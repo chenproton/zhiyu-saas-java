@@ -31,6 +31,7 @@ import { ResourceSelector } from '@/components/shared/resource-selector'
 import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
 import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // ==================== Types ====================
 
@@ -289,7 +290,7 @@ function uid(prefix = 'id') {
 function AttachmentListEditor({
   items,
   onChange,
-  addLabel = '上传附件',
+  addLabel,
 }: {
   items: AttachmentItem[]
   onChange: (items: AttachmentItem[]) => void
@@ -298,6 +299,7 @@ function AttachmentListEditor({
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const pendingItemIdRef = React.useRef<string | null>(null)
+  const t = useT()
 
   const update = (idx: number, patch: Partial<AttachmentItem>) => {
     const next = [...items]
@@ -317,9 +319,9 @@ function AttachmentListEditor({
       if (idx >= 0) {
         update(idx, { name: file.name, file: res.url })
       }
-      toast({ title: '附件上传成功' })
+      toast({ title: t('附件上传成功') })
     } catch (err: any) {
-      toast({ title: err?.message || '附件上传失败', variant: 'destructive' })
+      toast({ title: err?.message || t('附件上传失败'), variant: 'destructive' })
     } finally {
       setUploadingId(null)
       pendingItemIdRef.current = null
@@ -339,7 +341,7 @@ function AttachmentListEditor({
           <Input
             value={item.name}
             onChange={(e) => update(idx, { name: e.target.value })}
-            placeholder="附件名称"
+            placeholder={t('附件名称')}
             className="h-9 text-sm bg-white"
           />
           <div className="flex items-center gap-2 shrink-0">
@@ -348,7 +350,7 @@ function AttachmentListEditor({
                 {item.file.split('/').pop()}
               </Badge>
             ) : (
-              <span className="text-xs text-gray-400 whitespace-nowrap">未选择资料</span>
+              <span className="text-xs text-gray-400 whitespace-nowrap">{t('未选择资料')}</span>
             )}
             <Button
               size="sm"
@@ -361,7 +363,7 @@ function AttachmentListEditor({
               ) : (
                 <Upload className="h-3.5 w-3.5 mr-1" />
               )}
-              {uploadingId === item.id ? '上传中' : '选择资料'}
+              {uploadingId === item.id ? t('上传中') : t('选择资料')}
             </Button>
             <Button
               variant="ghost"
@@ -391,7 +393,7 @@ function AttachmentListEditor({
 function TaskListEditor({
   items,
   onChange,
-  addLabel = '添加任务',
+  addLabel,
 }: {
   items: TaskItem[]
   onChange: (items: TaskItem[]) => void
@@ -402,6 +404,7 @@ function TaskListEditor({
     next[idx] = { ...next[idx], ...patch }
     onChange(next)
   }
+  const t = useT()
 
   return (
     <div className="space-y-4">
@@ -411,7 +414,7 @@ function TaskListEditor({
             <Input
               value={item.name}
               onChange={(e) => update(idx, { name: e.target.value })}
-              placeholder="任务名称"
+              placeholder={t('任务名称')}
             />
             <Button
               variant="ghost"
@@ -424,14 +427,14 @@ function TaskListEditor({
           <MockRichEditor
             value={item.requirement}
             onChange={(v) => update(idx, { requirement: v })}
-            placeholder="任务要求"
+            placeholder={t('任务要求')}
           />
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">任务附件</Label>
+            <Label className="text-xs text-muted-foreground">{t('任务附件')}</Label>
             <AttachmentListEditor
               items={item.attachments}
               onChange={(attachments) => update(idx, { attachments })}
-              addLabel="上传附件"
+              addLabel={t('上传附件')}
             />
           </div>
         </div>
@@ -447,7 +450,7 @@ function TaskListEditor({
         }
       >
         <Plus className="h-4 w-4 mr-1" />
-        {addLabel}
+        {addLabel ?? t('添加任务')}
       </Button>
     </div>
   )
@@ -467,6 +470,7 @@ function ReportListEditor({
     next[idx] = { ...next[idx], ...patch }
     onChange(next)
   }
+  const t = useT()
 
   return (
     <div className="space-y-4">
@@ -476,7 +480,7 @@ function ReportListEditor({
             <Input
               value={item.name}
               onChange={(e) => update(idx, { name: e.target.value })}
-              placeholder="报告名称"
+              placeholder={t('报告名称')}
             />
             <div className="flex items-center gap-2 shrink-0">
               <Switch
@@ -485,7 +489,7 @@ function ReportListEditor({
                 onCheckedChange={(checked) => update(idx, { required: checked })}
               />
               <Label htmlFor={`report-req-${item.id}`} className="text-sm whitespace-nowrap">
-                必修
+                {t('必修')}
               </Label>
               <Button
                 variant="ghost"
@@ -499,19 +503,19 @@ function ReportListEditor({
           <MockRichEditor
             value={item.template}
             onChange={(v) => update(idx, { template: v })}
-            placeholder="报告模板"
+            placeholder={t('报告模板')}
           />
           <MockRichEditor
             value={item.requirement}
             onChange={(v) => update(idx, { requirement: v })}
-            placeholder="报告要求"
+            placeholder={t('报告要求')}
           />
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">报告附件</Label>
+            <Label className="text-xs text-muted-foreground">{t('报告附件')}</Label>
             <AttachmentListEditor
               items={item.attachments || []}
               onChange={(attachments) => update(idx, { attachments })}
-              addLabel="上传附件"
+              addLabel={t('上传附件')}
             />
           </div>
         </div>
@@ -534,7 +538,7 @@ function ReportListEditor({
         }
       >
         <Plus className="h-4 w-4 mr-1" />
-        添加报告
+        {t('添加报告')}
       </Button>
     </div>
   )
@@ -543,19 +547,20 @@ function ReportListEditor({
 // ==================== Activity module wrappers ====================
 
 function PrePreviewModule({ data, onChange }: AtomicModuleProps) {
+  const t = useT()
   return (
     <CardContent className="space-y-4">
       <MockRichEditor
         value={data.previewContent}
         onChange={(v) => onChange({ previewContent: v })}
-        placeholder="请输入课前预习内容"
+        placeholder={t('请输入课前预习内容')}
       />
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">预习资料附件</Label>
+        <Label className="text-xs text-muted-foreground">{t('预习资料附件')}</Label>
         <AttachmentListEditor
           items={data.previewAttachments}
           onChange={(v) => onChange({ previewAttachments: v })}
-          addLabel="添加附件"
+          addLabel={t('添加附件')}
         />
       </div>
     </CardContent>
@@ -631,12 +636,13 @@ function PreResourcesModule({ data, onChange, courseId }: AtomicModuleProps) {
 }
 
 function PreTasksModule({ data, onChange }: AtomicModuleProps) {
+  const t = useT()
   return (
     <CardContent>
       <TaskListEditor
         items={data.preClassTasks}
         onChange={(v) => onChange({ preClassTasks: v })}
-        addLabel="添加课前任务"
+        addLabel={t('添加课前任务')}
       />
     </CardContent>
   )
@@ -644,12 +650,13 @@ function PreTasksModule({ data, onChange }: AtomicModuleProps) {
 
 function PreQuizzesModule({ data, onChange }: AtomicModuleProps) {
   const methods = data.preQuizEvalMethods
+  const t = useT()
   return (
     <CardContent className="space-y-4">
       <div>
         <p className="text-sm font-semibold flex items-center gap-2 mb-3">
           <ClipboardList className="w-4 h-4 text-[#1890ff]" />
-          配置课程测评方式
+          {t('配置课程测评方式')}
         </p>
         <EvaluationMethodSelector
           selectedKeys={methods}
@@ -659,13 +666,13 @@ function PreQuizzesModule({ data, onChange }: AtomicModuleProps) {
       <div className="border-t pt-4">
         <p className="text-sm font-semibold flex items-center gap-2 mb-3">
           <Award className="w-4 h-4 text-[#1890ff]" />
-          配置课程评价规则
+          {t('配置课程评价规则')}
         </p>
         {methods.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-gray-400 py-12">
             <Database className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">尚未配置评价方式</p>
-            <p className="text-xs mt-1">请先在「配置课程测评方式」中选择评价类型</p>
+            <p className="text-sm">{t('尚未配置评价方式')}</p>
+            <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
           </div>
         ) : (
           <CourseEvaluationRulesDialog
@@ -673,7 +680,7 @@ function PreQuizzesModule({ data, onChange }: AtomicModuleProps) {
             evaluationMethods={methods}
             initialConfig={data.preQuizEvalRules}
             onChange={(config) => onChange({ preQuizEvalRules: config })}
-            title="配置课前测验评价规则"
+            title={t('配置课前测验评价规则')}
           />
         )}
       </div>
@@ -683,6 +690,7 @@ function PreQuizzesModule({ data, onChange }: AtomicModuleProps) {
 
 function LectureModule({ data, onChange }: AtomicModuleProps) {
   const sections = data.lectureSections || []
+  const t = useT()
 
   const update = (idx: number, patch: Partial<LectureSectionItem>) => {
     const next = [...sections]
@@ -694,7 +702,7 @@ function LectureModule({ data, onChange }: AtomicModuleProps) {
     <CardContent className="space-y-4">
       {sections.length === 0 && (
         <div className="text-center text-sm text-gray-400 py-4 border border-dashed rounded-lg">
-          暂无讲授环节，点击下方按钮新增
+          {t('暂无讲授环节，点击下方按钮新增')}
         </div>
       )}
       {sections.map((section, idx) => (
@@ -703,7 +711,7 @@ function LectureModule({ data, onChange }: AtomicModuleProps) {
             <Input
               value={section.name}
               onChange={(e) => update(idx, { name: e.target.value })}
-              placeholder="环节名称"
+              placeholder={t('环节名称')}
             />
             <Button
               variant="ghost"
@@ -716,14 +724,14 @@ function LectureModule({ data, onChange }: AtomicModuleProps) {
           <MockRichEditor
             value={section.content}
             onChange={(v) => update(idx, { content: v })}
-            placeholder="请输入环节讲授内容"
+            placeholder={t('请输入环节讲授内容')}
           />
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">环节附件</Label>
+            <Label className="text-xs text-muted-foreground">{t('环节附件')}</Label>
             <AttachmentListEditor
               items={section.attachments}
               onChange={(attachments) => update(idx, { attachments })}
-              addLabel="上传附件"
+              addLabel={t('上传附件')}
             />
           </div>
         </div>
@@ -741,19 +749,20 @@ function LectureModule({ data, onChange }: AtomicModuleProps) {
         }
       >
         <Plus className="h-4 w-4 mr-1" />
-        新增环节
+        {t('新增环节')}
       </Button>
     </CardContent>
   )
 }
 
 function InClassTasksModule({ data, onChange }: AtomicModuleProps) {
+  const t = useT()
   return (
     <CardContent>
       <TaskListEditor
         items={data.inClassTasks}
         onChange={(v) => onChange({ inClassTasks: v })}
-        addLabel="添加课堂任务"
+        addLabel={t('添加课堂任务')}
       />
     </CardContent>
   )
@@ -761,12 +770,13 @@ function InClassTasksModule({ data, onChange }: AtomicModuleProps) {
 
 function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
   const methods = data.inClassQuizEvalMethods
+  const t = useT()
   return (
     <CardContent className="space-y-4">
       <div>
         <p className="text-sm font-semibold flex items-center gap-2 mb-3">
           <ClipboardList className="w-4 h-4 text-[#1890ff]" />
-          配置课程测评方式
+          {t('配置课程测评方式')}
         </p>
         <EvaluationMethodSelector
           selectedKeys={methods}
@@ -776,13 +786,13 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
       <div className="border-t pt-4">
         <p className="text-sm font-semibold flex items-center gap-2 mb-3">
           <Award className="w-4 h-4 text-[#1890ff]" />
-          配置课程评价规则
+          {t('配置课程评价规则')}
         </p>
         {methods.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-gray-400 py-12">
             <Database className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">尚未配置评价方式</p>
-            <p className="text-xs mt-1">请先在「配置课程测评方式」中选择评价类型</p>
+            <p className="text-sm">{t('尚未配置评价方式')}</p>
+            <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
           </div>
         ) : (
           <CourseEvaluationRulesDialog
@@ -790,7 +800,7 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
             evaluationMethods={methods}
             initialConfig={data.inClassQuizEvalRules}
             onChange={(config) => onChange({ inClassQuizEvalRules: config })}
-            title="配置课中测验评价规则"
+            title={t('配置课中测验评价规则')}
           />
         )}
       </div>
@@ -800,6 +810,7 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
 
 function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
   const questions = data.classQuestions || []
+  const t = useT()
 
   const updateQuestion = (idx: number, patch: Partial<ClassroomQuestion>) => {
     const next = [...questions]
@@ -823,7 +834,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                 <Database className="h-4 w-4 text-[#1890ff]" />
                 <div>
                   <p className="text-sm font-medium">{q.bankTitle || q.stem}</p>
-                  <p className="text-xs text-gray-400">来自题库</p>
+                  <p className="text-xs text-gray-400">{t('来自题库')}</p>
                 </div>
               </div>
               <Button
@@ -840,7 +851,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
                 <Input
                   value={q.stem}
                   onChange={(e) => updateQuestion(idx, { stem: e.target.value })}
-                  placeholder="问题内容"
+                  placeholder={t('问题内容')}
                 />
                 <Button
                   variant="ghost"
@@ -855,7 +866,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
               <Input
                 value={q.answer}
                 onChange={(e) => updateQuestion(idx, { answer: e.target.value })}
-                placeholder="参考答案"
+                placeholder={t('参考答案')}
               />
             </>
           )}
@@ -863,7 +874,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
       ))}
       <Button size="sm" variant="outline" onClick={addQuestion}>
         <Plus className="h-4 w-4 mr-1" />
-        添加提问
+        {t('添加提问')}
       </Button>
     </CardContent>
   )
@@ -871,6 +882,7 @@ function ClassQuestionsModule({ data, onChange }: AtomicModuleProps) {
 
 function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
   const tasks = data.practiceTasks || []
+  const t = useT()
 
   const updateTask = (idx: number, patch: Partial<TaskItem>) => {
     const next = [...tasks]
@@ -897,7 +909,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                 <Database className="h-4 w-4 text-[#1890ff]" />
                 <div>
                   <p className="text-sm font-medium">{task.scenarioTitle || task.name}</p>
-                  <p className="text-xs text-gray-400">来自实践场景库</p>
+                  <p className="text-xs text-gray-400">{t('来自实践场景库')}</p>
                 </div>
               </div>
               <Button
@@ -914,7 +926,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
                 <Input
                   value={task.name}
                   onChange={(e) => updateTask(idx, { name: e.target.value })}
-                  placeholder="任务名称"
+                  placeholder={t('任务名称')}
                 />
                 <Button
                   variant="ghost"
@@ -927,14 +939,14 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
               <MockRichEditor
                 value={task.requirement}
                 onChange={(v) => updateTask(idx, { requirement: v })}
-                placeholder="任务要求"
+                placeholder={t('任务要求')}
               />
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">任务附件</Label>
+                <Label className="text-xs text-muted-foreground">{t('任务附件')}</Label>
                 <AttachmentListEditor
                   items={task.attachments}
                   onChange={(attachments) => updateTask(idx, { attachments })}
-                  addLabel="上传附件"
+                  addLabel={t('上传附件')}
                 />
               </div>
             </>
@@ -943,7 +955,7 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
       ))}
       <Button size="sm" variant="outline" onClick={addTask}>
         <Plus className="h-4 w-4 mr-1" />
-        添加实践任务
+        {t('添加实践任务')}
       </Button>
     </CardContent>
   )
@@ -951,12 +963,13 @@ function PracticeTasksModule({ data, onChange }: AtomicModuleProps) {
 
 function HomeworksModule({ data, onChange }: AtomicModuleProps) {
   const methods = data.homeworkEvalMethods
+  const t = useT()
   return (
     <CardContent className="space-y-4">
       <div>
         <p className="text-sm font-semibold flex items-center gap-2 mb-3">
           <ClipboardList className="w-4 h-4 text-[#1890ff]" />
-          配置课程测评方式
+          {t('配置课程测评方式')}
         </p>
         <EvaluationMethodSelector
           selectedKeys={methods}
@@ -966,13 +979,13 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
       <div className="border-t pt-4">
         <p className="text-sm font-semibold flex items-center gap-2 mb-3">
           <Award className="w-4 h-4 text-[#1890ff]" />
-          配置课程评价规则
+          {t('配置课程评价规则')}
         </p>
         {methods.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-gray-400 py-12">
             <Database className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">尚未配置评价方式</p>
-            <p className="text-xs mt-1">请先在「配置课程测评方式」中选择评价类型</p>
+            <p className="text-sm">{t('尚未配置评价方式')}</p>
+            <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
           </div>
         ) : (
           <CourseEvaluationRulesDialog
@@ -980,7 +993,7 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
             evaluationMethods={methods}
             initialConfig={data.homeworkEvalRules}
             onChange={(config) => onChange({ homeworkEvalRules: config })}
-            title="配置课后作业评价规则"
+            title={t('配置课后作业评价规则')}
           />
         )}
       </div>

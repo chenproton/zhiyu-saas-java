@@ -16,6 +16,7 @@ import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import { makeDefaultEvalRuleConfig } from '@/lib/types/evaluation'
 import { EvaluationRulesEditor, type AbilityPointItem } from '@/components/evaluation-rules'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export type { EvalRuleConfig as CourseEvalRulesConfig, EvalRuleMethodKey }
 export type { EvalRulePoint as EvalPoint } from '@/lib/types/evaluation'
@@ -45,6 +46,7 @@ export function CourseEvaluationRulesDialog({
   abilityPoints,
 }: CourseEvaluationRulesDialogProps) {
   const { toast } = useToast()
+  const t = useT()
   const [liveConfig, setLiveConfig] = useState<EvalRuleConfig | null>(null)
 
   const config = useMemo<EvalRuleConfig>(() => {
@@ -79,7 +81,7 @@ export function CourseEvaluationRulesDialog({
         evaluationMethods={evaluationMethods}
         config={config}
         onChange={handleChange}
-        title={title}
+        title={t(title)}
         knowledgePoints={knowledgePoints}
         abilityPoints={abilityPoints}
       />
@@ -94,10 +96,10 @@ export function CourseEvaluationRulesDialog({
             <div className="p-1.5 bg-primary/10 rounded">
               <Award className="h-5 w-5" />
             </div>
-            {title}
+            {t(title)}
           </DialogTitle>
           <DialogDescription>
-            配置各评价方式的测评对象、评价主体、测评资源与评价标准
+            {t('配置各评价方式的测评对象、评价主体、测评资源与评价标准')}
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-hidden py-4">
@@ -105,29 +107,31 @@ export function CourseEvaluationRulesDialog({
             evaluationMethods={evaluationMethods}
             config={config}
             onChange={handleChange}
-            title={title}
+            title={t(title)}
             knowledgePoints={knowledgePoints}
             abilityPoints={abilityPoints}
           />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange?.(false)}>
-            取消
+            {t('取消')}
           </Button>
           <Button
             onClick={() => {
               if (methodWeightTotal !== 100) {
                 toast({
                   variant: 'destructive',
-                  title: '权重校验失败',
-                  description: `评价方式权重合计需等于 100%，当前为 ${methodWeightTotal}%`,
+                  title: t('权重校验失败'),
+                  description: t('评价方式权重合计需等于 100%，当前为 {n}%', {
+                    n: methodWeightTotal,
+                  }),
                 })
                 return
               }
               onOpenChange?.(false)
             }}
           >
-            保存
+            {t('保存')}
           </Button>
         </DialogFooter>
       </DialogContent>

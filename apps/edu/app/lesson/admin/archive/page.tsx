@@ -8,8 +8,10 @@ import type { Course } from '@/lib/types/lesson'
 
 import { useToast, StatusBadge, useAsync } from '@zhiyu/ui'
 import { ArchiveListPage, type ArchiveColumn } from '@/components/shared/archive-list-page'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function LessonArchivePage() {
+  const t = useT()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
@@ -56,12 +58,12 @@ export default function LessonArchivePage() {
     try {
       await courseApi.saveDraft(course.id)
       await refresh()
-      toast({ title: '已恢复' })
+      toast({ title: t('已恢复') })
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '恢复失败',
-        description: err.message || '请稍后重试',
+        title: t('恢复失败'),
+        description: err.message || t('请稍后重试'),
       })
     }
   }
@@ -74,7 +76,7 @@ export default function LessonArchivePage() {
 
   const columns: ArchiveColumn<Course>[] = [
     {
-      header: '课程名称',
+      header: t('课程名称'),
       cell: (course) => (
         <div>
           <span className="font-medium">{course.name}</span>
@@ -85,27 +87,31 @@ export default function LessonArchivePage() {
       ),
     },
     {
-      header: '课程编码',
+      header: t('课程编码'),
       cell: (course) => <span className="text-sm text-muted-foreground">{course.code}</span>,
     },
     {
-      header: '课程类型',
+      header: t('课程类型'),
       cell: (course) => (
         <span className="text-sm">
-          {course.type === 'system' ? '体系课' : course.type === 'granular' ? '颗粒课' : '混合课'}
+          {course.type === 'system'
+            ? t('体系课')
+            : course.type === 'granular'
+              ? t('颗粒课')
+              : t('混合课')}
         </span>
       ),
     },
     {
-      header: '版本',
+      header: t('版本'),
       cell: (course) => <span className="text-sm">{course.version || '-'}</span>,
     },
     {
-      header: '适用专业',
+      header: t('适用专业'),
       cell: (course) => <span className="text-sm">{course.majorName || '-'}</span>,
     },
     {
-      header: '所属批次分组',
+      header: t('所属批次分组'),
       cell: (course) => (
         <span className="text-sm">
           {course.batchId ? batchMap.get(course.batchId)?.name || course.batchId : '-'}
@@ -113,7 +119,7 @@ export default function LessonArchivePage() {
       ),
     },
     {
-      header: '归档时间',
+      header: t('归档时间'),
       cell: (course) => (
         <span className="text-sm text-muted-foreground">{formatDate(course.updatedAt)}</span>
       ),
@@ -124,10 +130,10 @@ export default function LessonArchivePage() {
 
   return (
     <ArchiveListPage
-      entityLabel="课程"
-      pageTitle="课程历史档案库"
-      pageDescription="查看已归档的课程记录，支持恢复为草稿继续编辑"
-      sidebarTitle="按专业归档"
+      entityLabel={t('课程')}
+      pageTitle={t('课程历史档案库')}
+      pageDescription={t('查看已归档的课程记录，支持恢复为草稿继续编辑')}
+      sidebarTitle={t('按专业归档')}
       sidebarItems={majors.map((m) => ({ id: m, name: m }))}
       sidebarSelectedId={selectedMajor}
       onSidebarSelect={setSelectedMajor}
@@ -135,7 +141,7 @@ export default function LessonArchivePage() {
       loading={loading}
       onRestore={handleRestore}
       detailHref={(item) => editHref(item.type, item.id)}
-      searchPlaceholder="搜索课程名称 / 编码 / 专业 / 分类"
+      searchPlaceholder={t('搜索课程名称 / 编码 / 专业 / 分类')}
       searchValue={search}
       onSearchChange={setSearch}
       columns={columns}

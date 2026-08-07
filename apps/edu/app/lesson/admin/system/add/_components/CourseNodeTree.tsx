@@ -23,6 +23,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Plus, MoreHorizontal, GripVertical, BookOpen } from 'lucide-react'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 import { NODE_REF_TYPE_LABELS, NODE_REF_TYPE_COLORS } from '@/lib/types/lesson-source'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface CourseNodeTreeProps {
   nodes: SystemCourseNode[]
@@ -81,6 +82,7 @@ export default function CourseNodeTree({
   onDeleteNode,
   onReorderNodes,
 }: CourseNodeTreeProps) {
+  const t = useT()
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
@@ -242,13 +244,13 @@ export default function CourseNodeTree({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="text-xs">
               <DropdownMenuItem onClick={() => openEditDialog(node.id)}>
-                ✏ 编辑名称
+                ✏ {t('编辑名称')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openAddDialog(node.id)}>
-                + 添加子节点
+                + {t('添加子节点')}
               </DropdownMenuItem>
               <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(node.id)}>
-                🗑 删除
+                🗑 {t('删除')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -274,7 +276,7 @@ export default function CourseNodeTree({
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
             <BookOpen className="w-4 h-4 text-blue-500" />
-            目录
+            {t('目录')}
           </h3>
         </div>
         <div className="space-y-0.5 text-sm">
@@ -287,10 +289,10 @@ export default function CourseNodeTree({
           onClick={() => openAddDialog(null)}
         >
           <Plus className="w-3.5 h-3.5 mr-1" />
-          添加节点
+          {t('添加节点')}
         </Button>
         <p className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-400">
-          💡 拖拽节点可调整顺序
+          💡 {t('拖拽节点可调整顺序')}
         </p>
       </div>
 
@@ -298,11 +300,10 @@ export default function CourseNodeTree({
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>{isRootAdd ? '添加节点' : '添加子节点'}</DialogTitle>
+            <DialogTitle>{isRootAdd ? t('添加节点') : t('添加子节点')}</DialogTitle>
             {!isRootAdd && parentNode && (
               <p className="text-xs text-gray-500 mt-1">
-                将在「<span className="font-medium text-gray-700">{parentNode.name}</span>
-                」下添加子节点
+                {t('将在「{name}」下添加子节点', { name: parentNode.name })}
               </p>
             )}
           </DialogHeader>
@@ -310,12 +311,12 @@ export default function CourseNodeTree({
           <div className="py-2 space-y-4">
             <div>
               <Label className="text-sm">
-                节点名称 <span className="text-red-500">*</span>
+                {t('节点名称')} <span className="text-red-500">*</span>
               </Label>
               <Input
                 value={newNodeName}
                 onChange={(e) => setNewNodeName(e.target.value)}
-                placeholder="请输入节点名称"
+                placeholder={t('请输入节点名称')}
                 maxLength={50}
                 className="mt-1.5"
               />
@@ -325,10 +326,10 @@ export default function CourseNodeTree({
 
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button size="sm" onClick={handleConfirmAdd} disabled={!newNodeName.trim()}>
-              确认添加
+              {t('确认添加')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -338,14 +339,14 @@ export default function CourseNodeTree({
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>编辑节点名称</DialogTitle>
+            <DialogTitle>{t('编辑节点名称')}</DialogTitle>
           </DialogHeader>
           <div className="py-2">
-            <FormFieldRow label="节点名称">
+            <FormFieldRow label={t('节点名称')}>
               <Input
                 value={editNodeName}
                 onChange={(e) => setEditNodeName(e.target.value)}
-                placeholder="请输入节点名称"
+                placeholder={t('请输入节点名称')}
                 maxLength={50}
                 className="mt-1"
               />
@@ -353,9 +354,9 @@ export default function CourseNodeTree({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
-            <Button onClick={handleConfirmEdit}>保存</Button>
+            <Button onClick={handleConfirmEdit}>{t('保存')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -365,8 +366,8 @@ export default function CourseNodeTree({
         onOpenChange={(open) => {
           if (!open) setDeleteNodeId(null)
         }}
-        title="删除节点"
-        description="确定删除该节点吗？删除后其所有子节点也将被删除。"
+        title={t('删除节点')}
+        description={t('确定删除该节点吗？删除后其所有子节点也将被删除。')}
         variant="destructive"
         onConfirm={executeDelete}
       />

@@ -8,6 +8,7 @@ import {
   EVALUATION_METHOD_OPTIONS,
   type EvaluationMethodOption,
 } from '@/components/shared/eval-method-selector'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export type EvalMethodOption = EvaluationMethodOption
 
@@ -30,12 +31,13 @@ export function EvaluationMethodSelector({
   onChange,
   allowedKeys,
 }: EvaluationMethodSelectorProps) {
+  const t = useT()
   const [primaryTab, setPrimaryTab] = useState<'platform' | 'industry'>('platform')
   const [secondaryTab, setSecondaryTab] = useState('全部')
 
   const primaryTabs = [
-    { key: 'platform' as const, label: '平台通用' },
-    { key: 'industry' as const, label: '行业专属' },
+    { key: 'platform' as const, label: t('平台通用') },
+    { key: 'industry' as const, label: t('行业专属') },
   ]
 
   const secondaryTabsMap: Record<string, string[]> = {
@@ -96,7 +98,7 @@ export function EvaluationMethodSelector({
                 : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50',
             )}
           >
-            {tab}
+            {t(tab)}
           </button>
         ))}
       </div>
@@ -120,18 +122,18 @@ export function EvaluationMethodSelector({
                 <div className="flex items-center gap-3">
                   <div className={cn('p-2.5 rounded-lg border', method.color)}>{method.icon}</div>
                   <div>
-                    <p className="text-sm font-semibold">{method.label}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{method.desc}</p>
+                    <p className="text-sm font-semibold">{t(method.label)}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{t(method.desc)}</p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <Badge variant="outline" className="text-[10px] font-normal">
-                    {method.secondaryCategory}
+                    {t(method.secondaryCategory)}
                   </Badge>
                   {enabled && (
                     <div className="flex items-center gap-1 text-primary text-xs font-medium bg-primary/5 px-2 py-1 rounded-full">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      已选择
+                      {t('已选择')}
                     </div>
                   )}
                 </div>
@@ -144,13 +146,13 @@ export function EvaluationMethodSelector({
       {filteredMethods.length === 0 && (
         <div className="p-12 text-center text-gray-400 border border-dashed rounded-xl">
           <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">该分类下暂无可用测评方式</p>
+          <p className="text-sm">{t('该分类下暂无可用测评方式')}</p>
         </div>
       )}
 
       {selectedKeys.length === 0 && filteredMethods.length > 0 && (
         <div className="p-4 text-center text-gray-400 border border-dashed rounded-xl text-sm">
-          请选择至少一种评价方式
+          {t('请选择至少一种评价方式')}
         </div>
       )}
     </div>

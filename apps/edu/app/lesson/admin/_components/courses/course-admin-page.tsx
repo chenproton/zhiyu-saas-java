@@ -8,6 +8,7 @@ import type { Course as BackendCourse, LessonBatch } from '@/lib/types/lesson'
 import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface CourseAdminPageProps {
   title: string
@@ -67,10 +68,11 @@ export function CourseAdminPage({
   addHref,
   importExcelEntity,
 }: CourseAdminPageProps) {
+  const t = useT()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
   const typeLabel =
-    courseType === 'system' ? '体系课' : courseType === 'granular' ? '颗粒课' : '混合课'
+    courseType === 'system' ? t('体系课') : courseType === 'granular' ? t('颗粒课') : t('混合课')
 
   return (
     <ContentListPage<Course, BackendCourse, LessonBatch>
@@ -94,7 +96,7 @@ export function CourseAdminPage({
       mapItem={(b) => mapCourse(b, currentUserId)}
       mapBatch={mapCourseBatch}
       createPayload={(uid, label) => ({
-        name: `新建${label}_${draftSuffix()}`,
+        name: `${t('新建')}${label}_${draftSuffix()}`,
         type: courseType,
         category: 'default',
         status: 'draft',

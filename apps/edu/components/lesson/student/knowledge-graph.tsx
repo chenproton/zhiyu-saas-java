@@ -5,12 +5,7 @@ import type { Course, KnowledgePoint } from '@/lib/types'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
 import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
-
-const NODE_LABELS = {
-  position: '课程',
-  domain: '节点',
-  knowledge: '知识点',
-} as const
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface LessonKnowledgeGraphProps {
   course: Course
@@ -19,6 +14,7 @@ interface LessonKnowledgeGraphProps {
 }
 
 export function LessonKnowledgeGraph({ course, nodes, knowledgeMap }: LessonKnowledgeGraphProps) {
+  const t = useT()
   const isGranular = course.type === 'granular'
 
   const { nodes: graphNodes, edges: graphEdges } = useMemo(() => {
@@ -28,7 +24,7 @@ export function LessonKnowledgeGraph({ course, nodes, knowledgeMap }: LessonKnow
     const pushKnowledge = (targetId: string, kp: KnowledgePoint) => {
       graphNodes.push({
         id: kp.id,
-        label: kp.name || kp.code || '知识点',
+        label: kp.name || kp.code || t('知识点'),
         type: 'knowledge',
       })
       graphEdges.push({ source: targetId, target: kp.id })
@@ -36,7 +32,7 @@ export function LessonKnowledgeGraph({ course, nodes, knowledgeMap }: LessonKnow
 
     graphNodes.push({
       id: course.id,
-      label: course.name || '课程',
+      label: course.name || t('课程'),
       type: 'position',
     })
 
@@ -51,7 +47,7 @@ export function LessonKnowledgeGraph({ course, nodes, knowledgeMap }: LessonKnow
       nodes.forEach((node) => {
         graphNodes.push({
           id: node.id,
-          label: node.name || '节点',
+          label: node.name || t('节点'),
           type: 'domain',
         })
         graphEdges.push({ source: course.id, target: node.id })
@@ -60,11 +56,11 @@ export function LessonKnowledgeGraph({ course, nodes, knowledgeMap }: LessonKnow
     }
 
     return { nodes: graphNodes, edges: graphEdges }
-  }, [course, nodes, knowledgeMap, isGranular])
+  }, [course, nodes, knowledgeMap, isGranular, t])
 
   const emptyView = (
     <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
-      暂无图谱数据
+      {t('暂无图谱数据')}
     </div>
   )
 
@@ -72,9 +68,15 @@ export function LessonKnowledgeGraph({ course, nodes, knowledgeMap }: LessonKnow
     <KnowledgeGraphShell
       nodes={graphNodes}
       edges={graphEdges}
-      title="知识图谱"
-      description={isGranular ? '课程 → 知识点的关联网络' : '课程 → 节点 → 知识点的关联网络'}
-      nodeLabels={NODE_LABELS}
+      title={t('知识图谱')}
+      description={
+        isGranular ? t('课程 → 知识点的关联网络') : t('课程 → 节点 → 知识点的关联网络')
+      }
+      nodeLabels={{
+        position: t('课程'),
+        domain: t('节点'),
+        knowledge: t('知识点'),
+      }}
       emptyView={emptyView}
     />
   )
