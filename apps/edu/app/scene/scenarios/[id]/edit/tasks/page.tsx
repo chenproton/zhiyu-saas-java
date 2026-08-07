@@ -100,6 +100,7 @@ import {
 } from './_components/tasks-logic'
 import { useAuth } from '@/components/auth-provider'
 import { reportError } from '@/lib/error-handling'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Task } from '@/lib/types/scene-mock'
 import type { Scenario } from '@/lib/types/scene'
 import type { CareerPosition } from '@/lib/types/job'
@@ -139,6 +140,7 @@ export default function TasksEditPage() {
   const scenarioId = params.id as string
   const { toast } = useToast()
   const { user } = useAuth()
+  const t = useT()
 
   const datasets = useTaskDatasets()
 
@@ -241,14 +243,14 @@ export default function TasksEditPage() {
           positions: Array<{ id: string; name: string; professionId: string }>
         }> = []
         posRes.items.forEach((p) => {
-          const pos = p as PositionWithIndustryName
-          const prof = nextProfessions.find((pr) => pr.name === (pos.industryName || '其他'))
-          if (prof) {
-            prof.positions.push({ id: pos.id, name: pos.name, professionId: prof.id })
-          } else {
-            nextProfessions.push({
-              id: `prof-${nextProfessions.length + 1}`,
-              name: pos.industryName || '其他',
+        const pos = p as PositionWithIndustryName
+        const prof = nextProfessions.find((pr) => pr.name === (pos.industryName || t('其他')))
+        if (prof) {
+          prof.positions.push({ id: pos.id, name: pos.name, professionId: prof.id })
+        } else {
+          nextProfessions.push({
+            id: `prof-${nextProfessions.length + 1}`,
+            name: pos.industryName || t('其他'),
               positions: [
                 { id: pos.id, name: pos.name, professionId: `prof-${nextProfessions.length + 1}` },
               ],
@@ -328,13 +330,13 @@ export default function TasksEditPage() {
         setLoadFailed(true)
         toast({
           variant: 'destructive',
-          title: '任务数据加载失败',
-          description: err?.message || '请刷新页面重试',
+          title: t('任务数据加载失败'),
+          description: err?.message || t('请刷新页面重试'),
         })
       }
     }
     load()
-  }, [scenarioId, user?.id, ensureDatasets, toast])
+  }, [scenarioId, user?.id, ensureDatasets, toast, t])
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -408,23 +410,29 @@ export default function TasksEditPage() {
 
     switch (type) {
       case 'info':
-        return `任务名称：${task.name}\n编码：${task.code || '-'}\n任务类型：${task.taskType === 'assessment' ? '考核' : '训练'}\n难度：${task.difficulty}星\n预估学时：${task.estimatedHours}小时`
+        return t('任务名称：{name}\n编码：{code}\n任务类型：{type}\n难度：{difficulty}星\n预估学时：{hours}小时', {
+          name: task.name,
+          code: task.code || '-',
+          type: task.taskType === 'assessment' ? t('考核') : t('训练'),
+          difficulty: task.difficulty,
+          hours: task.estimatedHours,
+        })
       case 'description': {
         if (state.description) return `${state.description.replace(/<[^>]*>/g, '').slice(0, 50)}...`
-        if (state.descriptionPdf) return '已上传附件'
-        return '未填写'
+        if (state.descriptionPdf) return t('已上传附件')
+        return t('未填写')
       }
       case 'knowledge':
-        if (state.knowledgePoints.length === 0) return '未配置'
+        if (state.knowledgePoints.length === 0) return t('未配置')
         const kpNames = state.knowledgePoints
           .map((id) => datasets.knowledgePoints.find((k) => k.id === id)?.name)
           .filter(Boolean)
         return (
           kpNames.slice(0, 3).join('、') +
-          (kpNames.length > 3 ? ` 等${state.knowledgePoints.length}个` : '')
+          (kpNames.length > 3 ? t(' 等{n}个', { n: state.knowledgePoints.length }) : '')
         )
       case 'ability': {
-        if (state.abilityPoints.length === 0) return '未配置'
+        if (state.abilityPoints.length === 0) return t('未配置')
         // 优先使用服务端随任务返回的名称（与 abilityPointIds 对齐），
         // 再回退全量能力点列表与岗位绑定名称（全量列表接口 maxPageSize=200 会截断）
         const apiNameById = new Map<string, string>()
@@ -451,26 +459,26 @@ export default function TasksEditPage() {
           .filter(Boolean)
         return (
           abNames.slice(0, 3).join('、') +
-          (abNames.length > 3 ? ` 等${state.abilityPoints.length}个` : '')
+          (abNames.length > 3 ? t(' 等{n}个', { n: state.abilityPoints.length }) : '')
         )
       }
       case 'resources':
-        if (state.resources.length === 0) return '未配置'
+        if (state.resources.length === 0) return t('未配置')
         const resNames = state.resources
           .map((id) => datasets.learningResources.find((r) => r.id === id)?.name)
           .filter(Boolean)
         return (
           resNames.slice(0, 3).join('、') +
-          (resNames.length > 3 ? ` 等${state.resources.length}个` : '')
+          (resNames.length > 3 ? t(' 等{n}个', { n: state.resources.length }) : '')
         )
       case 'evaluation':
-        if (state.evaluationMethods.length === 0) return '未配置'
+        if (state.evaluationMethods.length === 0) return t('未配置')
         return state.evaluationMethods
           .map((m) => evaluationMethodOptions.find((o) => o.key === m)?.label)
           .filter(Boolean)
           .join('、')
       case 'evaluationRules':
-        if (state.evaluationMethods.length === 0) return '未配置评价方式'
+        if (state.evaluationMethods.length === 0) return t('未配置评价方式')
         const configuredMethods = state.evaluationMethods.filter((m) => {
           if (m === 'random_draw')
             return (
@@ -491,14 +499,14 @@ export default function TasksEditPage() {
           (sum, m) => sum + (state.methodWeights[m] || 0),
           0,
         )
-        if (configuredMethods.length === 0) return '待配置'
+        if (configuredMethods.length === 0) return t('待配置')
         const weightSummary = state.evaluationMethods
           .map((m) => {
             const label = evaluationMethodOptions.find((o) => o.key === m)?.label || m
             return `${label}${state.methodWeights[m] || 0}%`
           })
           .join('、')
-        return `${weightSummary}\n权重合计 ${methodWeightTotal2}%${methodWeightTotal2 !== 100 ? ' (需等于100%)' : ''}`
+        return `${weightSummary}\n${t('权重合计 {n}%', { n: methodWeightTotal2 })}${methodWeightTotal2 !== 100 ? t(' (需等于100%)') : ''}`
       case 'weight':
         return `${state.weight}%`
     }
@@ -568,9 +576,9 @@ export default function TasksEditPage() {
       setTaskStates(newStates)
       setIsAddTaskOpen(false)
       setNewTask({ name: '', hours: 4, type: 'training', difficulty: 3, background: '' })
-      toast({ title: '已添加任务' })
+      toast({ title: t('已添加任务') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '添加失败', description: err.message })
+      toast({ variant: 'destructive', title: t('添加失败'), description: err.message })
     }
   }
 
@@ -612,7 +620,7 @@ export default function TasksEditPage() {
       setIsCloneOpen(false)
       setSelectedClone([])
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '克隆失败', description: err.message })
+      toast({ variant: 'destructive', title: t('克隆失败'), description: err.message })
     } finally {
       setIsCloning(false)
     }
@@ -626,9 +634,9 @@ export default function TasksEditPage() {
       delete newStates[id]
       setTaskStates(newStates)
       setDeleteConfirmTask(null)
-      toast({ title: '已删除任务' })
+      toast({ title: t('已删除任务') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     }
   }
 
@@ -775,8 +783,8 @@ export default function TasksEditPage() {
     if (failedCreateIds.length > 0) {
       toast({
         variant: 'destructive',
-        title: '部分自定义知识点保存失败',
-        description: `${failedCreateIds.length} 个知识点未能创建，将从任务中移除`,
+        title: t('部分自定义知识点保存失败'),
+        description: t('{n} 个知识点未能创建，将从任务中移除', { n: failedCreateIds.length }),
       })
     }
 
@@ -836,8 +844,8 @@ export default function TasksEditPage() {
     if (failedAbilityIds.length > 0) {
       toast({
         variant: 'destructive',
-        title: '部分自定义能力点保存失败',
-        description: `${failedAbilityIds.length} 个能力点未能创建，将从任务中移除`,
+        title: t('部分自定义能力点保存失败'),
+        description: t('{n} 个能力点未能创建，将从任务中移除', { n: failedAbilityIds.length }),
       })
     }
 
@@ -889,8 +897,8 @@ export default function TasksEditPage() {
     if (failedResourceIds.length > 0) {
       toast({
         variant: 'destructive',
-        title: '部分自定义资源保存失败',
-        description: `${failedResourceIds.length} 个资源未能创建，将从任务中移除`,
+        title: t('部分自定义资源保存失败'),
+        description: t('{n} 个资源未能创建，将从任务中移除', { n: failedResourceIds.length }),
       })
     }
 
@@ -990,12 +998,12 @@ export default function TasksEditPage() {
       if (existingScenario?.status !== 'draft') {
         await scenarioApi.saveDraft(scenarioId)
         setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
-        toast({ title: '草稿已保存', description: '场景已退回草稿状态' })
+        toast({ title: t('草稿已保存'), description: t('场景已退回草稿状态') })
       } else {
-        toast({ title: '草稿已保存' })
+        toast({ title: t('草稿已保存') })
       }
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     } finally {
       setIsSaving(false)
     }
@@ -1008,13 +1016,13 @@ export default function TasksEditPage() {
       if (existingScenario?.status !== 'draft') {
         await scenarioApi.saveDraft(scenarioId)
         setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
-        toast({ title: '配置已保存', description: '场景已退回草稿状态' })
+        toast({ title: t('配置已保存'), description: t('场景已退回草稿状态') })
       } else {
-        toast({ title: '配置已保存' })
+        toast({ title: t('配置已保存') })
       }
       router.push('/scene')
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     } finally {
       setIsSaving(false)
     }
@@ -1023,22 +1031,22 @@ export default function TasksEditPage() {
   return (
     <EditorShell
       mode="fullscreen"
-      backText="取消"
+      backText={t('取消')}
       onBack={() => router.push('/scene')}
       step={2}
-      stepLabel="任务链配置"
+      stepLabel={t('任务链配置')}
       onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
       onPrev={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}
       onSubmit={handleFinish}
-      submitText="完成配置"
+      submitText={t('完成配置')}
       contentMaxWidth="max-w-[1400px]"
     >
       {loadFailed && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
-          <span className="text-sm text-destructive">任务数据加载失败，请重试</span>
+          <span className="text-sm text-destructive">{t('任务数据加载失败，请重试')}</span>
           <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            刷新重试
+            {t('刷新重试')}
           </Button>
         </div>
       )}
@@ -1049,28 +1057,28 @@ export default function TasksEditPage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <CardTitle className="text-lg truncate">
-                  {existingScenario?.name || '新建场景'}
+                  {existingScenario?.name || t('新建场景')}
                 </CardTitle>
                 {existingScenario && existingScenario.coBuilders.length > 0 && (
                   <Badge variant="secondary" className="text-[10px]">
-                    共建
+                    {t('共建')}
                   </Badge>
                 )}
               </div>
               <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="truncate">
-                  {existingScenario?.positionName || existingScenario?.positionId || '未选择岗位'}
+                  {existingScenario?.positionName || existingScenario?.positionId || t('未选择岗位')}
                   {' | '}
-                  {existingScenario?.industryName || existingScenario?.industryId || '未选择行业'}
+                  {existingScenario?.industryName || existingScenario?.industryId || t('未选择行业')}
                   {' | '}
                   {existingScenario?.professionName ||
                     existingScenario?.professionId ||
-                    '未选择专业'}
+                    t('未选择专业')}
                 </span>
                 {existingScenario && existingScenario.coBuilders.length > 0 && (
                   <span className="flex flex-wrap items-center gap-1">
                     <span className="text-gray-400">|</span>
-                    <span>共建人：</span>
+                    <span>{t('共建人：')}</span>
                     {existingScenario.coBuilders.map((cb: { id: string; name: string }) => (
                       <Badge key={cb.id} variant="outline" className="text-[10px]">
                         {cb.name}
@@ -1099,15 +1107,15 @@ export default function TasksEditPage() {
           </div>
         </CardHeader>
         <CardContent className="pt-0 border-t">
-          <p className="text-sm text-gray-600 pt-3">{existingScenario?.background || '暂无介绍'}</p>
+          <p className="text-sm text-gray-600 pt-3">{existingScenario?.background || t('暂无介绍')}</p>
         </CardContent>
       </Card>
 
       {/* Tasks Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mt-6">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold text-lg">任务列表</h2>
-          <Badge variant="secondary">{tasks.length} 个任务</Badge>
+          <h2 className="font-semibold text-lg">{t('任务列表')}</h2>
+          <Badge variant="secondary">{t('{n} 个任务', { n: tasks.length })}</Badge>
           <div
             className={cn(
               'flex items-center gap-1 text-sm px-2 py-1 rounded',
@@ -1115,21 +1123,21 @@ export default function TasksEditPage() {
             )}
           >
             <Scale className="h-3.5 w-3.5" />
-            权重: {totalWeight}%
+            {t('权重: {n}%', { n: totalWeight })}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            添加任务
+            {t('添加任务')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setIsCloneOpen(true)}>
             <Copy className="mr-2 h-4 w-4" />
-            克隆/引用
+            {t('克隆/引用')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setIsWeightConfigOpen(true)}>
             <PieChartIcon className="mr-2 h-4 w-4" />
-            配置任务权重
+            {t('配置任务权重')}
           </Button>
         </div>
       </div>
@@ -1144,7 +1152,7 @@ export default function TasksEditPage() {
               className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-2"
               key={c.type}
             >
-              {c.title}
+              {t(c.title)}
             </div>
           ))}
           <div className="w-8 shrink-0" />
@@ -1225,10 +1233,10 @@ export default function TasksEditPage() {
                         >
                           {config.icon}
                         </div>
-                        <span className="text-xs font-medium truncate flex-1">{config.title}</span>
+                        <span className="text-xs font-medium truncate flex-1">{t(config.title)}</span>
                         {isRef && (
                           <Badge variant="outline" className="text-[10px] px-1 py-0">
-                            引用
+                            {t('引用')}
                           </Badge>
                         )}
                       </div>
@@ -1260,10 +1268,10 @@ export default function TasksEditPage() {
           {tasks.length === 0 && (
             <div className="py-16 text-center">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-4">暂无任务，点击添加第一个任务</p>
+              <p className="text-gray-500 mb-4">{t('暂无任务，点击添加第一个任务')}</p>
               <Button onClick={() => setIsAddTaskOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                添加任务
+                {t('添加任务')}
               </Button>
             </div>
           )}
@@ -1274,20 +1282,20 @@ export default function TasksEditPage() {
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>添加任务</DialogTitle>
+            <DialogTitle>{t('添加任务')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>任务名称</Label>
+              <Label>{t('任务名称')}</Label>
               <Input
                 value={newTask.name}
                 onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                placeholder="输入任务名称"
+                placeholder={t('输入任务名称')}
                 className="mt-1.5"
               />
             </div>
             <div>
-              <Label>任务类型</Label>
+              <Label>{t('任务类型')}</Label>
               <Select
                 value={newTask.type}
                 onValueChange={(v) =>
@@ -1298,15 +1306,15 @@ export default function TasksEditPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="training">训练任务</SelectItem>
-                  <SelectItem value="assessment">考核任务</SelectItem>
+                  <SelectItem value="training">{t('训练任务')}</SelectItem>
+                  <SelectItem value="assessment">{t('考核任务')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <Label>预估学时</Label>
-                <span className="text-xs text-gray-400">学生完成任务的预估时长</span>
+                <Label>{t('预估学时')}</Label>
+                <span className="text-xs text-gray-400">{t('学生完成任务的预估时长')}</span>
               </div>
               <Input
                 type="number"
@@ -1316,7 +1324,7 @@ export default function TasksEditPage() {
               />
             </div>
             <div>
-              <Label>难度</Label>
+              <Label>{t('难度')}</Label>
               <div className="flex gap-1 mt-1.5">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button key={n} onClick={() => setNewTask({ ...newTask, difficulty: n })}>
@@ -1331,11 +1339,11 @@ export default function TasksEditPage() {
               </div>
             </div>
             <div>
-              <Label>背景介绍</Label>
+              <Label>{t('背景介绍')}</Label>
               <Textarea
                 value={newTask.background}
                 onChange={(e) => setNewTask({ ...newTask, background: e.target.value })}
-                placeholder="简述任务背景"
+                placeholder={t('简述任务背景')}
                 className="mt-1.5"
                 rows={3}
               />
@@ -1343,10 +1351,10 @@ export default function TasksEditPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleAddTask} disabled={!newTask.name}>
-              添加
+              {t('添加')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1356,8 +1364,8 @@ export default function TasksEditPage() {
       <Dialog open={isCloneOpen} onOpenChange={setIsCloneOpen}>
         <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>克隆/引用任务</DialogTitle>
-            <DialogDescription>从其他场景选择任务进行克隆或引用</DialogDescription>
+            <DialogTitle>{t('克隆/引用任务')}</DialogTitle>
+            <DialogDescription>{t('从其他场景选择任务进行克隆或引用')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between">
@@ -1367,14 +1375,14 @@ export default function TasksEditPage() {
                   size="sm"
                   onClick={() => setCloneMode('clone')}
                 >
-                  克隆（可编辑）
+                  {t('克隆（可编辑）')}
                 </Button>
                 <Button
                   variant={cloneMode === 'reference' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setCloneMode('reference')}
                 >
-                  引用（只读）
+                  {t('引用（只读）')}
                 </Button>
               </div>
               <div className="relative w-64">
@@ -1382,7 +1390,7 @@ export default function TasksEditPage() {
                 <Input
                   value={cloneSearch}
                   onChange={(e) => setCloneSearch(e.target.value)}
-                  placeholder="搜索任务名称、编码..."
+                  placeholder={t('搜索任务名称、编码...')}
                   className="pl-9"
                 />
               </div>
@@ -1392,9 +1400,9 @@ export default function TasksEditPage() {
               onValueChange={(v) => setCloneTab(v as 'my' | 'collab' | 'public')}
             >
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="my">我的</TabsTrigger>
-                <TabsTrigger value="collab">共建</TabsTrigger>
-                <TabsTrigger value="public">公共库</TabsTrigger>
+                <TabsTrigger value="my">{t('我的')}</TabsTrigger>
+                <TabsTrigger value="collab">{t('共建')}</TabsTrigger>
+                <TabsTrigger value="public">{t('公共库')}</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="flex-1 overflow-y-auto border rounded-lg">
@@ -1402,10 +1410,10 @@ export default function TasksEditPage() {
                 {/* Table Header */}
                 <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0 min-w-[540px]">
                   <div></div>
-                  <div>任务名称</div>
-                  <div>任务编码</div>
-                  <div>关联场景</div>
-                  <div>关联岗位</div>
+                  <div>{t('任务名称')}</div>
+                  <div>{t('任务编码')}</div>
+                  <div>{t('关联场景')}</div>
+                  <div>{t('关联岗位')}</div>
                 </div>
                 {allTasks
                   .filter((t) => {
@@ -1467,10 +1475,10 @@ export default function TasksEditPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleClone} disabled={selectedClone.length === 0 || isCloning}>
-              {isCloning ? '克隆中...' : `确定 (${selectedClone.length})`}
+              {isCloning ? t('克隆中...') : t('确定 ({n})', { n: selectedClone.length })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1512,10 +1520,12 @@ export default function TasksEditPage() {
       <ConfirmDialog
         open={!!deleteConfirmTask}
         onOpenChange={(open) => !open && setDeleteConfirmTask(null)}
-        title="确认删除"
-        description={`确定要删除任务「${deleteConfirmTask?.name}」吗？删除后不可恢复。`}
+        title={t('确认删除')}
+        description={t('确定要删除任务「{name}」吗？删除后不可恢复。', {
+          name: deleteConfirmTask?.name || '',
+        })}
         variant="destructive"
-        confirmText="确认删除"
+        confirmText={t('确认删除')}
         onConfirm={() => deleteConfirmTask && handleDeleteTask(deleteConfirmTask.id)}
       />
     </EditorShell>
@@ -1613,6 +1623,7 @@ function EditCardDialog({
   datasets: UseTaskDatasetsResult
   professions: any[]
 }) {
+  const t = useT()
   const config = cardConfigs.find((c) => c.type === cardType)!
   const [localTask, setLocalTask] = useState({
     name: task.name,
@@ -1724,7 +1735,7 @@ function EditCardDialog({
             )
             updateState({ evalMethodVersion: newVersion })
           } catch (err: any) {
-            toast({ variant: 'destructive', title: '评价规则保存失败', description: err.message })
+            toast({ variant: 'destructive', title: t('评价规则保存失败'), description: err.message })
             return
           }
         }
@@ -1834,7 +1845,9 @@ function EditCardDialog({
           return (
             <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
               <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-gray-600">请先关联岗位后，再选择考察能力点</p>
+              <p className="text-sm font-medium text-gray-600">
+                {t('请先关联岗位后，再选择考察能力点')}
+              </p>
             </div>
           )
         }
@@ -1859,9 +1872,9 @@ function EditCardDialog({
           return {
             ...ab,
             id: b.abilityPointId,
-            name: b.abilityName || ab.name || '未命名能力',
+            name: b.abilityName || ab.name || t('未命名能力'),
             positionIds: [positionId],
-            domain: b?.domain || ab.domain || '其他',
+            domain: b?.domain || ab.domain || t('其他'),
             requiredLevel: b?.requiredLevel || ab.requiredLevel,
             proficiencyDesc: b?.rubricDescription || ab.proficiencyDesc,
           }
@@ -1871,9 +1884,11 @@ function EditCardDialog({
           return (
             <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
               <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-gray-600 mb-1">目标岗位暂无关联能力点</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">
+                {t('目标岗位暂无关联能力点')}
+              </p>
               <p className="text-xs text-gray-400 mb-4">
-                请先去岗位配置页关联能力点后，再回到本页面选择
+                {t('请先去岗位配置页关联能力点后，再回到本页面选择')}
               </p>
               <Button
                 variant="outline"
@@ -1882,7 +1897,7 @@ function EditCardDialog({
                   positionId && window.open(`/job/positions/${positionId}/edit`, '_blank')
                 }
               >
-                去岗位配置页关联
+                {t('去岗位配置页关联')}
                 <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Button>
             </div>
@@ -1901,7 +1916,7 @@ function EditCardDialog({
         // Group by domain
         const domainGroups = relatedAbilities.reduce(
           (acc, ab) => {
-            const domain = ab.domain || '其他'
+            const domain = ab.domain || t('其他')
             if (!acc[domain]) acc[domain] = []
             acc[domain].push(ab)
             return acc
@@ -1952,14 +1967,15 @@ function EditCardDialog({
                 <Input
                   value={abilitySearch}
                   onChange={(e) => setAbilitySearch(e.target.value)}
-                  placeholder="搜索能力点名称、编码或描述..."
+                  placeholder={t('搜索能力点名称、编码或描述...')}
                   className="pl-9"
                 />
               </div>
               <div className="text-sm text-gray-500 shrink-0">
-                共 <span className="font-medium text-gray-800">{relatedAbilities.length}</span>{' '}
-                个关联能力点，已选{' '}
-                <span className="font-medium text-primary">{state.abilityPoints.length}</span> 个
+                {t('共 {n} 个关联能力点，已选 {m} 个', {
+                  n: relatedAbilities.length,
+                  m: state.abilityPoints.length,
+                })}
               </div>
             </div>
 
@@ -1995,7 +2011,7 @@ function EditCardDialog({
                         <DomainIcon className="h-4 w-4" />
                         <span className="flex-1 text-left truncate">{domain}</span>
                         <Badge className="text-[10px] bg-white text-sky-600 border-sky-200 shrink-0">
-                          {filtered.length} 个能力点
+                          {t('{n} 个能力点', { n: filtered.length })}
                         </Badge>
                       </button>
                       {expanded && (
@@ -2047,7 +2063,7 @@ function EditCardDialog({
                                           requiredLevelColors[levelLabel] || '',
                                         )}
                                       >
-                                        胜任标准：{levelLabel}
+                                        {t('胜任标准：{level}', { level: levelLabel })}
                                       </Badge>
                                     )}
                                   </div>
@@ -2061,7 +2077,7 @@ function EditCardDialog({
                                     className="text-[10px] text-gray-500 shrink-0 line-clamp-1 max-w-[50%] text-right"
                                     title={ab.proficiencyDesc || undefined}
                                   >
-                                    {ab.proficiencyDesc || '岗位胜任标准描述'}
+                                    {ab.proficiencyDesc || t('岗位胜任标准描述')}
                                   </span>
                                 </div>
                               </div>
@@ -2083,7 +2099,7 @@ function EditCardDialog({
                 ).length === 0 && (
                   <div className="col-span-full text-center text-gray-400 py-16">
                     <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">未找到匹配的能力点</p>
+                    <p className="text-sm">{t('未找到匹配的能力点')}</p>
                   </div>
                 )}
               </div>
@@ -2093,7 +2109,7 @@ function EditCardDialog({
             <Dialog open={abilityDetailOpen} onOpenChange={setAbilityDetailOpen}>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>能力点详情</DialogTitle>
+                  <DialogTitle>{t('能力点详情')}</DialogTitle>
                 </DialogHeader>
                 {detailAb && (
                   <div className="space-y-4 py-2">
@@ -2106,15 +2122,15 @@ function EditCardDialog({
                       )}
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">能力点描述</Label>
+                      <Label className="text-xs text-gray-500">{t('能力点描述')}</Label>
                       <p className="text-sm text-gray-700 mt-1">{detailAb.description}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">所属能力领域</Label>
+                      <Label className="text-xs text-gray-500">{t('所属能力领域')}</Label>
                       <p className="text-sm text-gray-700 mt-1">{detailAb.domain || '-'}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">关联岗位</Label>
+                      <Label className="text-xs text-gray-500">{t('关联岗位')}</Label>
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {(
                           detailAb.positionIds
@@ -2131,7 +2147,7 @@ function EditCardDialog({
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">胜任标准</Label>
+                      <Label className="text-xs text-gray-500">{t('胜任标准')}</Label>
                       <p className="text-sm text-gray-700 mt-1">
                         {detailAb.requiredLevel
                           ? COMPETENCY_LEVEL_LABELS[
@@ -2141,7 +2157,7 @@ function EditCardDialog({
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">岗位胜任标准描述</Label>
+                      <Label className="text-xs text-gray-500">{t('岗位胜任标准描述')}</Label>
                       <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">
                         {detailAb.proficiencyDesc || '-'}
                       </p>
@@ -2248,17 +2264,17 @@ function EditCardDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="p-1.5 bg-primary/10 rounded">{config.icon}</div>
-            {config.title}
+            {t(config.title)}
           </DialogTitle>
-          <DialogDescription>任务：{task.name}</DialogDescription>
+          <DialogDescription>{t('任务：{name}', { name: task.name })}</DialogDescription>
         </DialogHeader>
         <div className={cn('flex-1 py-4 overflow-y-auto')}>{renderContent()}</div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            取消
+            {t('取消')}
           </Button>
           <Button onClick={handleSave} disabled={isSavingCard}>
-            {isSavingCard ? '保存中...' : '保存'}
+            {isSavingCard ? t('保存中...') : t('保存')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2281,6 +2297,7 @@ function WeightConfigDialog({
   taskStates: Record<string, TaskState>
   updateAnyState: (id: string, u: Partial<TaskState>) => void
 }) {
+  const t = useT()
   const colors = [
     'bg-blue-500',
     'bg-green-500',
@@ -2332,9 +2349,9 @@ function WeightConfigDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PieChartIcon className="h-5 w-5" />
-            配置任务权重
+            {t('配置任务权重')}
           </DialogTitle>
-          <DialogDescription>调整所有任务的权重分配，总权重应为 100%</DialogDescription>
+          <DialogDescription>{t('调整所有任务的权重分配，总权重应为 100%')}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
           <div className="flex items-center justify-between">
@@ -2345,17 +2362,19 @@ function WeightConfigDialog({
                   totalW === 100 ? 'text-green-600' : 'text-amber-600',
                 )}
               >
-                总权重: {totalW}%
+                {t('总权重: {n}%', { n: totalW })}
               </span>
               {totalW !== 100 && (
                 <span className="text-sm text-amber-600">
-                  {totalW > 100 ? `超出 ${totalW - 100}%` : `还需分配 ${100 - totalW}%`}
+                  {totalW > 100
+                    ? t('超出 {n}%', { n: totalW - 100 })
+                    : t('还需分配 {n}%', { n: 100 - totalW })}
                 </span>
               )}
             </div>
             <Button variant="outline" size="sm" onClick={distributeGlobal}>
               <Scale className="mr-2 h-4 w-4" />
-              一键平均分配
+              {t('一键平均分配')}
             </Button>
           </div>
 
@@ -2454,7 +2473,7 @@ function WeightConfigDialog({
         </div>
         <DialogFooter className="gap-2">
           <Button disabled={totalW !== 100} onClick={() => onOpenChange(false)}>
-            保存
+            {t('保存')}
           </Button>
         </DialogFooter>
       </DialogContent>

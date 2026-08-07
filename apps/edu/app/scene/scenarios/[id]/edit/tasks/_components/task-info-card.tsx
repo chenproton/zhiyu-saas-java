@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface TaskInfoCardProps {
   name: string
@@ -41,37 +42,39 @@ export function TaskInfoCard({
   onHoursChange,
   background,
   onBackgroundChange,
-  hoursLabel = '学生完成任务的预估时长',
+  hoursLabel,
   showBackground = true,
   showName = true,
   showType = true,
 }: TaskInfoCardProps) {
+  const t = useT()
+  const effectiveHoursLabel = hoursLabel || t('学生完成任务的预估时长')
   return (
     <div className="space-y-4">
       {showName && (
         <div>
-          <Label>任务名称</Label>
+          <Label>{t('任务名称')}</Label>
           <Input value={name} onChange={(e) => onNameChange(e.target.value)} className="mt-1.5" />
         </div>
       )}
       {showType && (
         <div>
-          <Label>任务类型</Label>
+          <Label>{t('任务类型')}</Label>
           <Select value={type} onValueChange={onTypeChange}>
             <SelectTrigger className="mt-1.5">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="training">训练任务</SelectItem>
-              <SelectItem value="assessment">考核任务</SelectItem>
+              <SelectItem value="training">{t('训练任务')}</SelectItem>
+              <SelectItem value="assessment">{t('考核任务')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       )}
       <div>
         <div className="flex items-center gap-2">
-          <Label>预估学时</Label>
-          <span className="text-xs text-gray-400">{hoursLabel}</span>
+          <Label>{t('预估学时')}</Label>
+          <span className="text-xs text-gray-400">{effectiveHoursLabel}</span>
         </div>
         <Input
           type="number"
@@ -81,7 +84,7 @@ export function TaskInfoCard({
         />
       </div>
       <div>
-        <Label>难度</Label>
+        <Label>{t('难度')}</Label>
         <div className="flex gap-1 mt-1.5">
           {([1, 2, 3, 4, 5] as const).map((n) => (
             <button key={n} onClick={() => onDifficultyChange(n)}>
@@ -97,7 +100,7 @@ export function TaskInfoCard({
       </div>
       {showBackground && (
         <div>
-          <Label>背景介绍</Label>
+          <Label>{t('背景介绍')}</Label>
           <Textarea
             value={background || ''}
             onChange={(e) => onBackgroundChange?.(e.target.value)}

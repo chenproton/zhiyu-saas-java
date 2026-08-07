@@ -18,6 +18,7 @@ import type { ResourceItem } from '@/components/shared/resource-selector'
 import type { RubricScheme } from '@/components/evaluation-rules/types'
 import { setLoadedExams, type LoadedExam } from '@/components/evaluation-rules/shared-defs'
 import { reportError } from '@/lib/error-handling'
+import { useI18n, translate } from '@/lib/i18n/locale-provider'
 
 export type { RubricScheme }
 
@@ -81,6 +82,7 @@ export interface UseTaskDatasetsResult {
 
 export function useTaskDatasets(): UseTaskDatasetsResult {
   const { user } = useAuth()
+  const { locale } = useI18n()
   const userId = user?.id
 
   const [knowledgePoints, setKnowledgePoints] = useState<TaskKnowledgePointItem[]>([])
@@ -319,7 +321,7 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
               }
               const tasksByScenarioId = new Map<string, unknown[]>()
               for (const t of allTasksRes.items) {
-                const sName = scenarioNameMap.get(t.scenarioId) || '未知场景'
+                const sName = scenarioNameMap.get(t.scenarioId) || translate('未知场景', locale)
                 const sMeta = scenarioMetaMap.get(t.scenarioId) || {
                   creatorId: '',
                   coBuilderIds: [],
@@ -356,7 +358,7 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
       })
       await Promise.all(jobs)
     },
-    [userId],
+    [userId, locale],
   )
 
   return {

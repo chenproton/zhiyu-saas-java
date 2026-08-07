@@ -37,6 +37,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { fileApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const toolbarItems = [
   [
@@ -65,7 +66,7 @@ const toolbarItems = [
   ],
   [
     { icon: <LinkIcon className="h-4 w-4" />, label: '链接' },
-    { icon: <Image className="h-4 w-4" aria-label="图片" />, label: '图片' },
+    { icon: <Image className="h-4 w-4" aria-label="image" />, label: '图片' },
     { icon: <Video className="h-4 w-4" />, label: '视频' },
   ],
   [
@@ -97,6 +98,7 @@ export function TaskDescriptionCard({
   onDescriptionPdfChange,
   toast,
 }: TaskDescriptionCardProps) {
+  const t = useT()
   const [descMode, setDescMode] = useState<'rich_text' | 'pdf'>('rich_text')
   const [pdfUploading, setPdfUploading] = useState(false)
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
@@ -107,20 +109,20 @@ export function TaskDescriptionCard({
   const handlePdfUpload = async (file: File) => {
     if (!file) return
     if (file.type !== 'application/pdf') {
-      toast({ variant: 'destructive', title: '请上传 PDF 文件' })
+      toast({ variant: 'destructive', title: t('请上传 PDF 文件') })
       return
     }
     if (file.size > 20 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: '文件大小超过 20MB' })
+      toast({ variant: 'destructive', title: t('文件大小超过 20MB') })
       return
     }
     setPdfUploading(true)
     try {
       const res = await fileApi.upload(file)
       onDescriptionPdfChange(res.url)
-      toast({ title: '上传成功' })
+      toast({ title: t('上传成功') })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '上传失败', description: err.message })
+      toast({ variant: 'destructive', title: t('上传失败'), description: err.message })
     } finally {
       setPdfUploading(false)
     }
@@ -137,13 +139,13 @@ export function TaskDescriptionCard({
     <div className="space-y-3 h-full flex flex-col">
       <Tabs value={descMode} onValueChange={(v) => setDescMode(v as 'rich_text' | 'pdf')}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="rich_text">富文本编辑</TabsTrigger>
-          <TabsTrigger value="pdf">上传任务说明书</TabsTrigger>
+          <TabsTrigger value="rich_text">{t('富文本编辑')}</TabsTrigger>
+          <TabsTrigger value="pdf">{t('上传任务说明书')}</TabsTrigger>
         </TabsList>
       </Tabs>
       {descMode === 'rich_text' ? (
         <div className="flex-1 flex flex-col min-h-0">
-          <p className="text-xs text-gray-500 mb-2">可编写详细的操作手册，支持图文混排</p>
+          <p className="text-xs text-gray-500 mb-2">{t('可编写详细的操作手册，支持图文混排')}</p>
           <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-[450px]">
             <div className="bg-gray-50 border-b px-3 py-2 flex flex-wrap gap-1">
               {toolbarItems.map((group, gi) => (
@@ -154,7 +156,7 @@ export function TaskDescriptionCard({
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/5"
-                      title={item.label}
+                      title={t(item.label)}
                     >
                       {item.icon}
                     </Button>
@@ -166,48 +168,19 @@ export function TaskDescriptionCard({
               <Textarea
                 value={description}
                 onChange={(e) => onDescriptionChange(e.target.value)}
-                placeholder={`任务描述
-
-你需要完成 [具体任务]。该任务基于 [背景/前提]，要求你 [核心动作]。执行时请注意 [关键约束]，确保理解需求后再开始。
-
-任务目标
-
-• 核心目标：[一句话概括最终成果]
-• 目标一：[具体子目标]
-• 目标二：[具体子目标]
-• 目标三：[具体子目标]
-• 成功标准：[任务完成的具体标志]
-
-任务结果
-
-请提交以下内容：
-
-• 主交付物：[如报告/代码/方案]
-• 格式要求：[如 Markdown/JSON/纯文本]
-• 附属说明：[假设、来源、取舍等]
-• 篇幅要求：[如不少于 500 字/代码 100 行内]
-
-测评要求
-
-• 准确性（30%）：内容正确，逻辑清晰，来源可靠
-• 完整性（25%）：覆盖所有子目标，无遗漏
-• 清晰度（20%）：结构分明，表达简洁
-• 实用性（15%）：结论可操作，建议可落地
-• 规范性（10%）：符合格式，术语统一，无明显错误
-
-一票否决项：若出现 [如抄袭/泄密/核心事实错误]，视为未通过。`}
+                placeholder={t('任务描述\n\n你需要完成 [具体任务]。该任务基于 [背景/前提]，要求你 [核心动作]。执行时请注意 [关键约束]，确保理解需求后再开始。\n\n任务目标\n\n• 核心目标：[一句话概括最终成果]\n• 目标一：[具体子目标]\n• 目标二：[具体子目标]\n• 目标三：[具体子目标]\n• 成功标准：[任务完成的具体标志]\n\n任务结果\n\n请提交以下内容：\n\n• 主交付物：[如报告/代码/方案]\n• 格式要求：[如 Markdown/JSON/纯文本]\n• 附属说明：[假设、来源、取舍等]\n• 篇幅要求：[如不少于 500 字/代码 100 行内]\n\n测评要求\n\n• 准确性（30%）：内容正确，逻辑清晰，来源可靠\n• 完整性（25%）：覆盖所有子目标，无遗漏\n• 清晰度（20%）：结构分明，表达简洁\n• 实用性（15%）：结论可操作，建议可落地\n• 规范性（10%）：符合格式，术语统一，无明显错误\n\n一票否决项：若出现 [如抄袭/泄密/核心事实错误]，视为未通过。')}
                 className="border-0 min-h-full w-full focus-visible:ring-0 resize-none text-sm leading-relaxed"
               />
             </div>
             <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
-              <span>纯文本模式</span>
-              <span>{description.length} 字符</span>
+              <span>{t('纯文本模式')}</span>
+              <span>{t('{n} 字符', { n: description.length })}</span>
             </div>
           </div>
           {description.includes('<img') || description.includes('<video') ? (
             <div className="p-3 bg-primary/5 rounded-lg border border-primary/10 text-sm text-primary flex items-center gap-2 mt-2">
-              <Image className="h-4 w-4" aria-label="图片" />
-              检测到已插入多媒体内容
+              <Image className="h-4 w-4" aria-label="image" />
+              {t('检测到已插入多媒体内容')}
             </div>
           ) : null}
         </div>
@@ -250,8 +223,10 @@ export function TaskDescriptionCard({
                 )}
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">点击或拖拽上传任务说明书</p>
-                <p className="text-xs text-gray-500 mt-1">支持 PDF 格式，最大 20MB</p>
+                <p className="text-sm font-medium text-gray-700">
+                  {t('点击或拖拽上传任务说明书')}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">{t('支持 PDF 格式，最大 20MB')}</p>
               </div>
             </>
           )}
@@ -262,7 +237,7 @@ export function TaskDescriptionCard({
             >
               <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
                 <Eye className="h-4 w-4 mr-1" />
-                预览
+                {t('预览')}
               </Button>
               <Button
                 variant="outline"
@@ -271,11 +246,11 @@ export function TaskDescriptionCard({
                 onClick={() => pdfInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 mr-1" />
-                重新上传
+                {t('重新上传')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => onDescriptionPdfChange(null)}>
                 <Trash2 className="h-4 w-4 mr-1" />
-                移除文件
+                {t('移除文件')}
               </Button>
             </div>
           )}
@@ -288,23 +263,25 @@ export function TaskDescriptionCard({
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <File className="h-5 w-5 text-red-500" />
-              <span className="truncate">{pdfFileName || '任务说明书预览'}</span>
+              <span className="truncate">{pdfFileName || t('任务说明书预览')}</span>
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
             {descriptionPdf ? (
               <iframe
                 src={descriptionPdf}
-                title={pdfFileName || 'PDF 预览'}
+                title={pdfFileName || t('PDF 预览')}
                 className="w-full h-full"
               />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">暂无文件</div>
+              <div className="h-full flex items-center justify-center text-gray-400">
+                {t('暂无文件')}
+              </div>
             )}
           </div>
           <DialogFooter className="shrink-0 gap-2">
             <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>
-              关闭
+              {t('关闭')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -43,6 +43,7 @@ import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
+import { useT } from '@/lib/i18n/locale-provider'
 import {
   EvalMethodCard,
   EvalMethodSubmitDialog,
@@ -97,6 +98,7 @@ export default function SceneLearnPage() {
   const targetTaskId = searchParams.get('task')
   const { toast } = useToast()
   const { user } = useAuth()
+  const t = useT()
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
@@ -185,9 +187,9 @@ export default function SceneLearnPage() {
       })
       .catch((err) => {
         reportError(err, '加载知识点/能力点数据')
-        toast({ title: '部分数据加载失败', variant: 'destructive' })
+        toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, scenario, toast])
+  }, [id, scenario, toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -211,9 +213,9 @@ export default function SceneLearnPage() {
       .then((res) => setMyResults(res.items || []))
       .catch((err) => {
         reportError(err, '加载我的评估结果')
-        toast({ title: '评估结果加载失败', variant: 'destructive' })
+        toast({ title: t('评估结果加载失败'), variant: 'destructive' })
       })
-  }, [activeTaskId, user?.id, toast])
+  }, [activeTaskId, user?.id, toast, t])
 
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId), [tasks, activeTaskId])
   const totalHours = useMemo(() => tasks.reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
@@ -382,12 +384,12 @@ export default function SceneLearnPage() {
               <BookOpen className="w-12 h-12 text-white/80" />
             </div>
           </div>
-          <div className="text-lg font-semibold text-gray-600">场景不存在</div>
+          <div className="text-lg font-semibold text-gray-600">{t('场景不存在')}</div>
           <Link
             href="/scene/landing"
             className="text-primary hover:text-primary mt-2 text-sm font-medium transition-colors"
           >
-            返回场景列表
+            {t('返回场景列表')}
           </Link>
         </div>
         <Footer className="mt-auto" />
@@ -433,7 +435,7 @@ export default function SceneLearnPage() {
                 <>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
                     <Target className="w-3.5 h-3.5 text-primary" />{' '}
-                    {activeTask.taskType === 'assessment' ? '考核' : '训练'}
+                    {activeTask.taskType === 'assessment' ? t('考核') : t('训练')}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
                     <BarChart3 className="w-3.5 h-3.5 text-primary" />{' '}
@@ -441,16 +443,17 @@ export default function SceneLearnPage() {
                       `Lv.${activeTask.difficulty}`}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
-                    <Clock className="w-3.5 h-3.5 text-primary" /> {activeTask.estimatedHours || 0}{' '}
-                    课时
+                    <Clock className="w-3.5 h-3.5 text-primary" />{' '}
+                    {t('{n} 课时', { n: activeTask.estimatedHours || 0 })}
                   </span>
                 </>
               )}
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <ListChecks className="w-3.5 h-3.5 text-primary" /> {tasks.length} 个任务
+                <ListChecks className="w-3.5 h-3.5 text-primary" />{' '}
+                {t('{n} 个任务', { n: tasks.length })}
               </span>
               <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <Clock className="w-3.5 h-3.5 text-primary" /> {totalHours} 课时
+                <Clock className="w-3.5 h-3.5 text-primary" /> {t('{n} 课时', { n: totalHours })}
               </span>
             </div>
           </div>
@@ -485,11 +488,11 @@ export default function SceneLearnPage() {
                 <div className="flex-1 flex items-center gap-3">
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Layers className="w-3 h-3" />
-                    {tasks.length} 个任务
+                    {t('{n} 个任务', { n: tasks.length })}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Clock className="w-3 h-3" />
-                    {totalHours} 课时
+                    {t('{n} 课时', { n: totalHours })}
                   </span>
                 </div>
               )}
@@ -501,7 +504,7 @@ export default function SceneLearnPage() {
                     ? 'w-9 h-9 text-gray-500 hover:text-primary'
                     : 'w-8 h-8 ml-auto',
                 )}
-                title={sidebarCollapsed ? '展开任务列表' : '折叠任务列表'}
+                title={sidebarCollapsed ? t('展开任务列表') : t('折叠任务列表')}
               >
                 {sidebarCollapsed ? (
                   <PanelLeftOpen className="h-5 w-5" />
@@ -595,7 +598,7 @@ export default function SceneLearnPage() {
                             color: task.taskType === 'assessment' ? '#dc2626' : 'var(--primary)',
                           }}
                         >
-                          {task.taskType === 'assessment' ? '考核' : '训练'}
+                          {task.taskType === 'assessment' ? t('考核') : t('训练')}
                         </span>
                       </div>
                     </div>
@@ -617,8 +620,8 @@ export default function SceneLearnPage() {
                   <BookOpen className="w-12 h-12 text-white/80" />
                 </div>
               </div>
-              <p className="text-base font-semibold text-gray-600">选择一个任务开始学习</p>
-              <p className="text-sm text-gray-400 mt-1.5">从左侧任务列表中点击任务</p>
+              <p className="text-base font-semibold text-gray-600">{t('选择一个任务开始学习')}</p>
+              <p className="text-sm text-gray-400 mt-1.5">{t('从左侧任务列表中点击任务')}</p>
             </div>
           ) : (
             <>
@@ -633,21 +636,21 @@ export default function SceneLearnPage() {
                         <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
                           <FileText className="h-4 w-4" />
                         </div>
-                        <span className="text-gray-800 font-semibold text-lg">任务说明书</span>
+                        <span className="text-gray-800 font-semibold text-lg">{t('任务说明书')}</span>
                         {activeTask.descriptionPdf && (
                           <button
                             onClick={() =>
                               addPreviewResource({
                                 id: `pdf-${Date.now()}`,
                                 url: activeTask.descriptionPdf,
-                                name: '任务说明书 PDF',
+                                name: t('任务说明书 PDF'),
                                 type: 'pdf',
                               } as TaskResource)
                             }
                             className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 shadow-sm transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            查看 PDF
+                            {t('查看 PDF')}
                           </button>
                         )}
                       </CardTitle>
@@ -659,7 +662,7 @@ export default function SceneLearnPage() {
                             {activeTask.detailedDescription || activeTask.description}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400">暂无任务说明书</p>
+                          <p className="text-xs text-gray-400">{t('暂无任务说明书')}</p>
                         )}
                       </ScrollArea>
                     </CardContent>
@@ -671,15 +674,21 @@ export default function SceneLearnPage() {
                       <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
                         <ClipboardList className="h-4 w-4" />
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">任务测评</h3>
+                      <h3 className="text-base font-semibold text-gray-800">{t('任务测评')}</h3>
                       {taskAggregate.totalMethods > 0 && (
                         <div className="ml-auto flex items-center gap-3">
                           <span className="text-xs text-gray-500">
-                            已评分 {taskAggregate.evaluatedCount}/{taskAggregate.totalMethods}
+                            {t('已评分 {e}/{t}', {
+                              e: taskAggregate.evaluatedCount,
+                              t: taskAggregate.totalMethods,
+                            })}
                           </span>
                           {taskAggregate.evaluatedCount > 0 && (
                             <span className="text-sm font-semibold text-primary">
-                              综合 {taskAggregate.score}/{taskAggregate.maxScore}
+                              {t('综合 {s}/{m}', {
+                                s: taskAggregate.score,
+                                m: taskAggregate.maxScore,
+                              })}
                             </span>
                           )}
                         </div>
@@ -720,10 +729,10 @@ export default function SceneLearnPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">
-                            该任务暂未设置评价方式
+                            {t('该任务暂未设置评价方式')}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            教师配置后，测评入口将显示在此处
+                            {t('教师配置后，测评入口将显示在此处')}
                           </p>
                         </div>
                       </Card>
@@ -750,21 +759,21 @@ export default function SceneLearnPage() {
                       className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <BrainCircuit className="mr-1 h-3.5 w-3.5" />
-                      知识点
+                      {t('知识点')}
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-ability"
                       className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <Target className="mr-1 h-3.5 w-3.5" />
-                      能力点
+                      {t('能力点')}
                     </TabsTrigger>
                     <TabsTrigger
                       value="collapsed-resource"
                       className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                     >
                       <FolderOpen className="mr-1 h-3.5 w-3.5" />
-                      资源
+                      {t('资源')}
                     </TabsTrigger>
                   </TabsList>
                 </CardHeader>
@@ -791,14 +800,14 @@ export default function SceneLearnPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">暂无知识点</p>
+                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无知识点')}</p>
                     )}
                   </TabsContent>
                   <TabsContent value="collapsed-ability" className="mt-0 space-y-2">
                     {taskAbilityPoints.length > 0 ? (
                       taskAbilityPoints.map((ap, i) => {
                         const cat = {
-                          label: ap.attributes?.[0] || '能力点',
+                          label: ap.attributes?.[0] || t('能力点'),
                           color: 'var(--primary)',
                         }
                         return (
@@ -822,7 +831,7 @@ export default function SceneLearnPage() {
                         )
                       })
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">暂无能力点</p>
+                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无能力点')}</p>
                     )}
                   </TabsContent>
                   <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
@@ -848,7 +857,7 @@ export default function SceneLearnPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">暂无资源</p>
+                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无资源')}</p>
                     )}
                   </TabsContent>
                 </CardContent>
@@ -883,19 +892,19 @@ export default function SceneLearnPage() {
                 {activeKnowledgePoint.name}
               </DialogTitle>
               {activeKnowledgePoint.code && (
-                <DialogDescription>编码：{activeKnowledgePoint.code}</DialogDescription>
+                <DialogDescription>{t('编码：{code}', { code: activeKnowledgePoint.code })}</DialogDescription>
               )}
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">描述</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('描述')}</p>
                 <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                  {activeKnowledgePoint.description || '暂无描述'}
+                  {activeKnowledgePoint.description || t('暂无描述')}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                  关联颗粒课（{activeKnowledgePointCourses.length}）
+                  {t('关联颗粒课（{n}）', { n: activeKnowledgePointCourses.length })}
                 </p>
                 {activeKnowledgePointCourses.length > 0 ? (
                   <div className="space-y-2">
@@ -913,7 +922,7 @@ export default function SceneLearnPage() {
                             {c.name}
                           </p>
                           <p className="text-[11px] text-gray-400">
-                            {c.code ? `${c.code} · ` : ''}颗粒课
+                            {c.code ? `${c.code} · ` : ''}{t('颗粒课')}
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
@@ -922,7 +931,7 @@ export default function SceneLearnPage() {
                   </div>
                 ) : (
                   <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 rounded-xl">
-                    暂无关联颗粒课
+                    {t('暂无关联颗粒课')}
                   </p>
                 )}
               </div>

@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth-provider'
 import { ContentListPage, type ContentBatch } from '@/components/shared/content-list-page'
 import { draftSuffix } from '@/lib/format-utils'
 import { STATUS_FILTER_OPTIONS, type Scenario, type SceneBatch } from '@zhiyu/shared-types'
+import { useT } from '@/lib/i18n/locale-provider'
 
 function generateCode(prefix: string) {
   return `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
@@ -38,13 +39,14 @@ function mapSceneBatch(backend: any): ContentBatch {
 
 export default function SceneHallPage() {
   const { user } = useAuth()
+  const t = useT()
   const currentUserId = user?.id ?? ''
 
   return (
     <ContentListPage<ScenarioListItem, Scenario, SceneBatch>
-      title="场景大厅"
-      subtitle="管理场景建设资源，支持场景创建、编辑、任务配置、审批发布等全流程管理"
-      entityLabel="场景"
+      title={t('场景大厅')}
+      subtitle={t('管理场景建设资源，支持场景创建、编辑、任务配置、审批发布等全流程管理')}
+      entityLabel={t('场景')}
       addHref="/scene/scenarios"
       permissionModule="scene"
       permissionResource="scenarios"
@@ -69,7 +71,7 @@ export default function SceneHallPage() {
       createRedirectUrl={(id) => `/scene/scenarios/${id}/edit?new=true`}
       coBuilderField="coBuilderIds"
       createPayload={(uid, _label) => ({
-        name: `新建场景_${draftSuffix()}`,
+        name: `${t('新建场景')}_${draftSuffix()}`,
         code: generateCode('SC'),
         difficulty: 1,
         version: 'V1.0',

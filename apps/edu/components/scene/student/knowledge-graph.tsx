@@ -4,13 +4,7 @@ import { useMemo } from 'react'
 import type { Scenario, ScenarioTask, KnowledgePoint, Course } from '@/lib/types'
 import type { GraphNode, GraphEdge } from '@/components/knowledge-graph/types'
 import { KnowledgeGraphShell } from '@/components/knowledge-graph/knowledge-graph-shell'
-
-const NODE_LABELS = {
-  position: '场景',
-  domain: '任务',
-  knowledge: '知识点',
-  course: '颗粒课',
-} as const
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface SceneKnowledgeGraphProps {
   scenario: Scenario
@@ -25,6 +19,13 @@ export function SceneKnowledgeGraph({
   knowledgeMap,
   courseMap,
 }: SceneKnowledgeGraphProps) {
+  const t = useT()
+  const nodeLabels = {
+    position: t('场景'),
+    domain: t('任务'),
+    knowledge: t('知识点'),
+    course: t('颗粒课'),
+  } as const
   const { nodes, edges } = useMemo(() => {
     const graphNodes: GraphNode[] = []
     const graphEdges: GraphEdge[] = []
@@ -47,7 +48,7 @@ export function SceneKnowledgeGraph({
 
     graphNodes.push({
       id: scenario.id,
-      label: scenario.name || '场景',
+      label: scenario.name || t('场景'),
       type: 'position',
     })
 
@@ -55,7 +56,7 @@ export function SceneKnowledgeGraph({
     tasks.forEach((task) => {
       graphNodes.push({
         id: task.id,
-        label: task.name || task.code || '任务',
+        label: task.name || task.code || t('任务'),
         type: 'domain',
       })
       pushEdge(scenario.id, task.id)
@@ -67,7 +68,7 @@ export function SceneKnowledgeGraph({
           knowledgeNodeIds.add(kid)
           graphNodes.push({
             id: kp.id,
-            label: kp.name || kp.code || '知识点',
+            label: kp.name || kp.code || t('知识点'),
             type: 'knowledge',
           })
         }
@@ -84,18 +85,18 @@ export function SceneKnowledgeGraph({
         if (!course) return
         if (!courseNodeIds.has(cid)) {
           courseNodeIds.add(cid)
-          graphNodes.push({ id: cid, label: course.name || '颗粒课', type: 'course' })
+          graphNodes.push({ id: cid, label: course.name || t('颗粒课'), type: 'course' })
         }
         pushEdge(kid, cid)
       })
     })
 
     return { nodes: graphNodes, edges: graphEdges }
-  }, [scenario, tasks, knowledgeMap, courseMap])
+  }, [scenario, tasks, knowledgeMap, courseMap, t])
 
   const emptyView = (
     <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
-      暂无图谱数据
+      {t('暂无图谱数据')}
     </div>
   )
 
@@ -103,9 +104,9 @@ export function SceneKnowledgeGraph({
     <KnowledgeGraphShell
       nodes={nodes}
       edges={edges}
-      title="知识图谱"
-      description="场景 → 任务 → 知识点 → 颗粒课的关联网络"
-      nodeLabels={NODE_LABELS}
+      title={t('知识图谱')}
+      description={t('场景 → 任务 → 知识点 → 颗粒课的关联网络')}
+      nodeLabels={nodeLabels}
       emptyView={emptyView}
     />
   )
