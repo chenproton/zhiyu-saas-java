@@ -1027,7 +1027,7 @@ function HybridCourseAddForm() {
                       </div>
                       <Button size="sm" variant="outline" onClick={openShareDialog}>
                         <Layers className="h-4 w-4 mr-1" />
-                        复用节点
+                        复用节点教学设计
                       </Button>
                     </CardHeader>
                     <CardContent>
