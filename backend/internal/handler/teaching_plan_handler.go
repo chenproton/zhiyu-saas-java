@@ -124,7 +124,11 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 
 	var classNodeIDs []string
 	if program.MajorID != nil && *program.MajorID != "" {
-		classNodeIDs, _ = h.Service.FetchTeachingPlanMajorClasses(ctx, tenantID, *program.MajorID)
+		classNodeIDs, err = h.Service.FetchTeachingPlanMajorClasses(ctx, tenantID, *program.MajorID)
+		if err != nil {
+			respondServerError(w, r, err, "查询专业班级失败")
+			return
+		}
 	}
 
 	planID, err := h.Service.GenerateTeachingPlan(ctx, &store.GeneratePlanParams{
