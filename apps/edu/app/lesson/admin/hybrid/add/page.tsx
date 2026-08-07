@@ -165,7 +165,7 @@ function HybridCourseAddForm() {
 
   // 课程基本信息独立 state（与节点无关，对齐体系课编辑结构）
   const [courseForm, setCourseForm] = useState<CourseBasicForm>(
-    () => createDefaultNodeModuleData().form,
+    () => ({ ...createDefaultNodeModuleData().form, category: COURSE_CATEGORIES[0] }),
   )
   const courseFormRef = useRef(courseForm)
 
@@ -839,6 +839,11 @@ function HybridCourseAddForm() {
                     )}
                   </div>
                 </div>
+                {!globalInfoOpen && courseForm.detailedDescription && (
+                  <p className="text-xs text-gray-400 mt-1 pl-6 text-left line-clamp-2">
+                    {courseForm.detailedDescription}
+                  </p>
+                )}
               </CardHeader>
             </button>
           </CollapsibleTrigger>
