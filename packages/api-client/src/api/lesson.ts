@@ -5,6 +5,7 @@ import type {
   NodeHomework,
   NodeResource,
   LessonBatch,
+  HybridNodeModule,
 } from '../types/lesson'
 import type { SystemCourseNode } from '../types/lesson-source'
 import { request, buildQuery, ListResponse } from '../api-helpers'
@@ -155,6 +156,22 @@ export const courseResourceApi = {
     }),
   unbind: (id: string) =>
     request<{ id: string }>(`/lesson/course-resources/${id}`, { method: 'DELETE' }),
+}
+
+export interface HybridModulePayload {
+  moduleKey: string
+  mode: 'online' | 'offline'
+  data: Record<string, any>
+}
+
+export const hybridModuleApi = {
+  list: (params?: { nodeId?: string; courseId?: string; limit?: number }) =>
+    request<ListResponse<HybridNodeModule>>(`/lesson/hybrid-modules${buildQuery(params || {})}`),
+  batchSave: (nodeId: string, modules: HybridModulePayload[]) =>
+    request<{ nodeId: string }>('/lesson/hybrid-modules/batch', {
+      method: 'POST',
+      body: JSON.stringify({ nodeId, modules }),
+    }),
 }
 
 export const lessonBatchApi = {

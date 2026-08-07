@@ -169,6 +169,7 @@ export default function LessonLandingPage() {
 
   const systemCourses = useMemo(() => filtered.filter((c) => c.type === 'system'), [filtered])
   const granularCourses = useMemo(() => filtered.filter((c) => c.type === 'granular'), [filtered])
+  const hybridCourses = useMemo(() => filtered.filter((c) => c.type === 'hybrid'), [filtered])
 
   const totalPages = Math.max(1, Math.ceil(systemCourses.length / CARDS_PER_PAGE))
   const pageSystemCourses = useMemo(() => {
@@ -321,6 +322,26 @@ export default function LessonLandingPage() {
                 }}
                 accentColor="primary"
               />
+            </div>
+          )}
+
+          {/* 混合课 */}
+          {hybridCourses.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+                  混合课
+                  <span className="text-[13px] text-[#64748b] font-normal ml-1">
+                    ({hybridCourses.length})
+                  </span>
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {hybridCourses.map((course, i) => (
+                  <CourseCard key={course.id} course={course} index={i} />
+                ))}
+              </div>
             </div>
           )}
 
