@@ -319,7 +319,7 @@ function HybridCourseAddForm() {
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [shareSelectedIds, setShareSelectedIds] = useState<string[]>([])
-  const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
+  const [globalInfoOpen, setGlobalInfoOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
 
@@ -845,7 +845,7 @@ function HybridCourseAddForm() {
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left: 课程名称 + 课程编码 + 课程分类 + 课程简介 */}
+                {/* Left: 课程名称 + 课程分类 + 课程简介 */}
                 <div className="space-y-4 min-w-0">
                   <FormFieldRow label="课程名称" labelClassName="text-xs">
                     <Input
@@ -853,13 +853,6 @@ function HybridCourseAddForm() {
                       onChange={(e) => updateCourseForm({ name: e.target.value })}
                       placeholder="请输入课程名称"
                       className="h-9 text-sm"
-                    />
-                  </FormFieldRow>
-                  <FormFieldRow label="课程编码" labelClassName="text-xs">
-                    <Input
-                      value={editId ? courseForm.code || '保存后自动生成' : '保存后自动生成'}
-                      disabled
-                      className="h-9 text-sm bg-gray-50 text-gray-500"
                     />
                   </FormFieldRow>
                   <FormFieldRow label="课程分类" labelClassName="text-xs">
