@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,7 +17,6 @@ import {
 } from '@/components/ui/dialog'
 import {
   AlertCircle,
-  GraduationCap,
   User,
   Lock,
   MessageCircle,
@@ -146,9 +146,13 @@ export default function PortalLoginPage() {
               </span>
             </Link>
           </div>
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 ring-1 ring-white/20">
-            <GraduationCap className="h-8 w-8 text-white" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="知育"
+            width={369}
+            height={139}
+            className="h-16 w-auto object-contain"
+          />
           <h1 className="text-xl sm:text-2xl font-bold text-white">
             {t('场景化数智教学服务平台')}
           </h1>
