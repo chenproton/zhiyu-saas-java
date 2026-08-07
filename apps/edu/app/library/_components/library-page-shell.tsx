@@ -70,8 +70,10 @@ export function LibraryPageShell<T>({
 }: LibraryPageShellProps<T>) {
   return (
     <div className="p-6 space-y-5">
-      <div className="flex flex-col lg:flex-row gap-3">
-        <Card className={`border-0 shadow-sm bg-gradient-to-br ${statGradient} shrink-0`}>
+      {statsExtra ? (
+        statsExtra
+      ) : (
+        <Card className={`border-0 shadow-sm bg-gradient-to-br ${statGradient}`}>
           <CardContent className="p-4 flex items-center gap-3">
             {statIcon}
             <div>
@@ -80,8 +82,7 @@ export function LibraryPageShell<T>({
             </div>
           </CardContent>
         </Card>
-        {statsExtra && <div className="flex-1 flex gap-3 min-w-0">{statsExtra}</div>}
-      </div>
+      )}
 
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
