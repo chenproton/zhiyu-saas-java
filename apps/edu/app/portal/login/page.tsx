@@ -15,15 +15,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import {
-  AlertCircle,
-  User,
-  Lock,
-  MessageCircle,
-  QrCode,
-  Building2,
-  History,
-} from 'lucide-react'
+import { AlertCircle, User, Lock, Building2, History } from 'lucide-react'
 import { authApi, setToken } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -43,14 +35,6 @@ function getPostLoginPath(roleCode?: string): string {
   }
 }
 
-type LoginMethod = 'password' | 'sms' | 'wechat'
-
-const methodTabs: { key: LoginMethod; label: string; icon: typeof MessageCircle }[] = [
-  { key: 'password', label: '账号密码', icon: Lock },
-  { key: 'sms', label: '短信登录', icon: MessageCircle },
-  { key: 'wechat', label: '微信扫码', icon: QrCode },
-]
-
 export default function PortalLoginPage() {
   const t = useT()
   const router = useRouter()
@@ -60,7 +44,6 @@ export default function PortalLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('password')
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([])
   const [preAuthToken, setPreAuthToken] = useState('')
   const [showTenantSelect, setShowTenantSelect] = useState(false)
@@ -89,7 +72,6 @@ export default function PortalLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (loginMethod !== 'password') return
     setError('')
     setLoading(true)
 
@@ -110,10 +92,10 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f9fc] p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#f6f9ff] via-[#f7f9fc] to-[#eef3fb] p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -left-40 -top-40 h-[560px] w-[560px] rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-[560px] w-[560px] rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute left-1/3 top-1/2 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
         <div className="absolute left-1/4 top-1/4 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl" />
         <svg
@@ -133,12 +115,12 @@ export default function PortalLoginPage() {
       </div>
 
       <div className="relative w-full max-w-md">
-        <div className="relative mb-8 flex flex-col items-center gap-3">
+        <div className="relative mb-8 flex flex-col items-center gap-4">
           <div className="absolute right-0 top-0">
             <Link
               href="/changelog"
               title={t('查看平台更新记录')}
-              className="group flex items-center gap-0 rounded-full border border-[#e6ebf3] bg-white px-2.5 py-1.5 text-xs text-[#666] shadow-sm transition-all hover:gap-1 hover:border-primary/30 hover:bg-primary/5"
+              className="group flex items-center gap-0 rounded-full border border-[#e6ebf3] bg-white/80 px-2.5 py-1.5 text-xs text-[#8a94a6] shadow-sm backdrop-blur transition-all hover:gap-1 hover:border-primary/30 hover:bg-white hover:text-primary"
             >
               <History className="h-3.5 w-3.5 shrink-0" />
               <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:max-w-[8rem] group-hover:opacity-100">
@@ -151,101 +133,82 @@ export default function PortalLoginPage() {
             alt="知育"
             width={369}
             height={139}
-            className="h-16 w-auto object-contain"
+            className="h-16 w-auto object-contain drop-shadow-sm"
           />
-          <h1 className="text-xl sm:text-2xl font-bold text-[#333]">
-            {t('场景化数智教学服务平台')}
-          </h1>
-          <p className="text-sm text-[#666]">{t('数智融合 · 精准教学')}</p>
+          <div className="flex flex-col items-center gap-1.5">
+            <h1 className="bg-gradient-to-r from-primary via-primary to-primary/60 bg-clip-text text-2xl sm:text-[26px] font-bold tracking-wide text-transparent">
+              {t('场景化数智教学服务平台')}
+            </h1>
+            <p className="text-sm tracking-[0.35em] text-[#98a2b3] pl-[0.35em]">
+              {t('数智融合 · 精准教学')}
+            </p>
+          </div>
         </div>
 
-        <Card className="border border-[#e8ecf3] bg-white shadow-xl shadow-primary/10">
-          <CardContent className="px-5 py-6 sm:px-8 sm:py-8">
-            <div className="mb-6 flex rounded-lg bg-slate-100 p-1">
-              {methodTabs.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={key !== 'password'}
-                  onClick={() => setLoginMethod(key)}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all ${
-                    loginMethod === key
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  } ${key !== 'password' ? 'cursor-not-allowed opacity-60' : ''}`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {t(label)}
-                </button>
-              ))}
+        <Card className="relative overflow-hidden rounded-2xl border border-[#e8ecf3] bg-white/95 shadow-[0_24px_70px_-28px] shadow-primary/25 backdrop-blur-xl">
+          <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/30" />
+          <CardContent className="px-6 py-8 sm:px-9 sm:py-9">
+            <div className="mb-7 flex flex-col items-center gap-1.5">
+              <h2 className="text-lg font-semibold text-[#333]">{t('账号登录')}</h2>
+              <p className="text-xs text-[#98a2b3]">{t('使用学校分配的账号登录系统')}</p>
             </div>
 
-            {loginMethod === 'password' ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username" className="text-sm font-medium text-slate-700">
-                    {t('账号')}
-                  </Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      id="username"
-                      placeholder={t('请输入账号')}
-                      className="border-slate-200 pl-10 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                    />
-                  </div>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className="text-sm font-medium text-slate-600">
+                  {t('账号')}
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="username"
+                    placeholder={t('请输入账号')}
+                    className="h-11 rounded-lg border-slate-200 bg-slate-50/80 pl-10 text-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary/60 focus-visible:bg-white focus-visible:ring-primary/20"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    required
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">
-                    {t('密码')}
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder={t('请输入密码')}
-                      className="border-slate-200 pl-10 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm font-medium text-slate-600">
+                  {t('密码')}
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder={t('请输入密码')}
+                    className="h-11 rounded-lg border-slate-200 bg-slate-50/80 pl-10 text-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary/60 focus-visible:bg-white focus-visible:ring-primary/20"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
                 </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    {error}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-primary to-primary/70 py-2.5 text-base shadow-lg shadow-primary/25 hover:from-primary/90 hover:to-primary/70"
-                  disabled={loading}
-                  size="lg"
-                >
-                  {loading ? t('登录中...') : t('登 录')}
-                </Button>
-              </form>
-            ) : loginMethod === 'sms' ? (
-              <div className="py-8 text-center text-sm text-slate-400">
-                <MessageCircle className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                <p>{t('短信登录功能开发中')}</p>
               </div>
-            ) : (
-              <div className="py-8 text-center text-sm text-slate-400">
-                <QrCode className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                <p>{t('微信扫码登录功能开发中')}</p>
-              </div>
-            )}
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-lg bg-gradient-to-r from-primary via-primary to-primary/80 text-base shadow-lg shadow-primary/30 transition-all hover:-translate-y-px hover:shadow-xl hover:shadow-primary/30 active:translate-y-0 disabled:translate-y-0"
+                disabled={loading}
+                size="lg"
+              >
+                {loading ? t('登录中...') : t('登 录')}
+              </Button>
+            </form>
 
             {process.env.NODE_ENV !== 'production' && (
-              <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-400">
+              <div className="mt-6 rounded-xl border border-dashed border-[#e6ebf3] bg-[#fafbfc] p-3.5 text-xs text-slate-400">
                 <p className="mb-1 font-medium text-slate-500">
                   {t('测试账号（仅开发环境显示）：')}
                 </p>
@@ -253,13 +216,13 @@ export default function PortalLoginPage() {
                   <li>{t('学校管理员：school / school123')}</li>
                   <li>{t('教师：teacher / teacher123')}</li>
                   <li>{t('学生：student / student123')}</li>
-                 </ul>
-               </div>
-             )}
-           </CardContent>
-         </Card>
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
+        <p className="mt-7 px-6 text-center text-xs leading-relaxed text-slate-400">
           {t('版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1')}
         </p>
       </div>
