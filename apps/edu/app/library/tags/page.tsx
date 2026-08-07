@@ -20,8 +20,10 @@ import { useToast } from '@zhiyu/ui'
 import { LibraryPageShell } from '../_components/library-page-shell'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { useTags } from '@/components/shared/use-tags'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function TagsPage() {
+  const t = useT()
   const { toast } = useToast()
   const { tags, loading, reload } = useTags()
   const [searchQuery, setSearchQuery] = useState('')
@@ -53,21 +55,21 @@ export default function TagsPage() {
   const handleSubmit = async () => {
     const trimmed = name.trim()
     if (!trimmed) {
-      toast({ variant: 'destructive', title: '标签名称不能为空' })
+      toast({ variant: 'destructive', title: t('标签名称不能为空') })
       return
     }
     try {
       if (editingItem) {
         await tagApi.update(editingItem.id, { name: trimmed, color })
-        toast({ title: '更新成功' })
+        toast({ title: t('更新成功') })
       } else {
         await tagApi.create({ name: trimmed, color })
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
       }
       setIsDialogOpen(false)
       reload()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
   }
 
@@ -75,10 +77,10 @@ export default function TagsPage() {
     if (!deleteTarget) return
     try {
       await tagApi.delete(deleteTarget.id)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       reload()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     } finally {
       setDeleteTarget(null)
     }
@@ -87,8 +89,8 @@ export default function TagsPage() {
   return (
     <>
       <LibraryPageShell
-        title="标签管理"
-        statLabel="标签总数"
+        title={t('标签管理')}
+        statLabel={t('标签总数')}
         statIcon={
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <TagsIcon className="size-5 text-primary" />
@@ -96,31 +98,31 @@ export default function TagsPage() {
         }
         statGradient="from-primary/5 to-primary/10"
         statCount={tags.length}
-        searchPlaceholder="搜索标签..."
+        searchPlaceholder={t('搜索标签...')}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAdd={handleOpenAdd}
-        addLabel="新建标签"
+        addLabel={t('新建标签')}
         loading={loading}
         items={filtered}
-        emptyMessage="暂无标签，点击右上角新建"
+        emptyMessage={t('暂无标签，点击右上角新建')}
         deleteTarget={deleteTarget ? deleteTarget.id : null}
         onDeleteCancel={() => setDeleteTarget(null)}
         onDeleteConfirm={confirmDelete}
-        deleteLabel="标签（关联资源的标签绑定将一并清除）"
+        deleteLabel={t('标签（关联资源的标签绑定将一并清除）')}
         tableHeaders={
           <>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              标签
+              {t('标签')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-              颜色
+              {t('颜色')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              绑定资源数
+              {t('绑定资源数')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-              操作
+              {t('操作')}
             </TableHead>
           </>
         }
@@ -147,24 +149,24 @@ export default function TagsPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>{editingItem ? '编辑标签' : '新建标签'}</DialogTitle>
+                <DialogTitle>{editingItem ? t('编辑标签') : t('新建标签')}</DialogTitle>
                 <DialogDescription>
-                  标签可用于公共资源库各列表页的筛选，以及资源新增/编辑时的绑定
+                  {t('标签可用于公共资源库各列表页的筛选，以及资源新增/编辑时的绑定')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div>
-                  <Label>标签名称</Label>
+                  <Label>{t('标签名称')}</Label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="如：重点教材、精品课程"
+                    placeholder={t('如：重点教材、精品课程')}
                     className="mt-1.5"
                     maxLength={64}
                   />
                 </div>
                 <div>
-                  <Label>标签颜色</Label>
+                  <Label>{t('标签颜色')}</Label>
                   <div className="flex items-center gap-3 mt-1.5">
                     <input
                       type="color"
@@ -173,7 +175,7 @@ export default function TagsPage() {
                       className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer bg-transparent p-1"
                     />
                     <div className="flex items-center gap-2">
-                      <TagBadge tag={{ id: 'preview', tenantId: '', name: name.trim() || '标签预览', color, createdAt: '', updatedAt: '' }} />
+                      <TagBadge tag={{ id: 'preview', tenantId: '', name: name.trim() || t('标签预览'), color, createdAt: '', updatedAt: '' }} />
                       <span className="text-xs text-slate-400 font-mono">{color}</span>
                     </div>
                   </div>
@@ -181,9 +183,9 @@ export default function TagsPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  取消
+                  {t('取消')}
                 </Button>
-                <Button onClick={handleSubmit}>{editingItem ? '保存' : '创建'}</Button>
+                <Button onClick={handleSubmit}>{editingItem ? t('保存') : t('创建')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

@@ -27,8 +27,10 @@ import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
 import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AbilityPointsPage() {
+  const t = useT()
   const { toast } = useToast()
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const { tagsByResource, loadBindings, saveTags } = useTagBindings(
@@ -90,17 +92,17 @@ export default function AbilityPointsPage() {
     if (!deleteTarget) return
     try {
       await abilityApi.delete(deleteTarget)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     } finally {
       setDeleteTarget(null)
     }
   }
   const handleSubmit = async () => {
     if (!name.trim()) {
-      toast({ variant: 'destructive', title: '名称不能为空' })
+      toast({ variant: 'destructive', title: t('名称不能为空') })
       return
     }
     const attrList = attributes
@@ -119,7 +121,7 @@ export default function AbilityPointsPage() {
           isPublic,
           attributes: attrList,
         } as any)
-        toast({ title: '更新成功' })
+        toast({ title: t('更新成功') })
       } else {
         const created = await abilityApi.create({
           name: name.trim(),
@@ -128,20 +130,20 @@ export default function AbilityPointsPage() {
           attributes: attrList,
         } as any)
         savedId = created.id
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
       }
       await saveTags(savedId, tagIds)
       setIsDialogOpen(false)
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
   }
 
   return (
     <LibraryPageShell
-      title="能力点管理"
-      statLabel="能力点总数"
+      title={t('能力点管理')}
+      statLabel={t('能力点总数')}
       statIcon={
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
           <Lightbulb className="size-5 text-primary" />
@@ -151,50 +153,50 @@ export default function AbilityPointsPage() {
       statCount={total}
       statsExtra={
         <CitationStatsPanel
-          entityLabel="能力点"
-          dialogTitle="零引用能力点"
+          entityLabel={t('能力点')}
+          dialogTitle={t('零引用能力点')}
           fetchStats={() => abilityApi.citationStats()}
           fetchUncited={(params) => abilityApi.uncited(params)}
           deleteItem={(id) => abilityApi.delete(id)}
           onDeleted={loadItems}
           statCount={total}
-          statLabel="能力点总数"
+          statLabel={t('能力点总数')}
           statIcon={<Lightbulb className="size-5 text-primary" />}
         />
       }
-      searchPlaceholder="搜索能力点..."
+      searchPlaceholder={t('搜索能力点...')}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAdd={handleOpenAdd}
-      addLabel="新建能力点"
+      addLabel={t('新建能力点')}
       loading={loading}
       items={items}
       deleteTarget={deleteTarget}
       onDeleteCancel={() => setDeleteTarget(null)}
       onDeleteConfirm={confirmDelete}
-      deleteLabel="能力点"
+      deleteLabel={t('能力点')}
       tableHeaders={
         <>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            名称
+            {t('名称')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            编码
+            {t('编码')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-            描述
+            {t('描述')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-            属性标签
+            {t('属性标签')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-            标签
+            {t('标签')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            公开
+            {t('公开')}
           </TableHead>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-            操作
+            {t('操作')}
           </TableHead>
         </>
       }
@@ -229,7 +231,7 @@ export default function AbilityPointsPage() {
           </TableCell>
           <TableCell className="p-3">
             <Badge variant={item.isPublic ? 'default' : 'secondary'} className="text-xs">
-              {item.isPublic ? '公开' : '私有'}
+              {item.isPublic ? t('公开') : t('私有')}
             </Badge>
           </TableCell>
           <TableCell className="p-3 text-right whitespace-nowrap">
@@ -246,48 +248,48 @@ export default function AbilityPointsPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingItem ? '编辑能力点' : '新增能力点'}</DialogTitle>
+              <DialogTitle>{editingItem ? t('编辑能力点') : t('新增能力点')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {editingItem && (
-                <FormFieldRow label="编码">
+                <FormFieldRow label={t('编码')}>
                   <Input value={editingItem.code || '-'} readOnly />
                 </FormFieldRow>
               )}
-              <FormFieldRow label="名称" required>
+              <FormFieldRow label={t('名称')} required>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="能力点名称"
+                  placeholder={t('能力点名称')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="描述">
+              <FormFieldRow label={t('描述')}>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="简要描述"
+                  placeholder={t('简要描述')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="属性标签（逗号分隔）">
+              <FormFieldRow label={t('属性标签（逗号分隔）')}>
                 <Input
                   value={attributes}
                   onChange={(e) => setAttributes(e.target.value)}
-                  placeholder="沟通, 协作, 领导力"
+                  placeholder={t('沟通, 协作, 领导力')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="标签">
+              <FormFieldRow label={t('标签')}>
                 <TagPicker value={tagIds} onChange={setTagIds} />
               </FormFieldRow>
               <div className="flex items-center space-x-2">
                 <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-                <Label>公开</Label>
+                <Label>{t('公开')}</Label>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                取消
+                {t('取消')}
               </Button>
-              <Button onClick={handleSubmit}>保存</Button>
+              <Button onClick={handleSubmit}>{t('保存')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -304,7 +306,7 @@ export default function AbilityPointsPage() {
               setSearchQuery('')
             }}
           >
-            清除
+            {t('清除')}
           </Button>
         )}
       </div>

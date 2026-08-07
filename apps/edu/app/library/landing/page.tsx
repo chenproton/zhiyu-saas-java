@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import {
   Eye,
   Building2,
@@ -33,6 +33,7 @@ import { reportError } from '@/lib/error-handling'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
 import { LandingShell, LandingSkeleton, LandingEmpty } from '@/components/shared/landing-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
 const ALL_TYPES = Object.keys(RESOURCE_TYPE_LABELS) as (keyof typeof RESOURCE_TYPE_LABELS)[]
@@ -86,42 +87,7 @@ const STAT_GRADIENTS = [
   'from-primary/90 to-primary/70',
 ]
 
-const TIME_RANGES = [
-  { value: 'all', label: '全部时间' },
-  { value: 'week', label: '近一周' },
-  { value: 'month', label: '近一月' },
-  { value: 'year', label: '近一年' },
-]
-
-const TYPE_FILTER_ITEMS = [
-  '全部',
-  ...ALL_TYPES.map((t) => `${TYPE_EMOJI[t] || '📦'} ${RESOURCE_TYPE_LABELS[t] || t}`),
-]
-
 const CARDS_PER_PAGE = 12
-
-function typeLabel(type: string): string {
-  if (type === '全部') return '全部'
-  const idx = ALL_TYPES.indexOf(type as keyof typeof RESOURCE_TYPE_LABELS)
-  return idx >= 0 ? TYPE_FILTER_ITEMS[idx + 1] : type
-}
-
-function typeFromLabel(label: string): string {
-  if (label === '全部') return '全部'
-  return (
-    ALL_TYPES.find(
-      (t) => `${TYPE_EMOJI[t] || '📦'} ${RESOURCE_TYPE_LABELS[t] || t}` === label,
-    ) || '全部'
-  )
-}
-
-function timeLabel(value: string): string {
-  return TIME_RANGES.find((r) => r.value === value)?.label || '全部时间'
-}
-
-function timeFromLabel(label: string): string {
-  return TIME_RANGES.find((r) => r.label === label)?.value || 'all'
-}
 
 function ResourceCard({
   resource,
@@ -130,6 +96,7 @@ function ResourceCard({
   resource: ResourceLibraryItem
   onPreview: (resource: ResourceLibraryItem) => void
 }) {
+  const t = useT()
   const color = TYPE_COLORS[resource.resourceType] || TYPE_COLORS.other
   const hasPreview = !!resource.url
   const TypeIcon = TYPE_ICONS[resource.resourceType] || Package
@@ -200,7 +167,7 @@ function ResourceCard({
           {resource.fileSize != null && <span>{formatSize(resource.fileSize)}</span>}
           {hasPreview && (
             <span className="flex items-center gap-1 font-medium" style={{ color }}>
-              预览 <Eye className="w-3 h-3" />
+              {t('预览')} <Eye className="w-3 h-3" />
             </span>
           )}
         </div>
@@ -210,9 +177,44 @@ function ResourceCard({
 }
 
 export default function LibraryLandingPage() {
+  const t = useT()
   const listRef = useRef<HTMLDivElement>(null)
   const [resources, setResources] = useState<ResourceLibraryItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  const allLabel = t('全部')
+  const typeFilterItems = useMemo(
+    () => [allLabel, ...ALL_TYPES.map((ty) => `${TYPE_EMOJI[ty] || '📦'} ${RESOURCE_TYPE_LABELS[ty] || ty}`)],
+    [allLabel],
+  )
+  const timeRanges = useMemo(
+    () => [
+      { value: 'all', label: t('全部时间') },
+      { value: 'week', label: t('近一周') },
+      { value: 'month', label: t('近一月') },
+      { value: 'year', label: t('近一年') },
+    ],
+    [t],
+  )
+  const typeLabel = useCallback((type: string): string => {
+    if (type === '全部') return t('全部')
+    const idx = ALL_TYPES.indexOf(type as keyof typeof RESOURCE_TYPE_LABELS)
+    return idx >= 0 ? typeFilterItems[idx + 1] : type
+  }, [t, typeFilterItems])
+  const typeFromLabel = (label: string): string => {
+    if (label === allLabel) return allLabel
+    return (
+      ALL_TYPES.find(
+        (ty) => `${TYPE_EMOJI[ty] || '📦'} ${RESOURCE_TYPE_LABELS[ty] || ty}` === label,
+      ) || allLabel
+    )
+  }
+  const timeLabel = useCallback(
+    (value: string): string => timeRanges.find((r) => r.value === value)?.label || t('全部时间'),
+    [timeRanges, t],
+  )
+  const timeFromLabel = (label: string): string =>
+    timeRanges.find((r) => r.label === label)?.value || 'all'
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('全部')
@@ -326,13 +328,13 @@ export default function LibraryLandingPage() {
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
-    if (typeFilter !== '全部') filters.push({ type: 'type', label: `分类：${typeLabel(typeFilter)}` })
-    if (timeFilter !== 'all') filters.push({ type: 'time', label: `时间：${timeLabel(timeFilter)}` })
-    if (orgFilter !== '全部') filters.push({ type: 'org', label: `院系：${orgFilter}` })
-    if (majorFilter !== '全部') filters.push({ type: 'major', label: `专业：${majorFilter}` })
-    if (search.trim()) filters.push({ type: 'keyword', label: `关键词：${search.trim()}` })
+    if (typeFilter !== '全部') filters.push({ type: 'type', label: `${t('分类：')}${typeLabel(typeFilter)}` })
+    if (timeFilter !== 'all') filters.push({ type: 'time', label: `${t('时间：')}${timeLabel(timeFilter)}` })
+    if (orgFilter !== '全部') filters.push({ type: 'org', label: `${t('院系：')}${orgFilter}` })
+    if (majorFilter !== '全部') filters.push({ type: 'major', label: `${t('专业：')}${majorFilter}` })
+    if (search.trim()) filters.push({ type: 'keyword', label: `${t('关键词：')}${search.trim()}` })
     return filters
-  }, [typeFilter, timeFilter, orgFilter, majorFilter, search])
+  }, [typeFilter, timeFilter, orgFilter, majorFilter, search, t, typeLabel, timeLabel])
 
   const removeFilter = (type: string) => {
     if (type === 'type') setTypeFilter('全部')
@@ -359,16 +361,16 @@ export default function LibraryLandingPage() {
     <>
       <LandingShell
         hero={{
-          badge: '教学资产 · 一站式共享',
+          badge: t('教学资产 · 一站式共享'),
           title: (
             <>
-              教学资产共享中心
+              {t('教学资产共享中心')}
               <br />
-              <span className="text-white/80">汇聚教学资源，服务一线教师</span>
+              <span className="text-white/80">{t('汇聚教学资源，服务一线教师')}</span>
             </>
           ),
-          description: '汇聚视频、文档、软件、场地等教学资源，为教师提供一站式资源共享服务',
-          ctaLabel: '浏览资源',
+          description: t('汇聚视频、文档、软件、场地等教学资源，为教师提供一站式资源共享服务'),
+          ctaLabel: t('浏览资源'),
         }}
         stats={topTypes.map((s, i) => ({
           icon: TYPE_ICONS[s.type] || Package,
@@ -376,26 +378,26 @@ export default function LibraryLandingPage() {
           label: RESOURCE_TYPE_LABELS[s.type] || s.type,
           gradient: STAT_GRADIENTS[i % STAT_GRADIENTS.length],
         }))}
-        filterTitle="资源筛选"
+        filterTitle={t('资源筛选')}
         filterRows={
           <>
             <LandingFilterRow
-              label="分类"
-              items={TYPE_FILTER_ITEMS}
-              selected={typeFilter === '全部' ? '全部' : typeLabel(typeFilter)}
+              label={t('分类')}
+              items={typeFilterItems}
+              selected={typeFilter === '全部' ? allLabel : typeLabel(typeFilter)}
               onSelect={(d) => setTypeFilter(typeFromLabel(d))}
               accentColor="primary"
             />
             <LandingFilterRow
-              label="时间"
-              items={TIME_RANGES.map((r) => r.label)}
+              label={t('时间')}
+              items={timeRanges.map((r) => r.label)}
               selected={timeLabel(timeFilter)}
               onSelect={(d) => setTimeFilter(timeFromLabel(d))}
               accentColor="primary"
             />
             <LandingFilterRow
-              label="院系"
-              items={['全部', ...orgNames]}
+              label={t('院系')}
+              items={[allLabel, ...orgNames]}
               selected={orgFilter}
               onSelect={(d) => {
                 setOrgFilter(d)
@@ -404,8 +406,8 @@ export default function LibraryLandingPage() {
               accentColor="primary"
             />
             <LandingFilterRow
-              label="专业"
-              items={orgFilter === '全部' ? ['全部'] : ['全部', ...majorNames]}
+              label={t('专业')}
+              items={orgFilter === '全部' ? [allLabel] : [allLabel, ...majorNames]}
               selected={majorFilter}
               onSelect={setMajorFilter}
               showBorder={false}
@@ -417,23 +419,23 @@ export default function LibraryLandingPage() {
         onRemoveFilter={removeFilter}
         onClearFilters={clearFilters}
         sortOptions={[
-          { value: 'newest', label: '最新' },
-          { value: 'popular', label: '热门' },
+          { value: 'newest', label: t('最新') },
+          { value: 'popular', label: t('热门') },
         ]}
         sort={sortBy}
         onSortChange={(v) => setSortBy(v as 'newest' | 'popular')}
         keyword={search}
         onKeywordChange={setSearch}
         onSearch={executeSearch}
-        searchPlaceholder="搜索视频、文档、软件、场地等教学资源..."
+        searchPlaceholder={t('搜索视频、文档、软件、场地等教学资源...')}
         totalCount={filteredResources.length}
-        countLabel="个资源"
+        countLabel={t('个资源')}
         listRef={listRef}
       >
         {loading ? (
           <LandingSkeleton />
         ) : filteredResources.length === 0 ? (
-          <LandingEmpty title="暂无符合条件的资源" hint="试试调整筛选条件或搜索关键词" />
+          <LandingEmpty title={t('暂无符合条件的资源')} hint={t('试试调整筛选条件或搜索关键词')} />
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

@@ -31,8 +31,10 @@ import { useTagBindings } from '@/components/shared/use-tag-bindings'
 import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { LibraryPageShell } from '../_components/library-page-shell'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function QuestionsPage() {
+  const t = useT()
   const { toast } = useToast()
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const { tagsByResource, loadBindings, saveTags } = useTagBindings(
@@ -107,17 +109,17 @@ export default function QuestionsPage() {
     if (!deleteTarget) return
     try {
       await randomDrawQuestionApi.delete(deleteTarget)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     } finally {
       setDeleteTarget(null)
     }
   }
   const handleSubmit = async () => {
     if (!name.trim()) {
-      toast({ variant: 'destructive', title: '题目名称不能为空' })
+      toast({ variant: 'destructive', title: t('题目名称不能为空') })
       return
     }
     try {
@@ -129,24 +131,24 @@ export default function QuestionsPage() {
       }
       if (editing) {
         await randomDrawQuestionApi.update(editing.id, payload as any)
-        toast({ title: '更新成功' })
+        toast({ title: t('更新成功') })
         await saveTags(editing.id, tagIds)
       } else {
         const created = await randomDrawQuestionApi.create(payload as any)
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
         await saveTags(created.id, tagIds)
       }
       setDialogOpen(false)
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
   }
 
   return (
     <LibraryPageShell
-      title="现场问答题库"
-      statLabel="题目总数"
+      title={t('现场问答题库')}
+      statLabel={t('题目总数')}
       statIcon={
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
           <MessageSquare className="size-5 text-primary" />
@@ -154,17 +156,17 @@ export default function QuestionsPage() {
       }
       statGradient="from-primary/5 to-primary/10"
       statCount={items.length}
-      searchPlaceholder="搜索题目名称..."
+      searchPlaceholder={t('搜索题目名称...')}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAdd={handleAdd}
-      addLabel="新建现场问答题"
+      addLabel={t('新建现场问答题')}
       loading={loading}
       items={items}
       deleteTarget={deleteTarget}
       onDeleteCancel={() => setDeleteTarget(null)}
       onDeleteConfirm={confirmDelete}
-      deleteLabel="现场问答题"
+      deleteLabel={t('现场问答题')}
       tableHeaders={
         <>
           <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -227,20 +229,20 @@ export default function QuestionsPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editing ? '编辑现场问答题' : '新增现场问答题'}</DialogTitle>
+              <DialogTitle>{editing ? t('编辑现场问答题') : t('新增现场问答题')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <FormFieldRow label="题目名称" required>
+              <FormFieldRow label={t('题目名称')} required>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="输入题目名称"
+                  placeholder={t('输入题目名称')}
                 />
               </FormFieldRow>
-              <FormFieldRow label="适用专业">
+              <FormFieldRow label={t('适用专业')}>
                 <Select value={majorId} onValueChange={setMajorId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="选择适用专业" />
+                    <SelectValue placeholder={t('选择适用专业')} />
                   </SelectTrigger>
                   <SelectContent>
                     {majors.map((m: any) => (
@@ -251,23 +253,23 @@ export default function QuestionsPage() {
                   </SelectContent>
                 </Select>
               </FormFieldRow>
-              <FormFieldRow label="题目描述">
+              <FormFieldRow label={t('题目描述')}>
                 <Textarea
                   value={desc}
                   onChange={(e) => setDesc(e.target.value)}
-                  placeholder="输入题目描述"
+                  placeholder={t('输入题目描述')}
                   rows={3}
                 />
               </FormFieldRow>
-              <FormFieldRow label="题目答案">
+              <FormFieldRow label={t('题目答案')}>
                 <Textarea
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="输入题目答案"
+                  placeholder={t('输入题目答案')}
                   rows={3}
                 />
               </FormFieldRow>
-              <FormFieldRow label="标签">
+              <FormFieldRow label={t('标签')}>
                 <TagPicker value={tagIds} onChange={setTagIds} />
               </FormFieldRow>
             </div>

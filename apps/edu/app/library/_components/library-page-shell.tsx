@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { PaginationBar } from '@/components/shared/pagination-bar'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface LibraryPagination {
   page: number
@@ -68,6 +69,7 @@ export function LibraryPageShell<T>({
   children,
   pagination,
 }: LibraryPageShellProps<T>) {
+  const t = useT()
   return (
     <div className="p-6 space-y-5">
       {statsExtra ? (
@@ -105,7 +107,7 @@ export function LibraryPageShell<T>({
             </div>
             {searchQuery && (
               <Button variant="ghost" size="sm" onClick={() => onSearchChange('')}>
-                清除
+                {t('清除')}
               </Button>
             )}
           </div>
@@ -119,7 +121,7 @@ export function LibraryPageShell<T>({
                 {loading && (
                   <TableRow>
                     <TableCell colSpan={99} className="p-12 text-center text-muted-foreground">
-                      加载中...
+                      {t('加载中...')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -152,9 +154,9 @@ export function LibraryPageShell<T>({
         onOpenChange={(open) => {
           if (!open) onDeleteCancel()
         }}
-        title="确认删除"
-        description={`确定要删除该${deleteLabel}吗？此操作不可恢复。`}
-        confirmText="删除"
+        title={t('确认删除')}
+        description={t('确定要删除该{label}吗？此操作不可恢复。', { label: deleteLabel })}
+        confirmText={t('删除')}
         variant="destructive"
         onConfirm={onDeleteConfirm}
       />

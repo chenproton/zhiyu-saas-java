@@ -21,6 +21,7 @@ import {
   type GranularLessonOption,
 } from './granular-lesson-select-dialog'
 import { TagPicker } from '@/components/shared/tag-picker'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface KnowledgePointFormValues {
   name: string
@@ -53,6 +54,7 @@ export function KnowledgePointFormDialog({
   onSave,
   onCreateGranularLesson,
 }: KnowledgePointFormDialogProps) {
+  const t = useT()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [code, setCode] = useState('')
@@ -72,13 +74,14 @@ export function KnowledgePointFormDialog({
     })()
   }, [open, initialValues, mode])
 
-  const title = mode === 'add' ? '新增知识点' : mode === 'clone' ? '克隆知识点' : '编辑知识点'
+  const title =
+    mode === 'add' ? t('新增知识点') : mode === 'clone' ? t('克隆知识点') : t('编辑知识点')
   const desc =
     mode === 'add'
-      ? '创建一个新的知识点'
+      ? t('创建一个新的知识点')
       : mode === 'clone'
-        ? `基于「${initialValues?.name ?? ''}」创建副本`
-        : '修改知识点信息'
+        ? t('基于「{name}」创建副本', { name: initialValues?.name ?? '' })
+        : t('修改知识点信息')
 
   const handleSave = () => {
     if (!name.trim()) return
@@ -103,26 +106,26 @@ export function KnowledgePointFormDialog({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>知识点名称</Label>
+              <Label>{t('知识点名称')}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="输入知识点名称"
+                placeholder={t('输入知识点名称')}
                 className="mt-1.5"
               />
             </div>
             <div>
-              <Label>描述</Label>
+              <Label>{t('描述')}</Label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="输入知识点描述"
+                placeholder={t('输入知识点描述')}
                 className="mt-1.5 max-h-[120px] overflow-y-auto resize-none"
                 rows={3}
               />
             </div>
             <div>
-              <Label>编码</Label>
+              <Label>{t('编码')}</Label>
               <Input
                 value={code}
                 disabled={mode !== 'edit'}
@@ -130,17 +133,17 @@ export function KnowledgePointFormDialog({
                 className={cn('mt-1.5', mode !== 'edit' && 'bg-gray-50')}
               />
               <p className="text-xs text-gray-400 mt-1">
-                {mode === 'edit' ? '可修改编码' : '系统自动生成，不可修改'}
+                {mode === 'edit' ? t('可修改编码') : t('系统自动生成，不可修改')}
               </p>
             </div>
             <div>
-              <Label>标签</Label>
+              <Label>{t('标签')}</Label>
               <div className="mt-1.5">
                 <TagPicker value={tagIds} onChange={setTagIds} className="w-full" />
               </div>
             </div>
             <div>
-              <Label>关联颗粒课</Label>
+              <Label>{t('关联颗粒课')}</Label>
               <div className="mt-1.5">
                 {selectedGranularLessons.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -165,7 +168,7 @@ export function KnowledgePointFormDialog({
                     onClick={() => setGlSelectOpen(true)}
                   >
                     <Plus className="h-3 w-3 mr-1" />
-                    选择颗粒课
+                    {t('选择颗粒课')}
                   </Button>
                   {onCreateGranularLesson && (
                     <Button
@@ -182,7 +185,7 @@ export function KnowledgePointFormDialog({
                       }}
                     >
                       <Plus className="h-3 w-3 mr-1" />
-                      新建颗粒课
+                      {t('新建颗粒课')}
                     </Button>
                   )}
                 </div>
@@ -191,10 +194,14 @@ export function KnowledgePointFormDialog({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={handleSave} disabled={!name.trim()}>
-              {mode === 'add' ? '新增并选中' : mode === 'clone' ? '克隆并选中' : '保存修改'}
+              {mode === 'add'
+                ? t('新增并选中')
+                : mode === 'clone'
+                  ? t('克隆并选中')
+                  : t('保存修改')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -203,7 +210,7 @@ export function KnowledgePointFormDialog({
       <GranularLessonSelectDialog
         open={glSelectOpen}
         onOpenChange={setGlSelectOpen}
-        title="选择颗粒课"
+        title={t('选择颗粒课')}
         granularCourses={granularCourses}
         selectedIds={granularLessonIds}
         onChange={setGranularLessonIds}
