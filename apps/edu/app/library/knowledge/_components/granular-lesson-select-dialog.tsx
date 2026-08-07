@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export interface GranularLessonOption {
   id: string
@@ -38,6 +39,7 @@ export function GranularLessonSelectDialog({
   selectedIds,
   onChange,
 }: GranularLessonSelectDialogProps) {
+  const t = useT()
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(
@@ -73,7 +75,7 @@ export function GranularLessonSelectDialog({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索颗粒课名称或编码..."
+                placeholder={t('搜索颗粒课名称或编码...')}
                 className="pl-9"
               />
             </div>
@@ -115,18 +117,20 @@ export function GranularLessonSelectDialog({
               })}
               {filtered.length === 0 && (
                 <div className="text-center text-gray-400 py-8">
-                  <p className="text-sm">未找到匹配的颗粒课</p>
+                  <p className="text-sm">{t('未找到匹配的颗粒课')}</p>
                 </div>
               )}
             </div>
           </div>
 
           <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-            <p className="text-sm font-medium mb-3 text-gray-700">已选择 ({selectedIds.length})</p>
+            <p className="text-sm font-medium mb-3 text-gray-700">
+              {t('已选择 ({n})', { n: selectedIds.length })}
+            </p>
             <div className="flex-1 overflow-y-auto space-y-2">
               {selectedCourses.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">
-                  <p className="text-xs">从左侧选择颗粒课</p>
+                  <p className="text-xs">{t('从左侧选择颗粒课')}</p>
                 </div>
               ) : (
                 selectedCourses.map((gl) => (
@@ -150,7 +154,7 @@ export function GranularLessonSelectDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>确定</Button>
+          <Button onClick={() => onOpenChange(false)}>{t('确定')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

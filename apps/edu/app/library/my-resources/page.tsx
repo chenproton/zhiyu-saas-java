@@ -45,6 +45,7 @@ import type {
 import { RESOURCE_TYPE_LABELS, type ResourceKind } from '@/lib/types/library'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
 const RESOURCE_KINDS: ResourceKind[] = Object.keys(RESOURCE_TYPE_LABELS) as ResourceKind[]
@@ -52,7 +53,7 @@ const RESOURCE_KINDS: ResourceKind[] = Object.keys(RESOURCE_TYPE_LABELS) as Reso
 const RESOURCE_ICONS: Record<ResourceKind, React.ReactNode> = {
   document: <FileText className="size-4" />,
   spreadsheet: <Table className="size-4" />,
-  image: <Image className="size-4" aria-label="图片" />,
+  image: <Image className="size-4" aria-label="image" />,
   link: <Link className="size-4" />,
   audio: <Music className="size-4" />,
   video: <Video className="size-4" />,
@@ -71,26 +72,8 @@ interface TabDef {
   icon: React.ReactNode
 }
 
-function buildTabs(): TabDef[] {
-  const tabs: TabDef[] = [
-    { key: 'knowledge', label: '知识点库', icon: <BookOpen className="size-4" /> },
-    { key: 'ability', label: '能力点库', icon: <Lightbulb className="size-4" /> },
-    { key: 'certificates', label: '证书库', icon: <Award className="size-4" /> },
-  ]
-  for (const kind of RESOURCE_KINDS) {
-    tabs.push({
-      key: `resource:${kind}`,
-      label: RESOURCE_TYPE_LABELS[kind],
-      icon: RESOURCE_ICONS[kind],
-    })
-  }
-  tabs.push({ key: 'questions', label: '现场问答题库', icon: <MessageSquare className="size-4" /> })
-  return tabs
-}
-
-const TABS = buildTabs()
-
 export default function MyResourcesPage() {
+  const t = useT()
   const { toast } = useToast()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<TabKey>('knowledge')
@@ -120,6 +103,20 @@ export default function MyResourcesPage() {
 
   const userId = user?.id
 
+  const tabs: TabDef[] = [
+    { key: 'knowledge', label: t('知识点库'), icon: <BookOpen className="size-4" /> },
+    { key: 'ability', label: t('能力点库'), icon: <Lightbulb className="size-4" /> },
+    { key: 'certificates', label: t('证书库'), icon: <Award className="size-4" /> },
+  ]
+  for (const kind of RESOURCE_KINDS) {
+    tabs.push({
+      key: `resource:${kind}`,
+      label: RESOURCE_TYPE_LABELS[kind],
+      icon: RESOURCE_ICONS[kind],
+    })
+  }
+  tabs.push({ key: 'questions', label: t('现场问答题库'), icon: <MessageSquare className="size-4" /> })
+
   // TODO: 列表接口后端上限 maxPageSize=200，此处全量展示会被截断，需改为服务端分页
   const loadKnowledge = useCallback(async () => {
     setLoadingKnowledge(true)
@@ -128,11 +125,11 @@ export default function MyResourcesPage() {
       setKnowledgeItems(res.items)
       if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载知识点失败', description: err.message })
+      toast({ variant: 'destructive', title: t('加载知识点失败'), description: err.message })
     } finally {
       setLoadingKnowledge(false)
     }
-  }, [userId, toast])
+  }, [userId, toast, t])
 
   const loadAbilities = useCallback(async () => {
     setLoadingAbility(true)
@@ -141,11 +138,11 @@ export default function MyResourcesPage() {
       setAbilityItems(res.items)
       if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载能力点失败', description: err.message })
+      toast({ variant: 'destructive', title: t('加载能力点失败'), description: err.message })
     } finally {
       setLoadingAbility(false)
     }
-  }, [userId, toast])
+  }, [userId, toast, t])
 
   const loadCertificates = useCallback(async () => {
     setLoadingCertificates(true)
@@ -154,11 +151,11 @@ export default function MyResourcesPage() {
       setCertificateItems(res.items)
       if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载证书失败', description: err.message })
+      toast({ variant: 'destructive', title: t('加载证书失败'), description: err.message })
     } finally {
       setLoadingCertificates(false)
     }
-  }, [userId, toast])
+  }, [userId, toast, t])
 
   const loadQuestions = useCallback(async () => {
     setLoadingQuestions(true)
@@ -167,11 +164,11 @@ export default function MyResourcesPage() {
       setQuestionItems(res.items)
       if (res.total > res.items.length) setTruncated(true)
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '加载问答题失败', description: err.message })
+      toast({ variant: 'destructive', title: t('加载问答题失败'), description: err.message })
     } finally {
       setLoadingQuestions(false)
     }
-  }, [userId, toast])
+  }, [userId, toast, t])
 
   const loadResourceKind = useCallback(
     async (kind: ResourceKind) => {
@@ -185,12 +182,12 @@ export default function MyResourcesPage() {
         setResourceItemsMap((prev) => ({ ...prev, [kind]: res.items }))
         loadedResourceKinds.current.add(kind)
       } catch (err: any) {
-        toast({ variant: 'destructive', title: '加载资源失败', description: err.message })
+        toast({ variant: 'destructive', title: t('加载资源失败'), description: err.message })
       } finally {
         setLoadingResourceKind(null)
       }
     },
-    [userId, toast],
+    [userId, toast, t],
   )
 
   useEffect(() => {
@@ -243,7 +240,7 @@ export default function MyResourcesPage() {
     <div className="p-6 space-y-5">
       {truncated && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
-          部分数据超过单次加载上限（200 条），当前仅展示前 200 条，请按条件筛选查看完整数据。
+          {t('部分数据超过单次加载上限（200 条），当前仅展示前 200 条，请按条件筛选查看完整数据。')}
         </div>
       )}
       <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
@@ -254,7 +251,7 @@ export default function MyResourcesPage() {
           <div>
             <div className="text-2xl font-bold text-primary">{countForTab(activeTab)}</div>
             <div className="text-xs text-primary">
-              {TABS.find((t) => t.key === activeTab)?.label} · 共 {countForTab(activeTab)} 项
+              {tabs.find((tb) => tb.key === activeTab)?.label} · {t('共 {n} 项', { n: countForTab(activeTab) })}
             </div>
           </div>
         </CardContent>
@@ -262,12 +259,12 @@ export default function MyResourcesPage() {
 
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">我的资源</CardTitle>
+          <CardTitle className="text-base font-semibold">{t('我的资源')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
             <TabsList className="mb-4 flex-wrap h-auto gap-1">
-              {TABS.map((tab) => (
+              {tabs.map((tab) => (
                 <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5">
                   {tab.icon}
                   {tab.label}
@@ -282,7 +279,7 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingKnowledge,
                 knowledgeItems,
-                ['名称', '编码', '描述'],
+                [t('名称'), t('编码'), t('描述')],
                 (item: KnowledgePoint) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
                     <TableCell className="p-3">
@@ -297,6 +294,7 @@ export default function MyResourcesPage() {
                     </TableCell>
                   </TableRow>
                 ),
+                t,
               )}
             </TabsContent>
 
@@ -304,7 +302,7 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingAbility,
                 abilityItems,
-                ['名称', '分类', '描述'],
+                [t('名称'), t('分类'), t('描述')],
                 (item: AbilityPoint) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
                     <TableCell className="p-3">
@@ -321,6 +319,7 @@ export default function MyResourcesPage() {
                     </TableCell>
                   </TableRow>
                 ),
+                t,
               )}
             </TabsContent>
 
@@ -328,7 +327,7 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingCertificates,
                 certificateItems,
-                ['名称', '描述', '链接'],
+                [t('名称'), t('描述'), t('链接')],
                 (item: CertificateLibraryItem) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
                     <TableCell className="p-3">
@@ -345,6 +344,7 @@ export default function MyResourcesPage() {
                     </TableCell>
                   </TableRow>
                 ),
+                t,
               )}
             </TabsContent>
 
@@ -353,7 +353,7 @@ export default function MyResourcesPage() {
                 {renderTable(
                   loadingResourceKind === kind,
                   resourceItemsMap[kind],
-                  ['名称', '描述'],
+                  [t('名称'), t('描述')],
                   (item: ResourceLibraryItem) => (
                     <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
                       <TableCell className="p-3">
@@ -367,6 +367,7 @@ export default function MyResourcesPage() {
                       </TableCell>
                     </TableRow>
                   ),
+                  t,
                 )}
               </TabsContent>
             ))}
@@ -375,7 +376,7 @@ export default function MyResourcesPage() {
               {renderTable(
                 loadingQuestions,
                 questionItems,
-                ['题目', '题型', '分值'],
+                [t('题目'), t('题型'), t('分值')],
                 (item: OnSiteQuestionLibraryItem) => (
                   <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
                     <TableCell className="p-3">
@@ -394,6 +395,7 @@ export default function MyResourcesPage() {
                     <TableCell className="p-3 text-sm text-slate-400">{item.score}</TableCell>
                   </TableRow>
                 ),
+                t,
               )}
             </TabsContent>
           </Tabs>
@@ -408,6 +410,7 @@ function renderTable<T>(
   items: T[],
   headerLabels: string[],
   renderRow: (item: T) => React.ReactNode,
+  t: (key: string, vars?: Record<string, string | number>) => string,
 ) {
   return (
     <div className="rounded-lg border">
@@ -431,7 +434,7 @@ function renderTable<T>(
                 colSpan={headerLabels.length}
                 className="p-12 text-center text-muted-foreground"
               >
-                加载中...
+                {t('加载中...')}
               </TableCell>
             </TableRow>
           )}
@@ -441,7 +444,7 @@ function renderTable<T>(
                 colSpan={headerLabels.length}
                 className="p-12 text-center text-muted-foreground"
               >
-                暂无数据
+                {t('暂无数据')}
               </TableCell>
             </TableRow>
           )}

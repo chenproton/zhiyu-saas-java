@@ -20,8 +20,10 @@ import {
 } from './_components/knowledge-point-form-dialog'
 import type { GranularLessonOption } from './_components/granular-lesson-select-dialog'
 import { useLibraryCrud } from '../_components/use-library-crud'
+import { useT } from '@/lib/i18n/locale-provider'
 
 export default function KnowledgePointsPage() {
+  const t = useT()
   const { toast } = useToast()
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const { tagsByResource, loadBindings, saveTags } = useTagBindings(
@@ -98,10 +100,10 @@ export default function KnowledgePointsPage() {
     if (!deleteTarget) return
     try {
       await knowledgeApi.delete(deleteTarget)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     } finally {
       setDeleteTarget(null)
     }
@@ -119,7 +121,7 @@ export default function KnowledgePointsPage() {
           linked,
           granularLessonIds: values.granularLessonIds,
         } as any)
-        toast({ title: '更新成功' })
+        toast({ title: t('更新成功') })
       } else {
         const created = await knowledgeApi.create({
           name: values.name,
@@ -129,24 +131,24 @@ export default function KnowledgePointsPage() {
           granularLessonIds: values.granularLessonIds,
         } as any)
         savedId = created.id
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
       }
       await saveTags(savedId, values.tagIds)
       setIsDialogOpen(false)
       loadItems()
       loadGranularCourses()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
   }
 
   const handleCreateGranularLesson = async (): Promise<string | undefined> => {
-    const baseName = editingItem?.name || '新建颗粒课'
+    const baseName = editingItem?.name || t('新建颗粒课')
     try {
       const created = await courseApi.create({
-        name: `基于「${baseName}」的颗粒课`,
+        name: t('基于「{name}」的颗粒课', { name: baseName }),
         type: 'granular',
-        category: '专业基础',
+        category: t('专业基础'),
       } as any)
       setGranularCourses((prev) => [
         ...prev,
@@ -170,7 +172,7 @@ export default function KnowledgePointsPage() {
       setNavigateCourseId(created.id)
       return created.id
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '创建颗粒课失败', description: err.message })
+      toast({ variant: 'destructive', title: t('创建颗粒课失败'), description: err.message })
       return undefined
     }
   }
@@ -178,8 +180,8 @@ export default function KnowledgePointsPage() {
   return (
     <>
       <LibraryPageShell
-        title="知识点管理"
-        statLabel="知识点总数"
+        title={t('知识点管理')}
+        statLabel={t('知识点总数')}
         statIcon={
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <BookOpen className="size-5 text-primary" />
@@ -189,47 +191,47 @@ export default function KnowledgePointsPage() {
         statCount={total}
         statsExtra={
           <CitationStatsPanel
-            entityLabel="知识点"
-            dialogTitle="零引用知识点"
+            entityLabel={t('知识点')}
+            dialogTitle={t('零引用知识点')}
             fetchStats={() => knowledgeApi.citationStats()}
             fetchUncited={(params) => knowledgeApi.uncited(params)}
             deleteItem={(id) => knowledgeApi.delete(id)}
             onDeleted={loadItems}
             statCount={total}
-            statLabel="知识点总数"
+            statLabel={t('知识点总数')}
             statIcon={<BookOpen className="size-5 text-primary" />}
           />
         }
-        searchPlaceholder="搜索知识点..."
+        searchPlaceholder={t('搜索知识点...')}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAdd={handleOpenAdd}
-        addLabel="新建知识点"
+        addLabel={t('新建知识点')}
         loading={loading}
         items={items}
         deleteTarget={deleteTarget}
         onDeleteCancel={() => setDeleteTarget(null)}
         onDeleteConfirm={confirmDelete}
-        deleteLabel="知识点"
+        deleteLabel={t('知识点')}
         tableHeaders={
           <>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              名称
+              {t('名称')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              编码
+              {t('编码')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-              描述
+              {t('描述')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-              关联课程
+              {t('关联课程')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-              标签
+              {t('标签')}
             </TableHead>
             <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-              操作
+              {t('操作')}
             </TableHead>
           </>
         }
@@ -246,7 +248,7 @@ export default function KnowledgePointsPage() {
               {item.description || '-'}
             </TableCell>
             <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell">
-              {item.granularLessonIds?.length || 0} 门
+              {t('{n} 门', { n: item.granularLessonIds?.length || 0 })}
             </TableCell>
             <TableCell className="p-3 hidden lg:table-cell">
               <div className="flex flex-wrap gap-1.5">
@@ -278,9 +280,9 @@ export default function KnowledgePointsPage() {
         onOpenChange={(open) => {
           if (!open) setNavigateCourseId(null)
         }}
-        title="前往完善"
-        description="占位颗粒课已创建并关联，是否立即前往完善？"
-        confirmText="前往"
+        title={t('前往完善')}
+        description={t('占位颗粒课已创建并关联，是否立即前往完善？')}
+        confirmText={t('前往')}
         onConfirm={() => {
           if (navigateCourseId) {
             window.open(`/lesson/admin/granular/add?id=${navigateCourseId}`, '_blank')

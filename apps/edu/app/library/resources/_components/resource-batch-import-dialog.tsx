@@ -29,6 +29,7 @@ import {
   resourceTypeAccept,
   validateResourceFile,
 } from '@/lib/resource-type-constants'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ResourceBatchImportDialogProps {
   open: boolean
@@ -44,6 +45,7 @@ export function ResourceBatchImportDialog({
   resourceType,
   onImported,
 }: ResourceBatchImportDialogProps) {
+  const t = useT()
   const { toast } = useToast()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
@@ -75,12 +77,12 @@ export function ResourceBatchImportDialog({
       if (skipped > 0) {
         toast({
           variant: 'destructive',
-          title: '部分文件被跳过',
-          description: `${skipped} 个文件格式不支持或超过 100MB，已跳过`,
+          title: t('部分文件被跳过'),
+          description: t('{n} 个文件格式不支持或超过 100MB，已跳过', { n: skipped }),
         })
       }
     },
-    [submitType, toast],
+    [submitType, toast, t],
   )
 
   const handleDrop = (e: React.DragEvent) => {
@@ -148,21 +150,24 @@ export function ResourceBatchImportDialog({
       setUploadedCount(i + 1)
     }
     setUploading(false)
-    const skippedMsg = skipped > 0 ? `，跳过 ${skipped} 个同名资源` : ''
+    const skippedMsg = skipped > 0 ? t('，跳过 {n} 个同名资源', { n: skipped }) : ''
     const permissionMsg =
       permissionSkipped > 0
-        ? `，${permissionSkipped} 个资源非本人创建，已跳过覆盖`
+        ? t('，{n} 个资源非本人创建，已跳过覆盖', { n: permissionSkipped })
         : ''
     if (failed > 0) {
       toast({
         variant: 'destructive',
-        title: '批量导入完成',
-        description: `成功 ${success} 个，失败 ${failed} 个${skippedMsg}${permissionMsg}`,
+        title: t('批量导入完成'),
+        description: t('成功 {ok} 个，失败 {fail} 个', {
+          ok: success,
+          fail: failed,
+        }) + skippedMsg + permissionMsg,
       })
     } else {
       toast({
-        title: '批量导入成功',
-        description: `成功导入 ${success} 个资源${skippedMsg}${permissionMsg}`,
+        title: t('批量导入成功'),
+        description: t('成功导入 {n} 个资源', { n: success }) + skippedMsg + permissionMsg,
       })
     }
     onImported()
@@ -194,13 +199,13 @@ export function ResourceBatchImportDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>批量导入资源</DialogTitle>
-          <DialogDescription>支持同时选择多个文件，自动以文件名作为资源名称</DialogDescription>
+          <DialogTitle>{t('批量导入资源')}</DialogTitle>
+          <DialogDescription>{t('支持同时选择多个文件，自动以文件名作为资源名称')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           {!resourceType && (
             <div>
-              <Label>资源类型</Label>
+              <Label>{t('资源类型')}</Label>
               <Select value={selectType} onValueChange={setSelectType}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue />
@@ -247,9 +252,9 @@ export function ResourceBatchImportDialog({
               <Upload className="h-6 w-6 text-gray-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">点击或拖拽批量选择文件</p>
+              <p className="text-sm font-medium text-gray-700">{t('点击或拖拽批量选择文件')}</p>
               <p className="text-xs text-gray-500 mt-1 break-words">
-                支持 Office 文档、PDF、图片、CAD 图纸、音视频、压缩包、代码文件、电子书 等常见格式，单文件最大 100MB。
+                {t('支持 Office 文档、PDF、图片、CAD 图纸、音视频、压缩包、代码文件、电子书 等常见格式，单文件最大 100MB。')}
               </p>
             </div>
           </div>
@@ -280,15 +285,15 @@ export function ResourceBatchImportDialog({
           {uploading ? (
             <div className="flex items-center gap-2 text-sm text-gray-500 w-full justify-center">
               <Loader2 className="h-4 w-4 animate-spin" />
-              正在上传 {uploadedCount}/{files.length}...
+              {t('正在上传 {a}/{b}...', { a: uploadedCount, b: files.length })}
             </div>
           ) : (
             <>
               <Button variant="outline" onClick={() => handleClose(false)}>
-                取消
+                {t('取消')}
               </Button>
               <Button onClick={handleImport} disabled={files.length === 0}>
-                开始导入（{files.length}）
+                {t('开始导入（{n}）', { n: files.length })}
               </Button>
             </>
           )}

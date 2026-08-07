@@ -70,6 +70,7 @@ import { ResourceBatchImportDialog } from './resource-batch-import-dialog'
 import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
 import { PaginationBar } from '@/components/shared/pagination-bar'
 import { resourceLibraryApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const TYPE_LABEL_MAP: Record<string, string> = RESOURCE_TYPE_LABELS
 // 资源类型展示顺序（与共享 RESOURCE_TYPE_LABELS 对应）
@@ -81,8 +82,9 @@ const ALL_TYPES: string[] = Object.keys(RESOURCE_TYPE_LABELS)
  * 否则呈现总览视图（统计卡片 + 类型筛选 + 弹窗内选择类型）。
  */
 export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind }) {
+  const t = useT()
   const isTypeView = !!resourceType
-  const typeLabel = resourceType ? RESOURCE_TYPE_LABELS[resourceType] || resourceType : '资源'
+  const typeLabel = resourceType ? RESOURCE_TYPE_LABELS[resourceType] || resourceType : t('资源')
   const typeColor = resourceType ? TYPE_COLORS[resourceType] || '#78716c' : undefined
   const typeBg = resourceType ? TYPE_BG[resourceType] || 'bg-slate-50' : undefined
   const typeIcon = resourceType ? TYPE_ICONS[resourceType] || TYPE_ICONS.other : undefined
@@ -180,15 +182,15 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
     <div className="p-6 space-y-5">
       {isTypeView ? (
         <CitationStatsPanel
-          entityLabel="资源"
-          dialogTitle="零引用资源"
+          entityLabel={t('资源')}
+          dialogTitle={t('零引用资源')}
           fetchStats={(params) => resourceLibraryApi.citationStats(params)}
           fetchUncited={(params) => resourceLibraryApi.uncited(params)}
           deleteItem={(id) => resourceLibraryApi.delete(id)}
           onDeleted={loadItems}
           resourceType={resourceType}
           statCount={statCount}
-          statLabel={`${typeLabel}总数`}
+          statLabel={t('{label}总数', { label: typeLabel })}
           statIcon={<span style={{ color: typeColor }}>{typeIcon}</span>}
           statIconWrapClass={typeBg}
         />
@@ -216,14 +218,14 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               ))}
           </div>
           <CitationStatsPanel
-            entityLabel="资源"
-            dialogTitle="零引用资源"
+            entityLabel={t('资源')}
+            dialogTitle={t('零引用资源')}
             fetchStats={(params) => resourceLibraryApi.citationStats(params)}
             fetchUncited={(params) => resourceLibraryApi.uncited(params)}
             deleteItem={(id) => resourceLibraryApi.delete(id)}
             onDeleted={loadItems}
             statCount={statCount}
-            statLabel="资源总数"
+            statLabel={t('资源总数')}
             statIcon={<HelpCircle className="size-5 text-primary" />}
           />
         </>
@@ -231,7 +233,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
 
       {!isTypeView && (
         <div className="bg-white rounded-xl p-3 flex gap-2 flex-wrap items-center border border-slate-100 shadow-sm">
-          <span className="text-sm text-slate-400 mr-1 shrink-0">类型筛选：</span>
+          <span className="text-sm text-slate-400 mr-1 shrink-0">{t('类型筛选：')}</span>
           {ALL_TYPES.map((type) => {
             const active = filterType === type
             return (
@@ -249,7 +251,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                 <span style={{ color: active ? '#fff' : TYPE_COLORS[type] }}>
                   {TYPE_ICONS[type] || TYPE_ICONS.other}
                 </span>
-                {TYPE_LABEL_MAP[type] || '其他'}
+                {TYPE_LABEL_MAP[type] || t('其他')}
                 <span className="tabular-nums opacity-60">{typeCounts[type] || 0}</span>
                 {active && <X className="size-3 ml-0.5" />}
               </button>
@@ -263,7 +265,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               }}
               className="ml-auto px-3 py-1.5 text-xs text-red-400 hover:text-red-600 font-medium border border-red-200 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
             >
-              清除筛选
+              {t('清除筛选')}
             </button>
           )}
         </div>
@@ -272,16 +274,16 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base font-semibold">
-            {isTypeView ? typeLabel : '教学资源库'}
+            {isTypeView ? typeLabel : t('教学资源库')}
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setBatchOpen(true)}>
               <Upload className="size-4 mr-1" />
-              批量导入
+              {t('批量导入')}
             </Button>
             <Button onClick={handleOpenAddWithType} size="sm">
               <Plus className="size-4 mr-1" />
-              新建资源
+              {t('新建资源')}
             </Button>
           </div>
         </CardHeader>
@@ -295,7 +297,9 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder={isTypeView ? `搜索${typeLabel}...` : '搜索资源名称...'}
+                placeholder={
+                  isTypeView ? t('搜索{label}...', { label: typeLabel }) : t('搜索资源名称...')
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -308,27 +312,27 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               <TableHeader>
                 <TableRow className="bg-slate-50/50">
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    资源
+                    {t('资源')}
                   </TableHead>
                   {!isTypeView && (
                     <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      类型
+                      {t('类型')}
                     </TableHead>
                   )}
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-                    链接
+                    {t('链接')}
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">
-                    大小
+                    {t('大小')}
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-                    描述
+                    {t('描述')}
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-                    标签
+                    {t('标签')}
                   </TableHead>
                   <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-                    操作
+                    {t('操作')}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -339,14 +343,14 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                       colSpan={tableColSpan}
                       className="p-12 text-center text-muted-foreground"
                     >
-                      加载中...
+                      {t('加载中...')}
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading && items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={tableColSpan} className="p-12 text-center">
-                      <div className="text-muted-foreground">暂无数据</div>
+                      <div className="text-muted-foreground">{t('暂无数据')}</div>
                       <Button
                         variant="outline"
                         size="sm"
@@ -354,7 +358,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                         onClick={handleOpenAddWithType}
                       >
                         <Plus className="size-3 mr-1" />
-                        新增第一条资源
+                        {t('新增第一条资源')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -397,7 +401,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                             className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
                           >
                             <ExternalLink className="size-3" />
-                            访问
+                            {t('访问')}
                           </a>
                         ) : (
                           '-'
@@ -471,9 +475,9 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null)
         }}
-        title="确认删除"
-        description="确定要删除该资源吗？此操作不可恢复。"
-        confirmText="删除"
+        title={t('确认删除')}
+        description={t('确定要删除该资源吗？此操作不可恢复。')}
+        confirmText={t('删除')}
         variant="destructive"
         onConfirm={confirmDelete}
       />
@@ -482,16 +486,18 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingItem ? '编辑资源' : isTypeView ? '新增资源' : '上传资源到公共库'}
+              {editingItem ? t('编辑资源') : isTypeView ? t('新增资源') : t('上传资源到公共库')}
             </DialogTitle>
             <DialogDescription>
-              {isTypeView ? `上传本地资源到${typeLabel}` : '补充本地资源，上传后将加入资源公共库'}
+              {isTypeView
+                ? t('上传本地资源到{label}', { label: typeLabel })
+                : t('补充本地资源，上传后将加入资源公共库')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
             {isTypeView && (
               <div>
-                <Label>资源类型</Label>
+                <Label>{t('资源类型')}</Label>
                 <Badge
                   variant="outline"
                   className="ml-2 text-xs"
@@ -502,17 +508,17 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               </div>
             )}
             <div>
-              <Label>资源名称</Label>
+              <Label>{t('资源名称')}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="输入资源名称"
+                placeholder={t('输入资源名称')}
                 className="mt-1.5"
               />
             </div>
             {!isTypeView && !editingItem && (
               <div>
-                <Label>资源类型</Label>
+                <Label>{t('资源类型')}</Label>
                 <Select
                   value={dialogType}
                   onValueChange={(v) => {
@@ -536,7 +542,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
 
             {submitType === 'link' && (
               <div>
-                <Label>URL 地址</Label>
+                <Label>{t('URL 地址')}</Label>
                 <Input
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
@@ -547,18 +553,18 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
             )}
 
             <div>
-              <Label>资源描述</Label>
+              <Label>{t('资源描述')}</Label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="输入资源简介、用途说明等"
+                placeholder={t('输入资源简介、用途说明等')}
                 className="mt-1.5"
                 rows={2}
               />
             </div>
 
             <div>
-              <Label>标签</Label>
+              <Label>{t('标签')}</Label>
               <div className="mt-1.5">
                 <TagPicker value={tagIds} onChange={setTagIds} className="w-full" />
               </div>
@@ -577,11 +583,11 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              取消
+              {t('取消')}
             </Button>
             <Button onClick={() => handleSubmit(submitType)} disabled={uploading}>
               {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {editingItem ? '保存' : '上传到资源库'}
+              {editingItem ? t('保存') : t('上传到资源库')}
             </Button>
           </DialogFooter>
         </DialogContent>

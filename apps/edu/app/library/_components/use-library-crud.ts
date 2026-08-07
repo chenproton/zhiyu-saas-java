@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToast } from '@zhiyu/ui'
+import { useT } from '@/lib/i18n/locale-provider'
 
 type QueryParams = Record<string, string | number | boolean | undefined>
 
@@ -30,6 +31,7 @@ export function useLibraryCrud<TItem>(
   options: UseLibraryCrudOptions = {},
 ) {
   const { toast } = useToast()
+  const t = useT()
   // options 每次渲染为新对象，经 effect 同步到 ref，避免被 loadItems 闭包捕获陈旧值
   const optionsRef = useRef(options)
   const [items, setItems] = useState<TItem[]>([])
@@ -71,13 +73,13 @@ export function useLibraryCrud<TItem>(
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err instanceof Error ? err.message : '无法获取列表',
+        title: t('加载失败'),
+        description: err instanceof Error ? err.message : t('无法获取列表'),
       })
     } finally {
       setLoading(false)
     }
-  }, [list, page, searchQuery, toast, filterKey])
+  }, [list, page, searchQuery, toast, filterKey, t])
 
   const handleSearchChange = useCallback((q: string) => {
     setSearchQuery(q)

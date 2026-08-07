@@ -3,6 +3,7 @@ import { Upload, File, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { resourceTypeAccept } from '@/lib/resource-type-constants'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface ResourceUploadZoneProps {
   resourceType: string
@@ -21,6 +22,7 @@ export function ResourceUploadZone({
   onFileSelect,
   onClear,
 }: ResourceUploadZoneProps) {
+  const t = useT()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
@@ -75,11 +77,11 @@ export function ResourceUploadZone({
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
+            <p className="text-sm font-medium text-gray-700">{t('点击或拖拽上传文件')}</p>
             <p className="text-xs text-gray-500 mt-1">
               {resourceTypeAccept[resourceType]
-                ? `支持 ${resourceTypeAccept[resourceType]}，最大 100MB`
-                : '支持多种格式，最大 100MB'}
+                ? t('支持 {types}，最大 100MB', { types: resourceTypeAccept[resourceType] })
+                : t('支持多种格式，最大 100MB')}
             </p>
           </div>
         </>
@@ -91,11 +93,11 @@ export function ResourceUploadZone({
         >
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-3.5 w-3.5 mr-1" />
-            重新选择
+            {t('重新选择')}
           </Button>
           <Button variant="outline" size="sm" onClick={onClear}>
             <X className="h-3.5 w-3.5 mr-1" />
-            清除
+            {t('清除')}
           </Button>
         </div>
       )}

@@ -4,11 +4,13 @@ import { type ResourceLibraryItem } from '@/lib/types/library'
 import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { useToast } from '@zhiyu/ui'
 import { fileTypesWithUpload, validateResourceFile } from '@/lib/resource-type-constants'
+import { useT } from '@/lib/i18n/locale-provider'
 
 const PAGE_SIZE = 200
 
 export function useResourceCrud(resourceType?: string) {
   const { toast } = useToast()
+  const t = useT()
   const resFileInputRef = useRef<HTMLInputElement>(null)
 
   const [items, setItems] = useState<ResourceLibraryItem[]>([])
@@ -54,13 +56,13 @@ export function useResourceCrud(resourceType?: string) {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: '加载失败',
-        description: err.message || '无法获取资源列表',
+        title: t('加载失败'),
+        description: err.message || t('无法获取资源列表'),
       })
     } finally {
       setLoading(false)
     }
-  }, [resourceType, filterType, searchQuery, selectedTagIds, page, toast])
+  }, [resourceType, filterType, searchQuery, selectedTagIds, page, toast, t])
 
   useEffect(() => {
     ;(async () => {
@@ -113,10 +115,10 @@ export function useResourceCrud(resourceType?: string) {
     if (!deleteTarget) return
     try {
       await resourceLibraryApi.delete(deleteTarget)
-      toast({ title: '删除成功' })
+      toast({ title: t('删除成功') })
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '删除失败', description: err.message })
+      toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
     } finally {
       setDeleteTarget(null)
     }
@@ -129,7 +131,7 @@ export function useResourceCrud(resourceType?: string) {
     if (file && fileTypesWithUpload.includes(fileType)) {
       const err = validateResourceFile(file, fileType)
       if (err) {
-        toast({ variant: 'destructive', title: '文件校验失败', description: err })
+        toast({ variant: 'destructive', title: t('文件校验失败'), description: err })
         return
       }
       setUploadFile(file)
@@ -139,7 +141,7 @@ export function useResourceCrud(resourceType?: string) {
   const handleFileSelect = (file: File, fileType: string) => {
     const err = validateResourceFile(file, fileType)
     if (err) {
-      toast({ variant: 'destructive', title: '文件校验失败', description: err })
+      toast({ variant: 'destructive', title: t('文件校验失败'), description: err })
       return
     }
     setUploadFile(file)
@@ -147,7 +149,7 @@ export function useResourceCrud(resourceType?: string) {
 
   const handleSubmit = async (submitType: string) => {
     if (!name.trim()) {
-      toast({ variant: 'destructive', title: '名称不能为空' })
+      toast({ variant: 'destructive', title: t('名称不能为空') })
       return
     }
 
@@ -164,7 +166,7 @@ export function useResourceCrud(resourceType?: string) {
         finalUrl = res.url
         finalSize = res.size
       } catch (err: any) {
-        toast({ variant: 'destructive', title: '文件上传失败', description: err.message })
+        toast({ variant: 'destructive', title: t('文件上传失败'), description: err.message })
         setUploading(false)
         return
       } finally {
@@ -184,10 +186,10 @@ export function useResourceCrud(resourceType?: string) {
     try {
       if (editingItem) {
         await resourceLibraryApi.update(editingItem.id, payload as any)
-        toast({ title: '更新成功' })
+        toast({ title: t('更新成功') })
       } else {
         const created = await resourceLibraryApi.create(payload as any)
-        toast({ title: '创建成功' })
+        toast({ title: t('创建成功') })
         if (created?.id) {
           await tagApi.setBindings({
             resourceType: TAG_RESOURCE_TYPES.resource_library,
@@ -206,7 +208,7 @@ export function useResourceCrud(resourceType?: string) {
       setIsDialogOpen(false)
       loadItems()
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '保存失败', description: err.message })
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
   }
 
