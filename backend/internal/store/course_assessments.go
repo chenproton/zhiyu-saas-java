@@ -114,7 +114,16 @@ func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, 
 }
 
 // CreateTempExam 创建临时考试（published）。
+// 名称冲突（同租户同名临时考试已存在，如编辑测评规则后重新发布）时复用已有临时考试，
+// 避免 INSERT 触发唯一键冲突导致事务中止（25P02）。
 func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, tenantID, name string, duration int, creatorID string) (string, error) {
+	var existingID string
+	if err := q.QueryRow(ctx, `
+		SELECT id FROM exams WHERE tenant_id = $1 AND name = $2 AND is_temp = TRUE
+	`, tenantID, name).Scan(&existingID); err == nil && existingID != "" {
+		return existingID, nil
+	}
+
 	id := uuid.NewString()
 	code, err := GenerateUniqueEntityCode(ctx, q, "SJ", "exams", tenantID)
 	if err != nil {
