@@ -94,6 +94,25 @@ export interface ResourceTagRelation {
   tags: TagItem[]
 }
 
+// 引用次数分布（库页面顶部指标卡片用）
+export interface CitationBucket {
+  label: string
+  count: number
+}
+
+export interface CitationStats {
+  buckets: CitationBucket[]
+  zeroCount: number
+  total: number
+}
+
+// 零引用资源条目（弹窗列表：名称 + 上传时间）
+export interface UncitedItem {
+  id: string
+  name: string
+  createdAt: string
+}
+
 // 可绑定标签的资源类型（与后端 domain.TagResourceType* 常量一一对应）
 export const TAG_RESOURCE_TYPES = {
   knowledge_point: 'knowledge_point',

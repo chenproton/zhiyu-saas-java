@@ -238,6 +238,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			resourceLibraryHandler := &handler.ResourceLibraryHandler{Service: service.NewResourceService(svc2)}
 			r.Get("/library/resources", resourceLibraryHandler.List)
 			r.Get("/library/resources/stats", resourceLibraryHandler.Stats)
+			r.Get("/library/resources/citation-stats", resourceLibraryHandler.CitationStats)
+			r.Get("/library/resources/uncited", resourceLibraryHandler.UncitedList)
 			r.Get("/library/resources/{id}", resourceLibraryHandler.Get)
 			r.Post("/library/resources", resourceLibraryHandler.Create)
 			r.Put("/library/resources/{id}", resourceLibraryHandler.Update)
@@ -335,6 +337,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 			knowledgePointHandler := &handler.KnowledgePointHandler{Service: lessonContentSvc}
 			r.Get("/lesson/knowledge-points", knowledgePointHandler.List)
+			r.Get("/lesson/knowledge-points/citation-stats", knowledgePointHandler.CitationStats)
+			r.Get("/lesson/knowledge-points/uncited", knowledgePointHandler.UncitedList)
 			r.Get("/lesson/knowledge-points/{id}", knowledgePointHandler.Get)
 			r.Post("/lesson/knowledge-points", knowledgePointHandler.Create)
 			r.Put("/lesson/knowledge-points/{id}", knowledgePointHandler.Update)

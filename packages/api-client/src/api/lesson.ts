@@ -8,6 +8,7 @@ import type {
   HybridNodeModule,
 } from '../types/lesson'
 import type { SystemCourseNode } from '../types/lesson-source'
+import type { CitationStats, UncitedItem } from '../types/citation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi, createContentApi } from '../api-factory'
 
@@ -94,11 +95,19 @@ export const courseHomeworkApi = {
     ),
 }
 
-export const knowledgeApi = createCrudApi<
-  KnowledgePoint,
-  Omit<KnowledgePoint, 'id' | 'createdAt' | 'updatedAt'>,
-  Partial<Omit<KnowledgePoint, 'id' | 'createdAt' | 'updatedAt'>>
->('/lesson/knowledge-points')
+export const knowledgeApi = {
+  ...createCrudApi<
+    KnowledgePoint,
+    Omit<KnowledgePoint, 'id' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<KnowledgePoint, 'id' | 'createdAt' | 'updatedAt'>>
+  >('/lesson/knowledge-points'),
+  citationStats: () =>
+    request<CitationStats>('/lesson/knowledge-points/citation-stats'),
+  uncited: (params?: { startDate?: string; endDate?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<UncitedItem>>(
+      `/lesson/knowledge-points/uncited${buildQuery(params || {})}`,
+    ),
+}
 
 export const courseNodeApi = {
   list: (params?: Record<string, string | number | boolean | undefined>) =>

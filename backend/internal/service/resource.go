@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -27,6 +28,16 @@ func (s *ResourceService) List(ctx context.Context, tenantID string, f store.Res
 // CountByType 按类型统计资源数量（列表总览统计卡片用）。
 func (s *ResourceService) CountByType(ctx context.Context, tenantID, search string) ([]store.ResourceTypeCount, error) {
 	return s.st.ResourceLibrary().CountByType(ctx, tenantID, search)
+}
+
+// CitationStats 资源引用次数分布（可按类型过滤）。
+func (s *ResourceService) CitationStats(ctx context.Context, tenantID, resourceType string) (store.CitationStats, error) {
+	return s.st.ResourceLibrary().CitationStats(ctx, tenantID, resourceType)
+}
+
+// ListUncitedResources 零引用资源列表（弹窗：上传时段筛选 + 分页；可按类型过滤）。
+func (s *ResourceService) ListUncitedResources(ctx context.Context, tenantID, resourceType string, from, to *time.Time, limit, offset int) ([]store.UncitedItem, int, error) {
+	return s.st.ResourceLibrary().ListUncited(ctx, tenantID, resourceType, from, to, limit, offset)
 }
 
 // Get 查询单个资源。

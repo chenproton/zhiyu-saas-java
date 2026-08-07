@@ -111,6 +111,46 @@ func (h *ResourceLibraryHandler) Stats(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]any{"items": counts})
 }
 
+// CitationStats 资源引用次数分布（顶部指标卡片用；可选 resourceType 过滤）。
+func (h *ResourceLibraryHandler) CitationStats(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	stats, err := h.Service.CitationStats(r.Context(), tenantID, r.URL.Query().Get("resourceType"))
+	if err != nil {
+		respondServerError(w, r, err, "查询资源引用统计失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, stats)
+}
+
+// UncitedList 零引用资源列表（弹窗：上传时段筛选 + 分页；可选 resourceType 过滤）。
+func (h *ResourceLibraryHandler) UncitedList(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	from, to, ok := parseDateRange(w, r)
+	if !ok {
+		return
+	}
+	limit, err := parsePageLimit(r.URL.Query().Get("limit"), 20)
+	if err != nil {
+		limit = 20
+	}
+	offset := 0
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		offset = v
+	}
+	items, total, err := h.Service.ListUncitedResources(r.Context(), tenantID, r.URL.Query().Get("resourceType"), from, to, limit, offset)
+	if err != nil {
+		respondServerError(w, r, err, "查询零引用资源失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[store.UncitedItem]{Items: items, Total: total})
+}
+
 func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")

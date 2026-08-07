@@ -134,6 +134,37 @@ func parsePageLimit(s string, defaultVal int) (int, error) {
 	return store.ParsePageLimit(s, defaultVal)
 }
 
+// parseDateRange 解析 startDate/endDate（YYYY-MM-DD）查询参数为时间范围。
+// 两个参数均可省略；endDate 按"含当天"处理（内部转换为次日零点开区间）。
+// 放在 handler 层是因为它只做 HTTP 查询参数的解析校验，无 SQL 语义。
+// 返回 ok=false 时已写入 400 错误响应。
+func parseDateRange(w http.ResponseWriter, r *http.Request) (from, to *time.Time, ok bool) {
+	parse := func(v string) (time.Time, bool) {
+		t, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "日期格式应为 YYYY-MM-DD")
+			return t, false
+		}
+		return t, true
+	}
+	if v := r.URL.Query().Get("startDate"); v != "" {
+		t, ok := parse(v)
+		if !ok {
+			return nil, nil, false
+		}
+		from = &t
+	}
+	if v := r.URL.Query().Get("endDate"); v != "" {
+		t, ok := parse(v)
+		if !ok {
+			return nil, nil, false
+		}
+		t = t.AddDate(0, 0, 1)
+		to = &t
+	}
+	return from, to, true
+}
+
 // itoa 委托 store.Itoa（唯一实现）。
 func itoa(i int) string {
 	return store.Itoa(i)

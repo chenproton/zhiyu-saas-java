@@ -5,6 +5,8 @@ import "github.com/go-chi/chi/v5"
 func registerLibraryRoutes(r chi.Router, h *Handlers) {
 	r.Get("/library/resources", h.resourceLibraryHandler.List)
 	r.Get("/library/resources/stats", h.resourceLibraryHandler.Stats)
+	r.Get("/library/resources/citation-stats", h.resourceLibraryHandler.CitationStats)
+	r.Get("/library/resources/uncited", h.resourceLibraryHandler.UncitedList)
 	r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
 	r.Post("/library/resources", h.resourceLibraryHandler.Create)
 	r.Post("/library/resources/import/preview", h.resourceLibraryHandler.PreviewImport)

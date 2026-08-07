@@ -21,6 +21,8 @@ interface LibraryPageShellProps<T> {
   statIcon: ReactNode
   statGradient: string
   statCount: number
+  /** 顶部指标区附加内容（如引用次数分布面板），与统计卡片并排展示 */
+  statsExtra?: ReactNode
   searchPlaceholder: string
   searchQuery: string
   onSearchChange: (q: string) => void
@@ -47,6 +49,7 @@ export function LibraryPageShell<T>({
   statIcon,
   statGradient,
   statCount,
+  statsExtra,
   searchPlaceholder,
   searchQuery,
   onSearchChange,
@@ -67,15 +70,18 @@ export function LibraryPageShell<T>({
 }: LibraryPageShellProps<T>) {
   return (
     <div className="p-6 space-y-5">
-      <Card className={`border-0 shadow-sm bg-gradient-to-br ${statGradient}`}>
-        <CardContent className="p-4 flex items-center gap-3">
-          {statIcon}
-          <div>
-            <div className="text-2xl font-bold">{statCount}</div>
-            <div className="text-xs opacity-70">{statLabel}</div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col lg:flex-row gap-3">
+        <Card className={`border-0 shadow-sm bg-gradient-to-br ${statGradient} shrink-0`}>
+          <CardContent className="p-4 flex items-center gap-3">
+            {statIcon}
+            <div>
+              <div className="text-2xl font-bold">{statCount}</div>
+              <div className="text-xs opacity-70">{statLabel}</div>
+            </div>
+          </CardContent>
+        </Card>
+        {statsExtra && <div className="flex-1 flex gap-3 min-w-0">{statsExtra}</div>}
+      </div>
 
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">

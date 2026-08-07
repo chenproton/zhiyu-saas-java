@@ -5,6 +5,7 @@ import type {
   TagResourceType,
   ResourceTagRelation,
 } from '../types/library'
+import type { CitationStats, UncitedItem } from '../types/citation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 
 export const resourceLibraryApi = {
@@ -20,6 +21,16 @@ export const resourceLibraryApi = {
     request<{ items: { resourceType: string; count: number }[] }>(
       `/library/resources/stats${buildQuery(params || {})}`,
     ),
+  citationStats: (params?: { resourceType?: string }) =>
+    request<CitationStats>(`/library/resources/citation-stats${buildQuery(params || {})}`),
+  uncited: (params?: {
+    resourceType?: string
+    startDate?: string
+    endDate?: string
+    limit?: number
+    offset?: number
+  }) =>
+    request<ListResponse<UncitedItem>>(`/library/resources/uncited${buildQuery(params || {})}`),
   get: (id: string) => request<ResourceLibraryItem>(`/library/resources/${id}`),
   create: (req: Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>) =>
     request<ResourceLibraryItem>('/library/resources', {

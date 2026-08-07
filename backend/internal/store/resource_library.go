@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -133,6 +134,95 @@ func (s *ResourceLibraryStore) List(ctx context.Context, tenantID string, f Reso
 	defer rows.Close()
 	items, err := scanResourceRows(rows)
 	return items, total, err
+}
+
+// CitationStats 资源引用次数分布（引用源：课程/节点/任务绑定；可按类型过滤）。
+func (s *ResourceLibraryStore) CitationStats(ctx context.Context, tenantID, resourceType string) (CitationStats, error) {
+	where := "rl.tenant_id = $1"
+	args := []any{tenantID}
+	argIdx := 2
+	if resourceType != "" {
+		where += " AND rl.resource_type::text = $" + Itoa(argIdx)
+		args = append(args, resourceType)
+		argIdx++
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT `+citationBucketCase+`, COUNT(*) AS cnt
+		FROM (
+			SELECT rl.id,
+				COALESCE((SELECT COUNT(*) FROM course_resource_bindings crb WHERE crb.resource_id = rl.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM node_resource_bindings nrb WHERE nrb.resource_id = rl.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM task_resource_bindings trb WHERE trb.resource_id = rl.id), 0) AS ref_count
+			FROM resource_library rl
+			WHERE `+where+`
+		) refs
+		GROUP BY bucket
+	`, args...)
+	if err != nil {
+		return CitationStats{}, err
+	}
+	defer rows.Close()
+	return scanCitationStats(rows)
+}
+
+// ListUncited 零引用资源列表（弹窗：上传时段筛选 + 分页；可按类型过滤）。
+func (s *ResourceLibraryStore) ListUncited(ctx context.Context, tenantID, resourceType string, from, to *time.Time, limit, offset int) ([]UncitedItem, int, error) {
+	where := "rl.tenant_id = $1"
+	args := []any{tenantID}
+	argIdx := 2
+	if resourceType != "" {
+		where += " AND rl.resource_type::text = $" + Itoa(argIdx)
+		args = append(args, resourceType)
+		argIdx++
+	}
+	if from != nil {
+		where += " AND rl.created_at >= $" + Itoa(argIdx)
+		args = append(args, *from)
+		argIdx++
+	}
+	if to != nil {
+		where += " AND rl.created_at < $" + Itoa(argIdx)
+		args = append(args, *to)
+		argIdx++
+	}
+	uncited := `
+		AND NOT EXISTS (SELECT 1 FROM course_resource_bindings crb WHERE crb.resource_id = rl.id)
+		AND NOT EXISTS (SELECT 1 FROM node_resource_bindings nrb WHERE nrb.resource_id = rl.id)
+		AND NOT EXISTS (SELECT 1 FROM task_resource_bindings trb WHERE trb.resource_id = rl.id)`
+
+	var total int
+	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM resource_library rl WHERE "+where+uncited, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > maxPageSize {
+		limit = maxPageSize
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args = append(args, limit, offset)
+	rows, err := s.q.Query(ctx, `
+		SELECT rl.id, rl.name, rl.created_at
+		FROM resource_library rl
+		WHERE `+where+uncited+`
+		ORDER BY rl.created_at DESC
+		LIMIT $`+Itoa(argIdx)+` OFFSET $`+Itoa(argIdx+1), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]UncitedItem, 0, limit)
+	for rows.Next() {
+		var it UncitedItem
+		if err := rows.Scan(&it.ID, &it.Name, &it.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, it)
+	}
+	return items, total, rows.Err()
 }
 
 // ResourceTypeCount 某资源类型的数量（列表总览统计卡片用）。
