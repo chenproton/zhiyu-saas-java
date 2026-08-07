@@ -131,7 +131,7 @@ export function useResourceCrud(resourceType?: string) {
     if (file && fileTypesWithUpload.includes(fileType)) {
       const err = validateResourceFile(file, fileType)
       if (err) {
-        toast({ variant: 'destructive', title: t('文件校验失败'), description: err })
+        toast({ variant: 'destructive', title: t('文件校验失败'), description: t(err) })
         return
       }
       setUploadFile(file)
@@ -141,7 +141,7 @@ export function useResourceCrud(resourceType?: string) {
   const handleFileSelect = (file: File, fileType: string) => {
     const err = validateResourceFile(file, fileType)
     if (err) {
-      toast({ variant: 'destructive', title: t('文件校验失败'), description: err })
+      toast({ variant: 'destructive', title: t('文件校验失败'), description: t(err) })
       return
     }
     setUploadFile(file)
