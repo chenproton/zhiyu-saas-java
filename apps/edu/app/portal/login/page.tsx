@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ import {
   MessageCircle,
   QrCode,
   Building2,
+  History,
 } from 'lucide-react'
 import { authApi, setToken } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
@@ -241,7 +243,17 @@ export default function PortalLoginPage() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-xs text-blue-200/40">
+        <div className="mt-5 flex items-center justify-center">
+          <Link
+            href="/changelog"
+            className="flex items-center gap-1.5 text-xs text-blue-200/40 transition-colors hover:text-blue-100/80"
+          >
+            <History className="h-3.5 w-3.5" />
+            {t('查看平台更新记录')}
+          </Link>
+        </div>
+
+        <p className="mt-3 text-center text-xs text-blue-200/40">
           © {new Date().getFullYear()} {t('场景化数智教学服务平台')} All Rights Reserved
         </p>
       </div>
