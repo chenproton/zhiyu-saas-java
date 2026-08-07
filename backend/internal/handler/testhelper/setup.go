@@ -210,6 +210,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 			abilityHandler := &handler.AbilityHandler{Service: positionSvc}
 			r.Get("/job/abilities", abilityHandler.List)
+			r.Get("/job/abilities/citation-stats", abilityHandler.CitationStats)
+			r.Get("/job/abilities/uncited", abilityHandler.UncitedList)
 			r.Get("/job/abilities/{id}", abilityHandler.Get)
 			r.Post("/job/abilities", abilityHandler.Create)
 			r.Put("/job/abilities/{id}", abilityHandler.Update)
@@ -244,6 +246,15 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/library/resources", resourceLibraryHandler.Create)
 			r.Put("/library/resources/{id}", resourceLibraryHandler.Update)
 			r.Delete("/library/resources/{id}", resourceLibraryHandler.Delete)
+
+			certificateLibraryHandler := &handler.CertificateLibraryHandler{Store: st2.CertificateLibrary()}
+			r.Get("/job/certificate-library", certificateLibraryHandler.List)
+			r.Get("/job/certificate-library/citation-stats", certificateLibraryHandler.CitationStats)
+			r.Get("/job/certificate-library/uncited", certificateLibraryHandler.UncitedList)
+			r.Get("/job/certificate-library/{id}", certificateLibraryHandler.Get)
+			r.Post("/job/certificate-library", certificateLibraryHandler.Create)
+			r.Put("/job/certificate-library/{id}", certificateLibraryHandler.Update)
+			r.Delete("/job/certificate-library/{id}", certificateLibraryHandler.Delete)
 
 			abilityDomainHandler := &handler.AbilityDomainHandler{Service: positionSvc}
 			r.Get("/job/ability-domains", abilityDomainHandler.List)

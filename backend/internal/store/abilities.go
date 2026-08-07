@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"time"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
@@ -121,6 +123,84 @@ func (s *AbilityStore) ListConfig() ListQueryConfig[domain.AbilityPoint] {
 			AddTagFilter(qb, p.TenantID, domain.TagResourceTypeAbilityPoint, "id", SplitTagIDs(p.Values["tagIds"]))
 		},
 	}
+}
+
+// CitationStats 能力点引用次数分布（引用源：岗位职责/节点/场景任务/认证绑定）。
+func (s *AbilityStore) CitationStats(ctx context.Context, tenantID string) (CitationStats, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT `+citationBucketCase+`, COUNT(*) AS cnt
+		FROM (
+			SELECT ap.id,
+				COALESCE((SELECT COUNT(*) FROM position_ability_bindings pab WHERE pab.ability_point_id = ap.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM node_ability_point_bindings nab WHERE nab.ability_point_id = ap.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM task_ability_bindings tab WHERE tab.ability_point_id = ap.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM certification_ability_points cap WHERE cap.ability_point_id = ap.id), 0) AS ref_count
+			FROM ability_points ap
+			WHERE ap.tenant_id = $1
+		) refs
+		GROUP BY bucket
+	`, tenantID)
+	if err != nil {
+		return CitationStats{}, err
+	}
+	defer rows.Close()
+	return scanCitationStats(rows)
+}
+
+// ListUncited 零引用能力点列表（弹窗：创建时段筛选 + 分页）。
+func (s *AbilityStore) ListUncited(ctx context.Context, tenantID string, from, to *time.Time, limit, offset int) ([]UncitedItem, int, error) {
+	where := "ap.tenant_id = $1"
+	args := []any{tenantID}
+	argIdx := 2
+	if from != nil {
+		where += " AND ap.created_at >= $" + Itoa(argIdx)
+		args = append(args, *from)
+		argIdx++
+	}
+	if to != nil {
+		where += " AND ap.created_at < $" + Itoa(argIdx)
+		args = append(args, *to)
+		argIdx++
+	}
+	uncited := `
+		AND NOT EXISTS (SELECT 1 FROM position_ability_bindings pab WHERE pab.ability_point_id = ap.id)
+		AND NOT EXISTS (SELECT 1 FROM node_ability_point_bindings nab WHERE nab.ability_point_id = ap.id)
+		AND NOT EXISTS (SELECT 1 FROM task_ability_bindings tab WHERE tab.ability_point_id = ap.id)
+		AND NOT EXISTS (SELECT 1 FROM certification_ability_points cap WHERE cap.ability_point_id = ap.id)`
+
+	var total int
+	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM ability_points ap WHERE "+where+uncited, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > maxPageSize {
+		limit = maxPageSize
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args = append(args, limit, offset)
+	rows, err := s.q.Query(ctx, `
+		SELECT ap.id, ap.name, ap.created_at
+		FROM ability_points ap
+		WHERE `+where+uncited+`
+		ORDER BY ap.created_at DESC
+		LIMIT $`+Itoa(argIdx)+` OFFSET $`+Itoa(argIdx+1), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]UncitedItem, 0, limit)
+	for rows.Next() {
+		var it UncitedItem
+		if err := rows.Scan(&it.ID, &it.Name, &it.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, it)
+	}
+	return items, total, rows.Err()
 }
 
 // ===== 能力域 =====

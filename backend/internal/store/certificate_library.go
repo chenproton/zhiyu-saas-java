@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
@@ -87,4 +88,76 @@ func (s *CertificateLibraryStore) Delete(ctx context.Context, id, tenantID strin
 	}
 	_, err := s.Q().Exec(ctx, `DELETE FROM certificate_library WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
+}
+
+// CitationStats 证书引用次数分布（引用源：岗位证书绑定）。
+func (s *CertificateLibraryStore) CitationStats(ctx context.Context, tenantID string) (CitationStats, error) {
+	rows, err := s.Q().Query(ctx, `
+		SELECT `+citationBucketCase+`, COUNT(*) AS cnt
+		FROM (
+			SELECT cl.id,
+				COALESCE((SELECT COUNT(*) FROM position_certificates pc WHERE pc.certificate_library_id = cl.id), 0) AS ref_count
+			FROM certificate_library cl
+			WHERE cl.tenant_id = $1
+		) refs
+		GROUP BY bucket
+	`, tenantID)
+	if err != nil {
+		return CitationStats{}, err
+	}
+	defer rows.Close()
+	return scanCitationStats(rows)
+}
+
+// ListUncited 零引用证书列表（弹窗：创建时段筛选 + 分页）。
+func (s *CertificateLibraryStore) ListUncited(ctx context.Context, tenantID string, from, to *time.Time, limit, offset int) ([]UncitedItem, int, error) {
+	where := "cl.tenant_id = $1"
+	args := []any{tenantID}
+	argIdx := 2
+	if from != nil {
+		where += " AND cl.created_at >= $" + Itoa(argIdx)
+		args = append(args, *from)
+		argIdx++
+	}
+	if to != nil {
+		where += " AND cl.created_at < $" + Itoa(argIdx)
+		args = append(args, *to)
+		argIdx++
+	}
+	uncited := `
+		AND NOT EXISTS (SELECT 1 FROM position_certificates pc WHERE pc.certificate_library_id = cl.id)`
+
+	var total int
+	if err := s.Q().QueryRow(ctx, "SELECT COUNT(*) FROM certificate_library cl WHERE "+where+uncited, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > maxPageSize {
+		limit = maxPageSize
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args = append(args, limit, offset)
+	rows, err := s.Q().Query(ctx, `
+		SELECT cl.id, cl.name, cl.created_at
+		FROM certificate_library cl
+		WHERE `+where+uncited+`
+		ORDER BY cl.created_at DESC
+		LIMIT $`+Itoa(argIdx)+` OFFSET $`+Itoa(argIdx+1), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]UncitedItem, 0, limit)
+	for rows.Next() {
+		var it UncitedItem
+		if err := rows.Scan(&it.ID, &it.Name, &it.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, it)
+	}
+	return items, total, rows.Err()
 }

@@ -10,6 +10,7 @@ import type {
   PositionRecommendation,
   LearnRoad,
 } from '../types/job'
+import type { CitationStats, UncitedItem } from '../types/citation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi, createContentApi } from '../api-factory'
 
@@ -97,6 +98,9 @@ export const abilityApi = {
   update: (id: string, req: Partial<Omit<AbilityPoint, 'id' | 'createdAt'>>) =>
     request<AbilityPoint>(`/job/abilities/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
   delete: (id: string) => request<{ id: string }>(`/job/abilities/${id}`, { method: 'DELETE' }),
+  citationStats: () => request<CitationStats>('/job/abilities/citation-stats'),
+  uncited: (params?: { startDate?: string; endDate?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<UncitedItem>>(`/job/abilities/uncited${buildQuery(params || {})}`),
   listBindings: (params?: { careerPositionId?: string; responsibilityId?: string }) =>
     request<ListResponse<PositionAbilityBinding>>(
       `/job/position-abilities${buildQuery(params || {})}`,
@@ -195,6 +199,11 @@ export const certificateLibraryApi = {
     }),
   delete: (id: string) =>
     request<{ id: string }>(`/job/certificate-library/${id}`, { method: 'DELETE' }),
+  citationStats: () => request<CitationStats>('/job/certificate-library/citation-stats'),
+  uncited: (params?: { startDate?: string; endDate?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<UncitedItem>>(
+      `/job/certificate-library/uncited${buildQuery(params || {})}`,
+    ),
 }
 
 export const batchApi = {

@@ -24,6 +24,7 @@ import { useTagBindings } from '@/components/shared/use-tag-bindings'
 import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { LibraryPageShell } from '../_components/library-page-shell'
+import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
 import { useLibraryCrud } from '../_components/use-library-crud'
 import { useEffect } from 'react'
 
@@ -158,6 +159,20 @@ export default function CertificatesPage() {
       }
       statGradient="from-rose-50 to-rose-100"
       statCount={total}
+      statsExtra={
+        <CitationStatsPanel
+          entityLabel="证书"
+          dialogTitle="零引用证书"
+          fetchStats={() => certificateLibraryApi.citationStats()}
+          fetchUncited={(params) => certificateLibraryApi.uncited(params)}
+          deleteItem={(id) => certificateLibraryApi.delete(id)}
+          onDeleted={loadItems}
+          statCount={total}
+          statLabel="证书总数"
+          statIcon={<Award className="size-5 text-rose-600" />}
+          statGradient="from-rose-50 to-rose-100"
+        />
+      }
       searchPlaceholder="搜索证书..."
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
