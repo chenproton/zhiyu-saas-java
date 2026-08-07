@@ -71,7 +71,6 @@ export interface JobAbilityResult {
   id: string
   positionId: string
   positionName: string
-  positionCode: string
   userId?: string
   studentName: string
   studentId: string

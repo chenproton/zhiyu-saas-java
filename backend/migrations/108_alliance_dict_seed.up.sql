@@ -1,5 +1,7 @@
 -- 联盟字典种子数据（code=英文存储值, name=中文显示名）
--- 为所有已存在的租户插入，已存在(code 冲突)则跳过
+-- 插入运营方租户（固定 ID，seed 程序随后创建该租户行）与所有现存租户；
+-- 若运营方租户行尚未创建（migration 先于 seed 执行），其字典行会先落库，
+-- 租户创建时无需回填即可直接使用。已存在(code 冲突)则跳过。
 INSERT INTO alliance_dictionaries (id, tenant_id, dict_type, code, name, sort_order, created_at)
 SELECT gen_random_uuid(), t.id, d.dict_type, d.code, d.name, d.sort_order, NOW()
 FROM (VALUES
@@ -44,5 +46,10 @@ FROM (VALUES
     ('project_type', '课程开发项目', '课程开发项目', 7),
     ('project_type', '专业共建项目', '专业共建项目', 8)
 ) AS d(dict_type, code, name, sort_order)
-CROSS JOIN tenants t
+CROSS JOIN (
+    -- 运营方租户固定 ID（seed 程序随后创建租户行）+ 所有现存租户
+    SELECT '00000000-0000-0000-0000-000000000001'::uuid AS id
+    UNION
+    SELECT id FROM tenants
+) t
 ON CONFLICT (tenant_id, dict_type, code) DO NOTHING;

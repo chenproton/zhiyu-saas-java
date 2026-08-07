@@ -480,6 +480,18 @@ export function YiKnowAssistant() {
   const [isTyping, setIsTyping] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearReplyTimer = () => {
+    if (replyTimerRef.current) {
+      clearTimeout(replyTimerRef.current)
+      replyTimerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => clearReplyTimer()
+  }, [])
 
   const getModules = (platformId: string) => APP_MODULES[platformId] || []
 
@@ -619,7 +631,9 @@ export function YiKnowAssistant() {
     setInputValue('')
     setIsTyping(true)
 
-    setTimeout(() => {
+    clearReplyTimer()
+    replyTimerRef.current = setTimeout(() => {
+      replyTimerRef.current = null
       const { reply, recommendations, quickActions } = generateReply(question)
 
       const assistantMsg: ChatMessage = {
@@ -635,6 +649,7 @@ export function YiKnowAssistant() {
   }
 
   const handleCloseChat = () => {
+    clearReplyTimer()
     setChatMessages([])
     setInputValue('')
     setIsTyping(false)
@@ -643,6 +658,7 @@ export function YiKnowAssistant() {
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
     if (!nextOpen) {
+      clearReplyTimer()
       setInputValue('')
       setChatMessages([])
       setExpandedIds(new Set())

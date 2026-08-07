@@ -1,14 +1,17 @@
 'use client'
 
 import { useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { PlatformSideNav } from '@zhiyu/ui'
 import { allianceNavigationConfig } from '@/lib/navigation-config'
 import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AllianceAdminLayout({ children }: { children: React.ReactNode }) {
-  const { hasMenuPermission } = useAuth()
+  const { hasMenuPermission, loading } = useAuth()
   const t = useT()
+  const pathname = usePathname()
+  const permitted = hasMenuPermission(pathname)
 
   // 导航配置中的 label 为中文 key，在此统一翻译后再传给 PlatformSideNav
   const translatedConfig = useMemo(() => {
@@ -39,7 +42,15 @@ export default function AllianceAdminLayout({ children }: { children: React.Reac
     <div className="flex min-h-[calc(100vh-56px)] bg-[#f5f7fa]">
       <PlatformSideNav config={translatedConfig} hasMenuPermission={hasMenuPermission} />
       <main className="min-w-0 flex-1">
-        <div className="p-4 sm:p-6">{children}</div>
+        <div className="p-4 sm:p-6">
+          {loading ? null : permitted ? (
+            children
+          ) : (
+            <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+              {t('当前角色暂无权限访问该页面，请联系管理员在角色权限中开通')}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )

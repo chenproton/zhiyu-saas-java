@@ -6,19 +6,18 @@ export type TopicStatus = 'draft' | 'pending' | 'published' | 'locked'
 export interface GraduationProjectTopic {
   id: string
   name: string
-  positionId: string
-  positionName: string
-  college: string
+  careerPositionId: string
+  college?: string
   source: TopicSource
   status: TopicStatus
   capacity: number
   appliedCount: number
-  advisorName: string
-  enterpriseMentorName?: string
-  startDate: Date
-  endDate: Date
+  advisorId?: string
+  enterpriseMentorId?: string
+  startDate?: string
+  endDate?: string
   description?: string
-  createdAt: Date
+  createdAt: string
 }
 
 export type ArchivePhase = 'proposal' | 'midterm' | 'process' | 'final'
@@ -45,16 +44,14 @@ export type EvaluationGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 export interface GraduationProjectEvaluation {
   id: string
   topicId: string
-  topicName: string
-  studentName: string
-  studentId: string
-  advisorScore: number
+  userId: string
+  advisorScore?: number
   enterpriseScore?: number
   defenseScore?: number
-  comprehensiveGrade: EvaluationGrade
+  comprehensiveGrade?: EvaluationGrade
   isExcellent: boolean
-  evaluationTime: Date
   status: 'pending' | 'completed'
+  evaluatedAt: string
 }
 
 export interface GraduationQueryResult {

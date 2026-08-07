@@ -99,6 +99,7 @@ export function TeacherDashboardTab({
   const [hybridGradeDialogOpen, setHybridGradeDialogOpen] = useState(false)
   const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
   const [hybridGradeClassName, setHybridGradeClassName] = useState('')
+  const [hybridGradeCourseId, setHybridGradeCourseId] = useState('')
   const [, setPrepSessionLabels] = useState<Record<string, string>>({})
 
   return (
@@ -123,10 +124,11 @@ export function TeacherDashboardTab({
                 if (sessionLabel)
                   setPrepSessionLabels((prev) => ({ ...prev, [sessionId]: sessionLabel }))
               }}
-              onGradeRequest={(title, className, isHybrid) => {
+              onGradeRequest={(title, className, isHybrid, courseId) => {
                 if (isHybrid) {
                   setHybridGradeSessionTitle(title)
                   setHybridGradeClassName(className || '')
+                  setHybridGradeCourseId(courseId || '')
                   setHybridGradeDialogOpen(true)
                 }
               }}
@@ -251,6 +253,7 @@ export function TeacherDashboardTab({
         onOpenChange={setHybridGradeDialogOpen}
         sessionTitle={hybridGradeSessionTitle}
         className={hybridGradeClassName}
+        courseId={hybridGradeCourseId}
       />
     </div>
   )
@@ -324,7 +327,7 @@ interface CourseScheduleTableProps {
     url: string,
     sessionLabel?: string,
   ) => void
-  onGradeRequest?: (title: string, className: string, isHybrid: boolean) => void
+  onGradeRequest?: (title: string, className: string, isHybrid: boolean, courseId?: string) => void
 }
 
 function CourseScheduleTable({
@@ -710,12 +713,13 @@ function CourseScheduleTable({
                                 try {
                                   const c = await courseApi.get(event.courseId)
                                   if (c.type === 'hybrid') {
-                                    if (onGradeRequest)
-                                      onGradeRequest(
-                                        `${event.title} · ${event.period}`,
-                                        event.className || event.tag || '',
-                                        true,
-                                      )
+                                  if (onGradeRequest)
+                                    onGradeRequest(
+                                      `${event.title} · ${event.period}`,
+                                      event.className || event.tag || '',
+                                      true,
+                                      event.courseId,
+                                    )
                                     return
                                   }
                                 } catch {

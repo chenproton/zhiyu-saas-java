@@ -23,19 +23,16 @@ export const ISSUE_STATUS_LABELS: Record<IssueStatus, string> = {
   revoked: '已撤销',
 }
 
+// 证书发放记录：字段与后端 store/micro_cert.go 返回结构对齐
 export interface CertIssuanceRecord {
   id: string
   templateId: string
-  templateTitle: string
-  certTypeName: string
-  studentName: string
-  studentId: string
-  className: string
-  issueDate: Date
-  expireDate?: Date
+  userId: string
+  issueDate: string
+  expireDate?: string
   status: IssueStatus
   certNumber: string
-  revokedAt?: Date
+  revokedAt?: string
   revokeReason?: string
 }
 

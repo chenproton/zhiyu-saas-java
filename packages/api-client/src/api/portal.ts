@@ -37,7 +37,7 @@ export const userManagementApi = {
   updateStatus: (id: string, status: string) =>
     request<User>(`/users/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   batchCreate: (reqs: CreateUserRequest[]) =>
-    request<{ count: number }>('/users/batch', {
+    request<ListResponse<User>>('/users/batch', {
       method: 'POST',
       body: JSON.stringify({ users: reqs }),
     }),
@@ -79,7 +79,7 @@ export const portalUserManagementApi = {
       body: JSON.stringify({ roleIds }),
     }),
   batchCreate: (reqs: CreateUserRequest[]) =>
-    portalRequest<{ count: number }>('/users/batch', {
+    portalRequest<ListResponse<User>>('/users/batch', {
       method: 'POST',
       body: JSON.stringify({ users: reqs }),
     }),

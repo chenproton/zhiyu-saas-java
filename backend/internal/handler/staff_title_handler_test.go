@@ -83,7 +83,7 @@ func TestStaffTitle_CRUD(t *testing.T) {
 	}
 
 	wStatus := do("POST", "/api/v1/staff-titles/"+title.ID+"/status", map[string]interface{}{
-		"status": "disabled",
+		"status": "inactive",
 	})
 	if wStatus.Code != http.StatusOK {
 		t.Fatalf("toggle status: %d %s", wStatus.Code, testhelper.ErrMsg(wStatus))

@@ -43,6 +43,7 @@ import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import { useToast } from '@zhiyu/ui'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { Search, Upload, Download, FolderTree, Loader2, ChevronDown } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -164,6 +165,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
 }: PortalSidebarCrudPageConfig<T>) {
   const { toast } = useToast()
   const t = useT()
+  const { tenantId } = usePortalAuth()
   const [searchTerm, setSearchTerm] = useState('')
 
   const [selectedOrgNodeId, setSelectedOrgNodeId] = useState<string | null>(null)
@@ -574,6 +576,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               <OrgNodePicker
                 value={joinTargetNodeId}
                 onChange={(value) => setJoinTargetNodeId(value || '')}
+                tenantId={tenantId}
                 placeholder={
                   orgNodePickerProps?.placeholder || t('选择{joinEntityLabel}', { joinEntityLabel })
                 }

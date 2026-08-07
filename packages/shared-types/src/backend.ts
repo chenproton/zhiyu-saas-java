@@ -193,13 +193,13 @@ export interface Workflow {
   createdAt: string
 }
 
+// 审批历史条目：与后端 ApprovalRecord.history 实际 JSON 键对齐
 export interface ApprovalHistoryItem {
-  stepId: string
-  stepName: string
+  action: string
+  remark?: string
+  stepIdx?: number
   reviewerId?: string
   reviewerName?: string
-  status: string
-  comment?: string
   createdAt: string
 }
 
