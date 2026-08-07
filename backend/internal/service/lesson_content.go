@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -61,6 +62,16 @@ func (s *LessonContentService) UpdateKnowledgePoint(ctx context.Context, tenantI
 // DeleteKnowledgePoint 删除知识点。
 func (s *LessonContentService) DeleteKnowledgePoint(ctx context.Context, id, tenantID string) error {
 	return s.st.KnowledgePoints().Delete(ctx, id, tenantID)
+}
+
+// KnowledgePointCitationStats 知识点引用次数分布（顶部指标卡片用）。
+func (s *LessonContentService) KnowledgePointCitationStats(ctx context.Context, tenantID string) (store.CitationStats, error) {
+	return s.st.KnowledgePoints().CitationStats(ctx, tenantID)
+}
+
+// ListUncitedKnowledgePoints 零引用知识点列表（弹窗：上传时段筛选 + 分页）。
+func (s *LessonContentService) ListUncitedKnowledgePoints(ctx context.Context, tenantID string, from, to *time.Time, limit, offset int) ([]store.UncitedItem, int, error) {
+	return s.st.KnowledgePoints().ListUncited(ctx, tenantID, from, to, limit, offset)
 }
 
 // ListNodeHomeworks 查询作业列表。

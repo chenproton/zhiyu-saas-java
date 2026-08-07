@@ -95,6 +95,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/job/abilities", h.abilityHandler.List)
 				r.Get("/job/abilities/{id}", h.abilityHandler.Get)
 				r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
+				r.Get("/lesson/knowledge-points/citation-stats", h.knowledgePointHandler.CitationStats)
+				r.Get("/lesson/knowledge-points/uncited", h.knowledgePointHandler.UncitedList)
 				r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
 
 				// 学生体系课学习页只读接口（写操作仍限 businessUser）

@@ -13,6 +13,7 @@ import { TagFilterBar } from '@/components/shared/tag-filter-bar'
 import { useTagBindings } from '@/components/shared/use-tag-bindings'
 import { TAG_RESOURCE_TYPES } from '@/lib/types/library'
 import { LibraryPageShell } from '../_components/library-page-shell'
+import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
 import {
   KnowledgePointFormDialog,
   type KnowledgePointFormValues,
@@ -187,6 +188,16 @@ export default function KnowledgePointsPage() {
         }
         statGradient="from-primary/5 to-primary/10"
         statCount={total}
+        statsExtra={
+          <CitationStatsPanel
+            entityLabel="知识点"
+            dialogTitle="零引用知识点"
+            fetchStats={() => knowledgeApi.citationStats()}
+            fetchUncited={(params) => knowledgeApi.uncited(params)}
+            deleteItem={(id) => knowledgeApi.delete(id)}
+            onDeleted={loadItems}
+          />
+        }
         searchPlaceholder="搜索知识点..."
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

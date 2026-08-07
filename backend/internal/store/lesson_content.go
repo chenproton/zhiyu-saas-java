@@ -26,6 +26,84 @@ func (s *KnowledgePointStore) List(ctx context.Context, p ListParams, cfg ListQu
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanKnowledgePointRows)
 }
 
+// CitationStats 知识点引用次数分布（引用源：课程/颗粒课、节点、题库、试题）。
+func (s *KnowledgePointStore) CitationStats(ctx context.Context, tenantID string) (CitationStats, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT `+citationBucketCase+`, COUNT(*) AS cnt
+		FROM (
+			SELECT kp.id,
+				COALESCE((SELECT COUNT(*) FROM courses c WHERE kp.id = ANY(c.knowledge_point_ids)), 0)
+				+ COALESCE((SELECT COUNT(*) FROM node_knowledge_point_bindings nb WHERE nb.knowledge_point_id = kp.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM question_bank_knowledge_points qb WHERE qb.knowledge_point_id = kp.id), 0)
+				+ COALESCE((SELECT COUNT(*) FROM questions q WHERE kp.id = ANY(q.knowledge_point_ids)), 0) AS ref_count
+			FROM knowledge_points kp
+			WHERE kp.tenant_id = $1
+		) refs
+		GROUP BY bucket
+	`, tenantID)
+	if err != nil {
+		return CitationStats{}, err
+	}
+	defer rows.Close()
+	return scanCitationStats(rows)
+}
+
+// ListUncited 零引用知识点列表（弹窗：上传时段筛选 + 分页）。
+func (s *KnowledgePointStore) ListUncited(ctx context.Context, tenantID string, from, to *time.Time, limit, offset int) ([]UncitedItem, int, error) {
+	where := "kp.tenant_id = $1"
+	args := []any{tenantID}
+	argIdx := 2
+	if from != nil {
+		where += " AND kp.created_at >= $" + Itoa(argIdx)
+		args = append(args, *from)
+		argIdx++
+	}
+	if to != nil {
+		where += " AND kp.created_at < $" + Itoa(argIdx)
+		args = append(args, *to)
+		argIdx++
+	}
+	uncited := `
+		AND NOT EXISTS (SELECT 1 FROM courses c WHERE kp.id = ANY(c.knowledge_point_ids))
+		AND NOT EXISTS (SELECT 1 FROM node_knowledge_point_bindings nb WHERE nb.knowledge_point_id = kp.id)
+		AND NOT EXISTS (SELECT 1 FROM question_bank_knowledge_points qb WHERE qb.knowledge_point_id = kp.id)
+		AND NOT EXISTS (SELECT 1 FROM questions q WHERE kp.id = ANY(q.knowledge_point_ids))`
+
+	var total int
+	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM knowledge_points kp WHERE "+where+uncited, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > maxPageSize {
+		limit = maxPageSize
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args = append(args, limit, offset)
+	rows, err := s.q.Query(ctx, `
+		SELECT kp.id, kp.name, kp.created_at
+		FROM knowledge_points kp
+		WHERE `+where+uncited+`
+		ORDER BY kp.created_at DESC
+		LIMIT $`+Itoa(argIdx)+` OFFSET $`+Itoa(argIdx+1), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]UncitedItem, 0, limit)
+	for rows.Next() {
+		var it UncitedItem
+		if err := rows.Scan(&it.ID, &it.Name, &it.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, it)
+	}
+	return items, total, rows.Err()
+}
+
 // ListConfig 返回知识点列表查询配置，SQL 片段沉淀在 store 层。
 func (s *KnowledgePointStore) ListConfig() ListQueryConfig[domain.KnowledgePoint] {
 	return ListQueryConfig[domain.KnowledgePoint]{

@@ -67,6 +67,7 @@ import {
 import { useResourceCrud } from './use-resource-crud'
 import { ResourceUploadZone } from './resource-upload-zone'
 import { ResourceBatchImportDialog } from './resource-batch-import-dialog'
+import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
 import { PaginationBar } from '@/components/shared/pagination-bar'
 import { resourceLibraryApi } from '@/lib/api'
 
@@ -178,50 +179,75 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
   return (
     <div className="p-6 space-y-5">
       {isTypeView ? (
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg ${typeBg} flex items-center justify-center`}>
-              <span style={{ color: typeColor }}>{typeIcon}</span>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-primary">{statCount}</div>
-              <div className="text-xs text-primary">{typeLabel}总数</div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
+        <div className="flex flex-col lg:flex-row gap-3">
+          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10 shrink-0">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <HelpCircle className="size-5 text-primary" />
+              <div className={`w-10 h-10 rounded-lg ${typeBg} flex items-center justify-center`}>
+                <span style={{ color: typeColor }}>{typeIcon}</span>
               </div>
               <div>
                 <div className="text-2xl font-bold text-primary">{statCount}</div>
-                <div className="text-xs text-primary">资源总数</div>
+                <div className="text-xs text-primary">{typeLabel}总数</div>
               </div>
             </CardContent>
           </Card>
-          {Object.entries(typeCounts)
-            .slice(0, 5)
-            .map(([type, count]) => (
-              <Card key={type} className="border-0 shadow-sm">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-lg ${TYPE_BG[type] || 'bg-slate-50'} flex items-center justify-center`}
-                  >
-                    <span style={{ color: TYPE_COLORS[type] || '#78716c' }}>
-                      {TYPE_ICONS[type] || TYPE_ICONS.other}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-slate-700">{count}</div>
-                    <div className="text-xs text-slate-400">{TYPE_LABEL_MAP[type] || type}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex-1 flex gap-3 min-w-0">
+            <CitationStatsPanel
+              entityLabel="资源"
+              dialogTitle="零引用资源"
+              fetchStats={(params) => resourceLibraryApi.citationStats(params)}
+              fetchUncited={(params) => resourceLibraryApi.uncited(params)}
+              deleteItem={(id) => resourceLibraryApi.delete(id)}
+              onDeleted={loadItems}
+              resourceType={resourceType}
+            />
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <HelpCircle className="size-5 text-primary" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-primary">{statCount}</div>
+                  <div className="text-xs text-primary">资源总数</div>
+                </div>
+              </CardContent>
+            </Card>
+            {Object.entries(typeCounts)
+              .slice(0, 5)
+              .map(([type, count]) => (
+                <Card key={type} className="border-0 shadow-sm">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-lg ${TYPE_BG[type] || 'bg-slate-50'} flex items-center justify-center`}
+                    >
+                      <span style={{ color: TYPE_COLORS[type] || '#78716c' }}>
+                        {TYPE_ICONS[type] || TYPE_ICONS.other}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-slate-700">{count}</div>
+                      <div className="text-xs text-slate-400">{TYPE_LABEL_MAP[type] || type}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+          <div className="flex gap-3">
+            <CitationStatsPanel
+              entityLabel="资源"
+              dialogTitle="零引用资源"
+              fetchStats={(params) => resourceLibraryApi.citationStats(params)}
+              fetchUncited={(params) => resourceLibraryApi.uncited(params)}
+              deleteItem={(id) => resourceLibraryApi.delete(id)}
+              onDeleted={loadItems}
+            />
+          </div>
+        </>
       )}
 
       {!isTypeView && (
