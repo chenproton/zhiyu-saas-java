@@ -163,7 +163,7 @@ export function useApprovals({
           failed === results.length &&
           results.every((r) => isApprovalPermissionDenied((r as any).reason))
         ) {
-          toast({ title: PERMISSION_DENIED_HINT, variant: 'destructive' })
+          toast({ title: t(PERMISSION_DENIED_HINT), variant: 'destructive' })
         } else {
           toast({
             title: t('批量{action}完成，成功 {ok} 条，失败 {fail} 条', {

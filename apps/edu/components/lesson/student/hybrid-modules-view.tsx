@@ -330,7 +330,7 @@ function renderModuleContent(
     return (
       <EvalModuleCards
         moduleKey={m.moduleKey}
-        label={label}
+        label={t(label)}
         data={data}
         courseId={courseId}
         nodeId={nodeId}

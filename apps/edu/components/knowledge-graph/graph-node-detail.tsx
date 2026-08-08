@@ -142,7 +142,7 @@ export function GraphNodeDetail({
       relatedUnitItems.push({
         id: b.abilityPointId,
         type: 'unit',
-        label: abilityPoint?.name || b.domain || '未命名能力',
+        label: abilityPoint?.name || b.domain || t('未命名能力'),
       })
     })
 
@@ -173,7 +173,7 @@ export function GraphNodeDetail({
       relatedUnitItems.push({
         id: b.abilityPointId,
         type: 'unit',
-        label: abilityPoint?.name || b.domain || '未命名能力',
+        label: abilityPoint?.name || b.domain || t('未命名能力'),
       })
     })
     return (

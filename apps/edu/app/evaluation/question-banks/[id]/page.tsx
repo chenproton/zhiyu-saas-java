@@ -340,7 +340,7 @@ export default function QuestionBankDetailPage() {
       if (question) {
         createQuestion(bankId, {
           type: question.type,
-          content: question.content + ' (复制)',
+          content: question.content + t(' (复制)'),
           options: question.options,
           answer: question.answer,
           analysis: question.analysis,
@@ -385,7 +385,7 @@ export default function QuestionBankDetailPage() {
   const handleCopyQuestion = (question: Question) => {
     createQuestion(bankId, {
       type: question.type,
-      content: question.content + ' (复制)',
+      content: question.content + t(' (复制)'),
       options: question.options,
       answer: question.answer,
       analysis: question.analysis,

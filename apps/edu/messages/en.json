@@ -4155,5 +4155,8 @@
   "产教融合管理平台": "Industry-Education Integration Platform",
   "资源共享平台": "Resource Sharing Platform",
   "平台用户": "Platform User",
-  "教学用户": "Teaching User"
+  "教学用户": "Teaching User",
+  "您暂无权限审批该条记录，请确认自己是当前步骤审批人": "You don't have permission to approve this record. Please confirm you are the approver for the current step.",
+  "课前测验": "Pre-class Quiz",
+  "点击上传{name}": "Click to upload {name}"
 }

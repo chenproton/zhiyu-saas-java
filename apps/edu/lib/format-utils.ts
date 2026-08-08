@@ -24,6 +24,7 @@ export function formatDateTime(value?: string | Date | null, fallback = '-'): st
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   }).format(d)
 }
 

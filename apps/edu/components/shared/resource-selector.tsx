@@ -334,7 +334,7 @@ export function ResourceSelector({
       type: newResType,
       url: fileUrl,
       description: newResDescription,
-      uploadedBy: '当前用户',
+      uploadedBy: t('当前用户'),
       uploadedAt: new Date().toISOString().slice(0, 10),
       size: uploadedSize,
     }

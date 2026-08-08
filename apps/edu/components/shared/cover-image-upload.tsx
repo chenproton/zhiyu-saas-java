@@ -120,7 +120,7 @@ export function CoverImageUpload({
             <span className="text-sm text-gray-500">
               {uploading
                 ? t('上传中...')
-                : t('点击上传{name}封面', { name: label.replace('封面', '') })}
+                : t('点击上传{name}', { name: label })}
             </span>
           </div>
         )}
