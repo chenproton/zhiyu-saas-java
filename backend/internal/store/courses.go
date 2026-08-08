@@ -344,3 +344,47 @@ func ScanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 	}
 	return items, rows.Err()
 }
+
+// ListCourseKnowledgePointNames 查询课程绑定知识点名称（导出用）。
+func (s *CourseStore) ListCourseKnowledgePointNames(ctx context.Context, q Queryer, tenantID, courseID string) []string {
+	rows, err := q.Query(ctx, `
+		SELECT kp.name FROM knowledge_points kp
+		JOIN course_knowledge_bindings cb ON cb.knowledge_point_id = kp.id
+		WHERE cb.course_id=$1 AND cb.bind_type='course' AND cb.tenant_id=$2
+		ORDER BY kp.name
+	`, courseID, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// ListCourseResourceNames 查询课程绑定资源名称（导出用）。
+func (s *CourseStore) ListCourseResourceNames(ctx context.Context, q Queryer, tenantID, courseID string) []string {
+	rows, err := q.Query(ctx, `
+		SELECT rl.name FROM resource_library rl
+		JOIN course_resource_bindings cb ON cb.resource_id = rl.id
+		WHERE cb.course_id=$1 AND cb.tenant_id=$2
+		ORDER BY rl.name
+	`, courseID, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil {
+			names = append(names, n)
+		}
+	}
+	return names
+}

@@ -59,3 +59,10 @@ func (s *MajorsStore) CountUserRefs(ctx context.Context, majorID string) (int, e
 	err := s.Q().QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE major_id = $1`, majorID).Scan(&count)
 	return count, err
 }
+
+// GetNameByID 按 id 查询专业名称（导出用）。
+func (s *MajorsStore) GetNameByID(ctx context.Context, q Queryer, id string) (string, error) {
+	var name string
+	err := q.QueryRow(ctx, `SELECT name FROM majors WHERE id = $1`, id).Scan(&name)
+	return name, err
+}

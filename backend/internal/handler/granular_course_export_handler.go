@@ -49,30 +49,36 @@ func (h *GranularCourseExportHandler) fillCoursesData(ctx context.Context, f *ex
 	setCell := newSetCell(f)
 
 	for ri, cid := range courseIDs {
-		var name, desc string
-		var majorID, batchID *string
-		var difficulty *int
-		var duration *float64
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, COALESCE(description,''), major_id, batch_id, difficulty, online_hours
-			FROM courses WHERE id=$1 AND tenant_id=$2 AND type='granular'
-		`, cid, tenantID).Scan(&name, &desc, &majorID, &batchID, &difficulty, &duration)
-		if err != nil {
+		course, err := h.Store.Courses().Get(ctx, cid, tenantID)
+		if err != nil || course.Type != "granular" {
 			slog.Warn("导出颗粒课行跳过", "courseId", cid, "error", err)
 			continue
 		}
+		name := course.Name
+		desc := ""
+		if course.Description != nil {
+			desc = *course.Description
+		}
+		majorID := course.MajorID
+		batchID := course.BatchID
+		difficulty := course.Difficulty
+		duration := course.OnlineHours
 
 		majorName := ""
 		if majorID != nil && *majorID != "" {
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName); err != nil {
+			majorName, err = h.Store.Majors().GetNameByID(ctx, h.Store.Q(), *majorID)
+			if err != nil {
 				slog.Warn("导出颗粒课专业名查询失败", "majorId", *majorID, "error", err)
+				majorName = ""
 			}
 		}
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+			batchName, err = h.Store.Batches().GetNameByTable(ctx, h.Store.Q(), "lesson_batches", *batchID)
+			if err != nil {
 				slog.Warn("导出颗粒课批次名查询失败", "batchId", *batchID, "error", err)
+				batchName = ""
 			}
 		}
 
