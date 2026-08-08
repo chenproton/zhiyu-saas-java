@@ -398,8 +398,6 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         batchApi.list({ limit: 1000 }),
       ])
       const mappedBatches = batchesResp.items.map(mapBatchRef.current)
-      setBatches(mappedBatches)
-      setExpandedBatches(mappedBatches.map((b) => b.id))
 
       if (tenantId) {
         try {
@@ -407,8 +405,15 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             majorApi.list({ tenantId, limit: 1000 }),
             workflowApi.list({ limit: 1000 }),
           ])
-          setMajors((majorsResp.items as Major[]).filter((m) => m.enabled))
-          setWorkflows(workflowsResp.items as Workflow[])
+          let majorsUpdated: Major[] = []
+          let workflowsUpdated: Workflow[] = []
+          majorsUpdated = (majorsResp.items as Major[]).filter((m) => m.enabled)
+          workflowsUpdated = workflowsResp.items as Workflow[]
+          // 仅在最新一次请求中落 state，防止旧响应覆盖新数据
+          if (loadSeq === loadSeqRef.current) {
+            setMajors(majorsUpdated)
+            setWorkflows(workflowsUpdated)
+          }
         } catch (err) {
           reportError(err, '加载专业与审批流配置')
         }
@@ -451,6 +456,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
 
       // 仅应用最新一次请求的结果，防止 reloadKey 连续 bump 时旧响应覆盖新数据
       if (loadSeq !== loadSeqRef.current) return
+      setBatches(mappedBatches)
+      setExpandedBatches(mappedBatches.map((b) => b.id))
       setFrontItems(front)
     } catch (err) {
       if (loadSeq !== loadSeqRef.current) return

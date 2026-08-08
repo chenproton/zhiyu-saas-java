@@ -646,7 +646,7 @@ export default function CourseDetailPage() {
 
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       <span className="flex items-center gap-1.5">
-                        {t('创建人：{n}', { n: course.creatorId.slice(0, 8) })}
+                        {t('创建人：{n}', { n: (course.creatorId || '').slice(0, 8) })}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" /> {t('更新于 {n}', { n: formatDate(course.updatedAt) })}

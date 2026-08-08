@@ -134,22 +134,36 @@ export function useApprovalDialogs({
     setApproveOpen(true)
   }
 
+  const [submitting, setSubmitting] = useState(false)
+
   const openReject = () => {
     setComment('')
     setRejectOpen(true)
   }
 
   const confirmApprove = async () => {
-    await onApprove(comment)
-    setApproveOpen(false)
-    setComment('')
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      await onApprove(comment)
+      setApproveOpen(false)
+      setComment('')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const confirmReject = async () => {
+    if (submitting) return
     if (!comment.trim()) return
-    await onReject(comment.trim())
-    setRejectOpen(false)
-    setComment('')
+    setSubmitting(true)
+    try {
+      await onReject(comment.trim())
+      setRejectOpen(false)
+      setComment('')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const dialogs = (
@@ -189,10 +203,12 @@ export function useApprovalDialogs({
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveOpen(false)}>
+            <Button variant="outline" onClick={() => !submitting && setApproveOpen(false)} disabled={submitting}>
               {t('取消')}
             </Button>
-            <Button onClick={confirmApprove}>{t('确认通过')}</Button>
+            <Button onClick={confirmApprove} disabled={submitting}>
+              {submitting ? t('提交中...') : t('确认通过')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -230,11 +246,19 @@ export function useApprovalDialogs({
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => !submitting && setRejectOpen(false)}
+              disabled={submitting}
+            >
               {t('取消')}
             </Button>
-            <Button variant="destructive" onClick={confirmReject} disabled={!comment.trim()}>
-              {t('确认驳回')}
+            <Button
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={submitting || !comment.trim()}
+            >
+              {submitting ? t('提交中...') : t('确认驳回')}
             </Button>
           </DialogFooter>
         </DialogContent>
