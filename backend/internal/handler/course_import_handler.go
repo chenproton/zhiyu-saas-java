@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -17,6 +19,13 @@ import (
 
 type CourseImportHandler struct {
 	DB *pgxpool.Pool
+}
+
+// importDB 覆盖导入所需的最小查询接口：*pgxpool.Pool 与 pgx.Tx 均满足。
+type importDB interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 type courseImportResult struct {
@@ -70,8 +79,8 @@ func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Reques
 	mfu.ForEach(func(xlsx *excelize.File) {
 		result := &courseImportResult{}
 		courseMap := make(map[string]string)
-		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
-		h.importNodes(ctx, xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
+		h.importCourses(ctx, h.DB, xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
+		h.importNodes(ctx, h.DB, xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -106,13 +115,32 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 	aggregated := &courseImportResult{}
+	// 覆盖导入整体包在事务内：overwrite 会清空旧课程节点再重建，
+	// 任一步失败整体回滚，防止"旧数据已清空、新数据未写入"的不可恢复中间态。
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		respondServerError(w, r, err, "开启导入事务失败")
+		return
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			slog.Error("[course-import] 事务回滚失败", "error", err)
+		}
+	}()
+
 	mfu.ForEach(func(xlsx *excelize.File) {
 		courseMap := make(map[string]string)
-		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
+		h.importCourses(ctx, tx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
 		if len(courseMap) > 0 {
-			h.importNodes(ctx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
+			h.importNodes(ctx, tx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
 		}
 	})
+
+	if err := tx.Commit(ctx); err != nil {
+		slog.Error("[course-import] 事务提交失败", "error", err)
+		respondServerError(w, r, err, "导入提交失败")
+		return
+	}
 
 	if len(aggregated.Errors) > 0 {
 		slog.Info(fmt.Sprintf("[course-import] tenant=%s created=%d failed=%d skipped=%d errors:\n", tenantID, aggregated.Created, aggregated.Failed, aggregated.Skipped))
@@ -134,7 +162,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
+func (h *CourseImportHandler) importCourses(ctx context.Context, q importDB, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
 	rows, err := xlsx.GetRows("课程基本信息")
 	if err != nil {
 		return
@@ -154,7 +182,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 
 		majorID := lookupMajorID(ctx, h.DB, tenantID, majorName)
 		batchID := lookupBatchID(ctx, h.DB, "lesson_batches", tenantID, batchName)
-		abilityPointIDs := h.lookupAbilityPoints(ctx, tenantID, abilityPointNames)
+		abilityPointIDs := h.lookupAbilityPoints(ctx, q, tenantID, abilityPointNames)
 
 		var descPtr *string
 		if courseIntro != "" {
@@ -163,7 +191,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 
 		var existingID, existingCreator string
 		var existingCoCreators []string
-		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
+		err := q.QueryRow(ctx, `SELECT id, creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
 		exists := err == nil && existingID != ""
 
 		origName := ""
@@ -188,7 +216,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := h.DB.Exec(ctx, `
+				_, err := q.Exec(ctx, `
 					UPDATE courses
 					SET major_id=$3, batch_id=$4, description=$5, ability_point_ids=$6, updated_at=NOW()
 					WHERE id=$1 AND tenant_id=$2
@@ -198,7 +226,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
 					continue
 				}
-				h.clearCourseNodes(ctx, existingID)
+				h.clearCourseNodes(ctx, q, existingID)
 				courseMap[name] = existingID
 				continue
 			}
@@ -206,7 +234,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			origName = name
 			name = uniqueSuffixed(name, func(c string) bool {
 				var eid string
-				_ = h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, c).Scan(&eid)
+				_ = q.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, c).Scan(&eid)
 				return eid != ""
 			})
 		}
@@ -218,7 +246,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 
 		courseID := uuid.NewString()
 		code := generateEntityCode("XT")
-		_, err = h.DB.Exec(ctx, `
+		_, err = q.Exec(ctx, `
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
@@ -240,7 +268,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 	}
 }
 
-func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
+func (h *CourseImportHandler) importNodes(ctx context.Context, q importDB, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
 	if preview {
 		return
 	}
@@ -305,7 +333,7 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 				}
 			}
 
-			if err := h.createSystemCourseNode(ctx, tenantID, userID, nr, parentID, nodeNameMap, result); err == nil {
+			if err := h.createSystemCourseNode(ctx, q, tenantID, userID, nr, parentID, nodeNameMap, result); err == nil {
 				progressed = true
 			}
 		}
@@ -321,7 +349,7 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 	}
 }
 
-func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenantID, userID string, nr nodeRow, parentID *string, nodeNameMap map[string]map[string]string, result *courseImportResult) error {
+func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q importDB, tenantID, userID string, nr nodeRow, parentID *string, nodeNameMap map[string]map[string]string, result *courseImportResult) error {
 	var sourceID, sourceName *string
 	var teachingGoals *string
 	var duration float64
@@ -330,7 +358,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 	var baseResourceIDs []string
 
 	if nr.refType == "original" {
-		g := h.lookupGranularCourse(ctx, tenantID, nr.nodeName)
+		g := h.lookupGranularCourse(ctx, q, tenantID, nr.nodeName)
 		if g == nil {
 			result.Skipped++
 			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]未找到同名颗粒课,已跳过", nr.courseName, nr.nodeName))
@@ -355,8 +383,8 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 			difficulty = *g.Difficulty
 		}
 		// 回退到颗粒课关联的知识点和资源（以绑定表为准，避免 courses 表数组字段为空）
-		baseKnowledgeIDs = h.lookupGranularCourseKnowledgePointIDs(ctx, g.ID)
-		baseResourceIDs = h.lookupGranularCourseResourceIDs(ctx, g.ID)
+		baseKnowledgeIDs = h.lookupGranularCourseKnowledgePointIDs(ctx, q, g.ID)
+		baseResourceIDs = h.lookupGranularCourseResourceIDs(ctx, q, g.ID)
 	} else {
 		teachingGoals = nr.manualTeachingGoals
 		duration = nr.manualDuration
@@ -364,7 +392,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 	}
 
 	nodeID := uuid.NewString()
-	_, err := h.DB.Exec(ctx, `
+	_, err := q.Exec(ctx, `
 		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
 			teaching_goals, duration, difficulty, knowledge_point_ids, resource_ids, status)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
@@ -381,7 +409,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 	// 合并 Excel 中填写的知识点/资源与颗粒课自带的知识点/资源
 	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, h.DB, tenantID, nr.knowledgeNames), baseKnowledgeIDs)
 	for _, kpID := range knowledgePointIDs {
-		_, _ = h.DB.Exec(ctx, `
+		_, _ = q.Exec(ctx, `
 			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
 			VALUES ($1,$2,$3,$4,NOW())
 			ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
@@ -390,7 +418,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 
 	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, h.DB, tenantID, nr.resourceNames, userID), baseResourceIDs)
 	for _, resID := range resourceIDs {
-		_, _ = h.DB.Exec(ctx, `
+		_, _ = q.Exec(ctx, `
 			INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
 			VALUES ($1,$2,$3,$4,NOW())
 			ON CONFLICT (node_id, resource_id) DO NOTHING
@@ -398,7 +426,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 	}
 
 	// 同时写入节点字段，与 scenario_tasks 保持一致
-	_, _ = h.DB.Exec(ctx, `
+	_, _ = q.Exec(ctx, `
 		UPDATE system_course_nodes
 		SET knowledge_point_ids = $2, resource_ids = $3
 		WHERE id = $1
@@ -411,7 +439,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 		}
 		switch methodKey {
 		case "homework":
-			_, err := h.DB.Exec(ctx, `
+			_, err := q.Exec(ctx, `
 				INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment)
 				VALUES ($1,$2,$3,$4,'',false)
 			`, uuid.NewString(), tenantID, nodeID, "作业测评")
@@ -425,7 +453,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 			} else if methodKey == "quiz" {
 				title = "随堂测"
 			}
-			_, err := h.DB.Exec(ctx, `
+			_, err := q.Exec(ctx, `
 				INSERT INTO node_quizzes (id, tenant_id, node_id, title, type)
 				VALUES ($1,$2,$3,$4,$5)
 			`, uuid.NewString(), tenantID, nodeID, title, methodKey)
@@ -471,13 +499,13 @@ func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string 
 	return merged
 }
 
-func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, courseID string) {
-	_, _ = h.DB.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
-	_, _ = h.DB.Exec(ctx, `DELETE FROM node_homeworks WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
-	_, _ = h.DB.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID)
+func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, q importDB, courseID string) {
+	_, _ = q.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
+	_, _ = q.Exec(ctx, `DELETE FROM node_homeworks WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
+	_, _ = q.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID)
 }
 
-func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, tenantID string, names []string) []string {
+func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, q importDB, tenantID string, names []string) []string {
 	if len(names) == 0 {
 		return []string{}
 	}
@@ -487,7 +515,7 @@ func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, tenantID 
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		err := q.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 		if err != nil {
 			continue
 		}
@@ -496,12 +524,12 @@ func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, tenantID 
 	return ids
 }
 
-func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID, name string) *domain.Course {
+func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, q importDB, tenantID, name string) *domain.Course {
 	if name == "" {
 		return nil
 	}
 	var c domain.Course
-	err := h.DB.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT id, name, online_hours, description, difficulty
 		FROM courses
 		WHERE tenant_id=$1 AND name=$2 AND type='granular'
@@ -513,8 +541,8 @@ func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID
 	return &c
 }
 
-func (h *CourseImportHandler) lookupGranularCourseKnowledgePointIDs(ctx context.Context, courseID string) []string {
-	rows, err := h.DB.Query(ctx, `
+func (h *CourseImportHandler) lookupGranularCourseKnowledgePointIDs(ctx context.Context, q importDB, courseID string) []string {
+	rows, err := q.Query(ctx, `
 		SELECT knowledge_point_id FROM course_knowledge_bindings
 		WHERE course_id=$1 AND bind_type='course'
 	`, courseID)
@@ -532,8 +560,8 @@ func (h *CourseImportHandler) lookupGranularCourseKnowledgePointIDs(ctx context.
 	return ids
 }
 
-func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Context, courseID string) []string {
-	rows, err := h.DB.Query(ctx, `
+func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Context, q importDB, courseID string) []string {
+	rows, err := q.Query(ctx, `
 		SELECT resource_id FROM course_resource_bindings
 		WHERE course_id=$1
 	`, courseID)
@@ -551,10 +579,10 @@ func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Contex
 	return ids
 }
 
-func (h *CourseImportHandler) generateSystemCourseCode(ctx context.Context, tenantID string) string {
+func (h *CourseImportHandler) generateSystemCourseCode(ctx context.Context, q importDB, tenantID string) string {
 	year := time.Now().Format("2006")
 	var maxNum int
-	err := h.DB.QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SYS-[0-9]{4}-([0-9]+)')::int), 0) FROM courses WHERE tenant_id=$1 AND code LIKE 'SYS-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
+	err := q.QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SYS-[0-9]{4}-([0-9]+)')::int), 0) FROM courses WHERE tenant_id=$1 AND code LIKE 'SYS-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
 	if err != nil {
 		maxNum = 0
 	}

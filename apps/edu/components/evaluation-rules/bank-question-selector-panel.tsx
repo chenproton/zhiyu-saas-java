@@ -29,11 +29,6 @@ import { questionBankApi, questionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { QuestionType } from '@/lib/types'
 import {
-  getAllQuestions,
-  getCachedQuestion,
-  hasCachedQuestion,
-  setCachedQuestion,
-  setCachedQuestions,
   typeColorMap,
   questionTypeLabels,
   difficultyLabels,
@@ -62,6 +57,9 @@ export function BankQuestionSelectorPanel({
   const t = useT()
   // 题库切换请求序号：丢弃过期响应
   const loadSeqRef = useRef(0)
+  // 题目缓存收敛到组件内 state（组件卸载即销毁），避免模块级缓存跨租户/跨页面串数据
+  const [questionCache, setQuestionCache] = useState<Map<string, CachedQuestion>>(new Map())
+  const [allQuestions, setAllQuestions] = useState<CachedQuestion[]>([])
   const [banks, setBanks] = useState<any[]>([])
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null)
@@ -98,7 +96,7 @@ export function BankQuestionSelectorPanel({
 
   useEffect(() => {
     const missingIds = selectedIds.filter(
-      (qid) => !hasCachedQuestion(qid) && !preloadedQuestions.some((q) => q.id === qid),
+      (qid) => !questionCache.has(qid) && !preloadedQuestions.some((q) => q.id === qid),
     )
     if (missingIds.length === 0) return
     Promise.all(
@@ -112,10 +110,16 @@ export function BankQuestionSelectorPanel({
       }),
     ).then((results) => {
       const loaded = results.filter(Boolean)
-      loaded.forEach((q) => setCachedQuestion(q as CachedQuestion))
+      loaded.forEach((q) => {
+        setQuestionCache((prev) => {
+          const next = new Map(prev)
+          next.set(q.id, q as CachedQuestion)
+          return next
+        })
+      })
       setPreloadedQuestions((prev) => [...prev, ...loaded])
     })
-  }, [selectedIds, preloadedQuestions])
+  }, [selectedIds, preloadedQuestions, questionCache])
 
   const loadQuestions = useCallback(async (bankId: string) => {
     const seq = ++loadSeqRef.current
@@ -126,7 +130,12 @@ export function BankQuestionSelectorPanel({
       }
       // 连续切换题库时丢弃过期响应，防止旧题库题目覆盖新题库
       if (seq !== loadSeqRef.current) return
-      setCachedQuestions(res.items)
+      setQuestionCache((prev) => {
+        const next = new Map(prev)
+        res.items.forEach((q) => next.set(q.id, q))
+        return next
+      })
+      setAllQuestions(res.items)
       setBankQuestions(res.items)
     } catch (err) {
       if (seq !== loadSeqRef.current) return
@@ -211,11 +220,11 @@ export function BankQuestionSelectorPanel({
       return (
         bankQuestions.find((bq: any) => bq.id === qid) ||
         preloadedQuestions.find((q: any) => q.id === qid) ||
-        getCachedQuestion(qid) ||
-        getAllQuestions().find((aq) => aq.id === qid)
+        questionCache.get(qid) ||
+        allQuestions.find((aq) => aq.id === qid)
       )
     },
-    [bankQuestions, preloadedQuestions],
+    [bankQuestions, preloadedQuestions, questionCache, allQuestions],
   )
 
   const selectedQuestionItems = useMemo(() => {

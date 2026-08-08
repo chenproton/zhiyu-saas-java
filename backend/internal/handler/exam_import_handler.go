@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -49,7 +50,7 @@ func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request)
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
 		result := &examImportResult{}
-		h.importExams(ctx, xlsx, tenantID, claims.UserID, true, false, false, nil, result)
+		h.importExams(ctx, h.DB, xlsx, tenantID, claims.UserID, true, false, false, nil, result)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -83,13 +84,32 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 
 	ctx := r.Context()
 	aggregated := &examImportResult{}
+	// 覆盖导入整体包在事务内：overwrite 清空旧题目后按新文件重建，
+	// 任一步失败整体回滚，防止"题目已清空、新题未写入"的中间态。
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		respondServerError(w, r, err, "开启导入事务失败")
+		return
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			slog.Error("[exam-import] 事务回滚失败", "error", err)
+		}
+	}()
+
 	mfu.ForEach(func(xlsx *excelize.File) {
 		examMap := make(map[string]string)
-		h.importExams(ctx, xlsx, tenantID, claims.UserID, false, overwrite, rename, examMap, aggregated)
+		h.importExams(ctx, tx, xlsx, tenantID, claims.UserID, false, overwrite, rename, examMap, aggregated)
 		if len(examMap) > 0 {
-			h.importExamQuestions(ctx, xlsx, tenantID, examMap, aggregated)
+			h.importExamQuestions(ctx, tx, xlsx, tenantID, examMap, aggregated)
 		}
 	})
+
+	if err := tx.Commit(ctx); err != nil {
+		slog.Error("[exam-import] 事务提交失败", "error", err)
+		respondServerError(w, r, err, "导入提交失败")
+		return
+	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created":           aggregated.Created,
@@ -101,7 +121,7 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, examMap map[string]string, result *examImportResult) {
+func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷基本信息")
 	if err != nil {
 		slog.Info(fmt.Sprintf("[import/exams] sheet '试卷基本信息' not found: %v", err))
@@ -138,7 +158,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 
 		var existingID, existingCreator string
 		var existingCollaborators []string
-		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		err := q.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		exists := err == nil && existingID != ""
 
 		if preview {
@@ -161,7 +181,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := h.DB.Exec(ctx, `
+				_, err := q.Exec(ctx, `
 					UPDATE exams SET name=$1, description=$2, batch_id=$3, updated_at=NOW()
 					WHERE id=$4 AND tenant_id=$5
 				`, name, description, batchID, existingID, tenantID)
@@ -173,7 +193,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 					continue
 				}
 				// 覆盖时清空原有题目关联，随后根据新文件内容重新写入
-				if _, err := h.DB.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id=$1`, existingID); err != nil {
+				if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id=$1`, existingID); err != nil {
 					msg := fmt.Sprintf("试卷[%s]清空旧题目失败: %v", name, err)
 					result.Errors = append(result.Errors, msg)
 					slog.Error(fmt.Sprintf("[import/exams] %s", msg))
@@ -191,7 +211,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 				origName = name
 				name = uniqueSuffixed(name, func(c string) bool {
 					var eid string
-					_ = h.DB.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+					_ = q.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
 					return eid != ""
 				})
 			} else {
@@ -202,7 +222,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 
 		examID := uuid.NewString()
 		code := generateEntityCode("SJ")
-		_, err = h.DB.Exec(ctx, `
+		_, err = q.Exec(ctx, `
 			INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration,
 				batch_id, version, owner_type, creator_id, is_temp)
 			VALUES ($1,$2,$3,$4,$5,'draft',0,60,$6,'v1.0','mine',$7,false)
@@ -226,7 +246,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 	}
 }
 
-func (h *ExamImportHandler) importExamQuestions(ctx context.Context, xlsx *excelize.File, tenantID string, examMap map[string]string, result *examImportResult) {
+func (h *ExamImportHandler) importExamQuestions(ctx context.Context, q importDB, xlsx *excelize.File, tenantID string, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷题目")
 	if err != nil {
 		return
@@ -252,7 +272,7 @@ func (h *ExamImportHandler) importExamQuestions(ctx context.Context, xlsx *excel
 
 		var qID, qType, qContent, qAnswer, qAnalysis string
 		var qOptions []byte
-		err := h.DB.QueryRow(ctx, `
+		err := q.QueryRow(ctx, `
 			SELECT id, type, content, options, answer, analysis
 			FROM questions WHERE tenant_id=$1 AND content=$2 LIMIT 1
 		`, tenantID, questionContent).Scan(&qID, &qType, &qContent, &qOptions, &qAnswer, &qAnalysis)
@@ -262,7 +282,7 @@ func (h *ExamImportHandler) importExamQuestions(ctx context.Context, xlsx *excel
 		}
 
 		sortCounter[examID]++
-		_, err = h.DB.Exec(ctx, `
+		_, err = q.Exec(ctx, `
 			INSERT INTO exam_questions (id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 		`, uuid.NewString(), examID, qID, qType, qContent, qOptions, qAnswer, qAnalysis, score, sortCounter[examID])

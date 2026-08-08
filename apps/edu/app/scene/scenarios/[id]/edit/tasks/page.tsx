@@ -84,7 +84,6 @@ import {
 import { TaskInfoCard } from './_components/task-info-card'
 import { TaskDescriptionCard } from './_components/task-description-card'
 import { TaskWeightCard } from './_components/task-weight-card'
-import { clearAllCaches } from '@/components/evaluation-rules/shared-defs'
 import {
   cardConfigs,
   defaultGradeMapping,
@@ -178,7 +177,6 @@ export default function TasksEditPage() {
   // 离开编辑页时清理模块级缓存，避免跨场景污染
   useEffect(() => {
     return () => {
-      clearAllCaches()
     }
   }, [])
 

@@ -62,9 +62,6 @@ import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { BankQuestionSelectorPanel } from '@/components/evaluation-rules/bank-question-selector-panel'
 import { examApi, randomDrawQuestionApi, majorApi, taskEvaluationApi, knowledgeApi, abilityApi } from '@/lib/api'
 import {
-  getLoadedExams,
-  setLoadedExams,
-  addLoadedExam,
   type LoadedExam,
 } from '@/components/evaluation-rules/shared-defs'
 import {
@@ -424,7 +421,8 @@ export function EvaluationRulesEditor({
   const [loadingRdq, setLoadingRdq] = useState(false)
   const [majors, setMajors] = useState<any[]>([])
 
-  // Paper loading
+  // Paper loading（每次挂载拉取，组件卸载即释放，避免跨租户/跨页面串数据）
+  const [papers, setPapers] = useState<LoadedExam[]>([])
   const [loadingPapers, setLoadingPapers] = useState(false)
   const [paperSearch, setPaperSearch] = useState('')
   const [showCreatePaperLocal, setShowCreatePaperLocal] = useState(false)
@@ -531,11 +529,11 @@ export function EvaluationRulesEditor({
   )
 
   const loadPapers = useCallback(async () => {
-    if (getLoadedExams().length > 0) return
     setLoadingPapers(true)
     try {
+      // 每次挂载重新拉取，避免模块级缓存跨租户/跨页面串数据
       const res = await examApi.list({ limit: 1000 })
-      setLoadedExams((res.items || []) as LoadedExam[])
+      setPapers((res.items || []) as LoadedExam[])
     } catch (err) {
       reportError(err, { source: '加载试卷列表' })
     } finally {
@@ -569,7 +567,7 @@ export function EvaluationRulesEditor({
     async (data: any) => {
       try {
         const created = await examApi.create(data as any)
-        addLoadedExam(created as LoadedExam)
+        setPapers((prev) => [...prev, created as LoadedExam])
         updateConfig({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
       } catch (err) {
         reportError(err, { source: '创建试卷' })
@@ -1804,7 +1802,7 @@ export function EvaluationRulesEditor({
                   <div className="text-center py-8 text-gray-400">{t('加载中...')}</div>
                 ) : (
                   <div className="space-y-2">
-                    {getLoadedExams()
+                    {papers
                       .filter((p) => !paperSearch || p.name.includes(paperSearch))
                       .map((paper) => {
                         const selected = config.paperIds.includes(paper.id)
@@ -1851,7 +1849,7 @@ export function EvaluationRulesEditor({
                           </div>
                         )
                       })}
-                    {getLoadedExams().filter((p) => !paperSearch || p.name.includes(paperSearch))
+                    {papers.filter((p) => !paperSearch || p.name.includes(paperSearch))
                       .length === 0 &&
                       !paperSearch && (
                         <div className="text-center py-8 text-gray-400">
@@ -1860,8 +1858,8 @@ export function EvaluationRulesEditor({
                           <p className="text-xs mt-1">{t('请点击「新建试卷」创建试卷')}</p>
                         </div>
                       )}
-                    {getLoadedExams().length > 0 &&
-                      getLoadedExams().filter((p) => !paperSearch || p.name.includes(paperSearch))
+                    {papers.length > 0 &&
+                      papers.filter((p) => !paperSearch || p.name.includes(paperSearch))
                         .length === 0 && (
                         <div className="text-center py-8 text-gray-400">
                           <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -1945,7 +1943,7 @@ export function EvaluationRulesEditor({
                     <DialogTitle>{t('试卷详情')}</DialogTitle>
                   </DialogHeader>
                   {(() => {
-                    const paper = getLoadedExams().find((e) => e.id === selectedPaperForDetailLocal)
+                    const paper = papers.find((e) => e.id === selectedPaperForDetailLocal)
                     if (!paper) return null
                     return (
                       <div className="space-y-3 py-2">

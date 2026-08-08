@@ -6,7 +6,6 @@ import {
   knowledgeApi,
   abilityApi,
   resourceLibraryApi,
-  examApi,
   taskEvaluationApi,
   userManagementApi,
   scenarioApi,
@@ -16,7 +15,6 @@ import {
 import type { KnowledgePointItem, Course } from '@/lib/types/lesson'
 import type { ResourceItem } from '@/components/shared/resource-selector'
 import type { RubricScheme } from '@/components/evaluation-rules/types'
-import { setLoadedExams, type LoadedExam } from '@/components/evaluation-rules/shared-defs'
 import { reportError } from '@/lib/error-handling'
 import { useI18n, translate } from '@/lib/i18n/locale-provider'
 
@@ -220,13 +218,11 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
               }),
             )
           } else if (key === 'evaluation') {
-            const [examRes, rubricRes] = await Promise.all([
-              examApi.list({ limit: 1000 }),
+            const [rubricRes] = await Promise.all([
               taskEvaluationApi
                 .listTemplates({ limit: 200 })
                 .catch(() => ({ items: [] as unknown[], total: 0 })),
             ])
-            setLoadedExams((examRes.items || []) as LoadedExam[])
             const mapTemplate = (rt: unknown): RubricScheme => {
               const item = rt as {
                 id: string
