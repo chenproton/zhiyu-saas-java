@@ -39,6 +39,8 @@ export interface ImportWizardDialogProps {
   importing?: boolean
   /** 外部控制的下载中状态 */
   downloading?: boolean
+  /** 是否允许多文件选择（默认 true）；false 时每次选择仅保留第一个文件 */
+  allowMultiple?: boolean
 }
 
 /** Excel 导入两步向导：下载模板 → 上传文件 → 执行导入。
@@ -59,6 +61,7 @@ export function ImportWizardDialog({
   onRemoveFile: controlledOnRemoveFile,
   importing: controlledImporting,
   downloading: controlledDownloading,
+  allowMultiple = true,
 }: ImportWizardDialogProps) {
   const isControlled = controlledFiles !== undefined
   const [step, setStep] = useState<'download' | 'upload'>('download')
@@ -78,7 +81,9 @@ export function ImportWizardDialog({
     }
     if (!fl) return
     const existing = new Set(internalFiles.map((f) => f.name + '_' + f.size))
-    const added = Array.from(fl).filter((f) => !existing.has(f.name + '_' + f.size))
+    let added = Array.from(fl).filter((f) => !existing.has(f.name + '_' + f.size))
+    // 单选模式下仅保留第一个文件，避免调用方只处理 files[0] 时其余文件被静默忽略
+    if (!allowMultiple && added.length > 1) added = added.slice(0, 1)
     setInternalFiles((prev) => [...prev, ...added])
   }
 
@@ -184,7 +189,7 @@ export function ImportWizardDialog({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  multiple
+                  multiple={allowMultiple}
                   accept=".xlsx"
                   className="hidden"
                   onChange={(e) => handleAddFiles(e.target.files)}

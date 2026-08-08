@@ -78,8 +78,13 @@ export function ImageListUpload({
     if (list.some(isUndecodableImage)) {
       toast({ title: t('暂不支持 HEIC/HEIF 格式，请先转换后再上传'), variant: 'destructive' })
     }
-    queueRef.current = list.filter((f) => !isUndecodableImage(f))
-    processNext()
+    const valid = list.filter((f) => !isUndecodableImage(f))
+    if (valid.length === 0) return
+    // 追加到队列尾部，避免覆盖前一批仍在上传/编辑的文件
+    const wasEmpty = queueRef.current.length === 0
+    queueRef.current.push(...valid)
+    // 编辑弹窗打开时不抢占，等 finishEdit 结束当前编辑后再处理队列
+    if (wasEmpty && !editTarget) processNext()
   }
 
   const finishEdit = (file?: File) => {

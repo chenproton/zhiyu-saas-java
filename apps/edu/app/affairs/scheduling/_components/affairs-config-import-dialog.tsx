@@ -67,6 +67,7 @@ export function AffairsConfigImportDialog({
       uploadHint={t('点击选择已填写的 Excel 文件')}
       importLabel={() => t('开始导入')}
       onImport={handleImport}
+      allowMultiple={false}
     />
   )
 }

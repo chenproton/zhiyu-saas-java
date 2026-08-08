@@ -157,11 +157,17 @@ export default function TenantPage() {
   )
 
   const loadTenantToForm = (ten: Tenant) => {
+    // 省份/城市不在字典键集合（如「内蒙古」vs「内蒙」）时不作兜底回退，
+    // 置空让用户显式选择，防止保存时把真实值改写为兜底默认值
+    const knownProvince = PROVINCES.includes(ten.province)
     setFormData({
       name: ten.enterpriseName,
       shortName: ten.shortName === '-' ? '' : ten.shortName,
-      province: PROVINCES.includes(ten.province) ? ten.province : PROVINCES[0],
-      city: ten.city !== '-' && ten.city ? ten.city : CHINA_REGION[PROVINCES[0]][0],
+      province: knownProvince ? ten.province : '',
+      city:
+        knownProvince && ten.city !== '-' && ten.city
+          ? ten.city
+          : '',
       contact: ten.contact === '-' ? '' : ten.contact,
       phone: ten.phone === '-' ? '' : ten.phone,
       contactPhone: ten.contactPhone === '-' ? '' : ten.contactPhone,
@@ -218,8 +224,10 @@ export default function TenantPage() {
           enterpriseCode: formData.enterpriseCode || null,
           description: formData.description || null,
           shortName: formData.shortName || null,
-          province: formData.province || null,
-          city: formData.city || null,
+          // 省份/城市未选择（原值不在字典键集合）时不提交，保留后端原值
+          ...(formData.province
+            ? { province: formData.province, city: formData.city || null }
+            : {}),
           website: formData.website
             ? formData.website.startsWith('http')
               ? formData.website

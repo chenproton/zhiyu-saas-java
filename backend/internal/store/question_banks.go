@@ -154,19 +154,26 @@ func (s *QuestionBankStore) Update(ctx context.Context, id, tenantID string, p *
 	return s.Get(ctx, id)
 }
 
-// Delete 删除题库（连带题目与知识点绑定，限定租户）。
+// Delete 删除题库（连带题目与知识点绑定，限定租户；事务内执行防孤儿数据）。
 func (s *QuestionBankStore) Delete(ctx context.Context, id, tenantID string) error {
 	if _, err := s.fetchBankScoped(ctx, id, tenantID); err != nil {
 		return err
 	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
-		return fmt.Errorf("delete bank knowledge points: %w", err)
+	if s.beginner == nil {
+		return errors.New("question bank store: queryer does not support transactions")
 	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM questions WHERE bank_id = $1`, id); err != nil {
-		return fmt.Errorf("delete bank questions: %w", err)
-	}
-	_, err := s.q.Exec(ctx, `DELETE FROM question_banks WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id); err != nil {
+			return fmt.Errorf("delete bank knowledge points: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM questions WHERE bank_id = $1`, id); err != nil {
+			return fmt.Errorf("delete bank questions: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM question_banks WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // EnsureDraftPool 为用户创建默认草稿池（不存在时）。

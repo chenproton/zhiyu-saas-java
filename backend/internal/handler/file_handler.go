@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -17,6 +18,28 @@ import (
 
 const MaxUploadSize = 100 << 20 // 100MB
 const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
+
+// pageNum 从文件名中提取页码数字（幻灯片1.png → 1），无数字时按字典序兜底。
+func pageNum(name string) int {
+	digits := strings.Builder{}
+	started := false
+	for _, r := range name {
+		if r >= '0' && r <= '9' {
+			digits.WriteRune(r)
+			started = true
+		} else if started {
+			break
+		}
+	}
+	if digits.Len() == 0 {
+		return 0
+	}
+	n, err := strconv.Atoi(digits.String())
+	if err != nil {
+		return 0
+	}
+	return n
+}
 
 type FileHandler struct {
 	UploadDir string
@@ -213,6 +236,11 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		entries, _ := os.ReadDir(tmpDir)
+		// 按文件名中的页码数字排序（如 1.png、2.png … 或 幻灯片1.png），
+		// 保证多页 PPT 转换后的翻页顺序与页码一致
+		sort.Slice(entries, func(i, j int) bool {
+			return pageNum(entries[i].Name()) < pageNum(entries[j].Name())
+		})
 		var images []string
 		for _, e := range entries {
 			if strings.HasSuffix(strings.ToLower(e.Name()), ".png") {
@@ -222,7 +250,6 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		sort.Slice(images, func(i, j int) bool { return i < j })
 		if len(images) == 0 {
 			respondServerError(w, r, err, "未生成幻灯片")
 			return

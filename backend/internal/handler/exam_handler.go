@@ -203,7 +203,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		CoverImage:          req.CoverImage,
 		CollaboratorIDs:     collaboratorIDs,
 		CollaboratorDeptIDs: collaboratorDeptIDs,
-		BatchID:             req.BatchID,
+		BatchID:             emptyStrToNil(req.BatchID),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {

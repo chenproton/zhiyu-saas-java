@@ -340,6 +340,7 @@ export function ResourceSelector({
     }
 
     if (useApi && apiAvailable) {
+      let createdId: string | undefined
       try {
         const created = await resourceLibraryApi.create({
           name: newRes.name,
@@ -348,6 +349,7 @@ export function ResourceSelector({
           description: newResDescription || undefined,
           fileSize: uploadedSize,
         })
+        createdId = created.id
         newRes.id = created.id
         newRes.url = created.url || newRes.url
         setInternalPool((prev) => [newRes, ...prev])
@@ -358,7 +360,16 @@ export function ResourceSelector({
           await nodeResourceApi.bind({ nodeId: effectiveNodeId, resourceId: created.id })
         }
       } catch (e: any) {
-        toast({ title: e.message || t('资源保存失败'), variant: 'destructive' })
+        if (createdId) {
+          // 资源已创建但绑定失败：提示可重试绑定，避免用户重试时重复创建孤儿资源
+          toast({
+            title: t('资源已创建但绑定失败'),
+            description: t('资源已保存到资源库，请重试或手动关联'),
+            variant: 'destructive',
+          })
+        } else {
+          toast({ title: e.message || t('资源保存失败'), variant: 'destructive' })
+        }
         setNewResUploading(false)
         return
       }

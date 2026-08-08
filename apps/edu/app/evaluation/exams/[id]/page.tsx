@@ -77,12 +77,16 @@ export default function ExamComposerPage() {
 
   const [loadingExam, setLoadingExam] = useState(!getExam(examId))
   const triedReload = useRef(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const dragTargetRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (getExam(examId) || triedReload.current) return
     triedReload.current = true
-    loadExams?.().finally(() => setLoadingExam(false))
+    loadExams?.()
+      .then(() => setLoadError(null))
+      .catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'))
+      .finally(() => setLoadingExam(false))
   }, [examId, getExam, loadExams])
 
   const exam = getExam(examId)
@@ -167,6 +171,30 @@ export default function ExamComposerPage() {
   }
 
   if (!exam) {
+    // 区分「加载失败」（可重试）与「确实不存在」（引导返回）
+    if (loadError) {
+      return (
+        <div className="flex h-[50vh] items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold">{t('加载失败')}</h2>
+            <p className="mb-4 text-muted-foreground">{loadError}</p>
+            <Button
+              onClick={() => {
+                triedReload.current = false
+                setLoadError(null)
+                setLoadingExam(true)
+                loadExams?.()
+                  .then(() => setLoadError(null))
+                  .catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'))
+                  .finally(() => setLoadingExam(false))
+              }}
+            >
+              {t('重试')}
+            </Button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">

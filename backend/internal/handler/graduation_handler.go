@@ -15,6 +15,18 @@ type GraduationHandler struct {
 	Service *service.EvaluationService
 }
 
+// parseTopicDate 解析课题日期：空串返回 nil（不设置），非法格式返回错误。
+func parseTopicDate(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
 type CreateGraduationTopicRequest struct {
 	Name               string  `json:"name"`
 	CareerPositionID   string  `json:"careerPositionId"`
@@ -100,14 +112,22 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	startDate, _ := time.Parse(time.RFC3339, req.StartDate)
-	endDate, _ := time.Parse(time.RFC3339, req.EndDate)
+	startDate, err := parseTopicDate(req.StartDate)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "开始日期格式不正确")
+		return
+	}
+	endDate, err := parseTopicDate(req.EndDate)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "结束日期格式不正确")
+		return
+	}
 
 	topic, err := h.Service.CreateGraduationTopic(r.Context(), &store.GraduationTopicParams{
 		TenantID: tenantID, Name: req.Name, CareerPositionID: req.CareerPositionID,
 		College: req.College, Source: req.Source, Capacity: req.Capacity,
 		AdvisorID: req.AdvisorID, EnterpriseMentorID: req.EnterpriseMentorID,
-		StartDate: &startDate, EndDate: &endDate, Description: req.Description,
+		StartDate: startDate, EndDate: endDate, Description: req.Description,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -143,14 +163,22 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	startDate, _ := time.Parse(time.RFC3339, req.StartDate)
-	endDate, _ := time.Parse(time.RFC3339, req.EndDate)
+	startDate, err := parseTopicDate(req.StartDate)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "开始日期格式不正确")
+		return
+	}
+	endDate, err := parseTopicDate(req.EndDate)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "结束日期格式不正确")
+		return
+	}
 
 	topic, err = h.Service.UpdateGraduationTopic(r.Context(), id, &store.GraduationTopicParams{
 		Name: req.Name, CareerPositionID: req.CareerPositionID,
 		College: req.College, Source: req.Source, Capacity: req.Capacity,
 		AdvisorID: req.AdvisorID, EnterpriseMentorID: req.EnterpriseMentorID,
-		StartDate: &startDate, EndDate: &endDate, Description: req.Description,
+		StartDate: startDate, EndDate: endDate, Description: req.Description,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {

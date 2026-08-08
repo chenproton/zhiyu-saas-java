@@ -105,7 +105,7 @@ func (s *PositionStore) FavoritesListConfig(userID string) ListQueryConfig[domai
 
 // Get 查询单个岗位。
 func (s *PositionStore) Get(ctx context.Context, id string) (*domain.CareerPosition, error) {
-	pos, err := s.fetchPosition(ctx, id)
+	pos, err := s.fetchPosition(ctx, s.q, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -144,7 +144,7 @@ func (s *PositionStore) Create(ctx context.Context, tx Queryer, tenantID string,
 			return nil, err
 		}
 	}
-	return s.fetchPosition(ctx, id)
+	return s.fetchPosition(ctx, tx, id)
 }
 
 // Update 在事务内更新岗位与专业绑定。
@@ -171,7 +171,7 @@ func (s *PositionStore) Update(ctx context.Context, tx Queryer, id string, p *Po
 			return nil, err
 		}
 	}
-	return s.fetchPosition(ctx, id)
+	return s.fetchPosition(ctx, tx, id)
 }
 
 // Delete 删除岗位（事务内同步清理无外键约束的岗位能力结果/学生画像/汇聚日志/
@@ -534,13 +534,13 @@ func (s *PositionStore) ListFavorites(ctx context.Context, userID string, p List
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanPositionRows)
 }
 
-func (s *PositionStore) fetchPosition(ctx context.Context, id string) (*domain.CareerPosition, error) {
+func (s *PositionStore) fetchPosition(ctx context.Context, q Queryer, id string) (*domain.CareerPosition, error) {
 	var pos domain.CareerPosition
 	var batchID, shortName, industryID, coverImage, description, careerPath *string
 	var salaryMin, salaryMax *int
 	var majorIDs, majorNames, requirements, collaborators []string
 
-	err := s.q.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT cp.id, cp.tenant_id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,

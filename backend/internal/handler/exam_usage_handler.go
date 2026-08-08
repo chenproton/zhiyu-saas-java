@@ -156,7 +156,8 @@ func (h *ExamUsageHandler) manualOnly(w http.ResponseWriter, r *http.Request) bo
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return false
 	}
-	if usage.TargetType != nil && !isManualTargetType(*usage.TargetType) {
+	// TargetType 为 NULL（异常/旧数据）视同非手动类型，禁止编辑/删除
+	if usage.TargetType == nil || !isManualTargetType(*usage.TargetType) {
 		respondError(w, http.StatusForbidden, "自动创建的考试安排不允许编辑/删除")
 		return false
 	}

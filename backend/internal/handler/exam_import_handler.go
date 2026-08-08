@@ -173,7 +173,12 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 					continue
 				}
 				// 覆盖时清空原有题目关联，随后根据新文件内容重新写入
-				_, _ = h.DB.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id=$1`, existingID)
+				if _, err := h.DB.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id=$1`, existingID); err != nil {
+					msg := fmt.Sprintf("试卷[%s]清空旧题目失败: %v", name, err)
+					result.Errors = append(result.Errors, msg)
+					slog.Error(fmt.Sprintf("[import/exams] %s", msg))
+					continue
+				}
 				if examMap != nil {
 					examMap[name] = existingID
 				}

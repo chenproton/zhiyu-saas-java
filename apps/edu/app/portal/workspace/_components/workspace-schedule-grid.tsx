@@ -504,7 +504,17 @@ function MonthView({
       </div>
       <div className="grid grid-cols-7 gap-2">
         {calendarDays.map((day, index) => {
-          const dayEvents = day ? events.filter((e) => e.dayOfWeek === (index % 7 || 7)) : []
+          // 单次事件（带 date）按日期精确匹配，避免在当月所有同星期格重复出现；
+          // 未带 date 的事件视为每周重复安排，按星期匹配
+          const dayEvents = day
+            ? events.filter((e) => {
+                const eventDate = (e as ScheduleEvent & { date?: string }).date
+                if (eventDate) {
+                  return eventDate.slice(0, 10) === `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                }
+                return e.dayOfWeek === (index % 7 || 7)
+              })
+            : []
           return (
             <div
               key={index}

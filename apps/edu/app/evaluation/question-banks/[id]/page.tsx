@@ -183,7 +183,8 @@ export default function QuestionBankDetailPage() {
     if (!files) return
     const existing = new Set(importFiles.map((f) => f.name + '_' + f.size))
     const added = Array.from(files).filter((f) => !existing.has(f.name + '_' + f.size))
-    setImportFiles((prev) => [...prev, ...added])
+    // 导入仅处理单个文件，单选避免其余文件被静默忽略
+    setImportFiles((prev) => [...prev, ...added].slice(0, 1))
   }
 
   const handleRemoveFile = (index: number) => {
@@ -196,9 +197,9 @@ export default function QuestionBankDetailPage() {
     setIsImportConfirmOpen(false)
   }
 
-  const executeImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
+  const executeImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip'): Promise<boolean> => {
     const file = importFiles[0]
-    if (!file) return
+    if (!file) return false
     setIsImporting(true)
     try {
       const result = await importExportApi.importExcel(
@@ -228,12 +229,14 @@ export default function QuestionBankDetailPage() {
       resetImport()
       setIsImportDialogOpen(false)
       await loadBankQuestions?.(bankId)
+      return true
     } catch (err: any) {
       toast({
         variant: 'destructive',
         title: t('导入失败'),
         description: err.message || t('导入失败'),
       })
+      return false
     } finally {
       setIsImporting(false)
     }
@@ -254,7 +257,7 @@ export default function QuestionBankDetailPage() {
         setIsImporting(false)
         return false
       }
-      return await executeImport('skip').then(() => true)
+      return await executeImport('skip')
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -786,6 +789,7 @@ export default function QuestionBankDetailPage() {
         onRemoveFile={handleRemoveFile}
         importing={isImporting}
         downloading={isDownloading}
+        allowMultiple={false}
       />
 
       {importPreview && (

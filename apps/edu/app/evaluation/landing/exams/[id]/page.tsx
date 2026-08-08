@@ -81,7 +81,6 @@ export default function ExamDetailPage() {
   const [submitted, setSubmitted] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showAudienceDialog, setShowAudienceDialog] = useState(false)
-  const [, setUsages] = useState<ExamUsage[]>([])
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
@@ -149,7 +148,6 @@ export default function ExamDetailPage() {
       .list({ examId })
       .then((res) => {
         const items = res.items || []
-        setUsages(items)
         const usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
         if (usage && !currentUsage) {
           setCurrentUsage(usage)

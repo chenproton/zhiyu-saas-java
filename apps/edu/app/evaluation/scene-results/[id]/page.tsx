@@ -518,7 +518,6 @@ export default function GradingDetailPage() {
   const [rdQuestions, setRdQuestions] = useState<any[]>([])
   const [rdQuestionPool, setRdQuestionPool] = useState<any[]>([])
   const [questionFilter, setQuestionFilter] = useState<'all' | 'pending'>('all')
-  const [allExpanded, setAllExpanded] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<{
     name: string
     url: string
@@ -1263,14 +1262,6 @@ export default function GradingDetailPage() {
                       {t('待评分题目 ({n})', { n: pendingQuestions.length })}
                     </button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs text-gray-500 hover:text-gray-700"
-                    onClick={() => setAllExpanded((prev) => !prev)}
-                  >
-                    {allExpanded ? t('全部收起') : t('全部展开')}
-                  </Button>
                 </div>
                 <div className="space-y-2">
                   {displayedQuestions.map((q: any, idx: number) => (

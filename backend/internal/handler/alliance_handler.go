@@ -657,7 +657,8 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetDictionaryByID(r.Context(), id, tenantID); err != nil {
+	existing, err := h.Store.GetDictionaryByID(r.Context(), id, tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "字典项不存在")
 		return
 	}
@@ -668,6 +669,10 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 	}
 	if !decodeBody(w, r, &req) {
 		return
+	}
+	// 部分更新兜底：未携带 name 时回退现有值，防止全列覆盖清空字典项名
+	if req.Name == "" {
+		req.Name = existing.Name
 	}
 	if err := h.Store.UpdateDictionary(r.Context(), id, tenantID, &domain.AllianceDictionary{
 		Name:      req.Name,

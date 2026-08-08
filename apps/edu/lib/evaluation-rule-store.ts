@@ -340,13 +340,9 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
       return
     }
     if (onChangeRef.current) {
-      const exportConfig: EvalRuleConfig = {
-        ...state,
-        evaluationMethods: state.evaluationMethods.map((m) =>
-          m === 'homework' ? ('exam' as EvalRuleMethodKey) : m,
-        ) as EvalRuleConfig['evaluationMethods'],
-      }
-      onChangeRef.current(exportConfig)
+      // 输入即输出透传方法键（homework 是合法 key），避免改写为不存在于
+      // EvalRuleMethodKey 联合类型内的 exam 键导致兄弟字段键不一致
+      onChangeRef.current(state)
     }
   }, [state])
 

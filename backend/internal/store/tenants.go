@@ -182,7 +182,7 @@ func (s *TenantStore) Update(ctx context.Context, id string, p *TenantUpdatePara
 	_, err := s.q.Exec(ctx, `
 		UPDATE tenants SET name = $1, logo_url = $2, domain = $3, enterprise_code = $4, contact = $5,
 			phone = $6, address = $7, description = $8,
-			short_name = $9, school_type = $10, province = $11, city = $12,
+			short_name = $9, school_type = $10, province = COALESCE(NULLIF($11,''), province), city = COALESCE(NULLIF($12,''), city),
 			website = $13, contact_phone = $14, scale_data = $15, secondary_colleges = $16,
 			education_level = $17, education_nature = $18,
 			updated_at = NOW()

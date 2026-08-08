@@ -51,15 +51,21 @@ export default function JobStudentLearnPage() {
 
     scenarioApi
       .list({ careerPositionId: id, status: 'published', limit: 1000 })
-      .then((res) => {
+      .then(async (res) => {
         const scens = res.items || []
         setScenarios(scens)
-        return Promise.all(
-          scens.map((s: Scenario) => taskApi.list({ scenarioId: s.id, limit: 1000 })),
+        const allTasks: ScenarioTask[] = []
+        // 逐任务容错：单个场景任务加载失败只记录错误，不清空已加载数据
+        await Promise.all(
+          scens.map(async (s: Scenario) => {
+            try {
+              const r = await taskApi.list({ scenarioId: s.id, limit: 1000 })
+              allTasks.push(...(r.items || []))
+            } catch (err) {
+              reportError(err, `加载场景任务（${s.id}）`)
+            }
+          }),
         )
-      })
-      .then((results) => {
-        const allTasks = results.flatMap((r) => r.items || [])
         setScenarioTasks(allTasks)
       })
       .catch(() => {
