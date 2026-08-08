@@ -15,8 +15,11 @@ ALTER TABLE alliance_brand_topics ADD CONSTRAINT fk_alliance_brand_topics_tenant
 DELETE FROM alliance_brands WHERE tenant_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = alliance_brands.tenant_id);
 ALTER TABLE alliance_brands ADD CONSTRAINT fk_alliance_brands_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
-DELETE FROM alliance_dictionaries WHERE tenant_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = alliance_dictionaries.tenant_id);
-ALTER TABLE alliance_dictionaries ADD CONSTRAINT fk_alliance_dictionaries_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+-- 注意：alliance_dictionaries **不添加** REFERENCES tenants 外键——
+-- 108 迁移会在 seed 创建运营方租户行之前为其预插字典数据（时序依赖），
+-- 全新部署时 FK 校验会因该预插行（tenant 尚不存在）失败；
+-- 运营方租户本身不可删除，该表无级联清理需求，保持现状。
+DELETE FROM alliance_dictionaries WHERE tenant_id IS NOT NULL AND tenant_id <> '00000000-0000-0000-0000-000000000001' AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = alliance_dictionaries.tenant_id);
 
 DELETE FROM alliance_enterprise_agreements WHERE tenant_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = alliance_enterprise_agreements.tenant_id);
 ALTER TABLE alliance_enterprise_agreements ADD CONSTRAINT fk_alliance_enterprise_agreements_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;

@@ -100,10 +100,10 @@ func (s *QuestionBankStore) Create(ctx context.Context, tenantID string, p *Ques
 				continue
 			}
 			if _, err := tx.Exec(ctx, `
-					INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
-					VALUES (gen_random_uuid(), $1, $2, $3)
+					INSERT INTO question_bank_knowledge_points (id, question_bank_id, knowledge_point_id)
+					VALUES (gen_random_uuid(), $1, $2)
 					ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
-				`, tenantID, id, kpID); err != nil {
+				`, id, kpID); err != nil {
 				return err
 			}
 		}
@@ -139,10 +139,10 @@ func (s *QuestionBankStore) Update(ctx context.Context, id, tenantID string, p *
 				continue
 			}
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO question_bank_knowledge_points (id, tenant_id, question_bank_id, knowledge_point_id)
-				VALUES (gen_random_uuid(), $1, $2, $3)
+				INSERT INTO question_bank_knowledge_points (id, question_bank_id, knowledge_point_id)
+				VALUES (gen_random_uuid(), $1, $2)
 				ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
-			`, p.TenantID, id, kpID); err != nil {
+			`, id, kpID); err != nil {
 				return err
 			}
 		}

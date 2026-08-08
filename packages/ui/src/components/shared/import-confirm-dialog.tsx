@@ -48,11 +48,13 @@ export function ImportConfirmDialog({
   const hasMore = duplicateItems.length > 10
   const [pending, setPending] = useState<string | null>(null)
 
-  const run = async (mode: string, fn: () => void) => {
+  const run = async (mode: string, fn: () => void | Promise<void>) => {
     if (pending) return
     setPending(mode)
     try {
-      fn()
+      // 必须 await：调用方传的均为 async 导入函数，若不同步挂起，
+      // finally 立即 setPending(null) 会被 React 批处理合并，busy 态不渲染、防重失效
+      await fn()
     } finally {
       setPending(null)
     }

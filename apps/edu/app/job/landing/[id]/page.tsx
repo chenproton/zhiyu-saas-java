@@ -87,21 +87,24 @@ export default function JobStudentDetailPage() {
   const [scenarioTasks, setScenarioTasks] = useState<ScenarioTask[]>([])
   // 岗位详情加载请求序号：快速切换 id 时丢弃过期响应
   const loadSeqRef = useRef(0)
+  // 详情加载使用独立序号：与关联数据加载（loadSeqRef）互不抢占，
+  // 避免切换岗位时 detail effect 的 finally 被抢占导致 loading 永不复位（骨架屏卡死）
+  const detailSeqRef = useRef(0)
 
   useEffect(() => {
     if (!id) return
-    const seq = ++loadSeqRef.current
+    const seq = ++detailSeqRef.current
     ;(async () => {
       setLoading(true)
       try {
         const pos = await publicPositionApi.get(id)
-        if (seq !== loadSeqRef.current) return
+        if (seq !== detailSeqRef.current) return
         setPosition(pos)
       } catch {
-        if (seq !== loadSeqRef.current) return
+        if (seq !== detailSeqRef.current) return
         setPosition(null)
       } finally {
-        if (seq === loadSeqRef.current) setLoading(false)
+        if (seq === detailSeqRef.current) setLoading(false)
       }
     })()
   }, [id])

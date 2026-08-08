@@ -51,6 +51,9 @@ func (h *AbilityDomainHandler) crud() crudConfig[AbilityDomainRequest, domain.Ab
 		DeleteErrMsg:   "删除能力域失败",
 		CheckOwnership: true,
 		GetOwnership:   true,
+		TenantFn: func(w http.ResponseWriter, r *http.Request) (string, bool) {
+			return requireTenant(w, r)
+		},
 		ValidateCreate: func(t *AbilityDomainRequest) string {
 			if t.CareerPositionID == "" || t.Name == "" {
 				return "缺少必填字段"

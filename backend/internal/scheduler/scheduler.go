@@ -40,7 +40,12 @@ func aggregateAll(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Release()
+	// Release 前必须重置会话设置：pgxpool 回池不清理会话级变量，
+	// 否则该物理连接永久失去 15s 语句超时保护，失控慢查询可挂死连接池
+	defer func() {
+		_, _ = conn.Exec(context.Background(), `RESET statement_timeout`)
+		conn.Release()
+	}()
 	if _, err := conn.Exec(ctx, `SET statement_timeout = 0`); err != nil {
 		return err
 	}

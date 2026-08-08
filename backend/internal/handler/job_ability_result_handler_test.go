@@ -88,7 +88,7 @@ func TestJobAbilityResultIndicators(t *testing.T) {
 	if !ok {
 		t.Fatal("缺少存量行结果")
 	}
-	wantComp := ((85-70)/70*0.6 + 0) * 100
+	wantComp := ((85.0-70)/70.0*0.6 + 0) * 100
 	if math.Abs(fallback.PositionCompetency-wantComp) > 1e-6 {
 		t.Errorf("存量行胜任度应回退计算为 %v，实际 %v", wantComp, fallback.PositionCompetency)
 	}
