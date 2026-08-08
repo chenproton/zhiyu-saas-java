@@ -2,14 +2,12 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { PlatformShell } from '@/components/platform-shell'
+import { PermissionGuard } from '@/components/shared/permission-guard'
 import { libraryNavigationConfig } from '@/lib/navigation-config'
 import { useAuth } from '@/components/auth-provider'
-import { useT } from '@/lib/i18n/locale-provider'
 
 export default function LibraryLayout({ children }: { children: React.ReactNode }) {
-  const t = useT()
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, hasMenuPermission } = useAuth()
@@ -23,28 +21,16 @@ export default function LibraryLayout({ children }: { children: React.ReactNode 
 
   const allowed = !loading && !!user && hasMenuPermission(pathname)
 
-  const content = isLanding ? (
-    <>{children}</>
-  ) : (
-    <PlatformShell config={{ ...libraryNavigationConfig, sideBackHref: '/portal/apps' }}>
-      {children}
-    </PlatformShell>
-  )
+  if (isLanding) {
+    return <>{children}</>
+  }
 
+  // 未授权时不渲染 children：避免页面在无权限时仍发起数据请求（403 噪音 + 无效请求）
   return (
-    <>
-      {content}
-      {!isLanding && (loading || !allowed) && (
-        <div className="fixed inset-0 z-50 flex h-screen items-center justify-center bg-[#f5f7fa]">
-          {loading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              {t('当前角色暂无权限访问该页面，请联系管理员在角色权限中开通')}
-            </div>
-          )}
-        </div>
-      )}
-    </>
+    <PermissionGuard loading={loading} allowed={allowed}>
+      <PlatformShell config={{ ...libraryNavigationConfig, sideBackHref: '/portal/apps' }}>
+        {children}
+      </PlatformShell>
+    </PermissionGuard>
   )
 }
