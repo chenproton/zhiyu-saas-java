@@ -590,3 +590,24 @@ func CleanupTaskExamUsages(ctx context.Context, tx Queryer, taskID string) error
 	}
 	return nil
 }
+
+// ListEnabledMethodKeys 查询任务启用测评方式 key 列表（导出用）。
+func (s *TaskEvaluationStore) ListEnabledMethodKeys(ctx context.Context, q Queryer, tenantID, taskID string) []string {
+	rows, err := q.Query(ctx, `
+		SELECT method_key FROM task_evaluation_methods
+		WHERE task_id=$1 AND tenant_id=$2 AND is_enabled=true
+		ORDER BY method_key
+	`, taskID, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err == nil {
+			out = append(out, k)
+		}
+	}
+	return out
+}

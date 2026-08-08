@@ -53,17 +53,22 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 	var sRows []sRow
 
 	for _, sid := range scenarioIDs {
-		var name, diff, bg, batchName string
-		var careerPositionID, batchID *string
-		var industryIDs, professionIDs []string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, career_position_id, industry_ids, profession_ids, batch_id, difficulty, COALESCE(background,'')
-			FROM scenarios WHERE id=$1 AND tenant_id=$2
-		`, sid, tenantID).Scan(&name, &careerPositionID, &industryIDs, &professionIDs, &batchID, &diff, &bg)
+		scn, err := h.Store.Scenarios().Get(ctx, sid)
 		if err != nil {
 			slog.Warn("导出场景行跳过", "scenarioId", sid, "error", err)
 			continue
 		}
+		name := scn.Name
+		diff := fmt.Sprintf("%d", scn.Difficulty)
+		bg := ""
+		if scn.Background != nil {
+			bg = *scn.Background
+		}
+		batchName := ""
+		careerPositionID := scn.CareerPositionID
+		industryIDs := scn.IndustryIDs
+		professionIDs := scn.ProfessionIDs
+		batchID := scn.BatchID
 
 		positionName := ""
 		if careerPositionID != nil && *careerPositionID != "" {
@@ -109,39 +114,25 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			slog.Warn("导出场景任务名称查询失败", "scenarioId", sid, "error", err)
 		}
 
-		taskRows, err := h.Store.Q().Query(ctx, `
-			SELECT id, name, task_type, difficulty, estimated_hours,
-				COALESCE(background,''), COALESCE(detailed_description,''),
-				knowledge_point_ids, ability_point_ids, resource_ids
-			FROM scenario_tasks WHERE scenario_id=$1 AND tenant_id=$2 ORDER BY sort_order
-		`, sid, tenantID)
+		taskRows, err := h.Store.ScenarioTasks().ListByScenarioID(ctx, h.Store.Q(), tenantID, sid)
 		if err != nil {
 			slog.Warn("导出场景任务查询失败", "scenarioId", sid, "error", err)
 			continue
 		}
-		for taskRows.Next() {
-			var taskID, tname, ttype, tdesc, tdetail string
-			var tdiff int
-			var thours float64
-			var kpIDs, apIDs, resIDs []string
-			if err := taskRows.Scan(&taskID, &tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs); err != nil {
-				slog.Warn("导出场景任务行扫描失败", "scenarioId", sid, "error", err)
-				continue
-			}
+		for _, t := range taskRows {
+			kpNames := h.lookupKnowledgePointNames(ctx, t.KnowledgePointIDs)
+			apNames := h.lookupAbilityPointNames(ctx, t.AbilityPointIDs)
+			resNames := h.lookupResourceNames(ctx, t.ResourceIDs)
 
-			kpNames := h.lookupKnowledgePointNames(ctx, kpIDs)
-			apNames := h.lookupAbilityPointNames(ctx, apIDs)
-			resNames := h.lookupResourceNames(ctx, resIDs)
-
-			evalMethods := h.lookupTaskEvalMethods(ctx, tenantID, taskID)
+			evalMethods := h.lookupTaskEvalMethods(ctx, tenantID, t.ID)
 
 			setCell("任务配置", fmt.Sprintf("A%d", taskRow), scenarioName)
-			setCell("任务配置", fmt.Sprintf("B%d", taskRow), tname)
-			setCell("任务配置", fmt.Sprintf("C%d", taskRow), mapTaskTypeToChinese(ttype))
-			setCell("任务配置", fmt.Sprintf("D%d", taskRow), fmt.Sprintf("%d", tdiff))
-			setCell("任务配置", fmt.Sprintf("E%d", taskRow), fmt.Sprintf("%.1f", thours))
-			setCell("任务配置", fmt.Sprintf("F%d", taskRow), tdesc)
-			setCell("任务配置", fmt.Sprintf("G%d", taskRow), tdetail)
+			setCell("任务配置", fmt.Sprintf("B%d", taskRow), t.Name)
+			setCell("任务配置", fmt.Sprintf("C%d", taskRow), mapTaskTypeToChinese(t.TaskType))
+			setCell("任务配置", fmt.Sprintf("D%d", taskRow), fmt.Sprintf("%d", t.Difficulty))
+			setCell("任务配置", fmt.Sprintf("E%d", taskRow), fmt.Sprintf("%.1f", t.EstimatedHours))
+			setCell("任务配置", fmt.Sprintf("F%d", taskRow), t.Background)
+			setCell("任务配置", fmt.Sprintf("G%d", taskRow), t.DetailedDesc)
 			setCell("任务配置", fmt.Sprintf("H%d", taskRow), strings.Join(kpNames, ","))
 			setCell("任务配置", fmt.Sprintf("I%d", taskRow), strings.Join(apNames, ","))
 			setCell("任务配置", fmt.Sprintf("J%d", taskRow), strings.Join(resNames, ","))
@@ -150,7 +141,6 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			f.SetRowHeight("任务配置", taskRow, 24)
 			taskRow++
 		}
-		taskRows.Close()
 	}
 
 	return nil
@@ -217,24 +207,7 @@ func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []s
 }
 
 func (h *ScenarioExportHandler) lookupTaskEvalMethods(ctx context.Context, tenantID, taskID string) []string {
-	var methods []string
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT method_key FROM task_evaluation_methods
-		WHERE task_id=$1 AND tenant_id=$2 AND is_enabled=true
-		ORDER BY created_at
-	`, taskID, tenantID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var mk string
-		rows.Scan(&mk)
-		if ch := mapEvalMethodToChinese(mk); ch != "" {
-			methods = append(methods, ch)
-		}
-	}
-	return methods
+	return h.Store.TaskEval().ListEnabledMethodKeys(ctx, h.Store.Q(), tenantID, taskID)
 }
 
 func mapTaskTypeToChinese(t string) string {

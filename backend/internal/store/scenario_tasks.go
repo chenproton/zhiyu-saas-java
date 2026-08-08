@@ -300,3 +300,40 @@ func scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask, error) {
 	}
 	return items, rows.Err()
 }
+
+// ScenarioTaskExportRow 导出用任务行。
+type ScenarioTaskExportRow struct {
+	ID               string
+	Name             string
+	TaskType         string
+	Difficulty       int
+	EstimatedHours   float64
+	Background       string
+	DetailedDesc     string
+	KnowledgePointIDs []string
+	AbilityPointIDs   []string
+	ResourceIDs       []string
+}
+
+// ListByScenarioID 查询场景全部任务（导出用）。
+func (s *ScenarioTaskStore) ListByScenarioID(ctx context.Context, q Queryer, tenantID, scenarioID string) ([]ScenarioTaskExportRow, error) {
+	rows, err := q.Query(ctx, `
+		SELECT id, name, task_type, difficulty, estimated_hours,
+			COALESCE(background,''), COALESCE(detailed_description,''),
+			knowledge_point_ids, ability_point_ids, resource_ids
+		FROM scenario_tasks WHERE scenario_id=$1 AND tenant_id=$2 ORDER BY sort_order
+	`, scenarioID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ScenarioTaskExportRow
+	for rows.Next() {
+		var r ScenarioTaskExportRow
+		if err := rows.Scan(&r.ID, &r.Name, &r.TaskType, &r.Difficulty, &r.EstimatedHours, &r.Background, &r.DetailedDesc, &r.KnowledgePointIDs, &r.AbilityPointIDs, &r.ResourceIDs); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
