@@ -200,14 +200,15 @@ func canManageUsers(r *http.Request) bool {
 }
 
 // canManageAlliance reports whether the caller may manage the alliance
-// (产教融合) module. 产教融合平台面向业务角色开放（教师/学校管理员/企业导师/平台
-// 管理员），与教师菜单中可见的 alliance 页面保持一致；有系统设置菜单权限的角色亦放行。
+// (产教融合) module. 产教融合平台面向教师/学校管理员/平台管理员开放；
+// 企业导师（enterprise_mentor）仅保留岗位/场景共建与测评打分，不再有联盟管理权限（B13 角色收窄）。
+// 有系统设置菜单权限的角色亦放行。
 func canManageAlliance(claims *middleware.Claims) bool {
 	if claims == nil {
 		return false
 	}
 	for _, code := range []string{
-		domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin,
+		domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RolePlatformAdmin,
 	} {
 		if middleware.HasRole(claims, code) {
 			return true

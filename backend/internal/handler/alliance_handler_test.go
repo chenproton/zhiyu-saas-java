@@ -52,8 +52,8 @@ func doWithClaims(r chi.Router, method, path string, body interface{}, claims *m
 	return w
 }
 
-// TestAlliance_BusinessRolePermission 产教融合模块面向业务角色（教师/企业导师）开放，
-// 学生仍被拒绝；与 school_admin 行为一致。
+// TestAlliance_BusinessRolePermission 产教融合模块面向业务角色（教师）开放，
+// 学生被拒绝；B13 角色收窄后企业导师（enterprise_mentor）不再有联盟管理权限（403）。
 // Partner 改造后：学校侧企业接口为「已引入列表（link 视图）+ 引入（link）」，不再创建企业主体。
 func TestAlliance_BusinessRolePermission(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
@@ -90,10 +90,10 @@ func TestAlliance_BusinessRolePermission(t *testing.T) {
 		}
 	})
 
-	t.Run("enterprise mentor list ok", func(t *testing.T) {
+	t.Run("enterprise mentor forbidden (B13 角色收窄)", func(t *testing.T) {
 		w := doWithClaims(r, http.MethodGet, "/alliance/enterprises", nil, claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa12", domain.RoleEnterpriseMentor))
-		if w.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 

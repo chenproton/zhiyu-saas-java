@@ -491,6 +491,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 			"menus": domain.JSONMap{
 				"/job/positions": true, "/job/landing": true,
 				"/scene/": true, "/scene/landing": true,
+				"/evaluation/scene-results": true,
 			},
 			"scene": modPerms(adminActions),
 			"job":   domain.JSONMap{"positions": adminActions},
