@@ -112,7 +112,8 @@ func (s *UserExtensionFieldStore) FilterTenantRoleCodes(ctx context.Context, ten
 		SELECT code FROM roles WHERE tenant_id = $1 AND code = ANY($2::text[])
 	`, tenantID, codes)
 	if err != nil {
-		return []string{}
+		// 查询失败时返回原始 codes：宁可保留原值，也不能用空数组覆盖 applicable_role_codes
+		return codes
 	}
 	defer rows.Close()
 	valid := make([]string, 0, len(codes))

@@ -97,7 +97,7 @@ type allianceEnterpriseRequest struct {
 	CoverPhotos                json.RawMessage `json:"coverPhotos"`
 	SecondaryColleges          json.RawMessage `json:"secondaryColleges"`
 	RatingRecord               json.RawMessage `json:"ratingRecord"`
-	IsPublic                   bool            `json:"isPublic"`
+	IsPublic                   *bool           `json:"isPublic"`
 }
 
 func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest, domain.AllianceEnterprise] {
@@ -147,7 +147,7 @@ func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest,
 			CoverPhotos:                t.CoverPhotos,
 			SecondaryColleges:          t.SecondaryColleges,
 			RatingRecord:               t.RatingRecord,
-			IsPublic:                   t.IsPublic,
+			IsPublic:                   derefBool(t.IsPublic, false),
 		})
 	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *allianceEnterpriseRequest) error {
@@ -175,7 +175,7 @@ func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest,
 			CoverPhotos:                t.CoverPhotos,
 			SecondaryColleges:          t.SecondaryColleges,
 			RatingRecord:               t.RatingRecord,
-			IsPublic:                   t.IsPublic,
+			IsPublic:                   derefBool(t.IsPublic, false),
 		})
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
@@ -209,6 +209,9 @@ func (h *AllianceHandler) enterpriseCRUD() crudConfig[allianceEnterpriseRequest,
 		}
 		if t.Rating == nil {
 			t.Rating = existing.Rating
+		}
+		if t.IsPublic == nil {
+			t.IsPublic = &existing.IsPublic
 		}
 		if len(t.CooperationTypes) == 0 {
 			t.CooperationTypes = existing.CooperationTypes

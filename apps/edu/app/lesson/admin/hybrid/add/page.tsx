@@ -104,6 +104,11 @@ function HybridCourseAddForm() {
   const [abilityPool, setAbilityPool] = useState<
     { id: string; name: string; code?: string; description?: string }[]
   >([])
+  // 池渲染期同步到 ref：加载 effect 不依赖池变化，避免池加载完成后重跑重置用户编辑
+  const abilityPoolRef = useRef(abilityPool)
+  useEffect(() => {
+    abilityPoolRef.current = abilityPool
+  }, [abilityPool])
 
   useEffect(() => {
     abilityApi
@@ -236,7 +241,7 @@ function HybridCourseAddForm() {
           setNodes(loadedNodes)
           setAbilityPoints(
             (c.abilityPointIds || []).map((id: string) => {
-              const found = abilityPool.find((a) => a.id === id)
+              const found = abilityPoolRef.current.find((a) => a.id === id)
               return found || { id, name: id }
             }),
           )
@@ -320,7 +325,7 @@ function HybridCourseAddForm() {
     return () => {
       cancelled = true
     }
-  }, [editId, claimCourse, claimSessionNames, abilityPool])
+  }, [editId, claimCourse, claimSessionNames])
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [addDialogCategory, setAddDialogCategory] = useState<AtomicModuleCategory | null>(null)

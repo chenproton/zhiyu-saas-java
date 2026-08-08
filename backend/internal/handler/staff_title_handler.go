@@ -187,8 +187,16 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	title, _ = h.Store.GetByID(r.Context(), id)
-	count, _ := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
+	title, err = h.Store.GetByID(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询状态失败")
+		return
+	}
+	count, err := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
+	if err != nil {
+		respondServerError(w, r, err, "查询引用数失败")
+		return
+	}
 	title.UserCount = count
 	respondJSON(w, http.StatusOK, title)
 }

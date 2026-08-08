@@ -154,6 +154,11 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 部分更新兜底：未携带 scenarioId 时回退现有任务归属场景，避免 404「场景不存在」
+	if req.ScenarioID == "" && task.ScenarioID != "" {
+		req.ScenarioID = task.ScenarioID
+	}
+
 	newScenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), req.ScenarioID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "场景不存在")

@@ -461,7 +461,7 @@ export default function AllianceLandingPage() {
               return (
                 <TabsContent key={cat.id} value={cat.id}>
                   {items.length === 0 ? (
-                    <LandingEmpty title={`暂无${t(cat.title)}`} />
+                    <LandingEmpty title={t('暂无{title}', { title: t(cat.title) })} />
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                       {items.map((brand) => (

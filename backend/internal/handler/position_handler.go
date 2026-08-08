@@ -485,7 +485,11 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pos, _ := h.Service.Get(r.Context(), id)
+	pos, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询岗位失败")
+		return
+	}
 	h.clearPublicPositionsCache(r)
 	respondJSON(w, http.StatusOK, pos)
 }

@@ -184,26 +184,26 @@ export function useResourceCrud(resourceType?: string) {
     }
 
     try {
+      let targetId = editingItem?.id
       if (editingItem) {
         await resourceLibraryApi.update(editingItem.id, payload as any)
         toast({ title: t('更新成功') })
       } else {
         const created = await resourceLibraryApi.create(payload as any)
+        targetId = created?.id
         toast({ title: t('创建成功') })
-        if (created?.id) {
+      }
+      try {
+        // 实体已保存成功，标签失败单独提示（重试仅补标签，不会重复创建实体）
+        if (targetId) {
           await tagApi.setBindings({
             resourceType: TAG_RESOURCE_TYPES.resource_library,
-            resourceId: created.id,
+            resourceId: targetId,
             tagIds,
           })
         }
-      }
-      if (editingItem) {
-        await tagApi.setBindings({
-          resourceType: TAG_RESOURCE_TYPES.resource_library,
-          resourceId: editingItem.id,
-          tagIds,
-        })
+      } catch {
+        toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
       }
       setIsDialogOpen(false)
       loadItems()

@@ -420,6 +420,8 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 	countFrom := cfg.CountTable
 	if countFrom == "" {
 		countFrom = cfg.Table
+	} else if _, err := SanitizeIdentifier(countFrom, allowedListQueryTables); err != nil {
+		return nil, 0, err
 	}
 	countQuery := "SELECT COUNT(*) FROM " + countFrom + " WHERE " + where
 	var total int

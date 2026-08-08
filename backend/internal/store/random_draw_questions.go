@@ -9,12 +9,13 @@ import (
 
 // RandomDrawQuestionStore 随机抽题持久化。
 type RandomDrawQuestionStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewRandomDrawQuestionStore 创建随机抽题 store。
-func NewRandomDrawQuestionStore(q Queryer) *RandomDrawQuestionStore {
-	return &RandomDrawQuestionStore{q: q}
+func NewRandomDrawQuestionStore(q Queryer, beginner txBeginner) *RandomDrawQuestionStore {
+	return &RandomDrawQuestionStore{q: q, beginner: beginner}
 }
 
 // List 查询随机抽题列表。
@@ -61,11 +62,13 @@ func (s *RandomDrawQuestionStore) Update(ctx context.Context, id, tenantID strin
 
 // Delete 删除随机抽题。
 func (s *RandomDrawQuestionStore) Delete(ctx context.Context, id, tenantID string) error {
-	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeRandomDrawQ, id); err != nil {
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if err := DeleteResourceTags(ctx, tx, domain.TagResourceTypeRandomDrawQ, id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM random_draw_questions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 		return err
-	}
-	_, err := s.q.Exec(ctx, `DELETE FROM random_draw_questions WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	})
 }
 
 // RandomDrawQuestionParams 创建/更新参数。

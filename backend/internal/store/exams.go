@@ -214,7 +214,7 @@ func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, err
 				FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord)
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
-			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at, e.tenant_id
+			e.collaborator_dept_ids, e.batch_id, COALESCE(e.version, 'v1.0') AS version, e.owner_type, e.creator_id, e.created_at, e.updated_at, e.tenant_id
 		FROM exams e WHERE e.id = $1
 	`, id).Scan(
 		&e.ID, &e.Code, &e.Name, &description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
@@ -296,7 +296,7 @@ func ScanExamRows(rows pgx.Rows) ([]domain.Exam, error) {
 }
 
 const examListFrom = "exams e"
-const examListSelectColumns = "e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at, (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = e.id) AS question_count"
+const examListSelectColumns = "e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, COALESCE(e.version, 'v1.0') AS version, e.owner_type, e.creator_id, e.created_at, e.updated_at, (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = e.id) AS question_count"
 
 // ListConfig 返回试卷列表查询配置，SQL 片段沉淀在 store 层。
 func (s *ExamStore) ListConfig() ListQueryConfig[domain.Exam] {

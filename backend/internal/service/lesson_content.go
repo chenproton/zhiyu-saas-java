@@ -594,6 +594,10 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 			return rc, err
 		}
 		usageID = found
+		if usageID != "" {
+			// 复用分支同样写回：后续 window 更新/学生作答依赖该 id
+			rc["usageId"] = usageID
+		}
 	}
 
 	if usageID == "" {

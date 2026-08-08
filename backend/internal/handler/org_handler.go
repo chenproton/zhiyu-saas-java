@@ -174,7 +174,11 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, _ := h.Service.Get(r.Context(), id)
+	updated, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询组织失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, updated)
 }
 

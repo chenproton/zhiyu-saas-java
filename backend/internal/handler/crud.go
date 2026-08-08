@@ -199,7 +199,11 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		respondServerError(w, r, err, cfg.UpdateErrMsg)
 		return
 	}
-	item, _ := cfg.GetByIDFn(r.Context(), id, tenantID)
+	item, err := cfg.GetByIDFn(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询失败")
+		return
+	}
 	if cfg.AfterLoad != nil {
 		if err := cfg.AfterLoad(r.Context(), &item); err != nil {
 			respondServerError(w, r, err, "查询失败")

@@ -26,12 +26,13 @@ type ResourceRow struct {
 // ResourceBindingStore 提供资源库与节点/任务/课程的绑定持久化。
 // 三种绑定表（node/task/course_resource_bindings）共用资源库实体。
 type ResourceBindingStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewResourceBindingStore 创建资源绑定 store。
-func NewResourceBindingStore(q Queryer) *ResourceBindingStore {
-	return &ResourceBindingStore{q: q}
+func NewResourceBindingStore(q Queryer, beginner txBeginner) *ResourceBindingStore {
+	return &ResourceBindingStore{q: q, beginner: beginner}
 }
 
 // BindingTable 绑定表元信息。
@@ -107,21 +108,30 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 // 可选 afterBind 回调（如课程资源同步 courses.resource_ids），在绑定后执行。
 func (s *ResourceBindingStore) CreateResource(ctx context.Context, tenantID, bindTable, bindCol, bindID string, p *ResourceCreateSimpleParams, afterBind func(ctx context.Context, q Queryer, bindID, resourceID string) error) (*ResourceRow, error) {
 	id := uuid.NewString()
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)
-		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8, $9, $10)
-	`, id, tenantID, p.Name, p.Type, p.URL, p.Description, p.Thumbnail, p.FileSize, p.Metadata, p.UploadedBy); err != nil {
-		return nil, err
-	}
-	if bindTable != "" && bindID != "" {
-		_, _ = s.q.Exec(ctx, `
-			INSERT INTO `+bindTable+` (id, tenant_id, `+bindCol+`, resource_id)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (`+bindCol+`, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, bindID, id)
-		if afterBind != nil {
-			_ = afterBind(ctx, s.q, bindID, id)
+	if err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)
+			VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8, $9, $10)
+		`, id, tenantID, p.Name, p.Type, p.URL, p.Description, p.Thumbnail, p.FileSize, p.Metadata, p.UploadedBy); err != nil {
+			return err
 		}
+		if bindTable != "" && bindID != "" {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO `+bindTable+` (id, tenant_id, `+bindCol+`, resource_id)
+				VALUES ($1, $2, $3, $4)
+				ON CONFLICT (`+bindCol+`, resource_id) DO NOTHING
+			`, uuid.NewString(), tenantID, bindID, id); err != nil {
+				return err
+			}
+			if afterBind != nil {
+				if err := afterBind(ctx, tx, bindID, id); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return s.fetchResource(ctx, id)

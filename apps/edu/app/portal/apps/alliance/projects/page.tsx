@@ -172,7 +172,7 @@ export default function AllianceProjectsPage() {
                 {['initiation', 'execution', 'acceptance', 'closure', 'archived', 'terminated'].map(
                   (v) => (
                     <SelectItem key={v} value={v}>
-                      {v}
+                      {allianceLabel('projectPhase', v)}
                     </SelectItem>
                   ),
                 )}

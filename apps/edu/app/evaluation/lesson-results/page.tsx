@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -65,6 +65,8 @@ function LessonResultsPageContent() {
   const urlCourseId = searchParams.get('courseId')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+  // 课程结果请求序号：快速切换课程时丢弃过期响应
+  const courseResultSeqRef = useRef(0)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
 
   const [courses, setCourses] = useState<Course[]>([])
@@ -105,14 +107,23 @@ function LessonResultsPageContent() {
 
   useEffect(() => {
     if (!selectedCourseId) return
+    const seq = ++courseResultSeqRef.current
     courseNodeApi
       .list({ courseId: selectedCourseId, limit: 1000 } as any)
-      .then((res) => setNodes((res.items || []) as any))
-      .catch(() => setNodes([]))
+      .then((res) => {
+        if (seq === courseResultSeqRef.current) setNodes((res.items || []) as any)
+      })
+      .catch(() => {
+        if (seq === courseResultSeqRef.current) setNodes([])
+      })
     nodeEvaluationResultApi
       .listByCourse(selectedCourseId)
-      .then((res) => setResults(res.items || []))
-      .catch(() => setResults([]))
+      .then((res) => {
+        if (seq === courseResultSeqRef.current) setResults(res.items || [])
+      })
+      .catch(() => {
+        if (seq === courseResultSeqRef.current) setResults([])
+      })
   }, [selectedCourseId])
 
   const filteredCourses = useMemo(() => {

@@ -133,6 +133,8 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
   }, [newRespNames])
 
   useEffect(() => {
+    // 请求序号：快速切换岗位时丢弃过期响应，避免过滤结果与当前岗位不一致
+    const seq = ++abilityFilterSeqRef.current
     ;(async () => {
       if (!abilityPoolFilterPosition) {
         setAbilityPoolFilterPositionAbilities(new Set())
@@ -140,16 +142,20 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       }
       try {
         const res = await abilityApi.listBindings({ careerPositionId: abilityPoolFilterPosition })
+        if (seq !== abilityFilterSeqRef.current) return
         const ids = new Set<string>()
         res.items.forEach((b) => {
           if (b.abilityPointId) ids.add(b.abilityPointId)
         })
         setAbilityPoolFilterPositionAbilities(ids)
       } catch {
-        /* ignore */
+        if (seq === abilityFilterSeqRef.current) setAbilityPoolFilterPositionAbilities(new Set())
       }
     })()
   }, [abilityPoolFilterPosition])
+
+  // 岗位过滤请求序号
+  const abilityFilterSeqRef = useRef(0)
 
   const selectedResp = position.responsibilities.find((r) => r.id === selectedRespId)
 

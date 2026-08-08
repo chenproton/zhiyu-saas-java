@@ -238,6 +238,7 @@
   "是": "Yes",
   "暂不支持 HEIC/HEIF 格式，请先转换后再上传": "HEIC/HEIF is not supported. Please convert the image first.",
   "暂无专业": "No majors",
+  "暂无{title}": "No {title}",
   "暂无关联颗粒课": "No linked granular courses",
   "暂无启用的审批流程，请先在审批流程管理中启用": "No active approval workflows. Please enable one in workflow management first.",
   "暂无审批流程": "No approval workflows",

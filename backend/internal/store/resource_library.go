@@ -43,12 +43,13 @@ const resourceJoinClause = `
 
 // ResourceLibraryStore 提供资源库的持久化访问，SQL 全部收敛于此。
 type ResourceLibraryStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewResourceLibraryStore 创建资源库 store。
-func NewResourceLibraryStore(q Queryer) *ResourceLibraryStore {
-	return &ResourceLibraryStore{q: q}
+func NewResourceLibraryStore(q Queryer, beginner txBeginner) *ResourceLibraryStore {
+	return &ResourceLibraryStore{q: q, beginner: beginner}
 }
 
 // ResourceFilter 资源列表查询参数（由 handler 从请求显式提取）。
@@ -330,11 +331,13 @@ func (s *ResourceLibraryStore) Update(ctx context.Context, id string, p *Resourc
 
 // Delete 删除资源。
 func (s *ResourceLibraryStore) Delete(ctx context.Context, id string) error {
-	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeResourceLibrary, id); err != nil {
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if err := DeleteResourceTags(ctx, tx, domain.TagResourceTypeResourceLibrary, id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM resource_library WHERE id = $1`, id)
 		return err
-	}
-	_, err := s.q.Exec(ctx, `DELETE FROM resource_library WHERE id = $1`, id)
-	return err
+	})
 }
 
 // ResourceCreateParams 创建资源参数。

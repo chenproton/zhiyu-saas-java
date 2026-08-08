@@ -756,7 +756,8 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	schedMap := map[string]map[string]string{}
 	srows, err := h.Service.ListScheduledExportMap(r.Context(), tenantID, termID)
 	if err != nil {
-		slog.Warn("schedule export query failed", "error", err)
+		respondServerError(w, r, err, "导出排课表生成失败")
+		return
 	}
 	for _, m := range srows {
 		if m.PlanEntryID != nil {

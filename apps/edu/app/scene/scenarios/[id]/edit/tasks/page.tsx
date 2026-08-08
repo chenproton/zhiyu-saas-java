@@ -326,7 +326,9 @@ export default function TasksEditPage() {
             }
           })
         } catch (err) {
+          // 权重拉取失败：中止加载——后续保存会把均分默认值覆盖后端真实权重，宁可明确报错
           reportError(err, '加载任务权重')
+          throw err
         }
         setTaskStates(states)
 

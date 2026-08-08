@@ -663,6 +663,9 @@ type ClassPlanRow struct {
 
 // ListClassPlans 教师班级计划。
 func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantID *string) ([]ClassPlanRow, error) {
+	if tenantID == nil {
+		return nil, nil
+	}
 	query := `
 		SELECT se.id::text, COALESCE(se.plan_entry_id::text, ''), se.course_name, se.type, se.day_of_week,
 			se.periods, se.start_week, se.end_week, se.week_pattern, se.status,

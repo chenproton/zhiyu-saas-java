@@ -62,9 +62,10 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, ListResponse[domain.CertIssuanceRecord]{Items: items, Total: total})
 }
 
-func normalizeCertTypeID(id string) string {
+func normalizeCertTypeID(id, name string) string {
+	// 未传 certTypeId 时按名称生成确定性 ID，避免空串写入 uuid NOT NULL 列导致 500
 	if id == "" {
-		return ""
+		id = name
 	}
 	if u, err := uuid.Parse(id); err == nil {
 		return u.String()
@@ -123,7 +124,7 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 	id, err := h.Store.CreateTemplate(r.Context(), store.MicroCertTemplateCreateParams{
 		TenantID:     tenantID,
 		Title:        req.Title,
-		CertTypeID:   normalizeCertTypeID(req.CertTypeID),
+		CertTypeID:   normalizeCertTypeID(req.CertTypeID, req.CertTypeName),
 		CertTypeName: req.CertTypeName,
 		Content:      req.Content,
 		CoverImage:   req.CoverImage,
@@ -174,7 +175,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 
 	if err := h.Store.UpdateTemplate(r.Context(), id, store.MicroCertTemplateUpdateParams{
 		Title:        req.Title,
-		CertTypeID:   normalizeCertTypeID(req.CertTypeID),
+		CertTypeID:   normalizeCertTypeID(req.CertTypeID, req.CertTypeName),
 		CertTypeName: req.CertTypeName,
 		Content:      req.Content,
 		CoverImage:   req.CoverImage,

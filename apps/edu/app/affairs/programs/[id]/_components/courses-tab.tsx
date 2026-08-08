@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,7 +79,11 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
     onBusyChange?.({ saving, loading })
   }, [saving, loading, onBusyChange])
 
+  // 请求序号：programId 快速切换时丢弃过期响应
+  const loadSeqRef = useRef(0)
+
   const loadCourses = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     try {
       const res = await programApi.listCourses(programId)
       const loadedRows: CourseRow[] = res.items.map((c) => ({
@@ -126,6 +130,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
           positionId: pid,
         })
       })
+      if (seq !== loadSeqRef.current) return
       displayRows.push(...regular)
       setRows(displayRows)
     } catch (err: any) {

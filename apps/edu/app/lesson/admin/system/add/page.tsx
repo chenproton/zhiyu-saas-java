@@ -134,6 +134,11 @@ function AddSystemPageInner() {
   const [abilityPool, setAbilityPool] = useState<
     { id: string; name: string; code?: string; description?: string }[]
   >([])
+  // 池渲染期同步到 ref：课程加载 effect 不依赖池变化，避免池加载完成后重跑重置用户编辑
+  const abilityPoolRef = useRef(abilityPool)
+  useEffect(() => {
+    abilityPoolRef.current = abilityPool
+  }, [abilityPool])
 
   /* module 4: per-node assessment */
   const [nodeEvalRuleConfig, setNodeEvalRuleConfig] = useState<EvalRuleConfig | undefined>(
@@ -194,7 +199,7 @@ function AddSystemPageInner() {
         setOriginalStatus(course.status || 'draft')
         setAbilityPoints(
           (course.abilityPointIds || []).map((id: string) => {
-            const found = abilityPool.find((a) => a.id === id)
+            const found = abilityPoolRef.current.find((a) => a.id === id)
             return found || { id, name: id }
           }),
         )
@@ -235,7 +240,7 @@ function AddSystemPageInner() {
     return () => {
       cancelled = true
     }
-  }, [editId, abilityPool, t])
+  }, [editId, t])
 
   const handleAddNode = useCallback(
     (
@@ -586,9 +591,9 @@ function AddSystemPageInner() {
       if (confirmNodeId === selectedNodeIdRef.current) {
         setKnowledgePoints([])
         setSelectedResourceIds([])
+        setNodeEvalRuleConfig(undefined)
       }
     }
-    setNodeEvalRuleConfig(undefined)
   }, [
     grainSelectedId,
     selectedNodeId,
@@ -667,7 +672,9 @@ function AddSystemPageInner() {
             } as any)
             kpIdMapping.set(kp.id, created.id)
           } catch (createErr) {
+            // 创建失败即中止保存：继续会导致该知识点被过滤静默丢失（无提示的数据缺失）
             reportError(createErr, '创建自定义知识点')
+            throw new Error(t('创建自定义知识点「{name}」失败', { name: kp.name }))
           }
         }
         const knowledgePointIds = resolveKnowledgePointIds(kpList, kpIdMapping)
@@ -725,13 +732,19 @@ function AddSystemPageInner() {
       const refreshed = await courseNodeApi.list({ courseId: effectiveCourseId })
       const refreshedNodes = refreshed.items || []
       setNodes(refreshedNodes)
+      // 重映射选中节点：本地 temp id → 后端真实 id（与 hybrid 版行为一致）
+      if (selectedNodeIdRef.current && !refreshedNodes.some((n) => n.id === selectedNodeIdRef.current)) {
+        const prevName = nodesRef.current.find((x) => x.id === selectedNodeIdRef.current)?.name
+        const created = refreshedNodes.find((n) => n.name === prevName && !n.id.startsWith('node-'))
+        if (created) setSelectedNodeId(created.id)
+      }
       const newModes: Record<string, AddMode> = {}
       refreshedNodes.forEach((n) => {
         if (n.type !== 'original') newModes[n.id] = 'upload'
       })
       setNodeModes((prev) => ({ ...prev, ...newModes }))
     },
-    [resourcePool, setNodes, setNodeModes, contentCode],
+    [resourcePool, setNodes, setNodeModes, contentCode, t],
   )
 
   const handleSave = useCallback(async () => {

@@ -119,7 +119,7 @@ func newStore(q Queryer) *Store {
 	}
 	return &Store{
 		q:                q,
-		resourceLib:      NewResourceLibraryStore(q),
+		resourceLib:      NewResourceLibraryStore(q, beginner),
 		tenants:          NewTenantStore(q),
 		tenantAdmins:     NewTenantAdminStore(q),
 		organizations:    NewOrganizationStore(q),
@@ -131,7 +131,7 @@ func newStore(q Queryer) *Store {
 		taskBindings:     NewTaskKnowledgeAbilityStore(q),
 		knowledgePoint:   NewKnowledgePointStore(q),
 		nodeHomework:     NewNodeHomeworkStore(q),
-		resourceBind:     NewResourceBindingStore(q),
+		resourceBind:     NewResourceBindingStore(q, beginner),
 		positionAbility:  NewPositionAbilityStore(q),
 		positionResp:     NewPositionResponsibilityStore(q),
 		positionCert:     NewPositionCertificateStore(q),
@@ -152,7 +152,7 @@ func newStore(q Queryer) *Store {
 		exams:            NewExamStore(q),
 		examResults:      NewExamResultStore(q),
 		examUsages:       NewExamUsageStore(q),
-		randomDrawQ:      NewRandomDrawQuestionStore(q),
+		randomDrawQ:      NewRandomDrawQuestionStore(q, beginner),
 		certGrades:       NewCertGradeStore(q),
 		scheduling:       NewSchedulingStore(q),
 		certifications:   NewCertificationStore(q),
