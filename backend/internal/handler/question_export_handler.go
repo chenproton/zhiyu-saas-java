@@ -70,6 +70,7 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 		f.SetCellStyle(sheet, cell, cell, wrapAlign)
 	}
 
+	failed := 0
 	for ri, qid := range questionIDs {
 		var qType, content, answerJSON, analysis, difficulty, source string
 		var score float64
@@ -82,6 +83,7 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 			WHERE id=$1 AND bank_id=$2 AND tenant_id=$3
 		`, qid, bankID, tenantID).Scan(&qType, &content, &optionsJSON, &answerJSON, &analysis, &score, &difficulty, &knowledgePointIDs, &source)
 		if err != nil {
+			failed++
 			slog.Warn("导出题目行跳过", "questionId", qid, "error", err)
 			continue
 		}
@@ -115,6 +117,9 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 		f.SetRowHeight("题目明细", r, 24)
 	}
 
+	if failed > 0 {
+		return fmt.Errorf("%d 个题目数据导出失败", failed)
+	}
 	return nil
 }
 

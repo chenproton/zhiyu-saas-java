@@ -79,7 +79,7 @@ func buildTeachingPlanExcel(plan *domain.TeachingPlan, entries []domain.Teaching
 	s2, _ := f.NewSheet(entrySheet)
 	f.SetActiveSheet(s2)
 	headers := []string{"序号", "课程", "课程编码", "学分", "总学时", "周学时", "起止周", "周次模式", "班级", "教师", "场地类型"}
-	widths := []float64{6, 26, 14, 8, 8, 8, 8, 12, 10, 28, 16, 12}
+	widths := []float64{6, 26, 14, 8, 8, 8, 8, 12, 10, 28, 16}
 	for ci, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(ci+1, 1)
 		f.SetCellValue(entrySheet, cell, h)

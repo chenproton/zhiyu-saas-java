@@ -106,29 +106,3 @@ export interface GraduationProjectEvaluationFormData {
   comprehensiveGrade: EvaluationGrade
   isExcellent: boolean
 }
-
-// ==================== 毕业设计演示用扩展类型 ====================
-
-export interface ProcessEvaluation {
-  id: string
-  archiveId: string
-  studentName: string
-  topicName: string
-  phase: 'proposal' | 'midterm' | 'process'
-  advisorScore: number
-  comment: string
-  evaluatedAt: Date
-}
-
-export interface RectificationDetail {
-  id: string
-  archiveId: string
-  studentId: string
-  studentName: string
-  topicName: string
-  requirement: string
-  deadline: Date
-  status: 'pending' | 'submitted' | 'approved'
-  studentResponse?: string
-  submittedAt?: Date
-}

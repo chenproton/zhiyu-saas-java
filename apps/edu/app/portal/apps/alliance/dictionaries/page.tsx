@@ -30,7 +30,6 @@ function DictionaryTab({ dictType }: { dictType: string }) {
   const [editId, setEditId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AllianceDictionary | null>(null)
-  const [, setDeleting] = useState(false)
   const fetchItems = useCallback(async () => {
     if (!tenantId) return
 
@@ -81,7 +80,6 @@ function DictionaryTab({ dictType }: { dictType: string }) {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    setDeleting(true)
     try {
       await portalRequest(`/alliance/dictionaries/${dictType}/${deleteTarget.id}`, {
         method: 'DELETE',
@@ -92,7 +90,6 @@ function DictionaryTab({ dictType }: { dictType: string }) {
     } catch (e: any) {
       toast({ title: t('删除失败'), description: e.message, variant: 'destructive' })
     } finally {
-      setDeleting(false)
     }
   }
 

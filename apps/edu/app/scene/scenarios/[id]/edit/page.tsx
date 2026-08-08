@@ -22,12 +22,10 @@ import {
   positionApi,
   industryApi,
   sceneBatchApi,
-  userManagementApi,
   scenarioApi,
   fileApi,
   majorApi,
 } from '@/lib/api'
-import type { User } from '@/lib/api'
 import type { CareerPosition } from '@/lib/types/job'
 import type { Industry, Major } from '@/lib/types/backend'
 import type { SceneBatch } from '@/lib/types/scene'
@@ -53,7 +51,6 @@ export default function ScenarioEditPage() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [majors, setMajors] = useState<Major[]>([])
   const [batches, setBatches] = useState<SceneBatch[]>([])
-  const [, setUsers] = useState<User[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -78,18 +75,16 @@ export default function ScenarioEditPage() {
     const loadData = async () => {
       setDataLoading(true)
       try {
-        const [posRes, indRes, batchRes, userRes, majRes, scenario] = await Promise.all([
+        const [posRes, indRes, batchRes, majRes, scenario] = await Promise.all([
           positionApi.list({ limit: 1000 }),
           industryApi.list({ limit: 1000 }),
           sceneBatchApi.list({ limit: 1000 }),
-          userManagementApi.list({ limit: 1000 }),
           majorApi.list({ limit: 1000 }),
           scenarioApi.get(scenarioId),
         ])
         setAllPositions(posRes.items)
         setIndustries(indRes.items)
         setBatches(batchRes.items)
-        setUsers(userRes.items)
         setMajors(majRes.items.filter((m) => m.enabled))
 
         setScenarioName(scenario.name || '')

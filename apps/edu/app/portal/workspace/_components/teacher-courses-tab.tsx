@@ -654,7 +654,6 @@ export function TeacherCoursesTab({
   const [prepPlanName, setPrepPlanName] = useState('')
   const [prepIsHybrid, setPrepIsHybrid] = useState(true)
   const [prepUrl, setPrepUrl] = useState('')
-  const [, setPrepSessionLabels] = useState<Record<string, string>>({})
 
   const [hybridGradeDialogOpen, setHybridGradeDialogOpen] = useState(false)
   const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
@@ -1007,10 +1006,6 @@ export function TeacherCoursesTab({
                                                   setPrepIsHybrid(isHybrid)
                                                   setPrepUrl(accentColors.prepUrl)
                                                   setPrepDialogOpen(true)
-                                                  setPrepSessionLabels((prev) => ({
-                                                    ...prev,
-                                                    [session.id]: `${session.weekday} ${session.period}`,
-                                                  }))
                                                 }}
                                               >
                                                 {t('修改关联')}
@@ -1035,10 +1030,6 @@ export function TeacherCoursesTab({
                                             setPrepIsHybrid(isHybrid)
                                             setPrepUrl(accentColors.prepUrl)
                                             setPrepDialogOpen(true)
-                                            setPrepSessionLabels((prev) => ({
-                                              ...prev,
-                                              [session.id]: `${session.weekday} ${session.period}`,
-                                            }))
                                           }}
                                         >
                                           <ExternalLink className="h-3 w-3 mr-0.5" />

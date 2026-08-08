@@ -188,7 +188,6 @@ export function EvaluationRulesEditor({
   const [methodInstanceCounts] = useState<Record<string, number>>({})
 
   const [showAddQuestion, setShowAddQuestion] = useState(false)
-  const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
 
   const [rdqSearch, setRdqSearch] = useState('')
   const [rdqActionOpen, setRdqActionOpen] = useState(false)
@@ -209,7 +208,6 @@ export function EvaluationRulesEditor({
   const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
   const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
 
-  const [, setPaperDetailOpen] = useState(false)
 
   const [rubricKpDialogOpen, setRubricKpDialogOpen] = useState(false)
   const [rubricKpTargetPointId, setRubricKpTargetPointId] = useState<string | null>(null)
@@ -1971,7 +1969,7 @@ export function EvaluationRulesEditor({
                     )
                   })()}
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setPaperDetailOpen(false)}>
+                    <Button variant="outline" onClick={() => setPaperDetailOpenLocal(false)}>
                       {t('关闭')}
                     </Button>
                   </DialogFooter>
@@ -4390,19 +4388,6 @@ export function EvaluationRulesEditor({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={questionDetailOpen} onOpenChange={setQuestionDetailOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('题目详情')}</DialogTitle>
-          </DialogHeader>
-          {null}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuestionDetailOpen(false)}>
-              {t('关闭')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={showAddQuestion} onOpenChange={setShowAddQuestion}>
         <DialogContent className="sm:max-w-md">

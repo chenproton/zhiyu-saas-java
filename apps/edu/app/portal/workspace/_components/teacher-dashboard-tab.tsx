@@ -100,7 +100,6 @@ export function TeacherDashboardTab({
   const [hybridGradeSessionTitle, setHybridGradeSessionTitle] = useState('')
   const [hybridGradeClassName, setHybridGradeClassName] = useState('')
   const [hybridGradeCourseId, setHybridGradeCourseId] = useState('')
-  const [, setPrepSessionLabels] = useState<Record<string, string>>({})
 
   return (
     <div className="space-y-3">
@@ -114,15 +113,13 @@ export function TeacherDashboardTab({
               classPlans={classPlans}
               classSessions={classSessions}
               prepAssociations={prepAssociations}
-              onPrepRequest={(planId, sessionId, planName, isHybrid, url, sessionLabel) => {
+              onPrepRequest={(planId, sessionId, planName, isHybrid, url) => {
                 setPrepPlanId(planId)
                 setPrepSessionId(sessionId)
                 setPrepPlanName(planName)
                 setPrepIsHybrid(isHybrid)
                 setPrepUrl(url)
                 setPrepDialogOpen(true)
-                if (sessionLabel)
-                  setPrepSessionLabels((prev) => ({ ...prev, [sessionId]: sessionLabel }))
               }}
               onGradeRequest={(title, className, isHybrid, courseId) => {
                 if (isHybrid) {
@@ -325,7 +322,6 @@ interface CourseScheduleTableProps {
     planName: string,
     isHybrid: boolean,
     url: string,
-    sessionLabel?: string,
   ) => void
   onGradeRequest?: (title: string, className: string, isHybrid: boolean, courseId?: string) => void
 }
@@ -654,7 +650,6 @@ function CourseScheduleTable({
                                         event.title,
                                         urls.isHybrid,
                                         urls.prepUrl,
-                                        `${days[event.dayOfWeek - 1]} ${event.period}`,
                                       )
                                   }}
                                 >
@@ -679,7 +674,6 @@ function CourseScheduleTable({
                                   event.title,
                                   urls.isHybrid,
                                   urls.prepUrl,
-                                  `${days[event.dayOfWeek - 1]} ${event.period}`,
                                 )
                             }}
                           >
