@@ -92,7 +92,7 @@
 | 场景 | 命令 |
 |------|------|
 | 全量巡检（三角色 × 全部页面） | `node scripts/ui-smoke/ui-smoke.mjs` |
-| 单角色快速巡检 | `node scripts/ui-smoke/ui-smoke.mjs --roles teacher --max-clicks 15` |
+| 单角色快速巡检 | `node scripts/ui-smoke/ui-smoke.mjs --roles teacher` |
 | 抓取后端容器日志增量 | `node scripts/ui-smoke/ui-smoke.mjs --tail-backend` |
 | 只查一个页面（调试） | `node scripts/ui-smoke/ui-smoke.mjs --route /portal/apps/system` |
 
@@ -101,7 +101,7 @@
 - **必须走 nginx 网关**（默认 `http://127.0.0.1`），直连 3020 会导致 `/api/` 代理失败
 - 依赖系统 Chrome（`channel: 'chrome'`），首次使用在 `scripts/ui-smoke` 下 `pnpm install` 即可
 - 巡检账号：`school/school123`、`teacher/teacher123`、`student/student123`（portal 平台测试账号）
-- 默认跳过会修改数据的按钮（保存/提交/删除等），弹窗只打开后 Esc 关闭，不污染数据
+- **每页点完所有唯一可点元素**（含弹窗/下拉/Tab 切换后新出现的元素；表格每行按钮逐个点），弹窗只打开后 Esc 关闭，不污染数据；`--max-clicks` 仅作安全阀（默认 100）
 - 报告输出到 `/tmp/zhiyu-ui-smoke/report.json`，`errors[].type` 中 `api` 即后端服务端错误信号；`status: skip` 为无权限页，属预期
 
 ## 七、AI 协作者约定
