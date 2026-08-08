@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -488,7 +489,11 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	entry, _ := h.fetchScheduleEntry(ctx, id, tenantID)
+	entry, err := h.fetchScheduleEntry(ctx, id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "创建排课失败")
+		return
+	}
 	respondJSON(w, http.StatusCreated, entry)
 }
 
@@ -571,7 +576,11 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	entry, _ := h.fetchScheduleEntry(ctx, id, tenantID)
+	entry, err := h.fetchScheduleEntry(ctx, id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "更新排课失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, entry)
 }
 
@@ -736,7 +745,10 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 
 	// 已排课映射：plan_entry_id -> (day, periods, teacherName, venueName, classNames)
 	schedMap := map[string]map[string]string{}
-	srows, _ := h.Service.ListScheduledExportMap(r.Context(), tenantID, termID)
+	srows, err := h.Service.ListScheduledExportMap(r.Context(), tenantID, termID)
+	if err != nil {
+		slog.Warn("schedule export query failed", "error", err)
+	}
 	for _, m := range srows {
 		if m.PlanEntryID != nil {
 			schedMap[*m.PlanEntryID] = map[string]string{
@@ -775,7 +787,10 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.NewSheet(teacherSheet)
 	f.SetCellValue(teacherSheet, "A1", "教师姓名")
 	f.SetCellStyle(teacherSheet, "A1", "A1", hdrStyle)
-	teacherNames, _ := h.Service.ListTeacherNames(r.Context(), tenantID)
+	teacherNames, err := h.Service.ListTeacherNames(r.Context(), tenantID)
+	if err != nil {
+		slog.Warn("schedule export query failed", "error", err)
+	}
 	ti := 2
 	for _, n := range teacherNames {
 		if cell, err := excelize.CoordinatesToCellName(1, ti); err == nil {
@@ -792,7 +807,10 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.SetCellStyle(venueSheet, "A1", "A1", hdrStyle)
 	f.SetCellValue(venueSheet, "B1", "类型")
 	f.SetCellStyle(venueSheet, "B1", "B1", hdrStyle)
-	venueBriefs, _ := h.Service.ListVenueBriefs(r.Context(), tenantID)
+	venueBriefs, err := h.Service.ListVenueBriefs(r.Context(), tenantID)
+	if err != nil {
+		slog.Warn("schedule export query failed", "error", err)
+	}
 	vi := 2
 	for _, v := range venueBriefs {
 		if c1, e1 := excelize.CoordinatesToCellName(1, vi); e1 == nil {
@@ -811,7 +829,10 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.NewSheet(classSheet)
 	f.SetCellValue(classSheet, "A1", "班级名称")
 	f.SetCellStyle(classSheet, "A1", "A1", hdrStyle)
-	classNames, _ := h.Service.ListClassNames(r.Context(), tenantID)
+	classNames, err := h.Service.ListClassNames(r.Context(), tenantID)
+	if err != nil {
+		slog.Warn("schedule export query failed", "error", err)
+	}
 	ci2 := 2
 	for _, n := range classNames {
 		if cell, err := excelize.CoordinatesToCellName(1, ci2); err == nil {
@@ -830,7 +851,10 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.SetCellStyle(periodSheet, "B1", "B1", hdrStyle)
 	f.SetCellValue(periodSheet, "C1", "结束时间")
 	f.SetCellStyle(periodSheet, "C1", "C1", hdrStyle)
-	periodSlots, _ := h.Service.ListPeriodSlots(r.Context(), tenantID)
+	periodSlots, err := h.Service.ListPeriodSlots(r.Context(), tenantID)
+	if err != nil {
+		slog.Warn("schedule export query failed", "error", err)
+	}
 	pi := 2
 	for _, ps := range periodSlots {
 		s, e := "", ""

@@ -476,7 +476,11 @@ func (h *CertificationHandler) PutFullRule(w http.ResponseWriter, r *http.Reques
 		respondServerError(w, r, err, "保存认证规则失败")
 		return
 	}
-	rule, _ := h.Service.GetCertificationRule(r.Context(), id)
+	rule, err := h.Service.GetCertificationRule(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "保存认证规则失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, rule)
 }
 

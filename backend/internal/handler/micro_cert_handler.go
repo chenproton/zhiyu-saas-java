@@ -133,7 +133,11 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	template, _ := h.Store.GetTemplate(r.Context(), id)
+	template, err := h.Store.GetTemplate(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "创建微证书模板失败")
+		return
+	}
 	respondJSON(w, http.StatusCreated, template)
 }
 
@@ -179,7 +183,11 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	template, _ := h.Store.GetTemplate(r.Context(), id)
+	template, err := h.Store.GetTemplate(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "更新微证书模板失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, template)
 }
 

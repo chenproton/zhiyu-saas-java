@@ -17,6 +17,7 @@ import {
 import { StatusBadge, useToast } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
 import { favoriteApi, positionApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import type { CareerPosition, Scenario, Course, QuestionBank, Exam } from '@/lib/types'
 import type { FavoriteTargetType } from '@/lib/api'
 import { JobCard } from '@/components/job/student/job-card'
@@ -278,8 +279,14 @@ export function CareerTab() {
       setLoading(true)
       try {
         const [jobsRes, favRes] = await Promise.all([
-          positionApi.listFavorites().catch(() => null),
-          favoriteApi.list().catch(() => null),
+          positionApi.listFavorites().catch((e) => {
+            reportError(e, '加载岗位收藏')
+            return null
+          }),
+          favoriteApi.list().catch((e) => {
+            reportError(e, '加载收藏')
+            return null
+          }),
         ])
         if (cancelled) return
         setFavorites({

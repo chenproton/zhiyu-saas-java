@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Download, FileSpreadsheet, FileUp, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { toast } from '@zhiyu/ui'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { useImportFlow } from '@/hooks/use-import-flow'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -50,13 +51,21 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
 
   // 下载当前学期教学计划数据（含参考表），编辑后回传导入
   const handleDownloadTemplate = async () => {
-    const { authedFetch, downloadBlob } = await import('@zhiyu/api-client')
-    const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.error || `HTTP ${res.status}`)
+    try {
+      const { authedFetch, downloadBlob } = await import('@zhiyu/api-client')
+      const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      downloadBlob(await res.blob(), '排课导入模板.xlsx')
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('下载失败'),
+        description: err instanceof Error ? err.message : t('请稍后重试'),
+      })
     }
-    downloadBlob(await res.blob(), '排课导入模板.xlsx')
   }
 
   const doImport = async (mode: 'skip' | 'overwrite') => {

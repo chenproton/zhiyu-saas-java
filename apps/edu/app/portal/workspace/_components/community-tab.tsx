@@ -161,6 +161,11 @@ export function CommunityTab() {
       await loadTopics(sort)
     } catch (e) {
       reportError(e, '发布话题失败')
+      toast({
+        variant: 'destructive',
+        title: t('发布失败'),
+        description: e instanceof Error ? e.message : t('请稍后重试'),
+      })
     } finally {
       setPostSubmitting(false)
     }

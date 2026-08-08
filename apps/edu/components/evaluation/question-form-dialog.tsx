@@ -51,6 +51,7 @@ import type {
 } from '@/lib/types'
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface QuestionFormDialogProps {
@@ -108,7 +109,8 @@ export function QuestionFormDialog({
         const res = await knowledgeApi.list({ limit: 1000 })
         if (cancelled) return
         setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
-      } catch (_err) {
+      } catch (err) {
+        reportError(err, '加载知识点列表')
       } finally {
         if (!cancelled) setLoadingKnowledgePoints(false)
       }

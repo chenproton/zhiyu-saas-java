@@ -172,7 +172,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
-		record, _ = h.Service.GetApproval(r.Context(), id)
+		record, err = h.Service.GetApproval(r.Context(), id)
+		if err != nil {
+			respondServerError(w, r, err, "查询审批记录失败")
+			return
+		}
 		respondJSON(w, http.StatusOK, record)
 		return
 	}
@@ -193,7 +197,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			respondServerError(w, r, err, "更新审批记录失败")
 			return
 		}
-		record, _ = h.Service.GetApproval(r.Context(), id)
+		record, err = h.Service.GetApproval(r.Context(), id)
+		if err != nil {
+			respondServerError(w, r, err, "查询审批记录失败")
+			return
+		}
 		respondJSON(w, http.StatusOK, record)
 		return
 	}
@@ -218,7 +226,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	if syncStatus {
 		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
 	}
-	record, _ = h.Service.GetApproval(r.Context(), id)
+	record, err = h.Service.GetApproval(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询审批记录失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, record)
 }
 

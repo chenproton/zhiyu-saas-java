@@ -63,7 +63,11 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	updated, _ := h.Store.GetSchoolInfo(r.Context(), tenantID)
+	updated, err := h.Store.GetSchoolInfo(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "更新学校信息失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, updated)
 }
 
@@ -148,7 +152,11 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 		return
 	}
 
-	item, _ := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
+	item, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "创建失败")
+		return
+	}
 	respondJSON(w, http.StatusCreated, item)
 }
 
@@ -207,7 +215,11 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 		return
 	}
 
-	item, _ := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
+	item, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "更新失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, item)
 }
 

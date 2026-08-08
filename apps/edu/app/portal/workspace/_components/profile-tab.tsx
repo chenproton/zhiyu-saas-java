@@ -33,6 +33,7 @@ import { AccountInfoForm } from './account-info-form'
 import { ChangePasswordForm } from './change-password-form'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { studentHonorApi, fileApi } from '@/lib/api'
+import { toast } from '@zhiyu/ui'
 import type { StudentHonor } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -139,8 +140,13 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
       }
       setHonorDialogOpen(false)
       await loadHonors()
-    } catch {
-      // 保存失败保持弹窗
+    } catch (err) {
+      // 保存失败保持弹窗并提示
+      toast({
+        variant: 'destructive',
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('请稍后重试'),
+      })
     } finally {
       setSaving(false)
     }
@@ -151,8 +157,13 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
     try {
       await studentHonorApi.remove(id)
       setHonors((list) => list.filter((h) => h.id !== id))
-    } catch {
-      // 删除失败忽略
+    } catch (err) {
+      // 删除失败提示
+      toast({
+        variant: 'destructive',
+        title: t('删除失败'),
+        description: err instanceof Error ? err.message : t('请稍后重试'),
+      })
     } finally {
       setDeletingId(null)
     }

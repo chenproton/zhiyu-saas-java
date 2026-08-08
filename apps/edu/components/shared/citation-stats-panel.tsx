@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { CitationStats, UncitedItem } from '@/lib/types/library'
 import { UncitedResourcesDialog } from './uncited-resources-dialog'
+import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface CitationStatsPanelProps {
@@ -63,8 +64,9 @@ export function CitationStatsPanel({
     try {
       const res = await fetchStats(resourceType ? { resourceType } : undefined)
       setStats(res)
-    } catch {
+    } catch (err) {
       setStats(null)
+      reportError(err, '加载引用统计')
     }
   }, [fetchStats, resourceType])
 

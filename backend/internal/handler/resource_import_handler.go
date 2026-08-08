@@ -280,7 +280,11 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 			continue
 		}
 		if !preview {
-			_, _ = h.DB.Exec(ctx, `UPDATE industries SET parent_id=$1, updated_at=NOW() WHERE id=$2 AND tenant_id=$3`, parentID, id, tenantID)
+			if _, err := h.DB.Exec(ctx, `UPDATE industries SET parent_id=$1, updated_at=NOW() WHERE id=$2 AND tenant_id=$3`, parentID, id, tenantID); err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]父级关联更新失败: %v", code, err))
+				continue
+			}
 		}
 	}
 
@@ -721,7 +725,11 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 				var uid string
 				_ = h.DB.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND username=$2 LIMIT 1`, tenantID, username).Scan(&uid)
 				if uid != "" {
-					_, _ = h.DB.Exec(ctx, `UPDATE users SET title_ids=$1 WHERE id=$2`, titleIDs, uid)
+					if _, err := h.DB.Exec(ctx, `UPDATE users SET title_ids=$1 WHERE id=$2`, titleIDs, uid); err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]职称绑定失败: %v", username, err))
+						continue
+					}
 				}
 			}
 			result.TeacherCreated++

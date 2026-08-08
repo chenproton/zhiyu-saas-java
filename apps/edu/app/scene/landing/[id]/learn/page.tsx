@@ -323,14 +323,23 @@ export default function SceneLearnPage() {
 
   const handleSubmitMethod = async (payload: EvalMethodSubmitPayload) => {
     if (!user?.id || !activeTaskId) return
-    await evaluationResultApi.submit({
-      taskId: activeTaskId,
-      sceneId: id,
-      methodKey: payload.methodKey,
-      evaluateeId: user.id,
-      maxScore: payload.maxScore,
-      subjectiveContent: payload.subjectiveContent,
-    })
+    try {
+      await evaluationResultApi.submit({
+        taskId: activeTaskId,
+        sceneId: id,
+        methodKey: payload.methodKey,
+        evaluateeId: user.id,
+        maxScore: payload.maxScore,
+        subjectiveContent: payload.subjectiveContent,
+      })
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('提交失败'),
+        description: err instanceof Error ? err.message : t('请稍后重试'),
+      })
+      throw err
+    }
     setSubmittedMethodKeys((prev) => new Set([...Array.from(prev), payload.methodKey]))
   }
 

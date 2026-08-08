@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -41,7 +42,11 @@ func (h *NodeEvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request
 	id := chi.URLParam(r, "id")
 	res, err := h.Service.GetByID(r.Context(), tenantID, id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "评价结果不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "评价结果不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询评价结果失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, res)

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -104,7 +105,10 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *PortalHandler) listAnnouncements(ctx context.Context, role string, tenantID *string) []domain.WorkspaceAnnouncement {
-	rows, _ := h.Service.ListAnnouncements(ctx, role, tenantID)
+	rows, err := h.Service.ListAnnouncements(ctx, role, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 	var items []domain.WorkspaceAnnouncement
 	for _, a := range rows {
 		items = append(items, domain.WorkspaceAnnouncement{
@@ -146,7 +150,10 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 	}
 	if role == domain.RoleTeacher || role == domain.RoleSchoolAdmin || role == "school" {
 		periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
-		rows, _ := h.Service.ListTeacherSchedules(ctx, userID, tenantID)
+		rows, err := h.Service.ListTeacherSchedules(ctx, userID, tenantID)
+		if err != nil {
+			slog.Error("portal dashboard query failed", "error", err)
+		}
 		for _, se := range rows {
 			eventType := "course"
 			if se.EntryType == "scene" {
@@ -170,7 +177,10 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 	} else if role == domain.RoleStudent {
 		if classNodeID != "" {
 			periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
-			rows, _ := h.Service.ListStudentSchedules(ctx, classNodeID, tenantID)
+			rows, err := h.Service.ListStudentSchedules(ctx, classNodeID, tenantID)
+			if err != nil {
+				slog.Error("portal dashboard query failed", "error", err)
+			}
 			for _, se := range rows {
 				eventType := "course"
 				if se.EntryType == "scene" {
@@ -241,7 +251,10 @@ func (h *PortalHandler) schoolAdminResourceGrowth(ctx context.Context, tenantID 
 }
 
 func (h *PortalHandler) schoolAdminPersonnelStats(ctx context.Context, tenantID *string) []domain.WorkspacePersonnelStat {
-	rows, _ := h.Service.PersonnelStats(ctx, tenantID)
+	rows, err := h.Service.PersonnelStats(ctx, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 	counts := map[string]int{}
 	for _, r := range rows {
 		counts[r.Code] = r.Count
@@ -255,7 +268,10 @@ func (h *PortalHandler) schoolAdminPersonnelStats(ctx context.Context, tenantID 
 }
 
 func (h *PortalHandler) schoolAdminTodos(ctx context.Context, tenantID *string) []domain.WorkspaceTodo {
-	rows, _ := h.Service.SchoolAdminTodos(ctx, tenantID)
+	rows, err := h.Service.SchoolAdminTodos(ctx, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 	typeLabels := map[string]string{
 		"course":           "待审批课程",
 		"scenario":         "待审批场景",
@@ -279,7 +295,10 @@ func (h *PortalHandler) schoolAdminTodos(ctx context.Context, tenantID *string) 
 
 func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceCourse {
 	ratio := h.Service.CreditHoursRatio(ctx)
-	rows, _ := h.Service.ListStudentCourses(ctx, userID, tenantID)
+	rows, err := h.Service.ListStudentCourses(ctx, userID, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 
 	var items []domain.WorkspaceCourse
 	courseIDs := make([]string, 0, 50)
@@ -301,7 +320,10 @@ func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, t
 }
 
 func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceSceneTask {
-	rows, _ := h.Service.ListSceneTasks(ctx, userID, tenantID)
+	rows, err := h.Service.ListSceneTasks(ctx, userID, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 
 	var items []domain.WorkspaceSceneTask
 	taskIDs := make([]string, 0, 50)
@@ -324,7 +346,10 @@ func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string
 }
 
 func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceExam {
-	rows, _ := h.Service.ListStudentExams(ctx, userID, tenantID, h.Service.UserClassNodeID(ctx, userID, tenantID))
+	rows, err := h.Service.ListStudentExams(ctx, userID, tenantID, h.Service.UserClassNodeID(ctx, userID, tenantID))
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 	var items []domain.WorkspaceExam
 	for _, e := range rows {
 		duration := 0
@@ -351,7 +376,10 @@ func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, ten
 }
 
 func (h *PortalHandler) listTeacherCourses(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceTeacherCourse {
-	rows, _ := h.Service.ListTeacherCourses(ctx, userID, tenantID)
+	rows, err := h.Service.ListTeacherCourses(ctx, userID, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 
 	var items []domain.WorkspaceTeacherCourse
 	courseIDs := make([]string, 0, 50)
@@ -378,7 +406,10 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 	}
 
 	periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
-	rows, _ := h.Service.ListClassPlans(ctx, userID, tenantID)
+	rows, err := h.Service.ListClassPlans(ctx, userID, tenantID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 
 	type planKey struct{ planEntryID, course, term string }
 	planIndex := map[planKey]int{}
