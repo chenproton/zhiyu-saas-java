@@ -31,20 +31,17 @@ func splitNames(s string) []string {
 
 // lookupIDsByNames 按租户+名称批量查找记录 ID（名称多值用分号分隔），
 // 未命中的名称忽略，返回命中的 ID 列表。
-// 仅供 import/export 豁免区使用。
 func lookupIDsByNames(ctx context.Context, db store.Queryer, table, tenantID, names string) []string {
 	return store.LookupIDsByNames(ctx, db, table, tenantID, names)
 }
 
 // lookupSingleIDByName 按租户+名称查找单个记录 ID（名称多值时取第一个），
 // 未命中时返回 nil。
-// 仅供 import/export 豁免区使用。
 func lookupSingleIDByName(ctx context.Context, db store.Queryer, table, tenantID, names string) *string {
 	return store.LookupSingleIDByName(ctx, db, table, tenantID, names)
 }
 
 // jsonBytes 将任意值序列化为 JSON 字节，序列化失败时返回 "[]"。
-// 仅供 import/export 豁免区使用。
 func jsonBytes(v any) []byte {
 	b, err := json.Marshal(v)
 	if err != nil {
