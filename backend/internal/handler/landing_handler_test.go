@@ -17,15 +17,15 @@ import (
 
 // landingEnv 构造 landing handler 测试环境。
 type landingEnv struct {
-	env     *testhelper.TestEnv
-	handler *handler.LandingHandler
-	student string
+	env      *testhelper.TestEnv
+	handler  *handler.LandingHandler
+	student  string
 	student2 string
-	classID string
-	posA    string
-	posB    string
-	posC    string
-	posD    string
+	classID  string
+	posA     string
+	posB     string
+	posC     string
+	posD     string
 }
 
 // setupLandingEnv 构造测试数据：

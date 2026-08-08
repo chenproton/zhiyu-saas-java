@@ -163,7 +163,9 @@ func (s *PortalStore) UserClassNodeID(ctx context.Context, userID string, tenant
 	var classNodeID string
 	if err := s.q.QueryRow(ctx, `
 		SELECT org_node_id FROM users WHERE id = $1 AND ($2::uuid IS NULL OR tenant_id = $2::uuid)
-	`, userID, tenantID).Scan(&classNodeID); err != nil { slog.Warn("portal stat query failed", "error", err) }
+	`, userID, tenantID).Scan(&classNodeID); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
 	return classNodeID
 }
 
@@ -711,7 +713,9 @@ func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantI
 // CreditHoursRatio 查询学分学时比。
 func (s *PortalStore) CreditHoursRatio(ctx context.Context) float64 {
 	var ratio float64
-	if err := s.q.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`, ).Scan(&ratio); err != nil { slog.Warn("portal stat query failed", "error", err) }
+	if err := s.q.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`).Scan(&ratio); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
 	if ratio <= 0 {
 		ratio = 16
 	}
