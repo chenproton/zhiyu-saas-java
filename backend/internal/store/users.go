@@ -286,10 +286,12 @@ func (s *UserStore) RebindUserRole(ctx context.Context, userID, roleID string, t
 	if !validRole {
 		return fmt.Errorf("角色 ID 无效：该角色不属于当前租户")
 	}
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
 		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
-	`, userID)
+	`, userID); err != nil {
+		return err
+	}
 	if _, err := s.q.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
 		return err
 	}

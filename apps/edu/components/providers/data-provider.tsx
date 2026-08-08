@@ -283,7 +283,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addQuestionToExam = useCallback(
     async (examId: string, question: Question, score?: number) => {
       const exam = exams.find((e) => e.id === examId)
-      if (!exam || exam.questions.some((q) => q.questionId === question.id)) return
+      if (!exam || (exam.questions ?? []).some((q) => q.questionId === question.id)) return
       await examApi.addQuestion(examId, question.id, score ?? question.score)
       await loadExams()
     },
@@ -294,7 +294,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     async (examId: string, examQuestionId: string) => {
       const exam = exams.find((e) => e.id === examId)
       if (!exam) return
-      const eq = exam.questions.find((q) => q.id === examQuestionId)
+      const eq = (exam.questions ?? []).find((q) => q.id === examQuestionId)
       if (!eq) return
       await examApi.removeQuestion(examId, eq.questionId)
       await loadExams()
@@ -306,7 +306,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     async (examId: string, examQuestionId: string, score: number) => {
       const exam = exams.find((e) => e.id === examId)
       if (!exam) return
-      const eq = exam.questions.find((q) => q.id === examQuestionId)
+      const eq = (exam.questions ?? []).find((q) => q.id === examQuestionId)
       if (!eq) return
       await examApi.updateQuestionScore(examId, eq.questionId, score)
       await loadExams()

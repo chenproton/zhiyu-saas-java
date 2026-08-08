@@ -19,7 +19,7 @@ export interface Tenant {
   secondaryColleges?: any[]
   educationLevel?: string
   educationNature?: string
-  adminIds: string[]
+  adminIds?: string[]
   status: 'active' | 'inactive'
   createdAt: string
   updatedAt: string

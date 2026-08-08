@@ -150,9 +150,7 @@ export default function TasksEditPage() {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
-  const [, setPositions] = useState<any[]>([])
-  const [, setIndustries] = useState<any[]>([])
-  const [, setMajors] = useState<any[]>([])
+
   const [professions, setProfessions] = useState<any[]>([])
 
   const scenarioDataRef = useRef<Scenario | null>(null)
@@ -202,10 +200,6 @@ export default function TasksEditPage() {
           majorApi.list({ limit: 1000 }),
         ])
         scenarioDataRef.current = scenarioData
-
-        setPositions(posRes.items)
-        setIndustries(indRes.items)
-        setMajors(majRes.items)
 
         const positionName =
           posRes.items.find((p) => p.id === scenarioData.careerPositionId)?.name ||

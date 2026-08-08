@@ -72,7 +72,7 @@ export function ExamFormDialog({ open, onOpenChange, exam, onSubmit }: ExamFormD
     ;(async () => {
       if (exam) {
         setName(exam.name)
-        setDescription(exam.description)
+        setDescription(exam.description || '')
         setCollaboratorIds(exam.collaboratorIds || [])
         setBatchId(exam.batchId || '')
         setCoverUrl(exam.coverImage || '')

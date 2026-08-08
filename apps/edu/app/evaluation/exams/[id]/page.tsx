@@ -258,7 +258,7 @@ export default function ExamComposerPage() {
     if (dragTargetRef.current === index) return
     dragTargetRef.current = index
 
-    const newQuestions = [...exam.questions]
+    const newQuestions = [...(exam.questions ?? [])]
     const [dragged] = newQuestions.splice(draggedIndex, 1)
     newQuestions.splice(index, 0, dragged)
 
@@ -272,7 +272,7 @@ export default function ExamComposerPage() {
   }
 
   const handleEvenDistribution = () => {
-    const qs = exam.questions
+    const qs = exam.questions ?? []
     if (qs.length === 0) return
     const n = qs.length
     const base = Math.floor(100 / n)
@@ -289,7 +289,7 @@ export default function ExamComposerPage() {
   }
 
   const handleProportionalDistribution = () => {
-    const qs = exam.questions
+    const qs = exam.questions ?? []
     if (qs.length === 0) return
     const total = qs.reduce((sum, q) => sum + (q.score || 0), 0)
     if (total <= 0) {
@@ -397,7 +397,7 @@ export default function ExamComposerPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">{t('题目数量')}:</span>{' '}
-                <strong>{exam.questions.length}</strong>
+                <strong>{(exam.questions ?? []).length}</strong>
               </div>
               <div>
                 <span className="text-muted-foreground">{t('总分')}:</span>{' '}
@@ -532,7 +532,7 @@ export default function ExamComposerPage() {
 
         {/* 题目列表 */}
         <ScrollArea className="flex-1">
-          {exam.questions.length === 0 ? (
+          {(exam.questions ?? []).length === 0 ? (
             <div className="flex h-full items-center justify-center p-8 text-center">
               <div>
                 <FileText className="mx-auto mb-2 size-12 text-muted-foreground/50" />
@@ -544,7 +544,7 @@ export default function ExamComposerPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2 p-6">
-              {exam.questions.map((question, index) => (
+              {(exam.questions ?? []).map((question, index) => (
                 <div
                   key={question.id}
                   draggable={canEdit}
@@ -666,7 +666,7 @@ export default function ExamComposerPage() {
       <ScoreConfigDialog
         open={scoreTypeDialogOpen}
         onOpenChange={setScoreTypeDialogOpen}
-        questions={exam.questions}
+        questions={exam.questions ?? []}
         onApply={handleTypeDistribution}
       />
     </div>

@@ -17,7 +17,7 @@ export interface Scenario {
   deliveryGoal?: string
   creatorId: string
   creatorName?: string
-  coBuilderIds: string[]
+  coBuilderIds?: string[]
   createdAt: string
   updatedAt: string
   publishTime?: string
@@ -38,14 +38,14 @@ export interface ScenarioTask {
   taskType: 'assessment' | 'training'
   difficulty: number
   background?: string
-  dependencyIds: string[]
+  dependencyIds?: string[]
   isReferenced: boolean
   sourceScenarioId?: string
-  knowledgePointIds: string[]
-  abilityPointIds: string[]
+  knowledgePointIds?: string[]
+  abilityPointIds?: string[]
   /** 与 abilityPointIds 按序对齐的能力点名称（服务端 JOIN 返回，避免前端依赖全量能力点列表） */
   abilityPointNames?: string[]
-  resourceIds: string[]
+  resourceIds?: string[]
   evalData?: Record<string, any>
 }
 

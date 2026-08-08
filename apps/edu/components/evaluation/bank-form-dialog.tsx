@@ -71,7 +71,7 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
     queueMicrotask(() => {
       if (bank) {
         setName(bank.name)
-        setDescription(bank.description)
+        setDescription(bank.description || '')
         setCoverUrl(bank.coverImage || '')
         setCollaboratorIds(bank.collaboratorIds || [])
         setBatchId(bank.batchId || '')

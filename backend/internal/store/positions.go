@@ -508,10 +508,12 @@ func (s *PositionStore) ToggleFavorite(ctx context.Context, userID, positionID s
 		if _, err := s.q.Exec(ctx, `DELETE FROM position_favorites WHERE user_id = $1 AND career_position_id = $2`, userID, positionID); err != nil {
 			return false, err
 		}
-		_, _ = s.q.Exec(ctx, `
+		if _, err := s.q.Exec(ctx, `
 			UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
 			WHERE target_type = 'career_position' AND target_id = $1
-		`, positionID)
+		`, positionID); err != nil {
+			return false, err
+		}
 		return false, nil
 	}
 	if _, err := s.q.Exec(ctx, `
@@ -521,11 +523,13 @@ func (s *PositionStore) ToggleFavorite(ctx context.Context, userID, positionID s
 	`, uuid.NewString(), userID, positionID); err != nil {
 		return false, err
 	}
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		INSERT INTO favorite_counters (target_type, target_id, cnt)
 		VALUES ('career_position', $1, 1)
 		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
-	`, positionID)
+	`, positionID); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 

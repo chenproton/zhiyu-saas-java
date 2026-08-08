@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -98,7 +99,8 @@ func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID str
 		}
 		pointID, err := s.st.Positions().PrepareAbilityPoint(ctx, tenantID, b.Name, b.Description, b.Attributes)
 		if err != nil {
-			continue
+			// 创建失败向上传播：静默跳过会导致能力点/证书绑定悄悄丢失
+			return fmt.Errorf("创建能力点「%s」失败: %w", b.Name, err)
 		}
 		if pointID != "" {
 			abilityPointMap[b.ID] = pointID
@@ -111,7 +113,7 @@ func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID str
 		}
 		libID, err := s.st.Positions().PrepareCertificate(ctx, tenantID, c.Name, c.URL, c.Description, c.Image)
 		if err != nil {
-			continue
+			return fmt.Errorf("创建证书「%s」失败: %w", c.Name, err)
 		}
 		if libID != "" {
 			certificateMap[c.Name] = libID

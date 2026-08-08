@@ -27,7 +27,7 @@ export interface Course {
   resourceIds?: string[]
   creatorId: string
   creatorName?: string
-  coCreatorIds: string[]
+  coCreatorIds?: string[]
   batchId?: string
   batchName?: string
   evalData?: Record<string, any>

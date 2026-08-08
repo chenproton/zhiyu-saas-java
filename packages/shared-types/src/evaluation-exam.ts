@@ -103,7 +103,7 @@ export interface QuestionBank {
   id: string
   code?: string
   name: string
-  description: string
+  description?: string
   coverImage?: string
   status: Status
   questionCount: number
@@ -113,7 +113,7 @@ export interface QuestionBank {
   collaboratorNames?: string[]
   collaboratorDeptIds?: string[]
   batchId?: string
-  version: string
+  version?: string
   ownerType: 'mine' | 'collaborate' | 'public'
   isDraftPool?: boolean
   /** 驳回原因（后端审批驳回时返回） */
@@ -125,7 +125,7 @@ export interface QuestionBank {
 // 创建题库表单数据
 export interface QuestionBankFormData {
   name: string
-  description: string
+  description?: string
   coverImage?: string
   collaboratorIds?: string[]
   collaboratorDeptIds?: string[]
@@ -181,16 +181,16 @@ export interface Exam {
   id: string
   code?: string
   name: string
-  description: string
+  description?: string
   status: Status
   totalScore: number
   duration: number // 分钟
-  questions: ExamQuestion[]
+  questions?: ExamQuestion[]
   coverImage?: string
   collaboratorIds?: string[]
   collaboratorDeptIds?: string[]
   batchId?: string
-  version: string
+  version?: string
   ownerType: 'mine' | 'collaborate' | 'public'
   creatorId?: string
   creatorName?: string
@@ -205,7 +205,7 @@ export interface Exam {
 // 创建试卷表单数据
 export interface ExamFormData {
   name: string
-  description: string
+  description?: string
   duration: number
   coverImage?: string
   collaboratorIds?: string[]
@@ -268,7 +268,7 @@ export interface ExamCenterItem {
   examId: string
   usageName: string
   examName: string
-  description: string
+  description?: string
   startTime?: string
   endTime?: string
   duration?: number

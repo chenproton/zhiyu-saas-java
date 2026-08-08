@@ -13,7 +13,7 @@ export interface User {
   loginName?: string
   username: string
   name: string
-  email: string
+  email?: string
   phone?: string
   avatarUrl?: string
   studentNo?: string

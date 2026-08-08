@@ -10,12 +10,13 @@ import (
 
 // TeachingPlanStore 教学计划持久化。
 type TeachingPlanStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewTeachingPlanStore 创建教学计划 store。
-func NewTeachingPlanStore(q Queryer) *TeachingPlanStore {
-	return &TeachingPlanStore{q: q}
+func NewTeachingPlanStore(q Queryer, beginner txBeginner) *TeachingPlanStore {
+	return &TeachingPlanStore{q: q, beginner: beginner}
 }
 
 // ProgramBrief 人培方案简要。
@@ -388,27 +389,33 @@ func (s *TeachingPlanStore) GetPlanEntry(ctx context.Context, id, tenantID strin
 
 // UpdatePlanEntry 更新计划条目（含多班级关联）。
 func (s *TeachingPlanStore) UpdatePlanEntry(ctx context.Context, id, tenantID string, e *domain.TeachingPlanEntry, credits *float64, totalHours *int, classNodeIDs *[]string) error {
-	if _, err := s.q.Exec(ctx, `
-		UPDATE teaching_plan_entries e
-		SET week_hours = $1, start_week = $2, end_week = $3, week_pattern = $4,
-			class_node_id = $5, teacher_id = $6, teacher_type = $7, venue_type = $8, status = $9,
-			credits = COALESCE($12, credits), total_hours = COALESCE($13, total_hours)
-		FROM teaching_plans p
-		WHERE e.id = $10 AND p.id = e.plan_id AND p.tenant_id = $11
-	`, e.WeekHours, e.StartWeek, e.EndWeek, e.WeekPattern,
-		e.ClassNodeID, e.TeacherID, e.TeacherType, e.VenueType, e.Status, id, tenantID,
-		credits, totalHours); err != nil {
-		return err
-	}
-	if classNodeIDs != nil {
-		_, _ = s.q.Exec(ctx, `DELETE FROM teaching_plan_entry_classes WHERE entry_id = $1`, id)
-		for _, cid := range *classNodeIDs {
-			if cid != "" {
-				_, _ = s.q.Exec(ctx, `INSERT INTO teaching_plan_entry_classes (entry_id, class_node_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, cid)
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			UPDATE teaching_plan_entries e
+			SET week_hours = $1, start_week = $2, end_week = $3, week_pattern = $4,
+				class_node_id = $5, teacher_id = $6, teacher_type = $7, venue_type = $8, status = $9,
+				credits = COALESCE($12, credits), total_hours = COALESCE($13, total_hours)
+			FROM teaching_plans p
+			WHERE e.id = $10 AND p.id = e.plan_id AND p.tenant_id = $11
+		`, e.WeekHours, e.StartWeek, e.EndWeek, e.WeekPattern,
+			e.ClassNodeID, e.TeacherID, e.TeacherType, e.VenueType, e.Status, id, tenantID,
+			credits, totalHours); err != nil {
+			return err
+		}
+		if classNodeIDs != nil {
+			if _, err := tx.Exec(ctx, `DELETE FROM teaching_plan_entry_classes WHERE entry_id = $1`, id); err != nil {
+				return err
+			}
+			for _, cid := range *classNodeIDs {
+				if cid != "" {
+					if _, err := tx.Exec(ctx, `INSERT INTO teaching_plan_entry_classes (entry_id, class_node_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, cid); err != nil {
+						return err
+					}
+				}
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // DeletePlanEntry 删除计划条目。

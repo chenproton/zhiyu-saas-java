@@ -13,12 +13,13 @@ import (
 
 // CertificationStore 认证规则持久化。
 type CertificationStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewCertificationStore 创建认证 store。
-func NewCertificationStore(q Queryer) *CertificationStore {
-	return &CertificationStore{q: q}
+func NewCertificationStore(q Queryer, beginner txBeginner) *CertificationStore {
+	return &CertificationStore{q: q, beginner: beginner}
 }
 
 // PublishedTarget 已发布认证规则对应的租户+岗位组合。
@@ -207,11 +208,13 @@ func (s *CertificationStore) DeleteItem(ctx context.Context, id, tenantID string
 	if _, err := s.fetchItem(ctx, id, tenantID); err != nil {
 		return err
 	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM certification_ability_points WHERE item_id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
-		return fmt.Errorf("delete certification ability points: %w", err)
-	}
-	_, err := s.q.Exec(ctx, `DELETE FROM certification_ability_items WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM certification_ability_points WHERE item_id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
+			return fmt.Errorf("delete certification ability points: %w", err)
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM certification_ability_items WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+		return err
+	})
 }
 
 // ===== 能力点 =====

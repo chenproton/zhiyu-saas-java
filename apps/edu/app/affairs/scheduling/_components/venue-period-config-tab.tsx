@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { formatDate, formatDuration } from '@/lib/format-utils'
 import {
   Dialog,
   DialogContent,
@@ -46,13 +47,6 @@ function parseYMD(s: string): Date | undefined {
   const [y, m, d] = s.split('-').map(Number)
   if (!y || !m || !d) return undefined
   return new Date(y, m - 1, d)
-}
-
-function formatYMD(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
 }
 
 function calcWeeks(from: Date, to: Date): number {
@@ -124,8 +118,8 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
     if (!name || !dateRange?.from || !dateRange?.to) return
     setSaving(true)
     try {
-      const startDate = formatYMD(dateRange.from)
-      const endDate = formatYMD(dateRange.to)
+      const startDate = formatDate(dateRange.from, '')
+      const endDate = formatDate(dateRange.to, '')
       const payload = { name, startDate, endDate, weeksCount: weeksCount || 16, isCurrent }
       if (editing) {
         await termApi.update(editing.id, payload)
@@ -568,12 +562,6 @@ function parseTime(t: string): number {
   return h * 60 + m
 }
 
-function formatTime(mins: number): string {
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
 /** 预览行（工作副本，保存时才落库） */
 interface PeriodRow {
   name: string
@@ -624,7 +612,7 @@ const defaultSettings: PeriodSettings = {
 function generateRows(settings: PeriodSettings): PeriodRow[] {
   const rows: PeriodRow[] = []
   const add = (type: string, name: string, start: number, end: number) => {
-    rows.push({ name, type, startTime: formatTime(start), endTime: formatTime(end) })
+    rows.push({ name, type, startTime: formatDuration(start * 60), endTime: formatDuration(end * 60) })
   }
   const group = (
     type: string,

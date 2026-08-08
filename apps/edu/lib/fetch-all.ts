@@ -12,3 +12,8 @@ export async function fetchAllPages<T>(
   }
   return all
 }
+
+/** 列表接口全量拉取一行式封装：listAll((p, ps) => xxxApi.list({ limit: ps, offset: p * ps })) */
+export function listAll<T>(fetcher: (page: number, pageSize: number) => Promise<{ items: T[] }>, pageSize = 200): Promise<T[]> {
+  return fetchAllPages(fetcher, pageSize)
+}

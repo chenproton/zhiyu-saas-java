@@ -91,10 +91,12 @@ func (s *FavoritesStore) ToggleFavorite(ctx context.Context, userID, targetType,
 		`, userID, targetType, targetID); err != nil {
 			return false, err
 		}
-		_, _ = s.q.Exec(ctx, `
+		if _, err := s.q.Exec(ctx, `
 			UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
 			WHERE target_type = $1 AND target_id = $2
-		`, targetType, targetID)
+		`, targetType, targetID); err != nil {
+			return false, err
+		}
 		return false, nil
 	}
 	if _, err := s.q.Exec(ctx, `
@@ -104,11 +106,13 @@ func (s *FavoritesStore) ToggleFavorite(ctx context.Context, userID, targetType,
 	`, uuid.NewString(), userID, targetType, targetID); err != nil {
 		return false, err
 	}
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		INSERT INTO favorite_counters (target_type, target_id, cnt)
 		VALUES ($1, $2, 1)
 		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
-	`, targetType, targetID)
+	`, targetType, targetID); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
