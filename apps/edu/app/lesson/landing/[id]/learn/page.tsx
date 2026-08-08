@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -95,6 +95,8 @@ export default function LessonLearnPage() {
   const { toast } = useToast()
   const { user } = useAuth()
 
+  // 节点测评结果加载请求序号：快速切换节点时丢弃过期响应
+  const nodeResultSeqRef = useRef(0)
   const [course, setCourse] = useState<Course | null>(null)
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [loading, setLoading] = useState(true)
@@ -181,10 +183,16 @@ export default function LessonLearnPage() {
 
   useEffect(() => {
     if (!activeNodeId) return
+    // 快速切换节点时丢弃过期响应，防止旧节点结果覆盖新节点
+    const seq = ++nodeResultSeqRef.current
     nodeEvaluationResultApi
       .list({ nodeId: activeNodeId, evaluateeId: user?.id, limit: 50 })
-      .then((res) => setMyResults(res.items || []))
+      .then((res) => {
+        if (seq !== nodeResultSeqRef.current) return
+        setMyResults(res.items || [])
+      })
       .catch((err) => {
+        if (seq !== nodeResultSeqRef.current) return
         reportError(err, '加载我的测评结果')
         toast({ title: t('测评结果加载失败'), variant: 'destructive' })
       })

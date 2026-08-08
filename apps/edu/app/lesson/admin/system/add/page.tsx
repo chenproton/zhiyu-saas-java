@@ -121,6 +121,11 @@ function AddSystemPageInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [nodeModes, setNodeModes] = useState<Record<string, AddMode>>({})
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
+  // 当前选中节点 ref：异步回填前校验节点是否已切换
+  const selectedNodeIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId
+  }, [selectedNodeId])
 
   /* module 2b: ability points (course-level, for job ability aggregation) */
   const [abilityPoints, setAbilityPoints] = useState<
@@ -536,6 +541,8 @@ function AddSystemPageInner() {
       teachingGoals: grain.description,
       type: isQuote ? 'original' : 'normal',
     }
+    // 记录发起时的目标节点，异步回填前校验节点未切换，防止颗粒课数据写入错误节点
+    const confirmNodeId = selectedNodeId
     handleUpdateNode(selectedNodeId, updates)
     setNodeModes((prev) => ({ ...prev, [selectedNodeId]: grainSelectorMode }))
     setHours(String(grain.duration))
@@ -546,6 +553,7 @@ function AddSystemPageInner() {
     // Fetch full grain data for KPs and resources
     try {
       const grainFull = await courseApi.get(`${grain.id}?_t=${Date.now()}` as any)
+      if (confirmNodeId !== selectedNodeIdRef.current) return
       setLearningGoalPdf((grainFull as any).evalData?.descriptionPdf || null)
       const grainKpIds = new Set((grainFull.knowledgePointIds || []).filter((id: any) => !!id))
       setKnowledgePoints(knowledgePool.filter((k: any) => grainKpIds.has(k.id)))
@@ -575,8 +583,10 @@ function AddSystemPageInner() {
       }
     } catch (err) {
       reportError(err, '加载知识点')
-      setKnowledgePoints([])
-      setSelectedResourceIds([])
+      if (confirmNodeId === selectedNodeIdRef.current) {
+        setKnowledgePoints([])
+        setSelectedResourceIds([])
+      }
     }
     setNodeEvalRuleConfig(undefined)
   }, [
