@@ -4,7 +4,8 @@
   "type": "module",
   "description": "知育前端全站点击巡检工具：自动遍历每个页面并点击所有可见按钮/链接/弹窗，监控前端 console 与后端接口报错",
   "scripts": {
-    "smoke": "node ui-smoke.mjs"
+    "smoke": "node ui-smoke.mjs",
+    "test": "node --test test/"
   },
   "dependencies": {
     "playwright": "^1.62.1"
