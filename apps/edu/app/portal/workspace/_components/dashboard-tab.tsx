@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Bell,
@@ -49,16 +49,22 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
   const [announcements, setAnnouncements] = useState<WorkspaceAnnouncement[]>([])
   const [todos, setTodos] = useState<WorkspaceTodo[]>([])
   const [schedule, setSchedule] = useState<WorkspaceScheduleEvent[]>([])
+  // 角色切换请求序号：丢弃过期响应
+  const loadSeqRef = useRef(0)
 
   useEffect(() => {
+    const seq = ++loadSeqRef.current
     portalApi
       .workspaceDashboard(activeRoleCode ? { role: activeRoleCode } : undefined)
       .then((res) => {
+        // 角色切换时丢弃过期响应，防止旧角色数据覆盖新角色
+        if (seq !== loadSeqRef.current) return
         setAnnouncements(res.announcements || [])
         setTodos(res.todos || [])
         setSchedule(res.schedule || [])
       })
       .catch((err) => {
+        if (seq !== loadSeqRef.current) return
         reportError(err, { source: '加载工作台 dashboard' })
         toast({
           variant: 'destructive',

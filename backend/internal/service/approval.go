@@ -55,9 +55,9 @@ func (s *ApprovalService) ReviewApproval(ctx context.Context, id, action, newSta
 	})
 }
 
-// UpdateApprovalHistory 更新审批历史（不推进）。
-func (s *ApprovalService) UpdateApprovalHistory(ctx context.Context, id string, history domain.JSONSlice) (bool, error) {
-	return s.st.Approvals().UpdateHistory(ctx, id, history)
+// UpdateApprovalHistory 追加审批历史（不推进）。
+func (s *ApprovalService) UpdateApprovalHistory(ctx context.Context, id string, entry domain.JSONMap) (bool, error) {
+	return s.st.Approvals().UpdateHistory(ctx, id, entry)
 }
 
 // PendingApprovalCount 待审批数。

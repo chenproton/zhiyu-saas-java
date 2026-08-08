@@ -481,6 +481,8 @@ function EditView({
 export default function LearnRoadsPage() {
   const t = useT()
   const { toast } = useToast()
+  // 编辑加载请求序号：快速切换岗位时丢弃过期响应
+  const editSeqRef = useRef(0)
 
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
@@ -601,6 +603,7 @@ export default function LearnRoadsPage() {
 
   const handleEdit = useCallback(
     async (position: Position) => {
+      const seq = ++editSeqRef.current
       setEditingPosition(position)
       setView('edit')
       setSaved(false)
@@ -611,6 +614,8 @@ export default function LearnRoadsPage() {
           learnRoadApi.list({ limit: 1000 }),
           loadPositionScenes(position.id),
         ])
+        // 快速连续点击不同岗位时丢弃过期响应，防止先发后至覆盖当前岗位数据
+        if (seq !== editSeqRef.current) return
         setLearnRoads(roads)
 
         const existing = roads.find((r) => r.positionIds?.includes(position.id))
@@ -626,6 +631,7 @@ export default function LearnRoadsPage() {
         setScenes(loadedScenes)
         setSelectedSceneId(loadedScenes[0]?.id || null)
       } catch (err) {
+        if (seq !== editSeqRef.current) return
         toast({
           title: t('加载失败'),
           description: err instanceof Error ? err.message : t('请稍后重试'),
@@ -637,7 +643,7 @@ export default function LearnRoadsPage() {
         setPositionScenarios([])
         setPositionTasks([])
       } finally {
-        setEditLoading(false)
+        if (seq === editSeqRef.current) setEditLoading(false)
       }
     },
     [loadPositionScenes, toast, t],

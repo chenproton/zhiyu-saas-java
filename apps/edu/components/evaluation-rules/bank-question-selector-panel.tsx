@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   ChevronLeft,
   Search,
@@ -60,6 +60,8 @@ export function BankQuestionSelectorPanel({
   onUpdateQuestionScores,
 }: BankQuestionSelectorPanelProps) {
   const t = useT()
+  // 题库切换请求序号：丢弃过期响应
+  const loadSeqRef = useRef(0)
   const [banks, setBanks] = useState<any[]>([])
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null)
@@ -116,17 +118,21 @@ export function BankQuestionSelectorPanel({
   }, [selectedIds, preloadedQuestions])
 
   const loadQuestions = useCallback(async (bankId: string) => {
+    const seq = ++loadSeqRef.current
     setLoadingQuestions(true)
     try {
       const res = (await questionApi.list({ bankId, limit: 1000 })) as unknown as {
         items: CachedQuestion[]
       }
+      // 连续切换题库时丢弃过期响应，防止旧题库题目覆盖新题库
+      if (seq !== loadSeqRef.current) return
       setCachedQuestions(res.items)
       setBankQuestions(res.items)
     } catch (err) {
+      if (seq !== loadSeqRef.current) return
       reportError(err, { source: '加载题库题目', extras: { bankId } })
     } finally {
-      setLoadingQuestions(false)
+      if (seq === loadSeqRef.current) setLoadingQuestions(false)
     }
   }, [])
 

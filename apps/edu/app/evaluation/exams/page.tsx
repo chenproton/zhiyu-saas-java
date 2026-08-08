@@ -43,7 +43,7 @@ function mapExamItem(backend: any, _currentUserId: string): ExamItem {
     rejectReason: backend.rejectReason ?? undefined,
     code: backend.code || '',
     description: backend.description || '',
-    questionCount: (backend.questions || []).length,
+    questionCount: backend.questionCount ?? (backend.questions || []).length,
     totalScore: backend.totalScore || 0,
     collaboratorNames: backend.collaboratorNames || [],
     creatorName: backend.creatorName || backend.creatorId || '',

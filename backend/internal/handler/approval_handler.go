@@ -192,7 +192,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	stepIdx := record.CurrentStepIdx
 	stepComplete := h.isStepComplete(workflow, record, stepIdx)
 	if !stepComplete {
-		ok, err := h.Service.UpdateApprovalHistory(r.Context(), id, record.History)
+		ok, err := h.Service.UpdateApprovalHistory(r.Context(), id, entry)
 		if err != nil || !ok {
 			respondServerError(w, r, err, "更新审批记录失败")
 			return

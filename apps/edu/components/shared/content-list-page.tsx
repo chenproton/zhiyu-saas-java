@@ -336,6 +336,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   const mapBatchRef = useRef(mapBatch)
   const afterLoadRef = useRef(afterLoad)
   const listParamsRef = useRef(listParams)
+  // 请求序号：reloadKey 连续 bump 时仅应用最新一次加载结果
+  const loadSeqRef = useRef(0)
   useEffect(() => {
     mapItemRef.current = mapItem
     mapBatchRef.current = mapBatch
@@ -387,6 +389,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   }, [importPreview])
 
   const loadData = useCallback(async () => {
+    const loadSeq = ++loadSeqRef.current
     setIsLoading(true)
     setLoadError(null)
     try {
@@ -446,14 +449,17 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         }
       }
 
+      // 仅应用最新一次请求的结果，防止 reloadKey 连续 bump 时旧响应覆盖新数据
+      if (loadSeq !== loadSeqRef.current) return
       setFrontItems(front)
     } catch (err) {
+      if (loadSeq !== loadSeqRef.current) return
       reportError(err, '加载列表数据')
       setLoadError(
         err instanceof Error ? err.message : t('加载{entityLabel}列表失败', { entityLabel }),
       )
     } finally {
-      setIsLoading(false)
+      if (loadSeq === loadSeqRef.current) setIsLoading(false)
     }
   }, [tenantId, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel, t])
 

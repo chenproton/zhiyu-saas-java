@@ -23,7 +23,14 @@ export default function OperationLogsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
+
+  // 搜索输入 300ms 防抖，避免每次击键触发万级记录全量拉取
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   const loadLogs = useCallback(
     async (targetPage = page) => {
@@ -32,7 +39,7 @@ export default function OperationLogsPage() {
       setError(null)
       try {
         // 后端操作日志接口不支持 free-text search，搜索时全量拉取后由前端过滤分页
-        const searching = searchTerm.trim() !== ''
+        const searching = debouncedSearch.trim() !== ''
         const res = await portalLogApi.operationLogs({
           tenantId,
           limit: searching ? 10000 : PAGE_SIZE,
@@ -46,7 +53,7 @@ export default function OperationLogsPage() {
         setLoading(false)
       }
     },
-    [tenantId, page, searchTerm, t],
+    [tenantId, page, debouncedSearch, t],
   )
 
   useEffect(() => {

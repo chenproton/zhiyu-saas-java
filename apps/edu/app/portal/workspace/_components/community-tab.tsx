@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Flame,
@@ -70,6 +70,8 @@ export function CommunityTab() {
   const [hotTotal, setHotTotal] = useState(0)
   const [mineTotal, setMineTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  // 排序切换请求序号：丢弃过期响应
+  const loadSeqRef = useRef(0)
 
   // 帖子详情
   const [detail, setDetail] = useState<CommunityTopic | null>(null)
@@ -87,6 +89,7 @@ export function CommunityTab() {
   const [postSubmitting, setPostSubmitting] = useState(false)
 
   const loadTopics = useCallback(async (s: CommunityTopicSort) => {
+    const seq = ++loadSeqRef.current
     setLoading(true)
     try {
       const [res, mineRes, hotRes] = await Promise.all([
@@ -94,14 +97,17 @@ export function CommunityTab() {
         portalCommunityApi.listTopics({ sort: 'mine', limit: 1 }),
         portalCommunityApi.listTopics({ sort: 'hot', limit: 1 }),
       ])
+      // 快速切换排序时丢弃过期响应，防止旧排序列表覆盖新排序
+      if (seq !== loadSeqRef.current) return
       setTopics(res.items)
       setMineTotal(mineRes.total)
       setHotTotal(hotRes.total)
     } catch (e) {
+      if (seq !== loadSeqRef.current) return
       reportError(e, '加载学习社区话题失败')
       setTopics([])
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [])
 

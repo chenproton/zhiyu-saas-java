@@ -177,10 +177,20 @@ func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context,
 	if err != nil || len(abilityPointIDs) == 0 {
 		return ""
 	}
+	// 批量查询名称，避免逐 id 单条 QueryRow（N+1）
 	var names []string
-	for _, id := range abilityPointIDs {
+	rows, err := h.DB.Query(ctx, `
+		SELECT name FROM ability_points WHERE id = ANY($1::uuid[]) ORDER BY name
+	`, abilityPointIDs)
+	if err != nil {
+		return ""
+	}
+	defer rows.Close()
+	for rows.Next() {
 		var n string
-		h.DB.QueryRow(ctx, `SELECT name FROM ability_points WHERE id=$1`, id).Scan(&n)
+		if err := rows.Scan(&n); err != nil {
+			return strings.Join(names, ",")
+		}
 		if n != "" {
 			names = append(names, n)
 		}

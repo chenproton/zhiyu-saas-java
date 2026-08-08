@@ -85,37 +85,46 @@ export default function JobStudentDetailPage() {
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenarioTasks, setScenarioTasks] = useState<ScenarioTask[]>([])
+  // 岗位详情加载请求序号：快速切换 id 时丢弃过期响应
+  const loadSeqRef = useRef(0)
 
   useEffect(() => {
     if (!id) return
+    const seq = ++loadSeqRef.current
     ;(async () => {
       setLoading(true)
       try {
         const pos = await publicPositionApi.get(id)
+        if (seq !== loadSeqRef.current) return
         setPosition(pos)
       } catch {
+        if (seq !== loadSeqRef.current) return
         setPosition(null)
       } finally {
-        setLoading(false)
+        if (seq === loadSeqRef.current) setLoading(false)
       }
     })()
   }, [id])
 
   useEffect(() => {
     if (!id || !position) return
+    const seq = ++loadSeqRef.current
 
     publicPositionApi
       .list({ status: 'published', limit: 20 })
-      .then((res) => setAllPositions(res.items || []))
-      .catch(() => setAllPositions([]))
+      .then((res) => {
+        if (seq === loadSeqRef.current) setAllPositions(res.items || [])
+      })
+      .catch(() => {
+        if (seq === loadSeqRef.current) setAllPositions([])
+      })
 
     scenarioApi
       .list({ careerPositionId: id, status: 'published', limit: 1000 })
       .then(async (res) => {
         const scens = res.items || []
-        setScenarios(scens)
-        const allTasks: ScenarioTask[] = []
         // 逐任务加载，单个场景任务失败只记录错误，不清空已加载的数据
+        const allTasks: ScenarioTask[] = []
         await Promise.all(
           scens.map(async (s: Scenario) => {
             try {
@@ -126,6 +135,9 @@ export default function JobStudentDetailPage() {
             }
           }),
         )
+        // 快速切换岗位 id 时丢弃过期响应
+        if (seq !== loadSeqRef.current) return
+        setScenarios(scens)
         setScenarioTasks(allTasks)
       })
       .catch((err) => {

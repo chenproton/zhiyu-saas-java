@@ -6,24 +6,11 @@ import (
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-// ListExams 查询试卷列表（批量填充题目）。
+// ListExams 查询试卷列表（含题目数聚合，不填充全量题目——大列表下避免一次返回数千题目对象）。
 func (s *EvaluationService) ListExams(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.Exam]) ([]domain.Exam, int, error) {
 	items, total, err := s.st.Exams().List(ctx, p, cfg)
 	if err != nil {
 		return nil, 0, err
-	}
-	if len(items) > 0 {
-		examIDs := make([]string, len(items))
-		for i := range items {
-			examIDs[i] = items[i].ID
-			items[i].Questions = []domain.ExamQuestion{}
-		}
-		qMap, qErr := s.st.Exams().BatchFetchExamQuestions(ctx, examIDs)
-		if qErr == nil {
-			for i := range items {
-				items[i].Questions = qMap[items[i].ID]
-			}
-		}
 	}
 	return items, total, nil
 }

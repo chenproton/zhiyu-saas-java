@@ -37,15 +37,16 @@ export default function AllianceProjectsPage() {
         allianceProjectApi.list(),
         allianceEnterpriseApi.list({ limit: 200 }),
       ])
+      // 里程碑并行拉取，避免逐项目串行 N+1 请求
       const ms: Record<string, AllianceProjectMilestone[]> = {}
-      for (const p of data.items || []) {
-        try {
-          const m = await allianceProjectApi.listMilestones(p.id)
-          ms[p.id] = m.items || []
-        } catch {
-          ms[p.id] = []
-        }
-      }
+      const milestoneResults = await Promise.all(
+        (data.items || []).map((p) =>
+          allianceProjectApi.listMilestones(p.id).catch(() => ({ items: [] })),
+        ),
+      )
+      ;(data.items || []).forEach((p, i) => {
+        ms[p.id] = milestoneResults[i]?.items || []
+      })
       return { projects: data.items || [], enterprises: ents.items || [], milestones: ms }
     },
     { deps: [tenantId, authLoading], onError: () => true },

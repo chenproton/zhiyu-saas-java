@@ -83,6 +83,7 @@ type Exam struct {
 	Duration            int            `json:"duration"`
 	TenantID            *string        `json:"-"`
 	Questions           []ExamQuestion `json:"questions,omitempty"`
+	QuestionCount       int            `json:"questionCount,omitempty"`
 	CoverImage          *string        `json:"coverImage,omitempty"`
 	CollaboratorIDs     []string       `json:"collaboratorIds,omitempty"`
 	CollaboratorNames   []string       `json:"collaboratorNames,omitempty"`

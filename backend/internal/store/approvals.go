@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -123,12 +124,17 @@ func (s *ApprovalStore) ExistsPending(ctx context.Context, targetType, targetID 
 	return exists, err
 }
 
-// UpdateHistory 更新历史（不改变状态）。
-func (s *ApprovalStore) UpdateHistory(ctx context.Context, id string, history domain.JSONSlice) (bool, error) {
+// UpdateHistory 追加审批历史（不改变状态）。
+// SQL 级原子追加：并发审批（"或"模式多人步骤）各自追加互不覆盖，防止后写整段覆盖先写。
+func (s *ApprovalStore) UpdateHistory(ctx context.Context, id string, entry domain.JSONMap) (bool, error) {
+	entryJSON, err := json.Marshal([]domain.JSONMap{entry})
+	if err != nil {
+		return false, err
+	}
 	tag, err := s.q.Exec(ctx, `
-		UPDATE approval_records SET history = $1, updated_at = NOW()
+		UPDATE approval_records SET history = COALESCE(history, '[]'::jsonb) || $1::jsonb, updated_at = NOW()
 		WHERE id = $2 AND status = $3
-	`, history, id, string(domain.ApprovalStatusPending))
+	`, string(entryJSON), id, string(domain.ApprovalStatusPending))
 	if err != nil {
 		return false, err
 	}

@@ -82,6 +82,8 @@ export function KnowledgeSelector({
   const [searchResults, setSearchResults] = useState<KnowledgePointItem[] | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const searchSeqRef = useRef(0)
+  // 场景/岗位筛选请求序号：快速连续切换时丢弃过期响应
+  const filterSeqRef = useRef(0)
   const [kpDetailOpen, setKpDetailOpen] = useState(false)
   const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
 
@@ -212,9 +214,11 @@ export function KnowledgeSelector({
     }
     setFilterLoading(true)
     setFilterKpIds(new Set())
+    const seq = ++filterSeqRef.current
     taskApi
       .list({ scenarioId: sid, limit: 200 })
       .then((res) => {
+        if (seq !== filterSeqRef.current) return
         const tasks = res.items || []
         setSceneTasks(tasks)
         const ids = new Set<string>()
@@ -223,10 +227,13 @@ export function KnowledgeSelector({
         setFilterKpIds(ids)
       })
       .catch(() => {
+        if (seq !== filterSeqRef.current) return
         setSceneTasks([])
         setFilterKpIds(new Set())
       })
-      .finally(() => setFilterLoading(false))
+      .finally(() => {
+        if (seq === filterSeqRef.current) setFilterLoading(false)
+      })
   }
 
   const handleTaskChange = (tid: string) => {
@@ -253,14 +260,21 @@ export function KnowledgeSelector({
     const posScenarios = scenarios.filter((s) => s.careerPositionId === pid)
     setFilterLoading(true)
     setFilterKpIds(new Set())
+    const seq = ++filterSeqRef.current
     Promise.all(posScenarios.map((s) => taskApi.list({ scenarioId: s.id, limit: 200 })))
       .then((results) => {
+        if (seq !== filterSeqRef.current) return
         const ids = new Set<string>()
         for (const r of results) for (const task of r.items || []) for (const id of task.knowledgePointIds || []) ids.add(id)
         setFilterKpIds(ids)
       })
-      .catch(() => setFilterKpIds(new Set()))
-      .finally(() => setFilterLoading(false))
+      .catch(() => {
+        if (seq !== filterSeqRef.current) return
+        setFilterKpIds(new Set())
+      })
+      .finally(() => {
+        if (seq === filterSeqRef.current) setFilterLoading(false)
+      })
   }
 
   const handleReferenceKp = (kp: KnowledgePointItem) => {
