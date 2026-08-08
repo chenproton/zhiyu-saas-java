@@ -118,8 +118,8 @@ export interface QuestionBank {
   isDraftPool?: boolean
   /** 驳回原因（后端审批驳回时返回） */
   rejectReason?: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
 // 创建题库表单数据
@@ -148,7 +148,7 @@ export interface Question {
   creatorId?: string
   source?: string
   status: Status
-  createdAt: Date
+  createdAt: string
 }
 
 // 创建题目表单数据
@@ -195,8 +195,8 @@ export interface Exam {
   creatorId?: string
   creatorName?: string
   collaboratorNames?: string[]
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
   isTemp?: boolean
   /** 驳回原因（后端审批驳回时返回） */
   rejectReason?: string

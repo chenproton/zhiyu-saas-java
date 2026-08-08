@@ -537,16 +537,25 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 	// 清理旧测试数据，避免 UNIQUE 约束冲突
 	// 注意：先删引用方（archives/evaluations 的 FK 指向 topics），否则 topics 删除会因 FK 失败
 	tables := []string{
+		// 引用方优先（FK 依赖），再删主体
 		"graduation_project_archives", "graduation_project_evaluations", "graduation_query_results",
 		"learn_roads", "graduation_project_topics", "workflows",
-		"career_positions", "ability_points", "knowledge_points",
-		"exams", "question_banks", "scenarios", "courses",
-		"staff_titles", "industries", "majors", "org_types",
+		"exam_results", "exam_questions", "exam_usages", "question_banks", "exams",
+		"node_knowledge_point_bindings", "node_resource_bindings", "node_homework_submissions", "node_homeworks", "node_quizzes",
+		"system_course_nodes", "course_knowledge_bindings", "course_resource_bindings", "course_homework_submissions", "course_homeworks",
+		"training_program_courses", "training_programs", "courses",
+		"scene_evaluation_results", "course_evaluation_results", "task_evaluation_methods", "scenario_tasks", "scenarios",
+		"position_ability_bindings", "position_responsibilities", "position_certificates", "career_position_majors",
+		"career_positions", "ability_domains", "ability_points", "knowledge_points", "resource_library", "tags",
+		"resource_tag_relations", "user_favorites", "favorite_counters", "view_counters",
+		"community_topics", "community_posts", "on_site_question_library",
+		"schedule_entries", "teaching_plan_entry_classes", "teaching_plan_entries", "teaching_plans",
+		"period_slots", "venues", "terms",
+		"staff_titles", "industries", "majors", "org_types", "organizations",
 		"lesson_batches", "scene_batches", "evaluation_batches", "affairs_batches",
 		"micro_cert_templates", "cert_issuance_records",
-		"exam_usages", "exam_results",
 		"certification_rules", "certification_ability_items", "certification_ability_points",
-		"appeal_records", "user_relations",
+		"appeal_records", "user_relations", "hybrid_node_modules", "job_ability_results", "student_honors",
 	}
 	for _, tbl := range tables {
 		db.Exec(ctx, "DELETE FROM "+tbl+" WHERE tenant_id = $1", TestTenantID)

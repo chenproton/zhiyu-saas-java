@@ -2,10 +2,10 @@ package store
 
 import (
 	"context"
-	"sync"
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"

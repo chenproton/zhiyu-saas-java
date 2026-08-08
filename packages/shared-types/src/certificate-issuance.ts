@@ -12,8 +12,8 @@ export interface MicroCertTemplate {
   certTypeName: string
   content: string
   coverImage?: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
 export type IssueStatus = 'issued' | 'revoked'

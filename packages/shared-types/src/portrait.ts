@@ -15,13 +15,13 @@ export interface StudentAbilityArchive {
   materialType: ArchiveMaterialType
   materialName: string
   issuingOrg: string
-  obtainDate: Date
+  obtainDate: string
   auditStatus: ArchiveAuditStatus
   auditRemark?: string
   convertedCredit: number
   direction: ArchiveDirection
   isEnabled: boolean
-  createdAt: Date
+  createdAt: string
   level?: string
 }
 
@@ -55,7 +55,7 @@ export interface StudentAbilityPortrait {
   majorRank: number
   majorTotal: number
   recommendPositions: { positionName: string; matchRate: number }[]
-  updatedAt: Date
+  updatedAt: string
   gender: string
   gradeYear: string
   avatarUrl?: string
@@ -102,7 +102,7 @@ export interface AppealRecord {
   type: 'grade' | 'graduation' | 'ability'
   reason: string
   status: 'pending' | 'processing' | 'resolved' | 'rejected'
-  createdAt: Date
+  createdAt: string
 }
 
 export interface CreditConversionRule {
@@ -118,7 +118,7 @@ export interface ArchiveVersion {
   version: number
   changedBy: string
   changeSummary: string
-  createdAt: Date
+  createdAt: string
 }
 
 export interface EvaluationStandard {

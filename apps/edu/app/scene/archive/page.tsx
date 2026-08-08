@@ -107,7 +107,11 @@ export default function SceneArchivePage() {
   const confirmBatchDelete = async () => {
     if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     try {
-      await Promise.all(batchDeleteTarget.map((id) => scenarioApi.delete(id)))
+      const results = await Promise.allSettled(batchDeleteTarget.map((id) => scenarioApi.delete(id)))
+      const failedCount = results.filter((r) => r.status === 'rejected').length
+      if (failedCount > 0) {
+        toast({ variant: 'destructive', title: t('部分删除失败'), description: t('{n} 个场景删除失败，其余已删除', { n: String(failedCount) }) })
+      }
       await refresh()
       toast({ title: t('已批量删除 {n} 个场景', { n: batchDeleteTarget.length }) })
     } catch (err: any) {

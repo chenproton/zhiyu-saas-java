@@ -59,6 +59,7 @@ import { coverGradientFor } from '@/lib/cover-gradients'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import { useT } from '@/lib/i18n/locale-provider'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },
@@ -395,20 +396,17 @@ export default function SceneDetailPage() {
   useEffect(() => {
     if (!id || !scenario) return
 
-    // TODO: 列表接口后端上限 200，以下映射类数据超限时会缺失，需服务端分页或按需拉取
-    taskApi
-      .list({ scenarioId: id, limit: 200 })
-      .then((res) => {
-        const taskList = res.items || []
+    // 全量分页拉取：避免列表接口 200 上限导致映射数据缺失
+    fetchAllPages((page, pageSize) => taskApi.list({ scenarioId: id, limit: pageSize, offset: page * pageSize }))
+      .then((taskList) => {
         setTasks(taskList)
       })
       .catch(() => setTasks([]))
 
-    resourceLibraryApi
-      .list({ limit: 200 })
-      .then((res) => {
+    fetchAllPages((page, pageSize) => resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((items) => {
         const rMap = new Map<string, TaskResource>()
-        ;(res.items || []).forEach((r: any) => {
+        items.forEach((r: any) => {
           rMap.set(r.id, {
             ...r,
             type: r.resourceType || r.type,
@@ -420,16 +418,16 @@ export default function SceneDetailPage() {
       .catch(() => setAllResourceMap(new Map()))
 
     Promise.all([
-      knowledgeApi.list({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
-      abilityApi.list({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
+      fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize })).catch(() => []),
+      fetchAllPages((page, pageSize) => abilityApi.list({ limit: pageSize, offset: page * pageSize })).catch(() => []),
       courseApi.list({ type: 'granular', limit: 1000 }).catch(() => ({ items: [], total: 0 })),
     ])
       .then(([kRes, aRes, cRes]) => {
         const kMap = new Map<string, KnowledgePoint>()
-        ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
+        kRes.forEach((k) => kMap.set(k.id, k))
         setKnowledgeMap(kMap)
         const aMap = new Map<string, AbilityPoint>()
-        ;(aRes.items || []).forEach((a) => aMap.set(a.id, a))
+        aRes.forEach((a) => aMap.set(a.id, a))
         setAbilityMap(aMap)
         const cMap = new Map<string, Course>()
         ;(cRes.items || []).forEach((c) => cMap.set(c.id, c))

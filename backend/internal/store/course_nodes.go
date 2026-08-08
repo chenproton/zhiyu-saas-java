@@ -468,14 +468,14 @@ func (s *CourseNodeStore) ListNodeEvalMethods(ctx context.Context, q Queryer, te
 
 // CourseNodeExportRow 导出用节点行。
 type CourseNodeExportRow struct {
-	ID           string
-	Name         string
-	ParentID     string
-	RefType      string
-	SortOrder    int
+	ID            string
+	Name          string
+	ParentID      string
+	RefType       string
+	SortOrder     int
 	TeachingGoals string
-	Duration     int
-	Difficulty   int
+	Duration      int
+	Difficulty    int
 }
 
 // ListByCourse 查询课程全部节点（导出用）。

@@ -111,8 +111,8 @@ func (s *PositionCloneStore) cloneMajors(ctx context.Context, tx Queryer, oldPos
 	for rows.Next() {
 		var majorID string
 		if err := rows.Scan(&majorID); err != nil {
-		return err
-	}
+			return err
+		}
 		majors = append(majors, majorID)
 	}
 	if err := rows.Err(); err != nil {
@@ -147,8 +147,8 @@ func (s *PositionCloneStore) cloneResponsibilities(ctx context.Context, tx Query
 	for rows.Next() {
 		var rr respRow
 		if err := rows.Scan(&rr.OldID, &rr.Name, &rr.Description, &rr.SortOrder); err != nil {
-		return err
-	}
+			return err
+		}
 		items = append(items, rr)
 	}
 	if err := rows.Err(); err != nil {
@@ -188,8 +188,8 @@ func (s *PositionCloneStore) cloneAbilityBindings(ctx context.Context, tx Querye
 		var br bindingRow
 		if err := rows.Scan(&br.oldBindingID, &br.oldRespID, &br.abilityPointID, &br.source,
 			&br.domain, &br.requiredLevel, &br.rubricDescription, &br.attributes, &br.weight); err != nil {
-		return err
-	}
+			return err
+		}
 		bindings = append(bindings, br)
 	}
 	if err := rows.Err(); err != nil {
@@ -234,8 +234,8 @@ func (s *PositionCloneStore) cloneAbilityDomains(ctx context.Context, tx Queryer
 	for rows.Next() {
 		var dr domainRow
 		if err := rows.Scan(&dr.name, &dr.description, &dr.oldBindingIDs, &dr.sortOrder); err != nil {
-		return err
-	}
+			return err
+		}
 		domains = append(domains, dr)
 	}
 	if err := rows.Err(); err != nil {
@@ -270,8 +270,8 @@ func (s *PositionCloneStore) cloneCertificates(ctx context.Context, tx Queryer, 
 	for rows.Next() {
 		var libID string
 		if err := rows.Scan(&libID); err != nil {
-		return err
-	}
+			return err
+		}
 		libIDs = append(libIDs, libID)
 	}
 	if err := rows.Err(); err != nil {

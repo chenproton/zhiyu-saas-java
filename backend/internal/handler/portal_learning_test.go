@@ -148,19 +148,21 @@ func TestPortalWorkspace_LearningScheduleFilter(t *testing.T) {
 		}
 	}
 
-	// 9. 清理
-	for _, q := range []string{
-		"DELETE FROM schedule_entries WHERE tenant_id = $1",
-		"DELETE FROM scenario_tasks WHERE scenario_id IN (SELECT id FROM scenarios WHERE tenant_id = $1)",
-		"DELETE FROM scenarios WHERE tenant_id = $1",
-		"DELETE FROM courses WHERE tenant_id = $1",
-		"DELETE FROM terms WHERE tenant_id = $1",
-		"DELETE FROM organizations WHERE tenant_id = $1",
-		"DELETE FROM org_types WHERE tenant_id = $1",
-	} {
-		env.DB.Exec(ctx, q, tenantID)
-	}
-	env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
+	// 9. 清理（defer 化：断言失败提前退出也不残留）
+	t.Cleanup(func() {
+		for _, q := range []string{
+			"DELETE FROM schedule_entries WHERE tenant_id = $1",
+			"DELETE FROM scenario_tasks WHERE scenario_id IN (SELECT id FROM scenarios WHERE tenant_id = $1)",
+			"DELETE FROM scenarios WHERE tenant_id = $1",
+			"DELETE FROM courses WHERE tenant_id = $1",
+			"DELETE FROM terms WHERE tenant_id = $1",
+			"DELETE FROM organizations WHERE tenant_id = $1",
+			"DELETE FROM org_types WHERE tenant_id = $1",
+		} {
+			env.DB.Exec(ctx, q, tenantID)
+		}
+		env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
+	})
 }
 
 func execOrFail(t *testing.T, env *testhelper.TestEnv, ctx context.Context, sql string, args ...any) {

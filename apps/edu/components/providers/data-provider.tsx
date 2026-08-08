@@ -19,7 +19,7 @@ import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi 
 
 // ==================== Date parsing helpers ====================
 
-const parseDate = (v: string | Date | undefined): Date => (v ? new Date(v) : new Date())
+const parseDate = (v: string | Date | undefined): string => (v ? new Date(v).toISOString() : new Date().toISOString())
 
 const parseQuestionBank = (bank: QuestionBank): QuestionBank => ({
   ...bank,

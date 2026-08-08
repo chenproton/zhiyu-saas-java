@@ -251,7 +251,7 @@ export interface StudentAbilityPortrait {
   majorRank: number
   majorTotal: number
   recommendPositions: { positionName: string; matchRate: number }[]
-  updatedAt: Date
+  updatedAt: string
   gender: string
   gradeYear: string
   avatarUrl?: string

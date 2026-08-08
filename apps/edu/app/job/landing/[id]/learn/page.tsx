@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { publicPositionApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
@@ -48,11 +48,14 @@ export default function JobStudentLearnPage() {
 
   useEffect(() => {
     if (!id || !position) return
+    // 请求序号：岗位快速切换时丢弃过期响应（与详情页 loadSeqRef 一致）
+    const seq = ++learnSeqRef.current
 
     scenarioApi
       .list({ careerPositionId: id, status: 'published', limit: 1000 })
       .then(async (res) => {
         const scens = res.items || []
+        if (seq !== learnSeqRef.current) return
         setScenarios(scens)
         const allTasks: ScenarioTask[] = []
         // 逐任务容错：单个场景任务加载失败只记录错误，不清空已加载数据
@@ -66,11 +69,14 @@ export default function JobStudentLearnPage() {
             }
           }),
         )
+        if (seq !== learnSeqRef.current) return
         setScenarioTasks(allTasks)
       })
       .catch(() => {
-        setScenarios([])
-        setScenarioTasks([])
+        if (seq === learnSeqRef.current) {
+          setScenarios([])
+          setScenarioTasks([])
+        }
       })
 
     if (!user) return
@@ -78,16 +84,21 @@ export default function JobStudentLearnPage() {
     learnRoadApi
       .list({ limit: 100 })
       .then((roadRes) => {
+        if (seq !== learnSeqRef.current) return
         const relatedRoads = (roadRes.items || []).filter((r: LearnRoad) =>
           r.positionIds?.includes(id),
         )
         setRoads(relatedRoads)
       })
       .catch((err) => {
+        if (seq !== learnSeqRef.current) return
         reportError(err, '加载学习路径数据')
         toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
   }, [id, position, user, toast, t])
+
+  // 岗位内容加载序号
+  const learnSeqRef = useRef(0)
 
   if (loading) {
     return (

@@ -85,7 +85,7 @@ export function RandomQuestionDialog({
         setQuestions(
           items.map((q) => ({
             ...q,
-            createdAt: new Date((q.createdAt as unknown as string) || Date.now()),
+            createdAt: (q.createdAt as unknown as string) || new Date().toISOString(),
           })),
         )
       } catch (err) {

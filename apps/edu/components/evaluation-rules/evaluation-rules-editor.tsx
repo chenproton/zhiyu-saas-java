@@ -385,7 +385,7 @@ export function EvaluationRulesEditor({
   const [editingStepDesc, setEditingStepDesc] = useState('')
 
   // EvalResourceOnlyPanel 状态（从内部组件提升）
-  const [rdqMajorTab, setRdqMajorTab] = useState('全部')
+  const [rdqMajorTab, setRdqMajorTab] = useState('all')
 
   // MethodDialogContent 状态（从内部组件提升）
   const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
@@ -551,8 +551,8 @@ export function EvaluationRulesEditor({
   }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates])
 
   const majorOptions = useMemo(
-    () => [{ id: '全部', name: '全部' }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))],
-    [majors],
+    () => [{ id: 'all', name: t('全部') }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))],
+    [majors, t],
   )
   const majorNameMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -938,7 +938,7 @@ export function EvaluationRulesEditor({
     ? (() => {
         if (erDialogMethod === 'random_draw') {
           const filteredRdq = rdqApiQuestions.filter((q) => {
-            const matchMajor = rdqMajorTab === '全部' || q.majorId === rdqMajorTab
+            const matchMajor = rdqMajorTab === 'all' || q.majorId === rdqMajorTab
             const matchSearch =
               !rdqSearch ||
               (q.name || '').includes(rdqSearch) ||
@@ -1022,7 +1022,7 @@ export function EvaluationRulesEditor({
                   <p className="text-sm font-medium mb-2 text-gray-700">
                     {rdqSearch
                       ? t('搜索结果 ({n})', { n: filteredRdq.length })
-                      : rdqMajorTab === '全部'
+                      : rdqMajorTab === 'all'
                         ? t('全部现场问答题')
                         : t('{name}相关现场问答题', { name: majorNameMap[rdqMajorTab] || rdqMajorTab })}
                   </p>
@@ -4001,10 +4001,10 @@ export function EvaluationRulesEditor({
                                   <SelectValue placeholder={t('选择互评规则')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="随机分配">{t('随机分配')}</SelectItem>
-                                  <SelectItem value="相邻座位">{t('相邻座位')}</SelectItem>
-                                  <SelectItem value="自由组合">{t('自由组合')}</SelectItem>
-                                  <SelectItem value="指定分组">{t('指定分组')}</SelectItem>
+                                  <SelectItem value="random">{t('随机分配')}</SelectItem>
+                                  <SelectItem value="adjacent">{t('相邻座位')}</SelectItem>
+                                  <SelectItem value="free">{t('自由组合')}</SelectItem>
+                                  <SelectItem value="grouped">{t('指定分组')}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </FormFieldRow>

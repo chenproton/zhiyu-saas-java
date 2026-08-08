@@ -303,13 +303,13 @@ func scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask, error) {
 
 // ScenarioTaskExportRow 导出用任务行。
 type ScenarioTaskExportRow struct {
-	ID               string
-	Name             string
-	TaskType         string
-	Difficulty       int
-	EstimatedHours   float64
-	Background       string
-	DetailedDesc     string
+	ID                string
+	Name              string
+	TaskType          string
+	Difficulty        int
+	EstimatedHours    float64
+	Background        string
+	DetailedDesc      string
 	KnowledgePointIDs []string
 	AbilityPointIDs   []string
 	ResourceIDs       []string

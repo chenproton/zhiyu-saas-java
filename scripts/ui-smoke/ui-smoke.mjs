@@ -140,14 +140,6 @@ function attachListeners(page, sink, args) {
   }))
   page.on('console', msg => {
     const t = msg.type()
-    if (process.env.UI_SMOKE_TRACE && t === 'error' && msg.text().includes('DialogTitle')) {
-      console.log(`    [trace-warn] url=${page.url()} msg=${msg.text().slice(0, 50)}`)
-      page.evaluate(() => {
-        const dialogs = [...document.querySelectorAll('[role="dialog"], [data-slot="sheet-content"]')]
-          .map(d => ({ role: d.getAttribute('role'), label: d.getAttribute('aria-labelledby'), slot: d.getAttribute('data-slot'), html: d.outerHTML.slice(0, 200) }))
-        console.log('DIALOGS-NOW', JSON.stringify(dialogs))
-      }).catch(() => {})
-    }
     if (t === 'error') push({ type: 'console', message: msg.text().slice(0, 500) })
     else if (t === 'warning' && args.verbose) push({ type: 'console-warning', message: msg.text().slice(0, 500) })
   })
@@ -220,7 +212,6 @@ async function walkRoute(page, ctx, route, args, role, sink) {
         if (el) el.click()
       }, { selector: CLICKABLE_SELECTOR, key: pick.key }).catch(() => {})
       routeResult.clicks++
-      if (process.env.UI_SMOKE_TRACE) console.log(`    [trace] ${route} click#${routeResult.clicks} -> ${pick.key.slice(0, 60)}`)
       await sleep(350)
       // 弹窗/下拉菜单打开则 Esc 关闭
       if (await page.locator('[role="dialog"]:visible, [role="menu"]:visible').count()) {

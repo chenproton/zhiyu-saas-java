@@ -2,8 +2,8 @@ package store
 
 import (
 	"context"
-	"log/slog"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"

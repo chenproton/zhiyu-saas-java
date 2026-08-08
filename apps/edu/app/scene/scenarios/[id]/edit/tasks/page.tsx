@@ -1668,7 +1668,7 @@ function EditCardDialog({
 
   const [abilitySearch, setAbilitySearch] = useState('')
   const [abilityDetailOpen, setAbilityDetailOpen] = useState(false)
-  const [selectedAbilityForDetail] = useState<string | null>(null)
+  const [selectedAbilityForDetail, setSelectedAbilityForDetail] = useState<string | null>(null)
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
   const [isSavingCard, setIsSavingCard] = useState(false)
 
@@ -2099,6 +2099,25 @@ function EditCardDialog({
                                         {t('胜任标准：{level}', { level: levelLabel })}
                                       </Badge>
                                     )}
+                                    <span
+                                      role="button"
+                                      tabIndex={0}
+                                      className="text-[10px] text-sky-600 hover:underline shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedAbilityForDetail(ab.id)
+                                        setAbilityDetailOpen(true)
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.stopPropagation()
+                                          setSelectedAbilityForDetail(ab.id)
+                                          setAbilityDetailOpen(true)
+                                        }
+                                      }}
+                                    >
+                                      {t('详情')}
+                                    </span>
                                   </div>
                                 </div>
                                 {/* Row 2: description + standard description */}

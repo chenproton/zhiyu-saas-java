@@ -39,10 +39,16 @@ export function isAnswerCorrect(q: any, ans: any): boolean {
     return true
   }
   if (type === 'judge' || type === 'judgment') {
-    const s = typeof ans === 'string' ? ans.toLowerCase().trim() : ''
-    if (correct.length === 0) return false
-    const c = correct[0]
-    return s === c || (s === '正确' && c === 'true') || (s === '错误' && c === 'false')
+    // 判断题答案归一：兼容 '正确/错误/对/错/T/F/true/false/1/0' 等变体
+    const normalize = (v: string): boolean | null => {
+      const t = v.trim().toLowerCase()
+      if (['正确', '对', 't', 'true', '1', '是'].includes(t)) return true
+      if (['错误', '错', 'f', 'false', '0', '否'].includes(t)) return false
+      return null
+    }
+    const s = typeof ans === 'string' ? normalize(ans) : null
+    if (correct.length === 0 || s === null) return false
+    return s === normalize(String(correct[0]))
   }
   return false
 }

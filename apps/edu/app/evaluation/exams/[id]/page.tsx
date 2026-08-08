@@ -257,7 +257,7 @@ export default function ExamComposerPage() {
     analysis: eq.analysis,
     score: eq.score,
     status: 'published',
-    createdAt: new Date(),
+    createdAt: new Date().toISOString(),
   })
 
   const handleDragStart = (index: number) => {

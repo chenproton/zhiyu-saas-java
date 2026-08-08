@@ -123,15 +123,17 @@ func TestTeachingPlanGenerate_AutoClasses(t *testing.T) {
 		}
 	}
 
-	// 7. 清理
-	for _, q := range []string{
-		"DELETE FROM teaching_plans WHERE tenant_id = $1",
-		"DELETE FROM training_programs WHERE tenant_id = $1",
-		"DELETE FROM terms WHERE tenant_id = $1",
-		"DELETE FROM organizations WHERE tenant_id = $1",
-		"DELETE FROM org_types WHERE tenant_id = $1",
-	} {
-		env.DB.Exec(ctx, q, tenantID)
-	}
-	env.DB.Exec(ctx, "DELETE FROM majors WHERE id = $1", majorID)
+	// 7. 清理（defer 化：断言失败提前退出也不残留）
+	t.Cleanup(func() {
+		for _, q := range []string{
+			"DELETE FROM teaching_plans WHERE tenant_id = $1",
+			"DELETE FROM training_programs WHERE tenant_id = $1",
+			"DELETE FROM terms WHERE tenant_id = $1",
+			"DELETE FROM organizations WHERE tenant_id = $1",
+			"DELETE FROM org_types WHERE tenant_id = $1",
+		} {
+			env.DB.Exec(ctx, q, tenantID)
+		}
+		env.DB.Exec(ctx, "DELETE FROM majors WHERE id = $1", majorID)
+	})
 }
