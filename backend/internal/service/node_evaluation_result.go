@@ -53,7 +53,7 @@ func (s *NodeEvaluationResultService) Grade(ctx context.Context, tenantID, id, g
 	if examResultID == "" {
 		return nil
 	}
-	if err := s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, p.Score); err != nil {
+	if err := s.st.EvaluationResults().UpdateExamResultScore(ctx, s.st.Q(), examResultID, p.Score); err != nil {
 		slog.Warn("同步节点考试结果分数失败", "examResultID", examResultID, "nodeResultID", id, "error", err)
 	}
 	return nil

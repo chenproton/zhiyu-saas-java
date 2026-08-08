@@ -66,7 +66,7 @@ export function useApprovals({
       )
       if (workflowIds.length > 0) {
         try {
-          const wfRes = await workflowApi.list({ limit: 1000 })
+          const wfRes = await workflowApi.list({ ids: workflowIds.join(','), limit: 100 })
           const map = new Map<string, Workflow>()
           wfRes.items.forEach((w) => {
             if (workflowIds.includes(w.id)) map.set(w.id, w)

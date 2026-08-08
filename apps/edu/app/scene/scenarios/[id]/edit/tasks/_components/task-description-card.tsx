@@ -8,23 +8,6 @@ import {
   Loader2,
   Trash2,
   Upload,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  List,
-  ListOrdered,
-  Heading1,
-  Heading2,
-  Quote,
-  Code,
-  Minus,
-  Link as LinkIcon,
-  Table,
-  Strikethrough,
-  Palette,
-  Sparkles,
-  Type,
-  Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,45 +22,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { fileApi } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 
-const toolbarItems = [
-  [
-    { icon: <Heading1 className="h-4 w-4" />, label: 'H1' },
-    { icon: <Heading2 className="h-4 w-4" />, label: 'H2' },
-  ],
-  [{ icon: <Type className="h-4 w-4" />, label: '正文' }],
-  [
-    { icon: <b className="text-xs">B</b>, label: '加粗' },
-    { icon: <i className="text-xs">I</i>, label: '斜体' },
-    { icon: <u className="text-xs">U</u>, label: '下划线' },
-    { icon: <Strikethrough className="h-4 w-4" />, label: '删除线' },
-  ],
-  [
-    { icon: <AlignLeft className="h-4 w-4" />, label: '左对齐' },
-    { icon: <AlignCenter className="h-4 w-4" />, label: '居中' },
-    { icon: <AlignRight className="h-4 w-4" />, label: '右对齐' },
-  ],
-  [
-    { icon: <List className="h-4 w-4" />, label: '无序列表' },
-    { icon: <ListOrdered className="h-4 w-4" />, label: '有序列表' },
-  ],
-  [
-    { icon: <Quote className="h-4 w-4" />, label: '引用' },
-    { icon: <Code className="h-4 w-4" />, label: '代码' },
-  ],
-  [
-    { icon: <LinkIcon className="h-4 w-4" />, label: '链接' },
-    { icon: <Image className="h-4 w-4" aria-label="image" />, label: '图片' },
-    { icon: <Video className="h-4 w-4" />, label: '视频' },
-  ],
-  [
-    { icon: <Table className="h-4 w-4" />, label: '表格' },
-    { icon: <Minus className="h-4 w-4" />, label: '分割线' },
-  ],
-  [
-    { icon: <Palette className="h-4 w-4" />, label: '字体颜色' },
-    { icon: <Sparkles className="h-4 w-4" />, label: '背景色' },
-  ],
-]
 
 interface TaskDescriptionCardProps {
   description: string
@@ -145,25 +89,8 @@ export function TaskDescriptionCard({
       </Tabs>
       {descMode === 'rich_text' ? (
         <div className="flex-1 flex flex-col min-h-0">
-          <p className="text-xs text-gray-500 mb-2">{t('可编写详细的操作手册，支持图文混排')}</p>
+          <p className="text-xs text-gray-500 mb-2">{t('可编写详细的操作手册（当前为纯文本模式，支持 Markdown 语法）')}</p>
           <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-[450px]">
-            <div className="bg-gray-50 border-b px-3 py-2 flex flex-wrap gap-1">
-              {toolbarItems.map((group, gi) => (
-                <div key={gi} className="flex items-center gap-0.5 mr-2">
-                  {group.map((item, ii) => (
-                    <Button
-                      key={ii}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/5"
-                      title={t(item.label)}
-                    >
-                      {item.icon}
-                    </Button>
-                  ))}
-                </div>
-              ))}
-            </div>
             <div className="p-4 flex-1 bg-white">
               <Textarea
                 value={description}

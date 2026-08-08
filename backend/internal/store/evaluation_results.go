@@ -113,8 +113,8 @@ func (s *EvaluationResultStore) Submit(ctx context.Context, p *EvaluationResultS
 }
 
 // Grade 评分（pending→evaluated）。
-func (s *EvaluationResultStore) Grade(ctx context.Context, id, graderID string, p *EvaluationResultGradeParams) error {
-	tag, err := s.q.Exec(ctx, `
+func (s *EvaluationResultStore) Grade(ctx context.Context, q Queryer, id, graderID string, p *EvaluationResultGradeParams) error {
+	tag, err := q.Exec(ctx, `
 		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, subjective_content = $5, status = 'evaluated', graded_at = NOW(), graded_by = $6, updated_at = NOW()
 		WHERE id = $7 AND status = 'pending'
 	`, p.Score, p.Comment, p.EvalPointScores, p.DrawnQuestions, p.SubjectiveContent, graderID, id)
@@ -148,9 +148,9 @@ func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, grad
 // FindLatestExamResult 查询任务下某测评方式对应的最新考试结果。
 // 通过 resource_config 中的 paperId/examId 将考试安排绑定到该方式自身的试卷，
 // 避免任务下多个试卷方式（paper/question_bank/quiz）之间互相串用考试结果。
-func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID, methodKey, evaluateeID string) (string, error) {
+func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, q Queryer, taskID, methodKey, evaluateeID string) (string, error) {
 	var examResultID string
-	err := s.q.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT er.id
 		FROM exam_results er
 		JOIN exam_usages eu ON er.exam_usage_id = eu.id
@@ -171,8 +171,8 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, taskID
 
 // UpdateExamResultScore 更新考试结果分数，并同步及格判定（60% 及格线，与提交时一致），
 // 同时标记教师评分时间（graded_at 非空即视为已评分，用于重交保护）。
-func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, examResultID string, score float64) error {
-	_, err := s.q.Exec(ctx, `UPDATE exam_results SET score = $1, is_pass = ($1 >= total_score * 0.6), graded_at = NOW(), updated_at = NOW() WHERE id = $2`, score, examResultID)
+func (s *EvaluationResultStore) UpdateExamResultScore(ctx context.Context, q Queryer, examResultID string, score float64) error {
+	_, err := q.Exec(ctx, `UPDATE exam_results SET score = $1, is_pass = ($1 >= total_score * 0.6), graded_at = NOW(), updated_at = NOW() WHERE id = $2`, score, examResultID)
 	return err
 }
 

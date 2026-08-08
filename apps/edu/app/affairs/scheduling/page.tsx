@@ -12,9 +12,10 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@zhiyu/ui'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
-import { teachingPlanApi } from '@/lib/api'
-import type { TeachingPlan, TeachingPlanDetail } from '@/lib/types'
+import { teachingPlanApi, termApi } from '@/lib/api'
+import type { TeachingPlan, TeachingPlanDetail, AffairsTerm } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { reportError } from '@/lib/error-handling'
 import { ScheduleGridTab } from './_components/schedule-grid-tab'
 import { TimetableViewTab } from './_components/timetable-view-tab'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -84,6 +85,28 @@ function SchedulingPageInner() {
   }, [planId, loadPlanDetail])
 
   const selectedPlan = useMemo(() => plans.find((p) => p.id === planId) || null, [plans, planId])
+  const [selectedTerm, setSelectedTerm] = useState<AffairsTerm | null>(null)
+
+  // 选中计划变化时拉取完整 term（周数/日期用于课表视图）
+  // 异步加载不回写同步 setState；termId 变化时由 term 查询结果驱动
+  useEffect(() => {
+    if (!selectedPlan?.termId) return
+    let cancelled = false
+    termApi
+      .list({ search: selectedPlan.termId })
+      .then((res) => {
+        if (!cancelled) {
+          const t = (res.items || []).find((x) => x.id === selectedPlan.termId)
+          setSelectedTerm(t ?? null)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) reportError(err, '加载学期信息')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedPlan?.termId])
 
   return (
     <div className="space-y-6">
@@ -169,15 +192,15 @@ function SchedulingPageInner() {
       {step === 'timetable' && selectedPlan && (
         <TimetableViewTab
           term={
-            {
+            selectedTerm ?? {
               id: selectedPlan.termId,
-              name: selectedPlan.termName,
+              name: selectedPlan.termName || '',
               startDate: '',
               endDate: '',
-              weeksCount: 0,
+              weeksCount: 16,
               isCurrent: false,
               createdAt: '',
-            } as any
+            } as AffairsTerm
           }
         />
       )}

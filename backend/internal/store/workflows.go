@@ -99,6 +99,11 @@ func (s *WorkflowStore) ListConfig() ListQueryConfig[domain.Workflow] {
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
 		ScanRows:      ScanWorkflowRows,
+		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
+			if ids := p.Values["ids"]; ids != "" {
+				qb.AddCondition("id = ANY(" + qb.NextArg(ids) + ")")
+			}
+		},
 	}
 }
 

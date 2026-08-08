@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math"
 	"strings"
@@ -251,13 +252,14 @@ func (s *EvaluationService) SubmitEvaluationResult(ctx context.Context, p *store
 	return s.st.EvaluationResults().Submit(ctx, p)
 }
 
-// GradeEvaluationResult 评分并同步考试分数。
+// GradeEvaluationResult 评分并同步考试分数（同一事务：评分与回写原子）。
 func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, id, graderID string, p *store.EvaluationResultGradeParams, taskID, methodKey, evaluateeID string) error {
-	if err := s.st.EvaluationResults().Grade(ctx, id, graderID, p); err != nil {
-		return err
-	}
-	s.syncExamResultScore(ctx, taskID, methodKey, evaluateeID, p.Score)
-	return nil
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := txStore.EvaluationResults().Grade(ctx, txStore.Q(), id, graderID, p); err != nil {
+			return err
+		}
+		return s.syncExamResultScoreTx(ctx, txStore, taskID, methodKey, evaluateeID, p.Score)
+	})
 }
 
 // BatchGradeEvaluationResults 批量评分（事务）并同步考试分数。
@@ -275,28 +277,39 @@ func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, gra
 		}
 		var err2 error
 		targets, err2 = txStore.EvaluationResults().BatchGetGradeTargets(ctx, txStore.Q(), ids)
-		return err2
+		if err2 != nil {
+			return err2
+		}
+		// 回写与评分同一事务：任一失败整体回滚
+		for _, t := range targets {
+			if err := s.syncExamResultScoreTx(ctx, txStore, t.TaskID, t.MethodKey, t.EvaluateeID, scoreByID[t.ID]); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
-	if err != nil {
-		return err
+	return err
+}
+
+// syncExamResultScore 同步考试结果分数（事务内版本）。
+func (s *EvaluationService) syncExamResultScoreTx(ctx context.Context, txStore *store.Store, taskID, methodKey, evaluateeID string, score float64) error {
+	if methodKey != "paper" && methodKey != "question_bank" && methodKey != "quiz" {
+		return nil
 	}
-	for _, t := range targets {
-		s.syncExamResultScore(ctx, t.TaskID, t.MethodKey, t.EvaluateeID, scoreByID[t.ID])
+	examResultID, err := txStore.EvaluationResults().FindLatestExamResult(ctx, txStore.Q(), taskID, methodKey, evaluateeID)
+	if err != nil || examResultID == "" {
+		return nil
+	}
+	if err := txStore.EvaluationResults().UpdateExamResultScore(ctx, txStore.Q(), examResultID, score); err != nil {
+		return fmt.Errorf("同步考试结果分数失败: %w", err)
 	}
 	return nil
 }
 
-// syncExamResultScore 同步考试结果分数。
+// syncExamResultScore 同步考试结果分数（单连接版本，兼容既有调用方）。
 func (s *EvaluationService) syncExamResultScore(ctx context.Context, taskID, methodKey, evaluateeID string, score float64) {
-	if methodKey != "paper" && methodKey != "question_bank" && methodKey != "quiz" {
-		return
-	}
-	examResultID, err := s.st.EvaluationResults().FindLatestExamResult(ctx, taskID, methodKey, evaluateeID)
-	if err != nil || examResultID == "" {
-		return
-	}
-	if err := s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, score); err != nil {
-		slog.Warn("同步考试结果分数失败", "examResultID", examResultID, "error", err)
+	if err := s.syncExamResultScoreTx(ctx, s.st, taskID, methodKey, evaluateeID, score); err != nil {
+		slog.Warn("同步考试结果分数失败", "taskID", taskID, "error", err)
 	}
 }
 

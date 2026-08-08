@@ -40,6 +40,25 @@ func (a *JobAbilityAggregator) lockPosition(tenantID, positionID string) *sync.M
 // 会破坏同一岗位的互斥。岗位数量有界，map 常驻可接受。
 
 // aggPoint 汇聚用能力点：关联链来自 position_ability_bindings + 场景评分点关联。
+// studentTaskKey 学生+任务键（同一任务多方法评分取最高）。
+type studentTaskKey struct {
+	studentID, taskID string
+}
+
+// pointDetail 能力点达成明细（汇聚结果 JSON）。
+type pointDetail struct {
+	AbilityPointID     string  `json:"abilityPointId"`
+	Name               string  `json:"abilityPointName"`
+	Score              float64 `json:"score"`
+	Weight             float64 `json:"weight"`
+	RequiredLevel      string  `json:"requiredLevel"`
+	RequiredLevelLabel string  `json:"requiredLevelLabel,omitempty"`
+	Achieved           bool    `json:"achieved"`
+	LevelLabel         string  `json:"levelLabel,omitempty"`
+	// CompetencyV2 能力点胜任度（新，%）：等级距离法；无效点不写入
+	CompetencyV2 *float64 `json:"competencyV2,omitempty"`
+}
+
 type aggPoint struct {
 	abilityPointID string
 	name           string
@@ -205,9 +224,6 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	}
 
 	// 每学生每任务的归一化得分（同一任务多方法评分取最高）
-	type studentTaskKey struct {
-		studentID, taskID string
-	}
 	scores := map[studentTaskKey]taskScore{}
 	scoreRows, err := a.store.JobAbilityResults().LoadStudentTaskScores(ctx, tenantID, taskIDs, studentIDs)
 	if err != nil {
@@ -224,159 +240,169 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	}
 
 	// 3. 逐学生计算并 upsert（岗位总评 grade 已停用，不再计算/写入；能力点按分档判定达成）
+	// 每 100 名学生合并为一个事务，避免千级学生时开启上千次事务
 	updated := 0
-	for _, studentID := range studentIDs {
-		type pointDetail struct {
-			AbilityPointID     string  `json:"abilityPointId"`
-			Name               string  `json:"abilityPointName"`
-			Score              float64 `json:"score"`
-			Weight             float64 `json:"weight"`
-			RequiredLevel      string  `json:"requiredLevel"`
-			RequiredLevelLabel string  `json:"requiredLevelLabel,omitempty"`
-			Achieved           bool    `json:"achieved"`
-			LevelLabel         string  `json:"levelLabel,omitempty"`
-			// CompetencyV2 能力点胜任度（新，%）：等级距离法；无效点不写入
-			CompetencyV2 *float64 `json:"competencyV2,omitempty"`
+	for batchStart := 0; batchStart < len(studentIDs); batchStart += 100 {
+		batchEnd := batchStart + 100
+		if batchEnd > len(studentIDs) {
+			batchEnd = len(studentIDs)
 		}
-		details := make([]pointDetail, 0, len(points))
-		pointValid := make([]bool, 0, len(points))
-		var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum, competencyV2WeightedSum, competencyV2WeightSum float64
-		achieved := 0
-		for _, p := range points {
-			var weightedSum, weightSum float64
-			for _, t := range p.tasks {
-				if s, ok := scores[studentTaskKey{studentID, t.taskID}]; ok {
-					weightedSum += s.score * t.weight
-					weightSum += t.weight
-				}
-			}
-			pointScore := 0.0
-			valid := weightSum > 0
-			if valid {
-				pointScore = weightedSum / weightSum
-				posWeightedSum += pointScore * p.weight
-				posWeightSum += p.weight
-			}
-			// 胜任度（新）：等级距离法，仅有效点参与（无效点剔除，不惩罚）
-			compV2 := 0.0
-			if valid && p.weight > 0 {
-				compV2 = 100 + (levelValue(p.levels, pointScore)-levelRankByCode(p.requiredLevel))*50
-				if compV2 < 0 {
-					compV2 = 0
-				}
-				competencyV2WeightedSum += compV2 * p.weight
-				competencyV2WeightSum += p.weight
-			}
-			// 认知得分/胜任度：与读取时回退口径一致，全部权重>0 的点参与（无效点按 0 分计入）
-			if p.weight > 0 {
-				cognitionSum += pointScore * p.weight
-				cognitionWeight += p.weight
-				need := pointCompetencyNeed(p.levels, p.requiredLevel)
-				if need > 0 {
-					if c := (pointScore - need) / need; c > 0 {
-						competencySum += c * p.weight
-					}
-				}
-			}
-			pointValid = append(pointValid, valid)
-			// 达成判定：有自定义分档时用配置档位（分数档位 >= 要求档位），无配置时回退系统固定五档；
-			// requiredLevel 无法解析时回退 60 分线
-			pointAchieved := false
-			if valid {
-				if len(p.levels) > 0 {
-					requiredRank := customLevelRankByCode(p.levels, p.requiredLevel)
-					pointAchieved = requiredRank >= 0 && customLevelRank(p.levels, pointScore) >= requiredRank
-				} else {
-					requiredRank := masteryCodeRank(p.requiredLevel)
-					if requiredRank >= 0 {
-						pointAchieved = masteryScoreRank(pointScore) >= requiredRank
-					} else {
-						pointAchieved = pointScore >= 60
-					}
-				}
-			}
-			if pointAchieved {
-				achieved++
-			}
-			details = append(details, pointDetail{
-				AbilityPointID:     p.abilityPointID,
-				Name:               p.name,
-				Score:              math.Round(pointScore*100) / 100,
-				Weight:             p.weight,
-				RequiredLevel:      p.requiredLevel,
-				RequiredLevelLabel: masteryCodeLabel(p.requiredLevel),
-				Achieved:           pointAchieved,
-				LevelLabel:         pointLevelLabel(p.levels, pointScore),
-				CompetencyV2:       competencyV2Ref(valid, compV2),
-			})
-		}
-		if posWeightSum == 0 {
-			continue // 无任何有效点则跳过该学生
-		}
-
-		positionScore := posWeightedSum / posWeightSum
-		rate := math.Round(positionScore*100) / 100
-
-		// 认知得分（0-100）与岗位胜任度（%，负值归零），落库供读取直接返回
-		cognition := 0.0
-		competency := 0.0
-		if cognitionWeight > 0 {
-			cognition = math.Round(cognitionSum/cognitionWeight*100) / 100
-			// competencySum 为比值加权和（c=(score-need)/need），转百分比需 ×100；
-			// round(×10000)/100 即四舍五入到两位百分数（与认知得分/v2 的 round(×100)/100 同构）
-			competency = math.Round(competencySum/cognitionWeight*10000) / 100
-		}
-
-		// 岗位胜任度（新，%）：有效能力点胜任度（新）加权平均
-		competencyV2 := 0.0
-		if competencyV2WeightSum > 0 {
-			competencyV2 = math.Round(competencyV2WeightedSum/competencyV2WeightSum*100) / 100
-		}
-
-		// 按能力域（position_ability_bindings.domain）汇总域内能力点加权平均分
-		domainScores := make([]portraitDomainScore, 0)
-		{
-			type domainAcc struct {
-				weightedSum, weightSum float64
-			}
-			accs := map[string]*domainAcc{}
-			order := make([]string, 0)
-			for i, p := range points {
-				if !pointValid[i] {
-					continue
-				}
-				d := details[i]
-				acc, ok := accs[p.domain]
-				if !ok {
-					acc = &domainAcc{}
-					accs[p.domain] = acc
-					order = append(order, p.domain)
-				}
-				acc.weightedSum += d.Score * p.weight
-				acc.weightSum += p.weight
-			}
-			for _, domainName := range order {
-				acc := accs[domainName]
-				if acc.weightSum == 0 {
-					continue
-				}
-				score := math.Round(acc.weightedSum/acc.weightSum*100) / 100
-				domainScores = append(domainScores, portraitDomainScore{
-					Domain:      domainName,
-					DomainLabel: domainName,
-					Score:       score,
-					Level:       masteryGrade(score),
-				})
-			}
-		}
-
-		profile := profiles[studentID]
-		detailsJSON, err := json.Marshal(details)
-		if err != nil {
+		if err := a.aggregateStudentBatch(ctx, tenantID, careerPositionID, studentIDs[batchStart:batchEnd], scores, profiles, points); err != nil {
 			return len(studentIDs), updated, err
 		}
+		updated += batchEnd - batchStart
+	}
 
-		if err := a.store.WithTx(ctx, func(txStore *store.Store) error {
+	// 同岗位下按达标率刷新班级/专业排名
+	if err := a.store.JobAbilityResults().RefreshRanks(ctx, careerPositionID, tenantID); err != nil {
+		return len(studentIDs), updated, err
+	}
+
+	return len(studentIDs), updated, nil
+}
+
+// aggregateStudentBatch 批量处理一批学生的能力汇聚（批内共享同一事务）。
+func (a *JobAbilityAggregator) aggregateStudentBatch(ctx context.Context, tenantID, careerPositionID string, studentIDs []string, scores map[studentTaskKey]taskScore, profiles map[string]store.UserProfile, points []aggPoint) error {
+	return a.store.WithTx(ctx, func(txStore *store.Store) error {
+		for _, studentID := range studentIDs {
+			details := make([]pointDetail, 0, len(points))
+			pointValid := make([]bool, 0, len(points))
+			var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum, competencyV2WeightedSum, competencyV2WeightSum float64
+			achieved := 0
+			for _, p := range points {
+				var weightedSum, weightSum float64
+				for _, t := range p.tasks {
+					if s, ok := scores[studentTaskKey{studentID, t.taskID}]; ok {
+						weightedSum += s.score * t.weight
+						weightSum += t.weight
+					}
+				}
+				pointScore := 0.0
+				valid := weightSum > 0
+				if valid {
+					pointScore = weightedSum / weightSum
+					posWeightedSum += pointScore * p.weight
+					posWeightSum += p.weight
+				}
+				// 胜任度（新）：等级距离法，仅有效点参与（无效点剔除，不惩罚）
+				compV2 := 0.0
+				if valid && p.weight > 0 {
+					compV2 = 100 + (levelValue(p.levels, pointScore)-levelRankByCode(p.requiredLevel))*50
+					if compV2 < 0 {
+						compV2 = 0
+					}
+					competencyV2WeightedSum += compV2 * p.weight
+					competencyV2WeightSum += p.weight
+				}
+				// 认知得分/胜任度：与读取时回退口径一致，全部权重>0 的点参与（无效点按 0 分计入）
+				if p.weight > 0 {
+					cognitionSum += pointScore * p.weight
+					cognitionWeight += p.weight
+					need := pointCompetencyNeed(p.levels, p.requiredLevel)
+					if need > 0 {
+						if c := (pointScore - need) / need; c > 0 {
+							competencySum += c * p.weight
+						}
+					}
+				}
+				pointValid = append(pointValid, valid)
+				// 达成判定：有自定义分档时用配置档位（分数档位 >= 要求档位），无配置时回退系统固定五档；
+				// requiredLevel 无法解析时回退 60 分线
+				pointAchieved := false
+				if valid {
+					if len(p.levels) > 0 {
+						requiredRank := customLevelRankByCode(p.levels, p.requiredLevel)
+						pointAchieved = requiredRank >= 0 && customLevelRank(p.levels, pointScore) >= requiredRank
+					} else {
+						requiredRank := masteryCodeRank(p.requiredLevel)
+						if requiredRank >= 0 {
+							pointAchieved = masteryScoreRank(pointScore) >= requiredRank
+						} else {
+							pointAchieved = pointScore >= 60
+						}
+					}
+				}
+				if pointAchieved {
+					achieved++
+				}
+				details = append(details, pointDetail{
+					AbilityPointID:     p.abilityPointID,
+					Name:               p.name,
+					Score:              math.Round(pointScore*100) / 100,
+					Weight:             p.weight,
+					RequiredLevel:      p.requiredLevel,
+					RequiredLevelLabel: masteryCodeLabel(p.requiredLevel),
+					Achieved:           pointAchieved,
+					LevelLabel:         pointLevelLabel(p.levels, pointScore),
+					CompetencyV2:       competencyV2Ref(valid, compV2),
+				})
+			}
+			if posWeightSum == 0 {
+				continue // 无任何有效点则跳过该学生
+			}
+
+			positionScore := posWeightedSum / posWeightSum
+			rate := math.Round(positionScore*100) / 100
+
+			// 认知得分（0-100）与岗位胜任度（%，负值归零），落库供读取直接返回
+			cognition := 0.0
+			competency := 0.0
+			if cognitionWeight > 0 {
+				cognition = math.Round(cognitionSum/cognitionWeight*100) / 100
+				// competencySum 为比值加权和（c=(score-need)/need），转百分比需 ×100；
+				// round(×10000)/100 即四舍五入到两位百分数（与认知得分/v2 的 round(×100)/100 同构）
+				competency = math.Round(competencySum/cognitionWeight*10000) / 100
+			}
+
+			// 岗位胜任度（新，%）：有效能力点胜任度（新）加权平均
+			competencyV2 := 0.0
+			if competencyV2WeightSum > 0 {
+				competencyV2 = math.Round(competencyV2WeightedSum/competencyV2WeightSum*100) / 100
+			}
+
+			// 按能力域（position_ability_bindings.domain）汇总域内能力点加权平均分
+			domainScores := make([]portraitDomainScore, 0)
+			{
+				type domainAcc struct {
+					weightedSum, weightSum float64
+				}
+				accs := map[string]*domainAcc{}
+				order := make([]string, 0)
+				for i, p := range points {
+					if !pointValid[i] {
+						continue
+					}
+					d := details[i]
+					acc, ok := accs[p.domain]
+					if !ok {
+						acc = &domainAcc{}
+						accs[p.domain] = acc
+						order = append(order, p.domain)
+					}
+					acc.weightedSum += d.Score * p.weight
+					acc.weightSum += p.weight
+				}
+				for _, domainName := range order {
+					acc := accs[domainName]
+					if acc.weightSum == 0 {
+						continue
+					}
+					score := math.Round(acc.weightedSum/acc.weightSum*100) / 100
+					domainScores = append(domainScores, portraitDomainScore{
+						Domain:      domainName,
+						DomainLabel: domainName,
+						Score:       score,
+						Level:       masteryGrade(score),
+					})
+				}
+			}
+
+			profile := profiles[studentID]
+			detailsJSON, err := json.Marshal(details)
+			if err != nil {
+				return err
+			}
+
 			if err := txStore.JobAbilityResults().UpsertResult(ctx, &store.JobAbilityResultUpsertParams{
 				TenantID:              tenantID,
 				CareerPositionID:      careerPositionID,
@@ -408,26 +434,19 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 			if err != nil {
 				return err
 			}
-			return txStore.StudentPortraits().UpsertPortrait(ctx, &store.StudentPortraitUpsertParams{
+			if err := txStore.StudentPortraits().UpsertPortrait(ctx, &store.StudentPortraitUpsertParams{
 				TenantID:           tenantID,
 				UserID:             studentID,
 				CareerPositionID:   careerPositionID,
 				OverallGrade:       nil, // 岗位总评已停用，列保留置空
 				DomainScores:       domainScoresJSON,
 				RecommendPositions: recommendsJSON,
-			})
-		}); err != nil {
-			return len(studentIDs), updated, err
+			}); err != nil {
+				return err
+			}
 		}
-		updated++
-	}
-
-	// 同岗位下按达标率刷新班级/专业排名
-	if err := a.store.JobAbilityResults().RefreshRanks(ctx, careerPositionID, tenantID); err != nil {
-		return len(studentIDs), updated, err
-	}
-
-	return len(studentIDs), updated, nil
+		return nil
+	})
 }
 
 // masteryLevels 掌握程度五档（分数→等级固定映射，不再支持自定义等级映射）。
