@@ -1,0 +1,8 @@
+{
+  "baseUrl": "http://127.0.0.1",
+  "roles": ["school", "teacher", "student"],
+  "workers": 3,
+  "maxClicks": 100,
+  "excludeRoutes": [],
+  "expectedAuthPages": ["/superadmin"]
+}
