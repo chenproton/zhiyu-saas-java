@@ -31,7 +31,7 @@ func (s *PositionCertificateStore) List(ctx context.Context, tenantID, careerPos
 	}
 	cond := joinSQL(where, " AND ")
 
-	countQuery := "SELECT COUNT(*) FROM position_certificates WHERE " + cond
+	countQuery := "SELECT COUNT(*) FROM position_certificates pc WHERE " + cond
 	var total int
 	if err := s.q.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err

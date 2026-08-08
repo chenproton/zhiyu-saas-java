@@ -20,7 +20,7 @@
  *   --base-url <url>        目标站点（默认 http://127.0.0.1，即 nginx 网关；注意不能直连 3020，
  *                          容器内 Next rewrite 到 127.0.0.1:8080 会失败，必须走网关）
  *   --roles <a,b,c>         角色列表（默认 school,teacher,student）
- *   --max-clicks <n>        每页最大点击次数（默认 15）
+ *   --max-clicks <n>        每页点击次数安全阀（默认 100，正常每页唯一可点元素不会触达）
  *   --workers <n>           并行巡检路数（默认 3）
  *   --report <path>         报告 JSON 输出路径（默认 /tmp/zhiyu-ui-smoke/report.json）
  *   --exclude <sub,a,b>     按路径子串排除路由（逗号分隔）
@@ -49,15 +49,15 @@ const ROLE_ACCOUNTS = {
   student: { username: 'student', password: 'student123' },
 }
 
-// 会修改/提交数据的按钮，默认跳过（防止污染数据）
-const DANGEROUS_RE = /^(保存|提交|删除|发布|确认|确定|归档|驳回|通过|启用|停用|重置密码|退出|注销|登出|批量)/
+// 会修改/提交数据的按钮，默认跳过（防止污染数据；含新建/创建/禁用等，避免误操作）
+const DANGEROUS_RE = /^(保存|提交|删除|发布|确认|确定|归档|驳回|通过|启用|停用|禁用|冻结|锁定|重置密码|退出|注销|登出|批量|创建|新增|新建|添加)/
 
 // 种子数据中的占位图片等已知噪音，默认过滤（--verbose 可关闭过滤）
 const NOISE_RE = /example\.com/
 
 function parseArgs(argv) {
   const args = { baseUrl: 'http://127.0.0.1', roles: ['school', 'teacher', 'student'],
-    maxClicks: 15, workers: 3, report: DEFAULT_REPORT, exclude: [], route: null,
+    maxClicks: 100, workers: 3, report: DEFAULT_REPORT, exclude: [], route: null,
     clickDangerous: false, tailBackend: false, failOnError: false, headed: false, verbose: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -165,9 +165,10 @@ const CLICKABLE_SELECTOR = ['button', 'a[href]', '[role="tab"]', '[role="button"
 async function collectClickables(page, args) {
   return page.evaluate(({ selector, dangerous, clickDangerous }) => {
     const skipRe = new RegExp(dangerous)
-    const seen = new Set()
+    const countByKey = new Map()
     const out = []
-    document.querySelectorAll(selector).forEach(el => {
+    const els = [...document.querySelectorAll(selector)]
+    els.forEach((el, index) => {
       const rect = el.getBoundingClientRect()
       if (rect.width < 4 || rect.height < 4) return
       const cs = getComputedStyle(el)
@@ -178,13 +179,29 @@ async function collectClickables(page, args) {
       if (el.tagName === 'A' && href && !href.startsWith('/')) return // 仅内部链接
       const text = (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40)
       if (text && !clickDangerous && skipRe.test(text)) return
-      const key = `${el.tagName}|${text}|${href}`
-      if (seen.has(key)) return
-      seen.add(key)
-      out.push({ key })
+      // 同类元素（如表格每行"编辑"）按出现次数编号，保证每个都点一次
+      const base = `${el.tagName}|${text}|${href}`
+      const n = (countByKey.get(base) || 0) + 1
+      countByKey.set(base, n)
+      out.push({ key: `${base}|${n}`, index })
     })
     return out
   }, { selector: CLICKABLE_SELECTOR, dangerous: DANGEROUS_RE.source, clickDangerous: args.clickDangerous })
+}
+
+// 按收集时的文档序 index 定位并点击；DOM 变化导致错位时校验 base key，不一致则按 key 回退查找
+function clickByIndex(page, selector, pick) {
+  return page.evaluate(({ selector, key, index }) => {
+    const base = key.slice(0, key.lastIndexOf('|'))
+    const matchKey = el => {
+      const text = (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40)
+      const href = el.getAttribute('href') || ''
+      return `${el.tagName}|${text}|${href}` === base
+    }
+    const els = [...document.querySelectorAll(selector)]
+    const el = els[index] && matchKey(els[index]) ? els[index] : els.find(matchKey)
+    if (el) el.click()
+  }, { selector, key: pick.key, index: pick.index }).catch(() => {})
 }
 
 async function walkRoute(page, ctx, route, args, role, sink) {
@@ -198,19 +215,15 @@ async function walkRoute(page, ctx, route, args, role, sink) {
       return routeResult
     }
     const basePath = new URL(page.url()).pathname
-    for (let i = 0; i < args.maxClicks; i++) {
-      const clickables = await collectClickables(page, args)
-      if (!clickables.length) break
-      const pick = clickables[i % clickables.length]
-      await page.evaluate(({ selector, key }) => {
-        const els = [...document.querySelectorAll(selector)]
-        const el = els.find(x => {
-          const text = (x.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40)
-          const href = x.getAttribute('href') || ''
-          return `${x.tagName}|${text}|${href}` === key
-        })
-        if (el) el.click()
-      }, { selector: CLICKABLE_SELECTOR, key: pick.key }).catch(() => {})
+    // 队列式点击：初始收集一次唯一元素清单，逐个点一遍（弹窗开→Esc 关，跳走→回本页），
+    // 每轮结束后补充点击产生的新元素（Tab 切换/展开菜单等），max-clicks 仅作安全阀
+    const attempted = new Set()
+    const queue = await collectClickables(page, args)
+    for (let qi = 0; qi < queue.length && routeResult.clicks < args.maxClicks; qi++) {
+      const pick = queue[qi]
+      if (attempted.has(pick.key)) continue
+      attempted.add(pick.key)
+      await clickByIndex(page, CLICKABLE_SELECTOR, pick)
       routeResult.clicks++
       await sleep(350)
       // 弹窗/下拉菜单打开则 Esc 关闭
@@ -225,6 +238,13 @@ async function walkRoute(page, ctx, route, args, role, sink) {
           .catch(() => {})
         await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})
         await sleep(400)
+      }
+      // 增量补充点击后新出现的可点击元素（已尝试过的不重复点）
+      const fresh = await collectClickables(page, args).catch(() => [])
+      for (const f of fresh) {
+        if (!attempted.has(f.key) && !queue.some(q => q.key === f.key)) {
+          queue.push(f)
+        }
       }
     }
   } catch (e) {
@@ -260,7 +280,7 @@ async function main() {
 
   const routes = args.route ? [args.route] : (await discoverRoutes()).filter(r => !args.exclude.some(x => r.includes(x)))
   console.log(`目标站点: ${args.baseUrl}`)
-  console.log(`发现页面: ${routes.length} 个，角色: ${args.roles.join('/')}，每页最多点击 ${args.maxClicks} 次`)
+  console.log(`发现页面: ${routes.length} 个，角色: ${args.roles.join('/')}，每页点击全部唯一可点元素（上限 ${args.maxClicks}）`)
 
   const backendStart = new Date().toISOString()
   // 优先用系统 Chrome（channel: 'chrome'），避免从 cdn.playwright.dev 下载浏览器（该 CDN 在国内不通）

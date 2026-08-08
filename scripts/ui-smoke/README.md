@@ -15,11 +15,11 @@ pnpm install
 ## 使用
 
 ```bash
-# 默认：本机 nginx 网关(http://127.0.0.1)、三个角色全量巡检、每页 15 次点击、3 路并发
+# 默认：本机 nginx 网关(http://127.0.0.1)、三个角色全量巡检、每页点击全部唯一可点元素（含弹窗/下拉/Tab 切换后新出现的元素）、3 路并发
 node scripts/ui-smoke/ui-smoke.mjs
 
 # 指定站点 / 角色 / 点击量
-node scripts/ui-smoke/ui-smoke.mjs --base-url http://127.0.0.1 --roles teacher --max-clicks 20
+node scripts/ui-smoke/ui-smoke.mjs --base-url http://127.0.0.1 --roles teacher
 
 # 同时抓取后端容器日志增量（error/panic 行）
 node scripts/ui-smoke/ui-smoke.mjs --tail-backend
@@ -37,7 +37,7 @@ node scripts/ui-smoke/ui-smoke.mjs --click-dangerous
 |---|---|---|
 | `--base-url` | `http://127.0.0.1` | 目标站点，**必须走 nginx 网关**；直连 3020 时容器内 Next rewrite 到 127.0.0.1:8080 会失败 |
 | `--roles` | `school,teacher,student` | 逗号分隔角色列表（登录页标注的测试账号） |
-| `--max-clicks` | `15` | 每页最多点击次数 |
+| `--max-clicks` | `100` | 每页点击次数安全阀（默认每页点完所有唯一可点元素，一般触达不到） |
 | `--workers` | `3` | 并发巡检路数 |
 | `--exclude` | - | 按路由子串排除，逗号分隔 |
 | `--route` | - | 只巡检一个路由 |
