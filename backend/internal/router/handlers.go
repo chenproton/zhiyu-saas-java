@@ -47,6 +47,8 @@ type Handlers struct {
 	workflowHandler               *handler.WorkflowHandler
 	approvalHandler               *handler.ApprovalHandler
 	allianceHandler               *handler.AllianceHandler
+	allianceMentorHandler         *handler.AllianceMentorHandler
+	partnerHandler                *handler.PartnerHandler
 	positionHandler               *handler.PositionHandler
 	positionCloneHandler          *handler.PositionCloneHandler
 	abilityHandler                *handler.AbilityHandler
@@ -127,8 +129,11 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	scenarioSvc := service.NewScenarioService(svc)
 	lessonContentSvc := service.NewLessonContentService(svc)
 	favoritesSvc := service.NewFavoritesService(svc)
+	partnerSvc := service.NewPartnerService(svc)
+	authH := handler.NewAuthHandler(authSvc, jwtSecret)
+	authH.PartnerService = partnerSvc
 	return &Handlers{
-		authHandler:                   handler.NewAuthHandler(authSvc, jwtSecret),
+		authHandler:                   authH,
 		fileHandler:                   fileHandler,
 		statsHandler:                  &handler.StatsHandler{},
 		portalHandler:                 &handler.PortalHandler{Service: positionSvc},
@@ -165,7 +170,9 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		userRelationHandler:           &handler.UserRelationHandler{Service: service.NewUserRelationService(svc)},
 		workflowHandler:               &handler.WorkflowHandler{Service: approvalSvc},
 		approvalHandler:               &handler.ApprovalHandler{Service: approvalSvc, RedisClient: redisClient},
-		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance()},
+		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()},
+		allianceMentorHandler:         &handler.AllianceMentorHandler{Service: service.NewAllianceMentorService(svc)},
+		partnerHandler:                &handler.PartnerHandler{Service: partnerSvc},
 		positionHandler:               &handler.PositionHandler{Service: positionSvc, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc)},
 		abilityHandler:                &handler.AbilityHandler{Service: positionSvc},

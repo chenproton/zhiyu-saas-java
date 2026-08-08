@@ -1,5 +1,14 @@
 import type { PlatformNavigationConfig } from '@/components/platform-shell'
-import { Building, Database, History, Users, type LucideIcon } from 'lucide-react'
+import {
+  Building,
+  Database,
+  History,
+  KeyRound,
+  School,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 
 /* ============================================================
    统一导航树（数字课程平台）
@@ -869,6 +878,70 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
     },
   ],
   defaultExpandedSideNavIds: ['affairs-mgmt', 'teaching-mgmt', 'teaching-approval'],
+  platformSwitchItems: [],
+  shellClassName: 'bg-background',
+  mainClassName: 'min-w-0 flex-1',
+}
+
+/* ============================================================
+   Partner 模块导航（企业服务台，与 Portal 学校平台平级）
+   供 /partner/* 路由段使用，独立于 portal 菜单权限体系
+   ============================================================ */
+export const partnerNavigationConfig: PlatformNavigationConfig = {
+  brandTitle: '企业服务台',
+  currentPlatformId: 'partner',
+  currentPlatformLabel: '企业服务台',
+  brandHref: '/partner/workspace',
+  brandIcon: 'briefcase',
+  platformIcon: 'briefcase',
+  sideBackHref: '/partner/workspace',
+  showCurrentTime: false,
+  showUserMenu: false,
+  sideNavItems: [
+    {
+      id: 'workspace',
+      label: '服务台',
+      icon: 'home',
+      href: '/partner/workspace',
+      matchers: ['/partner/workspace$'],
+    },
+    {
+      id: 'enterprise',
+      label: '企业信息',
+      icon: Building,
+      href: '/partner/enterprise',
+      matchers: ['/partner/enterprise$'],
+    },
+    {
+      id: 'experts',
+      label: '专家资源',
+      icon: Users,
+      href: '/partner/experts',
+      matchers: ['/partner/experts'],
+    },
+    {
+      id: 'members',
+      label: '成员账号',
+      icon: UserCog,
+      href: '/partner/members',
+      matchers: ['/partner/members$'],
+    },
+    {
+      id: 'schools',
+      label: '合作学校',
+      icon: School,
+      href: '/partner/schools',
+      matchers: ['/partner/schools$'],
+    },
+    {
+      id: 'settings',
+      label: '账号安全',
+      icon: KeyRound,
+      href: '/partner/settings',
+      matchers: ['/partner/settings$'],
+    },
+  ],
+  defaultExpandedSideNavIds: [],
   platformSwitchItems: [],
   shellClassName: 'bg-background',
   mainClassName: 'min-w-0 flex-1',

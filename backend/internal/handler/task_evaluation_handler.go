@@ -67,6 +67,8 @@ type ReviewStepInput struct {
 	SubjectType *string `json:"subjectType"`
 	Weight      float64 `json:"weight"`
 	SortOrder   int     `json:"sortOrder"`
+	// AssignedUserIds 任务级企业导师分配（subjectType='enterprise_mentor' 时生效，F16 契约）
+	AssignedUserIDs []string `json:"assignedUserIds"`
 }
 
 func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Request) {
@@ -145,12 +147,13 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		reviewSteps := make([]service.ReviewStepSaveInput, 0, len(m.ReviewSteps))
 		for _, rs := range m.ReviewSteps {
 			reviewSteps = append(reviewSteps, service.ReviewStepSaveInput{
-				Label:       rs.Label,
-				Description: rs.Description,
-				Enabled:     rs.Enabled,
-				SubjectType: rs.SubjectType,
-				Weight:      rs.Weight,
-				SortOrder:   rs.SortOrder,
+				Label:           rs.Label,
+				Description:     rs.Description,
+				Enabled:         rs.Enabled,
+				SubjectType:     rs.SubjectType,
+				Weight:          rs.Weight,
+				SortOrder:       rs.SortOrder,
+				AssignedUserIDs: coalesceStringSlice(rs.AssignedUserIDs),
 			})
 		}
 		scoreRules := make([]service.ScoreRuleSaveInput, 0, len(m.ScoreRules))
@@ -183,6 +186,10 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		if err == service.ErrMethodVersionConflict {
 			respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
+			return
+		}
+		if err == service.ErrInvalidMentorAssignment {
+			respondError(w, http.StatusBadRequest, "企业导师评分人无效：须为本校已启用的共建导师")
 			return
 		}
 		respondServerError(w, r, err, "保存测评方式失败")

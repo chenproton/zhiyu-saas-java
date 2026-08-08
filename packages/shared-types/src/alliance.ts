@@ -43,10 +43,22 @@ export interface AllianceEnterprise {
   coverPhotos?: string[]
   secondaryColleges?: string[]
   ratingRecord?: Record<string, any>
+  /** 学校侧 link 字段：是否在本校前台展示（与企业侧 enablePublic 双控） */
   isPublic: boolean
+  /** 企业侧主体字段：企业"愿意对外展示"开关（企业服务台维护，学校只读） */
+  enablePublic?: boolean
   createdBy?: string
   createdAt: string
   updatedAt: string
+}
+
+/** 学校侧企业更新请求（PUT /alliance/enterprises/{id}）：仅 link 管理字段 */
+export interface AllianceEnterpriseLinkUpdate {
+  rating?: string
+  status?: string
+  enterpriseType?: string
+  isPublic?: boolean
+  secondaryColleges?: string[]
 }
 
 export interface AllianceEnterpriseAgreement {
@@ -150,6 +162,8 @@ export interface AllianceExpert {
   attachments?: string[]
   enterpriseId?: string
   organization?: string
+  /** 绑定的企业成员账号（partner 平台 users.id，可空） */
+  userId?: string
   rating?: string
   status: string
   secondaryColleges?: string[]
@@ -157,6 +171,25 @@ export interface AllianceExpert {
   createdBy?: string
   createdAt: string
   updatedAt: string
+}
+
+/** 共建导师选项（GET /alliance/experts/mentor-options）：学校侧"启用专家为共建导师"后的选择器数据源 */
+export interface AllianceMentorOption {
+  expertId: string
+  name: string
+  title?: string
+  enterpriseId: string
+  enterpriseName?: string
+  enabled: boolean
+  /** 学校租户影子账号 users.id，未启用为 null */
+  userId: string | null
+}
+
+/** 启用专家为共建导师响应（POST /alliance/experts/{id}/mentor-link）；username/initialPassword 仅首次创建影子账号时返回 */
+export interface AllianceMentorLinkResult {
+  userId: string
+  username?: string
+  initialPassword?: string
 }
 
 export interface AllianceAgreement {

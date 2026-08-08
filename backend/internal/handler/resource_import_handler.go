@@ -1150,7 +1150,7 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 		endDate := nullableStr(col(row, 4))
 		description := nullableStr(col(row, 5))
 		budget := nullableStr(col(row, 6))
-		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_enterprises", tenantID, col(row, 7))
+		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 7))
 
 		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_projects", tenantID, name)
 		if existingID != "" {
@@ -1237,7 +1237,7 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 		description := nullableStr(col(row, 2))
 		achievementDate := nullableStr(col(row, 3))
 		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 4))
-		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_enterprises", tenantID, col(row, 5))
+		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 5))
 
 		var existingID string
 		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, title).Scan(&existingID)
@@ -1424,7 +1424,7 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 		}
 		content := nullableStr(col(row, 5))
 		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 6))
-		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_enterprises", tenantID, col(row, 7))
+		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 7))
 
 		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_agreements", tenantID, name)
 		if existingID != "" {
@@ -1602,7 +1602,7 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 		isFeatured := parseBoolDefault(col(row, 5), false)
 		coverImage := nullableStr(col(row, 6))
 		studentID := lookupSingleIDByName(ctx, h.Store.Q(), "users", tenantID, col(row, 7))
-		enterpriseID := lookupSingleIDByName(ctx, h.Store.Q(), "alliance_enterprises", tenantID, col(row, 8))
+		enterpriseID := lookupSingleIDByName(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 8))
 		positionID := lookupSingleIDByName(ctx, h.Store.Q(), "career_positions", tenantID, col(row, 9))
 		majorID := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, col(row, 10))
 		teacherID := lookupSingleIDByName(ctx, h.Store.Q(), "users", tenantID, col(row, 11))

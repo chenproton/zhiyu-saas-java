@@ -453,7 +453,6 @@ export default function AllianceEnterpriseDetailPage() {
           ) : undefined
         }
         backHref="/portal/apps/alliance/enterprises"
-        editHref={`/portal/apps/alliance/enterprises/${id}/edit`}
         tabs={tabs}
         defaultTab="info"
         loading={loading}

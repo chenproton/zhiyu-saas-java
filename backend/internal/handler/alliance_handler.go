@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -14,6 +15,7 @@ import (
 
 type AllianceHandler struct {
 	Store *store.AllianceStore
+	Links *store.AllianceEnterpriseLinkStore
 }
 
 // ===== 通用响应结构 =====
@@ -71,26 +73,198 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, http.StatusOK, updated)
 }
 
-// ===== 合作企业 =====
+// ===== 合作企业（学校侧：引入/关联企业，主体只读 + link 管理字段） =====
 
+// ListEnterprises 本校已引入企业列表（link 合并视图：全局主体 + 学校侧管理字段）。
 func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request) {
-	allianceList(w, r, h.Store.Q(), h.Store.ListEnterprisesConfig(), "查询企业列表失败")
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.Links.ListBySchoolTenant(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询企业列表失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceLinkedEnterprise]{Items: items, Total: len(items)})
 }
 
+// GetEnterprise 单企业合并视图（主体只读 + link 管理字段）。
 func (h *AllianceHandler) GetEnterprise(w http.ResponseWriter, r *http.Request) {
-	crudGet(w, r, h.enterpriseCRUD())
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	item, err := h.Links.GetLinkedByEnterprise(r.Context(), chi.URLParam(r, "id"), tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在或未引入")
+		return
+	}
+	respondJSON(w, http.StatusOK, item)
 }
 
-func (h *AllianceHandler) CreateEnterprise(w http.ResponseWriter, r *http.Request) {
-	crudCreate(w, r, h.enterpriseCRUD())
+// SearchEnterprises 全局企业池搜索（跨租户只读，排除已引入企业），供"引入企业"选择。
+func (h *AllianceHandler) SearchEnterprises(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.Links.SearchEnterprises(r.Context(), tenantID, r.URL.Query().Get("keyword"), 20)
+	if err != nil {
+		respondServerError(w, r, err, "搜索企业失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceEnterprise]{Items: items, Total: len(items)})
 }
 
+// linkEnterpriseRequest 引入企业请求（均为可选，默认值由 store 兜底）。
+type linkEnterpriseRequest struct {
+	RelationType   string  `json:"relationType"`
+	EnterpriseType string  `json:"enterpriseType"`
+	Status         string  `json:"status"`
+	Rating         *string `json:"rating"`
+}
+
+// LinkEnterprise 引入企业（创建学校-企业合作关联）。
+func (h *AllianceHandler) LinkEnterprise(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	eid := chi.URLParam(r, "id")
+	if _, err := h.Store.GetEnterpriseByIDGlobal(r.Context(), eid); err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在")
+		return
+	}
+	var req linkEnterpriseRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if _, err := h.Links.CreateLink(r.Context(), &store.AllianceEnterpriseLinkCreateParams{
+		TenantID:       tenantID,
+		EnterpriseID:   eid,
+		RelationType:   req.RelationType,
+		Status:         req.Status,
+		Rating:         req.Rating,
+		EnterpriseType: req.EnterpriseType,
+		CreatedBy:      &claims.UserID,
+	}); err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "该企业已引入")
+			return
+		}
+		respondServerError(w, r, err, "引入企业失败")
+		return
+	}
+	item, err := h.Links.GetLinkedByEnterprise(r.Context(), eid, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "引入企业失败")
+		return
+	}
+	respondJSON(w, http.StatusCreated, item)
+}
+
+// UnlinkEnterprise 解除引入（删除 link；历史协议/项目/成果引用保留，页面不再展示）。
+func (h *AllianceHandler) UnlinkEnterprise(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	eid := chi.URLParam(r, "id")
+	if err := h.Links.DeleteLink(r.Context(), eid, tenantID); err != nil {
+		respondServerError(w, r, err, "解除引入失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"id": eid})
+}
+
+// updateEnterpriseLinkRequest 学校侧管理字段更新（仅 link 字段，企业主体不可改）。
+type updateEnterpriseLinkRequest struct {
+	Status            string          `json:"status"`
+	Rating            *string         `json:"rating"`
+	EnterpriseType    string          `json:"enterpriseType"`
+	IsPublic          *bool           `json:"isPublic"`
+	SecondaryColleges json.RawMessage `json:"secondaryColleges"`
+}
+
+// UpdateEnterprise 仅更新 link 学校侧管理字段（rating/status/enterprise_type/is_public/secondary_colleges）。
 func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Request) {
-	crudUpdate(w, r, h.enterpriseCRUD())
-}
-
-func (h *AllianceHandler) DeleteEnterprise(w http.ResponseWriter, r *http.Request) {
-	crudDelete(w, r, h.enterpriseCRUD())
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	eid := chi.URLParam(r, "id")
+	existing, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "企业不存在或未引入")
+		return
+	}
+	var req updateEnterpriseLinkRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	// 部分更新兜底：未携带字段回退已有值
+	if req.Status == "" {
+		req.Status = existing.Status
+	}
+	if req.Rating == nil {
+		req.Rating = existing.Rating
+	}
+	if req.EnterpriseType == "" {
+		req.EnterpriseType = existing.EnterpriseType
+	}
+	if req.IsPublic == nil {
+		req.IsPublic = &existing.IsPublic
+	}
+	if len(req.SecondaryColleges) == 0 {
+		req.SecondaryColleges = existing.SecondaryColleges
+	}
+	if err := h.Links.UpdateLink(r.Context(), eid, tenantID, &store.AllianceEnterpriseLinkUpdateParams{
+		Status:            req.Status,
+		Rating:            req.Rating,
+		EnterpriseType:    req.EnterpriseType,
+		IsPublic:          *req.IsPublic,
+		SecondaryColleges: req.SecondaryColleges,
+	}); err != nil {
+		respondServerError(w, r, err, "更新企业失败")
+		return
+	}
+	item, err := h.Links.GetLinkedByEnterprise(r.Context(), eid, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "更新企业失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, item)
 }
 
 // ===== 企业合作协议 =====
@@ -106,7 +280,7 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 		return
 	}
 	eid := chi.URLParam(r, "eid")
-	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "企业不存在")
 		return
 	}
@@ -131,7 +305,7 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 
 	eid := chi.URLParam(r, "eid")
-	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "企业不存在")
 		return
 	}
@@ -172,7 +346,7 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 
 	eid := chi.URLParam(r, "eid")
-	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "企业不存在")
 		return
 	}
@@ -234,7 +408,7 @@ func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *ht
 		return
 	}
 	eid := chi.URLParam(r, "eid")
-	if _, err := h.Store.GetEnterpriseByID(r.Context(), eid, tenantID); err != nil {
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "企业不存在")
 		return
 	}
@@ -408,26 +582,73 @@ func (h *AllianceHandler) DeleteAchievement(w http.ResponseWriter, r *http.Reque
 	crudDelete(w, r, h.achievementCRUD())
 }
 
-// ===== 专家 =====
+// ===== 专家（学校侧：跨租户只读，按已引入企业过滤；越权防线：enterprise_id 必须 ∈ 本校 links） =====
 
+// ListExperts 本校已引入企业的专家列表（跨租户只读）。
+// query 指定 enterpriseId 时必须在已引入企业集合内，否则 403。
 func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
-	allianceList(w, r, h.Store.Q(), h.Store.ListExpertsConfig(), "查询专家列表失败")
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	enterpriseIDs, err := h.Links.ListEnterpriseIDsBySchoolTenant(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询专家列表失败")
+		return
+	}
+	if eid := r.URL.Query().Get("enterpriseId"); eid != "" {
+		allowed := false
+		for _, id := range enterpriseIDs {
+			if id == eid {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			respondError(w, http.StatusForbidden, "无权查看：该企业未引入")
+			return
+		}
+		enterpriseIDs = []string{eid}
+	}
+	items, err := h.Store.ListByEnterpriseIDs(r.Context(), enterpriseIDs)
+	if err != nil {
+		respondServerError(w, r, err, "查询专家列表失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceExpert]{Items: items, Total: len(items)})
 }
 
+// GetExpert 专家详情（跨租户只读；专家所属企业必须已引入本校）。
 func (h *AllianceHandler) GetExpert(w http.ResponseWriter, r *http.Request) {
-	crudGet(w, r, h.expertCRUD())
-}
-
-func (h *AllianceHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
-	crudCreate(w, r, h.expertCRUD())
-}
-
-func (h *AllianceHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
-	crudUpdate(w, r, h.expertCRUD())
-}
-
-func (h *AllianceHandler) DeleteExpert(w http.ResponseWriter, r *http.Request) {
-	crudDelete(w, r, h.expertCRUD())
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	expert, err := h.Store.GetExpertByIDGlobal(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	// 越权防线：专家所属企业必须在本校 links 内
+	if expert.EnterpriseID == nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), *expert.EnterpriseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, expert)
 }
 
 // ===== 合作协议（独立） =====
@@ -745,35 +966,59 @@ func (h *AllianceHandler) GetPublicSchoolInfo(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AllianceHandler) ListPublicEnterprises(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicEnterprises)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceEnterprise, error) {
+		return h.Store.ListPublicEnterprises(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicEnterpriseByID, "企业不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
+		return h.Store.GetPublicEnterpriseByID(ctx, id, tenantID)
+	}, "企业不存在")
 }
 
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicProjects)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceProject, error) {
+		return h.Store.ListPublicProjects(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicProjectByID, "项目不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceProject, error) {
+		return h.Store.GetPublicProjectByID(ctx, id, tenantID)
+	}, "项目不存在")
 }
 
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicAchievements)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceAchievement, error) {
+		return h.Store.ListPublicAchievements(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicAchievementByID, "成果不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceAchievement, error) {
+		return h.Store.GetPublicAchievementByID(ctx, id, tenantID)
+	}, "成果不存在")
 }
 
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicExperts)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
+		return h.Store.ListPublicExperts(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicExpertByID, "专家不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceExpert, error) {
+		return h.Store.GetPublicExpertByID(ctx, id, tenantID)
+	}, "专家不存在")
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
@@ -787,7 +1032,7 @@ func (h *AllianceHandler) GetPublicBrand(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AllianceHandler) GetPublicStats(w http.ResponseWriter, r *http.Request) {
-	stats := h.Store.GetPublicStats(r.Context())
+	stats := h.Store.GetPublicStats(r.Context(), r.URL.Query().Get("tenantId"))
 	respondJSON(w, http.StatusOK, map[string]int{
 		"enterpriseCount":  stats.EnterpriseCount,
 		"projectCount":     stats.ProjectCount,

@@ -250,6 +250,7 @@ export function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
       description: rs.desc || null,
       enabled: rs.enabled,
       subjectType: rs.subjectType || null,
+      assignedUserIds: rs.assignedUserIds || [],
       weight: rs.weight,
       sortOrder: i,
     })),
@@ -319,6 +320,7 @@ export function evalRuleConfigToTaskStateUpdates(config: EvalRuleConfig): Partia
       desc: rs.description || '',
       enabled: rs.enabled,
       subjectType: rs.subjectType || '',
+      assignedUserIds: rs.assignedUserIds || [],
       weight: rs.weight,
     })),
   }
@@ -441,6 +443,7 @@ export function taskStateFromMethods(methods: TaskEvaluationMethod[]): TaskState
       desc: rs.description || '',
       enabled: rs.enabled,
       subjectType: rs.subjectType,
+      assignedUserIds: rs.assignedUserIds || [],
       weight: rs.weight,
     }))
   }
@@ -520,6 +523,7 @@ export function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: a
         description: rs.desc || null,
         enabled: rs.enabled,
         subjectType: rs.subjectType,
+        assignedUserIds: rs.assignedUserIds || [],
         weight: rs.weight,
         sortOrder: i,
       }))

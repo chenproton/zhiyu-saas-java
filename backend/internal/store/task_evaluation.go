@@ -174,7 +174,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	}
 
 	rsRows, err := s.q.Query(ctx, `
-		SELECT id, config_id, label, description, enabled, subject_type, weight, sort_order
+		SELECT id, config_id, label, description, enabled, subject_type, weight, sort_order, assigned_user_ids
 		FROM task_review_steps
 		WHERE config_id = ANY($1)
 		ORDER BY sort_order
@@ -185,8 +185,11 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	defer rsRows.Close()
 	for rsRows.Next() {
 		var st domain.TaskReviewStep
-		if err := rsRows.Scan(&st.ID, &st.ConfigID, &st.Label, &st.Description, &st.Enabled, &st.SubjectType, &st.Weight, &st.SortOrder); err != nil {
+		if err := rsRows.Scan(&st.ID, &st.ConfigID, &st.Label, &st.Description, &st.Enabled, &st.SubjectType, &st.Weight, &st.SortOrder, &st.AssignedUserIDs); err != nil {
 			continue
+		}
+		if st.AssignedUserIDs == nil {
+			st.AssignedUserIDs = []string{}
 		}
 		reviewStepsByConfig[st.ConfigID] = append(reviewStepsByConfig[st.ConfigID], st)
 	}
@@ -299,9 +302,9 @@ func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, te
 	}
 	for _, rs := range m.ReviewSteps {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder); err != nil {
+			INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight, sort_order, assigned_user_ids)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder, rs.AssignedUserIDs); err != nil {
 			return err
 		}
 	}
@@ -355,6 +358,8 @@ type TaskReviewStepInput struct {
 	SubjectType *string
 	Weight      float64
 	SortOrder   int
+	// AssignedUserIDs 任务级企业导师分配（仅 subject_type='enterprise_mentor' 持久化）。
+	AssignedUserIDs []string
 }
 
 // EnsureExamUsageForMethod 确保试卷/题库/随堂测方法存在临时考试与使用记录。
