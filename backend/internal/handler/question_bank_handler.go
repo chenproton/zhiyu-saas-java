@@ -156,8 +156,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Name = existing.Name
 	}
 	if req.Description == nil || *req.Description == "" {
-		existingDesc := existing.Description
-		req.Description = &existingDesc
+		req.Description = existing.Description
 	}
 	if req.CoverImage == nil {
 		req.CoverImage = existing.CoverImage

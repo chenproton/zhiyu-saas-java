@@ -215,7 +215,11 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		respondServerError(w, r, err, "评分失败")
 		return
 	}
-	res, _ = h.Service.GetEvaluationResult(r.Context(), id)
+	res, err = h.Service.GetEvaluationResult(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "评分成功但查询结果失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, res)
 }
 

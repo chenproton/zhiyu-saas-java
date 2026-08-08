@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -40,7 +42,15 @@ func (s *NodeEvaluationResultService) Grade(ctx context.Context, tenantID, id, g
 	}
 	// 回写考试结果：试卷/题库/随堂测方式的考试结果同步教师评分
 	examResultID, err := s.st.EvaluationResults().FindNodeExamResult(ctx, result.NodeID, result.MethodKey, result.EvaluateeID)
-	if err != nil || examResultID == "" {
+	if err != nil {
+		// 真实 DB 错误（如 eval_data 中非法 uuid 强转失败）不得静默吞掉：
+		// 教师评分成功但考试结果分数回写永久失败且无痕迹
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Error("查询节点考试结果失败，评分分数可能未同步", "nodeResultID", id, "error", err)
+		}
+		return nil
+	}
+	if examResultID == "" {
 		return nil
 	}
 	if err := s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, p.Score); err != nil {

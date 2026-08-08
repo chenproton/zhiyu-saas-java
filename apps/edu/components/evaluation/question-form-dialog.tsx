@@ -824,6 +824,22 @@ export function QuestionFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                {t('分值')}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={0.5}
+                value={score}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  setScore(Number.isNaN(v) || v < 0 ? 0 : v)
+                }}
+                className="h-8 w-full rounded-lg text-xs"
+              />
+            </div>
             <div ref={knowledgeRef} className="relative">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t('关联知识点')}

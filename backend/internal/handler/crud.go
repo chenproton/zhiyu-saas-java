@@ -97,7 +97,11 @@ func crudCreate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		respondServerError(w, r, err, cfg.CreateErrMsg)
 		return
 	}
-	item, _ := cfg.GetByIDFn(r.Context(), id, tenantID)
+	item, err := cfg.GetByIDFn(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, cfg.CreateErrMsg)
+		return
+	}
 	respondJSON(w, http.StatusCreated, item)
 }
 

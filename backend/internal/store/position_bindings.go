@@ -201,9 +201,9 @@ func (s *PositionResponsibilityStore) Update(ctx context.Context, id string, p *
 		return nil, err
 	}
 	_, err := s.q.Exec(ctx, `
-		UPDATE position_responsibilities SET name = $1, description = $2, sort_order = $3
-		WHERE id = $4
-	`, p.Name, p.Description, p.SortOrder, id)
+		UPDATE position_responsibilities SET career_position_id = $1, name = $2, description = $3, sort_order = $4
+		WHERE id = $5
+	`, p.CareerPositionID, p.Name, p.Description, p.SortOrder, id)
 	if err != nil {
 		return nil, err
 	}

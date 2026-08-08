@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { approvalApi, workflowApi } from '@/lib/api'
 import type { ApprovalRecord, Workflow, WorkflowStep } from '@/lib/types/backend'
 import { toast } from '@zhiyu/ui'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface ApprovalStepInfo {
@@ -40,7 +41,7 @@ interface UseApprovalsReturn {
 
 export function useApprovals({
   targetType,
-  limit = 1000,
+
 }: UseApprovalsOptions): UseApprovalsReturn {
   const t = useT()
   const [records, setRecords] = useState<ApprovalRecord[]>([])
@@ -50,12 +51,15 @@ export function useApprovals({
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await approvalApi.list({ targetType, limit })
-      setRecords(res.items)
+      // 分页合并全量拉取，避免超过后端 maxPageSize(200) 静默截断
+      const items = await fetchAllPages((page, pageSize) =>
+        approvalApi.list({ targetType, limit: pageSize, offset: page * pageSize }),
+      )
+      setRecords(items)
 
       const workflowIds = Array.from(
         new Set(
-          res.items
+          items
             .filter((a) => a.status === 'pending' && a.workflowId)
             .map((a) => a.workflowId as string),
         ),
@@ -77,7 +81,7 @@ export function useApprovals({
     } finally {
       setLoading(false)
     }
-  }, [targetType, limit, t])
+  }, [targetType, t])
 
   useEffect(() => {
     ;(async () => {

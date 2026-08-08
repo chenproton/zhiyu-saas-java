@@ -180,7 +180,11 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.invalidateAfterWrite(r)
-	entity, _ := c.fetch(r.Context(), id)
+	entity, err := c.fetch(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "操作成功但查询结果失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, entity)
 }
 

@@ -227,6 +227,8 @@ type QuestionBankUpdateParams struct {
 }
 
 func (s *QuestionBankStore) fetchBank(ctx context.Context, id string) (*domain.QuestionBank, error) {
+	var desc *string
+
 	var b domain.QuestionBank
 	var coverImage, creatorID, batchID *string
 	err := s.q.QueryRow(ctx, `
@@ -245,7 +247,7 @@ func (s *QuestionBankStore) fetchBank(ctx context.Context, id string) (*domain.Q
 			qb.created_at, qb.updated_at
 		FROM question_banks qb WHERE qb.id = $1
 	`, id).Scan(
-		&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
+		&b.ID, &b.Code, &b.Name, &desc, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
 		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
 		&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
@@ -254,6 +256,7 @@ func (s *QuestionBankStore) fetchBank(ctx context.Context, id string) (*domain.Q
 		return nil, err
 	}
 	b.CoverImage = coverImage
+	b.Description = desc
 	b.CreatorID = creatorID
 	b.BatchID = batchID
 	return &b, nil
@@ -261,6 +264,8 @@ func (s *QuestionBankStore) fetchBank(ctx context.Context, id string) (*domain.Q
 
 // fetchBankScoped 查询单个题库（限定租户）。
 func (s *QuestionBankStore) fetchBankScoped(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
+	var desc *string
+
 	var b domain.QuestionBank
 	var coverImage, creatorID, batchID *string
 	err := s.q.QueryRow(ctx, `
@@ -279,7 +284,7 @@ func (s *QuestionBankStore) fetchBankScoped(ctx context.Context, id, tenantID st
 			qb.created_at, qb.updated_at
 		FROM question_banks qb WHERE qb.id = $1 AND qb.tenant_id = $2
 	`, id, tenantID).Scan(
-		&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
+		&b.ID, &b.Code, &b.Name, &desc, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
 		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
 		&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
@@ -288,6 +293,7 @@ func (s *QuestionBankStore) fetchBankScoped(ctx context.Context, id, tenantID st
 		return nil, err
 	}
 	b.CoverImage = coverImage
+	b.Description = desc
 	b.CreatorID = creatorID
 	b.BatchID = batchID
 	return &b, nil
@@ -295,12 +301,14 @@ func (s *QuestionBankStore) fetchBankScoped(ctx context.Context, id, tenantID st
 
 // ScanQuestionBankRows 扫描题库行。
 func ScanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
+	var desc *string
+
 	items := make([]domain.QuestionBank, 0)
 	for rows.Next() {
 		var b domain.QuestionBank
 		var coverImage, creatorID, batchID *string
 		if err := rows.Scan(
-			&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
+			&b.ID, &b.Code, &b.Name, &desc, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
 			&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
 			&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 			&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
@@ -308,6 +316,7 @@ func ScanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
 			return nil, err
 		}
 		b.CoverImage = coverImage
+		b.Description = desc
 		b.CreatorID = creatorID
 		b.BatchID = batchID
 		items = append(items, b)

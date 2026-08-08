@@ -9,7 +9,7 @@ type QuestionBank struct {
 	ID                  string    `json:"id"`
 	Code                string    `json:"code"`
 	Name                string    `json:"name"`
-	Description         string    `json:"description"`
+	Description         *string   `json:"description,omitempty"`
 	CoverImage          *string   `json:"coverImage,omitempty"`
 	Status              string    `json:"status"`
 	QuestionCount       int       `json:"questionCount"`

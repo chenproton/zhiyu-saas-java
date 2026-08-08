@@ -386,8 +386,6 @@ export function EvaluationRulesEditor({
 
   // EvalResourceOnlyPanel 状态（从内部组件提升）
   const [rdqMajorTab, setRdqMajorTab] = useState('全部')
-  const [qbDrawMode, setQbDrawMode] = useState<'all' | 'practice'>('all')
-  const [qbPassRate, setQbPassRate] = useState(60)
 
   // MethodDialogContent 状态（从内部组件提升）
   const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
@@ -590,6 +588,8 @@ export function EvaluationRulesEditor({
   )
 
   const mockResQuestionBank = getResourceConfig('question_bank', {
+    drawMode: 'all' as 'all' | 'practice',
+    passRate: 60,
     timeLimit: 30,
     allowRetake: true,
     retakeCount: 3,
@@ -2008,8 +2008,10 @@ export function EvaluationRulesEditor({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormFieldRow label={t('答题方式')} labelClassName="text-xs text-gray-500">
                     <Select
-                      value={qbDrawMode}
-                      onValueChange={(v) => setQbDrawMode(v as 'all' | 'practice')}
+                      value={mockResQuestionBank.drawMode}
+                      onValueChange={(v) =>
+                        setMockResQuestionBank({ drawMode: v as 'all' | 'practice' })
+                      }
                     >
                       <SelectTrigger className="text-sm h-9">
                         <SelectValue />
@@ -2020,7 +2022,7 @@ export function EvaluationRulesEditor({
                       </SelectContent>
                     </Select>
                   </FormFieldRow>
-                  {qbDrawMode === 'practice' && (
+                  {mockResQuestionBank.drawMode === 'practice' && (
                     <FormFieldRow
                       label={t('正确率（%）')}
                       labelClassName="text-xs text-gray-500"
@@ -2028,9 +2030,11 @@ export function EvaluationRulesEditor({
                     >
                       <Input
                         type="number"
-                        value={qbPassRate}
+                        value={mockResQuestionBank.passRate}
                         onChange={(e) =>
-                          setQbPassRate(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))
+                          setMockResQuestionBank({
+                            passRate: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)),
+                          })
                         }
                         className="text-sm"
                         min={0}

@@ -88,7 +88,14 @@ func (h *PositionResponsibilityHandler) crud() crudConfig[PositionResponsibility
 			}
 			return item.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *PositionResponsibilityRequest) error {
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *PositionResponsibilityRequest) error {
+			// 校验目标岗位属于当前租户（职责移动路径），防止跨租户写
+			if t.CareerPositionID != "" {
+				posTenant, err := h.Service.PositionTenantID(ctx, t.CareerPositionID)
+				if err != nil || posTenant != tenantID {
+					return store.ErrNotFound
+				}
+			}
 			_, err := h.Service.UpdateResponsibility(ctx, id, &store.PositionResponsibilityParams{
 				CareerPositionID: t.CareerPositionID,
 				Name:             t.Name,
