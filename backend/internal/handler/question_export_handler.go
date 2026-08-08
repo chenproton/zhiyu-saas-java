@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -37,9 +36,7 @@ func (h *QuestionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	var existingBank string
-	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
-	if err != nil {
+	if _, err := h.Store.QuestionBanks().GetScoped(ctx, bankID, tenantID); err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
 	}
@@ -72,30 +69,35 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 
 	failed := 0
 	for ri, qid := range questionIDs {
-		var qType, content, answerJSON, analysis, difficulty, source string
-		var score float64
-		var optionsJSON []byte
-		var knowledgePointIDs []string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT type, content, options, answer, analysis, score, difficulty,
-			       knowledge_point_ids, COALESCE(source,'')
-			FROM questions
-			WHERE id=$1 AND bank_id=$2 AND tenant_id=$3
-		`, qid, bankID, tenantID).Scan(&qType, &content, &optionsJSON, &answerJSON, &analysis, &score, &difficulty, &knowledgePointIDs, &source)
+		question, err := h.Store.Questions().Get(ctx, qid, tenantID)
 		if err != nil {
 			failed++
 			slog.Warn("导出题目行跳过", "questionId", qid, "error", err)
 			continue
 		}
-
-		var options []string
-		if len(optionsJSON) > 0 {
-			_ = json.Unmarshal(optionsJSON, &options)
+		qType := string(question.Type)
+		content := question.Content
+		analysis := ""
+		if question.Analysis != nil {
+			analysis = *question.Analysis
 		}
+		difficulty := ""
+		if question.Difficulty != nil {
+			difficulty = *question.Difficulty
+		}
+		source := ""
+		if question.Source != nil {
+			source = *question.Source
+		}
+		score := question.Score
+		knowledgePointIDs := question.KnowledgePoints
+		options := question.Options
 
 		var answers []string
-		if answerJSON != "" {
-			_ = json.Unmarshal([]byte(answerJSON), &answers)
+		for _, a := range question.Answer {
+			if s, ok := a.(string); ok {
+				answers = append(answers, s)
+			}
 		}
 
 		r := 3 + ri
