@@ -395,3 +395,108 @@ func scanCourseNodeBaseRows(rows pgx.Rows) ([]CourseNodeBase, error) {
 	}
 	return items, rows.Err()
 }
+
+// ListNodeKnowledgePointNames 查询节点绑定知识点名称（导出用）。
+func (s *CourseNodeStore) ListNodeKnowledgePointNames(ctx context.Context, q Queryer, nodeID string) []string {
+	rows, err := q.Query(ctx, `
+		SELECT kp.name FROM knowledge_points kp
+		JOIN node_knowledge_point_bindings nb ON nb.knowledge_point_id = kp.id
+		WHERE nb.node_id=$1
+		ORDER BY kp.name
+	`, nodeID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil && n != "" {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// ListNodeResourceNames 查询节点绑定资源名称（导出用）。
+func (s *CourseNodeStore) ListNodeResourceNames(ctx context.Context, q Queryer, nodeID string) []string {
+	rows, err := q.Query(ctx, `
+		SELECT r.name FROM resource_library r
+		JOIN node_resource_bindings nb ON nb.resource_id = r.id
+		WHERE nb.node_id=$1
+		ORDER BY r.name
+	`, nodeID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err == nil && n != "" {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// ListNodeEvalMethods 查询节点测评方式（quiz 类型 + 是否有作业，导出用）。
+func (s *CourseNodeStore) ListNodeEvalMethods(ctx context.Context, q Queryer, tenantID, nodeID string) ([]string, bool) {
+	var methods []string
+	rows, err := q.Query(ctx, `
+		SELECT type FROM node_quizzes
+		WHERE node_id=$1 AND tenant_id=$2
+		ORDER BY type
+	`, nodeID, tenantID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var t string
+			if err := rows.Scan(&t); err == nil {
+				methods = append(methods, t)
+			}
+		}
+	}
+	var hasHomework bool
+	if err := q.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id=$1 AND tenant_id=$2)
+	`, nodeID, tenantID).Scan(&hasHomework); err != nil {
+		hasHomework = false
+	}
+	return methods, hasHomework
+}
+
+// CourseNodeExportRow 导出用节点行。
+type CourseNodeExportRow struct {
+	ID           string
+	Name         string
+	ParentID     string
+	RefType      string
+	SortOrder    int
+	TeachingGoals string
+	Duration     int
+	Difficulty   int
+}
+
+// ListByCourse 查询课程全部节点（导出用）。
+func (s *CourseNodeStore) ListByCourse(ctx context.Context, q Queryer, tenantID, courseID string) ([]CourseNodeExportRow, error) {
+	rows, err := q.Query(ctx, `
+		SELECT id, name, COALESCE(parent_id::text,''), COALESCE(ref_type,''), sort_order, COALESCE(teaching_goals,''), duration, difficulty
+		FROM system_course_nodes
+		WHERE course_id=$1 AND tenant_id=$2
+		ORDER BY sort_order, created_at
+	`, courseID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []CourseNodeExportRow
+	for rows.Next() {
+		var n CourseNodeExportRow
+		if err := rows.Scan(&n.ID, &n.Name, &n.ParentID, &n.RefType, &n.SortOrder, &n.TeachingGoals, &n.Duration, &n.Difficulty); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}

@@ -56,25 +56,33 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 	courseNameMap := make(map[string]string)
 
 	for _, cid := range courseIDs {
-		var name, desc string
-		var majorID, batchID *string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, COALESCE(description,''), major_id, batch_id
-			FROM courses WHERE id=$1 AND tenant_id=$2 AND type='system'
-		`, cid, tenantID).Scan(&name, &desc, &majorID, &batchID)
-		if err != nil {
+		course, err := h.Store.Courses().Get(ctx, cid, tenantID)
+		if err != nil || course.Type != "system" {
 			slog.Warn("导出课程行跳过", "courseId", cid, "error", err)
 			continue
 		}
+		name := course.Name
+		desc := ""
+		if course.Description != nil {
+			desc = *course.Description
+		}
+		majorID := course.MajorID
+		batchID := course.BatchID
 
 		majorName := ""
 		if majorID != nil && *majorID != "" {
-			h.Store.Q().QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName)
+			majorName, err = h.Store.Majors().GetNameByID(ctx, h.Store.Q(), *majorID)
+			if err != nil {
+				majorName = ""
+			}
 		}
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.Store.Q().QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			batchName, err = h.Store.Batches().GetNameByTable(ctx, h.Store.Q(), "lesson_batches", *batchID)
+			if err != nil {
+				batchName = ""
+			}
 		}
 
 		abilityPointNames := h.lookupCourseAbilityPointNames(ctx, cid)
@@ -103,12 +111,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 
 		// 节点ID -> 节点名
 		nodeNameByID := make(map[string]string)
-		nodeRows, err := h.Store.Q().Query(ctx, `
-			SELECT id, name, parent_id, ref_type, sort_order, COALESCE(teaching_goals,''), duration, difficulty
-			FROM system_course_nodes
-			WHERE course_id=$1 AND tenant_id=$2
-			ORDER BY sort_order, created_at
-		`, cid, tenantID)
+		nodeRows, err := h.Store.CourseNodes().ListByCourse(ctx, h.Store.Q(), tenantID, cid)
 		if err != nil {
 			slog.Warn("导出课程节点查询失败", "courseId", cid, "error", err)
 			continue
@@ -119,20 +122,10 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 			sortOrder, duration, difficulty            int
 		}
 		var nodes []nodeInfo
-		for nodeRows.Next() {
-			var n nodeInfo
-			if err := nodeRows.Scan(&n.id, &n.name, &n.parentID, &n.refType, &n.sortOrder, &n.teachingGoals, &n.duration, &n.difficulty); err != nil {
-				nodeRows.Close()
-				return err
-			}
-			nodeNameByID[n.id] = n.name
-			nodes = append(nodes, n)
+		for _, n := range nodeRows {
+			nodeNameByID[n.ID] = n.Name
+			nodes = append(nodes, nodeInfo{n.ID, n.Name, n.ParentID, n.RefType, n.TeachingGoals, n.SortOrder, n.Duration, n.Difficulty})
 		}
-		if err := nodeRows.Err(); err != nil {
-			nodeRows.Close()
-			return err
-		}
-		nodeRows.Close()
 
 		for _, n := range nodes {
 			parentName := ""
@@ -199,77 +192,25 @@ func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context,
 }
 
 func (h *CourseExportHandler) lookupNodeKnowledgePointNames(ctx context.Context, nodeID string) []string {
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT kp.name FROM knowledge_points kp
-		JOIN node_knowledge_point_bindings nb ON nb.knowledge_point_id = kp.id
-		WHERE nb.node_id=$1
-		ORDER BY kp.name
-	`, nodeID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		if n != "" {
-			names = append(names, n)
-		}
-	}
-	return names
+	return h.Store.CourseNodes().ListNodeKnowledgePointNames(ctx, h.Store.Q(), nodeID)
 }
 
 func (h *CourseExportHandler) lookupNodeResourceNames(ctx context.Context, nodeID string) []string {
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT r.name FROM resource_library r
-		JOIN node_resource_bindings nb ON nb.resource_id = r.id
-		WHERE nb.node_id=$1
-		ORDER BY r.name
-	`, nodeID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		if n != "" {
-			names = append(names, n)
-		}
-	}
-	return names
+	return h.Store.CourseNodes().ListNodeResourceNames(ctx, h.Store.Q(), nodeID)
 }
 
 func (h *CourseExportHandler) lookupNodeEvalMethods(ctx context.Context, tenantID, nodeID string) []string {
-	var methods []string
-
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT type FROM node_quizzes
-		WHERE node_id=$1 AND tenant_id=$2
-		ORDER BY type
-	`, nodeID, tenantID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var t string
-			rows.Scan(&t)
-			if ch := mapCourseEvalMethodToChinese(t); ch != "" {
-				methods = append(methods, ch)
-			}
+	methods, hasHomework := h.Store.CourseNodes().ListNodeEvalMethods(ctx, h.Store.Q(), tenantID, nodeID)
+	var out []string
+	for _, t := range methods {
+		if ch := mapCourseEvalMethodToChinese(t); ch != "" {
+			out = append(out, ch)
 		}
 	}
-
-	var hasHomework bool
-	err = h.Store.Q().QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id=$1 AND tenant_id=$2)
-	`, nodeID, tenantID).Scan(&hasHomework)
-	if err == nil && hasHomework {
-		methods = append(methods, "作业")
+	if hasHomework {
+		out = append(out, "作业")
 	}
-
-	return methods
+	return out
 }
 
 func mapCourseEvalMethodToChinese(mk string) string {
