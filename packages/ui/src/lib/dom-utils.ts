@@ -27,8 +27,10 @@ export function createTagElement(
   span.textContent = name
 
   const btn = document.createElement('button')
+  btn.type = 'button'
   btn.className = btnClass
   btn.textContent = '×'
+  btn.setAttribute('aria-label', `删除标签${name ? `：${name}` : ''}`)
   btn.onclick = (e) => {
     e.stopPropagation()
     span.remove()

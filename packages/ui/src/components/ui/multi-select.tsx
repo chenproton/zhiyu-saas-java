@@ -90,12 +90,14 @@ export function MultiSelect({
                 className="inline-flex items-center gap-1 rounded-sm bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600"
               >
                 {displayLabel}
-                <span
+                <button
+                  type="button"
+                  aria-label={`移除${displayLabel}`}
                   onClick={(e) => removeOption(optionValue, e)}
                   className="cursor-pointer text-blue-400 hover:text-blue-800"
                 >
                   <X className="h-3 w-3" />
-                </span>
+                </button>
               </span>
             )
           })

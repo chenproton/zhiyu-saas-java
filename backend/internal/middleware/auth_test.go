@@ -149,7 +149,7 @@ func TestJWT_ExpiredToken(t *testing.T) {
 		Role:     domain.UserRoleSchool,
 	}
 	claims := jwt.MapClaims{
-		"userID":   user.ID,
+		"userId":   user.ID,
 		"tenantId": *user.TenantID,
 		"role":     string(user.Role),
 		"exp":      time.Now().Add(-time.Hour).Unix(),

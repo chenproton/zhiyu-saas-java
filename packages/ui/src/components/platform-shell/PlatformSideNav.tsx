@@ -114,6 +114,7 @@ export function PlatformSideNav({
         <div className="flex items-center gap-3">
           <Link
             href={config.sideBackHref}
+            aria-label={config.currentPlatformLabel ? `返回${config.currentPlatformLabel}` : '返回'}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 transition-colors hover:bg-primary/10 hover:text-primary"
           >
             <ChevronLeft className="h-4 w-4" />

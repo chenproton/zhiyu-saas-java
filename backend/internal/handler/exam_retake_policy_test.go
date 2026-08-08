@@ -82,7 +82,7 @@ func TestExamRetakePolicy(t *testing.T) {
 		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '重交策略学生', 'active', '{}', $5)
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw), classID)
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
-	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.UserRoleOperator, nil, "student")
+	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")
 
 	rr := buildExamFlowRouter(env)
 	submit := func(usageID string) *int {
@@ -135,7 +135,7 @@ func TestExamSubmitWindow(t *testing.T) {
 		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '窗口校验学生', 'active', '{}', $5)
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw), classID)
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
-	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.UserRoleOperator, nil, "student")
+	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")
 
 	rr := buildExamFlowRouter(env)
 	submit := func(usageID string) int {
@@ -219,7 +219,7 @@ func TestNodeGradeSyncsExamResult(t *testing.T) {
 		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '节点评分学生', 'active', '{}')
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw))
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
-	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.UserRoleOperator, nil, "student")
+	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")
 
 	rr := buildExamFlowRouter(env)
 	// 学生提交：客观 40 分 + 主观待评分

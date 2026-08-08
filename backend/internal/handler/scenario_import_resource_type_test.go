@@ -35,6 +35,8 @@ func TestScenarioImportResourceType(t *testing.T) {
 		t.Fatalf("seed resource: count = %d, want 1", before)
 	}
 
+	sceneName := "设备检修场景-" + uuid.NewString()[:8]
+
 	f := excelize.NewFile()
 	f.DeleteSheet("Sheet1")
 	f.NewSheet("场景基本信息")
@@ -42,7 +44,7 @@ func TestScenarioImportResourceType(t *testing.T) {
 		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
 		f.SetCellValue("场景基本信息", cell, v)
 	}
-	f.SetCellValue("场景基本信息", "A3", "设备检修场景")
+	f.SetCellValue("场景基本信息", "A3", sceneName)
 	f.SetCellValue("场景基本信息", "E3", 2)
 
 	f.NewSheet("任务配置")
@@ -50,7 +52,7 @@ func TestScenarioImportResourceType(t *testing.T) {
 		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
 		f.SetCellValue("任务配置", cell, v)
 	}
-	f.SetCellValue("任务配置", "A3", "设备检修场景")
+	f.SetCellValue("任务配置", "A3", sceneName)
 	f.SetCellValue("任务配置", "B3", "检修任务一")
 	f.SetCellValue("任务配置", "C3", "训练")
 	f.SetCellValue("任务配置", "D3", 1)

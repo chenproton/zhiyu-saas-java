@@ -355,6 +355,7 @@ func TestCertificateUncitedList(t *testing.T) {
 func TestAbilityAndCertificateUncitedDelete(t *testing.T) {
 	env, do := newResourceLibraryTestEnv(t)
 	defer env.Cleanup()
+	ctx := context.Background()
 
 	prefix := fmt.Sprintf("零引用删除-%s", uuid.NewString()[:8])
 	w := do("POST", "/api/v1/job/abilities", map[string]interface{}{"name": prefix + "-能力点"})
@@ -370,6 +371,12 @@ func TestAbilityAndCertificateUncitedDelete(t *testing.T) {
 	if w := do("DELETE", "/api/v1/job/abilities/"+ability.ID, nil); w.Code != http.StatusOK {
 		t.Fatalf("delete ability: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
+	// 验证数据库行确实被删除（防止静默失败/软删）
+	var abilityExists bool
+	env.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM ability_points WHERE id = $1)`, ability.ID).Scan(&abilityExists)
+	if abilityExists {
+		t.Fatalf("ability still exists after delete: %s", ability.ID)
+	}
 
 	wc := do("POST", "/api/v1/job/certificate-library", map[string]interface{}{"name": prefix + "-证书"})
 	if wc.Code != http.StatusCreated {
@@ -383,5 +390,10 @@ func TestAbilityAndCertificateUncitedDelete(t *testing.T) {
 	}
 	if w := do("DELETE", "/api/v1/job/certificate-library/"+cert.ID, nil); w.Code != http.StatusOK {
 		t.Fatalf("delete cert: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	var certExists bool
+	env.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM certificate_library WHERE id = $1)`, cert.ID).Scan(&certExists)
+	if certExists {
+		t.Fatalf("cert still exists after delete: %s", cert.ID)
 	}
 }

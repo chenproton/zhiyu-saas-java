@@ -118,7 +118,17 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
             {((isMultiple && (props.value as string[]).length > 0) ||
               (!isMultiple && props.value)) &&
               !disabled && (
-                <X className="h-3.5 w-3.5 opacity-50 hover:opacity-100 mr-1" onClick={clearValue} />
+                <button
+                  type="button"
+                  aria-label="清除选择"
+                  className="rounded-sm hover:bg-muted p-0.5"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    clearValue(e)
+                  }}
+                >
+                  <X className="h-3.5 w-3.5 opacity-50 hover:opacity-100" />
+                </button>
               )}
             <ChevronsUpDown className="h-4 w-4 opacity-50" />
           </div>

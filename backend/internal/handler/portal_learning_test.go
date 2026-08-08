@@ -59,9 +59,9 @@ func TestPortalWorkspace_LearningScheduleFilter(t *testing.T) {
 	insertCourse := func(name string) string {
 		id := uuid.NewString()
 		execOrFail(t, env, ctx, `
-			INSERT INTO courses (id, code, name, type, category, status, creator_id)
-			VALUES ($1, $2, $3, 'traditional', 'course', 'published', $4)
-		`, id, name, name, testhelper.TestOperatorID)
+			INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id)
+			VALUES ($1, $2, $3, $4, 'traditional', 'course', 'published', $5)
+		`, id, tenantID, name, name, testhelper.TestOperatorID)
 		return id
 	}
 	course1 := insertCourse("c1-排给班1")
@@ -69,9 +69,9 @@ func TestPortalWorkspace_LearningScheduleFilter(t *testing.T) {
 	course3 := insertCourse("c3-未排课")
 	course4ID := uuid.NewString()
 	execOrFail(t, env, ctx, `
-		INSERT INTO courses (id, code, name, type, category, status, creator_id)
-		VALUES ($1, $2, $3, 'traditional', 'course', 'published', $4)
-	`, course4ID, "c4-草稿排课", "c4-草稿排课", testhelper.TestOperatorID)
+		INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id)
+		VALUES ($1, $2, $3, $4, 'traditional', 'course', 'published', $5)
+	`, course4ID, tenantID, "c4-草稿排课", "c4-草稿排课", testhelper.TestOperatorID)
 
 	// 6. 场景：scene1 排给班1已发布；scene2 排给班2；scene3 未排课
 	insertScene := func(name string) (string, string) {

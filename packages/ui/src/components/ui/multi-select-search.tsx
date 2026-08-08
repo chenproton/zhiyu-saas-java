@@ -168,6 +168,8 @@ export function MultiSelectSearch({
                 <Badge key={label} variant="secondary" className="text-xs gap-1">
                   {label}
                   <button
+                    type="button"
+                    aria-label={`移除${label}`}
                     onClick={() => {
                       const val = options.find((o) => o.label === label)?.value
                       if (val) toggle(val)

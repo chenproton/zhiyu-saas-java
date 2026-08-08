@@ -65,7 +65,13 @@ func TestSettings_TenantThemeOverride(t *testing.T) {
 
 	tenantID := testhelper.TestTenantID
 
-	// 未配置租户覆盖 → 回退平台默认（当前为 #1677ff，见上一个用例；此处显式验证回退逻辑）
+	// 用例自包含：显式重置平台默认主题，避免依赖其他用例的执行顺序
+	w0 := env.Do("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "#1677ff"})
+	if w0.Code != http.StatusOK {
+		t.Fatalf("reset platform theme: %d %s", w0.Code, testhelper.ErrMsg(w0))
+	}
+
+	// 未配置租户覆盖 → 回退平台默认（当前为 #1677ff，此处显式验证回退逻辑）
 	w := env.DoNoAuth("GET", "/api/v1/settings/theme?tenantId="+tenantID, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("get tenant theme: %d %s", w.Code, testhelper.ErrMsg(w))
