@@ -394,10 +394,14 @@ export default function QuestionBankDetailPage() {
     }
   }
 
-  const handleBatchMove = (targetBankId: string) => {
-    moveQuestions(Array.from(selectedQuestions), targetBankId)
-    setSelectedQuestions(new Set())
-    setBatchMoveOpen(false)
+  const handleBatchMove = async (targetBankId: string) => {
+    try {
+      await moveQuestions(Array.from(selectedQuestions), targetBankId)
+      setSelectedQuestions(new Set())
+      setBatchMoveOpen(false)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('批量移动失败'), description: err.message })
+    }
   }
 
   const handleCopyQuestion = async (question: Question) => {

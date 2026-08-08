@@ -709,6 +709,7 @@ function AddSystemPageInner() {
 
         // 上传本地资源并绑定到真实节点
         if (realNodeId && !realNodeId.startsWith('node-')) {
+          let failedCount = 0
           for (const localRes of localResources) {
             try {
               const created = await nodeResourceApi.create({
@@ -721,9 +722,12 @@ function AddSystemPageInner() {
               })
               await nodeResourceApi.bind({ nodeId: realNodeId, resourceId: created.id })
             } catch (err) {
-              // 忽略失败，继续
+              failedCount++
               reportError(err, '绑定节点资源')
             }
+          }
+          if (failedCount > 0) {
+            toast({ variant: 'destructive', title: t('部分资源绑定失败'), description: t('{n} 个资源未能绑定到节点，请重新编辑补充', { n: String(failedCount) }) })
           }
         }
       }

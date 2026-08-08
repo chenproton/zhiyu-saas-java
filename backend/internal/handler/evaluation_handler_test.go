@@ -787,8 +787,8 @@ func TestEvaluationResult(t *testing.T) {
 			{"id": "non-existent-id", "score": 90},
 		},
 	})
-	if w.Code == http.StatusOK {
-		t.Errorf("batch grade with non-existent ids should not return 200, got %d", w.Code)
+	if w.Code != http.StatusBadRequest && w.Code != http.StatusNotFound {
+		t.Errorf("batch grade with non-existent ids should return 4xx, got %d", w.Code)
 	}
 }
 

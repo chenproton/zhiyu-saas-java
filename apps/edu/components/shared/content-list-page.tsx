@@ -778,11 +778,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       if (!item) continue
       try {
         if (itemApi.clone) {
-          await itemApi.clone(item.id, { name: `${item.name} (克隆)` })
+          await itemApi.clone(item.id, { name: `${item.name}-copy` })
         } else {
           await itemApi.create({
             ...createPayload(currentUserId, entityLabel),
-            name: `${item.name} (克隆)`,
+            name: `${item.name}-copy`,
             batchId: item.batchId,
           })
         }

@@ -659,6 +659,7 @@ export default function TasksEditPage() {
   // 持久化任务权重（仅对已落库任务；ON CONFLICT (scenario_id, task_id) 幂等 upsert）
   // 由调用方传入最新任务列表与状态，避免闭包陈旧导致新建任务权重丢失
   const persistWeights = async (taskList: Task[], states: Record<string, TaskState>) => {
+    let failedCount = 0
     for (const t of taskList) {
       if (t.id.startsWith('task-')) continue
       const st = states[t.id]
@@ -670,9 +671,11 @@ export default function TasksEditPage() {
           weight: st.weight ?? 0,
         })
       } catch (err) {
+        failedCount++
         reportError(err, { source: '保存任务权重', extras: { taskId: t.id } })
       }
     }
+    return failedCount
   }
 
   const saveTasksToBackend = async () => {
@@ -1010,7 +1013,15 @@ export default function TasksEditPage() {
     }
     setTasks(newTasks)
     setTaskStates(updatedTaskStates)
-    await persistWeights(newTasks, updatedTaskStates)
+    const weightFailures = await persistWeights(newTasks, updatedTaskStates)
+    if (weightFailures > 0) {
+      toast({
+        variant: 'destructive',
+        title: t('部分任务权重保存失败'),
+        description: t('{n} 个任务权重未保存，请重试', { n: String(weightFailures) }),
+      })
+    }
+    return weightFailures
   }
 
   const handleSaveDraft = async () => {

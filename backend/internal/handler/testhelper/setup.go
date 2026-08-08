@@ -49,6 +49,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	if dbURL == "" {
 		// 安全红线：绝不回退 DATABASE_URL（生产库）。测试会对库执行迁移与 DELETE 种子数据，
 		// 误连生产库会造成不可逆数据损失。未显式配置测试库时直接跳过。
+		// 明确提示测试被跳过，避免 CI "全绿但零测试"
+		fmt.Println("[testhelper] TEST_DATABASE_URL not set — integration tests SKIPPED (CI 请配置测试库)")
 		t.Skip("TEST_DATABASE_URL not set, skipping integration test")
 	}
 

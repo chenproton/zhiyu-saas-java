@@ -212,14 +212,22 @@ export default function ExamComposerPage() {
     !isPreview && ['draft', 'rejected', 'approved', 'published', 'archived'].includes(exam.status)
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
 
-  const handleExamUpdate = (data: ExamFormData) => {
-    updateExam(examId, data)
+  const handleExamUpdate = async (data: ExamFormData) => {
+    try {
+      await updateExam(examId, data)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
+    }
   }
 
-  const handleAddQuestions = (questions: Question[]) => {
-    questions.forEach((question) => {
-      addQuestionToExam(examId, question)
-    })
+  const handleAddQuestions = async (questions: Question[]) => {
+    try {
+      for (const question of questions) {
+        await addQuestionToExam(examId, question)
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('添加题目失败'), description: err.message })
+    }
   }
 
   const handleCreateQuestion = async (data: QuestionFormData) => {
@@ -228,10 +236,14 @@ export default function ExamComposerPage() {
     addQuestionToExam(examId, newQuestion)
   }
 
-  const handleRemoveQuestion = () => {
+  const handleRemoveQuestion = async () => {
     if (deleteConfirm) {
-      removeQuestionFromExam(examId, deleteConfirm.id)
-      setDeleteConfirm(null)
+      try {
+        await removeQuestionFromExam(examId, deleteConfirm.id)
+        setDeleteConfirm(null)
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: t('移除题目失败'), description: err.message })
+      }
     }
   }
 
@@ -252,7 +264,7 @@ export default function ExamComposerPage() {
     setDraggedIndex(index)
   }
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = async (e: React.DragEvent, index: number) => {
     e.preventDefault()
     if (draggedIndex === null || draggedIndex === index) return
     if (dragTargetRef.current === index) return
@@ -262,7 +274,11 @@ export default function ExamComposerPage() {
     const [dragged] = newQuestions.splice(draggedIndex, 1)
     newQuestions.splice(index, 0, dragged)
 
-    reorderExamQuestions(examId, newQuestions)
+    try {
+      await reorderExamQuestions(examId, newQuestions)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('排序保存失败'), description: err.message })
+    }
     setDraggedIndex(index)
   }
 
@@ -271,7 +287,7 @@ export default function ExamComposerPage() {
     dragTargetRef.current = null
   }
 
-  const handleEvenDistribution = () => {
+  const handleEvenDistribution = async () => {
     const qs = exam.questions ?? []
     if (qs.length === 0) return
     const n = qs.length
@@ -281,14 +297,22 @@ export default function ExamComposerPage() {
     qs.forEach((q, i) => {
       scores[q.questionId] = base + (i < remainder ? 1 : 0)
     })
-    updateExamQuestionScores?.(examId, scores)
+    try {
+      await updateExamQuestionScores?.(examId, scores)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('分数分配失败'), description: err.message })
+    }
   }
 
-  const handleTypeDistribution = (scores: Record<string, number>) => {
-    updateExamQuestionScores?.(examId, scores)
+  const handleTypeDistribution = async (scores: Record<string, number>) => {
+    try {
+      await updateExamQuestionScores?.(examId, scores)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('分数分配失败'), description: err.message })
+    }
   }
 
-  const handleProportionalDistribution = () => {
+  const handleProportionalDistribution = async () => {
     const qs = exam.questions ?? []
     if (qs.length === 0) return
     const total = qs.reduce((sum, q) => sum + (q.score || 0), 0)
@@ -311,7 +335,11 @@ export default function ExamComposerPage() {
     qs.forEach((q, i) => {
       scores[q.questionId] = floored[i]
     })
-    updateExamQuestionScores?.(examId, scores)
+    try {
+      await updateExamQuestionScores?.(examId, scores)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('分数分配失败'), description: err.message })
+    }
   }
 
   const getCollaboratorNames = () =>
@@ -379,7 +407,11 @@ export default function ExamComposerPage() {
                       variant="outline"
                       size="sm"
                       className="text-primary hover:text-primary/90"
-                      onClick={() => updateExamStatus(examId, 'publish')}
+                      onClick={() => {
+                        updateExamStatus(examId, 'publish').catch((err: any) => {
+                          toast({ variant: 'destructive', title: t('发布失败'), description: err.message })
+                        })
+                      }}
                     >
                       <Rocket className="mr-1 size-4" />
                       {t('发布')}

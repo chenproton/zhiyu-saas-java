@@ -576,10 +576,6 @@ func TestNodeHomework_CRUD(t *testing.T) {
 	}
 }
 
-func TestCourseBatch_CRUD(t *testing.T) {
-	// lesson_batches 表已由迁移创建，测试启用
-}
-
 func TestHybridModule(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

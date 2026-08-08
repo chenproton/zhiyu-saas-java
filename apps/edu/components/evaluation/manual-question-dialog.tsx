@@ -75,6 +75,8 @@ export function ManualQuestionDialog({
         setLoadingQuestions(true)
         try {
           await loadBankQuestions?.(selectedBankId)
+        } catch (err) {
+          reportError(err, '加载题库题目')
         } finally {
           setLoadingQuestions(false)
         }

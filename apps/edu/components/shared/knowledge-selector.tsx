@@ -296,7 +296,7 @@ export function KnowledgeSelector({
 
   const openCloneKp = (kp: KnowledgePointItem) => {
     setNewKpForm({
-      name: `${kp.name}（克隆）`,
+      name: `${kp.name}-copy`,
       description: kp.description || '',
       code: generateKpCode(),
       granularLessons: kp.granularLessons || [],

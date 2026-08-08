@@ -48,7 +48,7 @@ export default function ProgramsPage() {
       createPayload={() => ({
         name: t('新建人培方案'),
         entryYear: new Date().getFullYear(),
-        level: t('本科'),
+        level: '本科',
         duration: 4,
         totalCredits: 0,
         status: 'draft',

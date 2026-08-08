@@ -154,7 +154,7 @@ export default function AllianceSchoolPage() {
       shortName: t.shortName === '-' ? '' : t.shortName,
       // 不在 CHINA_REGION 时留空：回填默认"北京/东城区"会在未修改保存时覆盖原地区
       province: PROVINCES.includes(t.province) ? t.province : '',
-      city: t.city !== '-' && t.city && CHINA_REGION[PROVINCES[0]].includes(t.city) ? t.city : '',
+      city: t.city !== '-' && t.city && CHINA_REGION[t.province]?.includes(t.city) ? t.city : '',
       contact: t.contact === '-' ? '' : t.contact,
       phone: t.phone === '-' ? '' : t.phone,
       contactPhone: t.contactPhone === '-' ? '' : t.contactPhone,

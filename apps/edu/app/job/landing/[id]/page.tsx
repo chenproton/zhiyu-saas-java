@@ -151,6 +151,7 @@ export default function JobStudentDetailPage() {
 
     if (!user) return
 
+    const detailSeq = ++loadSeqRef.current
     Promise.all([
       positionResponsibilityApi.list({ careerPositionId: id }),
       abilityApi.listBindings({ careerPositionId: id }),
@@ -159,6 +160,7 @@ export default function JobStudentDetailPage() {
       positionCertificateApi.list({ careerPositionId: id }),
     ])
       .then(([respRes, bindingRes, abilityRes, domainRes, certRes]) => {
+        if (detailSeq !== loadSeqRef.current) return
         setResponsibilities(respRes.items || [])
         setBindings(bindingRes.items || [])
         setAbilityPoints(abilityRes.items || [])

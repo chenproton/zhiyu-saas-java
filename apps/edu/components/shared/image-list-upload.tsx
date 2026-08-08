@@ -47,15 +47,13 @@ export function ImageListUpload({
   const uploadAndAppend = async (f: File) => {
     setUploading(true)
     try {
-      let url: string
-      try {
-        url = await uploadFile(f)
-      } catch {
-        url = URL.createObjectURL(f)
-      }
+      // 上传失败不降级 blob URL：blob 无法持久化，保存后即破图（静默脏数据）
+      const url = await uploadFile(f)
       const next = multiple ? [...valueRef.current, url] : [url]
       valueRef.current = next
       onChange(next)
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('上传失败'), description: err instanceof Error ? err.message : t('请重试') })
     } finally {
       setUploading(false)
     }
@@ -195,11 +193,9 @@ export function SingleImageUpload({
   const doUpload = async (f: File) => {
     setUploading(true)
     try {
-      try {
-        onChange(await uploadFile(f))
-      } catch {
-        onChange(URL.createObjectURL(f))
-      }
+      onChange(await uploadFile(f))
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('上传失败'), description: err instanceof Error ? err.message : t('请重试') })
     } finally {
       setUploading(false)
     }

@@ -29,6 +29,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import {
   orgApi,
@@ -477,13 +478,16 @@ export default function OrgStructurePage() {
     if (!graduateTarget || !tenantId) return
     setGraduateLoading(true)
     try {
-      const res = await portalUserManagementApi.list({
-        tenantId,
-        orgNodeId: graduateTarget.id,
-        status: 'active',
-        limit: 1000,
-      })
-      const userIds = res.items.map((u) => u.id)
+      const items = await fetchAllPages((page, pageSize) =>
+        portalUserManagementApi.list({
+          tenantId,
+          orgNodeId: graduateTarget.id,
+          status: 'active',
+          limit: pageSize,
+          offset: page * pageSize,
+        }),
+      )
+      const userIds = items.map((u) => u.id)
       if (userIds.length === 0) {
         toast({ title: t('暂无在籍学生'), description: t('该班级下没有可毕业的在籍学生') })
         return

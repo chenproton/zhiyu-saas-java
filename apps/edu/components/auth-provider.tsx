@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { authApi, getToken, removeToken, type MeResponse } from '@/lib/api'
 import type { Organization, Major, Role } from '@/lib/types/backend'
@@ -56,6 +56,8 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const t = useT()
+  // 登录态请求序号
+  const meSeqRef = useRef(0)
   const [state, setState] = useState<{
     me?: MeResponse
     loading: boolean
@@ -63,6 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }>({ loading: true })
 
   const fetchMe = useCallback(async () => {
+    // 请求序号：pathname 变化触发重取时丢弃过期响应
+    const seq = ++meSeqRef.current
     // 公共页面（如 /changelog）不获取登录态：未登录不触发请求，失效 token 也不会被 401 跳转
     if (isPublicPage(pathname)) {
       setState({ loading: false })
@@ -78,12 +82,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const data = await authApi.portalMe()
+      if (seq !== meSeqRef.current) return
       setState({
         me: data,
         loading: false,
         error: undefined,
       })
     } catch (err) {
+      if (seq !== meSeqRef.current) return
       removeToken('portal')
       setState({
         loading: false,

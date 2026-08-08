@@ -258,7 +258,7 @@ export default function SuperAdminPage() {
       const token = getToken('saas')
       if (token) {
         try {
-          const payload = JSON.parse(atob(token.split('.')[1]))
+          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((token.split('.')[1].length + 3) % 4)))
           if (payload.roleCodes?.includes('platform_admin')) {
             setAuthenticated(true)
             setAuthUser(payload.username || t('管理员'))
@@ -283,7 +283,7 @@ export default function SuperAdminPage() {
     setLoginError(null)
     try {
       const data = await authApi.saasLogin({ username: loginUsername, password: loginPassword })
-      const payload = JSON.parse(atob(data.token.split('.')[1]))
+      const payload = JSON.parse(atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((data.token.split('.')[1].length + 3) % 4)))
       if (!payload.roleCodes?.includes('platform_admin')) {
         throw new Error(t('当前账号不是平台管理员，无权限访问'))
       }

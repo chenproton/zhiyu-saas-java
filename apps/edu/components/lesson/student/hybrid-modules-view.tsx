@@ -421,7 +421,7 @@ function renderModuleContent(
       )}
       {m.moduleKey === 'homeworks' && data.items?.length > 0 && (
         <TaskList
-          items={data.items.map((h: any) => ({ name: t('作业要求'), requirement: h.requirement }))}
+          items={data.items.map((h: any) => ({ name: h.name || t('作业要求'), requirement: h.requirement }))}
         />
       )}
     </div>
