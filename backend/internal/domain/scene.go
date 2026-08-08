@@ -119,6 +119,9 @@ type TaskReviewStep struct {
 	SubjectType *string `json:"subjectType,omitempty"`
 	Weight      float64 `json:"weight"`
 	SortOrder   int     `json:"sortOrder"`
+	// AssignedUserIds 任务级企业导师分配（subject_type='enterprise_mentor' 时生效）：
+	// 本校已启用 mentor_links 的影子账号 users.id 集合。
+	AssignedUserIDs []string `json:"assignedUserIds"`
 }
 
 type TaskResource struct {

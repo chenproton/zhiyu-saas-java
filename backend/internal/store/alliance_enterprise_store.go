@@ -270,21 +270,42 @@ func (s *AllianceStore) DeleteEnterpriseAgreement(ctx context.Context, id, tenan
 }
 
 // ===== 公开查询（门户前台） =====
-// 阶段一仅随表结构做必要适配：is_public+status 过滤映射为企业侧 enable_public 开关，
-// 数据源语义（双控过滤）在阶段二（B11）改造。
+// 数据源（§3.2 双控原则）：企业控制 enable_public（"愿不愿意"），学校控制 link.is_public（"在不在本校出现"）。
+// tenantID 为空 → 全局联盟展示（仅企业侧开关）；非空 → 该校落地页（link.is_public + enable_public 双控）。
 
-func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.AllianceEnterprise, error) {
+func (s *AllianceStore) ListPublicEnterprises(ctx context.Context, tenantID string) ([]domain.AllianceEnterprise, error) {
+	if tenantID != "" {
+		return queryList(ctx, s.q, s.ScanEnterpriseRows, `
+			SELECT `+enterpriseColumns+`
+			FROM partner_enterprises pe
+			WHERE pe.enable_public = true AND EXISTS (
+				SELECT 1 FROM alliance_enterprise_links l
+				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+			)
+			ORDER BY pe.created_at DESC LIMIT 100
+		`, tenantID)
+	}
 	return queryList(ctx, s.q, s.ScanEnterpriseRows, `
 		SELECT `+enterpriseColumns+`
-		FROM partner_enterprises WHERE enable_public = true
-		ORDER BY created_at DESC LIMIT 100
+		FROM partner_enterprises pe WHERE pe.enable_public = true
+		ORDER BY pe.created_at DESC LIMIT 100
 	`)
 }
 
-func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
+func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterprise, error) {
+	if tenantID != "" {
+		return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
+			SELECT `+enterpriseColumns+`
+			FROM partner_enterprises pe
+			WHERE pe.id = $1 AND pe.enable_public = true AND EXISTS (
+				SELECT 1 FROM alliance_enterprise_links l
+				WHERE l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true
+			)
+		`, id, tenantID)
+	}
 	return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
 		SELECT `+enterpriseColumns+`
-		FROM partner_enterprises WHERE id = $1 AND enable_public = true
+		FROM partner_enterprises pe WHERE pe.id = $1 AND pe.enable_public = true
 	`, id)
 }
 
@@ -307,22 +328,67 @@ type AlliancePublicStats struct {
 	BrandCount       int
 }
 
-func (s *AllianceStore) GetPublicStats(ctx context.Context) AlliancePublicStats {
+func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) AlliancePublicStats {
 	var st AlliancePublicStats
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM partner_enterprises WHERE enable_public = true`).Scan(&st.EnterpriseCount); err != nil {
-		slog.Warn("alliance public stats query failed", "table", "partner_enterprises", "error", err)
+	count := func(query string, args ...any) int {
+		var n int
+		if err := s.q.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+			slog.Warn("alliance public stats query failed", "error", err)
+		}
+		return n
 	}
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount); err != nil {
-		slog.Warn("alliance public stats query failed", "table", "alliance_projects", "error", err)
+	if tenantID != "" {
+		st.EnterpriseCount = count(`
+			SELECT COUNT(*) FROM partner_enterprises pe
+			WHERE pe.enable_public = true AND EXISTS (
+				SELECT 1 FROM alliance_enterprise_links l
+				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+			)`, tenantID)
+		st.ExpertCount = count(`
+			SELECT COUNT(*) FROM alliance_experts x
+			WHERE x.is_public = true AND x.status = 'active'
+			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true)`, tenantID)
+		st.ProjectCount = count(`
+			SELECT COUNT(*) FROM alliance_projects p
+			WHERE p.is_public = true AND p.publish_status = 'published'
+			  AND p.tenant_id = $1
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+			  )`, tenantID)
+		st.AchievementCount = count(`
+			SELECT COUNT(*) FROM alliance_achievements a
+			WHERE a.is_public = true AND a.status = 'published'
+			  AND a.tenant_id = $1
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+			  )`, tenantID)
+	} else {
+		st.EnterpriseCount = count(`SELECT COUNT(*) FROM partner_enterprises WHERE enable_public = true`)
+		st.ExpertCount = count(`
+			SELECT COUNT(*) FROM alliance_experts x
+			WHERE x.is_public = true AND x.status = 'active'
+			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)`)
+		st.ProjectCount = count(`
+			SELECT COUNT(*) FROM alliance_projects p
+			WHERE p.is_public = true AND p.publish_status = 'published'
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			  )`)
+		st.AchievementCount = count(`
+			SELECT COUNT(*) FROM alliance_achievements a
+			WHERE a.is_public = true AND a.status = 'published'
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			  )`)
 	}
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&st.ExpertCount); err != nil {
-		slog.Warn("alliance public stats query failed", "table", "alliance_experts", "error", err)
-	}
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&st.AchievementCount); err != nil {
-		slog.Warn("alliance public stats query failed", "table", "alliance_achievements", "error", err)
-	}
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&st.BrandCount); err != nil {
-		slog.Warn("alliance public stats query failed", "table", "alliance_brands", "error", err)
-	}
+	// 品牌为学校侧内容（§3.2 逻辑保持），不参与企业双控
+	st.BrandCount = count(`SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`)
 	return st
 }

@@ -966,35 +966,59 @@ func (h *AllianceHandler) GetPublicSchoolInfo(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AllianceHandler) ListPublicEnterprises(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicEnterprises)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceEnterprise, error) {
+		return h.Store.ListPublicEnterprises(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicEnterpriseByID, "企业不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
+		return h.Store.GetPublicEnterpriseByID(ctx, id, tenantID)
+	}, "企业不存在")
 }
 
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicProjects)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceProject, error) {
+		return h.Store.ListPublicProjects(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicProjectByID, "项目不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceProject, error) {
+		return h.Store.GetPublicProjectByID(ctx, id, tenantID)
+	}, "项目不存在")
 }
 
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicAchievements)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceAchievement, error) {
+		return h.Store.ListPublicAchievements(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicAchievementByID, "成果不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceAchievement, error) {
+		return h.Store.GetPublicAchievementByID(ctx, id, tenantID)
+	}, "成果不存在")
 }
 
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, h.Store.ListPublicExperts)
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
+		return h.Store.ListPublicExperts(ctx, tenantID)
+	})
 }
 
 func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicExpertByID, "专家不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceExpert, error) {
+		return h.Store.GetPublicExpertByID(ctx, id, tenantID)
+	}, "专家不存在")
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
@@ -1008,7 +1032,7 @@ func (h *AllianceHandler) GetPublicBrand(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AllianceHandler) GetPublicStats(w http.ResponseWriter, r *http.Request) {
-	stats := h.Store.GetPublicStats(r.Context())
+	stats := h.Store.GetPublicStats(r.Context(), r.URL.Query().Get("tenantId"))
 	respondJSON(w, http.StatusOK, map[string]int{
 		"enterpriseCount":  stats.EnterpriseCount,
 		"projectCount":     stats.ProjectCount,

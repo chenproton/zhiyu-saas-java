@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -134,6 +135,10 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
 			return
 		}
+		if errors.Is(err, service.ErrInvalidEnterpriseMentor) {
+			respondError(w, http.StatusBadRequest, "企业导师无效：须为本校已启用的共建导师")
+			return
+		}
 		respondServerError(w, r, err, "创建毕业设计课题失败")
 		return
 	}
@@ -173,8 +178,12 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, "结束日期格式不正确")
 		return
 	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
-	topic, err = h.Service.UpdateGraduationTopic(r.Context(), id, &store.GraduationTopicParams{
+	topic, err = h.Service.UpdateGraduationTopic(r.Context(), id, tenantID, &store.GraduationTopicParams{
 		Name: req.Name, CareerPositionID: req.CareerPositionID,
 		College: req.College, Source: req.Source, Capacity: req.Capacity,
 		AdvisorID: req.AdvisorID, EnterpriseMentorID: req.EnterpriseMentorID,
@@ -183,6 +192,10 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
+			return
+		}
+		if errors.Is(err, service.ErrInvalidEnterpriseMentor) {
+			respondError(w, http.StatusBadRequest, "企业导师无效：须为本校已启用的共建导师")
 			return
 		}
 		respondServerError(w, r, err, "更新毕业设计课题失败")

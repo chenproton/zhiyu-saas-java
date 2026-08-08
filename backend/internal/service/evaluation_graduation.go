@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -16,13 +18,37 @@ func (s *EvaluationService) GetGraduationTopic(ctx context.Context, id string) (
 	return s.st.Graduations().GetTopic(ctx, id)
 }
 
+// ErrInvalidEnterpriseMentor 毕业设计企业导师非法（非本校已启用 mentor_links 的影子账号）。
+var ErrInvalidEnterpriseMentor = errors.New("invalid enterprise mentor")
+
+// validateEnterpriseMentor 校验企业导师 ∈ 本校已启用 mentor_links 的影子账号（B14，修复悬空引用）。
+func (s *EvaluationService) validateEnterpriseMentor(ctx context.Context, tenantID string, mentorID *string) error {
+	if mentorID == nil || *mentorID == "" {
+		return nil
+	}
+	ok, err := s.st.AllianceExpertMentorLinks().IsEnabledMentorUser(ctx, tenantID, *mentorID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrInvalidEnterpriseMentor
+	}
+	return nil
+}
+
 // CreateGraduationTopic 创建课题。
 func (s *EvaluationService) CreateGraduationTopic(ctx context.Context, p *store.GraduationTopicParams) (*domain.GraduationProjectTopic, error) {
+	if err := s.validateEnterpriseMentor(ctx, p.TenantID, p.EnterpriseMentorID); err != nil {
+		return nil, err
+	}
 	return s.st.Graduations().CreateTopic(ctx, p)
 }
 
 // UpdateGraduationTopic 更新课题。
-func (s *EvaluationService) UpdateGraduationTopic(ctx context.Context, id string, p *store.GraduationTopicParams) (*domain.GraduationProjectTopic, error) {
+func (s *EvaluationService) UpdateGraduationTopic(ctx context.Context, id, tenantID string, p *store.GraduationTopicParams) (*domain.GraduationProjectTopic, error) {
+	if err := s.validateEnterpriseMentor(ctx, tenantID, p.EnterpriseMentorID); err != nil {
+		return nil, err
+	}
 	return s.st.Graduations().UpdateTopic(ctx, id, p)
 }
 

@@ -47,6 +47,7 @@ type Handlers struct {
 	workflowHandler               *handler.WorkflowHandler
 	approvalHandler               *handler.ApprovalHandler
 	allianceHandler               *handler.AllianceHandler
+	allianceMentorHandler         *handler.AllianceMentorHandler
 	partnerHandler                *handler.PartnerHandler
 	positionHandler               *handler.PositionHandler
 	positionCloneHandler          *handler.PositionCloneHandler
@@ -170,6 +171,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		workflowHandler:               &handler.WorkflowHandler{Service: approvalSvc},
 		approvalHandler:               &handler.ApprovalHandler{Service: approvalSvc, RedisClient: redisClient},
 		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()},
+		allianceMentorHandler:         &handler.AllianceMentorHandler{Service: service.NewAllianceMentorService(svc)},
 		partnerHandler:                &handler.PartnerHandler{Service: partnerSvc},
 		positionHandler:               &handler.PositionHandler{Service: positionSvc, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc)},

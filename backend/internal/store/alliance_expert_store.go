@@ -148,17 +148,42 @@ func (s *AllianceStore) GetExpertByIDGlobal(ctx context.Context, id string) (*do
 	`, id)
 }
 
-func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.AllianceExpert, error) {
+// ListPublicExperts 门户前台公开专家列表（双控：企业 enable_public + 专家 is_public；
+// 带 tenantID 时叠加该校 link.is_public，§3.2）。
+func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string) ([]domain.AllianceExpert, error) {
+	if tenantID != "" {
+		return queryList(ctx, s.q, s.ScanExpertRows, `
+			SELECT `+expertColumns+`
+			FROM alliance_experts x
+			WHERE x.is_public = true AND x.status = 'active'
+			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true)
+			ORDER BY x.created_at DESC LIMIT 100
+		`, tenantID)
+	}
 	return queryList(ctx, s.q, s.ScanExpertRows, `
 		SELECT `+expertColumns+`
-		FROM alliance_experts WHERE is_public = true AND status = 'active'
-		ORDER BY created_at DESC LIMIT 100
+		FROM alliance_experts x
+		WHERE x.is_public = true AND x.status = 'active'
+		  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
+		ORDER BY x.created_at DESC LIMIT 100
 	`)
 }
 
-func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id string) (*domain.AllianceExpert, error) {
+func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id, tenantID string) (*domain.AllianceExpert, error) {
+	if tenantID != "" {
+		return queryOne(ctx, s.q, s.ScanExpertRows, `
+			SELECT `+expertColumns+`
+			FROM alliance_experts x
+			WHERE x.id = $1 AND x.is_public = true AND x.status = 'active'
+			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $2 AND l.is_public = true)
+		`, id, tenantID)
+	}
 	return queryOne(ctx, s.q, s.ScanExpertRows, `
 		SELECT `+expertColumns+`
-		FROM alliance_experts WHERE id = $1 AND is_public = true AND status = 'active'
+		FROM alliance_experts x
+		WHERE x.id = $1 AND x.is_public = true AND x.status = 'active'
+		  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
 	`, id)
 }

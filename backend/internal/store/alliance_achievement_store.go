@@ -145,23 +145,64 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 	return &a, nil
 }
 
-func (s *AllianceStore) ListPublicAchievements(ctx context.Context) ([]domain.AllianceAchievement, error) {
+// ListPublicAchievements 门户前台公开成果列表：归属"双控通过的企业"（enterprise_ids 关联判断，
+// §3.2）；带 tenantID 时限定该校自有成果且叠加 link.is_public 双控。
+func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID string) ([]domain.AllianceAchievement, error) {
+	const cols = `id, tenant_id, title, type, description, achievement_date, cover_image,
+		attachments, citation_reason, images, owner_persons, co_builders,
+		enterprise_ids, project_ids, related_positions, related_scenes,
+		related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at`
+	if tenantID != "" {
+		return queryList(ctx, s.q, s.ScanAchievementRows, `
+			SELECT `+cols+`
+			FROM alliance_achievements a
+			WHERE a.is_public = true AND a.status = 'published'
+			  AND a.tenant_id = $1
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+			  )
+			ORDER BY a.created_at DESC LIMIT 100
+		`, tenantID)
+	}
 	return queryList(ctx, s.q, s.ScanAchievementRows, `
-		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, citation_reason, images, owner_persons, co_builders,
-			enterprise_ids, project_ids, related_positions, related_scenes,
-			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
-		FROM alliance_achievements WHERE is_public = true AND status = 'published'
-		ORDER BY created_at DESC LIMIT 100
+		SELECT `+cols+`
+		FROM alliance_achievements a
+		WHERE a.is_public = true AND a.status = 'published'
+		  AND EXISTS (
+			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  )
+		ORDER BY a.created_at DESC LIMIT 100
 	`)
 }
 
-func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id string) (*domain.AllianceAchievement, error) {
+func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id, tenantID string) (*domain.AllianceAchievement, error) {
+	const cols = `id, tenant_id, title, type, description, achievement_date, cover_image,
+		attachments, citation_reason, images, owner_persons, co_builders,
+		enterprise_ids, project_ids, related_positions, related_scenes,
+		related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at`
+	if tenantID != "" {
+		return queryOne(ctx, s.q, s.ScanAchievementRows, `
+			SELECT `+cols+`
+			FROM alliance_achievements a
+			WHERE a.id = $1 AND a.is_public = true AND a.status = 'published'
+			  AND a.tenant_id = $2
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true
+			  )
+		`, id, tenantID)
+	}
 	return queryOne(ctx, s.q, s.ScanAchievementRows, `
-		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, citation_reason, images, owner_persons, co_builders,
-			enterprise_ids, project_ids, related_positions, related_scenes,
-			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
-		FROM alliance_achievements WHERE id = $1 AND is_public = true AND status = 'published'
+		SELECT `+cols+`
+		FROM alliance_achievements a
+		WHERE a.id = $1 AND a.is_public = true AND a.status = 'published'
+		  AND EXISTS (
+			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  )
 	`, id)
 }
