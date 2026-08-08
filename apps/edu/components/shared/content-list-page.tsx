@@ -296,7 +296,6 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
 
   // Dialogs
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [, setIsExportDialogOpen] = useState(false)
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState('')
   const [moveSelectedMajorId, setMoveSelectedMajorId] = useState('all')
@@ -818,7 +817,6 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         description: err.message || t('导出失败'),
       })
     }
-    setIsExportDialogOpen(false)
     setSelectedIds([])
   }
 

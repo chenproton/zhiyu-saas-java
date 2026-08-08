@@ -24,10 +24,6 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../../packages/shared-types/src/$1'),
       },
       {
-        find: /^@\/lib\/utils$/,
-        replacement: path.resolve(__dirname, '../../packages/ui/src/lib/utils.ts'),
-      },
-      {
         find: /^@\/components\/ui\/(.*)$/,
         replacement: path.resolve(__dirname, '../../packages/ui/src/components/ui/$1'),
       },

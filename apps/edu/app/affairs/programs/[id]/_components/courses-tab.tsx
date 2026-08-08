@@ -26,6 +26,7 @@ import type { Course } from '@/lib/types/lesson'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
 import { ProgramCourseImportDialog } from './program-course-import-dialog'
 import { useT } from '@/lib/i18n/locale-provider'
+import { reportError } from '@/lib/error-handling'
 
 const NATURE_OPTIONS = ['必修', '选修', '实践', '场景']
 
@@ -106,8 +107,8 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
             limit: 200,
           })
           setPositionScenariosMap((prev) => ({ ...prev, [pid]: s.items }))
-        } catch {
-          /* ignore */
+        } catch (err) {
+          reportError(err, '加载岗位场景')
         }
       }
       const grouped = new Map<string, CourseRow[]>()

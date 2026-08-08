@@ -36,7 +36,6 @@ function SchedulingPageInner() {
   const [plans, setPlans] = useState<TeachingPlan[]>([])
   const [planId, setPlanId] = useState('')
   const [planDetail, setPlanDetail] = useState<TeachingPlanDetail | null>(null)
-  const [, setLoadingPlan] = useState(false)
 
   const loadPlans = useCallback(async () => {
     try {
@@ -59,7 +58,6 @@ function SchedulingPageInner() {
         setPlanDetail(null)
         return
       }
-      setLoadingPlan(true)
       try {
         const detail = await teachingPlanApi.get(id)
         setPlanDetail(detail)
@@ -69,8 +67,6 @@ function SchedulingPageInner() {
           title: t('加载失败'),
           description: t('查询教学计划详情失败'),
         })
-      } finally {
-        setLoadingPlan(false)
       }
     },
     [toast, t],

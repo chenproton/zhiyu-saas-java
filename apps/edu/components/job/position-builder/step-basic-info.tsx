@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { industryApi, majorApi, certificateLibraryApi, fileApi } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
+import { reportError } from '@/lib/error-handling'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
 
 interface StepBasicInfoProps {
@@ -96,8 +97,9 @@ export function StepBasicInfo({
         setMajors(
           (majorRes.items || []).filter((m) => m.enabled).map((m) => ({ id: m.id, name: m.name })),
         )
-      } catch {
+      } catch (err) {
         if (cancelled) return
+        reportError(err, '加载行业列表')
         setIndustries([])
         setMajors([])
       } finally {
@@ -132,8 +134,11 @@ export function StepBasicInfo({
             image: item.imageUrl ?? '',
           })),
         )
-      } catch {
-        if (!cancelled) setCertificateLibrary([])
+      } catch (err) {
+        if (!cancelled) {
+          reportError(err, '加载证书库')
+          setCertificateLibrary([])
+        }
       } finally {
         if (!cancelled) setLibraryLoading(false)
       }

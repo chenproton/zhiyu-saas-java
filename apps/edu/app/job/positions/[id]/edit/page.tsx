@@ -10,12 +10,10 @@ import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info
 import { StepAbilityModeling } from '@/components/job/position-builder/step-ability-modeling'
 import { Step3ResultTable } from '@/components/job/position-builder/ai-assisted-2/step3-result-table'
 import { UserSelector } from '@/components/shared/user-selector'
-import type { Position, Batch } from '@/lib/types/job-source'
+import type { Position } from '@/lib/types/job-source'
 import {
   positionApi,
   batchApi,
-  majorApi,
-  industryApi,
   abilityApi,
   positionResponsibilityApi,
   positionCertificateApi,
@@ -24,7 +22,6 @@ import {
 import { fetchAllPages } from '@/lib/fetch-all'
 import {
   convertCareerPositionToPosition,
-  convertJobBatchToBatch,
   convertApiResponsibilityToLocal,
   convertApiCertificateToLocal,
   convertApiAbilityBindingToLocal,
@@ -53,9 +50,6 @@ function PositionEditPageContent({ params }: PageProps) {
     ? { id: user.id, name: user.name || user.username || user.id }
     : { id: '', name: '' }
   const [positions, setPositions] = useState<Position[]>([])
-  const [, setBatches] = useState<Batch[]>([])
-  const [, setMajorMap] = useState<Map<string, string>>(new Map())
-  const [, setIndustryMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [activeStep, setActiveStep] = useState('basic')
   const [isSaving, setIsSaving] = useState(false)
@@ -77,14 +71,11 @@ function PositionEditPageContent({ params }: PageProps) {
     ;(async () => {
       setLoading(true)
       try {
-        const [posRes, batchRes] = await Promise.all([
-          fetchAllPages((page, pageSize) => positionApi.list({ limit: pageSize, offset: page * pageSize })),
-          fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
-        ])
+        const posList = await fetchAllPages((page, pageSize) =>
+          positionApi.list({ limit: pageSize, offset: page * pageSize }),
+        )
         if (cancelled) return
-        const posList = posRes.map(convertCareerPositionToPosition)
-        setPositions(posList)
-        setBatches(batchRes.map(convertJobBatchToBatch))
+        setPositions(posList.map(convertCareerPositionToPosition))
       } catch (err: any) {
         if (!cancelled) toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
       } finally {
@@ -178,19 +169,6 @@ function PositionEditPageContent({ params }: PageProps) {
       }
     })()
   }, [searchParams])
-
-  useEffect(() => {
-    Promise.all([majorApi.list({ limit: 1000 }), industryApi.list({ limit: 1000 })])
-      .then(([majorRes, industryRes]) => {
-        const majorMap = new Map<string, string>()
-        majorRes.items.forEach((m) => majorMap.set(m.id, m.name))
-        setMajorMap(majorMap)
-        const industryMap = new Map<string, string>()
-        industryRes.items.forEach((i) => industryMap.set(i.id, i.name))
-        setIndustryMap(industryMap)
-      })
-      .catch((err) => reportError(err, '加载专业/行业字典数据'))
-  }, [])
 
   if (loading) {
     return (

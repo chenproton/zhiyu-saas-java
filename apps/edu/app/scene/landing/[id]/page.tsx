@@ -192,7 +192,7 @@ function AbilitiesTab({
                       )}
                     </div>
                     <span className="text-[10px] text-[#94a3b8] truncate font-mono">
-                      ID：{ap.code || ap.id}
+                      {t('ID：')}{ap.code || ap.id}
                     </span>
                   </div>
                 </div>
@@ -227,7 +227,7 @@ function AbilitiesTab({
               </div>
               {(selectedAbility.ap.code || selectedAbility.ap.id) && (
                 <div className="text-xs text-[#94a3b8] mb-2 font-mono">
-                  ID：{selectedAbility.ap.code || selectedAbility.ap.id}
+                  {t('ID：')}{selectedAbility.ap.code || selectedAbility.ap.id}
                 </div>
               )}
               <div className="space-y-2 text-xs">

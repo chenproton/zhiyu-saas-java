@@ -1,8 +1,6 @@
 package store
 
 import (
-	"context"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
@@ -93,5 +91,3 @@ func ScanOperationLogRows(rows pgx.Rows) ([]domain.OperationLog, error) {
 	}
 	return items, rows.Err()
 }
-
-var _ = context.Background // 保持 context 导入（扫描函数不直接用但类型依赖）

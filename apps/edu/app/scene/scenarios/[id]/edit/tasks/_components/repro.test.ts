@@ -67,8 +67,6 @@ describe('round trip: load -> save', () => {
   it('preserves all enabled methods', () => {
     const ts = taskStateFromMethods(task11Methods())
     const payload = taskStateToMethodsInput(ts)
-    console.log('evaluationMethods:', ts.evaluationMethods)
-    console.log('disabledEvaluationMethods:', ts.disabledEvaluationMethods)
     console.log(
       'payload:',
       JSON.stringify(payload.map((m) => ({ k: m.methodKey, en: m.isEnabled }))),
@@ -82,7 +80,6 @@ describe('round trip: load -> save', () => {
     const updates = evalRuleConfigToTaskStateUpdates(config)
     const ts2 = { ...ts, ...updates }
     const payload = taskStateToMethodsInput(ts2)
-    console.log('after editor round trip evaluationMethods:', ts2.evaluationMethods)
     console.log(
       'payload2:',
       JSON.stringify(payload.map((m) => ({ k: m.methodKey, en: m.isEnabled }))),

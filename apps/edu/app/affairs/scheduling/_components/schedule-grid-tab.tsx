@@ -50,7 +50,6 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const [editOpen, setEditOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ScheduleEntry | null>(null)
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null)
-  const [savingQuick] = useState(false)
   const [venueFilter, setVenueFilter] = useState<string>('__all')
   const [movingEntry, setMovingEntry] = useState<ScheduleEntry | null>(null)
   const [preConfigEntry, setPreConfigEntry] = useState<TeachingPlanEntry | null>(null)
@@ -158,7 +157,6 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
 
   const handleCellClick = useCallback(
     async (dayOfWeek: number, periodKey: string) => {
-      if (savingQuick) return
       if (movingEntry) {
         try {
           await scheduleApi.update(movingEntry.id, {
@@ -201,7 +199,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       setPreTeacherId(selectedEntry.teacherId || '')
       setPreVenueId(venueFilter === '__all' ? '' : venueFilter)
     },
-    [selectedEntry, movingEntry, reloadAll, savingQuick, toast, venueFilter, t],
+    [selectedEntry, movingEntry, reloadAll, toast, venueFilter, t],
   )
 
   const handlePreConfigSave = async () => {

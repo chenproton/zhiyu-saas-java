@@ -340,7 +340,7 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 	if _, err := tx.Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id = $1`, positionID); err != nil {
 		return err
 	}
-	for name, libID := range certificateMap {
+	for _, libID := range certificateMap {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
 			VALUES ($1, $2, $3, $4)
@@ -348,7 +348,6 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 		`, uuid.NewString(), tenantID, positionID, libID); err != nil {
 			return err
 		}
-		_ = name
 	}
 
 	if _, err := tx.Exec(ctx, `DELETE FROM ability_domains WHERE career_position_id = $1`, positionID); err != nil {
