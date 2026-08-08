@@ -173,6 +173,16 @@ export default function TasksEditPage() {
     },
     [loadDatasets],
   )
+  // 首屏加载 effect 仅以 scenarioId 触发一次；易变依赖（locale/t/数据集加载）
+  // 用 ref 持有，避免切换语言/用户解析晚到时整页重载重建 taskStates（未保存编辑丢失）
+  const ensureDatasetsRef = useRef(ensureDatasets)
+  const toastRef = useRef(toast)
+  const tRef = useRef(t)
+  useEffect(() => {
+    ensureDatasetsRef.current = ensureDatasets
+    toastRef.current = toast
+    tRef.current = t
+  })
 
   // 离开编辑页时清理模块级缓存，避免跨场景污染
   useEffect(() => {
@@ -242,13 +252,13 @@ export default function TasksEditPage() {
         }> = []
         posRes.items.forEach((p) => {
         const pos = p as PositionWithIndustryName
-        const prof = nextProfessions.find((pr) => pr.name === (pos.industryName || t('其他')))
+        const prof = nextProfessions.find((pr) => pr.name === (pos.industryName || tRef.current('其他')))
         if (prof) {
           prof.positions.push({ id: pos.id, name: pos.name, professionId: prof.id })
         } else {
           nextProfessions.push({
             id: `prof-${nextProfessions.length + 1}`,
-            name: pos.industryName || t('其他'),
+            name: pos.industryName || tRef.current('其他'),
               positions: [
                 { id: pos.id, name: pos.name, professionId: `prof-${nextProfessions.length + 1}` },
               ],
@@ -321,20 +331,22 @@ export default function TasksEditPage() {
         setTaskStates(states)
 
         // Preload datasets so card previews show names immediately
-        await ensureDatasets(['knowledge', 'ability', 'resources', 'evaluation', 'users'])
+        await ensureDatasetsRef.current(['knowledge', 'ability', 'resources', 'evaluation', 'users'])
 
         setDataLoaded(true)
       } catch (err: any) {
         setLoadFailed(true)
         toast({
           variant: 'destructive',
-          title: t('任务数据加载失败'),
-          description: err?.message || t('请刷新页面重试'),
+          title: tRef.current('任务数据加载失败'),
+          description: err?.message || tRef.current('请刷新页面重试'),
         })
       }
     }
     load()
-  }, [scenarioId, user?.id, ensureDatasets, toast, t])
+    // 仅场景变化时触发一次；locale/用户态变化不再整页重载
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarioId])
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -623,6 +635,18 @@ export default function TasksEditPage() {
   }
 
   const handleDeleteTask = async (id: string) => {
+    // 临时 id（新建/克隆尚未落库）任务直接本地移除，避免对不存在的 id 调接口必 404
+    if (id.startsWith('task-')) {
+      setTasks(tasks.filter((t) => t.id !== id))
+      setTaskStates((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+      setDeleteConfirmTask(null)
+      toast({ title: t('已删除任务') })
+      return
+    }
     try {
       await taskApi.delete(id)
       setTasks(tasks.filter((t) => t.id !== id))

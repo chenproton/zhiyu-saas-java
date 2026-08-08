@@ -169,6 +169,9 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
             courseId: movingEntry.courseId || undefined,
             type: movingEntry.type,
             classNodeId: movingEntry.classNodeId,
+            // 多班级条目必须回传完整班级列表，否则后端回退仅主班级、其余班级丢失
+            classNodeIds:
+              movingEntry.classNodeIds || (movingEntry.classNodeId ? [movingEntry.classNodeId] : []),
             teacherId: movingEntry.teacherId || undefined,
             dayOfWeek,
             periods: [periodKey],

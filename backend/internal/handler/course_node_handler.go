@@ -163,6 +163,10 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	// 校验知识点/资源/引用源归属当前租户，防止跨租户绑定与回显
+	if !h.checkNodeRefsTenant(w, r, tenantID, kpIDs, resIDs, req.SourceID, req.RefType) {
+		return
+	}
 
 	node, err := h.Service.CreateNode(r.Context(), tenantID, &store.CourseNodeCreateParams{
 		CourseID:            req.CourseID,
@@ -207,7 +211,8 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, err := h.Service.GetNodeBase(r.Context(), id, tenantID); err != nil {
+	existing, err := h.Service.GetNodeBase(r.Context(), id, tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
@@ -221,11 +226,62 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 部分更新兜底：未携带字段回退现有值，防止 nil/零值覆盖清空数据
+	if req.ParentID == nil {
+		req.ParentID = existing.ParentID
+	}
+	if req.Code == nil {
+		req.Code = existing.Code
+	}
+	if req.SortOrder == 0 {
+		req.SortOrder = existing.SortOrder
+	}
+	if req.RefType == "" {
+		req.RefType = existing.RefType
+	}
+	if req.SourceID == nil {
+		req.SourceID = existing.SourceID
+	}
+	if req.SourceName == nil {
+		req.SourceName = existing.SourceName
+	}
+	if req.TeachingGoals == nil {
+		req.TeachingGoals = existing.TeachingGoals
+	}
+	if req.DetailedDescription == nil {
+		req.DetailedDescription = existing.DetailedDescription
+	}
+	if req.DescriptionPdf == nil {
+		req.DescriptionPdf = existing.DescriptionPdf
+	}
+	if req.Background == nil {
+		req.Background = existing.Background
+	}
+	if req.EstimatedHours == nil {
+		req.EstimatedHours = existing.EstimatedHours
+	}
+	if req.Duration == nil {
+		req.Duration = existing.Duration
+	}
+	if req.Difficulty == nil {
+		req.Difficulty = existing.Difficulty
+	}
+	if req.EvalData == nil {
+		req.EvalData = existing.EvalData
+	}
+	if req.Status == "" {
+		req.Status = existing.Status
+	}
+
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
 	if req.RefType == "original" {
 		kpIDs = []string{}
 		resIDs = []string{}
+	}
+	// 校验知识点/资源/引用源归属当前租户
+	if !h.checkNodeRefsTenant(w, r, tenantID, kpIDs, resIDs, req.SourceID, req.RefType) {
+		return
 	}
 
 	node, err := h.Service.UpdateNode(r.Context(), id, tenantID, &store.CourseNodeUpdateParams{
@@ -451,4 +507,29 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 	}
 
 	return items, nil
+}
+
+// checkNodeRefsTenant 校验节点引用的知识点/资源/颗粒课源属于当前租户。
+func (h *CourseNodeHandler) checkNodeRefsTenant(w http.ResponseWriter, r *http.Request, tenantID string, kpIDs, resIDs []string, sourceID *string, refType string) bool {
+	st := h.Service.Store()
+	for _, kpID := range kpIDs {
+		if _, err := st.KnowledgePoints().Get(r.Context(), kpID, tenantID); err != nil {
+			respondError(w, http.StatusNotFound, "知识点不存在")
+			return false
+		}
+	}
+	for _, resID := range resIDs {
+		item, err := st.ResourceLibrary().Get(r.Context(), resID)
+		if err != nil || item.TenantID != tenantID {
+			respondError(w, http.StatusNotFound, "资源不存在")
+			return false
+		}
+	}
+	if refType == "original" && sourceID != nil && *sourceID != "" {
+		if _, err := st.Courses().Get(r.Context(), *sourceID, tenantID); err != nil {
+			respondError(w, http.StatusNotFound, "引用颗粒课不存在")
+			return false
+		}
+	}
+	return true
 }

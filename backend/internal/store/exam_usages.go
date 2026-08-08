@@ -104,8 +104,9 @@ func (s *ExamUsageStore) Update(ctx context.Context, id string, p *ExamUsageCrea
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE exam_usages SET name = $1, description = $2, start_time = $3, end_time = $4,
-			duration = $5, target_type = COALESCE($6, target_type), target_ids = COALESCE($7, target_ids),
+		UPDATE exam_usages SET name = $1, description = COALESCE($2, description),
+			start_time = COALESCE($3, start_time), end_time = COALESCE($4, end_time),
+			duration = COALESCE($5, duration), target_type = COALESCE($6, target_type), target_ids = COALESCE($7, target_ids),
 			activation_mode = $8,
 			status = CASE WHEN $8::varchar = 'always' THEN 'published' ELSE status END,
 			updated_at = NOW()

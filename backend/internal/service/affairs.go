@@ -175,6 +175,11 @@ func (s *AffairsService) FallbackClassID(ctx context.Context, entryID string) *s
 	return s.st.Scheduling().FallbackClassID(ctx, entryID)
 }
 
+// PlanEntryTenantID 查询教学计划条目所属租户（排课归属校验用）。
+func (s *AffairsService) PlanEntryTenantID(ctx context.Context, entryID string) (string, error) {
+	return s.st.Scheduling().PlanEntryTenantID(ctx, entryID)
+}
+
 // ResolveCourseIDByCode 按编码解析课程。
 func (s *AffairsService) ResolveCourseIDByCode(ctx context.Context, tenantID string, courseCode *string) *string {
 	return s.st.Scheduling().ResolveCourseIDByCode(ctx, s.st.Q(), tenantID, courseCode)

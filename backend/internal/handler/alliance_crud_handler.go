@@ -358,6 +358,60 @@ func (h *AllianceHandler) achievementCRUD() crudConfig[domain.AllianceAchievemen
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceAchievement, tenantID, userID string) (string, error) {
 		return h.Store.CreateAchievement(ctx, t)
 	}
+	cfg.ValidateUpdateExisting = func(t *domain.AllianceAchievement, existing *domain.AllianceAchievement) string {
+		if t.Title == "" {
+			t.Title = existing.Title
+		}
+		if t.Type == "" {
+			t.Type = existing.Type
+		}
+		if t.Description == nil {
+			t.Description = existing.Description
+		}
+		if t.AchievementDate == nil {
+			t.AchievementDate = existing.AchievementDate
+		}
+		if t.CoverImage == nil {
+			t.CoverImage = existing.CoverImage
+		}
+		if t.CitationReason == nil {
+			t.CitationReason = existing.CitationReason
+		}
+		if t.Status == "" {
+			t.Status = existing.Status
+		}
+		if len(t.Attachments) == 0 {
+			t.Attachments = existing.Attachments
+		}
+		if len(t.Images) == 0 {
+			t.Images = existing.Images
+		}
+		if len(t.OwnerPersons) == 0 {
+			t.OwnerPersons = existing.OwnerPersons
+		}
+		if len(t.CoBuilders) == 0 {
+			t.CoBuilders = existing.CoBuilders
+		}
+		if len(t.EnterpriseIDs) == 0 {
+			t.EnterpriseIDs = existing.EnterpriseIDs
+		}
+		if len(t.ProjectIDs) == 0 {
+			t.ProjectIDs = existing.ProjectIDs
+		}
+		if len(t.RelatedPositions) == 0 {
+			t.RelatedPositions = existing.RelatedPositions
+		}
+		if len(t.RelatedScenes) == 0 {
+			t.RelatedScenes = existing.RelatedScenes
+		}
+		if len(t.RelatedCourses) == 0 {
+			t.RelatedCourses = existing.RelatedCourses
+		}
+		if len(t.SecondaryColleges) == 0 {
+			t.SecondaryColleges = existing.SecondaryColleges
+		}
+		return ""
+	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceAchievement) error {
 		return h.Store.UpdateAchievement(ctx, id, tenantID, t)
 	}
@@ -394,6 +448,84 @@ func (h *AllianceHandler) expertCRUD() crudConfig[domain.AllianceExpert, domain.
 	}
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceExpert, tenantID, userID string) (string, error) {
 		return h.Store.CreateExpert(ctx, t)
+	}
+	cfg.ValidateUpdateExisting = func(t *domain.AllianceExpert, existing *domain.AllianceExpert) string {
+		if t.Name == "" {
+			t.Name = existing.Name
+		}
+		if t.Gender == nil {
+			t.Gender = existing.Gender
+		}
+		if t.Age == nil {
+			t.Age = existing.Age
+		}
+		if t.Title == nil {
+			t.Title = existing.Title
+		}
+		if t.Position == nil {
+			t.Position = existing.Position
+		}
+		if t.ExpertType == nil {
+			t.ExpertType = existing.ExpertType
+		}
+		if t.Industry == nil {
+			t.Industry = existing.Industry
+		}
+		if t.ExperienceYears == nil {
+			t.ExperienceYears = existing.ExperienceYears
+		}
+		if t.Education == nil {
+			t.Education = existing.Education
+		}
+		if t.Introduction == nil {
+			t.Introduction = existing.Introduction
+		}
+		if t.WorkExperience == nil {
+			t.WorkExperience = existing.WorkExperience
+		}
+		if t.City == nil {
+			t.City = existing.City
+		}
+		if t.AvatarURL == nil {
+			t.AvatarURL = existing.AvatarURL
+		}
+		if t.CoverImage == nil {
+			t.CoverImage = existing.CoverImage
+		}
+		if t.EnterpriseID == nil {
+			t.EnterpriseID = existing.EnterpriseID
+		}
+		if t.Organization == nil {
+			t.Organization = existing.Organization
+		}
+		if t.Rating == nil {
+			t.Rating = existing.Rating
+		}
+		if t.Status == "" {
+			t.Status = existing.Status
+		}
+		if t.PartnerSource == nil {
+			t.PartnerSource = existing.PartnerSource
+		}
+		if t.PositionDirection == nil {
+			t.PositionDirection = existing.PositionDirection
+		}
+		if len(t.ProfessionalFields) == 0 {
+			t.ProfessionalFields = existing.ProfessionalFields
+		}
+		if len(t.Specialties) == 0 {
+			t.Specialties = existing.Specialties
+		}
+		if len(t.Photos) == 0 {
+			t.Photos = existing.Photos
+		}
+		if len(t.Attachments) == 0 {
+			t.Attachments = existing.Attachments
+		}
+		if len(t.SecondaryColleges) == 0 {
+			t.SecondaryColleges = existing.SecondaryColleges
+		}
+		return ""
 	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceExpert) error {
 		return h.Store.UpdateExpert(ctx, id, tenantID, t)
@@ -432,6 +564,36 @@ func (h *AllianceHandler) agreementCRUD() crudConfig[domain.AllianceAgreement, d
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceAgreement, tenantID, userID string) (string, error) {
 		return h.Store.CreateAgreement(ctx, t)
 	}
+	cfg.ValidateUpdateExisting = func(t *domain.AllianceAgreement, existing *domain.AllianceAgreement) string {
+		if t.Name == "" {
+			t.Name = existing.Name
+		}
+		if t.Type == nil {
+			t.Type = existing.Type
+		}
+		if t.Content == nil {
+			t.Content = existing.Content
+		}
+		if t.StartDate == nil {
+			t.StartDate = existing.StartDate
+		}
+		if t.EndDate == nil {
+			t.EndDate = existing.EndDate
+		}
+		if t.Status == "" {
+			t.Status = existing.Status
+		}
+		if len(t.EnterpriseIDs) == 0 {
+			t.EnterpriseIDs = existing.EnterpriseIDs
+		}
+		if len(t.ProjectIDs) == 0 {
+			t.ProjectIDs = existing.ProjectIDs
+		}
+		if len(t.Attachments) == 0 {
+			t.Attachments = existing.Attachments
+		}
+		return ""
+	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceAgreement) error {
 		return h.Store.UpdateAgreement(ctx, id, tenantID, t)
 	}
@@ -467,6 +629,45 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 	}
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceBrand, tenantID, userID string) (string, error) {
 		return h.Store.CreateBrand(ctx, t)
+	}
+	cfg.ValidateUpdateExisting = func(t *domain.AllianceBrand, existing *domain.AllianceBrand) string {
+		if t.Name == "" {
+			t.Name = existing.Name
+		}
+		if t.Status == "" {
+			t.Status = existing.Status
+		}
+		if t.CoverImage == nil {
+			t.CoverImage = existing.CoverImage
+		}
+		if t.CoverVideo == nil {
+			t.CoverVideo = existing.CoverVideo
+		}
+		if t.Description == nil {
+			t.Description = existing.Description
+		}
+		if t.StudentID == nil {
+			t.StudentID = existing.StudentID
+		}
+		if t.EnterpriseID == nil {
+			t.EnterpriseID = existing.EnterpriseID
+		}
+		if t.PositionID == nil {
+			t.PositionID = existing.PositionID
+		}
+		if t.MajorID == nil {
+			t.MajorID = existing.MajorID
+		}
+		if t.TeacherID == nil {
+			t.TeacherID = existing.TeacherID
+		}
+		if t.ExpertID == nil {
+			t.ExpertID = existing.ExpertID
+		}
+		if len(t.Data) == 0 {
+			t.Data = existing.Data
+		}
+		return ""
 	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceBrand) error {
 		return h.Store.UpdateBrand(ctx, id, tenantID, t)

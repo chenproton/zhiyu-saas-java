@@ -76,7 +76,14 @@ export default function UserFieldsPage() {
     const original = rawFields.find((f) => f.id === field.id)
     if (!original) return
     try {
-      await portalUserExtensionFieldApi.update(field.id, { isEnabled: !field.enabled })
+      // 后端全列覆盖且 fieldName 必填：开关切换需回传完整字段，
+      // 否则 isEnabled 切换必然 400、isRequired 会被零值 false 静默禁用
+      await portalUserExtensionFieldApi.update(field.id, {
+        fieldName: original.fieldName,
+        isEnabled: !field.enabled,
+        isRequired: original.isRequired ?? false,
+        applicableRoleCodes: original.applicableRoleCodes || [],
+      })
       toast({ title: t('状态已更新') })
     } catch (err) {
       toast({
@@ -88,8 +95,12 @@ export default function UserFieldsPage() {
   }
 
   const handleSave = async (item: ExtendField) => {
+    const original = rawFields.find((f) => f.id === item.id)
     await portalUserExtensionFieldApi.update(item.id, {
       fieldName: item.name.trim(),
+      // 后端全列覆盖：必须回传 isEnabled/isRequired，防止编辑后字段被静默禁用
+      isEnabled: original?.isEnabled ?? true,
+      isRequired: original?.isRequired ?? false,
       applicableRoleCodes: item.roleCodes,
     })
     toast({ title: t('保存成功') })

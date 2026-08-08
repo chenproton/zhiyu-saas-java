@@ -36,6 +36,9 @@ func (h *FavoritesHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.checkTargetTenant(w, r, targetType, id) {
+		return
+	}
 	isfav, err := h.Service.GetFavorite(r.Context(), claims.UserID, targetType, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏状态失败")
@@ -58,6 +61,9 @@ func (h *FavoritesHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.checkTargetTenant(w, r, targetType, id) {
+		return
+	}
 	isfav, err := h.Service.ToggleFavorite(r.Context(), claims.UserID, targetType, id)
 	if err != nil {
 		respondServerError(w, r, err, "切换收藏失败")
@@ -65,6 +71,20 @@ func (h *FavoritesHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request
 	}
 	cnt, _ := h.Service.FavoriteCount(r.Context(), targetType, id)
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav, FavoriteCount: cnt})
+}
+
+// checkTargetTenant 校验收藏目标属于当前租户（不存在/他租户按不存在处理）。
+func (h *FavoritesHandler) checkTargetTenant(w http.ResponseWriter, r *http.Request, targetType, targetID string) bool {
+	tenantID := ""
+	if claims := middleware.CurrentUser(r); claims != nil && claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+	targetTenant, err := h.Service.FavoriteTargetTenant(r.Context(), targetType, targetID)
+	if err != nil || targetTenant != tenantID {
+		respondError(w, http.StatusNotFound, "收藏对象不存在")
+		return false
+	}
+	return true
 }
 
 // List 查询当前用户全部收藏（按类型分组）。
@@ -77,22 +97,26 @@ func (h *FavoritesHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	userID := claims.UserID
-	scenes, err := h.Service.ListScenes(ctx, userID)
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+	scenes, err := h.Service.ListScenes(ctx, userID, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏场景失败")
 		return
 	}
-	courses, err := h.Service.ListCourses(ctx, userID)
+	courses, err := h.Service.ListCourses(ctx, userID, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏课程失败")
 		return
 	}
-	banks, err := h.Service.ListQuestionBanks(ctx, userID)
+	banks, err := h.Service.ListQuestionBanks(ctx, userID, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏题库失败")
 		return
 	}
-	exams, err := h.Service.ListExams(ctx, userID)
+	exams, err := h.Service.ListExams(ctx, userID, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询收藏试卷失败")
 		return

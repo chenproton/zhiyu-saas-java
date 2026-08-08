@@ -765,12 +765,12 @@ function AddSystemPageInner() {
         setCourseId(created.id)
         effectiveCourseId = created.id
       }
-      hasSavedRef.current = true
 
-      // 保存节点树
+      // 保存节点树；成功后才标记已保存（节点失败时 handleFinish 不得跳转）
       if (effectiveCourseId) {
         await saveNodes(effectiveCourseId)
       }
+      hasSavedRef.current = true
 
       toast({ title: t('草稿已保存') })
     } catch (e: any) {

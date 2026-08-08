@@ -100,6 +100,10 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Answer == nil {
 		req.Answer = domain.JSONSlice{}
 	}
+	// 校验目标题库属于当前租户，防止跨租户写他人题库
+	if !h.checkBankTenant(w, r, tenantID, req.BankID) {
+		return
+	}
 
 	code, err := h.Service.GenerateEntityCode(r.Context(), "TM", "questions", tenantID)
 	if err != nil {
@@ -157,6 +161,10 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Answer == nil {
 		req.Answer = domain.JSONSlice{}
 	}
+	// 校验目标题库属于当前租户
+	if !h.checkBankTenant(w, r, tenantID, req.BankID) {
+		return
+	}
 
 	q, err := h.Service.UpdateQuestion(r.Context(), id, tenantID, &store.QuestionUpdateParams{
 		BankID:          req.BankID,
@@ -175,6 +183,19 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
+}
+
+// checkBankTenant 校验题库属于当前租户，不匹配时按不存在处理。
+func (h *QuestionHandler) checkBankTenant(w http.ResponseWriter, r *http.Request, tenantID, bankID string) bool {
+	if bankID == "" {
+		respondError(w, http.StatusBadRequest, "缺少题库 ID")
+		return false
+	}
+	if _, err := h.Service.GetQuestionBankInTenant(r.Context(), bankID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "题库不存在")
+		return false
+	}
+	return true
 }
 
 func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +243,10 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	items := make([]store.QuestionCreateParams, 0, len(req.Items))
+	// 校验目标题库属于当前租户
+	if !h.checkBankTenant(w, r, tenantID, req.BankID) {
+		return
+	}
 	for _, item := range req.Items {
 		if item.Answer == nil {
 			item.Answer = domain.JSONSlice{}

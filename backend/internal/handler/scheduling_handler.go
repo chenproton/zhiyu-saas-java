@@ -413,6 +413,11 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 
 	// 班级兜底：请求未带班级且来源教学计划条目时，优先从 junction table 读取，
 	// 再 fallback 到 class_node_id 字段。
+	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
+		if !h.checkPlanEntryTenant(w, r, ctx, *req.PlanEntryID, tenantID) {
+			return
+		}
+	}
 	if req.ClassNodeID == "" && req.PlanEntryID != nil && *req.PlanEntryID != "" {
 		fallbackClassID := h.Service.FallbackClassID(ctx, *req.PlanEntryID)
 		if fallbackClassID != nil && *fallbackClassID != "" {
@@ -537,6 +542,10 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 		courseID = h.Service.ResolveCourseIDByCode(ctx, tenantID, req.CourseCode)
 	}
 	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
+		// 校验教学计划条目属于当前租户，防止跨租户引用
+		if !h.checkPlanEntryTenant(w, r, ctx, *req.PlanEntryID, tenantID) {
+			return
+		}
 		if planCourseID := h.Service.PlanEntryCourseID(ctx, *req.PlanEntryID); planCourseID != nil && *planCourseID != "" {
 			courseID = planCourseID
 		}
@@ -1013,6 +1022,20 @@ func validateScheduleRequest(w http.ResponseWriter, req *ScheduleEntryRequest) b
 
 func (h *SchedulingHandler) fetchScheduleEntry(ctx context.Context, id, tenantID string) (*domain.ScheduleEntry, error) {
 	return h.Service.GetSchedule(ctx, id, tenantID)
+}
+
+// checkPlanEntryTenant 校验教学计划条目属于当前租户，防止跨租户引用排课。
+func (h *SchedulingHandler) checkPlanEntryTenant(w http.ResponseWriter, r *http.Request, ctx context.Context, planEntryID, tenantID string) bool {
+	entryTenant, err := h.Service.PlanEntryTenantID(ctx, planEntryID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "教学计划条目不存在")
+		return false
+	}
+	if entryTenant != tenantID {
+		respondError(w, http.StatusNotFound, "教学计划条目不存在")
+		return false
+	}
+	return true
 }
 
 func (h *SchedulingHandler) fetchTermBrief(ctx context.Context, id, tenantID string) (*domain.Term, error) {

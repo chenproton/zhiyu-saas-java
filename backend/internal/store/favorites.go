@@ -35,6 +35,26 @@ func NewFavoritesStore(q Queryer) *FavoritesStore {
 	return &FavoritesStore{q: q}
 }
 
+// FavoriteTargetTenant 查询收藏目标的所属租户（归属校验用）。
+func (s *FavoritesStore) FavoriteTargetTenant(ctx context.Context, targetType, targetID string) (string, error) {
+	var tenantID string
+	switch targetType {
+	case FavoriteTypeScene:
+		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM scenarios WHERE id = $1`, targetID).Scan(&tenantID)
+		return tenantID, err
+	case FavoriteTypeCourse:
+		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM courses WHERE id = $1`, targetID).Scan(&tenantID)
+		return tenantID, err
+	case FavoriteTypeQuestionBank:
+		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM question_banks WHERE id = $1`, targetID).Scan(&tenantID)
+		return tenantID, err
+	case FavoriteTypeExam:
+		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM exams WHERE id = $1`, targetID).Scan(&tenantID)
+		return tenantID, err
+	}
+	return "", pgx.ErrNoRows
+}
+
 // GetFavorite 查询收藏状态。
 func (s *FavoritesStore) GetFavorite(ctx context.Context, userID, targetType, targetID string) (bool, error) {
 	var exists bool
@@ -93,40 +113,40 @@ func (s *FavoritesStore) ToggleFavorite(ctx context.Context, userID, targetType,
 }
 
 // ListScenes 查询用户收藏的场景（仅已发布）。
-func (s *FavoritesStore) ListScenes(ctx context.Context, userID string) ([]domain.Scenario, error) {
-	return listFavoritesByType(ctx, s.q, userID, FavoriteTypeScene,
+func (s *FavoritesStore) ListScenes(ctx context.Context, userID, tenantID string) ([]domain.Scenario, error) {
+	return listFavoritesByType(ctx, s.q, userID, tenantID, FavoriteTypeScene,
 		scenarioListFrom+" ON s.id = f.target_id"+scenarioListJoins,
-		scenarioListSelectColumns, " AND s.status = 'published'", scanScenarioRows)
+		scenarioListSelectColumns, "s.tenant_id", " AND s.status = 'published'", scanScenarioRows)
 }
 
 // ListCourses 查询用户收藏的课程（仅已发布）。
-func (s *FavoritesStore) ListCourses(ctx context.Context, userID string) ([]domain.Course, error) {
-	return listFavoritesByType(ctx, s.q, userID, FavoriteTypeCourse,
+func (s *FavoritesStore) ListCourses(ctx context.Context, userID, tenantID string) ([]domain.Course, error) {
+	return listFavoritesByType(ctx, s.q, userID, tenantID, FavoriteTypeCourse,
 		courseListFrom+" ON c.id = f.target_id"+courseListJoins,
-		courseListSelectColumns, " AND c.status = 'published'", ScanCourseRows)
+		courseListSelectColumns, "c.tenant_id", " AND c.status = 'published'", ScanCourseRows)
 }
 
 // ListQuestionBanks 查询用户收藏的题库（仅已发布）。
-func (s *FavoritesStore) ListQuestionBanks(ctx context.Context, userID string) ([]domain.QuestionBank, error) {
-	return listFavoritesByType(ctx, s.q, userID, FavoriteTypeQuestionBank,
+func (s *FavoritesStore) ListQuestionBanks(ctx context.Context, userID, tenantID string) ([]domain.QuestionBank, error) {
+	return listFavoritesByType(ctx, s.q, userID, tenantID, FavoriteTypeQuestionBank,
 		questionBankListFrom+" ON qb.id = f.target_id"+questionBankListJoins,
-		questionBankListSelectColumns, " AND qb.status = 'published'", ScanQuestionBankRows)
+		questionBankListSelectColumns, "qb.tenant_id", " AND qb.status = 'published'", ScanQuestionBankRows)
 }
 
 // ListExams 查询用户收藏的试卷（仅已发布、非临时）。
-func (s *FavoritesStore) ListExams(ctx context.Context, userID string) ([]domain.Exam, error) {
-	return listFavoritesByType(ctx, s.q, userID, FavoriteTypeExam,
+func (s *FavoritesStore) ListExams(ctx context.Context, userID, tenantID string) ([]domain.Exam, error) {
+	return listFavoritesByType(ctx, s.q, userID, tenantID, FavoriteTypeExam,
 		examListFrom+" ON e.id = f.target_id",
-		examListSelectColumns, " AND e.is_temp = FALSE AND e.status = 'published'", ScanExamRows)
+		examListSelectColumns, "e.tenant_id", " AND e.is_temp = FALSE AND e.status = 'published'", ScanExamRows)
 }
 
-func listFavoritesByType[T any](ctx context.Context, q Queryer, userID, targetType, from, selectColumns, extraFilter string, scan func(pgx.Rows) ([]T, error)) ([]T, error) {
+func listFavoritesByType[T any](ctx context.Context, q Queryer, userID, tenantID, targetType, from, selectColumns, tenantColumn, extraFilter string, scan func(pgx.Rows) ([]T, error)) ([]T, error) {
 	rows, err := q.Query(ctx, `
 		SELECT `+selectColumns+`
 		FROM user_favorites f JOIN `+from+`
-		WHERE f.user_id = $1 AND f.target_type = $2`+extraFilter+`
+		WHERE f.user_id = $1 AND f.target_type = $2 AND `+tenantColumn+` = $3`+extraFilter+`
 		ORDER BY f.created_at DESC
-	`, userID, targetType)
+	`, userID, targetType, tenantID)
 	if err != nil {
 		return nil, err
 	}

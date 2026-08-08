@@ -427,6 +427,15 @@ func (h *CertificationHandler) PutFullRule(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
+	// 校验改绑岗位属于当前租户（与 UpdateRule 一致），防止跨租户关联
+	posTenant, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, posTenant) {
+		return
+	}
 	for _, item := range req.Items {
 		if item.Name == "" {
 			respondError(w, http.StatusBadRequest, "缺少必填字段")
