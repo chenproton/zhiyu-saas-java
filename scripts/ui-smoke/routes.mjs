@@ -23,7 +23,7 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/job/landing/[id]/learn': { api: '/api/v1/job/public/positions?limit=10', url: '/job/landing/{id}/learn' },
   '/lesson/landing/[id]': { api: '/api/v1/lesson/courses?limit=10', url: '/lesson/landing/{id}' },
   '/lesson/landing/[id]/learn': { api: '/api/v1/lesson/courses?limit=10', url: '/lesson/landing/{id}/learn' },
-  '/library/resources/[type]': { api: '/api/v1/library/resources?limit=10', url: '/library/resources/{id}' },
+  // 注意：/library/resources/[type] 的 [type] 是资源类型枚举（course/scene 等），非实体 id，不配置动态路由
   '/portal/alliance/achievements/[id]': { api: '/api/v1/alliance/public/achievements?limit=10', url: '/portal/alliance/achievements/{id}' },
   '/portal/alliance/brands/[id]': { api: '/api/v1/alliance/public/brands?limit=10', url: '/portal/alliance/brands/{id}' },
   '/portal/alliance/brands/major/[id]': { api: '/api/v1/alliance/public/brands?limit=10', url: '/portal/alliance/brands/major/{id}' },
