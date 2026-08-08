@@ -205,7 +205,7 @@ func (s *BatchStore) UpdateFields(ctx context.Context, table string, fields Batc
 	if _, err := SanitizeIdentifier(table, allowedBatchWriteTables); err != nil {
 		return err
 	}
-	setClauses := []string{"name = $1", "code = $2", "org_node_id = $3", "major_id = $4", "workflow_id = $5", "updated_at = NOW()"}
+	setClauses := []string{"name = $1", "code = COALESCE($2, code)", "org_node_id = COALESCE($3, org_node_id)", "major_id = COALESCE($4, major_id)", "workflow_id = COALESCE($5, workflow_id)", "updated_at = NOW()"}
 	args := []any{fields.Name, fields.Code, fields.OrgNodeID, fields.MajorID, fields.WorkflowID}
 	argIdx := 6
 	if fields.Status != nil {

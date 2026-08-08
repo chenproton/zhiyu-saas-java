@@ -81,7 +81,21 @@ func (h *NodeHomeworkHandler) crud() crudConfig[NodeHomeworkRequest, domain.Node
 			return hw.ID, nil
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *NodeHomeworkRequest) error {
-			_, err := h.Service.UpdateNodeHomework(ctx, id, tenantID, &store.NodeHomeworkUpdateParams{
+			// 部分更新兜底：未携带字段回退现有值
+			existing, err := h.Service.GetNodeHomework(ctx, id, tenantID)
+			if err != nil {
+				return err
+			}
+			if t.Requirement == nil {
+				t.Requirement = existing.Requirement
+			}
+			if t.Deadline == nil {
+				t.Deadline = existing.Deadline
+			}
+			if t.Title == "" {
+				t.Title = existing.Title
+			}
+			_, err = h.Service.UpdateNodeHomework(ctx, id, tenantID, &store.NodeHomeworkUpdateParams{
 				Title:          t.Title,
 				Requirement:    t.Requirement,
 				NeedAttachment: t.NeedAttachment,

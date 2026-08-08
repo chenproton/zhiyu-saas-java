@@ -34,6 +34,8 @@ export function useLibraryCrud<TItem>(
   const t = useT()
   // options 每次渲染为新对象，经 effect 同步到 ref，避免被 loadItems 闭包捕获陈旧值
   const optionsRef = useRef(options)
+  // 请求序号：连续输入搜索词/快速翻页时丢弃过期响应
+  const loadSeqRef = useRef(0)
   const [items, setItems] = useState<TItem[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -53,6 +55,7 @@ export function useLibraryCrud<TItem>(
   const filterKey = JSON.stringify(options.getParams?.() ?? {})
 
   const loadItems = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     setLoading(true)
     try {
       const opts = optionsRef.current
@@ -68,16 +71,18 @@ export function useLibraryCrud<TItem>(
         setPage(totalPages)
         return
       }
+      if (seq !== loadSeqRef.current) return
       setItems(res.items ?? [])
       setTotal(res.total ?? 0)
     } catch (err) {
+      if (seq !== loadSeqRef.current) return
       toast({
         variant: 'destructive',
         title: t('加载失败'),
         description: err instanceof Error ? err.message : t('无法获取列表'),
       })
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [list, page, searchQuery, toast, filterKey, t])
 

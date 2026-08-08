@@ -156,6 +156,8 @@ export function UserSelector({
   const [selectedIds, setSelectedIds] = useState<string[]>(value)
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
+  // 用户列表请求序号：快速切换组织/连续输入时丢弃过期响应
+  const loadSeqRef = useRef(0)
 
   const excludeUserIdsRef = useRef(excludeUserIds)
   useEffect(() => {
@@ -214,6 +216,7 @@ export function UserSelector({
   }, [userSearch])
 
   const loadUsers = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     setUsersLoading(true)
     setUsersError(null)
     try {
@@ -227,6 +230,7 @@ export function UserSelector({
       const res = await fetchAllPages((page, pageSize) =>
         api.list({ ...params, limit: pageSize, offset: page * pageSize }),
       )
+      if (seq !== loadSeqRef.current) return
       let filtered = res
       if (excludeStudent) {
         filtered = filtered.filter((u) => !(u.roleCodes || []).includes('student'))

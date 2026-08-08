@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Layers, FileText, GraduationCap } from 'lucide-react'
 import { courseApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { Course } from '@/lib/types'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
@@ -120,8 +121,8 @@ export default function LessonLandingPage() {
     ;(async () => {
       setLoading(true)
       try {
-        const res = await courseApi.list({ status: 'published', limit: 1000 } as any)
-        setCourses(res.items || [])
+        const res = await fetchAllPages((page, pageSize) => courseApi.list({ status: 'published', limit: pageSize, offset: page * pageSize } as any))
+        setCourses(res || [])
       } catch {
         setCourses([])
       } finally {

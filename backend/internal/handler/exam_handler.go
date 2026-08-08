@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -66,7 +67,11 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	exam, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if exam.TenantID != nil && (claims.TenantID == nil || *exam.TenantID != *claims.TenantID) {
@@ -152,7 +157,11 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
@@ -229,7 +238,11 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	tenantID, err := h.Service.ExamTenantID(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if !verifyTenantOwnership(w, r, tenantID) {
@@ -258,7 +271,11 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	exam, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
@@ -276,7 +293,11 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 
 	q, err := h.Service.FetchExamQuestion(r.Context(), tenantID, req.QuestionID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "题目不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "题目不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 
@@ -308,7 +329,11 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 	questionID := chi.URLParam(r, "questionId")
 	exam, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
@@ -351,7 +376,11 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 
 	exam, err := h.Service.GetExam(r.Context(), examID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
@@ -401,7 +430,11 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 	}
 	exam, err := h.Service.GetExam(r.Context(), examID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "考试不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {

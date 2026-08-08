@@ -85,7 +85,21 @@ func (h *KnowledgePointHandler) crud() crudConfig[KnowledgePointRequest, domain.
 			return kp.ID, nil
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *KnowledgePointRequest) error {
-			_, err := h.Service.UpdateKnowledgePoint(ctx, tenantID, id, &store.KnowledgePointUpdateParams{
+			// 部分更新兜底：未携带字段回退现有值，防止 nil/零值清空
+			existing, err := h.Service.GetKnowledgePoint(ctx, id, tenantID)
+			if err != nil {
+				return err
+			}
+			if t.Code == nil {
+				t.Code = existing.Code
+			}
+			if t.Description == nil {
+				t.Description = existing.Description
+			}
+			if t.GranularLessonIds == nil {
+				t.GranularLessonIds = existing.GranularLessonIds
+			}
+			_, err = h.Service.UpdateKnowledgePoint(ctx, tenantID, id, &store.KnowledgePointUpdateParams{
 				Name:              t.Name,
 				Code:              t.Code,
 				Description:       t.Description,

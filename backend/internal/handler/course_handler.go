@@ -110,7 +110,11 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	course, err := h.Service.GetCourseDetailInTenant(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, course)
@@ -218,7 +222,11 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.Service.GetCourseDetailInTenant(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 

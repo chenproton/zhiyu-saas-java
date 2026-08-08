@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { courseApi, courseNodeApi, courseResourceApi, knowledgeApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { Course, NodeResource, KnowledgePoint, TaskResource } from '@/lib/types'
 import {
   SCENE_DIFFICULTY,
@@ -137,9 +138,8 @@ export default function CourseDetailPage() {
       .then((res) => setNodes((res.items || []) as any))
       .catch(() => setNodes([]))
 
-    courseResourceApi
-      .list({ courseId: id, limit: 10000 })
-      .then((res) => setResources(res.items || []))
+    fetchAllPages((page, pageSize) => courseResourceApi.list({ courseId: id, limit: pageSize, offset: page * pageSize }))
+      .then((res) => setResources(res || []))
       .catch(() => setResources([]))
 
     knowledgeApi

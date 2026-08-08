@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -85,7 +86,11 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	res, err := h.Service.GetEvaluationResult(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "评价结果不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "评价结果不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
@@ -193,7 +198,11 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 	}
 	res, err := h.Service.GetEvaluationResult(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "评价结果不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "评价结果不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
@@ -238,7 +247,11 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	for _, item := range req.Items {
 		res, err := h.Service.GetEvaluationResult(r.Context(), item.ID)
 		if err != nil {
-			respondError(w, http.StatusNotFound, "评价结果不存在")
+			if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+				respondError(w, http.StatusNotFound, "评价结果不存在")
+				return
+			}
+			respondServerError(w, r, err, "查询失败")
 			return
 		}
 		if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {

@@ -40,7 +40,7 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
       abilityDomains.forEach((d) => groups.set(d.name, []))
       bindings.forEach((b) => {
         const domain =
-          abilityDomains.find((d) => d.bindingIds.includes(b.id))?.name || b.domain || t('其他')
+          abilityDomains.find((d) => (d.bindingIds || []).includes(b.id))?.name || b.domain || t('其他')
         const list = groups.get(domain) || []
         list.push(b)
         groups.set(domain, list)

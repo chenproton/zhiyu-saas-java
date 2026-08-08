@@ -132,7 +132,16 @@ export default function AbilityPointsPage() {
         savedId = created.id
         toast({ title: t('创建成功') })
       }
-      await saveTags(savedId, tagIds)
+      try {
+        try {
+          await saveTags(savedId, tagIds)
+        } catch (err) {
+          toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
+        }
+      } catch (err) {
+        // 实体已保存成功，标签失败单独提示（重试仅补标签，不会重复创建实体）
+        toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
+      }
       setIsDialogOpen(false)
       loadItems()
     } catch (err: any) {

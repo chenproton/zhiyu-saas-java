@@ -38,6 +38,7 @@ export default function ProgramEditPage() {
   const [program, setProgram] = useState<TrainingProgram | null>(null)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [tab, setTab] = useState('basic')
   const [coursesBusy, setCoursesBusy] = useState({ saving: false, loading: true })
 
@@ -51,6 +52,7 @@ export default function ProgramEditPage() {
 
   const loadProgram = useCallback(async () => {
     if (isNew) return
+    setLoadError(false)
     try {
       const p = await programApi.get(id)
       setProgram(p)
@@ -61,6 +63,7 @@ export default function ProgramEditPage() {
       setDuration(p.duration != null ? String(p.duration) : '')
       setDescription(p.description || '')
     } catch (err: any) {
+      setLoadError(true)
       toast({
         variant: 'destructive',
         title: t('加载失败'),
@@ -78,7 +81,7 @@ export default function ProgramEditPage() {
     })()
   }, [loadProgram])
 
-  const isFormValid = name.trim() !== '' && Number(entryYear) > 0
+  const isFormValid = name.trim() !== '' && Number(entryYear) > 0 && !loadError
 
   const handleSaveBasic = async () => {
     if (!isFormValid) return

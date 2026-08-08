@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { programApi, teachingPlanApi, batchApi, affairsBatchApi, approvalApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { TrainingProgram, TeachingPlan } from '@/lib/types'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
@@ -62,13 +63,13 @@ export default function AffairsApprovalsPage() {
     Promise.all([
       programApi.list({ limit: 1000 }),
       teachingPlanApi.list({ limit: 1000 }),
-      batchApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
       affairsBatchApi.list({ limit: 1000 }),
     ])
       .then(([pres, plres, bres, abres]) => {
         setProgramMap(new Map(pres.items.map((p) => [p.id, p])))
         setPlanMap(new Map(plres.items.map((p) => [p.id, p])))
-        setBatchMap(new Map(bres.items.map((b) => [b.id, b])))
+        setBatchMap(new Map(bres.map((b) => [b.id, b])))
         setAffairsBatchMap(new Map(abres.items.map((b) => [b.id, b])))
       })
       .catch((err) => {

@@ -37,6 +37,7 @@ import {
 import { cn } from '@/lib/utils'
 import { POSITION_TYPE_LABELS } from '@/lib/types/job-source'
 import { positionApi, recommendApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import {
   convertCareerPositionToPosition,
@@ -55,11 +56,11 @@ export default function PostRecommendPage() {
 
   const { data, loading, refresh } = useAsync(async () => {
     const [posRes, recRes] = await Promise.all([
-      positionApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) => positionApi.list({ limit: pageSize, offset: page * pageSize })),
       recommendApi.list({ limit: 1000 }),
     ])
     return {
-      positions: posRes.items.map(convertCareerPositionToPosition),
+      positions: posRes.map(convertCareerPositionToPosition),
       recommendations: recRes.items.map(convertApiRecommendationToLocal),
     }
   })

@@ -26,6 +26,7 @@ import {
 import {
   resourceLibraryApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
 import { formatSize } from '@/lib/resource-type-constants'
@@ -229,8 +230,8 @@ export default function LibraryLandingPage() {
     const load = async () => {
       setLoading(true)
       try {
-        const resRes = await resourceLibraryApi.list({ limit: 500 })
-        setResources(resRes.items)
+        const resRes = await fetchAllPages((page, pageSize) => resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }))
+        setResources(resRes)
       } catch (err) {
         reportError(err, '加载 landing 资源统计')
       } finally {

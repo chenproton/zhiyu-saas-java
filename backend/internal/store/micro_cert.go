@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,11 +110,18 @@ func (s *MicroCertStore) UpdateTemplate(ctx context.Context, id string, p MicroC
 }
 
 func (s *MicroCertStore) DeleteTemplate(ctx context.Context, id string) error {
-	if _, err := s.q.Exec(ctx, `DELETE FROM cert_issuance_records WHERE template_id = $1`, id); err != nil {
-		return err
+	if s.beginner == nil {
+		return errors.New("micro cert store: queryer does not support transactions")
 	}
-	_, err := s.q.Exec(ctx, `DELETE FROM micro_cert_templates WHERE id = $1`, id)
-	return err
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM cert_issuance_records WHERE template_id = $1`, id); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM micro_cert_templates WHERE id = $1`, id); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *MicroCertStore) IssueCerts(ctx context.Context, tenantID, templateID string, userIDs []string) (int, error) {

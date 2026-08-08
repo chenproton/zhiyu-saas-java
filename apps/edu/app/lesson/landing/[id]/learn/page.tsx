@@ -62,6 +62,7 @@ import {
   fileApi,
   knowledgeApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { Course, KnowledgePoint } from '@/lib/types'
 import type {
   SystemCourseNode,
@@ -201,14 +202,14 @@ export default function LessonLearnPage() {
   useEffect(() => {
     if (!id || !course || course.type === 'hybrid') return
     Promise.all([
-      knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [] as KnowledgePoint[], total: 0 })),
+      fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize })).catch(() => [] as KnowledgePoint[]),
       courseApi
         .list({ type: 'granular', limit: 1000 })
         .catch(() => ({ items: [] as Course[], total: 0 })),
     ])
       .then(([kRes, gRes]) => {
         const kMap = new Map<string, KnowledgePoint>()
-        ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
+        ;(kRes || []).forEach((k) => kMap.set(k.id, k))
         setKnowledgeMap(kMap)
         const gMap = new Map<string, Course>()
         ;(gRes.items || []).forEach((c) => gMap.set(c.id, c))

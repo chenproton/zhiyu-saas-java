@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type EvaluationMethodHandler struct {
@@ -69,7 +72,11 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 	}
 	methodTenantID, err := h.Service.Store().EvaluationMethods().TenantID(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "测评方式不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "测评方式不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if !verifyTenantOwnership(w, r, methodTenantID) {

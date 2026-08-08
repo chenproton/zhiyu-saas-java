@@ -125,7 +125,7 @@ func newStore(q Queryer) *Store {
 		organizations:    NewOrganizationStore(q),
 		userExtFields:    NewUserExtensionFieldStore(q),
 		userRelations:    NewUserRelationStore(q),
-		users:            NewUserStore(q),
+		users:            NewUserStore(q, beginner),
 		scenarioWeight:   NewScenarioWeightStore(q),
 		scenarioGrade:    NewScenarioGradeStore(q),
 		taskBindings:     NewTaskKnowledgeAbilityStore(q),

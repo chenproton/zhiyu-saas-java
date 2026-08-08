@@ -325,7 +325,7 @@ func ScanQuestionBankRows(rows pgx.Rows) ([]domain.QuestionBank, error) {
 		}
 		b.CoverImage = coverImage
 		b.Description = desc
-	b.Version = version
+		b.Version = version
 		b.CreatorID = creatorID
 		b.BatchID = batchID
 		items = append(items, b)

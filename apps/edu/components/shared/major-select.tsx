@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Select,
   SelectContent,
@@ -35,8 +35,11 @@ export function MajorSelect({
   const [majors, setMajors] = useState<Major[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
+  // 请求序号：tenantId 快速切换时丢弃过期响应
+  const loadSeqRef = useRef(0)
 
   const loadMajors = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     setLoading(true)
     setError(undefined)
     try {
@@ -48,6 +51,7 @@ export function MajorSelect({
       const items = await fetchAllPages((page, pageSize) =>
         majorApi.list({ ...params, limit: pageSize, offset: page * pageSize }),
       )
+      if (seq !== loadSeqRef.current) return
       setMajors(items.filter((m) => m.enabled))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('加载专业失败'))

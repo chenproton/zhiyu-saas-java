@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 
 import { positionApi, batchApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { Position } from '@/lib/types/job-source'
 import {
   convertCareerPositionToPosition,
@@ -26,12 +27,12 @@ export default function PositionArchivePage() {
 
   const { data, loading, refresh } = useAsync(async () => {
     const [posRes, batchRes] = await Promise.all([
-      positionApi.list({ status: 'archived', limit: 1000 }),
-      batchApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) => positionApi.list({ status: 'archived', limit: pageSize, offset: page * pageSize })),
+      fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
     ])
     return {
-      positions: posRes.items.map(convertCareerPositionToPosition),
-      batches: batchRes.items.map(convertJobBatchToBatch),
+      positions: posRes.map(convertCareerPositionToPosition),
+      batches: batchRes.map(convertJobBatchToBatch),
     }
   })
 

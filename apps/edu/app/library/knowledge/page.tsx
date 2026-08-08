@@ -5,6 +5,7 @@ import { Pencil, Trash2, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { knowledgeApi, courseApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { KnowledgePoint } from '@/lib/types/lesson'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -60,9 +61,9 @@ export default function KnowledgePointsPage() {
 
   const loadGranularCourses = async () => {
     try {
-      const res = await courseApi.list({ type: 'granular', limit: 1000 })
+      const res = await fetchAllPages((page, pageSize) => courseApi.list({ type: 'granular', limit: pageSize, offset: page * pageSize }))
       setGranularCourses(
-        res.items.map((c) => ({
+        res.map((c) => ({
           id: c.id,
           name: c.name,
           code: c.code,
@@ -133,7 +134,11 @@ export default function KnowledgePointsPage() {
         savedId = created.id
         toast({ title: t('创建成功') })
       }
-      await saveTags(savedId, values.tagIds)
+      try {
+        await saveTags(savedId, values.tagIds)
+      } catch {
+        toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
+      }
       setIsDialogOpen(false)
       loadItems()
       loadGranularCourses()

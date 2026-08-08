@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -80,7 +82,11 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// 校验课程归属当前租户，防跨租户写入课程资源绑定
 	courseTenantID, err := h.Service.CourseTenantID(r.Context(), req.CourseID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if !verifyTenantOwnership(w, r, courseTenantID) {
@@ -145,7 +151,11 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 
 	courseTenantID, err := h.Service.CourseTenantID(r.Context(), req.CourseID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if !verifyTenantOwnership(w, r, courseTenantID) {
@@ -176,7 +186,11 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	}
 	courseTenantID, err := h.Service.CourseTenantID(r.Context(), courseID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	if !verifyTenantOwnership(w, r, courseTenantID) {

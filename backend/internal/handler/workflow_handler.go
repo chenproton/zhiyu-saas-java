@@ -99,15 +99,26 @@ func (h *WorkflowHandler) crud() crudConfig[WorkflowRequest, domain.Workflow] {
 			return wf.ID, nil
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *WorkflowRequest) error {
+			// 部分更新兜底：未携带的列表字段回退现有值，防止清空已配置步骤/适用专业
+			existing, err := h.Service.GetWorkflow(ctx, id, tenantID)
+			if err != nil {
+				return err
+			}
 			steps := t.Steps
 			if steps == nil {
-				steps = domain.JSONSlice{}
+				steps = existing.Steps
 			}
 			majorIds := t.MajorIds
 			if majorIds == nil {
-				majorIds = domain.StringSlice{}
+				majorIds = existing.MajorIds
 			}
-			_, err := h.Service.UpdateWorkflow(ctx, id, tenantID, &store.WorkflowParams{
+			if t.Name == "" {
+				t.Name = existing.Name
+			}
+			if t.Description == nil {
+				t.Description = existing.Description
+			}
+			_, err = h.Service.UpdateWorkflow(ctx, id, tenantID, &store.WorkflowParams{
 				Name: t.Name, Scene: t.Scene, Description: t.Description,
 				Steps: steps, MajorIds: majorIds, Status: domain.WorkflowStatus(t.Status),
 			})

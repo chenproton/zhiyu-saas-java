@@ -21,6 +21,7 @@ import {
   positionCertificateApi,
   fileApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -77,13 +78,13 @@ function PositionEditPageContent({ params }: PageProps) {
       setLoading(true)
       try {
         const [posRes, batchRes] = await Promise.all([
-          positionApi.list({ limit: 1000 }),
-          batchApi.list({ limit: 1000 }),
+          fetchAllPages((page, pageSize) => positionApi.list({ limit: pageSize, offset: page * pageSize })),
+          fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
         ])
         if (cancelled) return
-        const posList = posRes.items.map(convertCareerPositionToPosition)
+        const posList = posRes.map(convertCareerPositionToPosition)
         setPositions(posList)
-        setBatches(batchRes.items.map(convertJobBatchToBatch))
+        setBatches(batchRes.map(convertJobBatchToBatch))
       } catch (err: any) {
         if (!cancelled) toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
       } finally {

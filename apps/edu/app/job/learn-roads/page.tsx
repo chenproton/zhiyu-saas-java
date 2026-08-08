@@ -43,6 +43,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 import {
   convertCareerPositionToPosition,
@@ -510,11 +511,11 @@ export default function LearnRoadsPage() {
     setDataLoading(true)
     try {
       const [posRes, batchRes] = await Promise.all([
-        positionApi.list({ limit: 1000 }),
-        batchApi.list({ limit: 1000 }),
+        fetchAllPages((page, pageSize) => positionApi.list({ limit: pageSize, offset: page * pageSize })),
+        fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
       ])
-      setPositions(posRes.items.map(convertCareerPositionToPosition))
-      setBatches(batchRes.items.map(convertJobBatchToBatch))
+      setPositions(posRes.map(convertCareerPositionToPosition))
+      setBatches(batchRes.map(convertJobBatchToBatch))
     } catch (err: any) {
       toast({
         variant: 'destructive',

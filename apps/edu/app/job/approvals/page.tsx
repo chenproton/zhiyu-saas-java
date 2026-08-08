@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { positionApi, batchApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { CareerPosition, JobBatch } from '@/lib/types/job'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
@@ -39,10 +40,10 @@ export default function JobApprovalsPage() {
   const [batchMap, setBatchMap] = useState<Map<string, JobBatch>>(new Map())
 
   useEffect(() => {
-    Promise.all([positionApi.list({ limit: 1000 }), batchApi.list({ limit: 1000 })])
+    Promise.all([fetchAllPages((page, pageSize) => positionApi.list({ limit: pageSize, offset: page * pageSize })), fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize }))])
       .then(([posRes, batchRes]) => {
-        setPositionMap(new Map(posRes.items.map((p) => [p.id, p])))
-        setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
+        setPositionMap(new Map(posRes.map((p) => [p.id, p])))
+        setBatchMap(new Map(batchRes.map((b) => [b.id, b])))
       })
       .catch((err) => {
         reportError(err, { source: '加载岗位/批次列表' })

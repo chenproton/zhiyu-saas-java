@@ -35,6 +35,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DateRangePicker } from '@/components/shared/date-range-picker'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { termApi, venueApi, periodSlotApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { DateRange } from 'react-day-picker'
 import type { AffairsTerm, Venue, PeriodSlot } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -329,8 +330,8 @@ function VenuesSection() {
 
   const loadItems = useCallback(async () => {
     try {
-      const res = await venueApi.list({ limit: 500 })
-      setItems(res.items)
+      const res = await fetchAllPages((page, pageSize) => venueApi.list({ limit: pageSize, offset: page * pageSize }))
+      setItems(res)
     } catch (err: any) {
       toast({
         variant: 'destructive',

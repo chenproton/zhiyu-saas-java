@@ -39,6 +39,8 @@ export function useAsync<T>(fetcher: () => Promise<T>, options: UseAsyncOptions<
 
   const fetcherRef = useRef(fetcher)
   const optionsRef = useRef(options)
+  // 请求序号：deps 快速变化时丢弃过期响应
+  const seqRef = useRef(0)
 
   useEffect(() => {
     fetcherRef.current = fetcher
@@ -49,12 +51,15 @@ export function useAsync<T>(fetcher: () => Promise<T>, options: UseAsyncOptions<
   }, [options])
 
   const refresh = useCallback(async () => {
+    const seq = ++seqRef.current
     setLoading(true)
     try {
       const res = await fetcherRef.current()
+      if (seq !== seqRef.current) return
       setData(res)
       setError(null)
     } catch (err) {
+      if (seq !== seqRef.current) return
       const e = err instanceof Error ? err : new Error('未知错误')
       setError(e)
       if (!optionsRef.current.onError?.(e)) {
@@ -65,7 +70,7 @@ export function useAsync<T>(fetcher: () => Promise<T>, options: UseAsyncOptions<
         })
       }
     } finally {
-      setLoading(false)
+      if (seq === seqRef.current) setLoading(false)
     }
   }, [toast])
 

@@ -132,11 +132,19 @@ export default function QuestionsPage() {
       if (editing) {
         await randomDrawQuestionApi.update(editing.id, payload as any)
         toast({ title: t('更新成功') })
-        await saveTags(editing.id, tagIds)
+        try {
+          await saveTags(editing.id, tagIds)
+        } catch {
+          toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
+        }
       } else {
         const created = await randomDrawQuestionApi.create(payload as any)
         toast({ title: t('创建成功') })
-        await saveTags(created.id, tagIds)
+        try {
+          await saveTags(created.id, tagIds)
+        } catch {
+          toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
+        }
       }
       setDialogOpen(false)
       loadItems()

@@ -19,8 +19,8 @@ type JobBannerRequest struct {
 	Title     string  `json:"title"`
 	ImageURL  string  `json:"imageUrl"`
 	LinkURL   *string `json:"linkUrl"`
-	SortOrder int     `json:"sortOrder"`
-	IsEnabled bool    `json:"isEnabled"`
+	SortOrder *int    `json:"sortOrder"`
+	IsEnabled *bool   `json:"isEnabled"`
 }
 
 func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -72,8 +72,8 @@ func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerC
 				Title:     t.Title,
 				ImageURL:  t.ImageURL,
 				LinkURL:   t.LinkURL,
-				SortOrder: t.SortOrder,
-				IsEnabled: t.IsEnabled,
+				SortOrder: derefInt(t.SortOrder, 0),
+				IsEnabled: derefBool(t.IsEnabled, true),
 			})
 			if err != nil {
 				return "", err
@@ -81,12 +81,28 @@ func (h *JobBannerHandler) crud() crudConfig[JobBannerRequest, domain.JobBannerC
 			return b.ID, nil
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *JobBannerRequest) error {
-			_, err := h.Service.UpdateBanner(ctx, id, tenantID, &store.BannerParams{
+			// 部分更新兜底：未携带的排序/开关回退现有值
+			existing, err := h.Service.GetBanner(ctx, id, tenantID)
+			if err != nil {
+				return err
+			}
+			sortOrder := t.SortOrder
+			if sortOrder == nil {
+				sortOrder = &existing.SortOrder
+			}
+			isEnabled := t.IsEnabled
+			if isEnabled == nil {
+				isEnabled = &existing.IsEnabled
+			}
+			if t.LinkURL == nil {
+				t.LinkURL = existing.LinkURL
+			}
+			_, err = h.Service.UpdateBanner(ctx, id, tenantID, &store.BannerParams{
 				Title:     t.Title,
 				ImageURL:  t.ImageURL,
 				LinkURL:   t.LinkURL,
-				SortOrder: t.SortOrder,
-				IsEnabled: t.IsEnabled,
+				SortOrder: *sortOrder,
+				IsEnabled: *isEnabled,
 			})
 			return err
 		},
@@ -117,4 +133,20 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	crudDelete(w, r, h.crud())
+}
+
+// derefInt 指针解引用，nil 回退默认值。
+func derefInt(p *int, fallback int) int {
+	if p == nil {
+		return fallback
+	}
+	return *p
+}
+
+// derefBool 指针解引用，nil 回退默认值。
+func derefBool(p *bool, fallback bool) bool {
+	if p == nil {
+		return fallback
+	}
+	return *p
 }

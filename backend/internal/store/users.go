@@ -13,12 +13,13 @@ import (
 
 // UserStore 提供用户管理的持久化访问，SQL 全部收敛于此。
 type UserStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewUserStore 创建用户 store。
-func NewUserStore(q Queryer) *UserStore {
-	return &UserStore{q: q}
+func NewUserStore(q Queryer, beginner txBeginner) *UserStore {
+	return &UserStore{q: q, beginner: beginner}
 }
 
 // List 按租户范围分页查询用户。
@@ -165,12 +166,16 @@ func (s *UserStore) ResetPassword(ctx context.Context, id, plainPassword string)
 
 // Delete 删除用户并递减其角色计数。
 func (s *UserStore) Delete(ctx context.Context, id string) error {
-	_, _ = s.q.Exec(ctx, `
-		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
-		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
-	`, id)
-	_, err := s.q.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
-	return err
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
+			WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
+		`, id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+		return err
+	})
 }
 
 // BatchGraduate 批量毕业（仅 active 用户）。
@@ -186,20 +191,25 @@ func (s *UserStore) BatchGraduate(ctx context.Context, tenantID string, userIDs 
 // BatchDelete 批量删除用户（限定租户），返回删除计数。
 func (s *UserStore) BatchDelete(ctx context.Context, tenantID string, userIDs []string) (int64, error) {
 	uuids := parseUUIDs(userIDs)
-	tag, err := s.q.Exec(ctx,
-		`DELETE FROM user_roles WHERE user_id = ANY($1::uuid[]) AND user_id IN (
-			SELECT id FROM users WHERE tenant_id = $2 AND id = ANY($1::uuid[])
-		)`, uuids, tenantID)
-	if err != nil {
-		return 0, err
-	}
-	result, err := s.q.Exec(ctx,
-		`DELETE FROM users WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
-		uuids, tenantID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected() + tag.RowsAffected(), nil
+	var deleted int64
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx,
+			`DELETE FROM user_roles WHERE user_id = ANY($1::uuid[]) AND user_id IN (
+				SELECT id FROM users WHERE tenant_id = $2 AND id = ANY($1::uuid[])
+			)`, uuids, tenantID)
+		if err != nil {
+			return err
+		}
+		result, err := tx.Exec(ctx,
+			`DELETE FROM users WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
+			uuids, tenantID)
+		if err != nil {
+			return err
+		}
+		deleted = result.RowsAffected() + tag.RowsAffected()
+		return nil
+	})
+	return deleted, err
 }
 
 // BatchUpdateOrgNode 批量更新/清空用户组织节点。
