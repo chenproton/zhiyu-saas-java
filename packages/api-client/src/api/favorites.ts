@@ -19,11 +19,6 @@ export interface FavoriteListResponse {
   exam: Exam[]
 }
 
-// 收藏列表总响应：岗位 + 通用收藏（岗位来自 /job/positions/favorites）
-export interface AllFavoritesResponse extends FavoriteListResponse {
-  career_position: CareerPosition[]
-}
-
 export const favoriteApi = {
   get: (targetType: FavoriteTargetType, id: string) =>
     request<FavoriteStatus>(`/favorites/${targetType}/${id}`),

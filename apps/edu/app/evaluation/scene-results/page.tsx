@@ -88,7 +88,6 @@ function GradingPageContent() {
   const [scenarios, setScenarios] = useState<any[]>([])
   const [results, setResults] = useState<SceneEvaluationResult[]>([])
   const [userMap, setUserMap] = useState<Map<string, any>>(new Map())
-  const [, setPositionMap] = useState<Map<string, string>>(new Map())
   const [taskNameMap, setTaskNameMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
@@ -105,7 +104,6 @@ function GradingPageContent() {
 
         const pMap = new Map<string, string>()
         ;(posRes.items || []).forEach((p: any) => pMap.set(p.id, p.name))
-        setPositionMap(pMap)
 
         const loadedScenarios = (scRes.items || [])
           .filter((s: any) => s.status === 'published')
