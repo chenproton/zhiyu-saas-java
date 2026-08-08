@@ -192,7 +192,11 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "停止考试安排失败")
 		return
 	}
-	usage, _ = h.Service.GetExamUsage(r.Context(), id)
+	usage, err = h.Service.GetExamUsage(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询考试安排失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, usage)
 }
 
@@ -215,7 +219,11 @@ func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "开启考试安排失败")
 		return
 	}
-	usage, _ = h.Service.GetExamUsage(r.Context(), id)
+	usage, err = h.Service.GetExamUsage(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询考试安排失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, usage)
 }
 

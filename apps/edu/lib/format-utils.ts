@@ -59,3 +59,12 @@ export function formatDuration(totalSeconds: number): string {
   const ss = String(sec).padStart(2, '0')
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
+
+/** 计算展示总分：考试结果分 > 考试总分 > 题目分数求和。 */
+export function computeTotalScore(
+  examResultTotal: number | undefined,
+  examTotal: number | undefined,
+  questions: Array<{ score?: number | null }>,
+): number {
+  return examResultTotal ?? examTotal ?? questions.reduce((sum, q) => sum + (q.score ?? 0), 0)
+}

@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { computeTotalScore } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import { examApi, examResultApi, examUsageApi } from '@/lib/api'
 import type { ExamResult } from '@/lib/types'
@@ -106,9 +107,7 @@ export default function DailyExamGradingPage() {
 
   const examTotal = examAutoTotal + examSubjectiveTotal
   const examMaxScore =
-    result?.totalScore ??
-    exam?.totalScore ??
-    examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
+    computeTotalScore(result?.totalScore, exam?.totalScore, examQuestions)
 
   const pendingQuestions = useMemo(() => {
     return examQuestions.filter(

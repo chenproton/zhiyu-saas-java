@@ -9,7 +9,7 @@ import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
-import { reportError } from '@/lib/error-handling'
+import { handleLoadError } from '@/lib/load-error'
 import { formatDate } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -73,12 +73,7 @@ export default function AffairsApprovalsPage() {
         setAffairsBatchMap(new Map(abres.items.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        reportError(err, { source: '加载培养方案/教学计划/批次列表' })
-        toast({
-          variant: 'destructive',
-          title: t('加载失败'),
-          description: err instanceof Error ? err.message : t('加载培养方案/教学计划/批次列表失败'),
-        })
+        handleLoadError(err, toast, t, '加载培养方案/教学计划/批次列表失败', '{ source: "加载培养方案/教学计划/批次列表" }')
       })
   }, [toast, t])
 

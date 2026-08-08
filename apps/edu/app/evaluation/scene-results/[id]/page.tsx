@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { computeTotalScore } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import {
   evaluationResultApi,
@@ -692,9 +693,7 @@ export default function GradingDetailPage() {
 
   const examTotal = examAutoTotal + examSubjectiveTotal
   const examMaxScore =
-    examResult?.totalScore ??
-    exam?.totalScore ??
-    examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
+    computeTotalScore(examResult?.totalScore, exam?.totalScore, examQuestions)
 
   const evalPointTotal = useMemo(() => {
     if (isScoreRuleMode) {

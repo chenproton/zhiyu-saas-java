@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -81,7 +82,9 @@ func SyncScheduledExamUsageStatus(ctx context.Context, q Queryer, tenantID strin
 		query += ` AND tenant_id = $2`
 		args = append(args, tenantID)
 	}
-	_, _ = q.Exec(ctx, query, args...)
+	if _, err := q.Exec(ctx, query, args...); err != nil {
+		slog.Warn("auto activate exam usages failed", "error", err)
+	}
 }
 
 // Create 创建考试安排。

@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
-  ChevronDown,
-  ChevronRight,
   Users as UsersIcon,
   Building,
   Search,
@@ -12,6 +10,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { OrgTreeNodeToggle } from './multi-org-node-picker'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -91,24 +90,7 @@ function OrgTreeRow({
         )}
         style={{ marginLeft: level * 16 }}
       >
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            if (hasChildren) onToggle(node.id)
-          }}
-          className="w-4 h-4 flex items-center justify-center shrink-0"
-          tabIndex={-1}
-        >
-          {hasChildren ? (
-            expanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            )
-          ) : (
-            <span className="w-3.5" />
-          )}
-        </button>
+<OrgTreeNodeToggle expanded={expanded} hasChildren={hasChildren} onToggle={() => onToggle(node.id)} />
         <Icon className={cn('w-4 h-4 shrink-0', meta.color)} />
         <span className="truncate">{node.name}</span>
       </div>

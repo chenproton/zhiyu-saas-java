@@ -25,7 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from '../_data/workspace-student-types'
-import { formatDate } from '@/lib/format-utils'
+import { formatDate , formatYMD } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface ScheduleGridProps {
@@ -100,10 +100,7 @@ function getWeekEnd(weekStart: Date) {
 }
 
 function dateKey(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return formatYMD(d)
 }
 
 // 事件可带可选的 date（单次安排）；未带 date 的事件视为每周重复安排，始终显示

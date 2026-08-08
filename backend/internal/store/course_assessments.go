@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -199,16 +200,20 @@ func (s *CourseAssessmentStore) CreateNodeHomework(ctx context.Context, q Querye
 
 // CleanupCourseLevelAssessments 清理课程级旧测评（兼容历史数据）。
 func (s *CourseAssessmentStore) CleanupCourseLevelAssessments(ctx context.Context, q Queryer, courseID string) error {
-	_, _ = q.Exec(ctx, `
+	if _, err := q.Exec(ctx, `
 		DELETE FROM exam_usages eu
 		WHERE eu.target_type = 'course' AND $1 = ANY(eu.target_ids)
 		  AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)
-	`, courseID)
-	_, _ = q.Exec(ctx, `
+	`, courseID); err != nil {
+		slog.Warn("cleanup course exam usages failed", "courseID", courseID, "error", err)
+	}
+	if _, err := q.Exec(ctx, `
 		DELETE FROM course_homeworks ch
 		WHERE ch.course_id = $1
 		  AND NOT EXISTS (SELECT 1 FROM course_homework_submissions chs WHERE chs.homework_id = ch.id)
-	`, courseID)
+	`, courseID); err != nil {
+		slog.Warn("cleanup course homeworks failed", "courseID", courseID, "error", err)
+	}
 	return nil
 }
 

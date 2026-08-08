@@ -47,7 +47,11 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 			for i := range items {
 				ids[i] = items[i].ID
 			}
-			counts, _ := h.Store.BatchCountUsersByTitle(r.Context(), tenantID, ids)
+			counts, err := h.Store.BatchCountUsersByTitle(r.Context(), tenantID, ids)
+			if err != nil {
+				respondServerError(w, r, err, "查询职称引用数失败")
+				return
+			}
 			for i := range items {
 				items[i].UserCount = counts[items[i].ID]
 			}

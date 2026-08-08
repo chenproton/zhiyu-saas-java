@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -75,15 +76,19 @@ func (s *AuthStore) FindUsersByUsername(ctx context.Context, username string, pl
 
 // UpdateLastLogin 更新最后登录时间。
 func (s *AuthStore) UpdateLastLogin(ctx context.Context, userID string, t time.Time) {
-	_, _ = s.q.Exec(ctx, `UPDATE users SET last_login_at = $1 WHERE id = $2`, t, userID)
+	if _, err := s.q.Exec(ctx, `UPDATE users SET last_login_at = $1 WHERE id = $2`, t, userID); err != nil {
+		slog.Warn("update last login failed", "userID", userID, "error", err)
+	}
 }
 
 // RecordLoginLog 记录登录日志。
 func (s *AuthStore) RecordLoginLog(ctx context.Context, tenantID, userID, userName, ip, device, status string) {
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		INSERT INTO login_logs (tenant_id, user_id, user_name, ip, device, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
-	`, tenantID, userID, userName, ip, device, status)
+	`, tenantID, userID, userName, ip, device, status); err != nil {
+		slog.Warn("record login log failed", "userID", userID, "error", err)
+	}
 }
 
 // GetUserByID 查询用户。

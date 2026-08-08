@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -236,10 +237,12 @@ func RecordView(ctx context.Context, q Queryer, targetType, targetID string, use
 	if err != nil {
 		return err
 	}
-	_, _ = q.Exec(ctx, `
+	if _, err := q.Exec(ctx, `
 		INSERT INTO view_counters (target_type, target_id, cnt)
 		VALUES ($1, $2, 1)
 		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = view_counters.cnt + 1, updated_at = now()
-	`, targetType, targetID)
+	`, targetType, targetID); err != nil {
+		slog.Warn("increment view counter failed", "targetType", targetType, "targetID", targetID, "error", err)
+	}
 	return nil
 }

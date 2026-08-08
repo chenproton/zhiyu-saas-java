@@ -368,3 +368,36 @@ export function MultiOrgNodePicker({
     </>
   )
 }
+
+/** 组织树节点展开/收起按钮（multi-org-node-picker/user-selector/org-filter-tree 共用）。 */
+export function OrgTreeNodeToggle({
+  expanded,
+  hasChildren,
+  onToggle,
+}: {
+  expanded: boolean
+  hasChildren: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        if (hasChildren) onToggle()
+      }}
+      className="w-4 h-4 flex items-center justify-center shrink-0"
+      tabIndex={-1}
+      aria-label={expanded ? '折叠' : '展开'}
+    >
+      {hasChildren ? (
+        expanded ? (
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+        )
+      ) : (
+        <span className="w-3.5" />
+      )}
+    </button>
+  )
+}

@@ -249,7 +249,11 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "课题不存在或已满员")
 		return
 	}
-	topic, _ = h.Service.GetGraduationTopic(r.Context(), id)
+	topic, err = h.Service.GetGraduationTopic(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询毕业课题失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, topic)
 }
 

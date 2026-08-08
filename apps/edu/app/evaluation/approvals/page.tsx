@@ -10,7 +10,7 @@ import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/appro
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { toast } from '@zhiyu/ui'
-import { reportError } from '@/lib/error-handling'
+import { handleLoadError } from '@/lib/load-error'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -69,12 +69,7 @@ export default function EvaluationApprovalsPage() {
         setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        reportError(err, { source: '加载题库/试卷/批次列表' })
-        toast({
-          variant: 'destructive',
-          title: t('加载失败'),
-          description: err instanceof Error ? err.message : t('加载题库/试卷/批次列表失败'),
-        })
+        handleLoadError(err, toast, t, '加载题库/试卷/批次列表失败', '{ source: "加载题库/试卷/批次列表" }')
       })
   }, [t])
 
