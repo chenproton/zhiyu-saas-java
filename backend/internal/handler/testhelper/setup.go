@@ -32,6 +32,7 @@ const (
 
 type TestEnv struct {
 	DB            *pgxpool.Pool
+	Store         *store.Store
 	Router        chi.Router
 	OperatorToken string
 	Cleanup       func()
@@ -520,6 +521,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	return &TestEnv{
 		DB:            pool,
+		Store:         st2,
 		Router:        r,
 		OperatorToken: operatorToken,
 		Cleanup: func() {

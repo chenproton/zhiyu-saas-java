@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type TemplateHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *TemplateHandler) ServePositionTemplate(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +84,7 @@ func newSetCell(f *excelize.File) func(sheet, cell, val string) {
 }
 
 func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (industries [][2]string, majors [][2]string, certs [][3]string, positions [][2]string, knowledgePoints []string, abilityPoints [][2]string, resources [][2]string) {
-	rows, err := h.DB.Query(ctx, `SELECT name, COALESCE(code,'') FROM industries WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err := h.Store.Q().Query(ctx, `SELECT name, COALESCE(code,'') FROM industries WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(code,'') FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(code,'') FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -106,7 +106,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(url,''), COALESCE(description,'') FROM certificate_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(url,''), COALESCE(description,'') FROM certificate_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -117,7 +117,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(short_name,'') FROM career_positions WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(short_name,'') FROM career_positions WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.Store.Q().Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -139,7 +139,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(array_to_string(attributes, ','), '') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(array_to_string(attributes, ','), '') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -150,7 +150,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(resource_type::text,'') FROM resource_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(resource_type::text,'') FROM resource_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return
 	}
@@ -600,7 +600,7 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 
 func (h *TemplateHandler) queryLessonBatches(ctx context.Context, tenantID string) []string {
 	var names []string
-	rows, qErr := h.DB.Query(ctx, `SELECT name FROM lesson_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM lesson_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if qErr != nil {
 		return nil
 	}
@@ -786,7 +786,7 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 
 	// Reference sheets
 	var batches [][]string
-	bRows, qErr := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	bRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if qErr != nil {
 		return nil
 	}
@@ -827,7 +827,7 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 	}
 
 	bankName := ""
-	_ = h.DB.QueryRow(ctx, `SELECT name FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&bankName)
+	_ = h.Store.Q().QueryRow(ctx, `SELECT name FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&bankName)
 
 	// Sheet 1: 题目明细
 	s1, _ := f.NewSheet("题目明细")
@@ -841,7 +841,7 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 	f.AutoFilter("题目明细", "A2:L2", []excelize.AutoFilterOptions{})
 
 	var kps [][]string
-	kRows, qErr := h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	kRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if qErr != nil {
 		return nil
 	}
@@ -902,7 +902,7 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 	f.AutoFilter("试卷题目", "A2:C2", []excelize.AutoFilterOptions{})
 
 	var batches [][]string
-	bRows, qErr := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	bRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if qErr != nil {
 		return nil
 	}
@@ -1104,7 +1104,7 @@ func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tena
 	f.AutoFilter("组织架构", "A2:D2", []excelize.AutoFilterOptions{})
 
 	var types [][]string
-	rows, qErr := h.DB.Query(ctx, `SELECT name FROM org_types WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM org_types WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if qErr != nil {
 		return nil
 	}
@@ -1199,7 +1199,7 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 	h.addRefSheet(f, "【参考】组织节点路径", []string{"组织节点路径"}, []float64{48}, "仅作参考，无需编辑修改。教师列表 Sheet「所属组织节点(路径)」与本表路径一致则可精确定位。", paths)
 
 	var titles [][]string
-	tRows, qErr := h.DB.Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	tRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if qErr != nil {
 		return nil
 	}
@@ -1221,7 +1221,7 @@ func (h *TemplateHandler) queryOrgPaths(ctx context.Context, tenantID string) []
 		name     string
 		parentID *string
 	}
-	rows, err := h.DB.Query(ctx, `SELECT id, name, parent_id FROM organizations WHERE tenant_id=$1 ORDER BY sort_order, name`, tenantID)
+	rows, err := h.Store.Q().Query(ctx, `SELECT id, name, parent_id FROM organizations WHERE tenant_id=$1 ORDER BY sort_order, name`, tenantID)
 	if err != nil {
 		return nil
 	}

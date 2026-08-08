@@ -9,13 +9,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 type examImportResult struct {
@@ -50,7 +50,7 @@ func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request)
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
 		result := &examImportResult{}
-		h.importExams(ctx, h.DB, xlsx, tenantID, claims.UserID, true, false, false, nil, result)
+		h.importExams(ctx, h.Store.Q(), xlsx, tenantID, claims.UserID, true, false, false, nil, result)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -86,7 +86,7 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	aggregated := &examImportResult{}
 	// 覆盖导入整体包在事务内：overwrite 清空旧题目后按新文件重建，
 	// 任一步失败整体回滚，防止"题目已清空、新题未写入"的中间态。
-	tx, err := h.DB.Begin(ctx)
+	tx, err := h.Store.WithTxRaw(ctx)
 	if err != nil {
 		respondServerError(w, r, err, "开启导入事务失败")
 		return
@@ -141,7 +141,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 		description := nullableStr(col(row, 1))
 		batchName := col(row, 2)
 
-		batchID := lookupBatchID(ctx, h.DB, "evaluation_batches", tenantID, batchName)
+		batchID := lookupBatchID(ctx, h.Store.Q(), "evaluation_batches", tenantID, batchName)
 
 		if seen[name] {
 			result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{

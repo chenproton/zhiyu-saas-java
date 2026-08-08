@@ -546,3 +546,71 @@ func JSONSliceToStrings(s domain.JSONSlice) []string {
 func FormatDateTime(t time.Time) string {
 	return t.Format("2006-01-02 15:04")
 }
+
+// lookupByNameTables 通用名称查重白名单（import 类功能使用）。
+var lookupByNameTables = []string{
+	"ability_points", "ability_domains", "alliance_agreements", "alliance_enterprises",
+	"alliance_experts", "alliance_projects", "batches", "career_positions", "certificate_library",
+	"courses", "evaluation_batches", "exams", "industries", "institutions",
+	"knowledge_points", "lesson_batches", "majors", "organizations", "question_banks", "questions",
+	"resource_library", "roles", "scene_batches", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
+}
+
+// LookupByTableAndName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
+// 表名经白名单校验（与 SanitizeIdentifier 一致），仅限白名单内的字典/实体表。
+func LookupByTableAndName(ctx context.Context, q Queryer, tableName, tenantID, name string) (string, error) {
+	table, err := SanitizeIdentifier(tableName, lookupByNameTables)
+	if err != nil {
+		return "", fmt.Errorf("不支持的表名: %s", tableName)
+	}
+	var id string
+	err = q.QueryRow(ctx,
+		fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1", table),
+		tenantID, name,
+	).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return id, nil
+}
+
+// LookupIDsByNames 批量按名称查 ID，未命中的返回空字符串。
+func LookupIDsByNames(ctx context.Context, q Queryer, table, tenantID, names string) []string {
+	var ids []string
+	for _, n := range splitCommaNames(names) {
+		id, err := LookupByTableAndName(ctx, q, table, tenantID, n)
+		if err == nil && id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// LookupSingleIDByName 取第一个名称的 ID；不存在返回 nil。
+func LookupSingleIDByName(ctx context.Context, q Queryer, table, tenantID, names string) *string {
+	for _, n := range splitCommaNames(names) {
+		id, err := LookupByTableAndName(ctx, q, table, tenantID, n)
+		if err == nil && id != "" {
+			return &id
+		}
+	}
+	return nil
+}
+
+// splitCommaNames 按中文/英文分号拆分为列表，空项忽略。
+func splitCommaNames(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == '；' || r == ',' || r == '，' })
+	var out []string
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}

@@ -108,7 +108,7 @@ func TestBrandImportAllFields(t *testing.T) {
 		{"师资品牌", "测试师资品牌", "师资品牌描述", "已发布", "是", "是", "https://example.com/teacher.jpg", "", "", "", "", "测试教师甲", "测试关联专家"},
 		{"文化品牌", "测试文化品牌", "文化品牌描述", "已归档", "否", "否", "", "", "", "", "测试关联专业", "", ""},
 	})
-	h := &handler.ResourceImportHandler{DB: env.DB}
+	h := &handler.ResourceImportHandler{Store: env.Store}
 	w := httptest.NewRecorder()
 	h.ImportBrands(w, makeRequest(t, "/import/alliance-brands/excel", file, claims))
 	if w.Code != 200 {

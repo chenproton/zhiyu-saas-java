@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -9,20 +8,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-// configImportDB 教务配置导入所需的最小查询接口（*pgxpool.Pool 与 pgx.Tx 均满足）。
-type configImportDB interface {
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
 type AffairsConfigImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 // parseSlotTypeName 将「时段类型」列中文值映射为 slot_type，无法识别时返回空串。
@@ -63,7 +55,7 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 	result := map[string]interface{}{}
 	// 三 Sheet 导入包在同一事务：任一步骤失败整体回滚，防止中途失败留部分数据
-	tx, err := h.DB.Begin(ctx)
+	tx, err := h.Store.WithTxRaw(ctx)
 	if err != nil {
 		respondServerError(w, r, err, "开启导入事务失败")
 		return

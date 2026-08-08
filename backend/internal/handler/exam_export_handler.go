@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *ExamExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func (h *ExamExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) 
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generateExamTemplate(ctx, tenantID)
 
 	if err := h.fillExamsData(ctx, f, tenantID, ids); err != nil {
@@ -50,22 +50,21 @@ func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File,
 	examNameMap := make(map[string]string)
 
 	for ri, eid := range examIDs {
-		var name, desc string
-		var batchID *string
-		err := h.DB.QueryRow(ctx, `
-			SELECT name, COALESCE(description,''), batch_id
-			FROM exams WHERE id=$1 AND tenant_id=$2
-		`, eid, tenantID).Scan(&name, &desc, &batchID)
-		if err != nil {
+		exam, err := h.Store.Exams().Get(ctx, eid)
+		if err != nil || exam.TenantID == nil || *exam.TenantID != tenantID {
 			slog.Warn("导出试卷行跳过", "examId", eid, "error", err)
 			continue
 		}
+		name := exam.Name
+		desc := exam.Description
 		examNameMap[eid] = name
 
 		batchName := ""
-		if batchID != nil && *batchID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM evaluation_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
-				slog.Warn("导出试卷批次名查询失败", "batchId", *batchID, "error", err)
+		if exam.BatchID != nil && *exam.BatchID != "" {
+			batchName, err = h.Store.Batches().GetNameByTable(ctx, h.Store.Q(), "evaluation_batches", *exam.BatchID)
+			if err != nil {
+				slog.Warn("导出试卷批次名查询失败", "batchId", *exam.BatchID, "error", err)
+				batchName = ""
 			}
 		}
 
@@ -83,7 +82,7 @@ func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File,
 			continue
 		}
 
-		rows, err := h.DB.Query(ctx, `
+		rows, err := h.Store.Q().Query(ctx, `
 			SELECT content, score
 			FROM exam_questions
 			WHERE exam_id=$1 AND tenant_id=$2

@@ -8,16 +8,16 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // ResourceExportHandler handles Excel export for portal resources:
 // organizations, students and teachers.
 type ResourceExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *ResourceExportHandler) ExportOrganizations(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 
 	var f *excelize.File
 	switch entity {
@@ -110,7 +110,7 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 	}
 	args = append([]interface{}{tenantID}, args...)
 
-	rows, err := h.DB.Query(ctx, query, args...)
+	rows, err := h.Store.Q().Query(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 
 	for i := range orgs {
 		var typeName string
-		if err := h.DB.QueryRow(ctx, `SELECT name FROM org_types WHERE id=$1`, orgs[i].typeID).Scan(&typeName); err != nil {
+		if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM org_types WHERE id=$1`, orgs[i].typeID).Scan(&typeName); err != nil {
 			slog.Warn("导出组织类型名查询失败", "typeId", orgs[i].typeID, "error", err)
 		}
 		orgs[i].typeName = typeName
@@ -146,7 +146,7 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 	for _, o := range orgs {
 		if o.parentID != nil && *o.parentID != "" {
 			var name string
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1`, *o.parentID).Scan(&name); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1`, *o.parentID).Scan(&name); err != nil {
 				slog.Warn("导出组织上级名称查询失败", "orgId", *o.parentID, "error", err)
 			}
 			if name != "" {
@@ -208,7 +208,7 @@ func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File,
 		ORDER BY u.name, u.username
 	`, idFilter)
 
-	rows, err := h.DB.Query(ctx, query, args...)
+	rows, err := h.Store.Q().Query(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func (h *ResourceExportHandler) buildAncestorChain(ctx context.Context, tenantID
 		seen[currentID] = true
 		var name string
 		var parentID *string
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT name, parent_id FROM organizations WHERE tenant_id=$1 AND id=$2
 		`, tenantID, currentID).Scan(&name, &parentID)
 		if err != nil {
@@ -306,7 +306,7 @@ func (h *ResourceExportHandler) lookupTitleNames(ctx context.Context, tenantID s
 			continue
 		}
 		var name string
-		h.DB.QueryRow(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 AND id=$2`, tenantID, id).Scan(&name)
+		h.Store.Q().QueryRow(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 AND id=$2`, tenantID, id).Scan(&name)
 		if name != "" {
 			names = append(names, name)
 		}

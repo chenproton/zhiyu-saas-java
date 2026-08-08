@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
@@ -13,8 +12,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -22,34 +19,9 @@ import (
 )
 
 // lookupIDByNameTables 是 lookupIDByName 允许查询的表名白名单。
-var lookupIDByNameTables = []string{
-	"ability_points", "ability_domains", "alliance_agreements", "alliance_enterprises",
-	"alliance_experts", "alliance_projects", "batches", "career_positions", "certificate_library",
-	"courses", "evaluation_batches", "exams", "industries", "institutions",
-	"knowledge_points", "lesson_batches", "majors", "organizations", "question_banks", "questions",
-	"resource_library", "roles", "scene_batches", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
-}
-
-// lookupIDByName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
-// 仅供 import/export 豁免区使用。
-func lookupIDByName(ctx context.Context, db *pgxpool.Pool, tableName, tenantID, name string) (string, error) {
-	table, err := store.SanitizeIdentifier(tableName, lookupIDByNameTables)
-	if err != nil {
-		return "", fmt.Errorf("不支持的表名: %s", tableName)
-	}
-	var id string
-	err = db.QueryRow(ctx,
-		fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1", table),
-		tenantID, name,
-	).Scan(&id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", nil
-		}
-		slog.Error("lookupIDByName查询失败", "table", tableName, "error", err)
-		return "", err
-	}
-	return id, nil
+// lookupIDByName 按表名+租户+名称查询记录 ID（委托 store 白名单查询，SQL 唯一所在地）。
+func lookupIDByName(ctx context.Context, db store.Queryer, tableName, tenantID, name string) (string, error) {
+	return store.LookupByTableAndName(ctx, db, tableName, tenantID, name)
 }
 
 // splitNames 将名称字符串按中文/英文分号拆分为列表，空项忽略。
@@ -60,29 +32,15 @@ func splitNames(s string) []string {
 // lookupIDsByNames 按租户+名称批量查找记录 ID（名称多值用分号分隔），
 // 未命中的名称忽略，返回命中的 ID 列表。
 // 仅供 import/export 豁免区使用。
-func lookupIDsByNames(ctx context.Context, db *pgxpool.Pool, table, tenantID, names string) []string {
-	var ids []string
-	for _, name := range splitNames(names) {
-		id, err := lookupIDByName(ctx, db, table, tenantID, name)
-		if err != nil || id == "" {
-			continue
-		}
-		ids = append(ids, id)
-	}
-	return ids
+func lookupIDsByNames(ctx context.Context, db store.Queryer, table, tenantID, names string) []string {
+	return store.LookupIDsByNames(ctx, db, table, tenantID, names)
 }
 
 // lookupSingleIDByName 按租户+名称查找单个记录 ID（名称多值时取第一个），
 // 未命中时返回 nil。
 // 仅供 import/export 豁免区使用。
-func lookupSingleIDByName(ctx context.Context, db *pgxpool.Pool, table, tenantID, names string) *string {
-	for _, name := range splitNames(names) {
-		id, err := lookupIDByName(ctx, db, table, tenantID, name)
-		if err == nil && id != "" {
-			return &id
-		}
-	}
-	return nil
+func lookupSingleIDByName(ctx context.Context, db store.Queryer, table, tenantID, names string) *string {
+	return store.LookupSingleIDByName(ctx, db, table, tenantID, names)
 }
 
 // jsonBytes 将任意值序列化为 JSON 字节，序列化失败时返回 "[]"。
@@ -467,7 +425,7 @@ func parseMultiImportRequest(w http.ResponseWriter, r *http.Request, requirePort
 
 // findOrCreateKnowledgePoints 按租户+名称批量查找知识点，不存在则创建，返回命中的 ID 列表。
 // 供课程/场景/颗粒课/题库题面等导入复用。
-func findOrCreateKnowledgePoints(ctx context.Context, db *pgxpool.Pool, tenantID string, names []string) []string {
+func findOrCreateKnowledgePoints(ctx context.Context, db store.Queryer, tenantID string, names []string) []string {
 	if len(names) == 0 {
 		return []string{}
 	}
@@ -502,7 +460,7 @@ func findOrCreateKnowledgePoints(ctx context.Context, db *pgxpool.Pool, tenantID
 
 // findOrCreateResources 按租户+名称批量查找资源库资源，不存在则按文件后缀推断类型创建
 // （无后缀/未知后缀归入 other），返回命中的 ID 列表。供课程/场景/颗粒课导入复用。
-func findOrCreateResources(ctx context.Context, db *pgxpool.Pool, tenantID string, names []string, userID string) []string {
+func findOrCreateResources(ctx context.Context, db store.Queryer, tenantID string, names []string, userID string) []string {
 	if len(names) == 0 {
 		return []string{}
 	}
@@ -572,7 +530,7 @@ func resourceTypeByExt(name string) string {
 
 // lookupBatchID 按租户+名称在批次表中查找记录 ID，找不到返回 nil。
 // 表名经 lookupIDByName 白名单校验。
-func lookupBatchID(ctx context.Context, db *pgxpool.Pool, table, tenantID, name string) *string {
+func lookupBatchID(ctx context.Context, db store.Queryer, table, tenantID, name string) *string {
 	if name == "" {
 		return nil
 	}
@@ -584,7 +542,7 @@ func lookupBatchID(ctx context.Context, db *pgxpool.Pool, table, tenantID, name 
 }
 
 // lookupMajorID 按租户+名称（NFKC 归一化）查找专业 ID，找不到返回 nil。
-func lookupMajorID(ctx context.Context, db *pgxpool.Pool, tenantID, name string) *string {
+func lookupMajorID(ctx context.Context, db store.Queryer, tenantID, name string) *string {
 	if name == "" {
 		return nil
 	}

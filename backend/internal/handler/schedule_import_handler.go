@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -17,7 +16,7 @@ import (
 )
 
 type ScheduleImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 const scheduleImportSheet = "排课导入"
@@ -240,7 +239,7 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 
 	// 先解析出该学期（从第一个有效课程匹配教学计划）
 	termID := ""
-	_ = h.DB.QueryRow(ctx, `
+	_ = h.Store.Q().QueryRow(ctx, `
 		SELECT p.term_id::text FROM teaching_plan_entries e
 		JOIN teaching_plans p ON p.id = e.plan_id
 		WHERE p.tenant_id = $1 AND e.course_name = $2 LIMIT 1
@@ -251,7 +250,7 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		return result
 	}
 
-	tx, err := h.DB.Begin(ctx)
+	tx, err := h.Store.WithTxRaw(ctx)
 	if err != nil {
 		result.Errors = append(result.Errors, "开启事务失败")
 		result.Failed++
@@ -458,7 +457,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		}
 
 		// 引用解析
-		termID, err := lookupIDByName(ctx, h.DB, "terms", tenantID, sr.termName)
+		termID, err := lookupIDByName(ctx, h.Store.Q(), "terms", tenantID, sr.termName)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("第%d行学期[%s]查询失败", rowNum, sr.termName))
@@ -480,7 +479,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		var teacherID *string
 		if sr.teacherName != "" {
 			var id string
-			err := h.DB.QueryRow(ctx, `
+			err := h.Store.Q().QueryRow(ctx, `
 				SELECT id FROM users WHERE tenant_id=$1 AND (name=$2 OR username=$2 OR login_name=$2) LIMIT 1
 			`, tenantID, sr.teacherName).Scan(&id)
 			if err != nil {
@@ -494,7 +493,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		var venueID *string
 		if sr.venueName != "" {
 			var id string
-			err := h.DB.QueryRow(ctx, `SELECT id FROM venues WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, sr.venueName).Scan(&id)
+			err := h.Store.Q().QueryRow(ctx, `SELECT id FROM venues WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, sr.venueName).Scan(&id)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("第%d行场地[%s]不存在，请先在场地管理中创建", rowNum, sr.venueName))
@@ -506,7 +505,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		var scenarioID *string
 		if sr.entryType == "scene" {
 			var id string
-			err := h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, sr.sceneName).Scan(&id)
+			err := h.Store.Q().QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, sr.sceneName).Scan(&id)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("第%d行场景[%s]不存在", rowNum, sr.sceneName))
@@ -517,7 +516,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 
 		// 尝试匹配教学计划条目（用于覆盖已有排课并同步待排区状态）
 		var planEntryID *string
-		_ = h.DB.QueryRow(ctx, `
+		_ = h.Store.Q().QueryRow(ctx, `
 			SELECT e.id::text FROM teaching_plan_entries e
 			JOIN teaching_plans p ON p.id = e.plan_id
 			WHERE p.tenant_id = $1 AND p.term_id = $2 AND e.class_node_id = $3 AND e.course_name = $4
@@ -527,14 +526,14 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		// 重复判定：优先按 plan_entry_id，其次按同学期+班级+星期+课程+节次交集
 		var existingID string
 		if planEntryID != nil && *planEntryID != "" {
-			_ = h.DB.QueryRow(ctx, `
+			_ = h.Store.Q().QueryRow(ctx, `
 				SELECT id::text FROM schedule_entries
 				WHERE tenant_id=$1 AND plan_entry_id=$2
 				LIMIT 1
 			`, tenantID, *planEntryID).Scan(&existingID)
 		}
 		if existingID == "" {
-			_ = h.DB.QueryRow(ctx, `
+			_ = h.Store.Q().QueryRow(ctx, `
 				SELECT id::text FROM schedule_entries
 				WHERE tenant_id=$1 AND term_id=$2 AND class_node_id=$3 AND day_of_week=$4 AND course_name=$5 AND periods ?| $6
 				LIMIT 1
@@ -597,7 +596,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		courseID := h.resolveCourseIDByCode(ctx, tenantID, courseCode)
 
 		if existingID != "" {
-			_, err := h.DB.Exec(ctx, `
+			_, err := h.Store.Q().Exec(ctx, `
 				UPDATE schedule_entries
 				SET plan_entry_id=$1, course_code=$2, course_id=$3, type=$4, teacher_id=$5, periods=$6, start_week=$7, end_week=$8,
 					week_pattern=$9, venue_id=$10, scenario_id=$11, source='imported', updated_at=NOW()
@@ -616,7 +615,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 			continue
 		}
 
-		_, err = h.DB.Exec(ctx, `
+		_, err = h.Store.Q().Exec(ctx, `
 		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
 				venue_id, scenario_id, source, status, version)
@@ -641,7 +640,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		for id := range planEntryIDs {
 			ids = append(ids, id)
 		}
-		_, _ = h.DB.Exec(ctx, `
+		_, _ = h.Store.Q().Exec(ctx, `
 			UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = ANY($1)
 		`, ids)
 	}
@@ -738,7 +737,7 @@ func (h *ScheduleImportHandler) lookupOrgNode(ctx context.Context, tenantID, nam
 			break
 		}
 	}
-	return lookupIDByName(ctx, h.DB, "organizations", tenantID, name)
+	return lookupIDByName(ctx, h.Store.Q(), "organizations", tenantID, name)
 }
 
 // checkScheduleConflicts 排课冲突校验（冻结区文件本地实现，经 store 查询）。
@@ -762,7 +761,7 @@ func (h *ScheduleImportHandler) checkScheduleConflicts(ctx context.Context, tena
 	if weekPattern == "" {
 		weekPattern = "all"
 	}
-	rows, err := h.DB.Query(ctx, query, tenantID, req.TermID, req.DayOfWeek, req.StartWeek, req.EndWeek, weekPattern, periods, excludeID)
+	rows, err := h.Store.Q().Query(ctx, query, tenantID, req.TermID, req.DayOfWeek, req.StartWeek, req.EndWeek, weekPattern, periods, excludeID)
 	if err != nil {
 		return nil, err
 	}
@@ -826,7 +825,7 @@ func (h *ScheduleImportHandler) resolveCourseIDByCode(ctx context.Context, tenan
 		return nil
 	}
 	var id string
-	err := h.DB.QueryRow(ctx, `
+	err := h.Store.Q().QueryRow(ctx, `
 		SELECT id FROM courses WHERE tenant_id = $1 AND code = $2 AND type = 'system' LIMIT 1
 	`, tenantID, *courseCode).Scan(&id)
 	if err != nil {

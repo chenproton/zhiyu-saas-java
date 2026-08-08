@@ -196,7 +196,7 @@ func TestAllianceImport_TeacherPermission(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 
-	h := &handler.ResourceImportHandler{DB: env.DB}
+	h := &handler.ResourceImportHandler{Store: env.Store}
 	file := buildExcel(t, "合作企业", [][]interface{}{
 		{"填写说明"},
 		{"企业名称 *", "企业类型", "所属行业", "所在地区", "合作状态", "合作评级", "联系人", "联系电话", "联系邮箱", "企业地址", "统一社会信用代码", "成立年份", "企业规模（人数）", "企业简介"},

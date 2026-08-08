@@ -10,13 +10,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +37,7 @@ func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 	}
 
 	var existingBank string
-	err := h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
+	err := h.Store.Q().QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
@@ -81,7 +81,7 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	}
 
 	var existingBank string
-	err := h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
+	err := h.Store.Q().QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
@@ -190,7 +190,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		seen[key] = true
 
 		var existingID, existingCreator string
-		err = h.DB.QueryRow(ctx, `SELECT id, creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
+		err = h.Store.Q().QueryRow(ctx, `SELECT id, creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
 		found := err == nil && existingID != ""
 
 		if preview {
@@ -215,8 +215,8 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 					execRes.PermissionSkipped++
 					continue
 				}
-				knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
-				_, err = h.DB.Exec(ctx, `
+				knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, knowledgeNames)
+				_, err = h.Store.Q().Exec(ctx, `
 					UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
 					WHERE id=$8
 				`, qType, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, existingID)
@@ -234,7 +234,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 				// rename 模式：追加随机后缀生成新题干，按新对象导入
 				content = uniqueSuffixed(content, func(c string) bool {
 					var eid string
-					_ = h.DB.QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, c).Scan(&eid)
+					_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, c).Scan(&eid)
 					return eid != ""
 				})
 			} else {
@@ -243,10 +243,10 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 			}
 		}
 
-		knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
+		knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, knowledgeNames)
 		questionID := uuid.NewString()
 		code := generateEntityCode("TM")
-		_, err = h.DB.Exec(ctx, `
+		_, err = h.Store.Q().Exec(ctx, `
 			INSERT INTO questions (id, tenant_id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'draft')
 		`, questionID, tenantID, code, bankID, qType, content, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, userID, source)

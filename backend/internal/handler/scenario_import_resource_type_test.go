@@ -73,7 +73,7 @@ func TestScenarioImportResourceType(t *testing.T) {
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
 
-	h := &handler.ScenarioImportHandler{DB: env.DB}
+	h := &handler.ScenarioImportHandler{Store: env.Store}
 	w := httptest.NewRecorder()
 	h.ImportExcel(w, req)
 	if w.Code != http.StatusOK {

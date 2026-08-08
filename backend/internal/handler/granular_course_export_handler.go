@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type GranularCourseExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *GranularCourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +34,7 @@ func (h *GranularCourseExportHandler) ExportExcel(w http.ResponseWriter, r *http
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generateGranularCourseTemplate(ctx, tenantID)
 
 	if err := h.fillCoursesData(ctx, f, tenantID, ids); err != nil {
@@ -53,7 +53,7 @@ func (h *GranularCourseExportHandler) fillCoursesData(ctx context.Context, f *ex
 		var majorID, batchID *string
 		var difficulty *int
 		var duration *float64
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT name, COALESCE(description,''), major_id, batch_id, difficulty, online_hours
 			FROM courses WHERE id=$1 AND tenant_id=$2 AND type='granular'
 		`, cid, tenantID).Scan(&name, &desc, &majorID, &batchID, &difficulty, &duration)
@@ -64,14 +64,14 @@ func (h *GranularCourseExportHandler) fillCoursesData(ctx context.Context, f *ex
 
 		majorName := ""
 		if majorID != nil && *majorID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName); err != nil {
 				slog.Warn("导出颗粒课专业名查询失败", "majorId", *majorID, "error", err)
 			}
 		}
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
 				slog.Warn("导出颗粒课批次名查询失败", "batchId", *batchID, "error", err)
 			}
 		}
@@ -105,7 +105,7 @@ func (h *GranularCourseExportHandler) fillCoursesData(ctx context.Context, f *ex
 }
 
 func (h *GranularCourseExportHandler) lookupCourseKnowledgePointNames(ctx context.Context, tenantID, courseID string) []string {
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT kp.name FROM knowledge_points kp
 		JOIN course_knowledge_bindings cb ON cb.knowledge_point_id = kp.id
 		WHERE cb.course_id=$1 AND cb.bind_type='course' AND cb.tenant_id=$2
@@ -130,7 +130,7 @@ func (h *GranularCourseExportHandler) lookupCourseKnowledgePointNames(ctx contex
 }
 
 func (h *GranularCourseExportHandler) lookupCourseResourceNames(ctx context.Context, tenantID, courseID string) []string {
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT r.name FROM resource_library r
 		JOIN course_resource_bindings cb ON cb.resource_id = r.id
 		WHERE cb.course_id=$1 AND cb.tenant_id=$2

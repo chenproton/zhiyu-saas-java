@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -241,4 +242,14 @@ func (s *BatchStore) UpdateStatus(ctx context.Context, table, id, status string)
 var allowedBatchWriteCols = []string{
 	"id", "name", "code", "org_node_id", "major_id", "workflow_id", "status", "tenant_id",
 	"course_count", "created_at", "updated_at",
+}
+
+// GetNameByTable 按 id 查询批次/字典表名称（白名单表）。
+func (s *BatchStore) GetNameByTable(ctx context.Context, q Queryer, table, id string) (string, error) {
+	if _, err := SanitizeIdentifier(table, allowedBatchTables); err != nil {
+		return "", err
+	}
+	var name string
+	err := q.QueryRow(ctx, fmt.Sprintf("SELECT name FROM %s WHERE id = $1", table), id).Scan(&name)
+	return name, err
 }

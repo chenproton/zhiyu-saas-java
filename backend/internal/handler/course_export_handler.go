@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *CourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +34,7 @@ func (h *CourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generateSystemCourseTemplate(ctx, tenantID)
 
 	if err := h.fillCoursesData(ctx, f, tenantID, ids); err != nil {
@@ -58,7 +58,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 	for _, cid := range courseIDs {
 		var name, desc string
 		var majorID, batchID *string
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT name, COALESCE(description,''), major_id, batch_id
 			FROM courses WHERE id=$1 AND tenant_id=$2 AND type='system'
 		`, cid, tenantID).Scan(&name, &desc, &majorID, &batchID)
@@ -69,12 +69,12 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 
 		majorName := ""
 		if majorID != nil && *majorID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName)
+			h.Store.Q().QueryRow(ctx, `SELECT name FROM majors WHERE id=$1`, *majorID).Scan(&majorName)
 		}
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			h.Store.Q().QueryRow(ctx, `SELECT name FROM lesson_batches WHERE id=$1`, *batchID).Scan(&batchName)
 		}
 
 		abilityPointNames := h.lookupCourseAbilityPointNames(ctx, cid)
@@ -103,7 +103,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 
 		// 节点ID -> 节点名
 		nodeNameByID := make(map[string]string)
-		nodeRows, err := h.DB.Query(ctx, `
+		nodeRows, err := h.Store.Q().Query(ctx, `
 			SELECT id, name, parent_id, ref_type, sort_order, COALESCE(teaching_goals,''), duration, difficulty
 			FROM system_course_nodes
 			WHERE course_id=$1 AND tenant_id=$2
@@ -170,7 +170,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 
 func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context, courseID string) string {
 	var abilityPointIDs []string
-	err := h.DB.QueryRow(ctx, `
+	err := h.Store.Q().QueryRow(ctx, `
 		SELECT ARRAY(SELECT unnest(ability_point_ids)::text)
 		FROM courses WHERE id=$1
 	`, courseID).Scan(&abilityPointIDs)
@@ -179,7 +179,7 @@ func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context,
 	}
 	// 批量查询名称，避免逐 id 单条 QueryRow（N+1）
 	var names []string
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT name FROM ability_points WHERE id = ANY($1::uuid[]) ORDER BY name
 	`, abilityPointIDs)
 	if err != nil {
@@ -199,7 +199,7 @@ func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context,
 }
 
 func (h *CourseExportHandler) lookupNodeKnowledgePointNames(ctx context.Context, nodeID string) []string {
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT kp.name FROM knowledge_points kp
 		JOIN node_knowledge_point_bindings nb ON nb.knowledge_point_id = kp.id
 		WHERE nb.node_id=$1
@@ -221,7 +221,7 @@ func (h *CourseExportHandler) lookupNodeKnowledgePointNames(ctx context.Context,
 }
 
 func (h *CourseExportHandler) lookupNodeResourceNames(ctx context.Context, nodeID string) []string {
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT r.name FROM resource_library r
 		JOIN node_resource_bindings nb ON nb.resource_id = r.id
 		WHERE nb.node_id=$1
@@ -245,7 +245,7 @@ func (h *CourseExportHandler) lookupNodeResourceNames(ctx context.Context, nodeI
 func (h *CourseExportHandler) lookupNodeEvalMethods(ctx context.Context, tenantID, nodeID string) []string {
 	var methods []string
 
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT type FROM node_quizzes
 		WHERE node_id=$1 AND tenant_id=$2
 		ORDER BY type
@@ -262,7 +262,7 @@ func (h *CourseExportHandler) lookupNodeEvalMethods(ctx context.Context, tenantI
 	}
 
 	var hasHomework bool
-	err = h.DB.QueryRow(ctx, `
+	err = h.Store.Q().QueryRow(ctx, `
 		SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id=$1 AND tenant_id=$2)
 	`, nodeID, tenantID).Scan(&hasHomework)
 	if err == nil && hasHomework {

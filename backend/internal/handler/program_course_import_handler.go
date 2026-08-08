@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ProgramCourseImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 const pcImportSheet = "导入"
@@ -66,7 +66,7 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 
 	// 校验方案归属当前租户，防跨租户清空/替换他人方案课程
 	var tenantOf string
-	if err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM training_programs WHERE id=$1`, programID).Scan(&tenantOf); err != nil {
+	if err := h.Store.Q().QueryRow(r.Context(), `SELECT tenant_id FROM training_programs WHERE id=$1`, programID).Scan(&tenantOf); err != nil {
 		respondError(w, http.StatusNotFound, "方案不存在")
 		return
 	}
@@ -88,7 +88,7 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 		return
 	}
 
-	tx, err := h.DB.Begin(r.Context())
+	tx, err := h.Store.WithTxRaw(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "导入失败")
 		return
@@ -181,14 +181,14 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 
 		if positionName != "" {
 			var pid string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM career_positions WHERE name=$1 AND tenant_id=$2 LIMIT 1`, positionName, h.currentTenant(r)).Scan(&pid); err == nil {
+			if err := h.Store.Q().QueryRow(r.Context(), `SELECT id FROM career_positions WHERE name=$1 AND tenant_id=$2 LIMIT 1`, positionName, h.currentTenant(r)).Scan(&pid); err == nil {
 				c.PositionID = &pid
 				c.Name = positionName
 			}
 		}
 		if c.PositionID == nil && courseName != "" {
 			var id, n string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' AND tenant_id=$2 LIMIT 1`, courseName, h.currentTenant(r)).Scan(&id, &n); err == nil {
+			if err := h.Store.Q().QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' AND tenant_id=$2 LIMIT 1`, courseName, h.currentTenant(r)).Scan(&id, &n); err == nil {
 				c.Name = n
 				if c.Name == "" {
 					c.Name = courseName

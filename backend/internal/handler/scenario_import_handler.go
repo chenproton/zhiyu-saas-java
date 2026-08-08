@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/cache"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioImportHandler struct {
-	DB          *pgxpool.Pool
+	Store       *store.Store
 	RedisClient *redis.Client
 }
 
@@ -118,11 +118,11 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 		careerPositionID := h.lookupCareerPosition(ctx, tenantID, positionName)
 		industryIDs := h.lookupIndustries(ctx, tenantID, industryNames)
 		professionIDs := h.lookupProfessions(ctx, tenantID, professionNames)
-		batchID := lookupBatchID(ctx, h.DB, "scene_batches", tenantID, batchName)
+		batchID := lookupBatchID(ctx, h.Store.Q(), "scene_batches", tenantID, batchName)
 
 		var existingID, existingCreator string
 		var existingBuilders []string
-		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, co_builder_ids FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingBuilders)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, creator_id, co_builder_ids FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingBuilders)
 		exists := err == nil && existingID != ""
 
 		origName := ""
@@ -147,7 +147,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := h.DB.Exec(ctx, `
+				_, err := h.Store.Q().Exec(ctx, `
 					UPDATE scenarios
 					SET name=$3, career_position_id=$4, industry_ids=$5, profession_ids=$6,
 					    batch_id=$7, difficulty=$8, background=$9
@@ -160,8 +160,8 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 					continue
 				}
 				// 覆盖时清空原有任务及任务相关数据，随后根据新文件内容重新写入
-				h.DB.Exec(ctx, `DELETE FROM task_evaluation_methods WHERE task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id=$1)`, existingID)
-				h.DB.Exec(ctx, `DELETE FROM scenario_tasks WHERE scenario_id=$1`, existingID)
+				h.Store.Q().Exec(ctx, `DELETE FROM task_evaluation_methods WHERE task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id=$1)`, existingID)
+				h.Store.Q().Exec(ctx, `DELETE FROM scenario_tasks WHERE scenario_id=$1`, existingID)
 				scenarioMap[name] = existingID
 				continue
 			}
@@ -169,7 +169,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 			origName = name
 			name = uniqueSuffixed(name, func(c string) bool {
 				var eid string
-				_ = h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
 				return eid != ""
 			})
 		}
@@ -181,7 +181,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 
 		code := generateEntityCode("CJ")
 		scenarioID := uuid.NewString()
-		_, err = h.DB.Exec(ctx, `
+		_, err = h.Store.Q().Exec(ctx, `
 			INSERT INTO scenarios (id, tenant_id, name, code, career_position_id, industry_ids, profession_ids,
 				batch_id, difficulty, version, status, background, creator_id, co_builder_ids)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'v1.0','draft',$10,$11,'{}')
@@ -241,11 +241,11 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		taskCode := h.generateTaskCode(ctx, tenantID, scenarioID, seenTaskCode)
 		taskID := uuid.NewString()
 
-		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgePointNames)
+		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, knowledgePointNames)
 		abilityPointIDs := h.lookupAbilityPoints(ctx, tenantID, abilityPointNames)
-		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
+		resourceIDs := findOrCreateResources(ctx, h.Store.Q(), tenantID, resourceNames, userID)
 
-		_, err := h.DB.Exec(ctx, `
+		_, err := h.Store.Q().Exec(ctx, `
 			INSERT INTO scenario_tasks (id, tenant_id, scenario_id, name, code, sort_order,
 				background, detailed_description, estimated_hours, task_type, difficulty,
 				knowledge_point_ids, ability_point_ids, resource_ids, eval_data, dependency_ids, is_referenced)
@@ -271,7 +271,7 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 			// 未配置权重时按等分写入（如 4 种方式各 25），避免权重恒为 0 导致均分/综合分恒为 0
 			weight := 100.0 / float64(len(validMethods))
 			for _, mk := range validMethods {
-				_, err := h.DB.Exec(ctx, `
+				_, err := h.Store.Q().Exec(ctx, `
 					INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
 					VALUES ($1,$2,$3,$4,$5,'individual',NULL,'[]'::jsonb,NULL,'{}'::jsonb,1,true)
 					ON CONFLICT (task_id, method_key) DO UPDATE SET
@@ -298,7 +298,7 @@ func (h *ScenarioImportHandler) generateScenarioCode(ctx context.Context, tenant
 	year := time.Now().Format("2006")
 	var maxNum int
 	// 提取 SC-YYYY-NNNN 中的序号，忽略 -clone 等后缀
-	err := h.DB.QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SC-[0-9]{4}-([0-9]+)')::int), 0) FROM scenarios WHERE tenant_id=$1 AND code LIKE 'SC-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
+	err := h.Store.Q().QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SC-[0-9]{4}-([0-9]+)')::int), 0) FROM scenarios WHERE tenant_id=$1 AND code LIKE 'SC-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
 	if err != nil {
 		maxNum = 0
 	}
@@ -316,7 +316,7 @@ func (h *ScenarioImportHandler) lookupCareerPosition(ctx context.Context, tenant
 		return nil
 	}
 	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 	if err != nil {
 		return nil
 	}
@@ -333,7 +333,7 @@ func (h *ScenarioImportHandler) lookupIndustries(ctx context.Context, tenantID s
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 		if err != nil {
 			continue
 		}
@@ -352,7 +352,7 @@ func (h *ScenarioImportHandler) lookupProfessions(ctx context.Context, tenantID 
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
 		if err != nil {
 			continue
 		}
@@ -371,7 +371,7 @@ func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantI
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 		if err != nil {
 			continue
 		}

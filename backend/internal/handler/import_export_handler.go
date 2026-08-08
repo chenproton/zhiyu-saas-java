@@ -13,13 +13,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ImportExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 var importExportEntities = map[string]importExportEntity{
@@ -124,7 +123,7 @@ func (h *ImportExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cols := strings.Join(meta.defaultCols, ", ")
-	rows, err := h.DB.Query(r.Context(), fmt.Sprintf(`SELECT %s FROM %s WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1000`, cols, entity), tenantID)
+	rows, err := h.Store.Q().Query(r.Context(), fmt.Sprintf(`SELECT %s FROM %s WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1000`, cols, entity), tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "导出失败")
 		return
@@ -345,7 +344,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 					updateArgs = append(updateArgs, row.code)
 				}
 				updateArgs = append(updateArgs, existingID)
-				_, execErr := h.DB.Exec(r.Context(), meta.updateSQL, updateArgs...)
+				_, execErr := h.Store.Q().Exec(r.Context(), meta.updateSQL, updateArgs...)
 				if execErr != nil {
 					failed++
 					continue
@@ -370,7 +369,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				id := uuid.NewString()
-				_, execErr := h.DB.Exec(r.Context(), meta.insertSQL, id, tenantID, name, code, claims.UserID)
+				_, execErr := h.Store.Q().Exec(r.Context(), meta.insertSQL, id, tenantID, name, code, claims.UserID)
 				if execErr != nil {
 					failed++
 					continue
@@ -383,7 +382,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := uuid.NewString()
-		_, execErr := h.DB.Exec(r.Context(), meta.insertSQL, id, tenantID, row.name, row.code, claims.UserID)
+		_, execErr := h.Store.Q().Exec(r.Context(), meta.insertSQL, id, tenantID, row.name, row.code, claims.UserID)
 		if execErr != nil {
 			failed++
 			continue
@@ -411,7 +410,7 @@ func (h *ImportExportHandler) findExistingByKey(ctx context.Context, entity, ten
 	}
 	var id string
 	query := fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND %s=$2 LIMIT 1", entity, keyCol)
-	err = h.DB.QueryRow(ctx, query, tenantID, key).Scan(&id)
+	err = h.Store.Q().QueryRow(ctx, query, tenantID, key).Scan(&id)
 	return id, err == nil && id != ""
 }
 

@@ -40,7 +40,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"企业名称 *", "企业类型", "所属行业", "所在地区", "合作状态", "合作评级", "联系人", "联系电话", "联系邮箱", "企业地址", "统一社会信用代码", "成立年份", "企业规模（人数）", "企业简介"},
 		{"测试企业甲", "合作企业", "智能制造", "苏州市", "合作中", "战略合作", "张伟", "13800000000", "a@example.com", "苏州市工业园区", "91320594MA1P7ABC1X", "2015", "1200", "测试企业简介"},
 	})
-	hEnt := &handler.ResourceImportHandler{DB: env.DB}
+	hEnt := &handler.ResourceImportHandler{Store: env.Store}
 	w := httptest.NewRecorder()
 	hEnt.ImportEnterprises(w, makeRequest(t, "/import/alliance-enterprises/excel", entFile, claims))
 	if w.Code != 200 {
@@ -64,7 +64,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述", "预算", "关联合作企业"},
 		{"测试联合研发项目", "联合研发", "执行中", "2026-01-15", "2027-06-30", "项目描述", "300万", "测试企业甲"},
 	})
-	hProj := &handler.ResourceImportHandler{DB: env.DB}
+	hProj := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
 	hProj.ImportProjects(w, makeRequest(t, "/import/alliance-projects/excel", projFile, claims))
 	if w.Code != 200 {
@@ -92,7 +92,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"成果名称 *", "成果类型", "描述", "成果日期", "关联归属项目", "关联合作企业"},
 		{"测试视觉质检标准", "自定义成果", "成果描述", "2026-05-20", "测试联合研发项目", "测试企业甲"},
 	})
-	hAch := &handler.ResourceImportHandler{DB: env.DB}
+	hAch := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
 	hAch.ImportAchievements(w, makeRequest(t, "/import/alliance-achievements/excel", achFile, claims))
 	if w.Code != 200 {
@@ -120,7 +120,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"姓名 *", "头衔", "职位", "行业", "城市", "简介", "年龄", "从业年限", "关联合作企业", "擅长领域", "从业经历"},
 		{"测试专家张工", "教授级高工", "特聘教授", "智能制造", "苏州市", "专家简介", "45", "20", "测试企业甲", "机器视觉；工业机器人", "主持多项省部级课题"},
 	})
-	hExp := &handler.ResourceImportHandler{DB: env.DB}
+	hExp := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
 	hExp.ImportExperts(w, makeRequest(t, "/import/alliance-experts/excel", expFile, claims))
 	if w.Code != 200 {
@@ -156,7 +156,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容", "关联归属项目", "关联合作企业"},
 		{"测试共建实验室协议", "实验室共建", "2026-01-10", "2027-01-09", "生效中", "协议内容", "测试联合研发项目", "测试企业甲"},
 	})
-	hAgr := &handler.ResourceImportHandler{DB: env.DB}
+	hAgr := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
 	hAgr.ImportAgreements(w, makeRequest(t, "/import/alliance-agreements/excel", agrFile, claims))
 	if w.Code != 200 {

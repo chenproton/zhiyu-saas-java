@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionBankImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *QuestionBankImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +114,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 		description := nullableStr(col(row, 1))
 		batchName := col(row, 2)
 
-		batchID := lookupBatchID(ctx, h.DB, "evaluation_batches", tenantID, batchName)
+		batchID := lookupBatchID(ctx, h.Store.Q(), "evaluation_batches", tenantID, batchName)
 
 		if seen[name] {
 			previewRes.Duplicates++
@@ -134,7 +134,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 		var existingID, existingCreator string
 		var existingCollaborators []string
-		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		found := err == nil && existingID != ""
 
 		if preview {
@@ -159,7 +159,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 					execRes.PermissionSkipped++
 					continue
 				}
-				_, err := h.DB.Exec(ctx, `
+				_, err := h.Store.Q().Exec(ctx, `
 					UPDATE question_banks SET name=$1, description=$2, batch_id=$3 WHERE id=$4
 				`, name, description, batchID, existingID)
 				if err != nil {
@@ -177,7 +177,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 				// rename 模式：追加随机后缀生成新名称，按新对象导入
 				name = uniqueSuffixed(name, func(c string) bool {
 					var eid string
-					_ = h.DB.QueryRow(ctx, `SELECT id FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+					_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
 					return eid != ""
 				})
 			} else {
@@ -188,7 +188,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 		bankID := uuid.NewString()
 		code := generateEntityCode("TK")
-		_, err = h.DB.Exec(ctx, `
+		_, err = h.Store.Q().Exec(ctx, `
 			INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
 				batch_id, version, owner_type, is_draft_pool)
 			VALUES ($1,$2,$3,$4,$5,'draft',0,$6,$7,'v1.0','mine',false)

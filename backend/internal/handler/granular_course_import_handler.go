@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type GranularCourseImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 type granularCourseImportResult struct {
@@ -121,8 +121,8 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		resourceNames := splitTrim(col(row, 6), ",")
 		batchName := col(row, 7)
 
-		majorID := lookupMajorID(ctx, h.DB, tenantID, majorName)
-		batchID := lookupBatchID(ctx, h.DB, "lesson_batches", tenantID, batchName)
+		majorID := lookupMajorID(ctx, h.Store.Q(), tenantID, majorName)
+		batchID := lookupBatchID(ctx, h.Store.Q(), "lesson_batches", tenantID, batchName)
 
 		var descPtr *string
 		if learningGoal != "" {
@@ -139,7 +139,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 
 		var existingID, existingCreator string
 		var existingCoCreators []string
-		err := h.DB.QueryRow(ctx, `SELECT id, creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
 		exists := err == nil && existingID != ""
 
 		if exists && preview {
@@ -166,11 +166,11 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		}
 
 		// 覆盖权限判定通过后才创建知识点与资源（preview 与权限不足路径均无写副作用）
-		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
-		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
+		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, knowledgeNames)
+		resourceIDs := findOrCreateResources(ctx, h.Store.Q(), tenantID, resourceNames, userID)
 
 		if exists && overwrite {
-			_, err := h.DB.Exec(ctx, `
+			_, err := h.Store.Q().Exec(ctx, `
 				UPDATE courses
 				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7,
 				    knowledge_point_ids=$8, resource_ids=$9, resource_count=COALESCE(array_length($9::uuid[], 1), 0), updated_at=NOW()
@@ -188,7 +188,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			// rename 模式：追加随机后缀生成新名称，按新对象导入
 			name = uniqueSuffixed(name, func(c string) bool {
 				var eid string
-				_ = h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, c).Scan(&eid)
+				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, c).Scan(&eid)
 				return eid != ""
 			})
 		}
@@ -200,7 +200,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 
 		courseID := uuid.NewString()
 		code := h.generateGranularCourseCode(ctx, tenantID)
-		_, err = h.DB.Exec(ctx, `
+		_, err = h.Store.Q().Exec(ctx, `
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
@@ -219,11 +219,11 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 }
 
 func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, knowledgePointIDs, resourceIDs []string) {
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id=$1 AND bind_type='course'`, courseID)
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id=$1`, courseID)
+	_, _ = h.Store.Q().Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id=$1 AND bind_type='course'`, courseID)
+	_, _ = h.Store.Q().Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id=$1`, courseID)
 
 	for _, kpID := range knowledgePointIDs {
-		_, _ = h.DB.Exec(ctx, `
+		_, _ = h.Store.Q().Exec(ctx, `
 			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
 			VALUES ($1,$2,$3,$4,'course',NULL)
 			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
@@ -231,7 +231,7 @@ func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context,
 	}
 
 	for _, resID := range resourceIDs {
-		_, _ = h.DB.Exec(ctx, `
+		_, _ = h.Store.Q().Exec(ctx, `
 			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
 			VALUES ($1,$2,$3,$4)
 			ON CONFLICT (course_id, resource_id) DO NOTHING
@@ -242,7 +242,7 @@ func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context,
 func (h *GranularCourseImportHandler) generateGranularCourseCode(ctx context.Context, tenantID string) string {
 	year := time.Now().Format("2006")
 	var maxNum int
-	err := h.DB.QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^GRA-[0-9]{4}-([0-9]+)')::int), 0) FROM courses WHERE tenant_id=$1 AND code LIKE 'GRA-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
+	err := h.Store.Q().QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^GRA-[0-9]{4}-([0-9]+)')::int), 0) FROM courses WHERE tenant_id=$1 AND code LIKE 'GRA-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
 	if err != nil {
 		maxNum = 0
 	}

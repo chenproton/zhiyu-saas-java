@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionBankExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.R
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generateQuestionBankTemplate(ctx, tenantID)
 
 	if err := h.fillBanksData(ctx, f, tenantID, ids); err != nil {
@@ -58,7 +58,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 	for ri, bid := range bankIDs {
 		var name, desc string
 		var batchID *string
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT name, COALESCE(description,''), batch_id
 			FROM question_banks WHERE id=$1 AND tenant_id=$2
 		`, bid, tenantID).Scan(&name, &desc, &batchID)
@@ -70,7 +70,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.DB.QueryRow(ctx, `SELECT name FROM evaluation_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			h.Store.Q().QueryRow(ctx, `SELECT name FROM evaluation_batches WHERE id=$1`, *batchID).Scan(&batchName)
 		}
 
 		r := 3 + ri

@@ -8,7 +8,7 @@
 
 | 包                | 文件/行数         | 状态                                                                                                                                                                                          |
 | ----------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| handler           | 121 文件          | 除豁免冻结区（import/export/template 22 文件）与测试外：无直写 SQL、无 `*pgxpool.Pool` 字段、无 `pgx.Tx`；handler 不再持有 Service+Store 双依赖（统一 store-only）                                 |
+| handler           | 121 文件          | 全部 handler 无 `*pgxpool.Pool` 字段（import/export/template 已于 2026-08-09 迁移为 Store 注入）；分层红线全量适用                                 |
 | store             | 70+ 文件          | 独立类型模式成熟：`NewXxxStore(q)` 工厂；**列表查询配置全量下沉**（各域 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`ListXxxConfig()` 方法 + `BatchTableConfig` + 日志包级配置），非冻结区 handler 不再内联 SQL 片段 |
 | service           | 50 文件           | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读；`PositionService`/`EvaluationService` 方法已按域重组为独立文件（position/ability/batch/workflow/term/teaching_plan/training_program/workspace_stats 等） |
 | domain            | 12 文件 / 2.1k 行 | 类型中心，**保持不动，不新建 model/**                                                                                                                                                         |
@@ -42,7 +42,7 @@ internal/
 
 核心契约：
 
-- `handler` 禁止拼接 SQL、禁止持有 `*pgxpool.Pool`（豁免区除外，见红线 2）
+- `handler` 禁止拼接 SQL、禁止持有 `*pgxpool.Pool`（全量适用，无豁免区）
 - `service` 禁止拼接 SQL 字符串
 - `store` 禁止读取 HTTP Header/Claims，只接收显式参数
 
@@ -51,7 +51,7 @@ internal/
 见 `AGENTS.md`「二、交付要求」第 6 条，全文如下：
 
 1. **新增** handler 中出现 `SELECT/INSERT/UPDATE/DELETE` 字符串，或直接调用 `db.Query/QueryRow/Exec` → 禁止合并
-2. 新增 handler 禁止持有 `*pgxpool.Pool` 字段；**豁免冻结区**：现有 import/export/template 22 个 handler 文件（`*_import_handler.go`、`*_export_handler.go`、`template_handler.go`、`import_common.go`、`import_export_handler.go`）保持现状，冻结不扩散，不做迁移
+2. 新增 handler 禁止持有 `*pgxpool.Pool` 字段（**冻结区已于 2026-08-09 取消**：import/export/template 23 个文件全部迁移为 `Store *store.Store` 注入，不再豁免）
 3. `common.go` 新增函数必须说明为何不能放入 store 层
 4. `service` 禁止拼接 SQL；`store` 禁止读取 HTTP/Claims（只接收显式参数）
 5. 新接口必须附带 handler/service/store 测试至少一种

@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *QuestionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +38,7 @@ func (h *QuestionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 
 	ctx := r.Context()
 	var existingBank string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
+	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
@@ -49,7 +49,7 @@ func (h *QuestionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generateQuestionTemplate(ctx, tenantID, bankID)
 
 	if err := h.fillQuestionsData(ctx, f, tenantID, bankID, ids); err != nil {
@@ -76,7 +76,7 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 		var score float64
 		var optionsJSON []byte
 		var knowledgePointIDs []string
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT type, content, options, answer, analysis, score, difficulty,
 			       knowledge_point_ids, COALESCE(source,'')
 			FROM questions
@@ -133,7 +133,7 @@ func (h *QuestionExportHandler) lookupKnowledgePointNames(ctx context.Context, t
 			continue
 		}
 		var name string
-		err := h.DB.QueryRow(ctx, `SELECT name FROM knowledge_points WHERE id=$1 AND tenant_id=$2`, id, tenantID).Scan(&name)
+		err := h.Store.Q().QueryRow(ctx, `SELECT name FROM knowledge_points WHERE id=$1 AND tenant_id=$2`, id, tenantID).Scan(&name)
 		if err == nil && name != "" {
 			names = append(names, name)
 		}

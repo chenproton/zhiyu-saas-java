@@ -8,13 +8,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionImportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *PositionImportHandler) processImport(r *http.Request, w http.ResponseWriter, preview bool) {
@@ -100,12 +99,12 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchName := col(row, 11)
 
 		industryID := h.lookupIndustry(ctx, tenantID, industryName)
-		batchID := lookupBatchID(ctx, h.DB, "batches", tenantID, batchName)
+		batchID := lookupBatchID(ctx, h.Store.Q(), "batches", tenantID, batchName)
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
 		var existingID, existingCreator string
 		var existingCollaborators []string
-		err := h.DB.QueryRow(ctx, `SELECT id, created_by, collaborators FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, created_by, collaborators FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		exists := err == nil && existingID != ""
 
 		origName := ""
@@ -130,7 +129,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := h.DB.Exec(ctx, `
+				_, err := h.Store.Q().Exec(ctx, `
 					UPDATE career_positions
 					SET name=$3, short_name=$4, industry_id=$5, position_type=$6,
 					    salary_min=$7, salary_max=$8, description=$9, requirements=$10,
@@ -144,13 +143,13 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 					continue
 				}
 				// 覆盖时清空原有关联数据，随后根据新文件内容重新写入
-				h.DB.Exec(ctx, `DELETE FROM career_position_majors WHERE career_position_id=$1`, existingID)
-				h.DB.Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id=$1`, existingID)
-				h.DB.Exec(ctx, `DELETE FROM position_responsibilities WHERE career_position_id=$1`, existingID)
-				h.DB.Exec(ctx, `DELETE FROM position_ability_bindings WHERE career_position_id=$1`, existingID)
+				h.Store.Q().Exec(ctx, `DELETE FROM career_position_majors WHERE career_position_id=$1`, existingID)
+				h.Store.Q().Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id=$1`, existingID)
+				h.Store.Q().Exec(ctx, `DELETE FROM position_responsibilities WHERE career_position_id=$1`, existingID)
+				h.Store.Q().Exec(ctx, `DELETE FROM position_ability_bindings WHERE career_position_id=$1`, existingID)
 
 				for _, mid := range majorIDs {
-					h.DB.Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+					h.Store.Q().Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
 						uuid.NewString(), existingID, mid)
 				}
 				for _, certName := range certNames {
@@ -158,7 +157,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 						continue
 					}
 					certID := h.findOrCreateCert(ctx, tenantID, certName)
-					h.DB.Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+					h.Store.Q().Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
 						uuid.NewString(), tenantID, existingID, certID)
 				}
 				positionMap[name] = existingID
@@ -168,7 +167,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			origName = name
 			name = uniqueSuffixed(name, func(c string) bool {
 				var eid string
-				_ = h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
 				return eid != ""
 			})
 		}
@@ -180,7 +179,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 
 		positionID := uuid.NewString()
 		code := generateEntityCode("GW")
-		_, err = h.DB.Exec(ctx, `
+		_, err = h.Store.Q().Exec(ctx, `
 			INSERT INTO career_positions (id, tenant_id, code, name, short_name, industry_id, position_type,
 				salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'v1.0','draft',$13,'{}')
@@ -193,10 +192,10 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		}
 		slog.Info(fmt.Sprintf("[import/positions] created position %s (id=%s)", name, positionID))
 		if batchID != nil {
-			h.DB.Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
+			h.Store.Q().Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
 		}
 		for _, mid := range majorIDs {
-			h.DB.Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+			h.Store.Q().Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
 				uuid.NewString(), positionID, mid)
 		}
 
@@ -205,7 +204,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				continue
 			}
 			certID := h.findOrCreateCert(ctx, tenantID, certName)
-			h.DB.Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+			h.Store.Q().Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
 				uuid.NewString(), tenantID, positionID, certID)
 		}
 
@@ -264,12 +263,12 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		if !ok {
 			sortCounter[positionID]++
 			respID = uuid.NewString()
-			_, err := h.DB.Exec(ctx, `INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+			_, err := h.Store.Q().Exec(ctx, `INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
 				respID, tenantID, positionID, respName, sortCounter[positionID])
 			if err != nil {
 				slog.Info(fmt.Sprintf("[import/positions] 职责[%s/%s]插入失败: %v", positionName, respName, err))
 				var existingID string
-				h.DB.QueryRow(ctx, `SELECT id FROM position_responsibilities WHERE career_position_id=$1 AND name=$2`, positionID, respName).Scan(&existingID)
+				h.Store.Q().QueryRow(ctx, `SELECT id FROM position_responsibilities WHERE career_position_id=$1 AND name=$2`, positionID, respName).Scan(&existingID)
 				if existingID != "" {
 					respID = existingID
 				}
@@ -298,7 +297,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		}
 
 		bindingID := uuid.NewString()
-		_, err := h.DB.Exec(ctx, `
+		_, err := h.Store.Q().Exec(ctx, `
 			INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, weight, attributes)
 			VALUES ($1,$2,$3,$4,$5,'custom',$6,$7,$8,0,$9)
 		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription, attributes)
@@ -323,7 +322,7 @@ func (h *PositionImportHandler) lookupIndustry(ctx context.Context, tenantID, na
 		return nil
 	}
 	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 	if err != nil {
 		return nil
 	}
@@ -340,7 +339,7 @@ func (h *PositionImportHandler) lookupMajors(ctx context.Context, tenantID strin
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
 		if err != nil {
 			continue
 		}
@@ -351,14 +350,14 @@ func (h *PositionImportHandler) lookupMajors(ctx context.Context, tenantID strin
 
 func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, name string) string {
 	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 	if err == nil {
 		return id
 	}
 	id = uuid.NewString()
-	h.DB.Exec(ctx, `INSERT INTO certificate_library (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
+	h.Store.Q().Exec(ctx, `INSERT INTO certificate_library (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
 	var existing string
-	h.DB.QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+	h.Store.Q().QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 	if existing != "" {
 		return existing
 	}
@@ -367,22 +366,22 @@ func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, 
 
 func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, tenantID, name string, attributes []string) string {
 	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 	if err == nil {
 		// 能力点已存在时，若导入提供了属性则尝试更新
 		if len(attributes) > 0 {
-			h.DB.Exec(ctx, `UPDATE ability_points SET attributes=$1 WHERE id=$2 AND (attributes IS NULL OR attributes = '{}')`, attributes, id)
+			h.Store.Q().Exec(ctx, `UPDATE ability_points SET attributes=$1 WHERE id=$2 AND (attributes IS NULL OR attributes = '{}')`, attributes, id)
 		}
 		return id
 	}
 	id = uuid.NewString()
-	code, codeErr := store.GenerateUniqueEntityCode(ctx, h.DB, "NL", "ability_points", tenantID)
+	code, codeErr := store.GenerateUniqueEntityCode(ctx, h.Store.Q(), "NL", "ability_points", tenantID)
 	if codeErr != nil {
 		code = store.GenerateEntityCode("NL")
 	}
-	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, is_public, attributes, code) VALUES ($1,$2,$3,true,$4,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, attributes, code)
+	h.Store.Q().Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, is_public, attributes, code) VALUES ($1,$2,$3,true,$4,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, attributes, code)
 	var existing string
-	h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+	h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 	if existing != "" {
 		return existing
 	}
@@ -391,13 +390,13 @@ func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, te
 
 func (h *PositionImportHandler) ensureAbilityDomain(ctx context.Context, tenantID, positionID, domainName, bindingID string) {
 	var domainID string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM ability_domains WHERE tenant_id=$1 AND career_position_id=$2 AND name=$3 LIMIT 1`, tenantID, positionID, domainName).Scan(&domainID)
+	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_domains WHERE tenant_id=$1 AND career_position_id=$2 AND name=$3 LIMIT 1`, tenantID, positionID, domainName).Scan(&domainID)
 	if err == nil {
-		h.DB.Exec(ctx, `UPDATE ability_domains SET binding_ids = array_append(binding_ids, $1) WHERE id=$2 AND NOT ($1 = ANY(binding_ids))`, bindingID, domainID)
+		h.Store.Q().Exec(ctx, `UPDATE ability_domains SET binding_ids = array_append(binding_ids, $1) WHERE id=$2 AND NOT ($1 = ANY(binding_ids))`, bindingID, domainID)
 		return
 	}
 	domainID = uuid.NewString()
-	h.DB.Exec(ctx, `INSERT INTO ability_domains (id, tenant_id, career_position_id, name, binding_ids) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+	h.Store.Q().Exec(ctx, `INSERT INTO ability_domains (id, tenant_id, career_position_id, name, binding_ids) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
 		domainID, tenantID, positionID, domainName, []string{bindingID})
 }
 

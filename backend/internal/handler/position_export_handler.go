@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generatePositionTemplate(ctx, tenantID)
 
 	if err := h.fillPositionsData(ctx, f, tenantID, ids); err != nil {
@@ -57,7 +57,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		var salaryMin, salaryMax *int
 		var industryID, batchID *string
 		var requirements []string
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT name, COALESCE(short_name,''), position_type, COALESCE(description,''),
 				COALESCE(career_path,''), salary_min, salary_max, industry_id, requirements, batch_id
 			FROM career_positions WHERE id=$1 AND tenant_id=$2
@@ -69,13 +69,13 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 
 		industryName := ""
 		if industryID != nil && *industryID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM industries WHERE id=$1 AND tenant_id=$2`, *industryID, tenantID).Scan(&industryName); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM industries WHERE id=$1 AND tenant_id=$2`, *industryID, tenantID).Scan(&industryName); err != nil {
 				slog.Warn("导出岗位行业名查询失败", "industryId", *industryID, "error", err)
 			}
 		}
 
 		var majorNames []string
-		majRows, err := h.DB.Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id JOIN career_positions cp ON cp.id=cpm.career_position_id WHERE cpm.career_position_id=$1 AND cp.tenant_id=$2`, pid, tenantID)
+		majRows, err := h.Store.Q().Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id JOIN career_positions cp ON cp.id=cpm.career_position_id WHERE cpm.career_position_id=$1 AND cp.tenant_id=$2`, pid, tenantID)
 		if err != nil {
 			slog.Warn("导出岗位专业列表查询失败", "positionId", pid, "error", err)
 		} else {
@@ -91,7 +91,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		}
 
 		var certNames []string
-		certRows, err := h.DB.Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1 AND pc.tenant_id=$2`, pid, tenantID)
+		certRows, err := h.Store.Q().Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1 AND pc.tenant_id=$2`, pid, tenantID)
 		if err != nil {
 			slog.Warn("导出岗位证书列表查询失败", "positionId", pid, "error", err)
 		} else {
@@ -108,7 +108,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM batches WHERE id=$1 AND tenant_id=$2`, *batchID, tenantID).Scan(&batchName); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM batches WHERE id=$1 AND tenant_id=$2`, *batchID, tenantID).Scan(&batchName); err != nil {
 				slog.Warn("导出岗位批次名查询失败", "batchId", *batchID, "error", err)
 			}
 		}
@@ -158,11 +158,11 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 	bindRow := 3
 	for _, pid := range positionIDs {
 		var positionName string
-		if err := h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1 AND tenant_id=$2`, pid, tenantID).Scan(&positionName); err != nil {
+		if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1 AND tenant_id=$2`, pid, tenantID).Scan(&positionName); err != nil {
 			slog.Warn("导出岗位绑定名称查询失败", "positionId", pid, "error", err)
 		}
 
-		bindRows, err := h.DB.Query(ctx, `
+		bindRows, err := h.Store.Q().Query(ctx, `
 			SELECT pr.name, ap.name, ap.attributes, pab.attributes, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
 			FROM position_ability_bindings pab
 			JOIN position_responsibilities pr ON pr.id = pab.responsibility_id

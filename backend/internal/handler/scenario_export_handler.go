@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioExportHandler struct {
-	DB *pgxpool.Pool
+	Store *store.Store
 }
 
 func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	th := &TemplateHandler{DB: h.DB}
+	th := &TemplateHandler{Store: h.Store}
 	f := th.generateScenarioTemplate(ctx, tenantID)
 
 	if err := h.fillScenariosData(ctx, f, tenantID, ids); err != nil {
@@ -56,7 +56,7 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 		var name, diff, bg, batchName string
 		var careerPositionID, batchID *string
 		var industryIDs, professionIDs []string
-		err := h.DB.QueryRow(ctx, `
+		err := h.Store.Q().QueryRow(ctx, `
 			SELECT name, career_position_id, industry_ids, profession_ids, batch_id, difficulty, COALESCE(background,'')
 			FROM scenarios WHERE id=$1 AND tenant_id=$2
 		`, sid, tenantID).Scan(&name, &careerPositionID, &industryIDs, &professionIDs, &batchID, &diff, &bg)
@@ -67,12 +67,12 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 
 		positionName := ""
 		if careerPositionID != nil && *careerPositionID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *careerPositionID).Scan(&positionName); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *careerPositionID).Scan(&positionName); err != nil {
 				slog.Warn("导出场景岗位名查询失败", "positionId", *careerPositionID, "error", err)
 			}
 		}
 		if batchID != nil && *batchID != "" {
-			if err := h.DB.QueryRow(ctx, `SELECT name FROM scene_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM scene_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
 				slog.Warn("导出场景批次名查询失败", "batchId", *batchID, "error", err)
 			}
 		}
@@ -105,11 +105,11 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 	taskRow := 3
 	for _, sid := range scenarioIDs {
 		var scenarioName string
-		if err := h.DB.QueryRow(ctx, `SELECT name FROM scenarios WHERE id=$1`, sid).Scan(&scenarioName); err != nil {
+		if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM scenarios WHERE id=$1`, sid).Scan(&scenarioName); err != nil {
 			slog.Warn("导出场景任务名称查询失败", "scenarioId", sid, "error", err)
 		}
 
-		taskRows, err := h.DB.Query(ctx, `
+		taskRows, err := h.Store.Q().Query(ctx, `
 			SELECT id, name, task_type, difficulty, estimated_hours,
 				COALESCE(background,''), COALESCE(detailed_description,''),
 				knowledge_point_ids, ability_point_ids, resource_ids
@@ -163,7 +163,7 @@ func (h *ScenarioExportHandler) lookupNames(ctx context.Context, table string, i
 	var names []string
 	for _, id := range ids {
 		var name string
-		err := h.DB.QueryRow(ctx, fmt.Sprintf(`SELECT name FROM %s WHERE id=$1`, table), id).Scan(&name)
+		err := h.Store.Q().QueryRow(ctx, fmt.Sprintf(`SELECT name FROM %s WHERE id=$1`, table), id).Scan(&name)
 		if err == nil {
 			names = append(names, name)
 		}
@@ -178,7 +178,7 @@ func (h *ScenarioExportHandler) lookupKnowledgePointNames(ctx context.Context, i
 	var names []string
 	for _, id := range ids {
 		var name string
-		h.DB.QueryRow(ctx, `SELECT name FROM knowledge_points WHERE id=$1`, id).Scan(&name)
+		h.Store.Q().QueryRow(ctx, `SELECT name FROM knowledge_points WHERE id=$1`, id).Scan(&name)
 		if name != "" {
 			names = append(names, name)
 		}
@@ -193,7 +193,7 @@ func (h *ScenarioExportHandler) lookupAbilityPointNames(ctx context.Context, ids
 	var names []string
 	for _, id := range ids {
 		var name string
-		h.DB.QueryRow(ctx, `SELECT name FROM ability_points WHERE id=$1`, id).Scan(&name)
+		h.Store.Q().QueryRow(ctx, `SELECT name FROM ability_points WHERE id=$1`, id).Scan(&name)
 		if name != "" {
 			names = append(names, name)
 		}
@@ -208,7 +208,7 @@ func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []s
 	var names []string
 	for _, id := range ids {
 		var name string
-		h.DB.QueryRow(ctx, `SELECT name FROM resource_library WHERE id=$1`, id).Scan(&name)
+		h.Store.Q().QueryRow(ctx, `SELECT name FROM resource_library WHERE id=$1`, id).Scan(&name)
 		if name != "" {
 			names = append(names, name)
 		}
@@ -218,7 +218,7 @@ func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []s
 
 func (h *ScenarioExportHandler) lookupTaskEvalMethods(ctx context.Context, tenantID, taskID string) []string {
 	var methods []string
-	rows, err := h.DB.Query(ctx, `
+	rows, err := h.Store.Q().Query(ctx, `
 		SELECT method_key FROM task_evaluation_methods
 		WHERE task_id=$1 AND tenant_id=$2 AND is_enabled=true
 		ORDER BY created_at

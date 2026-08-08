@@ -83,7 +83,7 @@ func TestAffairsConfigImportPeriodSlotType(t *testing.T) {
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
 
-	h := &handler.AffairsConfigImportHandler{DB: env.DB}
+	h := &handler.AffairsConfigImportHandler{Store: env.Store}
 	w := httptest.NewRecorder()
 	h.ImportExcel(w, req)
 	if w.Code != http.StatusOK {
