@@ -262,6 +262,12 @@ func execMultiSQL(conn *pgx.Conn, sql string) error {
 		sql += ";"
 	}
 	stmts := splitSQLStatements(sql)
+	// 多语句迁移整体包事务：中途失败整体回滚，避免部分 DDL 落库
+	tx, err := conn.Begin(ctx())
+	if err != nil {
+		return fmt.Errorf("begin migration tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx()) }()
 	for j, stmt := range stmts {
 		stmt = stripSQLComments(stmt)
 		if stmt == "" {
@@ -270,7 +276,7 @@ func execMultiSQL(conn *pgx.Conn, sql string) error {
 		if !strings.HasSuffix(stmt, ";") {
 			stmt += ";"
 		}
-		if _, err := conn.Exec(ctx(), stmt); err != nil {
+		if _, err := tx.Exec(ctx(), stmt); err != nil {
 			preview := stmt
 			if len(preview) > 120 {
 				preview = preview[:120]
@@ -278,7 +284,7 @@ func execMultiSQL(conn *pgx.Conn, sql string) error {
 			return fmt.Errorf("statement %d: %w\n  sql: %s", j, err, preview)
 		}
 	}
-	return nil
+	return tx.Commit(ctx())
 }
 
 // stripSQLComments 移除单行注释并trim，返回可执行的 SQL 主体。

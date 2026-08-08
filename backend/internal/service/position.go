@@ -81,46 +81,45 @@ func (s *PositionService) IncrementView(ctx context.Context, targetID string, us
 
 // SaveFull 完整保存岗位（事务内职责/绑定/能力域/证书重写）。
 func (s *PositionService) SaveFull(ctx context.Context, tenantID, positionID string, p *store.FullPositionSaveParams) error {
-	abilityPointMap := make(map[string]string)
-	for _, b := range p.AbilityBindings {
-		if b.Source == "public" {
-			if b.PublicAbilityID != "" {
-				abilityPointMap[b.ID] = b.PublicAbilityID
-			} else if b.AbilityPointID != "" {
-				abilityPointMap[b.ID] = b.AbilityPointID
-			}
-			continue
-		}
-		if b.Source != "custom" {
-			continue
-		}
-		if strings.TrimSpace(b.Name) == "" {
-			continue
-		}
-		pointID, err := s.st.Positions().PrepareAbilityPoint(ctx, tenantID, b.Name, b.Description, b.Attributes)
-		if err != nil {
-			// 创建失败向上传播：静默跳过会导致能力点/证书绑定悄悄丢失
-			return fmt.Errorf("创建能力点「%s」失败: %w", b.Name, err)
-		}
-		if pointID != "" {
-			abilityPointMap[b.ID] = pointID
-		}
-	}
-	certificateMap := make(map[string]string)
-	for _, c := range p.Certificates {
-		if c.Name == "" {
-			continue
-		}
-		libID, err := s.st.Positions().PrepareCertificate(ctx, tenantID, c.Name, c.URL, c.Description, c.Image)
-		if err != nil {
-			return fmt.Errorf("创建证书「%s」失败: %w", c.Name, err)
-		}
-		if libID != "" {
-			certificateMap[c.Name] = libID
-		}
-	}
-
+	// 能力点/证书预写入与 SaveFull 同事务：回滚时不留孤儿库条目
 	return s.WithTx(ctx, func(txStore *store.Store) error {
+		abilityPointMap := make(map[string]string)
+		for _, b := range p.AbilityBindings {
+			if b.Source == "public" {
+				if b.PublicAbilityID != "" {
+					abilityPointMap[b.ID] = b.PublicAbilityID
+				} else if b.AbilityPointID != "" {
+					abilityPointMap[b.ID] = b.AbilityPointID
+				}
+				continue
+			}
+			if b.Source != "custom" {
+				continue
+			}
+			if strings.TrimSpace(b.Name) == "" {
+				continue
+			}
+			pointID, err := txStore.Positions().PrepareAbilityPoint(ctx, txStore.Q(), tenantID, b.Name, b.Description, b.Attributes)
+			if err != nil {
+				return fmt.Errorf("创建能力点「%s」失败: %w", b.Name, err)
+			}
+			if pointID != "" {
+				abilityPointMap[b.ID] = pointID
+			}
+		}
+		certificateMap := make(map[string]string)
+		for _, cert := range p.Certificates {
+			if cert.Name == "" {
+				continue
+			}
+			libID, err := txStore.Positions().PrepareCertificate(ctx, txStore.Q(), tenantID, cert.Name, cert.URL, cert.Description, cert.Image)
+			if err != nil {
+				return fmt.Errorf("创建证书「%s」失败: %w", cert.Name, err)
+			}
+			if libID != "" {
+				certificateMap[cert.Name] = libID
+			}
+		}
 		return txStore.Positions().SaveFull(ctx, txStore.Q(), tenantID, positionID, p, abilityPointMap, certificateMap)
 	})
 }

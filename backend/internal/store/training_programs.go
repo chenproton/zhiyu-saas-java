@@ -221,7 +221,7 @@ func ScanTrainingProgramRows(rows pgx.Rows) ([]domain.TrainingProgram, error) {
 		}
 		items = append(items, p)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // GetByID 按 ID 查询（无租户，contentActions 用）。

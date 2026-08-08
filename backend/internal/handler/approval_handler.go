@@ -78,7 +78,12 @@ func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
 	}
-	if record.TenantID != nil && !verifyTenantOwnership(w, r, *record.TenantID) {
+	if record.TenantID == nil {
+		// 无租户审批记录不向租户用户暴露（fail-closed）
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	if !verifyTenantOwnership(w, r, *record.TenantID) {
 		return
 	}
 	respondJSON(w, http.StatusOK, record)

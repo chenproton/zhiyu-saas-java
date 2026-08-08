@@ -494,7 +494,12 @@ func (h *CourseHandler) ListHomeworkSubmissions(w http.ResponseWriter, r *http.R
 	courseID := chi.URLParam(r, "id")
 	homeworkID := chi.URLParam(r, "homeworkId")
 
-	subs, err := h.Service.ListCourseHomeworkSubmissions(r.Context(), *claims.TenantID, courseID, homeworkID)
+	// 学生仅可查看本人提交（避免枚举查看全班作业内容/分数）
+	var studentID *string
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		studentID = &claims.UserID
+	}
+	subs, err := h.Service.ListCourseHomeworkSubmissions(r.Context(), *claims.TenantID, courseID, homeworkID, studentID)
 	if err != nil {
 		respondServerError(w, r, err, "查询失败")
 		return
@@ -532,6 +537,10 @@ func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.R
 	}
 	if claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	courseID := chi.URLParam(r, "id")
@@ -612,7 +621,12 @@ func (h *CourseHandler) ListNodeHomeworkSubmissions(w http.ResponseWriter, r *ht
 	nodeID := chi.URLParam(r, "nodeId")
 	homeworkID := chi.URLParam(r, "homeworkId")
 
-	subs, err := h.Service.ListNodeHomeworkSubmissions(r.Context(), *claims.TenantID, nodeID, homeworkID)
+	// 学生仅可查看本人提交
+	var studentID *string
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		studentID = &claims.UserID
+	}
+	subs, err := h.Service.ListNodeHomeworkSubmissions(r.Context(), *claims.TenantID, nodeID, homeworkID, studentID)
 	if err != nil {
 		respondServerError(w, r, err, "查询失败")
 		return
@@ -650,6 +664,10 @@ func (h *CourseHandler) GradeNodeHomeworkSubmission(w http.ResponseWriter, r *ht
 	}
 	if claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	nodeID := chi.URLParam(r, "nodeId")

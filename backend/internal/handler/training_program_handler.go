@@ -315,7 +315,11 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 		respondServerError(w, r, err, "保存课程设置失败")
 		return
 	}
-	coursesOut, _ := h.Service.ListTrainingProgramCourses(r.Context(), id)
+	coursesOut, err := h.Service.ListTrainingProgramCourses(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询方案课程失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": coursesOut, "total": len(coursesOut)})
 }
 

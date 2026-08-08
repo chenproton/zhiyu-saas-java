@@ -421,30 +421,30 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 }
 
 // PrepareAbilityPoint 查找或创建能力点，返回 ID。
-func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name string, description *string, attributes []string) (string, error) {
+func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, q Queryer, tenantID, name string, description *string, attributes []string) (string, error) {
 	if strings.TrimSpace(name) == "" {
 		return "", errors.New("ability point name is empty")
 	}
 	var existingID string
-	err := s.q.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
 	`, tenantID, name).Scan(&existingID)
 	if err == nil && existingID != "" {
 		return existingID, nil
 	}
 	newID := uuid.NewString()
-	code, err := GenerateUniqueEntityCode(ctx, s.q, "NL", "ability_points", tenantID)
+	code, err := GenerateUniqueEntityCode(ctx, q, "NL", "ability_points", tenantID)
 	if err != nil {
 		code = GenerateEntityCode("NL")
 	}
-	if _, err := s.q.Exec(ctx, `
+	if _, err := q.Exec(ctx, `
 		INSERT INTO ability_points (id, tenant_id, name, code, description, attributes, is_public)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (tenant_id, name) DO NOTHING
 	`, newID, tenantID, name, code, description, attributes, true); err != nil {
 		return "", err
 	}
-	_ = s.q.QueryRow(ctx, `
+	_ = q.QueryRow(ctx, `
 		SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
 	`, tenantID, name).Scan(&existingID)
 	if existingID != "" {
@@ -454,23 +454,23 @@ func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, tenantID, name 
 }
 
 // PrepareCertificate 查找或创建证书库条目，返回 ID。
-func (s *PositionStore) PrepareCertificate(ctx context.Context, tenantID, name string, url, description, image *string) (string, error) {
+func (s *PositionStore) PrepareCertificate(ctx context.Context, q Queryer, tenantID, name string, url, description, image *string) (string, error) {
 	var libraryID string
-	err := s.q.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
 	`, tenantID, name).Scan(&libraryID)
 	if err == nil && libraryID != "" {
 		return libraryID, nil
 	}
 	libraryID = uuid.NewString()
-	if _, err := s.q.Exec(ctx, `
+	if _, err := q.Exec(ctx, `
 		INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (tenant_id, name) DO NOTHING
 	`, libraryID, tenantID, name, url, description, image); err != nil {
 		return "", err
 	}
-	_ = s.q.QueryRow(ctx, `
+	_ = q.QueryRow(ctx, `
 		SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
 	`, tenantID, name).Scan(&libraryID)
 	return libraryID, nil
@@ -497,40 +497,46 @@ func (s *PositionStore) FavoriteCount(ctx context.Context, positionID string) (i
 
 // ToggleFavorite 切换收藏，返回新状态。
 func (s *PositionStore) ToggleFavorite(ctx context.Context, userID, positionID string) (bool, error) {
-	var exists bool
-	err := s.q.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)
-	`, userID, positionID).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-	if exists {
-		if _, err := s.q.Exec(ctx, `DELETE FROM position_favorites WHERE user_id = $1 AND career_position_id = $2`, userID, positionID); err != nil {
-			return false, err
+	// 收藏表与计数同一事务更新，避免并发下计数漂移
+	var toggled bool
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		var exists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)
+		`, userID, positionID).Scan(&exists); err != nil {
+			return err
 		}
-		if _, err := s.q.Exec(ctx, `
-			UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
-			WHERE target_type = 'career_position' AND target_id = $1
+		if exists {
+			if _, err := tx.Exec(ctx, `DELETE FROM position_favorites WHERE user_id = $1 AND career_position_id = $2`, userID, positionID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
+				WHERE target_type = 'career_position' AND target_id = $1
+			`, positionID); err != nil {
+				return err
+			}
+			toggled = false
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO position_favorites (id, user_id, career_position_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, career_position_id) DO NOTHING
+		`, uuid.NewString(), userID, positionID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO favorite_counters (target_type, target_id, cnt)
+			VALUES ('career_position', $1, 1)
+			ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
 		`, positionID); err != nil {
-			return false, err
+			return err
 		}
-		return false, nil
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO position_favorites (id, user_id, career_position_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, career_position_id) DO NOTHING
-	`, uuid.NewString(), userID, positionID); err != nil {
-		return false, err
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO favorite_counters (target_type, target_id, cnt)
-		VALUES ('career_position', $1, 1)
-		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
-	`, positionID); err != nil {
-		return false, err
-	}
-	return true, nil
+		toggled = true
+		return nil
+	})
+	return toggled, err
 }
 
 // ListFavorites 查询用户收藏的岗位。

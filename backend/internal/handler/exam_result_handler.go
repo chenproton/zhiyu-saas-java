@@ -41,6 +41,13 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	// 学生仅可查看本人考试结果
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		if params.Values == nil {
+			params.Values = map[string]string{}
+		}
+		params.Values["userId"] = claims.UserID
+	}
 	items, total, err := h.Service.ListExamResults(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询考试结果失败")
@@ -131,6 +138,11 @@ func (h *ExamResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if result.TenantID != nil && claims.TenantID != nil && *result.TenantID != *claims.TenantID {
+		respondError(w, http.StatusNotFound, "考试结果不存在")
+		return
+	}
+	// 学生仅可查看本人考试结果
+	if middleware.HasRole(claims, domain.RoleStudent) && result.UserID != claims.UserID {
 		respondError(w, http.StatusNotFound, "考试结果不存在")
 		return
 	}

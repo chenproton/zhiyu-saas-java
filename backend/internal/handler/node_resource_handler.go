@@ -98,6 +98,10 @@ func (h *NodeResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// 校验目标节点属于当前租户（防止把资源绑定到他租户节点）
+	if !h.checkNodeTenant(w, r, req.NodeID) {
+		return
+	}
 
 	var fileSize *int64
 	if req.Size != nil {
@@ -140,6 +144,10 @@ func (h *NodeResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	// 校验目标节点租户归属
+	if !h.checkNodeTenant(w, r, req.NodeID) {
+		return
+	}
 	if req.NodeID == "" || req.ResourceID == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -155,6 +163,21 @@ func (h *NodeResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// checkNodeTenant 校验节点属于当前租户（节点→课程→租户链路）。
+func (h *NodeResourceHandler) checkNodeTenant(w http.ResponseWriter, r *http.Request, nodeID string) bool {
+	courseID, err := h.Service.NodeCourseID(r.Context(), nodeID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "节点不存在")
+		return false
+	}
+	courseTenantID, err := h.Service.CourseTenantID(r.Context(), courseID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "课程不存在")
+		return false
+	}
+	return verifyTenantOwnership(w, r, courseTenantID)
 }
 
 func (h *NodeResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Request) {

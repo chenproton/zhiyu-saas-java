@@ -67,6 +67,12 @@ func (h *RecommendHandler) crud() crudConfig[RecommendRequest, domain.PositionRe
 			return ""
 		},
 		CreateFn: func(ctx context.Context, t *RecommendRequest, tenantID, userID string) (string, error) {
+			if t.CareerPositionID != "" {
+				pos, err := h.Service.Get(ctx, t.CareerPositionID)
+				if err != nil || pos.TenantID != tenantID {
+					return "", store.ErrNotFound
+				}
+			}
 			rec, err := h.Service.CreateRecommend(ctx, tenantID, &store.RecommendParams{
 				MajorID: t.MajorID, CareerPositionID: t.CareerPositionID, PositionType: t.PositionType,
 				Reason: t.Reason, SortOrder: t.SortOrder, IsEnabled: t.IsEnabled, CreatedBy: userID,

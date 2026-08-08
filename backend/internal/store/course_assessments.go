@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -205,14 +204,14 @@ func (s *CourseAssessmentStore) CleanupCourseLevelAssessments(ctx context.Contex
 		WHERE eu.target_type = 'course' AND $1 = ANY(eu.target_ids)
 		  AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)
 	`, courseID); err != nil {
-		slog.Warn("cleanup course exam usages failed", "courseID", courseID, "error", err)
+		return fmt.Errorf("cleanup course exam usages: %w", err)
 	}
 	if _, err := q.Exec(ctx, `
 		DELETE FROM course_homeworks ch
 		WHERE ch.course_id = $1
 		  AND NOT EXISTS (SELECT 1 FROM course_homework_submissions chs WHERE chs.homework_id = ch.id)
 	`, courseID); err != nil {
-		slog.Warn("cleanup course homeworks failed", "courseID", courseID, "error", err)
+		return fmt.Errorf("cleanup course homeworks: %w", err)
 	}
 	return nil
 }

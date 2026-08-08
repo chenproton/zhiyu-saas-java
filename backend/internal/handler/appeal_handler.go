@@ -110,6 +110,10 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
 	id := chi.URLParam(r, "id")
 	var req ProcessAppealRequest
 	if !decodeBody(w, r, &req) {

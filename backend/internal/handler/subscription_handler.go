@@ -113,6 +113,11 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 	existing, err := h.Service.GetSubscriptionByTenant(ctx, tenantID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		// DB 故障不落创建分支，避免掩盖真实错误
+		respondServerError(w, r, err, "查询订阅失败")
+		return
+	}
 	if err == nil && existing.ID != "" {
 		updated, err := h.Service.UpdateSubscription(ctx, existing.ID, &store.SubscriptionUpdateParams{
 			Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,

@@ -191,6 +191,10 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
 	id := chi.URLParam(r, "id")
 	var req GradeResultRequest
 	if !decodeBody(w, r, &req) {
@@ -235,6 +239,10 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	if middleware.HasRole(claims, domain.RoleStudent) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

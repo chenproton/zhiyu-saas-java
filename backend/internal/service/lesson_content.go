@@ -356,8 +356,8 @@ func (s *LessonContentService) SubmitCourseHomework(ctx context.Context, tenantI
 }
 
 // ListCourseHomeworkSubmissions 查询课程作业提交。
-func (s *LessonContentService) ListCourseHomeworkSubmissions(ctx context.Context, tenantID, courseID, homeworkID string) ([]store.HomeworkSubmissionItem, error) {
-	return s.st.CourseHomeworks().ListCourseHomeworkSubmissions(ctx, tenantID, courseID, homeworkID)
+func (s *LessonContentService) ListCourseHomeworkSubmissions(ctx context.Context, tenantID, courseID, homeworkID string, studentID *string) ([]store.HomeworkSubmissionItem, error) {
+	return s.st.CourseHomeworks().ListCourseHomeworkSubmissions(ctx, tenantID, courseID, homeworkID, studentID)
 }
 
 // GradeCourseHomework 批改课程作业。
@@ -372,8 +372,8 @@ func (s *LessonContentService) SubmitNodeHomework(ctx context.Context, tenantID,
 }
 
 // ListNodeHomeworkSubmissions 查询节点作业提交。
-func (s *LessonContentService) ListNodeHomeworkSubmissions(ctx context.Context, tenantID, nodeID, homeworkID string) ([]store.HomeworkSubmissionItem, error) {
-	return s.st.CourseHomeworks().ListNodeHomeworkSubmissions(ctx, tenantID, nodeID, homeworkID)
+func (s *LessonContentService) ListNodeHomeworkSubmissions(ctx context.Context, tenantID, nodeID, homeworkID string, studentID *string) ([]store.HomeworkSubmissionItem, error) {
+	return s.st.CourseHomeworks().ListNodeHomeworkSubmissions(ctx, tenantID, nodeID, homeworkID, studentID)
 }
 
 // GradeNodeHomework 批改节点作业。

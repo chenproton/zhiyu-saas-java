@@ -36,6 +36,9 @@ func (s *ExamResultStore) ListConfig() ListQueryConfig[domain.ExamResult] {
 		ScanRows:      ScanExamResultRows,
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			qb.AddCondition("er.exam_usage_id = " + qb.NextArg(p.Values["usageId"]))
+			if uid := p.Values["userId"]; uid != "" {
+				qb.AddCondition("er.user_id = " + qb.NextArg(uid))
+			}
 		},
 	}
 }
@@ -477,7 +480,7 @@ func ScanExamResultRows(rows pgx.Rows) ([]domain.ExamResult, error) {
 		}
 		items = append(items, r)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // scanExamResultRow 扫描单行考试结果（含评分字段）。

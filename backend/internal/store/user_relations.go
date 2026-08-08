@@ -99,7 +99,7 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 		item.CreatedAt = fmtTime(createdAt)
 		items = append(items, item)
 	}
-	return items, total, nil
+	return items, total, rows.Err()
 }
 
 // UsersExist 校验两个用户是否都属于租户。

@@ -638,7 +638,11 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	updated, _ := h.AdminService.Get(r.Context(), tenantID, adminID)
+	updated, err := h.AdminService.Get(r.Context(), tenantID, adminID)
+	if err != nil {
+		respondServerError(w, r, err, "查询学校管理员失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, updated)
 }
 

@@ -257,6 +257,16 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, topic)
 }
 
+// checkUserInTenant 校验目标用户属于当前租户。
+func (h *GraduationHandler) checkUserInTenant(w http.ResponseWriter, r *http.Request, tenantID, userID string) bool {
+	u, err := h.Service.Store().Users().Get(r.Context(), userID)
+	if err != nil || u.TenantID == nil || *u.TenantID != tenantID {
+		respondError(w, http.StatusNotFound, "用户不存在")
+		return false
+	}
+	return true
+}
+
 func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -274,6 +284,15 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		}
 		tenantID, ok := requireTenant(w, r)
 		if !ok {
+			return
+		}
+		// 校验课题与学生均属于当前租户，防止跨租户写入
+		topic, err := h.Service.GetGraduationTopic(r.Context(), req.TopicID)
+		if err != nil || topic.TenantID == nil || *topic.TenantID != tenantID {
+			respondError(w, http.StatusNotFound, "毕业课题不存在")
+			return
+		}
+		if !h.checkUserInTenant(w, r, tenantID, req.UserID) {
 			return
 		}
 		archive, err := h.Service.CreateGraduationArchive(r.Context(), tenantID, req.TopicID, req.UserID, req.Phase)

@@ -70,6 +70,12 @@ func (h *AbilityDomainHandler) crud() crudConfig[AbilityDomainRequest, domain.Ab
 			return ""
 		},
 		CreateFn: func(ctx context.Context, t *AbilityDomainRequest, tenantID, userID string) (string, error) {
+			if t.CareerPositionID != "" {
+				pos, err := h.Service.Get(ctx, t.CareerPositionID)
+				if err != nil || pos.TenantID != tenantID {
+					return "", store.ErrNotFound
+				}
+			}
 			d, err := h.Service.CreateAbilityDomain(ctx, tenantID, &store.AbilityDomainParams{
 				CareerPositionID: t.CareerPositionID,
 				Name:             t.Name,
@@ -83,6 +89,12 @@ func (h *AbilityDomainHandler) crud() crudConfig[AbilityDomainRequest, domain.Ab
 			return d.ID, nil
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *AbilityDomainRequest) error {
+			if t.CareerPositionID != "" {
+				pos, err := h.Service.Get(ctx, t.CareerPositionID)
+				if err != nil || pos.TenantID != tenantID {
+					return store.ErrNotFound
+				}
+			}
 			_, err := h.Service.UpdateAbilityDomain(ctx, id, tenantID, &store.AbilityDomainParams{
 				CareerPositionID: t.CareerPositionID,
 				Name:             t.Name,

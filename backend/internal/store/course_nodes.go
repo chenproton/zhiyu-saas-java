@@ -393,5 +393,5 @@ func scanCourseNodeBaseRows(rows pgx.Rows) ([]CourseNodeBase, error) {
 		}
 		items = append(items, n)
 	}
-	return items, nil
+	return items, rows.Err()
 }

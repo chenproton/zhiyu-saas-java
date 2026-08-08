@@ -27,12 +27,13 @@ func ValidFavoriteType(targetType string) bool {
 
 // FavoritesStore 通用收藏持久化（场景/课程/题库/试卷）。
 type FavoritesStore struct {
-	q Queryer
+	q        Queryer
+	beginner txBeginner
 }
 
 // NewFavoritesStore 创建通用收藏 store。
-func NewFavoritesStore(q Queryer) *FavoritesStore {
-	return &FavoritesStore{q: q}
+func NewFavoritesStore(q Queryer, beginner txBeginner) *FavoritesStore {
+	return &FavoritesStore{q: q, beginner: beginner}
 }
 
 // FavoriteTargetTenant 查询收藏目标的所属租户（归属校验用）。
@@ -77,43 +78,49 @@ func (s *FavoritesStore) FavoriteCount(ctx context.Context, targetType, targetID
 
 // ToggleFavorite 切换收藏，返回新状态。
 func (s *FavoritesStore) ToggleFavorite(ctx context.Context, userID, targetType, targetID string) (bool, error) {
-	var exists bool
-	err := s.q.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM user_favorites
-		WHERE user_id = $1 AND target_type = $2 AND target_id = $3)
-	`, userID, targetType, targetID).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-	if exists {
-		if _, err := s.q.Exec(ctx, `
-			DELETE FROM user_favorites WHERE user_id = $1 AND target_type = $2 AND target_id = $3
-		`, userID, targetType, targetID); err != nil {
-			return false, err
+	// 收藏表与计数在同一事务内更新，避免并发下计数漂移
+	var toggled bool
+	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		var exists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM user_favorites
+			WHERE user_id = $1 AND target_type = $2 AND target_id = $3)
+		`, userID, targetType, targetID).Scan(&exists); err != nil {
+			return err
 		}
-		if _, err := s.q.Exec(ctx, `
-			UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
-			WHERE target_type = $1 AND target_id = $2
+		if exists {
+			if _, err := tx.Exec(ctx, `
+				DELETE FROM user_favorites WHERE user_id = $1 AND target_type = $2 AND target_id = $3
+			`, userID, targetType, targetID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
+				WHERE target_type = $1 AND target_id = $2
+			`, targetType, targetID); err != nil {
+				return err
+			}
+			toggled = false
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO user_favorites (id, user_id, target_type, target_id)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (user_id, target_type, target_id) DO NOTHING
+		`, uuid.NewString(), userID, targetType, targetID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO favorite_counters (target_type, target_id, cnt)
+			VALUES ($1, $2, 1)
+			ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
 		`, targetType, targetID); err != nil {
-			return false, err
+			return err
 		}
-		return false, nil
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO user_favorites (id, user_id, target_type, target_id)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (user_id, target_type, target_id) DO NOTHING
-	`, uuid.NewString(), userID, targetType, targetID); err != nil {
-		return false, err
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO favorite_counters (target_type, target_id, cnt)
-		VALUES ($1, $2, 1)
-		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
-	`, targetType, targetID); err != nil {
-		return false, err
-	}
-	return true, nil
+		toggled = true
+		return nil
+	})
+	return toggled, err
 }
 
 // ListScenes 查询用户收藏的场景（仅已发布）。

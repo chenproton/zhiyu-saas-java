@@ -193,7 +193,7 @@ func newStore(q Queryer) *Store {
 		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
 		alliance:         NewAllianceStore(q),
 		community:        NewCommunityStore(q),
-		favorites:        NewFavoritesStore(q),
+		favorites:        NewFavoritesStore(q, beginner),
 		platformSettings: NewPlatformSettingsStore(q),
 		tags:             NewTagStore(q, beginner),
 	}

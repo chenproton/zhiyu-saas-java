@@ -59,14 +59,19 @@ func (s *CourseHomeworkStore) SubmitCourseHomework(ctx context.Context, tenantID
 }
 
 // ListCourseHomeworkSubmissions 查询课程作业提交列表。
-func (s *CourseHomeworkStore) ListCourseHomeworkSubmissions(ctx context.Context, tenantID, courseID, homeworkID string) ([]HomeworkSubmissionItem, error) {
-	rows, err := s.q.Query(ctx, `
+func (s *CourseHomeworkStore) ListCourseHomeworkSubmissions(ctx context.Context, tenantID, courseID, homeworkID string, studentID *string) ([]HomeworkSubmissionItem, error) {
+	query := `
 		SELECT s.id, s.student_id, COALESCE(u.name, ''), s.content, s.attachment_urls, s.status, s.score, s.total_score, s.comment, s.created_at, s.graded_at
 		FROM course_homework_submissions s
 		JOIN users u ON u.id = s.student_id
-		WHERE s.tenant_id = $1 AND s.course_id = $2 AND s.homework_id = $3
-		ORDER BY s.created_at DESC
-	`, tenantID, courseID, homeworkID)
+		WHERE s.tenant_id = $1 AND s.course_id = $2 AND s.homework_id = $3`
+	args := []any{tenantID, courseID, homeworkID}
+	if studentID != nil {
+		query += " AND s.student_id = $4"
+		args = append(args, *studentID)
+	}
+	query += " ORDER BY s.created_at DESC"
+	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -129,14 +134,19 @@ func (s *CourseHomeworkStore) SubmitNodeHomework(ctx context.Context, tenantID, 
 }
 
 // ListNodeHomeworkSubmissions 查询节点作业提交列表。
-func (s *CourseHomeworkStore) ListNodeHomeworkSubmissions(ctx context.Context, tenantID, nodeID, homeworkID string) ([]HomeworkSubmissionItem, error) {
-	rows, err := s.q.Query(ctx, `
+func (s *CourseHomeworkStore) ListNodeHomeworkSubmissions(ctx context.Context, tenantID, nodeID, homeworkID string, studentID *string) ([]HomeworkSubmissionItem, error) {
+	query := `
 		SELECT s.id, s.student_id, COALESCE(u.name, ''), s.content, s.attachment_urls, s.status, s.score, s.total_score, s.comment, s.created_at, s.graded_at
 		FROM node_homework_submissions s
 		JOIN users u ON u.id = s.student_id
-		WHERE s.tenant_id = $1 AND s.node_id = $2 AND s.homework_id = $3
-		ORDER BY s.created_at DESC
-	`, tenantID, nodeID, homeworkID)
+		WHERE s.tenant_id = $1 AND s.node_id = $2 AND s.homework_id = $3`
+	args := []any{tenantID, nodeID, homeworkID}
+	if studentID != nil {
+		query += " AND s.student_id = $4"
+		args = append(args, *studentID)
+	}
+	query += " ORDER BY s.created_at DESC"
+	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

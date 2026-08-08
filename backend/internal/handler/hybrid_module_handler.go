@@ -128,6 +128,11 @@ func (h *HybridModuleHandler) BatchSave(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
+	// 校验目标节点属于当前租户，防止把模块写入他租户节点
+	if _, err := h.Service.Store().CourseNodes().Get(r.Context(), req.NodeID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程节点不存在")
+		return
+	}
 	modules := make([]store.HybridModuleParams, 0, len(req.Modules))
 	for _, m := range req.Modules {
 		modules = append(modules, store.HybridModuleParams{

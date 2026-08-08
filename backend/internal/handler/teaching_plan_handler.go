@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -116,7 +117,11 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	for _, c := range courses {
 		if c.PositionID != nil && *c.PositionID != "" {
 			if _, ok := posScenMap[*c.PositionID]; !ok {
-				scenarios, _ := h.Service.FetchPositionScenarios(ctx, *c.PositionID)
+				scenarios, err := h.Service.FetchPositionScenarios(ctx, *c.PositionID)
+				if err != nil {
+					slog.Warn("fetch position scenarios failed", "positionID", *c.PositionID, "error", err)
+					continue
+				}
 				posScenMap[*c.PositionID] = scenarios
 			}
 		}

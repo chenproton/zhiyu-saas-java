@@ -248,6 +248,10 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, item := range req.Items {
+		if item.Type == "" || item.Content == "" {
+			respondError(w, http.StatusBadRequest, "批量题目存在缺少类型或内容的条目")
+			return
+		}
 		if item.Answer == nil {
 			item.Answer = domain.JSONSlice{}
 		}

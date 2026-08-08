@@ -275,5 +275,5 @@ func scanOrgRows(rows pgx.Rows) ([]domain.Organization, error) {
 		o.ParentID = parentID
 		items = append(items, o)
 	}
-	return items, nil
+	return items, rows.Err()
 }

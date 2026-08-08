@@ -368,7 +368,7 @@ func ScanGraduationTopicRows(rows pgx.Rows) ([]domain.GraduationProjectTopic, er
 		t.Description = description
 		items = append(items, t)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ScanGraduationArchiveRows 扫描档案行。
@@ -382,7 +382,7 @@ func ScanGraduationArchiveRows(rows pgx.Rows) ([]domain.GraduationProjectArchive
 		}
 		items = append(items, a)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ScanGraduationEvaluationRows 扫描评价行。
@@ -402,5 +402,5 @@ func ScanGraduationEvaluationRows(rows pgx.Rows) ([]domain.GraduationProjectEval
 		e.ComprehensiveGrade = comprehensiveGrade
 		items = append(items, e)
 	}
-	return items, nil
+	return items, rows.Err()
 }

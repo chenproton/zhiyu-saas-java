@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -61,7 +62,9 @@ func (s *PortalStore) PendingApprovalCount(ctx context.Context, tenantID *string
 		query += ` AND tenant_id = $1`
 		args = append(args, *tenantID)
 	}
-	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
+	if err := s.q.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
 	return count
 }
 
@@ -77,7 +80,9 @@ func (s *PortalStore) DraftCourseCount(ctx context.Context, userID string, tenan
 		query += ` AND u.tenant_id = $2`
 		args = append(args, *tenantID)
 	}
-	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
+	if err := s.q.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
 	return count
 }
 
@@ -100,7 +105,9 @@ func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, n
 		query += ` AND u.tenant_id = $` + strconv.Itoa(len(args)+1)
 		args = append(args, *tenantID)
 	}
-	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
+	if err := s.q.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
 	return count
 }
 
@@ -154,9 +161,9 @@ func (s *PortalStore) ListTeacherSchedules(ctx context.Context, userID string, t
 // UserClassNodeID 查询用户班级节点。
 func (s *PortalStore) UserClassNodeID(ctx context.Context, userID string, tenantID *string) string {
 	var classNodeID string
-	_ = s.q.QueryRow(ctx, `
+	if err := s.q.QueryRow(ctx, `
 		SELECT org_node_id FROM users WHERE id = $1 AND ($2::uuid IS NULL OR tenant_id = $2::uuid)
-	`, userID, tenantID).Scan(&classNodeID)
+	`, userID, tenantID).Scan(&classNodeID); err != nil { slog.Warn("portal stat query failed", "error", err) }
 	return classNodeID
 }
 
@@ -296,8 +303,12 @@ func (s *PortalStore) SchoolAdminStats(ctx context.Context, tenantID *string) (i
 	var courseCount, pendingApprovalCount int
 	courseQuery := `SELECT COUNT(*) FROM courses WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)`
 	approvalQuery := `SELECT COUNT(*) FROM approval_records WHERE status = 'pending' AND ($1::uuid IS NULL OR tenant_id = $1::uuid)`
-	_ = s.q.QueryRow(ctx, courseQuery, tenantID).Scan(&courseCount)
-	_ = s.q.QueryRow(ctx, approvalQuery, tenantID).Scan(&pendingApprovalCount)
+	if err := s.q.QueryRow(ctx, courseQuery, tenantID).Scan(&courseCount); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
+	if err := s.q.QueryRow(ctx, approvalQuery, tenantID).Scan(&pendingApprovalCount); err != nil {
+		slog.Warn("portal stat query failed", "error", err)
+	}
 	return courseCount, pendingApprovalCount
 }
 
@@ -700,7 +711,7 @@ func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantI
 // CreditHoursRatio 查询学分学时比。
 func (s *PortalStore) CreditHoursRatio(ctx context.Context) float64 {
 	var ratio float64
-	_ = s.q.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`).Scan(&ratio)
+	if err := s.q.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`, ).Scan(&ratio); err != nil { slog.Warn("portal stat query failed", "error", err) }
 	if ratio <= 0 {
 		ratio = 16
 	}

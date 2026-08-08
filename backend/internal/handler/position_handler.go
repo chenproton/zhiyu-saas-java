@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -516,7 +517,11 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询收藏状态失败")
 		return
 	}
-	cnt, _ := h.Service.FavoriteCount(r.Context(), id)
+	cnt, err := h.Service.FavoriteCount(r.Context(), id)
+	if err != nil {
+		slog.Warn("favorite count failed", "positionID", id, "error", err)
+		cnt = 0
+	}
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav, FavoriteCount: cnt})
 }
 

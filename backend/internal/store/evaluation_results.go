@@ -352,5 +352,5 @@ func ScanSceneEvaluationResultRows(rows pgx.Rows) ([]domain.SceneEvaluationResul
 		res.GradedAt = gradedAt
 		items = append(items, res)
 	}
-	return items, nil
+	return items, rows.Err()
 }

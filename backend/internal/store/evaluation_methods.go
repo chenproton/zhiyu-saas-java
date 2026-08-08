@@ -110,7 +110,7 @@ func ScanEvaluationMethodRows(rows pgx.Rows) ([]domain.EvaluationMethod, error) 
 		m.DocLink = docLink
 		items = append(items, m)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // AppealStore 申诉持久化。
@@ -203,5 +203,5 @@ func ScanAppealRows(rows pgx.Rows) ([]domain.AppealRecord, error) {
 		}
 		items = append(items, a)
 	}
-	return items, nil
+	return items, rows.Err()
 }

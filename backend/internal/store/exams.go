@@ -269,7 +269,7 @@ func (s *ExamStore) fetchExamQuestions(ctx context.Context, examID string) ([]do
 		eq.Analysis = analysis
 		items = append(items, eq)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 // ScanExamRows 扫描试卷行（不含题目）。
@@ -292,7 +292,7 @@ func ScanExamRows(rows pgx.Rows) ([]domain.Exam, error) {
 		e.BatchID = batchID
 		items = append(items, e)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 const examListFrom = "exams e"
