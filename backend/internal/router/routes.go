@@ -116,6 +116,10 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
 				r.Get("/evaluation/job-ability/course-scores", h.jobAbilityResultHandler.CourseScores)
 
+				// 资源标签批量查询为库浏览必需（列表页标签展示），对学生等只读角色开放；
+				// 绑定/写操作仍限 businessUser 组
+				r.Post("/library/resource-tags/query", h.tagHandler.QueryBindings)
+
 				// 学生场景任务中查看/作答试卷（仅读）；写操作仍在 businessUser
 				registerContentReadRoutes(r, "/evaluation/exams", h.examHandler)
 				// 考试安排：学生查询

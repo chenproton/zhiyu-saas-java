@@ -24,5 +24,5 @@ func registerLibraryRoutes(r chi.Router, h *Handlers) {
 	r.Put("/library/tags/{id}", h.tagHandler.Update)
 	r.Delete("/library/tags/{id}", h.tagHandler.Delete)
 	r.Post("/library/resource-tags", h.tagHandler.SetBindings)
-	r.Post("/library/resource-tags/query", h.tagHandler.QueryBindings)
+	// QueryBindings（资源标签批量查询）为库浏览必需，注册在 jobViewer 组（含学生）
 }
