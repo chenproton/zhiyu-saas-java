@@ -57,7 +57,7 @@
    - 目标架构：`handler`（HTTP 适配，不拼 SQL）→ `service`（业务编排+事务）→ `store`（唯一 SQL 所在）→ `domain`（模型）
    - **新增** handler 中出现 `SELECT/INSERT/UPDATE/DELETE` 字符串，或直接调用 `db.Query/QueryRow/Exec` → 禁止合并
    - 新增 handler 禁止持有 `*pgxpool.Pool` 字段
-   - ~~豁免冻结区~~：import/export/template 22 个 handler 已迁移（2026-08-09 取消冻结：Pool 字段移除、统一 Store 注入、SQL 查重下沉 store），全量适用分层红线
+   - 分层红线全量适用：所有 handler（含 import/export/template）统一执行
    - `common.go` 新增函数必须说明为何不能放入 store 层；`service` 禁止拼接 SQL；`store` 禁止读取 HTTP/Claims
    - **复用范例**：内容通用动作复用 `store.ContentActionStore`（`store/content_actions.go`）；新增 handler 的 500 错误统一用 `respondServerError`（记录原始 error 后返回通用响应）
    - 新接口必须附带 handler/service/store 测试至少一种

@@ -50,7 +50,7 @@ func RequireRoleOrMenu(allowedCodes ...string) func(http.Handler) http.Handler {
 					return
 				}
 			}
-			// 菜单豁免仅放行只读请求（GET/HEAD/OPTIONS）：
+			// 菜单权限放行仅限只读请求（GET/HEAD/OPTIONS）：
 			// 菜单权限桥接的是前端页面可见性，写操作（POST/PUT/DELETE）必须走角色绑定，
 			// 防止"有任意菜单即可操作全量 CRUD/审批"的授权绕过。
 			if isReadOnlyMethod(r.Method) && HasAnyMenuPermission(claims) {

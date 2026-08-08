@@ -156,7 +156,7 @@
 | GET/POST/PUT/DELETE | `/alliance/achievements`、`/experts`、`/agreements`、`/permissions`、`/brands` | systemAdmin | 成果/专家/协议/权限/品牌（各 5 CRUD） |
 | GET/POST/PUT/DELETE | `/alliance/dictionaries/{dictType}`、`/dictionaries/{dictType}/{id}` | systemAdmin | 合作字典 |
 
-### 1.10 导入 / 导出 / 模板（portal + businessUser；10min 超时豁免）
+### 1.10 导入 / 导出 / 模板（portal + businessUser；10min 长超时）
 
 **通用实体**（`/export/{entity}`、`/import/{entity}`、`/import/{entity}/preview`，CSV）：基础字典类（行业/专业/组织/学生/教师等，支持 `?overwrite=1` 覆盖更新）。
 
@@ -217,7 +217,7 @@
 
 ### 2.5 只读双组注册
 
-List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生）双组注册；`GET` 允许菜单豁免（RequireRoleOrMenu 仅放行 GET/HEAD/OPTIONS）。
+List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生）双组注册；`GET` 允许菜单放行（RequireRoleOrMenu 仅放行 GET/HEAD/OPTIONS）。
 
 ---
 

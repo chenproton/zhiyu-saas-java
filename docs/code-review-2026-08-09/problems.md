@@ -1,7 +1,7 @@
 # 全量代码审查问题清单（2026-08-09，未修复项）
 
 > 配套勾选清单：`checklist.md`（876 文件全部检查完成）。
-> 已修复问题已删除（修复提交：53c12dd7 越权批、19a7cbcc 前端批、eaaf4045/后续 冻结区迁移、9314fc79/380e405e/240373de/4977ee75 SQL 下沉）。
+> 已修复问题已删除（修复提交：53c12dd7 越权批、19a7cbcc 前端批、eaaf4045/后续 import/export 迁移、9314fc79/380e405e/240373de/4977ee75 SQL 下沉）。
 > 审查原则：① 简单优先，不过度防御；② 安全只排高危；③ 性能与稳定性优先；④ 容忍 hacker；⑤ 锁只给核心业务。
 
 ## 未修复统计（2026-08-09 中危已全部清零）
@@ -29,7 +29,7 @@
 | 8 | store/portal.go:232,571 | 读路径（考试列表）触发全表 UPDATE 懒更新，写放大 | 独立低频任务或条件更新 |
 | 9 | service/affairs.go:313-317 | AutoSchedule 事务内逐条 INSERT，数百条往返放大 | unnest 批量插入 |
 | 10 | service/lesson_content.go:390-418 | 课程发布钩子逐节点生成测评，单事务长、超时风险 | 分批提交 |
-| 11 | 冻结区 import×4 | course/granular/position/schedule import 的 Exec 吞错仍在（迁移后保留原行为） | 冻结区迁移时顺带修（已标注） |
+| 11 | import×4 | course/granular/position/schedule import 的 Exec 吞错仍在（已修复吞错，见 d46a993e） | 已修 |
 
 ### 纵深/基础设施
 
@@ -75,7 +75,7 @@
 - 死代码 ~8 处（savingQuick/setLoadingPlan/abilityDetailOpen 等）
 - 性能 ~12 处（N+1/相关子查询/逐条 INSERT/limit 魔数）
 - i18n 缺失 ~10 处（ui 包中文、组件内硬编码）
-- 冻结区 SQL 字面量 ~190 条（已无 Pool，纯组织优化，不影响功能性能）
+- 存量 SQL 字面量 ~190 条（已无 Pool，纯组织优化，不影响功能性能）
 - 风格 ~15 处（嵌套三元/命名/超大文件——按约定不拆）
 
 ## 评估跳过项（成本/风险 > 收益）
@@ -91,6 +91,6 @@
 
 ## 备注
 
-- 冻结区（23 文件）已于 2026-08-09 取消冻结：Pool 全部移除、Store 注入统一
+- import/export/template 23 文件已迁移：Pool 全部移除、Store 注入统一
 - 中危问题已全部修复（提交：53c12dd7/19a7cbcc/d46a993e/16ef8d3e 及中间批次）
 - 剩余低危约 130 条 + 评估跳过 6 条，均无现役数据风险

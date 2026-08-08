@@ -65,7 +65,7 @@
 | 封装 | 使用文件数 | 所在系统 | 决策 |
 |------|-----------|---------|------|
 | `FormFieldRow` / `FormFieldGrid` | 48 / 22 | 全部系统 | **默认选择**，新表单一律用它 |
-| `Field` 家族（FieldGroup/Field/FieldLabel…） | 7 | 教务排课/计划/方案、测评题库/试卷/评分 | **冻结保留**（container-query 响应式，服务复杂布局），不迁移不扩散 |
+| `Field` 家族（FieldGroup/Field/FieldLabel…） | 7 | 教务排课/计划/方案、测评题库/试卷/评分 | 保留（container-query 响应式，服务复杂布局），不与 FormFieldRow 互相迁移 |
 | 手写裸字段 | 少量 | 复杂结构 | **合理例外**，不强求抽象 |
 | `form.tsx`（react-hook-form 封装） | 0 | — | **已删除**（2026-08）：零引用死代码，勿再引入 |
 
@@ -74,7 +74,7 @@
 **结论：保持现状，不再进行大规模抽象。** 理由：
 
 1. `FormFieldRow` 已覆盖约 90% 场景（48 个文件引用），剩余手写均为"合理例外"（flex 开关行、多控件复合字段、双 Label 嵌套选择器），强行抽象收益低、风险高
-2. 两套字段封装（FormFieldRow 与 Field 家族）并存是**有意保留**：FormFieldRow 通用简单、Field 家族服务复杂响应式布局，各自冻结边界，不做互相迁移
+2. 两套字段封装（FormFieldRow 与 Field 家族）并存是**有意保留**：FormFieldRow 通用简单、Field 家族服务复杂响应式布局，可随时评估合并
 3. **不建议**引入更高层抽象（schema 驱动自动表单 / react-hook-form 重构）：当前 useState 受控 + FormFieldRow 已满足全部需求，引入新范式违背"简单优先"原则
 4. `form.tsx`（react-hook-form）已删除（2026-08 死代码清理），`@/components/ui/form` 不可用
 

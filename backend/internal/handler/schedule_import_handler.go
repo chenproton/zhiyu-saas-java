@@ -744,7 +744,7 @@ func (h *ScheduleImportHandler) lookupOrgNode(ctx context.Context, tenantID, nam
 	return lookupIDByName(ctx, h.Store.Q(), "organizations", tenantID, name)
 }
 
-// checkScheduleConflicts 排课冲突校验（冻结区文件本地实现，经 store 查询）。
+// checkScheduleConflicts 排课冲突校验（经 store 查询）。
 func (h *ScheduleImportHandler) checkScheduleConflicts(ctx context.Context, tenantID string, req *ScheduleEntryRequest, excludeID string) ([]domain.ScheduleConflict, error) {
 	query := `
 		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
@@ -823,7 +823,7 @@ func (h *ScheduleImportHandler) checkScheduleConflicts(ctx context.Context, tena
 	return conflicts, rows.Err()
 }
 
-// resolveCourseIDByCode 根据课程代码查询课程 ID（冻结区文件本地实现）。
+// resolveCourseIDByCode 根据课程代码查询课程 ID。
 func (h *ScheduleImportHandler) resolveCourseIDByCode(ctx context.Context, tenantID string, courseCode *string) *string {
 	if courseCode == nil || *courseCode == "" {
 		return nil

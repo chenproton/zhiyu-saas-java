@@ -16,7 +16,7 @@ import (
 
 func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
 	r.Route("/api/v1", func(r chi.Router) {
-		// 导入/导出/模板生成涉及大文件解析与批量写入，豁免 30s 短超时，
+		// 导入/导出/模板生成涉及大文件解析与批量写入，使用长超时（10 分钟），
 		// 其余接口仍受 30s 保护（statement_timeout=15s 为单语句级别，逐行导入不受影响）
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

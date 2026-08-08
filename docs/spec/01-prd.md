@@ -28,7 +28,7 @@
 | 指标 | 目标（建议值） | 数据来源 |
 |------|---------------|---------|
 | 租户开通全流程时长 | ≤ 5 分钟（超管一键建租户+管理员） | `/admin/tenants` |
-| 内容建设效率 | 岗位/场景/课程/题库支持 Excel 批量导入，单批 10 分钟内完成 | import 接口（10min 超时豁免） |
+| 内容建设效率 | 岗位/场景/课程/题库支持 Excel 批量导入，单批 10 分钟内完成 | import 接口（10min 长超时） |
 | 内容发布审批闭环 | 从提交到发布的审批全链路可达 | content 状态机 + approval_records |
 | 学生评价覆盖 | 学生可完成节点作业/测验/场景任务/考试/现场问答等多种测评 | evaluation 模块 |
 | 系统可用性 | 健康检查通过率 ≥ 99.9%，登录限流保护 | `/health`、登录限流 |
@@ -198,7 +198,7 @@ rejected → draft / pending / archived
 - 内容实体（岗位/场景/体系课/颗粒课/题库/题目/试卷）与基础数据（行业/专业/组织/学生/教师/联盟 7 实体/排课/人培课程/教务配置）支持 Excel 导入
 - 流程：上传 → 预览（错误行明细）→ 确认导入；同名/同 code 冲突提示
 - 导出支持"导入模板 Excel 导出并回导"（题库详情批量导出题目为模板）
-- 10 分钟超时豁免（常规接口 30s）
+- 10 分钟长超时（常规接口 30s）
 
 ---
 
@@ -219,7 +219,7 @@ rejected → draft / pending / archived
 | 项 | 说明 |
 |----|------|
 | 认证 | JWT HS256，密钥 `JWT_SECRET`（.env，禁止入库）；有效 7 天 |
-| 授权 | 三级中间件：平台隔离（RequirePlatform）→ 角色（RequireRole）→ 菜单/按钮权限；GET 豁免仅限只读（RequireRoleOrMenu 限制 GET/HEAD/OPTIONS） |
+| 授权 | 三级中间件：平台隔离（RequirePlatform）→ 角色（RequireRole）→ 菜单/按钮权限；GET 放行仅限只读（RequireRoleOrMenu 限制 GET/HEAD/OPTIONS） |
 | 数据权限 | 租户行级隔离；写操作三重校验；登录日志 + 操作日志审计（POST/PUT/DELETE 自动记录） |
 | 限流 | 登录 4 接口 30 次/分钟/IP，Redis 计数，429 + X-RateLimit-* 头 |
 | SQL 注入 | 排序白名单（SanitizeIdentifier）；store 层参数化查询 |
@@ -238,7 +238,7 @@ rejected → draft / pending / archived
 
 ### 5.4 可维护性
 
-- 后端分层：handler（HTTP 适配）→ service（编排+事务）→ store（唯一 SQL）→ domain（模型冻结）；详见 `docs/refactor-layering.md`
+- 后端分层：handler（HTTP 适配）→ service（编排+事务）→ store（唯一 SQL）→ domain（模型）；详见 `docs/refactor-layering.md`
 - 新增 handler 禁止拼 SQL/持有 pool；新接口必须附带 handler/service/store 测试至少一种
 - 前端组件规范见 `docs/components.md`、`docs/forms-tables.md`
 - 质量门禁：CI 前端 typecheck/lint/test/format:check，后端 gofmt/vet/build/test（DB 容器）

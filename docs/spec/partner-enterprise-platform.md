@@ -29,7 +29,6 @@
 | 学校侧协议/项目/成果 | 继续由学校维护，可关联到已引入企业，数据仍属学校租户 |
 | 门户其他模块 | 教务/课程/测评/岗位等不受影响 |
 | 运营方 SaaS 平台 | superadmin 控制台不受影响 |
-| 联盟导入导出冻结区 | `resource_import_handler.go` 等 22 个冻结文件不改动 |
 
 ---
 
@@ -272,7 +271,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | GET | `/partner/workspace/dashboard` | 所有 | 服务台统计（专家数/合作学校数等） |
 | GET | `/partner/schools` | 所有 | 合作学校列表（link 反向视图） |
 
-### 5.3 学校侧联盟接口改造（`alliance_handler.go` / `alliance_crud_handler.go`，非冻结区）
+### 5.3 学校侧联盟接口改造（`alliance_handler.go` / `alliance_crud_handler.go`）
 
 | 方法 | 路径 | 变更 |
 |------|------|------|
@@ -297,10 +296,10 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | PUT | `/evaluation/scene-results/{id}/grade`、`/batch-grade` | 保持现有能力；配合评分菜单授权（见 F16） |
 | — | 任务级企业导师分配 | 新增分配机制：任务/测评配置中选定 `enterprise_mentor` 主体 → 从已启用影子账号中指定具体评分人（落地到 `task_evaluation_methods` 或新分配字段） |
 
-### 5.5 导入接口处理（冻结区约束）
+### 5.5 导入接口处理
 
-- `resource_import_handler.go` 属冻结区文件，**不改动**
-- 在 routes.go（非冻结区）移除 `/import/alliance-enterprises*`、`/import/alliance-experts*` 路由注册，接口 404 即失效
+- `resource_import_handler.go` 已迁移，可正常调整
+- 在 routes.go 移除 `/import/alliance-enterprises*`、`/import/alliance-experts*` 路由注册，接口 404 即失效
 - 前端同步移除联盟企业/专家 Excel 导入入口
 
 ### 5.6 权限与越权校验
@@ -391,7 +390,7 @@ B10/B11（影子账号 + public 改造）→ B12（任务级分配）→ B13（�
 | 风险 | 应对 |
 |------|------|
 | 跨租户越权（学校读企业专家） | store 层强制校验 enterprise_id ∈ 本校 links |
-| 冻结区文件 | `resource_import_handler.go` 不动，仅移除路由注册与前端入口 |
+| 导入文件 | `resource_import_handler.go` 可调整；移除路由注册与前端入口 |
 | 解除引入后历史引用 | 协议/项目/成果引用保留，页面不再展示，文档说明 |
 | partner 用户名唯一性 | 注册接口应用层校验 partner 平台全局唯一（现有唯一约束是租户级，不动） |
 | PUT 全列覆盖语义 | 学校侧企业更新改为专用 handler（仅 link 管理字段），不复用 `ValidateUpdateExisting` 兜底 |
