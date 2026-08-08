@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -126,7 +128,11 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	base, err := h.Service.GetNodeBase(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程节点不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程节点不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询课程节点失败")
 		return
 	}
 	items, err := h.enrichCourseNodes(r.Context(), []courseNodeBase{*base})
@@ -157,7 +163,11 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询课程失败")
 		return
 	}
 
@@ -213,7 +223,11 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	existing, err := h.Service.GetNodeBase(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "课程节点不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程节点不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询课程节点失败")
 		return
 	}
 
@@ -328,7 +342,11 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Service.GetNodeBase(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "课程节点不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程节点不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询课程节点失败")
 		return
 	}
 	if err := h.Service.DeleteNode(r.Context(), id, tenantID); err != nil {
@@ -357,7 +375,11 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Service.Store().Courses().Get(r.Context(), req.CourseID, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "课程不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "课程不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询课程失败")
 		return
 	}
 	if err := h.Service.ReorderNodes(r.Context(), req.CourseID, req.NodeIDs); err != nil {

@@ -1,15 +1,25 @@
 package handler
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
+
+// configImportDB 教务配置导入所需的最小查询接口（*pgxpool.Pool 与 pgx.Tx 均满足）。
+type configImportDB interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 type AffairsConfigImportHandler struct {
 	DB *pgxpool.Pool
@@ -52,9 +62,20 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 	result := map[string]interface{}{}
+	// 三 Sheet 导入包在同一事务：任一步骤失败整体回滚，防止中途失败留部分数据
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		respondServerError(w, r, err, "开启导入事务失败")
+		return
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			slog.Error("[affairs-config-import] 事务回滚失败", "error", err)
+		}
+	}()
 
 	if rows, _ := xlsx.GetRows("学期"); len(rows) > 2 {
-		created, skipped := 0, 0
+		created, skipped, failed := 0, 0, 0
 		for i, row := range rows {
 			if i < 2 {
 				continue
@@ -72,21 +93,30 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 				weeks = 16
 			}
 			var exists string
-			h.DB.QueryRow(ctx, `SELECT id FROM terms WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists)
+			if err := tx.QueryRow(ctx, `SELECT id FROM terms WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists); err != nil && err != pgx.ErrNoRows {
+				slog.Error("[affairs-config-import] 学期查重失败", "name", name, "error", err)
+				failed++
+				continue
+			}
 			if exists != "" {
 				skipped++
 				continue
 			}
-			h.DB.Exec(ctx, `INSERT INTO terms (id, tenant_id, name, start_date, end_date, weeks_count) VALUES ($1,$2,$3,$4::date,$5::date,$6)`,
-				uuid.NewString(), tenantID, name, startDate, endDate, weeks)
+			if _, err := tx.Exec(ctx, `INSERT INTO terms (id, tenant_id, name, start_date, end_date, weeks_count) VALUES ($1,$2,$3,$4::date,$5::date,$6)`,
+				uuid.NewString(), tenantID, name, startDate, endDate, weeks); err != nil {
+				slog.Error("[affairs-config-import] 学期插入失败", "name", name, "error", err)
+				failed++
+				continue
+			}
 			created++
 		}
 		result["termsCreated"] = created
 		result["termsSkipped"] = skipped
+		result["termsFailed"] = failed
 	}
 
 	if rows, _ := xlsx.GetRows("场地"); len(rows) > 2 {
-		created, skipped := 0, 0
+		created, skipped, failed := 0, 0, 0
 		for i, row := range rows {
 			if i < 2 {
 				continue
@@ -104,21 +134,30 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 				cap = &capacity
 			}
 			var exists string
-			h.DB.QueryRow(ctx, `SELECT id FROM venues WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists)
+			if err := tx.QueryRow(ctx, `SELECT id FROM venues WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists); err != nil && err != pgx.ErrNoRows {
+				slog.Error("[affairs-config-import] 场地查重失败", "name", name, "error", err)
+				failed++
+				continue
+			}
 			if exists != "" {
 				skipped++
 				continue
 			}
-			h.DB.Exec(ctx, `INSERT INTO venues (id, tenant_id, name, type, capacity) VALUES ($1,$2,$3,$4,$5)`,
-				uuid.NewString(), tenantID, name, vtype, cap)
+			if _, err := tx.Exec(ctx, `INSERT INTO venues (id, tenant_id, name, type, capacity) VALUES ($1,$2,$3,$4,$5)`,
+				uuid.NewString(), tenantID, name, vtype, cap); err != nil {
+				slog.Error("[affairs-config-import] 场地插入失败", "name", name, "error", err)
+				failed++
+				continue
+			}
 			created++
 		}
 		result["venuesCreated"] = created
 		result["venuesSkipped"] = skipped
+		result["venuesFailed"] = failed
 	}
 
 	if rows, _ := xlsx.GetRows("节次"); len(rows) > 2 {
-		created, skipped := 0, 0
+		created, skipped, failed := 0, 0, 0
 		for i, row := range rows {
 			if i < 2 {
 				continue
@@ -150,19 +189,33 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 				et = &endTime
 			}
 			var exists string
-			h.DB.QueryRow(ctx, `SELECT id FROM period_slots WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists)
+			if err := tx.QueryRow(ctx, `SELECT id FROM period_slots WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists); err != nil && err != pgx.ErrNoRows {
+				slog.Error("[affairs-config-import] 节次查重失败", "name", name, "error", err)
+				failed++
+				continue
+			}
 			if exists != "" {
 				skipped++
 				continue
 			}
-			h.DB.Exec(ctx, `INSERT INTO period_slots (id, tenant_id, name, slot_type, start_time, end_time, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-				uuid.NewString(), tenantID, name, slotType, st, et, sortOrder)
+			if _, err := tx.Exec(ctx, `INSERT INTO period_slots (id, tenant_id, name, slot_type, start_time, end_time, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+				uuid.NewString(), tenantID, name, slotType, st, et, sortOrder); err != nil {
+				slog.Error("[affairs-config-import] 节次插入失败", "name", name, "error", err)
+				failed++
+				continue
+			}
 			created++
 		}
 		result["periodSlotsCreated"] = created
 		result["periodSlotsSkipped"] = skipped
+		result["periodSlotsFailed"] = failed
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		slog.Error("[affairs-config-import] 事务提交失败", "error", err)
+		respondServerError(w, r, err, "导入提交失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, result)
 }
 

@@ -29,6 +29,7 @@ import {
   allianceProjectApi,
   allianceAchievementApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -67,24 +68,19 @@ export default function AllianceEnterpriseDetailPage() {
 
   const loadData = () => {
     if (!tenantId || !id) return
+    // 分页合并全量拉取：关联过滤基于完整列表，超过后端 maxPageSize(200) 不再截断
     Promise.all([
       allianceEnterpriseApi.get(id),
-      allianceAgreementApi.list({ limit: 200 }),
-      allianceProjectApi.list({ limit: 200 }),
-      allianceAchievementApi.list({ limit: 200 }),
+      fetchAllPages((page, pageSize) => allianceAgreementApi.list({ limit: pageSize, offset: page * pageSize })),
+      fetchAllPages((page, pageSize) => allianceProjectApi.list({ limit: pageSize, offset: page * pageSize })),
+      fetchAllPages((page, pageSize) => allianceAchievementApi.list({ limit: pageSize, offset: page * pageSize })),
     ])
       .then(([ent, agr, proj, ach]) => {
         setEnterprise(ent)
-        setAllAgreements(agr.items || [])
-        setAgreements((agr.items || []).filter((a) => (a.enterpriseIds || []).includes?.(id)))
-        setProjects(
-          proj.items?.filter((p: AllianceProject) => (p.enterpriseIds as any)?.includes?.(id)) ||
-            [],
-        )
-        setAchievements(
-          ach.items?.filter((a: AllianceAchievement) => (a.enterpriseIds as any)?.includes?.(id)) ||
-            [],
-        )
+        setAllAgreements(agr)
+        setAgreements(agr.filter((a) => (a.enterpriseIds || []).includes?.(id)))
+        setProjects(proj.filter((p: AllianceProject) => (p.enterpriseIds as any)?.includes?.(id)))
+        setAchievements(ach.filter((a: AllianceAchievement) => (a.enterpriseIds as any)?.includes?.(id)))
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))

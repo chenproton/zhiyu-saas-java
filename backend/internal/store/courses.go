@@ -159,6 +159,12 @@ func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 		`, id); err != nil {
 			return fmt.Errorf("delete course exam usages: %w", err)
 		}
+		// 从知识点/资源反向引用中移除该课程（granular_lesson_ids）
+		if _, err := tx.Exec(ctx, `
+			UPDATE knowledge_points SET granular_lesson_ids = array_remove(granular_lesson_ids, $1) WHERE $1::uuid = ANY(granular_lesson_ids)
+		`, id); err != nil {
+			return fmt.Errorf("unbind course from knowledge points: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM courses WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
 			return err
 		}

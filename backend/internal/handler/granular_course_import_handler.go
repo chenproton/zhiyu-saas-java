@@ -158,15 +158,18 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			continue
 		}
 
-		// 查重/跳过判定之后才创建知识点与资源，preview 模式不产生任何写操作
-		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
-		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
-
 		if exists && overwrite {
 			if !canOverwriteContent(existingCreator, existingCoCreators, userID) {
 				result.PermissionSkipped++
 				continue
 			}
+		}
+
+		// 覆盖权限判定通过后才创建知识点与资源（preview 与权限不足路径均无写副作用）
+		knowledgePointIDs := findOrCreateKnowledgePoints(ctx, h.DB, tenantID, knowledgeNames)
+		resourceIDs := findOrCreateResources(ctx, h.DB, tenantID, resourceNames, userID)
+
+		if exists && overwrite {
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
 				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7,
