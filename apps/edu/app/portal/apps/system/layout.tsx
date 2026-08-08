@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { systemNavigationConfig } from '@/lib/navigation-config'
 import { resolvePlatformIcon } from '@/components/platform-shell'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const menuItems = systemNavigationConfig.sideNavItems
@@ -155,6 +155,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
       </button>
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0">
+          <SheetTitle className="sr-only">{t('导航菜单')}</SheetTitle>
           <div className="flex h-full flex-col overflow-y-auto">{navContent}</div>
         </SheetContent>
       </Sheet>

@@ -230,6 +230,9 @@ async function walkRoute(page, ctx, route, args, role, sink) {
   } catch (e) {
     routeResult.status = 'error'
     routeResult.errors.push({ type: 'page', message: `页面巡检失败: ${e.message}` })
+    if (/crash|target closed/i.test(e.message || '')) {
+      routeResult.crashed = true // 渲染进程崩溃（多并发大页面时内存压力），由 worker 重试
+    }
   }
   for (const err of sink.splice(0)) {
     routeResult.errors.push(err)
@@ -291,11 +294,19 @@ async function main() {
 
     await Promise.all(chunks.map(async (chunk, wi) => {
       const wctx = await browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) })
-      const wpage = await wctx.newPage()
-      const wsink = []
+      let wpage = await wctx.newPage()
+      let wsink = []
       attachListeners(wpage, wsink, args)
       for (const route of chunk) {
-        const r = await walkRoute(wpage, wctx, route, args, role, wsink)
+        let r = await walkRoute(wpage, wctx, route, args, role, wsink)
+        // 渲染进程崩溃（多 worker 并发大页面时的内存压力）→ 换新页面重试，最多 2 次
+        for (let attempt = 0; r.crashed && attempt < 2; attempt++) {
+          await wpage.close().catch(() => {})
+          wpage = await wctx.newPage()
+          wsink = []
+          attachListeners(wpage, wsink, args)
+          r = await walkRoute(wpage, wctx, route, args, role, wsink)
+        }
         perRole.push(r)
         done++
         const mark = r.status === 'ok' ? 'ok  ' : r.status === 'skip' ? 'skip' : 'ERR '

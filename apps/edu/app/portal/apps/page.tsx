@@ -187,7 +187,12 @@ export default function AppsPage() {
     return pool
   }, [allModules])
 
-  const serviceClickCounts = useMemo(() => getServiceClickCounts(), [])
+  // localStorage 仅在客户端可用：SSR 首屏统一渲染为空计数，避免 hydration 不匹配
+  const [serviceClickCounts, setServiceClickCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    const timer = setTimeout(() => setServiceClickCounts(getServiceClickCounts()), 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   const visibleQuickAccess = useMemo(() => {
     const visible = servicePool.filter((item) => hasMenuPermission(item.href))
