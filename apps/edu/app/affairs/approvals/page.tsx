@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { programApi, teachingPlanApi, batchApi, affairsBatchApi, approvalApi } from '@/lib/api'
 import { fetchAllPages } from '@/lib/fetch-all'
-import type { TrainingProgram, TeachingPlan } from '@/lib/types'
+import type { TrainingProgram, TeachingPlan } from '@/lib/types/affairs'
+import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
@@ -31,7 +32,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
-  history?: any[]
+  history?: ApprovalHistoryItem[]
 }
 
 export default function AffairsApprovalsPage() {
@@ -133,7 +134,7 @@ export default function AffairsApprovalsPage() {
   ]
 
   const mapRecord = useCallback(
-    (a: any): ApprovalView => {
+    (a: ApprovalRecord): ApprovalView => {
       const isProgram = programRecords.includes(a)
       const targetType = isProgram ? ('training_program' as const) : ('teaching_plan' as const)
       const target = (isProgram ? programMap : planMap).get(a.targetId)

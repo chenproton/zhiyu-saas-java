@@ -18,9 +18,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { CheckSquare, ChevronDown, Eye } from 'lucide-react'
 import { useApprovalDialogs } from '@/components/shared/_components/approval-dialogs'
+import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { useT } from '@/lib/i18n/locale-provider'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import type { ApprovalStepInfo } from '@/hooks/use-approvals'
+import type { ApprovalHistoryItem } from '@/lib/types/backend'
 
 export interface ApprovalColumn<T> {
   header: string
@@ -29,7 +30,7 @@ export interface ApprovalColumn<T> {
 }
 
 export interface ApprovalListPageProps<
-  T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: any[] },
+  T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: ApprovalHistoryItem[] },
 > {
   entityLabel: string
   pageDescription: string
@@ -52,7 +53,7 @@ export interface ApprovalListPageProps<
 }
 
 export function ApprovalListPage<
-  T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: any[] },
+  T extends { id: string; status: string; stepInfo?: ApprovalStepInfo; history?: ApprovalHistoryItem[] },
 >({
   entityLabel,
   pageDescription,

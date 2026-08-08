@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -49,6 +49,7 @@ interface ExamStudentResult {
 
 function ExamResultsContent() {
   const t = useT()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const usageId = searchParams.get('usageId') || ''
   const [usage, setUsage] = useState<ExamUsage | null>(null)
@@ -351,7 +352,12 @@ function ExamResultsContent() {
                       )}
                     </TableCell>
                     <TableCell className="sticky right-0 bg-white text-right">
-                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => router.push(`/evaluation/lesson-results/${result.id}`)}
+                      >
                         <Eye className="size-3.5" />
                         {t('查看详情')}
                       </Button>

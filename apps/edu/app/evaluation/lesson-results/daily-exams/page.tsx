@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   BookOpen,
@@ -42,37 +42,40 @@ export default function DailyExamsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
+  // 统计选中项：避免对全部 usage 并发请求（N+1 打爆后端）
+  const loadStats = useCallback(async (usageId: string) => {
+    try {
+      const r = await examResultApi.list({ usageId, limit: 500 })
+      const list = r.items || []
+      setUsageStats((prev) => ({
+        ...prev,
+        [usageId]: {
+          submitted: list.length,
+          pending: list.filter((x) => x.gradingStatus !== 'evaluated').length,
+          graded: list.filter((x) => x.gradingStatus === 'evaluated').length,
+        },
+      }))
+    } catch {
+      setUsageStats((prev) => ({ ...prev, [usageId]: { submitted: 0, pending: 0, graded: 0 } }))
+    }
+  }, [])
+
   useEffect(() => {
     const load = async () => {
       try {
         const res = await examUsageApi.list({ limit: 500 })
         const items = res.items || []
         setUsages(items)
-        setSelectedUsageId((prev) => prev ?? items[0]?.id ?? null)
-        const stats: Record<string, UsageStats> = {}
-        await Promise.all(
-          items.map(async (u) => {
-            try {
-              const r = await examResultApi.list({ usageId: u.id, limit: 500 })
-              const list = r.items || []
-              stats[u.id] = {
-                submitted: list.length,
-                pending: list.filter((x) => x.gradingStatus !== 'evaluated').length,
-                graded: list.filter((x) => x.gradingStatus === 'evaluated').length,
-              }
-            } catch {
-              stats[u.id] = { submitted: 0, pending: 0, graded: 0 }
-            }
-          }),
-        )
-        setUsageStats(stats)
+        const firstId = items[0]?.id ?? null
+        setSelectedUsageId((prev) => prev ?? firstId)
+        if (firstId) void loadStats(firstId)
       } catch {
         /* ignore */
       }
       setLoading(false)
     }
     load()
-  }, [])
+  }, [loadStats])
 
   useEffect(() => {
     if (!selectedUsageId) return
@@ -81,6 +84,15 @@ export default function DailyExamsPage() {
       .then((res) => setResults(res.items || []))
       .catch(() => setResults([]))
   }, [selectedUsageId])
+
+  // 切换选中项时统计其数据（已统计过的跳过，避免重复请求）
+  const statsDoneRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (selectedUsageId && !statsDoneRef.current.has(selectedUsageId)) {
+      statsDoneRef.current.add(selectedUsageId)
+      void loadStats(selectedUsageId)
+    }
+  }, [selectedUsageId, loadStats])
 
   const filteredUsages = useMemo(() => {
     if (!search.trim()) return usages

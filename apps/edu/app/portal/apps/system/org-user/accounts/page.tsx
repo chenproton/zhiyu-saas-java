@@ -26,6 +26,7 @@ import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Trash2, Loader2, Check, X, Users, KeyRound, Power } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatDateTime } from '@/lib/format-utils'
 
 export default function AccountsPage() {
   const t = useT()
@@ -131,7 +132,7 @@ export default function AccountsPage() {
       orgTypeName: orgTypeName || undefined,
       loginName: user.username || user.loginName || '',
       status: user.status,
-      lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('zh-CN') : '—',
+      lastLogin: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : '—',
     }
   })
 

@@ -67,8 +67,14 @@ func (s *BannerStore) Update(ctx context.Context, id, tenantID string, p *Banner
 
 // Delete 删除轮播图。
 func (s *BannerStore) Delete(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM banner_configs WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	tag, err := s.q.Exec(ctx, `DELETE FROM banner_configs WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // BannerParams 轮播图参数。

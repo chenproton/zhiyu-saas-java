@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { scenarioApi, sceneBatchApi } from '@/lib/api'
 import type { Scenario, SceneBatch } from '@/lib/types/scene'
+import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
@@ -27,7 +28,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
-  history?: any[]
+  history?: ApprovalHistoryItem[]
 }
 
 export default function SceneApprovalsPage() {
@@ -98,7 +99,7 @@ export default function SceneApprovalsPage() {
   ]
 
   const mapRecord = useCallback(
-    (a: any): ApprovalView => {
+    (a: ApprovalRecord): ApprovalView => {
       const scenario = scenarioMap.get(a.targetId)
       const batch = scenario?.batchId ? batchMap.get(scenario.batchId) : undefined
       return {

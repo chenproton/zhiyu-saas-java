@@ -23,6 +23,7 @@ import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel } from '@/lib/hybrid-eval'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatDateTime } from '@/lib/format-utils'
 
 const methodLabel = (key: string, label: (k: string) => string) =>
   getHybridMethodLabel(key, label)
@@ -183,7 +184,7 @@ export default function LessonResultDetailPage() {
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <Clock className="h-3.5 w-3.5" />
                   {t('评分时间：{time}', {
-                    time: new Date(result.gradedAt).toLocaleString('zh-CN'),
+                    time: formatDateTime(result.gradedAt),
                   })}
                 </div>
               )}
@@ -323,7 +324,7 @@ export default function LessonResultDetailPage() {
                 {result.gradedAt && (
                   <span className="text-gray-400 text-xs">
                     {t('评分时间：{time}', {
-                      time: new Date(result.gradedAt).toLocaleString('zh-CN'),
+                      time: formatDateTime(result.gradedAt),
                     })}
                   </span>
                 )}

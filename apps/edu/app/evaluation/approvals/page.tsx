@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { questionBankApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
-import type { QuestionBank, Exam, EvaluationBatch } from '@/lib/types'
+import type { Exam, QuestionBank, EvaluationBatch } from '@/lib/types/evaluation'
+import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
@@ -31,7 +32,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
-  history?: any[]
+  history?: ApprovalHistoryItem[]
 }
 
 export default function EvaluationApprovalsPage() {
@@ -135,7 +136,7 @@ export default function EvaluationApprovalsPage() {
   ]
 
   const mapRecord = useCallback(
-    (a: any): ApprovalView => {
+    (a: ApprovalRecord): ApprovalView => {
       const isBank = bankRecords.includes(a)
       const targetType = isBank ? ('question_bank' as const) : ('exam' as const)
       let targetName = a.targetId

@@ -76,8 +76,14 @@ func (s *AbilityStore) Delete(ctx context.Context, id, tenantID string) error {
 	if err := DeleteResourceTags(ctx, s.q, domain.TagResourceTypeAbilityPoint, id); err != nil {
 		return err
 	}
-	_, err := s.q.Exec(ctx, `DELETE FROM ability_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	tag, err := s.q.Exec(ctx, `DELETE FROM ability_points WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // AbilityPointParams 能力点参数。

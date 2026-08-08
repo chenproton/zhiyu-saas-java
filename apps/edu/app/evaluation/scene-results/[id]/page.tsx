@@ -26,7 +26,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { computeTotalScore } from '@/lib/format-utils'
+import { computeTotalScore, formatDateTime } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import {
   evaluationResultApi,
@@ -1322,7 +1322,7 @@ export default function GradingDetailPage() {
           {saved && result.gradedAt && (
             <div className="text-xs text-gray-400 shrink-0 text-right">
               <div>{t('评分时间')}</div>
-              <div>{new Date(result.gradedAt).toLocaleString('zh-CN')}</div>
+              <div>{formatDateTime(result.gradedAt)}</div>
             </div>
           )}
           <Button variant="outline" size="sm" asChild className="shrink-0 h-9">

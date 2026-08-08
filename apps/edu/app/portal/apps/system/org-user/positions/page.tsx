@@ -22,6 +22,7 @@ import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Pencil, Power, Trash2, Upload, Download, Loader2, Users } from 'lucide-react'
 import type { StaffTitle } from '@/lib/types/backend'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatDateTime } from '@/lib/format-utils'
 
 export default function PositionsPage() {
   const t = useT()
@@ -190,7 +191,7 @@ export default function PositionsPage() {
             />
           </TableCell>
           <TableCell className="hidden md:table-cell text-muted-foreground">
-            {new Date(position.createdAt).toLocaleString('zh-CN')}
+            {formatDateTime(position.createdAt)}
           </TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>

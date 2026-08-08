@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { positionApi, batchApi } from '@/lib/api'
 import { fetchAllPages } from '@/lib/fetch-all'
 import type { CareerPosition, JobBatch } from '@/lib/types/job'
+import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
 import { ApprovalListPage, type ApprovalColumn } from '@/components/shared/approval-list-page'
@@ -27,7 +28,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
-  history?: any[]
+  history?: ApprovalHistoryItem[]
 }
 
 export default function JobApprovalsPage() {
@@ -97,7 +98,7 @@ export default function JobApprovalsPage() {
   ]
 
   const mapRecord = useCallback(
-    (a: any): ApprovalView => {
+    (a: ApprovalRecord): ApprovalView => {
       const position = positionMap.get(a.targetId)
       const batch = position?.batchId ? batchMap.get(position.batchId) : undefined
       return {
