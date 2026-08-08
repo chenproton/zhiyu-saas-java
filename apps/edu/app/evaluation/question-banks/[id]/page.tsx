@@ -289,13 +289,17 @@ export default function QuestionBankDetailPage() {
     updateQuestionBank(bankId, data)
   }
 
-  const handleQuestionSubmit = (data: QuestionFormData) => {
-    if (editingQuestion) {
-      updateQuestion(editingQuestion.id, data)
-    } else {
-      createQuestion(bankId, data)
+  const handleQuestionSubmit = async (data: QuestionFormData) => {
+    try {
+      if (editingQuestion) {
+        await updateQuestion(editingQuestion.id, data)
+      } else {
+        await createQuestion(bankId, data)
+      }
+      setEditingQuestion(null)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     }
-    setEditingQuestion(null)
   }
 
   const handleQuestionEdit = (question: Question) => {
@@ -304,10 +308,14 @@ export default function QuestionBankDetailPage() {
     setQuestionFormOpen(true)
   }
 
-  const handleQuestionDelete = () => {
+  const handleQuestionDelete = async () => {
     if (deleteConfirm) {
-      deleteQuestion(deleteConfirm.id)
-      setDeleteConfirm(null)
+      try {
+        await deleteQuestion(deleteConfirm.id)
+        setDeleteConfirm(null)
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: t('删除失败'), description: err.message })
+      }
     }
   }
 
@@ -329,19 +337,24 @@ export default function QuestionBankDetailPage() {
     setSelectedQuestions(newSelected)
   }
 
-  const handleBatchDelete = () => {
-    selectedQuestions.forEach((id) => {
-      deleteQuestion(id)
-    })
-    setSelectedQuestions(new Set())
-    setBatchDeleteConfirm(false)
+  const handleBatchDelete = async () => {
+    try {
+      for (const id of selectedQuestions) {
+        await deleteQuestion(id)
+      }
+      setSelectedQuestions(new Set())
+      setBatchDeleteConfirm(false)
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('批量删除失败'), description: err.message })
+    }
   }
 
-  const handleBatchCopy = () => {
-    selectedQuestions.forEach((id) => {
-      const question = questions.find((q) => q.id === id)
-      if (question) {
-        createQuestion(bankId, {
+  const handleBatchCopy = async () => {
+    try {
+      for (const id of selectedQuestions) {
+        const question = questions.find((q) => q.id === id)
+        if (!question) continue
+        await createQuestion(bankId, {
           type: question.type,
           content: question.content + t(' (复制)'),
           options: question.options,
@@ -352,8 +365,10 @@ export default function QuestionBankDetailPage() {
           knowledgePoints: question.knowledgePoints,
         })
       }
-    })
-    setSelectedQuestions(new Set())
+      setSelectedQuestions(new Set())
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('批量复制失败'), description: err.message })
+    }
   }
 
   const handleBatchExport = async () => {
@@ -385,17 +400,21 @@ export default function QuestionBankDetailPage() {
     setBatchMoveOpen(false)
   }
 
-  const handleCopyQuestion = (question: Question) => {
-    createQuestion(bankId, {
-      type: question.type,
-      content: question.content + t(' (复制)'),
-      options: question.options,
-      answer: question.answer,
-      analysis: question.analysis,
-      score: question.score,
+  const handleCopyQuestion = async (question: Question) => {
+    try {
+      await createQuestion(bankId, {
+        type: question.type,
+        content: question.content + t(' (复制)'),
+        options: question.options,
+        answer: question.answer,
+        analysis: question.analysis,
+        score: question.score,
       difficulty: question.difficulty,
       knowledgePoints: question.knowledgePoints,
-    })
+      })
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('复制失败'), description: err.message })
+    }
   }
 
   const getCollaboratorNames = () =>

@@ -105,8 +105,8 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if existingPlanID, err := h.Service.FindTeachingPlanExisting(ctx, req.ProgramID, req.TermID, tenantID); err == nil && existingPlanID != "" {
-		scheduledCount, _ := h.Service.TeachingPlanScheduledCount(ctx, existingPlanID)
-		if scheduledCount > 0 {
+		scheduledCount, serr := h.Service.TeachingPlanScheduledCount(ctx, existingPlanID)
+		if serr == nil && scheduledCount > 0 {
 			respondError(w, http.StatusConflict, "该计划已有排课记录，无法重新生成")
 			return
 		}
@@ -170,7 +170,11 @@ func (h *TeachingPlanHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "教学计划不存在")
 		return
 	}
-	entries, _ := h.Service.ListTeachingPlanEntries(r.Context(), id, tenantID)
+	entries, err := h.Service.ListTeachingPlanEntries(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询计划条目失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, TeachingPlanDetailResponse{TeachingPlan: *plan, Entries: entries})
 }
 
@@ -290,7 +294,11 @@ func (h *TeachingPlanHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "确认教学计划失败")
 		return
 	}
-	plan, _ := h.Service.GetTeachingPlan(r.Context(), id, tenantID)
+	plan, err := h.Service.GetTeachingPlan(r.Context(), id, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询教学计划失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, plan)
 }
 

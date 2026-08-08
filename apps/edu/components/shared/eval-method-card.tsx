@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useToast } from '@zhiyu/ui'
 import { EVAL_METHOD_LABELS, EVAL_METHOD_COLORS } from '@/lib/types'
 
 export interface EvalMethodViewModel {
@@ -266,6 +267,7 @@ export function EvalMethodSubmitDialog({
   onSubmitted,
 }: EvalMethodSubmitDialogProps) {
   const t = useT()
+  const { toast } = useToast()
   const color = EVAL_METHOD_COLORS[method.methodKey] || '#94a3b8'
   const label = method.label || t(getEvalMethodLabel(method.methodKey))
   const Icon = methodIconMap[method.methodKey] || ClipboardList
@@ -305,6 +307,8 @@ export function EvalMethodSubmitDialog({
       if (uploaded) {
         setFiles((prev: UploadedFile[]) => [...prev, uploaded])
       }
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('上传失败'), description: err instanceof Error ? err.message : t('请重试') })
     } finally {
       setUploading(false)
       e.target.value = ''

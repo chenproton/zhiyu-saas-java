@@ -206,7 +206,11 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, _ := h.Service.Get(r.Context(), id)
+	tenant, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询租户失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, tenant)
 }
 
@@ -237,7 +241,11 @@ func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, _ := h.Service.Get(r.Context(), id)
+	tenant, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询租户失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, tenant)
 }
 
@@ -350,7 +358,11 @@ func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, _ := h.Service.Get(r.Context(), id)
+	tenant, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询租户失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, tenant)
 }
 
@@ -375,7 +387,11 @@ func (h *TenantHandler) AdminUpdateStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tenant, _ := h.Service.Get(r.Context(), id)
+	tenant, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "查询租户失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, tenant)
 }
 

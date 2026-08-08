@@ -484,13 +484,27 @@ export function KnowledgeGraphD3View({
       .attr('r', (d: any) =>
         selectedId === d.id
           ? TYPE_META_D3[(d as SimNode).type].radius + 4
-          : TYPE_META_D3[(d as SimNode).type].radius,
+          : highlightNodeIds?.has((d as SimNode).id)
+            ? TYPE_META_D3[(d as SimNode).type].radius + 3
+            : TYPE_META_D3[(d as SimNode).type].radius,
       )
       .attr('fill-opacity', 1)
-      .attr('stroke', (d: any) => TYPE_META_D3[(d as SimNode).type].color)
-      .attr('stroke-opacity', (d: any) => (selectedId === d.id ? 1 : 0.55))
+      .attr('stroke', (d: any) =>
+        highlightNodeIds?.has((d as SimNode).id)
+          ? '#b91c1c'
+          : TYPE_META_D3[(d as SimNode).type].color,
+      )
+      .attr('stroke-opacity', (d: any) =>
+        selectedId === d.id || highlightNodeIds?.has((d as SimNode).id) ? 1 : 0.55,
+      )
       .attr('stroke-width', (d: any) =>
-        selectedId === d.id ? 2.5 : d.type === 'position' ? 2 : 1.5,
+        selectedId === d.id
+          ? 2.5
+          : highlightNodeIds?.has((d as SimNode).id)
+            ? 4
+            : d.type === 'position'
+              ? 2
+              : 1.5,
       )
     nodeG.style('opacity', (d: any) => {
       if (!activeIds) return 1

@@ -131,10 +131,11 @@ func (s *UserStore) Create(ctx context.Context, tx Queryer, p *UserCreateParams)
 
 // Update 更新用户基础信息。
 func (s *UserStore) Update(ctx context.Context, p *UserUpdateParams) error {
+	// 部分更新兜底：指针字段未携带时保留原值（COALESCE），避免 PUT 全列覆盖清空
 	_, err := s.q.Exec(ctx, `
-		UPDATE users SET institution_id = $1, org_node_id = $2, major_id = $3,
-			role = $4, login_name = $5, username = $6, name = $7, email = $8, phone = $9, avatar_url = $10,
-			student_no = $11, work_id = $12, id_card = $13, title_ids = COALESCE($14::uuid[], '{}'::uuid[]), updated_at = NOW()
+		UPDATE users SET institution_id = COALESCE($1, institution_id), org_node_id = COALESCE($2, org_node_id), major_id = COALESCE($3, major_id),
+			role = $4, login_name = $5, username = $6, name = $7, email = COALESCE($8, email), phone = COALESCE($9, phone), avatar_url = COALESCE($10, avatar_url),
+			student_no = COALESCE($11, student_no), work_id = COALESCE($12, work_id), id_card = COALESCE($13, id_card), title_ids = COALESCE($14::uuid[], '{}'::uuid[]), updated_at = NOW()
 		WHERE id = $15
 	`, p.InstitutionID, p.OrgNodeID, p.MajorID,
 		p.Role, p.GlobalLoginName, p.Username, p.Name, p.Email, p.Phone, p.AvatarURL,

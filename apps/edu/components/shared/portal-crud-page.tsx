@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Search, Plus, Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import { importExportApi } from '@/lib/api'
@@ -209,16 +210,22 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     setSaving(true)
     try {
       await onSave(formItem, !!formItem.id)
-      setIsDialogOpen(false)
-      await onRetry()
     } catch (err) {
       toast({
         variant: 'destructive',
         title: t('保存失败'),
         description: err instanceof Error ? err.message : t('未知错误'),
       })
-    } finally {
       setSaving(false)
+      return
+    }
+    // 保存已成功：列表刷新失败不应误报"保存失败"
+    setIsDialogOpen(false)
+    setSaving(false)
+    try {
+      await onRetry()
+    } catch (err) {
+      reportError(err, '保存后刷新列表')
     }
   }
 

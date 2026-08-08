@@ -51,7 +51,7 @@ export default function AlliancePermissionsPage() {
       onRetry={refresh}
       filterItems={(filtered, search) =>
         filtered.filter(
-          (p) => !search || p.accountName.toLowerCase().includes(search.toLowerCase()),
+          (p) => !search || (p.accountName || '').toLowerCase().includes(search.toLowerCase()),
         )
       }
       importConfig={{

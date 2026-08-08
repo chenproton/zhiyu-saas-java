@@ -342,12 +342,28 @@ export function ResourceSelector({
     if (useApi && apiAvailable) {
       let createdId: string | undefined
       try {
+        // 按资源类型收集表单字段进 metadata，避免创建时丢弃（场地/设施/软件等类型字段）
+        const meta: Record<string, any> = {}
+        if (newRes.type === 'venue') {
+          if (newResAddress) meta.address = newResAddress
+          if (newResOpenTime) meta.openTime = newResOpenTime
+          if (newResCapacity) meta.capacity = newResCapacity
+          if (newResContact) meta.contact = newResContact
+        } else if (newRes.type === 'facility') {
+          if (newResLocation) meta.location = newResLocation
+          if (newResContact) meta.contact = newResContact
+          if (newResQuantity) meta.quantity = newResQuantity
+        } else if (newRes.type === 'software') {
+          if (newResVersion) meta.version = newResVersion
+          if (newResContact) meta.contact = newResContact
+        }
         const created = await resourceLibraryApi.create({
           name: newRes.name,
           resourceType: newRes.type as ResourceKind,
           url: fileUrl || undefined,
           description: newResDescription || undefined,
           fileSize: uploadedSize,
+          metadata: Object.keys(meta).length > 0 ? meta : undefined,
         })
         createdId = created.id
         newRes.id = created.id

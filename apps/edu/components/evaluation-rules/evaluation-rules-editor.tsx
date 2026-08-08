@@ -505,6 +505,7 @@ export function EvaluationRulesEditor({
     } catch (err) {
       reportError(err, { source: '保存现场问答题' })
       toast({ variant: 'destructive', title: t('保存失败'), description: t('现场问答题保存失败') })
+      return
     }
     setRdqActionOpen(false)
     setRdqSearch('')

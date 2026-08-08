@@ -174,7 +174,9 @@ async function requestWithPlatform<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(url, { ...options, headers })
+  // 客户端超时：网络挂起时不让 UI 无限等待（后端超时 30s，前端放宽到 40s）
+  const signal = options.signal ?? AbortSignal.timeout(40_000)
+  const res = await fetch(url, { ...options, headers, signal })
   // chunked 响应无 content-length，按 Content-Type 判断响应体是否 JSON，
   // 避免非 JSON 成功响应被 json().catch 兜底成 {error:'请求失败'} 当作业务数据
   const contentType = res.headers.get('content-type') || ''

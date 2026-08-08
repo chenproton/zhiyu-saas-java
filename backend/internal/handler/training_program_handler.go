@@ -390,6 +390,10 @@ func (h *TrainingProgramHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "克隆失败")
 		return
 	}
-	program, _ := h.Service.GetTrainingProgram(ctx, newID, tenantID)
+	program, err := h.Service.GetTrainingProgram(ctx, newID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询克隆计划失败")
+		return
+	}
 	respondJSON(w, http.StatusCreated, program)
 }

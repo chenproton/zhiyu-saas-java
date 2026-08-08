@@ -2,9 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -178,8 +180,12 @@ func (h *TaskResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 
 	id := chi.URLParam(r, "id")
 	taskID, err := h.Service.BindTargetID(r.Context(), "task_resource_bindings", id)
-	if err != nil {
+	if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	if err != nil {
+		respondServerError(w, r, err, "查询绑定失败")
 		return
 	}
 	scenarioID, err := h.Service.TaskScenarioID(r.Context(), taskID)

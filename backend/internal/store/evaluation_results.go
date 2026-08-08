@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -129,11 +130,16 @@ func (s *EvaluationResultStore) Grade(ctx context.Context, id, graderID string, 
 // BatchGrade 事务内批量评分。
 func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, graderID string, items []EvaluationResultGradeItem) error {
 	for _, item := range items {
-		if _, err := tx.Exec(ctx, `
+		tag, err := tx.Exec(ctx, `
 			UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4, updated_at = NOW()
 			WHERE id = $5 AND status = 'pending'
-		`, item.Score, item.Comment, item.EvalPointScores, graderID, item.ID); err != nil {
+		`, item.Score, item.Comment, item.EvalPointScores, graderID, item.ID)
+		if err != nil {
 			return err
+		}
+		if tag.RowsAffected() == 0 {
+			// 该结果不在 pending 状态（已评分/已提交后再次评分）：整体中止并提示，避免对已评分结果静默成功
+			return fmt.Errorf("结果 %s 不在待评分状态", item.ID)
 		}
 	}
 	return nil

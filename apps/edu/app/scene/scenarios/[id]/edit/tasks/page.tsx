@@ -929,7 +929,12 @@ export default function TasksEditPage() {
     const replaceIds = (ids: string[]) =>
       ids
         .map((id) => kpIdMapping[id] || abIdMapping[id] || resourceIdMapping[id] || id)
-        .filter((id) => !id.startsWith('kp-custom-') && !id.startsWith('ab-custom-'))
+        .filter(
+          (id) =>
+            !id.startsWith('kp-custom-') &&
+            !id.startsWith('ab-custom-') &&
+            !failedResourceIds.includes(id),
+        )
     const replaceEvalPoints = (points: EvalPoint[]) =>
       points.map((p) => ({
         ...p,

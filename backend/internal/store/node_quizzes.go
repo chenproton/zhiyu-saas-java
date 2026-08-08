@@ -70,7 +70,7 @@ func (s *NodeQuizStore) UpdateQuiz(ctx context.Context, id, tenantID string, p *
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE node_quizzes SET title = $1, type = $2, time_limit = $3
+		UPDATE node_quizzes SET title = $1, type = $2, time_limit = COALESCE($3, time_limit)
 		WHERE id = $4 AND tenant_id = $5
 	`, p.Title, p.Type, p.TimeLimit, id, tenantID); err != nil {
 		return nil, err

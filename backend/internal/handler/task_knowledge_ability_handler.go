@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type TaskKnowledgeAbilityHandler struct {
@@ -57,8 +60,12 @@ func (h *TaskKnowledgeAbilityHandler) UnbindKnowledge(w http.ResponseWriter, r *
 
 	id := chi.URLParam(r, "id")
 	taskID, err := h.Service.TaskBindingTaskID(r.Context(), "task_knowledge_bindings", id)
-	if err != nil {
+	if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	if err != nil {
+		respondServerError(w, r, err, "查询绑定失败")
 		return
 	}
 	if !h.verifyTaskTenant(w, r, taskID) {
@@ -106,8 +113,12 @@ func (h *TaskKnowledgeAbilityHandler) UnbindAbility(w http.ResponseWriter, r *ht
 
 	id := chi.URLParam(r, "id")
 	taskID, err := h.Service.TaskBindingTaskID(r.Context(), "task_ability_bindings", id)
-	if err != nil {
+	if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		return
+	}
+	if err != nil {
+		respondServerError(w, r, err, "查询绑定失败")
 		return
 	}
 	if !h.verifyTaskTenant(w, r, taskID) {
