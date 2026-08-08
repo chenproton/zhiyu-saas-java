@@ -129,7 +129,7 @@ export default function PortalLoginPage() {
             </Link>
           </div>
           <Image
-            src="/logo.png"
+            src="/logo.png?v=2"
             alt="知育"
             width={369}
             height={139}

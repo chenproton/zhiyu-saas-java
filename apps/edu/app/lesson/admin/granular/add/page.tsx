@@ -32,6 +32,7 @@ import {
   courseResourceApi,
   resourceLibraryApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 import { KnowledgeSelector } from '../../_components/knowledge/knowledge-selector'
 import { ResourceSelector, type ResourceItem } from '../../_components/resources/resource-selector'
@@ -90,17 +91,19 @@ function AddGranularPageInner() {
     const load = async () => {
       setLoading(true)
       try {
-        const [kpRes, libRes] = await Promise.all([
-          knowledgeApi.list({ limit: 1000 }),
-          resourceLibraryApi.list({ limit: 1000 }),
+        const [kpItems, libItemsAll] = await Promise.all([
+          fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize })),
+          fetchAllPages((page, pageSize) =>
+            resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }),
+          ),
         ])
         setCustomKnowledgePointIds(new Set())
-        ;(kpRes.items || []).forEach((k) => {
+        kpItems.forEach((k) => {
           if (k.sourceType === 'course' && k.sourceId === editId) {
             setCustomKnowledgePointIds((prev) => new Set(prev).add(k.id))
           }
         })
-        const pool = kpRes.items.map((k) => ({
+        const pool = kpItems.map((k) => ({
           id: k.id,
           name: k.name,
           code: k.code,
@@ -110,7 +113,7 @@ function AddGranularPageInner() {
         }))
         setKnowledgePool(pool)
 
-        const libItems = (libRes.items || []).map((r: any) => ({
+        const libItems = libItemsAll.map((r: any) => ({
           id: r.id,
           name: r.name,
           type: r.resourceType || r.type,
@@ -120,8 +123,11 @@ function AddGranularPageInner() {
         }))
         // 课程已绑定的资源（含本地上传后已入库的）并入资源池，保证刷新后选中项可解析
         const boundItems = editId
-          ? ((await courseResourceApi.list({ courseId: editId, limit: 200 })).items || []).map(
-              (r: any) => ({
+          ? (
+              await fetchAllPages((page, pageSize) =>
+                courseResourceApi.list({ courseId: editId, limit: pageSize, offset: page * pageSize }),
+              )
+            ).map((r: any) => ({
                 id: r.id,
                 name: r.name,
                 type: r.resourceType || r.type,

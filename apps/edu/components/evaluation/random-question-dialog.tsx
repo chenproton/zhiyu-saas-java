@@ -18,6 +18,8 @@ import { Slider } from '@/components/ui/slider'
 import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 import { useData } from '@/components/providers/data-provider'
 import { knowledgeApi, questionApi } from '@/lib/api'
+import { fetchAllPages } from '@/lib/fetch-all'
+import { reportError } from '@/lib/error-handling'
 import type { Question, QuestionType, Difficulty, EvalKnowledgePoint } from '@/lib/types'
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -75,16 +77,19 @@ export function RandomQuestionDialog({
     ;(async () => {
       setLoadingQuestions(true)
       try {
-        const res = await questionApi.list({ limit: 10000 })
+        // 分页合并全量拉取，避免超过后端 maxPageSize(200) 截断抽题池
+        const items = await fetchAllPages((page, pageSize) =>
+          questionApi.list({ limit: pageSize, offset: page * pageSize }),
+        )
         if (cancelled) return
         setQuestions(
-          res.items.map((q) => ({
+          items.map((q) => ({
             ...q,
             createdAt: new Date((q.createdAt as unknown as string) || Date.now()),
           })),
         )
-      } catch (_err) {
-        // ignore
+      } catch (err) {
+        reportError(err, '加载题目列表')
       } finally {
         if (!cancelled) setLoadingQuestions(false)
       }

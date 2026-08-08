@@ -136,7 +136,7 @@ export function TopNav() {
         <div className="flex items-center gap-4 md:gap-8">
           <Link href="/portal" className="flex items-center gap-2">
             <Image
-              src="/logo.png"
+              src="/logo.png?v=2"
               alt="知育"
               width={369}
               height={139}
