@@ -111,7 +111,7 @@ func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *htt
 		return
 	}
 
-	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid)
+	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询失败")
 		return
@@ -285,7 +285,7 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusNotFound, "项目不存在")
 		return
 	}
-	items, err := h.Store.ListMilestones(r.Context(), pid)
+	items, err := h.Store.ListMilestones(r.Context(), pid, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "查询失败")
 		return

@@ -10,7 +10,8 @@ function fakeResponse(status: number, body: unknown): Response {
   return {
     status,
     ok: status >= 200 && status < 300,
-    headers: { get: () => null },
+    // 与后端一致：所有 API 响应均为 JSON
+    headers: { get: () => 'application/json' },
     json: async () => body,
   } as unknown as Response
 }

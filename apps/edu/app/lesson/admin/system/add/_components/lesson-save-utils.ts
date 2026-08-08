@@ -138,10 +138,12 @@ export function buildNodeSavePayload(options: {
       descriptionPdf: draft?.learningGoalPdf || node.descriptionPdf || undefined,
       detailedDescription: draft?.detailedDescription || node.detailedDescription,
       background: draft?.background || node.background,
-      estimatedHours:
-        draft?.estimatedHours || node.estimatedHours
-          ? parseFloat(draft?.estimatedHours || String(node.estimatedHours || ''))
-          : undefined,
+      estimatedHours: (() => {
+        const v = draft?.estimatedHours
+        // 显式清空（''）生效；未填写回退节点原值；parseFloat 需 NaN 兜底
+        if (v !== undefined && v !== '') return parseFloat(v)
+        return node.estimatedHours
+      })(),
       duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
       difficulty: draft?.difficulty ?? node.difficulty,
       knowledgePointIds: resolvedKnowledgePointIds,

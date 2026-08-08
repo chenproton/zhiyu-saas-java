@@ -35,9 +35,11 @@ func (s *EvaluationService) UpdateExam(ctx context.Context, id string, p *store.
 	return s.st.Exams().Update(ctx, id, p)
 }
 
-// DeleteExam 删除试卷。
+// DeleteExam 删除试卷（题目与试卷同一事务）。
 func (s *EvaluationService) DeleteExam(ctx context.Context, id string) error {
-	return s.st.Exams().Delete(ctx, id)
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.Exams().Delete(ctx, txStore.Q(), id)
+	})
 }
 
 // BulkUpdateExamScores 批量更新分数（事务内）。

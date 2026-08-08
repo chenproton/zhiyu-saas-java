@@ -153,6 +153,12 @@ func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
 			return fmt.Errorf("delete course eval results: %w", err)
 		}
+		// 课程级考试安排/作业测评一并清理，防止孤儿 usage 残留
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM exam_usages WHERE target_type = 'course' AND $1::uuid = ANY(target_ids)
+		`, id); err != nil {
+			return fmt.Errorf("delete course exam usages: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM courses WHERE id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
 			return err
 		}

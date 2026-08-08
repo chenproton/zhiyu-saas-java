@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -133,7 +134,12 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 	c.invalidateAfterWrite(r)
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, c.entityName+"不存在")
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, c.entityName+"不存在")
+			return
+		}
+		// 状态流转已生效，回读失败按 500 提示，避免客户端误判后重试导致二次流转 400
+		respondServerError(w, r, err, "操作已生效，查询结果失败，请刷新")
 		return
 	}
 	respondJSON(w, http.StatusOK, entity)

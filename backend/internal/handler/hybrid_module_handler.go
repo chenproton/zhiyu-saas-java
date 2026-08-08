@@ -58,6 +58,11 @@ func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
+	// 校验目标节点属于当前租户，防止把模块写入他租户节点
+	if _, err := h.Service.Store().CourseNodes().Get(r.Context(), req.NodeID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程节点不存在")
+		return
+	}
 	module, err := h.Service.UpsertHybridModule(r.Context(), tenantID, req.ID, &store.HybridModuleParams{
 		NodeID: req.NodeID, ModuleKey: req.ModuleKey, Mode: req.Mode, Data: req.Data,
 	})

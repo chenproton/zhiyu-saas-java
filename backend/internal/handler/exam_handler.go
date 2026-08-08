@@ -289,7 +289,11 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "添加题目失败")
 		return
 	}
-	exam, _ = h.Service.GetExam(r.Context(), id)
+	exam, err = h.Service.GetExam(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "操作成功但查询结果失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -314,7 +318,11 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "移除题目失败")
 		return
 	}
-	exam, _ = h.Service.GetExam(r.Context(), id)
+	exam, err = h.Service.GetExam(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "操作成功但查询结果失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -359,7 +367,11 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "更新question score失败")
 		return
 	}
-	exam, _ = h.Service.GetExam(r.Context(), examID)
+	exam, err = h.Service.GetExam(r.Context(), examID)
+	if err != nil {
+		respondServerError(w, r, err, "操作成功但查询结果失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -399,7 +411,11 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "批量更新分数失败")
 		return
 	}
-	exam, _ = h.Service.GetExam(r.Context(), examID)
+	exam, err = h.Service.GetExam(r.Context(), examID)
+	if err != nil {
+		respondServerError(w, r, err, "操作成功但查询结果失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, exam)
 }
 

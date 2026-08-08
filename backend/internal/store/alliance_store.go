@@ -102,14 +102,14 @@ func queryOne[T any](ctx context.Context, db Queryer, scan func(pgx.Rows) ([]T, 
 	return &items[0], nil
 }
 
-func (s *AllianceStore) ListEnterpriseAgreements(ctx context.Context, enterpriseID string) ([]domain.AllianceEnterpriseAgreement, error) {
+func (s *AllianceStore) ListEnterpriseAgreements(ctx context.Context, enterpriseID, tenantID string) ([]domain.AllianceEnterpriseAgreement, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date,
 			status, content, attachments, created_at, updated_at
 		FROM alliance_enterprise_agreements
-		WHERE enterprise_id = $1
+		WHERE enterprise_id = $1 AND tenant_id = $2
 		ORDER BY created_at DESC
-	`, enterpriseID)
+	`, enterpriseID, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +117,12 @@ func (s *AllianceStore) ListEnterpriseAgreements(ctx context.Context, enterprise
 	return s.ScanEnterpriseAgreementRows(rows)
 }
 
-func (s *AllianceStore) ListMilestones(ctx context.Context, projectID string) ([]domain.AllianceProjectMilestone, error) {
+func (s *AllianceStore) ListMilestones(ctx context.Context, projectID, tenantID string) ([]domain.AllianceProjectMilestone, error) {
 	return queryList(ctx, s.q, s.ScanMilestoneRows, `
 		SELECT id, tenant_id, project_id, name, description, due_date, completed_date,
 			is_completed, sort_order, created_at, updated_at
-		FROM alliance_project_milestones WHERE project_id = $1 ORDER BY sort_order ASC
-	`, projectID)
+		FROM alliance_project_milestones WHERE project_id = $1 AND tenant_id = $2 ORDER BY sort_order ASC
+	`, projectID, tenantID)
 }
 
 func (s *AllianceStore) GetPermissionByID(ctx context.Context, id, tenantID string) (*domain.AlliancePermission, error) {

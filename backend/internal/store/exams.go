@@ -76,12 +76,12 @@ func (s *ExamStore) Update(ctx context.Context, id string, p *ExamUpdateParams) 
 	return s.Get(ctx, id)
 }
 
-// Delete 删除试卷。
-func (s *ExamStore) Delete(ctx context.Context, id string) error {
-	if _, err := s.q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id); err != nil {
+// Delete 删除试卷（题目与试卷在同一事务内，防止半删状态）。
+func (s *ExamStore) Delete(ctx context.Context, q Queryer, id string) error {
+	if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id); err != nil {
 		return fmt.Errorf("delete exam questions: %w", err)
 	}
-	_, err := s.q.Exec(ctx, `DELETE FROM exams WHERE id = $1`, id)
+	_, err := q.Exec(ctx, `DELETE FROM exams WHERE id = $1`, id)
 	return err
 }
 

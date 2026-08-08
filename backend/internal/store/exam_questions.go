@@ -65,22 +65,16 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 		if s, ok := questionScores[qq.id]; ok && s > 0 {
 			score = s
 		}
-		var existingID string
-		_ = q.QueryRow(ctx, `SELECT id FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, examID, qq.id).Scan(&existingID)
-		if existingID != "" {
-			if _, err := q.Exec(ctx, `
-				UPDATE exam_questions SET type = $1, content = $2, options = $3, answer = $4, analysis = $5, score = $6, sort_order = $7
-				WHERE id = $8
-			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1, existingID); err != nil {
-				return fmt.Errorf("update exam question %s: %w", qq.id, err)
-			}
-		} else {
-			if _, err := q.Exec(ctx, `
-				INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1); err != nil {
-				return fmt.Errorf("insert exam question %s: %w", qq.id, err)
-			}
+		// ON CONFLICT 单语句完成插入/更新，消除每题 2 次往返的 N+1
+		if _, err := q.Exec(ctx, `
+			INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			ON CONFLICT (exam_id, question_id) DO UPDATE SET
+				type = EXCLUDED.type, content = EXCLUDED.content, options = EXCLUDED.options,
+				answer = EXCLUDED.answer, analysis = EXCLUDED.analysis, score = EXCLUDED.score,
+				sort_order = EXCLUDED.sort_order, updated_at = NOW()
+		`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1); err != nil {
+			return fmt.Errorf("upsert exam question %s: %w", qq.id, err)
 		}
 	}
 

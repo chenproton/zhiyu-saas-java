@@ -169,6 +169,10 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var tenantID *string
 	if claims.TenantID != nil && *claims.TenantID != "" {
 		tenantID = claims.TenantID
+	} else if h.Config.TenantScoped {
+		// 租户域表不允许无租户创建，防止落库 NULL tenant_id 产生无主记录
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
 	}
 
 	fields := store.BatchCreateFields{

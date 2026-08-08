@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -46,7 +47,11 @@ func alliancePublicGet[T any](w http.ResponseWriter, r *http.Request, getFn func
 	id := chi.URLParam(r, "id")
 	item, err := getFn(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, notFoundMsg)
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, notFoundMsg)
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)

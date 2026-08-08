@@ -249,6 +249,10 @@ export const scheduleApi = {
   /** 导出当前学期排课为 Excel（格式与导入模板一致） */
   exportExcel: async (termId: string) => {
     const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `HTTP ${res.status}`)
+    }
     downloadBlob(await res.blob(), '排课导出.xlsx')
   },
   /** 班级/教师课表视图（默认仅 published，含 version） */

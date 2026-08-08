@@ -2,10 +2,13 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // crudConfig 描述一个租户域字典实体 Create/Get/Update/Delete 的行为差异；
@@ -124,7 +127,11 @@ func crudGet[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfi
 	}
 	item, err := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+			return
+		}
+		respondServerError(w, r, err, cfg.NotFoundMsg)
 		return
 	}
 	if cfg.GetOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&item)) {
@@ -158,7 +165,11 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 	}
 	existing, err := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+			return
+		}
+		respondServerError(w, r, err, cfg.NotFoundMsg)
 		return
 	}
 	if cfg.CheckOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&existing)) {
@@ -217,7 +228,11 @@ func crudDelete[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 	}
 	existing, err := cfg.GetByIDFn(r.Context(), id, tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
+			return
+		}
+		respondServerError(w, r, err, cfg.NotFoundMsg)
 		return
 	}
 	if cfg.CheckOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&existing)) {

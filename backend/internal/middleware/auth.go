@@ -55,6 +55,12 @@ func JWT(secret string) func(http.Handler) http.Handler {
 				http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
 				return
 			}
+			// 强制 UserID 非空：排除预授权令牌（同密钥 HS256 但无 userId）等
+			// 签名正确但结构不全的令牌类型混淆，避免空 UserID 请求穿透到业务查询
+			if claims.UserID == "" {
+				http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+				return
+			}
 
 			ctx := context.WithValue(r.Context(), ContextKeyUser, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))

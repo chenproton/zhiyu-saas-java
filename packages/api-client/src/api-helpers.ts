@@ -175,7 +175,10 @@ async function requestWithPlatform<T>(
   }
 
   const res = await fetch(url, { ...options, headers })
-  const hasBody = res.status !== 204 && res.headers.get('content-length') !== '0'
+  // chunked 响应无 content-length，按 Content-Type 判断响应体是否 JSON，
+  // 避免非 JSON 成功响应被 json().catch 兜底成 {error:'请求失败'} 当作业务数据
+  const contentType = res.headers.get('content-type') || ''
+  const hasBody = res.status !== 204 && contentType.includes('application/json')
   const data = hasBody ? await res.json().catch(() => ({ error: '请求失败' })) : ({} as T)
 
   if (!res.ok) {

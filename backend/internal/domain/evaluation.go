@@ -19,7 +19,7 @@ type QuestionBank struct {
 	CollaboratorNames   []string  `json:"collaboratorNames,omitempty"`
 	CollaboratorDeptIDs []string  `json:"collaboratorDeptIds,omitempty"`
 	BatchID             *string   `json:"batchId,omitempty"`
-	Version             string    `json:"version"`
+	Version             *string   `json:"version,omitempty"`
 	OwnerType           string    `json:"ownerType"`
 	IsDraftPool         bool      `json:"isDraftPool"`
 	KnowledgePointIDs   []string  `json:"knowledgePointIds,omitempty"`

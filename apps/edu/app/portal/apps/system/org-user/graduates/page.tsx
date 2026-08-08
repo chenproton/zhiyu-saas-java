@@ -58,7 +58,7 @@ export default function GraduatesPage() {
   const { institution, tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
-  const { users, loading, error, refetch } = usePortalUsers({
+  const { users, loading, error, refetch, total, page, setPage, pageSize } = usePortalUsers({
     roleCode: 'student',
     status: 'graduated',
     search: searchTerm || undefined,
@@ -186,6 +186,7 @@ export default function GraduatesPage() {
       error={error ?? null}
       onRetry={refetch}
       colSpan={7}
+      pagination={{ total, page, totalPages: Math.max(1, Math.ceil(total / pageSize)), onPageChange: setPage }}
       searchPlaceholder={t('搜索姓名或学号...')}
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
