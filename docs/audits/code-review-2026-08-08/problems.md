@@ -1,94 +1,35 @@
-# 知与 SaaS 全量代码复查问题清单（2026-08-08）
+# 知与 SaaS 全量代码复查问题清单（2026-08-08，未修复项）
 
-> 审查范围：前后端全部源码 **约 990 个文件、约 20 万行**，逐文件、逐行完整通读（清单见 [`checklist.md`](./checklist.md)）。
-> 审查性质：**复查**——2026-08-07 首轮全量审查后已修复 P0×4 / P1×73 / P2 精选 / 死代码，本轮重点为「修复引入的回归、上轮遗漏、遗留问题」。
-> 审查原则（依 AGENTS.md）：简单优先；安全只排高危；性能与稳定性优先；容忍 hacker；锁只给核心业务。
-> **回查验证**：本清单生成后已对全部 P0/P1 逐条回到代码复核（标注「已回查确认 / 回查降级 / 回查排除」）。
+> 审查范围：前后端全部源码约 990 个文件，逐文件逐行完整通读（清单见 checklist.md）。
+> **本清单仅保留未修复项**：已修复问题已删除（修复提交 d860b82b / 9c0f770a / 8e69ae4b / efdee119 / 50ca27b2 / 447e64b2）。
+> 审查原则：简单优先；安全只排高危；性能与稳定性优先；容忍 hacker；锁只给核心业务。
 
-## 统计总览
+## 当前未修复状态
 
-| 严重级 | 数量 | 说明 |
-|--------|-----|------|
-| P0 高危 | **2** | 均为修复引入的回归（能力域 CRUD 404、题库带知识点绑定必 500），均回查确认 |
-| P1 严重 | **33** | 修复回归 6、上轮遗漏/遗留 25、误报排除 1、降级 2 |
-| P2 重要 | **328** | 边界/竞态/错误吞/租户纵深/契约（详见第三章） |
-| P3 一般 | **607** | 死代码/风格/测试瑕疵（统计见第四章，明细在 raw/） |
-| **合计** | **970** | 已对全部文件逐行通读 |
+| 严重级 | 剩余数量 | 说明 |
+|--------|---------|------|
+| P0 高危 | **0** | 复查发现的 2 条（能力域 404、题库绑定 500）已全部修复 |
+| P1 严重 | **1 暂缓 + 2 降级** | 仅 localStorage JWT 暂缓；position_certificates/alliance_store 已降级 P2（handler 已兜底） |
+| P2 重要 | **300** | 契约字段、i18n、404 误报残余、store 纵深、竞态残余等（无现役高危） |
+| P3 一般 | **607** | 死代码/风格/测试卫生 |
 
 ---
 
-## 一、P0 高危（2 条，全部回查确认）
+## 一、P0 高危（已全部修复，无剩余）
 
-| # | 位置 | 问题 | 最佳实践方案 |
-|---|------|------|--------------|
-| 1 | `backend/internal/handler/ability_domain_handler.go:46-109` | **修复引入回归**：08-07 租户隔离修复给 GetByIDFn/UpdateFn/DeleteFn 加了租户限定，却漏配 `TenantFn: requireTenant` → crud 骨架 tenantID="" → store `WHERE tenant_id=''` 恒不命中，**能力域 Get/Update/Delete 一律 404**（Create/List 正常）。已在真实测试库复跑确认 | crud 配置补 `TenantFn: requireTenant`（对照 ability_handler.go:99），并补不依赖 DB 的 handler 单测 |
-| 2 | `backend/internal/store/question_banks.go:102-106,141-146` | **上轮遗漏**：`INSERT INTO question_bank_knowledge_points (id, tenant_id, ...)` 引用**不存在的 tenant_id 列**（表仅 id/question_bank_id/knowledge_point_id/created_at，已 pgx 实测 SQLSTATE 42703）。**题库 Create/Update 携带知识点绑定即 500** | 列清单去掉 tenant_id（绑定表靠 question_bank_id 关联），保留 ON CONFLICT |
+复查发现的 2 条 P0 均已修复（`d860b82b`）：能力域 crud 补配 TenantFn；question_banks 绑定 INSERT 移除不存在的 tenant_id 列。
 
----
+## 二、P1 严重（剩余 1 条暂缓 + 2 条降级）
 
-## 二、P1 严重（33 条，已逐条回查）
-
-### A. 修复引入的回归（6 条）
-
-| 位置 | 问题 | 回查 | 最佳实践方案 |
+| 位置 | 问题 | 状态 | 最佳实践方案 |
 |------|------|------|--------------|
-| `backend/internal/scheduler/scheduler.go:38-49` | `aggregateAll` 从共享连接池取连接 `SET statement_timeout=0` 后 Release，pgxpool 不重置会话设置 → 该物理连接永久失去 15s 超时保护，失控慢查询可挂死连接池 | 已确认 | Release 前 `RESET statement_timeout`（defer 内先 Reset 后 Release），或独立专用连接 |
-| `backend/migrations/140_tenant_fk_cascade.up.sql:18` | 孤儿清理会把 108 为运营方租户（0000…0001，seed 尚未创建）预插的字典行当孤儿删除 → **全新部署平台租户字典为空**，上轮修的 108 种子时序被回归 | 已确认（108:49-54 依赖预插可用） | 清理语句统一加 `AND tenant_id <> '00000000-0000-0000-0000-000000000001'` 豁免平台租户 |
-| `packages/ui/src/components/shared/import-confirm-dialog.tsx:51-59` | 上轮「导入防重」回归：`run()` 内 `fn()` 未 await，async 调用方未挂起 → finally 同步 setPending(null)，React 批处理使 busy 态不渲染 → **连点可并发两次 importExcel** | 已确认 | `await fn()`（try 内），finally 再 setPending(null) |
-| `backend/internal/handler/job_ability_result_handler_test.go:91-94` | 上轮新增测试回归：`((85-70)/70*0.6+0)*100` 中 `(85-70)/70` 为 Go 整型除法=0，断言恒失败（实现为 float64 得 12.857） | 已确认（go run 实测） | 改 `((85.0-70)/70.0*0.6+0)*100` 或直接写期望值 |
-| `backend/internal/handler/approval_handler.go` 相关（router/routes.go:255） | admin 路由内层 OperationLog 与外层叠加 → `/admin/*` 写操作双写审计日志 | 已回查排除：外层 oplog 仅在 `/api/v1` 组生效，admin 组内层为唯一写入路径，无双写 | — |
-| `apps/edu/app/job/landing/[id]/page.tsx:91-169` | 两个 effect 共享 `loadSeqRef`：切换岗位 id 时 effect2 抢占序号 → effect1 finally 跳过 setLoading(false)、effect2 不复位 → **页面永久骨架屏** | 已确认 | effect1 用独立 seq 或 cancelled（learn 页 30-47 为正确范本） |
+| `packages/api-client/src/api-helpers.ts:122-139,250-261` | JWT 仍存 localStorage（XSS 可窃取会话） | **暂缓**（架构级改造，需后端 Set-Cookie + CSRF 防护，前提是存在 XSS） | httpOnly+Secure cookie 或 refresh token |
+| `store/position_certificates.go:23-66` | `List` 无 tenant 过滤 | **降级 P2**（handler List 已有 careerPositionId 归属校验） | store.List 加 tenantID 参数 |
+| `store/alliance_store.go:55-73` | `nilToEmpty` 空操作，空 ID 新建学校信息必 500 | **降级 P2**（当前无前端调用方） | SQL 改 `COALESCE(NULLIF($1,''), gen_random_uuid())` |
 
-### B. 越权 / 租户隔离（8 条）
+> 复查发现的其余 30 条 P1（回归×5、越权租户×7、兜底×8、错误吞×4、契约×6）均已修复；2 条误报排除（DeleteMilestone、admin oplog 双写）。
 
-| 位置 | 问题 | 回查 | 最佳实践方案 |
-|------|------|------|--------------|
-| `handler/certification_handler.go:406-485` | `PutFullRule` 未校验新 careerPositionID 租户归属（UpdateRule 已修，此处遗漏）→ 可跨租户改绑认证规则 | 已确认 | 补 `PositionTenantID` + `verifyTenantOwnership` |
-| `handler/course_node_handler.go:164-165,224-229` | Create/Update 的 kpIDs/resIDs/sourceId 不校验租户归属；enrich 查询（store/course_nodes.go:199-240,278-334）全无租户过滤 → 可跨租户回显知识点/资源（含 URL） | 已确认 | 绑定/回显查询补 tenant 条件 |
-| `handler/favorites_handler.go:39-66` + store/favorites.go | 收藏体系全链路无租户维度（表无 tenant_id、List JOIN 无过滤），任意登录用户可读他租户对象元数据并污染全局收藏计数 | 已确认 | user_favorites/favorite_counters 增 tenant_id，Toggle/Get/Count/List 按租户过滤 |
-| `handler/question_handler.go:110,161,229` | Create/Update/BatchCreate 的 bankId 未校验归属租户 → 跨租户写他人题库（孤儿数据） | 已确认 | 复用 `GetQuestionBankInTenant` 校验 |
-| `handler/scheduling_handler.go:416-451` | CreateSchedule/UpdateSchedule 的 planEntryId 无租户校验；store `FallbackClassID/PlanEntryCourseID/DeleteScheduleWithRestore` 无租户条件 → 跨租户读班级名/写计划条目状态 | 已确认 | handler 校验 planEntryId 归属 + store 查询补 tenant |
-| `store/position_certificates.go:23-66` | `List` 无 tenant 过滤（handler 已校验 careerPositionId 归属） | 回查降级 P2：handler List 已有归属校验，store 属纵深 | store.List 加 tenantID 参数 |
-| `store/alliance_store.go:55-73` | `nilToEmpty` 仍是空操作，空 ID 新建学校信息 `''::uuid` 必 500 | 回查降级 P2：无前端调用方（学校页直接改 tenant） | SQL 改 `COALESCE(NULLIF($1,''), gen_random_uuid())` |
-| `store/alliance_project_store.go:197-199` | DeleteMilestone 声称少传参数 | **回查排除（误报）**：SQL 与参数均正确（`id, tenantID`） | — |
-
-### C. 数据丢失 / 部分更新兜底遗漏（8 条）
-
-| 位置 | 问题 | 回查 | 最佳实践方案 |
-|------|------|------|--------------|
-| `handler/alliance_crud_handler.go:342-485` | achievement/expert/agreement/brand 四实体无 ValidateUpdateExisting，部分 PUT 清空整行（与已修联盟 bug 同类遗漏） | 已确认 | 按 enterprise/project 模式补回退 |
-| `handler/exam_usage_handler.go:100-112` | Update 的 description/start_time/end_time/duration 无 COALESCE 兜底（仅 target_type/target_ids 有），只改 name 即清空考试时间窗口 | 已确认 | store 指针字段 COALESCE 兜底 |
-| `handler/course_node_handler.go:231-249` | Update 无部分更新兜底，nil 字段写 NULL、sortOrder 写 0 | 已确认 | 回读现有节点做兜底（参照 course Update） |
-| `apps/edu/app/affairs/scheduling/_components/schedule-grid-tab.tsx:164-180` | 移动排课载荷缺 classNodeIds → 后端回退仅主班级，**多班级条目移动后其余班级丢失** | 已确认 | 载荷补 `classNodeIds` |
-| `apps/edu/app/portal/apps/system/org-user/fields/page.tsx:75-88` | 启用开关只发 `{isEnabled}` 缺 fieldName → 后端 400，**开关永远切换失败** | 已确认 | 回传完整字段 |
-| `apps/edu/app/portal/apps/system/org-user/fields/page.tsx:90-96` | 编辑保存缺 isEnabled/isRequired → Go 零值 false 写入，**字段被静默禁用** | 已确认 | 提交完整对象或后端指针语义 |
-| `apps/edu/app/lesson/admin/system/add/page.tsx:768,796-800` | `hasSavedRef` 在 saveNodes 前置位且 handleSave 无返回值 → 节点树保存失败仍跳转，**节点静默丢失** | 已确认 | saveNodes 成功后再置位，或 handleSave 返回 boolean（参照 hybrid） |
-| `apps/edu/app/scene/scenarios/[id]/edit/tasks/page.tsx:184-337` | 首屏加载 effect 依赖含 `t`/ensureDatasets（随 locale 变化）→ 切语言整页重载重建 taskStates，**未保存编辑全部丢失** | 已确认 | effect 只依赖 scenarioId，数据集加载解耦 |
-
-### D. 错误吞静默失败（4 条）
-
-| 位置 | 问题 | 回查 | 最佳实践方案 |
-|------|------|------|--------------|
-| `handler/crud.go:100,187` | crudCreate/crudUpdate 回读错误被 `item, _` 吞 → 201/200 返回零值实体 | 已确认 | 回读失败 respondServerError |
-| `handler/content_actions.go:183-184` | review 成功后 fetch 错误忽略 → 200 返回 null | 已确认 | 同上 |
-| `handler/evaluation_result_handler.go:218` | Grade 后回读错误忽略 → 200 返回评分前旧数据 | 已确认 | 同上 |
-| `service/node_evaluation_result.go:43-45` | FindNodeExamResult 真实 DB 错误与"无考试结果"混同静默吞掉，评分成功但分数回写永久失败无日志 | 已确认 | store 区分 ErrNoRows，service 对真实错误打日志 |
-
-### E. 功能失效 / 契约 / 性能（7 条）
-
-| 位置 | 问题 | 回查 | 最佳实践方案 |
-|------|------|------|--------------|
-| `handler/position_responsibility_handler.go:91-99` | UpdateFn 透传 careerPositionId 但 store 不写该列 →「职责移动」静默无效；未来补写将形成跨租户写 | 已确认 | store 补写列并在 handler 校验目标岗位租户，或移除该字段 |
-| `domain/evaluation.go:12` + `store/question_banks.go:248,282,303` | `QuestionBank.Description` 直扫可空列；导入空描述单元格确定性落 NULL → **题库列表/详情 500** | 已确认（question_bank_import_handler.go:120 落 NULL 路径） | 改 `*string` + 判空（参照 Exam.Description 范式） |
-| `apps/edu/components/evaluation-rules/evaluation-rules-editor.tsx:389,2011-2040` | qbDrawMode/qbPassRate 仅本地 state 不持久化到 methodResourceConfigs → **答题方式/正确率配置从未生效** | 已确认 | 走 `updateResourceConfig('question_bank', ...)` |
-| `apps/edu/components/evaluation/question-form-dialog.tsx:92,219` | 弹窗无分值控件，新建题目 score 恒 0 落库 | 已确认 | 补分值输入或提交 undefined 让后端兜底 |
-| `apps/edu/hooks/use-approvals.ts:53` | `approvalApi.list({limit:1000})` 被后端钳 200，审批超 200 条静默截断（fetchAllPages 遗漏调用点） | 已确认 | 改用 fetchAllPages 分页合并 |
-| `apps/edu/app/scene/scenarios/[id]/edit/tasks/page.tsx:625-637` | 删除临时 id（`task-*`）任务直接调 taskApi.delete 必 404，未保存的克隆任务无法删除 | 已确认 | 临时 id 本地移除，落库任务才调接口 |
-| `packages/api-client/src/api-helpers.ts:122-139,250-261` | JWT 仍存 localStorage（上轮遗留暂缓项，XSS 可窃取会话） | 已确认（维持暂缓：架构级改造） | httpOnly+Secure cookie 或 refresh token |
-
----
-
-## 三、P2 重要（328 条）
+## 三、P2 重要（剩余 300 条）
 
 > 全部 P2 条目（按来源批次分组），每条含精确位置与最佳实践；原始逐行记录见 `raw/`。
 
@@ -96,7 +37,6 @@
 ### backend-domain.md（7 条 P2）
 
 - [NULL 直扫·未修复] evaluation.go:92 + store/exams.go:221,283 — `Exam.Version string` 直扫可空列 `exams.version`（001_baseline:427 无 NOT NULL）。应用侧全部 INSERT 路径（exams.go:55、course_assessments.go:135、task_evaluation.go:469）均显式写 'v1.0'，当前风险仅限存量/外部 NULL 行；最佳实践：domain 改 `*string` 或 SQL `COALESCE(e.version, '')`（description 已按此处理，version 漏）。
-- [NULL 直扫·未修复] evaluation.go:22 + store/question_banks.go:248,282,303 — `QuestionBank.Version string` 直扫可空列 `question_banks.version`（001_baseline:848 无 NOT NULL），与 Description 同源同修。
 - [枚举/DB 默认值错位·未修复] lesson.go:107 + 001_baseline:601 — `LessonBatch.Status LessonBatchStatus`（=ContentStatus，open/closed）但 `lesson_batches.status` DB 默认值为 `'active'`；batch_configs.go:96 CreateWithStatus 保证 handler 路径显式写状态，绕过 handler 的插入（种子/脚本）会得到 'active' 与 open/closed 两态冲突；最佳实践：新增迁移把默认值改为 'open'。
 - [枚举错位·未修复] models.go:85 + status.go:24 — `InstitutionStatus = ContentStatus`，但 DB `institution_status` 枚举只有 pending/approved/disabled（001_baseline:4-8）；ContentStatus 的 draft/rejected/published/open/closed 等值写入该列会被 DB 拒绝，且 'disabled' 无对应常量。本轮核实：Go 代码层无 INSERT/UPDATE institutions 路径（仅 auth.go:129 读取），风险为潜在类型隐患；最佳实践：独立定义 InstitutionStatus 枚举（含 StatusDisabled="disabled"）。
 - [NULL 扫描风险·未修复] scene.go:16 + store/scenarios.go:205,220 — `Scenario.Difficulty int` 直扫可空列（001_baseline:1010 `difficulty smallint` 无 NOT NULL，CHECK(1-5) 放行 NULL）；存量 NULL 行导致列表/详情扫描报错；Create 路径 handler 直传 int 为 0 时触发 CHECK 拒绝→500；最佳实践：domain 改 `*int` 或 store COALESCE + handler 校验 1-5。
@@ -114,7 +54,6 @@
 
 ### backend-middleware-router.md（6 条 P2）
 
-- [JWT 校验]（遗留）auth.go:53-57 — 中间件只校验"能解析 + 签名有效"，不强制 `claims.UserID != ""`。登录多租户流程签发的 `preAuthClaims`（auth_handler.go:159-169，含 `platform` 字段、无 `userId`）与正式令牌同密钥同 HS256，可被本中间件解析为 `Claims{Platform:"portal", UserID:""}` 并放行进入仅挂 `RequirePlatform` 的端点（`/auth/portal/me`、`/subscriptions`、`/stats/me` 等）：`PortalMe` 以空 UserID 查库、`SubscriptionHandler` 因 tenant 过滤拒绝，无数据泄露但属于令牌类型混淆缺口，且空 UserID 请求会打到 DB 查询（500 面）。最佳实践：解析成功后 `if claims.UserID == "" { 401 }`，天然排除 preAuthToken 及任何签名正确但结构不全的令牌。
 - [oplog 缓冲]（遗留）oplog_buffer.go:63-69 — `flushLoop` 的 `defer recover()` 记录 panic 后让 goroutine 永久退出（done 关闭、循环终止），此后所有操作日志入队即丢弃且 `Shutdown()` 立即返回，整个审计管线不可自愈。最佳实践：recover 后不 return，继续外层 for 循环（或重启 goroutine）。
 - [oplog 缓冲]（遗留）oplog_buffer.go:121-125 — 批量 `br.Exec()` 错误处理不符合 pgx 语义：单行失败后后续 `Exec()` 复读同一错误，剩余行实际消费与否由服务端决定但本地一律记失败，且每行一条 warn 造成错误风暴。最佳实践：首个错误即 break，统一记一条"N 行成功/第 K 行失败"。
 - [未鉴权接口]（遗留）router.go:122 — `GET /uploads/{filename}` 完全公开（无 JWT、无租户隔离）：上传目录全局共享，获得 URL 即可读任意上传文件（作业附件、证件照、含个人信息的导入 Excel）。缓解：文件名 UUID v4 不可枚举、扩展名白名单 + `..` 拒绝 + 前缀校验（file_handler.go:164-189）防穿越与 XSS。最佳实践：至少要求 JWT；更进一步按租户子目录存储。
@@ -129,12 +68,10 @@
 ### frontend-api-client.md（8 条 P2）
 
 - [超时] api-helpers.ts:177 — `fetch` 无 `AbortSignal` 超时；后端有 30s/10min 超时中间件，但客户端网络挂起时 UI 无限等待、页面卸载后请求仍在跑。上轮遗留。最佳实践：读接口挂 `AbortSignal.timeout()` 并透传外部 signal。
-- [错误处理] api-helpers.ts:178-179 — `hasBody` 用 `content-length !== '0'` 判断响应体；chunked 响应无 content-length 时非 JSON 成功响应会被 `res.json().catch` 兜底成 `{error:'请求失败'}` 作为业务数据返回。上轮遗留。最佳实践：按 Content-Type 判断或对空体接口显式处理。
 - [契约] job.ts:72-75 — `saveFull` 响应类型声明 `{ position: CareerPosition }`，后端直接返回岗位对象（position_handler.go:490 `respondJSON(w, http.StatusOK, pos)`），无 position 包装；当前唯一调用方（edu `job/positions/[id]/edit/page.tsx:214`）忽略返回值故无运行时影响，但类型误导后续调用方。上轮遗留。最佳实践：类型改为 `Promise<CareerPosition>`。
 - [契约] evaluation.ts:486-489 — `aggregateStatus` 的 `careerPositionId` 类型为可选，后端必填（job_ability_result_handler.go:438-442 缺失返回 400）；响应类型 `| null` 也不会出现——后端无记录返回 404 而非 null。上轮遗留。最佳实践：careerPositionId 必填、类型改 `Promise<JobAbilityAggregateStatus>`。
 - [契约] portal.ts:120-124 — `portalUserExtensionFieldApi.list` 声明返回 `ListResponse<UserExtensionField>`，后端仅返回 `{items}` 无 `total`（user_extension_field_handler.go:17-18,41）；若调用方读 `.total` 恒 undefined。本轮新发现（当前唯一页面用 `fields.length` 故无运行时影响）。最佳实践：类型改 `{ items: UserExtensionField[] }`。
 - [契约] system.ts:71-78 — `approvalApi.review` 请求体含 `nextStepIdx`，后端 `ReviewApprovalRequest` 仅 action/remark（approval_handler.go:46-49），按步骤审批参数被静默丢弃、流转实际由后端 CurrentStepIdx 推进，前端"指定步骤"无效且无报错。上轮遗留。最佳实践：后端补齐 stepIdx 或前端移除。
-- [错误处理] affairs.ts:250-253 — `scheduleApi.exportExcel` 未检查 `res.ok` 即 `downloadBlob(await res.blob())`，非 2xx 的 JSON 错误体会被下载成「排课导出.xlsx」垃圾文件；同文件 :153-160 teachingPlanApi.exportExcel 有 ok 检查，行为不一致。上轮遗留。最佳实践：复用 :155-158 模式。
 - [契约] honors.ts:5-6 — `list` 的 `userId` 声明为可选，后端对业务用户必填、缺失返回 400（student_honor_handler.go:62-66）；学生由后端强制本人。教师端不传必 400。上轮遗留。最佳实践：拆学生（无参）/业务用户（必传 userId）两种签名。
 
 ### frontend-app-01.md（13 条 P2）
@@ -173,7 +110,6 @@
 - [竞态] 行 529-591 — `handleGrainConfirm` 已加 `confirmNodeId !== selectedNodeIdRef.current` 守卫（行 556、586，修复正确），但行 591 `setNodeEvalRuleConfig(undefined)` 在 try/catch **之外**无条件执行：异步拉取期间用户切换节点 → 早期 return 后仍会清空**当前节点**的评价配置 UI 状态（数据层因 buildEvalDataForSave 回退不丢，仅 UI 显示为空）。**新发现**。最佳实践：切换守卫后同样跳过 591 行。
 - [跨节点状态残留] 行 281/330、716-722 与 288/349、638 — 上轮问题未修：`submittedMethodKeys`/`hybridSubmittedKeys` 以 methodKey 为键、**切换节点不重置**；节点 B 与节点 A 配置相同 methodKey 时，切到 B 后卡片直接显示"已提交/pending"（`overriddenResult` 短路），用户误以为已提交。最佳实践：提交键带上 nodeId 或在 activeNodeId 变化时清空。
 - [竞态] 行 116-132（course 加载）与 134-158（nodes/hybrid modules 加载）— 上轮问题未修：两 effect 无取消/序号守卫，快速切换课程 id 时旧响应可覆盖新数据。最佳实践：cancelled 标志或 AbortController。
-- [崩溃风险] 行 649 — `course.creatorId.slice(0, 8)`：creatorId 为 null/undefined（老数据）时 TypeError 整页崩溃（上轮已标记未修）。最佳实践：`(course.creatorId || '').slice(0, 8)`。
 - [截断] 行 140-143 — `courseResourceApi.list({ courseId: id, limit: 10000 })` 超过后端 maxPageSize 被截断，资源中心数据不完整且无提示（上轮已标记未修）。最佳实践：fetchAllPages 分页合并。
 - [竞态] 行 132-153 — 三个并行拉取无取消守卫，切换课程 id 时旧数据可覆盖（上轮已标记未修）。
 - [截断] 行 123 — `courseApi.list({ status:'published', limit:1000 })` 客户端全量拉取，课程超上限时列表/筛选/统计不完整（上轮已标记未修）。容忍（含 P3：CourseCard index prop 未使用）。
@@ -225,9 +161,6 @@
 - [状态管理/竞态] knowledge-graph-d3-view.tsx:474-516 — 第二个样式 effect 会在主绘制 effect 之后无条件覆盖 circle 的 `fill/stroke/stroke-width`（回到 TYPE_META 普通配色），使主 effect 中针对 `highlightNodeIds` 的红色渐变/红描边/加宽高亮（:313-329）全部失效；若未来任何页面启用 highlightNodeIds（当前 KnowledgeGraphShell 未透传、无调用方，功能休眠），红色高亮将不可见，仅剩透明度区分；最佳实践：样式 effect 内同样处理 highlight 分支，或高亮样式集中到单一 effect 管理
 - [交互失效/状态管理] yi-know-assistant.tsx:774-781 — 聊天气泡内点击「为你推荐」资源卡片仅 setActiveTab/setExpandedIds，而 `isChatMode = chatMessages.length > 0 || isTyping`（:540）不会因此退出，界面仍停留在 chatView，用户点击无任何可见反馈（预期切回资源列表并展开该卡片）；最佳实践：点击推荐时调用 handleCloseChat 或新增「返回导航面板」行为
 - [竞态/卸载] data-provider.tsx:108-131 — `cancelled` 仅保护 reportError/setEvaluationLoading，`loadQuestionBanks/loadExams` 内部的 setQuestionBanks/setExams（:89,:103）不受保护：路由快速切换（isPortal 条件翻转）时旧请求响应会写入新页面状态，且卸载后 setState；最佳实践：loadXxx 返回后统一过 cancelled 检查
-- [防重复] approval-list-page.tsx:230-234 + approval-dialogs.tsx:142-153 — 通过/驳回按钮在审批请求执行期间无 pending/loading 禁用，快速双击会重复调用 onApprove/onReject（后端可能二次审批报错或重复流转）；最佳实践：useApprovalDialogs 内部增加 submitting 状态禁用按钮
-- [防重复] approval-dialogs.tsx:142-153 — `confirmApprove/confirmReject` 无 pending 状态，双击可重复提交（同 approval-list-page:231 一并修复）；最佳实践：按钮增加 loading 并 disable
-- [竞态] content-list-page.tsx:400-413 — `setBatches/setExpandedBatches/setMajors/setWorkflows` 在 `loadSeq` 守卫（:453）之前无条件执行，快速连续 refresh 时旧请求的批次/专业列表可覆盖新请求结果（frontItems 已正确受守卫）；最佳实践：将全部 setState 移到 loadSeq 校验之后
 - [错误被吞] eval-method-card.tsx:299-312 — `handleFileUpload` 中 `onFileUpload` 失败（reject）无任何捕获/提示，仅 finally 复位 uploading，产生 unhandled rejection 且用户无感知；最佳实践：catch 后 setError 展示
 
 ### frontend-comp-03.md（22 条 P2）
@@ -319,39 +252,31 @@
 
 ### handler-01.md（11 条 P2）
 
-- [静默失败] affairs_config_import_handler.go:74-79、106-111、152-157 — 三个 Sheet 的重复检查 `QueryRow(...).Scan` 与 INSERT `Exec` 错误全部忽略，DB 故障或类型不合法（如日期格式错误）时导入返回 200 且计数虚高、部分行静默丢失；最佳实践：Scan/Exec 出错时记录日志并 500（或计入 skipped 并在响应带 error 字段）。
-- [事务缺失] affairs_config_import_handler.go:53-166 — 三 Sheet 导入不在同一事务，中途失败留部分数据；最佳实践：整次导入包 BeginTx 整体回滚。
 - [数据丢失] alliance_crud_handler.go:180-251、287-326 — enterprise/project 的部分更新兜底**漏掉 bool 字段 `IsPublic`**（请求体缺省 false 会覆盖已有 true）：仅改名称/阶段的局部 PUT 会静默取消前台公开，企业/项目从门户消失；最佳实践：将 IsPublic 改为 *bool 或维护显式 PATCH 语义，缺省时回退现有值。
-- [错误处理] alliance_crud_handler.go:49 — `alliancePublicGet` 将 store 所有错误（含 DB 故障）统一响应 404（上轮已标，未修）；最佳实践：区分 ErrNotFound 返回 404，其余走 respondServerError。
 - [数据丢失] alliance_handler.go:344-363 — UpdateMilestone 兜底漏掉 `IsCompleted`（bool）与 `SortOrder`（int）：仅改名称/日期的局部更新会把已勾选完成的里程碑重置为未完成、排序清零；最佳实践：IsCompleted/SortOrder 改指针或请求侧显式区分，缺省回退 existing。
 - [数据丢失] alliance_handler.go:541-563 — UpdatePermission 兜底漏掉 `IsEnabled`（bool）：部分更新（如改账号名/资源权限）会静默把合作账号置为停用；最佳实践：IsEnabled 改 *bool 缺省回退。
 - [数据丢失] alliance_handler.go:666-685 — UpdateDictionaryItem 已修 name 回退，但 `SortOrder`（int）缺省写 0，部分更新重排序字典项；最佳实践：SortOrder 缺省回退现有值。
 - [错误处理] alliance_handler.go:488-493 — GetPermission 将 store 所有错误（含 DB 故障）响应 404（上轮已标，未修）；最佳实践：区分 pgx.ErrNoRows 与内部错误。
 - [数据丢失] batch_handler.go:207-245 — BatchUpdate 无部分更新兜底：store/batches.go:208-209 恒写 `code/org_node_id/major_id/workflow_id`，请求未携带的 *string 字段以 NULL 覆盖已有值（如仅改批次名称即清空批次编码与组织/专业/工作流关联）；最佳实践：与联盟同类，Update 前先读回、nil 字段回退现有值。
-- [租户边界] batch_handler.go:169-172 — claims.TenantID 为空时 tenantID=nil，TenantScoped 表（如课程批次）落库 NULL tenant_id 产生无主记录（上轮已标，未修）；最佳实践：TenantScoped=true 时无租户直接 403。
 - [契约不一致] cert_grade_handler.go:87-123 — 无组件/无榜单数据时 `CompData`/`Leaderboard` 为 nil，JSON 输出 `null` 而非 `[]`（上轮已标，未修）；最佳实践：组装前初始化空切片。
 
 ### handler-02.md（20 条 P2）
 
-- [错误误报] content_actions.go:134-138 — `transitionWithHook` 状态流转已提交成功后回读失败返回 404"不存在"，客户端误判失败并重试，第二次流转会得到 400 invalid transition，产生误导；最佳实践：写成功后回读失败返回 500 并提示"已生效，请刷新"。
 - [参数校验] content_actions.go:205-208 — `invite` 直接用 `json.NewDecoder(r.Body)` 解析，未走 `decodeBody`（无 10MB 上限）；且 `UserID` 未校验 UUID 格式，非法值触发 PG 22P02 转 500；最佳实践：复用 `decodeBody`，前置 `uuid.Parse` 校验并 400。
 - [数据完整性] content_actions.go:209 + store/content_actions.go:160-176 — `Invite` 未校验被邀请用户存在且属于当前租户，任意（含他租户）用户 ID 可写入 collaborator 数组；列表/详情回显姓名（exams.go:299 的 unnest+JOIN users 无租户过滤）会泄露他租户用户名；最佳实践：邀请前 `Users().Get` 校验租户归属（参照 evaluation_result_handler.go:150-156 的做法）。
 - [健壮性] course_clone_handler.go:43 — 直接 `json.NewDecoder(r.Body)` 无 `MaxBytesReader` 限制；最佳实践：改用 `decodeBody`。
 - [错误误报 404] course_handler.go:111-115（Get）、360-362（Delete 前置）、461-465（SubmitHomework）、579-583（SubmitNodeHomework）— 对"不存在"以外的任意错误（含 DB 故障）统一返回 404"不存在"，上轮"回读错误改 500"未覆盖；最佳实践：`errors.Is(err, store.ErrNotFound)` 分流 404 / respondServerError。
 - [性能] course_handler.go:476-516、594-634 — `ListHomeworkSubmissions`/`ListNodeHomeworkSubmissions` 无分页，一次返回全部提交（含 content/attachmentUrls 大字段）；最佳实践：加分页或限制条数。
 - [事务边界] course_import_handler.go:410,419 — `findOrCreateKnowledgePoints`/`findOrCreateResources` 走 `h.DB`（连接池，事务外自动提交），而绑定插入走事务 `q`；导入整体回滚时，本次新建的知识点/资源行残留为孤儿数据，破坏"覆盖导入整体回滚"的原子性承诺；最佳实践：将 findOrCreate 改为接收 `q` 在事务内执行。
-- [错误误报 404] course_node_handler.go:127-131（Get）、210-213（Update 前置）、274-277（Delete 前置）、159-162（Create 课程校验）— 任意错误返回 404"不存在"；最佳实践：`errors.Is(err, store.ErrNotFound)` 分流。
 - [边界] course_node_handler.go:307 — `ReorderNodes` 传入的 nodeIDs 不做归属校验：不属于该课程的节点被 store 的 `WHERE id AND course_id` 静默跳过（无提示），部分列表重排导致 sort_order 出现重复/悬空；最佳实践：校验 nodeIDs 均属于该课程并回读校验数量，失败返回 400。
 - [数据完整性] course_node_handler.go:167-170 — Create 的 `ParentID` 未校验父节点属于同一课程/租户，可把节点挂到他课程父节点下造成树错乱；最佳实践：前置校验 parent 归属同课程。
 - [错误误报 404] course_resource_handler.go:81-85,146-150,177-181 — `CourseTenantID` 对任意错误（含 DB 故障）返回 404"课程不存在"；最佳实践：ErrNotFound 分流 404，其余 respondServerError。
 - [错误吞静默失败] course_resource_handler.go:172-176 — `UnbindResource` 中 `BindTargetID` 错误一律返回 200"成功"（意图为幂等，但无法区分"绑定不存在"与 DB 故障）：DB 异常时客户端误以为已解绑，绑定实际仍在；最佳实践：用 `errors.Is(err, store.ErrNotFound)` 区分，DB 错误返回 500。
-- [错误误报 404] crud.go:121-125（crudGet）、155-159（crudUpdate 前置）、214-218（crudDelete 前置）— `GetByIDFn` 任意错误返回 404；最佳实践：ErrNotFound 分流，其余 500。
 - [错误误报 404] evaluation_method_handler.go:70-74 — `TenantID` 查询任意错误返回 404"测评方式不存在"；最佳实践：ErrNotFound 分流。
 - [数据完整性] evaluation_result_handler.go:158-171 — `Submit` 未校验 taskId/sceneId 属于当前租户，非学生角色也未校验 evaluateeId 属于当前租户；可写入引用他租户任务/用户的脏结果行（当前列表无 join 不泄露，但一旦列表 join 展示任务信息即构成跨租户信息暴露）；最佳实践：提交前校验 task/scene/evaluatee 归属（参照 evaluator 校验 150-156）。
 - [参数校验] evaluation_result_handler.go:183-220,222-258 — `Grade`/`BatchGrade` 均未校验 score 上下界，可写入负数或 >100 的分数（course_handler.go:540 的 0~100 校验在此缺失）；最佳实践：与课程作业批改一致加 0~100 校验。
 - [性能] evaluation_result_handler.go:234-250 — `BatchGrade` 对每个 item 逐条 `GetEvaluationResult`（N+1），批量大时放大查询；最佳实践：批量 IN 查询一次取回并校验。
 - [错误误报 404] evaluation_result_handler.go:86-90 — `Get` 任意错误返回 404；最佳实践：ErrNotFound 分流。
-- [错误吞静默失败] exam_handler.go:292（AddQuestion）、317（RemoveQuestion）、362（UpdateQuestionScore）、402（BulkUpdateScores）— 写操作成功后回读错误被 `exam, _` 吞掉，200 返回变更前旧实体；最佳实践：回读失败 respondServerError。
 - [错误误报 404] exam_handler.go:67-71（Get）、153-157（Update）、230-234（Delete）— 任意错误返回 404"考试不存在"；最佳实践：ErrNotFound 分流。
 
 ### handler-03.md（12 条 P2）
@@ -362,9 +287,7 @@
 - [性能/DoS] file_handler.go:233,266 — libreoffice 转换使用 `exec.Command` 无 context 超时、无并发限制，配合 100MB 上传（file_handler.go:19）可被反复触发重 CPU 转换拖垮进程；最佳实践：加超时（context.WithTimeout）与全局并发信号量。
 - [竞态] graduation_handler.go:231 — `AppliedCount >= Capacity` 为事务外预检，并发申请可超容量（service ApplyGraduationTopic 若未对课题行加锁重检即越界）；最佳实践：service 事务内 `SELECT ... FOR UPDATE` 后重检容量再插入。
 - [事务/一致性] granular_course_import_handler.go:88-90 — 导入整体无事务（对比 exam_import_handler.go:89-108 有事务包裹），中途失败部分写入、无回滚；最佳实践：与试卷导入一致在 ImportExcel 外层包事务。
-- [副作用顺序] granular_course_import_handler.go:162-169 — `findOrCreateKnowledgePoints/Resources` 在覆盖权限校验（canOverwriteContent）之前执行，权限不足被跳过时知识点/资源已被创建（孤儿数据）；最佳实践：先做权限判定再创建知识/资源。
 - [吞错] granular_course_import_handler.go:218-237 — `replaceCourseBindings` 全部 `_, _ =` 忽略错误（DELETE/INSERT 失败静默），DB 中 resource_count 与真实绑定可能不一致；最佳实践：返回 error 由调用方计入 failed。
-- [租户完整性] hybrid_module_handler.go:61-63 — Upsert 未校验 `node_id` 归属租户（store Create 仅约束本行 tenant_id，hybrid_modules.go:77-87），可将模块写入他租户节点（孤儿行，不可见但脏数据）；最佳实践：Create/ReplaceByNode 前校验 `system_course_nodes.tenant_id = $tenant`。
 - [越权弱] import_export_handler.go:339-354 — 覆盖导入对他人对象仅走 updateSQL 改名/改码，无 `canOverwriteContent` 校验，任意业务用户可改名他人试卷/课程/场景/题库（与 exam/granular 导入的权限判定不一致）；最佳实践：覆盖前校验 creator/co-creator。
 - [事务] import_export_handler.go:291-401 — Import 无事务，中途失败部分写入（冻结豁免区，标注即可）。
 - [并发边界] job_ability_result_handler.go:399-407 — 单机 `aggInFlight` 按 positionId 去重，多实例部署时失效（可重复触发重汇聚）；最佳实践：改为 DB 层状态机（aggregate log 加唯一约束/互斥状态）。
@@ -379,18 +302,14 @@
 - [部分更新/数据丢失] node_homework_handler.go:83-90 — UpdateFn 直接透传 `Requirement/Deadline/NeedAttachment`；store Update（lesson_content.go:338-341）全列覆盖，ValidateUpdate 仅要求 title，故 PUT 省略 requirement/deadline 即被置 NULL、省略 needAttachment 即被置 false。最佳实践：与 learn_roads 一致回填现有值（crud 骨架已有 ValidateUpdateExisting 钩子可用）。
 - [部分更新] node_quiz_handler.go:118-122 — UpdateQuiz 直接透传 `TimeLimit *int`，PUT 省略 timeLimit 即清空（node_quizzes.go:72-75 全列覆盖）。最佳实践：UpdateFn 内回填现有 timeLimit 或改用指针三态语义。
 - [错误吞静默失败] node_resource_handler.go:167-170 — UnbindResource 中 `BindTargetID` 返回**任何**错误（含 DB 错误）都响应 200 `{"id":...}`，解绑失败被静默吞掉。最佳实践：仅 `pgx.ErrNoRows`（绑定不存在）幂等返回 200，其余错误走 respondServerError。
-- [错误吞静默失败] crud.go:100、crud.go:187 — `item, _ := cfg.GetByIDFn(...)` 创建/更新后的**回读错误被吞掉**，DB 写成功但回读失败时返回 201/200 + 零值空实体，客户端拿到空对象且无错误提示。上轮"回读错误改 500"只覆盖了手写回读的 handler，crud 骨架（本批 banner/knowledge_point/learn_road/major/on_site/node_homework 均走此路径）是遗漏点。最佳实践：回读失败时 respondServerError（保持写已成功但响应 500 的语义，与其余 handler 一致）。
 
 ### handler-05.md（10 条 P2）
 
 - [回读错误] org_handler.go:177 — `updated, _ := h.Service.Get(...)` 回读错误被忽略：Update 成功但回读失败时返回 200 + null 响应，与 2026-08-07"回读错误改 500"的修复目标不一致；最佳实践：回读失败时 respondServerError。
-- [回读错误] org_type_handler.go:100 — 经 crudCreate/crudUpdate 骨架（crud.go:100/187）回读错误被 `item, _ :=` 忽略，失败时返回 200 + 零值实体（`{}`）；2026-08-07"回读错误改 500"未覆盖 crud 框架；最佳实践：骨架层检查 GetByIDFn 错误并 respondServerError。
 - [错误吞静默失败] portal_handler.go:205 — `examEvents, _ := h.Service.ListExamEvents(...)` 错误被忽略且无日志，考试事件静默缺失（同文件其他查询均 slog.Error）；最佳实践：记录错误日志。
 - [租户隔离/数据完整性] position_ability_handler.go:74-81,130-139 — CreateBinding/UpdateBinding 校验了岗位租户，但 ResponsibilityID 完全未校验（不校验该职责是否属于本租户/本岗位；AbilityPointID 因 is_public 共享能力点可放行）。绑定写入后可引用他租户职责 id，本租户岗位模型/导出会渲染出他租户职责内容（跨租户引用，轻微信息泄露）；对比 position_certificate_handler.go:136-143 同时校验证书岗位与目标岗位租户，此处为遗漏；最佳实践：校验 responsibility 属于同一 position（tenant 一致），或由 store 层 JOIN 校验归属。
-- [错误掩盖] position_certificate_handler.go:61-74 — checkCertTenant/GetByIDFn 将任意错误（含 DB 故障）一并返回，经 crudGet/crudUpdate/crudDelete 骨架（crud.go:122-124/155-158）统一映射为 404"证书不存在"；DB 故障被掩盖为"资源不存在"，排障困难；最佳实践：仅对 store.ErrNotFound 返回 404，其他错误上抛走 respondServerError。
 - [回读错误] position_handler.go:488 — SaveFull 成功后 `pos, _ := h.Service.Get(...)` 回读错误被忽略，可能返回 200 + null；最佳实践：回读失败 respondServerError。
 - [静默失败/无事务] position_import_handler.go:147-150,196-210 — 覆盖模式清理（4 条 DELETE）与后续 majors/certs 重建、新建模式的 batch/majors/certs 关联写入大量 `h.DB.Exec` 错误被忽略且整体无事务；中途任一写入失败（如唯一约束、连接断开）会留下"岗位行已更新但关联数据缺失/残留"的不一致状态；最佳实践：至少对关联写入检查错误并计入 result.Errors，覆盖流程建议包事务。
-- [错误掩盖] position_responsibility_handler.go:103-113 — GetByIDFn 将 PositionTenantID 的任意错误（含 DB 故障）映射为 store.ErrNotFound，经 crudGet（crud.go:122-124）统一 404；最佳实践：区分 ErrNotFound 与其他错误。
 - [静默失败] program_course_import_handler.go:174-175 — `strconv.ParseFloat/strconv.Atoi` 错误被忽略，非法学分/学时以 0 静默落库；最佳实践：解析失败行计入 errors 并跳过。
 - [数据质量] program_course_import_handler.go:182-200 — 岗位名/课程名均未命中现有记录时仍 append 并插入 Name=""、position_id/course_id 均为空的行（空壳课程行），preview 的 Created 也计入这些无效行；最佳实践：解析失败（无法解析岗位或课程）的行计入 errors 并跳过，不落空行。
 
@@ -450,26 +369,20 @@
 ### store-01.md（11 条 P2）
 
 - [索引] abilities.go:128-204 — CitationStats/ListUncited 的 4 个引用绑定表相关子查询
-- [租户纵深] alliance_store.go:105-118 — ListEnterpriseAgreements 仅按
-- [租户纵深] alliance_store.go:120-126 — ListMilestones 仅按 `project_id` 过滤，
 - [错误处理] alliance_store.go:78-86 — queryList 吞掉扫描错误（`items, _ := scan(rows)`，
 - [租户纵深] approvals.go:76-85、129-166 — Get/UpdateHistory/RejectRecord/AdvanceRecord
 - [租户纵深] approvals.go:116-125 — ExistsPending 仅按 target_type+target_id 全局查询，
 - [租户纵深] batches.go:177-238 — CreateFields/UpdateFields/Delete/UpdateStatus 均无
 - [租户纵深] content_actions.go:94-176 — Transition/Review/Invite 均无 tenantID 参数
 - [错误处理] course_homeworks.go:177-188 — scanHomeworkSubmissions 扫描失败
-- [数据残留] courses.go:133-161 — Delete 未清理课程级 exam_usages（target_type=
 - [租户纵深] dict_store.go:56-85 — 基类 GetByID/Update/Delete 无租户过滤参数
 
 ### store-02.md（8 条 P2）
 
 - [nil 解引用] portal.go:679 — `ListClassPlans` 直接 `q.Query(ctx, query, userID, *tenantID)` 解引用指针，而本文件其余方法均以 `tenantID != nil` 守卫；一旦调用方传入 nil 即 panic；最佳实践：与其他方法一致先判 nil（nil 时按无租户或返回空处理）。
-- [数据丢失] lesson_content.go:158-174, 242-264 — `Update` 在 `GranularLessonIds` 缺省（PATCH 未带该字段）时置空，随后 `SyncCourseKnowledgePoints` 第二条 UPDATE 条件 `($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))` 恒真，会把该知识点从**租户内所有课程**的 `courses.knowledge_point_ids` 中删除；而该列同时被课程编辑（courses.go:119）、课程克隆/导入等链路直接写，属通用引用列，非颗粒课专属；只改知识点名称即可能静默剥离课程-KP 关联；最佳实践：Update 仅当请求显式携带 granular_lesson_ids 才调用 SyncCourseKnowledgePoints（或改为全量对比差异后再同步）。
 - [事务穿透] lesson_content.go:177-183 — `Delete` 先 `DeleteResourceTags` 再删知识点，两条语句未包事务（用 s.q 而非 tx），删除标签成功后删行失败会残留孤儿标签；最佳实践：签名改为接收 tx，由 service 统一开启事务。
 - [数据一致性] lesson_content.go:177-183 — 删除知识点后未从 `courses.knowledge_point_ids` 反向清理，形成悬空引用（CitationStats/ListUncited 口径与存量数据不一致）；最佳实践：Delete 内执行 `UPDATE courses SET knowledge_point_ids = array_remove(...) WHERE tenant_id=$1 AND $2 = ANY(knowledge_point_ids)`。
-- [N+1] exam_questions.go:63-85 — 每道题先 `SELECT id` 判存在再 UPDATE/INSERT（2 次往返/题），题目多时 N+1 放大；最佳实践：改 `INSERT ... ON CONFLICT (exam_id, question_id) DO UPDATE`（与 exams.go:124 的 AddQuestion 同款写法）单语句完成。
 - [原子性/计数器漂移] favorites.go:68-92 — 取消收藏的 DELETE 与 `favorite_counters` 减一、添加收藏的 INSERT 与计数器加一均非事务，且计数器 UPDATE/INSERT 错误被 `_, _ =` 吞掉（favorites.go:74-77, 87-91）；失败后计数与真实收藏数长期漂移（列表/详情展示错数）；最佳实践：两个语句包在一个短事务内，计数器语句错误返回 err 而非忽略。
-- [事务穿透] exams.go:80-86 — `Delete` 先删 `exam_questions` 再删 `exams`，两条语句未包事务，第二条失败时题目已删而试卷残留（半删状态，与上轮修复的 question_banks Delete 同型）；最佳实践：Delete 接收 tx 或内部开启事务。
 - [事务穿透] micro_cert.go:111-117 — `DeleteTemplate` 先删 `cert_issuance_records` 再删模板，未包事务，失败即半删（发放记录丢失、模板残留）；最佳实践：包事务。
 
 ### store-03.md（30 条 P2）
@@ -508,35 +421,13 @@
 
 ---
 
+---
+
 ## 四、P3 一般（607 条）
 
-主要类别（明细见 `raw/`）：死代码/未使用、重复代码、命名/风格、类型 any、测试卫生（清理错误忽略）、i18n 细节、过时注释。
+> 死代码/未使用、重复代码、命名/风格、类型 any、测试卫生、i18n 细节。明细见 raw/ 各批次文件。
 
----
+## 五、备注
 
-## 五、回查验证记录
-
-对 **35 条 P0/P1 记录**全部逐条回到代码复核：
-
-| 结论 | 数量 | 明细 |
-|------|------|------|
-| 已回查确认 | 32 | 见上文各条目「回查」列 |
-| 回查排除（误报） | 1 | `alliance_project_store.go:197` DeleteMilestone（SQL 与参数均正确） |
-| 回查降级 P1→P2 | 2 | `position_certificates.go:23` List（handler 已有归属校验，store 纵深）；`alliance_store.go:55` UpsertSchoolInfo（无调用方） |
-
-**关键结论**：本轮最重要的发现是 **2 个修复引入的 P0 回归**（能力域 404、题库绑定 500）与 **6 个 P1 回归**（scheduler 超时污染、140 种子时序、导入防重失效、测试断言、骨架屏卡死）——说明修复后必须补充回归验证。上轮绝大部分修复（越权/租户隔离/部分更新/回读 500/并发锁/竞态守卫/缓存收敛/导入事务化）经复核**无回归**。
-
----
-
-## 六、修复优先级建议
-
-1. **立即修（P0×2）**：能力域 TenantFn 补配、question_banks 绑定 INSERT 去 tenant_id
-2. **本周修（P1 回归×4）**：scheduler RESET statement_timeout、140 豁免平台租户、import-confirm await、job_ability 测试
-3. **两周内修（P1 越权/数据丢失）**：PutFullRule/course_node/favorites/question/scheduling 租户校验、四实体部分更新兜底、exam_usage/course_node 兜底、fields 开关、tasks 两处、landing 骨架屏
-4. **持续修（P2）**：按批次逐项修复
-5. **跟踪（P3）**：随重构清理
-
-## 附录
-
-- 逐文件勾选清单：[`checklist.md`](./checklist.md)
-- 各批次原始逐行记录：[`raw/`](./raw/)（28 个文件）
+- 已修复问题已从本清单删除（修复记录见 git 提交）。
+- 本清单为当前未修复问题的唯一追踪来源；合并视图见 issues-merged-2026-08-08.md。

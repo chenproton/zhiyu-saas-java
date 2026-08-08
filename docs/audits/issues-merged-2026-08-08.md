@@ -22,9 +22,7 @@
 - 其中 **107 条为两轮共同遗留**（07 已报、08 仍存在，顽固问题）
 
 - [两轮遗留][frontend-app-03.md] [i18n] 第 464 行：`<LandingEmpty title={`暂无${t(cat.title)}`} />` — 模板串拼接中文"暂无"，整串未作翻译 key，切语言后仍是中文；最佳实践：`t('暂无{t}', { t: t(cat.title) })`（上轮已报，未修）。
-- [两轮遗留][frontend-app-03.md] [分页缺失] 第 61-65 行：`usePortalUsers` 仅解构 `users/loading/error/refetch`，未取 `total/page/pageSize/setPage`，PortalCrudPage 也未传 `pagination` → 毕业学生超过默认 20 条时**只能看第一页、无法翻页**（对比 accounts 页第 168 行正确传了 pagination）（上轮已报，**未修**，回归确认）。
 - [两轮遗留][frontend-app-02.md] [字段丢失] 行 691-692 — `buildCoursePayload` 使用 `existing?.semester`/`existing?.className`，`courseForm.semester` 的用户修改永不生效（表单无该输入项，属死字段，上轮已标记未修）。建议删除或打通 UI。
-- [两轮遗留][frontend-app-02.md] [崩溃风险] 行 649 — `course.creatorId.slice(0, 8)`：creatorId 为 null/undefined（老数据）时 TypeError 整页崩溃（上轮已标记未修）。最佳实践：`(course.creatorId || '').slice(0, 8)`。
 - [两轮遗留][frontend-app-03.md] [截断] 第 72-87 行 `list({limit:200})` 三路截断：协议/项目/成果超 200 条时详情页各 Tab 过滤基于截断列表，已关联项缺失（上轮已报，未修）。
 - [两轮遗留][frontend-app-02.md] [截断] 行 123 — `courseApi.list({ status:'published', limit:1000 })` 客户端全量拉取，课程超上限时列表/筛选/统计不完整（上轮已标记未修）。容忍（含 P3：CourseCard index prop 未使用）。
 - [两轮遗留][frontend-app-02.md] [截断] 行 232 — `resourceLibraryApi.list({ limit: 500 })` 客户端全量拉取被后端上限截断，统计卡片、类型/院系/专业筛选、列表均不完整且无提示（上轮已标记未修）。
@@ -37,15 +35,10 @@
 - [两轮遗留][frontend-app-02.md] [重复加载覆盖] 行 190-323 — 上轮问题未修：加载 effect 依赖 `abilityPool`（行 323），能力池拉取完成触发 effect 重跑，编辑模式重新拉取课程/节点/模块并整体覆盖 `nodeDataMap`/`moduleAssignments`/`selectedNodeId`（会重置用户已选节点），新建模式则重置 nodes（若用户在该窗口内已添加节点会丢失）；`setAbilityPoints` 在第二次运行才拿得到池内名称（首次显示裸 UUID 名称）。最佳实践：去掉 abilityPool 依赖，改为首次加载后单独 setAbilityPoints。
 - [两轮遗留][frontend-app-02.md] [陈旧闭包] 行 310-329 — 上轮问题未修：`AttachmentListEditor.handleFileChange` 上传完成回填时读取闭包 `items` 做 `findIndex`，若上传期间该附件被删除则 idx=-1 静默丢弃（文件已上传 CDN 成孤儿）；若被追加条目不受影响。最佳实践：上传开始记录 itemId，回填前校验仍存在，失败提示。
 - [两轮遗留][store-01.md] [索引] abilities.go:128-204 — CitationStats/ListUncited 的 4 个引用绑定表相关子查询
-- [两轮遗留][frontend-api-client.md] [错误处理] affairs.ts:250-253 — `scheduleApi.exportExcel` 未检查 `res.ok` 即 `downloadBlob(await res.blob())`，非 2xx 的 JSON 错误体会被下载成「排课导出.xlsx」垃圾文件；同文件 :153-160 teachingPlanApi.exportExcel 有 ok 检查，行为不一致。上轮遗留。最佳实践：复用 :155-158 模式。
-- [两轮遗留][handler-01.md] [事务缺失] affairs_config_import_handler.go:53-166 — 三 Sheet 导入不在同一事务，中途失败留部分数据；最佳实践：整次导入包 BeginTx 整体回滚。
-- [两轮遗留][handler-01.md] [静默失败] affairs_config_import_handler.go:74-79、106-111、152-157 — 三个 Sheet 的重复检查 `QueryRow(...).Scan` 与 INSERT `Exec` 错误全部忽略，DB 故障或类型不合法（如日期格式错误）时导入返回 200 且计数虚高、部分行静默丢失；最佳实践：Scan/Exec 出错时记录日志并 500（或计入 skipped 并在响应带 error 字段）。
 - [两轮遗留][handler-01.md] [错误处理] alliance_crud_handler.go:49 — `alliancePublicGet` 将 store 所有错误（含 DB 故障）统一响应 404（上轮已标，未修）；最佳实践：区分 ErrNotFound 返回 404，其余走 respondServerError。
 - [两轮遗留][store-01.md] [错误处理] alliance_store.go:78-86 — queryList 吞掉扫描错误（`items, _ := scan(rows)`，
 - [两轮遗留][store-01.md] [租户纵深] alliance_store.go:105-118 — ListEnterpriseAgreements 仅按
 - [两轮遗留][store-01.md] [租户纵深] alliance_store.go:120-126 — ListMilestones 仅按 `project_id` 过滤，
-- [两轮遗留][frontend-api-client.md] [错误处理] api-helpers.ts:178-179 — `hasBody` 用 `content-length !== '0'` 判断响应体；chunked 响应无 content-length 时非 JSON 成功响应会被 `res.json().catch` 兜底成 `{error:'请求失败'}` 作为业务数据返回。上轮遗留。最佳实践：按 Content-Type 判断或对空体接口显式处理。
-- [两轮遗留][frontend-comp-02.md] [防重复] approval-dialogs.tsx:142-153 — `confirmApprove/confirmReject` 无 pending 状态，双击可重复提交（同 approval-list-page:231 一并修复）；最佳实践：按钮增加 loading 并 disable
 - [两轮遗留][backend-middleware-router.md] [JWT 校验]（遗留）auth.go:53-57 — 中间件只校验"能解析 + 签名有效"，不强制 `claims.UserID != ""`。登录多租户流程签发的 `preAuthClaims`（auth_handler.go:159-169，含 `platform` 字段、无 `userId`）与正式令牌同密钥同 HS256，可被本中间件解析为 `Claims{Platform:"portal", UserID:""}` 并放行进入仅挂 `RequirePlatform` 的端点（`/auth/portal/me`、`/subscriptions`、`/stats/me` 等）：`PortalMe` 以空 UserID 查库、`SubscriptionHandler` 因 tenant 过滤拒绝，无数据泄露但属于令牌类型混淆缺口，且空 UserID 请求会打到 DB 查询（500 面）。最佳实践：解析成功后 `if claims.UserID == "" { 401 }`，天然排除 preAuthToken 及任何签名正确但结构不全的令牌。
 - [两轮遗留][frontend-shared-types.md] [契约] backend.ts:22 — `Tenant.adminIds: string[]` 仍标必填，后端 `domain/unified.go:112` `json:"adminIds,omitempty"` 可空（上轮未修）；最佳实践：改 `adminIds?: string[]`。
 - [两轮遗留][frontend-shared-types.md] [契约] backend.ts:47 — `OrgType.isDefault?` 仍标可选，后端 `domain/unified.go:124` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
@@ -75,7 +68,6 @@
 - [两轮遗留][handler-02.md] [错误吞静默失败] exam_handler.go:292（AddQuestion）、317（RemoveQuestion）、362（UpdateQuestionScore）、402（BulkUpdateScores）— 写操作成功后回读错误被 `exam, _` 吞掉，200 返回变更前旧实体；最佳实践：回读失败 respondServerError。
 - [两轮遗留][store-02.md] [N+1] exam_questions.go:63-85 — 每道题先 `SELECT id` 判存在再 UPDATE/INSERT（2 次往返/题），题目多时 N+1 放大；最佳实践：改 `INSERT ... ON CONFLICT (exam_id, question_id) DO UPDATE`（与 exams.go:124 的 AddQuestion 同款写法）单语句完成。
 - [两轮遗留][store-02.md] [事务穿透] exams.go:80-86 — `Delete` 先删 `exam_questions` 再删 `exams`，两条语句未包事务，第二条失败时题目已删而试卷残留（半删状态，与上轮修复的 question_banks Delete 同型）；最佳实践：Delete 接收 tx 或内部开启事务。
-- [两轮遗留][handler-03.md] [副作用顺序] granular_course_import_handler.go:162-169 — `findOrCreateKnowledgePoints/Resources` 在覆盖权限校验（canOverwriteContent）之前执行，权限不足被跳过时知识点/资源已被创建（孤儿数据）；最佳实践：先做权限判定再创建知识/资源。
 - [两轮遗留][frontend-api-client.md] [契约] honors.ts:5-6 — `list` 的 `userId` 声明为可选，后端对业务用户必填、缺失返回 400（student_honor_handler.go:62-66）；学生由后端强制本人。教师端不传必 400。上轮遗留。最佳实践：拆学生（无参）/业务用户（必传 userId）两种签名。
 - [两轮遗留][handler-03.md] [租户完整性] hybrid_module_handler.go:61-63 — Upsert 未校验 `node_id` 归属租户（store Create 仅约束本行 tenant_id，hybrid_modules.go:77-87），可将模块写入他租户节点（孤儿行，不可见但脏数据）；最佳实践：Create/ReplaceByNode 前校验 `system_course_nodes.tenant_id = $tenant`。
 - [两轮遗留][frontend-shared-types.md] [契约] job.ts:3 — `CareerPosition.code?` 仍标可选，后端 `domain/job.go:27` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
