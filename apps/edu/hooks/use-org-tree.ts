@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { orgApi, orgTypeApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Organization, OrgType } from '@/lib/types/backend'
 
 export interface OrgTreeNode extends Organization {
@@ -31,6 +32,7 @@ function flattenOrgs(nodes: Organization[], depth = 0, result: OrgTreeNode[] = [
 }
 
 export function useOrgTree(tenantId?: string): UseOrgTreeResult {
+  const t = useT()
   const [orgs, setOrgs] = useState<Organization[]>([])
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
   const [loading, setLoading] = useState(false)
@@ -63,7 +65,7 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
         setOrgTypes(typesRes.items)
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : '加载组织架构失败')
+        setError(err instanceof Error ? err.message : t('加载组织架构失败'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -71,7 +73,7 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
     return () => {
       cancelled = true
     }
-  }, [tenantId, refetchKey])
+  }, [tenantId, refetchKey, t])
 
   const orgTree = useMemo(() => {
     return flattenOrgs(orgs)

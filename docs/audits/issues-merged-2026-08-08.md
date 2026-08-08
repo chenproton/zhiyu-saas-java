@@ -25,12 +25,10 @@
 - [两轮遗留][frontend-app-02.md] [字段丢失] 行 691-692 — `buildCoursePayload` 使用 `existing?.semester`/`existing?.className`，`courseForm.semester` 的用户修改永不生效（表单无该输入项，属死字段，上轮已标记未修）。建议删除或打通 UI。
 - [两轮遗留][frontend-app-03.md] [截断] 第 72-87 行 `list({limit:200})` 三路截断：协议/项目/成果超 200 条时详情页各 Tab 过滤基于截断列表，已关联项缺失（上轮已报，未修）。
 - [两轮遗留][frontend-app-02.md] [截断] 行 123 — `courseApi.list({ status:'published', limit:1000 })` 客户端全量拉取，课程超上限时列表/筛选/统计不完整（上轮已标记未修）。容忍（含 P3：CourseCard index prop 未使用）。
-- [两轮遗留][frontend-app-02.md] [截断] 行 232 — `resourceLibraryApi.list({ limit: 500 })` 客户端全量拉取被后端上限截断，统计卡片、类型/院系/专业筛选、列表均不完整且无提示（上轮已标记未修）。
 - [两轮遗留][frontend-app-02.md] [截断] 行 47 — `limit: 9999` 超后端 maxPageSize 被截断为 200，`totalPages = ceil(total/9999) = 1` 无分页，只展示前 200 条无提示（上轮已标记未修）。最佳实践：limit 传 200 并用服务端分页（其余 library 页已改造）。
 - [两轮遗留][frontend-app-03.md] [数据覆盖] 第 155-156 行：租户省份/城市不在 CHINA_REGION 或为空时，编辑表单默认回填 `北京 / 东城区`，用户不修改直接保存会把原地区覆盖为"北京/东城区"（数据污染）；最佳实践：默认留空，未选择不提交（上轮已报，未修）。
 - [两轮遗留][frontend-app-02.md] [竞态] 行 132-153 — 三个并行拉取无取消守卫，切换课程 id 时旧数据可覆盖（上轮已标记未修）。
 - [两轮遗留][frontend-app-02.md] [运算符优先级] 行 141-144 — 上轮问题未修：`draft?.estimatedHours || node.estimatedHours ? parseFloat(...) : undefined` 实为 `(a || b) ? c : d`：用户清空 estimatedHours（draft=''）而 node 原值存在时回退用旧值，**无法清空该字段**；parseFloat 无 NaN 兜底。最佳实践：显式 `const v = draft?.estimatedHours; const eh = v !== undefined && v !== '' ? parseFloat(v) : node.estimatedHours`。
-- [两轮遗留][frontend-app-02.md] [部分成功误导] 行 124-150 — 与 ability 页相同（create/update 成功后 saveTags 失败误报"保存失败"，重试重复创建；上轮已标记未修）。
 - [两轮遗留][frontend-app-02.md] [部分成功误导] 行 186-213 — 上轮问题未修：实体保存成功、`tagApi.setBindings` 失败 → toast"保存失败"且弹窗不关闭，重试会重复创建（新建路径无幂等）；行 162-175 上传成功但 create 失败的 CDN 孤儿文件无清理。最佳实践：标签失败单独提示；上传完成即视为"已提交"语义或幂等重试。
 - [两轮遗留][frontend-app-02.md] [重复加载覆盖] 行 190-323 — 上轮问题未修：加载 effect 依赖 `abilityPool`（行 323），能力池拉取完成触发 effect 重跑，编辑模式重新拉取课程/节点/模块并整体覆盖 `nodeDataMap`/`moduleAssignments`/`selectedNodeId`（会重置用户已选节点），新建模式则重置 nodes（若用户在该窗口内已添加节点会丢失）；`setAbilityPoints` 在第二次运行才拿得到池内名称（首次显示裸 UUID 名称）。最佳实践：去掉 abilityPool 依赖，改为首次加载后单独 setAbilityPoints。
 - [两轮遗留][frontend-app-02.md] [陈旧闭包] 行 310-329 — 上轮问题未修：`AttachmentListEditor.handleFileChange` 上传完成回填时读取闭包 `items` 做 `findIndex`，若上传期间该附件被删除则 idx=-1 静默丢弃（文件已上传 CDN 成孤儿）；若被追加条目不受影响。最佳实践：上传开始记录 itemId，回填前校验仍存在，失败提示。
@@ -49,7 +47,6 @@
 - [两轮遗留][handler-02.md] [错误误报] content_actions.go:134-138 — `transitionWithHook` 状态流转已提交成功后回读失败返回 404"不存在"，客户端误判失败并重试，第二次流转会得到 400 invalid transition，产生误导；最佳实践：写成功后回读失败返回 500 并提示"已生效，请刷新"。
 - [两轮遗留][store-01.md] [错误处理] course_homeworks.go:177-188 — scanHomeworkSubmissions 扫描失败
 - [两轮遗留][handler-02.md] [错误误报 404] course_node_handler.go:127-131（Get）、210-213（Update 前置）、274-277（Delete 前置）、159-162（Create 课程校验）— 任意错误返回 404"不存在"；最佳实践：`errors.Is(err, store.ErrNotFound)` 分流。
-- [两轮遗留][handler-02.md] [错误吞静默失败] course_resource_handler.go:172-176 — `UnbindResource` 中 `BindTargetID` 错误一律返回 200"成功"（意图为幂等，但无法区分"绑定不存在"与 DB 故障）：DB 异常时客户端误以为已解绑，绑定实际仍在；最佳实践：用 `errors.Is(err, store.ErrNotFound)` 区分，DB 错误返回 500。
 - [两轮遗留][store-01.md] [数据残留] courses.go:133-161 — Delete 未清理课程级 exam_usages（target_type=
 - [两轮遗留][handler-02.md] [错误误报 404] crud.go:121-125（crudGet）、155-159（crudUpdate 前置）、214-218（crudDelete 前置）— `GetByIDFn` 任意错误返回 404；最佳实践：ErrNotFound 分流，其余 500。
 - [两轮遗留][frontend-shared-types.md] [契约] evaluation-exam.ts:104,138,182 — `QuestionBank.code?/Question.code?/Exam.code?` 仍标可选，后端 `domain/evaluation.go:10,45,78` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
@@ -64,8 +61,6 @@
 - [两轮遗留][frontend-shared-types.md] [契约] evaluation-scene.ts:37-38 — `SceneEvaluationResult.evaluatorId?/evaluatorType?` 仍标可选，后端 `:189-190` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
 - [两轮遗留][backend-domain.md] [NULL 直扫·未修复] evaluation.go:22 + store/question_banks.go:248,282,303 — `QuestionBank.Version string` 直扫可空列 `question_banks.version`（001_baseline:848 无 NOT NULL），与 Description 同源同修。
 - [两轮遗留][frontend-api-client.md] [契约] evaluation.ts:486-489 — `aggregateStatus` 的 `careerPositionId` 类型为可选，后端必填（job_ability_result_handler.go:438-442 缺失返回 400）；响应类型 `| null` 也不会出现——后端无记录返回 404 而非 null。上轮遗留。最佳实践：careerPositionId 必填、类型改 `Promise<JobAbilityAggregateStatus>`。
-- [两轮遗留][handler-02.md] [错误误报 404] exam_handler.go:67-71（Get）、153-157（Update）、230-234（Delete）— 任意错误返回 404"考试不存在"；最佳实践：ErrNotFound 分流。
-- [两轮遗留][handler-02.md] [错误吞静默失败] exam_handler.go:292（AddQuestion）、317（RemoveQuestion）、362（UpdateQuestionScore）、402（BulkUpdateScores）— 写操作成功后回读错误被 `exam, _` 吞掉，200 返回变更前旧实体；最佳实践：回读失败 respondServerError。
 - [两轮遗留][store-02.md] [N+1] exam_questions.go:63-85 — 每道题先 `SELECT id` 判存在再 UPDATE/INSERT（2 次往返/题），题目多时 N+1 放大；最佳实践：改 `INSERT ... ON CONFLICT (exam_id, question_id) DO UPDATE`（与 exams.go:124 的 AddQuestion 同款写法）单语句完成。
 - [两轮遗留][store-02.md] [事务穿透] exams.go:80-86 — `Delete` 先删 `exam_questions` 再删 `exams`，两条语句未包事务，第二条失败时题目已删而试卷残留（半删状态，与上轮修复的 question_banks Delete 同型）；最佳实践：Delete 接收 tx 或内部开启事务。
 - [两轮遗留][frontend-api-client.md] [契约] honors.ts:5-6 — `list` 的 `userId` 声明为可选，后端对业务用户必填、缺失返回 400（student_honor_handler.go:62-66）；学生由后端强制本人。教师端不传必 400。上轮遗留。最佳实践：拆学生（无参）/业务用户（必传 userId）两种签名。
@@ -73,7 +68,6 @@
 - [两轮遗留][frontend-shared-types.md] [契约] job.ts:3 — `CareerPosition.code?` 仍标可选，后端 `domain/job.go:27` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
 - [两轮遗留][frontend-shared-types.md] [契约] job.ts:23-25 — `favoriteCount?/viewCount?/abilityCount?` 仍标可选，后端 `:45-47` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
 - [两轮遗留][frontend-api-client.md] [契约] job.ts:72-75 — `saveFull` 响应类型声明 `{ position: CareerPosition }`，后端直接返回岗位对象（position_handler.go:490 `respondJSON(w, http.StatusOK, pos)`），无 position 包装；当前唯一调用方（edu `job/positions/[id]/edit/page.tsx:214`）忽略返回值故无运行时影响，但类型误导后续调用方。上轮遗留。最佳实践：类型改为 `Promise<CareerPosition>`。
-- [两轮遗留][service-01.md] [数据丢失] job_ability_aggregator.go:373（联动 store/users.go:474-496）— profiles 以 users 表行回填，若候选学生已删号（scene_evaluation_results 的 evaluatee_id 仍存在），ListProfiles 无该 key，零值 struct 传入 UpsertResult 会把已存的 class_name/major_name 覆写为空串（旧数据被抹白）；最佳实践：profile 缺失的学生跳过 Upsert（或仅更新得分列不动身份列）。
 - [两轮遗留][backend-domain.md] [枚举/DB 默认值错位·未修复] lesson.go:107 + 001_baseline:601 — `LessonBatch.Status LessonBatchStatus`（=ContentStatus，open/closed）但 `lesson_batches.status` DB 默认值为 `'active'`；batch_configs.go:96 CreateWithStatus 保证 handler 路径显式写状态，绕过 handler 的插入（种子/脚本）会得到 'active' 与 open/closed 两态冲突；最佳实践：新增迁移把默认值改为 'open'。
 - [两轮遗留][frontend-shared-types.md] [契约] lesson.ts:3 — `Course.code?` 仍标可选，后端 `domain/lesson.go:9` 无 omitempty 必返（上轮未修）；最佳实践：改必填。
 - [两轮遗留][frontend-shared-types.md] [契约] lesson.ts:30 — `coCreatorIds: string[]` 仍标必填，后端 `:35` `json:"coCreatorIds,omitempty"` 可空（上轮未修）；最佳实践：改可选。
@@ -117,9 +111,7 @@
 - [两轮遗留][store-03.md] [租户] tenant_admins.go:128-138 — ResetPassword 仅 WHERE id 无租户；若未来放开非平台管理员调用即越权改密。最佳实践：增加 tenantID 参数。
 - [两轮遗留][handler-08.md] [静默失败] tenant_handler.go:209、240、353、378、625 — `Update`/`UpdateStatus`/`AdminUpdate`/`AdminUpdateStatus`/`UpdateSchoolAdmin` 回读一律 `tenant, _ :=`，回读失败返回 200 + null；最佳实践：`respondServerError`（UpdateSchoolAdmin 的 Admin 版本已正确 500，本组应统一）。
 - [两轮遗留][handler-08.md] [静默失败] training_program_handler.go:393 — `Clone` 成功后 `program, _ :=` 回读失败返回 201 + null；最佳实践：`respondServerError`。
-- [两轮遗留][frontend-ui.md] [竞态] packages/ui/src/hooks/use-async.ts:51-70 — refresh 无请求序号守卫：deps 快速变化（筛选联动）时，先发出的慢请求可能后返回并覆盖新数据，与仓库近期「8 处前端竞态请求序号守卫」的标准不一致。最佳实践：useRef 请求序号 `seqRef.current++`，await 后 `if (seq !== seqRef.current) return`。
 - [两轮遗留][handler-08.md] [错误吞静默] user_relation_handler.go:92-95 — `Create` 任何错误一律 400"发起者或目标不在租户中"：DB 故障/唯一冲突等真实错误被误标为客户错误，前端无法区分；最佳实践：区分 `pgx.ErrNoRows`/业务错误走 400，其余 `respondServerError`。
-- [两轮遗留][store-03.md] [事务] users.go:187-203 — BatchDelete 两条 DELETE 无事务，第二条失败时 user_roles 已删、users 残留（用户仍在但角色消失）；Delete（167-174）角色计数递减错误被忽略且与主删分离。最佳实践：包进 withTxStore。
 
 - 其余为本轮新增/回归发现，明细见 problems.md（08-08）第三章与 raw/。
 

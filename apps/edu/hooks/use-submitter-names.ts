@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { userManagementApi } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import { fetchAllPages } from '@/lib/fetch-all'
 import type { User } from '@/lib/api'
 
 export function useSubmitterNames() {
+  const t = useT()
   const [userMap, setUserMap] = useState<Map<string, User>>(new Map())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +26,7 @@ export function useSubmitterNames() {
           setUserMap(new Map(items.map((u) => [u.id, u])))
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : '获取用户列表失败')
+        if (!cancelled) setError(e instanceof Error ? e.message : t('获取用户列表失败'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -32,7 +34,7 @@ export function useSubmitterNames() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   const getName = (userId: string) => userMap.get(userId)?.name || userId
 

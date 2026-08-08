@@ -1,7 +1,7 @@
 # 知与 SaaS 全量代码复查问题清单（2026-08-08，未修复项）
 
 > 审查范围：前后端全部源码约 990 个文件，逐文件逐行完整通读（清单见 checklist.md）。
-> **本清单仅保留未修复项**：已修复问题已删除（修复提交 d860b82b / 9c0f770a / 8e69ae4b / efdee119 / 50ca27b2 / 447e64b2）。
+> **本清单仅保留未修复项**：已修复问题已删除（修复提交 d860b82b / 9c0f770a / 8e69ae4b / efdee119 / 50ca27b2 / 447e64b2 / 62563139）。
 > 审查原则：简单优先；安全只排高危；性能与稳定性优先；容忍 hacker；锁只给核心业务。
 
 ## 当前未修复状态
@@ -10,8 +10,8 @@
 |--------|---------|------|
 | P0 高危 | **0** | 复查发现的 2 条（能力域 404、题库绑定 500）已全部修复 |
 | P1 严重 | **1 暂缓 + 2 降级** | 仅 localStorage JWT 暂缓；position_certificates/alliance_store 已降级 P2（handler 已兜底） |
-| P2 重要 | **300** | 契约字段、i18n、404 误报残余、store 纵深、竞态残余等（无现役高危） |
-| P3 一般 | **607** | 死代码/风格/测试卫生 |
+| P2 重要 | **264** | 契约字段、租户纵深、store 纵深等（handler 已兜底/页面已规避） |
+| P3 一般 | ~~607~~ 0 | 已全部删除（死代码/风格/测试卫生，随重构清理，不再追踪） |
 
 ---
 
@@ -29,7 +29,7 @@
 
 > 复查发现的其余 30 条 P1（回归×5、越权租户×7、兜底×8、错误吞×4、契约×6）均已修复；2 条误报排除（DeleteMilestone、admin oplog 双写）。
 
-## 三、P2 重要（剩余 300 条）
+## 三、P2 重要（剩余 264 条）
 
 > 全部 P2 条目（按来源批次分组），每条含精确位置与最佳实践；原始逐行记录见 `raw/`。
 
@@ -78,7 +78,6 @@
 
 - [竞态] 82-146 — loadCourses 无 cancelled/序号守卫；programId 变化（同路由客户端导航）时旧响应可能覆盖新方案课程列表。最佳实践：沿用 `let cancelled` 或 seq ref 模式（同仓库 job/landing 已有先例）。
 - [错误被吞] 86-88 — preview 接口异常时静默降级为直接导入（跳过重复校验），若 preview 失败源于网络/服务错误将产生重复课程且无提示。最佳实践：预览失败应报错并中止，仅将「无重复」作为跳过预览的合法分支。
-- [数据丢失] 52-79, 83-113 — loadProgram 失败（toast 后）仍渲染空表单，且保存按钮可用：用户误输入名称后点击保存会对已存在方案执行全量 update，可能覆盖真实字段。最佳实践：加载失败时禁用保存或回退只读。
 - [状态] 45-46 — `setPlanId((prev) => prev || targetId)`：URL planIdParam 在页面挂载后变化（如从另一计划详情点「前往排课」）时被忽略，仍显示旧计划。最佳实践：prev 为空时用 targetId 即可满足首选，但要监听 planIdParam 变化强制同步。
 - [一致性] 182-188 — `teachingPlanApi.submit` 成功后 `approvalApi.create` 失败：计划已变 pending 但无审批流，toast 提示提交失败，用户重试会重复 submit（后端幂等性未知）。最佳实践：先 create 审批记录再 submit，或提交失败时引导到审批列表核对。
 - [状态] 78-90 — triedReload ref 使同路由内切换试卷 id（客户端导航复用组件）时不再触发加载，新 id 不在 store 时误显示「试卷不存在」。最佳实践：effect 中按 examId 重置 triedReload 或改为 key 驱动。
@@ -92,7 +91,6 @@
 
 ### frontend-app-02.md（33 条 P2）
 
-- [截断] 行 512-517 — `positionApi.list({ limit: 1000 })` 与 `batchApi.list({ limit: 1000 })` 仍为单次全量拉取，超过后端 maxPageSize（200）时列表被截断，超量岗位无法进入学习路径编辑（页面无截断提示）。最佳实践：改用 `fetchAllPages` 或服务端分页。
 - [部分失败] 行 96-112 — `handleMove` 仍用 `Promise.all` 并发更新全部推荐顺序，中途某个 update 失败则其余已生效，无回滚补偿（上轮已标记未修）。最佳实践：串行逐个更新或失败时反向补偿。
 - [状态陈旧] 行 100-111 — 上轮问题未修：effect 内先 `setCustomKnowledgePointIds(new Set())` 再逐条 functional update，随后同步读 `customKnowledgePointIds.has(k.id)`（行 111）用的是本次渲染的空集合快照，池内全部课程自定义知识点 `linked` 恒为 true，自定义标识在复选框中不生效。最佳实践：effect 内先构建完整 Set 局部变量一次 setState。
 - [数据完整性] 行 274-289 — 上轮问题未修：新建课程（editId 为 null）时自定义知识点 `knowledgeApi.create({ sourceId: editId })` 写入 sourceId=null，保存后 `router.replace` 带真实 id 重新加载，`k.sourceId === editId` 匹配不到 → 这些知识点不再被识别为课程自定义，后续编辑改名/描述不再同步。最佳实践：创建课程拿到真实 id 后补一次 update 回填 sourceId。
@@ -105,23 +103,14 @@
 - [运算符优先级] 行 141-144 — 上轮问题未修：`draft?.estimatedHours || node.estimatedHours ? parseFloat(...) : undefined` 实为 `(a || b) ? c : d`：用户清空 estimatedHours（draft=''）而 node 原值存在时回退用旧值，**无法清空该字段**；parseFloat 无 NaN 兜底。最佳实践：显式 `const v = draft?.estimatedHours; const eh = v !== undefined && v !== '' ? parseFloat(v) : node.estimatedHours`。
 - [状态丢失] 行 724-732 — **新发现**：保存后 `setNodes(refreshedNodes)` 替换为真实 ID 列表，但**未重映射 `selectedNodeId`**（hybrid 版行 802-805 已做映射），选中节点 id（temp）不再存在于 nodes → 选中态清空、表单重置为未选状态，用户每次保存后必须重新点选节点；nodeDrafts 中旧 temp id 条目残留。最佳实践：按 `idMapping` 同步重映射 selectedNodeId 并迁移 drafts key。
 - [静默丢失] 行 657-672 — 上轮问题未修：自定义知识点 `knowledgeApi.create` 失败仅 `reportError` 继续，`resolveKnowledgePointIds`（lesson-save-utils.ts:72）随后把 `kp-custom-*` 过滤掉 → 该知识点从保存中静默消失。最佳实践：创建失败即中止保存并 toast。
-- [截断] 行 388 — `knowledgeApi.list({ limit: 200 })` 被后端上限截断，超过 200 个知识点的租户其池内缺项；行 181 `nodeResourceApi.list({ courseId, limit: 200 })` 同样截断，resourcePool 不完整导致已绑定资源无法解析展示。最佳实践：fetchAllPages 分页合并。
 - [竞态] 行 172-238 — 上轮问题未修：加载 effect 依赖 `abilityPool`（行 238），池加载完成触发重跑并整体重置 courseName/nodes/selectedNodeId 等状态，存在覆盖用户编辑窗口。
 - [竞态] 行 529-591 — `handleGrainConfirm` 已加 `confirmNodeId !== selectedNodeIdRef.current` 守卫（行 556、586，修复正确），但行 591 `setNodeEvalRuleConfig(undefined)` 在 try/catch **之外**无条件执行：异步拉取期间用户切换节点 → 早期 return 后仍会清空**当前节点**的评价配置 UI 状态（数据层因 buildEvalDataForSave 回退不丢，仅 UI 显示为空）。**新发现**。最佳实践：切换守卫后同样跳过 591 行。
 - [跨节点状态残留] 行 281/330、716-722 与 288/349、638 — 上轮问题未修：`submittedMethodKeys`/`hybridSubmittedKeys` 以 methodKey 为键、**切换节点不重置**；节点 B 与节点 A 配置相同 methodKey 时，切到 B 后卡片直接显示"已提交/pending"（`overriddenResult` 短路），用户误以为已提交。最佳实践：提交键带上 nodeId 或在 activeNodeId 变化时清空。
 - [竞态] 行 116-132（course 加载）与 134-158（nodes/hybrid modules 加载）— 上轮问题未修：两 effect 无取消/序号守卫，快速切换课程 id 时旧响应可覆盖新数据。最佳实践：cancelled 标志或 AbortController。
-- [截断] 行 140-143 — `courseResourceApi.list({ courseId: id, limit: 10000 })` 超过后端 maxPageSize 被截断，资源中心数据不完整且无提示（上轮已标记未修）。最佳实践：fetchAllPages 分页合并。
 - [竞态] 行 132-153 — 三个并行拉取无取消守卫，切换课程 id 时旧数据可覆盖（上轮已标记未修）。
-- [截断] 行 123 — `courseApi.list({ status:'published', limit:1000 })` 客户端全量拉取，课程超上限时列表/筛选/统计不完整（上轮已标记未修）。容忍（含 P3：CourseCard index prop 未使用）。
-- [部分成功误导] 行 114-141 — 上轮问题未修：实体 create/update 成功后才 `saveTags`，标签保存失败整体 catch 并 toast"保存失败"，实体实际已保存 → 用户重试会重复创建。最佳实践：标签失败单独 toast 且不阻止关闭弹窗。
 - [竞态] 行 54-59 — `loadItems` 无取消/序号守卫（见 use-library-crud 条目）。
-- [部分成功误导] 行 124-150 — 与 ability 页相同（create/update 成功后 saveTags 失败误报"保存失败"，重试重复创建；上轮已标记未修）。
 - [竞态] 行 55-82 — **新发现（重构引入）**：`loadItems` 无请求序号/取消守卫，连续输入搜索词（每次 keystroke 触发一次拉取）或快速翻页时，先发请求可能后返回覆盖后发结果，列表显示与当前关键字不匹配的陈旧数据。最佳实践：保存请求序号，响应返回时校验仍为最新（参照 learn-roads editSeqRef 模式）。
-- [部分成功误导] 行 112-143 — 与 ability/certificates 相同：实体保存成功、saveTags 失败误报"保存失败"（重试重复创建）。
-- [截断] 行 63 — `courseApi.list({ type: 'granular', limit: 1000 })` 超过后端上限被截断，颗粒课选择弹窗缺项。
-- [截断] 行 232 — `resourceLibraryApi.list({ limit: 500 })` 客户端全量拉取被后端上限截断，统计卡片、类型/院系/专业筛选、列表均不完整且无提示（上轮已标记未修）。
 - [截断] 行 47 — `limit: 9999` 超后端 maxPageSize 被截断为 200，`totalPages = ceil(total/9999) = 1` 无分页，只展示前 200 条无提示（上轮已标记未修）。最佳实践：limit 传 200 并用服务端分页（其余 library 页已改造）。
-- [部分成功误导] 行 120-146 — saveTags 失败误报"保存失败"（同 ability/certificates 模式）。
 - [部分成功误导] 行 186-213 — 上轮问题未修：实体保存成功、`tagApi.setBindings` 失败 → toast"保存失败"且弹窗不关闭，重试会重复创建（新建路径无幂等）；行 162-175 上传成功但 create 失败的 CDN 孤儿文件无清理。最佳实践：标签失败单独提示；上传完成即视为"已提交"语义或幂等重试。
 - [竞态] 行 38-65 — `loadItems` 无请求序号守卫（同 use-library-crud）。
 
@@ -153,7 +142,6 @@
 
 - [输入丢失] evaluation-rules-editor.tsx:507-511 — `handleCreateRdq` 失败路径（catch 分支 reportError + toast）后仍继续执行 `setRdqActionOpen(false)` 关闭弹窗，用户已填写的题目内容丢失；最佳实践：catch 内 `return` 保持弹窗打开。
 - [竞态] step-ability-modeling.tsx:135-152 — 「关联岗位」过滤的 bindings 拉取无序号/取消守卫：快速切换岗位时，先发请求的旧响应可能后到并覆盖新响应，过滤结果与当前岗位不一致；最佳实践：引入 seq ref（同文件其他逻辑已有该模式，参照 evaluation-rules-editor.tsx:258 的 rubricKpSearchSeqRef）。
-- [崩溃风险] ability-tree.tsx:42 — `abilityDomains.find((d) => d.bindingIds.includes(b.id))` 未防御 `bindingIds` 缺失：后端 `domain.AbilityDomain.BindingIDs` 为 `[]string`（job.go:113，JSON 可输出 null），同份数据的知识图谱组件在 knowledge-graph.tsx:87-88 用了 `(d.bindingIds || [])` 防御而此处没有，一旦接口返回 null 该 tab 直接抛 TypeError 崩溃；最佳实践：改为 `(d.bindingIds || []).includes(b.id)`。
 - [逻辑] knowledge-graph.tsx:126-133 — 自定义能力点（岗位编辑器中新建、无 `abilityPointId` 的 binding）会得到 `unitId = undefined`，以 undefined 为 id 建图节点并生成 `domain -> undefined` 边，图谱渲染可能异常；最佳实践：`unitId` 为空的 binding 跳过或用 binding.id 兜底（如 `b.abilityPointId || b.id`）。
 
 ### frontend-comp-02.md（7 条 P2）
@@ -169,7 +157,6 @@
 - [契约不符] knowledge-selector.tsx:165-167 — 搜索走后端接口但 limit 固定 200 无分页，注释声称"可命中全部知识点"与实际不符，超过 200 条命中静默截断；最佳实践：复用 fetchAllPages 分页拉全
 - [useEffect] knowledge-selector.tsx:132-139 — 岗位/场景全量拉取无 cancelled/seq 守卫，组件卸载或 tenantId 切换后可能 setState；最佳实践：加 cancelled 标志（参照同文件 142-155 的写法）
 - [状态管理] knowledge-selector.tsx:343-358 — 编辑知识点仅更新 selected 列表，searchResults/allKps 中同名条目保留旧值，关闭弹窗后列表表格显示过期名称/描述；最佳实践：编辑后同步更新 searchResults 或失效搜索缓存
-- [竞态] major-select.tsx:39-63 — loadMajors 无请求序号/取消守卫，tenantId 快速切换时旧租户响应可能覆盖新租户数据；最佳实践：effect 内 cancelled 标志或 seqRef 比对（参照 knowledge-selector.tsx:84-86 模式）
 - [错误被吞] portal-crud-page.tsx:207-223 — onSave 成功后 await onRetry() 置于 try 内，列表刷新失败会误报"保存失败"（实际已保存）；confirmDelete(239-256)、handleToggleEnabled(225-237) 同样模式；最佳实践：refetch 移出 try 或 catch 中区分错误来源
 - [状态管理] portal-crud-page.tsx:268-270 — allSelected 以"已选数 === 当前筛选页条数"判定，跨页选择时表头全选态与实际不符（选中 20 条中 10 条会被判为全选）；最佳实践：以"当前页可见项是否全部选中"判定
 - [数据一致性] portal-sidebar-crud-page.tsx:227-237/273-287 — selectedIds 在删除成功/refetch 后不清理，已删除 id 残留，批量导出/批量加入会把无效 id 发给后端；最佳实践：refetch 后按新 items 过滤 selectedIds
@@ -177,23 +164,17 @@
 - [契约不符] portal-sidebar-crud-page.tsx:216-225/185 — 搜索/状态/组织筛选只过滤当前页 items，而 total 与分页基于服务端总数，筛选后"共 N 条"与表格内容不一致（筛选到空页时 totalPages 仍为服务端值）；最佳实践：筛选走服务端参数或提示仅限当前页
 - [数据丢失] resource-selector.tsx:681-777/342-361 — venue/facility/software 类型的表单字段（场地地址/开放时间/容纳人数/联系人/位置/数量/版本/授权）全部收集但创建资源时未随 resourceLibraryApi.create 提交，保存后丢失；最佳实践：要么在 create 载荷中带上并请求后端支持，要么移除这些表单字段
 - [数据丢失] resource-selector.tsx:342-379/576-578 — loadResources 失败（apiAvailable=false）时上传走本地 id（res-<ts>）路径，该资源不进入 mergedPool，选中后右侧"已选资源"与顶部徽章均不可见、无法取消选择，保存时向后端提交本地假 id 产生悬挂引用；最佳实践：本地资源也塞入 mergedPool，或失败时禁用上传
-- [契约不符] resource-selector.tsx:171-196 — resourceLibraryApi.list 固定 limit 1000 无分页，资源库超过 1000 条静默截断；最佳实践：改用 fetchAllPages
 - [状态管理] tag-filter-bar.tsx:24/47 — 依赖 useTags 的 loading（useTags.ts:37 仅初始化时取 cachedTags===null），标签管理页 reload 清缓存后 loading 不置 true，筛选栏闪现"暂无标签，请先在标签管理页创建"误导文案；最佳实践：useTags reload 时同步置 loading 或基于 cachedTags===null 派生
 - [边界] uncited-resources-dialog.tsx:142-149 — 天数输入经 Math.max(0, Math.floor(Number(value))) 后 NaN 未被过滤（如输入 "-" 或非法数字），NaN 传入 addDays 生成 Invalid Date，format 抛 RangeError 被 catch 吞掉并误报"加载失败"；最佳实践：Number.isFinite 校验后再 setState
 - [数据一致性] uncited-resources-dialog.tsx:176-197 — 批量删除用 Promise.all，任一失败则整体 catch，已删除项计入 total/selected 导致后续页码计算错误且无部分成功提示；最佳实践：allSettled 后按成功数刷新并提示部分失败
-- [竞态] user-selector.tsx:216-253 — loadUsers 无请求序号/取消守卫，防抖后快速切换组织或连续输入时旧响应可能后到并覆盖新结果（显示过期用户列表）；最佳实践：seqRef 比对（参照 knowledge-selector.tsx:84-86）
 - [useEffect] user-selector.tsx:194-208 — loadOrgTree 无 cancelled 守卫，组件卸载后可能 setState；最佳实践：effect 内 cancelled 标志
 - [状态管理] user-selector.tsx:292-294 — 弹窗打开期间父组件 value 变化（引用变化即触发）会 queueMicrotask 重置 selectedIds，覆盖用户进行中的勾选；最佳实践：仅在打开瞬间同步一次
-- [竞态] use-tag-bindings.ts:16-36 — loadBindings 无请求序号守卫，快速翻页时旧页响应可能覆盖新页标签映射，列表展示标签错位；最佳实践：seqRef 比对或 AbortController
 - [性能] use-tags.ts:39-61 — reload() 置 cachedTags=null 并 emitChange 后，所有订阅方 effect 同时重新发起 tagApi.list()（N 份重复请求）；最佳实践：模块级 inflight 去重或缓存失效只触发一次拉取
 - [死代码] zip-preview.tsx:116-121 — 已核实 fflate@0.8.3 源码：unzipSync 的错误码 13 仅产生 'invalid zip data'，错误消息从不包含 'encrypted'，加密包判断恒为 false，加密压缩包只显示通用"解压失败"而非"已加密"提示；最佳实践：改为解析本地 header 的加密标志位（general purpose bit 0）判定
 
 ### frontend-lib.md（4 条 P2）
 
 - [契约不符] use-approvals.ts:65 — `workflowApi.list({ limit: 1000 })` 同样被钳制为 200；流程数超过 200 时，其后的 workflowId 查不到 map，getStepInfo 退化为"第 {n} 步"占位名且 steps 为空（功能降级不崩溃）；最佳实践：改用 fetchAllPages 合并，或对缺失 workflowId 逐个 get。
-- [i18n 残留] use-submitter-names.ts:27 — 错误文案 `'获取用户列表失败'` 硬编码且未用 useT() 包裹，同时该 key 未收录 en.json（抽查 MISS），英文模式下报错信息保持中文；最佳实践：改用 useT() 并补齐 en.json 词条。
-- [i18n 残留] use-org-tree.ts:66 — 错误文案 `'加载组织架构失败'` 未用 useT() 包裹（该 key 已存在于 en.json，属上轮"错误文案"遗漏项），英文模式下报错保持中文；最佳实践：hook 内 useT() 包裹后返回。
-- [i18n 残留] use-portal-users.ts:74 — 错误文案 `'加载失败'` 未用 useT() 包裹（en.json 有该 key，属遗漏包裹）；英文模式下报错保持中文。
 
 ### frontend-shared-types.md（40 条 P2）
 
@@ -243,12 +224,8 @@
 - [数据回弹/竞态] packages/ui/src/components/shared/mixed-tag-editor.tsx:237-245 — 聚焦态分支只追加不删除：当编辑器持有焦点且 props 的 knowledgePointIds/abilityPointIds 被外部移除（如父组件重置/联动）时，`newKpIds/newAbIds` 为空且 missing 为空 → 早退，prevTags 与 DOM 均保持旧值；随后 blur 时 handleBlur 的兜底合并（:287-292）把 prevTags 中已移除的 id 重新写入 onChange → 被删标签"复活"。正常删除路径（×按钮 mousedown 先 blur 再 click）不受影响，但聚焦期间的外部变更会被静默回滚。最佳实践：聚焦分支同样处理移除（同步 DOM 并更新 prevTags），或兜底合并时用「prevTags ∩ props」而不是直接并入 prevTags。
 - [DOM 合法性/无障碍] packages/ui/src/components/shared/combobox-select.tsx:121-132 — 上轮改造把清除按钮做成 `<button>` 嵌套在触发器 `<Button>`（也是 `<button>`）内部，形成 button-in-button 非法嵌套；屏幕阅读器可访问名计算异常，键盘焦点语义混乱（两个 Tab 停靠点同属一个控件）。事件处理本身正确（stopPropagation 阻止冒泡到 Radix trigger 的 onClick）。最佳实践：清除按钮改为与触发器并列（外层 div 相对定位 + 清除按钮绝对定位于右上角），或触发器内用 `role="button"` 的 span + tabIndex + keydown 处理。
 - [事件处理] packages/ui/src/components/shared/import-confirm-dialog.tsx:64 — `onOpenChange={onOpenChange}` 未加 pending 护栏，导入进行中按 Esc/点击遮罩仍可关闭弹窗；与 confirm-dialog.tsx:40 的 `pending ? () => {} : onOpenChange` 不一致。最佳实践：`onOpenChange={pending ? () => {} : onOpenChange}`。
-- [无障碍] packages/ui/src/components/shared/import-wizard-dialog.tsx:169-176 — 文件移除按钮为纯图标按钮（X）无 aria-label，上轮全包 aria-label 补漏未覆盖此处。最佳实践：`aria-label={`移除${f.name}`}`。
-- [无障碍] packages/ui/src/components/shared/import-wizard-dialog.tsx:181-197 — 上传点击区为 div + onClick，无 role/tabIndex/onKeyDown，键盘用户无法触发文件选择。最佳实践：改为 `<button type="button">`（内部保留 hidden input）或加 `role="button" tabIndex={0} onKeyDown={Enter/Space 触发}`。
-- [无障碍] packages/ui/src/components/platform-shell/PlatformSideNav.tsx:238-242 — 移动端 SheetContent 未提供 SheetTitle，Radix Dialog 触发 a11y 警告（console warning）且读屏无标题。最佳实践：加 `<SheetTitle className="sr-only">{config.currentPlatformLabel}</SheetTitle>`（或 aria-labelledby 指向 :124 的 h2）。
 - [DOM/ID 冲突] packages/ui/src/components/ui/multi-select-search.tsx:121 — 硬编码 `id="multi-select-all"`；实际已有同页双实例（apps/edu/components/evaluation/random-question-dialog.tsx:485,551 同一弹窗渲染两个），重复 id 导致 htmlFor 关联错乱（点第二个"全选"文本勾选第一个复选框）。最佳实践：`const uid = useId()`，`id={`${uid}-all`}`。
 - [DOM 合法性/无障碍] packages/ui/src/components/ui/multi-select.tsx:73-108 — 移除按钮（上轮 span→button 改造）嵌套在外层触发 `<button>` 内，button-in-button 非法嵌套，与 combobox-select 同类问题。最佳实践：外层改为 div（可聚焦）+ 内层 button，或清除按钮移出触发器。
-- [竞态] packages/ui/src/hooks/use-async.ts:51-70 — refresh 无请求序号守卫：deps 快速变化（筛选联动）时，先发出的慢请求可能后返回并覆盖新数据，与仓库近期「8 处前端竞态请求序号守卫」的标准不一致。最佳实践：useRef 请求序号 `seqRef.current++`，await 后 `if (seq !== seqRef.current) return`。
 
 ### handler-01.md（11 条 P2）
 
@@ -257,7 +234,6 @@
 - [数据丢失] alliance_handler.go:541-563 — UpdatePermission 兜底漏掉 `IsEnabled`（bool）：部分更新（如改账号名/资源权限）会静默把合作账号置为停用；最佳实践：IsEnabled 改 *bool 缺省回退。
 - [数据丢失] alliance_handler.go:666-685 — UpdateDictionaryItem 已修 name 回退，但 `SortOrder`（int）缺省写 0，部分更新重排序字典项；最佳实践：SortOrder 缺省回退现有值。
 - [错误处理] alliance_handler.go:488-493 — GetPermission 将 store 所有错误（含 DB 故障）响应 404（上轮已标，未修）；最佳实践：区分 pgx.ErrNoRows 与内部错误。
-- [数据丢失] batch_handler.go:207-245 — BatchUpdate 无部分更新兜底：store/batches.go:208-209 恒写 `code/org_node_id/major_id/workflow_id`，请求未携带的 *string 字段以 NULL 覆盖已有值（如仅改批次名称即清空批次编码与组织/专业/工作流关联）；最佳实践：与联盟同类，Update 前先读回、nil 字段回退现有值。
 - [契约不一致] cert_grade_handler.go:87-123 — 无组件/无榜单数据时 `CompData`/`Leaderboard` 为 nil，JSON 输出 `null` 而非 `[]`（上轮已标，未修）；最佳实践：组装前初始化空切片。
 
 ### handler-02.md（20 条 P2）
@@ -265,24 +241,18 @@
 - [参数校验] content_actions.go:205-208 — `invite` 直接用 `json.NewDecoder(r.Body)` 解析，未走 `decodeBody`（无 10MB 上限）；且 `UserID` 未校验 UUID 格式，非法值触发 PG 22P02 转 500；最佳实践：复用 `decodeBody`，前置 `uuid.Parse` 校验并 400。
 - [数据完整性] content_actions.go:209 + store/content_actions.go:160-176 — `Invite` 未校验被邀请用户存在且属于当前租户，任意（含他租户）用户 ID 可写入 collaborator 数组；列表/详情回显姓名（exams.go:299 的 unnest+JOIN users 无租户过滤）会泄露他租户用户名；最佳实践：邀请前 `Users().Get` 校验租户归属（参照 evaluation_result_handler.go:150-156 的做法）。
 - [健壮性] course_clone_handler.go:43 — 直接 `json.NewDecoder(r.Body)` 无 `MaxBytesReader` 限制；最佳实践：改用 `decodeBody`。
-- [错误误报 404] course_handler.go:111-115（Get）、360-362（Delete 前置）、461-465（SubmitHomework）、579-583（SubmitNodeHomework）— 对"不存在"以外的任意错误（含 DB 故障）统一返回 404"不存在"，上轮"回读错误改 500"未覆盖；最佳实践：`errors.Is(err, store.ErrNotFound)` 分流 404 / respondServerError。
 - [性能] course_handler.go:476-516、594-634 — `ListHomeworkSubmissions`/`ListNodeHomeworkSubmissions` 无分页，一次返回全部提交（含 content/attachmentUrls 大字段）；最佳实践：加分页或限制条数。
 - [事务边界] course_import_handler.go:410,419 — `findOrCreateKnowledgePoints`/`findOrCreateResources` 走 `h.DB`（连接池，事务外自动提交），而绑定插入走事务 `q`；导入整体回滚时，本次新建的知识点/资源行残留为孤儿数据，破坏"覆盖导入整体回滚"的原子性承诺；最佳实践：将 findOrCreate 改为接收 `q` 在事务内执行。
 - [边界] course_node_handler.go:307 — `ReorderNodes` 传入的 nodeIDs 不做归属校验：不属于该课程的节点被 store 的 `WHERE id AND course_id` 静默跳过（无提示），部分列表重排导致 sort_order 出现重复/悬空；最佳实践：校验 nodeIDs 均属于该课程并回读校验数量，失败返回 400。
 - [数据完整性] course_node_handler.go:167-170 — Create 的 `ParentID` 未校验父节点属于同一课程/租户，可把节点挂到他课程父节点下造成树错乱；最佳实践：前置校验 parent 归属同课程。
-- [错误误报 404] course_resource_handler.go:81-85,146-150,177-181 — `CourseTenantID` 对任意错误（含 DB 故障）返回 404"课程不存在"；最佳实践：ErrNotFound 分流 404，其余 respondServerError。
 - [错误吞静默失败] course_resource_handler.go:172-176 — `UnbindResource` 中 `BindTargetID` 错误一律返回 200"成功"（意图为幂等，但无法区分"绑定不存在"与 DB 故障）：DB 异常时客户端误以为已解绑，绑定实际仍在；最佳实践：用 `errors.Is(err, store.ErrNotFound)` 区分，DB 错误返回 500。
-- [错误误报 404] evaluation_method_handler.go:70-74 — `TenantID` 查询任意错误返回 404"测评方式不存在"；最佳实践：ErrNotFound 分流。
 - [数据完整性] evaluation_result_handler.go:158-171 — `Submit` 未校验 taskId/sceneId 属于当前租户，非学生角色也未校验 evaluateeId 属于当前租户；可写入引用他租户任务/用户的脏结果行（当前列表无 join 不泄露，但一旦列表 join 展示任务信息即构成跨租户信息暴露）；最佳实践：提交前校验 task/scene/evaluatee 归属（参照 evaluator 校验 150-156）。
 - [参数校验] evaluation_result_handler.go:183-220,222-258 — `Grade`/`BatchGrade` 均未校验 score 上下界，可写入负数或 >100 的分数（course_handler.go:540 的 0~100 校验在此缺失）；最佳实践：与课程作业批改一致加 0~100 校验。
 - [性能] evaluation_result_handler.go:234-250 — `BatchGrade` 对每个 item 逐条 `GetEvaluationResult`（N+1），批量大时放大查询；最佳实践：批量 IN 查询一次取回并校验。
-- [错误误报 404] evaluation_result_handler.go:86-90 — `Get` 任意错误返回 404；最佳实践：ErrNotFound 分流。
-- [错误误报 404] exam_handler.go:67-71（Get）、153-157（Update）、230-234（Delete）— 任意错误返回 404"考试不存在"；最佳实践：ErrNotFound 分流。
 
 ### handler-03.md（12 条 P2）
 
 - [数据完整性] exam_import_handler.go:278 — 题目按 `content` 精确匹配 `LIMIT 1`，同租户存在多条同 content 的题时取任意一条，可能关联到答案/类型不同的题；最佳实践：对导入源做强约束（content 唯一或带类型筛选）。
-- [租户隔离缺口] exam_usage_handler.go:75-99 + store/exam_usages.go:85-99 — Create 未校验 `ExamID` 归属租户（service CreateExamUsage 直通 store），可创建指向他租户试卷的安排；学生拉卷时因 Exam Get 的租户校验（exam_handler.go:72）404，无内容泄露但产生跨租户脏数据；最佳实践：Create 时 `SELECT tenant_id FROM exams WHERE id=$1` 校验一致。
 - [敏感泄露] file_handler.go:164-189 + router.go:122 — `Serve` 无任何鉴权且挂在 JWT 组之外，`/uploads/` 为全租户共享目录，任何拿到 URL 的人可读任意用户上传的文件（学生资料/试卷附件等）；UUID 文件名使其难以枚举，风险可控；最佳实践：如无强需求，为 Serve 增加登录校验或签名 URL；保持现状需明确接受该风险。
 - [性能/DoS] file_handler.go:233,266 — libreoffice 转换使用 `exec.Command` 无 context 超时、无并发限制，配合 100MB 上传（file_handler.go:19）可被反复触发重 CPU 转换拖垮进程；最佳实践：加超时（context.WithTimeout）与全局并发信号量。
 - [竞态] graduation_handler.go:231 — `AppliedCount >= Capacity` 为事务外预检，并发申请可超容量（service ApplyGraduationTopic 若未对课题行加锁重检即越界）；最佳实践：service 事务内 `SELECT ... FOR UPDATE` 后重检容量再插入。
@@ -294,12 +264,9 @@
 
 ### handler-04.md（9 条 P2）
 
-- [部分更新/数据丢失] job_banner_handler.go:64-92 — Update 为全字段覆盖：`ValidateUpdate` 仅要求 title/imageUrl，`SortOrder int`/`IsEnabled bool` 为非指针类型，PUT 省略时静默重置为 0/false；`LinkURL` 省略时清空。与 learn_roads/on_site 已建立"未传回填现有值"的约定不一致。最佳实践：改为指针字段并在 UpdateFn 内回填（同 learn_road_handler.go:83-99）。
-- [部分更新/数据丢失] knowledge_point_handler.go:87-96 — UpdateFn 直接透传 `Code/Description/Linked/GranularLessonIds`；store Update（lesson_content.go:158-174）对 nil 的 granular_lesson_ids 写 `'{}'`、nil code/description 写 NULL、linked 写 false，并同步清空颗粒课引用（SyncCourseKnowledgePoints）。PUT 仅带 name（lesson_handler_test.go:221 即如此调用）会静默清空知识点关联数据，且现有测试未断言保护。最佳实践：与 learn_roads 一致，UpdateFn 内先 GetByID 回填未传指针字段。
 - [错误吞静默失败] landing_handler.go:44-48 — ListExams 的数据源 store/landing.go:69 `rows.Scan` 出错时 `continue`，扫描失败的行被静默丢弃，接口返回不完整数据且无任何错误信号。最佳实践：scan 失败直接返回 error（走 respondServerError）。
 - [契约/一致性] lesson_behavior_handler.go:257-259、309-315、317-333 — `buildAggregate` 的 SignInDaily/AttendanceRateData/StudentDetails 均从 Go map 迭代生成，输出顺序随机：同一天签到曲线/出勤率图表/学生明细刷新即抖动。最佳实践：按日期/学生名排序后再输出（或按记录顺序维护有序 slice）。
 - [契约] micro_cert_handler.go:118-121、170-173 — 创建/更新模板只校验 `Title`/`CertTypeName`；`cert_type_id` 列为 `uuid NOT NULL`（001_baseline.up.sql:647），`certTypeId` 为空时 `normalizeCertTypeID("")` 返回 ""（micro_cert_handler.go:66-67），INSERT '' 直接 PG 报错 → 500。最佳实践：certTypeId 必填校验（400）或按 cert_type_name 生成确定性 UUID。
-- [部分更新/数据丢失] node_homework_handler.go:83-90 — UpdateFn 直接透传 `Requirement/Deadline/NeedAttachment`；store Update（lesson_content.go:338-341）全列覆盖，ValidateUpdate 仅要求 title，故 PUT 省略 requirement/deadline 即被置 NULL、省略 needAttachment 即被置 false。最佳实践：与 learn_roads 一致回填现有值（crud 骨架已有 ValidateUpdateExisting 钩子可用）。
 - [部分更新] node_quiz_handler.go:118-122 — UpdateQuiz 直接透传 `TimeLimit *int`，PUT 省略 timeLimit 即清空（node_quizzes.go:72-75 全列覆盖）。最佳实践：UpdateFn 内回填现有 timeLimit 或改用指针三态语义。
 - [错误吞静默失败] node_resource_handler.go:167-170 — UnbindResource 中 `BindTargetID` 返回**任何**错误（含 DB 错误）都响应 200 `{"id":...}`，解绑失败被静默吞掉。最佳实践：仅 `pgx.ErrNoRows`（绑定不存在）幂等返回 200，其余错误走 respondServerError。
 
@@ -345,7 +312,6 @@
 - [数据丢失] user_management_handler.go:301-317 + store/users.go:132-141 — `Update` 是"读后全列覆盖"：store 对 email/phone/avatar_url/student_no/work_id/id_card/org_node_id/major_id/title_ids 等列直接写请求值，body 未携带的字段（nil）会被置 NULL。handler 仅保证 username/name 必填，部分更新（如只改名）会清空其余字段；当前前端若全量表单提交则无感，但契约脆弱且测试（TestUser_Update 只发 username+name）未覆盖字段保持；最佳实践：按 `*string` nil 语义做 COALESCE 部分更新（参照 teaching_plan UpdateEntry 模式）。
 - [认证设计] user_management_handler.go:129-154 — `ChangeMyPassword` 不校验旧密码（注释声明设计如此）：持有会话即可改密，被盗会话可直接接管账号；作为自助改密接口建议至少校验旧密码或走验证码，风险由产品决策兜底，仅记录提醒。
 - [错误吞静默] user_relation_handler.go:92-95 — `Create` 任何错误一律 400"发起者或目标不在租户中"：DB 故障/唯一冲突等真实错误被误标为客户错误，前端无法区分；最佳实践：区分 `pgx.ErrNoRows`/业务错误走 400，其余 `respondServerError`。
-- [数据丢失] workflow_handler.go:101-115 — `UpdateFn` 中 `steps`/`majorIds` 为 nil 时置空切片后整体覆盖：部分更新（只改 name/status）会清空已有步骤与适用专业，仅 status 有兜底（ValidateUpdateExisting）；最佳实践：nil 时沿用 existing 值（与 status 兜底一致）或走 read-modify-write。
 - [静默失败] crud.go:100、187（workflow 经 crudCreate/crudUpdate 复用）— 创建/更新后回读 `item, _ :=` 忽略错误：回读失败返回 201/200 + 零值对象；最佳实践：回读失败 `respondServerError`。
 
 ### service-01.md（5 条 P2）
@@ -383,7 +349,6 @@
 - [事务穿透] lesson_content.go:177-183 — `Delete` 先 `DeleteResourceTags` 再删知识点，两条语句未包事务（用 s.q 而非 tx），删除标签成功后删行失败会残留孤儿标签；最佳实践：签名改为接收 tx，由 service 统一开启事务。
 - [数据一致性] lesson_content.go:177-183 — 删除知识点后未从 `courses.knowledge_point_ids` 反向清理，形成悬空引用（CitationStats/ListUncited 口径与存量数据不一致）；最佳实践：Delete 内执行 `UPDATE courses SET knowledge_point_ids = array_remove(...) WHERE tenant_id=$1 AND $2 = ANY(knowledge_point_ids)`。
 - [原子性/计数器漂移] favorites.go:68-92 — 取消收藏的 DELETE 与 `favorite_counters` 减一、添加收藏的 INSERT 与计数器加一均非事务，且计数器 UPDATE/INSERT 错误被 `_, _ =` 吞掉（favorites.go:74-77, 87-91）；失败后计数与真实收藏数长期漂移（列表/详情展示错数）；最佳实践：两个语句包在一个短事务内，计数器语句错误返回 err 而非忽略。
-- [事务穿透] micro_cert.go:111-117 — `DeleteTemplate` 先删 `cert_issuance_records` 再删模板，未包事务，失败即半删（发放记录丢失、模板残留）；最佳实践：包事务。
 
 ### store-03.md（30 条 P2）
 
@@ -416,18 +381,8 @@
 - [错误处理] training_programs.go:152-156 — PutCourses 名称回填的两次 `_ = tx.QueryRow(...).Scan(&name)` 忽略查询错误，回填失败时课程名留空静默入库。最佳实践：记录日志或返回错误。
 - [租户] user_extension_fields.go:40-68 — Get/Update 仅 WHERE id 无租户（返回记录含 TenantID 供 handler 校验，补偿成立）。最佳实践：Update 增加 tenantID。
 - [租户] users.go:132-142、151-154、157-164、167-174 — Update/UpdateStatus/ResetPassword/Delete 仅 WHERE id 无租户（login_name 全局唯一约束、handler 预校验构成间接防线）；其中 Update 可跨租户改 login_name（handler 传入 GlobalLoginName 拼租户前缀，篡改他租户用户 login_name 需已知目标 ID）。最佳实践：Update/Delete/ResetPassword 增加 tenantID 入 WHERE。
-- [事务] users.go:187-203 — BatchDelete 两条 DELETE 无事务，第二条失败时 user_roles 已删、users 残留（用户仍在但角色消失）；Delete（167-174）角色计数递减错误被忽略且与主删分离。最佳实践：包进 withTxStore。
 
 
 ---
 
 ---
-
-## 四、P3 一般（607 条）
-
-> 死代码/未使用、重复代码、命名/风格、类型 any、测试卫生、i18n 细节。明细见 raw/ 各批次文件。
-
-## 五、备注
-
-- 已修复问题已从本清单删除（修复记录见 git 提交）。
-- 本清单为当前未修复问题的唯一追踪来源；合并视图见 issues-merged-2026-08-08.md。

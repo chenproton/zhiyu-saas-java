@@ -8,7 +8,7 @@ import type { PlatformNavigationConfig, SideNavChild, SideNavItem } from './conf
 import { resolvePlatformIcon } from './icons'
 import { cn } from '@/lib/utils'
 import { matchesPath } from './utils'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 
 function getMatchedTarget(pathname: string, href?: string, matchers?: string[]) {
   const targets = matchers && matchers.length > 0 ? matchers : href ? [href] : []
@@ -237,6 +237,7 @@ export function PlatformSideNav({
       </button>
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0">
+          <SheetTitle className="sr-only">导航菜单</SheetTitle>
           <div className="flex h-full flex-col">{navBody}</div>
         </SheetContent>
       </Sheet>

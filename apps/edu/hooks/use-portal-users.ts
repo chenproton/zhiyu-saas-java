@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalUserManagementApi, roleApi, type User } from '@/lib/api'
+import { useT } from '@/lib/i18n/locale-provider'
 import type { Role } from '@/lib/types/backend'
 
 export interface UsePortalUsersOptions {
@@ -27,6 +28,7 @@ export interface UsePortalUsersResult {
 }
 
 export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUsersResult {
+  const t = useT()
   const { tenantId } = usePortalAuth()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
@@ -71,7 +73,7 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
         setTotal(usersRes.total)
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : '加载失败')
+        setError(err instanceof Error ? err.message : t('加载失败'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -79,7 +81,7 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
     return () => {
       cancelled = true
     }
-  }, [tenantId, options.roleCode, options.search, options.status, page, pageSize, refetchKey])
+  }, [tenantId, options.roleCode, options.search, options.status, page, pageSize, refetchKey, t])
 
   return { users, roles, roleMap, total, page, pageSize, loading, error, refetch, setPage }
 }

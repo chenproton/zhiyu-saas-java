@@ -171,6 +171,7 @@ export function ImportWizardDialog({
                         size="icon"
                         className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
                         onClick={() => handleRemoveFile(i)}
+                        aria-label="移除文件"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -179,8 +180,16 @@ export function ImportWizardDialog({
                 </div>
               )}
               <div
+                role="button"
+                tabIndex={0}
                 className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-muted/30 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    fileInputRef.current?.click()
+                  }
+                }}
               >
                 <Plus className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">
