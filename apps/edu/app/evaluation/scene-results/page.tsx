@@ -32,6 +32,7 @@ import {
 import type { SceneEvaluationResult } from '@/lib/types'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 interface TaskStudent {
   studentId: string
@@ -99,7 +100,7 @@ function GradingPageContent() {
           scenarioApi.list({ limit: 200 }).catch(() => ({ items: [] as any[] })),
           userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
           positionApi.list({ limit: 500 }).catch(() => ({ items: [] as any[] })),
-          taskApi.list({ limit: 10000 }).catch(() => ({ items: [] as any[] })),
+          fetchAllPages((page, pageSize) => taskApi.list({ limit: pageSize, offset: page * pageSize })).catch(() => []),
         ])
 
         const pMap = new Map<string, string>()
@@ -125,7 +126,7 @@ function GradingPageContent() {
         setUserMap(uMap)
 
         const tMap = new Map<string, any>()
-        ;(taskRes.items || []).forEach((t: any) => tMap.set(t.id, t))
+        taskRes.forEach((t: any) => tMap.set(t.id, t))
         setTaskNameMap(tMap)
       } catch {
         /* ignore */

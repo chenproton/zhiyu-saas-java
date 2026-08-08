@@ -36,6 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { Footer } from '@/components/portal/footer'
@@ -152,11 +153,10 @@ export default function SceneLearnPage() {
 
   useEffect(() => {
     if (!id || !scenario) return
-    resourceLibraryApi
-      .list({ limit: 10000 })
-      .then((res) => {
+    fetchAllPages((page, pageSize) => resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((items) => {
         const rMap = new Map<string, TaskResource>()
-        ;(res.items || []).forEach((r: any) => {
+        items.forEach((r: any) => {
           rMap.set(r.id, {
             ...r,
             type: r.resourceType || r.type,

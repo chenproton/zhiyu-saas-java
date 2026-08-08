@@ -78,8 +78,7 @@ export function StepBasicInfo({
 
   // 证书库相关状态
   const [certificateLibrary, setCertificateLibrary] = useState<Certificate[]>([])
-  const [, setLibraryLoading] = useState(false)
-
+  
   // 加载真实行业/专业数据
   useEffect(() => {
     let cancelled = false
@@ -121,7 +120,6 @@ export function StepBasicInfo({
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      setLibraryLoading(true)
       try {
         const res = await certificateLibraryApi.list({ limit: 1000 })
         if (cancelled) return
@@ -140,7 +138,6 @@ export function StepBasicInfo({
           setCertificateLibrary([])
         }
       } finally {
-        if (!cancelled) setLibraryLoading(false)
       }
     })()
     return () => {

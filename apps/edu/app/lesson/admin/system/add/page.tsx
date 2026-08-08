@@ -114,8 +114,7 @@ function AddSystemPageInner() {
   const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
 
   const hasSavedRef = useRef(false)
-  const [, setLoadingEdit] = useState(false)
-
+  
   /* ========== course node tree ========== */
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -179,7 +178,6 @@ function AddSystemPageInner() {
     let cancelled = false
     Promise.resolve()
       .then(() => {
-        setLoadingEdit(true)
         return Promise.all([
           courseApi.get(editId),
           courseNodeApi.list({ courseId: editId }),
@@ -235,7 +233,6 @@ function AddSystemPageInner() {
         toast({ title: e.message || t('加载课程失败'), variant: 'destructive' })
       })
       .finally(() => {
-        if (!cancelled) setLoadingEdit(false)
       })
     return () => {
       cancelled = true

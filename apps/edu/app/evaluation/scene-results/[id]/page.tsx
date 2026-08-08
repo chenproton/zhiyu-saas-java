@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils'
 import { computeTotalScore, formatDateTime } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
+import { fetchAllPages } from '@/lib/fetch-all'
 import {
   evaluationResultApi,
   taskEvaluationApi,
@@ -612,8 +613,8 @@ export default function GradingDetailPage() {
 
         if (res.methodKey === 'random_draw') {
           try {
-            const rdRes = await randomDrawQuestionApi.list({ limit: 9999 })
-            const all = rdRes.items || []
+            const rdRes = await fetchAllPages((page, pageSize) => randomDrawQuestionApi.list({ limit: pageSize, offset: page * pageSize }))
+            const all = rdRes || []
             setRdQuestionPool(all)
             const drawnMap = (res.drawnQuestions || {}) as Record<string, any>
             const drawnIds = Object.keys(drawnMap).filter(

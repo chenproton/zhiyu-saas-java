@@ -13,6 +13,7 @@ import type {
   StatusAction,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { isPublicPage } from '@/lib/public-routes'
 import { useT } from '@/lib/i18n/locale-provider'
 import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
@@ -90,8 +91,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadBankQuestions = useCallback(async (bankId: string) => {
-    const res = await questionApi.list({ bankId, limit: 10000 })
-    const bankQs = res.items.map(parseQuestion)
+    const res = await fetchAllPages((page, pageSize) => questionApi.list({ bankId, limit: pageSize, offset: page * pageSize }))
+    const bankQs = res.map(parseQuestion)
     setQuestions((prev) => {
       const other = prev.filter((q) => q.bankId !== bankId)
       return [...other, ...bankQs]

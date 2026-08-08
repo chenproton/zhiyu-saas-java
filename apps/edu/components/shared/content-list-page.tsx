@@ -312,8 +312,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState('')
   const cloneRenameValueRef = useRef('')
-  const [, setCloneTarget] = useState<T | null>(null)
-  const cloneTargetRef = useRef<T | null>(null)
+    const cloneTargetRef = useRef<T | null>(null)
   const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
   const [rejectReasonItem, setRejectReasonItem] = useState<T | null>(null)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
@@ -914,7 +913,6 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
 
   const handleClone = (item: T) => {
     cloneTargetRef.current = item
-    setCloneTarget(item)
     const name = `${item.name} (克隆)`
     cloneRenameValueRef.current = name
     setCloneRenameValue(name)
@@ -941,7 +939,6 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       }
       setIsCloneRenameDialogOpen(false)
       cloneTargetRef.current = null
-      setCloneTarget(null)
       cloneRenameValueRef.current = ''
       setCloneRenameValue('')
       await refresh()

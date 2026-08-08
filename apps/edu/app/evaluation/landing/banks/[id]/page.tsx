@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
+import { fetchAllPages } from '@/lib/fetch-all'
 import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 import { Footer } from '@/components/portal/footer'
@@ -117,9 +118,8 @@ export default function BankDetailPage() {
             .get(id)
             .then(setBank)
             .catch(() => setBank(null)),
-          questionApi
-            .list({ bankId: id, limit: 10000 } as any)
-            .then((res) => setQuestions(res.items || []))
+          fetchAllPages((page, pageSize) => questionApi.list({ bankId: id, limit: pageSize, offset: page * pageSize }))
+            .then((items) => setQuestions(items || []))
             .catch(() => setQuestions([])),
           knowledgeApi
             .list({ limit: 1000 })

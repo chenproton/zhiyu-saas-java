@@ -44,7 +44,7 @@ export default function QuestionsPage() {
   const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
     randomDrawQuestionApi.list,
     {
-      limit: 9999,
+      limit: 200,
       autoLoad: false,
       getParams: () =>
         selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},

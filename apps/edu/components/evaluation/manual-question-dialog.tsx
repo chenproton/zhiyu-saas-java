@@ -27,6 +27,7 @@ import type { Question, QuestionType, EvalKnowledgePoint } from '@/lib/types'
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -87,10 +88,9 @@ export function ManualQuestionDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    knowledgeApi
-      .list({ limit: 10000 })
-      .then((res) => {
-        if (!cancelled) setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
+    fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((items) => {
+        if (!cancelled) setKnowledgePoints(items.map((kp) => ({ id: kp.id, name: kp.name })))
       })
       .catch((err) => reportError(err, '加载知识点列表'))
     return () => {

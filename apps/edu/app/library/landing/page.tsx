@@ -30,6 +30,7 @@ import { fetchAllPages } from '@/lib/fetch-all'
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
 import { formatSize } from '@/lib/resource-type-constants'
+import { formatDateTime } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
@@ -160,10 +161,7 @@ function ResourceCard({
         <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-50 text-[11px] text-[#cbd5e1]">
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {new Date(resource.createdAt).toLocaleDateString('zh-CN', {
-              month: 'numeric',
-              day: 'numeric',
-            })}
+            {formatDateTime(resource.createdAt).slice(5, 10)}
           </span>
           {resource.fileSize != null && <span>{formatSize(resource.fileSize)}</span>}
           {hasPreview && (

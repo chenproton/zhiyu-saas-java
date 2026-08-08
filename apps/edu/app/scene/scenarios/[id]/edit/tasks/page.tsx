@@ -144,8 +144,7 @@ export default function TasksEditPage() {
   const datasets = useTaskDatasets()
 
   const [existingScenario, setExistingScenario] = useState<EnrichedScenario | null>(null)
-  const [, setDataLoaded] = useState(false)
-  const [loadFailed, setLoadFailed] = useState(false)
+    const [loadFailed, setLoadFailed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const [tasks, setTasks] = useState<Task[]>([])
@@ -329,7 +328,6 @@ export default function TasksEditPage() {
         // Preload datasets so card previews show names immediately
         await ensureDatasetsRef.current(['knowledge', 'ability', 'resources', 'evaluation', 'users'])
 
-        setDataLoaded(true)
       } catch (err: any) {
         setLoadFailed(true)
         toast({

@@ -69,13 +69,11 @@ export function RandomQuestionDialog({
   )
 
   const [questions, setQuestions] = useState<Question[]>([])
-  const [, setLoadingQuestions] = useState(false)
-
+  
   useEffect(() => {
     if (!open) return
     let cancelled = false
     ;(async () => {
-      setLoadingQuestions(true)
       try {
         // 分页合并全量拉取，避免超过后端 maxPageSize(200) 截断抽题池
         const items = await fetchAllPages((page, pageSize) =>
@@ -91,7 +89,6 @@ export function RandomQuestionDialog({
       } catch (err) {
         reportError(err, '加载题目列表')
       } finally {
-        if (!cancelled) setLoadingQuestions(false)
       }
     })()
     return () => {

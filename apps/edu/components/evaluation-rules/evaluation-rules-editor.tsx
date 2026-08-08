@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils'
 import { useToast, MixedTagEditor } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
+import { fetchAllPages } from '@/lib/fetch-all'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { ExamActivationConfig } from '@/components/evaluation-rules/exam-activation-config'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
@@ -432,8 +433,8 @@ export function EvaluationRulesEditor({
   const loadRdqQuestions = useCallback(async () => {
     setLoadingRdq(true)
     try {
-      const res = await randomDrawQuestionApi.list({ limit: 9999 })
-      setRdqApiQuestions(res.items || [])
+      const res = await fetchAllPages((page, pageSize) => randomDrawQuestionApi.list({ limit: pageSize, offset: page * pageSize }))
+      setRdqApiQuestions(res || [])
     } catch (err) {
       reportError(err, { source: '加载现场问答题列表' })
     } finally {
