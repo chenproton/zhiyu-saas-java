@@ -144,6 +144,8 @@ export interface EvalRuleReviewStepInput {
   description?: string | null
   enabled: boolean
   subjectType?: string | null
+  /** 指定评分人（subjectType='enterprise_mentor' 时使用，值为影子账号 users.id） */
+  assignedUserIds?: string[]
   weight: number
   sortOrder: number
 }
@@ -329,6 +331,7 @@ export function methodsToEvalRuleConfig(
       description?: string | null
       enabled: boolean
       subjectType?: string | null
+      assignedUserIds?: string[]
       weight: number
       sortOrder: number
     }>
@@ -408,6 +411,7 @@ export function methodsToEvalRuleConfig(
           description: rs.description || null,
           enabled: rs.enabled,
           subjectType: rs.subjectType || null,
+          assignedUserIds: rs.assignedUserIds || [],
           weight: rs.weight,
           sortOrder: rs.sortOrder ?? i,
         }))

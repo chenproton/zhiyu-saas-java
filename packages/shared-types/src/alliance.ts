@@ -173,6 +173,25 @@ export interface AllianceExpert {
   updatedAt: string
 }
 
+/** 共建导师选项（GET /alliance/experts/mentor-options）：学校侧"启用专家为共建导师"后的选择器数据源 */
+export interface AllianceMentorOption {
+  expertId: string
+  name: string
+  title?: string
+  enterpriseId: string
+  enterpriseName?: string
+  enabled: boolean
+  /** 学校租户影子账号 users.id，未启用为 null */
+  userId: string | null
+}
+
+/** 启用专家为共建导师响应（POST /alliance/experts/{id}/mentor-link）；username/initialPassword 仅首次创建影子账号时返回 */
+export interface AllianceMentorLinkResult {
+  userId: string
+  username?: string
+  initialPassword?: string
+}
+
 export interface AllianceAgreement {
   id: string
   tenantId: string

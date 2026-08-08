@@ -5,6 +5,8 @@ import type {
   AllianceProjectMilestone,
   AllianceAchievement,
   AllianceExpert,
+  AllianceMentorOption,
+  AllianceMentorLinkResult,
   AllianceAgreement,
   AlliancePermission,
   AllianceBrand,
@@ -100,6 +102,17 @@ export const allianceAchievementApi = {
 export const allianceExpertApi = {
   list: (params?: ListParams) => list<AllianceExpert>('/alliance/experts', params),
   get: (id: string) => portalRequest<AllianceExpert>(`/alliance/experts/${id}`),
+  // 共建导师选项：本校已引入企业的专家 + 影子账号启用状态
+  mentorOptions: () =>
+    portalRequest<AllianceListResponse<AllianceMentorOption>>('/alliance/experts/mentor-options'),
+  // 启用专家为共建导师（幂等；首次创建影子账号时响应含 initialPassword）
+  mentorLink: (id: string) =>
+    portalRequest<AllianceMentorLinkResult>(`/alliance/experts/${id}/mentor-link`, {
+      method: 'POST',
+    }),
+  // 停用共建导师（停用后该导师无法登录共建）
+  unlinkMentor: (id: string) =>
+    portalRequest<{ id: string }>(`/alliance/experts/${id}/mentor-link`, { method: 'DELETE' }),
 }
 
 export const allianceBrandApi = {

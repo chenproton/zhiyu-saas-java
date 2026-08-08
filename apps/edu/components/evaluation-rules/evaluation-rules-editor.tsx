@@ -30,6 +30,7 @@ import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,8 @@ import type { EvalRuleConfig } from '@/lib/types/evaluation'
 import { useEvalRuleStore } from '@/lib/evaluation-rule-store'
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { BankQuestionSelectorPanel } from '@/components/evaluation-rules/bank-question-selector-panel'
-import { examApi, randomDrawQuestionApi, majorApi, taskEvaluationApi, knowledgeApi, abilityApi } from '@/lib/api'
+import { examApi, randomDrawQuestionApi, majorApi, taskEvaluationApi, knowledgeApi, abilityApi, allianceExpertApi } from '@/lib/api'
+import type { AllianceMentorOption } from '@/lib/types/alliance'
 import {
   type LoadedExam,
 } from '@/components/evaluation-rules/shared-defs'
@@ -112,6 +114,8 @@ interface ReviewStep {
   desc: string
   enabled: boolean
   subjectType: string
+  /** 指定评分人（subjectType='enterprise_mentor' 时使用，值为影子账号 users.id） */
+  assignedUserIds?: string[]
   weight: number
 }
 
@@ -244,6 +248,7 @@ export function EvaluationRulesEditor({
         desc: rs.description || '',
         enabled: rs.enabled,
         subjectType: rs.subjectType || '',
+        assignedUserIds: rs.assignedUserIds || [],
         weight: rs.weight,
       }))
     }
@@ -251,6 +256,28 @@ export function EvaluationRulesEditor({
   })
 
   const lastSyncedReviewStepsRef = useRef<EvalRuleReviewStepInput[] | null>(null)
+
+  // 企业导师选项（评审步骤 subjectType='enterprise_mentor' 时用于"指定评分人"多选）
+  // null=未加载；仅在存在企业导师步骤时按需拉取一次
+  const [mentorOptions, setMentorOptions] = useState<AllianceMentorOption[] | null>(null)
+  const hasEnterpriseMentorStep = reviewSteps.some(
+    (s) => s.enabled && s.subjectType === 'enterprise_mentor',
+  )
+  useEffect(() => {
+    if (!hasEnterpriseMentorStep || mentorOptions !== null) return
+    let cancelled = false
+    allianceExpertApi
+      .mentorOptions()
+      .then((options) => {
+        if (!cancelled) setMentorOptions(options.items || [])
+      })
+      .catch(() => {
+        if (!cancelled) setMentorOptions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [hasEnterpriseMentorStep, mentorOptions])
 
   // 评价量规「关联考查知识点/能力点」搜索走后端接口（name/code/描述模糊匹配），
   // 可命中全部知识点/能力点，不受初始 pool（200 条钳制）限制
@@ -316,6 +343,7 @@ export function EvaluationRulesEditor({
           s.description !== inc.description ||
           s.enabled !== inc.enabled ||
           s.subjectType !== inc.subjectType ||
+          (s.assignedUserIds || []).join(',') !== (inc.assignedUserIds || []).join(',') ||
           s.weight !== inc.weight ||
           s.sortOrder !== inc.sortOrder
         )
@@ -348,6 +376,7 @@ export function EvaluationRulesEditor({
           desc: rs.description || '',
           enabled: rs.enabled,
           subjectType: rs.subjectType || '',
+          assignedUserIds: rs.assignedUserIds || [],
           weight: rs.weight,
         })),
       )
@@ -367,6 +396,7 @@ export function EvaluationRulesEditor({
           description: rs.desc || null,
           enabled: rs.enabled,
           subjectType: rs.subjectType || null,
+          assignedUserIds: rs.assignedUserIds || [],
           weight: rs.weight,
           sortOrder: i,
         }))
@@ -1680,6 +1710,62 @@ export function EvaluationRulesEditor({
                           </div>
                         </div>
                       )}
+                      {editingReviewStepId !== step.id &&
+                        step.enabled &&
+                        step.subjectType === 'enterprise_mentor' && (
+                          <div className="mt-2 pl-9 space-y-1.5">
+                            <p className="text-[11px] text-gray-500">
+                              {t('指定评分人（企业导师）')}
+                            </p>
+                            {(mentorOptions || []).filter((o) => o.enabled && o.userId).length ===
+                            0 ? (
+                              <p className="text-xs text-gray-400">
+                                {mentorOptions === null
+                                  ? t('加载中...')
+                                  : t('暂无已启用的企业导师，可先在产业联盟专家详情页启用')}
+                              </p>
+                            ) : (
+                              (mentorOptions || [])
+                                .filter((o) => o.enabled && o.userId)
+                                .map((o) => (
+                                  <label
+                                    key={o.expertId}
+                                    className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer"
+                                  >
+                                    <Checkbox
+                                      checked={(step.assignedUserIds || []).includes(
+                                        o.userId as string,
+                                      )}
+                                      onCheckedChange={(v) =>
+                                        setReviewStepsAndSync(
+                                          reviewSteps.map((s) =>
+                                            s.id === step.id
+                                              ? {
+                                                  ...s,
+                                                  assignedUserIds: v
+                                                    ? [
+                                                        ...(s.assignedUserIds || []),
+                                                        o.userId as string,
+                                                      ]
+                                                    : (s.assignedUserIds || []).filter(
+                                                        (x) => x !== o.userId,
+                                                      ),
+                                                }
+                                              : s,
+                                          ),
+                                        )
+                                      }
+                                    />
+                                    <span>
+                                      {[o.enterpriseName, o.name, o.title]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                    </span>
+                                  </label>
+                                ))
+                            )}
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>

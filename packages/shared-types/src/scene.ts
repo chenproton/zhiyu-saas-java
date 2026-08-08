@@ -171,6 +171,8 @@ export interface TaskReviewStep {
   description?: string
   enabled: boolean
   subjectType?: string
+  /** 指定评分人（subjectType='enterprise_mentor' 时使用，值为影子账号 users.id） */
+  assignedUserIds?: string[]
   weight: number
   sortOrder: number
 }

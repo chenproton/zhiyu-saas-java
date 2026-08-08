@@ -389,6 +389,7 @@ export default function ScenarioEditPage() {
                     placeholder={t('点击选择共建人')}
                     tenantId={tenantId}
                     excludeUserIds={creatorId ? [creatorId] : undefined}
+                    showEnterpriseExperts
                   />
                 </div>
 

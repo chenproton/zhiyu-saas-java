@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Users as UsersIcon,
   Building,
+  Briefcase,
   Search,
   X,
   Check,
@@ -31,10 +32,18 @@ import {
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { fetchAllPages } from '@/lib/fetch-all'
-import { orgApi, orgTypeApi, userManagementApi, portalUserManagementApi } from '@/lib/api'
+import {
+  orgApi,
+  orgTypeApi,
+  userManagementApi,
+  portalUserManagementApi,
+  allianceExpertApi,
+} from '@/lib/api'
 import type { User } from '@/lib/api'
+import { useToast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { Organization, OrgType } from '@/lib/types/backend'
+import type { AllianceMentorOption } from '@/lib/types'
 import { typeMetaFor } from '@/lib/org-type-icons'
 
 interface UserSelectorProps {
@@ -47,6 +56,8 @@ interface UserSelectorProps {
   disabled?: boolean
   tenantId?: string
   usePortalApi?: boolean
+  /** 开启后选择器增加"企业专家"分组（数据源：本校已引入企业的专家/共建导师） */
+  showEnterpriseExperts?: boolean
 }
 
 function OrgTreeRow({
@@ -122,8 +133,10 @@ export function UserSelector({
   disabled = false,
   tenantId,
   usePortalApi = true,
+  showEnterpriseExperts = false,
 }: UserSelectorProps) {
   const t = useT()
+  const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [orgs, setOrgs] = useState<(Organization & { children?: Organization[] })[]>([])
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
@@ -140,6 +153,10 @@ export function UserSelector({
   const fetchedIdsRef = useRef<Set<string>>(new Set())
   // 用户列表请求序号：快速切换组织/连续输入时丢弃过期响应
   const loadSeqRef = useRef(0)
+  // 企业专家分组：右侧列表切换为专家视图（null=未加载）
+  const [expertView, setExpertView] = useState(false)
+  const [mentorOptions, setMentorOptions] = useState<AllianceMentorOption[] | null>(null)
+  const [enablingExpertId, setEnablingExpertId] = useState<string | null>(null)
 
   const excludeUserIdsRef = useRef(excludeUserIds)
   useEffect(() => {
@@ -198,6 +215,8 @@ export function UserSelector({
   }, [userSearch])
 
   const loadUsers = useCallback(async () => {
+    // 专家视图下右侧列表来自 mentorOptions，本地过滤，无需请求用户接口
+    if (expertView) return
     const seq = ++loadSeqRef.current
     setUsersLoading(true)
     setUsersError(null)
@@ -229,6 +248,7 @@ export function UserSelector({
       setUsersLoading(false)
     }
   }, [
+    expertView,
     selectedOrgId,
     debouncedUserSearch,
     tenantId,
@@ -249,6 +269,73 @@ export function UserSelector({
       if (open) await loadUsers()
     })()
   }, [open, loadUsers])
+
+  // 企业专家分组数据源：弹窗打开后按需加载一次（dialog 生命周期内复用）
+  useEffect(() => {
+    if (!open || !showEnterpriseExperts || mentorOptions !== null) return
+    let cancelled = false
+    allianceExpertApi
+      .mentorOptions()
+      .then((options) => {
+        if (!cancelled) setMentorOptions(options.items || [])
+      })
+      .catch(() => {
+        if (!cancelled) setMentorOptions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, showEnterpriseExperts, mentorOptions])
+
+  const expertLabel = useCallback(
+    (o: AllianceMentorOption) =>
+      [o.enterpriseName, o.name, o.title].filter(Boolean).join(' · ') || o.name,
+    [],
+  )
+
+  // 右侧专家列表：搜索词本地过滤 + excludeUserIds 过滤（按影子账号 id）
+  const visibleExperts = useMemo(() => {
+    if (!mentorOptions) return []
+    const kw = debouncedUserSearch.trim().toLowerCase()
+    const excludeSet = new Set(excludeUserIds)
+    return mentorOptions.filter((o) => {
+      if (o.userId && excludeSet.has(o.userId)) return false
+      if (!kw) return true
+      return expertLabel(o).toLowerCase().includes(kw)
+    })
+  }, [mentorOptions, debouncedUserSearch, excludeUserIds, expertLabel])
+
+  // 未启用的专家：先启用为共建导师（创建影子账号）再自动勾选
+  const enableExpertAndSelect = async (option: AllianceMentorOption) => {
+    if (enablingExpertId) return
+    setEnablingExpertId(option.expertId)
+    try {
+      const res = await allianceExpertApi.mentorLink(option.expertId)
+      setMentorOptions(
+        (prev) =>
+          prev?.map((o) =>
+            o.expertId === option.expertId ? { ...o, enabled: true, userId: res.userId } : o,
+          ) || prev,
+      )
+      if (res.initialPassword) {
+        toast({
+          title: t('已启用为共建导师并选中'),
+          description: t('初始密码：{pwd}（请转告导师修改密码）', { pwd: res.initialPassword }),
+        })
+      } else {
+        toast({ title: t('已启用为共建导师并选中') })
+      }
+      toggleUser(res.userId)
+    } catch (err: any) {
+      toast({
+        title: t('启用失败'),
+        description: err?.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setEnablingExpertId(null)
+    }
+  }
 
   // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
   // so the trigger shows user names instead of raw ids.
@@ -355,16 +442,22 @@ export function UserSelector({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedOrgId(null)}
+                    onClick={() => {
+                      setExpertView(false)
+                      setSelectedOrgId(null)
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        setExpertView(false)
                         setSelectedOrgId(null)
                       }
                     }}
                     className={cn(
                       'flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mb-1',
-                      !selectedOrgId ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+                      !expertView && !selectedOrgId
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'hover:bg-muted',
                     )}
                   >
                     <Building className="w-4 h-4 text-slate-600" />
@@ -376,12 +469,35 @@ export function UserSelector({
                       node={node}
                       level={0}
                       orgTypeMap={orgTypeMap}
-                      selectedId={selectedOrgId}
-                      onSelect={setSelectedOrgId}
+                      selectedId={expertView ? null : selectedOrgId}
+                      onSelect={(oid) => {
+                        setExpertView(false)
+                        setSelectedOrgId(oid)
+                      }}
                       collapsedIds={collapsedIds}
                       onToggle={toggleOrg}
                     />
                   ))}
+                  {showEnterpriseExperts && (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpertView(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setExpertView(true)
+                        }
+                      }}
+                      className={cn(
+                        'flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mt-1',
+                        expertView ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+                      )}
+                    >
+                      <Briefcase className="w-4 h-4 text-slate-600" />
+                      <span>{t('企业专家')}</span>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -392,7 +508,7 @@ export function UserSelector({
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder={t('搜索用户...')}
+                    placeholder={expertView ? t('搜索企业专家...') : t('搜索用户...')}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     className="pl-8 h-9"
@@ -401,7 +517,76 @@ export function UserSelector({
               </div>
 
               <div className="flex-1 overflow-y-auto min-h-0">
-                {usersLoading ? (
+                {expertView ? (
+                  mentorOptions === null ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : visibleExperts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Briefcase className="h-10 w-10 mb-2 opacity-30" />
+                      <p className="text-sm">{t('暂无企业专家')}</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">{multiple ? '' : ''}</TableHead>
+                          <TableHead className="text-xs">{t('专家')}</TableHead>
+                          <TableHead className="text-xs">{t('共建导师')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visibleExperts.map((o) => {
+                          const selectable = o.enabled && !!o.userId
+                          return (
+                            <TableRow
+                              key={o.expertId}
+                              className={cn(
+                                selectable && 'cursor-pointer',
+                                selectable && o.userId && selectedIds.includes(o.userId)
+                                  ? 'bg-primary/5'
+                                  : '',
+                              )}
+                              onClick={() => {
+                                if (selectable && o.userId) toggleUser(o.userId)
+                              }}
+                            >
+                              <TableCell>
+                                <Checkbox
+                                  checked={!!o.userId && selectedIds.includes(o.userId)}
+                                  disabled={!selectable}
+                                />
+                              </TableCell>
+                              <TableCell className="text-sm">{expertLabel(o)}</TableCell>
+                              <TableCell
+                                className="text-sm text-muted-foreground"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {selectable ? (
+                                  t('已启用')
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    disabled={enablingExpertId === o.expertId}
+                                    onClick={() => enableExpertAndSelect(o)}
+                                  >
+                                    {enablingExpertId === o.expertId && (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                    )}
+                                    {t('启用')}
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  )
+                ) : usersLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>

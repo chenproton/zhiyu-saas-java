@@ -346,6 +346,7 @@ function PositionEditPageContent({ params }: PageProps) {
                     placeholder={t('点击选择共建人')}
                     tenantId={tenantId}
                     excludeUserIds={position.createdBy ? [position.createdBy] : undefined}
+                    showEnterpriseExperts
                   />
                 </div>
 
