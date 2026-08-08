@@ -1045,3 +1045,27 @@ func (s *SchedulingStore) ListClassNames(ctx context.Context, tenantID string) (
 	}
 	return items, rows.Err()
 }
+
+// BatchCreateSchedules 批量插入排课并标记计划条目（自动排课用，事务内执行）。
+func (s *SchedulingStore) BatchCreateSchedules(ctx context.Context, tx Queryer, params []*ScheduleCreateParams) error {
+	for _, p := range params {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
+				class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+				venue_id, scenario_id, source, status, version)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'draft', 1)
+		`, p.TenantID, p.TermID, p.PlanEntryID, p.CourseName, p.CourseCode, p.CourseID, p.Type,
+			p.ClassNodeID, p.ClassNodeIDs, p.TeacherID, p.DayOfWeek, p.Periods, p.StartWeek, p.EndWeek, p.WeekPattern,
+			p.VenueID, p.ScenarioID, p.Source); err != nil {
+			return err
+		}
+		if p.PlanEntryID != nil && *p.PlanEntryID != "" {
+			if _, err := tx.Exec(ctx, `
+				UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1
+			`, *p.PlanEntryID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

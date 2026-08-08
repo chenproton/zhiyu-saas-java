@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"log/slog"
 	"encoding/json"
 	"time"
 
@@ -376,10 +377,20 @@ type AlliancePublicStats struct {
 
 func (s *AllianceStore) GetPublicStats(ctx context.Context) AlliancePublicStats {
 	var st AlliancePublicStats
-	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&st.EnterpriseCount)
-	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount)
-	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&st.ExpertCount)
-	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&st.AchievementCount)
-	s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&st.BrandCount)
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&st.EnterpriseCount); err != nil {
+		slog.Warn("alliance public stats query failed", "table", "alliance_enterprises", "error", err)
+	}
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount); err != nil {
+		slog.Warn("alliance public stats query failed", "table", "alliance_projects", "error", err)
+	}
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_experts WHERE is_public = true AND status = 'active'`).Scan(&st.ExpertCount); err != nil {
+		slog.Warn("alliance public stats query failed", "table", "alliance_experts", "error", err)
+	}
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_achievements WHERE is_public = true AND status = 'published'`).Scan(&st.AchievementCount); err != nil {
+		slog.Warn("alliance public stats query failed", "table", "alliance_achievements", "error", err)
+	}
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`).Scan(&st.BrandCount); err != nil {
+		slog.Warn("alliance public stats query failed", "table", "alliance_brands", "error", err)
+	}
 	return st
 }

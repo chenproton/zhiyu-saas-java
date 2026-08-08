@@ -20,10 +20,10 @@ func NewPositionCertificateStore(q Queryer) *PositionCertificateStore {
 }
 
 // List 查询岗位证书列表（含证书库详情）。
-func (s *PositionCertificateStore) List(ctx context.Context, careerPositionID string, limit, offset int) ([]domain.PositionCertificate, int, error) {
-	where := []string{"1=1"}
-	args := []any{}
-	argIdx := 1
+func (s *PositionCertificateStore) List(ctx context.Context, tenantID, careerPositionID string, limit, offset int) ([]domain.PositionCertificate, int, error) {
+	where := []string{"pc.tenant_id = $1"}
+	args := []any{tenantID}
+	argIdx := 2
 	if careerPositionID != "" {
 		where = append(where, "career_position_id = $"+Itoa(argIdx))
 		args = append(args, careerPositionID)

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -162,13 +163,19 @@ func (s *ResourceBindingStore) Unbind(ctx context.Context, bindTable, id string,
 	var bindID, resourceID string
 	err := s.q.QueryRow(ctx, `SELECT `+bindColOf(bindTable)+`, resource_id FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID, &resourceID)
 	if err != nil {
-		return nil
+		// 幂等删除：绑定不存在视为成功；DB 故障需上抛
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
 	}
 	if _, err := s.q.Exec(ctx, `DELETE FROM `+bindTable+` WHERE id = $1`, id); err != nil {
 		return err
 	}
 	if afterUnbind != nil {
-		_ = afterUnbind(ctx, s.q, bindID, resourceID)
+		if err := afterUnbind(ctx, s.q, bindID, resourceID); err != nil {
+			return err
+		}
 	}
 	return nil
 }

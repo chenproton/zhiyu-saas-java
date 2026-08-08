@@ -85,9 +85,10 @@ func (s *CertGradeStore) ListCompRequirements(ctx context.Context, gradeIDs []st
 	var items []CompRequirement
 	for rows.Next() {
 		var c CompRequirement
-		if err := rows.Scan(&c.GradeDataID, &c.DutyName, &c.ItemName, &c.TargetLevel, &c.CurrentLevel, &c.Description, &c.SortOrder); err == nil {
-			items = append(items, c)
+		if err := rows.Scan(&c.GradeDataID, &c.DutyName, &c.ItemName, &c.TargetLevel, &c.CurrentLevel, &c.Description, &c.SortOrder); err != nil {
+			return nil, err
 		}
+		items = append(items, c)
 	}
 	return items, rows.Err()
 }
@@ -121,9 +122,10 @@ func (s *CertGradeStore) ListLeaderboard(ctx context.Context, gradeIDs []string)
 	var items []LeaderboardEntry
 	for rows.Next() {
 		var l LeaderboardEntry
-		if err := rows.Scan(&l.GradeDataID, &l.StudentName, &l.ClassName, &l.MajorName, &l.AchievementRate, &l.GradeLabel, &l.SortOrder, &l.UserID); err == nil {
-			items = append(items, l)
+		if err := rows.Scan(&l.GradeDataID, &l.StudentName, &l.ClassName, &l.MajorName, &l.AchievementRate, &l.GradeLabel, &l.SortOrder, &l.UserID); err != nil {
+			return nil, err
 		}
+		items = append(items, l)
 	}
 	return items, rows.Err()
 }

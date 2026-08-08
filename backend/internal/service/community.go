@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -57,8 +57,9 @@ func (s *CommunityService) GetTopic(ctx context.Context, tenantID, userID, topic
 	if err != nil {
 		return nil, err
 	}
+	// 阅读计数失败不阻断详情返回（计数为非核心写路径）
 	if err := store.RecordView(ctx, s.st.Q(), "community_topic", topicID, userID, tenantID); err != nil {
-		return nil, fmt.Errorf("record view: %w", err)
+		slog.Warn("record community topic view failed", "topicID", topicID, "error", err)
 	}
 	return &domain.CommunityTopic{
 		ID:          row.ID,

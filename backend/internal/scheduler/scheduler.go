@@ -49,6 +49,18 @@ func aggregateAll(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := conn.Exec(ctx, `SET statement_timeout = 0`); err != nil {
 		return err
 	}
+	// 分布式锁：多实例部署时仅一个实例执行汇聚（advisory 会话锁，连接持有期间独占）
+	var locked bool
+	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock(737001)`, ).Scan(&locked); err != nil {
+		return err
+	}
+	if !locked {
+		slog.Info("岗位能力汇聚已被其他实例执行，跳过本次")
+		return nil
+	}
+	defer func() {
+		_, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(737001)`)
+	}()
 	agg := service.NewJobAbilityAggregator(store.NewConn(conn))
 	return agg.AggregateAllPublished(ctx)
 }

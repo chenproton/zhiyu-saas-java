@@ -226,7 +226,11 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
 					continue
 				}
-				h.clearCourseNodes(ctx, q, existingID)
+				if err := h.clearCourseNodes(ctx, q, existingID); err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]清理旧节点失败: %v", name, err))
+					continue
+				}
 				courseMap[name] = existingID
 				continue
 			}
@@ -499,10 +503,17 @@ func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string 
 	return merged
 }
 
-func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, q store.Queryer, courseID string) {
-	_, _ = q.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
-	_, _ = q.Exec(ctx, `DELETE FROM node_homeworks WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID)
-	_, _ = q.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID)
+func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, q store.Queryer, courseID string) error {
+	if _, err := q.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID); err != nil {
+		return err
+	}
+	if _, err := q.Exec(ctx, `DELETE FROM node_homeworks WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID); err != nil {
+		return err
+	}
+	if _, err := q.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, q store.Queryer, tenantID string, names []string) []string {

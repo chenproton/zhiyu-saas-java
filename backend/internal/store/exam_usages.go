@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sync"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -68,7 +69,26 @@ func (s *ExamUsageStore) Get(ctx context.Context, id string) (*domain.ExamUsage,
 
 // SyncScheduledExamUsageStatus 定时启停考试按时间窗懒更新状态：
 // 到开始时间自动 published，过结束时间自动 finished。manual/always 不自动流转。
+// syncThrottle 读路径懒更新节流：每租户 60s 内最多触发一次全表 UPDATE，
+// 避免考试列表读接口高频写放大。
+var syncThrottle = struct {
+	mu sync.Mutex
+	m  map[string]time.Time
+}{m: make(map[string]time.Time)}
+
 func SyncScheduledExamUsageStatus(ctx context.Context, q Queryer, tenantID string, now time.Time) {
+	key := "all"
+	if tenantID != "" {
+		key = tenantID
+	}
+	syncThrottle.mu.Lock()
+	if last, ok := syncThrottle.m[key]; ok && now.Sub(last) < time.Minute {
+		syncThrottle.mu.Unlock()
+		return
+	}
+	syncThrottle.m[key] = now
+	syncThrottle.mu.Unlock()
+
 	query := `
 		UPDATE exam_usages SET status = CASE
 			WHEN activation_mode = 'scheduled' AND status IN ('draft', 'published') AND end_time IS NOT NULL AND $1 >= end_time THEN 'finished'

@@ -73,6 +73,9 @@ func (s *OrganizationStore) Tree(ctx context.Context, tenantID string) ([]domain
 
 // MemberCounts 统计每个组织的直接成员数。
 func (s *OrganizationStore) MemberCounts(ctx context.Context, tenantID string) (map[string]int, error) {
+	if tenantID == "" {
+		return nil, nil
+	}
 	query := `SELECT org_node_id, COUNT(*) FROM users WHERE org_node_id IS NOT NULL`
 	args := []any{}
 	if tenantID != "" {

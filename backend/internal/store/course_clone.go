@@ -132,8 +132,8 @@ func (s *CourseCloneStore) cloneCourseBindings(ctx context.Context, tx Queryer, 
 	for rows.Next() {
 		var r kpRow
 		if err := rows.Scan(&r.KpID, &r.BindType, &r.SourceID); err != nil {
-			continue
-		}
+		return err
+	}
 		kpRows = append(kpRows, r)
 	}
 	rows.Close()

@@ -74,8 +74,8 @@ func (s *PositionConfigService) DeleteResponsibility(ctx context.Context, id str
 }
 
 // ListCertificates 查询岗位证书列表。
-func (s *PositionConfigService) ListCertificates(ctx context.Context, careerPositionID string, limit, offset int) ([]domain.PositionCertificate, int, error) {
-	return s.st.PositionCertificates().List(ctx, careerPositionID, limit, offset)
+func (s *PositionConfigService) ListCertificates(ctx context.Context, tenantID, careerPositionID string, limit, offset int) ([]domain.PositionCertificate, int, error) {
+	return s.st.PositionCertificates().List(ctx, tenantID, careerPositionID, limit, offset)
 }
 
 // GetCertificate 查询单个岗位证书。

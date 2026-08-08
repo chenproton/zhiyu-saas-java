@@ -355,8 +355,10 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]导入失败: %v", it.courseName, err))
 			continue
 		}
-		// 标记已排
-		_, _ = tx.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, planEntryID)
+		// 标记已排（失败计入错误，避免计划条目状态与排课不一致）
+		if _, err := tx.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, planEntryID); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]计划条目标记失败: %v", it.courseName, err))
+		}
 		created++
 	}
 
@@ -640,9 +642,11 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		for id := range planEntryIDs {
 			ids = append(ids, id)
 		}
-		_, _ = h.Store.Q().Exec(ctx, `
+		if _, err := h.Store.Q().Exec(ctx, `
 			UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = ANY($1)
-		`, ids)
+		`, ids); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("批量标记计划条目失败: %v", err))
+		}
 	}
 
 	return result

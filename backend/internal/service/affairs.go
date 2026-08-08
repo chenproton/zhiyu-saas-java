@@ -310,10 +310,8 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 			}
 		}
 
-		for _, p := range creates {
-			if _, err := txStore.Scheduling().CreateSchedule(ctx, txStore.Q(), p); err != nil {
-				return err
-			}
+		if err := txStore.Scheduling().BatchCreateSchedules(ctx, txStore.Q(), creates); err != nil {
+			return err
 		}
 		return nil
 	})

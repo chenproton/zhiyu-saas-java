@@ -49,7 +49,12 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
-	items, total, err := h.Service.ListCertificates(r.Context(), careerPositionID, limit, offset)
+	claims := middleware.CurrentUser(r)
+	tenantID := ""
+	if claims != nil && claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+	items, total, err := h.Service.ListCertificates(r.Context(), tenantID, careerPositionID, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询证书失败")
 		return

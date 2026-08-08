@@ -142,23 +142,41 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 					result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]更新失败: %v", name, err))
 					continue
 				}
-				// 覆盖时清空原有关联数据，随后根据新文件内容重新写入
-				h.Store.Q().Exec(ctx, `DELETE FROM career_position_majors WHERE career_position_id=$1`, existingID)
-				h.Store.Q().Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id=$1`, existingID)
-				h.Store.Q().Exec(ctx, `DELETE FROM position_responsibilities WHERE career_position_id=$1`, existingID)
-				h.Store.Q().Exec(ctx, `DELETE FROM position_ability_bindings WHERE career_position_id=$1`, existingID)
-
+				// 覆盖时清空原有关联数据，随后根据新文件内容重新写入（错误计入 Failed 而非静默）
+				clearFailed := false
+				for _, delSQL := range []string{
+					`DELETE FROM career_position_majors WHERE career_position_id=$1`,
+					`DELETE FROM position_certificates WHERE career_position_id=$1`,
+					`DELETE FROM position_responsibilities WHERE career_position_id=$1`,
+					`DELETE FROM position_ability_bindings WHERE career_position_id=$1`,
+				} {
+					if _, err := h.Store.Q().Exec(ctx, delSQL, existingID); err != nil {
+						slog.Warn("覆盖导入清理关联失败", "positionId", existingID, "error", err)
+						clearFailed = true
+					}
+				}
 				for _, mid := range majorIDs {
-					h.Store.Q().Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-						uuid.NewString(), existingID, mid)
+					if _, err := h.Store.Q().Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+						uuid.NewString(), existingID, mid); err != nil {
+						slog.Warn("覆盖导入写入专业失败", "positionId", existingID, "error", err)
+						clearFailed = true
+					}
 				}
 				for _, certName := range certNames {
 					if certName == "" {
 						continue
 					}
 					certID := h.findOrCreateCert(ctx, tenantID, certName)
-					h.Store.Q().Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-						uuid.NewString(), tenantID, existingID, certID)
+					if _, err := h.Store.Q().Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+						uuid.NewString(), tenantID, existingID, certID); err != nil {
+						slog.Warn("覆盖导入写入证书失败", "positionId", existingID, "error", err)
+						clearFailed = true
+					}
+				}
+				if clearFailed {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]关联数据写入失败", name))
+					continue
 				}
 				positionMap[name] = existingID
 				continue
