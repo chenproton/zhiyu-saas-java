@@ -128,6 +128,7 @@ var (
 		"banner_configs",
 		"batches",
 		"batches b LEFT JOIN majors m ON m.id = b.major_id",
+		"career_positions cp",
 		"career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
 		"cert_issuance_records",
 		"certificate_library",
@@ -163,6 +164,7 @@ var (
 		"position_ability_bindings b LEFT JOIN ability_points ap ON ap.id = b.ability_point_id",
 		"position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
 		"position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
+		"question_banks qb",
 		"question_banks qb LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM questions q WHERE q.bank_id = qb.id) qcnt ON true LEFT JOIN users cr_u ON cr_u.id = qb.creator_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') AS ids FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) kparr ON true",
 		"position_responsibilities",
 		"questions",
@@ -176,6 +178,7 @@ var (
 		"schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id",
 		"scene_batches",
 		"scene_batches sb LEFT JOIN majors m ON m.id = sb.major_id",
+		"scenarios s",
 		"scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true LEFT JOIN users cr_u ON cr_u.id = s.creator_id",
 		"scene_evaluation_results",
 		"staff_titles",
@@ -256,7 +259,7 @@ var (
 		"c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.ability_point_ids::text[] AS ability_point_ids, c.resource_ids::text[] AS resource_ids, c.eval_data, c.creator_id, COALESCE(cr_u.name, c.creator_id::text) AS creator_name, c.co_creator_ids, c.batch_id, lb.name AS batch_name, COALESCE((SELECT COUNT(*) FROM system_course_nodes scn WHERE scn.course_id = c.id), 0) AS node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at",
 		"cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, (SELECT COUNT(*) FROM position_ability_bindings pab WHERE pab.career_position_id = cp.id) AS ability_count, cp.created_at, cp.updated_at",
 		"s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, COALESCE(cr_u.name, s.creator_id::text) AS creator_name, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count",
-		"e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at",
+		"e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, COALESCE(e.version, 'v1.0') AS version, e.owner_type, e.creator_id, e.created_at, e.updated_at, (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = e.id) AS question_count",
 		`id, scenario_id, name, code, sort_order, description, detailed_description, description_pdf,
 	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
 	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`,
@@ -360,6 +363,31 @@ var (
 	}
 )
 
+// ValidateIdentifiers 校验配置中的表/列/排序字段均在白名单内（防 SQL 注入）。
+// ExecuteListQuery 与单元测试共用，保证 store 新增/修改查询时白名单同步。
+func (cfg ListQueryConfig[T]) ValidateIdentifiers() error {
+	if _, err := SanitizeIdentifier(cfg.Table, allowedListQueryTables); err != nil {
+		return err
+	}
+	if _, err := SanitizeIdentifier(cfg.SelectColumns, allowedListQuerySelectColumns); err != nil {
+		return err
+	}
+	if cfg.OrderBy != "" {
+		if _, err := SanitizeIdentifier(cfg.OrderBy, allowedListQueryOrderBy); err != nil {
+			return err
+		}
+	}
+	if _, err := SanitizeIdentifier(cfg.TenantColumn, allowedListQueryTenantColumns); err != nil {
+		return err
+	}
+	for _, col := range cfg.SearchColumns {
+		if _, err := SanitizeIdentifier(col, allowedListQuerySearchColumns); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, cfg ListQueryConfig[T], scanRows ...func(pgx.Rows) ([]T, error)) ([]T, int, error) {
 	scanner := cfg.ScanRows
 	if len(scanRows) > 0 {
@@ -369,24 +397,8 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 		return nil, 0, errors.New("scanRows not configured")
 	}
 
-	if _, err := SanitizeIdentifier(cfg.Table, allowedListQueryTables); err != nil {
+	if err := cfg.ValidateIdentifiers(); err != nil {
 		return nil, 0, err
-	}
-	if _, err := SanitizeIdentifier(cfg.SelectColumns, allowedListQuerySelectColumns); err != nil {
-		return nil, 0, err
-	}
-	if cfg.OrderBy != "" {
-		if _, err := SanitizeIdentifier(cfg.OrderBy, allowedListQueryOrderBy); err != nil {
-			return nil, 0, err
-		}
-	}
-	if _, err := SanitizeIdentifier(cfg.TenantColumn, allowedListQueryTenantColumns); err != nil {
-		return nil, 0, err
-	}
-	for _, col := range cfg.SearchColumns {
-		if _, err := SanitizeIdentifier(col, allowedListQuerySearchColumns); err != nil {
-			return nil, 0, err
-		}
 	}
 
 	qb := &ListQueryBuilder{idx: 1}
