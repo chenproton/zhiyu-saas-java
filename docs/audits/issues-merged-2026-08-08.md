@@ -336,13 +336,13 @@
 - [07遗留待确认][frontend-app-01.md] [部分失败全清空] job/landing/[id]/learn/page.tsx:57-68 — 场景列表成功后任一场景的 `taskApi.list` 失败会触发整链 Promise.all reject，catch 里把已成功加载的 `scenarios` 也清空（详情页 job/landing/[id]/page.tsx:119-128 已做逐任务容错，此页未同步）。最佳实践：逐任务 try/catch 保留已加载数据。
 - [07遗留待确认][frontend-app-04.md] [一致性] scene/archive/page.tsx:62,89 — 「恢复」调用 `scenarioApi.saveDraft` 恢复为草稿，与后端存档语义一致；但批量恢复 `Promise.allSettled` 后统一 refresh，部分失败时 toast 汇总正确。无问题。
 
-- ... 其余 107 条见 code-review-2026-08-07/problems.md 第三章。
+- ... 其余 107 条已于 2026-08-07 后修复或确认无现役影响（历史明细已随旧审查文档归档，可在 git 历史中追溯）。
 
 ## 四、P3 一般
 
 - 本轮：594 条（见 problems.md 08-08）
 
-- 上轮：911 条（大部分随修复/重构清理，剩余见 code-review-2026-08-07/problems.md 第四章）
+- 上轮：911 条（大部分随修复/重构清理，剩余以 code-review-2026-08-08 复查为准）
 
 ## 五、上轮已修复对照（2026-08-08 前提交）
 
