@@ -11,19 +11,23 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
-// ===== 合作企业 =====
+// ===== 企业主体（partner_enterprises，全局唯一，tenant_id = 企业租户） =====
+
+// enterpriseColumns 企业主体全列（唯一列清单，扫描顺序与 ScanEnterpriseRows 一致）。
+const enterpriseColumns = `id, tenant_id, name, industry, region, description,
+	logo_url, cover_image, cooperation_types, contact_person,
+	contact_phone, contact_email, address, unified_social_credit_code,
+	established_year, employee_count, business_license_photos, qualification_photos,
+	intellectual_property_photos, cover_photos, enable_public, created_at, updated_at`
 
 type AllianceEnterpriseCreateParams struct {
 	TenantID                   string
 	Name                       string
-	EnterpriseType             string
 	Industry                   *string
 	Region                     *string
 	Description                *string
 	LogoURL                    *string
 	CoverImage                 *string
-	Status                     string
-	Rating                     *string
 	CooperationTypes           json.RawMessage
 	ContactPerson              *string
 	ContactPhone               *string
@@ -36,22 +40,17 @@ type AllianceEnterpriseCreateParams struct {
 	QualificationPhotos        json.RawMessage
 	IntellectualPropertyPhotos json.RawMessage
 	CoverPhotos                json.RawMessage
-	SecondaryColleges          json.RawMessage
-	RatingRecord               json.RawMessage
-	IsPublic                   bool
-	CreatedBy                  *string
+	EnablePublic               bool
 }
 
-type AllianceEnterpriseUpdateParams struct {
+// AllianceEnterpriseProfileUpdateParams 企业服务台主体信息更新（不含租户归属）。
+type AllianceEnterpriseProfileUpdateParams struct {
 	Name                       string
-	EnterpriseType             string
 	Industry                   *string
 	Region                     *string
 	Description                *string
 	LogoURL                    *string
 	CoverImage                 *string
-	Status                     string
-	Rating                     *string
 	CooperationTypes           json.RawMessage
 	ContactPerson              *string
 	ContactPhone               *string
@@ -64,9 +63,7 @@ type AllianceEnterpriseUpdateParams struct {
 	QualificationPhotos        json.RawMessage
 	IntellectualPropertyPhotos json.RawMessage
 	CoverPhotos                json.RawMessage
-	SecondaryColleges          json.RawMessage
-	RatingRecord               json.RawMessage
-	IsPublic                   bool
+	EnablePublic               bool
 }
 
 func emptyJSON(v json.RawMessage) json.RawMessage {
@@ -80,16 +77,15 @@ func (s *AllianceStore) ScanEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnte
 	items := make([]domain.AllianceEnterprise, 0)
 	for rows.Next() {
 		var e domain.AllianceEnterprise
-		var industry, region, description, logoURL, coverImage, rating *string
+		var industry, region, description, logoURL, coverImage *string
 		var contactPerson, contactPhone, contactEmail, address, creditCode *string
 		var establishedYear, employeeCount *int
-		var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos, colleges, ratingRecord json.RawMessage
-		var createdBy *string
-		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &e.EnterpriseType, &industry, &region,
-			&description, &logoURL, &coverImage, &e.Status, &rating, &coopTypes,
+		var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos json.RawMessage
+		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &industry, &region,
+			&description, &logoURL, &coverImage, &coopTypes,
 			&contactPerson, &contactPhone, &contactEmail, &address, &creditCode,
 			&establishedYear, &employeeCount, &bizPhotos, &qualPhotos, &ipPhotos,
-			&coverPhotos, &colleges, &ratingRecord, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			&coverPhotos, &e.EnablePublic, &e.CreatedAt, &e.UpdatedAt); err != nil {
 			return nil, err
 		}
 		e.Industry = industry
@@ -97,7 +93,6 @@ func (s *AllianceStore) ScanEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnte
 		e.Description = description
 		e.LogoURL = logoURL
 		e.CoverImage = coverImage
-		e.Rating = rating
 		e.CooperationTypes = coopTypes
 		e.ContactPerson = contactPerson
 		e.ContactPhone = contactPhone
@@ -110,128 +105,72 @@ func (s *AllianceStore) ScanEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnte
 		e.QualificationPhotos = qualPhotos
 		e.IntellectualPropertyPhotos = ipPhotos
 		e.CoverPhotos = coverPhotos
-		e.SecondaryColleges = colleges
-		e.RatingRecord = ratingRecord
-		e.CreatedBy = createdBy
 		items = append(items, e)
 	}
 	return items, rows.Err()
 }
 
-// ListConfig 返回合作企业列表查询配置，SQL 片段沉淀在 store 层。
-func (s *AllianceStore) ListEnterprisesConfig() ListQueryConfig[domain.AllianceEnterprise] {
-	return ListQueryConfig[domain.AllianceEnterprise]{
-		Table: "alliance_enterprises",
-		SelectColumns: "id, tenant_id, name, enterprise_type, industry, region, description, " +
-			"logo_url, cover_image, status, rating, cooperation_types, contact_person, " +
-			"contact_phone, contact_email, address, unified_social_credit_code, " +
-			"established_year, employee_count, business_license_photos, qualification_photos, " +
-			"intellectual_property_photos, cover_photos, secondary_colleges, rating_record, " +
-			"is_public, created_by, created_at, updated_at",
-		TenantScoped:  true,
-		SearchColumns: []string{"name", "industry"},
-		OrderBy:       "created_at DESC",
-		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
-			if status := p.Values["status"]; status != "" {
-				qb.AddCondition("status = " + qb.NextArg(status))
-			}
-			if rating := p.Values["rating"]; rating != "" {
-				qb.AddCondition("rating = " + qb.NextArg(rating))
-			}
-		},
-		ScanRows: s.ScanEnterpriseRows,
-	}
+// GetEnterpriseByID 按 ID + 企业租户查询主体（企业服务台自身数据）。
+func (s *AllianceStore) GetEnterpriseByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterprise, error) {
+	return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
+		SELECT `+enterpriseColumns+`
+		FROM partner_enterprises WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID)
 }
 
-func (s *AllianceStore) GetEnterpriseByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterprise, error) {
-	var e domain.AllianceEnterprise
-	var industry, region, description, logoURL, coverImage, rating *string
-	var contactPerson, contactPhone, contactEmail, address, creditCode *string
-	var establishedYear, employeeCount *int
-	var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos, colleges, ratingRecord json.RawMessage
-	var createdBy *string
-	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
-			logo_url, cover_image, status, rating, cooperation_types, contact_person,
-			contact_phone, contact_email, address, unified_social_credit_code,
-			established_year, employee_count, business_license_photos, qualification_photos,
-			intellectual_property_photos, cover_photos, secondary_colleges, rating_record,
-			is_public, created_by, created_at, updated_at
-		FROM alliance_enterprises WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&e.ID, &e.TenantID, &e.Name, &e.EnterpriseType, &industry, &region,
-		&description, &logoURL, &coverImage, &e.Status, &rating, &coopTypes,
-		&contactPerson, &contactPhone, &contactEmail, &address, &creditCode,
-		&establishedYear, &employeeCount, &bizPhotos, &qualPhotos, &ipPhotos,
-		&coverPhotos, &colleges, &ratingRecord, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	e.Industry = industry
-	e.Region = region
-	e.Description = description
-	e.LogoURL = logoURL
-	e.CoverImage = coverImage
-	e.Rating = rating
-	e.CooperationTypes = coopTypes
-	e.ContactPerson = contactPerson
-	e.ContactPhone = contactPhone
-	e.ContactEmail = contactEmail
-	e.Address = address
-	e.UnifiedSocialCreditCode = creditCode
-	e.EstablishedYear = establishedYear
-	e.EmployeeCount = employeeCount
-	e.BusinessLicensePhotos = bizPhotos
-	e.QualificationPhotos = qualPhotos
-	e.IntellectualPropertyPhotos = ipPhotos
-	e.CoverPhotos = coverPhotos
-	e.SecondaryColleges = colleges
-	e.RatingRecord = ratingRecord
-	e.CreatedBy = createdBy
-	return &e, nil
+// GetEnterpriseByTenant 按企业租户查询主体（每个企业租户唯一主体）。
+func (s *AllianceStore) GetEnterpriseByTenant(ctx context.Context, tenantID string) (*domain.AllianceEnterprise, error) {
+	return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
+		SELECT `+enterpriseColumns+`
+		FROM partner_enterprises WHERE tenant_id = $1
+	`, tenantID)
+}
+
+// GetEnterpriseByIDGlobal 按 ID 查询主体（跨租户只读；调用方须先做合作关联校验）。
+func (s *AllianceStore) GetEnterpriseByIDGlobal(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
+	return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
+		SELECT `+enterpriseColumns+`
+		FROM partner_enterprises WHERE id = $1
+	`, id)
 }
 
 func (s *AllianceStore) CreateEnterprise(ctx context.Context, p *AllianceEnterpriseCreateParams) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `
-		INSERT INTO alliance_enterprises (id, tenant_id, name, enterprise_type, industry, region,
-			description, logo_url, cover_image, status, rating, cooperation_types, contact_person,
+		INSERT INTO partner_enterprises (id, tenant_id, name, industry, region,
+			description, logo_url, cover_image, cooperation_types, contact_person,
 			contact_phone, contact_email, address, unified_social_credit_code, established_year,
 			employee_count, business_license_photos, qualification_photos, intellectual_property_photos,
-			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW(),NOW())
-	`, id, p.TenantID, p.Name, p.EnterpriseType, p.Industry, p.Region, p.Description, p.LogoURL,
-		p.CoverImage, p.Status, p.Rating, emptyJSON(p.CooperationTypes), p.ContactPerson,
+			cover_photos, enable_public, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW())
+	`, id, p.TenantID, p.Name, p.Industry, p.Region, p.Description, p.LogoURL,
+		p.CoverImage, emptyJSON(p.CooperationTypes), p.ContactPerson,
 		p.ContactPhone, p.ContactEmail, p.Address, p.UnifiedSocialCreditCode, p.EstablishedYear,
 		p.EmployeeCount, emptyJSON(p.BusinessLicensePhotos), emptyJSON(p.QualificationPhotos),
-		emptyJSON(p.IntellectualPropertyPhotos), emptyJSON(p.CoverPhotos), emptyJSON(p.SecondaryColleges),
-		p.RatingRecord, p.IsPublic, p.CreatedBy)
+		emptyJSON(p.IntellectualPropertyPhotos), emptyJSON(p.CoverPhotos), p.EnablePublic)
 	if err != nil {
 		return "", err
 	}
 	return id, nil
 }
 
-func (s *AllianceStore) UpdateEnterprise(ctx context.Context, id, tenantID string, p *AllianceEnterpriseUpdateParams) error {
+// UpdateEnterpriseProfile 企业服务台更新自身主体信息（含 enable_public 展示开关）。
+func (s *AllianceStore) UpdateEnterpriseProfile(ctx context.Context, id, tenantID string, p *AllianceEnterpriseProfileUpdateParams) error {
 	_, err := s.q.Exec(ctx, `
-		UPDATE alliance_enterprises SET
-			name = $1, enterprise_type = $2, industry = $3, region = $4, description = $5,
-			logo_url = $6, cover_image = $7, status = $8, rating = $9, cooperation_types = $10,
-			contact_person = $11, contact_phone = $12, contact_email = $13, address = $14,
-			unified_social_credit_code = $15, established_year = $16, employee_count = $17,
-			business_license_photos = $18, qualification_photos = $19, intellectual_property_photos = $20,
-			cover_photos = $21, secondary_colleges = $22, rating_record = $23, is_public = $24,
+		UPDATE partner_enterprises SET
+			name = $1, industry = $2, region = $3, description = $4,
+			logo_url = $5, cover_image = $6, cooperation_types = $7,
+			contact_person = $8, contact_phone = $9, contact_email = $10, address = $11,
+			unified_social_credit_code = $12, established_year = $13, employee_count = $14,
+			business_license_photos = $15, qualification_photos = $16, intellectual_property_photos = $17,
+			cover_photos = $18, enable_public = $19,
 			updated_at = NOW()
-		WHERE id = $25 AND tenant_id = $26
-	`, p.Name, p.EnterpriseType, p.Industry, p.Region, p.Description, p.LogoURL, p.CoverImage,
-		p.Status, p.Rating, emptyJSON(p.CooperationTypes), p.ContactPerson, p.ContactPhone,
+		WHERE id = $20 AND tenant_id = $21
+	`, p.Name, p.Industry, p.Region, p.Description, p.LogoURL, p.CoverImage,
+		emptyJSON(p.CooperationTypes), p.ContactPerson, p.ContactPhone,
 		p.ContactEmail, p.Address, p.UnifiedSocialCreditCode, p.EstablishedYear, p.EmployeeCount,
 		emptyJSON(p.BusinessLicensePhotos), emptyJSON(p.QualificationPhotos), emptyJSON(p.IntellectualPropertyPhotos),
-		emptyJSON(p.CoverPhotos), emptyJSON(p.SecondaryColleges), p.RatingRecord, p.IsPublic, id, tenantID)
-	return err
-}
-
-func (s *AllianceStore) DeleteEnterprise(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM alliance_enterprises WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+		emptyJSON(p.CoverPhotos), p.EnablePublic, id, tenantID)
 	return err
 }
 
@@ -331,28 +270,21 @@ func (s *AllianceStore) DeleteEnterpriseAgreement(ctx context.Context, id, tenan
 }
 
 // ===== 公开查询（门户前台） =====
+// 阶段一仅随表结构做必要适配：is_public+status 过滤映射为企业侧 enable_public 开关，
+// 数据源语义（双控过滤）在阶段二（B11）改造。
 
 func (s *AllianceStore) ListPublicEnterprises(ctx context.Context) ([]domain.AllianceEnterprise, error) {
 	return queryList(ctx, s.q, s.ScanEnterpriseRows, `
-		SELECT id, tenant_id, name, enterprise_type, industry, region, description, logo_url,
-			cover_image, status, rating, cooperation_types, contact_person, contact_phone,
-			contact_email, address, unified_social_credit_code, established_year, employee_count,
-			business_license_photos, qualification_photos, intellectual_property_photos,
-			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at
-		FROM alliance_enterprises WHERE is_public = true AND status = 'active'
+		SELECT `+enterpriseColumns+`
+		FROM partner_enterprises WHERE enable_public = true
 		ORDER BY created_at DESC LIMIT 100
 	`)
 }
 
 func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id string) (*domain.AllianceEnterprise, error) {
 	return queryOne(ctx, s.q, s.ScanEnterpriseRows, `
-		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
-			logo_url, cover_image, status, rating, cooperation_types, contact_person,
-			contact_phone, contact_email, address, unified_social_credit_code,
-			established_year, employee_count, business_license_photos, qualification_photos,
-			intellectual_property_photos, cover_photos, secondary_colleges, rating_record,
-			is_public, created_by, created_at, updated_at
-		FROM alliance_enterprises WHERE id = $1 AND is_public = true AND status = 'active'
+		SELECT `+enterpriseColumns+`
+		FROM partner_enterprises WHERE id = $1 AND enable_public = true
 	`, id)
 }
 
@@ -377,8 +309,8 @@ type AlliancePublicStats struct {
 
 func (s *AllianceStore) GetPublicStats(ctx context.Context) AlliancePublicStats {
 	var st AlliancePublicStats
-	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprises WHERE is_public = true AND status = 'active'`).Scan(&st.EnterpriseCount); err != nil {
-		slog.Warn("alliance public stats query failed", "table", "alliance_enterprises", "error", err)
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM partner_enterprises WHERE enable_public = true`).Scan(&st.EnterpriseCount); err != nil {
+		slog.Warn("alliance public stats query failed", "table", "partner_enterprises", "error", err)
 	}
 	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_projects WHERE is_public = true AND publish_status = 'published'`).Scan(&st.ProjectCount); err != nil {
 		slog.Warn("alliance public stats query failed", "table", "alliance_projects", "error", err)

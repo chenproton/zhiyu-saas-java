@@ -100,6 +100,8 @@ type Store struct {
 	microCerts       *MicroCertStore
 	onSiteQuestions  *OnSiteQuestionLibraryStore
 	alliance         *AllianceStore
+	allianceLinks    *AllianceEnterpriseLinkStore
+	partner          *PartnerStore
 	community        *CommunityStore
 	favorites        *FavoritesStore
 	platformSettings *PlatformSettingsStore
@@ -192,6 +194,8 @@ func newStore(q Queryer) *Store {
 		microCerts:       NewMicroCertStore(q, beginner),
 		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
 		alliance:         NewAllianceStore(q),
+		allianceLinks:    NewAllianceEnterpriseLinkStore(q),
+		partner:          NewPartnerStore(q),
 		community:        NewCommunityStore(q),
 		favorites:        NewFavoritesStore(q, beginner),
 		platformSettings: NewPlatformSettingsStore(q),
@@ -617,6 +621,16 @@ func (s *Store) OnSiteQuestions() *OnSiteQuestionLibraryStore {
 // Alliance 返回联盟 store。
 func (s *Store) Alliance() *AllianceStore {
 	return s.alliance
+}
+
+// AllianceEnterpriseLinks 返回学校-企业合作关联 store。
+func (s *Store) AllianceEnterpriseLinks() *AllianceEnterpriseLinkStore {
+	return s.allianceLinks
+}
+
+// Partner 返回企业平台 store。
+func (s *Store) Partner() *PartnerStore {
+	return s.partner
 }
 
 // Community 返回学习社区 store。

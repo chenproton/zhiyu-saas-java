@@ -1,5 +1,6 @@
 export * from './backend'
 export * from './alliance'
+export * from './partner'
 export * from './affairs'
 export * from './evaluation'
 export * from './job'

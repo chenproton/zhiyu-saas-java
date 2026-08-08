@@ -117,11 +117,12 @@ export interface ListResponse<T> {
   total: number
 }
 
-export type AuthPlatform = 'saas' | 'portal'
+export type AuthPlatform = 'saas' | 'portal' | 'partner'
 
 const TOKEN_KEYS: Record<AuthPlatform, string> = {
   saas: 'zhiyu-token',
   portal: 'zhiyu-portal-token',
+  partner: 'zhiyu-partner-token',
 }
 
 function getDefaultPlatform(): AuthPlatform {
@@ -145,14 +146,29 @@ export function isPortalPath(path?: string): boolean {
   return p.startsWith('/portal')
 }
 
-export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export function isPartnerPath(path?: string): boolean {
+  if (typeof window === 'undefined') return false
+  const p = path ?? window.location.pathname
+  return p.startsWith('/partner')
+}
+
+/** 依据当前路由段解析请求应使用的平台 token（partner 独立 token 体系） */
+function resolvePlatform(): AuthPlatform {
+  if (isPartnerPath()) return 'partner'
   const defaultPlatform = getDefaultPlatform()
-  const platform = defaultPlatform === 'portal' || isPortalPath() ? 'portal' : 'saas'
-  return requestWithPlatform<T>(platform, path, options)
+  return defaultPlatform === 'portal' || isPortalPath() ? 'portal' : 'saas'
+}
+
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return requestWithPlatform<T>(resolvePlatform(), path, options)
 }
 
 export async function portalRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   return requestWithPlatform<T>('portal', path, options)
+}
+
+export async function partnerRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return requestWithPlatform<T>('partner', path, options)
 }
 
 export async function saasRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -187,7 +203,8 @@ async function requestWithPlatform<T>(
     const errorMessage = (data as any).error || `HTTP ${res.status}`
     if (res.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem(TOKEN_KEYS[platform])
-      const loginPath = platform === 'portal' ? '/portal/login' : '/login'
+      const loginPath =
+        platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'
       if (!window.location.pathname.startsWith(loginPath)) {
         window.location.href = loginPath
       }
@@ -226,8 +243,7 @@ export function downloadBlob(blob: Blob, filename: string) {
 }
 
 async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const defaultPlatform = getDefaultPlatform()
-  const platform = defaultPlatform === 'portal' || isPortalPath() ? 'portal' : 'saas'
+  const platform = resolvePlatform()
   const token = getToken(platform)
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -242,7 +258,8 @@ async function authedFetch(path: string, init: RequestInit = {}): Promise<Respon
 
   if (res.status === 401 && typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEYS[platform as keyof typeof TOKEN_KEYS])
-    const loginPath = platform === 'portal' ? '/portal/login' : '/login'
+    const loginPath =
+      platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'
     if (!window.location.pathname.startsWith(loginPath)) {
       window.location.href = loginPath
     }

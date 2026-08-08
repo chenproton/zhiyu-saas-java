@@ -6,7 +6,7 @@ export interface User {
   orgNodeId?: string
   majorId?: string
   role: 'school' | 'enterprise' | 'operator'
-  platform: 'saas' | 'portal'
+  platform: 'saas' | 'portal' | 'partner'
   roleIds?: string[]
   roleCodes?: string[]
   roleNames?: string[]

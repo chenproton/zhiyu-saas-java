@@ -166,7 +166,7 @@
 |------|------|
 | positions / scenarios / question-banks / question-banks/{bankId}/questions / exams / courses / granular-courses | 岗位/场景/题库/题目/试卷/体系课/颗粒课 |
 | industries / majors / organizations / students / teachers | 基础数据（另含 `/export/{entity}/excel` 导出） |
-| alliance-enterprises / alliance-projects / alliance-achievements / alliance-experts / alliance-agreements / alliance-permissions / alliance-brands | 联盟 7 实体 |
+| alliance-projects / alliance-achievements / alliance-agreements / alliance-permissions / alliance-brands | 联盟 5 实体（企业/专家导入已随 Partner 平台移除） |
 | schedules / program-courses / affairs-config | 排课/人培课程/教务配置 |
 
 ### 1.11 SaaS 运营端（saas token + platformAdmin，`/admin/*`）

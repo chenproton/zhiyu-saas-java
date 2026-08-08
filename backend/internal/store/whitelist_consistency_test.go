@@ -21,7 +21,6 @@ func TestListQueryConfigsMatchWhitelists(t *testing.T) {
 	checkConfig(t, "alliance_achievements", NewAllianceStore(q).ListAchievementsConfig())
 	checkConfig(t, "alliance_agreements", NewAllianceStore(q).ListAgreementsConfig())
 	checkConfig(t, "alliance_brands", NewAllianceStore(q).ListBrandsConfig())
-	checkConfig(t, "alliance_enterprises", NewAllianceStore(q).ListEnterprisesConfig())
 	checkConfig(t, "alliance_experts", NewAllianceStore(q).ListExpertsConfig())
 	checkConfig(t, "alliance_permissions", NewAllianceStore(q).ListPermissionsConfig())
 	checkConfig(t, "alliance_projects", NewAllianceStore(q).ListProjectsConfig())

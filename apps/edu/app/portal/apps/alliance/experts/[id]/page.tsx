@@ -201,7 +201,6 @@ export default function AllianceExpertDetailPage() {
         ) : undefined
       }
       backHref="/portal/apps/alliance/experts"
-      editHref={`/portal/apps/alliance/experts/${id}/edit`}
       tabs={tabs}
       defaultTab="info"
       loading={loading}

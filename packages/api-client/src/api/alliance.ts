@@ -1,5 +1,6 @@
 import type {
   AllianceEnterprise,
+  AllianceEnterpriseLinkUpdate,
   AllianceProject,
   AllianceProjectMilestone,
   AllianceAchievement,
@@ -18,24 +19,25 @@ function list<T>(path: string, params?: ListParams) {
 }
 
 export const allianceEnterpriseApi = {
+  // 列表为 link 合并视图：企业主体字段 + 本校 link 管理字段（rating/status/enterprise_type/is_public/secondary_colleges）
   list: (params?: ListParams) => list<AllianceEnterprise>('/alliance/enterprises', params),
   get: (id: string) => portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`),
-  create: (req: Partial<AllianceEnterprise>) =>
-    portalRequest<AllianceEnterprise>('/alliance/enterprises', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (id: string, req: Partial<AllianceEnterprise>) =>
+  // 全局企业池搜索（跨租户只读，供"引入企业"用）
+  search: (keyword: string) =>
+    portalRequest<AllianceListResponse<AllianceEnterprise>>(
+      `/alliance/enterprises/search${buildQuery({ keyword })}`,
+    ),
+  // 引入企业（建立学校-企业 link）
+  link: (id: string) =>
+    portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}/link`, { method: 'POST' }),
+  // 解除引入（历史协议/项目/成果引用保留，页面不再展示）
+  unlink: (id: string) =>
+    portalRequest<{ id: string }>(`/alliance/enterprises/${id}/link`, { method: 'DELETE' }),
+  // 仅更新学校侧 link 管理字段
+  update: (id: string, req: AllianceEnterpriseLinkUpdate) =>
     portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`, {
       method: 'PUT',
       body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    portalRequest<{ id: string }>(`/alliance/enterprises/${id}`, { method: 'DELETE' }),
-  togglePublic: (id: string, isPublic: boolean) =>
-    portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ isPublic }),
     }),
 }
 
@@ -94,21 +96,10 @@ export const allianceAchievementApi = {
     portalRequest<{ id: string }>(`/alliance/achievements/${id}`, { method: 'DELETE' }),
 }
 
+// 专家档案归属企业租户，学校端跨租户只读（按本校已引入企业过滤）
 export const allianceExpertApi = {
   list: (params?: ListParams) => list<AllianceExpert>('/alliance/experts', params),
   get: (id: string) => portalRequest<AllianceExpert>(`/alliance/experts/${id}`),
-  create: (req: Partial<AllianceExpert>) =>
-    portalRequest<AllianceExpert>('/alliance/experts', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (id: string, req: Partial<AllianceExpert>) =>
-    portalRequest<AllianceExpert>(`/alliance/experts/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    portalRequest<{ id: string }>(`/alliance/experts/${id}`, { method: 'DELETE' }),
 }
 
 export const allianceBrandApi = {

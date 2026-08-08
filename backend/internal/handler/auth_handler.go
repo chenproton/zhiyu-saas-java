@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,6 +23,9 @@ type AuthHandler struct {
 	JWTSecret  string
 	usedNonces sync.Map // map[string]time.Time
 	stopCh     chan struct{}
+
+	// PartnerService 企业平台注册/主体查询（router 装配时注入）。
+	PartnerService *service.PartnerService
 }
 
 func NewAuthHandler(svc *service.AuthService, jwtSecret string) *AuthHandler {
@@ -100,6 +105,54 @@ func (h *AuthHandler) SaasLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) PortalLogin(w http.ResponseWriter, r *http.Request) {
 	h.loginWithPlatform(w, r, domain.UserPlatformPortal)
+}
+
+func (h *AuthHandler) PartnerLogin(w http.ResponseWriter, r *http.Request) {
+	h.loginWithPlatform(w, r, domain.UserPlatformPartner)
+}
+
+// PartnerRegisterRequest 企业自助注册请求。
+type PartnerRegisterRequest struct {
+	EnterpriseName string `json:"enterpriseName" validate:"required"`
+	Username       string `json:"username" validate:"required"`
+	Password       string `json:"password" validate:"required"`
+	ContactName    string `json:"contactName"`
+}
+
+// PartnerRegister 企业自助注册：创建企业租户+主体+管理员后直接签发 token。
+func (h *AuthHandler) PartnerRegister(w http.ResponseWriter, r *http.Request) {
+	var req PartnerRegisterRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.EnterpriseName == "" || req.Username == "" {
+		respondError(w, http.StatusBadRequest, "企业名称和用户名不能为空")
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	res, err := h.PartnerService.Register(r.Context(), &service.PartnerRegisterParams{
+		EnterpriseName: req.EnterpriseName,
+		Username:       req.Username,
+		Password:       req.Password,
+		ContactName:    req.ContactName,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrPartnerUsernameExists):
+			respondError(w, http.StatusConflict, "用户名已被注册")
+		case isUniqueViolation(err):
+			respondError(w, http.StatusConflict, "企业名称已被注册")
+		default:
+			respondServerError(w, r, err, "注册失败")
+		}
+		return
+	}
+
+	h.issueTokenForUser(w, r, res.User)
 }
 
 func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, platform domain.UserPlatform) {
@@ -316,6 +369,46 @@ func (h *AuthHandler) SaasMe(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) PortalMe(w http.ResponseWriter, r *http.Request) {
 	h.meWithPlatform(w, r, domain.UserPlatformPortal)
+}
+
+// PartnerMeResponse partner 端用户信息 + 企业主体合并返回。
+type PartnerMeResponse struct {
+	MeResponse
+	Enterprise *domain.AllianceEnterprise `json:"enterprise,omitempty"`
+}
+
+// PartnerMe partner 端 me：用户信息 + 租户 + 角色 + 企业主体。
+func (h *AuthHandler) PartnerMe(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusUnauthorized, "未登录或登录已过期")
+		return
+	}
+	if claims.Platform != domain.UserPlatformPartner {
+		respondError(w, http.StatusForbidden, "无效平台")
+		return
+	}
+
+	user, err := h.fetchUserByID(r.Context(), claims.UserID)
+	if err != nil {
+		respondServerError(w, r, err, "查询用户信息失败")
+		return
+	}
+	user.PasswordHash = ""
+	user.Oauth = nil
+
+	resp := PartnerMeResponse{MeResponse: MeResponse{User: user}}
+	if user.TenantID != nil {
+		resp.Tenant = h.fetchTenantByID(r.Context(), *user.TenantID)
+		if h.PartnerService != nil {
+			if enterprise, err := h.PartnerService.GetProfile(r.Context(), *user.TenantID); err == nil {
+				resp.Enterprise = enterprise
+			}
+		}
+	}
+	resp.Roles = h.fetchUserRoles(r.Context(), user.ID)
+
+	respondJSON(w, http.StatusOK, resp)
 }
 
 func (h *AuthHandler) meWithPlatform(w http.ResponseWriter, r *http.Request, platform domain.UserPlatform) {

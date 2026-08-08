@@ -25,19 +25,17 @@ type AllianceSchoolInfo struct {
 	UpdatedAt         time.Time       `json:"updatedAt"`
 }
 
-// ===== 合作企业 =====
+// ===== 企业主体（partner_enterprises，全局唯一，归属企业租户） =====
+// 学校管理字段（评级/状态/类型/前台展示/二级学院）已下沉到 AllianceEnterpriseLink。
 type AllianceEnterprise struct {
 	ID                         string          `json:"id"`
 	TenantID                   string          `json:"tenantId"`
 	Name                       string          `json:"name"`
-	EnterpriseType             string          `json:"enterpriseType"`
 	Industry                   *string         `json:"industry,omitempty"`
 	Region                     *string         `json:"region,omitempty"`
 	Description                *string         `json:"description,omitempty"`
 	LogoURL                    *string         `json:"logoUrl,omitempty"`
 	CoverImage                 *string         `json:"coverImage,omitempty"`
-	Status                     string          `json:"status"`
-	Rating                     *string         `json:"rating,omitempty"`
 	CooperationTypes           json.RawMessage `json:"cooperationTypes,omitempty"`
 	ContactPerson              *string         `json:"contactPerson,omitempty"`
 	ContactPhone               *string         `json:"contactPhone,omitempty"`
@@ -50,12 +48,62 @@ type AllianceEnterprise struct {
 	QualificationPhotos        json.RawMessage `json:"qualificationPhotos,omitempty"`
 	IntellectualPropertyPhotos json.RawMessage `json:"intellectualPropertyPhotos,omitempty"`
 	CoverPhotos                json.RawMessage `json:"coverPhotos,omitempty"`
-	SecondaryColleges          json.RawMessage `json:"secondaryColleges,omitempty"`
-	RatingRecord               json.RawMessage `json:"ratingRecord,omitempty"`
-	IsPublic                   bool            `json:"isPublic"`
-	CreatedBy                  *string         `json:"createdBy,omitempty"`
+	EnablePublic               bool            `json:"enablePublic"`
 	CreatedAt                  time.Time       `json:"createdAt"`
 	UpdatedAt                  time.Time       `json:"updatedAt"`
+}
+
+// ===== 学校-企业合作关联（alliance_enterprise_links，tenant_id = 学校租户） =====
+type AllianceEnterpriseLink struct {
+	ID                string          `json:"id"`
+	TenantID          string          `json:"tenantId"`
+	EnterpriseID      string          `json:"enterpriseId"`
+	RelationType      string          `json:"relationType"`
+	Status            string          `json:"status"`
+	Rating            *string         `json:"rating,omitempty"`
+	EnterpriseType    string          `json:"enterpriseType"`
+	IsPublic          bool            `json:"isPublic"`
+	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
+	CreatedBy         *string         `json:"createdBy,omitempty"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	UpdatedAt         time.Time       `json:"updatedAt"`
+}
+
+// ===== 学校侧企业合并视图：全局主体（只读）+ link 学校侧管理字段 =====
+// json 字段名与原学校侧 AllianceEnterprise 契约兼容（status/rating/enterpriseType/isPublic/secondaryColleges 保持原名）。
+type AllianceLinkedEnterprise struct {
+	AllianceEnterprise
+	LinkID            string          `json:"linkId"`
+	RelationType      string          `json:"relationType"`
+	Status            string          `json:"status"`
+	Rating            *string         `json:"rating,omitempty"`
+	EnterpriseType    string          `json:"enterpriseType"`
+	IsPublic          bool            `json:"isPublic"`
+	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
+}
+
+// ===== 企业侧合作学校反向视图（link + 学校名称） =====
+type AlliancePartnerSchool struct {
+	LinkID         string    `json:"linkId"`
+	TenantID       string    `json:"tenantId"`
+	SchoolName     string    `json:"schoolName"`
+	RelationType   string    `json:"relationType"`
+	Status         string    `json:"status"`
+	Rating         *string   `json:"rating,omitempty"`
+	EnterpriseType string    `json:"enterpriseType"`
+	IsPublic       bool      `json:"isPublic"`
+	CreatedAt      time.Time `json:"createdAt"`
+}
+
+// ===== 专家 ↔ 学校影子账号（阶段二互动流程使用） =====
+type AllianceExpertMentorLink struct {
+	ID        string    `json:"id"`
+	TenantID  string    `json:"tenantId"`
+	ExpertID  string    `json:"expertId"`
+	UserID    string    `json:"userId"`
+	Enabled   bool      `json:"enabled"`
+	CreatedBy *string   `json:"createdBy,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // ===== 企业合作协议 =====
@@ -169,9 +217,11 @@ type AllianceExpert struct {
 	PositionDirection  *string         `json:"positionDirection,omitempty"`
 	SecondaryColleges  json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic           bool            `json:"isPublic"`
-	CreatedBy          *string         `json:"createdBy,omitempty"`
-	CreatedAt          time.Time       `json:"createdAt"`
-	UpdatedAt          time.Time       `json:"updatedAt"`
+	// UserID 专家档案绑定的企业成员账号（users.id，可空）
+	UserID    *string   `json:"userId,omitempty"`
+	CreatedBy *string   `json:"createdBy,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ===== 合作协议（独立模块） =====

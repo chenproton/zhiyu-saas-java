@@ -91,6 +91,26 @@ describe('request 401 处理', () => {
     expect(location.href).toBe('')
   })
 
+  it('partner 路由段 401 清除 partner token 并跳转 /partner/login', async () => {
+    const location = fakeWindow('/partner/workspace')
+    const store = fakeLocalStorage()
+    store.set('zhiyu-partner-token', 'stale-token')
+    globalThis.fetch = vi.fn(async () => fakeResponse(401, { error: 'token expired' }))
+
+    await expect(request('/some/api')).rejects.toThrow('token expired')
+    expect(store.get('zhiyu-partner-token')).toBeUndefined()
+    expect(location.href).toBe('/partner/login')
+  })
+
+  it('partner 登录页 401 不跳转（避免死循环）', async () => {
+    const location = fakeWindow('/partner/login')
+    fakeLocalStorage()
+    globalThis.fetch = vi.fn(async () => fakeResponse(401, { error: '用户名或密码错误' }))
+
+    await expect(request('/api/auth/partner/login')).rejects.toThrow('用户名或密码错误')
+    expect(location.href).toBe('')
+  })
+
   it('非 401 错误仍走全局错误处理器', async () => {
     fakeWindow('/portal/workspace')
     fakeLocalStorage()

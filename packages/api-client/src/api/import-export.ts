@@ -123,10 +123,8 @@ export const importExportApi = {
       | 'teachers'
       | 'schedules'
       | 'program-courses'
-      | 'alliance-enterprises'
       | 'alliance-projects'
       | 'alliance-achievements'
-      | 'alliance-experts'
       | 'alliance-agreements'
       | 'alliance-permissions'
       | 'alliance-brands',

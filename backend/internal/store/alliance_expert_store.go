@@ -9,7 +9,10 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
-// ===== 专家 =====
+// ===== 专家（alliance_experts，tenant_id = 企业租户） =====
+
+// expertColumns 专家全列（唯一列清单，扫描顺序与 ScanExpertRows 一致）。
+const expertColumns = "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, user_id, created_by, created_at, updated_at"
 
 func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, error) {
 	items := make([]domain.AllianceExpert, 0)
@@ -20,11 +23,11 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		var proFields, specs, photos, attachs json.RawMessage
 		var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization *string
 		var colleges json.RawMessage
-		var createdBy *string
+		var userID, createdBy *string
 		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 			&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
 			&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
-			&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &userID, &createdBy, &e.CreatedAt, &e.UpdatedAt); err != nil {
 			return nil, err
 		}
 		e.Gender = gender
@@ -50,6 +53,7 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		e.PartnerSource = partnerSource
 		e.PositionDirection = positionDirection
 		e.SecondaryColleges = colleges
+		e.UserID = userID
 		e.CreatedBy = createdBy
 		items = append(items, e)
 	}
@@ -60,7 +64,7 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 func (s *AllianceStore) ListExpertsConfig() ListQueryConfig[domain.AllianceExpert] {
 	return ListQueryConfig[domain.AllianceExpert]{
 		Table:         "alliance_experts",
-		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
+		SelectColumns: expertColumns,
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "title", "industry"},
 		OrderBy:       "created_at DESC",
@@ -79,13 +83,13 @@ func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpe
 		INSERT INTO alliance_experts (id, tenant_id, name, gender, age, title, position,
 			expert_type, industry, professional_fields, specialties, experience_years,
 			education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments,
-			enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,NOW(),NOW())
+			enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, user_id, created_by, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,NOW(),NOW())
 	`, id, e.TenantID, e.Name, e.Gender, e.Age, e.Title, e.Position, e.ExpertType,
 		e.Industry, emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
 		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Organization, e.Rating,
-		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, e.CreatedBy)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, e.UserID, e.CreatedBy)
 	if err != nil {
 		return "", err
 	}
@@ -100,13 +104,13 @@ func (s *AllianceStore) UpdateExpert(ctx context.Context, id, tenantID string, e
 			education = $11, introduction = $12, work_experience = $13, city = $14, avatar_url = $15,
 			cover_image = $16, photos = $17, attachments = $18, enterprise_id = $19, organization = $20, rating = $21,
 			status = $22, partner_source = $23, position_direction = $24,
-			secondary_colleges = $25, is_public = $26, updated_at = NOW()
-		WHERE id = $27 AND tenant_id = $28
+			secondary_colleges = $25, is_public = $26, user_id = $27, updated_at = NOW()
+		WHERE id = $28 AND tenant_id = $29
 	`, e.Name, e.Gender, e.Age, e.Title, e.Position, e.ExpertType, e.Industry,
 		emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
 		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Organization, e.Rating,
-		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, id, tenantID)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, e.UserID, id, tenantID)
 	return err
 }
 
@@ -115,60 +119,38 @@ func (s *AllianceStore) DeleteExpert(ctx context.Context, id, tenantID string) e
 	return err
 }
 
+// GetExpertByID 按 ID + 企业租户查询专家（企业服务台自身数据）。
 func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) (*domain.AllianceExpert, error) {
-	var e domain.AllianceExpert
-	var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
-	var age, expYrs *int
-	var proFields, specs, photos, attachs json.RawMessage
-	var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization *string
-	var colleges json.RawMessage
-	var createdBy *string
-	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
-			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
+	return queryOne(ctx, s.q, s.ScanExpertRows, `
+		SELECT `+expertColumns+`
 		FROM alliance_experts WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
-		&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
-		&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
-		&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt)
-	if err != nil {
-		return nil, err
+	`, id, tenantID)
+}
+
+// ListByEnterpriseIDs 跨租户只读：按企业 ID 集合查询专家（学校侧按已引入企业加载）。
+// 越权防线：入参 enterpriseIDs 必须由调用方（store/service）限定为本校 links 内的企业。
+func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, enterpriseIDs []string) ([]domain.AllianceExpert, error) {
+	if len(enterpriseIDs) == 0 {
+		return []domain.AllianceExpert{}, nil
 	}
-	e.Gender = gender
-	e.Age = age
-	e.Title = ttl
-	e.Position = pos
-	e.ExpertType = etype
-	e.Industry = industry
-	e.ProfessionalFields = proFields
-	e.Specialties = specs
-	e.ExperienceYears = expYrs
-	e.Education = edu
-	e.Introduction = intro
-	e.WorkExperience = workExp
-	e.City = city
-	e.AvatarURL = avatar
-	e.CoverImage = coverImage
-	e.Photos = photos
-	e.Attachments = attachs
-	e.EnterpriseID = enterpriseID
-	e.Organization = organization
-	e.Rating = rating
-	e.PartnerSource = partnerSource
-	e.PositionDirection = positionDirection
-	e.SecondaryColleges = colleges
-	e.CreatedBy = createdBy
-	return &e, nil
+	return queryList(ctx, s.q, s.ScanExpertRows, `
+		SELECT `+expertColumns+`
+		FROM alliance_experts WHERE enterprise_id = ANY($1::uuid[])
+		ORDER BY created_at DESC
+	`, enterpriseIDs)
+}
+
+// GetExpertByIDGlobal 按 ID 查询专家（跨租户只读；调用方须先做归属校验）。
+func (s *AllianceStore) GetExpertByIDGlobal(ctx context.Context, id string) (*domain.AllianceExpert, error) {
+	return queryOne(ctx, s.q, s.ScanExpertRows, `
+		SELECT `+expertColumns+`
+		FROM alliance_experts WHERE id = $1
+	`, id)
 }
 
 func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.AllianceExpert, error) {
 	return queryList(ctx, s.q, s.ScanExpertRows, `
-		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
-			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
+		SELECT `+expertColumns+`
 		FROM alliance_experts WHERE is_public = true AND status = 'active'
 		ORDER BY created_at DESC LIMIT 100
 	`)
@@ -176,10 +158,7 @@ func (s *AllianceStore) ListPublicExperts(ctx context.Context) ([]domain.Allianc
 
 func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id string) (*domain.AllianceExpert, error) {
 	return queryOne(ctx, s.q, s.ScanExpertRows, `
-		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
-			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
+		SELECT `+expertColumns+`
 		FROM alliance_experts WHERE id = $1 AND is_public = true AND status = 'active'
 	`, id)
 }

@@ -507,6 +507,77 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 	return nil
 }
 
+// CreateEnterpriseTenantResult 企业租户初始化结果。
+type CreateEnterpriseTenantResult struct {
+	TenantID     string
+	AdminRoleID  string
+	MemberRoleID string
+}
+
+// CreateEnterpriseTenant 在事务内创建企业租户（type=enterprise）并种子企业角色：
+// enterprise_admin（全部企业权限）/ enterprise_member（只读，无成员管理菜单）。
+// 不创建学校套餐/组织类型/行业字典/学校菜单——企业租户与学校租户逻辑完全分离。
+func (s *TenantStore) CreateEnterpriseTenant(ctx context.Context, tx Queryer, p *TenantCreateParams) (*CreateEnterpriseTenantResult, error) {
+	id := uuid.NewString()
+
+	var codeExists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, p.Code).Scan(&codeExists); err != nil {
+		return nil, err
+	}
+	if codeExists {
+		return nil, ErrCodeExists
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status, type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', 'enterprise')
+	`, id, p.Name, p.Code, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description); err != nil {
+		return nil, err
+	}
+
+	// partner 平台菜单权限标识（partner 侧导航按菜单权限显现）
+	adminMenus := domain.JSONMap{
+		"/partner/workspace":  true,
+		"/partner/enterprise": true,
+		"/partner/experts":    true,
+		"/partner/members":    true,
+		"/partner/schools":    true,
+		"/partner/settings":   true,
+	}
+	memberMenus := domain.JSONMap{
+		"/partner/workspace":  true,
+		"/partner/enterprise": true,
+		"/partner/experts":    true,
+		"/partner/schools":    true,
+		"/partner/settings":   true,
+	}
+	roles := []struct {
+		code        string
+		name        string
+		permissions domain.JSONMap
+	}{
+		{domain.RoleEnterpriseAdmin, "企业管理员", domain.JSONMap{"menus": adminMenus}},
+		{domain.RoleEnterpriseMember, "企业成员", domain.JSONMap{"menus": memberMenus}},
+	}
+	result := &CreateEnterpriseTenantResult{TenantID: id}
+	for _, role := range roles {
+		roleID := uuid.NewString()
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status, created_at)
+			VALUES ($1, $2, $3, $4, '', $5, 0, 'active', NOW())
+		`, roleID, id, role.code, role.name, role.permissions); err != nil {
+			return nil, err
+		}
+		switch role.code {
+		case domain.RoleEnterpriseAdmin:
+			result.AdminRoleID = roleID
+		case domain.RoleEnterpriseMember:
+			result.MemberRoleID = roleID
+		}
+	}
+	return result, nil
+}
+
 // TenantCreateParams 创建租户参数。
 type TenantCreateParams struct {
 	Name           string

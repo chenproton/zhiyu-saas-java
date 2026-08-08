@@ -40,6 +40,8 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.With(loginLimiter).Post("/auth/login", h.authHandler.Login)
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
 	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)
+	r.With(loginLimiter).Post("/auth/partner/login", h.authHandler.PartnerLogin)
+	r.With(loginLimiter).Post("/auth/partner/register", h.authHandler.PartnerRegister)
 	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
 	r.Get("/settings/theme", h.settingsHandler.GetTheme)
 }
@@ -260,6 +262,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				registerSuperAdminRoutes(r, h)
 			})
 		})
+
+		// ========== Partner 企业端（强制 partner 平台 token）==========
+		r.Group(func(r chi.Router) {
+			r.Use(authmw.RequirePlatform(domain.UserPlatformPartner))
+			registerPartnerRoutes(r, h)
+		})
 	})
 }
 
@@ -332,14 +340,10 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Post("/import/students/preview", h.resourceImportHandler.PreviewStudents)
 	r.Post("/import/teachers/excel", h.resourceImportHandler.ImportTeachers)
 	r.Post("/import/teachers/preview", h.resourceImportHandler.PreviewTeachers)
-	r.Post("/import/alliance-enterprises/excel", h.resourceImportHandler.ImportEnterprises)
-	r.Post("/import/alliance-enterprises/preview", h.resourceImportHandler.PreviewEnterprises)
 	r.Post("/import/alliance-projects/excel", h.resourceImportHandler.ImportProjects)
 	r.Post("/import/alliance-projects/preview", h.resourceImportHandler.PreviewProjects)
 	r.Post("/import/alliance-achievements/excel", h.resourceImportHandler.ImportAchievements)
 	r.Post("/import/alliance-achievements/preview", h.resourceImportHandler.PreviewAchievements)
-	r.Post("/import/alliance-experts/excel", h.resourceImportHandler.ImportExperts)
-	r.Post("/import/alliance-experts/preview", h.resourceImportHandler.PreviewExperts)
 	r.Post("/import/alliance-agreements/excel", h.resourceImportHandler.ImportAgreements)
 	r.Post("/import/alliance-agreements/preview", h.resourceImportHandler.PreviewAgreements)
 	r.Post("/import/alliance-permissions/excel", h.resourceImportHandler.ImportPermissions)
@@ -358,10 +362,8 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Get("/templates/organizations", h.templateHandler.ServeOrganizationTemplate)
 	r.Get("/templates/students", h.templateHandler.ServeStudentTemplate)
 	r.Get("/templates/teachers", h.templateHandler.ServeTeacherTemplate)
-	r.Get("/templates/alliance-enterprises", h.templateHandler.ServeEnterpriseTemplate)
 	r.Get("/templates/alliance-projects", h.templateHandler.ServeProjectTemplate)
 	r.Get("/templates/alliance-achievements", h.templateHandler.ServeAchievementTemplate)
-	r.Get("/templates/alliance-experts", h.templateHandler.ServeExpertTemplate)
 	r.Get("/templates/alliance-agreements", h.templateHandler.ServeAgreementTemplate)
 	r.Get("/templates/alliance-permissions", h.templateHandler.ServePermissionTemplate)
 	r.Get("/templates/alliance-brands", h.templateHandler.ServeBrandTemplate)
@@ -389,10 +391,12 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Put("/school-info", h.allianceHandler.UpdateSchoolInfo)
 
 		r.Get("/enterprises", h.allianceHandler.ListEnterprises)
-		r.Post("/enterprises", h.allianceHandler.CreateEnterprise)
+		r.Get("/enterprises/search", h.allianceHandler.SearchEnterprises)
 		r.Get("/enterprises/{id}", h.allianceHandler.GetEnterprise)
 		r.Put("/enterprises/{id}", h.allianceHandler.UpdateEnterprise)
-		r.Delete("/enterprises/{id}", h.allianceHandler.DeleteEnterprise)
+		r.Post("/enterprises/{id}/link", h.allianceHandler.LinkEnterprise)
+		r.Delete("/enterprises/{id}/link", h.allianceHandler.UnlinkEnterprise)
+		r.Delete("/enterprises/{id}", h.allianceHandler.UnlinkEnterprise)
 
 		r.Get("/enterprises/{eid}/agreements", h.allianceHandler.ListEnterpriseAgreements)
 		r.Post("/enterprises/{eid}/agreements", h.allianceHandler.CreateEnterpriseAgreement)
@@ -417,10 +421,7 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Delete("/achievements/{id}", h.allianceHandler.DeleteAchievement)
 
 		r.Get("/experts", h.allianceHandler.ListExperts)
-		r.Post("/experts", h.allianceHandler.CreateExpert)
 		r.Get("/experts/{id}", h.allianceHandler.GetExpert)
-		r.Put("/experts/{id}", h.allianceHandler.UpdateExpert)
-		r.Delete("/experts/{id}", h.allianceHandler.DeleteExpert)
 
 		r.Get("/agreements", h.allianceHandler.ListAgreements)
 		r.Post("/agreements", h.allianceHandler.CreateAgreement)

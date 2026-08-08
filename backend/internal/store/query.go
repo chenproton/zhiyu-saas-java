@@ -119,7 +119,6 @@ var (
 		"alliance_achievements",
 		"alliance_agreements",
 		"alliance_brands",
-		"alliance_enterprises",
 		"alliance_experts",
 		"alliance_permissions",
 		"alliance_projects",
@@ -199,8 +198,7 @@ var (
 		"id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
 		"qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status, COALESCE(qcnt.cnt, 0) AS question_count, qb.creator_id, COALESCE(cr_u.name, qb.creator_id::text) AS creator_name, qb.collaborator_ids, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool, COALESCE(kparr.ids, '{}') AS knowledge_point_ids, qb.created_at, qb.updated_at",
 		"id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
-		"id, tenant_id, name, enterprise_type, industry, region, description, logo_url, cover_image, status, rating, cooperation_types, contact_person, contact_phone, contact_email, address, unified_social_credit_code, established_year, employee_count, business_license_photos, qualification_photos, intellectual_property_photos, cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at",
-		"id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
+		"id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, user_id, created_by, created_at, updated_at",
 		"id, tenant_id, account_name, account_type, enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions, created_at, updated_at",
 		"id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
 		"id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
@@ -549,10 +547,10 @@ func FormatDateTime(t time.Time) string {
 
 // lookupByNameTables 通用名称查重白名单（import 类功能使用）。
 var lookupByNameTables = []string{
-	"ability_points", "ability_domains", "alliance_agreements", "alliance_enterprises",
+	"ability_points", "ability_domains", "alliance_agreements",
 	"alliance_experts", "alliance_projects", "batches", "career_positions", "certificate_library",
 	"courses", "evaluation_batches", "exams", "industries", "institutions",
-	"knowledge_points", "lesson_batches", "majors", "organizations", "question_banks", "questions",
+	"knowledge_points", "lesson_batches", "majors", "organizations", "partner_enterprises", "question_banks", "questions",
 	"resource_library", "roles", "scene_batches", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
 }
 
