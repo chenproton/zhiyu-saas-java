@@ -149,6 +149,12 @@ func (s *UserStore) UpdateSelfName(ctx context.Context, id, name string) error {
 	return err
 }
 
+// UpdateContact 更新联系方式（指针字段未携带时 COALESCE 保留原值）。
+func (s *UserStore) UpdateContact(ctx context.Context, id string, email, phone *string) error {
+	_, err := s.q.Exec(ctx, `UPDATE users SET email = COALESCE($1, email), phone = COALESCE($2, phone), updated_at = NOW() WHERE id = $3`, email, phone, id)
+	return err
+}
+
 // UpdateStatus 更新用户状态。
 func (s *UserStore) UpdateStatus(ctx context.Context, id, status string) error {
 	_, err := s.q.Exec(ctx, `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, status, id)

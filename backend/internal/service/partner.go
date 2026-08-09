@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // PartnerService 企业平台（Partner）业务编排。
@@ -22,10 +24,14 @@ func NewPartnerService(s *Service) *PartnerService {
 
 // PartnerRegisterParams 企业自助注册参数。
 type PartnerRegisterParams struct {
-	EnterpriseName string
-	Username       string
-	Password       string
-	ContactName    string // 管理员姓名（可选，默认"企业名+管理员"）
+	EnterpriseName          string
+	Username                string
+	Password                string
+	ContactName             string // 管理员姓名（可选，默认"企业名+管理员"）
+	UnifiedSocialCreditCode string // 统一社会信用代码（可选）
+	ContactPerson           string // 联系人（可选）
+	ContactPhone            string // 联系电话（可选）
+	ContactEmail            string // 联系邮箱（可选）
 }
 
 // PartnerRegisterResult 注册结果（handler 据此签发 token）。
@@ -65,8 +71,12 @@ func (s *PartnerService) Register(ctx context.Context, p *PartnerRegisterParams)
 
 		// 企业主体（全局唯一，name 冲突由 DB 唯一约束兜底）
 		enterpriseID, err := txStore.Alliance().CreateEnterprise(ctx, &store.AllianceEnterpriseCreateParams{
-			TenantID: tenantRes.TenantID,
-			Name:     p.EnterpriseName,
+			TenantID:                tenantRes.TenantID,
+			Name:                    p.EnterpriseName,
+			UnifiedSocialCreditCode: store.StrPtrIfNonEmpty(p.UnifiedSocialCreditCode),
+			ContactPerson:           store.StrPtrIfNonEmpty(p.ContactPerson),
+			ContactPhone:            store.StrPtrIfNonEmpty(p.ContactPhone),
+			ContactEmail:            store.StrPtrIfNonEmpty(p.ContactEmail),
 		})
 		if err != nil {
 			return err
@@ -140,7 +150,7 @@ func (s *PartnerService) ListSchools(ctx context.Context, tenantID string) ([]do
 }
 
 // CreateMember 管理员添加成员账号（绑定 enterprise_admin 或 enterprise_member）。
-func (s *PartnerService) CreateMember(ctx context.Context, tenantID, username, password, name, roleCode string) (*domain.User, error) {
+func (s *PartnerService) CreateMember(ctx context.Context, tenantID, username, password, name, roleCode string, phone, email *string) (*domain.User, error) {
 	if roleCode != domain.RoleEnterpriseAdmin && roleCode != domain.RoleEnterpriseMember {
 		return nil, fmt.Errorf("无效角色: %s", roleCode)
 	}
@@ -163,10 +173,22 @@ func (s *PartnerService) CreateMember(ctx context.Context, tenantID, username, p
 		Username: username,
 		Password: password,
 		Name:     name,
+		Phone:    phone,
+		Email:    email,
 	})
 }
 
-// ResetMyPassword 修改本人密码。
-func (s *PartnerService) ResetMyPassword(ctx context.Context, userID, newPassword string) error {
+// ErrInvalidOldPassword 修改密码时旧密码校验失败。
+var ErrInvalidOldPassword = errors.New("invalid old password")
+
+// ChangeMyPassword 修改本人密码（先校验旧密码，与登录同用 bcrypt 比对）。
+func (s *PartnerService) ChangeMyPassword(ctx context.Context, userID, oldPassword, newPassword string) error {
+	user, err := s.st.Users().Get(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)) != nil {
+		return ErrInvalidOldPassword
+	}
 	return s.st.Users().ResetPassword(ctx, userID, newPassword)
 }

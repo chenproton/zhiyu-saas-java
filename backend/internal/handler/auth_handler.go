@@ -113,10 +113,14 @@ func (h *AuthHandler) PartnerLogin(w http.ResponseWriter, r *http.Request) {
 
 // PartnerRegisterRequest 企业自助注册请求。
 type PartnerRegisterRequest struct {
-	EnterpriseName string `json:"enterpriseName" validate:"required"`
-	Username       string `json:"username" validate:"required"`
-	Password       string `json:"password" validate:"required"`
-	ContactName    string `json:"contactName"`
+	EnterpriseName          string `json:"enterpriseName" validate:"required"`
+	Username                string `json:"username" validate:"required"`
+	Password                string `json:"password" validate:"required"`
+	ContactName             string `json:"contactName"`
+	UnifiedSocialCreditCode string `json:"unifiedSocialCreditCode"`
+	ContactPerson           string `json:"contactPerson"`
+	ContactPhone            string `json:"contactPhone"`
+	ContactEmail            string `json:"contactEmail"`
 }
 
 // PartnerRegister 企业自助注册：创建企业租户+主体+管理员后直接签发 token。
@@ -135,10 +139,14 @@ func (h *AuthHandler) PartnerRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.PartnerService.Register(r.Context(), &service.PartnerRegisterParams{
-		EnterpriseName: req.EnterpriseName,
-		Username:       req.Username,
-		Password:       req.Password,
-		ContactName:    req.ContactName,
+		EnterpriseName:          req.EnterpriseName,
+		Username:                req.Username,
+		Password:                req.Password,
+		ContactName:             req.ContactName,
+		UnifiedSocialCreditCode: req.UnifiedSocialCreditCode,
+		ContactPerson:           req.ContactPerson,
+		ContactPhone:            req.ContactPhone,
+		ContactEmail:            req.ContactEmail,
 	})
 	if err != nil {
 		switch {

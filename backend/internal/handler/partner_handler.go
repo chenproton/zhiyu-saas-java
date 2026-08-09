@@ -57,7 +57,7 @@ type partnerProfileRequest struct {
 	QualificationPhotos        json.RawMessage `json:"qualificationPhotos"`
 	IntellectualPropertyPhotos json.RawMessage `json:"intellectualPropertyPhotos"`
 	CoverPhotos                json.RawMessage `json:"coverPhotos"`
-	EnablePublic               bool            `json:"enablePublic"`
+	EnablePublic               *bool           `json:"enablePublic"`
 }
 
 func (h *PartnerHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +75,19 @@ func (h *PartnerHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "企业主体不存在")
 		return
 	}
-	// 部分更新兜底：name 未携带时保留原值
+	// 部分更新兜底：未携带字段保留原值，避免 PUT 全列覆盖擦除数据
 	if req.Name == "" {
 		req.Name = existing.Name
+	}
+	if req.CooperationTypes == nil {
+		req.CooperationTypes = existing.CooperationTypes
+	}
+	if req.CoverPhotos == nil {
+		req.CoverPhotos = existing.CoverPhotos
+	}
+	enablePublic := existing.EnablePublic
+	if req.EnablePublic != nil {
+		enablePublic = *req.EnablePublic
 	}
 
 	updated, err := h.Service.UpdateProfile(r.Context(), tenantID, &store.AllianceEnterpriseProfileUpdateParams{
@@ -99,7 +109,7 @@ func (h *PartnerHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		QualificationPhotos:        req.QualificationPhotos,
 		IntellectualPropertyPhotos: req.IntellectualPropertyPhotos,
 		CoverPhotos:                req.CoverPhotos,
-		EnablePublic:               req.EnablePublic,
+		EnablePublic:               enablePublic,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新企业信息失败")
@@ -185,6 +195,13 @@ func (h *PartnerHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, expert)
 }
 
+// expertUpdateRequest 专家更新请求：IsPublic 指针区分"未携带"与"置为 false"，
+// 未携带时保留原值，避免 PUT 全列覆盖误关展示开关（外层同名字段优先于内嵌解码）。
+type expertUpdateRequest struct {
+	domain.AllianceExpert
+	IsPublic *bool `json:"isPublic"`
+}
+
 func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
@@ -196,9 +213,15 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
 	}
-	var e domain.AllianceExpert
-	if !decodeBody(w, r, &e) {
+	var req expertUpdateRequest
+	if !decodeBody(w, r, &req) {
 		return
+	}
+	e := req.AllianceExpert
+	if req.IsPublic != nil {
+		e.IsPublic = *req.IsPublic
+	} else {
+		e.IsPublic = existing.IsPublic
 	}
 	// 部分更新兜底：未携带字段回退已有值；企业归属强制本企业，不可改绑
 	if e.Name == "" {
@@ -323,10 +346,12 @@ func (h *PartnerHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 }
 
 type partnerMemberCreateRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
-	RoleCode string `json:"roleCode"`
+	Username string  `json:"username"`
+	Password string  `json:"password"`
+	Name     string  `json:"name"`
+	RoleCode string  `json:"roleCode"`
+	Phone    *string `json:"phone"`
+	Email    *string `json:"email"`
 }
 
 func (h *PartnerHandler) CreateMember(w http.ResponseWriter, r *http.Request) {
@@ -350,7 +375,7 @@ func (h *PartnerHandler) CreateMember(w http.ResponseWriter, r *http.Request) {
 		req.RoleCode = domain.RoleEnterpriseMember
 	}
 
-	user, err := h.Service.CreateMember(r.Context(), tenantID, req.Username, req.Password, req.Name, req.RoleCode)
+	user, err := h.Service.CreateMember(r.Context(), tenantID, req.Username, req.Password, req.Name, req.RoleCode, req.Phone, req.Email)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrPartnerUsernameExists):
@@ -372,6 +397,8 @@ type partnerMemberUpdateRequest struct {
 	Status   *string `json:"status"`
 	RoleCode *string `json:"roleCode"`
 	Password *string `json:"password"`
+	Phone    *string `json:"phone"`
+	Email    *string `json:"email"`
 }
 
 // verifyMemberTenant 校验目标用户属于本企业租户（防跨租户操作）。
@@ -404,6 +431,12 @@ func (h *PartnerHandler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 	users := h.Service.Store().Users()
 	if req.Name != nil && *req.Name != "" {
 		if err := users.UpdateSelfName(r.Context(), id, *req.Name); err != nil {
+			respondServerError(w, r, err, "更新成员失败")
+			return
+		}
+	}
+	if req.Phone != nil || req.Email != nil {
+		if err := users.UpdateContact(r.Context(), id, req.Email, req.Phone); err != nil {
 			respondServerError(w, r, err, "更新成员失败")
 			return
 		}
@@ -462,6 +495,7 @@ func (h *PartnerHandler) DeleteMember(w http.ResponseWriter, r *http.Request) {
 // ===== 个人 =====
 
 type partnerChangePasswordRequest struct {
+	OldPassword string `json:"oldPassword"`
 	NewPassword string `json:"newPassword"`
 }
 
@@ -475,11 +509,19 @@ func (h *PartnerHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	if req.OldPassword == "" {
+		respondError(w, http.StatusBadRequest, "旧密码不能为空")
+		return
+	}
 	if err := validatePassword(req.NewPassword); err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := h.Service.ResetMyPassword(r.Context(), claims.UserID, req.NewPassword); err != nil {
+	if err := h.Service.ChangeMyPassword(r.Context(), claims.UserID, req.OldPassword, req.NewPassword); err != nil {
+		if errors.Is(err, service.ErrInvalidOldPassword) {
+			respondError(w, http.StatusBadRequest, "旧密码不正确")
+			return
+		}
 		respondServerError(w, r, err, "修改密码失败")
 		return
 	}
