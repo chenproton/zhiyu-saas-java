@@ -10,6 +10,7 @@ import type {
   AllianceExpert,
   AllianceProject,
   AllianceAchievement,
+  AlliancePublicAgreement,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
@@ -49,6 +50,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
   const [experts, setExperts] = useState<AllianceExpert[]>([])
   const [projects, setProjects] = useState<AllianceProject[]>([])
   const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
+  const [agreements, setAgreements] = useState<AlliancePublicAgreement[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -58,8 +60,9 @@ export default function AlliancePublicEnterpriseDetailPage() {
       portalRequest<{ items: AllianceExpert[] }>('/alliance/public/experts'),
       portalRequest<{ items: AllianceProject[] }>('/alliance/public/projects'),
       portalRequest<{ items: AllianceAchievement[] }>('/alliance/public/achievements'),
+      portalRequest<{ items: AlliancePublicAgreement[] }>('/alliance/public/agreements'),
     ])
-      .then(([ent, expertsRes, projectsRes, achievementsRes]) => {
+      .then(([ent, expertsRes, projectsRes, achievementsRes, agreementsRes]) => {
         setEnterprise(toShowcase(ent))
         setExperts((expertsRes.items ?? []).filter((e) => e.enterpriseId === id))
         setProjects(
@@ -67,6 +70,9 @@ export default function AlliancePublicEnterpriseDetailPage() {
         )
         setAchievements(
           (achievementsRes.items ?? []).filter((a) => (a.enterpriseIds ?? []).includes(id)),
+        )
+        setAgreements(
+          (agreementsRes.items ?? []).filter((a) => (a.enterpriseIds ?? []).includes(id)),
         )
       })
       .catch((err) => {
@@ -95,6 +101,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
         experts={experts}
         projects={projects}
         achievements={achievements}
+        agreements={agreements}
       />
     </div>
   )

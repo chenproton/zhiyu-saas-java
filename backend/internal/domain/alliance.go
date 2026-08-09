@@ -254,6 +254,17 @@ type AllianceAgreement struct {
 	UpdatedAt     time.Time       `json:"updatedAt"`
 }
 
+// AlliancePublicAgreement 门户前台公开协议视图：不暴露 content/attachments 等敏感字段。
+type AlliancePublicAgreement struct {
+	ID            string          `json:"id"`
+	Name          string          `json:"name"`
+	Type          *string         `json:"type,omitempty"`
+	Status        string          `json:"status"`
+	StartDate     *string         `json:"startDate,omitempty"`
+	EndDate       *string         `json:"endDate,omitempty"`
+	EnterpriseIDs json.RawMessage `json:"enterpriseIds,omitempty"`
+}
+
 // ===== 合作权限 =====
 type AlliancePermission struct {
 	ID                  string          `json:"id"`

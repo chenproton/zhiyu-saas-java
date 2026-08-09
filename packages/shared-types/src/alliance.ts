@@ -209,6 +209,17 @@ export interface AllianceAgreement {
   updatedAt: string
 }
 
+/** 门户前台公开协议视图（后端不暴露 content/attachments） */
+export interface AlliancePublicAgreement {
+  id: string
+  name: string
+  type?: string
+  status: string
+  startDate?: string
+  endDate?: string
+  enterpriseIds?: string[]
+}
+
 export interface AlliancePermission {
   id: string
   tenantId: string

@@ -1007,6 +1007,13 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 	}, "成果不存在")
 }
 
+func (h *AllianceHandler) ListPublicAgreements(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.URL.Query().Get("tenantId")
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AlliancePublicAgreement, error) {
+		return h.Store.ListPublicAgreements(ctx, tenantID)
+	})
+}
+
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
