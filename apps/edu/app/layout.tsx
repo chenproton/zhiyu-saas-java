@@ -4,7 +4,6 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeBrandSync } from '@/components/theme-brand-sync'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
 import { GlobalApiErrorHandler } from '@/components/global-api-error-handler'
-import { DataProvider as EvaluationDataProvider } from '@/components/providers/data-provider'
 import { I18nProvider } from '@/lib/i18n/locale-provider'
 import { Toaster } from '@zhiyu/ui'
 import './globals.css'
@@ -52,13 +51,11 @@ export default function RootLayout({
         <I18nProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AuthProvider>
-              <EvaluationDataProvider>
-                <ThemeBrandSync />
-                <ChunkErrorHandler />
-                <GlobalApiErrorHandler />
-                <Toaster />
-                {children}
-              </EvaluationDataProvider>
+              <ThemeBrandSync />
+              <ChunkErrorHandler />
+              <GlobalApiErrorHandler />
+              <Toaster />
+              {children}
             </AuthProvider>
           </ThemeProvider>
         </I18nProvider>

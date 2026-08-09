@@ -1,7 +1,6 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
-import { usePathname } from 'next/navigation'
 import { useToast } from '@zhiyu/ui'
 import type {
   QuestionBank,
@@ -14,7 +13,6 @@ import type {
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { fetchAllPages } from '@/lib/fetch-all'
-import { isPublicPage } from '@/lib/public-routes'
 import { useT } from '@/lib/i18n/locale-provider'
 import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
 
@@ -76,7 +74,6 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | null>(null)
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
   const { toast } = useToast()
   const t = useT()
   const [evaluationLoading, setEvaluationLoading] = useState(false)
@@ -104,21 +101,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setExams(res.items.map(parseExam))
   }, [])
 
-  // 评测数据（题库/试卷）仅服务 portal 学校端页面；/partner 企业端与 /superadmin 不加载，
-  // 否则会携带 partner token 请求 portal 业务接口产生 403/401 报错
-  const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/superadmin') || pathname.startsWith('/partner')
-
+  // Provider 仅挂载在 /evaluation 布局下，进入测评域即预加载题库与试卷
   useEffect(() => {
-    if (isPortal || isPublicPage(pathname)) return
-
-    const tasks: (() => Promise<void>)[] = [loadQuestionBanks, loadExams]
-    if (tasks.length === 0) return
-
     let cancelled = false
     const loadAll = async () => {
       try {
         setEvaluationLoading(true)
-        await Promise.all(tasks.map((fn) => fn()))
+        await Promise.all([loadQuestionBanks(), loadExams()])
       } catch (err) {
         if (!cancelled) {
           reportError(err, '加载评测数据')
@@ -131,7 +120,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isPortal, pathname, loadQuestionBanks, loadExams])
+  }, [loadQuestionBanks, loadExams])
 
   // ==================== Question bank actions ====================
   const getQuestionBank = useCallback(
