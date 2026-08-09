@@ -23,6 +23,8 @@ export interface Course {
   courseTag?: string
   difficulty?: number
   knowledgePointIds?: string[]
+  /** 与 knowledgePointIds 按序对齐的知识点名称（服务端 JOIN 返回，避免前端依赖全量知识点列表） */
+  knowledgePointNames?: string[]
   abilityPointIds?: string[]
   resourceIds?: string[]
   creatorId: string

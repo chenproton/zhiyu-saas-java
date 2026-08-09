@@ -155,10 +155,23 @@ function AddGranularPageInner() {
           setCoverImage(c.coverImage || '')
           if (c.batchId) setBatchId(c.batchId)
 
-          const selectedKpIds = new Set(
-            (c.knowledgePointIds || []).filter((id): id is string => !!id),
-          )
-          setKnowledgePoints(pool.filter((k) => selectedKpIds.has(k.id)))
+          const kpNameById = new Map<string, string>()
+          ;(c.knowledgePointNames || []).forEach((name, i) => {
+            const id = (c.knowledgePointIds || [])[i]
+            if (id && name) kpNameById.set(id, name)
+          })
+          const selected: KnowledgePointItem[] = (c.knowledgePointIds || [])
+            .filter((id): id is string => !!id)
+            .map((id) => {
+              const fromPool = pool.find((k) => k.id === id)
+              if (fromPool) return fromPool
+              return {
+                id,
+                name: kpNameById.get(id) || id,
+                linked: true,
+              }
+            })
+          setKnowledgePoints(selected)
 
           const resIds = new Set((c.resourceIds || []).filter((id): id is string => !!id))
           setSelectedResourceIds(

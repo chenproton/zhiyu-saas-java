@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -365,6 +366,57 @@ func (s *CourseStore) ListCourseKnowledgePointNames(ctx context.Context, q Query
 		}
 	}
 	return names
+}
+
+// PopulateKnowledgePointNames 为课程补充知识点名称，与 knowledge_point_ids 按序对齐。
+// 避免前端依赖全量知识点列表接口（该接口 maxPageSize=200 会截断，导致引用旧知识点的课程预览缺失名称）。
+func (s *CourseStore) PopulateKnowledgePointNames(ctx context.Context, items []domain.Course) {
+	if len(items) == 0 {
+		return
+	}
+	idSet := make(map[string]struct{})
+	for _, it := range items {
+		for _, v := range it.KnowledgePointIds {
+			id, ok := v.(string)
+			if !ok || id == "" || strings.HasPrefix(id, "kp-custom-") {
+				continue
+			}
+			idSet[id] = struct{}{}
+		}
+	}
+	if len(idSet) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+	nameByID := make(map[string]string, len(ids))
+	rows, err := s.q.Query(ctx, `SELECT id, name FROM knowledge_points WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			continue
+		}
+		nameByID[id] = name
+	}
+	for i := range items {
+		if len(items[i].KnowledgePointIds) == 0 {
+			continue
+		}
+		names := make(domain.JSONSlice, len(items[i].KnowledgePointIds))
+		for j, v := range items[i].KnowledgePointIds {
+			id, ok := v.(string)
+			if ok {
+				names[j] = nameByID[id]
+			}
+		}
+		items[i].KnowledgePointNames = names
+	}
 }
 
 // ListCourseResourceNames 查询课程绑定资源名称（导出用）。

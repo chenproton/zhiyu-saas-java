@@ -159,7 +159,12 @@ func (s *LessonContentService) CloneCourse(ctx context.Context, tenantID, oldCou
 
 // GetCourse 查询完整课程。
 func (s *LessonContentService) GetCourse(ctx context.Context, id string) (*domain.Course, error) {
-	return s.st.CourseClone().FetchCourse(ctx, id)
+	c, err := s.st.CourseClone().FetchCourse(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	s.st.Courses().PopulateKnowledgePointNames(ctx, []domain.Course{*c})
+	return c, nil
 }
 
 // ErrCourseNotInTenant 课程不属于当前租户。
@@ -257,17 +262,32 @@ func (s *LessonContentService) EnrichNodes(ctx context.Context, nodeIDs []string
 
 // ListCourses 查询课程列表。
 func (s *LessonContentService) ListCourses(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.Course]) ([]domain.Course, int, error) {
-	return s.st.Courses().List(ctx, p, cfg)
+	items, total, err := s.st.Courses().List(ctx, p, cfg)
+	if err != nil {
+		return nil, 0, err
+	}
+	s.st.Courses().PopulateKnowledgePointNames(ctx, items)
+	return items, total, nil
 }
 
 // GetCourseDetail 查询单个课程。
 func (s *LessonContentService) GetCourseDetail(ctx context.Context, id string) (*domain.Course, error) {
-	return s.st.Courses().GetUnscoped(ctx, id)
+	c, err := s.st.Courses().GetUnscoped(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	s.st.Courses().PopulateKnowledgePointNames(ctx, []domain.Course{*c})
+	return c, nil
 }
 
 // GetCourseDetailInTenant 查询单个课程（租户限定）。
 func (s *LessonContentService) GetCourseDetailInTenant(ctx context.Context, id, tenantID string) (*domain.Course, error) {
-	return s.st.Courses().Get(ctx, id, tenantID)
+	c, err := s.st.Courses().Get(ctx, id, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	s.st.Courses().PopulateKnowledgePointNames(ctx, []domain.Course{*c})
+	return c, nil
 }
 
 // CreateCourse 创建课程（主记录、绑定、知识点引用在同一事务）。

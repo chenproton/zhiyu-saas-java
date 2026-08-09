@@ -88,6 +88,7 @@ func (s *ScenarioService) ListTasks(ctx context.Context, p store.ListParams, cfg
 	}
 	s.st.ScenarioTasks().PopulateEvalData(ctx, items)
 	s.st.ScenarioTasks().PopulateAbilityPointNames(ctx, items)
+	s.st.ScenarioTasks().PopulateKnowledgePointNames(ctx, items)
 	return items, total, nil
 }
 
@@ -100,6 +101,7 @@ func (s *ScenarioService) GetTask(ctx context.Context, id string) (*domain.Scena
 	items := []domain.ScenarioTask{*t}
 	s.st.ScenarioTasks().PopulateEvalData(ctx, items)
 	s.st.ScenarioTasks().PopulateAbilityPointNames(ctx, items)
+	s.st.ScenarioTasks().PopulateKnowledgePointNames(ctx, items)
 	*t = items[0]
 	return t, nil
 }

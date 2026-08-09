@@ -178,6 +178,52 @@ func (s *ScenarioTaskStore) PopulateAbilityPointNames(ctx context.Context, items
 	}
 }
 
+// PopulateKnowledgePointNames 为任务补充知识点名称，与 knowledge_point_ids 按序对齐。
+// 避免前端依赖全量知识点列表接口（该接口 maxPageSize=200 会截断，导致引用旧知识点的任务预览缺失名称）。
+func (s *ScenarioTaskStore) PopulateKnowledgePointNames(ctx context.Context, items []domain.ScenarioTask) {
+	if len(items) == 0 {
+		return
+	}
+	idSet := make(map[string]struct{})
+	for _, it := range items {
+		for _, id := range it.KnowledgePointIDs {
+			if id != "" {
+				idSet[id] = struct{}{}
+			}
+		}
+	}
+	if len(idSet) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+	nameByID := make(map[string]string, len(ids))
+	rows, err := s.q.Query(ctx, `SELECT id, name FROM knowledge_points WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			continue
+		}
+		nameByID[id] = name
+	}
+	for i := range items {
+		if len(items[i].KnowledgePointIDs) == 0 {
+			continue
+		}
+		names := make([]string, len(items[i].KnowledgePointIDs))
+		for j, id := range items[i].KnowledgePointIDs {
+			names[j] = nameByID[id]
+		}
+		items[i].KnowledgePointNames = names
+	}
+}
+
 // PopulateEvalData 为任务补充已启用的评估方法摘要。
 func (s *ScenarioTaskStore) PopulateEvalData(ctx context.Context, items []domain.ScenarioTask) {
 	if len(items) == 0 {

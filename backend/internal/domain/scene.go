@@ -46,6 +46,7 @@ type ScenarioTask struct {
 	IsReferenced        bool     `json:"isReferenced"`
 	SourceScenarioID    *string  `json:"sourceScenarioId,omitempty"`
 	KnowledgePointIDs   []string `json:"knowledgePointIds,omitempty"`
+	KnowledgePointNames []string `json:"knowledgePointNames,omitempty"`
 	AbilityPointIDs     []string `json:"abilityPointIds,omitempty"`
 	AbilityPointNames   []string `json:"abilityPointNames,omitempty"`
 	ResourceIDs         []string `json:"resourceIds,omitempty"`
