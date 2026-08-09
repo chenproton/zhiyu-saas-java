@@ -1,7 +1,9 @@
 import type { PlatformNavigationConfig } from '@/components/platform-shell'
 import {
   Building,
+  ClipboardList,
   Database,
+  Handshake,
   History,
   KeyRound,
   School,
@@ -932,6 +934,20 @@ export const partnerNavigationConfig: PlatformNavigationConfig = {
       icon: School,
       href: '/partner/schools',
       matchers: ['/partner/schools$'],
+    },
+    {
+      id: 'cooperation',
+      label: '合作内容',
+      icon: Handshake,
+      href: '/partner/cooperation',
+      matchers: ['/partner/cooperation$'],
+    },
+    {
+      id: 'tasks',
+      label: '测评任务',
+      icon: ClipboardList,
+      href: '/partner/tasks',
+      matchers: ['/partner/tasks$'],
     },
     {
       id: 'settings',

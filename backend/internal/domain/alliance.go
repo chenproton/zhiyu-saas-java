@@ -95,6 +95,55 @@ type AlliancePartnerSchool struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// ===== 企业侧合作内容只读视图（GET /partner/cooperation） =====
+
+// AlliancePartnerCooperationProject 学校关联本企业的合作项目条目。
+type AlliancePartnerCooperationProject struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Phase     string    `json:"phase"`
+	IsPublic  bool      `json:"isPublic"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// AlliancePartnerCooperationAchievement 学校关联本企业的合作成果条目。
+type AlliancePartnerCooperationAchievement struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Type      string    `json:"type"`
+	IsPublic  bool      `json:"isPublic"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// AlliancePartnerCooperationAgreement 学校关联本企业的合作协议条目。
+type AlliancePartnerCooperationAgreement struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Type      *string   `json:"type,omitempty"`
+	Status    string    `json:"status"`
+	IsPublic  bool      `json:"isPublic"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// AlliancePartnerCooperationSchool 单个合作学校聚合视图（三类内容合计 ≥1 条才返回）。
+type AlliancePartnerCooperationSchool struct {
+	TenantID     string                                  `json:"tenantId"`
+	SchoolName   string                                  `json:"schoolName"`
+	Projects     []AlliancePartnerCooperationProject     `json:"projects"`
+	Achievements []AlliancePartnerCooperationAchievement `json:"achievements"`
+	Agreements   []AlliancePartnerCooperationAgreement   `json:"agreements"`
+}
+
+// ===== 企业侧专家测评任务只读条目（GET /partner/mentor-tasks） =====
+type AlliancePartnerMentorTask struct {
+	TaskID     string    `json:"taskId"`
+	TaskName   string    `json:"taskName"`
+	StepLabel  string    `json:"stepLabel"`
+	SchoolName string    `json:"schoolName"`
+	ExpertName string    `json:"expertName"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
 // ===== 专家 ↔ 学校影子账号（阶段二互动流程使用） =====
 type AllianceExpertMentorLink struct {
 	ID        string    `json:"id"`

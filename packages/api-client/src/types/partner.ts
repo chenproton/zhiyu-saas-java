@@ -119,3 +119,62 @@ export interface PartnerChangePasswordRequest {
   oldPassword: string
   newPassword: string
 }
+
+/** PUT /partner/schools/{tenantId}/status：合作状态流转（negotiating→active、active↔paused、任意→terminated） */
+export type PartnerSchoolStatus = 'active' | 'paused' | 'terminated'
+
+export interface PartnerSchoolStatusUpdateRequest {
+  status: PartnerSchoolStatus
+}
+
+/** GET /partner/cooperation：按学校分组的合作内容总览（只返回有内容的学校） */
+export interface PartnerCooperationProject {
+  id: string
+  name: string
+  phase: string
+  isPublic: boolean
+  updatedAt: string
+}
+
+export interface PartnerCooperationAchievement {
+  id: string
+  title: string
+  type: string
+  isPublic: boolean
+  updatedAt: string
+}
+
+export interface PartnerCooperationAgreement {
+  id: string
+  name: string
+  type: string
+  status: string
+  isPublic: boolean
+  updatedAt: string
+}
+
+export interface PartnerCooperationSchool {
+  tenantId: string
+  schoolName: string
+  projects: PartnerCooperationProject[]
+  achievements: PartnerCooperationAchievement[]
+  agreements: PartnerCooperationAgreement[]
+}
+
+export interface PartnerCooperationOverview {
+  schools: PartnerCooperationSchool[]
+}
+
+/** GET /partner/mentor-tasks：本企业专家被学校分配的测评任务（打分在学校端进行，企业只读） */
+export interface PartnerMentorTask {
+  taskId: string
+  taskName: string
+  stepLabel: string
+  schoolName: string
+  expertName: string
+  updatedAt: string
+}
+
+export interface PartnerMentorTaskList {
+  items: PartnerMentorTask[]
+}

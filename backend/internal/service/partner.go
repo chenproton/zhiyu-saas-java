@@ -149,6 +149,60 @@ func (s *PartnerService) ListSchools(ctx context.Context, tenantID string) ([]do
 	return s.st.AllianceEnterpriseLinks().ListByEnterpriseTenant(ctx, tenantID)
 }
 
+// ErrPartnerInvalidStatus 合作状态确认请求携带了未知 status。
+var ErrPartnerInvalidStatus = errors.New("无效合作状态")
+
+// ErrPartnerInvalidTransition 合作状态流转不合法（terminated 为终态）。
+var ErrPartnerInvalidTransition = errors.New("非法合作状态流转")
+
+// partnerLinkTransitions 合作状态合法流转表：negotiating→active（确认）、
+// active↔paused（暂停/恢复）、任意非 terminated→terminated（终止）；terminated 是终态。
+var partnerLinkTransitions = map[string]map[string]bool{
+	"negotiating": {"active": true, "terminated": true},
+	"active":      {"paused": true, "terminated": true},
+	"paused":      {"active": true, "terminated": true},
+	"terminated":  {},
+}
+
+// UpdateSchoolStatus 合作关系状态确认：校验流转合法性后更新 link.status，
+// 返回更新后的合作学校视图（与 ListSchools 单项同构）；link 不存在时透传 pgx.ErrNoRows。
+func (s *PartnerService) UpdateSchoolStatus(ctx context.Context, tenantID, schoolTenantID, status string) (*domain.AlliancePartnerSchool, error) {
+	switch status {
+	case "active", "paused", "terminated":
+	default:
+		return nil, fmt.Errorf("%w: %s（仅支持 active/paused/terminated）", ErrPartnerInvalidStatus, status)
+	}
+	view, err := s.st.Partner().GetPartnerSchool(ctx, tenantID, schoolTenantID)
+	if err != nil {
+		return nil, err
+	}
+	if !partnerLinkTransitions[view.Status][status] {
+		return nil, fmt.Errorf("%w: 不允许从 %s 变更为 %s", ErrPartnerInvalidTransition, view.Status, status)
+	}
+	if err := s.st.Partner().UpdatePartnerSchoolStatus(ctx, tenantID, schoolTenantID, status); err != nil {
+		return nil, err
+	}
+	return s.st.Partner().GetPartnerSchool(ctx, tenantID, schoolTenantID)
+}
+
+// ListCooperation 本企业被各合作学校关联的内容只读视图（项目/成果/协议）。
+func (s *PartnerService) ListCooperation(ctx context.Context, tenantID string) ([]domain.AlliancePartnerCooperationSchool, error) {
+	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Partner().ListCooperation(ctx, enterprise.ID)
+}
+
+// ListMentorTasks 本企业专家被学校指派的测评任务只读列表。
+func (s *PartnerService) ListMentorTasks(ctx context.Context, tenantID string) ([]domain.AlliancePartnerMentorTask, error) {
+	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Partner().ListMentorTasks(ctx, enterprise.ID)
+}
+
 // CreateMember 管理员添加成员账号（绑定 enterprise_admin 或 enterprise_member）。
 func (s *PartnerService) CreateMember(ctx context.Context, tenantID, username, password, name, roleCode string, phone, email *string) (*domain.User, error) {
 	if roleCode != domain.RoleEnterpriseAdmin && roleCode != domain.RoleEnterpriseMember {

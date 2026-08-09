@@ -18,17 +18,20 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 	r.Group(func(r chi.Router) {
 		r.Use(partnerUser)
 		r.Get("/partner/enterprise/profile", h.partnerHandler.GetProfile)
-		r.Put("/partner/enterprise/profile", h.partnerHandler.UpdateProfile)
 		r.Get("/partner/experts", h.partnerHandler.ListExperts)
 		r.Get("/partner/experts/{id}", h.partnerHandler.GetExpert)
 		r.Get("/partner/workspace/dashboard", h.partnerHandler.Dashboard)
 		r.Get("/partner/schools", h.partnerHandler.ListSchools)
+		r.Get("/partner/cooperation", h.partnerHandler.ListCooperation)
+		r.Get("/partner/mentor-tasks", h.partnerHandler.ListMentorTasks)
 		r.Put("/partner/me/password", h.partnerHandler.ChangeMyPassword)
 	})
 
-	// 仅企业管理员（专家写 + 成员管理）
+	// 仅企业管理员（企业资料写 + 合作状态确认 + 专家写 + 成员管理）
 	r.Group(func(r chi.Router) {
 		r.Use(adminOnly)
+		r.Put("/partner/enterprise/profile", h.partnerHandler.UpdateProfile)
+		r.Put("/partner/schools/{tenantId}/status", h.partnerHandler.UpdateSchoolStatus)
 		r.Post("/partner/experts", h.partnerHandler.CreateExpert)
 		r.Put("/partner/experts/{id}", h.partnerHandler.UpdateExpert)
 		r.Delete("/partner/experts/{id}", h.partnerHandler.DeleteExpert)

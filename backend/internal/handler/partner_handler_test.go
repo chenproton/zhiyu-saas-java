@@ -366,6 +366,9 @@ func setupPartnerRouter(t *testing.T, env *testhelper.TestEnv, namePrefix string
 	r.Post("/partner/members", ph.CreateMember)
 	r.Put("/partner/members/{id}", ph.UpdateMember)
 	r.Put("/partner/me/password", ph.ChangeMyPassword)
+	r.Put("/partner/schools/{tenantId}/status", ph.UpdateSchoolStatus)
+	r.Get("/partner/cooperation", ph.ListCooperation)
+	r.Get("/partner/mentor-tasks", ph.ListMentorTasks)
 
 	claims := &middleware.Claims{
 		UserID:    reg.User.ID,
@@ -663,4 +666,336 @@ func TestPartner_UpdateExpertPreservesIsPublic(t *testing.T) {
 			t.Fatalf("显式传 false 应生效: %s", w.Body.String())
 		}
 	})
+}
+
+// ===== 合作关系状态确认 / 合作内容视图 / 专家测评任务 =====
+
+// partnerEnterpriseID 查询注册企业的全局主体 ID。
+func partnerEnterpriseID(t *testing.T, env *testhelper.TestEnv, tenantID string) string {
+	t.Helper()
+	var id string
+	if err := env.DB.QueryRow(context.Background(),
+		`SELECT id FROM partner_enterprises WHERE tenant_id = $1`, tenantID).Scan(&id); err != nil {
+		t.Fatalf("查询企业主体失败: %v", err)
+	}
+	return id
+}
+
+// createSchoolTenant 创建隔离的学校租户，返回租户 ID。
+func createSchoolTenant(t *testing.T, env *testhelper.TestEnv, name string) string {
+	t.Helper()
+	id := uuid.NewString()
+	if _, err := env.DB.Exec(context.Background(),
+		`INSERT INTO tenants (id, name, code, status) VALUES ($1, $2, $3, 'active')`,
+		id, name, "sch-"+strings.ReplaceAll(id, "-", "")[:12]); err != nil {
+		t.Fatalf("创建学校租户失败: %v", err)
+	}
+	return id
+}
+
+// linkSchoolEnterprise 创建学校↔企业合作 link 并登记清理。
+func linkSchoolEnterprise(t *testing.T, env *testhelper.TestEnv, schoolTenantID, enterpriseID, status string) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO alliance_enterprise_links (tenant_id, enterprise_id, status) VALUES ($1, $2, $3)`,
+		schoolTenantID, enterpriseID, status); err != nil {
+		t.Fatalf("预置 link 失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id = $2`, schoolTenantID, enterpriseID)
+		env.DB.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, schoolTenantID)
+	})
+}
+
+// TestPartner_UpdateSchoolStatus 合作状态确认：合法流转成功、非法流转 400、他校 tenantId 404。
+func TestPartner_UpdateSchoolStatus(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	r, claims, reg := setupPartnerRouter(t, env, "状态确认测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+	enterpriseID := partnerEnterpriseID(t, env, *reg.User.TenantID)
+
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "状态确认学校-"+suffix)
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "negotiating")
+
+	// 他校：存在租户但与本企业无 link
+	otherSchoolID := createSchoolTenant(t, env, "无关联学校-"+suffix)
+	t.Cleanup(func() {
+		env.DB.Exec(context.Background(), `DELETE FROM tenants WHERE id = $1`, otherSchoolID)
+	})
+
+	put := func(school, status string) *httptest.ResponseRecorder {
+		return doWithClaims(r, http.MethodPut, "/partner/schools/"+school+"/status",
+			map[string]interface{}{"status": status}, claims)
+	}
+
+	t.Run("confirm negotiating to active", func(t *testing.T) {
+		w := put(schoolID, "active")
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var view domain.AlliancePartnerSchool
+		if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if view.Status != "active" || view.TenantID != schoolID || view.SchoolName != "状态确认学校-"+suffix {
+			t.Fatalf("响应应为更新后的合作学校视图: %+v", view)
+		}
+	})
+
+	t.Run("same status rejected", func(t *testing.T) {
+		if w := put(schoolID, "active"); w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("pause then resume", func(t *testing.T) {
+		if w := put(schoolID, "paused"); w.Code != http.StatusOK {
+			t.Fatalf("active→paused 应成功, got %d: %s", w.Code, w.Body.String())
+		}
+		if w := put(schoolID, "active"); w.Code != http.StatusOK {
+			t.Fatalf("paused→active 应成功, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("paused cannot go back to negotiating", func(t *testing.T) {
+		if w := put(schoolID, "negotiating"); w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("terminate then terminated is final", func(t *testing.T) {
+		if w := put(schoolID, "terminated"); w.Code != http.StatusOK {
+			t.Fatalf("active→terminated 应成功, got %d: %s", w.Code, w.Body.String())
+		}
+		if w := put(schoolID, "active"); w.Code != http.StatusBadRequest {
+			t.Fatalf("terminated 为终态应 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("unknown status rejected", func(t *testing.T) {
+		if w := put(schoolID, "unknown"); w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("other school not found", func(t *testing.T) {
+		if w := put(otherSchoolID, "active"); w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+// TestPartner_Cooperation 合作内容只读视图：enterprise_ids 含/不含本企业的过滤 + 终止 link 排除。
+func TestPartner_Cooperation(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	r, claims, reg := setupPartnerRouter(t, env, "合作内容测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+	enterpriseID := partnerEnterpriseID(t, env, *reg.User.TenantID)
+
+	ctx := context.Background()
+	suffix := uuid.NewString()[:8]
+	schoolA := createSchoolTenant(t, env, "合作内容学校甲-"+suffix)
+	linkSchoolEnterprise(t, env, schoolA, enterpriseID, "active")
+	schoolB := createSchoolTenant(t, env, "合作内容学校乙-"+suffix)
+	linkSchoolEnterprise(t, env, schoolB, enterpriseID, "terminated")
+
+	otherEnt := uuid.NewString()
+	entJSON := `["` + enterpriseID + `"]`
+	otherJSON := `["` + otherEnt + `"]`
+
+	projIn, projOut := uuid.NewString(), uuid.NewString()
+	achIn, achOut := uuid.NewString(), uuid.NewString()
+	agrIn, agrOut := uuid.NewString(), uuid.NewString()
+	projB := uuid.NewString()
+
+	inserts := []struct {
+		query string
+		args  []interface{}
+	}{
+		{`INSERT INTO alliance_projects (id, tenant_id, name, phase, enterprise_ids, is_public) VALUES ($1,$2,$3,'execution',$4::jsonb,true)`,
+			[]interface{}{projIn, schoolA, "关联项目-" + suffix, entJSON}},
+		{`INSERT INTO alliance_projects (id, tenant_id, name, phase, enterprise_ids) VALUES ($1,$2,$3,'execution',$4::jsonb)`,
+			[]interface{}{projOut, schoolA, "无关项目-" + suffix, otherJSON}},
+		{`INSERT INTO alliance_achievements (id, tenant_id, title, type, enterprise_ids, is_public) VALUES ($1,$2,$3,'patent',$4::jsonb,true)`,
+			[]interface{}{achIn, schoolA, "关联成果-" + suffix, entJSON}},
+		{`INSERT INTO alliance_achievements (id, tenant_id, title, type, enterprise_ids) VALUES ($1,$2,$3,'patent',$4::jsonb)`,
+			[]interface{}{achOut, schoolA, "无关成果-" + suffix, otherJSON}},
+		{`INSERT INTO alliance_agreements (id, tenant_id, name, type, status, enterprise_ids, is_public) VALUES ($1,$2,$3,'framework','active',$4::jsonb,true)`,
+			[]interface{}{agrIn, schoolA, "关联协议-" + suffix, entJSON}},
+		{`INSERT INTO alliance_agreements (id, tenant_id, name, type, status, enterprise_ids) VALUES ($1,$2,$3,'framework','active',$4::jsonb)`,
+			[]interface{}{agrOut, schoolA, "无关协议-" + suffix, otherJSON}},
+		// 终止 link 的学校：即使 enterprise_ids 含本企业也应被排除
+		{`INSERT INTO alliance_projects (id, tenant_id, name, phase, enterprise_ids) VALUES ($1,$2,$3,'execution',$4::jsonb)`,
+			[]interface{}{projB, schoolB, "终止校项目-" + suffix, entJSON}},
+	}
+	for _, in := range inserts {
+		if _, err := env.DB.Exec(ctx, in.query, in.args...); err != nil {
+			t.Fatalf("预置合作内容失败: %v", err)
+		}
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM alliance_projects WHERE id IN ($1,$2,$3)`, projIn, projOut, projB)
+		env.DB.Exec(ctx, `DELETE FROM alliance_achievements WHERE id IN ($1,$2)`, achIn, achOut)
+		env.DB.Exec(ctx, `DELETE FROM alliance_agreements WHERE id IN ($1,$2)`, agrIn, agrOut)
+	})
+
+	w := doWithClaims(r, http.MethodGet, "/partner/cooperation", nil, claims)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Schools []domain.AlliancePartnerCooperationSchool `json:"schools"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp.Schools) != 1 {
+		t.Fatalf("只有学校甲应返回（乙已终止且甲的无关内容不应带出）: %s", w.Body.String())
+	}
+	sc := resp.Schools[0]
+	if sc.TenantID != schoolA || sc.SchoolName != "合作内容学校甲-"+suffix {
+		t.Fatalf("学校视图字段不符: %+v", sc)
+	}
+	if len(sc.Projects) != 1 || sc.Projects[0].ID != projIn || !sc.Projects[0].IsPublic {
+		t.Fatalf("项目过滤不符（应只含 enterprise_ids 含本企业的）: %+v", sc.Projects)
+	}
+	if len(sc.Achievements) != 1 || sc.Achievements[0].ID != achIn {
+		t.Fatalf("成果过滤不符: %+v", sc.Achievements)
+	}
+	if len(sc.Agreements) != 1 || sc.Agreements[0].ID != agrIn || sc.Agreements[0].Status != "active" {
+		t.Fatalf("协议过滤不符: %+v", sc.Agreements)
+	}
+}
+
+// TestPartner_MentorTasks 专家测评任务只读列表：影子账号被指派的评审步骤返回，
+// 他企业专家/禁用步骤被排除。
+func TestPartner_MentorTasks(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	r, claims, reg := setupPartnerRouter(t, env, "测评任务测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+	enterpriseID := partnerEnterpriseID(t, env, *reg.User.TenantID)
+
+	ctx := context.Background()
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "测评任务学校-"+suffix)
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, schoolID)
+	})
+
+	// 本企业专家 + 他企业专家（对照组；主体 tenant_id 与 experts.enterprise_id 均有 FK）
+	expertID, otherExpertID := uuid.NewString(), uuid.NewString()
+	otherEnterpriseID := uuid.NewString()
+	otherEntTenant := createSchoolTenant(t, env, "他企租户-"+suffix)
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, otherEntTenant)
+	})
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`,
+		otherEnterpriseID, otherEntTenant, "他企主体-"+suffix); err != nil {
+		t.Fatalf("预置他企主体失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, otherEnterpriseID)
+	})
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status) VALUES ($1,$2,$3,$4,'active')`,
+		expertID, *reg.User.TenantID, "测评专家甲-"+suffix, enterpriseID); err != nil {
+		t.Fatalf("预置专家失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status) VALUES ($1,$2,$3,$4,'active')`,
+		otherExpertID, otherEntTenant, "他企专家-"+suffix, otherEnterpriseID); err != nil {
+		t.Fatalf("预置他企专家失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id IN ($1,$2)`, expertID, otherExpertID)
+	})
+
+	// 影子账号（无 FK，模拟学校侧 enterprise_mentor 账号）
+	shadowUser, otherShadowUser := uuid.NewString(), uuid.NewString()
+	linkID, otherLinkID := uuid.NewString(), uuid.NewString()
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO alliance_expert_mentor_links (id, tenant_id, expert_id, user_id, enabled) VALUES ($1,$2,$3,$4,true)`,
+		linkID, schoolID, expertID, shadowUser); err != nil {
+		t.Fatalf("预置 mentor link 失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO alliance_expert_mentor_links (id, tenant_id, expert_id, user_id, enabled) VALUES ($1,$2,$3,$4,true)`,
+		otherLinkID, schoolID, otherExpertID, otherShadowUser); err != nil {
+		t.Fatalf("预置他企 mentor link 失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM alliance_expert_mentor_links WHERE id IN ($1,$2)`, linkID, otherLinkID)
+	})
+
+	// 任务链：scenario → scenario_task → evaluation_method → review_steps
+	scenarioID, taskID, emID := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO scenarios (id, name, code, version, status, creator_id, tenant_id) VALUES ($1,$2,$3,'1.0','published',$4,$5)`,
+		scenarioID, "测评场景-"+suffix, "scn-"+suffix, reg.User.ID, schoolID); err != nil {
+		t.Fatalf("预置场景失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO scenario_tasks (id, scenario_id, name, code, task_type, tenant_id) VALUES ($1,$2,$3,$4,'normal',$5)`,
+		taskID, scenarioID, "测评任务-"+suffix, "task-"+suffix, schoolID); err != nil {
+		t.Fatalf("预置任务失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, is_enabled) VALUES ($1,$2,$3,'review',true)`,
+		emID, schoolID, taskID); err != nil {
+		t.Fatalf("预置评价方式失败: %v", err)
+	}
+
+	stepID := uuid.NewString()
+	disabledStepID := uuid.NewString()
+	otherStepID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO task_review_steps (id, tenant_id, config_id, label, enabled, assigned_user_ids) VALUES ($1,$2,$3,$4,true,$5::uuid[])`,
+		stepID, schoolID, emID, "企业导师评审-"+suffix, "{"+shadowUser+"}"); err != nil {
+		t.Fatalf("预置评审步骤失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO task_review_steps (id, tenant_id, config_id, label, enabled, assigned_user_ids) VALUES ($1,$2,$3,$4,false,$5::uuid[])`,
+		disabledStepID, schoolID, emID, "禁用步骤-"+suffix, "{"+shadowUser+"}"); err != nil {
+		t.Fatalf("预置禁用步骤失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO task_review_steps (id, tenant_id, config_id, label, enabled, assigned_user_ids) VALUES ($1,$2,$3,$4,true,$5::uuid[])`,
+		otherStepID, schoolID, emID, "他企步骤-"+suffix, "{"+otherShadowUser+"}"); err != nil {
+		t.Fatalf("预置他企步骤失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM task_review_steps WHERE id IN ($1,$2,$3)`, stepID, disabledStepID, otherStepID)
+		env.DB.Exec(ctx, `DELETE FROM task_evaluation_methods WHERE id = $1`, emID)
+		env.DB.Exec(ctx, `DELETE FROM scenario_tasks WHERE id = $1`, taskID)
+		env.DB.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, scenarioID)
+	})
+
+	w := doWithClaims(r, http.MethodGet, "/partner/mentor-tasks", nil, claims)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Items []domain.AlliancePartnerMentorTask `json:"items"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("应只返回本企业专家的 1 条启用任务: %s", w.Body.String())
+	}
+	item := resp.Items[0]
+	if item.TaskID != taskID || item.TaskName != "测评任务-"+suffix ||
+		item.StepLabel != "企业导师评审-"+suffix || item.SchoolName != "测评任务学校-"+suffix ||
+		item.ExpertName != "测评专家甲-"+suffix {
+		t.Fatalf("任务条目字段不符: %+v", item)
+	}
 }

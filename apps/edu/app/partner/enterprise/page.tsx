@@ -127,6 +127,20 @@ export default function PartnerEnterprisePage() {
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
+  /** 资料完整度检查：任一项缺失都在页面顶部提示补全（影响对外展示效果） */
+  const missingFields: string[] = []
+  if (!item.logoUrl) missingFields.push(t('企业 Logo'))
+  if (!item.description) missingFields.push(t('企业简介'))
+  if (!item.contactPerson || !item.contactPhone) missingFields.push(t('联系人和联系电话'))
+  if (!item.coverImage) missingFields.push(t('企业主页封面'))
+  if (
+    item.businessLicensePhotos.length === 0 &&
+    item.intellectualPropertyPhotos.length === 0 &&
+    item.qualificationPhotos.length === 0
+  ) {
+    missingFields.push(t('资质/证照图片'))
+  }
+
   /** 当前表单实时数据 → 展示页 props（未保存也能预览） */
   const toPreview = (f: FormState): ShowcaseEnterprise => ({
     name: f.name,
@@ -184,6 +198,22 @@ export default function PartnerEnterprisePage() {
           </Button>
         </div>
       </div>
+
+      {missingFields.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="pt-6">
+            <div className="text-sm font-medium text-foreground">{t('资料待补全')}</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('以下资料尚未完善，将影响企业在产业联盟展示页的对外展示效果：')}
+            </p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
+              {missingFields.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
@@ -342,7 +372,7 @@ export default function PartnerEnterprisePage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {t(
-                  '开启后企业信息可出现在产业联盟前台展示；具体是否在某学校前台出现，由该校在引入时决定。',
+                  '开启后企业才会出现在各学校的产业联盟展示页；具体是否在某学校前台出现，由该校在引入时决定。',
                 )}
               </p>
             </CardContent>

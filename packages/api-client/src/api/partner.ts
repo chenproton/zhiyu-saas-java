@@ -12,6 +12,9 @@ import type {
   PartnerMeResponse,
   PartnerDashboard,
   PartnerSchool,
+  PartnerSchoolStatus,
+  PartnerCooperationOverview,
+  PartnerMentorTaskList,
   PartnerChangePasswordRequest,
 } from '../types/partner'
 
@@ -81,6 +84,19 @@ export const partnerWorkspaceApi = {
 export const partnerSchoolApi = {
   list: (params?: ListParams) =>
     partnerRequest<ListResponse<PartnerSchool>>(`/partner/schools${buildQuery(params || {})}`),
+  updateStatus: (tenantId: string, status: PartnerSchoolStatus) =>
+    partnerRequest<PartnerSchool>(`/partner/schools/${tenantId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+}
+
+export const partnerCooperationApi = {
+  overview: () => partnerRequest<PartnerCooperationOverview>('/partner/cooperation'),
+}
+
+export const partnerMentorTaskApi = {
+  list: () => partnerRequest<PartnerMentorTaskList>('/partner/mentor-tasks'),
 }
 
 export const partnerMeApi = {

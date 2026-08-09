@@ -555,3 +555,70 @@ func (h *PartnerHandler) ListSchools(w http.ResponseWriter, r *http.Request) {
 	}
 	respondJSON(w, http.StatusOK, ListResponse[domain.AlliancePartnerSchool]{Items: items, Total: len(items)})
 }
+
+// partnerSchoolStatusRequest 合作关系状态确认请求。
+type partnerSchoolStatusRequest struct {
+	Status string `json:"status"`
+}
+
+// UpdateSchoolStatus 合作关系状态确认（仅 enterprise_admin——路由层控制）。
+// 合法流转：negotiating→active、active→paused、paused→active、任意非 terminated→terminated。
+func (h *PartnerHandler) UpdateSchoolStatus(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	var req partnerSchoolStatusRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	school, err := h.Service.UpdateSchoolStatus(r.Context(), tenantID, chi.URLParam(r, "tenantId"), req.Status)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrPartnerInvalidStatus), errors.Is(err, service.ErrPartnerInvalidTransition):
+			respondError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, pgx.ErrNoRows):
+			respondError(w, http.StatusNotFound, "合作关系不存在")
+		default:
+			respondServerError(w, r, err, "更新合作状态失败")
+		}
+		return
+	}
+	respondJSON(w, http.StatusOK, school)
+}
+
+// ListCooperation 合作内容只读视图：本企业被各合作学校关联的项目/成果/协议。
+func (h *PartnerHandler) ListCooperation(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	schools, err := h.Service.ListCooperation(r.Context(), tenantID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "企业主体不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询合作内容失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"schools": schools})
+}
+
+// ListMentorTasks 专家测评任务只读列表：本企业专家被学校指派的评审任务。
+func (h *PartnerHandler) ListMentorTasks(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.Service.ListMentorTasks(r.Context(), tenantID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "企业主体不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询专家测评任务失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items})
+}
