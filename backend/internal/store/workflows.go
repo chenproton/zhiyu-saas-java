@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -101,7 +102,17 @@ func (s *WorkflowStore) ListConfig() ListQueryConfig[domain.Workflow] {
 		ScanRows:      ScanWorkflowRows,
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if ids := p.Values["ids"]; ids != "" {
-				qb.AddCondition("id = ANY(" + qb.NextArg(ids) + ")")
+				// 前端以逗号拼接多个 id（use-approvals），须拆分为数组显式转 uuid[]，
+				// 直接传标量字符串会报 malformed array literal
+				parts := make([]string, 0, 4)
+				for _, id := range strings.Split(ids, ",") {
+					if id = strings.TrimSpace(id); id != "" {
+						parts = append(parts, id)
+					}
+				}
+				if len(parts) > 0 {
+					qb.AddCondition("id = ANY(" + qb.NextArg(parts) + "::uuid[])")
+				}
 			}
 		},
 	}
