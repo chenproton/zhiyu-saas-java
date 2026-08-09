@@ -115,3 +115,8 @@
 3. 未经确认不得执行 `./deploy.sh`
 4. 修改后先本地验证（编译、类型检查、lint），再提请确认部署
 5. **前端样式修改永远不要主动验证**：禁止无头浏览器自动视觉验证，也禁止任何形式的主动验证手段（DOM/布局测量、CDP 脚本驱动、创建临时测试账号等）；样式问题一律在部署后由用户人工确认，改完代码直接提请部署即可
+6. **代码扫描/统计只覆盖自有代码**：统计代码量、死代码/重复代码扫描、重构巡检时，以下第三方/工具代码与产物路径一律排除（不统计、不扫描、非任务要求不改动）：
+   - `offline/`：离线部署资产与第三方图片编辑器（unlayer）资产的**唯一来源**（更新方式见 `offline/README.md`）
+   - `apps/edu/public/image-editor`：指向 `offline/image-editor` 的符号链接；`deploy.sh` 构建时替换为实体文件（已 gitignore，禁止提交实体文件）
+   - `backend/vendor/`：`go mod vendor` 产物；`deploy.sh` 以 `-mod=vendor` 构建，**不可移动位置**
+   - `node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`：依赖目录与构建/运行产物

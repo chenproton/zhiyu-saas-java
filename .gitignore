@@ -47,3 +47,7 @@ offline/debs/*.deb
 
 # Release packages (USB delivery, built by scripts/package-release.sh)
 /release/
+
+# Image editor assets: 仓库中是指向 offline/image-editor 的符号链接，
+# deploy.sh 构建时会替换为实体文件；禁止把实体文件提交入库
+/apps/edu/public/image-editor/
