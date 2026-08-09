@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -304,13 +303,6 @@ func (s *EvaluationService) syncExamResultScoreTx(ctx context.Context, txStore *
 		return fmt.Errorf("同步考试结果分数失败: %w", err)
 	}
 	return nil
-}
-
-// syncExamResultScore 同步考试结果分数（单连接版本，兼容既有调用方）。
-func (s *EvaluationService) syncExamResultScore(ctx context.Context, taskID, methodKey, evaluateeID string, score float64) {
-	if err := s.syncExamResultScoreTx(ctx, s.st, taskID, methodKey, evaluateeID, score); err != nil {
-		slog.Warn("同步考试结果分数失败", "taskID", taskID, "error", err)
-	}
 }
 
 // isCorrect 判断客观题答案是否正确。

@@ -1264,21 +1264,6 @@ func (h *TemplateHandler) queryOrgPaths(ctx context.Context, tenantID string) []
 
 // ===== Alliance Template Handlers =====
 
-func (h *TemplateHandler) ServeEnterpriseTemplate(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	ctx := r.Context()
-	f := h.generateEnterpriseTemplate(ctx, tenantID)
-	writeExcel(w, f, "合作企业批量导入模板.xlsx")
-}
-
 func (h *TemplateHandler) ServeProjectTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -1307,21 +1292,6 @@ func (h *TemplateHandler) ServeAchievementTemplate(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 	f := h.generateAchievementTemplate(ctx, tenantID)
 	writeExcel(w, f, "合作成果批量导入模板.xlsx")
-}
-
-func (h *TemplateHandler) ServeExpertTemplate(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	ctx := r.Context()
-	f := h.generateExpertTemplate(ctx, tenantID)
-	writeExcel(w, f, "专家资源批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeAgreementTemplate(w http.ResponseWriter, r *http.Request) {
@@ -1370,44 +1340,6 @@ func (h *TemplateHandler) ServeBrandTemplate(w http.ResponseWriter, r *http.Requ
 }
 
 // ===== Alliance Template Generators =====
-
-func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenantID string) *excelize.File {
-	f := excelize.NewFile()
-	hdrStyle := makeHeaderStyle(f)
-	noteStyle := makeNoteStyle(f)
-	wrapAlign := makeWrapAlign(f)
-
-	setHdr := func(sheet string, row int, headers []string, widths []float64) {
-		for ci, h := range headers {
-			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
-			f.SetCellValue(sheet, cell, h)
-			f.SetCellStyle(sheet, cell, cell, hdrStyle)
-			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
-		}
-		f.SetRowHeight(sheet, row, 28)
-	}
-	setA1 := func(sheet string, cols int, text string) {
-		start, _ := excelize.CoordinatesToCellName(1, 1)
-		end, _ := excelize.CoordinatesToCellName(cols, 1)
-		f.MergeCell(sheet, start, end)
-		f.SetCellValue(sheet, start, text)
-		f.SetCellStyle(sheet, start, end, noteStyle)
-		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
-	}
-
-	s1, _ := f.NewSheet("合作企业")
-	f.SetActiveSheet(s1)
-	f.DeleteSheet("Sheet1")
-	headers := []string{"企业名称 *", "企业类型", "所属行业", "所在地区", "合作状态", "合作评级", "联系人", "联系电话", "联系邮箱", "企业地址", "统一社会信用代码", "成立年份", "企业规模（人数）", "企业简介"}
-	widths := []float64{28, 22, 20, 20, 22, 22, 18, 18, 24, 36, 28, 14, 18, 48}
-	setA1("合作企业", 14, "填写说明：\n* 必填列。\n企业类型：合作企业 / 第三方雇主企业（或 cooperation / third-party），默认为 合作企业\n所属行业 / 所在地区：文本，选填\n合作状态：洽谈中 / 合作中 / 已暂停 / 已终止（或 negotiating / active / paused / terminated），默认为 合作中\n合作评级：战略合作 / 深度合作 / 一般合作（或 strategic / deep / general），选填\n联系人 / 联系电话 / 联系邮箱 / 企业地址：选填\n统一社会信用代码：文本，选填\n成立年份：四位数字，选填，如 2015\n企业规模（人数）：数字，选填，如 1200\n企业简介：文本，选填")
-	setHdr("合作企业", 2, headers, widths)
-	f.SetPanes("合作企业", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("合作企业", "A2:N2", []excelize.AutoFilterOptions{})
-
-	return f
-}
 
 func (h *TemplateHandler) generateProjectTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
@@ -1481,44 +1413,6 @@ func (h *TemplateHandler) generateAchievementTemplate(ctx context.Context, tenan
 	setHdr("合作成果", 2, headers, widths)
 	f.SetPanes("合作成果", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作成果", "A2:F2", []excelize.AutoFilterOptions{})
-
-	return f
-}
-
-func (h *TemplateHandler) generateExpertTemplate(ctx context.Context, tenantID string) *excelize.File {
-	f := excelize.NewFile()
-	hdrStyle := makeHeaderStyle(f)
-	noteStyle := makeNoteStyle(f)
-	wrapAlign := makeWrapAlign(f)
-
-	setHdr := func(sheet string, row int, headers []string, widths []float64) {
-		for ci, h := range headers {
-			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
-			f.SetCellValue(sheet, cell, h)
-			f.SetCellStyle(sheet, cell, cell, hdrStyle)
-			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
-		}
-		f.SetRowHeight(sheet, row, 28)
-	}
-	setA1 := func(sheet string, cols int, text string) {
-		start, _ := excelize.CoordinatesToCellName(1, 1)
-		end, _ := excelize.CoordinatesToCellName(cols, 1)
-		f.MergeCell(sheet, start, end)
-		f.SetCellValue(sheet, start, text)
-		f.SetCellStyle(sheet, start, end, noteStyle)
-		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
-	}
-
-	s1, _ := f.NewSheet("专家资源")
-	f.SetActiveSheet(s1)
-	f.DeleteSheet("Sheet1")
-	headers := []string{"姓名 *", "头衔", "职位", "行业", "城市", "简介", "年龄", "从业年限", "关联合作企业", "擅长领域", "从业经历"}
-	widths := []float64{20, 22, 22, 20, 18, 48, 12, 14, 40, 40, 48}
-	setA1("专家资源", 11, "填写说明：\n* 必填列。\n头衔 / 职位 / 行业 / 城市：文本，选填\n简介：文本，选填\n年龄：数字，选填\n从业年限：数字（年），选填\n关联合作企业：企业名称，选填，需与「合作企业」Sheet 中的企业名称一致\n擅长领域：文本，选填，多值用中文分号「；」分隔\n从业经历：文本，选填")
-	setHdr("专家资源", 2, headers, widths)
-	f.SetPanes("专家资源", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("专家资源", "A2:K2", []excelize.AutoFilterOptions{})
 
 	return f
 }

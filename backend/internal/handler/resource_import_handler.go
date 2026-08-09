@@ -762,10 +762,6 @@ func (h *ResourceImportHandler) getUserID(ctx context.Context, tenantID, usernam
 	return id
 }
 
-func (h *ResourceImportHandler) userExists(ctx context.Context, tenantID, username string) bool {
-	return h.getUserID(ctx, tenantID, username) != ""
-}
-
 func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string, institutionID *string, roleID string, orgNodeID, majorID *string, username, password, name, status string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -956,14 +952,6 @@ func parseBoolDefault(s string, defaultVal bool) bool {
 
 // ===== Alliance Import Handlers =====
 
-func (h *ResourceImportHandler) PreviewEnterprises(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-enterprises", h.doImportEnterprises, true)
-}
-
-func (h *ResourceImportHandler) ImportEnterprises(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-enterprises", h.doImportEnterprises, false)
-}
-
 func (h *ResourceImportHandler) PreviewProjects(w http.ResponseWriter, r *http.Request) {
 	h.importExcel(w, r, "alliance-projects", h.doImportProjects, true)
 }
@@ -978,14 +966,6 @@ func (h *ResourceImportHandler) PreviewAchievements(w http.ResponseWriter, r *ht
 
 func (h *ResourceImportHandler) ImportAchievements(w http.ResponseWriter, r *http.Request) {
 	h.importExcel(w, r, "alliance-achievements", h.doImportAchievements, false)
-}
-
-func (h *ResourceImportHandler) PreviewExperts(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-experts", h.doImportExperts, true)
-}
-
-func (h *ResourceImportHandler) ImportExperts(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-experts", h.doImportExperts, false)
 }
 
 func (h *ResourceImportHandler) PreviewAgreements(w http.ResponseWriter, r *http.Request) {
@@ -1013,110 +993,6 @@ func (h *ResourceImportHandler) ImportBrands(w http.ResponseWriter, r *http.Requ
 }
 
 // ===== Alliance doImport functions =====
-
-// Sheet: 合作企业
-// Columns: 企业名称*, 企业类型, 所属行业, 所在地区, 合作状态, 合作评级, 联系人, 联系电话, 联系邮箱, 企业地址
-func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
-	previewRes := &ImportPreviewResult{}
-	result := &resourceImportResult{}
-
-	rows, err := xlsx.GetRows("合作企业")
-	if err != nil {
-		msg := fmt.Sprintf("读取「合作企业」Sheet 失败: %v", err)
-		result.Errors = append(result.Errors, msg)
-		previewRes.Errors = append(previewRes.Errors, msg)
-		return previewRes, result
-	}
-
-	for i, row := range rows {
-		if i < 2 {
-			continue
-		}
-		rowNum := i + 1
-		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
-			continue
-		}
-		name := strings.TrimSpace(row[0])
-		entType := mapEnterpriseType(col(row, 1))
-		if entType == "" {
-			entType = "platform"
-		}
-		industry := nullableStr(col(row, 2))
-		region := nullableStr(col(row, 3))
-		status := mapCoopStatus(col(row, 4))
-		if status == "" {
-			status = "active"
-		}
-		rating := nullableStr(mapCoopRating(col(row, 5)))
-		contactPerson := nullableStr(col(row, 6))
-		contactPhone := nullableStr(col(row, 7))
-		contactEmail := nullableStr(col(row, 8))
-		address := nullableStr(col(row, 9))
-		creditCode := nullableStr(col(row, 10))
-		establishedYear := parseNullableInt(col(row, 11))
-		employeeCount := parseNullableInt(col(row, 12))
-		description := nullableStr(col(row, 13))
-
-		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_enterprises", tenantID, name)
-		if existingID != "" {
-			if !overwrite && !(rename && !preview) {
-				result.Skipped++
-				previewRes.Duplicates++
-				appendDuplicate(previewRes, rowNum, name, name)
-				continue
-			}
-			if overwrite {
-				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_enterprises SET enterprise_type=$1, industry=$2, region=$3,
-							status=$4, rating=$5, contact_person=$6, contact_phone=$7,
-							contact_email=$8, address=$9, unified_social_credit_code=$10,
-							established_year=$11, employee_count=$12, description=$13, updated_at=NOW()
-						WHERE id=$14 AND tenant_id=$15
-					`, entType, industry, region, status, rating, contactPerson, contactPhone, contactEmail, address,
-						creditCode, establishedYear, employeeCount, description, existingID, tenantID)
-					if err != nil {
-						result.Failed++
-						result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]更新失败: %v", name, err))
-						continue
-					}
-				}
-				result.Created++
-				previewRes.Created++
-				continue
-			}
-			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
-			name = uniqueSuffixed(name, func(c string) bool {
-				eid, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_enterprises", tenantID, c)
-				return eid != ""
-			})
-		}
-
-		if !preview {
-			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_enterprises (id, tenant_id, name, enterprise_type, industry, region, status, rating,
-					contact_person, contact_phone, contact_email, address, unified_social_credit_code,
-					established_year, employee_count, description, cooperation_types,
-					business_license_photos, qualification_photos, intellectual_property_photos, cover_photos,
-					secondary_colleges, is_public, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,NOW(),NOW())
-			`, id, tenantID, name, entType, industry, region, status, rating,
-				contactPerson, contactPhone, contactEmail, address,
-				creditCode, establishedYear, employeeCount, description,
-				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), false)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]创建失败: %v", name, err))
-				continue
-			}
-		}
-		result.Created++
-		previewRes.Created++
-	}
-
-	return previewRes, result
-}
 
 // Sheet: 合作项目
 // Columns: 项目名称*, 项目类型, 项目阶段, 开始日期, 结束日期, 描述, 预算, 关联合作企业
@@ -1289,99 +1165,6 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]创建失败: %v", title, err))
-				continue
-			}
-		}
-		result.Created++
-		previewRes.Created++
-	}
-
-	return previewRes, result
-}
-
-// Sheet: 专家资源
-// Columns: 姓名*, 头衔, 职位, 行业, 城市, 简介, 年龄, 从业年限, 关联合作企业, 擅长领域, 从业经历
-func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
-	previewRes := &ImportPreviewResult{}
-	result := &resourceImportResult{}
-
-	rows, err := xlsx.GetRows("专家资源")
-	if err != nil {
-		msg := fmt.Sprintf("读取「专家资源」Sheet 失败: %v", err)
-		result.Errors = append(result.Errors, msg)
-		previewRes.Errors = append(previewRes.Errors, msg)
-		return previewRes, result
-	}
-
-	for i, row := range rows {
-		if i < 2 {
-			continue
-		}
-		rowNum := i + 1
-		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
-			continue
-		}
-		name := strings.TrimSpace(row[0])
-		title := nullableStr(col(row, 1))
-		position := nullableStr(col(row, 2))
-		industry := nullableStr(col(row, 3))
-		city := nullableStr(col(row, 4))
-		introduction := nullableStr(col(row, 5))
-		age := parseNullableInt(col(row, 6))
-		experienceYears := parseNullableInt(col(row, 7))
-		enterpriseID := lookupSingleIDByName(ctx, h.Store.Q(), "alliance_enterprises", tenantID, col(row, 8))
-		specialties := jsonBytes(splitNames(col(row, 9)))
-		workExperience := nullableStr(col(row, 10))
-
-		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_experts", tenantID, name)
-		if existingID != "" {
-			if !overwrite && !(rename && !preview) {
-				result.Skipped++
-				previewRes.Duplicates++
-				appendDuplicate(previewRes, rowNum, name, name)
-				continue
-			}
-			if overwrite {
-				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_experts SET title=$1, position=$2, industry=$3, city=$4,
-							introduction=$5, age=$6, experience_years=$7, enterprise_id=$8,
-							specialties=$9, work_experience=$10, updated_at=NOW()
-						WHERE id=$11 AND tenant_id=$12
-					`, title, position, industry, city, introduction, age, experienceYears,
-						enterpriseID, specialties, workExperience, existingID, tenantID)
-					if err != nil {
-						result.Failed++
-						result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]更新失败: %v", name, err))
-						continue
-					}
-				}
-				result.Created++
-				previewRes.Created++
-				continue
-			}
-			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
-			name = uniqueSuffixed(name, func(c string) bool {
-				eid, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_experts", tenantID, c)
-				return eid != ""
-			})
-		}
-
-		if !preview {
-			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_experts (id, tenant_id, name, title, position, expert_type, industry,
-					introduction, city, age, experience_years, enterprise_id, specialties, work_experience,
-					professional_fields, photos, attachments, secondary_colleges, status, is_public,
-					created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW(),NOW())
-			`, id, tenantID, name, title, position, nullableStr(""), industry,
-				introduction, city, age, experienceYears, enterpriseID, specialties, workExperience,
-				[]byte("[]"), []byte("[]"), []byte("[]"),
-				[]byte("[]"), "active", false)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]创建失败: %v", name, err))
 				continue
 			}
 		}

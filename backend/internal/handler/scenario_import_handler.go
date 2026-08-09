@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -292,17 +291,6 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 			}
 		}
 	}
-}
-
-func (h *ScenarioImportHandler) generateScenarioCode(ctx context.Context, tenantID string) string {
-	year := time.Now().Format("2006")
-	var maxNum int
-	// 提取 SC-YYYY-NNNN 中的序号，忽略 -clone 等后缀
-	err := h.Store.Q().QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SC-[0-9]{4}-([0-9]+)')::int), 0) FROM scenarios WHERE tenant_id=$1 AND code LIKE 'SC-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
-	if err != nil {
-		maxNum = 0
-	}
-	return fmt.Sprintf("SC-%s-%04d", year, maxNum+1)
 }
 
 func (h *ScenarioImportHandler) generateTaskCode(ctx context.Context, tenantID, scenarioID string, counter map[string]int) string {
