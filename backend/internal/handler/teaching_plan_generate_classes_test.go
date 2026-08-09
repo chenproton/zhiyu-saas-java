@@ -60,7 +60,7 @@ func TestTeachingPlanGenerate_AutoClasses(t *testing.T) {
 	// 3. 专业字典
 	majorID := uuid.NewString()
 	execOrFail(t, env, ctx, `
-		INSERT INTO majors (id, tenant_id, name) VALUES ($1, $2, '软件技术')
+		INSERT INTO majors (id, tenant_id, code, name) VALUES ($1, $2, 'RJJS', '软件技术')
 	`, majorID, tenantID)
 
 	// 4. 人培方案 + 课程（含普通课与场景课各一门）

@@ -362,11 +362,12 @@ func TestSubscription_GetAndUpdate(t *testing.T) {
 	})
 
 	t.Run("Update", func(t *testing.T) {
-		w := env.Do("PUT", fmt.Sprintf("/api/v1/subscriptions/%s", subID), map[string]interface{}{
+		// 生产路由中订阅变更走 saas 平台管理端 /admin/tenants/{tenantId}/subscription
+		w := env.DoWithToken("PUT", fmt.Sprintf("/api/v1/admin/tenants/%s/subscription", testhelper.TestTenantID), map[string]interface{}{
 			"name":    "Updated Plan",
 			"modules": domain.JSONMap{"moduleA": true},
 			"status":  "inactive",
-		})
+		}, env.SaasAdminToken)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 		}

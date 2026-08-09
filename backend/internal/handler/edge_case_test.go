@@ -162,7 +162,9 @@ func TestNonOperatorAccess(t *testing.T) {
 	}
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", schoolUserID)
 
-	w := env.DoWithToken("POST", "/api/v1/tenants", map[string]string{
+	// 生产路由中租户创建只存在于 saas 平台管理端 /admin/tenants；
+	// school_admin（portal 平台、非 platform_admin）访问应被平台隔离/角色门禁拒绝（403）
+	w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"name": "Unauthorized Create",
 		"code": "unauth",
 	}, token)

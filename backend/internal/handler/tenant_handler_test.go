@@ -35,10 +35,10 @@ func TestTenant_Create(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	w := env.Do("POST", "/api/v1/tenants", map[string]string{
+	w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"name": "Test Tenant Create",
 		"code": "test-create",
-	})
+	}, env.SaasAdminToken)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
@@ -66,9 +66,9 @@ func TestTenant_Create_MissingFields(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 
-	w := env.Do("POST", "/api/v1/tenants", map[string]string{
+	w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"code": "no-name",
-	})
+	}, env.SaasAdminToken)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
@@ -79,20 +79,20 @@ func TestTenant_Create_DuplicateCode(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	w1 := env.Do("POST", "/api/v1/tenants", map[string]string{
+	w1 := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"name": "Dup Code A",
 		"code": "dup-code-test",
-	})
+	}, env.SaasAdminToken)
 	if w1.Code != http.StatusCreated {
 		t.Fatalf("create 1: %d %s", w1.Code, testhelper.ErrMsg(w1))
 	}
 	r1, _ := testhelper.Unmarshal[createTenantResp](w1)
 	defer cleanupTenant(ctx, t, env, r1.Tenant.ID)
 
-	w2 := env.Do("POST", "/api/v1/tenants", map[string]string{
+	w2 := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"name": "Dup Code B",
 		"code": "dup-code-test",
-	})
+	}, env.SaasAdminToken)
 	if w2.Code != http.StatusConflict {
 		t.Fatalf("expected 409, got %d: %s", w2.Code, testhelper.ErrMsg(w2))
 	}
@@ -103,7 +103,7 @@ func TestTenant_List(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	w1 := env.Do("POST", "/api/v1/tenants", map[string]string{"name": "ListTenantA", "code": "list-a"})
+	w1 := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{"name": "ListTenantA", "code": "list-a"}, env.SaasAdminToken)
 	if w1.Code != http.StatusCreated {
 		t.Fatalf("create tenant 1: %d %s", w1.Code, testhelper.ErrMsg(w1))
 	}
@@ -111,7 +111,7 @@ func TestTenant_List(t *testing.T) {
 	t1 := r1.Tenant
 	defer cleanupTenant(ctx, t, env, t1.ID)
 
-	w2 := env.Do("POST", "/api/v1/tenants", map[string]string{"name": "ListTenantB", "code": "list-b"})
+	w2 := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{"name": "ListTenantB", "code": "list-b"}, env.SaasAdminToken)
 	if w2.Code != http.StatusCreated {
 		t.Fatalf("create tenant 2: %d %s", w2.Code, testhelper.ErrMsg(w2))
 	}
@@ -141,7 +141,7 @@ func TestTenant_Get(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	wc := env.Do("POST", "/api/v1/tenants", map[string]string{"name": "Get Test Tenant", "code": "get-test"})
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{"name": "Get Test Tenant", "code": "get-test"}, env.SaasAdminToken)
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
 	}
@@ -177,7 +177,7 @@ func TestTenant_Update(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	wc := env.Do("POST", "/api/v1/tenants", map[string]string{"name": "Old Name", "code": "update-test"})
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{"name": "Old Name", "code": "update-test"}, env.SaasAdminToken)
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
 	}
@@ -213,7 +213,7 @@ func TestTenant_UpdateStatus(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	wc := env.Do("POST", "/api/v1/tenants", map[string]string{"name": "Status Tenant", "code": "status-test"})
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{"name": "Status Tenant", "code": "status-test"}, env.SaasAdminToken)
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
 	}
@@ -221,7 +221,7 @@ func TestTenant_UpdateStatus(t *testing.T) {
 	created := cr.Tenant
 	defer cleanupTenant(ctx, t, env, created.ID)
 
-	w := env.Do("POST", "/api/v1/tenants/"+created.ID+"/status", map[string]string{"status": "inactive"})
+	w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+created.ID+"/status", map[string]string{"status": "inactive"}, env.SaasAdminToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
@@ -239,7 +239,7 @@ func TestTenant_UpdateStatus_Invalid(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	wc := env.Do("POST", "/api/v1/tenants", map[string]string{"name": "StatusInv Tenant", "code": "status-inv-test"})
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{"name": "StatusInv Tenant", "code": "status-inv-test"}, env.SaasAdminToken)
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
 	}
@@ -247,7 +247,7 @@ func TestTenant_UpdateStatus_Invalid(t *testing.T) {
 	created := cr.Tenant
 	defer cleanupTenant(ctx, t, env, created.ID)
 
-	w := env.Do("POST", "/api/v1/tenants/"+created.ID+"/status", map[string]string{"status": "bogus"})
+	w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+created.ID+"/status", map[string]string{"status": "bogus"}, env.SaasAdminToken)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
@@ -258,10 +258,10 @@ func TestTenant_AdminCreate_CreatesSubscription(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	w := env.DoNoAuth("POST", "/api/v1/admin/tenants", map[string]string{
+	w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"name": "Admin Tenant Sub",
 		"code": "admin-sub-test",
-	})
+	}, env.SaasAdminToken)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
@@ -302,10 +302,10 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	defer env.Cleanup()
 	ctx := context.Background()
 
-	wc := env.DoNoAuth("POST", "/api/v1/admin/tenants", map[string]string{
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]string{
 		"name": "Admin Mgmt Tenant",
 		"code": "admin-mgmt-test",
-	})
+	}, env.SaasAdminToken)
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create tenant: %d %s", wc.Code, testhelper.ErrMsg(wc))
 	}
@@ -314,7 +314,7 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	defer cleanupTenant(ctx, t, env, created.ID)
 
 	// List admins should contain the default admin created by createTenant.
-	wl := env.DoNoAuth("GET", "/api/v1/admin/tenants/"+created.ID+"/admins", nil)
+	wl := env.DoWithToken("GET", "/api/v1/admin/tenants/"+created.ID+"/admins", nil, env.SaasAdminToken)
 	if wl.Code != http.StatusOK {
 		t.Fatalf("list admins: %d %s", wl.Code, testhelper.ErrMsg(wl))
 	}
@@ -326,17 +326,17 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	// Set a manual password for the default admin.
 	defaultAdminID := list.Items[0].ID
 	setPassword := "Abc12345"
-	wp := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", map[string]string{
+	wp := env.DoWithToken("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", map[string]string{
 		"password": setPassword,
-	})
+	}, env.SaasAdminToken)
 	if wp.Code != http.StatusOK {
 		t.Fatalf("set password: %d %s", wp.Code, testhelper.ErrMsg(wp))
 	}
 
 	// Weak password should be rejected.
-	ww := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", map[string]string{
+	ww := env.DoWithToken("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", map[string]string{
 		"password": "weak",
-	})
+	}, env.SaasAdminToken)
 	if ww.Code != http.StatusBadRequest {
 		t.Fatalf("weak password: expected 400, got %d %s", ww.Code, testhelper.ErrMsg(ww))
 	}
@@ -351,10 +351,10 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	}
 
 	// Create a new school admin.
-	wc2 := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins", map[string]string{
+	wc2 := env.DoWithToken("POST", "/api/v1/admin/tenants/"+created.ID+"/admins", map[string]string{
 		"username": "extra-admin",
 		"name":     "额外管理员",
-	})
+	}, env.SaasAdminToken)
 	if wc2.Code != http.StatusCreated {
 		t.Fatalf("create admin: %d %s", wc2.Code, testhelper.ErrMsg(wc2))
 	}
@@ -364,10 +364,10 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	}
 
 	// Update the new admin.
-	wu := env.DoNoAuth("PUT", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, map[string]string{
+	wu := env.DoWithToken("PUT", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, map[string]string{
 		"username": "extra-admin-renamed",
 		"name":     "已重命名管理员",
-	})
+	}, env.SaasAdminToken)
 	if wu.Code != http.StatusOK {
 		t.Fatalf("update admin: %d %s", wu.Code, testhelper.ErrMsg(wu))
 	}
@@ -377,13 +377,13 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	}
 
 	// Delete the new admin.
-	wd := env.DoNoAuth("DELETE", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, nil)
+	wd := env.DoWithToken("DELETE", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, nil, env.SaasAdminToken)
 	if wd.Code != http.StatusOK {
 		t.Fatalf("delete admin: %d %s", wd.Code, testhelper.ErrMsg(wd))
 	}
 
 	// List should now contain only the default admin again.
-	wl2 := env.DoNoAuth("GET", "/api/v1/admin/tenants/"+created.ID+"/admins", nil)
+	wl2 := env.DoWithToken("GET", "/api/v1/admin/tenants/"+created.ID+"/admins", nil, env.SaasAdminToken)
 	list2, _ := testhelper.Unmarshal[tenantAdminListResp](wl2)
 	if list2.Total != 1 {
 		t.Fatalf("expected 1 admin after delete, got %+v", list2)

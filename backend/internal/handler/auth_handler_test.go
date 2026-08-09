@@ -80,7 +80,7 @@ func TestMe_WithValidToken(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 
-	w := env.Do("GET", "/api/v1/auth/me", nil)
+	w := env.DoWithToken("GET", "/api/v1/auth/me", nil, env.SaasAdminToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}

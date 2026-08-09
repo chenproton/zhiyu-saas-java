@@ -18,14 +18,16 @@ func TestStudentHonorCRUD(t *testing.T) {
 	ctx := context.Background()
 
 	studentID := "11111111-2222-4333-8444-777777777791"
-	env.DB.Exec(ctx, `
+	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'student', 'portal', 'honor-stu', 'honor-stu', 'x', '荣誉学生', 'active', '{}')
-	`, studentID, testhelper.TestTenantID)
+		VALUES ($1, $2, 'school', 'portal', 'honor-stu', 'honor-stu', 'x', '荣誉学生', 'active', '{}')
+	`, studentID, testhelper.TestTenantID); err != nil {
+		t.Fatalf("insert student user: %v", err)
+	}
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
 	defer env.DB.Exec(ctx, "DELETE FROM student_honors WHERE user_id = $1", studentID)
 
-	studentToken := env.NewUserToken(studentID, testhelper.TestTenantID, domain.RoleStudent, nil)
+	studentToken := env.NewTokenWithIdentity(studentID, testhelper.TestTenantID, domain.RoleStudent, nil, domain.RoleStudent)
 
 	// 创建
 	w := env.DoWithToken("POST", "/api/v1/portal/workspace/honors", map[string]interface{}{
@@ -65,14 +67,15 @@ func TestStudentHonorCRUD(t *testing.T) {
 		t.Fatalf("list result: total=%d items=%+v", resp.Total, resp.Items)
 	}
 
-	// 业务用户只读：可查该学生荣誉
-	w = env.Do("GET", "/api/v1/portal/workspace/honors?userId="+studentID, nil)
+	// 业务用户只读：可查该学生荣誉（portalWorkspace 组限教师/学生/学校管理员，须用教师 token）
+	teacherToken := env.NewTokenWithIdentity("22222222-3333-4444-8555-888888888891", testhelper.TestTenantID, domain.UserRoleSchool, nil, domain.RoleTeacher)
+	w = env.DoWithToken("GET", "/api/v1/portal/workspace/honors?userId="+studentID, nil, teacherToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("list by business user: expected 200, got %d", w.Code)
 	}
 
 	// 业务用户不能创建
-	w = env.Do("POST", "/api/v1/portal/workspace/honors", map[string]interface{}{"name": "x"})
+	w = env.DoWithToken("POST", "/api/v1/portal/workspace/honors", map[string]interface{}{"name": "x"}, teacherToken)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("create by business user: expected 403, got %d", w.Code)
 	}
