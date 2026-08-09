@@ -22,13 +22,13 @@ func TestRoleIsolation_StudentForbidden(t *testing.T) {
 		method string
 		path   string
 	}{
-		// 评分接口（教师专属）
-		{"grade-evaluation", http.MethodPost, "/api/v1/evaluation/results/grade"},
-		{"grade-exam", http.MethodPost, "/api/v1/evaluation/exam-results/grade"},
-		// 证书颁发（管理专属）
-		{"issue-cert", http.MethodPost, "/api/v1/evaluation/certificates/issue"},
+		// 评分接口（教师专属，路由挂 businessUser 组，学生 403）
+		{"grade-evaluation", http.MethodPost, "/api/v1/evaluation/results/" + studentID + "/grade"},
+		{"grade-exam", http.MethodPost, "/api/v1/evaluation/exam-results/" + studentID + "/grade"},
+		// 证书规则创建（管理专属）
+		{"create-cert-rule", http.MethodPost, "/api/v1/evaluation/certifications"},
 		// 申诉处理（教师专属）
-		{"process-appeal", http.MethodPost, "/api/v1/evaluation/appeals/process"},
+		{"process-appeal", http.MethodPost, "/api/v1/evaluation/appeals/" + studentID + "/process"},
 	}
 
 	for _, tc := range cases {

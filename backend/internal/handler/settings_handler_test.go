@@ -30,7 +30,7 @@ func TestSettings_ThemeAdminUpdate(t *testing.T) {
 	defer env.Cleanup()
 
 	// 非法格式 → 400
-	w := env.Do("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "red"})
+	w := env.DoWithToken("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "red"}, env.SaasAdminToken)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("invalid color: expected 400, got %d %s", w.Code, testhelper.ErrMsg(w))
 	}
@@ -42,7 +42,7 @@ func TestSettings_ThemeAdminUpdate(t *testing.T) {
 	}
 
 	// 正常保存 → 保存后公开接口读取一致
-	w = env.Do("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "#1677ff"})
+	w = env.DoWithToken("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "#1677ff"}, env.SaasAdminToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("update theme: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
@@ -66,7 +66,7 @@ func TestSettings_TenantThemeOverride(t *testing.T) {
 	tenantID := testhelper.TestTenantID
 
 	// 用例自包含：显式重置平台默认主题，避免依赖其他用例的执行顺序
-	w0 := env.Do("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "#1677ff"})
+	w0 := env.DoWithToken("PUT", "/api/v1/admin/settings/theme", map[string]string{"primary": "#1677ff"}, env.SaasAdminToken)
 	if w0.Code != http.StatusOK {
 		t.Fatalf("reset platform theme: %d %s", w0.Code, testhelper.ErrMsg(w0))
 	}
@@ -91,7 +91,7 @@ func TestSettings_TenantThemeOverride(t *testing.T) {
 	}
 
 	// 设置租户覆盖色 → 公开接口按租户返回
-	w = env.Do("PUT", "/api/v1/admin/tenants/"+tenantID+"/settings/theme", map[string]string{"primary": "#0b5bd0"})
+	w = env.DoWithToken("PUT", "/api/v1/admin/tenants/"+tenantID+"/settings/theme", map[string]string{"primary": "#0b5bd0"}, env.SaasAdminToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("update tenant theme: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
@@ -121,7 +121,7 @@ func TestSettings_TenantThemeOverride(t *testing.T) {
 	}
 
 	// 清除租户覆盖 → 回退平台默认
-	w = env.Do("DELETE", "/api/v1/admin/tenants/"+tenantID+"/settings/theme", nil)
+	w = env.DoWithToken("DELETE", "/api/v1/admin/tenants/"+tenantID+"/settings/theme", nil, env.SaasAdminToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("delete tenant theme: %d %s", w.Code, testhelper.ErrMsg(w))
 	}

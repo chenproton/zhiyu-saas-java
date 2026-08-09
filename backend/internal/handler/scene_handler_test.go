@@ -639,8 +639,10 @@ func TestTaskEvaluationMethod_TempExamIdempotent(t *testing.T) {
 	}
 
 	var firstExamID string
+	version := 0 // 首轮不带 version（新任务从 0 开始）；次轮起带回上轮返回的新版本号，模拟前端正常流程
 	for i := 0; i < 2; i++ {
 		w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+			"version": version,
 			"methods": methods,
 		})
 		if w.Code != http.StatusOK {
@@ -655,6 +657,7 @@ func TestTaskEvaluationMethod_TempExamIdempotent(t *testing.T) {
 		found := false
 		for _, m := range resp.Methods {
 			if m.MethodKey == "question_bank" {
+				version = m.Version
 				if id, ok := m.ResourceConfig["examId"].(string); ok && id != "" {
 					if i == 0 {
 						firstExamID = id
@@ -728,9 +731,18 @@ func TestTaskEvaluationMethod_PartialSavePreservesOthers(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("initial save: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
+	// 乐观锁：第二次保存须带回第一次返回的新版本号（前端 saveMethodsWithRetry 同款流程）
+	firstResp, err := testhelper.Unmarshal[struct {
+		Methods []domain.TaskEvaluationMethod `json:"methods"`
+	}](w)
+	if err != nil || len(firstResp.Methods) == 0 {
+		t.Fatalf("unmarshal initial save: %v", err)
+	}
+	version := firstResp.Methods[0].Version
 
 	// 第二次只保存其中一个方法（模拟前端状态缺失部分方法的场景）
 	w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+		"version": version,
 		"methods": []map[string]interface{}{method("paper", true)},
 	})
 	if w.Code != http.StatusOK {
