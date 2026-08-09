@@ -15,7 +15,7 @@ func NewStaffTitlesStore(q Queryer) *StaffTitlesStore {
 		Table:         "staff_titles",
 		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
 		CreateSQL:     `INSERT INTO staff_titles (id, tenant_id, code, name, description, user_count, status) VALUES ($1,$2,$3,$4,$5,0,$6)`,
-		UpdateSQL:     `UPDATE staff_titles SET name=$1, description=$2, status=COALESCE(NULLIF($3,''), status), updated_at=NOW() WHERE id=$4`,
+		UpdateSQL:     `UPDATE staff_titles SET name=$1, description=$2, status=COALESCE(NULLIF($3,''), status) WHERE id=$4`,
 		GetByIDSQL:    `SELECT id, tenant_id, code, name, description, user_count, status, created_at FROM staff_titles WHERE id = $1`,
 		DeleteSQL:     `DELETE FROM staff_titles WHERE id = $1`,
 		TenantScoped:  true,
@@ -50,7 +50,7 @@ func (p StaffTitleUpdateParams) Args() []any {
 // UpdateStatus 仅更新启用状态（不走通用 Update 的 COALESCE 分支）。
 func (s *StaffTitlesStore) UpdateStatus(ctx context.Context, id, status string) error {
 	_, err := s.Q().Exec(ctx,
-		`UPDATE staff_titles SET status=$1, updated_at=NOW() WHERE id=$2`, status, id,
+		`UPDATE staff_titles SET status=$1 WHERE id=$2`, status, id,
 	)
 	return err
 }
