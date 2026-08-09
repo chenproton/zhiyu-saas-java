@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildDangerousRe } from '../clicker.mjs'
+import { buildDangerousRe, buildEditRe, buildDeleteRe, buildEnableRe, buildDisableRe } from '../clicker.mjs'
 import { errorSignature, aggregateErrors, classifyApiResponse, buildResumeDoneSet, isTransientError } from '../report.mjs'
 import { resolveImportCandidates } from '../routes.mjs'
 
@@ -108,6 +108,24 @@ test('import 解析：@/ 别名与相对路径', () => {
   const up = resolveImportCandidates('app/lesson/admin/page.tsx', '../_components/baz')
   assert.ok(up.includes('app/lesson/_components/baz.tsx'))
   assert.deepEqual(resolveImportCandidates('app/x/page.tsx', 'react'), [])
+})
+
+test('CRUD 动作词正则（中英双语）', () => {
+  const cfg = {
+    editWords: ['编辑', '修改'], editWordsEn: ['Edit', 'Modify'],
+    deleteWords: ['删除'], deleteWordsEn: ['Delete', 'Remove'],
+    enableWords: ['启用', '激活'], enableWordsEn: ['Enable', 'Activate'],
+    disableWords: ['禁用', '停用'], disableWordsEn: ['Disable', 'Deactivate'],
+  }
+  assert.ok(buildEditRe(cfg).test('编辑'))
+  assert.ok(buildEditRe(cfg).test('Edit'))
+  assert.ok(buildDeleteRe(cfg).test('删除'))
+  assert.ok(buildDeleteRe(cfg).test('Remove'))
+  assert.ok(buildEnableRe(cfg).test('启用'))
+  assert.ok(buildEnableRe(cfg).test('Activate'))
+  assert.ok(buildDisableRe(cfg).test('停用'))
+  assert.ok(buildDisableRe(cfg).test('Deactivate'))
+  assert.ok(!buildDeleteRe(cfg).test('编辑器'))
 })
 
 test('routeCfg 路由覆盖：前缀匹配最长优先', async () => {

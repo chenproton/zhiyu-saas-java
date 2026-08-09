@@ -1,7 +1,7 @@
 /**
  * 页面点击巡检：可点击元素收集、点击、弹窗关闭、跳转回访、增量补充。
  * 含 locale 防护（点击语言切换按钮后自动切回中文，防止危险词失效）。
- * --test-forms 下，点击创建/编辑类入口或页面内表单会触发表单填充提交测试（forms.mjs）。
+ * 默认模式下会测试 CRUD 按钮（创建/编辑/删除/启用/禁用），--click-only 退回到纯点击。
  */
 
 import { maybeTestForm, buildTriggerRe, keyText } from './forms.mjs'
@@ -30,7 +30,24 @@ export function buildNavRe(cfg) {
   return wordRe([...(cfg.navWords || []), ...(cfg.navWordsEn || [])])
 }
 
+export function buildEditRe(cfg) {
+  return wordRe([...(cfg.editWords || []), ...(cfg.editWordsEn || [])])
+}
+
+export function buildDeleteRe(cfg) {
+  return wordRe([...(cfg.deleteWords || []), ...(cfg.deleteWordsEn || [])])
+}
+
+export function buildEnableRe(cfg) {
+  return wordRe([...(cfg.enableWords || []), ...(cfg.enableWordsEn || [])])
+}
+
+export function buildDisableRe(cfg) {
+  return wordRe([...(cfg.disableWords || []), ...(cfg.disableWordsEn || [])])
+}
+
 function wordRe(words) {
+  if (!words.length) return { test: () => false }
   return new RegExp(`^(?:${words.map(escapeRe).join('|')})`)
 }
 
@@ -53,8 +70,10 @@ export function routeCfg(cfg, route) {
 // 收集可见可点击元素（含文档序 index 与行内序号 key）。
 // scope='page'：只收弹层外元素（默认）；scope='dialog'：只收弹层内元素（key 加 dlg| 前缀）。
 // triggerRe：表单测试模式下，创建/编辑类入口词即使命中危险词也放行（点击后由 maybeTestForm 接管）。
+// crud 模式下额外识别 edit/delete/enable/disable，并标注元素所在行是否含 SMOKE_ 标记。
 export async function collectClickables(page, cfg, dangerousRe, scope = 'page', triggerRe = null) {
-  return page.evaluate(({ selector, dialogSel, re, triggerSrc, submitWords, destructiveWords, navWords, clickDangerous, allowIconButtons, localeWords, scope }) => {
+  const crudMode = !cfg.clickOnly
+  return page.evaluate(({ selector, dialogSel, re, triggerSrc, submitWords, destructiveWords, navWords, clickDangerous, allowIconButtons, localeWords, scope, crudMode, editSrc, deleteSrc, enableSrc, disableSrc, marker }) => {
     const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     // 空词表时正则永不命中（否则 ^(?:) 会匹配一切）
     const wordRe = (words, anchorEnd) => words.length
@@ -66,9 +85,20 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     const destructiveRe = wordRe(destructiveWords)
     const navRe = wordRe(navWords)
     const localeRe = wordRe(localeWords, true)
-    // 动作分类：弹层内提交词优先（保存/创建是提交按钮），页面级入口词优先（创建/新增是表单入口）
+    const editRe = crudMode && editSrc ? new RegExp(editSrc) : { test: () => false }
+    const deleteRe = crudMode && deleteSrc ? new RegExp(deleteSrc) : { test: () => false }
+    const enableRe = crudMode && enableSrc ? new RegExp(enableSrc) : { test: () => false }
+    const disableRe = crudMode && disableSrc ? new RegExp(disableSrc) : { test: () => false }
+    const rowSel = 'tr, li, [role="listitem"], [role="row"], article, [class*="card"], [class*="Card"]'
+    // 动作分类：CRUD 动作 > 危险删除类 > 弹层内提交 > 页面级表单入口 > 导航
     const classify = (el, effText, href) => {
       if (effText) {
+        if (crudMode) {
+          if (editRe.test(effText)) return 'edit'
+          if (deleteRe.test(effText)) return 'delete'
+          if (enableRe.test(effText)) return 'enable'
+          if (disableRe.test(effText)) return 'disable'
+        }
         if (destructiveRe.test(effText)) return 'destructive'
         if (scope === 'dialog') {
           if (submitRe.test(effText)) return 'submit'
@@ -105,7 +135,11 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
         if (!effText && !allowIconButtons) return // 无文本图标按钮：宁漏勿删
         if (effText) {
           if (localeRe.test(effText)) return // 语言切换按钮：点击会改变全局语言，跳过
-          if (skipRe.test(effText) && !triggerRegex?.test(effText)) return
+          if (skipRe.test(effText) && !triggerRegex?.test(effText)) {
+            // CRUD 模式下，编辑/删除/启用/禁用/表单入口即使命中危险词也放行
+            const action = classify(el, effText, href)
+            if (!crudMode || !['edit', 'delete', 'enable', 'disable', 'form-trigger'].includes(action)) return
+          }
         }
       }
       const base = `${el.tagName}|${effText}|${href}`
@@ -113,7 +147,9 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
       countByKey.set(base, n)
       // 全局/共享元素（侧边栏、顶部导航等）只在第一次遇到时点击，避免每页重复点击拖慢全量回归
       const isGlobal = scope !== 'dialog' && !!el.closest('nav, aside, header, [role="navigation"], [role="banner"]')
-      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal })
+      const row = el.closest(rowSel)
+      const inSmokeRow = !!(marker && row && (row.innerText || '').includes(marker))
+      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal, inSmokeRow })
     })
     return out
   }, {
@@ -128,6 +164,12 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     allowIconButtons: cfg.allowIconButtons,
     localeWords: cfg.localeSwitchWords || [],
     scope,
+    crudMode,
+    editSrc: buildEditRe(cfg).source,
+    deleteSrc: buildDeleteRe(cfg).source,
+    enableSrc: buildEnableRe(cfg).source,
+    disableSrc: buildDisableRe(cfg).source,
+    marker: cfg.crudMarker || '',
   })
 }
 
@@ -204,7 +246,7 @@ async function enqueueDialogItems(page, cfg, dangerousRe, queue, attempted, trig
 }
 
 // 表单测试记录写入 routeResult 并返回是否消耗了一次提交额度
-function recordFormResult(routeResult, rec) {
+function recordFormResult(routeResult, rec, actionType = 'create') {
   if (!rec) return false
   if (rec.submitStatus === 'none' || rec.submitStatus === 'no-submit-button') {
     if (!rec.filled) return false // 无表单或无提交按钮（搜索区等），不记录
@@ -214,13 +256,89 @@ function recordFormResult(routeResult, rec) {
     const api = rec.apiResult
     routeResult.errors.push({ type: 'form', message: `表单提交失败: ${api?.status} ${api?.method} ${api?.url}（触发: ${rec.trigger}）` })
   }
+  // CRUD 统计
+  routeResult.crudActions.push({
+    action: actionType,
+    target: rec.trigger,
+    status: rec.submitStatus === 'pass' ? 'pass' : rec.submitStatus === 'error' ? 'error' : 'skip',
+    apiResult: rec.apiResult,
+    createdId: rec.createdId,
+  })
+  if (rec.createdId) {
+    if (!routeResult.createdIds) routeResult.createdIds = []
+    routeResult.createdIds.push(rec.createdId)
+  }
   return ['pass', 'error', 'no-request'].includes(rec.submitStatus)
+}
+
+// 处理 CRUD 编辑/删除/启用/禁用动作（点击已由调用方完成）。
+// 编辑：弹窗或页面内出现表单时调用 maybeTestForm 修改并提交。
+// 删除/启用/禁用：等待确认弹窗，点击确认，等待写接口响应。
+async function handleCrudAction(page, cfg, pick, pickText) {
+  await sleep(cfg.dialogEscMs)
+  const marker = cfg.crudMarker || 'SMOKE_'
+
+  if (pick.actionType === 'edit') {
+    // 若点击后进入编辑表单（弹窗或编辑页），执行编辑填充
+    const hasDialog = await page.locator(DIALOG_VISIBLE_SELECTOR).count() > 0
+    const hasForm = await page.locator('form:visible').count() > 0 || await page.evaluate(() => !!document.querySelector('main input, article input'))
+    if (!hasDialog && !hasForm) return { action: 'edit', target: pickText, status: 'skip', reason: '未进入编辑表单' }
+    const rec = await maybeTestForm(page, cfg, pickText, null, { isEdit: true }).catch(() => null)
+    if (!rec) return { action: 'edit', target: pickText, status: 'skip', reason: '未识别到编辑表单' }
+    return {
+      action: 'edit',
+      target: pickText,
+      status: rec.submitStatus === 'pass' ? 'pass' : rec.submitStatus === 'error' ? 'error' : 'skip',
+      apiResult: rec.apiResult,
+      createdId: rec.createdId,
+    }
+  }
+
+  // 删除/启用/禁用：等待确认弹窗并点击确认
+  const dialogOpen = await page.locator(DIALOG_VISIBLE_SELECTOR).count() > 0
+  if (!dialogOpen) return { action: pick.actionType, target: pickText, status: 'skip', reason: '无确认弹窗' }
+
+  const submitRe = new RegExp(`^(?:${[...(cfg.submitWords || []), ...(cfg.submitWordsEn || [])].map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`)
+  const destructiveRe = new RegExp(`^(?:${[...(cfg.destructiveWords || []), ...(cfg.destructiveWordsEn || []), ...(cfg.deleteWords || []), ...(cfg.deleteWordsEn || []), ...(cfg.enableWords || []), ...(cfg.enableWordsEn || []), ...(cfg.disableWords || []), ...(cfg.disableWordsEn || [])].map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`)
+
+  let confirmed = false
+  try {
+    const buttons = page.locator(DIALOG_VISIBLE_SELECTOR).locator('button:visible')
+    const n = await buttons.count()
+    for (let i = 0; i < n; i++) {
+      const text = ((await buttons.nth(i).innerText().catch(() => '')) || '').trim()
+      if (submitRe.test(text) || destructiveRe.test(text)) {
+        await buttons.nth(i).click({ timeout: 2000 })
+        confirmed = true
+        break
+      }
+    }
+  } catch { /* ignore */ }
+  if (!confirmed) return { action: pick.actionType, target: pickText, status: 'skip', reason: '未找到确认按钮' }
+
+  // 等待写接口响应（DELETE/PATCH/PUT）
+  try {
+    const res = await page.waitForResponse(
+      r => ['DELETE', 'PATCH', 'PUT'].includes(r.request().method()) && r.url().includes('/api/'),
+      { timeout: 8000 },
+    )
+    const status = res.status()
+    return {
+      action: pick.actionType,
+      target: pickText,
+      status: status < 400 ? 'pass' : 'error',
+      apiResult: { status, method: res.request().method(), url: res.url().replace(cfg.baseUrl, '') },
+    }
+  } catch {
+    return { action: pick.actionType, target: pickText, status: 'skip', reason: '未捕获到写接口响应' }
+  }
 }
 
 // 单页巡检：队列式点击全部唯一可点元素
 export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, token, globalSeen = null) {
   cfg = routeCfg(cfg, route) // per-route 配置覆盖（前缀匹配，最长优先）
-  const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [], forms: [] }
+  const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [], forms: [], crudActions: [], createdIds: [] }
+  const crudDisabled = !cfg.clickOnly && (cfg.crudExcludeRoutes || []).some(r => route.includes(r))
   try {
     // 门户 token 被其它应用（partner/superadmin）清除或替换后自动恢复，避免后续页面被踢到登录页或用错身份
     if (token) {
@@ -241,8 +359,18 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
 
     const basePath = new URL(page.url()).pathname
     const dangerousRe = buildDangerousRe(cfg)
-    const triggerRe = cfg.testForms ? buildTriggerRe(cfg) : null
+    const triggerRe = cfg.clickOnly ? null : buildTriggerRe(cfg)
     let formAttempts = 0
+
+    // 独立编辑页：表单已可见，直接填充提交
+    const isEditPage = /\/(edit|modify)(\/|$)/.test(route)
+    if (!cfg.clickOnly && !crudDisabled && isEditPage) {
+      const hasForm = await page.locator('form:visible').count() > 0 || await page.evaluate(() => !!document.querySelector('main input, article input'))
+      if (hasForm && formAttempts < maxForms) {
+        const rec = await maybeTestForm(page, cfg, '(编辑页)', null, { isEdit: true }).catch(() => null)
+        if (recordFormResult(routeResult, rec, 'edit')) formAttempts++
+      }
+    }
     const maxForms = cfg.maxFormSubmits || 3
     const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复耗尽额度
     const attempted = new Set()
@@ -283,7 +411,24 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
       if (pick.actionType === 'form-trigger' && formAttempts < maxForms && !formTestedTriggers.has(pickText)) {
         formTestedTriggers.add(pickText)
         const rec = await maybeTestForm(page, cfg, pickText).catch(() => null)
-        if (recordFormResult(routeResult, rec)) formAttempts++
+        if (recordFormResult(routeResult, rec, 'create')) formAttempts++
+      }
+      // CRUD 编辑/删除/启用/禁用
+      if (!cfg.clickOnly && !crudDisabled && ['edit', 'delete', 'enable', 'disable'].includes(pick.actionType)) {
+        if (!pick.inSmokeRow) {
+          routeResult.crudActions.push({ action: pick.actionType, target: pickText, status: 'skip', reason: '非 SMOKE_ 测试数据' })
+        } else if (formAttempts < maxForms && !formTestedTriggers.has(`crud:${pickText}`)) {
+          formTestedTriggers.add(`crud:${pickText}`)
+          const rec = await handleCrudAction(page, cfg, pick, pickText).catch(() => null)
+          if (rec) {
+            routeResult.crudActions.push(rec)
+            if (rec.createdId) routeResult.createdIds.push(rec.createdId)
+            if (rec.status === 'error' && rec.apiResult) {
+              routeResult.errors.push({ type: 'crud', message: `${rec.action} 操作失败: ${rec.apiResult.status} ${rec.apiResult.method} ${rec.apiResult.url}（触发: ${rec.target}）` })
+            }
+            if (rec.action === 'edit' && ['pass', 'error', 'no-request'].includes(rec.status)) formAttempts++
+          }
+        }
       }
       // 点击若打开了弹窗，先把弹窗内元素入队再关闭
       await enqueueDialogItems(page, cfg, dangerousRe, queue, attempted, triggerRe)

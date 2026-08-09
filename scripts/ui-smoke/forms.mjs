@@ -1,5 +1,5 @@
 /**
- * 表单自动填充 + 提交测试（--test-forms 启用）。
+ * 表单自动填充 + 提交测试（默认启用，--click-only 时跳过）。
  * 启发式识别表单，按字段类型填充，点击提交按钮，以写接口响应判定 pass/error。
  * 提交成功的数据统一带 SMOKE_ 前缀，由 cleanupSmokeData 在巡检结束后清理。
  */
@@ -211,11 +211,11 @@ async function findSubmitButton(page, submitRe, preferredText = null) {
  * 尝试对当前页面/弹窗中的表单执行 填充→提交→判定。
  * 返回表单测试记录（写入 routeResult.forms），无表单返回 null。
  */
-export async function maybeTestForm(page, cfg, triggerText, submitClick = null) {
+export async function maybeTestForm(page, cfg, triggerText, submitClick = null, opts = {}) {
   // 表单（尤其是弹层/创建页）可能需要短暂时间完成挂载
   await sleep(1000)
   const rand = Math.random().toString(36).slice(2, 8)
-  const rec = { trigger: triggerText || '(页面内表单)', filled: 0, skippedFields: [], submitStatus: 'none', apiResult: null }
+  const rec = { trigger: triggerText || '(页面内表单)', filled: 0, skippedFields: [], submitStatus: 'none', apiResult: null, createdId: null }
 
   const meta = await enumerateFields(page).catch(() => null)
   if (!meta || !meta.found) return null
@@ -235,6 +235,7 @@ export async function maybeTestForm(page, cfg, triggerText, submitClick = null) 
   const choiceFields = []
   let selectIdx = 0
   let comboIdx = 0
+  const isEdit = !!opts.isEdit
   for (const f of meta.fields) {
     if (f.tag === 'select') f.selectIndex = selectIdx++
     else if (f.role === 'combobox') f.comboIndex = comboIdx++
@@ -242,7 +243,11 @@ export async function maybeTestForm(page, cfg, triggerText, submitClick = null) 
       rec.skippedFields.push(f.label || f.name || f.type)
       continue
     }
-    if (!f.empty) continue // 已有值的字段一律不动（编辑表单防覆盖真实数据）
+    const hint = `${f.name} ${f.label}`.toLowerCase()
+    const isNameLike = /名称|标题|姓名|名字|\bname\b|\btitle\b|\bcode\b|编码|代号/.test(hint)
+    // 编辑模式下，名称/标题/编码类字段需要更新为新 SMOKE_ 值，避免重复提交无变化；其他已有值字段不动
+    const shouldFill = f.empty || (isEdit && isNameLike)
+    if (!shouldFill) continue
     if (f.tag === 'select' || f.role === 'combobox' || f.type === 'radio') { choiceFields.push(f); continue }
     if (f.type === 'checkbox') continue // 复选框默认不动
     textFields.push({ index: f.index, value: valueForField(f, rand) })
@@ -276,6 +281,12 @@ export async function maybeTestForm(page, cfg, triggerText, submitClick = null) 
     const status = res.status()
     rec.apiResult = { status, method: res.request().method(), url: res.url().replace(cfg.baseUrl, '') }
     rec.submitStatus = status < 400 ? 'pass' : 'error'
+    if (status < 400) {
+      try {
+        const body = await res.json()
+        rec.createdId = body?.id || body?.data?.id || null
+      } catch { /* 响应体非 JSON 或无双击 id */ }
+    }
   } else {
     // 无写请求：弹窗关了可能走了无 API 流程，否则视为被前端校验拦截（信息，不算错误）
     await sleep(cfg.dialogEscMs)
@@ -285,9 +296,10 @@ export async function maybeTestForm(page, cfg, triggerText, submitClick = null) 
   return rec
 }
 
-// 巡检结束后清理 SMOKE_ 前缀数据：list API 拉取 → 名称匹配 → DELETE（seen 跨角色去重）
-export async function cleanupSmokeData(cfg, token, cleanupSpecs, seen = new Set(), log = console.log) {
+// 巡检结束后清理 SMOKE_ 前缀数据：list API 拉取 → 名称匹配 / fallbackIds 匹配 → DELETE（seen 跨角色去重）
+export async function cleanupSmokeData(cfg, token, cleanupSpecs, seen = new Set(), log = console.log, fallbackIds = new Set()) {
   if (!cleanupSpecs.length) return { deleted: 0, failed: 0 }
+  const marker = cfg.crudMarker || 'SMOKE_'
   let deleted = 0
   let failed = 0
   for (const spec of cleanupSpecs) {
@@ -301,7 +313,8 @@ export async function cleanupSmokeData(cfg, token, cleanupSpecs, seen = new Set(
       const items = Array.isArray(data) ? data : data.items || []
       for (const item of items) {
         const name = (spec.fields || ['name', 'title']).map(f => item[f]).find(v => typeof v === 'string') || ''
-        if (!name.startsWith('SMOKE_') || !item.id) continue
+        const shouldDelete = (name.startsWith(marker) || fallbackIds.has(item.id)) && item.id
+        if (!shouldDelete) continue
         if (seen.has(item.id)) continue
         seen.add(item.id)
         try {

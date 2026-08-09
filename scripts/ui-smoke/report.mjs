@@ -150,6 +150,21 @@ export function printSummary(results, aggregate, diff, totalErrors, cfg) {
         console.log(`    ✗ ${f.trigger} → ${f.apiResult?.status} ${f.apiResult?.method} ${f.apiResult?.url}`)
       }
     }
+    const crudActions = r.routes.flatMap(x => x.crudActions || [])
+    if (crudActions.length && !cfg?.clickOnly) {
+      const byAction = {}
+      const byStatus = { pass: 0, error: 0, skip: 0 }
+      for (const a of crudActions) {
+        byAction[a.action] = (byAction[a.action] || 0) + 1
+        byStatus[a.status] = (byStatus[a.status] || 0) + 1
+      }
+      console.log(`  CRUD 操作 ${crudActions.length} 次：通过 ${byStatus.pass}，失败 ${byStatus.error}，跳过 ${byStatus.skip}`)
+      const actionLabels = Object.entries(byAction).map(([k, v]) => `${k}:${v}`).join(' ')
+      console.log(`    动作分布: ${actionLabels}`)
+      for (const a of crudActions.filter(a => a.status === 'error').slice(0, 5)) {
+        console.log(`    ✗ ${a.action} → ${a.apiResult?.status} ${a.apiResult?.method} ${a.apiResult?.url}`)
+      }
+    }
     for (const rt of errRoutes.slice(0, 20)) {
       console.log(`  ✗ ${rt.route}（点击 ${rt.clicks} 次）`)
       for (const e of rt.errors.slice(0, 5)) console.log(`      [${e.type}] ${e.message.split('\n')[0]}`)

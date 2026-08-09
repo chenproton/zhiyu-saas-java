@@ -97,6 +97,46 @@ test('maybeTestForm：接口 500 记 error', async t => {
   await page.close()
 })
 
+test('maybeTestForm：响应体含 id 时记录 createdId', async t => {
+  let page
+  try {
+    if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
+    page = await browser.newPage()
+    await page.route('**/*', route => {
+      const url = route.request().url()
+      if (url.includes('/api/')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'widget-123' }) })
+      return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: FORM_HTML })
+    })
+    await page.goto('http://smoke.local/form')
+  } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
+  const rec = await maybeTestForm(page, CFG, '新增')
+  assert.equal(rec.submitStatus, 'pass')
+  assert.equal(rec.createdId, 'widget-123')
+  await page.close()
+})
+
+test('maybeTestForm：编辑模式覆盖名称字段', async t => {
+  let page
+  try {
+    if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
+    page = await browser.newPage()
+    await page.route('**/*', route => {
+      const url = route.request().url()
+      if (url.includes('/api/')) return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+      return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: FORM_HTML })
+    })
+    await page.goto('http://smoke.local/form')
+    await page.fill('#f-name', 'SMOKE_旧名称')
+  } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
+  const rec = await maybeTestForm(page, CFG, '编辑', null, { isEdit: true })
+  assert.equal(rec.submitStatus, 'pass')
+  assert.ok(rec.filled >= 1, '编辑模式应至少覆盖名称字段')
+  const nameVal = await page.locator('#f-name').inputValue()
+  assert.notEqual(nameVal, 'SMOKE_旧名称', '名称字段应被更新')
+  assert.match(nameVal, /^SMOKE_/, '名称字段应保持 SMOKE_ 前缀')
+  await page.close()
+})
+
 test('maybeTestForm：无提交按钮不提交', async t => {
   let page
   try {

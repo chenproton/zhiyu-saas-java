@@ -58,10 +58,16 @@ const DEFAULTS = {
   allowIconButtons: false,
   // 动态路由详情页上的 404（实体被删/无权限 id）默认忽略
   dynamicIgnore404: true,
-  // 表单自动填充+提交测试（--test-forms 启用）；提交数据统一 SMOKE_ 前缀，结束后自动清理
-  testForms: false,
+  // 默认进入 CRUD 按钮功能测试；--click-only 退回到旧行为（只点击，不填表单、不点危险按钮）
+  clickOnly: false,
+  // 原 --test-forms 已合并到默认行为，保留字段仅作配置兼容
+  testForms: true,
   cleanup: true,
   maxFormSubmits: 3,
+  // CRUD 测试数据行标记
+  crudMarker: 'SMOKE_',
+  // CRUD 模式下默认跳过的系统高风险页（避免改乱权限/超管导致后续测试失败）
+  crudExcludeRoutes: ['/superadmin', '/portal/apps/system/org-user/roles'],
   // 创建/编辑类入口按钮文本（点击后如出现表单则执行表单测试）
   formTriggerWords: ['创建', '新增', '新建', '添加'],
   formTriggerWordsEn: ['Create', 'Add', 'New'],
@@ -71,6 +77,15 @@ const DEFAULTS = {
   // 动作分类：危险删除类 / 安全导航类（actionType 标注，供报告与后续扩展的动作处理器使用）
   destructiveWords: ['删除', '禁用', '停用', '冻结', '锁定', '归档', '驳回', '退出', '注销', '登出', '重置密码', '批量'],
   destructiveWordsEn: ['Delete', 'Disable', 'Freeze', 'Lock', 'Archive', 'Reject', 'Logout', 'Sign out', 'Reset', 'Batch', 'Remove'],
+  // CRUD 动作词表（默认模式下用于识别编辑/删除/启用/禁用按钮）
+  editWords: ['编辑', '修改'],
+  editWordsEn: ['Edit', 'Modify'],
+  deleteWords: ['删除'],
+  deleteWordsEn: ['Delete', 'Remove'],
+  enableWords: ['启用', '激活'],
+  enableWordsEn: ['Enable', 'Activate'],
+  disableWords: ['禁用', '停用'],
+  disableWordsEn: ['Disable', 'Deactivate'],
   navWords: ['返回', '查看', '详情', '取消', '关闭', '上一页', '下一页', '首页'],
   navWordsEn: ['Back', 'View', 'Detail', 'Cancel', 'Close', 'Prev', 'Next', 'Home'],
   // 按路由覆盖配置（前缀匹配，最长优先）：{ "/scene/scenarios": { "maxFormSubmits": 0, "skipFormFields": ["封面"] } }
@@ -118,6 +133,7 @@ export function parseArgs(argv) {
       case '--baseline': args.baseline = next(); break
       case '--resume': args.resume = next(); break
       case '--click-dangerous': args.clickDangerous = true; break
+      case '--click-only': args.clickOnly = true; break
       case '--test-forms': args.testForms = true; break
       case '--no-cleanup': args.cleanup = false; break
       case '--max-form-submits': args.maxFormSubmits = parseInt(next(), 10); break
@@ -144,9 +160,10 @@ export function parseArgs(argv) {
   --git-diff [ref]      只巡检 git 改动涉及的路由（默认对比 HEAD）
   --baseline <file>     与上次报告做回归 diff（新增/已修复/持续）
   --resume <file>       跳过上次报告中已 ok/skip 的路由
-  --click-dangerous     允许点击写数据按钮（默认跳过防污染）
-  --test-forms          表单自动填充+提交测试（测试租户专用，会真实创建数据）
-  --no-cleanup          表单测试后不清理 SMOKE_ 前缀数据（默认自动清理）
+  --click-only          只点击页面元素，不测试表单/创建/编辑/删除等 CRUD 按钮（旧默认行为）
+  --click-dangerous     允许点击写数据按钮（默认模式下只操作 SMOKE_ 测试数据）
+  --test-forms          已合并到默认行为，保留仅作兼容
+  --no-cleanup          测试后不清理 SMOKE_ 前缀数据（默认自动清理）
   --max-form-submits <n> 每页表单提交次数上限（默认 3）
   --tail-backend        抓取后端容器日志 error/panic 增量
   --fail-on-error       发现错误退出码 1

@@ -261,12 +261,14 @@ export async function main() {
 
   console.log(`目标站点: ${cfg.baseUrl}`)
   console.log(`发现页面: ${routes.length} 个，角色: ${cfg.roles.join('/')}，每页点击全部唯一可点元素（上限 ${cfg.maxClicks}）`)
-  if (cfg.testForms) {
+  if (cfg.clickOnly) {
+    console.log('[click-only] 仅点击页面元素，不测试 CRUD 按钮/表单')
+  } else {
     if (cfg.workers > 1) {
-      console.log('[test-forms] 表单提交会产生真实数据，并发降为 1 路串行执行')
+      console.log('[crud] 表单/状态变更操作会产生真实数据，并发降为 1 路串行执行')
       cfg.workers = 1
     }
-    console.log(`[test-forms] 表单填充+提交测试已启用（每页上限 ${cfg.maxFormSubmits} 次，数据前缀 SMOKE_，结束后${cfg.cleanup !== false ? '自动' : '不'}清理）`)
+    console.log(`[crud] 默认启用 CRUD 按钮测试（每页上限 ${cfg.maxFormSubmits} 次，数据前缀 ${cfg.crudMarker}，结束后${cfg.cleanup !== false ? '自动' : '不'}清理）`)
   }
 
   // 启动前就绪探测，避免部署后上游尚未切换完就开测
@@ -352,6 +354,7 @@ export async function main() {
 
       let done = 0
       const perRole = []
+      const roleCreatedIds = new Set()
 
       await Promise.all(chunks.map(async (chunk, wi) => {
         const wctx = await browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) })
@@ -403,6 +406,7 @@ export async function main() {
               }
             }
             perRole.push(r)
+            for (const id of r.createdIds || []) roleCreatedIds.add(id)
             done++
             const mark = r.status === 'ok' ? 'ok  ' : r.status === 'skip' ? 'skip' : 'ERR '
             console.log(`  [${role}] ${done}/${allRoutes.length} ${mark} ${route}${r.errors.length ? `（${r.errors.length} 个错误）` : ''}`)
@@ -422,9 +426,9 @@ export async function main() {
     await browser.close().catch(() => {})
   }
 
-  // 表单测试数据清理（SMOKE_ 前缀），跨角色按 id 去重
+  // CRUD 测试数据清理（SMOKE_ 前缀），跨角色按 id 去重
   let cleanupTotal = null
-  if (cfg.testForms && cfg.cleanup !== false) {
+  if (!cfg.clickOnly && cfg.cleanup !== false) {
     console.log('\n=== 清理 SMOKE_ 测试数据 ===')
     const specs = buildCleanupSpecs(cfg)
     const seenIds = new Set()
@@ -432,7 +436,11 @@ export async function main() {
     for (const role of cfg.roles) {
       if (results[role]?.login !== 'ok') continue
       const token = await readStateToken(role)
-      const r = await cleanupSmokeData(cfg, token, specs, seenIds)
+      const roleCreatedIds = new Set()
+      for (const rt of results[role]?.routes || []) {
+        for (const id of rt.createdIds || []) roleCreatedIds.add(id)
+      }
+      const r = await cleanupSmokeData(cfg, token, specs, seenIds, console.log, roleCreatedIds)
       cleanupTotal.deleted += r.deleted
       cleanupTotal.failed += r.failed
     }
@@ -458,7 +466,7 @@ export async function main() {
     generatedAt: new Date().toISOString(),
     durationSeconds: Math.round((Date.now() - startedAt) / 1000),
     baseUrl: cfg.baseUrl,
-    args: { roles: cfg.roles, maxClicks: cfg.maxClicks, workers: cfg.workers, gitDiff: cfg.gitDiff || null, testForms: !!cfg.testForms },
+    args: { roles: cfg.roles, maxClicks: cfg.maxClicks, workers: cfg.workers, gitDiff: cfg.gitDiff || null, clickOnly: !!cfg.clickOnly },
     crashedPages: allCrashes.routes,
     aggregate,
     diff: diff ? {
