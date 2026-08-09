@@ -104,7 +104,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setExams(res.items.map(parseExam))
   }, [])
 
-  const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/superadmin')
+  // 评测数据（题库/试卷）仅服务 portal 学校端页面；/partner 企业端与 /superadmin 不加载，
+  // 否则会携带 partner token 请求 portal 业务接口产生 403/401 报错
+  const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/superadmin') || pathname.startsWith('/partner')
 
   useEffect(() => {
     if (isPortal || isPublicPage(pathname)) return

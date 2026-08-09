@@ -54,6 +54,9 @@ export function PartnerAuthProvider({ children }: { children: React.ReactNode })
       return
     }
 
+    // 拉取期间保持 loading：登录页跳转过来的瞬间 user 尚未加载，
+    // Guard 若看到 loading=false + user=undefined 会误判未登录弹回登录页
+    setState((prev) => ({ ...prev, loading: true }))
     try {
       const data = await partnerAuthApi.me()
       if (seq !== meSeqRef.current) return
