@@ -2,6 +2,7 @@ package router
 
 import (
 	"bytes"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -24,8 +25,14 @@ func debugScheduleLogger() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			buf := &bytes.Buffer{}
-			rec := &responseRecorder{ResponseWriter: w, body: buf, statusCode: http.StatusOK}
+			bodyBuf := &bytes.Buffer{}
+			if r.Body != nil {
+				bodyBytes, _ := io.ReadAll(r.Body)
+				bodyBuf.Write(bodyBytes)
+				r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			}
+			respBuf := &bytes.Buffer{}
+			rec := &responseRecorder{ResponseWriter: w, body: respBuf, statusCode: http.StatusOK}
 			slog.Info("[debug-schedules] request start",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
@@ -33,13 +40,14 @@ func debugScheduleLogger() func(http.Handler) http.Handler {
 				slog.String("remote", r.RemoteAddr),
 				slog.String("authorization", r.Header.Get("Authorization")),
 				slog.String("content-type", r.Header.Get("Content-Type")),
+				slog.String("request-body", strings.TrimSpace(bodyBuf.String())),
 			)
 			next.ServeHTTP(rec, r)
 			slog.Info("[debug-schedules] request end",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.Int("status", rec.statusCode),
-				slog.String("body", strings.TrimSpace(buf.String())),
+				slog.String("response-body", strings.TrimSpace(respBuf.String())),
 			)
 		})
 	}
