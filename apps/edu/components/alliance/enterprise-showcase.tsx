@@ -4,7 +4,13 @@ import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import type { AllianceExpert, AllianceProject, AllianceAchievement } from '@/lib/types'
+import type {
+  AllianceExpert,
+  AllianceProject,
+  AllianceAchievement,
+  AlliancePublicAgreement,
+} from '@/lib/types'
+import { allianceLabel } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
   ExpertCard,
@@ -38,7 +44,8 @@ export interface EnterpriseShowcaseProps {
   experts?: AllianceExpert[]
   projects?: AllianceProject[]
   achievements?: AllianceAchievement[]
-  /** 预览模式提示语：在合作项目/成果版块位置展示（该内容由合作学校维护） */
+  agreements?: AlliancePublicAgreement[]
+  /** 预览模式提示语：在合作项目/成果/协议版块位置展示（该内容由合作学校维护） */
   schoolSectionsNote?: string
 }
 
@@ -90,6 +97,7 @@ export function EnterpriseShowcase({
   experts,
   projects,
   achievements,
+  agreements,
   schoolSectionsNote,
 }: EnterpriseShowcaseProps) {
   const t = useT()
@@ -195,6 +203,32 @@ export function EnterpriseShowcase({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {achievements.map((achievement) => (
               <AchievementCard key={achievement.id} achievement={achievement} />
+            ))}
+          </div>
+        </Section>
+      )}
+      {agreements && agreements.length > 0 && (
+        <Section title={t('合作协议')}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {agreements.map((agreement) => (
+              <Card key={agreement.id}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{agreement.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {agreement.type && <Badge variant="outline">{agreement.type}</Badge>}
+                    <Badge variant="secondary">
+                      {allianceLabel('agreementStatus', agreement.status)}
+                    </Badge>
+                  </div>
+                  {(agreement.startDate || agreement.endDate) && (
+                    <p className="text-muted-foreground">
+                      {agreement.startDate ?? '-'} ~ {agreement.endDate ?? '-'}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             ))}
           </div>
         </Section>

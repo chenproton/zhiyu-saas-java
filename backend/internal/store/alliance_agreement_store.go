@@ -55,6 +55,52 @@ func (s *AllianceStore) ListAgreementsConfig() ListQueryConfig[domain.AllianceAg
 	}
 }
 
+// ScanPublicAgreementRows 扫描公开协议视图行（仅公开字段，无 content/attachments）。
+func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.AlliancePublicAgreement, error) {
+	items := make([]domain.AlliancePublicAgreement, 0)
+	for rows.Next() {
+		var a domain.AlliancePublicAgreement
+		var startDate, endDate *time.Time
+		if err := rows.Scan(&a.ID, &a.Name, &a.Type, &a.Status, &startDate, &endDate, &a.EnterpriseIDs); err != nil {
+			return nil, err
+		}
+		a.StartDate = formatDate(startDate)
+		a.EndDate = formatDate(endDate)
+		items = append(items, a)
+	}
+	return items, rows.Err()
+}
+
+// ListPublicAgreements 门户前台公开协议列表：排除草稿，且至少关联一家"双控通过的企业"
+// （enterprise_ids 关联判断，参照 ListPublicProjects）；带 tenantID 时限定该校协议并叠加
+// link.is_public 双控。仅返回公开字段，content/attachments 不下发。
+func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string) ([]domain.AlliancePublicAgreement, error) {
+	const cols = `id, name, type, status, start_date, end_date, enterprise_ids`
+	if tenantID != "" {
+		return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
+			SELECT `+cols+`
+			FROM alliance_agreements a
+			WHERE a.status <> 'draft' AND a.tenant_id = $1
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+			  )
+			ORDER BY a.created_at DESC LIMIT 100
+		`, tenantID)
+	}
+	return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
+		SELECT `+cols+`
+		FROM alliance_agreements a
+		WHERE a.status <> 'draft'
+		  AND EXISTS (
+			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  )
+		ORDER BY a.created_at DESC LIMIT 100
+	`)
+}
+
 func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceAgreement) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `

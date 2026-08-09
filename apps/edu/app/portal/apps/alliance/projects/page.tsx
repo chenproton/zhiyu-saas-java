@@ -179,6 +179,20 @@ export default function AllianceProjectsPage() {
               </SelectContent>
             </Select>
           </FormFieldRow>
+          <FormFieldRow label={t('发布状态')}>
+            <Select
+              value={item.publishStatus || 'draft'}
+              onValueChange={(v: any) => setItem({ ...item, publishStatus: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">{t('草稿')}</SelectItem>
+                <SelectItem value="published">{t('已发布')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormFieldRow>
           <FormFieldGrid>
             <FormFieldRow label={t('开始日期')}>
               <Input

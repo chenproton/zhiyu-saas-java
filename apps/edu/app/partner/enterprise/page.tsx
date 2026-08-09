@@ -358,7 +358,7 @@ export default function PartnerEnterprisePage() {
           <EnterpriseShowcase
             enterprise={toPreview(item)}
             experts={previewExperts ?? []}
-            schoolSectionsNote={t('合作项目/合作成果由合作学校维护，将在学校端展示页显示')}
+            schoolSectionsNote={t('合作项目、合作成果、合作协议由合作学校维护，将在学校端展示页显示')}
           />
         </DialogContent>
       </Dialog>
