@@ -9,11 +9,26 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow } from '@/components/shared/form-field-row'
-import { Loader2 } from 'lucide-react'
-import { partnerEnterpriseApi, type PartnerEnterprise } from '@/lib/api'
+import { Loader2, Eye } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  partnerEnterpriseApi,
+  partnerExpertApi,
+  type PartnerEnterprise,
+  type PartnerExpert,
+} from '@/lib/api'
 import { useToast, LoadingView, ErrorState } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
+import {
+  EnterpriseShowcase,
+  type ShowcaseEnterprise,
+} from '@/components/alliance/enterprise-showcase'
 
 type FormState = {
   name: string
@@ -32,6 +47,7 @@ type FormState = {
   businessLicensePhotos: string[]
   intellectualPropertyPhotos: string[]
   qualificationPhotos: string[]
+  coverPhotos: string[]
   enablePublic: boolean
 }
 
@@ -53,6 +69,7 @@ function toForm(e: PartnerEnterprise): FormState {
     businessLicensePhotos: e.businessLicensePhotos || [],
     intellectualPropertyPhotos: e.intellectualPropertyPhotos || [],
     qualificationPhotos: e.qualificationPhotos || [],
+    coverPhotos: e.coverPhotos || [],
     enablePublic: e.enablePublic || false,
   }
 }
@@ -64,6 +81,17 @@ export default function PartnerEnterprisePage() {
   const [item, setItem] = useState<FormState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewExperts, setPreviewExperts] = useState<PartnerExpert[] | null>(null)
+
+  // 预览 Dialog 首次打开时拉取一次企业专家
+  useEffect(() => {
+    if (!previewOpen || previewExperts !== null) return
+    partnerExpertApi
+      .list({ limit: 200 })
+      .then((res) => setPreviewExperts(res.items || []))
+      .catch(() => setPreviewExperts([]))
+  }, [previewOpen, previewExperts])
 
   const load = async () => {
     try {
@@ -99,6 +127,26 @@ export default function PartnerEnterprisePage() {
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
+  /** 当前表单实时数据 → 展示页 props（未保存也能预览） */
+  const toPreview = (f: FormState): ShowcaseEnterprise => ({
+    name: f.name,
+    logoUrl: f.logoUrl || undefined,
+    coverImage: f.coverImage || undefined,
+    industry: f.industry || undefined,
+    region: f.region || undefined,
+    establishedYear: f.establishedYear,
+    employeeCount: f.employeeCount,
+    unifiedSocialCreditCode: f.unifiedSocialCreditCode || undefined,
+    description: f.description || undefined,
+    coverPhotos: f.coverPhotos,
+    qualificationPhotos: f.qualificationPhotos,
+    intellectualPropertyPhotos: f.intellectualPropertyPhotos,
+    contactPerson: f.contactPerson || undefined,
+    contactPhone: f.contactPhone || undefined,
+    contactEmail: f.contactEmail || undefined,
+    address: f.address || undefined,
+  })
+
   const handleSave = async () => {
     if (!item.name) {
       toast({ title: t('请填写企业名称'), variant: 'destructive' })
@@ -125,10 +173,16 @@ export default function PartnerEnterprisePage() {
             {t('维护企业主体信息，信息将共享给引入本企业的合作学校。')}
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-          {t('保存')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Eye className="h-4 w-4 mr-1" />
+            {t('预览展示页')}
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+            {t('保存')}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -198,6 +252,11 @@ export default function PartnerEnterprisePage() {
                 label={t('企业主页封面')}
                 value={item.coverImage}
                 onChange={(v) => setField('coverImage', v)}
+              />
+              <ImageListUpload
+                label={t('企业风采照片')}
+                value={item.coverPhotos}
+                onChange={(v) => setField('coverPhotos', v)}
               />
             </CardContent>
           </Card>
@@ -290,6 +349,19 @@ export default function PartnerEnterprisePage() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('展示页预览')}</DialogTitle>
+          </DialogHeader>
+          <EnterpriseShowcase
+            enterprise={toPreview(item)}
+            experts={previewExperts ?? []}
+            schoolSectionsNote={t('合作项目/合作成果由合作学校维护，将在学校端展示页显示')}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

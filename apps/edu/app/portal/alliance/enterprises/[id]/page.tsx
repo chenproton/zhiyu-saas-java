@@ -2,28 +2,73 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { portalRequest } from '@/lib/api'
-import { allianceLabel } from '@zhiyu/shared-types'
-import type { AllianceEnterprise } from '@/lib/types'
+import type {
+  AllianceEnterprise,
+  AllianceExpert,
+  AllianceProject,
+  AllianceAchievement,
+} from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
+import {
+  EnterpriseShowcase,
+  type ShowcaseEnterprise,
+} from '@/components/alliance/enterprise-showcase'
 
 import { useT } from '@/lib/i18n/locale-provider'
+
+/** 公开 API 字段 optional/omitempty，数组可能为 null，归一化为 ShowcaseEnterprise */
+function toShowcase(e: AllianceEnterprise): ShowcaseEnterprise {
+  return {
+    name: e.name,
+    logoUrl: e.logoUrl ?? undefined,
+    coverImage: e.coverImage ?? undefined,
+    industry: e.industry ?? undefined,
+    region: e.region ?? undefined,
+    establishedYear: e.establishedYear ?? undefined,
+    employeeCount: e.employeeCount ?? undefined,
+    unifiedSocialCreditCode: e.unifiedSocialCreditCode ?? undefined,
+    description: e.description ?? undefined,
+    coverPhotos: e.coverPhotos ?? [],
+    qualificationPhotos: e.qualificationPhotos ?? [],
+    intellectualPropertyPhotos: e.intellectualPropertyPhotos ?? [],
+    contactPerson: e.contactPerson ?? undefined,
+    contactPhone: e.contactPhone ?? undefined,
+    contactEmail: e.contactEmail ?? undefined,
+    address: e.address ?? undefined,
+  }
+}
+
 export default function AlliancePublicEnterpriseDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
-  const [enterprise, setEnterprise] = useState<AllianceEnterprise | null>(null)
+  const [enterprise, setEnterprise] = useState<ShowcaseEnterprise | null>(null)
+  const [experts, setExperts] = useState<AllianceExpert[]>([])
+  const [projects, setProjects] = useState<AllianceProject[]>([])
+  const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
-    portalRequest<AllianceEnterprise>(`/alliance/public/enterprises/${id}`)
-      .then(setEnterprise)
+    Promise.all([
+      portalRequest<AllianceEnterprise>(`/alliance/public/enterprises/${id}`),
+      portalRequest<{ items: AllianceExpert[] }>('/alliance/public/experts'),
+      portalRequest<{ items: AllianceProject[] }>('/alliance/public/projects'),
+      portalRequest<{ items: AllianceAchievement[] }>('/alliance/public/achievements'),
+    ])
+      .then(([ent, expertsRes, projectsRes, achievementsRes]) => {
+        setEnterprise(toShowcase(ent))
+        setExperts((expertsRes.items ?? []).filter((e) => e.enterpriseId === id))
+        setProjects(
+          (projectsRes.items ?? []).filter((p) => (p.enterpriseIds ?? []).includes(id)),
+        )
+        setAchievements(
+          (achievementsRes.items ?? []).filter((a) => (a.enterpriseIds ?? []).includes(id)),
+        )
+      })
       .catch((err) => {
         reportError(err, { source: '加载合作企业详情' })
       })
@@ -45,106 +90,12 @@ export default function AlliancePublicEnterpriseDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold break-words">{enterprise.name}</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {allianceLabel('enterpriseType', enterprise.enterpriseType)}
-            {enterprise.industry ? ` · ${enterprise.industry}` : ''}
-          </p>
-        </div>
-        <Badge variant="outline" className="shrink-0">
-          {allianceLabel('enterpriseStatus', enterprise.status)}
-        </Badge>
-      </div>
-
-      {enterprise.logoUrl && (
-        <Image
-          src={enterprise.logoUrl}
-          alt={enterprise.name}
-          width={64}
-          height={64}
-          className="h-16 object-contain"
-        />
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('基本信息')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">{t('所属行业：')}</span>
-              {enterprise.industry || '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('所在地区：')}</span>
-              {enterprise.region || '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('合作评级：')}</span>
-              {allianceLabel('enterpriseRating', enterprise.rating)}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('地址：')}</span>
-              {enterprise.address || '-'}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('联系信息')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">{t('联系人：')}</span>
-              {enterprise.contactPerson || '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('电话：')}</span>
-              {enterprise.contactPhone || '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('邮箱：')}</span>
-              {enterprise.contactEmail || '-'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {enterprise.description && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('企业介绍')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{enterprise.description}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {enterprise.coverPhotos && enterprise.coverPhotos.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('企业风采')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {enterprise.coverPhotos.map((photo, idx) => (
-                <div key={idx} className="relative w-full h-40 rounded-lg overflow-hidden">
-                  <Image
-                    src={photo}
-                    alt={t('{name} 照片 {idx}', { name: enterprise.name, idx: idx + 1 })}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <EnterpriseShowcase
+        enterprise={enterprise}
+        experts={experts}
+        projects={projects}
+        achievements={achievements}
+      />
     </div>
   )
 }
