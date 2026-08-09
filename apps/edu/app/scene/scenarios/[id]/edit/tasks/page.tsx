@@ -278,6 +278,7 @@ export default function TasksEditPage() {
           resources: at.resourceIds || [],
           deliverables: [],
           knowledgePoints: at.knowledgePointIds || [],
+          knowledgePointNames: at.knowledgePointNames || [],
           abilityPoints: at.abilityPointIds || [],
           abilityPointNames: at.abilityPointNames || [],
           assessment: null,
@@ -426,15 +427,22 @@ export default function TasksEditPage() {
         if (state.descriptionPdf) return t('已上传附件')
         return t('未填写')
       }
-      case 'knowledge':
+      case 'knowledge': {
         if (state.knowledgePoints.length === 0) return t('未配置')
+        // 优先使用服务端随任务返回的名称（与 knowledgePoints 对齐），
+        // 再回退全量知识点列表（全量列表接口 maxPageSize=200 会截断）
+        const apiNameById = new Map<string, string>()
+        ;(task.knowledgePointNames || []).forEach((n, i) => {
+          if (task.knowledgePoints[i] && n) apiNameById.set(task.knowledgePoints[i], n)
+        })
         const kpNames = state.knowledgePoints
-          .map((id) => datasets.knowledgePoints.find((k) => k.id === id)?.name)
+          .map((id) => apiNameById.get(id) || datasets.knowledgePoints.find((k) => k.id === id)?.name)
           .filter(Boolean)
         return (
           kpNames.slice(0, 3).join('、') +
           (kpNames.length > 3 ? t(' 等{n}个', { n: state.knowledgePoints.length }) : '')
         )
+      }
       case 'ability': {
         if (state.abilityPoints.length === 0) return t('未配置')
         // 优先使用服务端随任务返回的名称（与 abilityPointIds 对齐），
@@ -1819,9 +1827,14 @@ function EditCardDialog({
           linked: !datasets.customKnowledgePointIds.has(kp.id),
           granularLessons: kp.granularLessons || [],
         }))
+        const kpNameById = new Map<string, string>()
+        ;(task.knowledgePoints || []).forEach((id, i) => {
+          const name = (task.knowledgePointNames || [])[i]
+          if (name) kpNameById.set(id, name)
+        })
         const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
           const found = pool.find((p) => p.id === id)
-          return found || { id, name: id, linked: false }
+          return found || { id, name: kpNameById.get(id) || id, linked: false }
         })
         return (
           <KnowledgeSelector

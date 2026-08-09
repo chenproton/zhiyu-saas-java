@@ -91,6 +91,8 @@ export interface Task {
   resources: string[]
   deliverables: TaskDeliverable[]
   knowledgePoints: string[]
+  /** 与 knowledgePoints 按序对齐的知识点名称（服务端返回，弹窗/卡片预览直接使用，不依赖全量知识点列表） */
+  knowledgePointNames?: string[]
   abilityPoints: string[]
   /** 与 abilityPoints 按序对齐的能力点名称（服务端返回，卡片预览直接使用，不依赖全量能力点列表） */
   abilityPointNames?: string[]
