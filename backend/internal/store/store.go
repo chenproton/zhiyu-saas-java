@@ -71,7 +71,6 @@ type Store struct {
 	studentPortrait  *StudentPortraitStore
 	studentHonors    *StudentHonorStore
 	jobAbilityRes    *JobAbilityResultStore
-	graduations      *GraduationStore
 	abilities        *AbilityStore
 	abilityDomains   *AbilityDomainStore
 	banners          *BannerStore
@@ -97,7 +96,6 @@ type Store struct {
 	staffTitles      *StaffTitlesStore
 	learnRoads       *LearnRoadsStore
 	certLib          *CertificateLibraryStore
-	microCerts       *MicroCertStore
 	onSiteQuestions  *OnSiteQuestionLibraryStore
 	alliance         *AllianceStore
 	allianceLinks    *AllianceEnterpriseLinkStore
@@ -166,7 +164,6 @@ func newStore(q Queryer) *Store {
 		studentPortrait:  NewStudentPortraitStore(q),
 		studentHonors:    NewStudentHonorStore(q),
 		jobAbilityRes:    NewJobAbilityResultStore(q),
-		graduations:      NewGraduationStore(q, beginner),
 		abilities:        NewAbilityStore(q),
 		abilityDomains:   NewAbilityDomainStore(q),
 		banners:          NewBannerStore(q),
@@ -192,7 +189,6 @@ func newStore(q Queryer) *Store {
 		staffTitles:      NewStaffTitlesStore(q),
 		learnRoads:       NewLearnRoadsStore(q),
 		certLib:          NewCertificateLibraryStore(q),
-		microCerts:       NewMicroCertStore(q, beginner),
 		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
 		alliance:         NewAllianceStore(q),
 		allianceLinks:    NewAllianceEnterpriseLinkStore(q),
@@ -480,11 +476,6 @@ func (s *Store) JobAbilityResults() *JobAbilityResultStore {
 	return s.jobAbilityRes
 }
 
-// Graduations 返回毕业设计 store。
-func (s *Store) Graduations() *GraduationStore {
-	return s.graduations
-}
-
 // Abilities 返回能力点 store。
 func (s *Store) Abilities() *AbilityStore {
 	return s.abilities
@@ -608,11 +599,6 @@ func (s *Store) LearnRoads() *LearnRoadsStore {
 // CertificateLibrary 返回证书库 store。
 func (s *Store) CertificateLibrary() *CertificateLibraryStore {
 	return s.certLib
-}
-
-// MicroCerts 返回微证书 store。
-func (s *Store) MicroCerts() *MicroCertStore {
-	return s.microCerts
 }
 
 // OnSiteQuestions 返回现场问答库 store。

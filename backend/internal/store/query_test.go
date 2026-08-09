@@ -147,7 +147,6 @@ func TestWhitelistCoversHandlerConfigs(t *testing.T) {
 		"ability_points",
 		"ability_domains",
 		"random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
-		"graduation_project_topics",
 		"student_ability_portraits",
 		"scene_evaluation_results",
 		"appeal_records",

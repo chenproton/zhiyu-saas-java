@@ -19,12 +19,6 @@ import type {
   LevelMapping,
   StudentAbilityPortrait,
   StudentAbilityArchive,
-  GraduationProjectTopic,
-  GraduationProjectArchive,
-  GraduationProjectEvaluation,
-  GraduationQueryResult,
-  MicroCertTemplate,
-  CertIssuanceRecord,
   EvaluationBatch,
   EvaluationMethodCategory,
   EvaluationMethod,
@@ -398,72 +392,6 @@ export const landingApi = {
     ),
 }
 
-export const graduationApi = {
-  listTopics: (params?: {
-    careerPositionId?: string
-    status?: string
-    search?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<ListResponse<GraduationProjectTopic>>(
-      `/evaluation/graduation/topics${buildQuery(params || {})}`,
-    ),
-  getTopic: (id: string) => request<GraduationProjectTopic>(`/evaluation/graduation/topics/${id}`),
-  createTopic: (req: Omit<GraduationProjectTopic, 'id' | 'appliedCount' | 'createdAt'>) =>
-    request<GraduationProjectTopic>('/evaluation/graduation/topics', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  updateTopic: (
-    id: string,
-    req: Partial<Omit<GraduationProjectTopic, 'id' | 'appliedCount' | 'createdAt'>>,
-  ) =>
-    request<GraduationProjectTopic>(`/evaluation/graduation/topics/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  deleteTopic: (id: string) =>
-    request<{ id: string }>(`/evaluation/graduation/topics/${id}`, { method: 'DELETE' }),
-  applyTopic: (id: string) =>
-    request<GraduationProjectTopic>(`/evaluation/graduation/topics/${id}/apply`, {
-      method: 'POST',
-    }),
-  listArchives: (params?: { topicId?: string; userId?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<GraduationProjectArchive>>(
-      `/evaluation/graduation/archives${buildQuery(params || {})}`,
-    ),
-  upsertArchive: (req: Partial<GraduationProjectArchive>) =>
-    request<GraduationProjectArchive>('/evaluation/graduation/archives', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  listEvaluations: (params?: {
-    topicId?: string
-    userId?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<ListResponse<GraduationProjectEvaluation>>(
-      `/evaluation/graduation/evaluations${buildQuery(params || {})}`,
-    ),
-  upsertEvaluation: (req: Partial<GraduationProjectEvaluation>) =>
-    request<GraduationProjectEvaluation>('/evaluation/graduation/evaluations', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  queryResults: (params?: {
-    userId?: string
-    className?: string
-    majorName?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<ListResponse<GraduationQueryResult>>(
-      `/evaluation/graduation/query${buildQuery(params || {})}`,
-    ),
-}
-
 export const jobAbilityResultApi = {
   list: (params?: {
     careerPositionId?: string
@@ -521,42 +449,6 @@ export const portraitApi = {
     }),
   deleteArchive: (id: string) =>
     request<{ id: string }>(`/evaluation/portraits/archives/${id}`, { method: 'DELETE' }),
-}
-
-export const microCertApi = {
-  listTemplates: (params?: { search?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<MicroCertTemplate>>(
-      `/evaluation/certificates/templates${buildQuery(params || {})}`,
-    ),
-  createTemplate: (req: Omit<MicroCertTemplate, 'id' | 'createdAt' | 'updatedAt'>) =>
-    request<MicroCertTemplate>('/evaluation/certificates/templates', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  updateTemplate: (
-    id: string,
-    req: Partial<Omit<MicroCertTemplate, 'id' | 'createdAt' | 'updatedAt'>>,
-  ) =>
-    request<MicroCertTemplate>(`/evaluation/certificates/templates/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  deleteTemplate: (id: string) =>
-    request<{ id: string }>(`/evaluation/certificates/templates/${id}`, { method: 'DELETE' }),
-  issue: (templateId: string, userIds: string[]) =>
-    request<{ count: number }>('/evaluation/certificates/issue', {
-      method: 'POST',
-      body: JSON.stringify({ templateId, userIds }),
-    }),
-  listHistory: (params?: {
-    userId?: string
-    templateId?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<ListResponse<CertIssuanceRecord>>(
-      `/evaluation/certificates/history${buildQuery(params || {})}`,
-    ),
 }
 
 export const evaluationBatchApi = {

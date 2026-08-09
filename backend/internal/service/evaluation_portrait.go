@@ -35,13 +35,3 @@ func (s *EvaluationService) CreateStudentArchive(ctx context.Context, p *store.S
 func (s *EvaluationService) DeleteStudentArchive(ctx context.Context, id, tenantID string) (bool, error) {
 	return s.st.StudentPortraits().DeleteArchive(ctx, id, tenantID)
 }
-
-// ListGraduationArchives 查询档案列表。
-func (s *EvaluationService) ListGraduationArchives(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.GraduationProjectArchive]) ([]domain.GraduationProjectArchive, int, error) {
-	return s.st.Graduations().ListArchives(ctx, p, cfg)
-}
-
-// CreateGraduationArchive 创建档案。
-func (s *EvaluationService) CreateGraduationArchive(ctx context.Context, tenantID, topicID, userID, phase string) (*domain.GraduationProjectArchive, error) {
-	return s.st.Graduations().CreateArchive(ctx, tenantID, topicID, userID, phase)
-}

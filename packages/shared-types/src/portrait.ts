@@ -1,6 +1,6 @@
-import type { EvaluationGrade } from './graduation'
-
 // ==================== 学生能力画像管理相关 ====================
+
+export type EvaluationGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 
 export type ArchiveMaterialType =
   'certificate' | 'competition' | 'activity' | 'internship' | 'skill'

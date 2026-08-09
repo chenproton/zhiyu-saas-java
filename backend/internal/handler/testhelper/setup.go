@@ -448,19 +448,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 			r.Post("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 
-			graduationHandler := &handler.GraduationHandler{Service: evaluationSvc}
-			r.Get("/evaluation/graduation/topics", graduationHandler.ListTopics)
-			r.Get("/evaluation/graduation/topics/{id}", graduationHandler.GetTopic)
-			r.Post("/evaluation/graduation/topics", graduationHandler.CreateTopic)
-			r.Put("/evaluation/graduation/topics/{id}", graduationHandler.UpdateTopic)
-			r.Delete("/evaluation/graduation/topics/{id}", graduationHandler.DeleteTopic)
-			r.Post("/evaluation/graduation/topics/{id}/apply", graduationHandler.ApplyTopic)
-			r.Get("/evaluation/graduation/archives", graduationHandler.ArchivesCRUD)
-			r.Post("/evaluation/graduation/archives", graduationHandler.ArchivesCRUD)
-			r.Get("/evaluation/graduation/evaluations", graduationHandler.EvaluationsCRUD)
-			r.Post("/evaluation/graduation/evaluations", graduationHandler.EvaluationsCRUD)
-			r.Get("/evaluation/graduation/query", graduationHandler.QueryResults)
-
 			studentPortraitHandler := handler.NewStudentPortraitHandler(st2)
 			r.Get("/evaluation/portraits", studentPortraitHandler.List)
 			r.Get("/evaluation/portraits/student-dashboard", studentPortraitHandler.StudentDashboard)
@@ -486,15 +473,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/certifications/positions/{positionId}/model", certificationModelHandler.GetModel)
 			r.Put("/evaluation/certifications/positions/{positionId}/weights", certificationModelHandler.PutWeights)
 			r.Put("/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels", certificationModelHandler.PutPointLevels)
-
-			microCertHandler := &handler.MicroCertHandler{Store: st2.MicroCerts()}
-			r.Get("/evaluation/certificates/templates", microCertHandler.ListTemplates)
-			r.Post("/evaluation/certificates/templates", microCertHandler.CreateTemplate)
-			r.Get("/evaluation/certificates/templates/{id}", microCertHandler.ListTemplates)
-			r.Put("/evaluation/certificates/templates/{id}", microCertHandler.UpdateTemplate)
-			r.Delete("/evaluation/certificates/templates/{id}", microCertHandler.DeleteTemplate)
-			r.Post("/evaluation/certificates/issue", microCertHandler.IssueCerts)
-			r.Get("/evaluation/certificates/history", microCertHandler.ListHistory)
 
 			evaluationMethodHandler := &handler.EvaluationMethodHandler{Service: evaluationSvc}
 			r.Get("/evaluation/methods/categories", evaluationMethodHandler.ListCategories)
@@ -535,11 +513,10 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 	ctx := context.Background()
 
 	// 清理旧测试数据，避免 UNIQUE 约束冲突
-	// 注意：先删引用方（archives/evaluations 的 FK 指向 topics），否则 topics 删除会因 FK 失败
+	// 注意：引用方（FK 依赖）必须先于主体删除，否则删除会因 FK 失败
 	tables := []string{
 		// 引用方优先（FK 依赖），再删主体
-		"graduation_project_archives", "graduation_project_evaluations", "graduation_query_results",
-		"learn_roads", "graduation_project_topics", "workflows",
+		"learn_roads", "workflows",
 		"exam_results", "exam_questions", "exam_usages", "question_banks", "exams",
 		"node_knowledge_point_bindings", "node_resource_bindings", "node_homework_submissions", "node_homeworks", "node_quizzes",
 		"system_course_nodes", "course_knowledge_bindings", "course_resource_bindings", "course_homework_submissions", "course_homeworks",
@@ -553,7 +530,6 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 		"period_slots", "venues", "terms",
 		"staff_titles", "industries", "majors", "org_types", "organizations",
 		"lesson_batches", "scene_batches", "evaluation_batches", "affairs_batches",
-		"micro_cert_templates", "cert_issuance_records",
 		"certification_rules", "certification_ability_items", "certification_ability_points",
 		"appeal_records", "user_relations", "hybrid_node_modules", "job_ability_results", "student_honors",
 	}
