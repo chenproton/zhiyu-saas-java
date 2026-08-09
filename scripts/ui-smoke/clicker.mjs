@@ -218,11 +218,12 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
   cfg = routeCfg(cfg, route) // per-route 配置覆盖（前缀匹配，最长优先）
   const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [], forms: [] }
   try {
-    // 门户 token 被其它应用（partner/superadmin）清除后自动恢复，避免后续页面全部被 skip
+    // 门户 token 被其它应用（partner/superadmin）清除或替换后自动恢复，避免后续页面被踢到登录页或用错身份
     if (token) {
       await page.evaluate(t => {
         try {
-          if (!localStorage.getItem('zhiyu-portal-token')) localStorage.setItem('zhiyu-portal-token', t)
+          const current = localStorage.getItem('zhiyu-portal-token')
+          if (current !== t) localStorage.setItem('zhiyu-portal-token', t)
         } catch { /* ignore */ }
       }, token).catch(() => {})
     }
@@ -307,9 +308,14 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
   }
   // sink 分流：真实错误 vs 信息类（auth/rate-limit/console-warning），预期权限页直接丢弃 auth
   const expectedAuth = (cfg.expectedAuthPages || []).some(x => route.includes(x))
+  const hasAuthInfo = sink.some(e => e.type === 'auth' || (e.type === 'console' && /\b401\b|\b403\b/.test(e.message || '')))
   for (const err of sink.splice(0)) {
     if (err.type === 'auth' && expectedAuth) continue
     if (NON_ERROR_TYPES.has(err.type) || err.type === 'console-warning') routeResult.info.push(err)
+    else if (err.type === 'console' && err.message === '[app-error] Object' && hasAuthInfo) {
+      // 前端对 401/403 的兜底报错（如 reportError(err) 时 err 被序列化为 Object）归为权限信号
+      routeResult.info.push({ ...err, type: 'auth' })
+    }
     else routeResult.errors.push(err)
   }
   // skip 判定：无权限遮罩页（无点击、无真实错误、但有 401/403 信号）记 skip
