@@ -11,6 +11,17 @@ export function classifyApiResponse(status, { isDynamicRoute = false, dynamicIgn
   return 'api'
 }
 
+// 判断错误是否为瞬态基础设施错误（502/503/504、连接被拒绝等），可在导航层面重试
+export function isTransientError(err) {
+  const msg = String(err.message || '')
+  const type = err.type || ''
+  if (type === 'api' && /\b50[234]\b/.test(msg)) return true
+  if (type === 'console' && /\b50[234]\b.*Bad Gateway|Gateway Timeout|Service Unavailable|Failed to load resource/i.test(msg)) return true
+  if (type === 'network' && /ERR_CONNECTION_REFUSED|ERR_CONNECTION_RESET|net::ERR_FAILED/i.test(msg)) return true
+  if (type === 'page' && /net::ERR_CONNECTION_REFUSED|ERR_CONNECTION_RESET|502\s|503\s|504\s/i.test(msg)) return true
+  return false
+}
+
 // 断点续跑：按 角色:路由 记录已完成（ok/skip），避免跨角色误跳过
 export function buildResumeDoneSet(prevReport) {
   const done = new Set()

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildDangerousRe } from '../clicker.mjs'
-import { errorSignature, aggregateErrors, classifyApiResponse, buildResumeDoneSet } from '../report.mjs'
+import { errorSignature, aggregateErrors, classifyApiResponse, buildResumeDoneSet, isTransientError } from '../report.mjs'
 import { resolveImportCandidates } from '../routes.mjs'
 
 const CFG = {
@@ -72,6 +72,18 @@ test('API 响应分类：401/403→auth，429→rate-limit，动态页 404→ign
   assert.equal(classifyApiResponse(404, { isDynamicRoute: false }), 'api')
   assert.equal(classifyApiResponse(500), 'api')
   assert.equal(classifyApiResponse(400), 'api')
+})
+
+test('瞬态错误识别：502/503/504 与连接错误可重试，5xx 业务错误不可重试', () => {
+  assert.ok(isTransientError({ type: 'api', message: '502 GET /api/v1/settings/theme' }))
+  assert.ok(isTransientError({ type: 'api', message: '503 GET /api/v1/settings/theme' }))
+  assert.ok(isTransientError({ type: 'api', message: '504 POST /api/v1/x' }))
+  assert.ok(isTransientError({ type: 'console', message: 'Failed to load resource: the server responded with a status of 502 (Bad Gateway)' }))
+  assert.ok(isTransientError({ type: 'network', message: 'net::ERR_CONNECTION_REFUSED GET /api/v1/x' }))
+  assert.ok(isTransientError({ type: 'page', message: 'net::ERR_CONNECTION_REFUSED at http://127.0.0.1/affairs/relations' }))
+  assert.ok(!isTransientError({ type: 'api', message: '500 GET /api/v1/settings/theme' }))
+  assert.ok(!isTransientError({ type: 'api', message: '400 GET /api/v1/settings/theme' }))
+  assert.ok(!isTransientError({ type: 'console', message: 'TypeError: Cannot read properties of undefined' }))
 })
 
 test('断点续跑按 角色:路由 记录', () => {

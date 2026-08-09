@@ -44,6 +44,12 @@ const DEFAULTS = {
   retryCrashes: 2,
   // 单路由巡检超时（秒）：表格页行按钮多，120s 不够，放宽到 180s
   routeTimeoutSec: 180,
+  // 启动前就绪探测：等待 nginx 能正常连到前后端（避免部署刚结束上游还在切换导致 502）
+  readyTimeoutSec: 120,
+  readyIntervalMs: 1500,
+  // 瞬态错误重试：502/503/504 或连接被拒绝时重试整页（区分于崩溃重试）
+  retryTransient: 2,
+  retryTransientDelayMs: 1200,
   // 无文本/无 aria-label 的图标按钮：默认跳过（宁漏勿删）
   allowIconButtons: false,
   // 动态路由详情页上的 404（实体被删/无权限 id）默认忽略
@@ -116,6 +122,8 @@ export function parseArgs(argv) {
       case '--headed': args.headed = true; break
       case '--verbose': args.verbose = true; break
       case '--timeout-min': args.timeoutMin = parseInt(next(), 10); break
+      case '--ready-timeout': args.readyTimeoutSec = parseInt(next(), 10); break
+      case '--retry-transient': args.retryTransient = parseInt(next(), 10); break
       case '--help': case '-h':
         console.log(`知育前端全站点击巡检工具（UI Smoke Test）
 
@@ -141,6 +149,8 @@ export function parseArgs(argv) {
   --headed              显示浏览器窗口
   --verbose             连 warning 与噪音一并输出
   --timeout-min <n>     全局看门狗超时（分钟，默认不限）
+  --ready-timeout <n>   启动前就绪探测超时（秒，默认 120）
+  --retry-transient <n> 单路由瞬态 502/连接错误重试次数（默认 2）
 `)
         process.exit(0)
       default:

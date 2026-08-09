@@ -9,7 +9,7 @@ import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
 import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES } from './routes.mjs'
 import { walkRoute } from './clicker.mjs'
 import { cleanupSmokeData } from './forms.mjs'
-import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, printSummary, writeReport } from './report.mjs'
+import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, isTransientError, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -144,6 +144,36 @@ async function readStateToken(role) {
   return ''
 }
 
+// ── 启动前就绪探测：等待 nginx 能正常连到前后端，避免部署手顺中 502 ──
+async function waitForReady(cfg) {
+  const deadline = Date.now() + (cfg.readyTimeoutSec || 120) * 1000
+  const probes = [
+    { name: 'frontend', url: `${cfg.baseUrl}/portal/login`, expect: 200 },
+    { name: 'backend', url: `${cfg.baseUrl}/api/v1/settings/theme`, expect: 200 },
+  ]
+  let lastErr = ''
+  while (Date.now() < deadline) {
+    let pending = probes.length
+    const statuses = {}
+    for (const p of probes) {
+      try {
+        const res = await fetch(p.url, { method: 'GET', signal: AbortSignal.timeout(3000) })
+        statuses[p.name] = res.status
+      } catch (e) {
+        statuses[p.name] = 0
+        lastErr = e.message
+      }
+    }
+    if (Object.values(statuses).every(s => s >= 200 && s < 500)) {
+      console.log(`[ready] 前后端就绪（${Object.entries(statuses).map(([k, v]) => `${k}=${v}`).join(', ')}）`)
+      return
+    }
+    console.log(`[ready] 等待就绪：${Object.entries(statuses).map(([k, v]) => `${k}=${v || 'conn_err'}`).join(', ')}${lastErr ? ` (${lastErr.slice(0, 80)})` : ''}`)
+    await sleep(cfg.readyIntervalMs || 1500)
+  }
+  throw new Error(`服务未在 ${cfg.readyTimeoutSec || 120}s 内就绪，最后错误: ${lastErr || 'timeout'}`)
+}
+
 // ── 后端容器日志增量抓取（可选） ───────────────────────────
 function tailBackendLogs(startTime) {
   try {
@@ -190,6 +220,14 @@ export async function main() {
       cfg.workers = 1
     }
     console.log(`[test-forms] 表单填充+提交测试已启用（每页上限 ${cfg.maxFormSubmits} 次，数据前缀 SMOKE_，结束后${cfg.cleanup !== false ? '自动' : '不'}清理）`)
+  }
+
+  // 启动前就绪探测，避免部署后上游尚未切换完就开测
+  try {
+    await waitForReady(cfg)
+  } catch (e) {
+    console.error(`\n[ready] ${e.message}`)
+    process.exit(1)
   }
 
   const backendStart = new Date().toISOString()
@@ -296,6 +334,23 @@ export async function main() {
               }
               allCrashes.count++
               allCrashes.routes.push(route)
+            }
+            // 瞬态基础设施错误（502/503/504/连接被拒绝）重试，避免部署/重启手顺中的偶发失败污染报告
+            const maxTransient = cfg.retryTransient ?? 2
+            for (let attempt = 0; r.errors.length && r.errors.every(isTransientError) && attempt < maxTransient; attempt++) {
+              console.log(`  [${role}] ${route} 触发瞬态错误，${attempt + 1}/${maxTransient} 后重试...`)
+              await sleep(cfg.retryTransientDelayMs || 1200)
+              await wpage.close().catch(() => {})
+              wpage = await wctx.newPage()
+              wsink = []
+              attachListeners(wpage, wsink, cfg, wstate)
+              r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken, globalSeen)
+              if (r.timedOut) {
+                await wpage.close().catch(() => {})
+                wpage = await wctx.newPage()
+                wsink = []
+                attachListeners(wpage, wsink, cfg, wstate)
+              }
             }
             perRole.push(r)
             done++
