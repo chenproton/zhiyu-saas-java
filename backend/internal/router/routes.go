@@ -54,7 +54,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 	businessUser := authmw.RequireRoleOrMenu(domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin)
 	jobViewer := authmw.RequireRoleOrMenu(domain.RoleTeacher, domain.RoleStudent, domain.RoleSchoolAdmin, domain.RoleEnterpriseMentor, domain.RolePlatformAdmin)
 
-	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
 	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
 	cachedPublicScenarios := cache.Cached(redisClient, 2*time.Minute, cache.PublicScenariosKey())
 	cachedDashboard := cache.Cached(redisClient, 30*time.Second, cache.DashboardKey())
@@ -70,7 +69,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Get("/auth/portal/me", h.authHandler.PortalMe)
 			r.Get("/subscriptions", h.subscriptionHandler.Get)
 
-			registerLandingRoutes(r, h, cachedLandingExams)
+			registerLandingRoutes(r, h)
 
 			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
 			r.Group(func(r chi.Router) {
@@ -108,7 +107,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
 				r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
 				r.Post("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.Submit)
-				r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitNodeHomework)
 
 				// 学生提交/查看本人的场景测评结果；评分仍限 businessUser
 				r.Get("/evaluation/results", h.evaluationResultHandler.List)
@@ -379,9 +377,7 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Post("/export/teachers/excel", h.resourceExportHandler.ExportTeachers)
 }
 
-func registerLandingRoutes(r chi.Router, h *Handlers, cachedLandingExams func(http.Handler) http.Handler) {
-	r.With(cachedLandingExams).Get("/evaluation/landing/exams", h.landingHandler.ListExams)
-	r.Get("/evaluation/landing/certifications/{id}/grades", h.certGradeHandler.ListGrades)
+func registerLandingRoutes(r chi.Router, h *Handlers) {
 	r.Get("/job/landing/target-positions", h.landingHandler.ListTargetPositions)
 }
 

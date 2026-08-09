@@ -77,10 +77,6 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Post("/evaluation/portraits/archives", h.studentPortraitHandler.CreateArchive)
 	r.Delete("/evaluation/portraits/archives/{id}", h.studentPortraitHandler.DeleteArchive)
 
-	r.Get("/evaluation/methods/categories", h.evaluationMethodHandler.ListCategories)
-	r.Get("/evaluation/methods", h.evaluationMethodHandler.ListMethods)
-	r.Post("/evaluation/methods/{id}/toggle", h.evaluationMethodHandler.Toggle)
-
 	r.Get("/evaluation/appeals", h.appealHandler.List)
 	r.Get("/evaluation/appeals/{id}", h.appealHandler.Get)
 	r.Post("/evaluation/appeals", h.appealHandler.Create)

@@ -38,7 +38,6 @@ type Store struct {
 	scenarioGrade    *ScenarioGradeStore
 	taskBindings     *TaskKnowledgeAbilityStore
 	knowledgePoint   *KnowledgePointStore
-	nodeHomework     *NodeHomeworkStore
 	resourceBind     *ResourceBindingStore
 	positionAbility  *PositionAbilityStore
 	positionResp     *PositionResponsibilityStore
@@ -53,7 +52,6 @@ type Store struct {
 	taskEval         *TaskEvaluationStore
 	positions        *PositionStore
 	courses          *CourseStore
-	courseHomeworks  *CourseHomeworkStore
 	courseAssess     *CourseAssessmentStore
 	questionBanks    *QuestionBankStore
 	questions        *QuestionStore
@@ -61,10 +59,8 @@ type Store struct {
 	examResults      *ExamResultStore
 	examUsages       *ExamUsageStore
 	randomDrawQ      *RandomDrawQuestionStore
-	certGrades       *CertGradeStore
 	scheduling       *SchedulingStore
 	certifications   *CertificationStore
-	evalMethods      *EvaluationMethodStore
 	appeals          *AppealStore
 	evalResults      *EvaluationResultStore
 	nodeEvalResults  *NodeEvaluationResultStore
@@ -131,7 +127,6 @@ func newStore(q Queryer) *Store {
 		scenarioGrade:    NewScenarioGradeStore(q),
 		taskBindings:     NewTaskKnowledgeAbilityStore(q),
 		knowledgePoint:   NewKnowledgePointStore(q),
-		nodeHomework:     NewNodeHomeworkStore(q),
 		resourceBind:     NewResourceBindingStore(q, beginner),
 		positionAbility:  NewPositionAbilityStore(q),
 		positionResp:     NewPositionResponsibilityStore(q),
@@ -146,7 +141,6 @@ func newStore(q Queryer) *Store {
 		taskEval:         NewTaskEvaluationStore(q),
 		positions:        NewPositionStore(q, beginner),
 		courses:          NewCourseStore(q, beginner),
-		courseHomeworks:  NewCourseHomeworkStore(q, beginner),
 		courseAssess:     NewCourseAssessmentStore(q),
 		questionBanks:    NewQuestionBankStore(q),
 		questions:        NewQuestionStore(q),
@@ -154,10 +148,8 @@ func newStore(q Queryer) *Store {
 		examResults:      NewExamResultStore(q),
 		examUsages:       NewExamUsageStore(q),
 		randomDrawQ:      NewRandomDrawQuestionStore(q, beginner),
-		certGrades:       NewCertGradeStore(q),
 		scheduling:       NewSchedulingStore(q),
 		certifications:   NewCertificationStore(q, beginner),
-		evalMethods:      NewEvaluationMethodStore(q),
 		appeals:          NewAppealStore(q),
 		evalResults:      NewEvaluationResultStore(q),
 		nodeEvalResults:  NewNodeEvaluationResultStore(q),
@@ -311,11 +303,6 @@ func (s *Store) KnowledgePoints() *KnowledgePointStore {
 	return s.knowledgePoint
 }
 
-// NodeHomeworks 返回节点作业 store。
-func (s *Store) NodeHomeworks() *NodeHomeworkStore {
-	return s.nodeHomework
-}
-
 // ResourceBindings 返回资源绑定 store。
 func (s *Store) ResourceBindings() *ResourceBindingStore {
 	return s.resourceBind
@@ -386,11 +373,6 @@ func (s *Store) Courses() *CourseStore {
 	return s.courses
 }
 
-// CourseHomeworks 返回作业 store。
-func (s *Store) CourseHomeworks() *CourseHomeworkStore {
-	return s.courseHomeworks
-}
-
 // CourseAssessments 返回评估生成 store。
 func (s *Store) CourseAssessments() *CourseAssessmentStore {
 	return s.courseAssess
@@ -426,11 +408,6 @@ func (s *Store) RandomDrawQuestions() *RandomDrawQuestionStore {
 	return s.randomDrawQ
 }
 
-// CertGrades 返回岗位认证等级 store。
-func (s *Store) CertGrades() *CertGradeStore {
-	return s.certGrades
-}
-
 // Scheduling 返回排课 store。
 func (s *Store) Scheduling() *SchedulingStore {
 	return s.scheduling
@@ -439,11 +416,6 @@ func (s *Store) Scheduling() *SchedulingStore {
 // Certifications 返回认证 store。
 func (s *Store) Certifications() *CertificationStore {
 	return s.certifications
-}
-
-// EvaluationMethods 返回评价方法 store。
-func (s *Store) EvaluationMethods() *EvaluationMethodStore {
-	return s.evalMethods
 }
 
 // Appeals 返回申诉 store。

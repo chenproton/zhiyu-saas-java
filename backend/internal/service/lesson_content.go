@@ -74,31 +74,6 @@ func (s *LessonContentService) ListUncitedKnowledgePoints(ctx context.Context, t
 	return s.st.KnowledgePoints().ListUncited(ctx, tenantID, from, to, limit, offset)
 }
 
-// ListNodeHomeworks 查询作业列表。
-func (s *LessonContentService) ListNodeHomeworks(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.NodeHomework]) ([]domain.NodeHomework, int, error) {
-	return s.st.NodeHomeworks().List(ctx, p, cfg)
-}
-
-// GetNodeHomework 查询单个作业。
-func (s *LessonContentService) GetNodeHomework(ctx context.Context, id, tenantID string) (*domain.NodeHomework, error) {
-	return s.st.NodeHomeworks().Get(ctx, id, tenantID)
-}
-
-// CreateNodeHomework 创建作业。
-func (s *LessonContentService) CreateNodeHomework(ctx context.Context, tenantID string, p *store.NodeHomeworkCreateParams) (*domain.NodeHomework, error) {
-	return s.st.NodeHomeworks().Create(ctx, tenantID, p)
-}
-
-// UpdateNodeHomework 更新作业。
-func (s *LessonContentService) UpdateNodeHomework(ctx context.Context, id, tenantID string, p *store.NodeHomeworkUpdateParams) (*domain.NodeHomework, error) {
-	return s.st.NodeHomeworks().Update(ctx, id, tenantID, p)
-}
-
-// DeleteNodeHomework 删除作业。
-func (s *LessonContentService) DeleteNodeHomework(ctx context.Context, id, tenantID string) error {
-	return s.st.NodeHomeworks().Delete(ctx, id, tenantID)
-}
-
 // ListQuizzes 查询测验列表。
 func (s *LessonContentService) ListQuizzes(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.NodeQuiz]) ([]domain.NodeQuiz, int, error) {
 	return s.st.NodeQuizzes().ListQuizzes(ctx, p, cfg)
@@ -346,40 +321,6 @@ func (s *LessonContentService) UpdateCourse(ctx context.Context, id, tenantID, u
 // DeleteCourse 删除课程（限定租户）。
 func (s *LessonContentService) DeleteCourse(ctx context.Context, id, tenantID string) error {
 	return s.st.Courses().Delete(ctx, id, tenantID)
-}
-
-// ===== 课程/节点作业 =====
-
-// SubmitCourseHomework 提交课程作业。
-func (s *LessonContentService) SubmitCourseHomework(ctx context.Context, tenantID, courseID, homeworkID, studentID, content string, attachmentURLs []string) (string, error) {
-	return s.st.CourseHomeworks().SubmitCourseHomework(ctx, tenantID, courseID, homeworkID, studentID, content, attachmentURLs)
-}
-
-// ListCourseHomeworkSubmissions 查询课程作业提交。
-func (s *LessonContentService) ListCourseHomeworkSubmissions(ctx context.Context, tenantID, courseID, homeworkID string, studentID *string) ([]store.HomeworkSubmissionItem, error) {
-	return s.st.CourseHomeworks().ListCourseHomeworkSubmissions(ctx, tenantID, courseID, homeworkID, studentID)
-}
-
-// GradeCourseHomework 批改课程作业。
-func (s *LessonContentService) GradeCourseHomework(ctx context.Context, graderID, tenantID, courseID, homeworkID, submissionID string, score float64, comment string) error {
-	_, _, err := s.st.CourseHomeworks().GradeCourseHomework(ctx, graderID, tenantID, courseID, homeworkID, submissionID, score, comment)
-	return err
-}
-
-// SubmitNodeHomework 提交节点作业。
-func (s *LessonContentService) SubmitNodeHomework(ctx context.Context, tenantID, nodeID, homeworkID, studentID, content string, attachmentURLs []string) (string, error) {
-	return s.st.CourseHomeworks().SubmitNodeHomework(ctx, tenantID, nodeID, homeworkID, studentID, content, attachmentURLs)
-}
-
-// ListNodeHomeworkSubmissions 查询节点作业提交。
-func (s *LessonContentService) ListNodeHomeworkSubmissions(ctx context.Context, tenantID, nodeID, homeworkID string, studentID *string) ([]store.HomeworkSubmissionItem, error) {
-	return s.st.CourseHomeworks().ListNodeHomeworkSubmissions(ctx, tenantID, nodeID, homeworkID, studentID)
-}
-
-// GradeNodeHomework 批改节点作业。
-func (s *LessonContentService) GradeNodeHomework(ctx context.Context, graderID, tenantID, nodeID, homeworkID, submissionID string, score float64, comment string) error {
-	_, _, err := s.st.CourseHomeworks().GradeNodeHomework(ctx, graderID, tenantID, nodeID, homeworkID, submissionID, score, comment)
-	return err
 }
 
 // ===== 课程评估生成（发布 hook）=====
@@ -641,24 +582,4 @@ func extractEvalRuleConfig(evalData map[string]interface{}) map[string]interface
 		return rc
 	}
 	return nil
-}
-
-// ListCourseExamUsages 查询课程考试安排。
-func (s *LessonContentService) ListCourseExamUsages(ctx context.Context, courseID, tenantID string) ([]store.CourseExamUsage, error) {
-	return s.st.CourseAssessments().ListCourseExamUsages(ctx, tenantID, courseID)
-}
-
-// ListCourseHomeworks 查询课程作业列表。
-func (s *LessonContentService) ListCourseHomeworks(ctx context.Context, courseID, tenantID string) ([]store.CourseHomework, error) {
-	return s.st.CourseAssessments().ListCourseHomeworks(ctx, tenantID, courseID)
-}
-
-// CourseHomeworkExists 校验课程作业存在。
-func (s *LessonContentService) CourseHomeworkExists(ctx context.Context, homeworkID, courseID, tenantID string) (bool, error) {
-	return s.st.CourseHomeworks().CourseHomeworkExists(ctx, homeworkID, courseID, tenantID)
-}
-
-// NodeHomeworkExists 校验节点作业存在。
-func (s *LessonContentService) NodeHomeworkExists(ctx context.Context, homeworkID, nodeID, tenantID string) (bool, error) {
-	return s.st.CourseHomeworks().NodeHomeworkExists(ctx, homeworkID, nodeID, tenantID)
 }

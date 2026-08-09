@@ -27,8 +27,6 @@ func TestRoleIsolation_StudentForbidden(t *testing.T) {
 		{"grade-exam", http.MethodPost, "/api/v1/evaluation/exam-results/grade"},
 		// 证书颁发（管理专属）
 		{"issue-cert", http.MethodPost, "/api/v1/evaluation/certificates/issue"},
-		// 作业批改（教师专属）
-		{"grade-homework", http.MethodPost, "/api/v1/lesson/homeworks/grade"},
 		// 申诉处理（教师专属）
 		{"process-appeal", http.MethodPost, "/api/v1/evaluation/appeals/process"},
 	}

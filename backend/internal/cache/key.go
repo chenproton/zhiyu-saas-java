@@ -28,13 +28,6 @@ func PublicPositionsKey() KeyFunc {
 	}
 }
 
-func LandingExamsKey() KeyFunc {
-	return func(r *http.Request) string {
-		tenant := tenantFromRequest(r)
-		return "zhiyu:" + tenant + ":landing:exams"
-	}
-}
-
 // DashboardKey 工作台仪表盘缓存键：按租户+用户+角色隔离，避免跨用户/跨角色串数据
 // （同一用户切换角色时视图不同，role 缺失会命中对方视图缓存）。
 func DashboardKey() KeyFunc {

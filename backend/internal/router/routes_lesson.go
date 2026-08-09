@@ -5,14 +5,6 @@ import "github.com/go-chi/chi/v5"
 func registerLessonRoutes(r chi.Router, h *Handlers) {
 	registerContentRoutes(r, "/lesson/courses", h.courseHandler)
 	r.Post("/lesson/courses/{id}/clone", h.courseCloneHandler.Clone)
-	r.Get("/lesson/courses/{id}/assessments", h.courseHandler.Assessments)
-	r.Post("/lesson/courses/{id}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitHomework)
-	r.Get("/lesson/courses/{id}/homeworks/{homeworkId}/submissions", h.courseHandler.ListHomeworkSubmissions)
-	r.Post("/lesson/courses/{id}/homeworks/{homeworkId}/submissions/{submissionId}/grade", h.courseHandler.GradeHomeworkSubmission)
-
-	// 节点作业查询/批改（教师端）
-	r.Get("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submissions", h.courseHandler.ListNodeHomeworkSubmissions)
-	r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submissions/{submissionId}/grade", h.courseHandler.GradeNodeHomeworkSubmission)
 
 	// 节点测评结果评分（教师端）
 	r.Get("/lesson/course-node-evaluation-results", h.nodeEvaluationResultHandler.ListByCourse)
@@ -38,12 +30,6 @@ func registerLessonRoutes(r chi.Router, h *Handlers) {
 	r.Post("/lesson/quizzes/{id}/questions", h.nodeQuizHandler.AddQuestion)
 	r.Put("/lesson/quizzes/questions/{questionId}", h.nodeQuizHandler.UpdateQuestion)
 	r.Delete("/lesson/quizzes/questions/{questionId}", h.nodeQuizHandler.DeleteQuestion)
-
-	r.Get("/lesson/homeworks", h.nodeHomeworkHandler.List)
-	r.Get("/lesson/homeworks/{id}", h.nodeHomeworkHandler.Get)
-	r.Post("/lesson/homeworks", h.nodeHomeworkHandler.Create)
-	r.Put("/lesson/homeworks/{id}", h.nodeHomeworkHandler.Update)
-	r.Delete("/lesson/homeworks/{id}", h.nodeHomeworkHandler.Delete)
 
 	r.Get("/lesson/node-resources", h.nodeResourceHandler.ListResources)
 	r.Post("/lesson/node-resources/create", h.nodeResourceHandler.Create)

@@ -376,13 +376,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/lesson/quizzes/questions/{questionId}", nodeQuizHandler.UpdateQuestion)
 			r.Delete("/lesson/quizzes/questions/{questionId}", nodeQuizHandler.DeleteQuestion)
 
-			nodeHomeworkHandler := &handler.NodeHomeworkHandler{Service: lessonContentSvc}
-			r.Get("/lesson/homeworks", nodeHomeworkHandler.List)
-			r.Get("/lesson/homeworks/{id}", nodeHomeworkHandler.Get)
-			r.Post("/lesson/homeworks", nodeHomeworkHandler.Create)
-			r.Put("/lesson/homeworks/{id}", nodeHomeworkHandler.Update)
-			r.Delete("/lesson/homeworks/{id}", nodeHomeworkHandler.Delete)
-
 			hybridModuleHandler := &handler.HybridModuleHandler{Service: lessonContentSvc}
 			r.Get("/lesson/hybrid-modules", hybridModuleHandler.ListModules)
 			r.Post("/lesson/hybrid-modules", hybridModuleHandler.UpsertModule)
@@ -473,11 +466,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/certifications/positions/{positionId}/model", certificationModelHandler.GetModel)
 			r.Put("/evaluation/certifications/positions/{positionId}/weights", certificationModelHandler.PutWeights)
 			r.Put("/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels", certificationModelHandler.PutPointLevels)
-
-			evaluationMethodHandler := &handler.EvaluationMethodHandler{Service: evaluationSvc}
-			r.Get("/evaluation/methods/categories", evaluationMethodHandler.ListCategories)
-			r.Get("/evaluation/methods", evaluationMethodHandler.ListMethods)
-			r.Post("/evaluation/methods/{id}/toggle", evaluationMethodHandler.Toggle)
 
 			appealHandler := &handler.AppealHandler{Service: evaluationSvc}
 			r.Get("/evaluation/appeals", appealHandler.List)

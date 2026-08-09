@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -214,94 +213,4 @@ func (s *CourseAssessmentStore) CleanupCourseLevelAssessments(ctx context.Contex
 		return fmt.Errorf("cleanup course homeworks: %w", err)
 	}
 	return nil
-}
-
-// CourseExamUsage 课程考试安排（评估列表项）。
-type CourseExamUsage struct {
-	ID        string  `json:"id"`
-	ExamID    string  `json:"examId"`
-	ExamName  string  `json:"examName"`
-	IsTemp    bool    `json:"isTemp"`
-	Name      string  `json:"name"`
-	StartTime *string `json:"startTime,omitempty"`
-	EndTime   *string `json:"endTime,omitempty"`
-	Duration  *int    `json:"duration,omitempty"`
-	Status    string  `json:"status"`
-	Type      string  `json:"type"`
-}
-
-// CourseHomework 课程作业（评估列表项）。
-type CourseHomework struct {
-	ID             string  `json:"id"`
-	Title          string  `json:"title"`
-	Requirement    string  `json:"requirement"`
-	NeedAttachment bool    `json:"needAttachment"`
-	Deadline       *string `json:"deadline,omitempty"`
-	Status         string  `json:"status"`
-	Type           string  `json:"type"`
-}
-
-// ListCourseExamUsages 查询课程考试安排列表。
-func (s *CourseAssessmentStore) ListCourseExamUsages(ctx context.Context, tenantID, courseID string) ([]CourseExamUsage, error) {
-	rows, err := s.q.Query(ctx, `
-		SELECT eu.id, eu.exam_id, e.name AS exam_name, e.is_temp, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status
-		FROM exam_usages eu
-		JOIN exams e ON e.id = eu.exam_id
-		WHERE eu.tenant_id = $1 AND eu.target_type = 'course' AND $2 = ANY(eu.target_ids)
-		ORDER BY eu.created_at ASC
-	`, tenantID, courseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := make([]CourseExamUsage, 0)
-	for rows.Next() {
-		var item CourseExamUsage
-		var startTime, endTime *time.Time
-		if err := rows.Scan(&item.ID, &item.ExamID, &item.ExamName, &item.IsTemp, &item.Name, &startTime, &endTime, &item.Duration, &item.Status); err != nil {
-			return nil, err
-		}
-		item.Type = "exam"
-		if startTime != nil {
-			s := startTime.Format(time.RFC3339)
-			item.StartTime = &s
-		}
-		if endTime != nil {
-			s := endTime.Format(time.RFC3339)
-			item.EndTime = &s
-		}
-		items = append(items, item)
-	}
-	return items, rows.Err()
-}
-
-// ListCourseHomeworks 查询课程作业列表。
-func (s *CourseAssessmentStore) ListCourseHomeworks(ctx context.Context, tenantID, courseID string) ([]CourseHomework, error) {
-	rows, err := s.q.Query(ctx, `
-		SELECT id, title, requirement, need_attachment, deadline, status
-		FROM course_homeworks
-		WHERE tenant_id = $1 AND course_id = $2
-		ORDER BY created_at ASC
-	`, tenantID, courseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := make([]CourseHomework, 0)
-	for rows.Next() {
-		var item CourseHomework
-		var deadline *time.Time
-		if err := rows.Scan(&item.ID, &item.Title, &item.Requirement, &item.NeedAttachment, &deadline, &item.Status); err != nil {
-			return nil, err
-		}
-		item.Type = "homework"
-		if deadline != nil {
-			s := deadline.Format(time.RFC3339)
-			item.Deadline = &s
-		}
-		items = append(items, item)
-	}
-	return items, rows.Err()
 }

@@ -20,8 +20,6 @@ import type {
   StudentAbilityPortrait,
   StudentAbilityArchive,
   EvaluationBatch,
-  EvaluationMethodCategory,
-  EvaluationMethod,
   RandomDrawQuestion,
 } from '../types/evaluation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
@@ -168,18 +166,6 @@ export const evaluationResultApi = {
     request<{ count: number }>('/evaluation/results/batch-grade', {
       method: 'POST',
       body: JSON.stringify({ items }),
-    }),
-}
-
-export const evaluationMethodApi = {
-  listCategories: () =>
-    request<ListResponse<EvaluationMethodCategory>>('/evaluation/methods/categories'),
-  listMethods: (params?: { categoryId?: string; enabled?: boolean }) =>
-    request<ListResponse<EvaluationMethod>>(`/evaluation/methods${buildQuery(params || {})}`),
-  toggle: (id: string, enabled: boolean) =>
-    request<EvaluationMethod>(`/evaluation/methods/${id}/toggle`, {
-      method: 'POST',
-      body: JSON.stringify({ enabled }),
     }),
 }
 
@@ -337,58 +323,6 @@ export const certApi = {
         method: 'PUT',
         body: JSON.stringify({ levelMapping }),
       },
-    ),
-}
-
-export interface LandingExamItem {
-  id: string
-  name: string
-  status: string
-  type: string
-  time: string
-  duration: number
-  questionCount: number
-  description: string
-  college: string
-  major: string
-  targetAudience: string
-}
-
-export interface CompItem {
-  name: string
-  target: number
-  current: number
-  desc: string
-}
-
-export interface CompGroup {
-  duty: string
-  items: CompItem[]
-}
-
-export interface LeaderboardEntry {
-  id: string
-  studentName: string
-  className: string
-  major: string
-  achievementRate: number
-  grade: string
-}
-
-export interface CertGradeData {
-  totalPoints: number
-  avgRate: number
-  lastUpdated: string
-  compData: CompGroup[]
-  leaderboard: LeaderboardEntry[]
-}
-
-export const landingApi = {
-  listExams: (params?: { search?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<LandingExamItem>>(`/evaluation/landing/exams${buildQuery(params || {})}`),
-  getCertGrades: (positionId: string) =>
-    request<{ grades: Record<string, CertGradeData> }>(
-      `/evaluation/landing/certifications/${positionId}/grades`,
     ),
 }
 

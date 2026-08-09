@@ -150,7 +150,6 @@ func TestWhitelistCoversHandlerConfigs(t *testing.T) {
 		"student_ability_portraits",
 		"scene_evaluation_results",
 		"appeal_records",
-		"evaluation_methods",
 		"hybrid_node_modules",
 		"resource_codes",
 	}

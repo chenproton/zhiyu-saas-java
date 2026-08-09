@@ -481,101 +481,6 @@ func TestNodeQuiz_CRUD(t *testing.T) {
 	}
 }
 
-func TestNodeHomework_CRUD(t *testing.T) {
-	env := testhelper.SetupTestEnv(t)
-	defer env.Cleanup()
-	ctx := context.Background()
-
-	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
-		"code":     "TEST006",
-		"name":     "Homework Test Course",
-		"type":     "system",
-		"category": "公共基础课",
-	})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("expected 201, got %d", w.Code)
-	}
-	course, _ := testhelper.Unmarshal[domain.Course](w)
-	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
-
-	w = env.Do("POST", "/api/v1/lesson/nodes", map[string]interface{}{
-		"courseId":  course.ID,
-		"name":      "Homework Node",
-		"sortOrder": 0,
-		"refType":   "normal",
-	})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("expected 201, got %d", w.Code)
-	}
-	node, _ := testhelper.Unmarshal[handler.SystemCourseNodeResponse](w)
-	defer env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE id = $1", node.ID)
-
-	w = env.Do("POST", "/api/v1/lesson/homeworks", map[string]interface{}{
-		"nodeId": node.ID,
-		"title":  "HW 1",
-	})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	hw, err := testhelper.Unmarshal[domain.NodeHomework](w)
-	if err != nil {
-		t.Fatalf("unmarshal homework: %v", err)
-	}
-	defer env.DB.Exec(ctx, "DELETE FROM node_homeworks WHERE id = $1", hw.ID)
-
-	if hw.Title != "HW 1" {
-		t.Fatalf("expected HW 1, got %s", hw.Title)
-	}
-
-	w = env.Do("GET", "/api/v1/lesson/homeworks?nodeId="+node.ID, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-	items, _, err := testhelper.UnmarshalList[domain.NodeHomework](w)
-	if err != nil {
-		t.Fatalf("unmarshal list: %v", err)
-	}
-	if len(items) < 1 {
-		t.Fatal("expected at least 1 homework")
-	}
-
-	w = env.Do("GET", "/api/v1/lesson/homeworks/"+hw.ID, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-	got, err := testhelper.Unmarshal[domain.NodeHomework](w)
-	if err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if got.ID != hw.ID {
-		t.Fatalf("expected id %s, got %s", hw.ID, got.ID)
-	}
-
-	w = env.Do("PUT", "/api/v1/lesson/homeworks/"+hw.ID, map[string]interface{}{
-		"title": "HW 1 Updated",
-	})
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	updated, err := testhelper.Unmarshal[domain.NodeHomework](w)
-	if err != nil {
-		t.Fatalf("unmarshal updated: %v", err)
-	}
-	if updated.Title != "HW 1 Updated" {
-		t.Fatalf("expected 'HW 1 Updated', got %s", updated.Title)
-	}
-
-	w = env.Do("DELETE", "/api/v1/lesson/homeworks/"+hw.ID, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	w = env.Do("GET", "/api/v1/lesson/homeworks/"+hw.ID, nil)
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404 after delete, got %d", w.Code)
-	}
-}
-
 func TestHybridModule(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
@@ -926,13 +831,12 @@ func TestHybridCourseClone(t *testing.T) {
 		t.Fatalf("expected 201 for question, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// 子节点：作业 + 混合模块
-	w = env.Do("POST", "/api/v1/lesson/homeworks", map[string]interface{}{
-		"nodeId": childNode.ID,
-		"title":  "混合节点作业",
-	})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	// 子节点：作业 + 混合模块（作业 CRUD 接口已下线，直接落库验证克隆链路）
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO node_homeworks (id, tenant_id, node_id, title)
+		VALUES (gen_random_uuid(), $1, $2, '混合节点作业')
+	`, testhelper.TestTenantID, childNode.ID); err != nil {
+		t.Fatalf("insert homework: %v", err)
 	}
 	w = env.Do("POST", "/api/v1/lesson/hybrid-modules", map[string]interface{}{
 		"nodeId":    childNode.ID,

@@ -77,7 +77,6 @@ type Handlers struct {
 	nodeEvaluationResultHandler   *handler.NodeEvaluationResultHandler
 	courseResourceHandler         *handler.CourseResourceHandler
 	nodeQuizHandler               *handler.NodeQuizHandler
-	nodeHomeworkHandler           *handler.NodeHomeworkHandler
 	nodeResourceHandler           *handler.NodeResourceHandler
 	hybridModuleHandler           *handler.HybridModuleHandler
 	courseBatchHandler            *handler.CourseBatchHandler
@@ -93,11 +92,9 @@ type Handlers struct {
 	studentPortraitHandler        *handler.StudentPortraitHandler
 	studentHonorHandler           *handler.StudentHonorHandler
 	appealHandler                 *handler.AppealHandler
-	evaluationMethodHandler       *handler.EvaluationMethodHandler
 	evaluationBatchHandler        *handler.EvaluationBatchHandler
 	randomDrawQuestionHandler     *handler.RandomDrawQuestionHandler
 	landingHandler                *handler.LandingHandler
-	certGradeHandler              *handler.CertGradeHandler
 	resourceLibraryHandler        *handler.ResourceLibraryHandler
 	onSiteQuestionLibraryHandler  *handler.OnSiteQuestionLibraryHandler
 	jobAbilityResultHandler       *handler.JobAbilityResultHandler
@@ -199,7 +196,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		nodeEvaluationResultHandler:   &handler.NodeEvaluationResultHandler{Service: service.NewNodeEvaluationResultService(svc)},
 		courseResourceHandler:         &handler.CourseResourceHandler{Service: service.NewResourceBindingService(svc)},
 		nodeQuizHandler:               &handler.NodeQuizHandler{Service: lessonContentSvc},
-		nodeHomeworkHandler:           &handler.NodeHomeworkHandler{Service: lessonContentSvc},
 		nodeResourceHandler:           &handler.NodeResourceHandler{Service: service.NewResourceBindingService(svc)},
 		hybridModuleHandler:           &handler.HybridModuleHandler{Service: lessonContentSvc},
 		courseBatchHandler:            handler.NewCourseBatchHandler(positionSvc),
@@ -215,11 +211,9 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		studentPortraitHandler:        handler.NewStudentPortraitHandler(st),
 		studentHonorHandler:           handler.NewStudentHonorHandler(st),
 		appealHandler:                 &handler.AppealHandler{Service: evaluationSvc},
-		evaluationMethodHandler:       &handler.EvaluationMethodHandler{Service: evaluationSvc},
 		evaluationBatchHandler:        handler.NewEvaluationBatchHandler(evaluationSvc),
 		randomDrawQuestionHandler:     &handler.RandomDrawQuestionHandler{Service: evaluationSvc},
 		landingHandler:                &handler.LandingHandler{Service: positionSvc},
-		certGradeHandler:              &handler.CertGradeHandler{Service: evaluationSvc},
 		resourceLibraryHandler:        &handler.ResourceLibraryHandler{Service: service.NewResourceService(svc)},
 		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{Store: st.OnSiteQuestions()},
 		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(st),

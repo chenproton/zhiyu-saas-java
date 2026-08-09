@@ -1013,28 +1013,6 @@ func TestStudentPortrait(t *testing.T) {
 	}
 }
 
-func TestEvaluationMethods(t *testing.T) {
-	env := testhelper.SetupTestEnv(t)
-	defer env.Cleanup()
-
-	w := env.Do("GET", "/api/v1/evaluation/methods/categories", nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("list categories: expected 200, got %d", w.Code)
-	}
-
-	w = env.Do("GET", "/api/v1/evaluation/methods", nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("list methods: expected 200, got %d", w.Code)
-	}
-
-	w = env.Do("POST", "/api/v1/evaluation/methods/non-existent-id/toggle", map[string]interface{}{
-		"enabled": true,
-	})
-	if w.Code != http.StatusNotFound {
-		t.Errorf("toggle non-existent method: expected 404, got %d", w.Code)
-	}
-}
-
 func TestAppeal(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

@@ -2,7 +2,6 @@ import type {
   Course,
   KnowledgePoint,
   SystemCourseNode as BackendSystemCourseNode,
-  NodeHomework,
   NodeResource,
   LessonBatch,
   HybridNodeModule,
@@ -20,79 +19,6 @@ export const courseApi = {
   >('/lesson/courses'),
   clone: (id: string, body: { name: string }) =>
     request<Course>(`/lesson/courses/${id}/clone`, { method: 'POST', body: JSON.stringify(body) }),
-}
-
-export interface CourseAssessmentExam {
-  id: string
-  examId: string
-  examName: string
-  isTemp: boolean
-  name: string
-  startTime?: string
-  endTime?: string
-  duration?: number
-  status: string
-  type: 'exam'
-}
-
-export interface CourseAssessmentHomework {
-  id: string
-  title: string
-  requirement: string
-  needAttachment: boolean
-  deadline?: string
-  status: string
-  type: 'homework'
-}
-
-export interface CourseAssessmentsResponse {
-  exams: CourseAssessmentExam[]
-  homeworks: CourseAssessmentHomework[]
-}
-
-export const courseAssessmentsApi = {
-  get: (courseId: string) =>
-    request<CourseAssessmentsResponse>(`/lesson/courses/${courseId}/assessments`),
-}
-
-export interface CourseHomeworkSubmission {
-  id: string
-  studentId: string
-  studentName: string
-  content?: string
-  attachmentUrls?: string[]
-  status: 'submitted' | 'graded'
-  score?: number
-  totalScore?: number
-  comment?: string
-  createdAt?: string
-  gradedAt?: string
-}
-
-export const courseHomeworkApi = {
-  submit: (
-    courseId: string,
-    homeworkId: string,
-    req: { content?: string; attachmentUrls?: string[] },
-  ) =>
-    request<{ id: string; status: string }>(
-      `/lesson/courses/${courseId}/homeworks/${homeworkId}/submit`,
-      { method: 'POST', body: JSON.stringify(req) },
-    ),
-  listSubmissions: (courseId: string, homeworkId: string) =>
-    request<{ items: CourseHomeworkSubmission[] }>(
-      `/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions`,
-    ),
-  grade: (
-    courseId: string,
-    homeworkId: string,
-    submissionId: string,
-    req: { score: number; comment?: string },
-  ) =>
-    request<{ id: string; status: string }>(
-      `/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`,
-      { method: 'POST', body: JSON.stringify(req) },
-    ),
 }
 
 export const knowledgeApi = {
@@ -195,50 +121,6 @@ export const lessonBatchApi = {
       body: JSON.stringify({ status }),
     }),
 }
-
-export interface NodeHomeworkSubmission {
-  id: string
-  studentId: string
-  studentName: string
-  content?: string
-  attachmentUrls?: string[]
-  status: 'submitted' | 'graded'
-  score?: number
-  totalScore?: number
-  comment?: string
-  createdAt?: string
-  gradedAt?: string
-}
-
-export const nodeHomeworkApi = {
-  create: (req: Omit<NodeHomework, 'id'>) =>
-    request<NodeHomework>('/lesson/homeworks', { method: 'POST', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/lesson/homeworks/${id}`, { method: 'DELETE' }),
-  submit: (
-    nodeId: string,
-    homeworkId: string,
-    req: { content?: string; attachmentUrls?: string[] },
-  ) =>
-    request<{ id: string; status: string }>(
-      `/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submit`,
-      { method: 'POST', body: JSON.stringify(req) },
-    ),
-  listSubmissions: (nodeId: string, homeworkId: string) =>
-    request<{ items: NodeHomeworkSubmission[] }>(
-      `/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions`,
-    ),
-  grade: (
-    nodeId: string,
-    homeworkId: string,
-    submissionId: string,
-    req: { score: number; comment?: string },
-  ) =>
-    request<{ id: string; status: string }>(
-      `/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`,
-      { method: 'POST', body: JSON.stringify(req) },
-    ),
-}
-
 export interface NodeEvaluationResult {
   id: string
   nodeId: string

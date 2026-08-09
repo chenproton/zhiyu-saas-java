@@ -57,3 +57,8 @@ func (s *EvaluationService) EnsureDraftPool(ctx context.Context, tenantID, userI
 func (s *EvaluationService) IsDraftPool(ctx context.Context, id string) (bool, error) {
 	return s.st.QuestionBanks().IsDraftPool(ctx, id)
 }
+
+// PositionTenantID 查询岗位租户（证书体系租户归属校验用）。
+func (s *EvaluationService) PositionTenantID(ctx context.Context, positionID string) (string, error) {
+	return s.st.Positions().TenantID(ctx, positionID)
+}

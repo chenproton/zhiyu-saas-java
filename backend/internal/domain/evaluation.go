@@ -160,24 +160,6 @@ type ExamCenterItem struct {
 	StudentView    bool     `json:"studentView"`
 }
 
-// EvaluationMethodCategory represents a top-level evaluation category.
-type EvaluationMethodCategory struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Order int    `json:"order"`
-}
-
-// EvaluationMethod represents a second-level evaluation method.
-type EvaluationMethod struct {
-	ID              string  `json:"id"`
-	CategoryID      string  `json:"categoryId"`
-	Name            string  `json:"name"`
-	Enabled         bool    `json:"enabled"`
-	SubCategoryName *string `json:"subCategoryName,omitempty"`
-	Description     *string `json:"description,omitempty"`
-	DocLink         *string `json:"docLink,omitempty"`
-}
-
 // SceneEvaluationResult represents the result of a scene task evaluation.
 type SceneEvaluationResult struct {
 	ID                string     `json:"id"`
