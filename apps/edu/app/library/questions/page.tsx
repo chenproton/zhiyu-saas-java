@@ -41,15 +41,21 @@ export default function QuestionsPage() {
     TAG_RESOURCE_TYPES.random_draw_question,
   )
 
-  const { items, loading, searchQuery, setSearchQuery, loadItems } = useLibraryCrud(
-    randomDrawQuestionApi.list,
-    {
-      limit: 200,
-      autoLoad: false,
-      getParams: () =>
-        selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},
-    },
-  )
+  const {
+    items,
+    loading,
+    searchQuery,
+    setSearchQuery,
+    loadItems,
+    page,
+    setPage,
+    totalPages,
+  } = useLibraryCrud(randomDrawQuestionApi.list, {
+    limit: 200,
+    autoLoad: false,
+    getParams: () =>
+      selectedTagIds.length ? { tagIds: selectedTagIds.join(',') } : {},
+  })
   useEffect(() => {
     void loadItems()
   }, [loadItems])
@@ -104,6 +110,7 @@ export default function QuestionsPage() {
   }
   const handleTagFilterChange = (ids: string[]) => {
     setSelectedTagIds(ids)
+    setPage(1)
   }
   const confirmDelete = async () => {
     if (!deleteTarget) return
@@ -292,6 +299,7 @@ export default function QuestionsPage() {
           </DialogContent>
         </Dialog>
       }
+      pagination={{ page, totalPages, onPageChange: setPage }}
     >
       <TagFilterBar value={selectedTagIds} onChange={handleTagFilterChange} className="mb-4" />
     </LibraryPageShell>

@@ -137,7 +137,7 @@ export default function TeachingPlanDetailPage() {
           totalHours: s.totalHours !== '' ? Number(s.totalHours) : undefined,
           venueType: s.venueType,
           classNodeIds: s.classNodeIds,
-          teacherId: s.teacherId,
+          teacherId: s.teacherId ?? '',
         })
         setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
         success++

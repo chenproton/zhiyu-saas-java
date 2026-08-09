@@ -277,7 +277,8 @@ export default function ExamUsagePage() {
     (usage.status === 'draft' || usage.status === 'pending') &&
     (!usage.targetType || MANUAL_TARGET_TYPES.includes(usage.targetType))
 
-  const isFormValid = (editingUsage ? formName : formExamId && formName) && formClassIds.length > 0
+  const isFormValid = (editingUsage ? formName : formExamId && formName) &&
+    (formClassIds.length > 0 || editingUsage?.targetType === 'public')
 
   return (
     <div className="space-y-6">

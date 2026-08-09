@@ -47,7 +47,7 @@ export default function JobApprovalsPage() {
         setBatchMap(new Map(batchRes.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        handleLoadError(err, toast, t, '加载岗位/批次列表失败', '{ source: "加载岗位/批次列表" }')
+        handleLoadError(err, toast, t, '加载岗位/批次列表失败', '加载岗位/批次列表')
       })
   }, [toast, t])
 

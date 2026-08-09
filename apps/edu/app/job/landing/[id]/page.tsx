@@ -151,7 +151,7 @@ export default function JobStudentDetailPage() {
 
     if (!user) return
 
-    const detailSeq = ++loadSeqRef.current
+    // 复用上方 seq：再次递增会让前两个请求的响应被判为过期而丢弃
     Promise.all([
       positionResponsibilityApi.list({ careerPositionId: id }),
       abilityApi.listBindings({ careerPositionId: id }),
@@ -160,7 +160,7 @@ export default function JobStudentDetailPage() {
       positionCertificateApi.list({ careerPositionId: id }),
     ])
       .then(([respRes, bindingRes, abilityRes, domainRes, certRes]) => {
-        if (detailSeq !== loadSeqRef.current) return
+        if (seq !== loadSeqRef.current) return
         setResponsibilities(respRes.items || [])
         setBindings(bindingRes.items || [])
         setAbilityPoints(abilityRes.items || [])

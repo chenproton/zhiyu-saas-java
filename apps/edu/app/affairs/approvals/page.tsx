@@ -74,7 +74,7 @@ export default function AffairsApprovalsPage() {
         setAffairsBatchMap(new Map(abres.items.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        handleLoadError(err, toast, t, '加载培养方案/教学计划/批次列表失败', '{ source: "加载培养方案/教学计划/批次列表" }')
+        handleLoadError(err, toast, t, '加载培养方案/教学计划/批次列表失败', '加载培养方案/教学计划/批次列表')
       })
   }, [toast, t])
 

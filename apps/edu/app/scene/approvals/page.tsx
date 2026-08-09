@@ -47,7 +47,7 @@ export default function SceneApprovalsPage() {
         setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        handleLoadError(err, toast, t, '加载场景/批次列表失败', '{ source: "加载场景/批次列表" }')
+        handleLoadError(err, toast, t, '加载场景/批次列表失败', '加载场景/批次列表')
       })
   }, [toast, t])
 

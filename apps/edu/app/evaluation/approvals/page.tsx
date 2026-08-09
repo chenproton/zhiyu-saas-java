@@ -70,7 +70,7 @@ export default function EvaluationApprovalsPage() {
         setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
       })
       .catch((err) => {
-        handleLoadError(err, toast, t, '加载题库/试卷/批次列表失败', '{ source: "加载题库/试卷/批次列表" }')
+        handleLoadError(err, toast, t, '加载题库/试卷/批次列表失败', '加载题库/试卷/批次列表')
       })
   }, [t])
 
