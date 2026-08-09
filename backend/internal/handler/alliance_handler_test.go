@@ -3,6 +3,7 @@ package handler_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -352,6 +353,180 @@ func TestAlliance_LinkEnterpriseEmptyBody(t *testing.T) {
 		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/"+eid+"/link", nil, claims)
 		if w.Code != http.StatusConflict {
 			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+// TestAllianceEnterprises_Pagination 验证学校侧已引入企业列表支持分页、搜索、状态过滤，
+// 并正确返回 total（Partner 改造后曾丢失分页导致 Total 恒为切片长度）。
+func TestAllianceEnterprises_Pagination(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	h := newAllianceTestHandler(env)
+	r := chi.NewRouter()
+	r.Get("/alliance/enterprises", h.ListEnterprises)
+
+	ctx := context.Background()
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa31", domain.RoleTeacher)
+
+	// 预置 3 个企业主体，并全部引入本校；其中 2 个为 active、1 个为 negotiating。
+	entIDs := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		id := uuid.NewString()
+		entIDs[i] = id
+		name := fmt.Sprintf("分页测试企业-%d-%s", i, id[:8])
+		status := "active"
+		if i == 2 {
+			status = "negotiating"
+		}
+		if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`, id, testhelper.TestTenantID, name); err != nil {
+			t.Fatalf("预置企业失败: %v", err)
+		}
+		defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, id)
+		if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_enterprise_links (tenant_id, enterprise_id, status) VALUES ($1,$2,$3)`, testhelper.TestTenantID, id, status); err != nil {
+			t.Fatalf("预置 link 失败: %v", err)
+		}
+		defer env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE enterprise_id = $1`, id)
+	}
+
+	t.Run("limit/offset pagination", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/enterprises?limit=2&offset=0", nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, total, err := testhelper.UnmarshalList[domain.AllianceLinkedEnterprise](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if total != 3 {
+			t.Fatalf("total = %d, want 3", total)
+		}
+		if len(items) != 2 {
+			t.Fatalf("items len = %d, want 2", len(items))
+		}
+	})
+
+	t.Run("search by name", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/enterprises?search=分页测试企业-0", nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, total, err := testhelper.UnmarshalList[domain.AllianceLinkedEnterprise](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if total != 1 {
+			t.Fatalf("total = %d, want 1", total)
+		}
+		if len(items) != 1 {
+			t.Fatalf("items len = %d, want 1", len(items))
+		}
+	})
+
+	t.Run("filter by status", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/enterprises?status=negotiating", nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, total, err := testhelper.UnmarshalList[domain.AllianceLinkedEnterprise](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if total != 1 {
+			t.Fatalf("total = %d, want 1", total)
+		}
+		if len(items) != 1 || items[0].Status != "negotiating" {
+			t.Fatalf("status filter failed: %+v", items)
+		}
+	})
+}
+
+// TestAllianceExperts_Pagination 验证学校侧专家列表支持分页、搜索、状态过滤并正确返回 total。
+func TestAllianceExperts_Pagination(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	h := newAllianceTestHandler(env)
+	r := chi.NewRouter()
+	r.Get("/alliance/experts", h.ListExperts)
+
+	ctx := context.Background()
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa32", domain.RoleTeacher)
+
+	entID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`, entID, testhelper.TestTenantID, "专家分页测试企业"); err != nil {
+		t.Fatalf("预置企业失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, entID)
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_enterprise_links (tenant_id, enterprise_id, status) VALUES ($1,$2,'active')`, testhelper.TestTenantID, entID); err != nil {
+		t.Fatalf("预置 link 失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE enterprise_id = $1`, entID)
+
+	expIDs := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		id := uuid.NewString()
+		expIDs[i] = id
+		name := fmt.Sprintf("专家分页测试-%d", i)
+		status := "active"
+		if i == 2 {
+			status = "inactive"
+		}
+		if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status) VALUES ($1,$2,$3,$4,$5)`, id, testhelper.TestTenantID, name, entID, status); err != nil {
+			t.Fatalf("预置专家失败: %v", err)
+		}
+		defer env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id = $1`, id)
+	}
+
+	t.Run("limit/offset pagination", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/experts?limit=2&offset=0", nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, total, err := testhelper.UnmarshalList[domain.AllianceExpert](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if total != 3 {
+			t.Fatalf("total = %d, want 3", total)
+		}
+		if len(items) != 2 {
+			t.Fatalf("items len = %d, want 2", len(items))
+		}
+	})
+
+	t.Run("search by name", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/experts?search=专家分页测试-0", nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, total, err := testhelper.UnmarshalList[domain.AllianceExpert](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if total != 1 {
+			t.Fatalf("total = %d, want 1", total)
+		}
+		if len(items) != 1 {
+			t.Fatalf("items len = %d, want 1", len(items))
+		}
+	})
+
+	t.Run("filter by status", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/experts?status=inactive", nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, total, err := testhelper.UnmarshalList[domain.AllianceExpert](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if total != 1 {
+			t.Fatalf("total = %d, want 1", total)
+		}
+		if len(items) != 1 || items[0].Status != "inactive" {
+			t.Fatalf("status filter failed: %+v", items)
 		}
 	})
 }

@@ -86,12 +86,22 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	items, err := h.Links.ListBySchoolTenant(r.Context(), tenantID)
+	filter := store.AllianceEnterpriseListFilter{
+		Search: r.URL.Query().Get("search"),
+		Status: r.URL.Query().Get("status"),
+	}
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
+		filter.Limit = v
+	}
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		filter.Offset = v
+	}
+	items, total, err := h.Links.ListBySchoolTenant(r.Context(), tenantID, filter)
 	if err != nil {
 		respondServerError(w, r, err, "查询企业列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceLinkedEnterprise]{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceLinkedEnterprise]{Items: items, Total: total})
 }
 
 // GetEnterprise 单企业合并视图（主体只读 + link 管理字段）。
@@ -615,12 +625,22 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 		}
 		enterpriseIDs = []string{eid}
 	}
-	items, err := h.Store.ListByEnterpriseIDs(r.Context(), enterpriseIDs)
+	filter := store.AllianceExpertListFilter{
+		Search: r.URL.Query().Get("search"),
+		Status: r.URL.Query().Get("status"),
+	}
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
+		filter.Limit = v
+	}
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		filter.Offset = v
+	}
+	items, total, err := h.Store.ListByEnterpriseIDs(r.Context(), enterpriseIDs, filter)
 	if err != nil {
 		respondServerError(w, r, err, "查询专家列表失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceExpert]{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceExpert]{Items: items, Total: total})
 }
 
 // GetExpert 专家详情（跨租户只读；专家所属企业必须已引入本校）。

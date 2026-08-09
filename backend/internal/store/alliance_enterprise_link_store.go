@@ -3,6 +3,9 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -122,8 +125,48 @@ func (s *AllianceEnterpriseLinkStore) ListEnterpriseIDsBySchoolTenant(ctx contex
 	return ids, rows.Err()
 }
 
+// AllianceEnterpriseListFilter 学校侧已引入企业列表筛选参数。
+type AllianceEnterpriseListFilter struct {
+	Search string
+	Status string
+	Limit  int
+	Offset int
+}
+
 // ListBySchoolTenant 学校侧已引入企业合并视图（join partner_enterprises：主体信息 + link 管理字段）。
-func (s *AllianceEnterpriseLinkStore) ListBySchoolTenant(ctx context.Context, tenantID string) ([]domain.AllianceLinkedEnterprise, error) {
+// 支持按名称/行业关键字、link 状态筛选以及 limit/offset 分页，返回结果与总条数。
+func (s *AllianceEnterpriseLinkStore) ListBySchoolTenant(ctx context.Context, tenantID string, filter AllianceEnterpriseListFilter) ([]domain.AllianceLinkedEnterprise, int, error) {
+	if filter.Limit <= 0 {
+		filter.Limit = 200
+	}
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	where := []string{"l.tenant_id = $1"}
+	args := []any{tenantID}
+	idx := 2
+
+	if filter.Search != "" {
+		where = append(where, fmt.Sprintf("(e.name ILIKE $%d OR e.industry ILIKE $%d)", idx, idx))
+		args = append(args, "%"+filter.Search+"%")
+		idx++
+	}
+	if filter.Status != "" {
+		where = append(where, fmt.Sprintf("l.status = $%d", idx))
+		args = append(args, filter.Status)
+		idx++
+	}
+
+	whereClause := strings.Join(where, " AND ")
+
+	var total int
+	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM alliance_enterprise_links l JOIN partner_enterprises e ON e.id = l.enterprise_id WHERE "+whereClause, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	dataArgs := append([]any{}, args...)
+	dataArgs = append(dataArgs, filter.Limit, filter.Offset)
 	rows, err := s.q.Query(ctx, `
 		SELECT e.id, e.tenant_id, e.name, e.industry, e.region, e.description,
 			e.logo_url, e.cover_image, e.cooperation_types, e.contact_person,
@@ -133,14 +176,19 @@ func (s *AllianceEnterpriseLinkStore) ListBySchoolTenant(ctx context.Context, te
 			l.id, l.relation_type, l.status, l.rating, l.enterprise_type, l.is_public, l.secondary_colleges
 		FROM alliance_enterprise_links l
 		JOIN partner_enterprises e ON e.id = l.enterprise_id
-		WHERE l.tenant_id = $1
+		WHERE `+whereClause+`
 		ORDER BY l.created_at DESC
-	`, tenantID)
+		LIMIT $`+strconv.Itoa(idx)+` OFFSET $`+strconv.Itoa(idx+1)+`
+	`, dataArgs...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	return scanLinkedEnterpriseRows(rows)
+	items, err := scanLinkedEnterpriseRows(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 // GetLinkedByEnterprise 学校侧单企业合并视图（主体 + link 管理字段）。

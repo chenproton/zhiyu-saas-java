@@ -3,6 +3,9 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -127,17 +130,63 @@ func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) 
 	`, id, tenantID)
 }
 
+// AllianceExpertListFilter 学校侧专家列表筛选参数。
+type AllianceExpertListFilter struct {
+	Search string
+	Status string
+	Limit  int
+	Offset int
+}
+
 // ListByEnterpriseIDs 跨租户只读：按企业 ID 集合查询专家（学校侧按已引入企业加载）。
+// 支持按姓名/职称/行业关键字、状态筛选以及 limit/offset 分页，返回结果与总条数。
 // 越权防线：入参 enterpriseIDs 必须由调用方（store/service）限定为本校 links 内的企业。
-func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, enterpriseIDs []string) ([]domain.AllianceExpert, error) {
+func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, enterpriseIDs []string, filter AllianceExpertListFilter) ([]domain.AllianceExpert, int, error) {
 	if len(enterpriseIDs) == 0 {
-		return []domain.AllianceExpert{}, nil
+		return []domain.AllianceExpert{}, 0, nil
 	}
-	return queryList(ctx, s.q, s.ScanExpertRows, `
+	if filter.Limit <= 0 {
+		filter.Limit = 200
+	}
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	where := []string{"enterprise_id = ANY($1::uuid[])"}
+	args := []any{enterpriseIDs}
+	idx := 2
+
+	if filter.Search != "" {
+		where = append(where, fmt.Sprintf("(name ILIKE $%d OR title ILIKE $%d OR industry ILIKE $%d)", idx, idx, idx))
+		args = append(args, "%"+filter.Search+"%")
+		idx++
+	}
+	if filter.Status != "" {
+		where = append(where, fmt.Sprintf("status = $%d", idx))
+		args = append(args, filter.Status)
+		idx++
+	}
+
+	whereClause := strings.Join(where, " AND ")
+
+	var total int
+	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM alliance_experts WHERE "+whereClause, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	dataArgs := append([]any{}, args...)
+	dataArgs = append(dataArgs, filter.Limit, filter.Offset)
+	items, err := queryList(ctx, s.q, s.ScanExpertRows, `
 		SELECT `+expertColumns+`
-		FROM alliance_experts WHERE enterprise_id = ANY($1::uuid[])
+		FROM alliance_experts
+		WHERE `+whereClause+`
 		ORDER BY created_at DESC
-	`, enterpriseIDs)
+		LIMIT $`+strconv.Itoa(idx)+` OFFSET $`+strconv.Itoa(idx+1)+`
+	`, dataArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 // GetExpertByIDGlobal 按 ID 查询专家（跨租户只读；调用方须先做归属校验）。

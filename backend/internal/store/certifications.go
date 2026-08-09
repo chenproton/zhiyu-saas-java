@@ -195,7 +195,7 @@ func (s *CertificationStore) UpdateItem(ctx context.Context, id, tenantID, name 
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE certification_ability_items SET name = $1, sort_order = $2, updated_at = NOW()
+		UPDATE certification_ability_items SET name = $1, sort_order = $2
 		WHERE id = $3 AND tenant_id = $4
 	`, name, sortOrder, id, tenantID); err != nil {
 		return nil, err
@@ -269,7 +269,7 @@ func (s *CertificationStore) UpdatePoint(ctx context.Context, id, tenantID strin
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE certification_ability_points SET mapping_type = $1, custom_level_mapping = $2, required_level = $3, weight = $4, updated_at = NOW()
+		UPDATE certification_ability_points SET mapping_type = $1, custom_level_mapping = $2, required_level = $3, weight = $4
 		WHERE id = $5 AND tenant_id = $6
 	`, p.MappingType, p.CustomLevelMapping, p.RequiredLevel, p.Weight, id, tenantID); err != nil {
 		return nil, err
@@ -325,7 +325,7 @@ func (s *CertificationStore) UpdateTask(ctx context.Context, id, tenantID string
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE certification_related_tasks SET task_id = $1, max_score = $2, weight = $3, updated_at = NOW()
+		UPDATE certification_related_tasks SET task_id = $1, max_score = $2, weight = $3
 		WHERE id = $4 AND tenant_id = $5
 	`, taskID, maxScore, weight, id, tenantID); err != nil {
 		return nil, err
