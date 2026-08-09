@@ -276,7 +276,6 @@ function recordFormResult(routeResult, rec, actionType = 'create') {
 // 删除/启用/禁用：等待确认弹窗，点击确认，等待写接口响应。
 async function handleCrudAction(page, cfg, pick, pickText) {
   await sleep(cfg.dialogEscMs)
-  const marker = cfg.crudMarker || 'SMOKE_'
 
   if (pick.actionType === 'edit') {
     // 若点击后进入编辑表单（弹窗或编辑页），执行编辑填充
@@ -298,8 +297,10 @@ async function handleCrudAction(page, cfg, pick, pickText) {
   const dialogOpen = await page.locator(DIALOG_VISIBLE_SELECTOR).count() > 0
   if (!dialogOpen) return { action: pick.actionType, target: pickText, status: 'skip', reason: '无确认弹窗' }
 
-  const submitRe = new RegExp(`^(?:${[...(cfg.submitWords || []), ...(cfg.submitWordsEn || [])].map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`)
-  const destructiveRe = new RegExp(`^(?:${[...(cfg.destructiveWords || []), ...(cfg.destructiveWordsEn || []), ...(cfg.deleteWords || []), ...(cfg.deleteWordsEn || []), ...(cfg.enableWords || []), ...(cfg.enableWordsEn || []), ...(cfg.disableWords || []), ...(cfg.disableWordsEn || [])].map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`)
+  const submitWords = [...(cfg.submitWords || []), ...(cfg.submitWordsEn || [])]
+  const submitRe = submitWords.length ? new RegExp(`^(?:${submitWords.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`) : { test: () => false }
+  const destructiveWords = [...(cfg.destructiveWords || []), ...(cfg.destructiveWordsEn || []), ...(cfg.deleteWords || []), ...(cfg.deleteWordsEn || []), ...(cfg.enableWords || []), ...(cfg.enableWordsEn || []), ...(cfg.disableWords || []), ...(cfg.disableWordsEn || [])]
+  const destructiveRe = destructiveWords.length ? new RegExp(`^(?:${destructiveWords.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`) : { test: () => false }
 
   let confirmed = false
   try {
