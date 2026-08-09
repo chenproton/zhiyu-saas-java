@@ -101,7 +101,8 @@ function ExamCard({ exam }: { exam: Exam; index: number }) {
           </p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-3 mb-3">
             <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" /> {t('{n} 题', { n: (exam.questions || []).length })}
+              <FileText className="w-3 h-3" />{' '}
+              {t('{n} 题', { n: exam.questionCount ?? (exam.questions || []).length })}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> {t('{n} 分钟', { n: exam.duration })}

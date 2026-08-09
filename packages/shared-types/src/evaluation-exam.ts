@@ -185,6 +185,8 @@ export interface Exam {
   status: Status
   totalScore: number
   duration: number // 分钟
+  /** 列表接口返回的题目数（列表不再挂载 questions 数组，性能优化） */
+  questionCount?: number
   questions?: ExamQuestion[]
   coverImage?: string
   collaboratorIds?: string[]
