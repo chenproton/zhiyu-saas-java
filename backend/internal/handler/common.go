@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -112,9 +113,14 @@ func respondServerError(w http.ResponseWriter, r *http.Request, err error, messa
 const maxJSONBodySize = 10 << 20 // 10MB
 
 // decodeBody 解析 JSON 请求体，失败时写 400 响应并返回 false。
+// 空请求体（io.EOF）视为成功：目标 struct 保持零值，必填字段由后续校验拦截
+// （如 POST /alliance/enterprises/:id/link 等无请求体接口）。
 func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodySize)
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		if errors.Is(err, io.EOF) {
+			return true
+		}
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return false
 	}

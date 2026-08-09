@@ -241,11 +241,15 @@ func withTxStore(ctx context.Context, beginner txBeginner, fn func(tx pgx.Tx) er
 // 在事务上下文（pgx.Tx）上调用会返回 ErrNestedTransaction，
 // 事务内应直接使用传入的 txStore，而非再次 Begin。
 func (s *Store) Begin(ctx context.Context) (pgx.Tx, error) {
-	pool, ok := s.q.(*pgxpool.Pool)
-	if !ok {
+	switch q := s.q.(type) {
+	case *pgxpool.Pool:
+		return q.Begin(ctx)
+	case *pgxpool.Conn:
+		// 单连接模式（调度任务专用连接）同样支持事务
+		return q.Begin(ctx)
+	default:
 		return nil, fmt.Errorf("%w: current queryer is %T", ErrNestedTransaction, s.q)
 	}
-	return pool.Begin(ctx)
 }
 
 // ResourceLibrary 返回资源库 store。

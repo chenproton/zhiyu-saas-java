@@ -319,3 +319,39 @@ func TestAllianceImport_TeacherPermission(t *testing.T) {
 		}
 	})
 }
+
+// TestAlliance_LinkEnterpriseEmptyBody 引入企业空请求体回归：前端
+// POST /alliance/enterprises/:id/link 不带请求体，decodeBody 曾对 io.EOF 返回 400。
+func TestAlliance_LinkEnterpriseEmptyBody(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	h := newAllianceTestHandler(env)
+	r := chi.NewRouter()
+	r.Post("/alliance/enterprises/{id}/link", h.LinkEnterprise)
+
+	ctx := context.Background()
+	eid := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`,
+		eid, testhelper.TestTenantID, "空体引入测试企业-"+uuid.NewString()[:8]); err != nil {
+		t.Fatalf("预置企业失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, eid)
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE enterprise_id = $1`, eid)
+
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11", domain.RoleTeacher)
+
+	t.Run("empty body returns 201", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/"+eid+"/link", nil, claims)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("duplicate link conflict", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/"+eid+"/link", nil, claims)
+		if w.Code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}
