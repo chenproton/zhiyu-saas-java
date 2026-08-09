@@ -26,7 +26,6 @@ const BUILTIN_DYNAMIC_ROUTES = {
   // 注意：/library/resources/[type] 的 [type] 是资源类型枚举（course/scene 等），非实体 id，不配置动态路由
   '/portal/alliance/achievements/[id]': { api: '/api/v1/alliance/public/achievements?limit=10', url: '/portal/alliance/achievements/{id}' },
   '/portal/alliance/brands/[id]': { api: '/api/v1/alliance/public/brands?limit=10', url: '/portal/alliance/brands/{id}' },
-  '/portal/alliance/brands/major/[id]': { api: '/api/v1/alliance/public/brands?limit=10', url: '/portal/alliance/brands/major/{id}' },
   '/portal/alliance/enterprises/[id]': { api: '/api/v1/alliance/public/enterprises?limit=10', url: '/portal/alliance/enterprises/{id}' },
   '/portal/alliance/experts/[id]': { api: '/api/v1/alliance/public/experts?limit=10', url: '/portal/alliance/experts/{id}' },
   '/portal/alliance/projects/[id]': { api: '/api/v1/alliance/public/projects?limit=10', url: '/portal/alliance/projects/{id}' },
