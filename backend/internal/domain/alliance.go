@@ -249,6 +249,7 @@ type AllianceAgreement struct {
 	EnterpriseIDs json.RawMessage `json:"enterpriseIds,omitempty"`
 	ProjectIDs    json.RawMessage `json:"projectIds,omitempty"`
 	Attachments   json.RawMessage `json:"attachments,omitempty"`
+	IsPublic      bool            `json:"isPublic"`
 	CreatedBy     *string         `json:"createdBy,omitempty"`
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`

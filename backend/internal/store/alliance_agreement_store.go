@@ -22,7 +22,7 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 		var createdBy *string
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Name, &typ, &content, &startDate,
 			&endDate, &a.Status, &enterpriseIDs, &projectIDs, &attachments,
-			&createdBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			&a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.Type = typ
@@ -42,7 +42,7 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 func (s *AllianceStore) ListAgreementsConfig() ListQueryConfig[domain.AllianceAgreement] {
 	return ListQueryConfig[domain.AllianceAgreement]{
 		Table:         "alliance_agreements",
-		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
+		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
@@ -71,16 +71,16 @@ func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.Allianc
 	return items, rows.Err()
 }
 
-// ListPublicAgreements 门户前台公开协议列表：排除草稿，且至少关联一家"双控通过的企业"
-// （enterprise_ids 关联判断，参照 ListPublicProjects）；带 tenantID 时限定该校协议并叠加
-// link.is_public 双控。仅返回公开字段，content/attachments 不下发。
+// ListPublicAgreements 门户前台公开协议列表：is_public 为唯一展示门槛（业务状态不再参与过滤），
+// 且至少关联一家"双控通过的企业"（enterprise_ids 关联判断，参照 ListPublicProjects）；
+// 带 tenantID 时限定该校协议并叠加 link.is_public 双控。仅返回公开字段，content/attachments 不下发。
 func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string) ([]domain.AlliancePublicAgreement, error) {
 	const cols = `id, name, type, status, start_date, end_date, enterprise_ids`
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 			SELECT `+cols+`
 			FROM alliance_agreements a
-			WHERE a.status <> 'draft' AND a.tenant_id = $1
+			WHERE a.is_public = true AND a.tenant_id = $1
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
@@ -92,7 +92,7 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 	return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 		SELECT `+cols+`
 		FROM alliance_agreements a
-		WHERE a.status <> 'draft'
+		WHERE a.is_public = true
 		  AND EXISTS (
 			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
@@ -105,10 +105,10 @@ func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceA
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_agreements (id, tenant_id, name, type, content, start_date,
-			end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
+			end_date, status, enterprise_ids, project_ids, attachments, is_public, created_by, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
 	`, id, a.TenantID, a.Name, a.Type, a.Content, a.StartDate, a.EndDate,
-		a.Status, emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), a.CreatedBy)
+		a.Status, emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), a.IsPublic, a.CreatedBy)
 	if err != nil {
 		return "", err
 	}
@@ -119,10 +119,10 @@ func (s *AllianceStore) UpdateAgreement(ctx context.Context, id, tenantID string
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_agreements SET
 			name = $1, type = $2, content = $3, start_date = $4, end_date = $5,
-			status = $6, enterprise_ids = $7, project_ids = $8, attachments = $9, updated_at = NOW()
-		WHERE id = $10 AND tenant_id = $11
+			status = $6, enterprise_ids = $7, project_ids = $8, attachments = $9, is_public = $10, updated_at = NOW()
+		WHERE id = $11 AND tenant_id = $12
 	`, a.Name, a.Type, a.Content, a.StartDate, a.EndDate, a.Status,
-		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), id, tenantID)
+		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), a.IsPublic, id, tenantID)
 	return err
 }
 
@@ -139,10 +139,10 @@ func (s *AllianceStore) GetAgreementByID(ctx context.Context, id, tenantID strin
 	var createdBy *string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, content, start_date, end_date, status,
-			enterprise_ids, project_ids, attachments, created_by, created_at, updated_at
+			enterprise_ids, project_ids, attachments, is_public, created_by, created_at, updated_at
 		FROM alliance_agreements WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&a.ID, &a.TenantID, &a.Name, &typ, &content, &startDate,
-		&endDate, &a.Status, &enterpriseIDs, &projectIDs, &attachments, &createdBy, &a.CreatedAt, &a.UpdatedAt)
+		&endDate, &a.Status, &enterpriseIDs, &projectIDs, &attachments, &a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

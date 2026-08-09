@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
@@ -50,6 +52,7 @@ export default function AllianceAgreementEditPage() {
     enterpriseIds: [] as string[],
     projectIds: [] as string[],
     attachments: [] as string[],
+    isPublic: false,
   })
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export default function AllianceAgreementEditPage() {
           enterpriseIds: a.enterpriseIds || [],
           projectIds: a.projectIds || [],
           attachments: a.attachments || [],
+          isPublic: a.isPublic || false,
         })
         setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
         setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
@@ -225,6 +229,21 @@ export default function AllianceAgreementEditPage() {
                 onChange={(v) => setField('projectIds', v)}
                 placeholder={t('选择关联项目（可选）')}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('设置')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label>{t('公开显示')}</Label>
+                <Switch
+                  checked={item.isPublic}
+                  onCheckedChange={(v) => setField('isPublic', v)}
+                />
+              </div>
             </CardContent>
           </Card>
 

@@ -204,6 +204,7 @@ export interface AllianceAgreement {
   enterpriseIds?: string[]
   projectIds?: string[]
   attachments?: string[]
+  isPublic?: boolean
   createdBy?: string
   createdAt: string
   updatedAt: string

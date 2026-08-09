@@ -18,8 +18,7 @@ import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
-import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Loader2, Send } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
@@ -74,15 +73,12 @@ export default function AllianceProjectEditPage() {
       .finally(() => setLoading(false))
   }, [tenantId, id, toast, t])
 
-  const handleSave = async (publish = false) => {
+  const handleSave = async () => {
     if (!item) return
     setSaving(true)
     try {
-      await allianceProjectApi.update(id, {
-        ...item,
-        publishStatus: publish ? 'published' : item.publishStatus || 'draft',
-      })
-      toast({ title: publish ? t('项目已发布') : t('草稿已保存') })
+      await allianceProjectApi.update(id, item)
+      toast({ title: t('项目已保存') })
       router.push(`/portal/apps/alliance/projects/${id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
@@ -107,9 +103,6 @@ export default function AllianceProjectEditPage() {
           {t('返回')}
         </Button>
         <h1 className="text-xl font-semibold text-foreground">{t('编辑合作项目')}</h1>
-        <Badge variant={item.publishStatus === 'published' ? 'default' : 'secondary'}>
-          {item.publishStatus === 'published' ? t('已发布') : t('草稿')}
-        </Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -250,21 +243,10 @@ export default function AllianceProjectEditPage() {
 
           <Card>
             <CardContent className="pt-6 space-y-3">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleSave(false)}
-                disabled={saving}
-              >
+              <Button className="w-full" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                {t('保存草稿')}
+                {t('保存')}
               </Button>
-              {item.publishStatus !== 'published' && (
-                <Button className="w-full" onClick={() => handleSave(true)} disabled={saving}>
-                  <Send className="h-4 w-4 mr-1" />
-                  {t('发布项目')}
-                </Button>
-              )}
               <Button variant="outline" className="w-full" onClick={() => router.back()}>
                 {t('取消')}
               </Button>

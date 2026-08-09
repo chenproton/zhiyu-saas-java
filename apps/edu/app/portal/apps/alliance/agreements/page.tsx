@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -67,7 +68,7 @@ export default function AllianceAgreementsPage() {
         templateFileName: t('合作协议批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/agreements/new"
-      colSpan={8}
+      colSpan={9}
       renderTableHeader={() => (
         <>
           <TableHead>{t('协议名称')}</TableHead>
@@ -77,6 +78,7 @@ export default function AllianceAgreementsPage() {
           <TableHead>{t('生效日期')}</TableHead>
           <TableHead>{t('到期日期')}</TableHead>
           <TableHead>{t('状态')}</TableHead>
+          <TableHead>{t('前台展示')}</TableHead>
           <TableHead>{t('操作')}</TableHead>
         </>
       )}
@@ -117,6 +119,9 @@ export default function AllianceAgreementsPage() {
               {expiring && <span className="ml-1 text-xs">{t('（即将到期）')}</span>}
             </TableCell>
             <TableCell>{allianceLabel('agreementStatus', item.status)}</TableCell>
+            <TableCell>
+              <Switch checked={item.isPublic || false} onCheckedChange={actions.toggle} />
+            </TableCell>
             <TableRowActions>
               <Link href={`/portal/apps/alliance/agreements/${item.id}`}>
                 <Button variant="ghost" size="sm">
@@ -147,6 +152,7 @@ export default function AllianceAgreementsPage() {
           startDate: '',
           endDate: '',
           content: '',
+          isPublic: false,
           enabled: true as any,
           createdAt: '',
           updatedAt: '',
@@ -206,6 +212,12 @@ export default function AllianceAgreementsPage() {
               rows={4}
             />
           </FormFieldRow>
+          <FormFieldRow label={t('前台展示')}>
+            <Switch
+              checked={item.isPublic || false}
+              onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
+            />
+          </FormFieldRow>
         </div>
       )}
       getDeleteDescription={(item: any) => (
@@ -225,7 +237,11 @@ export default function AllianceAgreementsPage() {
         toast({ title: t('协议已删除') })
         await refresh()
       }}
-      onToggleEnabled={async () => {}}
+      onToggleEnabled={async (item: any) => {
+        // 全量回传：后端 PUT 为全列覆盖，避免部分字段被清空
+        await allianceAgreementApi.update(item.id, { ...item, isPublic: !item.isPublic })
+        toast({ title: item.isPublic ? t('已取消前台展示') : t('已开启前台展示') })
+      }}
     />
   )
 }

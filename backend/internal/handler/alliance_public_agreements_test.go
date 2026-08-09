@@ -12,7 +12,7 @@ import (
 )
 
 // TestAlliancePublicAgreements 公开协议接口回归：
-// - draft 协议被排除
+// - is_public=false 协议被排除（业务 status 不再参与展示过滤）
 // - 仅关联非 enable_public 企业的协议被排除
 // - 响应不含 content/attachments 等敏感字段
 // 需要 TEST_DATABASE_URL（testhelper 未配置时自动 skip）。
@@ -48,24 +48,26 @@ func TestAlliancePublicAgreements(t *testing.T) {
 	secretContent := "SECRET-AGREEMENT-CONTENT-" + suffix
 	secretAttachment := "secret-agreement-" + suffix + ".pdf"
 
-	// a1 应可见（active + 公开企业）；a2 draft 排除；a3 仅关联非公开企业排除
+	// a1 应可见（is_public=true + 公开企业，status=draft 不再影响展示）；a2 is_public=false 排除；
+	// a3 仅关联非公开企业排除
 	a1, a2, a3 := uuid.NewString(), uuid.NewString(), uuid.NewString()
 	seed := []struct {
-		id      string
-		name    string
-		status  string
-		entID   string
-		content string
+		id       string
+		name     string
+		status   string
+		isPublic bool
+		entID    string
+		content  string
 	}{
-		{a1, "公开协议-" + suffix, "active", entPub, secretContent},
-		{a2, "草稿协议-" + suffix, "draft", entPub, secretContent},
-		{a3, "私企协议-" + suffix, "active", entPriv, secretContent},
+		{a1, "公开协议-" + suffix, "draft", true, entPub, secretContent},
+		{a2, "隐藏协议-" + suffix, "active", false, entPub, secretContent},
+		{a3, "私企协议-" + suffix, "active", true, entPriv, secretContent},
 	}
 	for _, s := range seed {
 		if _, err := env.DB.Exec(ctx, `
-			INSERT INTO alliance_agreements (id, tenant_id, name, status, enterprise_ids, content, attachments)
-			VALUES ($1, $2, $3, $4, jsonb_build_array($5::text), $6, jsonb_build_array($7::text))
-		`, s.id, testhelper.TestTenantID, s.name, s.status, s.entID, s.content, secretAttachment); err != nil {
+			INSERT INTO alliance_agreements (id, tenant_id, name, status, enterprise_ids, content, attachments, is_public)
+			VALUES ($1, $2, $3, $4, jsonb_build_array($5::text), $6, jsonb_build_array($7::text), $8)
+		`, s.id, testhelper.TestTenantID, s.name, s.status, s.entID, s.content, secretAttachment, s.isPublic); err != nil {
 			t.Fatalf("预置协议失败: %v", err)
 		}
 	}
@@ -104,7 +106,7 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		var found bool
 		for _, it := range items {
 			if it.ID == a2 || it.ID == a3 {
-				t.Fatalf("draft/非公开企业协议不应公开: %s", w.Body.String())
+				t.Fatalf("is_public=false/非公开企业协议不应公开: %s", w.Body.String())
 			}
 			if it.ID == a1 {
 				found = true

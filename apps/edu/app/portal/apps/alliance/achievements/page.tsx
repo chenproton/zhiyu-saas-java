@@ -168,21 +168,6 @@ export default function AllianceAchievementsPage() {
               </SelectContent>
             </Select>
           </FormFieldRow>
-          <FormFieldRow label={t('状态')}>
-            <Select
-              value={item.status || 'draft'}
-              onValueChange={(v: any) => setItem({ ...item, status: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">{t('草稿')}</SelectItem>
-                <SelectItem value="published">{t('已发布')}</SelectItem>
-                <SelectItem value="archived">{t('已归档')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormFieldRow>
           <FormFieldRow label={t('描述')}>
             <Textarea
               value={item.description || ''}

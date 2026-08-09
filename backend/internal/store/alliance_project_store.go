@@ -199,8 +199,8 @@ func (s *AllianceStore) DeleteMilestone(ctx context.Context, id, tenantID string
 	return err
 }
 
-// ListPublicProjects 门户前台公开项目列表：归属"双控通过的企业"（enterprise_ids 关联判断，
-// §3.2）；带 tenantID 时限定该校自有项目且叠加 link.is_public 双控。
+// ListPublicProjects 门户前台公开项目列表：is_public 为唯一展示门槛，归属"双控通过的企业"
+// （enterprise_ids 关联判断，§3.2）；带 tenantID 时限定该校自有项目且叠加 link.is_public 双控。
 func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string) ([]domain.AllianceProject, error) {
 	const cols = `id, tenant_id, name, type, description, phase, publish_status,
 		start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
@@ -209,7 +209,7 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string)
 		return queryList(ctx, s.q, s.ScanProjectRows, `
 			SELECT `+cols+`
 			FROM alliance_projects p
-			WHERE p.is_public = true AND p.publish_status = 'published'
+			WHERE p.is_public = true
 			  AND p.tenant_id = $1
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
@@ -222,7 +222,7 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string)
 	return queryList(ctx, s.q, s.ScanProjectRows, `
 		SELECT `+cols+`
 		FROM alliance_projects p
-		WHERE p.is_public = true AND p.publish_status = 'published'
+		WHERE p.is_public = true
 		  AND EXISTS (
 			SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
 			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
@@ -239,7 +239,7 @@ func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id, tenantID s
 		return queryOne(ctx, s.q, s.ScanProjectRows, `
 			SELECT `+cols+`
 			FROM alliance_projects p
-			WHERE p.id = $1 AND p.is_public = true AND p.publish_status = 'published'
+			WHERE p.id = $1 AND p.is_public = true
 			  AND p.tenant_id = $2
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
@@ -251,7 +251,7 @@ func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id, tenantID s
 	return queryOne(ctx, s.q, s.ScanProjectRows, `
 		SELECT `+cols+`
 		FROM alliance_projects p
-		WHERE p.id = $1 AND p.is_public = true AND p.publish_status = 'published'
+		WHERE p.id = $1 AND p.is_public = true
 		  AND EXISTS (
 			SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
 			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true

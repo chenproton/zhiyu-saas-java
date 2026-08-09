@@ -145,8 +145,8 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 	return &a, nil
 }
 
-// ListPublicAchievements 门户前台公开成果列表：归属"双控通过的企业"（enterprise_ids 关联判断，
-// §3.2）；带 tenantID 时限定该校自有成果且叠加 link.is_public 双控。
+// ListPublicAchievements 门户前台公开成果列表：is_public 为唯一展示门槛，归属"双控通过的企业"
+// （enterprise_ids 关联判断，§3.2）；带 tenantID 时限定该校自有成果且叠加 link.is_public 双控。
 func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID string) ([]domain.AllianceAchievement, error) {
 	const cols = `id, tenant_id, title, type, description, achievement_date, cover_image,
 		attachments, citation_reason, images, owner_persons, co_builders,
@@ -156,7 +156,7 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID str
 		return queryList(ctx, s.q, s.ScanAchievementRows, `
 			SELECT `+cols+`
 			FROM alliance_achievements a
-			WHERE a.is_public = true AND a.status = 'published'
+			WHERE a.is_public = true
 			  AND a.tenant_id = $1
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
@@ -169,7 +169,7 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID str
 	return queryList(ctx, s.q, s.ScanAchievementRows, `
 		SELECT `+cols+`
 		FROM alliance_achievements a
-		WHERE a.is_public = true AND a.status = 'published'
+		WHERE a.is_public = true
 		  AND EXISTS (
 			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
@@ -187,7 +187,7 @@ func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id, tenant
 		return queryOne(ctx, s.q, s.ScanAchievementRows, `
 			SELECT `+cols+`
 			FROM alliance_achievements a
-			WHERE a.id = $1 AND a.is_public = true AND a.status = 'published'
+			WHERE a.id = $1 AND a.is_public = true
 			  AND a.tenant_id = $2
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
@@ -199,7 +199,7 @@ func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id, tenant
 	return queryOne(ctx, s.q, s.ScanAchievementRows, `
 		SELECT `+cols+`
 		FROM alliance_achievements a
-		WHERE a.id = $1 AND a.is_public = true AND a.status = 'published'
+		WHERE a.id = $1 AND a.is_public = true
 		  AND EXISTS (
 			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true

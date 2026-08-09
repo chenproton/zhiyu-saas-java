@@ -351,7 +351,7 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true)`, tenantID)
 		st.ProjectCount = count(`
 			SELECT COUNT(*) FROM alliance_projects p
-			WHERE p.is_public = true AND p.publish_status = 'published'
+			WHERE p.is_public = true
 			  AND p.tenant_id = $1
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
@@ -360,7 +360,7 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			  )`, tenantID)
 		st.AchievementCount = count(`
 			SELECT COUNT(*) FROM alliance_achievements a
-			WHERE a.is_public = true AND a.status = 'published'
+			WHERE a.is_public = true
 			  AND a.tenant_id = $1
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
@@ -375,14 +375,14 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)`)
 		st.ProjectCount = count(`
 			SELECT COUNT(*) FROM alliance_projects p
-			WHERE p.is_public = true AND p.publish_status = 'published'
+			WHERE p.is_public = true
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
 			  )`)
 		st.AchievementCount = count(`
 			SELECT COUNT(*) FROM alliance_achievements a
-			WHERE a.is_public = true AND a.status = 'published'
+			WHERE a.is_public = true
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true

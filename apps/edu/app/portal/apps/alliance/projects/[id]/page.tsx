@@ -228,10 +228,6 @@ export default function AllianceProjectDetailPage() {
                 {allianceLabel('projectPhase', project?.phase)}
               </p>
               <p>
-                <span className="text-muted-foreground">{t('发布状态：')}</span>
-                {allianceLabel('publishStatus', project?.publishStatus)}
-              </p>
-              <p>
                 <span className="text-muted-foreground">{t('公开显示：')}</span>
                 {project?.isPublic ? t('是') : t('否')}
               </p>
