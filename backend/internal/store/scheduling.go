@@ -488,9 +488,15 @@ func (s *SchedulingStore) ResolveCourseIDByCode(ctx context.Context, q Queryer, 
 }
 
 // PlanEntryTenantID 查询教学计划条目所属租户（排课归属校验用）。
+// 注意：teaching_plan_entries 自身无 tenant_id，需通过 plan_id 关联 teaching_plans 读取。
 func (s *SchedulingStore) PlanEntryTenantID(ctx context.Context, entryID string) (string, error) {
 	var tenantID string
-	err := s.q.QueryRow(ctx, `SELECT tenant_id FROM teaching_plan_entries WHERE id = $1`, entryID).Scan(&tenantID)
+	err := s.q.QueryRow(ctx, `
+		SELECT tp.tenant_id
+		FROM teaching_plan_entries tpe
+		JOIN teaching_plans tp ON tp.id = tpe.plan_id
+		WHERE tpe.id = $1
+	`, entryID).Scan(&tenantID)
 	return tenantID, err
 }
 
