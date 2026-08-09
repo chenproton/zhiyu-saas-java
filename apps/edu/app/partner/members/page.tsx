@@ -46,7 +46,11 @@ export default function PartnerMembersPage() {
     { deps: [authLoading, isAdmin], onError: () => true },
   )
 
-  const members = data ?? []
+  // 后端返回 domain.User，角色在 roleCodes 数组；补出单数 roleCode 供表格/编辑表单使用
+  const members = (data ?? []).map((m) => ({
+    ...m,
+    roleCode: (m.roleCodes?.[0] ?? m.roleCode) as MemberForm['roleCode'],
+  }))
 
   return (
     <PortalCrudPage<MemberForm>
@@ -85,7 +89,7 @@ export default function PartnerMembersPage() {
           <TableCell>{m.name || '-'}</TableCell>
           <TableCell>{m.phone || '-'}</TableCell>
           <TableCell>
-            {m.roleCode === 'enterprise_admin' ? t('企业管理员') : t('企业成员')}
+            {(m.roleCodes?.[0] ?? m.roleCode) === 'enterprise_admin' ? t('企业管理员') : t('企业成员')}
           </TableCell>
           <TableCell>{formatDate(m.lastLoginAt)}</TableCell>
           <TableCell>{formatDate(m.createdAt)}</TableCell>

@@ -41,7 +41,7 @@ export interface PartnerExpert extends AllianceExpert {
   userId?: string
 }
 
-/** 企业成员账号（users，platform=partner） */
+/** 企业成员账号（users，platform=partner；后端返回 domain.User，角色在 roleCodes 数组） */
 export interface PartnerMember {
   id: string
   username: string
@@ -49,6 +49,8 @@ export interface PartnerMember {
   phone?: string
   email?: string
   roleCode: 'enterprise_admin' | 'enterprise_member'
+  /** 后端实际返回的角色字段（domain.User.roleCodes）；roleCode 仅供前端表单/请求使用 */
+  roleCodes?: string[]
   status: string
   lastLoginAt?: string
   createdAt: string
@@ -98,15 +100,12 @@ export interface PartnerDashboard {
   publicExpertCount?: number
 }
 
-/** GET /partner/schools：合作学校（link 反向视图） */
+/** GET /partner/schools：合作学校（link 反向视图，对应后端 domain.AlliancePartnerSchool） */
 export interface PartnerSchool {
+  linkId: string
   tenantId: string
-  name: string
-  shortName?: string
-  logoUrl?: string
-  schoolType?: string
-  province?: string
-  city?: string
+  schoolName: string
+  relationType: string
   /** link 管理字段（学校侧维护，企业只读） */
   status: string
   rating?: string

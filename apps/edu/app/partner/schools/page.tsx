@@ -36,19 +36,14 @@ export default function PartnerSchoolsPage() {
       onRetry={refresh}
       filterItems={(items, search) =>
         items.filter(
-          (s) =>
-            !search ||
-            s.name.toLowerCase().includes(search.toLowerCase()) ||
-            (s.shortName || '').toLowerCase().includes(search.toLowerCase()),
+          (s) => !search || s.schoolName.toLowerCase().includes(search.toLowerCase()),
         )
       }
       hideCreate
-      colSpan={7}
+      colSpan={5}
       renderTableHeader={() => (
         <>
           <TableHead>{t('学校名称')}</TableHead>
-          <TableHead>{t('学校类型')}</TableHead>
-          <TableHead>{t('所在地区')}</TableHead>
           <TableHead>{t('合作状态')}</TableHead>
           <TableHead>{t('合作评级')}</TableHead>
           <TableHead>{t('学校前台展示')}</TableHead>
@@ -57,9 +52,7 @@ export default function PartnerSchoolsPage() {
       )}
       renderTableRow={(s) => (
         <>
-          <TableCell className="font-medium">{s.name}</TableCell>
-          <TableCell>{s.schoolType || '-'}</TableCell>
-          <TableCell>{[s.province, s.city].filter(Boolean).join(' ') || '-'}</TableCell>
+          <TableCell className="font-medium">{s.schoolName}</TableCell>
           <TableCell>{allianceLabel('enterpriseStatus', s.status)}</TableCell>
           <TableCell>{allianceLabel('enterpriseRating', s.rating)}</TableCell>
           <TableCell>{s.isPublic ? t('是') : t('否')}</TableCell>
