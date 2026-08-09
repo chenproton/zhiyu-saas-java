@@ -281,3 +281,56 @@ func TestAllianceEnterprise_SearchLinkUpdate(t *testing.T) {
 		}
 	})
 }
+
+// TestPartner_ListMembers 成员列表回归：Users().ListConfig 不含 ScanRows，
+// handler 必须走 UserStore.List（曾误用 executeListQuery 导致 500 scanRows not configured）。
+func TestPartner_ListMembers(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	// 注册企业，造出企业租户 + 管理员账号
+	authH := newPartnerAuthHandler(env)
+	r0 := chi.NewRouter()
+	r0.Post("/auth/partner/register", authH.PartnerRegister)
+	suffix := uuid.NewString()[:8]
+	w := doNoAuthJSON(r0, http.MethodPost, "/auth/partner/register", map[string]interface{}{
+		"enterpriseName": "成员列表测试企业-" + suffix,
+		"username":       "partner_mem_" + suffix,
+		"password":       "abc12345",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("注册失败: %d: %s", w.Code, w.Body.String())
+	}
+	var reg partnerLoginResp
+	if err := json.Unmarshal(w.Body.Bytes(), &reg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	tenantID := *reg.User.TenantID
+	defer cleanupPartnerTenant(env, tenantID)
+
+	svc := service.New(store.New(env.DB))
+	ph := &handler.PartnerHandler{Service: service.NewPartnerService(svc)}
+	r := chi.NewRouter()
+	r.Get("/partner/members", ph.ListMembers)
+
+	claims := &middleware.Claims{
+		UserID:    reg.User.ID,
+		TenantID:  &tenantID,
+		Platform:  domain.UserPlatformPartner,
+		RoleCodes: []string{domain.RoleEnterpriseAdmin},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/partner/members", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	items, total, err := testhelper.UnmarshalList[domain.User](rec)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if total < 1 || len(items) == 0 || items[0].ID != reg.User.ID {
+		t.Fatalf("成员列表应包含注册的管理员账号: total=%d body=%s", total, rec.Body.String())
+	}
+}

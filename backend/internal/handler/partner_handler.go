@@ -306,13 +306,15 @@ func (h *PartnerHandler) DeleteExpert(w http.ResponseWriter, r *http.Request) {
 // ===== 成员账号（仅 enterprise_admin——路由层控制） =====
 
 func (h *PartnerHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.User](
-		r.Context(), h.Service.Store().Q(), r, h.Service.Store().Users().ListConfig())
+	// Users().ListConfig 不含 ScanRows（扫描函数由 UserStore.List 内部注入），
+	// 不能走通用 executeListQuery，须与 user_management_handler.List 同款调用
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.Store().Users().List(r.Context(), params, h.Service.Store().Users().ListConfig())
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondServerError(w, r, err, "查询成员列表失败")
 		return
 	}
