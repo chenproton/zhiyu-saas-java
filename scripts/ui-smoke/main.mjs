@@ -76,8 +76,16 @@ function attachListeners(page, sink, cfg, routeState) {
   }))
   page.on('console', msg => {
     const t = msg.type()
-    if (t === 'error') push({ type: 'console', message: msg.text().slice(0, 500) })
-    else if (t === 'warning' && cfg.verbose) push({ type: 'console-warning', message: msg.text().slice(0, 500) })
+    if (t === 'error') {
+      const text = msg.text().slice(0, 500)
+      // 把 401/403/429 的 console 报错也归为权限/限流信号，避免 /partner 等无权限页噪音
+      let subType = 'console'
+      if (/\b401\b/.test(text) || /\b403\b/.test(text)) subType = 'auth'
+      else if (/\b429\b/.test(text)) subType = 'rate-limit'
+      push({ type: subType, message: text })
+    } else if (t === 'warning' && cfg.verbose) {
+      push({ type: 'console-warning', message: msg.text().slice(0, 500) })
+    }
   })
   page.on('response', res => {
     const status = res.status()
@@ -99,7 +107,7 @@ function attachListeners(page, sink, cfg, routeState) {
 }
 
 // ── 单路由超时包装：超时返回带 timedOut 标记的结果，由调用方换新页面 ──
-async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState) {
+async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState, token) {
   const timeoutMs = (cfg.routeTimeoutSec || 120) * 1000
   let timer
   const timeout = new Promise(resolve => {
@@ -108,7 +116,7 @@ async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState
       errors: [{ type: 'timeout', message: `单路由巡检超时（>${cfg.routeTimeoutSec || 120}s）` }],
     }), timeoutMs)
   })
-  const r = await Promise.race([walkRoute(page, ctx, route, cfg, role, sink, routeState), timeout])
+  const r = await Promise.race([walkRoute(page, ctx, route, cfg, role, sink, routeState, token), timeout])
   clearTimeout(timer)
   return r
 }
@@ -236,12 +244,13 @@ export async function main() {
 
       // 动态路由（拉真实实体 id）；--route 单页调试模式跳过
       let dynamicRoutes = []
+      let roleToken = ''
       if (!cfg.route) {
         try {
-          const token = await page.evaluate(() => {
+          roleToken = await page.evaluate(() => {
             try { return localStorage.getItem('zhiyu-portal-token') || '' } catch { return '' }
           })
-          dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, token)
+          dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, roleToken)
           if (dynamicRoutes.length) console.log(`  [${role}] 动态路由 ${dynamicRoutes.length} 个（拉取真实实体 id）`)
         } catch {
           dynamicRoutes = []
@@ -262,10 +271,9 @@ export async function main() {
         let wsink = []
         const wstate = { clickIndex: -1, url: '', dynamicUrls }
         attachListeners(wpage, wsink, cfg, wstate)
-        let authStreak = 0 // 连续 401 计数：疑似 token 过期时重新登录
         try {
           for (const route of chunk) {
-            let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate)
+            let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken)
             if (r.timedOut) {
               // 单路由超时：换新页面继续，不重试
               await wpage.close().catch(() => {})
@@ -279,7 +287,7 @@ export async function main() {
               const oldSink = wsink
               wsink = []
               attachListeners(wpage, wsink, cfg, wstate)
-              r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate)
+              r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate, roleToken)
               // 崩溃重试保留第一次的错误（P1-7）
               if (!r.errors.length && oldSink.length) {
                 r.errors.push(...oldSink)
@@ -292,17 +300,6 @@ export async function main() {
             done++
             const mark = r.status === 'ok' ? 'ok  ' : r.status === 'skip' ? 'skip' : 'ERR '
             console.log(`  [${role}] ${done}/${allRoutes.length} ${mark} ${route}${r.errors.length ? `（${r.errors.length} 个错误）` : ''}`)
-            // 连续多页 401 → token 可能过期，重新登录一次
-            authStreak = r.info?.some(e => e.type === 'auth' && /^401/.test(e.message)) ? authStreak + 1 : 0
-            if (authStreak >= 3) {
-              authStreak = 0
-              try {
-                await login(wctx, wpage, cfg, role, [])
-                console.log(`  [${role}] 检测到连续 401，已重新登录`)
-              } catch (e) {
-                console.error(`  [${role}] 重新登录失败: ${e.message}`)
-              }
-            }
           }
         } catch (e) {
           console.error(`  [${role}] worker#${wi} 异常（已保留其他结果）: ${e.message}`)

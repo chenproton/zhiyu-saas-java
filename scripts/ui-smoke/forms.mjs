@@ -21,7 +21,8 @@ export function keyText(key) {
 export function buildTriggerRe(cfg) {
   const words = [...(cfg.formTriggerWords || []), ...(cfg.formTriggerWordsEn || [])]
   if (!words.length) return null
-  return new RegExp(`^(?:${words.map(escapeRe).join('|')})`)
+  // 支持 "+ 新建"、"新建教师" 等带前缀/后缀的文案
+  return new RegExp(words.map(escapeRe).join('|'))
 }
 
 export function buildSubmitRe(cfg) {
@@ -35,7 +36,7 @@ function escapeRe(s) {
 
 // 按字段特征生成填充值（纯函数，便于测试）
 export function valueForField(field, rand) {
-  const hint = `${field.name} ${field.label}`.toLowerCase()
+  const hint = `${field.name} ${field.label} ${field.placeholder || ''}`.toLowerCase()
   const t = (field.type || '').toLowerCase()
   if (t === 'email' || /email|邮箱/.test(hint)) return `smoke_${rand}@test.local`
   if (t === 'tel' || /phone|tel|手机|电话/.test(hint)) return '13800000000'
@@ -55,6 +56,9 @@ async function enumerateFields(page) {
     const visible = el => el.offsetParent !== null || el.getClientRects().length > 0
     const scope = [...document.querySelectorAll(dialogAny)].find(visible)
       || [...document.querySelectorAll('form')].find(visible)
+      || document.querySelector('main')
+      || document.querySelector('article')
+      || document.body
       || null
     if (!scope) return { found: false, fields: [], skipped: [], inDialog: false }
     const fields = []
@@ -94,6 +98,10 @@ async function fillTextFields(page, fields, rand) {
     const visible = el => el.offsetParent !== null || el.getClientRects().length > 0
     const scope = [...document.querySelectorAll(dialogAny)].find(visible)
       || [...document.querySelectorAll('form')].find(visible)
+      || document.querySelector('main')
+      || document.querySelector('article')
+      || document.body
+      || null
     if (!scope) return 0
     const els = scope.querySelectorAll(fieldSel)
     const setReactValue = (el, value) => {
@@ -101,8 +109,10 @@ async function fillTextFields(page, fields, rand) {
       const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
       if (setter) setter.call(el, value)
       else el.value = value
+      el.focus()
       el.dispatchEvent(new Event('input', { bubbles: true }))
       el.dispatchEvent(new Event('change', { bubbles: true }))
+      el.blur()
     }
     let filled = 0
     for (const f of fields) {
@@ -135,9 +145,23 @@ async function fillChoiceFields(page, fields, cfg) {
         const box = scopeLoc.locator('[role="combobox"]:visible').nth(f.comboIndex)
         await box.click({ timeout: 2000 })
         await sleep(cfg.dialogEscMs)
-        const opt = page.locator('[role="option"]:visible').first()
-        if (!(await opt.count())) { skipped.push(f.label || f.name || 'combobox'); await page.keyboard.press('Escape').catch(() => {}); continue }
-        await opt.click({ timeout: 2000 })
+        // 过滤占位选项（请选择 / Select / Choose / 全部 / - 等）
+        const opts = page.locator('[role="option"]:visible')
+        const n = await opts.count()
+        let clicked = false
+        const placeholderRe = /^(请选择|选择|全部|Select|Choose|All|-|—)$/i
+        for (let i = 0; i < n; i++) {
+          const text = ((await opts.nth(i).innerText().catch(() => '')) || '').trim()
+          if (!text || placeholderRe.test(text)) continue
+          await opts.nth(i).click({ timeout: 2000 })
+          clicked = true
+          break
+        }
+        if (!clicked) {
+          skipped.push(f.label || f.name || 'combobox')
+          await page.keyboard.press('Escape').catch(() => {})
+          continue
+        }
         filled++
       } else if (f.type === 'radio') {
         // 同名组选第一个
@@ -155,26 +179,41 @@ async function fillChoiceFields(page, fields, cfg) {
   return { filled, skipped }
 }
 
-// 找提交按钮：表单内 type=submit 优先，其次文本匹配提交词
-async function findSubmitButton(page, submitRe) {
-  const scopeSel = `${DIALOG_VISIBLE}, form:visible`
-  const inScope = page.locator(scopeSel).last()
-  const byType = inScope.locator('button[type="submit"]:visible').first()
-  if (await byType.count()) return byType
-  const buttons = inScope.locator('button:visible')
-  const n = await buttons.count()
-  for (let i = 0; i < n; i++) {
-    const text = ((await buttons.nth(i).innerText().catch(() => '')) || '').trim()
-    if (text && submitRe.test(text)) return buttons.nth(i)
+// 找提交按钮：表单/弹层内优先；无表单时扩大到 main/article/body。
+// 按文本匹配 submitRe，而不是按 type=submit，避免把“返回”等按钮误判为提交。
+// 过滤掉浮层菜单/下拉列表里的按钮（它们会盖住主表单提交按钮）。
+async function findSubmitButton(page, submitRe, preferredText = null) {
+  const scopeSel = `${DIALOG_VISIBLE}, form:visible, main:visible, article:visible, body`
+  const scopes = page.locator(scopeSel)
+  const scopeCount = await scopes.count()
+  const candidates = []
+  for (let s = scopeCount - 1; s >= 0; s--) {
+    const inScope = scopes.nth(s)
+    const buttons = inScope.locator('button:visible')
+    const n = await buttons.count()
+    for (let i = 0; i < n; i++) {
+      const btn = buttons.nth(i)
+      const text = ((await btn.innerText().catch(() => '')) || '').trim()
+      if (!text || !submitRe.test(text)) continue
+      // 跳过下拉/菜单里的按钮
+      const inFloat = await btn.evaluate(el => !!el.closest('[role="menu"], [role="listbox"], [role="option"], [data-radix-popper-content-wrapper]')).catch(() => false)
+      if (inFloat) continue
+      candidates.push({ btn, text, preferred: preferredText && text === preferredText })
+    }
   }
-  return null
+  if (!candidates.length) return null
+  // 优先使用与入口文案完全一致的按钮（如创建页本身就是提交按钮）
+  const exact = candidates.find(c => c.preferred)
+  return exact ? exact.btn : candidates[0].btn
 }
 
 /**
  * 尝试对当前页面/弹窗中的表单执行 填充→提交→判定。
  * 返回表单测试记录（写入 routeResult.forms），无表单返回 null。
  */
-export async function maybeTestForm(page, cfg, triggerText) {
+export async function maybeTestForm(page, cfg, triggerText, submitClick = null) {
+  // 表单（尤其是弹层/创建页）可能需要短暂时间完成挂载
+  await sleep(1000)
   const rand = Math.random().toString(36).slice(2, 8)
   const rec = { trigger: triggerText || '(页面内表单)', filled: 0, skippedFields: [], submitStatus: 'none', apiResult: null }
 
@@ -183,8 +222,8 @@ export async function maybeTestForm(page, cfg, triggerText) {
   rec.skippedFields.push(...meta.skipped)
 
   const submitRe = buildSubmitRe(cfg)
-  const submitBtn = await findSubmitButton(page, submitRe)
-  if (!submitBtn) {
+  const submitBtn = submitClick ? null : await findSubmitButton(page, submitRe, triggerText)
+  if (!submitClick && !submitBtn) {
     rec.submitStatus = 'no-submit-button'
     return rec // 有字段但没有提交按钮（如搜索区），不算错误
   }
@@ -221,7 +260,16 @@ export async function maybeTestForm(page, cfg, triggerText) {
     res => ['POST', 'PUT', 'PATCH'].includes(res.request().method()) && res.url().includes('/api/'),
     { timeout: 8000 },
   ).catch(() => null)
-  await submitBtn.click({ timeout: 3000 }).catch(() => {})
+  if (cfg.verbose) {
+    const label = submitClick ? `(trigger click)` : await submitBtn.innerText().catch(() => '?')
+    console.log(`    [form] fields=${meta.fields.length} text=${textFields.length} choice=${choiceFields.length} submitBtn=${label}`)
+  }
+  try {
+    if (submitClick) await submitClick()
+    else await submitBtn.click({ timeout: 3000 })
+  } catch (e) {
+    if (cfg.verbose) console.log(`    [form] click error: ${e.message}`)
+  }
   const res = await respPromise
 
   if (res) {

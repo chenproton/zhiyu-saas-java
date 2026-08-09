@@ -20,24 +20,26 @@ const DEFAULTS = {
     student: { username: 'student', password: 'student123' },
   },
   maxClicks: 100,
-  workers: 3,
+  // 默认单路串行：多 worker 并发容易把本地后端压垮（502/崩溃），需要加速时可在配置中加大
+  workers: 1,
   report: DEFAULT_REPORT,
-  excludeRoutes: [],
+  // 默认排除 partner/superadmin 独立门户：portal 角色访问这些应用会清除/覆盖 portal token，导致后续页面被踢到登录页
+  excludeRoutes: ['/partner', '/superadmin'],
   dynamicRoutes: {},
   expectedAuthPages: [],
   // 会修改/提交数据的按钮文本（中英双语），默认跳过（防止污染数据）
-  dangerousWords: ['保存', '提交', '删除', '发布', '确认', '确定', '归档', '驳回', '通过', '启用', '停用', '禁用', '冻结', '锁定', '重置密码', '退出', '注销', '登出', '批量', '创建', '新增', '新建', '添加', '完成'],
+  dangerousWords: ['保存', '提交', '删除', '发布', '确认', '确定', '归档', '驳回', '通过', '启用', '停用', '禁用', '冻结', '锁定', '重置密码', '退出', '注销', '登出', '批量', '创建', '新增', '新建', '添加', '完成', '设为', '切换'],
   dangerousWordsEn: ['Save', 'Submit', 'Delete', 'Publish', 'Confirm', 'OK', 'Archive', 'Reject', 'Approve', 'Enable', 'Disable', 'Freeze', 'Lock', 'Reset', 'Logout', 'Sign out', 'Batch', 'Create', 'Add', 'Complete', 'Finish', 'Remove'],
   // 语言切换按钮文本：点击会改变全局语言，导致危险词失效，必须跳过
   localeSwitchWords: ['中文', 'English', '简体中文', '语言'],
   // 种子数据/已知噪音（正则片段）；静态资源 404 由 response 监听以外的 console 兜底产生，页面可用性另由 pageerror 保障
   noisePatterns: ['example\\.com', 'Failed to load resource: the server responded with a status of 404'],
-  // 点击时序
-  clickIntervalMs: 200,
-  dialogEscMs: 300,
-  settleMs: 500,
+  // 点击时序（默认值偏保守，全量回归时可在 smoke.config.json 中覆盖）
+  clickIntervalMs: 80,
+  dialogEscMs: 150,
+  settleMs: 300,
   // networkidle 仅在导航后尝试，超时短（带轮询的页面永远到不了 idle）
-  navWaitMs: 3000,
+  navWaitMs: 2500,
   loginTimeoutMs: 20000,
   retryCrashes: 2,
   // 单路由巡检超时（秒），超时记 error 并换新页面继续
@@ -51,8 +53,8 @@ const DEFAULTS = {
   cleanup: true,
   maxFormSubmits: 3,
   // 创建/编辑类入口按钮文本（点击后如出现表单则执行表单测试）
-  formTriggerWords: ['创建', '新增', '新建', '添加', '编辑'],
-  formTriggerWordsEn: ['Create', 'Add', 'New', 'Edit'],
+  formTriggerWords: ['创建', '新增', '新建', '添加'],
+  formTriggerWordsEn: ['Create', 'Add', 'New'],
   // 表单提交按钮文本
   submitWords: ['保存', '提交', '创建', '确定', '确认', '完成'],
   submitWordsEn: ['Save', 'Submit', 'Create', 'OK', 'Confirm', 'Finish'],

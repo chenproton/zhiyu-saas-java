@@ -151,10 +151,13 @@ export async function waitSettled(page, cfg, settleOverride, afterNav = false) {
   await sleep(settleOverride ?? cfg.settleMs)
 }
 
-// 检查并关闭弹窗/下拉
+// 检查并关闭弹窗/下拉（连按 Escape，兼容 Radix 弹窗与自定义下拉）
 export async function closeOverlays(page, cfg) {
   try {
-    if (await page.locator(`${DIALOG_VISIBLE_SELECTOR}, [role="menu"]:visible`).count()) {
+    const still = await page.locator(`${DIALOG_VISIBLE_SELECTOR}, [role="menu"]:visible, [role="listbox"]:visible`).count()
+    if (still) {
+      await page.keyboard.press('Escape').catch(() => {})
+      await sleep(cfg.dialogEscMs)
       await page.keyboard.press('Escape').catch(() => {})
       await sleep(cfg.dialogEscMs)
     }
@@ -209,10 +212,18 @@ function recordFormResult(routeResult, rec) {
 }
 
 // 单页巡检：队列式点击全部唯一可点元素
-export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
+export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, token) {
   cfg = routeCfg(cfg, route) // per-route 配置覆盖（前缀匹配，最长优先）
   const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [], forms: [] }
   try {
+    // 门户 token 被其它应用（partner/superadmin）清除后自动恢复，避免后续页面全部被 skip
+    if (token) {
+      await page.evaluate(t => {
+        try {
+          if (!localStorage.getItem('zhiyu-portal-token')) localStorage.setItem('zhiyu-portal-token', t)
+        } catch { /* ignore */ }
+      }, token).catch(() => {})
+    }
     await page.goto(cfg.baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 30000 })
     await waitSettled(page, cfg, undefined, true)
     if (page.url().includes('/portal/login')) { // 未登录被重定向
@@ -225,12 +236,7 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
     const triggerRe = cfg.testForms ? buildTriggerRe(cfg) : null
     let formAttempts = 0
     const maxForms = cfg.maxFormSubmits || 3
-    const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复编辑耗尽额度
-    // 页面内表单（如 /xxx/add 独立表单页）
-    if (triggerRe && !/login/.test(route)) {
-      const rec = await maybeTestForm(page, cfg, null).catch(() => null)
-      if (recordFormResult(routeResult, rec)) formAttempts++
-    }
+    const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复耗尽额度
     const attempted = new Set()
     const queue = await collectClickables(page, cfg, dangerousRe, 'page', triggerRe)
     for (let qi = 0; qi < queue.length && routeResult.clicks < cfg.maxClicks; qi++) {
@@ -240,12 +246,27 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
       // 记录当前点击序号与 URL，供错误监听器关联上下文
       routeState.clickIndex = routeResult.clicks
       routeState.url = page.url()
+      const pickText = keyText(pick.key)
+      const isCreatePage = /\/(add|new)(\/|$)/.test(route)
+      if (pick.actionType === 'form-trigger' && isCreatePage && formAttempts < maxForms && !formTestedTriggers.has(pickText)) {
+        // 独立创建页：表单已可见，直接填充提交，避免先点空提交。
+        // 入口按钮本身就是提交按钮，直接复用该元素点击，避免在 body 里重新搜索被浮层按钮干扰。
+        formTestedTriggers.add(pickText)
+        const submitClick = () => clickByIndex(page, pick)
+        const rec = await maybeTestForm(page, cfg, pickText, submitClick).catch(() => null)
+        if (recordFormResult(routeResult, rec)) formAttempts++
+        routeResult.clicks++
+        routeResult.actions.push({ key: pick.key, index: routeResult.clicks, actionType: pick.actionType })
+        await sleep(cfg.clickIntervalMs)
+        await closeOverlays(page, cfg)
+        await ensureZhLocale(page, cfg)
+        continue
+      }
       await clickByIndex(page, pick)
       routeResult.clicks++
       routeResult.actions.push({ key: pick.key, index: routeResult.clicks, actionType: pick.actionType })
       await sleep(cfg.clickIntervalMs)
-      // 点击创建/编辑类入口后如出现表单，执行填充+提交测试
-      const pickText = keyText(pick.key)
+      // 弹层内表单：点击入口后打开弹窗，再填充提交
       if (pick.actionType === 'form-trigger' && formAttempts < maxForms && !formTestedTriggers.has(pickText)) {
         formTestedTriggers.add(pickText)
         const rec = await maybeTestForm(page, cfg, pickText).catch(() => null)
@@ -277,11 +298,11 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
       routeResult.crashed = true
     }
   }
-  // sink 分流：真实错误 vs 信息类（auth/rate-limit），预期权限页直接丢弃 auth
+  // sink 分流：真实错误 vs 信息类（auth/rate-limit/console-warning），预期权限页直接丢弃 auth
   const expectedAuth = (cfg.expectedAuthPages || []).some(x => route.includes(x))
   for (const err of sink.splice(0)) {
     if (err.type === 'auth' && expectedAuth) continue
-    if (NON_ERROR_TYPES.has(err.type)) routeResult.info.push(err)
+    if (NON_ERROR_TYPES.has(err.type) || err.type === 'console-warning') routeResult.info.push(err)
     else routeResult.errors.push(err)
   }
   // skip 判定：无权限遮罩页（无点击、无真实错误、但有 401/403 信号）记 skip
