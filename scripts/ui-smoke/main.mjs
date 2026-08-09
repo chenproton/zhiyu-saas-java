@@ -8,7 +8,7 @@ import path from 'path'
 import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
 import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff } from './routes.mjs'
 import { walkRoute } from './clicker.mjs'
-import { aggregateErrors, diffWithBaseline, printSummary, writeReport } from './report.mjs'
+import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -81,9 +81,12 @@ function attachListeners(page, sink, cfg, routeState) {
   page.on('response', res => {
     const status = res.status()
     const url = res.url()
-    if (status >= 400 && url.includes('/api/')) {
-      push({ type: 'api', message: `${status} ${res.request().method()} ${url.replace(cfg.baseUrl, '')}` })
-    }
+    if (status < 400 || !url.includes('/api/')) return
+    let isDynamic = false
+    try { isDynamic = routeState.dynamicUrls?.has(new URL(page.url()).pathname) || false } catch { /* ignore */ }
+    const kind = classifyApiResponse(status, { isDynamicRoute: isDynamic, dynamicIgnore404: cfg.dynamicIgnore404 })
+    if (kind === 'ignore') return
+    push({ type: kind, message: `${status} ${res.request().method()} ${url.replace(cfg.baseUrl, '')}` })
   })
   page.on('requestfailed', req => {
     const err = req.failure()?.errorText || 'failed'
@@ -92,6 +95,21 @@ function attachListeners(page, sink, cfg, routeState) {
     }
   })
   page.on('dialog', d => d.dismiss().catch(() => {}))
+}
+
+// ── 单路由超时包装：超时返回带 timedOut 标记的结果，由调用方换新页面 ──
+async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState) {
+  const timeoutMs = (cfg.routeTimeoutSec || 120) * 1000
+  let timer
+  const timeout = new Promise(resolve => {
+    timer = setTimeout(() => resolve({
+      route, status: 'error', clicks: 0, actions: [], info: [], timedOut: true,
+      errors: [{ type: 'timeout', message: `单路由巡检超时（>${cfg.routeTimeoutSec || 120}s）` }],
+    }), timeoutMs)
+  })
+  const r = await Promise.race([walkRoute(page, ctx, route, cfg, role, sink, routeState), timeout])
+  clearTimeout(timer)
+  return r
 }
 
 // ── 后端容器日志增量抓取（可选） ───────────────────────────
@@ -120,19 +138,13 @@ export async function main() {
   let routes = staticRoutes.filter(r => !(cfg.excludeRoutes || []).some(x => r.includes(x)))
   if (cfg.route) routes = [cfg.route]
 
-  // 断点续跑：跳过上次报告中已 ok/skip 的路由
+  // 断点续跑：跳过上次报告中已 ok/skip 的路由（按 角色:路由 记录，避免跨角色误跳过）
+  let resumeDone = null
   if (cfg.resume) {
     try {
       const prev = JSON.parse(await fs.readFile(cfg.resume, 'utf8'))
-      const done = new Set()
-      for (const role of Object.keys(prev.results || {})) {
-        for (const rt of prev.results[role]?.routes || []) {
-          if (rt.status === 'ok' || rt.status === 'skip') done.add(rt.route)
-        }
-      }
-      const before = routes.length
-      routes = routes.filter(r => !done.has(r))
-      console.log(`[resume] 上次已完成 ${before - routes.length} 个路由，本次巡检 ${routes.length} 个`)
+      resumeDone = buildResumeDoneSet(prev)
+      console.log(`[resume] 上次已完成 ${resumeDone.size} 个 角色:路由，本次将跳过`)
     } catch {
       console.warn('[resume] 无法读取续跑报告，全量巡检')
     }
@@ -195,7 +207,9 @@ export async function main() {
           dynamicRoutes = []
         }
       }
-      const allRoutes = [...routes, ...dynamicRoutes.map(d => d.url)]
+      const dynamicUrls = new Set(dynamicRoutes.map(d => d.url))
+      const roleRoutes = resumeDone ? routes.filter(r => !resumeDone.has(`${role}:${r}`)) : routes
+      const allRoutes = [...roleRoutes, ...dynamicUrls]
       const chunkSize = Math.ceil(allRoutes.length / cfg.workers)
       const chunks = Array.from({ length: cfg.workers }, (_, i) => allRoutes.slice(i * chunkSize, (i + 1) * chunkSize)).filter(c => c.length)
 
@@ -206,11 +220,19 @@ export async function main() {
         const wctx = await browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) })
         let wpage = await wctx.newPage()
         let wsink = []
-        const wstate = { clickIndex: -1, url: '' }
+        const wstate = { clickIndex: -1, url: '', dynamicUrls }
         attachListeners(wpage, wsink, cfg, wstate)
+        let authStreak = 0 // 连续 401 计数：疑似 token 过期时重新登录
         try {
           for (const route of chunk) {
-            let r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate)
+            let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate)
+            if (r.timedOut) {
+              // 单路由超时：换新页面继续，不重试
+              await wpage.close().catch(() => {})
+              wpage = await wctx.newPage()
+              wsink = []
+              attachListeners(wpage, wsink, cfg, wstate)
+            }
             for (let attempt = 0; r.crashed && attempt < cfg.retryCrashes; attempt++) {
               await wpage.close().catch(() => {})
               wpage = await wctx.newPage()
@@ -230,6 +252,17 @@ export async function main() {
             done++
             const mark = r.status === 'ok' ? 'ok  ' : r.status === 'skip' ? 'skip' : 'ERR '
             console.log(`  [${role}] ${done}/${allRoutes.length} ${mark} ${route}${r.errors.length ? `（${r.errors.length} 个错误）` : ''}`)
+            // 连续多页 401 → token 可能过期，重新登录一次
+            authStreak = r.info?.some(e => e.type === 'auth' && /^401/.test(e.message)) ? authStreak + 1 : 0
+            if (authStreak >= 3) {
+              authStreak = 0
+              try {
+                await login(wctx, wpage, cfg, role, [])
+                console.log(`  [${role}] 检测到连续 401，已重新登录`)
+              } catch (e) {
+                console.error(`  [${role}] 重新登录失败: ${e.message}`)
+              }
+            }
           }
         } catch (e) {
           console.error(`  [${role}] worker#${wi} 异常（已保留其他结果）: ${e.message}`)
@@ -259,7 +292,7 @@ export async function main() {
   }, 0)
   const aggregate = aggregateErrors(results)
   const diff = cfg.baseline ? await diffWithBaseline(cfg.baseline, results) : null
-  printSummary(results, aggregate, diff, totalErrors)
+  printSummary(results, aggregate, diff, totalErrors, cfg)
 
   const report = {
     generatedAt: new Date().toISOString(),

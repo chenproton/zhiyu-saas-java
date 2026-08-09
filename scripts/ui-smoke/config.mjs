@@ -26,8 +26,8 @@ const DEFAULTS = {
   dynamicRoutes: {},
   expectedAuthPages: [],
   // 会修改/提交数据的按钮文本（中英双语），默认跳过（防止污染数据）
-  dangerousWords: ['保存', '提交', '删除', '发布', '确认', '确定', '归档', '驳回', '通过', '启用', '停用', '禁用', '冻结', '锁定', '重置密码', '退出', '注销', '登出', '批量', '创建', '新增', '新建', '添加', '完成', '返回'],
-  dangerousWordsEn: ['Save', 'Submit', 'Delete', 'Publish', 'Confirm', 'OK', 'Archive', 'Reject', 'Approve', 'Enable', 'Disable', 'Freeze', 'Lock', 'Reset', 'Logout', 'Sign out', 'Batch', 'Create', 'Add', 'Complete', 'Finish', 'Remove', 'Back'],
+  dangerousWords: ['保存', '提交', '删除', '发布', '确认', '确定', '归档', '驳回', '通过', '启用', '停用', '禁用', '冻结', '锁定', '重置密码', '退出', '注销', '登出', '批量', '创建', '新增', '新建', '添加', '完成'],
+  dangerousWordsEn: ['Save', 'Submit', 'Delete', 'Publish', 'Confirm', 'OK', 'Archive', 'Reject', 'Approve', 'Enable', 'Disable', 'Freeze', 'Lock', 'Reset', 'Logout', 'Sign out', 'Batch', 'Create', 'Add', 'Complete', 'Finish', 'Remove'],
   // 语言切换按钮文本：点击会改变全局语言，导致危险词失效，必须跳过
   localeSwitchWords: ['中文', 'English', '简体中文', '语言'],
   // 种子数据/已知噪音（正则片段）
@@ -36,9 +36,16 @@ const DEFAULTS = {
   clickIntervalMs: 200,
   dialogEscMs: 300,
   settleMs: 500,
-  navWaitMs: 8000,
+  // networkidle 仅在导航后尝试，超时短（带轮询的页面永远到不了 idle）
+  navWaitMs: 3000,
   loginTimeoutMs: 20000,
   retryCrashes: 2,
+  // 单路由巡检超时（秒），超时记 error 并换新页面继续
+  routeTimeoutSec: 120,
+  // 无文本/无 aria-label 的图标按钮：默认跳过（宁漏勿删）
+  allowIconButtons: false,
+  // 动态路由详情页上的 404（实体被删/无权限 id）默认忽略
+  dynamicIgnore404: true,
   // 定时巡检（git-diff 圈定）时组件依赖扫描深度
   depScanDepth: 3,
 }

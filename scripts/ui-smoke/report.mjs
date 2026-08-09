@@ -3,6 +3,25 @@
  */
 import { promises as fs } from 'fs'
 
+// API 响应分类：auth（401/403，不计错误）/ rate-limit（429，不计错误）/ ignore（动态详情页 404）/ api（真实错误）
+export function classifyApiResponse(status, { isDynamicRoute = false, dynamicIgnore404 = true } = {}) {
+  if (status === 401 || status === 403) return 'auth'
+  if (status === 429) return 'rate-limit'
+  if (status === 404 && isDynamicRoute && dynamicIgnore404) return 'ignore'
+  return 'api'
+}
+
+// 断点续跑：按 角色:路由 记录已完成（ok/skip），避免跨角色误跳过
+export function buildResumeDoneSet(prevReport) {
+  const done = new Set()
+  for (const role of Object.keys(prevReport?.results || {})) {
+    for (const rt of prevReport.results[role]?.routes || []) {
+      if (rt.status === 'ok' || rt.status === 'skip') done.add(`${role}:${rt.route}`)
+    }
+  }
+  return done
+}
+
 // 错误签名归一化：去掉动态 id / 数字参数，用于跨运行对比与聚合
 export function errorSignature(route, err) {
   const msg = String(err.message || '')
@@ -98,7 +117,7 @@ export async function writeReport(reportPath, report) {
   await fs.writeFile(reportPath, JSON.stringify(report, null, 2))
 }
 
-export function printSummary(results, aggregate, diff, totalErrors) {
+export function printSummary(results, aggregate, diff, totalErrors, cfg) {
   console.log('\n========== 巡检报告 ==========')
   for (const role of Object.keys(results)) {
     const r = results[role]
@@ -106,6 +125,10 @@ export function printSummary(results, aggregate, diff, totalErrors) {
     const errRoutes = r.routes.filter(x => x.errors.length)
     const skipped = r.routes.filter(x => x.status === 'skip').length
     console.log(`\n[${role}] 页面 ${r.routes.length} 个，跳过 ${skipped} 个，出错 ${errRoutes.length} 个`)
+    if (cfg?.verbose) {
+      const infoCount = r.routes.reduce((acc, x) => acc + (x.info?.length || 0), 0)
+      if (infoCount) console.log(`  （信息类信号 ${infoCount} 条：401/403/429，不计错误，见报告 info 字段）`)
+    }
     for (const rt of errRoutes.slice(0, 20)) {
       console.log(`  ✗ ${rt.route}（点击 ${rt.clicks} 次）`)
       for (const e of rt.errors.slice(0, 5)) console.log(`      [${e.type}] ${e.message.split('\n')[0]}`)
