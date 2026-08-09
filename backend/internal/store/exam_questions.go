@@ -72,7 +72,7 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 			ON CONFLICT (exam_id, question_id) DO UPDATE SET
 				type = EXCLUDED.type, content = EXCLUDED.content, options = EXCLUDED.options,
 				answer = EXCLUDED.answer, analysis = EXCLUDED.analysis, score = EXCLUDED.score,
-				sort_order = EXCLUDED.sort_order, updated_at = NOW()
+				sort_order = EXCLUDED.sort_order
 		`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1); err != nil {
 			return fmt.Errorf("upsert exam question %s: %w", qq.id, err)
 		}
