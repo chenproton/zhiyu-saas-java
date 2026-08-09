@@ -220,24 +220,3 @@ func mapTaskTypeToChinese(t string) string {
 		return t
 	}
 }
-
-func mapEvalMethodToChinese(mk string) string {
-	switch mk {
-	case "question_bank":
-		return "题库"
-	case "exam", "paper":
-		return "试卷"
-	case "quiz":
-		return "随堂测"
-	case "review":
-		return "现场评审"
-	case "outcome":
-		return "成果评价"
-	case "homework":
-		return "作业"
-	case "random_draw":
-		return "现场问答"
-	default:
-		return mk
-	}
-}

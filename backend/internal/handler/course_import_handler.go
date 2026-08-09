@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -470,19 +469,6 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 	return nil
 }
 
-func (h *CourseImportHandler) toStringSlice(s domain.JSONSlice) []string {
-	if len(s) == 0 {
-		return nil
-	}
-	var ids []string
-	for _, v := range s {
-		if id, ok := v.(string); ok && id != "" {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
-
 func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string {
 	seen := make(map[string]bool)
 	var merged []string
@@ -588,16 +574,6 @@ func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Contex
 		}
 	}
 	return ids
-}
-
-func (h *CourseImportHandler) generateSystemCourseCode(ctx context.Context, q store.Queryer, tenantID string) string {
-	year := time.Now().Format("2006")
-	var maxNum int
-	err := q.QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SYS-[0-9]{4}-([0-9]+)')::int), 0) FROM courses WHERE tenant_id=$1 AND code LIKE 'SYS-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
-	if err != nil {
-		maxNum = 0
-	}
-	return fmt.Sprintf("SYS-%s-%04d", year, maxNum+1)
 }
 
 func mapCourseRefType(t string) string {

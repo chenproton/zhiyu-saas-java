@@ -24,11 +24,6 @@ func lookupIDByName(ctx context.Context, db store.Queryer, tableName, tenantID, 
 	return store.LookupByTableAndName(ctx, db, tableName, tenantID, name)
 }
 
-// splitNames 将名称字符串按中文/英文分号拆分为列表，空项忽略。
-func splitNames(s string) []string {
-	return splitTrim(strings.ReplaceAll(s, "；", ";"), ";")
-}
-
 // lookupIDsByNames 按租户+名称批量查找记录 ID（名称多值用分号分隔），
 // 未命中的名称忽略，返回命中的 ID 列表。
 func lookupIDsByNames(ctx context.Context, db store.Queryer, table, tenantID, names string) []string {
@@ -155,19 +150,6 @@ func parseNullableInt(s string) *int {
 	return &v
 }
 
-// parseNullableFloat 将字符串解析为浮点数，空或无效时返回 nil。
-func parseNullableFloat(s string) *float64 {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil
-	}
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return nil
-	}
-	return &v
-}
-
 // nullableStr 去除空白后，空字符串返回 nil。
 func nullableStr(s string) *string {
 	s = strings.TrimSpace(s)
@@ -203,35 +185,6 @@ func mapDictValue(value string, pairs ...string) string {
 		}
 	}
 	return value
-}
-
-// mapEnterpriseType 企业类型：合作企业/第三方雇主企业 ↔ cooperation/third-party。
-// 兼容旧值 platform/school-based。
-func mapEnterpriseType(v string) string {
-	return mapDictValue(v,
-		"合作企业", "cooperation", "校企合作企业", "cooperation",
-		"第三方雇主企业", "third-party", "第三方", "third-party", "独立雇主企业", "third-party",
-		"platform", "third-party", "school-based", "cooperation",
-	)
-}
-
-// mapCoopStatus 合作状态：洽谈中/合作中/已暂停/已终止 ↔ negotiating/active/paused/terminated。
-func mapCoopStatus(v string) string {
-	return mapDictValue(v,
-		"洽谈中", "negotiating", "洽谈", "negotiating",
-		"合作中", "active", "合作", "active",
-		"已暂停", "paused", "暂停", "paused",
-		"已终止", "terminated", "终止", "terminated",
-	)
-}
-
-// mapCoopRating 合作评级：战略/深度/一般 ↔ strategic/deep/general。
-func mapCoopRating(v string) string {
-	return mapDictValue(v,
-		"战略合作", "strategic", "战略", "strategic",
-		"深度合作", "deep", "深度", "deep",
-		"一般合作", "general", "一般", "general",
-	)
 }
 
 // mapProjectPhase 项目阶段：启动/执行中/验收/关闭/已归档/已终止 ↔ initiation/execution/acceptance/closure/archived/terminated。
@@ -293,15 +246,6 @@ func mapBrandType(v string) string {
 		"专业品牌", "major", "专业", "major",
 		"师资品牌", "teacher", "教师", "teacher", "师资", "teacher",
 		"文化品牌", "culture", "文化", "culture",
-	)
-}
-
-// mapExpertRating 专家评级：金牌/银牌/铜牌 ↔ gold/silver/copper。
-func mapExpertRating(v string) string {
-	return mapDictValue(v,
-		"金牌", "gold", "金牌专家", "gold",
-		"银牌", "silver", "银牌专家", "silver",
-		"铜牌", "copper", "铜牌专家", "copper",
 	)
 }
 
