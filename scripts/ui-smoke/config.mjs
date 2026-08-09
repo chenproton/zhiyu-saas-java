@@ -153,7 +153,7 @@ export function parseArgs(argv) {
   --roles <a,b,c>       角色列表（默认 school,teacher,student,partner；partner 账号不存在时自动注册巡检企业）
   --account r:u:p       覆盖指定角色账号，如 --account school:school:newpass
   --max-clicks <n>      每页点击安全阀（默认 100）
-  --workers <n>         并发路数（默认 3）
+  --workers <n>         并发路数（默认 1）
   --config <path>       配置文件（默认 scripts/ui-smoke/smoke.config.json）
   --exclude <sub,a,b>   排除路由子串
   --route <path>        只巡检单个路由
