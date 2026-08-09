@@ -159,14 +159,6 @@ export interface NodeQuiz {
   timeLimit?: number
 }
 
-export interface NodeHomework {
-  id: string
-  title: string
-  requirement: string
-  needAttachment: boolean
-  deadline?: string
-}
-
 export interface SystemCourseNode {
   id: string
   courseId: string
@@ -187,7 +179,6 @@ export interface SystemCourseNode {
   difficulty?: number
   resources?: NodeResource[]
   quizzes?: NodeQuiz[]
-  homeworks?: NodeHomework[]
   evalData?: Record<string, any>
   status: CourseStatus
 }

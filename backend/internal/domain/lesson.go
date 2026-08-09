@@ -79,15 +79,6 @@ type NodeQuizQuestion struct {
 	SortOrder int     `json:"sortOrder"`
 }
 
-type NodeHomework struct {
-	ID             string     `json:"id"`
-	NodeID         string     `json:"nodeId"`
-	Title          string     `json:"title"`
-	Requirement    *string    `json:"requirement,omitempty"`
-	NeedAttachment bool       `json:"needAttachment"`
-	Deadline       *time.Time `json:"deadline,omitempty"`
-}
-
 type HybridNodeModule struct {
 	ID        string  `json:"id"`
 	NodeID    string  `json:"nodeId"`

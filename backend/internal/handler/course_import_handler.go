@@ -442,13 +442,8 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 		}
 		switch methodKey {
 		case "homework":
-			_, err := q.Exec(ctx, `
-				INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment)
-				VALUES ($1,$2,$3,$4,'',false)
-			`, uuid.NewString(), tenantID, nodeID, "作业测评")
-			if err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]作业测评创建失败: %v", nr.courseName, nr.nodeName, err))
-			}
+			// 节点作业功能已下线，导入时跳过
+			continue
 		default:
 			title := "题库测验"
 			if methodKey == "paper" {
@@ -491,9 +486,6 @@ func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string 
 
 func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, q store.Queryer, courseID string) error {
 	if _, err := q.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID); err != nil {
-		return err
-	}
-	if _, err := q.Exec(ctx, `DELETE FROM node_homeworks WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID); err != nil {
 		return err
 	}
 	if _, err := q.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID); err != nil {

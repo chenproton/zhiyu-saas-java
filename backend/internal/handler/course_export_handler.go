@@ -200,15 +200,12 @@ func (h *CourseExportHandler) lookupNodeResourceNames(ctx context.Context, nodeI
 }
 
 func (h *CourseExportHandler) lookupNodeEvalMethods(ctx context.Context, tenantID, nodeID string) []string {
-	methods, hasHomework := h.Store.CourseNodes().ListNodeEvalMethods(ctx, h.Store.Q(), tenantID, nodeID)
+	methods := h.Store.CourseNodes().ListNodeEvalMethods(ctx, h.Store.Q(), tenantID, nodeID)
 	var out []string
 	for _, t := range methods {
 		if ch := mapCourseEvalMethodToChinese(t); ch != "" {
 			out = append(out, ch)
 		}
-	}
-	if hasHomework {
-		out = append(out, "作业")
 	}
 	return out
 }

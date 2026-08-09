@@ -726,16 +726,6 @@ func TestHybridCourseGenerateAssessments(t *testing.T) {
 		t.Fatalf("expected 1 exam usage, got %d", usageCount)
 	}
 
-	// 作业已生成
-	var hwCount int
-	err = env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM node_homeworks WHERE node_id = $1`, nodeID).Scan(&hwCount)
-	if err != nil {
-		t.Fatalf("query homework: %v", err)
-	}
-	if hwCount != 1 {
-		t.Fatalf("expected 1 node homework, got %d", hwCount)
-	}
-
 	// eval_data 已写回 usageId
 	var savedEval domain.JSONMap
 	err = env.DB.QueryRow(ctx, `SELECT eval_data FROM system_course_nodes WHERE id = $1`, nodeID).Scan(&savedEval)
@@ -831,13 +821,7 @@ func TestHybridCourseClone(t *testing.T) {
 		t.Fatalf("expected 201 for question, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// 子节点：作业 + 混合模块（作业 CRUD 接口已下线，直接落库验证克隆链路）
-	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO node_homeworks (id, tenant_id, node_id, title)
-		VALUES (gen_random_uuid(), $1, $2, '混合节点作业')
-	`, testhelper.TestTenantID, childNode.ID); err != nil {
-		t.Fatalf("insert homework: %v", err)
-	}
+	// 子节点：混合模块
 	w = env.Do("POST", "/api/v1/lesson/hybrid-modules", map[string]interface{}{
 		"nodeId":    childNode.ID,
 		"moduleKey": "inClassQuiz",
@@ -918,15 +902,6 @@ func TestHybridCourseClone(t *testing.T) {
 	}
 	if questionCount != 1 {
 		t.Fatalf("expected 1 cloned quiz question, got %d", questionCount)
-	}
-
-	// 作业克隆
-	var hwCount int
-	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM node_homeworks WHERE node_id = $1`, clonedChildID).Scan(&hwCount); err != nil {
-		t.Fatalf("query cloned homeworks: %v", err)
-	}
-	if hwCount != 1 {
-		t.Fatalf("expected 1 cloned homework, got %d", hwCount)
 	}
 
 	// 源课不受影响

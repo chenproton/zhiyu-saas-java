@@ -173,29 +173,6 @@ func (s *CourseAssessmentStore) UpdateUsageWindow(ctx context.Context, q Queryer
 	return err
 }
 
-// NodeHomeworkExists 查询节点是否已有作业。
-func (s *CourseAssessmentStore) NodeHomeworkExists(ctx context.Context, q Queryer, nodeID string) (bool, error) {
-	var exists bool
-	err := q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id = $1)`, nodeID).Scan(&exists)
-	return exists, err
-}
-
-// CreateNodeHomework 创建节点作业。
-func (s *CourseAssessmentStore) CreateNodeHomework(ctx context.Context, q Queryer, tenantID, nodeID, title, creatorID string) error {
-	var creator any
-	if creatorID != "" {
-		creator = creatorID
-	}
-	_, err := q.Exec(ctx, `
-		INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment, creator_id)
-		VALUES ($1, $2, $3, $4, '', FALSE, $5)
-	`, uuid.NewString(), tenantID, nodeID, title, creator)
-	if err != nil {
-		return fmt.Errorf("创建节点作业失败: %w", err)
-	}
-	return nil
-}
-
 // CleanupCourseLevelAssessments 清理课程级旧测评（兼容历史数据）。
 func (s *CourseAssessmentStore) CleanupCourseLevelAssessments(ctx context.Context, q Queryer, courseID string) error {
 	if _, err := q.Exec(ctx, `

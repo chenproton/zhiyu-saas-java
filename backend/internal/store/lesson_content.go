@@ -274,15 +274,3 @@ func jsonSliceToStringSlice(ids domain.JSONSlice) []string {
 	}
 	return out
 }
-
-func scanNodeHomeworkRows(rows pgx.Rows) ([]domain.NodeHomework, error) {
-	items := make([]domain.NodeHomework, 0)
-	for rows.Next() {
-		var hw domain.NodeHomework
-		if err := rows.Scan(&hw.ID, &hw.NodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline); err != nil {
-			return nil, err
-		}
-		items = append(items, hw)
-	}
-	return items, rows.Err()
-}

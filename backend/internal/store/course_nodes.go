@@ -260,21 +260,6 @@ func (s *CourseNodeStore) QuizzesByNodeIDs(ctx context.Context, nodeIDs []string
 	return scanNodeQuizRows(rows)
 }
 
-// HomeworksByNodeIDs 批量查询节点作业。
-func (s *CourseNodeStore) HomeworksByNodeIDs(ctx context.Context, nodeIDs []string) ([]domain.NodeHomework, error) {
-	rows, err := s.q.Query(ctx, `
-		SELECT id, node_id, title, requirement, need_attachment, deadline
-		FROM node_homeworks
-		WHERE node_id = ANY($1)
-		ORDER BY id ASC
-	`, nodeIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanNodeHomeworkRows(rows)
-}
-
 // OriginalSourceKnowledgePoints 查询 original 节点来源颗粒课的知识点（course 绑定）。
 func (s *CourseNodeStore) OriginalSourceKnowledgePoints(ctx context.Context, courseIDs []string) (map[string][]NodeKnowledgePoint, error) {
 	out := make(map[string][]NodeKnowledgePoint)
@@ -440,8 +425,8 @@ func (s *CourseNodeStore) ListNodeResourceNames(ctx context.Context, q Queryer, 
 	return names
 }
 
-// ListNodeEvalMethods 查询节点测评方式（quiz 类型 + 是否有作业，导出用）。
-func (s *CourseNodeStore) ListNodeEvalMethods(ctx context.Context, q Queryer, tenantID, nodeID string) ([]string, bool) {
+// ListNodeEvalMethods 查询节点测评方式（quiz 类型，导出用）。
+func (s *CourseNodeStore) ListNodeEvalMethods(ctx context.Context, q Queryer, tenantID, nodeID string) []string {
 	var methods []string
 	rows, err := q.Query(ctx, `
 		SELECT type FROM node_quizzes
@@ -457,13 +442,7 @@ func (s *CourseNodeStore) ListNodeEvalMethods(ctx context.Context, q Queryer, te
 			}
 		}
 	}
-	var hasHomework bool
-	if err := q.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id=$1 AND tenant_id=$2)
-	`, nodeID, tenantID).Scan(&hasHomework); err != nil {
-		hasHomework = false
-	}
-	return methods, hasHomework
+	return methods
 }
 
 // CourseNodeExportRow 导出用节点行。

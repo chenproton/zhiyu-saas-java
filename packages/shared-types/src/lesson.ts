@@ -73,7 +73,6 @@ export interface SystemCourseNode {
   knowledgePointIds?: string[]
   resourceIds?: string[]
   quizzes?: NodeQuiz[]
-  homeworks?: NodeHomework[]
   evalData?: Record<string, any>
   status: string
   createdAt: string
@@ -97,15 +96,6 @@ export interface NodeQuizQuestion {
   answer?: string
   score: number
   sortOrder: number
-}
-
-export interface NodeHomework {
-  id: string
-  nodeId: string
-  title: string
-  requirement?: string
-  needAttachment: boolean
-  deadline?: string
 }
 
 export interface HybridNodeModule {

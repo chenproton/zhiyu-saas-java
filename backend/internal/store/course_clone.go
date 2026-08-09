@@ -268,9 +268,6 @@ func (s *CourseCloneStore) cloneCourseNodes(ctx context.Context, tx Queryer, old
 	if err := s.cloneNodeQuizzes(ctx, tx, nodeIDMap, tenantID); err != nil {
 		return err
 	}
-	if err := s.cloneNodeHomeworks(ctx, tx, nodeIDMap, tenantID); err != nil {
-		return err
-	}
 	if err := s.cloneHybridNodeModules(ctx, tx, nodeIDMap, tenantID); err != nil {
 		return err
 	}
@@ -367,51 +364,6 @@ func (s *CourseCloneStore) cloneNodeQuizzes(ctx context.Context, tx Queryer, nod
 			INSERT INTO node_quiz_questions (id, tenant_id, quiz_id, type, question, options, answer, score, sort_order)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		`, uuid.NewString(), tenantID, newQuizID, item.QQ.Type, item.QQ.Question, item.QQ.Options, item.QQ.Answer, item.QQ.Score, item.QQ.SortOrder); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *CourseCloneStore) cloneNodeHomeworks(ctx context.Context, tx Queryer, nodeIDMap map[string]string, tenantID string) error {
-	if len(nodeIDMap) == 0 {
-		return nil
-	}
-	oldNodeIDs := make([]string, 0, len(nodeIDMap))
-	for oldID := range nodeIDMap {
-		oldNodeIDs = append(oldNodeIDs, oldID)
-	}
-	rows, err := tx.Query(ctx, `
-		SELECT node_id, title, requirement, need_attachment, deadline
-		FROM node_homeworks
-		WHERE node_id = ANY($1)
-	`, oldNodeIDs)
-	if err != nil {
-		return err
-	}
-	var homeworks []domain.NodeHomework
-	var homeworkNodeIDs []string
-	for rows.Next() {
-		var hw domain.NodeHomework
-		var oldNodeID string
-		if err := rows.Scan(&oldNodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline); err != nil {
-			return err
-		}
-		homeworks = append(homeworks, hw)
-		homeworkNodeIDs = append(homeworkNodeIDs, oldNodeID)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	for i, hw := range homeworks {
-		newNodeID, ok := nodeIDMap[homeworkNodeIDs[i]]
-		if !ok {
-			continue
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment, deadline)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, uuid.NewString(), tenantID, newNodeID, hw.Title, hw.Requirement, hw.NeedAttachment, hw.Deadline); err != nil {
 			return err
 		}
 	}

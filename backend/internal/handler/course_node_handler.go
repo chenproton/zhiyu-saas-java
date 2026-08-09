@@ -39,7 +39,6 @@ type SystemCourseNodeResponse struct {
 	KnowledgePoints     []SystemCourseNodeKnowledgePoint `json:"knowledgePoints"`
 	Resources           []SystemCourseNodeResource       `json:"resources"`
 	Quizzes             []domain.NodeQuiz                `json:"quizzes"`
-	Homeworks           []domain.NodeHomework            `json:"homeworks"`
 }
 
 type SystemCourseNodeKnowledgePoint struct {
@@ -473,11 +472,6 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 	for _, q := range data.Quizzes {
 		if idx, ok := nodeIndex[q.NodeID]; ok {
 			items[idx].Quizzes = append(items[idx].Quizzes, q)
-		}
-	}
-	for _, hw := range data.Homeworks {
-		if idx, ok := nodeIndex[hw.NodeID]; ok {
-			items[idx].Homeworks = append(items[idx].Homeworks, hw)
 		}
 	}
 

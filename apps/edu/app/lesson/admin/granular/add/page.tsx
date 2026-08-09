@@ -213,7 +213,6 @@ function AddGranularPageInner() {
       knowledgePoints: kpForCheck,
       resources: resForCheck,
       quizzes: [],
-      homeworks: [],
       evalData: {},
     }
   }, [

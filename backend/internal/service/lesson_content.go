@@ -220,7 +220,6 @@ type NodeEnrichData struct {
 	KnowledgePoints map[string]store.NodeKnowledgePoint
 	Resources       map[string]store.NodeResource
 	Quizzes         []domain.NodeQuiz
-	Homeworks       []domain.NodeHomework
 	OriginalKP      map[string][]store.NodeKnowledgePoint
 	OriginalRes     map[string][]store.NodeResource
 }
@@ -239,10 +238,6 @@ func (s *LessonContentService) EnrichNodes(ctx context.Context, nodeIDs []string
 	if err != nil {
 		return nil, err
 	}
-	homeworks, err := s.st.CourseNodes().HomeworksByNodeIDs(ctx, nodeIDs)
-	if err != nil {
-		return nil, err
-	}
 	origKP, err := s.st.CourseNodes().OriginalSourceKnowledgePoints(ctx, originalSourceIDs)
 	if err != nil {
 		return nil, err
@@ -255,7 +250,6 @@ func (s *LessonContentService) EnrichNodes(ctx context.Context, nodeIDs []string
 		KnowledgePoints: kp,
 		Resources:       res,
 		Quizzes:         quizzes,
-		Homeworks:       homeworks,
 		OriginalKP:      origKP,
 		OriginalRes:     origRes,
 	}, nil
@@ -438,10 +432,6 @@ func (s *LessonContentService) applyRuleConfig(ctx context.Context, q store.Quer
 			}
 			methodResourceConfigs[methodKey] = newRC
 			updated = true
-		case "homework":
-			if err := s.ensureNodeHomework(ctx, q, n, info); err != nil {
-				return false, err
-			}
 		}
 	}
 
@@ -559,18 +549,6 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 		}
 	}
 	return rc, nil
-}
-
-// ensureNodeHomework 生成节点作业。
-func (s *LessonContentService) ensureNodeHomework(ctx context.Context, q store.Queryer, n store.NodeEvalRow, info *store.CourseInfo) error {
-	exists, err := s.st.CourseAssessments().NodeHomeworkExists(ctx, q, n.ID)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return nil
-	}
-	return s.st.CourseAssessments().CreateNodeHomework(ctx, q, info.TenantID, n.ID, fmt.Sprintf("%s-%s-节点作业", info.Name, n.Name), info.CreatorID)
 }
 
 // extractEvalRuleConfig 提取节点评估规则配置。
