@@ -306,7 +306,7 @@ export const sceneNavigationConfig: PlatformNavigationConfig = {
           id: 'scenarios',
           label: '场景管理',
           href: '/scene/',
-          matchers: ['/scene$', '/scene/scenarios', '/scene/ai', '/scene/ai-first'],
+          matchers: ['/scene$', '/scene/scenarios'],
         },
         { id: 'archive', label: '场景归档', href: '/scene/archive', matchers: ['/scene/archive'] },
       ],
@@ -974,7 +974,7 @@ function firstHrefFromNavConfig(config: PlatformNavigationConfig): string {
 
 /* ============================================================
    Alliance 模块导航（产教融合与就业服务平台）
-   使用自定义 AllianceSideNav 侧边栏，此配置仅用于 platformModuleDefs
+   portal/apps/alliance/layout.tsx 使用 PlatformSideNav 渲染此配置
    ============================================================ */
 export const allianceNavigationConfig: PlatformNavigationConfig = {
   brandTitle: '产教融合与就业服务平台',
