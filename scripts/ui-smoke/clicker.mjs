@@ -107,7 +107,9 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
       const base = `${el.tagName}|${effText}|${href}`
       const n = (countByKey.get(base) || 0) + 1
       countByKey.set(base, n)
-      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href) })
+      // 全局/共享元素（侧边栏、顶部导航等）只在第一次遇到时点击，避免每页重复点击拖慢全量回归
+      const isGlobal = scope !== 'dialog' && !!el.closest('nav, aside, header, [role="navigation"], [role="banner"]')
+      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal })
     })
     return out
   }, {
@@ -212,7 +214,7 @@ function recordFormResult(routeResult, rec) {
 }
 
 // 单页巡检：队列式点击全部唯一可点元素
-export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, token) {
+export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, token, globalSeen = null) {
   cfg = routeCfg(cfg, route) // per-route 配置覆盖（前缀匹配，最长优先）
   const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [], forms: [] }
   try {
@@ -243,6 +245,11 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
       const pick = queue[qi]
       if (attempted.has(pick.key)) continue
       attempted.add(pick.key)
+      // 全局/共享元素（侧边栏、顶部导航等）全量回归只点一次，避免每页重复点击拖慢并压垮后端
+      if (pick.isGlobal && globalSeen) {
+        if (globalSeen.has(pick.key)) continue
+        globalSeen.add(pick.key)
+      }
       // 记录当前点击序号与 URL，供错误监听器关联上下文
       routeState.clickIndex = routeResult.clicks
       routeState.url = page.url()

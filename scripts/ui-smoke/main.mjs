@@ -107,7 +107,7 @@ function attachListeners(page, sink, cfg, routeState) {
 }
 
 // ── 单路由超时包装：超时返回带 timedOut 标记的结果，由调用方换新页面 ──
-async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState, token) {
+async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState, token, globalSeen) {
   const timeoutMs = (cfg.routeTimeoutSec || 120) * 1000
   let timer
   const timeout = new Promise(resolve => {
@@ -116,7 +116,7 @@ async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState
       errors: [{ type: 'timeout', message: `单路由巡检超时（>${cfg.routeTimeoutSec || 120}s）` }],
     }), timeoutMs)
   })
-  const r = await Promise.race([walkRoute(page, ctx, route, cfg, role, sink, routeState, token), timeout])
+  const r = await Promise.race([walkRoute(page, ctx, route, cfg, role, sink, routeState, token, globalSeen), timeout])
   clearTimeout(timer)
   return r
 }
@@ -270,10 +270,11 @@ export async function main() {
         let wpage = await wctx.newPage()
         let wsink = []
         const wstate = { clickIndex: -1, url: '', dynamicUrls }
+        const globalSeen = new Set() // 全局/共享元素每个 worker 只点一次
         attachListeners(wpage, wsink, cfg, wstate)
         try {
           for (const route of chunk) {
-            let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken)
+            let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken, globalSeen)
             if (r.timedOut) {
               // 单路由超时：换新页面继续，不重试
               await wpage.close().catch(() => {})
@@ -287,7 +288,7 @@ export async function main() {
               const oldSink = wsink
               wsink = []
               attachListeners(wpage, wsink, cfg, wstate)
-              r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate, roleToken)
+              r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate, roleToken, globalSeen)
               // 崩溃重试保留第一次的错误（P1-7）
               if (!r.errors.length && oldSink.length) {
                 r.errors.push(...oldSink)

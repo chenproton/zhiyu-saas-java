@@ -35,15 +35,15 @@ const DEFAULTS = {
   // 种子数据/已知噪音（正则片段）；静态资源 404 由 response 监听以外的 console 兜底产生，页面可用性另由 pageerror 保障
   noisePatterns: ['example\\.com', 'Failed to load resource: the server responded with a status of 404'],
   // 点击时序（默认值偏保守，全量回归时可在 smoke.config.json 中覆盖）
-  clickIntervalMs: 80,
-  dialogEscMs: 150,
+  clickIntervalMs: 60,
+  dialogEscMs: 120,
   settleMs: 300,
   // networkidle 仅在导航后尝试，超时短（带轮询的页面永远到不了 idle）
   navWaitMs: 2500,
   loginTimeoutMs: 20000,
   retryCrashes: 2,
-  // 单路由巡检超时（秒），超时记 error 并换新页面继续
-  routeTimeoutSec: 120,
+  // 单路由巡检超时（秒）：表格页行按钮多，120s 不够，放宽到 180s
+  routeTimeoutSec: 180,
   // 无文本/无 aria-label 的图标按钮：默认跳过（宁漏勿删）
   allowIconButtons: false,
   // 动态路由详情页上的 404（实体被删/无权限 id）默认忽略
