@@ -1,57 +1,24 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 
-import {
-  BookOpen,
-  FileText,
-  Clock,
-  FolderOpen,
-  BrainCircuit,
-  BarChart3,
-  ListChecks,
-  ArrowLeft,
-  Eye,
-  Layers,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ClipboardList,
-  ChevronRight,
-} from 'lucide-react'
-
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Skeleton } from '@/components/ui/skeleton'
-import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import { evalRuleConfigToMethods } from '@/lib/types'
-import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
-import { Footer } from '@/components/portal/footer'
 import {
-  ResourcePreviewModal,
-  usePreviewResources,
-} from '@/components/shared/resource-preview-modal'
-import {
-  EvalMethodCard,
   EvalMethodSubmitDialog,
   EvalMethodSubmitPayload,
   EvalMethodViewModel,
-  EvalMethodResultModel,
-  UploadedFile,
 } from '@/components/shared/eval-method-card'
+import {
+  LearnPage,
+  LESSON_RESOURCE_TYPE_ICONS,
+  type LearnPageLabels,
+  type LearnUnit,
+} from '@/components/shared/learn-page'
 import { HybridModulesView } from '@/components/lesson/student/hybrid-modules-view'
 
 import {
@@ -59,7 +26,6 @@ import {
   courseNodeApi,
   hybridModuleApi,
   nodeEvaluationResultApi,
-  fileApi,
   knowledgeApi,
 } from '@/lib/api'
 import { fetchAllPages } from '@/lib/fetch-all'
@@ -70,20 +36,6 @@ import type {
   NodeResource,
 } from '@/lib/types/lesson-source'
 import type { NodeEvaluationResult, HybridNodeModule } from '@zhiyu/api-client'
-
-/* ---------- constants ---------- */
-
-const resourceTypeIcons: Record<string, string> = {
-  document: 'text-primary bg-primary/5',
-  video: 'text-[#f59e0b] bg-primary/5',
-  link: 'text-[#8b5cf6] bg-purple-50',
-  file: 'text-[#10b981] bg-emerald-50',
-  spreadsheet: 'text-[#16a34a] bg-green-50',
-  presentation: 'text-[#f97316] bg-orange-50',
-  image: 'text-[#ec4899] bg-pink-50',
-  audio: 'text-[#06b6d4] bg-cyan-50',
-  pdf: 'text-[#ef4444] bg-red-50',
-}
 
 /* ---------- page ---------- */
 
@@ -102,17 +54,12 @@ export default function LessonLearnPage() {
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [loading, setLoading] = useState(true)
   const [activeNodeId, setActiveNodeId] = useState<string | null>(targetNodeId || null)
-  // 混合课无右侧知识点/资源栏，默认展开左侧节点列表
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
   const [hybridModules, setHybridModules] = useState<HybridNodeModule[]>([])
-
-  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [myResults, setMyResults] = useState<NodeEvaluationResult[]>([])
 
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [granularCourseMap, setGranularCourseMap] = useState<Map<string, Course>>(new Map())
-  const [activeKnowledgePoint, setActiveKnowledgePoint] = useState<KnowledgePoint | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -121,9 +68,6 @@ export default function LessonLearnPage() {
       try {
         const c = await courseApi.get(id)
         setCourse(c)
-        if (c.type === 'hybrid') {
-          setSidebarCollapsed(false)
-        }
       } catch {
         setCourse(null)
       } finally {
@@ -169,7 +113,6 @@ export default function LessonLearnPage() {
   }, [hybridModules])
 
   const activeNode = useMemo(() => nodes.find((n) => n.id === activeNodeId), [nodes, activeNodeId])
-  const totalHours = useMemo(() => nodes.reduce((s, n) => s + (n.estimatedHours || 0), 0), [nodes])
 
   const evalMethods = useMemo(() => {
     const config = activeNode?.evalData?.evalRuleConfig
@@ -221,77 +164,11 @@ export default function LessonLearnPage() {
       })
   }, [id, course, toast, t])
 
-  const nodeKnowledgePoints = useMemo(() => {
-    if (!activeNode) return []
-    return ((activeNode.knowledgePoints || []) as NodeKnowledgePoint[]).map(
-      (kp) => knowledgeMap.get(kp.id) || ({ ...kp, granularLessonIds: [] } as unknown as KnowledgePoint),
-    )
-  }, [activeNode, knowledgeMap])
-
-  const activeKnowledgePointCourses = useMemo(() => {
-    if (!activeKnowledgePoint) return []
-    return (activeKnowledgePoint.granularLessonIds || [])
-      .map((cid) => granularCourseMap.get(cid))
-      .filter(Boolean) as Course[]
-  }, [activeKnowledgePoint, granularCourseMap])
-
-  const nodeResources = useMemo(() => {
-    if (!activeNode) return []
-    return (activeNode.resources || []) as NodeResource[]
-  }, [activeNode])
-
-  const nodeEvalMethods = useMemo(() => {
-    return {
-      methods: evalMethods.map((m) => m.methodKey),
-      weights: Object.fromEntries(evalMethods.map((m) => [m.methodKey, m.weight])),
-    }
-  }, [evalMethods])
-
-  const nodeAggregate = useMemo(() => {
-    let totalScore = 0
-    let totalWeight = 0
-    let evaluatedCount = 0
-    let pendingCount = 0
-    for (const m of evalMethods) {
-      const weight = m.weight || 0
-      totalWeight += weight
-      const r = myResults.find((x) => x.methodKey === m.methodKey)
-      if (r?.status === 'evaluated' && r.maxScore > 0) {
-        totalScore += ((r.totalScore || 0) / r.maxScore) * weight
-        evaluatedCount++
-      } else if (r) {
-        pendingCount++
-      }
-    }
-    return {
-      score: totalWeight > 0 ? Math.round(totalScore * 100) / 100 : 0,
-      maxScore: totalWeight,
-      evaluatedCount,
-      pendingCount,
-      totalMethods: evalMethods.length,
-    }
-  }, [evalMethods, myResults])
-
-  const selectNode = useCallback((nodeId: string) => {
-    setActiveNodeId(nodeId)
-  }, [])
-
-  /* ---------- eval method submit dialog state ---------- */
-  const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
-  const [activeMethodKey, setActiveMethodKey] = useState<string | null>(null)
-  const [submittedMethodKeys, setSubmittedMethodKeys] = useState<Set<string>>(new Set())
-  const [uploadingFile, setUploadingFile] = useState(false)
-
   /* ---------- hybrid eval submit state ---------- */
   const [hybridSubmitOpen, setHybridSubmitOpen] = useState(false)
   const [hybridActiveModuleKey, setHybridActiveModuleKey] = useState<string | null>(null)
   const [hybridActiveMethod, setHybridActiveMethod] = useState<EvalMethodViewModel | null>(null)
   const [hybridSubmittedKeys, setHybridSubmittedKeys] = useState<Set<string>>(new Set())
-
-  const activeMethod = useMemo(
-    () => evalMethods.find((m) => m.methodKey === activeMethodKey),
-    [evalMethods, activeMethodKey],
-  )
 
   const toEvalMethodView = (m: any): EvalMethodViewModel => ({
     methodKey: m.methodKey,
@@ -301,22 +178,56 @@ export default function LessonLearnPage() {
     evalPoints: m.evalPoints,
   })
 
-  const toEvalResultModel = (r?: NodeEvaluationResult): EvalMethodResultModel | undefined => {
-    if (!r) return undefined
-    return {
-      status: r.status,
-      totalScore: r.totalScore,
-      maxScore: r.maxScore,
-    }
+  const evalMethodViews = useMemo(() => evalMethods.map(toEvalMethodView), [evalMethods])
+
+  const units: LearnUnit[] = useMemo(
+    () =>
+      nodes.map((n) => ({
+        id: n.id,
+        name: n.name,
+        difficulty: n.difficulty ?? 3,
+        estimatedHours: n.estimatedHours,
+        background: n.background,
+        descriptionPdf: n.descriptionPdf,
+        description: n.detailedDescription,
+        knowledgePoints: ((n.knowledgePoints || []) as NodeKnowledgePoint[]).map(
+          (kp) =>
+            knowledgeMap.get(kp.id) ||
+            ({ ...kp, granularLessonIds: [] } as unknown as KnowledgePoint),
+        ),
+        resources: (n.resources || []) as NodeResource[],
+      })),
+    [nodes, knowledgeMap],
+  )
+
+  const labels: LearnPageLabels = {
+    notFoundText: t('课程不存在'),
+    backText: t('返回课程列表'),
+    sidebarExpandTitle: t('展开节点列表'),
+    sidebarCollapseTitle: t('折叠节点列表'),
+    emptyTitle: t('选择一个节点开始学习'),
+    emptyHint: t('从左侧节点列表中点击节点'),
+    descriptionTitle: t('节点说明书'),
+    descriptionPdfName: t('节点说明书 PDF'),
+    noDescriptionText: t('暂无节点说明书'),
+    evalTitle: t('节点测评'),
+    noEvalMethodsText: t('该节点暂未设置评价方式'),
+    formatUnitCount: (n) => t('{n} 个节点', { n }),
+    formatUnitTooltip: (idx, name, diffLabel, hours) =>
+      `${idx + 1}. ${name} (${t(diffLabel)}, ${hours}h)`,
+    formatEvaluatedCount: (evaluated, total) =>
+      t('已评分 {evaluated}/{total}', { evaluated, total }),
+    formatAggregateScore: (score, max) => t('综合 {score}/{max}', { score, max }),
+    formatKnowledgeCode: (code) => t('编码：{n}', { n: code }),
   }
 
-  const getExamHref = (m: any, nodeId: string, courseId: string) => {
+  const getExamHref = (m: EvalMethodViewModel) => {
     const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(m.methodKey)
     if (!isExamMethod) return undefined
     const examId = m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
-    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${m.methodKey}&usage=${usageId || ''}&course=${courseId}`
+    return `/evaluation/landing/exams/${examId}?node=${activeNodeId}&method=${m.methodKey}&usage=${usageId || ''}&course=${id}`
   }
 
   const handleSubmitMethod = async (payload: EvalMethodSubmitPayload) => {
@@ -328,7 +239,6 @@ export default function LessonLearnPage() {
       maxScore: payload.maxScore,
       subjectiveContent: payload.subjectiveContent,
     })
-    setSubmittedMethodKeys((prev) => new Set([...Array.from(prev), payload.methodKey]))
   }
 
   const handleHybridEvalAction = (moduleKey: string, method: EvalMethodViewModel) => {
@@ -350,605 +260,62 @@ export default function LessonLearnPage() {
     setHybridSubmittedKeys((prev) => new Set([...Array.from(prev), compositeKey]))
   }
 
-  const handleFileUpload = async (file: File): Promise<UploadedFile | null> => {
-    setUploadingFile(true)
-    try {
-      const res = await fileApi.upload(file)
-      return { name: file.name, url: res.url, size: res.size || file.size }
-    } catch {
-      return null
-    } finally {
-      setUploadingFile(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-primary/10 blur-[120px]" />
-          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-primary/10 blur-[100px]" />
-        </div>
-        <header className="relative z-10 bg-white border-b border-gray-200/60 shrink-0 h-16 flex items-center px-6">
-          <Skeleton className="h-5 w-48" />
-        </header>
-        <div className="relative z-10 flex-1 flex flex-col lg:flex-row p-4 gap-4">
-          <div className="w-full lg:w-[300px] shrink-0 rounded-2xl border border-[#e7e5e4] bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] h-48 lg:h-auto">
-            <Skeleton className="h-[200px] w-full rounded-xl" />
-          </div>
-          <div className="flex-1 min-w-0 p-0 lg:p-4">
-            <Skeleton className="h-[400px] w-full rounded-2xl" />
-          </div>
-        </div>
-        <Footer className="mt-auto" />
-      </div>
-    )
-  }
-
-  if (!course) {
-    return (
-      <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-primary/10 blur-[120px]" />
-          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-primary/10 blur-[100px]" />
-        </div>
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
-          <div className="relative w-24 h-24 mb-6">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/15 opacity-40 blur-xl" />
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/10 opacity-60" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <BookOpen className="w-12 h-12 text-white/80" />
-            </div>
-          </div>
-          <div className="text-lg font-semibold text-gray-600">{t('课程不存在')}</div>
-          <Link
-            href="/lesson/landing"
-            className="text-primary hover:text-primary mt-2 text-sm font-medium transition-colors"
-          >
-            {t('返回课程列表')}
-          </Link>
-        </div>
-        <Footer className="mt-auto" />
-      </div>
-    )
-  }
+  const isHybrid = course?.type === 'hybrid'
 
   return (
-    <div className="min-h-screen flex flex-col relative" style={{ background: '#F1FAFF' }}>
-      {/* ---------- ambient background ---------- */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-primary/10 blur-[100px]" />
-        <div
-          className="absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px)`,
-            backgroundSize: '48px 48px',
-          }}
-        />
-      </div>
-
-      {/* ---------- header ---------- */}
-      <header className="bg-white border-b border-gray-200/60 shrink-0 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 py-3 flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-4">
-              <Link
-                replace
-                href={`/lesson/landing/${id}`}
-                className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-primary transition-all duration-200"
-              >
-                <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-primary/5 group-hover:border-primary/30 group-hover:text-primary transition-all duration-200">
-                  <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
-                </span>
-                <span className="font-semibold truncate max-w-[200px] sm:max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-primary transition-colors">
-                  {course.name}
-                </span>
-              </Link>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {activeNode && (
-                <>
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
-                    <BarChart3 className="w-3.5 h-3.5 text-primary" />{' '}
-                    {SCENE_DIFFICULTY[activeNode.difficulty ?? 3]?.label ||
-                      `Lv.${activeNode.difficulty ?? 3}`}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">
-                    <Clock className="w-3.5 h-3.5 text-primary" />{' '}
-                    {t('{n} 课时', { n: activeNode.estimatedHours || 0 })}
-                  </span>
-                </>
-              )}
-              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <ListChecks className="w-3.5 h-3.5 text-primary" /> {t('{n} 个节点', { n: nodes.length })}
-              </span>
-              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-                <Clock className="w-3.5 h-3.5 text-primary" /> {t('{n} 课时', { n: totalHours })}
-              </span>
-            </div>
-          </div>
-          {activeNode?.background && (
-            <div className="text-sm text-gray-600 leading-relaxed line-clamp-2 whitespace-pre-line">
-              {activeNode.background}
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* ---------- body ---------- */}
-      <div className="relative z-10 flex-1 flex flex-col lg:flex-row max-w-[1400px] mx-auto w-full">
-        {/* ---------- left sidebar: node list ---------- */}
-        <aside
-          className={cn(
-              'flex flex-col rounded-2xl border border-[#e7e5e4] bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-all duration-300 overflow-hidden w-[calc(100%-2rem)] mt-4 mx-4 lg:flex-shrink-0 lg:sticky lg:self-start lg:h-[calc(100vh-8rem)] lg:mx-4',
-              sidebarCollapsed ? 'lg:w-[68px]' : 'h-[50vh] lg:w-[300px]',
-          )}
-          style={{ top: '7rem' }}
-        >
-          {/* sidebar header */}
-          <div className="relative border-b border-gray-100 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary to-primary/70 shadow-sm" />
-            <div
-              className={cn(
-                'flex items-center',
-                sidebarCollapsed ? 'px-2 py-3 justify-center' : 'px-5 py-3',
-              )}
-            >
-              {!sidebarCollapsed && (
-                <div className="flex-1 flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-xs text-gray-400">
-                    <Layers className="w-3 h-3" />
-                    {t('{n} 个节点', { n: nodes.length })}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-gray-400">
-                    <Clock className="w-3 h-3" />
-                    {t('{n} 课时', { n: totalHours })}
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={() => setSidebarCollapsed((v) => !v)}
-                className={cn(
-                  'flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all duration-200',
-                  sidebarCollapsed
-                    ? 'w-9 h-9 text-gray-500 hover:text-primary'
-                    : 'w-8 h-8 ml-auto',
-                )}
-                title={sidebarCollapsed ? t('展开节点列表') : t('折叠节点列表')}
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen className="h-5 w-5" />
-                ) : (
-                  <PanelLeftClose className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* node list */}
-          <ScrollArea className="flex-1">
-            <div
-              className={cn(
-                'py-1',
-                sidebarCollapsed && 'flex flex-row flex-wrap gap-1.5 px-3 py-2 lg:block lg:gap-0 lg:px-0 lg:py-1',
-              )}
-            >
-              {nodes.map((node, idx) => {
-                const isActive = activeNodeId === node.id
-                const diff = SCENE_DIFFICULTY[node.difficulty ?? 3] || SCENE_DIFFICULTY[3]
-
-                if (sidebarCollapsed) {
-                  return (
-                    <div key={node.id} className="flex justify-center py-1.5">
-                      <button
-                        onClick={() => selectNode(node.id)}
-                        className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold transition-all duration-200',
-                          isActive
-                            ? 'bg-gradient-to-br from-primary to-primary/70 text-white shadow-lg shadow-primary/30'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600 hover:-translate-y-0.5',
-                        )}
-                        title={`${idx + 1}. ${node.name} (${t(diff.label)}, ${node.estimatedHours || 0}h)`}
-                      >
-                        {idx + 1}
-                      </button>
-                    </div>
-                  )
-                }
-
-                return (
-                  <button
-                    key={node.id}
-                    onClick={() => selectNode(node.id)}
-                    className={cn(
-                      'relative flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 group',
-                      isActive
-                        ? 'bg-gradient-to-r from-primary/5 via-primary/5 to-transparent'
-                        : 'hover:bg-gray-50/80 hover:pl-5',
-                    )}
-                  >
-                    {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-primary to-primary/70 rounded-r-full shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
-                    )}
-                    <div
-                      className={cn(
-                        'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200',
-                        isActive
-                          ? 'bg-gradient-to-br from-primary to-primary/70 text-white shadow-md shadow-primary/25'
-                          : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600 group-hover:-translate-y-0.5',
-                      )}
-                    >
-                      {idx + 1}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={cn(
-                          'text-[13px] font-semibold truncate transition-colors duration-200',
-                          isActive ? 'text-primary' : 'text-gray-700 group-hover:text-gray-900',
-                        )}
-                      >
-                        {node.name}
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5" />
-                          {node.estimatedHours || 0}h
-                        </span>
-                        <span
-                          className="text-[10px] flex items-center gap-1"
-                          style={{ color: diff.color }}
-                        >
-                          <BarChart3 className="h-2.5 w-2.5" />
-                          {diff.label}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
+    <LearnPage
+      loading={loading}
+      notFound={!course}
+      entityName={course?.name}
+      detailHref={`/lesson/landing/${id}`}
+      backHref="/lesson/landing"
+      units={units}
+      activeUnitId={activeNodeId}
+      onSelectUnit={setActiveNodeId}
+      labels={labels}
+      evalMethods={evalMethodViews}
+      evalResults={myResults}
+      getExamHref={getExamHref}
+      onSubmit={handleSubmitMethod}
+      granularCourseMap={granularCourseMap}
+      resourceTypeIcons={LESSON_RESOURCE_TYPE_ICONS}
+      activeIndicatorGlowClass="shadow-[0_0_8px_rgba(245,158,11,0.4)]"
+      hideRightPanel={isHybrid}
+      mainOverride={
+        isHybrid && activeNode ? (
+          <HybridModulesView
+            node={activeNode}
+            modules={hybridModulesByNode.get(activeNode.id) || []}
+            courseId={id}
+            myResults={myResults}
+            submittedKeys={hybridSubmittedKeys}
+            onEvalAction={handleHybridEvalAction}
+          />
+        ) : undefined
+      }
+      renderExtraDialogs={(helpers) =>
+        hybridActiveMethod && (
+          <EvalMethodSubmitDialog
+            open={hybridSubmitOpen}
+            onOpenChange={setHybridSubmitOpen}
+            method={{
+              ...hybridActiveMethod,
+              label: t('提交测评'),
+            }}
+            uploading={helpers.uploading}
+            onFileUpload={helpers.onFileUpload}
+            onSubmit={handleHybridSubmit}
+            onSubmitted={() => {
+              if (hybridActiveModuleKey) {
+                setHybridSubmittedKeys((prev) =>
+                  new Set([...Array.from(prev), `${hybridActiveModuleKey}:${hybridActiveMethod.methodKey}`]),
                 )
-              })}
-            </div>
-          </ScrollArea>
-        </aside>
-
-        {/* ---------- right main area ---------- */}
-        <main className="flex flex-1 flex-col overflow-y-auto relative min-w-0">
-          {!activeNode ? (
-            <div className="flex flex-col items-center justify-center flex-1 p-4 sm:p-8">
-              <div className="relative w-28 h-28 mb-6">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/15 opacity-40 blur-xl animate-pulse" />
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/10 opacity-60" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <BookOpen className="w-12 h-12 text-white/80" />
-                </div>
-              </div>
-              <p className="text-base font-semibold text-gray-600">{t('选择一个节点开始学习')}</p>
-              <p className="text-sm text-gray-400 mt-1.5">{t('从左侧节点列表中点击节点')}</p>
-            </div>
-          ) : (
-            <>
-              {/* collapsed layout: left 2 cards + right sticky tab card */}
-              <div className="flex flex-1 gap-4 p-4">
-                {course.type === 'hybrid' ? (
-                  <div className="flex-1 space-y-4">
-                    <HybridModulesView
-                      node={activeNode}
-                      modules={hybridModulesByNode.get(activeNode.id) || []}
-                      courseId={id}
-                      myResults={myResults}
-                      submittedKeys={hybridSubmittedKeys}
-                      onEvalAction={handleHybridEvalAction}
-                    />
-                  </div>
-                ) : (
-                <div className="flex-1 space-y-4">
-                  {/* 节点说明书 */}
-                  <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] transition-all duration-300 py-0 gap-0 flex flex-col bg-white">
-                    <CardHeader className="border-b border-gray-100 px-6 py-5 shrink-0 bg-white">
-                      <CardTitle className="text-base flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <span className="text-gray-800 font-semibold text-lg">{t('节点说明书')}</span>
-                        {activeNode.descriptionPdf && (
-                          <button
-                            onClick={() =>
-                              addPreviewResource({
-                                id: `pdf-${Date.now()}`,
-                                url: activeNode.descriptionPdf,
-                                name: t('节点说明书 PDF'),
-                                type: 'pdf',
-                              } as any)
-                            }
-                            className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 shadow-sm transition-all"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            {t('查看 PDF')}
-                          </button>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-8 flex-1 bg-white">
-                      <ScrollArea className="h-full">
-                        {activeNode.detailedDescription ? (
-                          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line leading-loose">
-                            {activeNode.detailedDescription}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-400">{t('暂无节点说明书')}</p>
-                        )}
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-
-                  {/* 节点测评 */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 px-1">
-                      <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
-                        <ClipboardList className="h-4 w-4" />
-                      </div>
-                      <h3 className="text-base font-semibold text-gray-800">{t('节点测评')}</h3>
-                      {nodeAggregate.totalMethods > 0 && (
-                        <div className="ml-auto flex items-center gap-3">
-                          <span className="text-xs text-gray-500">
-                            {t('已评分 {evaluated}/{total}', {
-                              evaluated: nodeAggregate.evaluatedCount,
-                              total: nodeAggregate.totalMethods,
-                            })}
-                          </span>
-                          {nodeAggregate.evaluatedCount > 0 && (
-                            <span className="text-sm font-semibold text-primary">
-                              {t('综合 {score}/{max}', {
-                                score: nodeAggregate.score,
-                                max: nodeAggregate.maxScore,
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {nodeEvalMethods.methods.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {nodeEvalMethods.methods.map((mk) => {
-                          const method = evalMethods.find((m) => m.methodKey === mk)
-                          if (!method) return null
-                          const r = myResults.find((x) => x.methodKey === mk)
-                          const alreadySubmitted = submittedMethodKeys.has(mk)
-                          const overriddenResult: EvalMethodResultModel | undefined =
-                            r && !alreadySubmitted
-                              ? toEvalResultModel(r)
-                              : alreadySubmitted
-                                ? { status: 'pending' }
-                                : undefined
-                          return (
-                            <EvalMethodCard
-                              key={mk}
-                              method={toEvalMethodView(method)}
-                              result={overriddenResult}
-                              examHref={getExamHref(method, activeNodeId!, id)}
-                              onAction={() => {
-                                setActiveMethodKey(mk)
-                                setSubmitDialogOpen(true)
-                              }}
-                            />
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <Card className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 sm:p-8 flex flex-col items-center justify-center text-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400">
-                          <ClipboardList className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            {t('该节点暂未设置评价方式')}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {t('教师配置后，测评入口将显示在此处')}
-                          </p>
-                        </div>
-                      </Card>
-                    )}
-                  </div>
-                </div>
-                )}
-              </div>
-            </>
-          )}
-        </main>
-
-        {/* right panel: sticky tabs - outside main, same level as sidebar（仅体系课，混合课无知识点/资源栏） */}
-        {course.type !== 'hybrid' && sidebarCollapsed && activeNode && (
-          <div
-            className="flex w-[calc(100%-2rem)] lg:w-[360px] flex-shrink-0 lg:sticky lg:self-start mt-4 mx-4 lg:mx-4"
-            style={{ top: '7rem', maxHeight: 'calc(100vh - 8rem)' }}
-          >
-            <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col w-full">
-              <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col h-full">
-                <CardHeader className="border-b border-gray-100 p-2 shrink-0">
-                  <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
-                    <TabsTrigger
-                      value="collapsed-knowledge"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
-                    >
-                      <BrainCircuit className="mr-1 h-3.5 w-3.5" />
-                      {t('知识点')}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="collapsed-resource"
-                      className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/5 data-[state=active]:to-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
-                    >
-                      <FolderOpen className="mr-1 h-3.5 w-3.5" />
-                      {t('资源')}
-                    </TabsTrigger>
-                  </TabsList>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto p-3">
-                  <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
-                    {nodeKnowledgePoints.length > 0 ? (
-                      nodeKnowledgePoints.map((kp, i) => (
-                        <div
-                          key={kp.id}
-                          className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
-                          onClick={() => setActiveKnowledgePoint(kp)}
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-                            {i + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-700">{kp.name}</p>
-                            {kp.description && (
-                              <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">
-                                {kp.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无知识点')}</p>
-                    )}
-                  </TabsContent>
-                  <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
-                    {nodeResources.length > 0 ? (
-                      nodeResources.map((r) => (
-                        <div
-                          key={r.id}
-                          className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
-                          onClick={() => addPreviewResource(r as any)}
-                        >
-                          <div
-                            className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || 'text-gray-400 bg-gray-50'}`}
-                          >
-                            <FileText className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
-                            <p className="text-[11px] text-gray-400">
-                              {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
-                              {r.size ? ` · ${r.size}` : ''}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无资源')}</p>
-                    )}
-                  </TabsContent>
-                </CardContent>
-              </Tabs>
-            </Card>
-          </div>
-        )}
-      </div>
-
-      {activeKnowledgePoint && (
-        <Dialog open onOpenChange={(open) => !open && setActiveKnowledgePoint(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <BrainCircuit className="h-5 w-5 text-primary" />
-                {activeKnowledgePoint.name}
-              </DialogTitle>
-              {activeKnowledgePoint.code && (
-                <DialogDescription>{t('编码：{n}', { n: activeKnowledgePoint.code })}</DialogDescription>
-              )}
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('描述')}</p>
-                <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                  {activeKnowledgePoint.description || t('暂无描述')}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                  {t('关联颗粒课（{n}）', { n: activeKnowledgePointCourses.length })}
-                </p>
-                {activeKnowledgePointCourses.length > 0 ? (
-                  <div className="space-y-2">
-                    {activeKnowledgePointCourses.map((c) => (
-                      <Link
-                        key={c.id}
-                        href={`/lesson/landing/${c.id}`}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shrink-0">
-                          <BookOpen className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-700 truncate group-hover:text-primary transition-colors">
-                            {c.name}
-                          </p>
-                          <p className="text-[11px] text-gray-400">
-                            {c.code ? `${c.code} · ` : ''}
-                            {t('颗粒课')}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 rounded-xl">
-                    {t('暂无关联颗粒课')}
-                  </p>
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {activeMethod && (
-        <EvalMethodSubmitDialog
-          open={submitDialogOpen}
-          onOpenChange={setSubmitDialogOpen}
-          method={toEvalMethodView(activeMethod)}
-          uploading={uploadingFile}
-          onFileUpload={handleFileUpload}
-          onSubmit={handleSubmitMethod}
-          onSubmitted={() => {
-            if (activeMethodKey) {
-              setSubmittedMethodKeys((prev) => new Set([...Array.from(prev), activeMethodKey]))
-            }
-          }}
-        />
-      )}
-
-      {hybridActiveMethod && (
-        <EvalMethodSubmitDialog
-          open={hybridSubmitOpen}
-          onOpenChange={setHybridSubmitOpen}
-          method={{
-            ...hybridActiveMethod,
-            label: t('提交测评'),
-          }}
-          uploading={uploadingFile}
-          onFileUpload={handleFileUpload}
-          onSubmit={handleHybridSubmit}
-          onSubmitted={() => {
-            if (hybridActiveModuleKey) {
-              setHybridSubmittedKeys((prev) =>
-                new Set([...Array.from(prev), `${hybridActiveModuleKey}:${hybridActiveMethod.methodKey}`]),
-              )
-            }
-          }}
-        />
-      )}
-
-      {previewResources.map((r, i) => (
-        <ResourcePreviewModal
-          key={r.id}
-          resource={r}
-          open
-          index={i}
-          onOpenChange={() => removePreviewResource(r.id)}
-        />
-      ))}
-
-      <Footer className="mt-auto" />
-    </div>
+              }
+            }}
+          />
+        )
+      }
+      expandSidebar={isHybrid}
+    />
   )
 }
