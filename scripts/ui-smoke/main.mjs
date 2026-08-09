@@ -6,8 +6,9 @@ import { chromium } from 'playwright'
 import { execFileSync } from 'child_process'
 import path from 'path'
 import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
-import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff } from './routes.mjs'
+import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES } from './routes.mjs'
 import { walkRoute } from './clicker.mjs'
+import { cleanupSmokeData } from './forms.mjs'
 import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
 
@@ -112,6 +113,29 @@ async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState
   return r
 }
 
+// ── 清理规格：内置动态路由实体的 list/delete 映射 + 配置追加 ──
+function buildCleanupSpecs(cfg) {
+  const byBase = new Map()
+  for (const spec of Object.values(BUILTIN_DYNAMIC_ROUTES)) {
+    const base = spec.api.split('?')[0]
+    if (!byBase.has(base)) byBase.set(base, { list: `${base}?limit=100`, del: `${base}/{id}`, fields: ['name', 'title'] })
+  }
+  for (const extra of cfg.cleanupApis || []) byBase.set(extra.list.split('?')[0], extra)
+  return [...byBase.values()]
+}
+
+// 从 storageState 文件读取角色 token
+async function readStateToken(role) {
+  try {
+    const st = JSON.parse(await fs.readFile(path.join(STATE_DIR, `state-${role}.json`), 'utf8'))
+    for (const o of st.origins || []) {
+      const item = (o.localStorage || []).find(l => l.name === 'zhiyu-portal-token')
+      if (item) return item.value
+    }
+  } catch { /* ignore */ }
+  return ''
+}
+
 // ── 后端容器日志增量抓取（可选） ───────────────────────────
 function tailBackendLogs(startTime) {
   try {
@@ -152,6 +176,13 @@ export async function main() {
 
   console.log(`目标站点: ${cfg.baseUrl}`)
   console.log(`发现页面: ${routes.length} 个，角色: ${cfg.roles.join('/')}，每页点击全部唯一可点元素（上限 ${cfg.maxClicks}）`)
+  if (cfg.testForms) {
+    if (cfg.workers > 1) {
+      console.log('[test-forms] 表单提交会产生真实数据，并发降为 1 路串行执行')
+      cfg.workers = 1
+    }
+    console.log(`[test-forms] 表单填充+提交测试已启用（每页上限 ${cfg.maxFormSubmits} 次，数据前缀 SMOKE_，结束后${cfg.cleanup !== false ? '自动' : '不'}清理）`)
+  }
 
   const backendStart = new Date().toISOString()
   const browser = await chromium.launch({
@@ -175,7 +206,16 @@ export async function main() {
   try {
     for (const role of cfg.roles) {
       console.log(`\n=== [${role}] 开始巡检 ===`)
-      const ctx = await browser.newContext()
+      let ctx
+      try {
+        ctx = await browser.newContext()
+      } catch (e) {
+        if (/browser has been closed|context or browser has been closed/i.test(e.message)) {
+          console.error(`  [${role}] 浏览器已被关闭，停止后续角色巡检`)
+          break
+        }
+        throw e
+      }
       const page = await ctx.newPage()
       const sink = []
       const loginListeners = []
@@ -279,11 +319,28 @@ export async function main() {
     await browser.close().catch(() => {})
   }
 
+  // 表单测试数据清理（SMOKE_ 前缀），跨角色按 id 去重
+  let cleanupTotal = null
+  if (cfg.testForms && cfg.cleanup !== false) {
+    console.log('\n=== 清理 SMOKE_ 测试数据 ===')
+    const specs = buildCleanupSpecs(cfg)
+    const seenIds = new Set()
+    cleanupTotal = { deleted: 0, failed: 0 }
+    for (const role of cfg.roles) {
+      if (results[role]?.login !== 'ok') continue
+      const token = await readStateToken(role)
+      const r = await cleanupSmokeData(cfg, token, specs, seenIds)
+      cleanupTotal.deleted += r.deleted
+      cleanupTotal.failed += r.failed
+    }
+    console.log(`  清理完成：删除 ${cleanupTotal.deleted} 条${cleanupTotal.failed ? `，失败 ${cleanupTotal.failed} 条（仅警告）` : ''}`)
+  }
+
+  let backendLogLines = null
   if (cfg.tailBackend) {
     console.log('\n=== 后端容器日志（增量抓取） ===')
-    const lines = tailBackendLogs(backendStart)
-    console.log(lines.length ? lines.join('\n') : '  无 error/panic/fatal 行')
-    results.backendLogLines = lines
+    backendLogLines = tailBackendLogs(backendStart)
+    console.log(backendLogLines.length ? backendLogLines.join('\n') : '  无 error/panic/fatal 行')
   }
 
   // 汇总
@@ -298,7 +355,7 @@ export async function main() {
     generatedAt: new Date().toISOString(),
     durationSeconds: Math.round((Date.now() - startedAt) / 1000),
     baseUrl: cfg.baseUrl,
-    args: { roles: cfg.roles, maxClicks: cfg.maxClicks, workers: cfg.workers, gitDiff: cfg.gitDiff || null },
+    args: { roles: cfg.roles, maxClicks: cfg.maxClicks, workers: cfg.workers, gitDiff: cfg.gitDiff || null, testForms: !!cfg.testForms },
     crashedPages: allCrashes.routes,
     aggregate,
     diff: diff ? {
@@ -306,6 +363,8 @@ export async function main() {
       fixedErrors: diff.fixedErrors,
       persistentErrors: diff.persistentErrors,
     } : null,
+    cleanup: cleanupTotal,
+    backendLogLines,
     results,
   }
   await writeReport(cfg.report, report)

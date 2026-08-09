@@ -84,3 +84,49 @@ test('collectClickables：allowIconButtons 放开无文本按钮', async t => {
   await browser?.close()
   browser = null
 })
+
+test('collectClickables：testForms 触发词放行危险词', async t => {
+  let page
+  try {
+    if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
+    page = await browser.newPage()
+    await page.setContent('<html><body><button>新增 课程</button><button>删除</button><button>查看</button></body></html>')
+  } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
+  const re = buildDangerousRe({ dangerousWords: ['新增', '删除'], dangerousWordsEn: [] })
+  const noTrigger = await collectClickables(page, CFG, re, 'page')
+  assert.ok(!noTrigger.some(p => p.key.includes('新增')), '默认模式下新增被危险词过滤')
+  const triggerRe = /^(?:新增|创建)/
+  const withTrigger = await collectClickables(page, CFG, re, 'page', triggerRe)
+  assert.ok(withTrigger.some(p => p.key.includes('新增')), '表单测试模式下新增入口应放行')
+  assert.ok(!withTrigger.some(p => p.key.includes('删除')), '删除类仍被过滤')
+  await page.close()
+  await browser?.close()
+  browser = null
+})
+
+test('collectClickables：动作分类 actionType 标注', async t => {
+  let page
+  try {
+    if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
+    page = await browser.newPage()
+    await page.setContent('<html><body><button>新增</button><button>保存</button><button>删除</button><button>查看</button><a href="/x">内链</a></body></html>')
+  } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
+  const cfg = {
+    clickDangerous: true, allowIconButtons: false, localeSwitchWords: [],
+    submitWords: ['保存'], submitWordsEn: [],
+    destructiveWords: ['删除'], destructiveWordsEn: [],
+    navWords: ['查看'], navWordsEn: [],
+  }
+  const re = buildDangerousRe({ dangerousWords: ['新增', '保存', '删除'], dangerousWordsEn: [] })
+  const triggerRe = /^(?:新增|创建)/
+  const items = await collectClickables(page, cfg, re, 'page', triggerRe)
+  const byText = Object.fromEntries(items.map(p => [p.key.split('|')[1], p.actionType]))
+  assert.equal(byText['新增'], 'form-trigger', '页面级新增应为表单入口')
+  assert.equal(byText['保存'], 'submit')
+  assert.equal(byText['删除'], 'destructive')
+  assert.equal(byText['查看'], 'nav')
+  assert.equal(byText['内链'], 'nav')
+  await page.close()
+  await browser?.close()
+  browser = null
+})

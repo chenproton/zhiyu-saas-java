@@ -129,6 +129,16 @@ export function printSummary(results, aggregate, diff, totalErrors, cfg) {
       const infoCount = r.routes.reduce((acc, x) => acc + (x.info?.length || 0), 0)
       if (infoCount) console.log(`  （信息类信号 ${infoCount} 条：401/403/429，不计错误，见报告 info 字段）`)
     }
+    const formRecs = r.routes.flatMap(x => x.forms || [])
+    if (formRecs.length) {
+      const pass = formRecs.filter(f => f.submitStatus === 'pass').length
+      const err = formRecs.filter(f => f.submitStatus === 'error').length
+      const other = formRecs.length - pass - err
+      console.log(`  表单测试 ${formRecs.length} 次：通过 ${pass}，失败 ${err}，未发出请求 ${other}`)
+      for (const f of formRecs.filter(f => f.submitStatus === 'error').slice(0, 5)) {
+        console.log(`    ✗ ${f.trigger} → ${f.apiResult?.status} ${f.apiResult?.method} ${f.apiResult?.url}`)
+      }
+    }
     for (const rt of errRoutes.slice(0, 20)) {
       console.log(`  ✗ ${rt.route}（点击 ${rt.clicks} 次）`)
       for (const e of rt.errors.slice(0, 5)) console.log(`      [${e.type}] ${e.message.split('\n')[0]}`)

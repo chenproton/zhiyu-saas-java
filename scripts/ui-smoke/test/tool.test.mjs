@@ -97,3 +97,19 @@ test('import 解析：@/ 别名与相对路径', () => {
   assert.ok(up.includes('app/lesson/_components/baz.tsx'))
   assert.deepEqual(resolveImportCandidates('app/x/page.tsx', 'react'), [])
 })
+
+test('routeCfg 路由覆盖：前缀匹配最长优先', async () => {
+  const { routeCfg } = await import('../clicker.mjs')
+  const cfg = {
+    maxClicks: 100,
+    routeOverrides: {
+      '/scene': { maxClicks: 10 },
+      '/scene/scenarios': { maxClicks: 5, maxFormSubmits: 0 },
+    },
+  }
+  assert.equal(routeCfg(cfg, '/scene/scenarios').maxClicks, 5)
+  assert.equal(routeCfg(cfg, '/scene/scenarios/abc').maxClicks, 5, '子路径应命中前缀')
+  assert.equal(routeCfg(cfg, '/scene/other').maxClicks, 10)
+  assert.equal(routeCfg(cfg, '/other').maxClicks, 100)
+  assert.equal(routeCfg(cfg, '/scene/scenarios').maxFormSubmits, 0, '覆盖项应合并')
+})

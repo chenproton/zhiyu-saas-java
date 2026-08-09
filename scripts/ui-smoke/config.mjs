@@ -30,8 +30,8 @@ const DEFAULTS = {
   dangerousWordsEn: ['Save', 'Submit', 'Delete', 'Publish', 'Confirm', 'OK', 'Archive', 'Reject', 'Approve', 'Enable', 'Disable', 'Freeze', 'Lock', 'Reset', 'Logout', 'Sign out', 'Batch', 'Create', 'Add', 'Complete', 'Finish', 'Remove'],
   // 语言切换按钮文本：点击会改变全局语言，导致危险词失效，必须跳过
   localeSwitchWords: ['中文', 'English', '简体中文', '语言'],
-  // 种子数据/已知噪音（正则片段）
-  noisePatterns: ['example\\.com'],
+  // 种子数据/已知噪音（正则片段）；静态资源 404 由 response 监听以外的 console 兜底产生，页面可用性另由 pageerror 保障
+  noisePatterns: ['example\\.com', 'Failed to load resource: the server responded with a status of 404'],
   // 点击时序
   clickIntervalMs: 200,
   dialogEscMs: 300,
@@ -46,6 +46,25 @@ const DEFAULTS = {
   allowIconButtons: false,
   // 动态路由详情页上的 404（实体被删/无权限 id）默认忽略
   dynamicIgnore404: true,
+  // 表单自动填充+提交测试（--test-forms 启用）；提交数据统一 SMOKE_ 前缀，结束后自动清理
+  testForms: false,
+  cleanup: true,
+  maxFormSubmits: 3,
+  // 创建/编辑类入口按钮文本（点击后如出现表单则执行表单测试）
+  formTriggerWords: ['创建', '新增', '新建', '添加', '编辑'],
+  formTriggerWordsEn: ['Create', 'Add', 'New', 'Edit'],
+  // 表单提交按钮文本
+  submitWords: ['保存', '提交', '创建', '确定', '确认', '完成'],
+  submitWordsEn: ['Save', 'Submit', 'Create', 'OK', 'Confirm', 'Finish'],
+  // 动作分类：危险删除类 / 安全导航类（actionType 标注，供报告与后续扩展的动作处理器使用）
+  destructiveWords: ['删除', '禁用', '停用', '冻结', '锁定', '归档', '驳回', '退出', '注销', '登出', '重置密码', '批量'],
+  destructiveWordsEn: ['Delete', 'Disable', 'Freeze', 'Lock', 'Archive', 'Reject', 'Logout', 'Sign out', 'Reset', 'Batch', 'Remove'],
+  navWords: ['返回', '查看', '详情', '取消', '关闭', '上一页', '下一页', '首页'],
+  navWordsEn: ['Back', 'View', 'Detail', 'Cancel', 'Close', 'Prev', 'Next', 'Home'],
+  // 按路由覆盖配置（前缀匹配，最长优先）：{ "/scene/scenarios": { "maxFormSubmits": 0, "skipFormFields": ["封面"] } }
+  routeOverrides: {},
+  // 额外清理映射：[{ list: '/api/v1/x?limit=100', del: '/api/v1/x/{id}', fields: ['name'] }]
+  cleanupApis: [],
   // 定时巡检（git-diff 圈定）时组件依赖扫描深度
   depScanDepth: 3,
 }
@@ -87,6 +106,9 @@ export function parseArgs(argv) {
       case '--baseline': args.baseline = next(); break
       case '--resume': args.resume = next(); break
       case '--click-dangerous': args.clickDangerous = true; break
+      case '--test-forms': args.testForms = true; break
+      case '--no-cleanup': args.cleanup = false; break
+      case '--max-form-submits': args.maxFormSubmits = parseInt(next(), 10); break
       case '--tail-backend': args.tailBackend = true; break
       case '--fail-on-error': args.failOnError = true; break
       case '--headed': args.headed = true; break
@@ -109,6 +131,9 @@ export function parseArgs(argv) {
   --baseline <file>     与上次报告做回归 diff（新增/已修复/持续）
   --resume <file>       跳过上次报告中已 ok/skip 的路由
   --click-dangerous     允许点击写数据按钮（默认跳过防污染）
+  --test-forms          表单自动填充+提交测试（测试租户专用，会真实创建数据）
+  --no-cleanup          表单测试后不清理 SMOKE_ 前缀数据（默认自动清理）
+  --max-form-submits <n> 每页表单提交次数上限（默认 3）
   --tail-backend        抓取后端容器日志 error/panic 增量
   --fail-on-error       发现错误退出码 1
   --headed              显示浏览器窗口

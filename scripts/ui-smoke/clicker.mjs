@@ -1,7 +1,10 @@
 /**
  * 页面点击巡检：可点击元素收集、点击、弹窗关闭、跳转回访、增量补充。
  * 含 locale 防护（点击语言切换按钮后自动切回中文，防止危险词失效）。
+ * --test-forms 下，点击创建/编辑类入口或页面内表单会触发表单填充提交测试（forms.mjs）。
  */
+
+import { maybeTestForm, buildTriggerRe, keyText } from './forms.mjs'
 
 export const CLICKABLE_SELECTOR = ['button', 'a[href]', '[role="tab"]', '[role="button"]'].join(',')
 // 弹层容器：Radix Dialog 是 dialog，AlertDialog（确认删除等）是 alertdialog，两者都必须纳入
@@ -12,7 +15,18 @@ export const DIALOG_VISIBLE_SELECTOR = '[role="dialog"]:visible, [role="alertdia
 export const NON_ERROR_TYPES = new Set(['auth', 'rate-limit'])
 
 export function buildDangerousRe(cfg) {
-  const words = [...(cfg.dangerousWords || []), ...(cfg.dangerousWordsEn || [])]
+  return wordRe([...(cfg.dangerousWords || []), ...(cfg.dangerousWordsEn || [])])
+}
+
+export function buildDestructiveRe(cfg) {
+  return wordRe([...(cfg.destructiveWords || []), ...(cfg.destructiveWordsEn || [])])
+}
+
+export function buildNavRe(cfg) {
+  return wordRe([...(cfg.navWords || []), ...(cfg.navWordsEn || [])])
+}
+
+function wordRe(words) {
   return new RegExp(`^(?:${words.map(escapeRe).join('|')})`)
 }
 
@@ -20,12 +34,51 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+// 按路由覆盖配置（前缀匹配，最长优先）
+export function routeCfg(cfg, route) {
+  const overrides = cfg.routeOverrides || {}
+  let best = null
+  for (const key of Object.keys(overrides)) {
+    if (route === key || route.startsWith(key.endsWith('/') ? key : key + '/') || route.startsWith(key)) {
+      if (!best || key.length > best.length) best = key
+    }
+  }
+  return best ? { ...cfg, ...overrides[best] } : cfg
+}
+
 // 收集可见可点击元素（含文档序 index 与行内序号 key）。
 // scope='page'：只收弹层外元素（默认）；scope='dialog'：只收弹层内元素（key 加 dlg| 前缀）。
-export async function collectClickables(page, cfg, dangerousRe, scope = 'page') {
-  return page.evaluate(({ selector, dialogSel, re, clickDangerous, allowIconButtons, localeWords, scope }) => {
+// triggerRe：表单测试模式下，创建/编辑类入口词即使命中危险词也放行（点击后由 maybeTestForm 接管）。
+export async function collectClickables(page, cfg, dangerousRe, scope = 'page', triggerRe = null) {
+  return page.evaluate(({ selector, dialogSel, re, triggerSrc, submitWords, destructiveWords, navWords, clickDangerous, allowIconButtons, localeWords, scope }) => {
+    const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    // 空词表时正则永不命中（否则 ^(?:) 会匹配一切）
+    const wordRe = (words, anchorEnd) => words.length
+      ? new RegExp(`^(?:${words.map(escapeRe).join('|')})${anchorEnd ? '$' : ''}`)
+      : { test: () => false }
     const skipRe = new RegExp(re)
-    const localeRe = new RegExp(`^(?:${localeWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`)
+    const triggerRegex = triggerSrc ? new RegExp(triggerSrc) : null
+    const submitRe = wordRe(submitWords)
+    const destructiveRe = wordRe(destructiveWords)
+    const navRe = wordRe(navWords)
+    const localeRe = wordRe(localeWords, true)
+    // 动作分类：弹层内提交词优先（保存/创建是提交按钮），页面级入口词优先（创建/新增是表单入口）
+    const classify = (el, effText, href) => {
+      if (effText) {
+        if (destructiveRe.test(effText)) return 'destructive'
+        if (scope === 'dialog') {
+          if (submitRe.test(effText)) return 'submit'
+          if (triggerRegex?.test(effText)) return 'form-trigger'
+        } else {
+          if (triggerRegex?.test(effText)) return 'form-trigger'
+          if (submitRe.test(effText)) return 'submit'
+        }
+        if (navRe.test(effText)) return 'nav'
+      }
+      if (el.tagName === 'A' && href) return 'nav'
+      if (!effText) return 'unknown'
+      return 'overlay'
+    }
     const countByKey = new Map()
     const out = []
     const els = [...document.querySelectorAll(selector)]
@@ -47,20 +100,24 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page') 
       if (!clickDangerous) {
         if (!effText && !allowIconButtons) return // 无文本图标按钮：宁漏勿删
         if (effText) {
-          if (skipRe.test(effText)) return
           if (localeRe.test(effText)) return // 语言切换按钮：点击会改变全局语言，跳过
+          if (skipRe.test(effText) && !triggerRegex?.test(effText)) return
         }
       }
       const base = `${el.tagName}|${effText}|${href}`
       const n = (countByKey.get(base) || 0) + 1
       countByKey.set(base, n)
-      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index })
+      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href) })
     })
     return out
   }, {
     selector: CLICKABLE_SELECTOR,
     dialogSel: DIALOG_SELECTOR,
     re: dangerousRe.source,
+    triggerSrc: triggerRe?.source || null,
+    submitWords: [...(cfg.submitWords || []), ...(cfg.submitWordsEn || [])],
+    destructiveWords: [...(cfg.destructiveWords || []), ...(cfg.destructiveWordsEn || [])],
+    navWords: [...(cfg.navWords || []), ...(cfg.navWordsEn || [])],
     clickDangerous: cfg.clickDangerous,
     allowIconButtons: cfg.allowIconButtons,
     localeWords: cfg.localeSwitchWords || [],
@@ -127,19 +184,34 @@ export async function ensureZhLocale(page, cfg) {
 }
 
 // 弹层可见时收集其内部元素并入队（点击打开弹窗后、Esc 关闭前调用）
-async function enqueueDialogItems(page, cfg, dangerousRe, queue, attempted) {
+async function enqueueDialogItems(page, cfg, dangerousRe, queue, attempted, triggerRe = null) {
   try {
     if (!(await page.locator(DIALOG_VISIBLE_SELECTOR).count())) return
-    const dlgItems = await collectClickables(page, cfg, dangerousRe, 'dialog').catch(() => [])
+    const dlgItems = await collectClickables(page, cfg, dangerousRe, 'dialog', triggerRe).catch(() => [])
     for (const d of dlgItems) {
       if (!attempted.has(d.key) && !queue.some(q => q.key === d.key)) queue.push(d)
     }
   } catch { /* 页面可能已崩溃 */ }
 }
 
+// 表单测试记录写入 routeResult 并返回是否消耗了一次提交额度
+function recordFormResult(routeResult, rec) {
+  if (!rec) return false
+  if (rec.submitStatus === 'none' || rec.submitStatus === 'no-submit-button') {
+    if (!rec.filled) return false // 无表单或无提交按钮（搜索区等），不记录
+  }
+  routeResult.forms.push(rec)
+  if (rec.submitStatus === 'error') {
+    const api = rec.apiResult
+    routeResult.errors.push({ type: 'form', message: `表单提交失败: ${api?.status} ${api?.method} ${api?.url}（触发: ${rec.trigger}）` })
+  }
+  return ['pass', 'error', 'no-request'].includes(rec.submitStatus)
+}
+
 // 单页巡检：队列式点击全部唯一可点元素
 export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
-  const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [] }
+  cfg = routeCfg(cfg, route) // per-route 配置覆盖（前缀匹配，最长优先）
+  const routeResult = { route, status: 'ok', clicks: 0, actions: [], errors: [], info: [], forms: [] }
   try {
     await page.goto(cfg.baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 30000 })
     await waitSettled(page, cfg, undefined, true)
@@ -150,8 +222,17 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
 
     const basePath = new URL(page.url()).pathname
     const dangerousRe = buildDangerousRe(cfg)
+    const triggerRe = cfg.testForms ? buildTriggerRe(cfg) : null
+    let formAttempts = 0
+    const maxForms = cfg.maxFormSubmits || 3
+    const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复编辑耗尽额度
+    // 页面内表单（如 /xxx/add 独立表单页）
+    if (triggerRe && !/login/.test(route)) {
+      const rec = await maybeTestForm(page, cfg, null).catch(() => null)
+      if (recordFormResult(routeResult, rec)) formAttempts++
+    }
     const attempted = new Set()
-    const queue = await collectClickables(page, cfg, dangerousRe)
+    const queue = await collectClickables(page, cfg, dangerousRe, 'page', triggerRe)
     for (let qi = 0; qi < queue.length && routeResult.clicks < cfg.maxClicks; qi++) {
       const pick = queue[qi]
       if (attempted.has(pick.key)) continue
@@ -161,10 +242,17 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
       routeState.url = page.url()
       await clickByIndex(page, pick)
       routeResult.clicks++
-      routeResult.actions.push({ key: pick.key, index: routeResult.clicks })
+      routeResult.actions.push({ key: pick.key, index: routeResult.clicks, actionType: pick.actionType })
       await sleep(cfg.clickIntervalMs)
+      // 点击创建/编辑类入口后如出现表单，执行填充+提交测试
+      const pickText = keyText(pick.key)
+      if (pick.actionType === 'form-trigger' && formAttempts < maxForms && !formTestedTriggers.has(pickText)) {
+        formTestedTriggers.add(pickText)
+        const rec = await maybeTestForm(page, cfg, pickText).catch(() => null)
+        if (recordFormResult(routeResult, rec)) formAttempts++
+      }
       // 点击若打开了弹窗，先把弹窗内元素入队再关闭
-      await enqueueDialogItems(page, cfg, dangerousRe, queue, attempted)
+      await enqueueDialogItems(page, cfg, dangerousRe, queue, attempted, triggerRe)
       await closeOverlays(page, cfg)
       // 跳转回访
       const nowPath = new URL(page.url()).pathname
@@ -175,7 +263,7 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState) {
       // locale 防护
       await ensureZhLocale(page, cfg)
       // 增量补充
-      const fresh = await collectClickables(page, cfg, dangerousRe).catch(() => [])
+      const fresh = await collectClickables(page, cfg, dangerousRe, 'page', triggerRe).catch(() => [])
       for (const f of fresh) {
         if (!attempted.has(f.key) && !queue.some(q => q.key === f.key)) {
           queue.push(f)
