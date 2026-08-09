@@ -42,7 +42,7 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/scene/scenarios/[id]/edit/tasks': { api: '/api/v1/scene/scenarios?limit=10', url: '/scene/scenarios/{id}/edit/tasks' },
 }
 
-// 静态路由枚举：跳过动态段 [id]（由 resolveDynamicRoutes 单独处理）与分组段 (group)
+// 静态路由枚举：跳过动态段 [id]（由 resolveDynamicRoutes 单独处理）；(group) 分组段不占 URL，继续向下遍历
 async function walkRoutes(dir, prefix, out) {
   let entries
   try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return }
@@ -50,7 +50,11 @@ async function walkRoutes(dir, prefix, out) {
     if (e.name.startsWith('.')) continue
     const full = path.join(dir, e.name)
     if (e.isDirectory()) {
-      if (e.name.includes('(') || e.name.includes('[')) continue
+      if (e.name.startsWith('(') && e.name.endsWith(')')) {
+        await walkRoutes(full, prefix, out)
+        continue
+      }
+      if (e.name.includes('[') || e.name.includes('(')) continue
       await walkRoutes(full, `${prefix}/${e.name}`, out)
     } else if (e.name === 'page.tsx') {
       out.push(prefix)
@@ -74,6 +78,10 @@ async function discoverDynamicPatterns() {
       if (e.name.startsWith('.')) continue
       const full = path.join(dir, e.name)
       if (e.isDirectory()) {
+        if (e.name.startsWith('(') && e.name.endsWith(')')) {
+          await walk(full, prefix)
+          continue
+        }
         if (e.name.includes('(')) continue
         await walk(full, `${prefix}/${e.name}`)
       } else if (e.name === 'page.tsx' && prefix.includes('[')) {
@@ -116,6 +124,21 @@ export async function resolveDynamicRoutes(cfg, baseUrl, token) {
   return resolved
 }
 
+// import 解析：@/ 别名与相对路径（./ ../）→ APP_DIR 内候选文件列表（纯函数，便于测试）
+export function resolveImportCandidates(importerFile, spec) {
+  let base
+  if (spec.startsWith('@/')) base = spec.slice(2)
+  else if (spec.startsWith('.')) base = path.posix.normalize(path.posix.join(path.posix.dirname(importerFile), spec))
+  else return []
+  return [`${base}.tsx`, `${base}.ts`, `${base}/index.tsx`, `${base}/index.ts`, `${base}/page.tsx`]
+}
+
+function resolveImport(importerFile, spec) {
+  return resolveImportCandidates(importerFile, spec).find(c => {
+    try { fs.accessSync(path.join(APP_DIR, c)); return true } catch { return false }
+  }) || null
+}
+
 // git-diff 圈定受影响路由：改动文件 → 页面文件/组件依赖反查
 export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
   let files = []
@@ -123,18 +146,24 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
     const out = execFileSync('git', ['diff', '--name-only', `${gitRef}...HEAD`], {
       cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 15000,
     })
-    files = out.split('\n').filter(l => l.includes('apps/edu') && /\.(tsx?|ts)$/.test(l))
+    files = out.split('\n').filter(Boolean)
   } catch {
     try {
       const out = execFileSync('git', ['diff', '--name-only'], {
         cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 15000,
       })
-      files = out.split('\n').filter(l => l.includes('apps/edu') && /\.(tsx?|ts)$/.test(l))
+      files = out.split('\n').filter(Boolean)
     } catch {
       console.warn('  [git-diff] 无法读取 git 改动，回退为全量巡检')
       return routes
     }
   }
+  // 共享包（packages/ui、api-client 等）影响全站，圈定无意义，直接全量
+  if (files.some(f => f.startsWith('packages/'))) {
+    console.warn('  [git-diff] 改动涉及 packages/ 共享包，影响面全站，回退为全量巡检')
+    return routes
+  }
+  files = files.filter(l => l.includes('apps/edu') && /\.(tsx?|ts)$/.test(l))
   if (!files.length) {
     console.warn('  [git-diff] 未发现 apps/edu 下的改动文件，回退为全量巡检')
     return routes
@@ -155,18 +184,10 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
       const src = fs.readFileSync(path.join(APP_DIR, filePath), 'utf8')
       const imports = [...src.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(m => m[1])
       for (const imp of imports) {
-        if (imp.startsWith('@/')) {
-          const rel = imp.slice(2)
-          const candidates = [
-            `${rel}.tsx`, `${rel}.ts`, `${rel}/index.tsx`, `${rel}/index.ts`, `${rel}/page.tsx`,
-          ]
-          const hit = candidates.find(c => {
-            try { fs.accessSync(path.join(APP_DIR, c)); return true } catch { return false }
-          })
-          if (hit) {
-            deps.push(hit)
-            deps.push(...scanImports(hit, depth - 1))
-          }
+        const hit = resolveImport(filePath, imp)
+        if (hit) {
+          deps.push(hit)
+          deps.push(...scanImports(hit, depth - 1))
         }
       }
     } catch { /* 忽略无法读取的文件 */ }

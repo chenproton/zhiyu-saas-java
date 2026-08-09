@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildDangerousRe } from '../clicker.mjs'
-import { errorSignature, aggregateErrors } from '../report.mjs'
+import { errorSignature, aggregateErrors, classifyApiResponse, buildResumeDoneSet } from '../report.mjs'
+import { resolveImportCandidates } from '../routes.mjs'
 
 const CFG = {
   dangerousWords: ['保存', '提交', '删除'],
@@ -60,4 +61,55 @@ test('错误聚合去重', () => {
   assert.equal(aApi.count, 2, '/a 的 api 错误跨角色应聚合')
   assert.deepEqual(aApi.roles.sort(), ['school', 'teacher'])
   assert.equal(agg.length, 3, '3 类签名：/a api、/b api、/a console')
+})
+
+test('API 响应分类：401/403→auth，429→rate-limit，动态页 404→ignore，5xx→api', () => {
+  assert.equal(classifyApiResponse(401), 'auth')
+  assert.equal(classifyApiResponse(403), 'auth')
+  assert.equal(classifyApiResponse(429), 'rate-limit')
+  assert.equal(classifyApiResponse(404, { isDynamicRoute: true }), 'ignore')
+  assert.equal(classifyApiResponse(404, { isDynamicRoute: true, dynamicIgnore404: false }), 'api')
+  assert.equal(classifyApiResponse(404, { isDynamicRoute: false }), 'api')
+  assert.equal(classifyApiResponse(500), 'api')
+  assert.equal(classifyApiResponse(400), 'api')
+})
+
+test('断点续跑按 角色:路由 记录', () => {
+  const prev = {
+    results: {
+      school: { routes: [{ route: '/a', status: 'ok' }, { route: '/b', status: 'error' }] },
+      teacher: { routes: [{ route: '/a', status: 'error' }, { route: '/c', status: 'skip' }] },
+    },
+  }
+  const done = buildResumeDoneSet(prev)
+  assert.ok(done.has('school:/a'), 'school 已完成 /a')
+  assert.ok(!done.has('school:/b'), 'error 不算完成')
+  assert.ok(!done.has('teacher:/a'), 'teacher 的 /a 上次出错，不能因 school 完成而跳过')
+  assert.ok(done.has('teacher:/c'), 'skip 也算完成')
+})
+
+test('import 解析：@/ 别名与相对路径', () => {
+  const alias = resolveImportCandidates('app/portal/page.tsx', '@/components/foo')
+  assert.ok(alias.includes('components/foo.tsx'))
+  const rel = resolveImportCandidates('app/portal/apps/system/page.tsx', './_components/bar')
+  assert.ok(rel.includes('app/portal/apps/system/_components/bar.tsx'), `相对路径应相对引用者目录解析，得到 ${rel[0]}`)
+  const up = resolveImportCandidates('app/lesson/admin/page.tsx', '../_components/baz')
+  assert.ok(up.includes('app/lesson/_components/baz.tsx'))
+  assert.deepEqual(resolveImportCandidates('app/x/page.tsx', 'react'), [])
+})
+
+test('routeCfg 路由覆盖：前缀匹配最长优先', async () => {
+  const { routeCfg } = await import('../clicker.mjs')
+  const cfg = {
+    maxClicks: 100,
+    routeOverrides: {
+      '/scene': { maxClicks: 10 },
+      '/scene/scenarios': { maxClicks: 5, maxFormSubmits: 0 },
+    },
+  }
+  assert.equal(routeCfg(cfg, '/scene/scenarios').maxClicks, 5)
+  assert.equal(routeCfg(cfg, '/scene/scenarios/abc').maxClicks, 5, '子路径应命中前缀')
+  assert.equal(routeCfg(cfg, '/scene/other').maxClicks, 10)
+  assert.equal(routeCfg(cfg, '/other').maxClicks, 100)
+  assert.equal(routeCfg(cfg, '/scene/scenarios').maxFormSubmits, 0, '覆盖项应合并')
 })

@@ -6,9 +6,10 @@ import { chromium } from 'playwright'
 import { execFileSync } from 'child_process'
 import path from 'path'
 import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
-import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff } from './routes.mjs'
+import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES } from './routes.mjs'
 import { walkRoute } from './clicker.mjs'
-import { aggregateErrors, diffWithBaseline, printSummary, writeReport } from './report.mjs'
+import { cleanupSmokeData } from './forms.mjs'
+import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -75,15 +76,26 @@ function attachListeners(page, sink, cfg, routeState) {
   }))
   page.on('console', msg => {
     const t = msg.type()
-    if (t === 'error') push({ type: 'console', message: msg.text().slice(0, 500) })
-    else if (t === 'warning' && cfg.verbose) push({ type: 'console-warning', message: msg.text().slice(0, 500) })
+    if (t === 'error') {
+      const text = msg.text().slice(0, 500)
+      // 把 401/403/429 的 console 报错也归为权限/限流信号，避免 /partner 等无权限页噪音
+      let subType = 'console'
+      if (/\b401\b/.test(text) || /\b403\b/.test(text)) subType = 'auth'
+      else if (/\b429\b/.test(text)) subType = 'rate-limit'
+      push({ type: subType, message: text })
+    } else if (t === 'warning' && cfg.verbose) {
+      push({ type: 'console-warning', message: msg.text().slice(0, 500) })
+    }
   })
   page.on('response', res => {
     const status = res.status()
     const url = res.url()
-    if (status >= 400 && url.includes('/api/')) {
-      push({ type: 'api', message: `${status} ${res.request().method()} ${url.replace(cfg.baseUrl, '')}` })
-    }
+    if (status < 400 || !url.includes('/api/')) return
+    let isDynamic = false
+    try { isDynamic = routeState.dynamicUrls?.has(new URL(page.url()).pathname) || false } catch { /* ignore */ }
+    const kind = classifyApiResponse(status, { isDynamicRoute: isDynamic, dynamicIgnore404: cfg.dynamicIgnore404 })
+    if (kind === 'ignore') return
+    push({ type: kind, message: `${status} ${res.request().method()} ${url.replace(cfg.baseUrl, '')}` })
   })
   page.on('requestfailed', req => {
     const err = req.failure()?.errorText || 'failed'
@@ -92,6 +104,44 @@ function attachListeners(page, sink, cfg, routeState) {
     }
   })
   page.on('dialog', d => d.dismiss().catch(() => {}))
+}
+
+// ── 单路由超时包装：超时返回带 timedOut 标记的结果，由调用方换新页面 ──
+async function runRouteWithTimeout(page, ctx, route, cfg, role, sink, routeState, token) {
+  const timeoutMs = (cfg.routeTimeoutSec || 120) * 1000
+  let timer
+  const timeout = new Promise(resolve => {
+    timer = setTimeout(() => resolve({
+      route, status: 'error', clicks: 0, actions: [], info: [], timedOut: true,
+      errors: [{ type: 'timeout', message: `单路由巡检超时（>${cfg.routeTimeoutSec || 120}s）` }],
+    }), timeoutMs)
+  })
+  const r = await Promise.race([walkRoute(page, ctx, route, cfg, role, sink, routeState, token), timeout])
+  clearTimeout(timer)
+  return r
+}
+
+// ── 清理规格：内置动态路由实体的 list/delete 映射 + 配置追加 ──
+function buildCleanupSpecs(cfg) {
+  const byBase = new Map()
+  for (const spec of Object.values(BUILTIN_DYNAMIC_ROUTES)) {
+    const base = spec.api.split('?')[0]
+    if (!byBase.has(base)) byBase.set(base, { list: `${base}?limit=100`, del: `${base}/{id}`, fields: ['name', 'title'] })
+  }
+  for (const extra of cfg.cleanupApis || []) byBase.set(extra.list.split('?')[0], extra)
+  return [...byBase.values()]
+}
+
+// 从 storageState 文件读取角色 token
+async function readStateToken(role) {
+  try {
+    const st = JSON.parse(await fs.readFile(path.join(STATE_DIR, `state-${role}.json`), 'utf8'))
+    for (const o of st.origins || []) {
+      const item = (o.localStorage || []).find(l => l.name === 'zhiyu-portal-token')
+      if (item) return item.value
+    }
+  } catch { /* ignore */ }
+  return ''
 }
 
 // ── 后端容器日志增量抓取（可选） ───────────────────────────
@@ -120,19 +170,13 @@ export async function main() {
   let routes = staticRoutes.filter(r => !(cfg.excludeRoutes || []).some(x => r.includes(x)))
   if (cfg.route) routes = [cfg.route]
 
-  // 断点续跑：跳过上次报告中已 ok/skip 的路由
+  // 断点续跑：跳过上次报告中已 ok/skip 的路由（按 角色:路由 记录，避免跨角色误跳过）
+  let resumeDone = null
   if (cfg.resume) {
     try {
       const prev = JSON.parse(await fs.readFile(cfg.resume, 'utf8'))
-      const done = new Set()
-      for (const role of Object.keys(prev.results || {})) {
-        for (const rt of prev.results[role]?.routes || []) {
-          if (rt.status === 'ok' || rt.status === 'skip') done.add(rt.route)
-        }
-      }
-      const before = routes.length
-      routes = routes.filter(r => !done.has(r))
-      console.log(`[resume] 上次已完成 ${before - routes.length} 个路由，本次巡检 ${routes.length} 个`)
+      resumeDone = buildResumeDoneSet(prev)
+      console.log(`[resume] 上次已完成 ${resumeDone.size} 个 角色:路由，本次将跳过`)
     } catch {
       console.warn('[resume] 无法读取续跑报告，全量巡检')
     }
@@ -140,6 +184,13 @@ export async function main() {
 
   console.log(`目标站点: ${cfg.baseUrl}`)
   console.log(`发现页面: ${routes.length} 个，角色: ${cfg.roles.join('/')}，每页点击全部唯一可点元素（上限 ${cfg.maxClicks}）`)
+  if (cfg.testForms) {
+    if (cfg.workers > 1) {
+      console.log('[test-forms] 表单提交会产生真实数据，并发降为 1 路串行执行')
+      cfg.workers = 1
+    }
+    console.log(`[test-forms] 表单填充+提交测试已启用（每页上限 ${cfg.maxFormSubmits} 次，数据前缀 SMOKE_，结束后${cfg.cleanup !== false ? '自动' : '不'}清理）`)
+  }
 
   const backendStart = new Date().toISOString()
   const browser = await chromium.launch({
@@ -163,7 +214,16 @@ export async function main() {
   try {
     for (const role of cfg.roles) {
       console.log(`\n=== [${role}] 开始巡检 ===`)
-      const ctx = await browser.newContext()
+      let ctx
+      try {
+        ctx = await browser.newContext()
+      } catch (e) {
+        if (/browser has been closed|context or browser has been closed/i.test(e.message)) {
+          console.error(`  [${role}] 浏览器已被关闭，停止后续角色巡检`)
+          break
+        }
+        throw e
+      }
       const page = await ctx.newPage()
       const sink = []
       const loginListeners = []
@@ -184,18 +244,21 @@ export async function main() {
 
       // 动态路由（拉真实实体 id）；--route 单页调试模式跳过
       let dynamicRoutes = []
+      let roleToken = ''
       if (!cfg.route) {
         try {
-          const token = await page.evaluate(() => {
+          roleToken = await page.evaluate(() => {
             try { return localStorage.getItem('zhiyu-portal-token') || '' } catch { return '' }
           })
-          dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, token)
+          dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, roleToken)
           if (dynamicRoutes.length) console.log(`  [${role}] 动态路由 ${dynamicRoutes.length} 个（拉取真实实体 id）`)
         } catch {
           dynamicRoutes = []
         }
       }
-      const allRoutes = [...routes, ...dynamicRoutes.map(d => d.url)]
+      const dynamicUrls = new Set(dynamicRoutes.map(d => d.url))
+      const roleRoutes = resumeDone ? routes.filter(r => !resumeDone.has(`${role}:${r}`)) : routes
+      const allRoutes = [...roleRoutes, ...dynamicUrls]
       const chunkSize = Math.ceil(allRoutes.length / cfg.workers)
       const chunks = Array.from({ length: cfg.workers }, (_, i) => allRoutes.slice(i * chunkSize, (i + 1) * chunkSize)).filter(c => c.length)
 
@@ -206,18 +269,25 @@ export async function main() {
         const wctx = await browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) })
         let wpage = await wctx.newPage()
         let wsink = []
-        const wstate = { clickIndex: -1, url: '' }
+        const wstate = { clickIndex: -1, url: '', dynamicUrls }
         attachListeners(wpage, wsink, cfg, wstate)
         try {
           for (const route of chunk) {
-            let r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate)
+            let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken)
+            if (r.timedOut) {
+              // 单路由超时：换新页面继续，不重试
+              await wpage.close().catch(() => {})
+              wpage = await wctx.newPage()
+              wsink = []
+              attachListeners(wpage, wsink, cfg, wstate)
+            }
             for (let attempt = 0; r.crashed && attempt < cfg.retryCrashes; attempt++) {
               await wpage.close().catch(() => {})
               wpage = await wctx.newPage()
               const oldSink = wsink
               wsink = []
               attachListeners(wpage, wsink, cfg, wstate)
-              r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate)
+              r = await walkRoute(wpage, wctx, route, cfg, role, wsink, wstate, roleToken)
               // 崩溃重试保留第一次的错误（P1-7）
               if (!r.errors.length && oldSink.length) {
                 r.errors.push(...oldSink)
@@ -246,11 +316,28 @@ export async function main() {
     await browser.close().catch(() => {})
   }
 
+  // 表单测试数据清理（SMOKE_ 前缀），跨角色按 id 去重
+  let cleanupTotal = null
+  if (cfg.testForms && cfg.cleanup !== false) {
+    console.log('\n=== 清理 SMOKE_ 测试数据 ===')
+    const specs = buildCleanupSpecs(cfg)
+    const seenIds = new Set()
+    cleanupTotal = { deleted: 0, failed: 0 }
+    for (const role of cfg.roles) {
+      if (results[role]?.login !== 'ok') continue
+      const token = await readStateToken(role)
+      const r = await cleanupSmokeData(cfg, token, specs, seenIds)
+      cleanupTotal.deleted += r.deleted
+      cleanupTotal.failed += r.failed
+    }
+    console.log(`  清理完成：删除 ${cleanupTotal.deleted} 条${cleanupTotal.failed ? `，失败 ${cleanupTotal.failed} 条（仅警告）` : ''}`)
+  }
+
+  let backendLogLines = null
   if (cfg.tailBackend) {
     console.log('\n=== 后端容器日志（增量抓取） ===')
-    const lines = tailBackendLogs(backendStart)
-    console.log(lines.length ? lines.join('\n') : '  无 error/panic/fatal 行')
-    results.backendLogLines = lines
+    backendLogLines = tailBackendLogs(backendStart)
+    console.log(backendLogLines.length ? backendLogLines.join('\n') : '  无 error/panic/fatal 行')
   }
 
   // 汇总
@@ -259,13 +346,13 @@ export async function main() {
   }, 0)
   const aggregate = aggregateErrors(results)
   const diff = cfg.baseline ? await diffWithBaseline(cfg.baseline, results) : null
-  printSummary(results, aggregate, diff, totalErrors)
+  printSummary(results, aggregate, diff, totalErrors, cfg)
 
   const report = {
     generatedAt: new Date().toISOString(),
     durationSeconds: Math.round((Date.now() - startedAt) / 1000),
     baseUrl: cfg.baseUrl,
-    args: { roles: cfg.roles, maxClicks: cfg.maxClicks, workers: cfg.workers, gitDiff: cfg.gitDiff || null },
+    args: { roles: cfg.roles, maxClicks: cfg.maxClicks, workers: cfg.workers, gitDiff: cfg.gitDiff || null, testForms: !!cfg.testForms },
     crashedPages: allCrashes.routes,
     aggregate,
     diff: diff ? {
@@ -273,6 +360,8 @@ export async function main() {
       fixedErrors: diff.fixedErrors,
       persistentErrors: diff.persistentErrors,
     } : null,
+    cleanup: cleanupTotal,
+    backendLogLines,
     results,
   }
   await writeReport(cfg.report, report)

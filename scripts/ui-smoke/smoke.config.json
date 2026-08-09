@@ -1,8 +1,11 @@
 {
   "baseUrl": "http://127.0.0.1",
   "roles": ["school", "teacher", "student"],
-  "workers": 3,
+  "workers": 1,
   "maxClicks": 100,
-  "excludeRoutes": [],
-  "expectedAuthPages": ["/superadmin"]
+  "excludeRoutes": ["/partner", "/superadmin"],
+  "expectedAuthPages": ["/superadmin"],
+  "cleanupApis": [
+    { "list": "/api/v1/tenants?limit=100", "del": "/api/v1/tenants/{id}", "fields": ["name"] }
+  ]
 }

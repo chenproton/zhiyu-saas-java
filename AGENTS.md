@@ -105,8 +105,9 @@
 - 巡检账号：`school/school123`、`teacher/teacher123`、`student/student123`（portal 平台测试账号，`--account` 可覆盖）
 - **每页点完所有唯一可点元素**（含弹窗/下拉/Tab 切换后新出现的元素；表格每行按钮逐个点），弹窗只打开后 Esc 关闭，不污染数据；`--max-clicks` 仅作安全阀（默认 100）
 - 动态路由（`[id]` 详情/编辑页）自动从后端拉真实实体 id 巡检；无权限页自动识别记为 `skip`
-- 危险词表中英双语（保存/删除/禁用/创建/返回等）默认跳过写数据按钮，语言切换按钮不点，防止污染数据
-- 报告输出到 `/tmp/zhiyu-ui-smoke/report.json`，含错误聚合（去重）与基线 diff；`errors[].type` 中 `api` 即后端服务端错误信号；`status: skip` 为无权限页，属预期
+- 危险词表中英双语（保存/删除/禁用/创建等）默认跳过写数据按钮，语言切换按钮不点，防止污染数据
+- `--test-forms` 开启表单自动填充+提交测试（测试租户专用），提交数据统一 `SMOKE_` 前缀，结束后自动清理；复杂字段可在 `smoke.config.json` 的 `routeOverrides` 中按路由配置 `skipFormFields` 与 `maxFormSubmits`
+- 报告输出到 `/tmp/zhiyu-ui-smoke/report.json`，含错误聚合（去重）与基线 diff；`errors[].type` 中 `api` / `form` 为后端/表单错误信号，`auth`（401/403）与 `rate-limit`（429）不计错误；`status: skip` 为无权限页，属预期
 
 ## 七、AI 协作者约定
 
