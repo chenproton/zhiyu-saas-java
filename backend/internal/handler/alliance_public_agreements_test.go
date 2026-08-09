@@ -23,9 +23,9 @@ func TestAlliancePublicAgreements(t *testing.T) {
 	ctx := context.Background()
 	suffix := uuid.NewString()[:8]
 
-	// 两家企业：一家 enable_public，一家不开启
-	entPub, entPriv := uuid.NewString(), uuid.NewString()
-	for id, enable := range map[string]bool{entPub: true, entPriv: false} {
+	// 三家企业：一家 enable_public，一家不开启，一家双控均开但合作已终止（tenant 分支应排除）
+	entPub, entPriv, entTerm := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	for id, enable := range map[string]bool{entPub: true, entPriv: false, entTerm: true} {
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO partner_enterprises (id, tenant_id, name, enable_public)
 			VALUES ($1, $2, $3, $4)
@@ -33,24 +33,31 @@ func TestAlliancePublicAgreements(t *testing.T) {
 			t.Fatalf("预置企业失败: %v", err)
 		}
 	}
-	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id IN ($1,$2)`, entPub, entPriv)
+	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id IN ($1,$2,$3)`, entPub, entPriv, entTerm)
 
-	// 学校-企业关联（is_public=true），供 tenantId 双控分支使用
-	linkID := uuid.NewString()
+	// 学校-企业关联（is_public=true），供 tenantId 双控分支使用；
+	// entTerm 的 link 双控均开但 status='terminated'，tenant 分支应排除
+	linkID, linkTermID := uuid.NewString(), uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO alliance_enterprise_links (id, tenant_id, enterprise_id, is_public)
 		VALUES ($1, $2, $3, true)
 	`, linkID, testhelper.TestTenantID, entPub); err != nil {
 		t.Fatalf("预置企业关联失败: %v", err)
 	}
-	defer env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE id = $1`, linkID)
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO alliance_enterprise_links (id, tenant_id, enterprise_id, is_public, status)
+		VALUES ($1, $2, $3, true, 'terminated')
+	`, linkTermID, testhelper.TestTenantID, entTerm); err != nil {
+		t.Fatalf("预置终止合作关联失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE id IN ($1,$2)`, linkID, linkTermID)
 
 	secretContent := "SECRET-AGREEMENT-CONTENT-" + suffix
 	secretAttachment := "secret-agreement-" + suffix + ".pdf"
 
 	// a1 应可见（is_public=true + 公开企业，status=draft 不再影响展示）；a2 is_public=false 排除；
-	// a3 仅关联非公开企业排除
-	a1, a2, a3 := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	// a3 仅关联非公开企业排除；a4 关联已终止合作企业（tenant 分支排除）
+	a1, a2, a3, a4 := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
 	seed := []struct {
 		id       string
 		name     string
@@ -62,6 +69,7 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		{a1, "公开协议-" + suffix, "draft", true, entPub, secretContent},
 		{a2, "隐藏协议-" + suffix, "active", false, entPub, secretContent},
 		{a3, "私企协议-" + suffix, "active", true, entPriv, secretContent},
+		{a4, "终止合作协议-" + suffix, "active", true, entTerm, secretContent},
 	}
 	for _, s := range seed {
 		if _, err := env.DB.Exec(ctx, `
@@ -71,7 +79,7 @@ func TestAlliancePublicAgreements(t *testing.T) {
 			t.Fatalf("预置协议失败: %v", err)
 		}
 	}
-	defer env.DB.Exec(ctx, `DELETE FROM alliance_agreements WHERE id IN ($1,$2,$3)`, a1, a2, a3)
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_agreements WHERE id IN ($1,$2,$3,$4)`, a1, a2, a3, a4)
 
 	type item struct {
 		ID            string   `json:"id"`

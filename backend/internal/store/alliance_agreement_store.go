@@ -73,7 +73,7 @@ func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.Allianc
 
 // ListPublicAgreements 门户前台公开协议列表：is_public 为唯一展示门槛（业务状态不再参与过滤），
 // 且至少关联一家"双控通过的企业"（enterprise_ids 关联判断，参照 ListPublicProjects）；
-// 带 tenantID 时限定该校协议并叠加 link.is_public 双控。仅返回公开字段，content/attachments 不下发。
+// 带 tenantID 时限定该校协议并叠加 link.is_public 双控、排除已终止合作。仅返回公开字段，content/attachments 不下发。
 func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string) ([]domain.AlliancePublicAgreement, error) {
 	const cols = `id, name, type, status, start_date, end_date, enterprise_ids`
 	if tenantID != "" {
@@ -84,7 +84,7 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
-				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			  )
 			ORDER BY a.created_at DESC LIMIT 100
 		`, tenantID)

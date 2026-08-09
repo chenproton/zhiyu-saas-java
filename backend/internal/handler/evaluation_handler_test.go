@@ -8,6 +8,7 @@ import (
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 func TestQuestionBank_CRUD(t *testing.T) {
@@ -144,6 +145,7 @@ func TestQuestion_CRUD(t *testing.T) {
 	}
 
 	w = env.Do("PUT", "/api/v1/evaluation/questions/"+q.ID, map[string]interface{}{
+		"bankId":  bank.ID,
 		"type":    "single",
 		"content": "Updated?",
 		"options": []string{"A", "B", "C", "D"},
@@ -352,7 +354,7 @@ func TestExam_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected 400 for missing name, got %d", w.Code)
 	}
 
-	w = env.Do("GET", "/api/v1/evaluation/exams/non-existent-id", nil)
+	w = env.Do("GET", "/api/v1/evaluation/exams/00000000-0000-0000-0000-000000000000", nil)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for non-existent exam, got %d", w.Code)
 	}
@@ -577,6 +579,8 @@ func TestExamUsage_StartWindow(t *testing.T) {
 	}
 
 	// 2. 定时启停：已过结束时间 → 创建即同步为 finished
+	// 读路径懒更新有 60s 节流（进程内状态），上个用例已触发过同步，这里先重置节流确保本次创建回读能同步状态
+	store.ResetScheduledSyncThrottleForTest()
 	past := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
 	earlier := time.Now().Add(-time.Hour).Format(time.RFC3339)
 	w = env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
@@ -598,6 +602,7 @@ func TestExamUsage_StartWindow(t *testing.T) {
 	}
 
 	// 3. 定时启停：窗口内（开始已过、结束未到）→ 创建即同步为 published
+	store.ResetScheduledSyncThrottleForTest()
 	now := time.Now().Format(time.RFC3339)
 	w = env.Do("POST", "/api/v1/evaluation/exam-usages", map[string]interface{}{
 		"examId":         exam.ID,
@@ -657,6 +662,7 @@ func TestTaskDelete_CleansExamUsage(t *testing.T) {
 			"name":       name,
 			"code":       "T-" + name,
 			"taskType":   "training",
+			"difficulty": 3,
 		})
 		if w.Code != http.StatusCreated {
 			t.Fatalf("create task: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -774,7 +780,7 @@ func TestEvaluationResult(t *testing.T) {
 		t.Fatalf("list results: expected 200, got %d", w.Code)
 	}
 
-	w = env.Do("POST", "/api/v1/evaluation/results/non-existent-id/grade", map[string]interface{}{
+	w = env.Do("POST", "/api/v1/evaluation/results/00000000-0000-0000-0000-000000000000/grade", map[string]interface{}{
 		"score":   85,
 		"comment": "Good work",
 	})
@@ -784,7 +790,7 @@ func TestEvaluationResult(t *testing.T) {
 
 	w = env.Do("POST", "/api/v1/evaluation/results/batch-grade", map[string]interface{}{
 		"items": []map[string]interface{}{
-			{"id": "non-existent-id", "score": 90},
+			{"id": "00000000-0000-0000-0000-000000000000", "score": 90},
 		},
 	})
 	if w.Code != http.StatusBadRequest && w.Code != http.StatusNotFound {
@@ -800,7 +806,7 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 	userID := "11111111-2222-4333-8444-555555555555"
 	_, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'student', 'saas', 'evalres-stu', 'evalres-stu', 'x', 'Eval Stu', 'active', '{}')
+		VALUES ($1, $2, 'school', 'saas', 'evalres-stu', 'evalres-stu', 'x', 'Eval Stu', 'active', '{}')
 	`, userID, testhelper.TestTenantID)
 	if err != nil {
 		t.Fatalf("insert user: %v", err)
@@ -823,7 +829,7 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 		t.Fatalf("submit without evaluatorId: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 	var evaluatorID *string
-	var gotSceneID string
+	var gotSceneID *string
 	if err := env.DB.QueryRow(ctx, `
 		SELECT evaluator_id, scene_id FROM scene_evaluation_results WHERE evaluatee_id = $1
 	`, userID).Scan(&evaluatorID, &gotSceneID); err != nil {
@@ -832,8 +838,8 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 	if evaluatorID != nil {
 		t.Fatalf("expected evaluator_id NULL, got %v", *evaluatorID)
 	}
-	if gotSceneID != sceneID {
-		t.Fatalf("expected scene_id %s, got %s", sceneID, gotSceneID)
+	if gotSceneID == nil || *gotSceneID != sceneID {
+		t.Fatalf("expected scene_id %s, got %v", sceneID, gotSceneID)
 	}
 
 	// 显式传空串 evaluatorId/sceneId 同样应归一化为 NULL，而不是 500
@@ -853,8 +859,8 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 	`, userID).Scan(&evaluatorID, &gotSceneID); err != nil {
 		t.Fatalf("query result: %v", err)
 	}
-	if evaluatorID != nil || gotSceneID != "" {
-		t.Fatalf("expected evaluator_id NULL and scene_id NULL, got %v / %q", evaluatorID, gotSceneID)
+	if evaluatorID != nil || gotSceneID != nil {
+		t.Fatalf("expected evaluator_id NULL and scene_id NULL, got %v / %v", evaluatorID, gotSceneID)
 	}
 }
 

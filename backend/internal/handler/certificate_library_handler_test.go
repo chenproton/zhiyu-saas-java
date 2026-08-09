@@ -14,7 +14,7 @@ func TestCertificateLibrary_CRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
-	schoolAdminToken := env.NewTokenWithIdentity("school-admin-001", testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
+	schoolAdminToken := env.NewTokenWithIdentity(testhelper.TestOperatorID, testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
 	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
 		return env.DoWithToken(method, path, body, schoolAdminToken)
 	}

@@ -271,7 +271,7 @@ func (s *AllianceStore) DeleteEnterpriseAgreement(ctx context.Context, id, tenan
 
 // ===== 公开查询（门户前台） =====
 // 数据源（§3.2 双控原则）：企业控制 enable_public（"愿不愿意"），学校控制 link.is_public（"在不在本校出现"）。
-// tenantID 为空 → 全局联盟展示（仅企业侧开关）；非空 → 该校落地页（link.is_public + enable_public 双控）。
+// tenantID 为空 → 全局联盟展示（仅企业侧开关）；非空 → 该校落地页（link.is_public + enable_public 双控，且排除已终止合作）。
 
 func (s *AllianceStore) ListPublicEnterprises(ctx context.Context, tenantID string) ([]domain.AllianceEnterprise, error) {
 	if tenantID != "" {
@@ -280,7 +280,7 @@ func (s *AllianceStore) ListPublicEnterprises(ctx context.Context, tenantID stri
 			FROM partner_enterprises pe
 			WHERE pe.enable_public = true AND EXISTS (
 				SELECT 1 FROM alliance_enterprise_links l
-				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			)
 			ORDER BY pe.created_at DESC LIMIT 100
 		`, tenantID)
@@ -299,7 +299,7 @@ func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id, tenantI
 			FROM partner_enterprises pe
 			WHERE pe.id = $1 AND pe.enable_public = true AND EXISTS (
 				SELECT 1 FROM alliance_enterprise_links l
-				WHERE l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true
+				WHERE l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated'
 			)
 		`, id, tenantID)
 	}
@@ -342,13 +342,13 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			SELECT COUNT(*) FROM partner_enterprises pe
 			WHERE pe.enable_public = true AND EXISTS (
 				SELECT 1 FROM alliance_enterprise_links l
-				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			)`, tenantID)
 		st.ExpertCount = count(`
 			SELECT COUNT(*) FROM alliance_experts x
 			WHERE x.is_public = true AND x.status = 'active'
 			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
-			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true)`, tenantID)
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated')`, tenantID)
 		st.ProjectCount = count(`
 			SELECT COUNT(*) FROM alliance_projects p
 			WHERE p.is_public = true
@@ -356,7 +356,7 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
-				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			  )`, tenantID)
 		st.AchievementCount = count(`
 			SELECT COUNT(*) FROM alliance_achievements a
@@ -365,7 +365,7 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			  AND EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
-				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			  )`, tenantID)
 	} else {
 		st.EnterpriseCount = count(`SELECT COUNT(*) FROM partner_enterprises WHERE enable_public = true`)

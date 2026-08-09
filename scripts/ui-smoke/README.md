@@ -13,11 +13,12 @@ npm install
 ## 使用
 
 ```bash
-# 全量巡检（三角色 × 全部页面，每页点完所有唯一可点元素）
+# 全量巡检（四角色 × 全部页面，每页点完所有唯一可点元素）
 node scripts/ui-smoke/ui-smoke.mjs
 
-# 单角色快速巡检
+# 单角色快速巡检（partner 为企业端独立门户）
 node scripts/ui-smoke/ui-smoke.mjs --roles teacher
+node scripts/ui-smoke/ui-smoke.mjs --roles partner
 
 # 重构后定向巡检：只跑 git 改动涉及的路由（几分钟出结果）
 node scripts/ui-smoke/ui-smoke.mjs --git-diff
@@ -40,7 +41,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --test-forms
 | 选项 | 默认 | 说明 |
 |---|---|---|
 | `--base-url` | `http://127.0.0.1` | 目标站点，**必须走 nginx 网关**；直连 3020 时容器内 Next rewrite 会失败 |
-| `--roles` | `school,teacher,student` | 逗号分隔角色列表 |
+| `--roles` | `school,teacher,student,partner` | 逗号分隔角色列表 |
 | `--account` | - | 覆盖角色账号，如 `--account school:school:newpass` |
 | `--max-clicks` | `100` | 每页点击次数安全阀（默认点完所有唯一可点元素） |
 | `--workers` | `3` | 并发巡检路数（`--test-forms` 会强制降为 1） |
@@ -61,6 +62,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --test-forms
 
 ## 覆盖范围
 
+- **角色**：`school`/`teacher`/`student` 走 portal 登录页（`/portal/login`）；`partner`（企业端）为独立认证门户（`/partner/login`），巡检 `/partner` 下全部页面（workspace/enterprise/experts/members/schools/cooperation/tasks/settings，可在 `smoke.config.json` 用 `partnerRoutes` 覆盖）
 - **静态路由**：自动枚举 `apps/edu/app` 下全部页面（含 `(group)` 分组段，跳过动态段 `[id]`）
 - **动态路由**：从后端 API 拉真实实体 id，直接访问 `[id]` 详情页（如岗位/场景/试卷/联盟品牌等详情与编辑页）
 - **每页交互**：点完所有唯一可点元素（按钮/链接/Tab，含弹窗内按钮、表格每行按钮逐个点），弹窗/下拉打开后 Esc 关闭，跳转后回访继续，点击产生的新元素（Tab 切换等）增量补充
@@ -86,7 +88,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --test-forms
 ```json
 {
   "baseUrl": "http://127.0.0.1",
-  "roles": ["school", "teacher", "student"],
+  "roles": ["school", "teacher", "student", "partner"],
   "expectedAuthPages": ["/superadmin"],
   "cleanupApis": [
     { "list": "/api/v1/tenants?limit=100", "del": "/api/v1/tenants/{id}", "fields": ["name"] }
@@ -111,6 +113,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --test-forms
 ## 注意事项
 
 - 测试账号 `school/school123`、`teacher/teacher123`、`student/student123` 需存在于目标环境（`--account` 可覆盖）
+- `partner` 角色默认账号 `smokepartner/smoke123`：登录接口返回 401 时自动调用 `POST /api/v1/auth/partner/register` 注册巡检企业「巡检测试企业」并直接登录（无需预建账号）；若账号已存在但密码不符（注册冲突 409）会报错提示用 `--account partner:user:pass` 修正。巡检企业是空数据企业，页面多为空态属正常
 - 默认跳过写数据按钮，弹窗只开不确认，不污染数据；`--click-dangerous` 慎用
 - `--test-forms` 会在测试租户创建真实数据，但统一使用 `SMOKE_` 前缀并在结束后自动清理（`--no-cleanup` 可关闭）
 - 巡检会在页面内点击，可能产生浏览记录等无害副作用

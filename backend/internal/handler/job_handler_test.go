@@ -1051,7 +1051,7 @@ func TestLearnRoad_CRUD(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		body := map[string]interface{}{
 			"name":        "Test Road",
-			"positionIds": []string{"pos-1"},
+			"positionIds": []string{"11111111-1111-4111-8111-111111111111"},
 			"steps":       []interface{}{},
 		}
 		w := env.Do("POST", "/api/v1/job/learn-roads", body)
@@ -1112,7 +1112,7 @@ func TestLearnRoad_CRUD(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		body := map[string]interface{}{
 			"name":        "Updated Road",
-			"positionIds": []string{"pos-1", "pos-2"},
+			"positionIds": []string{"11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"},
 			"steps":       []interface{}{},
 		}
 		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/learn-roads/%s", roadID), body)

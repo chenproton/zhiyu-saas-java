@@ -419,6 +419,14 @@ func (s *CourseStore) PopulateKnowledgePointNames(ctx context.Context, items []d
 	}
 }
 
+// PopulateCourseKnowledgePointNames 为单个课程补充知识点名称。
+// PopulateKnowledgePointNames 按切片元素原地写入，单课程场景需经此包装避免传入副本导致结果丢失。
+func (s *CourseStore) PopulateCourseKnowledgePointNames(ctx context.Context, c *domain.Course) {
+	items := []domain.Course{*c}
+	s.PopulateKnowledgePointNames(ctx, items)
+	c.KnowledgePointNames = items[0].KnowledgePointNames
+}
+
 // ListCourseResourceNames 查询课程绑定资源名称（导出用）。
 func (s *CourseStore) ListCourseResourceNames(ctx context.Context, q Queryer, tenantID, courseID string) []string {
 	rows, err := q.Query(ctx, `

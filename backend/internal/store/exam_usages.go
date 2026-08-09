@@ -76,6 +76,14 @@ var syncThrottle = struct {
 	m  map[string]time.Time
 }{m: make(map[string]time.Time)}
 
+// ResetScheduledSyncThrottleForTest 清空懒更新节流状态。
+// 仅供测试重置进程内节流（throttle 为 60s 窗口，跨用例会跳过本应收到的同步）；生产代码勿调用。
+func ResetScheduledSyncThrottleForTest() {
+	syncThrottle.mu.Lock()
+	syncThrottle.m = make(map[string]time.Time)
+	syncThrottle.mu.Unlock()
+}
+
 func SyncScheduledExamUsageStatus(ctx context.Context, q Queryer, tenantID string, now time.Time) {
 	key := "all"
 	if tenantID != "" {

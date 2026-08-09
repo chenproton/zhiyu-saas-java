@@ -11,6 +11,10 @@ export const CLICKABLE_SELECTOR = ['button', 'a[href]', '[role="tab"]', '[role="
 export const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"], [data-radix-dialog-content]'
 export const DIALOG_VISIBLE_SELECTOR = '[role="dialog"]:visible, [role="alertdialog"]:visible'
 
+// 角色对应的 localStorage token 键与登录页路径（partner 企业端为独立认证门户）
+export const tokenKeyForRole = role => (role === 'partner' ? 'zhiyu-partner-token' : 'zhiyu-portal-token')
+export const loginPathForRole = role => (role === 'partner' ? '/partner/login' : '/portal/login')
+
 // 不计入错误的类型（401/403 权限信号、429 限流）
 export const NON_ERROR_TYPES = new Set(['auth', 'rate-limit'])
 
@@ -220,16 +224,17 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
   try {
     // 门户 token 被其它应用（partner/superadmin）清除或替换后自动恢复，避免后续页面被踢到登录页或用错身份
     if (token) {
-      await page.evaluate(t => {
+      const tokenKey = tokenKeyForRole(role)
+      await page.evaluate(([k, t]) => {
         try {
-          const current = localStorage.getItem('zhiyu-portal-token')
-          if (current !== t) localStorage.setItem('zhiyu-portal-token', t)
+          const current = localStorage.getItem(k)
+          if (current !== t) localStorage.setItem(k, t)
         } catch { /* ignore */ }
-      }, token).catch(() => {})
+      }, [tokenKey, token]).catch(() => {})
     }
     await page.goto(cfg.baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 30000 })
     await waitSettled(page, cfg, undefined, true)
-    if (page.url().includes('/portal/login')) { // 未登录被重定向
+    if (page.url().includes(loginPathForRole(role))) { // 未登录被重定向
       routeResult.status = 'skip'
       return routeResult
     }
@@ -285,7 +290,7 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
       await closeOverlays(page, cfg)
       // 跳转回访
       const nowPath = new URL(page.url()).pathname
-      if (nowPath !== basePath && !nowPath.includes('/portal/login')) {
+      if (nowPath !== basePath && !nowPath.includes(loginPathForRole(role))) {
         await page.goto(cfg.baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
         await waitSettled(page, cfg, 400, true)
       }

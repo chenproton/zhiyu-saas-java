@@ -581,17 +581,38 @@ func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
 // CleanupTaskExamUsages 清理任务关联的考试安排（target_type='task'）及其独占的临时考试。
 // 临时考试仅在其不再被任何安排引用时删除；正式试卷（is_temp=false）不受影响。
 // 须在事务内调用（场景/任务删除共用）。
+// 注意：不能合并为单条数据修改 CTE——CTE 的删除效果对同一语句的主查询不可见（快照语义），
+// 会导致 NOT EXISTS 判定不到已删安排、临时考试永远残留。故拆为两条语句（同事务内后一条可见前一条效果）。
 func CleanupTaskExamUsages(ctx context.Context, tx Queryer, taskID string) error {
+	rows, err := tx.Query(ctx, `
+		DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids) RETURNING exam_id
+	`, taskID)
+	if err != nil {
+		return fmt.Errorf("cleanup task exam usages: %w", err)
+	}
+	var examIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan deleted usage exam id: %w", err)
+		}
+		examIDs = append(examIDs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("cleanup task exam usages: %w", err)
+	}
+	if len(examIDs) == 0 {
+		return nil
+	}
 	if _, err := tx.Exec(ctx, `
-		WITH task_usage AS (
-			DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids) RETURNING exam_id
-		)
 		DELETE FROM exams e
 		WHERE e.is_temp = TRUE
-			AND EXISTS (SELECT 1 FROM task_usage tu WHERE tu.exam_id = e.id)
+			AND e.id = ANY($1::uuid[])
 			AND NOT EXISTS (SELECT 1 FROM exam_usages eu WHERE eu.exam_id = e.id)
-	`, taskID); err != nil {
-		return fmt.Errorf("cleanup task exam usages: %w", err)
+	`, examIDs); err != nil {
+		return fmt.Errorf("cleanup task temp exams: %w", err)
 	}
 	return nil
 }

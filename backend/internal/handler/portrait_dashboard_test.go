@@ -3,6 +3,7 @@ package handler_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -29,6 +30,7 @@ func TestStudentDashboard(t *testing.T) {
 	courseB := "11111111-2222-4333-8444-aaaaaaaaaaa2"
 	classNode := "11111111-2222-4333-8444-ccccccccccc1"
 	termID := "11111111-2222-4333-8444-ddddddddddd1"
+	orgTypeID := "11111111-2222-4333-8444-eeeeeeeeeee1"
 
 	cleanup := func() {
 		env.DB.Exec(ctx, "DELETE FROM schedule_entries WHERE class_node_id = $1", classNode)
@@ -40,7 +42,8 @@ func TestStudentDashboard(t *testing.T) {
 			env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", s)
 		}
 		for _, c := range []string{courseA, courseB} {
-			env.DB.Exec(ctx, "DELETE FROM course_evaluation_results WHERE course_id = $1", c)
+			env.DB.Exec(ctx, "DELETE FROM node_evaluation_results WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id = $1)", c)
+			env.DB.Exec(ctx, "DELETE FROM system_course_nodes WHERE course_id = $1", c)
 			env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", c)
 		}
 		for _, p := range []string{positionA, positionB} {
@@ -49,22 +52,36 @@ func TestStudentDashboard(t *testing.T) {
 		for _, u := range []string{userID, creatorID} {
 			env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", u)
 		}
+		env.DB.Exec(ctx, "DELETE FROM organizations WHERE id = $1", classNode)
+		env.DB.Exec(ctx, "DELETE FROM org_types WHERE id = $1", orgTypeID)
+		env.DB.Exec(ctx, "DELETE FROM terms WHERE id = $1", termID)
 	}
 	defer cleanup()
 
-	for _, p := range []string{positionA, positionB} {
+	// 岗位 code 为 NOT NULL
+	for i, p := range []string{positionA, positionB} {
 		env.DB.Exec(ctx, `
-			INSERT INTO career_positions (id, name, position_type, requirements, version, status, created_by, tenant_id)
-			VALUES ($1, '测试岗位', 'job', '{}', 'v1', 'published', $2, $3)
-		`, p, testhelper.TestOperatorID, testhelper.TestTenantID)
+			INSERT INTO career_positions (id, code, name, position_type, requirements, version, status, created_by, tenant_id)
+			VALUES ($1, $2, '测试岗位', 'job', '{}', 'v1', 'published', $3, $4)
+		`, p, fmt.Sprintf("POS-DASH-%d", i), testhelper.TestOperatorID, testhelper.TestTenantID)
 	}
+
+	// 学生/排课的班级节点有 organizations FK，先造 org_type + 班级节点
+	env.DB.Exec(ctx, `
+		INSERT INTO org_types (id, tenant_id, name, category)
+		VALUES ($1, $2, 'dashboard-test-type', 'class')
+	`, orgTypeID, testhelper.TestTenantID)
+	env.DB.Exec(ctx, `
+		INSERT INTO organizations (id, tenant_id, name, type_id)
+		VALUES ($1, $2, 'dashboard-test-class', $3)
+	`, classNode, testhelper.TestTenantID, orgTypeID)
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
 		VALUES ($1, $2, 'school', 'portal', 'dash-stu', 'dash-stu', 'x', '测试学生', 'active', '{}', $3)
 	`, userID, testhelper.TestTenantID, classNode)
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'teacher', 'portal', 'dash-creator', 'dash-creator', 'x', '创建者', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'dash-creator', 'dash-creator', 'x', '创建者', 'active', '{}')
 	`, creatorID, testhelper.TestTenantID)
 
 	// 已发布场景 A（关联岗位A）+ 场景 B（关联岗位B），各带一个任务
@@ -96,12 +113,24 @@ func TestStudentDashboard(t *testing.T) {
 			VALUES ($1, $2, '课程', 'system', '基础', 'published', $3, $4)
 		`, c, "c-"+c[len(c)-4:], creatorID, testhelper.TestTenantID)
 	}
+	// 课程成绩由节点测评结果归一化平均得出（ListStudentCourseScores 口径）：
+	// 课程A 下一个节点 + 学生已评成绩 88/100
+	nodeA := "11111111-2222-4333-8444-bbbbbbbbbbb1"
 	env.DB.Exec(ctx, `
-		INSERT INTO course_evaluation_results (course_id, evaluatee_id, status, total_score, max_score, tenant_id, method_key)
-		VALUES ($1, $2, 'evaluated', 88, 100, $3, 'course')
-	`, courseA, userID, testhelper.TestTenantID)
+		INSERT INTO system_course_nodes (id, course_id, name, sort_order, tenant_id, status)
+		VALUES ($1, $2, '节点A', 0, $3, 'published')
+	`, nodeA, courseA, testhelper.TestTenantID)
+	env.DB.Exec(ctx, `
+		INSERT INTO node_evaluation_results (id, tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score)
+		VALUES ($1, $2, $3, 'paper', $4, 'evaluated', 88, 100)
+	`, "11111111-2222-4333-8444-bbbbbbbbbbb2", testhelper.TestTenantID, nodeA, userID)
 
 	// 排课：课程A（traditional）+ 场景A（scene）排给学生班级并发布；课程B/场景B 不排
+	// schedule_entries.term_id 有 FK，先造学期
+	env.DB.Exec(ctx, `
+		INSERT INTO terms (id, tenant_id, name, start_date, end_date)
+		VALUES ($1, $2, 'dashboard-test-term', '2026-01-01', '2026-07-01')
+	`, termID, testhelper.TestTenantID)
 	env.DB.Exec(ctx, `
 		INSERT INTO schedule_entries (tenant_id, term_id, course_name, type, class_node_id, course_id, day_of_week, periods, start_week, end_week, week_pattern, source, status)
 		VALUES ($1, $2, '课程A', 'traditional', $3, $4, 1, '[1]'::jsonb, 1, 16, 'all', 'manual', 'published')

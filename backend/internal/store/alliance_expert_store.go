@@ -198,7 +198,7 @@ func (s *AllianceStore) GetExpertByIDGlobal(ctx context.Context, id string) (*do
 }
 
 // ListPublicExperts 门户前台公开专家列表（双控：企业 enable_public + 专家 is_public；
-// 带 tenantID 时叠加该校 link.is_public，§3.2）。
+// 带 tenantID 时叠加该校 link.is_public 且合作未终止，§3.2）。
 func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string) ([]domain.AllianceExpert, error) {
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanExpertRows, `
@@ -206,7 +206,7 @@ func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string) 
 			FROM alliance_experts x
 			WHERE x.is_public = true AND x.status = 'active'
 			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
-			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true)
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated')
 			ORDER BY x.created_at DESC LIMIT 100
 		`, tenantID)
 	}
@@ -226,7 +226,7 @@ func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id, tenantID st
 			FROM alliance_experts x
 			WHERE x.id = $1 AND x.is_public = true AND x.status = 'active'
 			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
-			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $2 AND l.is_public = true)
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated')
 		`, id, tenantID)
 	}
 	return queryOne(ctx, s.q, s.ScanExpertRows, `

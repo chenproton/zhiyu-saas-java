@@ -45,13 +45,14 @@ export default function PartnerTasksPage() {
         )
       }
       hideCreate
-      colSpan={5}
+      colSpan={6}
       renderTableHeader={() => (
         <>
           <TableHead>{t('任务名称')}</TableHead>
           <TableHead>{t('评审步骤')}</TableHead>
           <TableHead>{t('负责专家')}</TableHead>
           <TableHead>{t('所属学校')}</TableHead>
+          <TableHead>{t('评分进度')}</TableHead>
           <TableHead>{t('更新时间')}</TableHead>
         </>
       )}
@@ -61,6 +62,22 @@ export default function PartnerTasksPage() {
           <TableCell>{task.stepLabel || '-'}</TableCell>
           <TableCell>{task.expertName}</TableCell>
           <TableCell>{task.schoolName}</TableCell>
+          <TableCell>
+            {(task.assignedCount ?? 0) === 0 ? (
+              <span className="text-muted-foreground">{t('暂无评分对象')}</span>
+            ) : (task.gradedCount ?? 0) >= (task.assignedCount ?? 0) ? (
+              <span>
+                {t('已完成')}（{task.assignedCount}/{task.assignedCount}）
+              </span>
+            ) : (
+              <span>
+                {t('待评分 {graded}/{assigned}', {
+                  graded: task.gradedCount ?? 0,
+                  assigned: task.assignedCount ?? 0,
+                })}
+              </span>
+            )}
+          </TableCell>
           <TableCell>{formatDate(task.updatedAt)}</TableCell>
         </>
       )}

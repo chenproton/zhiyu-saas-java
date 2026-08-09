@@ -247,9 +247,11 @@ func (s *PartnerStore) collectCooperationAgreements(ctx context.Context, enterpr
 
 // ListMentorTasks 本企业专家被学校指派为评审人的测评任务
 // （学校给专家创建的影子账号 ml.user_id 被评审步骤 assigned_user_ids 指派）。
+// assignedCount/gradedCount：该任务+该校下影子账号被指派的评分记录数 / 其中已评（status='evaluated'）数。
 func (s *PartnerStore) ListMentorTasks(ctx context.Context, enterpriseID string) ([]domain.AlliancePartnerMentorTask, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT st.id, st.name, rs.label, t.name, x.name, rs.updated_at
+		SELECT st.id, st.name, rs.label, t.name, x.name, rs.updated_at,
+			COALESCE(prog.assigned_count, 0), COALESCE(prog.graded_count, 0)
 		FROM alliance_expert_mentor_links ml
 		JOIN alliance_experts x ON x.id = ml.expert_id
 		JOIN tenants t ON t.id = ml.tenant_id
@@ -257,6 +259,12 @@ func (s *PartnerStore) ListMentorTasks(ctx context.Context, enterpriseID string)
 			AND ml.user_id = ANY(rs.assigned_user_ids) AND rs.enabled = true
 		JOIN task_evaluation_methods em ON em.id = rs.config_id AND em.is_enabled = true
 		JOIN scenario_tasks st ON st.id = em.task_id
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*) AS assigned_count,
+				COUNT(*) FILTER (WHERE er.status = 'evaluated') AS graded_count
+			FROM scene_evaluation_results er
+			WHERE er.task_id = st.id AND er.tenant_id = ml.tenant_id AND er.evaluator_id = ml.user_id
+		) prog ON true
 		WHERE x.enterprise_id = $1 AND ml.enabled = true
 		ORDER BY rs.updated_at DESC LIMIT 200
 	`, enterpriseID)
@@ -267,7 +275,7 @@ func (s *PartnerStore) ListMentorTasks(ctx context.Context, enterpriseID string)
 	items := make([]domain.AlliancePartnerMentorTask, 0)
 	for rows.Next() {
 		var v domain.AlliancePartnerMentorTask
-		if err := rows.Scan(&v.TaskID, &v.TaskName, &v.StepLabel, &v.SchoolName, &v.ExpertName, &v.UpdatedAt); err != nil {
+		if err := rows.Scan(&v.TaskID, &v.TaskName, &v.StepLabel, &v.SchoolName, &v.ExpertName, &v.UpdatedAt, &v.AssignedCount, &v.GradedCount); err != nil {
 			return nil, err
 		}
 		items = append(items, v)

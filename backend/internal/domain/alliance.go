@@ -136,12 +136,14 @@ type AlliancePartnerCooperationSchool struct {
 
 // ===== 企业侧专家测评任务只读条目（GET /partner/mentor-tasks） =====
 type AlliancePartnerMentorTask struct {
-	TaskID     string    `json:"taskId"`
-	TaskName   string    `json:"taskName"`
-	StepLabel  string    `json:"stepLabel"`
-	SchoolName string    `json:"schoolName"`
-	ExpertName string    `json:"expertName"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	TaskID        string    `json:"taskId"`
+	TaskName      string    `json:"taskName"`
+	StepLabel     string    `json:"stepLabel"`
+	SchoolName    string    `json:"schoolName"`
+	ExpertName    string    `json:"expertName"`
+	AssignedCount int       `json:"assignedCount"`
+	GradedCount   int       `json:"gradedCount"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // ===== 专家 ↔ 学校影子账号（阶段二互动流程使用） =====

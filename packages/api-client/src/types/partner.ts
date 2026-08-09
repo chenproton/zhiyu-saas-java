@@ -172,6 +172,10 @@ export interface PartnerMentorTask {
   stepLabel: string
   schoolName: string
   expertName: string
+  /** 该任务分配给本企业专家的待评分对象数 */
+  assignedCount: number
+  /** 已完成评分的对象数 */
+  gradedCount: number
   updatedAt: string
 }
 

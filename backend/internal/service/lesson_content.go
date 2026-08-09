@@ -163,7 +163,7 @@ func (s *LessonContentService) GetCourse(ctx context.Context, id string) (*domai
 	if err != nil {
 		return nil, err
 	}
-	s.st.Courses().PopulateKnowledgePointNames(ctx, []domain.Course{*c})
+	s.st.Courses().PopulateCourseKnowledgePointNames(ctx, c)
 	return c, nil
 }
 
@@ -276,7 +276,7 @@ func (s *LessonContentService) GetCourseDetail(ctx context.Context, id string) (
 	if err != nil {
 		return nil, err
 	}
-	s.st.Courses().PopulateKnowledgePointNames(ctx, []domain.Course{*c})
+	s.st.Courses().PopulateCourseKnowledgePointNames(ctx, c)
 	return c, nil
 }
 
@@ -286,7 +286,7 @@ func (s *LessonContentService) GetCourseDetailInTenant(ctx context.Context, id, 
 	if err != nil {
 		return nil, err
 	}
-	s.st.Courses().PopulateKnowledgePointNames(ctx, []domain.Course{*c})
+	s.st.Courses().PopulateCourseKnowledgePointNames(ctx, c)
 	return c, nil
 }
 

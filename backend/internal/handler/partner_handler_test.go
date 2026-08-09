@@ -979,6 +979,53 @@ func TestPartner_MentorTasks(t *testing.T) {
 		env.DB.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, scenarioID)
 	})
 
+	// 评分记录（scene_evaluation_results 的 evaluator/evaluatee 有 users FK，影子账号需真实 users 行）：
+	// 本专家影子账号 2 条指派（1 条已评）；他企影子账号 1 条（同任务同校但 evaluator 不同，不应计入）
+	for _, u := range []struct{ id, name string }{
+		{shadowUser, "影子账号甲-" + suffix},
+		{otherShadowUser, "他企影子账号-" + suffix},
+	} {
+		if _, err := env.DB.Exec(ctx, `
+			INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
+			VALUES ($1,$2,'school','portal',$3,$4,'x',$5,'active','{}')
+		`, u.id, schoolID, "em_"+u.id[:8], schoolID+"_em_"+u.id[:8], u.name); err != nil {
+			t.Fatalf("预置影子账号 users 失败: %v", err)
+		}
+	}
+	evaluatee1, evaluatee2 := uuid.NewString(), uuid.NewString()
+	for _, id := range []string{evaluatee1, evaluatee2} {
+		if _, err := env.DB.Exec(ctx, `
+			INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
+			VALUES ($1,$2,'school','portal',$3,$4,'x','被评人','active','{}')
+		`, id, schoolID, "ee_"+id[:8], schoolID+"_ee_"+id[:8]); err != nil {
+			t.Fatalf("预置被评人失败: %v", err)
+		}
+	}
+	evalIDs := []string{uuid.NewString(), uuid.NewString(), uuid.NewString()}
+	seedEvals := []struct {
+		id        string
+		method    string
+		evaluator string
+		evaluatee string
+		status    string
+	}{
+		{evalIDs[0], "review", shadowUser, evaluatee1, "evaluated"},
+		{evalIDs[1], "review", shadowUser, evaluatee2, "pending"},
+		{evalIDs[2], "self", otherShadowUser, evaluatee1, "evaluated"},
+	}
+	for _, e := range seedEvals {
+		if _, err := env.DB.Exec(ctx, `
+			INSERT INTO scene_evaluation_results (id, task_id, method_key, evaluatee_id, evaluator_id, status, tenant_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7)
+		`, e.id, taskID, e.method, e.evaluatee, e.evaluator, e.status, schoolID); err != nil {
+			t.Fatalf("预置评分记录失败: %v", err)
+		}
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM scene_evaluation_results WHERE id IN ($1,$2,$3)`, evalIDs[0], evalIDs[1], evalIDs[2])
+		env.DB.Exec(ctx, `DELETE FROM users WHERE id IN ($1,$2,$3,$4)`, shadowUser, otherShadowUser, evaluatee1, evaluatee2)
+	})
+
 	w := doWithClaims(r, http.MethodGet, "/partner/mentor-tasks", nil, claims)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
@@ -997,5 +1044,8 @@ func TestPartner_MentorTasks(t *testing.T) {
 		item.StepLabel != "企业导师评审-"+suffix || item.SchoolName != "测评任务学校-"+suffix ||
 		item.ExpertName != "测评专家甲-"+suffix {
 		t.Fatalf("任务条目字段不符: %+v", item)
+	}
+	if item.AssignedCount != 2 || item.GradedCount != 1 {
+		t.Fatalf("评分进度应为 assignedCount=2 gradedCount=1（他企影子账号记录不计入）: %+v", item)
 	}
 }

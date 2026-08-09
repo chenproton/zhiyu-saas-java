@@ -27,8 +27,9 @@ func TestFavorites_SceneToggleAndList(t *testing.T) {
 
 	t.Run("CreateAndPublishScene", func(t *testing.T) {
 		w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
-			"name":    "Favorites Regression Scene",
-			"version": "v1.0",
+			"name":       "Favorites Regression Scene",
+			"version":    "v1.0",
+			"difficulty": 3,
 		})
 		if w.Code != http.StatusCreated {
 			t.Fatalf("create scene: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -39,6 +40,13 @@ func TestFavorites_SceneToggleAndList(t *testing.T) {
 		}
 		sceneID = sc.ID
 
+		// 发布需走完整流转：draft → pending → approved → published
+		if w := env.Do("POST", fmt.Sprintf("/api/v1/scene/scenarios/%s/submit", sceneID), nil); w.Code != http.StatusOK {
+			t.Fatalf("submit scene: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		if w := env.Do("POST", fmt.Sprintf("/api/v1/scene/scenarios/%s/review", sceneID), map[string]string{"status": "approved"}); w.Code != http.StatusOK {
+			t.Fatalf("approve scene: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
 		if w := env.Do("POST", fmt.Sprintf("/api/v1/scene/scenarios/%s/publish", sceneID), nil); w.Code != http.StatusOK {
 			t.Fatalf("publish scene: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 		}

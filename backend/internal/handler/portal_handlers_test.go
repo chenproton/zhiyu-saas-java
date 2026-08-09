@@ -198,6 +198,16 @@ func TestResourceCode_Read(t *testing.T) {
 func TestSubscription_Get(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
+	ctx := context.Background()
+
+	// 接口按租户查订阅，先造一条订阅夹具
+	subID := uuid.NewString()
+	_, err := env.DB.Exec(ctx, `INSERT INTO subscription_packages (id, tenant_id, name, modules, status) VALUES ($1, $2, 'Test Plan', '{}', 'active')`,
+		subID, testhelper.TestTenantID)
+	if err != nil {
+		t.Fatalf("insert subscription: %v", err)
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM subscription_packages WHERE id = $1", subID)
 
 	w := env.Do("GET", "/api/v1/subscriptions?tenantId="+testhelper.TestTenantID, nil)
 	if w.Code != http.StatusOK {

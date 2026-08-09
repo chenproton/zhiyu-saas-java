@@ -190,6 +190,9 @@ export default function PartnerLoginPage() {
                 >
                   {loading ? t('登录中...') : t('登 录')}
                 </Button>
+                <p className="text-center text-xs text-slate-400">
+                  {t('忘记密码？请联系平台管理员重置。')}
+                </p>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">

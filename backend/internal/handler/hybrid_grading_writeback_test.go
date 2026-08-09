@@ -6,9 +6,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TestHybridGradeWritebackExamResult 混合课教师评分后回写考试结果分数（exam_results）。
@@ -67,6 +69,14 @@ func TestHybridGradeWritebackExamResult(t *testing.T) {
 	`, usageID, tenantID, examID, []string{nodeID}, testhelper.TestOperatorID)
 	defer env.DB.Exec(ctx, "DELETE FROM exam_usages WHERE id = $1", usageID)
 
+	// exam_results.user_id 有 FK，先造学生用户
+	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
+	execOrFail(t, env, ctx, `
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '混合课回写学生', 'active', '{}')
+	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw))
+	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
+
 	execOrFail(t, env, ctx, `
 		INSERT INTO exam_results (id, tenant_id, exam_usage_id, user_id, score, total_score, grading_status)
 		VALUES ($1, $2, $3, $4, 60, 100, 'pending')
@@ -86,8 +96,9 @@ func TestHybridGradeWritebackExamResult(t *testing.T) {
 	svc := service.New(st)
 	nodeResultSvc := service.NewNodeEvaluationResultService(svc)
 	err := nodeResultSvc.Grade(ctx, tenantID, resultID, testhelper.TestOperatorID, &store.NodeEvaluationResultGradeParams{
-		Score:   85,
-		Comment: nil,
+		Score:           85,
+		Comment:         nil,
+		EvalPointScores: domain.JSONMap{},
 	})
 	if err != nil {
 		t.Fatalf("grade: %v", err)

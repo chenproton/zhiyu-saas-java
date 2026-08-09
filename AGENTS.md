@@ -91,7 +91,7 @@
 
 | 场景 | 命令 |
 |------|------|
-| 全量巡检（三角色 × 全部页面，含动态详情页） | `node scripts/ui-smoke/ui-smoke.mjs` |
+| 全量巡检（四角色 × 全部页面，含动态详情页） | `node scripts/ui-smoke/ui-smoke.mjs` |
 | 重构后定向巡检（只跑 git 改动涉及的路由） | `node scripts/ui-smoke/ui-smoke.mjs --git-diff` |
 | 回归对比（新增/已修复/持续错误） | `node scripts/ui-smoke/ui-smoke.mjs --baseline <上次报告>` |
 | 单角色快速巡检 | `node scripts/ui-smoke/ui-smoke.mjs --roles teacher` |
@@ -102,7 +102,7 @@
 
 - **必须走 nginx 网关**（默认 `http://127.0.0.1`），直连 3020 会导致 `/api/` 代理失败
 - 依赖系统 Chrome（`channel: 'chrome'`），首次使用在 `scripts/ui-smoke` 下 `npm install` 即可
-- 巡检账号：`school/school123`、`teacher/teacher123`、`student/student123`（portal 平台测试账号，`--account` 可覆盖）
+- 巡检账号：`school/school123`、`teacher/teacher123`、`student/student123`（portal 平台测试账号，`--account` 可覆盖）；`partner`（企业端独立门户）默认 `smokepartner/smoke123`，账号不存在时自动注册巡检企业「巡检测试企业」
 - **每页点完所有唯一可点元素**（含弹窗/下拉/Tab 切换后新出现的元素；表格每行按钮逐个点），弹窗只打开后 Esc 关闭，不污染数据；`--max-clicks` 仅作安全阀（默认 100）
 - 动态路由（`[id]` 详情/编辑页）自动从后端拉真实实体 id 巡检；无权限页自动识别记为 `skip`
 - 危险词表中英双语（保存/删除/禁用/创建等）默认跳过写数据按钮，语言切换按钮不点，防止污染数据

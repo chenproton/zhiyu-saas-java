@@ -75,7 +75,12 @@ export default function AllianceAgreementEditPage() {
           attachments: a.attachments || [],
           isPublic: a.isPublic || false,
         })
-        setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
+        // 已终止合作的企业不再出现在下拉选项中
+        setEnterprises(
+          (ents.items || [])
+            .filter((e) => e.status !== 'terminated')
+            .map((e) => ({ label: e.name, value: e.id })),
+        )
         setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))

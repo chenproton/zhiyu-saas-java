@@ -17,7 +17,7 @@ func TestOnSiteQuestionLibrary_ListGet(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
-	token := env.NewTokenWithIdentity("teacher-001", testhelper.TestTenantID, domain.RoleTeacher, nil, "teacher")
+	token := env.NewTokenWithIdentity(testhelper.TestOperatorID, testhelper.TestTenantID, domain.RoleTeacher, nil, "teacher")
 	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
 		return env.DoWithToken(method, path, body, token)
 	}
@@ -25,8 +25,8 @@ func TestOnSiteQuestionLibrary_ListGet(t *testing.T) {
 	qID := uuid.NewString()
 	_, err := env.DB.Exec(ctx, `
 		INSERT INTO on_site_question_library (id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at)
-		VALUES ($1, $2, '测试题目', '测试答案', 'single', 5, 'easy', ARRAY['kp-1']::uuid[], ARRAY['标签A']::text[], $3, NOW(), NOW())
-	`, qID, testhelper.TestTenantID, testhelper.TestTenantID)
+		VALUES ($1, $2, '测试题目', '测试答案', 'single', 5, 'easy', ARRAY['11111111-1111-4111-8111-111111111111']::uuid[], ARRAY['标签A']::text[], $3, NOW(), NOW())
+	`, qID, testhelper.TestTenantID, testhelper.TestOperatorID)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}

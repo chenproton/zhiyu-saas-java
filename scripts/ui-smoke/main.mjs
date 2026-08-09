@@ -7,7 +7,7 @@ import { execFileSync } from 'child_process'
 import path from 'path'
 import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
 import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES } from './routes.mjs'
-import { walkRoute } from './clicker.mjs'
+import { walkRoute, tokenKeyForRole } from './clicker.mjs'
 import { cleanupSmokeData } from './forms.mjs'
 import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, isTransientError, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
@@ -18,6 +18,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
 async function login(ctx, page, cfg, role, listeners) {
   const cred = cfg.accounts?.[role]
   if (!cred) throw new Error(`未知角色: ${role}，可通过 --account ${role}:user:pass 指定`)
+
+  // partner（企业端）为独立认证门户（/partner/login），走最小分支：直接调接口拿 token
+  if (role === 'partner') return loginPartner(ctx, page, cfg, role, cred)
 
   // 监听登录响应，区分失败原因（先建监听，再操作页面）
   const loginStatusPromise = new Promise(resolve => {
@@ -56,6 +59,44 @@ async function login(ctx, page, cfg, role, listeners) {
     () => !location.pathname.includes('/portal/login'),
     null, { timeout: cfg.loginTimeoutMs },
   ).catch(() => { throw new Error('登录超时: 登录后未跳转，请检查账号权限/租户') })
+
+  await ctx.storageState({ path: path.join(STATE_DIR, `state-${role}.json`) })
+  return true
+}
+
+// ── partner（企业端）登录：账号不存在时自动注册巡检企业，再直接调登录接口拿 token ──
+// 与 UI 登录等价：token 写入 localStorage（zhiyu-partner-token）后进入工作台验证不被踢回登录页
+async function loginPartner(ctx, page, cfg, role, cred) {
+  const post = (p, body) => fetch(`${cfg.baseUrl}${p}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(cfg.loginTimeoutMs),
+  })
+  let res = await post('/api/v1/auth/partner/login', { username: cred.username, password: cred.password })
+  if (res.status === 401) {
+    // 账号不存在（或密码错误）：尝试注册巡检企业；409 说明用户名已注册但密码不符
+    const enterpriseName = cred.enterpriseName || '巡检测试企业'
+    console.log(`  [${role}] 账号登录 401，自动注册巡检企业「${enterpriseName}」（${cred.username}）...`)
+    res = await post('/api/v1/auth/partner/register', {
+      enterpriseName,
+      username: cred.username,
+      password: cred.password,
+    })
+    if (res.status === 409) {
+      throw new Error(`partner 账号 ${cred.username} 已存在但密码不符（注册冲突 409），请用 --account ${role}:user:pass 修正`)
+    }
+  }
+  if (res.status === 429) throw new Error(`登录失败: 登录限流（429），请稍后重试`)
+  if (!res.ok) throw new Error(`partner 登录/注册失败: HTTP ${res.status}`)
+  const data = await res.json().catch(() => ({}))
+  if (!data.token) throw new Error('partner 登录响应无 token（疑似多租户预授权场景，暂不支持）')
+
+  await page.goto(`${cfg.baseUrl}/partner/login`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await page.evaluate(t => { try { localStorage.setItem('zhiyu-partner-token', t) } catch { /* ignore */ } }, data.token)
+  await page.goto(`${cfg.baseUrl}/partner/workspace`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await sleep(800)
+  if (page.url().includes('/partner/login')) throw new Error('partner token 写入后仍被踢回登录页，登录失败')
 
   await ctx.storageState({ path: path.join(STATE_DIR, `state-${role}.json`) })
   return true
@@ -137,7 +178,7 @@ async function readStateToken(role) {
   try {
     const st = JSON.parse(await fs.readFile(path.join(STATE_DIR, `state-${role}.json`), 'utf8'))
     for (const o of st.origins || []) {
-      const item = (o.localStorage || []).find(l => l.name === 'zhiyu-portal-token')
+      const item = (o.localStorage || []).find(l => l.name === tokenKeyForRole(role))
       if (item) return item.value
     }
   } catch { /* ignore */ }
@@ -199,6 +240,12 @@ export async function main() {
   }
   let routes = staticRoutes.filter(r => !(cfg.excludeRoutes || []).some(x => r.includes(x)))
   if (cfg.route) routes = [cfg.route]
+
+  // partner（企业端）独立门户路由：portal 角色的 excludeRoutes 会把 /partner 排除，
+  // 这里从排除前的 staticRoutes 单独取（排除登录页与重定向根页）；smoke.config.json 可用 partnerRoutes 覆盖
+  const partnerRoutes = cfg.partnerRoutes?.length
+    ? cfg.partnerRoutes
+    : staticRoutes.filter(r => r.startsWith('/partner/') && r !== '/partner/login')
 
   // 断点续跑：跳过上次报告中已 ok/skip 的路由（按 角色:路由 记录，避免跨角色误跳过）
   let resumeDone = null
@@ -280,22 +327,25 @@ export async function main() {
         for (const l of loginListeners) page.off(l.kind, l.handler)
       }
 
-      // 动态路由（拉真实实体 id）；--route 单页调试模式跳过
+      // 动态路由（拉真实实体 id）；--route 单页调试模式跳过；partner 角色只巡检固定的门户页面
       let dynamicRoutes = []
       let roleToken = ''
       if (!cfg.route) {
         try {
-          roleToken = await page.evaluate(() => {
-            try { return localStorage.getItem('zhiyu-portal-token') || '' } catch { return '' }
-          })
-          dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, roleToken)
-          if (dynamicRoutes.length) console.log(`  [${role}] 动态路由 ${dynamicRoutes.length} 个（拉取真实实体 id）`)
+          roleToken = await page.evaluate(k => {
+            try { return localStorage.getItem(k) || '' } catch { return '' }
+          }, tokenKeyForRole(role))
+          if (role !== 'partner') {
+            dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, roleToken)
+            if (dynamicRoutes.length) console.log(`  [${role}] 动态路由 ${dynamicRoutes.length} 个（拉取真实实体 id）`)
+          }
         } catch {
           dynamicRoutes = []
         }
       }
       const dynamicUrls = new Set(dynamicRoutes.map(d => d.url))
-      const roleRoutes = resumeDone ? routes.filter(r => !resumeDone.has(`${role}:${r}`)) : routes
+      const baseRoutes = role === 'partner' && !cfg.route ? partnerRoutes : routes
+      const roleRoutes = resumeDone ? baseRoutes.filter(r => !resumeDone.has(`${role}:${r}`)) : baseRoutes
       const allRoutes = [...roleRoutes, ...dynamicUrls]
       const chunkSize = Math.ceil(allRoutes.length / cfg.workers)
       const chunks = Array.from({ length: cfg.workers }, (_, i) => allRoutes.slice(i * chunkSize, (i + 1) * chunkSize)).filter(c => c.length)

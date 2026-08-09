@@ -25,6 +25,7 @@ import {
 import { useToast, LoadingView, ErrorState } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
+import { getEnterpriseMissingFields } from '@/lib/partner-enterprise-completeness'
 import {
   EnterpriseShowcase,
   type ShowcaseEnterprise,
@@ -128,18 +129,7 @@ export default function PartnerEnterprisePage() {
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
   /** 资料完整度检查：任一项缺失都在页面顶部提示补全（影响对外展示效果） */
-  const missingFields: string[] = []
-  if (!item.logoUrl) missingFields.push(t('企业 Logo'))
-  if (!item.description) missingFields.push(t('企业简介'))
-  if (!item.contactPerson || !item.contactPhone) missingFields.push(t('联系人和联系电话'))
-  if (!item.coverImage) missingFields.push(t('企业主页封面'))
-  if (
-    item.businessLicensePhotos.length === 0 &&
-    item.intellectualPropertyPhotos.length === 0 &&
-    item.qualificationPhotos.length === 0
-  ) {
-    missingFields.push(t('资质/证照图片'))
-  }
+  const missingFields = getEnterpriseMissingFields(item).map((f) => t(f))
 
   /** 当前表单实时数据 → 展示页 props（未保存也能预览） */
   const toPreview = (f: FormState): ShowcaseEnterprise => ({

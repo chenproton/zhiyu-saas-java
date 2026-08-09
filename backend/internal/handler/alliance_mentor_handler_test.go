@@ -314,11 +314,32 @@ func TestPublicAlliance_DoubleControl(t *testing.T) {
 			t.Fatalf("预置项目失败: %v", err)
 		}
 	}
+	// entTerminated：双控均开但合作已终止（status='terminated'），tenant 分支应排除；全局分支不用 link，不受影响
+	entTerminated := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name, enable_public) VALUES ($1,$2,$3,true)`,
+		entTerminated, tenantID, "终止合作企业-"+entTerminated[:8]); err != nil {
+		t.Fatalf("预置终止合作企业失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_enterprise_links (tenant_id, enterprise_id, is_public, status) VALUES ($1,$2,true,'terminated')`,
+		tenantID, entTerminated); err != nil {
+		t.Fatalf("预置终止合作 link 失败: %v", err)
+	}
+	expTerminated, projTerminated := uuid.NewString(), uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, is_public) VALUES ($1,$2,$3,$4,'active',true)`,
+		expTerminated, tenantID, "终止合作专家-"+expTerminated[:8], entTerminated); err != nil {
+		t.Fatalf("预置终止合作专家失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO alliance_projects (id, tenant_id, name, phase, publish_status, enterprise_ids, is_public)
+		VALUES ($1,$2,$3,'execution','published',$4::jsonb,true)
+	`, projTerminated, tenantID, "终止合作项目-"+projTerminated[:8], `["`+entTerminated+`"]`); err != nil {
+		t.Fatalf("预置终止合作项目失败: %v", err)
+	}
 	defer func() {
-		env.DB.Exec(ctx, `DELETE FROM alliance_projects WHERE id IN ($1,$2,$3)`, projPub, projLinkOff, projNoEnt)
-		env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id IN ($1,$2,$3)`, expPub, expLinkOff, expGlobalOff)
-		env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id IN ($2,$3,$4)`, tenantID, entPub, entLinkOff, entGlobalOff)
-		env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id IN ($1,$2,$3)`, entPub, entLinkOff, entGlobalOff)
+		env.DB.Exec(ctx, `DELETE FROM alliance_projects WHERE id IN ($1,$2,$3,$4)`, projPub, projLinkOff, projNoEnt, projTerminated)
+		env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id IN ($1,$2,$3,$4)`, expPub, expLinkOff, expGlobalOff, expTerminated)
+		env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id IN ($2,$3,$4,$5)`, tenantID, entPub, entLinkOff, entGlobalOff, entTerminated)
+		env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id IN ($1,$2,$3,$4)`, entPub, entLinkOff, entGlobalOff, entTerminated)
 	}()
 
 	get := func(path string) *httptest.ResponseRecorder {
@@ -362,8 +383,8 @@ func TestPublicAlliance_DoubleControl(t *testing.T) {
 		if !containsID(w.Body.Bytes(), entPub) {
 			t.Fatalf("双控通过企业应出现: %s", w.Body.String())
 		}
-		if containsID(w.Body.Bytes(), entLinkOff) || containsID(w.Body.Bytes(), entGlobalOff) {
-			t.Fatalf("任一开关关闭即不展示: %s", w.Body.String())
+		if containsID(w.Body.Bytes(), entLinkOff) || containsID(w.Body.Bytes(), entGlobalOff) || containsID(w.Body.Bytes(), entTerminated) {
+			t.Fatalf("任一开关关闭或合作已终止即不展示: %s", w.Body.String())
 		}
 	})
 
@@ -382,8 +403,8 @@ func TestPublicAlliance_DoubleControl(t *testing.T) {
 		if !containsID(w.Body.Bytes(), expPub) {
 			t.Fatalf("双控通过企业的专家应出现: %s", w.Body.String())
 		}
-		if containsID(w.Body.Bytes(), expLinkOff) || containsID(w.Body.Bytes(), expGlobalOff) {
-			t.Fatalf("任一开关关闭即不展示: %s", w.Body.String())
+		if containsID(w.Body.Bytes(), expLinkOff) || containsID(w.Body.Bytes(), expGlobalOff) || containsID(w.Body.Bytes(), expTerminated) {
+			t.Fatalf("任一开关关闭或合作已终止即不展示: %s", w.Body.String())
 		}
 	})
 
@@ -392,8 +413,8 @@ func TestPublicAlliance_DoubleControl(t *testing.T) {
 		if !containsID(w.Body.Bytes(), projPub) {
 			t.Fatalf("双控通过企业的项目应出现: %s", w.Body.String())
 		}
-		if containsID(w.Body.Bytes(), projLinkOff) || containsID(w.Body.Bytes(), projNoEnt) {
-			t.Fatalf("未过双控/无企业归属的项目不应出现: %s", w.Body.String())
+		if containsID(w.Body.Bytes(), projLinkOff) || containsID(w.Body.Bytes(), projNoEnt) || containsID(w.Body.Bytes(), projTerminated) {
+			t.Fatalf("未过双控/无企业归属/合作已终止的项目不应出现: %s", w.Body.String())
 		}
 		// 全局：entLinkOff 企业 enable_public=true，其项目可见
 		w = get("/alliance/public/projects")

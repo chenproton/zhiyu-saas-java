@@ -208,7 +208,7 @@ func (s *ExamResultStore) UsageAllowRetake(ctx context.Context, usageID string) 
 				CROSS JOIN LATERAL jsonb_each(
 					COALESCE(n.eval_data->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)
 					|| COALESCE((
-						SELECT jsonb_object_agg(hm.module_key || ':' || mc.key, mc.value)
+						SELECT jsonb_object_agg(hm.key || ':' || mc.key, mc.value)
 						FROM jsonb_each(COALESCE(n.eval_data->'hybridEvalRules', '{}'::jsonb)) hm
 						CROSS JOIN LATERAL jsonb_each(
 							COALESCE(hm.value->'evalRuleConfig'->'methodResourceConfigs', '{}'::jsonb)

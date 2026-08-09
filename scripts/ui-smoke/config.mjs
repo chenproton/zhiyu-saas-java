@@ -13,12 +13,16 @@ export const DEFAULT_REPORT = path.join(STATE_DIR, 'report.json')
 
 const DEFAULTS = {
   baseUrl: 'http://127.0.0.1',
-  roles: ['school', 'teacher', 'student'],
+  roles: ['school', 'teacher', 'student', 'partner'],
   accounts: {
     school: { username: 'school', password: 'school123' },
     teacher: { username: 'teacher', password: 'teacher123' },
     student: { username: 'student', password: 'student123' },
+    // partner（企业端）独立认证：账号不存在时按 enterpriseName 自动注册巡检企业后直接登录
+    partner: { username: 'smokepartner', password: 'smoke123', enterpriseName: '巡检测试企业' },
   },
+  // partner 角色巡检路由：默认空 = 自动枚举 /partner 下页面（排除登录页与重定向根页）
+  partnerRoutes: [],
   maxClicks: 100,
   // 默认单路串行：多 worker 并发容易把本地后端压垮（502/崩溃），需要加速时可在配置中加大
   workers: 1,
@@ -130,7 +134,7 @@ export function parseArgs(argv) {
 用法: node scripts/ui-smoke/ui-smoke.mjs [选项]
 
   --base-url <url>      目标站点（默认 http://127.0.0.1，必须走 nginx 网关）
-  --roles <a,b,c>       角色列表（默认 school,teacher,student）
+  --roles <a,b,c>       角色列表（默认 school,teacher,student,partner；partner 账号不存在时自动注册巡检企业）
   --account r:u:p       覆盖指定角色账号，如 --account school:school:newpass
   --max-clicks <n>      每页点击安全阀（默认 100）
   --workers <n>         并发路数（默认 3）
