@@ -5,12 +5,18 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 )
 
 type createTenantResp struct {
 	Tenant domain.Tenant `json:"tenant"`
+}
+
+type adminEnterpriseResp struct {
+	Tenant     domain.Tenant             `json:"tenant"`
+	Enterprise domain.AllianceEnterprise `json:"enterprise"`
 }
 
 func cleanupTenant(ctx context.Context, t *testing.T, env *testhelper.TestEnv, tenantID string) {
@@ -388,4 +394,176 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	if list2.Total != 1 {
 		t.Fatalf("expected 1 admin after delete, got %+v", list2)
 	}
+}
+
+// cleanupEnterpriseTenant 清理超管创建的企业租户测试数据（含企业主体/角色/link）。
+func cleanupEnterpriseTenant(env *testhelper.TestEnv, tenantID string) {
+	ctx := context.Background()
+	env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE enterprise_id IN (SELECT id FROM partner_enterprises WHERE tenant_id = $1)`, tenantID)
+	env.DB.Exec(ctx, `DELETE FROM users WHERE tenant_id = $1`, tenantID)
+	env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE tenant_id = $1`, tenantID)
+	env.DB.Exec(ctx, `DELETE FROM roles WHERE tenant_id = $1`, tenantID)
+	env.DB.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenantID)
+}
+
+// TestAdmin_CreateEnterpriseTenant 超管创建企业租户：企业租户+企业主体+管理员账号，
+// 列表按 type 过滤，企业主体可查看/编辑（信用代码/联系人/展示开关）。
+func TestAdmin_CreateEnterpriseTenant(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := uuid.NewString()[:8]
+	enterpriseName := "超管企业-" + suffix
+	username := "super_ent_" + suffix
+	password := "abc12345"
+	creditCode := "91320000" + suffix + "X"
+
+	var tenantID string
+
+	t.Run("create enterprise tenant", func(t *testing.T) {
+		w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
+			"name":           enterpriseName,
+			"type":           "enterprise",
+			"username":       username,
+			"password":       password,
+			"enterpriseCode": creditCode,
+			"contact":        "张三",
+			"phone":          "13800000000",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		var resp createTenantResp
+		var err error
+		resp, err = testhelper.Unmarshal[createTenantResp](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		tenant := resp.Tenant
+		tenantID = tenant.ID
+		if tenant.Type != domain.TenantTypeEnterprise {
+			t.Fatalf("expected type enterprise, got %s", tenant.Type)
+		}
+		var entCount int
+		if err := env.DB.QueryRow(ctx,
+			"SELECT COUNT(*) FROM partner_enterprises WHERE tenant_id = $1", tenantID).Scan(&entCount); err != nil {
+			t.Fatalf("count enterprises: %v", err)
+		}
+		if entCount != 1 {
+			t.Fatalf("expected 1 enterprise profile, got %d", entCount)
+		}
+		var userCount int
+		if err := env.DB.QueryRow(ctx,
+			"SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND platform = 'partner'", tenantID).Scan(&userCount); err != nil {
+			t.Fatalf("count users: %v", err)
+		}
+		if userCount != 1 {
+			t.Fatalf("expected 1 partner admin user, got %d", userCount)
+		}
+		var enterpriseRoleCount int
+		if err := env.DB.QueryRow(ctx,
+			"SELECT COUNT(*) FROM roles WHERE tenant_id = $1 AND code = 'enterprise_admin'", tenantID).Scan(&enterpriseRoleCount); err != nil {
+			t.Fatalf("count roles: %v", err)
+		}
+		if enterpriseRoleCount != 1 {
+			t.Fatalf("expected enterprise_admin role, got %d", enterpriseRoleCount)
+		}
+	})
+	if tenantID == "" {
+		t.Fatalf("创建企业租户失败，跳过后续用例")
+	}
+	defer cleanupEnterpriseTenant(env, tenantID)
+
+	t.Run("admin list filtered by type", func(t *testing.T) {
+		w := env.DoWithToken("GET", "/api/v1/admin/tenants?type=enterprise&limit=100", nil, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		items, total, err := testhelper.UnmarshalList[domain.Tenant](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total == 0 {
+			t.Fatalf("expected enterprise tenants in list")
+		}
+		found := false
+		for _, it := range items {
+			if it.Type != domain.TenantTypeEnterprise {
+				t.Fatalf("enterprise filter returned school tenant: %s", it.ID)
+			}
+			if it.ID == tenantID {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("created enterprise tenant not in filtered list")
+		}
+	})
+
+	t.Run("get enterprise profile", func(t *testing.T) {
+		w := env.DoWithToken("GET", "/api/v1/admin/tenants/"+tenantID+"/enterprise", nil, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		var resp adminEnterpriseResp
+		var err error
+		resp, err = testhelper.Unmarshal[adminEnterpriseResp](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if resp.Enterprise.Name != enterpriseName {
+			t.Fatalf("expected enterprise name %s, got %s", enterpriseName, resp.Enterprise.Name)
+		}
+		if resp.Enterprise.UnifiedSocialCreditCode == nil || *resp.Enterprise.UnifiedSocialCreditCode != creditCode {
+			t.Fatalf("expected credit code %s, got %v", creditCode, resp.Enterprise.UnifiedSocialCreditCode)
+		}
+	})
+
+	t.Run("update enterprise profile", func(t *testing.T) {
+		w := env.DoWithToken("PUT", "/api/v1/admin/tenants/"+tenantID+"/enterprise", map[string]interface{}{
+			"contactEmail": "ent@example.com",
+			"enablePublic": true,
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		var ent domain.AllianceEnterprise
+		var err error
+		ent, err = testhelper.Unmarshal[domain.AllianceEnterprise](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if ent.ContactEmail == nil || *ent.ContactEmail != "ent@example.com" {
+			t.Fatalf("expected email updated, got %v", ent.ContactEmail)
+		}
+		if !ent.EnablePublic {
+			t.Fatalf("expected enablePublic true")
+		}
+		if ent.UnifiedSocialCreditCode == nil || *ent.UnifiedSocialCreditCode != creditCode {
+			t.Fatalf("credit code should be preserved on partial update, got %v", ent.UnifiedSocialCreditCode)
+		}
+	})
+
+	t.Run("created admin can login on partner platform", func(t *testing.T) {
+		w := env.DoNoAuth("POST", "/api/v1/auth/partner/login", map[string]string{
+			"username": username,
+			"password": password,
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("duplicate username conflict", func(t *testing.T) {
+		w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
+			"name":     "另一家企业-" + suffix,
+			"type":     "enterprise",
+			"username": username,
+			"password": password,
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
 }

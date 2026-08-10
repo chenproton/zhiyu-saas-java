@@ -61,6 +61,17 @@ export interface AllianceEnterpriseLinkUpdate {
   secondaryColleges?: string[]
 }
 
+/** 学校代注册企业请求（POST /alliance/enterprises/register）：创建企业租户并直接建立合作关联 */
+export interface AllianceEnterpriseRegisterRequest {
+  enterpriseName: string
+  username: string
+  password: string
+  unifiedSocialCreditCode?: string
+  contactPerson?: string
+  contactPhone?: string
+  contactEmail?: string
+}
+
 export interface AllianceEnterpriseAgreement {
   id: string
   tenantId: string

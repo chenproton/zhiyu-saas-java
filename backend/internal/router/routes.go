@@ -275,6 +275,8 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 	r.Put("/admin/tenants/{id}", h.tenantHandler.AdminUpdate)
 	r.Post("/admin/tenants/{id}/status", h.tenantHandler.AdminUpdateStatus)
 	r.Delete("/admin/tenants/{id}", h.tenantHandler.AdminDelete)
+	r.Get("/admin/tenants/{id}/enterprise", h.tenantHandler.AdminGetEnterprise)
+	r.Put("/admin/tenants/{id}/enterprise", h.tenantHandler.AdminUpdateEnterprise)
 
 	r.Get("/admin/tenants/{tenantId}/admins", h.tenantHandler.AdminListAdmins)
 	r.Post("/admin/tenants/{tenantId}/admins", h.tenantHandler.AdminCreateAdmin)
@@ -388,6 +390,7 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 
 		r.Get("/enterprises", h.allianceHandler.ListEnterprises)
 		r.Get("/enterprises/search", h.allianceHandler.SearchEnterprises)
+		r.Post("/enterprises/register", h.allianceHandler.RegisterEnterprise)
 		r.Get("/enterprises/{id}", h.allianceHandler.GetEnterprise)
 		r.Put("/enterprises/{id}", h.allianceHandler.UpdateEnterprise)
 		r.Post("/enterprises/{id}/link", h.allianceHandler.LinkEnterprise)

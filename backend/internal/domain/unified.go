@@ -65,6 +65,14 @@ const (
 	TenantStatusInactive TenantStatus = "inactive"
 )
 
+// TenantType 租户类型：学校租户（默认）/ 企业租户（partner 平台）。
+type TenantType string
+
+const (
+	TenantTypeSchool     TenantType = "school"
+	TenantTypeEnterprise TenantType = "enterprise"
+)
+
 type OrgTypeCategory string
 
 const (
@@ -92,6 +100,7 @@ type Tenant struct {
 	ID                string          `json:"id"`
 	Name              string          `json:"name"`
 	Code              string          `json:"code"`
+	Type              TenantType      `json:"type"`
 	LogoURL           *string         `json:"logoUrl,omitempty"`
 	Domain            *string         `json:"domain,omitempty"`
 	EnterpriseCode    *string         `json:"enterpriseCode,omitempty"`

@@ -128,6 +128,10 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	partnerSvc := service.NewPartnerService(svc)
 	authH := handler.NewAuthHandler(authSvc, jwtSecret)
 	authH.PartnerService = partnerSvc
+	tenantH := &handler.TenantHandler{Service: service.NewTenantService(svc), AdminService: service.NewTenantAdminService(svc)}
+	tenantH.PartnerService = partnerSvc
+	allianceH := &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()}
+	allianceH.PartnerService = partnerSvc
 	return &Handlers{
 		authHandler:                   authH,
 		fileHandler:                   fileHandler,
@@ -151,7 +155,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		questionBankExportHandler:     &handler.QuestionBankExportHandler{Store: st},
 		questionExportHandler:         &handler.QuestionExportHandler{Store: st},
 		examExportHandler:             &handler.ExamExportHandler{Store: st},
-		tenantHandler:                 &handler.TenantHandler{Service: service.NewTenantService(svc), AdminService: service.NewTenantAdminService(svc)},
+		tenantHandler:                 tenantH,
 		orgHandler:                    &handler.OrgHandler{Service: service.NewOrgService(svc)},
 		orgTypeHandler:                &handler.OrgTypeHandler{Store: st.OrgTypes()},
 		userManagementHandler:         &handler.UserManagementHandler{Service: service.NewUserService(svc)},
@@ -166,7 +170,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		userRelationHandler:           &handler.UserRelationHandler{Service: service.NewUserRelationService(svc)},
 		workflowHandler:               &handler.WorkflowHandler{Service: approvalSvc},
 		approvalHandler:               &handler.ApprovalHandler{Service: approvalSvc, RedisClient: redisClient},
-		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()},
+		allianceHandler:               allianceH,
 		allianceMentorHandler:         &handler.AllianceMentorHandler{Service: service.NewAllianceMentorService(svc)},
 		partnerHandler:                &handler.PartnerHandler{Service: partnerSvc},
 		partnerCoBuildHandler:         &handler.PartnerCoBuildHandler{Service: service.NewPartnerCoBuildService(svc)},

@@ -1,6 +1,7 @@
 import type {
   AllianceEnterprise,
   AllianceEnterpriseLinkUpdate,
+  AllianceEnterpriseRegisterRequest,
   AllianceProject,
   AllianceProjectMilestone,
   AllianceAchievement,
@@ -35,6 +36,12 @@ export const allianceEnterpriseApi = {
   // 解除引入（历史协议/项目/成果引用保留，页面不再展示）
   unlink: (id: string) =>
     portalRequest<{ id: string }>(`/alliance/enterprises/${id}/link`, { method: 'DELETE' }),
+  // 学校代注册企业：创建企业租户+主体+管理员账号，并直接建立本校-企业合作关联（合作中）
+  register: (req: AllianceEnterpriseRegisterRequest) =>
+    portalRequest<AllianceEnterprise>(`/alliance/enterprises/register`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
   // 仅更新学校侧 link 管理字段
   update: (id: string, req: AllianceEnterpriseLinkUpdate) =>
     portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`, {

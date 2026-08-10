@@ -15,6 +15,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -527,6 +528,124 @@ func TestAllianceExperts_Pagination(t *testing.T) {
 		}
 		if len(items) != 1 || items[0].Status != "inactive" {
 			t.Fatalf("status filter failed: %+v", items)
+		}
+	})
+}
+
+// TestAlliance_RegisterEnterprise 学校代注册企业：创建企业租户+主体+管理员账号，
+// 并直接建立本校-企业合作关联（status=active）。
+func TestAlliance_RegisterEnterprise(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	st := store.New(env.DB)
+	h := &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()}
+	h.PartnerService = service.NewPartnerService(service.New(st))
+	r := chi.NewRouter()
+	r.Post("/alliance/enterprises/register", h.RegisterEnterprise)
+
+	suffix := uuid.NewString()[:8]
+	enterpriseName := "代注册企业-" + suffix
+	username := "proxy_ent_" + suffix
+	password := "abc12345"
+
+	var tenantID, enterpriseID string
+
+	t.Run("register ok with active link", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/register", map[string]interface{}{
+			"enterpriseName":          enterpriseName,
+			"username":                username,
+			"password":                password,
+			"unifiedSocialCreditCode": "91320594" + suffix + "1",
+			"contactPerson":           "李四",
+			"contactPhone":            "13900000000",
+		}, claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa21", domain.RoleTeacher))
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+		}
+		var item domain.AllianceLinkedEnterprise
+		if err := json.Unmarshal(w.Body.Bytes(), &item); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		tenantID = item.TenantID
+		enterpriseID = item.ID
+		if item.Name != enterpriseName {
+			t.Fatalf("expected name %s, got %s", enterpriseName, item.Name)
+		}
+		if item.Status != "active" {
+			t.Fatalf("expected link status active, got %s", item.Status)
+		}
+		// 租户类型必须是企业租户
+		var typ string
+		if err := env.DB.QueryRow(ctx, "SELECT type FROM tenants WHERE id = $1", tenantID).Scan(&typ); err != nil {
+			t.Fatalf("query tenant type: %v", err)
+		}
+		if typ != "enterprise" {
+			t.Fatalf("expected enterprise tenant, got %s", typ)
+		}
+	})
+	if tenantID == "" || enterpriseID == "" {
+		t.Fatalf("代注册失败，跳过后续用例")
+	}
+	defer cleanupPartnerTenant(env, tenantID)
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE enterprise_id = $1`, enterpriseID)
+
+	t.Run("link is associated to current school", func(t *testing.T) {
+		var linkCount int
+		if err := env.DB.QueryRow(ctx,
+			"SELECT COUNT(*) FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id = $2",
+			testhelper.TestTenantID, enterpriseID).Scan(&linkCount); err != nil {
+			t.Fatalf("count links: %v", err)
+		}
+		if linkCount != 1 {
+			t.Fatalf("expected 1 link to current school, got %d", linkCount)
+		}
+	})
+
+	t.Run("created admin can login on partner platform", func(t *testing.T) {
+		authH := newPartnerAuthHandler(env)
+		r2 := chi.NewRouter()
+		r2.Post("/auth/partner/login", authH.PartnerLogin)
+		w := doNoAuthJSON(r2, http.MethodPost, "/auth/partner/login", map[string]interface{}{
+			"username": username,
+			"password": password,
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("duplicate username conflict", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/register", map[string]interface{}{
+			"enterpriseName": "另一家代注册企业-" + suffix,
+			"username":       username,
+			"password":       password,
+		}, claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa21", domain.RoleTeacher))
+		if w.Code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("duplicate enterprise name conflict", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/register", map[string]interface{}{
+			"enterpriseName": enterpriseName,
+			"username":       "proxy_other_" + suffix,
+			"password":       password,
+		}, claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa21", domain.RoleTeacher))
+		if w.Code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("student forbidden", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/register", map[string]interface{}{
+			"enterpriseName": "学生代注册-" + suffix,
+			"username":       "proxy_stu_" + suffix,
+			"password":       password,
+		}, claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa22", domain.RoleStudent))
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 }

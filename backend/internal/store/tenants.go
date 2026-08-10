@@ -137,13 +137,16 @@ func (s *TenantStore) List(ctx context.Context, p ListParams, cfg ListQueryConfi
 func (s *TenantStore) ListConfig() ListQueryConfig[domain.Tenant] {
 	return ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
-		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		SelectColumns: "id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "id",
 		SearchColumns: []string{"name", "code"},
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+			if typ := p.Values["type"]; typ != "" {
+				qb.AddCondition("type = " + qb.NextArg(typ))
 			}
 		},
 	}
@@ -153,11 +156,14 @@ func (s *TenantStore) ListConfig() ListQueryConfig[domain.Tenant] {
 func (s *TenantStore) AdminListConfig() ListQueryConfig[domain.Tenant] {
 	return ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
-		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		SelectColumns: "id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
 		SearchColumns: []string{"name", "code"},
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+			if typ := p.Values["type"]; typ != "" {
+				qb.AddCondition("type = " + qb.NextArg(typ))
 			}
 			// 运营方租户不出现在超管控制台列表（避免误删导致平台管理员丢失）
 			qb.AddCondition("id <> " + qb.NextArg(domain.OperatorTenantID))
@@ -230,13 +236,13 @@ func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenan
 	var edLevel, edNature *string
 
 	err := s.q.QueryRow(ctx, `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description,
+		SELECT id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description,
 			short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges,
 			education_level, education_nature,
 			admin_ids, status, created_at, updated_at
 		FROM tenants WHERE id = $1
 	`, id).Scan(
-		&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+		&t.ID, &t.Name, &t.Code, &t.Type, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
 		&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
 		&edLevel, &edNature,
 		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
@@ -273,7 +279,7 @@ func scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
 		var scaleData, secondaryColleges json.RawMessage
 		var edLevel, edNature *string
 		if err := rows.Scan(
-			&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+			&t.ID, &t.Name, &t.Code, &t.Type, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
 			&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
 			&edLevel, &edNature,
 			&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
