@@ -65,3 +65,62 @@ func TestWorkflow_ListByIDs(t *testing.T) {
 		}
 	})
 }
+
+// TestWorkflow_DeleteBlockedByPendingApproval 删除保护回归：仍有待处理审批单的审批流禁止删除（409），
+// 全部完结后允许删除（200）。
+func TestWorkflow_DeleteBlockedByPendingApproval(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	ctx := context.Background()
+	wfID := uuid.NewString()
+	recordID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO workflows (id, tenant_id, name) VALUES ($1, $2, $3)`,
+		wfID, testhelper.TestTenantID, "审批流-删除保护"); err != nil {
+		t.Fatalf("预置审批流失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM workflows WHERE id = $1`, wfID)
+
+	svc := service.New(store.New(env.DB))
+	h := &handler.WorkflowHandler{Service: service.NewApprovalService(svc)}
+	r := chi.NewRouter()
+	r.Delete("/workflows/{id}", h.Delete)
+
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11", domain.RoleTeacher)
+
+	t.Run("有待处理审批单时阻止删除", func(t *testing.T) {
+		if _, err := env.DB.Exec(ctx, `
+			INSERT INTO approval_records (id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id)
+			VALUES ($1, $2, 'course', $3, $4, 0, 'pending', $5)`,
+			recordID, testhelper.TestTenantID, uuid.NewString(), wfID, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11"); err != nil {
+			t.Fatalf("预置待审批记录失败: %v", err)
+		}
+		defer env.DB.Exec(ctx, `DELETE FROM approval_records WHERE id = $1`, recordID)
+
+		w := doWithClaims(r, http.MethodDelete, "/workflows/"+wfID, nil, claims)
+		if w.Code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+		}
+		if msg := testhelper.ErrMsg(w); msg == "" {
+			t.Fatalf("应返回阻止删除原因: %s", w.Body.String())
+		}
+
+		var exists bool
+		if err := env.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM workflows WHERE id = $1)`, wfID).Scan(&exists); err != nil {
+			t.Fatalf("校验流程存在失败: %v", err)
+		}
+		if !exists {
+			t.Fatal("删除被拦截后审批流不应被删除")
+		}
+	})
+
+	t.Run("审批单完结后允许删除", func(t *testing.T) {
+		if _, err := env.DB.Exec(ctx, `UPDATE approval_records SET status = 'approved' WHERE id = $1`, recordID); err != nil {
+			t.Fatalf("完结审批单失败: %v", err)
+		}
+		w := doWithClaims(r, http.MethodDelete, "/workflows/"+wfID, nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}

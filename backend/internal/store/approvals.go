@@ -124,6 +124,18 @@ func (s *ApprovalStore) ExistsPending(ctx context.Context, targetType, targetID 
 	return exists, err
 }
 
+// ExistsPendingByWorkflow 判断审批流程是否仍有待处理审批单（删除前引用检查）。
+func (s *ApprovalStore) ExistsPendingByWorkflow(ctx context.Context, workflowID string) (bool, error) {
+	var exists bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM approval_records
+			WHERE workflow_id = $1 AND status = $2
+		)
+	`, workflowID, string(domain.ApprovalStatusPending)).Scan(&exists)
+	return exists, err
+}
+
 // UpdateHistory 追加审批历史（不改变状态）。
 // SQL 级原子追加：并发审批（"或"模式多人步骤）各自追加互不覆盖，防止后写整段覆盖先写。
 func (s *ApprovalStore) UpdateHistory(ctx context.Context, id string, entry domain.JSONMap) (bool, error) {

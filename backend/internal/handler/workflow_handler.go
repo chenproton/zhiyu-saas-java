@@ -127,6 +127,18 @@ func (h *WorkflowHandler) crud() crudConfig[WorkflowRequest, domain.Workflow] {
 		DeleteFn: func(ctx context.Context, id, tenantID string) error {
 			return h.Service.DeleteWorkflow(ctx, id, tenantID)
 		},
+		DeleteChecks: []func(ctx context.Context, t *domain.Workflow) (string, error){
+			func(ctx context.Context, t *domain.Workflow) (string, error) {
+				hasPending, err := h.Service.WorkflowHasPendingApprovals(ctx, t.ID)
+				if err != nil {
+					return "", err
+				}
+				if hasPending {
+					return "该审批流程仍有待处理的审批单，无法删除", nil
+				}
+				return "", nil
+			},
+		},
 		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.Workflow, error) {
 			wf, err := h.Service.GetWorkflow(ctx, id, tenantID)
 			if err != nil {

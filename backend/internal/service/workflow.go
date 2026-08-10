@@ -30,3 +30,8 @@ func (s *ApprovalService) UpdateWorkflow(ctx context.Context, id, tenantID strin
 func (s *ApprovalService) DeleteWorkflow(ctx context.Context, id, tenantID string) error {
 	return s.st.Workflows().Delete(ctx, id, tenantID)
 }
+
+// WorkflowHasPendingApprovals 判断审批流程是否仍有待处理审批单（删除保护）。
+func (s *ApprovalService) WorkflowHasPendingApprovals(ctx context.Context, workflowID string) (bool, error) {
+	return s.st.Approvals().ExistsPendingByWorkflow(ctx, workflowID)
+}
