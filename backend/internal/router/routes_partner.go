@@ -18,8 +18,10 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 	r.Group(func(r chi.Router) {
 		r.Use(partnerUser)
 		r.Get("/partner/enterprise/profile", h.partnerHandler.GetProfile)
-		r.Get("/partner/experts", h.partnerHandler.ListExperts)
+		// 专家档案列表/详情仅管理员；专家本人档案走 /me（member 无列表权限）
 		r.Get("/partner/experts/{id}", h.partnerHandler.GetExpert)
+		r.Get("/partner/experts/me", h.partnerHandler.GetMyExpert)
+		r.Put("/partner/experts/me", h.partnerHandler.UpdateMyExpert)
 		r.Get("/partner/workspace/dashboard", h.partnerHandler.Dashboard)
 		r.Get("/partner/schools", h.partnerHandler.ListSchools)
 		r.Get("/partner/cooperation", h.partnerHandler.ListCooperation)
@@ -30,6 +32,7 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 		r.Get("/partner/co-build/positions", h.partnerCoBuildHandler.ListPositions)
 		r.Post("/partner/co-build/positions", h.partnerCoBuildHandler.CreatePosition)
 		r.Get("/partner/co-build/positions/{id}", h.partnerCoBuildHandler.GetPosition)
+		r.Post("/partner/co-build/positions/{id}/edit", h.partnerCoBuildHandler.EditSourcePosition)
 		r.Put("/partner/co-build/positions/{id}", h.partnerCoBuildHandler.UpdatePosition)
 		r.Delete("/partner/co-build/positions/{id}", h.partnerCoBuildHandler.DeletePosition)
 		r.Post("/partner/co-build/positions/{id}/submit", h.partnerCoBuildHandler.SubmitPosition)
@@ -42,6 +45,7 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 		r.Get("/partner/co-build/scenes", h.partnerCoBuildHandler.ListScenarios)
 		r.Post("/partner/co-build/scenes", h.partnerCoBuildHandler.CreateScenario)
 		r.Get("/partner/co-build/scenes/{id}", h.partnerCoBuildHandler.GetScenario)
+		r.Post("/partner/co-build/scenes/{id}/edit", h.partnerCoBuildHandler.EditSourceScenario)
 		r.Put("/partner/co-build/scenes/{id}", h.partnerCoBuildHandler.UpdateScenario)
 		r.Delete("/partner/co-build/scenes/{id}", h.partnerCoBuildHandler.DeleteScenario)
 		r.Post("/partner/co-build/scenes/{id}/submit", h.partnerCoBuildHandler.SubmitScenario)
@@ -57,17 +61,14 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 		r.Get("/partner/co-build/schools/{tenantId}/evaluation-methods", h.partnerCoBuildHandler.ListSchoolEvaluationMethods)
 	})
 
-	// 仅企业管理员（企业资料写 + 合作状态确认 + 专家写 + 成员管理）
+	// 仅企业管理员（企业资料写 + 合作状态确认 + 专家库写）
 	r.Group(func(r chi.Router) {
 		r.Use(adminOnly)
 		r.Put("/partner/enterprise/profile", h.partnerHandler.UpdateProfile)
 		r.Put("/partner/schools/{tenantId}/status", h.partnerHandler.UpdateSchoolStatus)
+		r.Get("/partner/experts", h.partnerHandler.ListExperts)
 		r.Post("/partner/experts", h.partnerHandler.CreateExpert)
 		r.Put("/partner/experts/{id}", h.partnerHandler.UpdateExpert)
 		r.Delete("/partner/experts/{id}", h.partnerHandler.DeleteExpert)
-		r.Get("/partner/members", h.partnerHandler.ListMembers)
-		r.Post("/partner/members", h.partnerHandler.CreateMember)
-		r.Put("/partner/members/{id}", h.partnerHandler.UpdateMember)
-		r.Delete("/partner/members/{id}", h.partnerHandler.DeleteMember)
 	})
 }

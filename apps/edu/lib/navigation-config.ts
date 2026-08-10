@@ -8,7 +8,6 @@ import {
   History,
   KeyRound,
   School,
-  UserCog,
   Users,
   Workflow,
   type LucideIcon,
@@ -922,13 +921,6 @@ export const partnerNavigationConfig: PlatformNavigationConfig = {
       icon: Users,
       href: '/partner/experts',
       matchers: ['/partner/experts'],
-    },
-    {
-      id: 'members',
-      label: '成员账号',
-      icon: UserCog,
-      href: '/partner/members',
-      matchers: ['/partner/members$'],
     },
     {
       id: 'schools',

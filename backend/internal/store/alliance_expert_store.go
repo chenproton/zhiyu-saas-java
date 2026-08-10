@@ -130,6 +130,14 @@ func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) 
 	`, id, tenantID)
 }
 
+// GetExpertByUserID 专家本人档案（按绑定账号 user_id 查询，同租户内）。
+func (s *AllianceStore) GetExpertByUserID(ctx context.Context, tenantID, userID string) (*domain.AllianceExpert, error) {
+	return queryOne(ctx, s.q, s.ScanExpertRows, `
+		SELECT `+expertColumns+`
+		FROM alliance_experts WHERE tenant_id = $1 AND user_id = $2
+	`, tenantID, userID)
+}
+
 // AllianceExpertListFilter 学校侧专家列表筛选参数。
 type AllianceExpertListFilter struct {
 	Search string

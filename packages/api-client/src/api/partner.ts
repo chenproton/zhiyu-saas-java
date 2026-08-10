@@ -5,9 +5,6 @@ import type {
   PartnerEnterprise,
   PartnerEnterpriseUpdateRequest,
   PartnerExpert,
-  PartnerMember,
-  PartnerMemberCreateRequest,
-  PartnerMemberUpdateRequest,
   PartnerRegisterRequest,
   PartnerMeResponse,
   PartnerDashboard,
@@ -49,38 +46,36 @@ export const partnerEnterpriseApi = {
     }),
 }
 
+export interface PartnerExpertCreateResponse {
+  expert: PartnerExpert
+  username: string
+  initialPassword: string
+}
+
 export const partnerExpertApi = {
   list: (params?: ListParams) =>
     partnerRequest<ListResponse<PartnerExpert>>(`/partner/experts${buildQuery(params || {})}`),
   get: (id: string) => partnerRequest<PartnerExpert>(`/partner/experts/${id}`),
-  create: (req: Partial<PartnerExpert>) =>
-    partnerRequest<PartnerExpert>('/partner/experts', {
+  // 创建专家并自动生成登录账号（管理员填用户名+密码）
+  create: (req: Partial<PartnerExpert> & { username: string; password: string }) =>
+    partnerRequest<PartnerExpertCreateResponse>('/partner/experts', {
       method: 'POST',
       body: JSON.stringify(req),
     }),
-  update: (id: string, req: Partial<PartnerExpert>) =>
+  update: (id: string, req: Partial<PartnerExpert> & { password?: string }) =>
     partnerRequest<PartnerExpert>(`/partner/experts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(req),
     }),
   delete: (id: string) =>
     partnerRequest<{ id: string }>(`/partner/experts/${id}`, { method: 'DELETE' }),
-}
-
-export const partnerMemberApi = {
-  list: () => partnerRequest<ListResponse<PartnerMember>>('/partner/members'),
-  create: (req: PartnerMemberCreateRequest) =>
-    partnerRequest<PartnerMember>('/partner/members', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (id: string, req: PartnerMemberUpdateRequest) =>
-    partnerRequest<PartnerMember>(`/partner/members/${id}`, {
+  // 专家本人的档案（成员角色只能访问本人）
+  me: () => partnerRequest<PartnerExpert>('/partner/experts/me'),
+  updateMe: (req: Partial<PartnerExpert>) =>
+    partnerRequest<PartnerExpert>('/partner/experts/me', {
       method: 'PUT',
       body: JSON.stringify(req),
     }),
-  delete: (id: string) =>
-    partnerRequest<{ id: string }>(`/partner/members/${id}`, { method: 'DELETE' }),
 }
 
 export const partnerWorkspaceApi = {

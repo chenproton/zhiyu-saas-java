@@ -32,10 +32,14 @@ function PartnerShell({ children }: { children: React.ReactNode }) {
   const t = useT()
   const { user, enterprise, isAdmin, logout } = usePartnerAuth()
 
-  // 成员账号管理仅 enterprise_admin 可见
+  // 导航裁剪：admin 可见全部（成员管理已移除）；专家（member）只可见
+  // 专家资源（我的档案）/岗位共建/场景共建/账号安全
   const translatedConfig = useMemo(() => {
     const items = partnerNavigationConfig.sideNavItems
-      .filter((item) => item.id !== 'members' || isAdmin)
+      .filter((item) => {
+        if (isAdmin) return true
+        return ['experts', 'cobuild-positions', 'cobuild-scenes', 'settings'].includes(item.id)
+      })
       .map((item) => ({
         ...item,
         label: t(item.label),

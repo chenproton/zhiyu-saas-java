@@ -29,6 +29,7 @@ type Scenario struct {
 	TaskCount          int            `json:"taskCount"`
 	SourceType         string         `json:"sourceType"`
 	SourceEnterpriseID *string        `json:"sourceEnterpriseId,omitempty"`
+	SourceResourceID   *string        `json:"sourceResourceId,omitempty"`
 }
 
 type ScenarioTask struct {

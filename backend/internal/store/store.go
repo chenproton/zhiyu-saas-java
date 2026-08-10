@@ -96,6 +96,7 @@ type Store struct {
 	alliance         *AllianceStore
 	allianceLinks    *AllianceEnterpriseLinkStore
 	allianceMentors  *AllianceExpertMentorLinkStore
+	allianceGrants   *AllianceGrantStore
 	partner          *PartnerStore
 	community        *CommunityStore
 	favorites        *FavoritesStore
@@ -185,6 +186,7 @@ func newStore(q Queryer) *Store {
 		alliance:         NewAllianceStore(q),
 		allianceLinks:    NewAllianceEnterpriseLinkStore(q),
 		allianceMentors:  NewAllianceExpertMentorLinkStore(q),
+		allianceGrants:   NewAllianceGrantStore(q),
 		partner:          NewPartnerStore(q),
 		community:        NewCommunityStore(q),
 		favorites:        NewFavoritesStore(q, beginner),
@@ -597,9 +599,58 @@ func (s *Store) AllianceExpertMentorLinks() *AllianceExpertMentorLinkStore {
 	return s.allianceMentors
 }
 
+// AllianceGrants 返回学校-企业资源授权 store。
+func (s *Store) AllianceGrants() *AllianceGrantStore {
+	return s.allianceGrants
+}
+
 // Partner 返回企业平台 store。
 func (s *Store) Partner() *PartnerStore {
 	return s.partner
+}
+
+// MergeSourceEditDraft 审批通过时把「学校自建资源编辑稿」合并覆盖回原资源。
+// targetType 为 career_position/scenario 且目标带 source_resource_id 时返回 true（已合并）。
+func (s *Store) MergeSourceEditDraft(ctx context.Context, tx Queryer, targetType, targetID, tenantID string) (bool, error) {
+	switch targetType {
+	case "career_position":
+		var srcID string
+		err := tx.QueryRow(ctx, `
+			SELECT source_resource_id FROM career_positions WHERE id = $1 AND tenant_id = $2
+		`, targetID, tenantID).Scan(&srcID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return false, nil
+			}
+			return false, err
+		}
+		if srcID == "" {
+			return false, nil
+		}
+		if err := s.positions.MergePositionDraftToSource(ctx, tx, targetID, tenantID); err != nil {
+			return false, err
+		}
+		return true, nil
+	case "scenario":
+		var srcID string
+		err := tx.QueryRow(ctx, `
+			SELECT source_resource_id FROM scenarios WHERE id = $1 AND tenant_id = $2
+		`, targetID, tenantID).Scan(&srcID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return false, nil
+			}
+			return false, err
+		}
+		if srcID == "" {
+			return false, nil
+		}
+		if err := s.scenarios.MergeScenarioDraftToSource(ctx, tx, targetID, tenantID); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 // Community 返回学习社区 store。

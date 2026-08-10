@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { ArrowLeft, Loader2, KeyRound } from 'lucide-react'
 import { partnerExpertApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
@@ -25,6 +27,7 @@ export default function PartnerExpertEditPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [item, setItem] = useState<PartnerExpertFormState>(emptyPartnerExpertForm)
+  const [newPassword, setNewPassword] = useState('')
 
   // 写操作仅 enterprise_admin
   useEffect(() => {
@@ -67,7 +70,7 @@ export default function PartnerExpertEditPage() {
     }
     setSaving(true)
     try {
-      await partnerExpertApi.update(id, item)
+      await partnerExpertApi.update(id, { ...item, password: newPassword || undefined })
       toast({ title: t('专家已更新') })
       router.push(`/partner/experts/${id}`)
     } catch (e: any) {
@@ -96,6 +99,24 @@ export default function PartnerExpertEditPage() {
 
         <div className="space-y-6">
           <PartnerExpertSettingsCard item={item} onChange={setItem} />
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">{t('重置登录密码')}</h2>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('新密码（选填）')}</Label>
+                <Input
+                  type="password"
+                  placeholder={t('至少 8 位，包含字母和数字')}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button className="w-full" onClick={handleSave} disabled={saving}>

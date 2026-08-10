@@ -79,11 +79,25 @@ export default function PartnerCoBuildPositionsPage() {
     }
   }
 
-  const schoolSelector = (
-    value: string,
-    onChange: (v: string) => void,
-    includeAll: boolean,
-  ) => (
+  // 学校授权资源：编辑前先创建编辑稿（draft 副本），编辑稿提交学校审批后覆盖原资源
+  const doEditSource = async (item: CoBuildPosition) => {
+    setActingId(item.id)
+    try {
+      const draft = await partnerCobuildPositionApi.editSource(item.id)
+      toast({ title: t('已创建编辑稿，编辑完成后提交学校审批') })
+      router.push(`/partner/co-build/positions/${draft.id}/edit`)
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: t('创建编辑稿失败'),
+        description: e.message,
+      })
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const schoolSelector = (value: string, onChange: (v: string) => void, includeAll: boolean) => (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-full sm:w-56">
         <SelectValue placeholder={t('选择合作学校')} />
@@ -113,7 +127,11 @@ export default function PartnerCoBuildPositionsPage() {
       filterItems={(items, search) =>
         items.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()))
       }
-      searchRight={schoolSelector(schoolFilter || 'all', (v) => setSchoolFilter(v === 'all' ? '' : v), true)}
+      searchRight={schoolSelector(
+        schoolFilter || 'all',
+        (v) => setSchoolFilter(v === 'all' ? '' : v),
+        true,
+      )}
       colSpan={5}
       emptyContent={
         activeSchools.length === 0 ? (
@@ -134,7 +152,11 @@ export default function PartnerCoBuildPositionsPage() {
               {t('暂无已确认合作的学校，请先在合作学校页确认合作。')}
             </p>
           ) : (
-            schoolSelector(item.schoolTenantId, (v) => setItem({ ...item, schoolTenantId: v }), false)
+            schoolSelector(
+              item.schoolTenantId,
+              (v) => setItem({ ...item, schoolTenantId: v }),
+              false,
+            )
           )}
           <p className="text-xs text-muted-foreground">
             {t('创建后将生成草稿「未命名岗位」，并跳转到编辑页完善内容。')}
@@ -160,19 +182,40 @@ export default function PartnerCoBuildPositionsPage() {
       )}
       renderTableRow={(p: CoBuildPosition, actions) => (
         <>
-          <TableCell className="font-medium">{p.name}</TableCell>
+          <TableCell className="font-medium">
+            <div className="flex items-center gap-2">
+              <span>{p.name}</span>
+              {p.sourceType !== 'enterprise' && (
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                  {t('学校授权')}
+                </span>
+              )}
+            </div>
+          </TableCell>
           <TableCell>{p.schoolName || '-'}</TableCell>
           <TableCell>
             <StatusBadge status={p.status} />
           </TableCell>
           <TableCell>{formatDateTime(p.updatedAt)}</TableCell>
           <TableRowActions>
-            <Link href={`/partner/co-build/positions/${p.id}/edit`}>
-              <Button variant="ghost" size="sm">
+            {p.sourceType === 'enterprise' ? (
+              <Link href={`/partner/co-build/positions/${p.id}/edit`}>
+                <Button variant="ghost" size="sm">
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {t('编辑')}
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={actingId === p.id}
+                onClick={() => doEditSource(p)}
+              >
                 <Pencil className="h-3.5 w-3.5 mr-1" />
-                {t('编辑')}
+                {actingId === p.id ? t('创建中...') : t('编辑')}
               </Button>
-            </Link>
+            )}
             {(p.status === 'draft' || p.status === 'rejected') && (
               <Button
                 variant="ghost"

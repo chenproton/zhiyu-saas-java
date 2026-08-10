@@ -27,7 +27,7 @@ func (s *PositionStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanPositionRows)
 }
 
-const positionSelectColumns = "cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, (SELECT COUNT(*) FROM position_ability_bindings pab WHERE pab.career_position_id = cp.id) AS ability_count, cp.created_at, cp.updated_at, cp.tenant_id, cp.source_type, cp.source_enterprise_id"
+const positionSelectColumns = "cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, (SELECT COUNT(*) FROM position_ability_bindings pab WHERE pab.career_position_id = cp.id) AS ability_count, cp.created_at, cp.updated_at, cp.tenant_id, cp.source_type, cp.source_enterprise_id, cp.source_resource_id"
 
 const positionListFrom = "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id"
 
@@ -572,7 +572,7 @@ func (s *PositionStore) fetchPosition(ctx context.Context, q Queryer, id string)
 			), '{}') AS collaborator_names,
 			COALESCE(fc.cnt, 0) AS favorite_count,
 			COALESCE(vc.cnt, 0) AS view_count,
-			cp.source_type, cp.source_enterprise_id,
+			cp.source_type, cp.source_enterprise_id, cp.source_resource_id,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp
 		LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id
@@ -582,7 +582,7 @@ func (s *PositionStore) fetchPosition(ctx context.Context, q Queryer, id string)
 		&pos.ID, &pos.TenantID, &batchID, &pos.Code, &pos.Name, &shortName, &industryID, &majorIDs, &majorNames, &pos.PositionType,
 		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
 		&pos.Version, &pos.Status, &pos.CreatedBy, &pos.CreatedByName, &collaborators, &pos.CollaboratorNames, &pos.FavoriteCount, &pos.ViewCount,
-		&pos.SourceType, &pos.SourceEnterpriseID,
+		&pos.SourceType, &pos.SourceEnterpriseID, &pos.SourceResourceID,
 		&pos.CreatedAt, &pos.UpdatedAt,
 	)
 	if err != nil {
@@ -613,7 +613,7 @@ func scanPositionRow(row interface{ Scan(...any) error }, extra ...any) (domain.
 		&pos.ID, &batchID, &pos.Code, &pos.Name, &shortName, &industryID, &majorIDs, &majorNames, &pos.PositionType,
 		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
 		&pos.Version, &pos.Status, &pos.CreatedBy, &pos.CreatedByName, &collaborators, &pos.CollaboratorNames, &pos.FavoriteCount, &pos.ViewCount, &pos.AbilityCount,
-		&pos.CreatedAt, &pos.UpdatedAt, &pos.TenantID, &pos.SourceType, &pos.SourceEnterpriseID,
+		&pos.CreatedAt, &pos.UpdatedAt, &pos.TenantID, &pos.SourceType, &pos.SourceEnterpriseID, &pos.SourceResourceID,
 	}, extra...)
 	if err := row.Scan(targets...); err != nil {
 		return pos, err
@@ -647,10 +647,13 @@ func ScanPositionRows(rows pgx.Rows) ([]domain.CareerPosition, error) {
 
 // ListBySourceEnterprise 企业共建岗位列表（来源企业视角，join tenants 出校名）。
 // schoolTenantID 非空时按学校过滤；按 updated_at 倒序，上限 200 条。
+// 含学校授权资源：本企业共建的 + 学校授权（grant）给本企业的岗位。
 func (s *PositionStore) ListBySourceEnterprise(ctx context.Context, enterpriseID string, schoolTenantID *string) ([]domain.PartnerCoBuildPosition, error) {
 	query := `SELECT ` + positionSelectColumns + `, t.name AS school_name
 		FROM ` + positionListFrom + ` JOIN tenants t ON t.id = cp.tenant_id
-		WHERE cp.source_enterprise_id = $1`
+		WHERE (cp.source_enterprise_id = $1
+			OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+				WHERE g.enterprise_id = $1 AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))`
 	args := []any{enterpriseID}
 	if schoolTenantID != nil && *schoolTenantID != "" {
 		query += ` AND cp.tenant_id = $2`
@@ -672,4 +675,22 @@ func (s *PositionStore) ListBySourceEnterprise(ctx context.Context, enterpriseID
 		items = append(items, domain.PartnerCoBuildPosition{CareerPosition: pos, SchoolName: schoolName})
 	}
 	return items, rows.Err()
+}
+
+// FindDraftBySource 查询本企业对某源资源尚未完结的编辑 draft（draft/pending/rejected）。
+func (s *PositionStore) FindDraftBySource(ctx context.Context, enterpriseID, sourceResourceID string) (*domain.CareerPosition, error) {
+	var id string
+	err := s.q.QueryRow(ctx, `
+		SELECT id FROM career_positions
+		WHERE source_enterprise_id = $1 AND source_resource_id = $2
+			AND status IN ('draft', 'pending', 'rejected')
+		LIMIT 1
+	`, enterpriseID, sourceResourceID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s.fetchPosition(ctx, s.q, id)
 }

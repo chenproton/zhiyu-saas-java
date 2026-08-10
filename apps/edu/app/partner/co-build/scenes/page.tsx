@@ -79,11 +79,25 @@ export default function PartnerCoBuildScenesPage() {
     }
   }
 
-  const schoolSelector = (
-    value: string,
-    onChange: (v: string) => void,
-    includeAll: boolean,
-  ) => (
+  // 学校授权资源：编辑前先创建编辑稿（draft 副本），编辑稿提交学校审批后覆盖原资源
+  const doEditSource = async (item: CoBuildScenario) => {
+    setActingId(item.id)
+    try {
+      const draft = await partnerCobuildScenarioApi.editSource(item.id)
+      toast({ title: t('已创建编辑稿，编辑完成后提交学校审批') })
+      router.push(`/partner/co-build/scenes/${draft.id}/edit`)
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: t('创建编辑稿失败'),
+        description: e.message,
+      })
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const schoolSelector = (value: string, onChange: (v: string) => void, includeAll: boolean) => (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-full sm:w-56">
         <SelectValue placeholder={t('选择合作学校')} />
@@ -113,7 +127,11 @@ export default function PartnerCoBuildScenesPage() {
       filterItems={(items, search) =>
         items.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
       }
-      searchRight={schoolSelector(schoolFilter || 'all', (v) => setSchoolFilter(v === 'all' ? '' : v), true)}
+      searchRight={schoolSelector(
+        schoolFilter || 'all',
+        (v) => setSchoolFilter(v === 'all' ? '' : v),
+        true,
+      )}
       colSpan={5}
       emptyContent={
         activeSchools.length === 0 ? (
@@ -134,7 +152,11 @@ export default function PartnerCoBuildScenesPage() {
               {t('暂无已确认合作的学校，请先在合作学校页确认合作。')}
             </p>
           ) : (
-            schoolSelector(item.schoolTenantId, (v) => setItem({ ...item, schoolTenantId: v }), false)
+            schoolSelector(
+              item.schoolTenantId,
+              (v) => setItem({ ...item, schoolTenantId: v }),
+              false,
+            )
           )}
           <p className="text-xs text-muted-foreground">
             {t('创建后将生成草稿「未命名场景」，并跳转到编辑页完善内容。')}
@@ -167,12 +189,24 @@ export default function PartnerCoBuildScenesPage() {
           </TableCell>
           <TableCell>{formatDateTime(s.updatedAt)}</TableCell>
           <TableRowActions>
-            <Link href={`/partner/co-build/scenes/${s.id}/edit`}>
-              <Button variant="ghost" size="sm">
+            {s.sourceType === 'enterprise' ? (
+              <Link href={`/partner/co-build/scenes/${s.id}/edit`}>
+                <Button variant="ghost" size="sm">
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {t('编辑')}
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={actingId === s.id}
+                onClick={() => doEditSource(s)}
+              >
                 <Pencil className="h-3.5 w-3.5 mr-1" />
-                {t('编辑')}
+                {actingId === s.id ? t('创建中...') : t('编辑')}
               </Button>
-            </Link>
+            )}
             {(s.status === 'draft' || s.status === 'rejected') && (
               <Button
                 variant="ghost"
