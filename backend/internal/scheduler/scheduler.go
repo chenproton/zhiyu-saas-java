@@ -2,9 +2,13 @@
 package scheduler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -73,7 +77,7 @@ func startJobRun(ctx context.Context, pool *pgxpool.Pool, jobName string) string
 }
 
 // finishJobRun 回填执行结果；retry 前的首次失败在日志中不可见（仅记录最终结果），
-// 重试语义由日志字段 status/error 体现。
+// 重试语义由日志字段 status/error 体现。最终失败时触发告警 webhook（如已配置）。
 func finishJobRun(ctx context.Context, pool *pgxpool.Pool, logID, jobName string, started time.Time, err error) {
 	if logID == "" {
 		return
@@ -91,6 +95,46 @@ func finishJobRun(ctx context.Context, pool *pgxpool.Pool, logID, jobName string
 	}
 	if err != nil {
 		slog.Error("定时任务最终失败", "job", jobName, "error", err, "elapsed", time.Since(started).String())
+		notifyAlert(jobName, err, started)
+	}
+}
+
+// alertWebhookURL 告警 webhook 出口（环境变量 ALERT_WEBHOOK_URL，可选）。
+// 失败时以 JSON POST 通知外部系统（企业微信/钉钉/自建告警网关等），
+// 通知失败仅记日志不影响任务主流程。
+var alertWebhookURL = os.Getenv("ALERT_WEBHOOK_URL")
+
+func notifyAlert(jobName string, err error, started time.Time) {
+	if alertWebhookURL == "" {
+		return
+	}
+	payload, merr := json.Marshal(map[string]any{
+		"level":     "error",
+		"type":      "cron_job_failed",
+		"job":       jobName,
+		"error":     err.Error(),
+		"startedAt": started.Format(time.RFC3339),
+	})
+	if merr != nil {
+		slog.Warn("定时任务告警 payload 序列化失败", "job", jobName, "error", merr)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, rerr := http.NewRequestWithContext(ctx, http.MethodPost, alertWebhookURL, bytes.NewReader(payload))
+	if rerr != nil {
+		slog.Warn("定时任务告警请求构造失败", "job", jobName, "error", rerr)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, herr := http.DefaultClient.Do(req)
+	if herr != nil {
+		slog.Warn("定时任务告警发送失败", "job", jobName, "error", herr)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		slog.Warn("定时任务告警被拒绝", "job", jobName, "status", resp.StatusCode)
 	}
 }
 
