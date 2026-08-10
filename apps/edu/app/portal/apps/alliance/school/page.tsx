@@ -44,6 +44,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
 
 interface Tenant {
   id: string
@@ -135,6 +136,7 @@ function IconInput({ icon: Icon, ...props }: { icon: any } & React.ComponentProp
 
 export default function AllianceSchoolPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
+  const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -474,20 +476,7 @@ export default function AllianceSchoolPage() {
               </Label>
               <div className="space-y-4">
                 <MultiSelect
-                  options={[
-                    '智能制造学院',
-                    '信息技术学院',
-                    '经济管理学院',
-                    '艺术设计学院',
-                    '新能源工程学院',
-                    '生物医药学院',
-                    '现代服务学院',
-                    '国际教育学院',
-                    '创新创业学院',
-                    '继续教育学院',
-                    '基础教育学院',
-                    '马克思主义学院',
-                  ]}
+                  options={secondaryCollegeOptions}
                   value={(formData as any).secondaryColleges || []}
                   onChange={(v) => setF('secondaryColleges' as any, v as any)}
                   placeholder={t('选择或维护二级学院（多选）')}
