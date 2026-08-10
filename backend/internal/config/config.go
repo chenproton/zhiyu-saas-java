@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	RedisURL    string
-	JWTSecret   string
-	Port        string
+	DatabaseURL  string
+	RedisURL     string
+	JWTSecret    string
+	Port         string
+	IP2RegionXDB string
 }
 
 func Load() (*Config, error) {
@@ -30,10 +31,11 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		DatabaseURL: dbURL,
-		RedisURL:    redisURL,
-		JWTSecret:   jwtSecret,
-		Port:        getEnv("PORT", "8080"),
+		DatabaseURL:  dbURL,
+		RedisURL:     redisURL,
+		JWTSecret:    jwtSecret,
+		Port:         getEnv("PORT", "8080"),
+		IP2RegionXDB: getEnv("IP2REGION_XDB", "/app/data/ip2region_v4.xdb"),
 	}, nil
 }
 

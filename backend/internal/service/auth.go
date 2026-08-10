@@ -5,13 +5,15 @@ import (
 	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // AuthService 认证业务编排。
 type AuthService struct {
 	*Service
-	st *store.Store
+	st  *store.Store
+	Geo *geo.Searcher // IP 归属地查询器（登录日志地点），nil 时地点留空
 }
 
 // NewAuthService 创建认证服务。
@@ -29,9 +31,13 @@ func (s *AuthService) UpdateLastLogin(ctx context.Context, userID string, t time
 	s.st.Auth().UpdateLastLogin(ctx, userID, t)
 }
 
-// RecordLoginLog 登录日志。
+// RecordLoginLog 登录日志（ip2region 解析 IP 归属地写入 location）。
 func (s *AuthService) RecordLoginLog(ctx context.Context, tenantID, userID, userName, ip, device, status string) {
-	s.st.Auth().RecordLoginLog(ctx, tenantID, userID, userName, ip, device, status)
+	location := ""
+	if s.Geo != nil {
+		location = s.Geo.Location(ip)
+	}
+	s.st.Auth().RecordLoginLog(ctx, tenantID, userID, userName, ip, location, device, status)
 }
 
 // GetUserByID 用户详情。

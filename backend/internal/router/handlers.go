@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -113,10 +114,11 @@ type Handlers struct {
 	tagHandler                    *handler.TagHandler
 }
 
-func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client) *Handlers {
+func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client, geo *geo.Searcher) *Handlers {
 	st := store.New(db)
 	svc := service.New(st)
 	authSvc := service.NewAuthService(svc)
+	authSvc.Geo = geo
 	positionSvc := service.NewPositionService(svc)
 	affairsPlanSvc := service.NewAffairsPlanService(svc)
 	portalSvc := service.NewPortalService(svc)

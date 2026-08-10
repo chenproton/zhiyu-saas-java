@@ -29,6 +29,9 @@ offline/
     ├── nginx / nginx-common
     ├── postgresql-client-16 / postgresql-client / libpq5
     └── iptables / nftables / gettext-base 等依赖（可全离线安装）
+└── ip2region_v4.xdb            # ip2region v2.2 IPv4 数据文件（必需，~11MB，登录日志 IP 归属地）
+                                # 下载: https://github.com/lionsoul2014/ip2region/raw/master/data/ip2region_v4.xdb
+                                # deploy.sh 构建后端镜像时自动打包进容器 /app/data/
 ```
 
 ## 使用方式

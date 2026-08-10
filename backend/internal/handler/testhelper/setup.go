@@ -81,7 +81,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	// 避免手工维护的路由副本与生产漂移（漏注册/中间件不一致导致的假 404/403）。
 	// redis 与 oplogBuffer 传 nil：cache.RateLimit/Cached 对 nil client 直通，
 	// OperationLog 对 nil buffer 退化为同步写库，均为生产已有行为。
-	h := router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil)
+	// geo 传 nil：登录日志地点留空，不依赖 ip2region 数据文件。
+	h := router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil, nil)
 	r := chi.NewRouter()
 	router.RegisterAPIRoutes(r, TestJWTSecret, pool, h, nil, nil)
 

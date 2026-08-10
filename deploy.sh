@@ -799,6 +799,12 @@ if $BUILD_BACKEND; then
   mkdir -p "$TMPCTX/migrations"
   rsync -a --delete "$BACKEND_DIR/migrations/" "$TMPCTX/migrations/"
   cp "$BACKEND_DIR/Dockerfile" "$TMPCTX/Dockerfile"
+  # ip2region 离线数据文件（IP 归属地查询，登录日志地点）
+  if [[ -f "$OFFLINE_DIR/ip2region_v4.xdb" ]]; then
+    cp "$OFFLINE_DIR/ip2region_v4.xdb" "$TMPCTX/ip2region_v4.xdb"
+  else
+    die "offline/ip2region_v4.xdb 缺失：请先下载 ip2region v2.2 IPv4 数据文件到 offline/ 目录"
+  fi
 
   # 本地已加载 alpine 镜像时跳过 apk add，避免离线环境联网失败
   DOCKER_BUILD_ARGS=()

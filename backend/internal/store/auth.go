@@ -82,11 +82,11 @@ func (s *AuthStore) UpdateLastLogin(ctx context.Context, userID string, t time.T
 }
 
 // RecordLoginLog 记录登录日志。
-func (s *AuthStore) RecordLoginLog(ctx context.Context, tenantID, userID, userName, ip, device, status string) {
+func (s *AuthStore) RecordLoginLog(ctx context.Context, tenantID, userID, userName, ip, location, device, status string) {
 	if _, err := s.q.Exec(ctx, `
-		INSERT INTO login_logs (tenant_id, user_id, user_name, ip, device, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, tenantID, userID, userName, ip, device, status); err != nil {
+		INSERT INTO login_logs (tenant_id, user_id, user_name, ip, location, device, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, tenantID, userID, userName, ip, location, device, status); err != nil {
 		slog.Warn("record login log failed", "userID", userID, "error", err)
 	}
 }

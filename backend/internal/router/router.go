@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
@@ -92,7 +93,7 @@ func (r *Router) Shutdown() {
 	r.handlers.authHandler.Shutdown()
 }
 
-func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) *Router {
+func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer, geo *geo.Searcher) *Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -128,7 +129,7 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 		r.Get("/api/v1/files/preview", fileHandler.Preview)
 	})
 
-	h := NewHandlers(db, jwtSecret, fileHandler, redisClient)
+	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))

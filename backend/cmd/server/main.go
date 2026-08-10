@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/config"
 	"github.com/zhiyu-saas/backend/internal/db"
+	"github.com/zhiyu-saas/backend/internal/geo"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/router"
 	"github.com/zhiyu-saas/backend/internal/scheduler"
@@ -49,7 +50,12 @@ func main() {
 	oplogBuffer := authmw.NewOpLogBuffer(database.Pool)
 	defer oplogBuffer.Shutdown()
 
-	r := router.New(database.Pool, cfg.JWTSecret, redisClient, oplogBuffer)
+	geoSearcher := geo.NewSearcher(cfg.IP2RegionXDB)
+	if geoSearcher == nil {
+		slog.Warn("IP 归属地查询未启用（IP2REGION_XDB 未配置或加载失败），登录日志地点将为空")
+	}
+
+	r := router.New(database.Pool, cfg.JWTSecret, redisClient, oplogBuffer, geoSearcher)
 	defer r.Shutdown()
 
 	sched := scheduler.Start(database.Pool)
