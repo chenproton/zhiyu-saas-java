@@ -93,7 +93,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     setLoading(true)
     try {
       const res = await scheduleApi.timetable(params)
-      setEntries(res.items)
+      setEntries(res.items ?? [])
       setVersion(res.version)
     } catch (err: any) {
       toast({

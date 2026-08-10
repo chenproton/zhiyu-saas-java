@@ -8,7 +8,8 @@ import { useT } from '@/lib/i18n/locale-provider'
 import type { PeriodSlot, ScheduleEntry } from '@/lib/types'
 
 /** 按周次过滤：startWeek <= week <= endWeek 且周次模式匹配 */
-function filterEntriesByWeek(entries: ScheduleEntry[], week?: number): ScheduleEntry[] {
+function filterEntriesByWeek(entries: ScheduleEntry[] | null | undefined, week?: number): ScheduleEntry[] {
+  if (!entries) return []
   if (!week) return entries
   return entries.filter((e) => {
     if (e.startWeek > week || e.endWeek < week) return false

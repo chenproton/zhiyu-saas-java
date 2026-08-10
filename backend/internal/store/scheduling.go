@@ -736,7 +736,7 @@ func (s *SchedulingStore) ListTimetableEntries(ctx context.Context, tenantID, te
 		return nil, err
 	}
 	defer rows.Close()
-	var items []domain.ScheduleEntry
+	items := make([]domain.ScheduleEntry, 0)
 	for rows.Next() {
 		var e domain.ScheduleEntry
 		var planEntryID, courseCode, teacherID2, venueID, scenarioID *string
