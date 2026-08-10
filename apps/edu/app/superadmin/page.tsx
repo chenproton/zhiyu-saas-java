@@ -48,6 +48,7 @@ import {
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { PaginationBar } from '@/components/shared/pagination-bar'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
@@ -63,6 +64,7 @@ import {
 } from '@/lib/theme-brand'
 
 const TENANTS_API = '/admin/tenants'
+const PAGE_SIZE = 20
 
 interface AdminTenant {
   id: string
@@ -109,6 +111,7 @@ export default function SuperAdminPage() {
 
   const [tenants, setTenants] = useState<AdminTenant[]>([])
   const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -336,22 +339,28 @@ export default function SuperAdminPage() {
     setLoading(true)
     setError(null)
     try {
-      const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : ''
-      const res = await adminFetch<ListResponse<AdminTenant>>(params)
+      const params = new URLSearchParams()
+      if (searchTerm) params.set('search', searchTerm)
+      params.set('limit', String(PAGE_SIZE))
+      params.set('offset', String((page - 1) * PAGE_SIZE))
+      const res = await adminFetch<ListResponse<AdminTenant>>(`?${params.toString()}`)
       setTenants(res.items)
       setTotal(res.total)
+      if (res.items.length === 0 && page > 1) {
+        setPage((p) => p - 1)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('加载租户列表失败'))
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, t])
+  }, [searchTerm, page, t])
 
   useEffect(() => {
     if (!authenticated) return
     const timer = setTimeout(() => fetchTenants(), 300)
     return () => clearTimeout(timer)
-  }, [searchTerm, authenticated, fetchTenants])
+  }, [searchTerm, page, authenticated, fetchTenants])
 
   const openAdminModal = (ten: AdminTenant) => {
     setAdminModalTenant(ten)
@@ -765,7 +774,10 @@ export default function SuperAdminPage() {
           <Input
             placeholder={t('搜索企业名称或标识...')}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setPage(1)
+            }}
             className="pl-9"
           />
         </div>
@@ -917,6 +929,12 @@ export default function SuperAdminPage() {
 
           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
             <span>{t('共 {total} 条记录', { total })}</span>
+            <PaginationBar
+              page={page}
+              totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+              onPageChange={setPage}
+              disabled={loading}
+            />
           </div>
         </>
       )}
