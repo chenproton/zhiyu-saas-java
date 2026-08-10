@@ -113,7 +113,7 @@ func (r *recordingRouter) Trace(pattern string, h http.HandlerFunc) {
 // 弱权限组可能顶替强权限组（曾导致 /files/sign-url 被 partner 组顶替）。
 func TestNoDuplicateRouteRegistration(t *testing.T) {
 	rec := newRecordingRouter(t, chi.NewRouter())
-	h := NewHandlers(nil, "test-secret", &handler.FileHandler{}, nil, nil)
+	h := NewHandlers(nil, "test-secret", &handler.FileHandler{}, nil, nil, "test-secret")
 	RegisterAPIRoutes(rec, "test-secret", nil, h, nil, nil)
 	if len(rec.dups) > 0 {
 		t.Errorf("检测到同 method+path 重复注册（chi 静默覆盖，弱权限组可顶替强权限组）：\n%s", strings.Join(rec.dups, "\n"))

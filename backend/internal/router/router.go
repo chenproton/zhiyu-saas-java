@@ -12,8 +12,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/handler"
-	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/metrics"
+	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type contentRoutes interface {
