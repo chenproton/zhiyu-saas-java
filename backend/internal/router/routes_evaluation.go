@@ -1,8 +1,11 @@
 package router
 
-import "github.com/go-chi/chi/v5"
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
 
-func registerEvaluationRoutes(r chi.Router, h *Handlers) {
+func registerEvaluationRoutes(r chi.Router, db *pgxpool.Pool, h *Handlers) {
 	registerContentRoutes(r, "/evaluation/question-banks", h.questionBankHandler)
 
 	r.Get("/evaluation/questions", h.questionHandler.List)
@@ -19,7 +22,7 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Delete("/evaluation/random-draw-questions/{id}", h.randomDrawQuestionHandler.Delete)
 
 	// 考试只读（List/Get）挂在 jobViewer 角色组（routes.go，含学生），此处仅注册写操作
-	registerContentWriteRoutes(r, "/evaluation/exams", h.examHandler)
+	registerContentWriteRoutes(r, "/evaluation/exams", "exams", db, h.examHandler)
 	r.Post("/evaluation/exams/{id}/questions", h.examHandler.AddQuestion)
 	r.Put("/evaluation/exams/{id}/questions/scores", h.examHandler.BulkUpdateScores)
 	r.Put("/evaluation/exams/{id}/questions/{questionId}", h.examHandler.UpdateQuestionScore)

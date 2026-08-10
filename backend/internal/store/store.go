@@ -679,9 +679,3 @@ func (s *Store) AIConfigs() *AIConfigStore {
 func (s *Store) Tags() *TagStore {
 	return s.tags
 }
-
-// WithTxRaw 开启独立事务并暴露 pgx.Tx（存量 import 代码过渡用；
-// 新代码应使用 WithTx + 领域 store 方法，不要直接使用本方法）。
-func (s *Store) WithTxRaw(ctx context.Context) (pgx.Tx, error) {
-	return s.Begin(ctx)
-}

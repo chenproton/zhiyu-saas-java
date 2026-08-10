@@ -37,11 +37,11 @@ func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	f := th.generateScenarioTemplate(ctx, tenantID)
 
 	if err := h.fillScenariosData(ctx, f, tenantID, ids); err != nil {
-		respondError(w, http.StatusInternalServerError, "填充export data失败")
+		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
-	writeExcel(w, f, "场景导出.xlsx")
+	writeExcel(w, r, f, "场景导出.xlsx")
 }
 
 func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *excelize.File, tenantID string, scenarioIDs []string) error {

@@ -1,11 +1,14 @@
 package router
 
-import "github.com/go-chi/chi/v5"
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
 
-func registerSceneRoutes(r chi.Router, h *Handlers) {
+func registerSceneRoutes(r chi.Router, db *pgxpool.Pool, h *Handlers) {
 	// 场景/任务/测评方法的只读接口挂在 jobViewer 角色组（routes.go，含学生），
 	// 供学生场景学习页使用，此处只注册写操作。
-	registerContentWriteRoutes(r, "/scene/scenarios", h.scenarioHandler)
+	registerContentWriteRoutes(r, "/scene/scenarios", "scenarios", db, h.scenarioHandler)
 	r.Post("/scene/scenarios/{id}/clone", h.scenarioCloneHandler.Clone)
 
 	r.Post("/scene/tasks", h.scenarioTaskHandler.Create)

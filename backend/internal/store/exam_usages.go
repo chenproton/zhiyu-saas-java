@@ -55,9 +55,9 @@ func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 }
 
 // Get 查询单个考试安排（查询前同步定时启停状态）。
-func (s *ExamUsageStore) Get(ctx context.Context, id string) (*domain.ExamUsage, error) {
+func (s *ExamUsageStore) Get(ctx context.Context, tenantID, id string) (*domain.ExamUsage, error) {
 	SyncScheduledExamUsageStatus(ctx, s.q, "", time.Now())
-	u, err := s.fetchExamUsage(ctx, id)
+	u, err := s.fetchExamUsage(ctx, tenantID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -126,12 +126,12 @@ func (s *ExamUsageStore) Create(ctx context.Context, p *ExamUsageCreateParams) (
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, p.TenantID, id)
 }
 
 // Update 更新考试安排。
-func (s *ExamUsageStore) Update(ctx context.Context, id string, p *ExamUsageCreateParams) (*domain.ExamUsage, error) {
-	if _, err := s.fetchExamUsage(ctx, id); err != nil {
+func (s *ExamUsageStore) Update(ctx context.Context, tenantID, id string, p *ExamUsageCreateParams) (*domain.ExamUsage, error) {
+	if _, err := s.fetchExamUsage(ctx, tenantID, id); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
@@ -141,15 +141,15 @@ func (s *ExamUsageStore) Update(ctx context.Context, id string, p *ExamUsageCrea
 			activation_mode = $8,
 			status = CASE WHEN $8::varchar = 'always' THEN 'published' ELSE status END,
 			updated_at = NOW()
-		WHERE id = $9
-	`, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.ActivationMode, id); err != nil {
+		WHERE id = $9 AND tenant_id = $10
+	`, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.ActivationMode, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, tenantID, id)
 }
 
 // Delete 删除考试安排。
-func (s *ExamUsageStore) Delete(ctx context.Context, id string) error {
+func (s *ExamUsageStore) Delete(ctx context.Context, tenantID, id string) error {
 	_, err := s.q.Exec(ctx, `DELETE FROM exam_usages WHERE id = $1`, id)
 	return err
 }
@@ -262,7 +262,7 @@ type ExamUsageCreateParams struct {
 	CreatorID      string
 }
 
-func (s *ExamUsageStore) fetchExamUsage(ctx context.Context, id string) (*domain.ExamUsage, error) {
+func (s *ExamUsageStore) fetchExamUsage(ctx context.Context, tenantID, id string) (*domain.ExamUsage, error) {
 	var u domain.ExamUsage
 	var description, targetType *string
 	var startTime, endTime *time.Time

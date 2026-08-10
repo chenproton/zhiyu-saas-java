@@ -37,11 +37,11 @@ func (h *ExamExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) 
 	f := th.generateExamTemplate(ctx, tenantID)
 
 	if err := h.fillExamsData(ctx, f, tenantID, ids); err != nil {
-		respondError(w, http.StatusInternalServerError, "填充export data失败")
+		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
-	writeExcel(w, f, "试卷导出.xlsx")
+	writeExcel(w, r, f, "试卷导出.xlsx")
 }
 
 func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File, tenantID string, examIDs []string) error {

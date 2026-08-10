@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/handler"
+	"github.com/zhiyu-saas/backend/internal/metrics"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -49,18 +50,23 @@ func registerContentRoutes(r chi.Router, base string, h contentRoutes) {
 
 // registerContentWriteRoutes 只注册内容资源的写操作路由，
 // 两个 GET（List/Get）由 registerContentReadRoutes 挂在更宽的角色组（如含学生的 jobViewer）。
-func registerContentWriteRoutes(r chi.Router, base string, h contentRoutes) {
-	r.Post(base, h.Create)
-	r.Put(base+"/{id}", h.Update)
-	r.Delete(base+"/{id}", h.Delete)
-	r.Post(base+"/{id}/submit", h.Submit)
-	r.Post(base+"/{id}/review", h.Review)
-	r.Post(base+"/{id}/publish", h.Publish)
-	r.Post(base+"/{id}/archive", h.Archive)
-	r.Post(base+"/{id}/unpublish", h.Unpublish)
-	r.Post(base+"/{id}/withdraw", h.Withdraw)
-	r.Post(base+"/{id}/save-draft", h.SaveDraft)
-	r.Post(base+"/{id}/invite", h.Invite)
+// 试点：写路由统一挂租户归属中间件（跨租户 {id} 请求在路由层 404），
+// 后续推广到全部 id 型资源路由后可收敛 handler 层手工归属校验。
+func registerContentWriteRoutes(r chi.Router, base, table string, db *pgxpool.Pool, h contentRoutes) {
+	r.Group(func(r chi.Router) {
+		r.Use(authmw.TenantOwnedContent(db, table, "id"))
+		r.Post(base, h.Create)
+		r.Put(base+"/{id}", h.Update)
+		r.Delete(base+"/{id}", h.Delete)
+		r.Post(base+"/{id}/submit", h.Submit)
+		r.Post(base+"/{id}/review", h.Review)
+		r.Post(base+"/{id}/publish", h.Publish)
+		r.Post(base+"/{id}/archive", h.Archive)
+		r.Post(base+"/{id}/unpublish", h.Unpublish)
+		r.Post(base+"/{id}/withdraw", h.Withdraw)
+		r.Post(base+"/{id}/save-draft", h.SaveDraft)
+		r.Post(base+"/{id}/invite", h.Invite)
+	})
 }
 
 func registerContentReadRoutes(r chi.Router, base string, h contentRoutes) {
@@ -103,6 +109,7 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	// 导致限流/操作日志的 IP 可被伪造绕过；RemoteAddr 保持为 TCP 连接真实地址
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(metrics.Middleware)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -128,11 +135,15 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	r.With(authmw.OptionalJWT(jwtSecret)).Get("/uploads/{tenantID}/{filename}", fileHandler.Serve)
 
 	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo, aiSecret)
+	metrics.RegisterPool(db)
 
 	// /health 保持进程存活探针（历史兼容），/health/ready 为就绪探针（DB+Redis）
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+	// /metrics 暴露 Prometheus 指标（请求量/耗时/5xx + DB 连接池）
+	r.Get("/metrics", metrics.Handler().ServeHTTP)
+
 	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()

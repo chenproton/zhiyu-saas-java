@@ -37,11 +37,11 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	f := th.generatePositionTemplate(ctx, tenantID)
 
 	if err := h.fillPositionsData(ctx, f, tenantID, ids); err != nil {
-		respondError(w, http.StatusInternalServerError, "填充export data失败")
+		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
-	writeExcel(w, f, "岗位导出.xlsx")
+	writeExcel(w, r, f, "岗位导出.xlsx")
 }
 
 func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *excelize.File, tenantID string, positionIDs []string) error {

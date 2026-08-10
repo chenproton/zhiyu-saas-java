@@ -90,8 +90,19 @@ type ListResponse[T any] struct {
 	Total int `json:"total"`
 }
 
+// errorResponse 统一错误响应体：code 供前端按错误类型分支，
+// error 保留人类可读消息（历史兼容）。
+type errorResponse struct {
+	Code    string `json:"code"`
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
+}
+
 func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, map[string]string{"error": message})
+	respondJSON(w, status, errorResponse{
+		Code:  codeFor(status),
+		Error: message,
+	})
 }
 
 // respondServerError 统一返回 500 并记录原始错误，便于线上排查。

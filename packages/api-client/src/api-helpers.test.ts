@@ -114,11 +114,11 @@ describe('request 401 处理', () => {
   it('非 401 错误仍走全局错误处理器', async () => {
     fakeWindow('/portal/workspace')
     fakeLocalStorage()
-    globalThis.fetch = vi.fn(async () => fakeResponse(403, { error: '权限不足' }))
+    globalThis.fetch = vi.fn(async () => fakeResponse(403, { error: '权限不足', code: 'forbidden' }))
     const toast = vi.fn()
     setGlobalErrorHandler(toast)
 
     await expect(request('/some/api')).rejects.toThrow('权限不足')
-    expect(toast).toHaveBeenCalledWith('权限不足', 403, '/some/api')
+    expect(toast).toHaveBeenCalledWith('权限不足', 403, '/some/api', 'forbidden')
   })
 })

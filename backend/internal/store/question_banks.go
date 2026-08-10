@@ -50,18 +50,6 @@ func (s *QuestionBankStore) List(ctx context.Context, p ListParams, cfg ListQuer
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanQuestionBankRows)
 }
 
-// Get 查询单个题库。
-func (s *QuestionBankStore) Get(ctx context.Context, id string) (*domain.QuestionBank, error) {
-	b, err := s.fetchBank(ctx, id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
 // GetScoped 查询单个题库（限定租户）。
 func (s *QuestionBankStore) GetScoped(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
 	b, err := s.fetchBankScoped(ctx, id, tenantID)
@@ -112,7 +100,7 @@ func (s *QuestionBankStore) Create(ctx context.Context, tenantID string, p *Ques
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.GetScoped(ctx, id, tenantID)
 }
 
 // Update 更新题库（保留原列语义：不含 version/owner_type，限定租户）。
@@ -151,7 +139,7 @@ func (s *QuestionBankStore) Update(ctx context.Context, id, tenantID string, p *
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.GetScoped(ctx, id, tenantID)
 }
 
 // Delete 删除题库（连带题目与知识点绑定，限定租户；事务内执行防孤儿数据）。

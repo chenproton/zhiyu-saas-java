@@ -88,27 +88,17 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 		return
 	}
 
-	tx, err := h.Store.WithTxRaw(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "导入失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	if _, err := tx.Exec(r.Context(), `DELETE FROM training_program_courses WHERE program_id = $1`, programID); err != nil {
-		respondError(w, http.StatusInternalServerError, "清理旧数据失败")
-		return
-	}
+	items := make([]store.ProgramCourseImportItem, len(courses))
 	for i, c := range courses {
-		if _, err := tx.Exec(r.Context(),
-			`INSERT INTO training_program_courses (id, program_id, name, credits, hours, semester, nature, position_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,1,$6,$7,$8,$9)`,
-			c.ID, programID, c.Name, c.Credits, c.Hours, c.Nature, c.PositionID, c.CourseID, i); err != nil {
-			respondError(w, http.StatusInternalServerError, "保存课程失败")
-			return
+		items[i] = store.ProgramCourseImportItem{
+			ID: c.ID, Name: c.Name, Credits: int(c.Credits), Hours: int(c.Hours),
+			Nature: c.Nature, PositionID: c.PositionID, CourseID: c.CourseID,
 		}
 	}
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交失败")
+	if err := h.Store.WithTx(r.Context(), func(txStore *store.Store) error {
+		return store.ReplaceProgramCourses(r.Context(), txStore.Q(), programID, items)
+	}); err != nil {
+		respondServerError(w, r, err, "导入失败")
 		return
 	}
 
@@ -242,5 +232,5 @@ func (h *ProgramCourseImportHandler) ServeTemplate(w http.ResponseWriter, r *htt
 	f.SetRowHeight(pcImportSheet, 2, 28)
 	f.SetPanes(pcImportSheet, &excelize.Panes{Freeze: true, YSplit: 2})
 
-	writeExcel(w, f, "方案课程批量导入模板.xlsx")
+	writeExcel(w, r, f, "方案课程批量导入模板.xlsx")
 }

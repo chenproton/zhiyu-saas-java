@@ -55,8 +55,8 @@ func (s *EvaluationService) ListExamUsages(ctx context.Context, p store.ListPara
 }
 
 // GetExamUsage 查询单个考试安排。
-func (s *EvaluationService) GetExamUsage(ctx context.Context, id string) (*domain.ExamUsage, error) {
-	return s.st.ExamUsages().Get(ctx, id)
+func (s *EvaluationService) GetExamUsage(ctx context.Context, tenantID, id string) (*domain.ExamUsage, error) {
+	return s.st.ExamUsages().Get(ctx, tenantID, id)
 }
 
 // CreateExamUsage 创建考试安排。
@@ -65,13 +65,13 @@ func (s *EvaluationService) CreateExamUsage(ctx context.Context, p *store.ExamUs
 }
 
 // UpdateExamUsage 更新考试安排。
-func (s *EvaluationService) UpdateExamUsage(ctx context.Context, id string, p *store.ExamUsageCreateParams) (*domain.ExamUsage, error) {
-	return s.st.ExamUsages().Update(ctx, id, p)
+func (s *EvaluationService) UpdateExamUsage(ctx context.Context, tenantID, id string, p *store.ExamUsageCreateParams) (*domain.ExamUsage, error) {
+	return s.st.ExamUsages().Update(ctx, tenantID, id, p)
 }
 
 // DeleteExamUsage 删除考试安排。
-func (s *EvaluationService) DeleteExamUsage(ctx context.Context, id string) error {
-	return s.st.ExamUsages().Delete(ctx, id)
+func (s *EvaluationService) DeleteExamUsage(ctx context.Context, tenantID, id string) error {
+	return s.st.ExamUsages().Delete(ctx, tenantID, id)
 }
 
 // SetExamUsageStatus 更新考试安排状态。

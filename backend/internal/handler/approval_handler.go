@@ -73,7 +73,11 @@ func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	record, err := h.Service.GetApproval(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	record, err := h.Service.GetApproval(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
@@ -125,7 +129,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	record, err := h.Service.GetApproval(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	record, err := h.Service.GetApproval(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
@@ -177,7 +185,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
-		record, err = h.Service.GetApproval(r.Context(), id)
+		record, err = h.Service.GetApproval(r.Context(), tenantID, id)
 		if err != nil {
 			respondServerError(w, r, err, "查询审批记录失败")
 			return
@@ -202,7 +210,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			respondServerError(w, r, err, "更新审批记录失败")
 			return
 		}
-		record, err = h.Service.GetApproval(r.Context(), id)
+		record, err = h.Service.GetApproval(r.Context(), tenantID, id)
 		if err != nil {
 			respondServerError(w, r, err, "查询审批记录失败")
 			return
@@ -231,7 +239,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	if syncStatus {
 		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
 	}
-	record, err = h.Service.GetApproval(r.Context(), id)
+	record, err = h.Service.GetApproval(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询审批记录失败")
 		return

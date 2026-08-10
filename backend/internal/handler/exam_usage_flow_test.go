@@ -144,7 +144,7 @@ func TestExamUsage_Flow(t *testing.T) {
 	}
 	st := store.New(env.DB)
 	evalSvc := service.NewEvaluationService(service.New(st))
-	usage, err := evalSvc.GetExamUsage(ctx, usageID)
+	usage, err := evalSvc.GetExamUsage(ctx, testhelper.TestTenantID, usageID)
 	if err != nil {
 		t.Fatalf("get usage: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestExamUsage_Flow(t *testing.T) {
 	}
 
 	// 4. 已发布考试可直接作答（状态保持 published）
-	usage, _ = evalSvc.GetExamUsage(ctx, usageID)
+	usage, _ = evalSvc.GetExamUsage(ctx, testhelper.TestTenantID, usageID)
 	if usage.Status != "published" {
 		t.Fatalf("发布后状态应为 published，实际 %s", usage.Status)
 	}
@@ -252,7 +252,7 @@ func TestExamUsage_Flow(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("结束考试应成功，实际 %d %s", w.Code, w.Body.String())
 	}
-	usage, _ = evalSvc.GetExamUsage(ctx, usageID)
+	usage, _ = evalSvc.GetExamUsage(ctx, testhelper.TestTenantID, usageID)
 	if usage.Status != "finished" {
 		t.Fatalf("结束后状态应为 finished，实际 %s", usage.Status)
 	}

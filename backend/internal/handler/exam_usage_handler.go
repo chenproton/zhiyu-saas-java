@@ -97,8 +97,8 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 			}
 			return u.ID, nil
 		},
-		UpdateFn: func(ctx context.Context, id, _ string, t *ExamUsageRequest) error {
-			_, err := h.Service.UpdateExamUsage(ctx, id, &store.ExamUsageCreateParams{
+		UpdateFn: func(ctx context.Context, id, tenantID string, t *ExamUsageRequest) error {
+			_, err := h.Service.UpdateExamUsage(ctx, tenantID, id, &store.ExamUsageCreateParams{
 				Name:           t.Name,
 				Description:    t.Description,
 				StartTime:      t.StartTime,
@@ -110,11 +110,11 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 			})
 			return err
 		},
-		DeleteFn: func(ctx context.Context, id, _ string) error {
-			return h.Service.DeleteExamUsage(ctx, id)
+		DeleteFn: func(ctx context.Context, id, tenantID string) error {
+			return h.Service.DeleteExamUsage(ctx, tenantID, id)
 		},
-		GetByIDFn: func(ctx context.Context, id, _ string) (domain.ExamUsage, error) {
-			u, err := h.Service.GetExamUsage(ctx, id)
+		GetByIDFn: func(ctx context.Context, id, tenantID string) (domain.ExamUsage, error) {
+			u, err := h.Service.GetExamUsage(ctx, tenantID, id)
 			if err != nil {
 				return domain.ExamUsage{}, err
 			}
@@ -148,7 +148,11 @@ func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // manualOnly 仅允许操作手动创建的考试安排；自动创建（task/node/course）不允许编辑/删除。
 func (h *ExamUsageHandler) manualOnly(w http.ResponseWriter, r *http.Request) bool {
-	usage, err := h.Service.GetExamUsage(r.Context(), chi.URLParam(r, "id"))
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return false
+	}
+	usage, err := h.Service.GetExamUsage(r.Context(), tenantID, chi.URLParam(r, "id"))
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return false
@@ -176,7 +180,11 @@ func isManualTargetType(t string) bool {
 // Finish 停止考试：已发布/进行中 -> 已结束（不可作答）。
 func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	usage, err := h.Service.GetExamUsage(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	usage, err := h.Service.GetExamUsage(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
@@ -192,7 +200,7 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "停止考试安排失败")
 		return
 	}
-	usage, err = h.Service.GetExamUsage(r.Context(), id)
+	usage, err = h.Service.GetExamUsage(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询考试安排失败")
 		return
@@ -203,7 +211,11 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 // Publish 开启考试安排：草稿 -> 已发布（学生可作答）。
 func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	usage, err := h.Service.GetExamUsage(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	usage, err := h.Service.GetExamUsage(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
@@ -219,7 +231,7 @@ func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "开启考试安排失败")
 		return
 	}
-	usage, err = h.Service.GetExamUsage(r.Context(), id)
+	usage, err = h.Service.GetExamUsage(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询考试安排失败")
 		return

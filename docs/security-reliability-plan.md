@@ -127,11 +127,18 @@
 | P0 默认拒绝兜底 | ✅ 已实施 | 路由审计测试 `router_audit_test.go`（chi.Walk 遍历中间件链，凡 `/api/v1` 非白名单路由必须命中角色/平台级授权中间件；白名单路由反向校验可达性）；`files/upload\|preview\|sign-url` 单点注册 + `RequireAnyPlatform(portal, partner)`（多平台接口重复注册会被 chi 静默覆盖，配平台矩阵回归测试）；`auth/select-tenant` 挂登录限流 |
 | P0 上传类型白名单 | ✅ 已实施 | 上传扩展名白名单与下载侧 `allowedServeExts` 对齐 + 服务端 sniff（HTML/JS/可执行内容与扩展名不符即拒绝） |
 | P1 统一脱敏组件 | ✅ 已实施 | `internal/mask` 包（手机号/身份证/邮箱/学号工号 + `User(manageUsers, u)` 入口），接入用户列表/详情（原 ad-hoc 身份证掩码移除） |
-| P1 store 层单条读写强制租户 | ✅ 首批完成 | users `Get/Update/Delete`、exams `Get/Update/Delete` 签名增加 tenantID，SQL 级 `AND tenant_id = $n`；调用点编译期强制（handler 统一 `requireTenant`/`tenantIDOf`）。其余实体按"分批"延续 |
+| P1 store 层单条读写强制租户 | ✅ 两批完成 | 首批：users/exams `Get/Update/Delete`；第二批：question_banks（删裸 `Get` 只留 `GetScoped`）、exam_usages、approvals、user_extension_fields 签名增加 tenantID，SQL 级 `AND tenant_id = $n`。**注意**：scenarios/positions/resource_library 等存在经联盟授权（grant）的合法跨租户读，不能简单强制租户，待 P3 授权感知中间件承接 |
 | P1 健康检查分层 | ✅ 已实施 | `/health`（存活，兼容历史）+ `/health/ready`（DB+Redis Ping，3s 超时，失败 503）；docker-compose healthcheck 切到 ready |
 | P1 限流扩展 | ✅ 已实施 | `cache.RateLimitByUser`（按用户限流，未登录退 IP）；导入/导出 10 次/分钟、上传 20 次/分钟 |
 | P0 前端配套 | ✅ 已实施 | 登录/选租户下发 `zhiyu_auth` HttpOnly cookie（Path=/uploads，`<img>`/zip 预览零改动通过认证）；资源预览弹窗对 kkFileView 先换取签名 URL |
-| P2 / P3 | ⏳ 未启动 | 按文档排期（任务执行记录、metrics、错误码、残留清理、租户校验中间件化等） |
+| P2 定时任务执行记录 | ✅ 已实施 | `job_run_logs` 表（migration 147）+ scheduler 统一 `runJob` runner（panic recover + 失败重试 1 次 + 执行记录落库，记录写失败不影响任务） |
+| P2 监控指标 | ✅ 已实施 | Prometheus client_golang（vendor 已固化）：`/metrics` 端点 + HTTP 请求数/耗时/状态（路由模式标签防高基数）+ DB 连接池 Total/Idle 指标；middleware 挂 router 根部 |
+| P2 统一错误码 | ✅ 已实施 | `error_codes.go` 常量表（bad_request/unauthorized/forbidden/not_found/conflict/too_many_requests/internal_error，预留 ai_not_configured/ai_upstream_error）；`respondError` 响应体扩展为 `{code, error}`（error 字段保持兼容）；前端 request 层透传 code，全局错误处理按 code 优先分支 |
+| P2 残留清理 | ✅ 已实施 | 20 处 500 绕过全部改走 `respondServerError`（原始 error 落日志）；5 个 import handler 全部从 `WithTxRaw` 迁回 `WithTx`（`WithTxRaw` 已删除）；`import_common.go` 拼 SQL（knowledge_points/resource_library/majors 查找创建）下沉 `store/imports.go`；affairs-config/schedule 导入 SQL 一并下沉 store（`ImportTerm/ImportVenue/ImportPeriodSlot/ReplaceProgramCourses/SchedulePlanEntry` 系列），handler 层不再拼 SQL |
+| P3 chi 静默覆盖防护 | ✅ 已实施 | `router_dup_test.go`：recordingRouter 代理拦截全部注册入口，同 method+pattern 重复注册即 fail（曾导致 `/files/sign-url` 被 partner 组顶替的同类问题不再复发） |
+| P3 租户校验中间件化试点 | ✅ 试点完成 | `middleware.TenantOwnedContent(db, table, idParam)`：路由声明资源表，携带 `{id}` 的请求在路由层校验租户归属，跨租户一律 404；试点挂载 exams/scenarios 写路由（`registerContentWriteRoutes` 统一包裹），验证后推广；授权感知（grant）场景随中间件演进 |
+| P3 业务权限声明化 | ⏳ 评估中 | 路由组（systemAdmin/businessUser/portalWorkspace/jobViewer）已构成声明层，17 处内联 `canManagePortal` 属更细粒度操作（联盟管理等），收敛方案待试点评估后随重构推进 |
+| ui-smoke 巡检脚本 | ✅ 已修复 | `clicker.mjs` maxForms 在声明前使用（TDZ）导致场景编辑页巡检误报，已调整声明顺序 |
 
 **部署注意（人工执行）**：`deploy.sh` 部署后需在服务停止写入窗口执行一次
 `DATABASE_URL=... UPLOAD_DIR=... ./scripts/migrate_uploads.sh` 归置存量文件，否则旧 `/uploads/<uuid>.<ext>` URL 将 404。

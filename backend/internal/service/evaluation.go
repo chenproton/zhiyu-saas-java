@@ -23,9 +23,9 @@ func (s *EvaluationService) ListQuestionBanks(ctx context.Context, p store.ListP
 	return s.st.QuestionBanks().List(ctx, p, cfg)
 }
 
-// GetQuestionBank 查询单个题库。
-func (s *EvaluationService) GetQuestionBank(ctx context.Context, id string) (*domain.QuestionBank, error) {
-	return s.st.QuestionBanks().Get(ctx, id)
+// GetQuestionBank 查询单个题库（租户限定）。
+func (s *EvaluationService) GetQuestionBank(ctx context.Context, tenantID, id string) (*domain.QuestionBank, error) {
+	return s.st.QuestionBanks().GetScoped(ctx, id, tenantID)
 }
 
 // GetQuestionBankInTenant 查询单个题库（租户限定）。

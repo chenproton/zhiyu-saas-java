@@ -20,7 +20,7 @@ func (s *EvaluationService) ListExamResults(ctx context.Context, p store.ListPar
 // SubmitExamResult 提交考试结果（评分编排：拉取题目→判分→写结果→同步 3 类评价，全部写在同一事务）。
 func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}, methodKey string) (*domain.ExamResult, error) {
 	// 窗口校验：未到开始时间 / 已过结束时间禁止提交（重复作答同样受限）
-	usage, err := s.st.ExamUsages().Get(ctx, usageID)
+	usage, err := s.st.ExamUsages().Get(ctx, tenantID, usageID)
 	if err != nil {
 		return nil, err
 	}

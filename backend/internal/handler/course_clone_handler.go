@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -23,7 +24,7 @@ func (h *CourseCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			slog.Error("[CloneCourse] panic recovered", "panic", rec, "stack", string(debug.Stack()))
-			respondError(w, http.StatusInternalServerError, "服务器内部错误")
+			respondServerError(w, r, fmt.Errorf("panic: %v", rec), "服务器内部错误")
 		}
 	}()
 

@@ -889,7 +889,7 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.DeleteSheet("Sheet1")
 	idx, _ := f.GetSheetIndex(mainSheet)
 	f.SetActiveSheet(idx)
-	writeExcel(w, f, "排课导入_"+term.Name+".xlsx")
+	writeExcel(w, r, f, "排课导入_"+term.Name+".xlsx")
 }
 
 // Timetable GET /affairs/schedules/timetable?termId=&classNodeId=&teacherId= — 班级/教师课表视图。

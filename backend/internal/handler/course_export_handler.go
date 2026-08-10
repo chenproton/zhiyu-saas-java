@@ -38,11 +38,11 @@ func (h *CourseExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request
 	f := th.generateSystemCourseTemplate(ctx, tenantID)
 
 	if err := h.fillCoursesData(ctx, f, tenantID, ids); err != nil {
-		respondError(w, http.StatusInternalServerError, "填充export data失败")
+		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
-	writeExcel(w, f, "体系课导出.xlsx")
+	writeExcel(w, r, f, "体系课导出.xlsx")
 }
 
 func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.File, tenantID string, courseIDs []string) error {

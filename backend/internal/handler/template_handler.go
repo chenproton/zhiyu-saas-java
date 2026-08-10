@@ -30,7 +30,7 @@ func (h *TemplateHandler) ServePositionTemplate(w http.ResponseWriter, r *http.R
 	ctx := r.Context()
 	h.queryDicts(ctx, tenantID) // preload dicts
 	f := h.generatePositionTemplate(ctx, tenantID)
-	writeExcel(w, f, "岗位批量导入模板.xlsx")
+	writeExcel(w, r, f, "岗位批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeScenarioTemplate(w http.ResponseWriter, r *http.Request) {
@@ -45,18 +45,18 @@ func (h *TemplateHandler) ServeScenarioTemplate(w http.ResponseWriter, r *http.R
 	}
 	ctx := r.Context()
 	f := h.generateScenarioTemplate(ctx, tenantID)
-	writeExcel(w, f, "场景批量导入模板.xlsx")
+	writeExcel(w, r, f, "场景批量导入模板.xlsx")
 }
 
-func writeExcel(w http.ResponseWriter, f *excelize.File, filename string) {
+func writeExcel(w http.ResponseWriter, r *http.Request, f *excelize.File, filename string) {
 	if f == nil {
-		respondError(w, http.StatusInternalServerError, "生成模板失败")
+		respondServerError(w, r, fmt.Errorf("模板文件为空"), "生成模板失败")
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	if err := f.Write(w); err != nil {
-		respondError(w, http.StatusInternalServerError, "写入文件失败")
+		respondServerError(w, r, err, "写入文件失败")
 	}
 }
 
@@ -480,7 +480,7 @@ func (h *TemplateHandler) ServeGranularCourseTemplate(w http.ResponseWriter, r *
 	}
 	ctx := r.Context()
 	f := h.generateGranularCourseTemplate(ctx, tenantID)
-	writeExcel(w, f, "颗粒课批量导入模板.xlsx")
+	writeExcel(w, r, f, "颗粒课批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *http.Request) {
@@ -495,7 +495,7 @@ func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *ht
 	}
 	ctx := r.Context()
 	f := h.generateSystemCourseTemplate(ctx, tenantID)
-	writeExcel(w, f, "体系课批量导入模板.xlsx")
+	writeExcel(w, r, f, "体系课批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tenantID string) *excelize.File {
@@ -710,7 +710,7 @@ func (h *TemplateHandler) ServeQuestionBankTemplate(w http.ResponseWriter, r *ht
 	}
 	ctx := r.Context()
 	f := h.generateQuestionBankTemplate(ctx, tenantID)
-	writeExcel(w, f, "题库批量导入模板.xlsx")
+	writeExcel(w, r, f, "题库批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeQuestionTemplate(w http.ResponseWriter, r *http.Request) {
@@ -730,7 +730,7 @@ func (h *TemplateHandler) ServeQuestionTemplate(w http.ResponseWriter, r *http.R
 	}
 	ctx := r.Context()
 	f := h.generateQuestionTemplate(ctx, tenantID, bankID)
-	writeExcel(w, f, "题目批量导入模板.xlsx")
+	writeExcel(w, r, f, "题目批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeExamTemplate(w http.ResponseWriter, r *http.Request) {
@@ -745,7 +745,7 @@ func (h *TemplateHandler) ServeExamTemplate(w http.ResponseWriter, r *http.Reque
 	}
 	ctx := r.Context()
 	f := h.generateExamTemplate(ctx, tenantID)
-	writeExcel(w, f, "试卷批量导入模板.xlsx")
+	writeExcel(w, r, f, "试卷批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tenantID string) *excelize.File {
@@ -929,7 +929,7 @@ func (h *TemplateHandler) ServeIndustryTemplate(w http.ResponseWriter, r *http.R
 	}
 	ctx := r.Context()
 	f := h.generateIndustryTemplate(ctx, tenantID)
-	writeExcel(w, f, "行业批量导入模板.xlsx")
+	writeExcel(w, r, f, "行业批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeMajorTemplate(w http.ResponseWriter, r *http.Request) {
@@ -944,7 +944,7 @@ func (h *TemplateHandler) ServeMajorTemplate(w http.ResponseWriter, r *http.Requ
 	}
 	ctx := r.Context()
 	f := h.generateMajorTemplate(ctx, tenantID)
-	writeExcel(w, f, "专业批量导入模板.xlsx")
+	writeExcel(w, r, f, "专业批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeOrganizationTemplate(w http.ResponseWriter, r *http.Request) {
@@ -959,7 +959,7 @@ func (h *TemplateHandler) ServeOrganizationTemplate(w http.ResponseWriter, r *ht
 	}
 	ctx := r.Context()
 	f := h.generateOrganizationTemplate(ctx, tenantID)
-	writeExcel(w, f, "组织架构批量导入模板.xlsx")
+	writeExcel(w, r, f, "组织架构批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeStudentTemplate(w http.ResponseWriter, r *http.Request) {
@@ -974,7 +974,7 @@ func (h *TemplateHandler) ServeStudentTemplate(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context()
 	f := h.generateStudentTemplate(ctx, tenantID)
-	writeExcel(w, f, "学生批量导入模板.xlsx")
+	writeExcel(w, r, f, "学生批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeTeacherTemplate(w http.ResponseWriter, r *http.Request) {
@@ -989,7 +989,7 @@ func (h *TemplateHandler) ServeTeacherTemplate(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context()
 	f := h.generateTeacherTemplate(ctx, tenantID)
-	writeExcel(w, f, "教师批量导入模板.xlsx")
+	writeExcel(w, r, f, "教师批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) generateIndustryTemplate(ctx context.Context, tenantID string) *excelize.File {
@@ -1276,7 +1276,7 @@ func (h *TemplateHandler) ServeProjectTemplate(w http.ResponseWriter, r *http.Re
 	}
 	ctx := r.Context()
 	f := h.generateProjectTemplate(ctx, tenantID)
-	writeExcel(w, f, "合作项目批量导入模板.xlsx")
+	writeExcel(w, r, f, "合作项目批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeAchievementTemplate(w http.ResponseWriter, r *http.Request) {
@@ -1291,7 +1291,7 @@ func (h *TemplateHandler) ServeAchievementTemplate(w http.ResponseWriter, r *htt
 	}
 	ctx := r.Context()
 	f := h.generateAchievementTemplate(ctx, tenantID)
-	writeExcel(w, f, "合作成果批量导入模板.xlsx")
+	writeExcel(w, r, f, "合作成果批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeAgreementTemplate(w http.ResponseWriter, r *http.Request) {
@@ -1306,7 +1306,7 @@ func (h *TemplateHandler) ServeAgreementTemplate(w http.ResponseWriter, r *http.
 	}
 	ctx := r.Context()
 	f := h.generateAgreementTemplate(ctx, tenantID)
-	writeExcel(w, f, "合作协议批量导入模板.xlsx")
+	writeExcel(w, r, f, "合作协议批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServePermissionTemplate(w http.ResponseWriter, r *http.Request) {
@@ -1321,7 +1321,7 @@ func (h *TemplateHandler) ServePermissionTemplate(w http.ResponseWriter, r *http
 	}
 	ctx := r.Context()
 	f := h.generatePermissionTemplate(ctx, tenantID)
-	writeExcel(w, f, "合作权限批量导入模板.xlsx")
+	writeExcel(w, r, f, "合作权限批量导入模板.xlsx")
 }
 
 func (h *TemplateHandler) ServeBrandTemplate(w http.ResponseWriter, r *http.Request) {
@@ -1336,7 +1336,7 @@ func (h *TemplateHandler) ServeBrandTemplate(w http.ResponseWriter, r *http.Requ
 	}
 	ctx := r.Context()
 	f := h.generateBrandTemplate(ctx, tenantID)
-	writeExcel(w, f, "品牌内容批量导入模板.xlsx")
+	writeExcel(w, r, f, "品牌内容批量导入模板.xlsx")
 }
 
 // ===== Alliance Template Generators =====
