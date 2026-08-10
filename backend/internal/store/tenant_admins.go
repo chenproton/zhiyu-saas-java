@@ -22,7 +22,7 @@ type TenantAdminItem struct {
 	LastLoginAt *time.Time `json:"lastLoginAt,omitempty"`
 }
 
-// TenantAdminStore 提供学校管理员（school_admin）的持久化访问。
+// TenantAdminStore 提供租户管理员（school_admin / enterprise_admin）的持久化访问。
 type TenantAdminStore struct {
 	q Queryer
 }
@@ -32,16 +32,16 @@ func NewTenantAdminStore(q Queryer) *TenantAdminStore {
 	return &TenantAdminStore{q: q}
 }
 
-// List 查询租户下全部学校管理员。
-func (s *TenantAdminStore) List(ctx context.Context, tenantID string) ([]TenantAdminItem, error) {
+// List 查询租户下指定角色的管理员（school_admin / enterprise_admin）。
+func (s *TenantAdminStore) List(ctx context.Context, tenantID, roleCode string) ([]TenantAdminItem, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT u.id, u.tenant_id, u.username, u.login_name, u.name, u.status, u.last_login_at, u.created_at, u.updated_at
 		FROM users u
 		JOIN user_roles ur ON ur.user_id = u.id
 		JOIN roles r ON r.id = ur.role_id
-		WHERE u.tenant_id = $1 AND r.code = 'school_admin'
+		WHERE u.tenant_id = $1 AND r.code = $2
 		ORDER BY u.created_at DESC
-	`, tenantID)
+	`, tenantID, roleCode)
 	if err != nil {
 		return nil, err
 	}
@@ -49,17 +49,17 @@ func (s *TenantAdminStore) List(ctx context.Context, tenantID string) ([]TenantA
 	return scanTenantAdmins(rows)
 }
 
-// Get 查询单个学校管理员。
-func (s *TenantAdminStore) Get(ctx context.Context, tenantID, adminID string) (*TenantAdminItem, error) {
-	item, err := s.fetchAdmin(ctx, tenantID, adminID)
+// Get 查询单个租户管理员（按角色）。
+func (s *TenantAdminStore) Get(ctx context.Context, tenantID, adminID, roleCode string) (*TenantAdminItem, error) {
+	item, err := s.fetchAdmin(ctx, tenantID, adminID, roleCode)
 	if err != nil {
 		return nil, err
 	}
 	return item, nil
 }
 
-// Create 在事务内创建学校管理员并绑定 school_admin 角色。
-func (s *TenantAdminStore) Create(ctx context.Context, tx Queryer, tenantID, username, name, plainPassword string) (*TenantAdminItem, error) {
+// Create 在事务内创建租户管理员并绑定指定角色（school_admin / enterprise_admin）。
+func (s *TenantAdminStore) Create(ctx context.Context, tx Queryer, tenantID, roleCode, role, platform, username, name, plainPassword string) (*TenantAdminItem, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -71,24 +71,24 @@ func (s *TenantAdminStore) Create(ctx context.Context, tx Queryer, tenantID, use
 		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
 			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL,
+		VALUES ($1, $2, NULL, NULL, NULL, $3, $4, $5, $6, $7, $8, NULL, NULL, NULL,
 			NULL, NULL, NULL, '{}', '{}', 'active')
-	`, adminID, tenantID, loginName, username, string(hash), name); err != nil {
+	`, adminID, tenantID, role, platform, loginName, username, string(hash), name); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_roles (id, user_id, role_id)
-		SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = 'school_admin' LIMIT 1
-	`, uuid.NewString(), adminID, tenantID); err != nil {
+		SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = $4 LIMIT 1
+	`, uuid.NewString(), adminID, tenantID, roleCode); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE roles SET user_count = user_count + 1
-		WHERE tenant_id = $1 AND code = 'school_admin'
-	`, tenantID); err != nil {
+		WHERE tenant_id = $1 AND code = $2
+	`, tenantID, roleCode); err != nil {
 		return nil, err
 	}
-	return s.fetchAdmin(ctx, tenantID, adminID)
+	return s.fetchAdmin(ctx, tenantID, adminID, roleCode)
 }
 
 // Update 更新管理员用户名与姓名。
@@ -137,7 +137,7 @@ func (s *TenantAdminStore) ResetPassword(ctx context.Context, adminID, plainPass
 	return err
 }
 
-func (s *TenantAdminStore) fetchAdmin(ctx context.Context, tenantID, adminID string) (*TenantAdminItem, error) {
+func (s *TenantAdminStore) fetchAdmin(ctx context.Context, tenantID, adminID, roleCode string) (*TenantAdminItem, error) {
 	var admin TenantAdminItem
 	var loginName *string
 	var lastLoginAt *time.Time
@@ -146,8 +146,8 @@ func (s *TenantAdminStore) fetchAdmin(ctx context.Context, tenantID, adminID str
 		FROM users u
 		JOIN user_roles ur ON ur.user_id = u.id
 		JOIN roles r ON r.id = ur.role_id
-		WHERE u.id = $1 AND u.tenant_id = $2 AND r.code = 'school_admin'
-	`, adminID, tenantID).Scan(
+		WHERE u.id = $1 AND u.tenant_id = $2 AND r.code = $3
+	`, adminID, tenantID, roleCode).Scan(
 		&admin.ID, &admin.TenantID, &admin.Username, &loginName, &admin.Name, &admin.Status, &lastLoginAt, &admin.CreatedAt, &admin.UpdatedAt,
 	)
 	if err != nil {

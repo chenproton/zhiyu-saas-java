@@ -46,7 +46,6 @@ import {
   Shield,
   Palette,
   Eye,
-  Building2,
 } from 'lucide-react'
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
@@ -156,6 +155,8 @@ export default function SuperAdminPage() {
 
   const [adminModalOpen, setAdminModalOpen] = useState(false)
   const [adminModalTenant, setAdminModalTenant] = useState<AdminTenant | null>(null)
+  // 管理员弹窗类型：school（/admins）/ enterprise（/enterprise-admins）
+  const [adminKind, setAdminKind] = useState<'school' | 'enterprise'>('school')
   const [admins, setAdmins] = useState<TenantAdmin[]>([])
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
@@ -198,6 +199,14 @@ export default function SuperAdminPage() {
   const [entUsername, setEntUsername] = useState('')
   const [entPassword, setEntPassword] = useState('')
 
+  // 企业租户表单（创建/编辑共用，对齐 /partner/login 注册字段）
+  const [entForm, setEntForm] = useState({
+    creditCode: '',
+    contactPerson: '',
+    contactPhone: '',
+    contactEmail: '',
+  })
+
   // 企业租户查看/编辑：企业主体信息
   const [viewTarget, setViewTarget] = useState<AdminTenant | null>(null)
   const [viewProfile, setViewProfile] = useState<AdminEnterpriseProfile | null>(null)
@@ -215,7 +224,6 @@ export default function SuperAdminPage() {
     contactEmail: '',
     enablePublic: false,
   })
-  const [profileSubmitting, setProfileSubmitting] = useState(false)
 
   const { toast } = useToast()
   const t = useT()
@@ -384,6 +392,7 @@ export default function SuperAdminPage() {
     })
     setEntUsername('')
     setEntPassword('')
+    setEntForm({ creditCode: '', contactPerson: '', contactPhone: '', contactEmail: '' })
   }
 
   const loadForm = (ten: AdminTenant) => {
@@ -448,19 +457,25 @@ export default function SuperAdminPage() {
     })()
   }, [authenticated, fetchTenants])
 
+  // 管理员弹窗 API 前缀：学校 /admins，企业 /enterprise-admins
+  const adminApiBase = (tenantId: string, kind: 'school' | 'enterprise' = adminKind) =>
+    kind === 'enterprise' ? `/${tenantId}/enterprise-admins` : `/${tenantId}/admins`
+
   const openAdminModal = (ten: AdminTenant) => {
+    const kind = ten.type === 'enterprise' ? 'enterprise' : 'school'
     setAdminModalTenant(ten)
+    setAdminKind(kind)
     setAdminModalOpen(true)
     setAdminInline(null)
     setAdminError(null)
-    fetchAdmins(ten.id)
+    fetchAdmins(ten.id, kind)
   }
 
-  const fetchAdmins = async (tenantId: string) => {
+  const fetchAdmins = async (tenantId: string, kind: 'school' | 'enterprise' = adminKind) => {
     setAdminLoading(true)
     setAdminError(null)
     try {
-      const res = await adminFetch<ListResponse<TenantAdmin>>(`/${tenantId}/admins`)
+      const res = await adminFetch<ListResponse<TenantAdmin>>(`${adminApiBase(tenantId, kind)}`)
       setAdmins(res.items)
     } catch (err) {
       setAdminError(err instanceof Error ? err.message : t('加载管理员列表失败'))
@@ -495,13 +510,13 @@ export default function SuperAdminPage() {
     setAdminError(null)
     try {
       if (adminInline.id) {
-        await adminFetch(`/${adminModalTenant.id}/admins/${adminInline.id}`, {
+        await adminFetch(`${adminApiBase(adminModalTenant.id)}/${adminInline.id}`, {
           method: 'PUT',
           body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
         toast({ title: t('保存成功') })
       } else {
-        const created = await adminFetch<TenantAdmin>(`/${adminModalTenant.id}/admins`, {
+        const created = await adminFetch<TenantAdmin>(`${adminApiBase(adminModalTenant.id)}`, {
           method: 'POST',
           body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
@@ -526,7 +541,7 @@ export default function SuperAdminPage() {
   const handleAdminDelete = async () => {
     if (!adminModalTenant || !adminDeleteTarget) return
     try {
-      await adminFetch(`/${adminModalTenant.id}/admins/${adminDeleteTarget.id}`, {
+      await adminFetch(`${adminApiBase(adminModalTenant.id)}/${adminDeleteTarget.id}`, {
         method: 'DELETE',
       })
       toast({ title: t('删除成功') })
@@ -568,10 +583,13 @@ export default function SuperAdminPage() {
     setPasswordSubmitting(true)
     setPasswordError(null)
     try {
-      await adminFetch(`/${passwordAdmin.tenantId}/admins/${passwordAdmin.id}/reset-password`, {
-        method: 'POST',
-        body: JSON.stringify({ password: newPassword }),
-      })
+      await adminFetch(
+        `${adminApiBase(passwordAdmin.tenantId)}/${passwordAdmin.id}/reset-password`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ password: newPassword }),
+        },
+      )
       toast({ title: t('修改成功') })
       setPasswordAdmin(null)
     } catch (err) {
@@ -674,6 +692,12 @@ export default function SuperAdminPage() {
         `/${ten.id}/enterprise`,
       )
       setViewProfile(res.enterprise)
+      setEntForm({
+        creditCode: res.enterprise.unifiedSocialCreditCode || '',
+        contactPerson: res.enterprise.contactPerson || '',
+        contactPhone: res.enterprise.contactPhone || '',
+        contactEmail: res.enterprise.contactEmail || '',
+      })
       setProfileForm({
         unifiedSocialCreditCode: res.enterprise.unifiedSocialCreditCode || '',
         contactPerson: res.enterprise.contactPerson || '',
@@ -699,7 +723,6 @@ export default function SuperAdminPage() {
   }
 
   const saveEnterpriseProfile = async (ten: AdminTenant) => {
-    setProfileSubmitting(true)
     try {
       await adminFetch(`/${ten.id}/enterprise`, {
         method: 'PUT',
@@ -713,8 +736,6 @@ export default function SuperAdminPage() {
         title: t('保存失败'),
         description: err instanceof Error ? err.message : t('未知错误'),
       })
-    } finally {
-      setProfileSubmitting(false)
     }
   }
 
@@ -737,19 +758,36 @@ export default function SuperAdminPage() {
     setError(null)
     try {
       if (editingTenant) {
-        await adminFetch(`/${editingTenant.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            name: formData.name,
-            contact: formData.contact || null,
-            phone: formData.phone || null,
-            domain: formData.domain || null,
-            enterpriseCode: formData.enterpriseCode || null,
-            address: formData.address || null,
-            description: formData.description || null,
-          }),
-        })
-        toast({ title: t('更新成功') })
+        if (editingTenant.type === 'enterprise') {
+          // 企业编辑：一次合并更新租户+企业主体（名称/状态/信用代码/联系人/电话/邮箱/展示开关）
+          await adminFetch(`/${editingTenant.id}/enterprise`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              name: formData.name,
+              unifiedSocialCreditCode: entForm.creditCode || null,
+              contactPerson: entForm.contactPerson || null,
+              contactPhone: entForm.contactPhone || null,
+              contactEmail: entForm.contactEmail || null,
+              enablePublic: profileForm.enablePublic,
+              status: formData.status,
+            }),
+          })
+          toast({ title: t('更新成功') })
+        } else {
+          await adminFetch(`/${editingTenant.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              name: formData.name,
+              contact: formData.contact || null,
+              phone: formData.phone || null,
+              domain: formData.domain || null,
+              enterpriseCode: formData.enterpriseCode || null,
+              address: formData.address || null,
+              description: formData.description || null,
+            }),
+          })
+          toast({ title: t('更新成功') })
+        }
       } else if (tenantTab === 'enterprise') {
         const created = await adminFetch<{
           tenant: AdminTenant
@@ -761,11 +799,10 @@ export default function SuperAdminPage() {
             type: 'enterprise',
             username: entUsername,
             password: entPassword,
-            contact: formData.contact || null,
-            phone: formData.phone || null,
-            enterpriseCode: formData.enterpriseCode || null,
-            address: formData.address || null,
-            description: formData.description || null,
+            contact: entForm.contactPerson || null,
+            phone: entForm.contactPhone || null,
+            contactEmail: entForm.contactEmail || null,
+            enterpriseCode: entForm.creditCode || null,
           }),
         })
         toast({
@@ -1037,7 +1074,7 @@ export default function SuperAdminPage() {
             cell: (ten) => ten.code,
           },
           {
-            header: t('企业名称'),
+            header: t('租户名称'),
             className: 'font-medium',
             cell: (ten) => ten.name,
           },
@@ -1064,6 +1101,15 @@ export default function SuperAdminPage() {
             className: 'text-right w-16',
             cell: (ten) => (
               <TableRowActions>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openAdminModal(ten)}
+                >
+                  <Users className="mr-1 h-3 w-3" />
+                  {t(ten.type === 'enterprise' ? '企业管理员配置' : '学校管理员配置')}
+                </Button>
                 {ten.type === 'enterprise' ? (
                   <Button
                     variant="ghost"
@@ -1075,17 +1121,6 @@ export default function SuperAdminPage() {
                     {t('查看')}
                   </Button>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => openAdminModal(ten)}
-                  >
-                    <Users className="mr-1 h-3 w-3" />
-                    {t('学校管理员配置')}
-                  </Button>
-                )}
-                {ten.type !== 'enterprise' && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1228,139 +1263,124 @@ export default function SuperAdminPage() {
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t('联系人')}</Label>
-                <Input
-                  placeholder={t('企业联系人姓名')}
-                  value={formData.contact}
-                  onChange={(e) => setFormData((p) => ({ ...p, contact: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('联系电话')}</Label>
-                <Input
-                  placeholder={t('联系电话')}
-                  value={formData.phone}
-                  onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t('绑定域名')}</Label>
-                <Input
-                  placeholder={t('如：xxx.edu.cn')}
-                  value={formData.domain}
-                  onChange={(e) => setFormData((p) => ({ ...p, domain: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('企业代码')}</Label>
-                <Input
-                  placeholder={t('统一社会信用代码')}
-                  value={formData.enterpriseCode}
-                  onChange={(e) => setFormData((p) => ({ ...p, enterpriseCode: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('企业地址')}</Label>
-              <Input
-                placeholder={t('企业详细地址')}
-                value={formData.address}
-                onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('企业简介')}</Label>
-              <Textarea
-                placeholder={t('企业简介描述')}
-                value={formData.description}
-                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-
-            {tenantTab === 'enterprise' && editingTenant && (
+            {tenantTab === 'school' && (
               <>
-                <div className="mt-2 flex items-center gap-2 rounded-lg border border-dashed p-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                    <div className="grid gap-2">
-                      <Label>{t('状态')}</Label>
-                      <Select
-                        value={formData.status}
-                        onValueChange={(v) =>
-                          setFormData((p) => ({ ...p, status: v as 'active' | 'inactive' }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">{t('启用')}</SelectItem>
-                          <SelectItem value="inactive">{t('停用')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>{t('联系人')}</Label>
+                    <Input
+                      placeholder={t('企业联系人姓名')}
+                      value={formData.contact}
+                      onChange={(e) => setFormData((p) => ({ ...p, contact: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>{t('联系电话')}</Label>
+                    <Input
+                      placeholder={t('联系电话')}
+                      value={formData.phone}
+                      onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                    />
                   </div>
                 </div>
-
-                <div className="mt-2 rounded-lg border border-gray-200 bg-slate-50/60 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">{t('企业主体信息')}</h3>
-                    <span className="text-xs text-muted-foreground">
-                      {t('信用代码/联系人/展示开关由企业侧维护，此处可代维护')}
-                    </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>{t('绑定域名')}</Label>
+                    <Input
+                      placeholder={t('如：xxx.edu.cn')}
+                      value={formData.domain}
+                      onChange={(e) => setFormData((p) => ({ ...p, domain: e.target.value }))}
+                    />
                   </div>
-                  <div className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label>{t('企业代码')}</Label>
+                    <Input
+                      placeholder={t('统一社会信用代码')}
+                      value={formData.enterpriseCode}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, enterpriseCode: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t('企业地址')}</Label>
+                  <Input
+                    placeholder={t('企业详细地址')}
+                    value={formData.address}
+                    onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t('企业简介')}</Label>
+                  <Textarea
+                    placeholder={t('企业简介描述')}
+                    value={formData.description}
+                    onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
+
+            {tenantTab === 'enterprise' && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>{t('统一社会信用代码')}</Label>
+                    <Input
+                      placeholder={t('如：91320594MA1P7XXXX1')}
+                      value={entForm.creditCode}
+                      onChange={(e) => setEntForm((p) => ({ ...p, creditCode: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>{t('联系人')}</Label>
+                    <Input
+                      placeholder={t('企业联系人姓名')}
+                      value={entForm.contactPerson}
+                      onChange={(e) => setEntForm((p) => ({ ...p, contactPerson: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>{t('手机号')}</Label>
+                    <Input
+                      placeholder={t('联系电话')}
+                      value={entForm.contactPhone}
+                      onChange={(e) => setEntForm((p) => ({ ...p, contactPhone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>{t('联系邮箱（选填）')}</Label>
+                    <Input
+                      type="email"
+                      placeholder={t('联系邮箱')}
+                      value={entForm.contactEmail}
+                      onChange={(e) => setEntForm((p) => ({ ...p, contactEmail: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                {editingTenant && (
+                  <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <Label>{t('统一社会信用代码')}</Label>
-                        <Input
-                          placeholder={t('统一社会信用代码')}
-                          value={profileForm.unifiedSocialCreditCode}
-                          onChange={(e) =>
-                            setProfileForm((p) => ({
-                              ...p,
-                              unifiedSocialCreditCode: e.target.value,
-                            }))
+                        <Label>{t('状态')}</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(v) =>
+                            setFormData((p) => ({ ...p, status: v as 'active' | 'inactive' }))
                           }
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>{t('联系人')}</Label>
-                        <Input
-                          placeholder={t('企业联系人姓名')}
-                          value={profileForm.contactPerson}
-                          onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, contactPerson: e.target.value }))
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>{t('联系电话')}</Label>
-                        <Input
-                          placeholder={t('联系电话')}
-                          value={profileForm.contactPhone}
-                          onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, contactPhone: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>{t('联系邮箱')}</Label>
-                        <Input
-                          type="email"
-                          placeholder={t('联系邮箱')}
-                          value={profileForm.contactEmail}
-                          onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, contactEmail: e.target.value }))
-                          }
-                        />
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">{t('启用')}</SelectItem>
+                            <SelectItem value="inactive">{t('停用')}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1370,24 +1390,8 @@ export default function SuperAdminPage() {
                       />
                       <Label>{t('企业愿意在联盟前台对外展示')}</Label>
                     </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => {
-                      if (editingTenant) void saveEnterpriseProfile(editingTenant)
-                    }}
-                    disabled={profileSubmitting || viewLoading}
-                  >
-                    {profileSubmitting ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Building2 className="h-4 w-4 mr-1" />
-                    )}
-                    {t('保存企业主体信息')}
-                  </Button>
-                </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -1708,10 +1712,17 @@ export default function SuperAdminPage() {
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex-row items-center justify-between">
             <div>
-              <DialogTitle>{t('学校管理员配置')}</DialogTitle>
+              <DialogTitle>
+                {t(adminKind === 'enterprise' ? '企业管理员配置' : '学校管理员配置')}
+              </DialogTitle>
               <DialogDescription>
                 {adminModalTenant
-                  ? t('管理租户「{name}」的学校管理员账号', { name: adminModalTenant.name })
+                  ? t(
+                      adminKind === 'enterprise'
+                        ? '管理租户「{name}」的企业管理员账号（可登录企业服务台）'
+                        : '管理租户「{name}」的学校管理员账号',
+                      { name: adminModalTenant.name },
+                    )
                   : ''}
               </DialogDescription>
             </div>
@@ -1901,7 +1912,7 @@ export default function SuperAdminPage() {
                             colSpan={4}
                             className="text-center text-sm text-muted-foreground py-8"
                           >
-                            {t('暂无学校管理员')}
+                            {t(adminKind === 'enterprise' ? '暂无企业管理员' : '暂无学校管理员')}
                           </TableCell>
                         </TableRow>
                       )}

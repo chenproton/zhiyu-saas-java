@@ -30,6 +30,7 @@ type CreateTenantRequest struct {
 	EnterpriseCode *string `json:"enterpriseCode"`
 	Contact        *string `json:"contact"`
 	Phone          *string `json:"phone"`
+	ContactEmail   *string `json:"contactEmail"`
 	Address        *string `json:"address"`
 	Description    *string `json:"description"`
 }
@@ -362,6 +363,7 @@ func (h *TenantHandler) adminCreateEnterprise(w http.ResponseWriter, r *http.Req
 		UnifiedSocialCreditCode: strValue(req.EnterpriseCode),
 		ContactPerson:           strValue(req.Contact),
 		ContactPhone:            strValue(req.Phone),
+		ContactEmail:            strValue(req.ContactEmail),
 	})
 	if err != nil {
 		switch {
@@ -411,7 +413,8 @@ func (h *TenantHandler) AdminGetEnterprise(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, http.StatusOK, map[string]interface{}{"tenant": tenant, "enterprise": profile})
 }
 
-// AdminUpdateEnterprise 超管编辑企业租户主体信息（信用代码/联系人/电话/邮箱/展示开关）。
+// AdminUpdateEnterprise 超管编辑企业租户：企业主体字段（名称/信用代码/联系人/电话/邮箱/展示开关）
+// 与租户字段（名称/联系人/电话/企业代码/状态）一次合并更新，两侧保持同步。
 func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "id")
 	tenant, err := h.Service.Get(r.Context(), tenantID)
@@ -436,6 +439,10 @@ func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Req
 	}
 
 	// 部分更新兜底：未携带字段保留原值
+	name := existing.Name
+	if req.Name != "" {
+		name = req.Name
+	}
 	creditCode := store.StrPtrIfNonEmpty(req.UnifiedSocialCreditCode)
 	if creditCode == nil {
 		creditCode = existing.UnifiedSocialCreditCode
@@ -457,16 +464,58 @@ func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Req
 		enablePublic = *req.EnablePublic
 	}
 
+	// 1. 企业主体更新
 	if _, err := h.PartnerService.UpdateProfile(r.Context(), tenantID, &store.AllianceEnterpriseProfileUpdateParams{
-		Name:                    existing.Name,
+		Name:                    name,
 		UnifiedSocialCreditCode: creditCode,
 		ContactPerson:           contactPerson,
 		ContactPhone:            contactPhone,
 		ContactEmail:            contactEmail,
 		EnablePublic:            enablePublic,
 	}); err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "企业名称已被注册")
+			return
+		}
 		respondServerError(w, r, err, "更新企业信息失败")
 		return
+	}
+
+	// 2. 租户同步（名称/联系人/电话/企业代码与主体一致，其余字段保持原值）
+	if err := h.Service.Update(r.Context(), tenantID, &store.TenantUpdateParams{
+		Name:              name,
+		LogoURL:           tenant.LogoURL,
+		Domain:            tenant.Domain,
+		EnterpriseCode:    creditCode,
+		Contact:           contactPerson,
+		Phone:             contactPhone,
+		Address:           tenant.Address,
+		Description:       tenant.Description,
+		ShortName:         tenant.ShortName,
+		SchoolType:        tenant.SchoolType,
+		Province:          tenant.Province,
+		City:              tenant.City,
+		Website:           tenant.Website,
+		ContactPhone:      tenant.ContactPhone,
+		ScaleData:         tenant.ScaleData,
+		SecondaryColleges: tenant.SecondaryColleges,
+		EducationLevel:    tenant.EducationLevel,
+		EducationNature:   tenant.EducationNature,
+	}); err != nil {
+		respondServerError(w, r, err, "更新企业租户失败")
+		return
+	}
+
+	// 3. 状态（可独立变更）
+	if req.Status != "" {
+		if req.Status != string(domain.TenantStatusActive) && req.Status != string(domain.TenantStatusInactive) {
+			respondError(w, http.StatusBadRequest, "无效状态")
+			return
+		}
+		if err := h.Service.UpdateStatus(r.Context(), tenantID, domain.TenantStatus(req.Status)); err != nil {
+			respondServerError(w, r, err, "更新状态失败")
+			return
+		}
 	}
 
 	updated, err := h.PartnerService.GetProfile(r.Context(), tenantID)
@@ -477,13 +526,16 @@ func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Req
 	respondJSON(w, http.StatusOK, updated)
 }
 
-// adminEnterpriseUpdateRequest 超管编辑企业主体信息请求。
+// adminEnterpriseUpdateRequest 超管编辑企业租户请求（名称/信用代码/联系人/电话/邮箱/展示开关/状态，
+// 与租户字段合并同步；未携带字段保留原值）。
 type adminEnterpriseUpdateRequest struct {
+	Name                    string `json:"name"`
 	UnifiedSocialCreditCode string `json:"unifiedSocialCreditCode"`
 	ContactPerson           string `json:"contactPerson"`
 	ContactPhone            string `json:"contactPhone"`
 	ContactEmail            string `json:"contactEmail"`
 	EnablePublic            *bool  `json:"enablePublic"`
+	Status                  string `json:"status"`
 }
 
 func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
@@ -579,27 +631,50 @@ func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id, "deleted": "true"})
 }
 
-// CreateTenantAdminRequest is used by the superadmin console to add a school admin.
+// CreateTenantAdminRequest is used by the superadmin console to add a tenant admin.
 type CreateTenantAdminRequest struct {
 	Username string `json:"username"`
 	Name     string `json:"name"`
 }
 
-// UpdateTenantAdminRequest is used by the superadmin console to edit a school admin.
+// UpdateTenantAdminRequest is used by the superadmin console to edit a tenant admin.
 type UpdateTenantAdminRequest struct {
 	Username string `json:"username"`
 	Name     string `json:"name"`
 }
 
-// AdminListAdmins lists all school_admin users for a tenant.
-func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) {
+// adminKindSpec 租户管理员类型定义（学校/企业共用一套管理流程，仅角色与平台不同）。
+type adminKindSpec struct {
+	roleCode string
+	role     string
+	platform string
+	// enterprise 时创建走 partner 全局用户名查重（CreateEnterpriseAdmin）。
+	enterprise bool
+}
+
+var (
+	schoolAdminSpec = adminKindSpec{
+		roleCode: domain.RoleSchoolAdmin,
+		role:     string(domain.UserRoleSchool),
+		platform: string(domain.UserPlatformPortal),
+	}
+	enterpriseAdminSpec = adminKindSpec{
+		roleCode:   domain.RoleEnterpriseAdmin,
+		role:       string(domain.UserRoleEnterprise),
+		platform:   string(domain.UserPlatformPartner),
+		enterprise: true,
+	}
+)
+
+// adminListAdmins 列出租户下指定角色管理员。
+func (h *TenantHandler) adminListAdmins(w http.ResponseWriter, r *http.Request, spec adminKindSpec) {
 	tenantID := chi.URLParam(r, "tenantId")
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
-	items, err := h.AdminService.List(r.Context(), tenantID)
+	items, err := h.AdminService.List(r.Context(), tenantID, spec.roleCode)
 	if err != nil {
 		respondServerError(w, r, err, "查询管理员失败")
 		return
@@ -607,8 +682,8 @@ func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items, "total": len(items)})
 }
 
-// AdminCreateAdmin creates a new school admin for a tenant with a random password.
-func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request) {
+// adminCreateAdmin 创建租户管理员（随机密码，仅创建时返回一次）。
+func (h *TenantHandler) adminCreateAdmin(w http.ResponseWriter, r *http.Request, spec adminKindSpec) {
 	tenantID := chi.URLParam(r, "tenantId")
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "租户不存在")
@@ -624,13 +699,23 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	admin, plainPassword, err := h.AdminService.Create(r.Context(), tenantID, req.Username, req.Name)
+	var admin *store.TenantAdminItem
+	var plainPassword string
+	var err error
+	if spec.enterprise {
+		admin, plainPassword, err = h.AdminService.CreateEnterpriseAdmin(r.Context(), tenantID, req.Username, req.Name)
+	} else {
+		admin, plainPassword, err = h.AdminService.Create(r.Context(), tenantID, spec.roleCode, spec.role, spec.platform, req.Username, req.Name)
+	}
 	if err != nil {
-		if isUniqueViolation(err) {
+		switch {
+		case errors.Is(err, store.ErrPartnerUsernameExists):
+			respondError(w, http.StatusConflict, "用户名已被注册")
+		case isUniqueViolation(err):
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
-			return
+		default:
+			respondServerError(w, r, err, "创建管理员失败")
 		}
-		respondServerError(w, r, err, "创建管理员失败")
 		return
 	}
 
@@ -638,8 +723,8 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusCreated, admin)
 }
 
-// AdminUpdateAdmin updates a school admin's username and name.
-func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request) {
+// adminUpdateAdmin 更新租户管理员用户名与姓名。
+func (h *TenantHandler) adminUpdateAdmin(w http.ResponseWriter, r *http.Request, spec adminKindSpec) {
 	tenantID := chi.URLParam(r, "tenantId")
 	adminID := chi.URLParam(r, "id")
 
@@ -647,7 +732,7 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
-	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID); err != nil {
+	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID, spec.roleCode); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -671,7 +756,7 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	updated, err2 := h.AdminService.Get(r.Context(), tenantID, adminID)
+	updated, err2 := h.AdminService.Get(r.Context(), tenantID, adminID, spec.roleCode)
 	if err2 != nil {
 		respondServerError(w, r, err2, "获取更新后的管理员失败")
 		return
@@ -679,8 +764,8 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, updated)
 }
 
-// AdminDeleteAdmin deletes a school admin user.
-func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request) {
+// adminDeleteAdmin 删除租户管理员。
+func (h *TenantHandler) adminDeleteAdmin(w http.ResponseWriter, r *http.Request, spec adminKindSpec) {
 	tenantID := chi.URLParam(r, "tenantId")
 	adminID := chi.URLParam(r, "id")
 
@@ -688,7 +773,7 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
-	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID); err != nil {
+	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID, spec.roleCode); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -700,8 +785,8 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "deleted": "true"})
 }
 
-// AdminResetPassword sets a school admin's password to the given plaintext password.
-func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Request) {
+// adminResetPassword 重置租户管理员密码为指定明文。
+func (h *TenantHandler) adminResetPassword(w http.ResponseWriter, r *http.Request, spec adminKindSpec) {
 	tenantID := chi.URLParam(r, "tenantId")
 	adminID := chi.URLParam(r, "id")
 
@@ -709,7 +794,7 @@ func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
-	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID); err != nil {
+	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID, spec.roleCode); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -730,6 +815,60 @@ func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "updated": "true"})
 }
 
+// ===== 超管控制台：学校管理员（/admin/tenants/{tenantId}/admins） =====
+
+// AdminListAdmins lists all school_admin users for a tenant.
+func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) {
+	h.adminListAdmins(w, r, schoolAdminSpec)
+}
+
+// AdminCreateAdmin creates a new school admin for a tenant with a random password.
+func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request) {
+	h.adminCreateAdmin(w, r, schoolAdminSpec)
+}
+
+// AdminUpdateAdmin updates a school admin's username and name.
+func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request) {
+	h.adminUpdateAdmin(w, r, schoolAdminSpec)
+}
+
+// AdminDeleteAdmin deletes a school admin user.
+func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request) {
+	h.adminDeleteAdmin(w, r, schoolAdminSpec)
+}
+
+// AdminResetPassword sets a school admin's password to the given plaintext password.
+func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Request) {
+	h.adminResetPassword(w, r, schoolAdminSpec)
+}
+
+// ===== 超管控制台：企业管理员（/admin/tenants/{tenantId}/enterprise-admins） =====
+
+// AdminListEnterpriseAdmins lists all enterprise_admin users for an enterprise tenant.
+func (h *TenantHandler) AdminListEnterpriseAdmins(w http.ResponseWriter, r *http.Request) {
+	h.adminListAdmins(w, r, enterpriseAdminSpec)
+}
+
+// AdminCreateEnterpriseAdmin creates a new enterprise admin for a tenant with a random password.
+func (h *TenantHandler) AdminCreateEnterpriseAdmin(w http.ResponseWriter, r *http.Request) {
+	h.adminCreateAdmin(w, r, enterpriseAdminSpec)
+}
+
+// AdminUpdateEnterpriseAdmin updates an enterprise admin's username and name.
+func (h *TenantHandler) AdminUpdateEnterpriseAdmin(w http.ResponseWriter, r *http.Request) {
+	h.adminUpdateAdmin(w, r, enterpriseAdminSpec)
+}
+
+// AdminDeleteEnterpriseAdmin deletes an enterprise admin user.
+func (h *TenantHandler) AdminDeleteEnterpriseAdmin(w http.ResponseWriter, r *http.Request) {
+	h.adminDeleteAdmin(w, r, enterpriseAdminSpec)
+}
+
+// AdminResetEnterpriseAdminPassword sets an enterprise admin's password to the given plaintext password.
+func (h *TenantHandler) AdminResetEnterpriseAdminPassword(w http.ResponseWriter, r *http.Request) {
+	h.adminResetPassword(w, r, enterpriseAdminSpec)
+}
+
 // ListSchoolAdmins lists all school_admin users for the current tenant.
 func (h *TenantHandler) ListSchoolAdmins(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
@@ -737,7 +876,7 @@ func (h *TenantHandler) ListSchoolAdmins(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	items, err := h.AdminService.List(r.Context(), tenantID)
+	items, err := h.AdminService.List(r.Context(), tenantID, schoolAdminSpec.roleCode)
 	if err != nil {
 		respondServerError(w, r, err, "查询管理员失败")
 		return
@@ -761,7 +900,7 @@ func (h *TenantHandler) CreateSchoolAdmin(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	admin, plainPassword, err := h.AdminService.Create(r.Context(), tenantID, req.Username, req.Name)
+	admin, plainPassword, err := h.AdminService.Create(r.Context(), tenantID, schoolAdminSpec.roleCode, schoolAdminSpec.role, schoolAdminSpec.platform, req.Username, req.Name)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
@@ -783,7 +922,7 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 	adminID := chi.URLParam(r, "id")
 
-	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID); err != nil {
+	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID, schoolAdminSpec.roleCode); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -807,7 +946,7 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	updated, err := h.AdminService.Get(r.Context(), tenantID, adminID)
+	updated, err := h.AdminService.Get(r.Context(), tenantID, adminID, schoolAdminSpec.roleCode)
 	if err != nil {
 		respondServerError(w, r, err, "查询学校管理员失败")
 		return
@@ -823,7 +962,7 @@ func (h *TenantHandler) DeleteSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 	adminID := chi.URLParam(r, "id")
 
-	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID); err != nil {
+	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID, schoolAdminSpec.roleCode); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -843,7 +982,7 @@ func (h *TenantHandler) ResetSchoolAdminPassword(w http.ResponseWriter, r *http.
 	}
 	adminID := chi.URLParam(r, "id")
 
-	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID); err != nil {
+	if _, err := h.AdminService.Get(r.Context(), tenantID, adminID, schoolAdminSpec.roleCode); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}

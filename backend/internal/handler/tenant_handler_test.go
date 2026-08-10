@@ -567,3 +567,225 @@ func TestAdmin_CreateEnterpriseTenant(t *testing.T) {
 		}
 	})
 }
+
+// TestAdmin_EnterpriseAdminCRUD 超管企业管理员配置：列表（含注册时的初始管理员）/
+// 新增（随机密码，可登录 partner）/编辑/重置密码/删除。
+func TestAdmin_EnterpriseAdminCRUD(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := uuid.NewString()[:8]
+	enterpriseName := "超管管理员企业-" + suffix
+	username := "super_ent_adm_" + suffix
+
+	// 先创建企业租户（自带 1 个企业管理员）
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
+		"name":     enterpriseName,
+		"type":     "enterprise",
+		"username": username,
+		"password": "abc12345",
+	}, env.SaasAdminToken)
+	if wc.Code != http.StatusCreated {
+		t.Fatalf("create enterprise tenant: %d %s", wc.Code, testhelper.ErrMsg(wc))
+	}
+	created, _ := testhelper.Unmarshal[createTenantResp](wc)
+	tenantID := created.Tenant.ID
+	defer cleanupEnterpriseTenant(env, tenantID)
+
+	t.Run("list includes initial admin", func(t *testing.T) {
+		w := env.DoWithToken("GET", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins", nil, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		list, _ := testhelper.Unmarshal[tenantAdminListResp](w)
+		if list.Total != 1 {
+			t.Fatalf("expected 1 initial admin, got %d", list.Total)
+		}
+		if list.Items[0].Username != username {
+			t.Fatalf("expected initial admin %s, got %s", username, list.Items[0].Username)
+		}
+	})
+
+	var newAdmin tenantAdminResp
+	t.Run("create enterprise admin", func(t *testing.T) {
+		w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins", map[string]string{
+			"username": "ent_admin_extra_" + suffix,
+			"name":     "企业管理员B",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		newAdmin, _ = testhelper.Unmarshal[tenantAdminResp](w)
+		if newAdmin.NewPassword == "" {
+			t.Fatalf("expected initial password")
+		}
+		// 绑定 enterprise_admin 角色
+		var roleCode string
+		if err := env.DB.QueryRow(ctx, `
+			SELECT r.code FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1
+		`, newAdmin.ID).Scan(&roleCode); err != nil {
+			t.Fatalf("query role: %v", err)
+		}
+		if roleCode != "enterprise_admin" {
+			t.Fatalf("expected enterprise_admin role, got %s", roleCode)
+		}
+		// 平台应为 partner
+		var platform string
+		if err := env.DB.QueryRow(ctx, `SELECT platform FROM users WHERE id = $1`, newAdmin.ID).Scan(&platform); err != nil {
+			t.Fatalf("query platform: %v", err)
+		}
+		if platform != "partner" {
+			t.Fatalf("expected partner platform, got %s", platform)
+		}
+	})
+
+	t.Run("new admin can login on partner platform", func(t *testing.T) {
+		w := env.DoNoAuth("POST", "/api/v1/auth/partner/login", map[string]string{
+			"username": newAdmin.Username,
+			"password": newAdmin.NewPassword,
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("duplicate username conflict (partner global)", func(t *testing.T) {
+		// 先在另一个企业租户注册同名用户
+		w2 := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
+			"name":     "另一家企业-" + suffix,
+			"type":     "enterprise",
+			"username": "other_ent_" + suffix,
+			"password": "abc12345",
+		}, env.SaasAdminToken)
+		other, _ := testhelper.Unmarshal[createTenantResp](w2)
+		defer cleanupEnterpriseTenant(env, other.Tenant.ID)
+
+		w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins", map[string]string{
+			"username": "other_ent_" + suffix,
+			"name":     "重复用户名",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusConflict {
+			t.Fatalf("expected 409, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("update enterprise admin", func(t *testing.T) {
+		w := env.DoWithToken("PUT", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins/"+newAdmin.ID, map[string]string{
+			"username": "ent_admin_renamed_" + suffix,
+			"name":     "企业管理员B改",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		updated, _ := testhelper.Unmarshal[tenantAdminResp](w)
+		if updated.Username != "ent_admin_renamed_"+suffix {
+			t.Fatalf("expected renamed username, got %s", updated.Username)
+		}
+	})
+
+	t.Run("reset enterprise admin password", func(t *testing.T) {
+		w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins/"+newAdmin.ID+"/reset-password", map[string]string{
+			"password": "newpass123",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		wl := env.DoNoAuth("POST", "/api/v1/auth/partner/login", map[string]string{
+			"username": "ent_admin_renamed_" + suffix,
+			"password": "newpass123",
+		})
+		if wl.Code != http.StatusOK {
+			t.Fatalf("login with new password failed: %d %s", wl.Code, testhelper.ErrMsg(wl))
+		}
+	})
+
+	t.Run("delete enterprise admin", func(t *testing.T) {
+		w := env.DoWithToken("DELETE", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins/"+newAdmin.ID, nil, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		wl := env.DoWithToken("GET", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins", nil, env.SaasAdminToken)
+		list, _ := testhelper.Unmarshal[tenantAdminListResp](wl)
+		if list.Total != 1 {
+			t.Fatalf("expected 1 admin after delete, got %d", list.Total)
+		}
+	})
+}
+
+// TestAdmin_UpdateEnterpriseSynced 企业编辑合并更新：名称/状态/信用代码/联系人
+// 同时同步到租户与企业主体。
+func TestAdmin_UpdateEnterpriseSynced(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := uuid.NewString()[:8]
+	wc := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
+		"name":           "同步更新企业-" + suffix,
+		"type":           "enterprise",
+		"username":       "sync_ent_" + suffix,
+		"password":       "abc12345",
+		"enterpriseCode": "91320000" + suffix,
+		"contact":        "王五",
+		"phone":          "13700000000",
+	}, env.SaasAdminToken)
+	if wc.Code != http.StatusCreated {
+		t.Fatalf("create enterprise tenant: %d %s", wc.Code, testhelper.ErrMsg(wc))
+	}
+	created, _ := testhelper.Unmarshal[createTenantResp](wc)
+	tenantID := created.Tenant.ID
+	defer cleanupEnterpriseTenant(env, tenantID)
+
+	t.Run("merged update syncs tenant and profile", func(t *testing.T) {
+		newName := "同步更新企业改名-" + suffix
+		w := env.DoWithToken("PUT", "/api/v1/admin/tenants/"+tenantID+"/enterprise", map[string]interface{}{
+			"name":                    newName,
+			"unifiedSocialCreditCode": "91329999" + suffix,
+			"contactPerson":           "赵六",
+			"contactPhone":            "13600000000",
+			"contactEmail":            "sync@example.com",
+			"enablePublic":            true,
+			"status":                  "inactive",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+
+		// 租户同步
+		var tenantName, contact, phone, enterpriseCode, status string
+		if err := env.DB.QueryRow(ctx, `
+			SELECT name, COALESCE(contact, ''), COALESCE(phone, ''), COALESCE(enterprise_code, ''), status
+			FROM tenants WHERE id = $1
+		`, tenantID).Scan(&tenantName, &contact, &phone, &enterpriseCode, &status); err != nil {
+			t.Fatalf("query tenant: %v", err)
+		}
+		if tenantName != newName {
+			t.Fatalf("tenant name not synced: %s", tenantName)
+		}
+		if contact != "赵六" || phone != "13600000000" {
+			t.Fatalf("tenant contact not synced: %s/%s", contact, phone)
+		}
+		if enterpriseCode != "91329999"+suffix {
+			t.Fatalf("tenant enterprise_code not synced: %s", enterpriseCode)
+		}
+		if status != "inactive" {
+			t.Fatalf("tenant status not synced: %s", status)
+		}
+
+		// 企业主体同步
+		var profileName, creditCode, person, email string
+		if err := env.DB.QueryRow(ctx, `
+			SELECT name, COALESCE(unified_social_credit_code, ''), COALESCE(contact_person, ''), COALESCE(contact_email, '')
+			FROM partner_enterprises WHERE tenant_id = $1
+		`, tenantID).Scan(&profileName, &creditCode, &person, &email); err != nil {
+			t.Fatalf("query profile: %v", err)
+		}
+		if profileName != newName {
+			t.Fatalf("profile name not synced: %s", profileName)
+		}
+		if creditCode != "91329999"+suffix || person != "赵六" || email != "sync@example.com" {
+			t.Fatalf("profile fields not synced: %s/%s/%s", creditCode, person, email)
+		}
+	})
+}

@@ -4139,5 +4139,9 @@
   "请输入联系人姓名": "Enter contact name",
   "请输入手机号": "Enter phone number",
   "请输入联系邮箱": "Enter contact email",
-  "租户「{name}」与企业主体信息": "Tenant \"{name}\" and enterprise profile"
+  "租户「{name}」与企业主体信息": "Tenant \"{name}\" and enterprise profile",
+  "租户名称": "Tenant name",
+  "企业管理员配置": "Enterprise Admin Config",
+  "管理租户「{name}」的企业管理员账号（可登录企业服务台）": "Manage enterprise admin accounts of tenant \"{name}\" (can sign in to the enterprise console)",
+  "暂无企业管理员": "No enterprise admins"
 }

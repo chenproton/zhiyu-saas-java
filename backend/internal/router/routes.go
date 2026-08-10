@@ -283,6 +283,11 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 	r.Put("/admin/tenants/{tenantId}/admins/{id}", h.tenantHandler.AdminUpdateAdmin)
 	r.Delete("/admin/tenants/{tenantId}/admins/{id}", h.tenantHandler.AdminDeleteAdmin)
 	r.Post("/admin/tenants/{tenantId}/admins/{id}/reset-password", h.tenantHandler.AdminResetPassword)
+	r.Get("/admin/tenants/{tenantId}/enterprise-admins", h.tenantHandler.AdminListEnterpriseAdmins)
+	r.Post("/admin/tenants/{tenantId}/enterprise-admins", h.tenantHandler.AdminCreateEnterpriseAdmin)
+	r.Put("/admin/tenants/{tenantId}/enterprise-admins/{id}", h.tenantHandler.AdminUpdateEnterpriseAdmin)
+	r.Delete("/admin/tenants/{tenantId}/enterprise-admins/{id}", h.tenantHandler.AdminDeleteEnterpriseAdmin)
+	r.Post("/admin/tenants/{tenantId}/enterprise-admins/{id}/reset-password", h.tenantHandler.AdminResetEnterpriseAdminPassword)
 
 	r.Get("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminGet)
 	r.Put("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminUpdate)

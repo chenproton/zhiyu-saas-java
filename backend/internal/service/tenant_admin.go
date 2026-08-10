@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-// TenantAdminService 学校管理员业务编排。
+// TenantAdminService 租户管理员（学校/企业）业务编排。
 type TenantAdminService struct {
 	*Service
 	st *store.Store
@@ -17,25 +18,26 @@ func NewTenantAdminService(s *Service) *TenantAdminService {
 	return &TenantAdminService{Service: s, st: s.Store()}
 }
 
-// List 查询租户管理员列表。
-func (s *TenantAdminService) List(ctx context.Context, tenantID string) ([]store.TenantAdminItem, error) {
-	return s.st.TenantAdmins().List(ctx, tenantID)
+// List 查询租户管理员列表（roleCode: school_admin / enterprise_admin）。
+func (s *TenantAdminService) List(ctx context.Context, tenantID, roleCode string) ([]store.TenantAdminItem, error) {
+	return s.st.TenantAdmins().List(ctx, tenantID, roleCode)
 }
 
 // Get 查询单个管理员。
-func (s *TenantAdminService) Get(ctx context.Context, tenantID, adminID string) (*store.TenantAdminItem, error) {
-	return s.st.TenantAdmins().Get(ctx, tenantID, adminID)
+func (s *TenantAdminService) Get(ctx context.Context, tenantID, adminID, roleCode string) (*store.TenantAdminItem, error) {
+	return s.st.TenantAdmins().Get(ctx, tenantID, adminID, roleCode)
 }
 
-// Create 在事务内创建管理员，返回明文密码（仅创建时返回一次）。
-func (s *TenantAdminService) Create(ctx context.Context, tenantID, username, name string) (*store.TenantAdminItem, string, error) {
+// Create 在事务内创建租户管理员，返回明文密码（仅创建时返回一次）。
+// roleCode 决定绑定角色；role/platform 为用户基础字段（school/portal 或 enterprise/partner）。
+func (s *TenantAdminService) Create(ctx context.Context, tenantID, roleCode, role, platform, username, name string) (*store.TenantAdminItem, string, error) {
 	plain, err := store.GenerateSecurePassword(12)
 	if err != nil {
 		return nil, "", err
 	}
 	var admin *store.TenantAdminItem
 	err = s.WithTx(ctx, func(txStore *store.Store) error {
-		a, err := txStore.TenantAdmins().Create(ctx, txStore.Q(), tenantID, username, name, plain)
+		a, err := txStore.TenantAdmins().Create(ctx, txStore.Q(), tenantID, roleCode, role, platform, username, name, plain)
 		if err != nil {
 			return err
 		}
@@ -46,6 +48,19 @@ func (s *TenantAdminService) Create(ctx context.Context, tenantID, username, nam
 		return nil, "", err
 	}
 	return admin, plain, nil
+}
+
+// CreateEnterpriseAdmin 创建企业管理员：partner 平台用户名全局唯一（应用层前置校验），
+// 绑定 enterprise_admin 角色（platform=partner）。
+func (s *TenantAdminService) CreateEnterpriseAdmin(ctx context.Context, tenantID, username, name string) (*store.TenantAdminItem, string, error) {
+	exists, err := s.st.Partner().PartnerUsernameExists(ctx, username)
+	if err != nil {
+		return nil, "", err
+	}
+	if exists {
+		return nil, "", store.ErrPartnerUsernameExists
+	}
+	return s.Create(ctx, tenantID, domain.RoleEnterpriseAdmin, string(domain.UserRoleEnterprise), string(domain.UserPlatformPartner), username, name)
 }
 
 // Update 更新管理员信息。
