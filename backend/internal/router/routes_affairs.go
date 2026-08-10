@@ -58,7 +58,6 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	// 排课 Excel 导入（对齐 registerImportExportRoutes 风格）
 	r.Post("/import/schedules/excel", h.scheduleImportHandler.ImportExcel)
 	r.Post("/import/schedules/preview", h.scheduleImportHandler.PreviewExcel)
-	r.Get("/templates/schedules", h.scheduleImportHandler.ServeTemplate)
 
 	// 方案课程批量导入
 	r.Post("/import/program-courses/excel", h.programCourseImportHandler.ImportExcel)
