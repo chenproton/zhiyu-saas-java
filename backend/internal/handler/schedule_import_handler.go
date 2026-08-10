@@ -160,6 +160,16 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		return result
 	}
 
+	if len(rows) == 0 {
+		slog.Warn("排课导入调试: 课程列表 Sheet 无任何行")
+	}
+	for di, drow := range rows {
+		if di > 6 {
+			break
+		}
+		slog.Warn("排课导入调试: 课程列表行", "index", di, "len", len(drow), "cells", drow)
+	}
+
 	// 收集有排课信息的行
 	type rowData struct {
 		courseName, entryType           string
