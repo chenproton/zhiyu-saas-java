@@ -3,7 +3,6 @@ package cache
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type KeyFunc func(r *http.Request) string
@@ -100,6 +100,24 @@ func clientIP(r *http.Request) string {
 }
 
 func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.Handler) http.Handler {
+	return rateLimitWithKey(client, limit, window, func(r *http.Request) string {
+		return "zhiyu:ratelimit:" + clientIP(r)
+	})
+}
+
+// RateLimitByUser 按登录用户限流（未登录退回 IP 维度），
+// 用于导入/导出/上传等对"单用户资源消耗"更敏感的接口。
+func RateLimitByUser(client *redis.Client, limit int, window time.Duration) func(http.Handler) http.Handler {
+	return rateLimitWithKey(client, limit, window, func(r *http.Request) string {
+		uid := middleware.CurrentUser(r)
+		if uid != nil && uid.UserID != "" {
+			return "zhiyu:ratelimit:user:" + uid.UserID
+		}
+		return "zhiyu:ratelimit:" + clientIP(r)
+	})
+}
+
+func rateLimitWithKey(client *redis.Client, limit int, window time.Duration, keyOf func(r *http.Request) string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if client == nil {
@@ -107,7 +125,7 @@ func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.
 				return
 			}
 
-			key := fmt.Sprintf("zhiyu:ratelimit:%s", clientIP(r))
+			key := keyOf(r)
 			ctx := r.Context()
 
 			current, err := client.Incr(ctx, key).Result()
@@ -116,7 +134,7 @@ func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.
 				return
 			}
 			if current == 1 {
-				// 设置过期失败时回滚，避免 key 永久存在导致该 IP 被永久限流
+				// 设置过期失败时回滚，避免 key 永久存在导致该用户被永久限流
 				if err := client.Expire(ctx, key, window).Err(); err != nil {
 					client.Del(ctx, key)
 				}

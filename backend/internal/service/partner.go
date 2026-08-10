@@ -287,8 +287,8 @@ func (s *PartnerService) GetMyExpert(ctx context.Context, tenantID, userID strin
 }
 
 // ChangeMyPassword 修改本人密码（先校验旧密码，与登录同用 bcrypt 比对）。
-func (s *PartnerService) ChangeMyPassword(ctx context.Context, userID, oldPassword, newPassword string) error {
-	user, err := s.st.Users().Get(ctx, userID)
+func (s *PartnerService) ChangeMyPassword(ctx context.Context, tenantID, userID, oldPassword, newPassword string) error {
+	user, err := s.st.Users().Get(ctx, tenantID, userID)
 	if err != nil {
 		return err
 	}

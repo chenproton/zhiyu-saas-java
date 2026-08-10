@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/mask"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -116,7 +117,7 @@ func (h *UserManagementHandler) UpdateMe(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := h.Service.Get(r.Context(), claims.UserID)
+	user, err := h.Service.Get(r.Context(), tenantIDOf(claims), claims.UserID)
 	if err != nil {
 		respondServerError(w, r, err, "更新后查询用户失败")
 		return
@@ -165,9 +166,11 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询用户列表失败")
 		return
 	}
-	// 批量场景裁剪身份证/OAuth 敏感字段，避免教师翻页拉取全租户敏感信息
+	// 批量场景脱敏：教师等业务角色翻页拉取全租户用户时，
+	// 手机号/邮箱/身份证/学号工号统一掩码；OAuth 凭据一律不下发
+	manageUsers := canManageUsers(r)
 	for i := range items {
-		items[i].IDCard = nil
+		mask.User(manageUsers, &items[i])
 		items[i].Oauth = nil
 	}
 	respondJSON(w, http.StatusOK, ListResponse[domain.User]{Items: items, Total: total})
@@ -175,7 +178,11 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	user, err := h.Service.Get(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	user, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -184,19 +191,10 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.PasswordHash = ""
-	// 详情保留身份证供编辑回显，OAuth 凭据不随详情下发
+	// 详情保留脱敏后的敏感字段供编辑回显，OAuth 凭据不随详情下发
 	user.Oauth = nil
-	// 敏感信息脱敏：仅系统管理角色可见完整身份证号
-	if !canManageUsers(r) && user.IDCard != nil && *user.IDCard != "" {
-		runes := []rune(*user.IDCard)
-		if len(runes) <= 6 {
-			masked := "******"
-			user.IDCard = &masked
-		} else {
-			masked := string(runes[:3]) + "********" + string(runes[len(runes)-3:])
-			user.IDCard = &masked
-		}
-	}
+	// 敏感信息脱敏：仅系统管理角色可见完整手机号/身份证/学号工号
+	mask.User(canManageUsers(r), user)
 	respondJSON(w, http.StatusOK, user)
 }
 
@@ -270,7 +268,11 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	oldUser, err := h.Service.Get(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	oldUser, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -326,7 +328,7 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Service.Get(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询用户失败")
 		return
@@ -342,7 +344,11 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.Service.Get(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	user, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -351,7 +357,7 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Service.Delete(r.Context(), id); err != nil {
+	if err := h.Service.Delete(r.Context(), tenantID, id); err != nil {
 		respondServerError(w, r, err, "删除用户失败")
 		return
 	}
@@ -365,7 +371,11 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.Service.Get(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	user, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -388,7 +398,7 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user, err = h.Service.Get(r.Context(), id)
+	user, err = h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "更新后查询用户失败")
 		return
@@ -404,7 +414,11 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.Service.Get(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	user, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -623,7 +637,11 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.Service.Get(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	user, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -652,7 +670,7 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	updated, err := h.Service.Get(r.Context(), id)
+	updated, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询用户失败")
 		return

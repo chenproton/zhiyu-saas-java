@@ -1,4 +1,4 @@
-import { authedFetch, UploadResponse } from '../api-helpers'
+import { authedFetch, request, UploadResponse } from '../api-helpers'
 
 export const fileApi = {
   upload: async (file: File): Promise<UploadResponse> => {
@@ -10,6 +10,13 @@ export const fileApi = {
       throw new Error(data.error || `HTTP ${res.status}`)
     }
     return res.json()
+  },
+  /** 生成短时签名 URL，供 kkFileView 等无登录态的服务端抓取方预览 */
+  signUrl: async (name: string): Promise<string> => {
+    const data = await request<{ url: string }>(
+      `/files/sign-url?name=${encodeURIComponent(name)}`,
+    )
+    return data.url
   },
 }
 

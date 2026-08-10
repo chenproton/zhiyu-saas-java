@@ -42,7 +42,8 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)
 	r.With(loginLimiter).Post("/auth/partner/login", h.authHandler.PartnerLogin)
 	r.With(loginLimiter).Post("/auth/partner/register", h.authHandler.PartnerRegister)
-	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
+	// select-tenant 会签发正式 token，公开接口补限流防爆破
+	r.With(loginLimiter).Post("/auth/select-tenant", h.authHandler.SelectTenant)
 	r.Get("/settings/theme", h.settingsHandler.GetTheme)
 }
 
@@ -58,6 +59,10 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 	cachedPublicScenarios := cache.Cached(redisClient, 2*time.Minute, cache.PublicScenariosKey())
 	cachedDashboard := cache.Cached(redisClient, 30*time.Second, cache.DashboardKey())
 
+	// 导入/导出/上传涉及大文件与批量写入，按用户限流防资源耗尽
+	importExportLimiter := cache.RateLimitByUser(redisClient, 10, time.Minute)
+	uploadLimiter := cache.RateLimitByUser(redisClient, 20, time.Minute)
+
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
 		r.Use(authmw.OperationLog(db, oplogBuffer))
@@ -69,12 +74,17 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Get("/auth/portal/me", h.authHandler.PortalMe)
 			r.Get("/subscriptions", h.subscriptionHandler.Get)
 
+			// 文件上传/预览/签名 URL：平台隔离，portal token 专属
+			r.With(uploadLimiter).Post("/files/upload", h.fileHandler.Upload)
+			r.Get("/files/preview", h.fileHandler.Preview)
+			r.Get("/files/sign-url", h.fileHandler.SignURL)
+
 			registerLandingRoutes(r, h)
 
 			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
 			r.Group(func(r chi.Router) {
 				r.Use(businessUser)
-				registerImportExportRoutes(r, h)
+				registerImportExportRoutes(r.With(importExportLimiter), h)
 			})
 
 			r.Group(func(r chi.Router) {
@@ -264,6 +274,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 		// ========== Partner 企业端（强制 partner 平台 token）==========
 		r.Group(func(r chi.Router) {
 			r.Use(authmw.RequirePlatform(domain.UserPlatformPartner))
+
+			// 文件上传/预览/签名 URL：平台隔离，partner token 专属
+			r.With(uploadLimiter).Post("/files/upload", h.fileHandler.Upload)
+			r.Get("/files/preview", h.fileHandler.Preview)
+			r.Get("/files/sign-url", h.fileHandler.SignURL)
+
 			registerPartnerRoutes(r, h)
 		})
 	})

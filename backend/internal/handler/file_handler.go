@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,13 +14,18 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 const MaxUploadSize = 100 << 20 // 100MB
 const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
+
+// signURLTTL 签名 URL 有效期：kkFileView 大文件（Office 转 PDF）转换耗时较长，取 15 分钟。
+const signURLTTL = 15 * time.Minute
 
 // pageNum 从文件名中提取页码数字（幻灯片1.png → 1），无数字时按字典序兜底。
 func pageNum(name string) int {
@@ -43,6 +51,7 @@ func pageNum(name string) int {
 
 type FileHandler struct {
 	UploadDir string
+	JWTSecret string
 }
 
 type UploadResponse struct {
@@ -53,7 +62,8 @@ type UploadResponse struct {
 }
 
 func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -74,18 +84,32 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		defer r.MultipartForm.RemoveAll()
 	}
 
-	if err := os.MkdirAll(h.UploadDir, 0o755); err != nil {
-		respondServerError(w, r, err, "准备上传目录失败")
-		return
-	}
-
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if ext == "" {
 		ext = ".bin"
 	}
+	if !allowedUploadExts[ext] {
+		respondError(w, http.StatusBadRequest, "不支持的文件类型")
+		return
+	}
+
+	// 服务端 sniff 校验：内容与扩展名明显不符（如伪装成图片的 HTML/脚本）一律拒绝，
+	// 防止存储型 XSS 通过扩展名混淆上传成功
+	sniffBuf := make([]byte, 512)
+	n, _ := io.ReadFull(file, sniffBuf)
+	if isRiskySniff(http.DetectContentType(sniffBuf[:n])) && !textFileExts[ext] {
+		respondError(w, http.StatusBadRequest, "文件内容与类型不符")
+		return
+	}
+
+	tenantDir := filepath.Join(h.UploadDir, filepath.Clean(*claims.TenantID))
+	if err := os.MkdirAll(tenantDir, 0o755); err != nil {
+		respondServerError(w, r, err, "准备上传目录失败")
+		return
+	}
 
 	filename := uuid.NewString() + ext
-	destPath := filepath.Join(h.UploadDir, filename)
+	destPath := filepath.Join(tenantDir, filename)
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		respondServerError(w, r, err, "创建文件失败")
@@ -93,13 +117,13 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer destFile.Close()
 
-	size, err := io.Copy(destFile, file)
+	size, err := io.Copy(destFile, io.MultiReader(strings.NewReader(string(sniffBuf[:n])), file))
 	if err != nil {
 		respondServerError(w, r, err, "保存文件失败")
 		return
 	}
 
-	publicURL := "/uploads/" + filename
+	publicURL := "/uploads/" + *claims.TenantID + "/" + filename
 	respondJSON(w, http.StatusCreated, UploadResponse{
 		URL:      publicURL,
 		Name:     header.Filename,
@@ -161,9 +185,124 @@ var xssRiskyExts = map[string]bool{
 	".html": true, ".htm": true, ".svg": true, ".xml": true, ".xbrl": true,
 }
 
+// allowedUploadExts 上传扩展名白名单：与下载侧 allowedServeExts 完全对齐，
+// 保证上传的文件都能被预览/直出，杜绝"能传不能看"或"能传不能查"的类型。
+var allowedUploadExts = allowedServeExts
+
+// textFileExts 文本/代码类扩展名：sniff 出 HTML/JS 内容时这些扩展名属于正常形态
+// （如 .txt 内容恰为 HTML 片段），不做拒绝
+var textFileExts = map[string]bool{
+	".txt": true, ".md": true, ".log": true, ".json": true, ".properties": true,
+	".yaml": true, ".yml": true, ".gitignore": true,
+	".java": true, ".py": true, ".c": true, ".cpp": true, ".h": true, ".php": true,
+	".go": true, ".js": true, ".css": true, ".lua": true, ".sh": true, ".rb": true,
+	".sql": true, ".bat": true, ".m": true, ".bas": true, ".prg": true, ".cmd": true,
+	".cs": true, ".ftl": true, ".asp": true, ".jsp": true, ".aspx": true,
+	".html": true, ".htm": true, ".svg": true, ".xml": true, ".xbrl": true,
+	".csv": true, ".tsv": true, ".rtf": true, ".m3u8": true, ".mpd": true,
+	".drawio": true, ".bpmn": true, ".eml": true,
+}
+
+// riskySniffTypes 内容嗅探出的可执行类型：扩展名不在文本/代码白名单内即拒绝
+var riskySniffTypes = map[string]bool{
+	"text/html":                     true,
+	"text/javascript":               true,
+	"application/javascript":        true,
+	"application/x-javascript":      true,
+	"application/x-msdownload":      true,
+	"application/x-dosexec":         true,
+	"application/x-shockwave-flash": true,
+}
+
+func isRiskySniff(sniff string) bool {
+	sniff = strings.ToLower(sniff)
+	for t := range riskySniffTypes {
+		if strings.HasPrefix(sniff, t) {
+			return true
+		}
+	}
+	return false
+}
+
+// signURL 为上传路径生成短时签名 URL（kkFileView 等无 cookie/无 Authorization
+// 的服务端抓取方使用）；签名绑定完整路径与过期时间，防篡改与防永久 URL。
+func (h *FileHandler) signURL(path string) string {
+	exp := strconv.FormatInt(time.Now().Add(signURLTTL).Unix(), 10)
+	mac := hmac.New(sha256.New, []byte(h.JWTSecret))
+	mac.Write([]byte(path + "|" + exp))
+	sig := hex.EncodeToString(mac.Sum(nil))
+	return path + "?exp=" + exp + "&sig=" + sig
+}
+
+// verifySignURL 校验签名 URL 的签名与有效期。
+func (h *FileHandler) verifySignURL(r *http.Request) bool {
+	exp := r.URL.Query().Get("exp")
+	sig := r.URL.Query().Get("sig")
+	if exp == "" || sig == "" {
+		return false
+	}
+	expUnix, err := strconv.ParseInt(exp, 10, 64)
+	if err != nil || time.Now().Unix() >= expUnix {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(h.JWTSecret))
+	mac.Write([]byte(r.URL.Path + "|" + exp))
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(sig))
+}
+
+// resolveTenant 解析请求所属租户：签名 URL（公开可验证）直接取路径段；
+// 否则要求登录态且租户匹配，未登录 401、跨租户 403。
+func (h *FileHandler) resolveTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
+	tenantID := chi.URLParam(r, "tenantID")
+	if h.verifySignURL(r) {
+		return tenantID, true
+	}
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusUnauthorized, "需要登录")
+		return "", false
+	}
+	if *claims.TenantID != tenantID {
+		respondError(w, http.StatusForbidden, "无权访问该文件")
+		return "", false
+	}
+	return tenantID, true
+}
+
+// SignURL 为 /uploads/{tenantID}/{filename} 生成短时签名 URL，供 kkFileView
+// 等无登录态的第三方服务端抓取文件；仅限本租户文件。
+func (h *FileHandler) SignURL(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	name := r.URL.Query().Get("name")
+	segments := strings.Split(name, "/")
+	if len(segments) != 4 || segments[0] != "" || segments[1] != "uploads" || segments[2] != *claims.TenantID || segments[3] == "" || filepath.Ext(segments[3]) == "" {
+		respondError(w, http.StatusBadRequest, "无效文件路径")
+		return
+	}
+	if !allowedServeExts[strings.ToLower(filepath.Ext(segments[3]))] {
+		respondError(w, http.StatusForbidden, "文件类型不允许访问")
+		return
+	}
+	path := filepath.Join(h.UploadDir, filepath.Clean(segments[2]), filepath.Clean(segments[3]))
+	if _, err := os.Stat(path); err != nil {
+		respondError(w, http.StatusNotFound, "文件不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"url": h.signURL("/uploads/" + segments[2] + "/" + segments[3])})
+}
+
 func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
-	name := strings.TrimPrefix(r.URL.Path, "/uploads/")
-	if name == "" || strings.Contains(name, "..") {
+	tenantID, ok := h.resolveTenant(w, r)
+	if !ok {
+		return
+	}
+	name := chi.URLParam(r, "filename")
+	if name == "" || strings.Contains(name, "..") || strings.Contains(name, "/") {
 		respondError(w, http.StatusBadRequest, "无效文件名")
 		return
 	}
@@ -171,8 +310,10 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "文件类型不允许直接访问")
 		return
 	}
-	path := filepath.Join(h.UploadDir, filepath.Clean(name))
-	if !strings.HasPrefix(path, filepath.Clean(h.UploadDir)) {
+	// 租户目录隔离：文件必须落在当前租户子目录内
+	tenantDir := filepath.Join(h.UploadDir, filepath.Clean(tenantID))
+	path := filepath.Join(tenantDir, filepath.Clean(name))
+	if !strings.HasPrefix(path, filepath.Clean(tenantDir)) {
 		respondError(w, http.StatusForbidden, "无效文件路径")
 		return
 	}
@@ -189,12 +330,24 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	name := r.URL.Query().Get("name")
-	if name == "" || strings.Contains(name, "..") {
+	// name 形如 /uploads/{tenantID}/{filename}，必须属于当前租户
+	segments := strings.Split(name, "/")
+	if len(segments) != 4 || segments[0] != "" || segments[1] != "uploads" || segments[3] == "" {
+		respondError(w, http.StatusBadRequest, "无效文件名")
+		return
+	}
+	if segments[2] != *claims.TenantID {
+		respondError(w, http.StatusForbidden, "无权访问该文件")
+		return
+	}
+	filename := segments[3]
+	if strings.Contains(filename, "..") {
 		respondError(w, http.StatusBadRequest, "无效文件名")
 		return
 	}
@@ -203,8 +356,8 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		format = "html"
 	}
 
-	path := filepath.Join(h.UploadDir, filepath.Clean(name))
-	if !strings.HasPrefix(path, filepath.Clean(h.UploadDir)) {
+	path := filepath.Join(h.UploadDir, filepath.Clean(segments[2]), filepath.Clean(filename))
+	if !strings.HasPrefix(path, filepath.Clean(filepath.Join(h.UploadDir, filepath.Clean(segments[2])))) {
 		respondError(w, http.StatusForbidden, "无效文件路径")
 		return
 	}
@@ -214,7 +367,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ext := strings.ToLower(filepath.Ext(name))
+	ext := strings.ToLower(filepath.Ext(filename))
 	if ext != ".doc" && ext != ".docx" && ext != ".xls" && ext != ".xlsx" && ext != ".ppt" && ext != ".pptx" {
 		respondError(w, http.StatusBadRequest, "不支持的预览文件类型")
 		return
@@ -227,7 +380,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	base := strings.TrimSuffix(name, ext)
+	base := strings.TrimSuffix(filename, ext)
 
 	if format == "png" {
 		cmd := exec.Command("libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)

@@ -147,7 +147,7 @@ func (h *LessonBehaviorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
-	student, err := h.Service.Store().Users().Get(r.Context(), req.StudentUserID)
+	student, err := h.Service.Store().Users().Get(r.Context(), tenantID, req.StudentUserID)
 	if err != nil || student.TenantID == nil || *student.TenantID != tenantID {
 		respondError(w, http.StatusNotFound, "学生不存在")
 		return

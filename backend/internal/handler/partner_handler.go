@@ -446,7 +446,7 @@ func (h *PartnerHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := h.Service.ChangeMyPassword(r.Context(), claims.UserID, req.OldPassword, req.NewPassword); err != nil {
+	if err := h.Service.ChangeMyPassword(r.Context(), tenantIDOf(claims), claims.UserID, req.OldPassword, req.NewPassword); err != nil {
 		if errors.Is(err, service.ErrInvalidOldPassword) {
 			respondError(w, http.StatusBadRequest, "旧密码不正确")
 			return

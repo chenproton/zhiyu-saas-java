@@ -153,7 +153,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if evaluatorID != nil {
-		evaluator, err := h.Service.Store().Users().Get(r.Context(), *evaluatorID)
+		evaluator, err := h.Service.Store().Users().Get(r.Context(), tenantID, *evaluatorID)
 		if err != nil || evaluator.TenantID == nil || *evaluator.TenantID != tenantID {
 			respondError(w, http.StatusForbidden, "无权操作：评价人不属于您的租户")
 			return
