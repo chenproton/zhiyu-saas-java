@@ -11,6 +11,7 @@ type Config struct {
 	DatabaseURL  string
 	RedisURL     string
 	JWTSecret    string
+	AISecret     string
 	Port         string
 	IP2RegionXDB string
 }
@@ -31,9 +32,11 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		DatabaseURL:  dbURL,
-		RedisURL:     redisURL,
-		JWTSecret:    jwtSecret,
+		DatabaseURL: dbURL,
+		RedisURL:    redisURL,
+		JWTSecret:   jwtSecret,
+		// AI_CONFIG_SECRET 用于加密租户 AI API Key，缺省时回落 JWT_SECRET
+		AISecret:     getEnv("AI_CONFIG_SECRET", jwtSecret),
 		Port:         getEnv("PORT", "8080"),
 		IP2RegionXDB: getEnv("IP2REGION_XDB", "/app/data/ip2region_v4.xdb"),
 	}, nil

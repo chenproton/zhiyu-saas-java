@@ -95,7 +95,7 @@ func (r *Router) Shutdown() {
 	r.handlers.authHandler.Shutdown()
 }
 
-func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer, geo *geo.Searcher) *Router {
+func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer, geo *geo.Searcher, aiSecret string) *Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -127,7 +127,7 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	// 未登录且无签名返回 401，跨租户返回 403（见 FileHandler.Serve）
 	r.With(authmw.OptionalJWT(jwtSecret)).Get("/uploads/{tenantID}/{filename}", fileHandler.Serve)
 
-	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo)
+	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo, aiSecret)
 
 	// /health 保持进程存活探针（历史兼容），/health/ready 为就绪探针（DB+Redis）
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {

@@ -82,7 +82,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	// redis 与 oplogBuffer 传 nil：cache.RateLimit/Cached 对 nil client 直通，
 	// OperationLog 对 nil buffer 退化为同步写库，均为生产已有行为。
 	// geo 传 nil：登录日志地点留空，不依赖 ip2region 数据文件。
-	h := router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil, nil)
+	h := router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil, nil, "test-ai-secret")
 	r := chi.NewRouter()
 	router.RegisterAPIRoutes(r, TestJWTSecret, pool, h, nil, nil)
 

@@ -518,8 +518,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
     cp "$PROJECT_ROOT/.env.example" "$ENV_FILE"
     db_pass=$(rand_str 24)
     jwt_secret=$(rand_str 64)
+    ai_secret=$(rand_str 64)
     sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/zhiyu-saas?sslmode=disable|" "$ENV_FILE"
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" "$ENV_FILE"
+    sed -i "s|^AI_CONFIG_SECRET=.*|AI_CONFIG_SECRET=${ai_secret}|" "$ENV_FILE"
     sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${db_pass}|" "$ENV_FILE"
     # 写入部署相关默认值，便于用户后续修改
     {
