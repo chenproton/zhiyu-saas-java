@@ -87,7 +87,8 @@ func (h *ScheduleImportHandler) previewCourseList(ctx context.Context, xlsx *exc
 	return result
 }
 
-// ImportExcel POST /import/schedules/excel — 按「课程列表」Sheet 清空重排导入。
+// ImportExcel POST /import/schedules/excel?termId= — 按「课程列表」Sheet 清空重排导入。
+// termId 为目标学期，缺省时从第一个有效课程的教学计划推断。
 func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -99,6 +100,7 @@ func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	overwrite := importOverwriteParam(r)
+	termID := strings.TrimSpace(r.URL.Query().Get("termId"))
 
 	xlsx, sheets, err := parseUploadedExcel(r)
 	if err != nil {
@@ -113,7 +115,7 @@ func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	result := h.importFromCourseList(r.Context(), xlsx, tenantID, overwrite)
+	result := h.importFromCourseList(r.Context(), xlsx, tenantID, termID, overwrite)
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created": result.Created, "failed": result.Failed, "skipped": result.Skipped,
 		"entity": "排课", "errors": result.Errors, "sheets": sheets,
@@ -183,7 +185,9 @@ func normalizePeriods(periods []string) []string {
 
 // importFromCourseList 从「课程列表」Sheet 清空重排。
 // 模板列：课程名称 | 类型 | 起始周 | 结束周 | 周次模式 | 节次(整周矩阵) | 教师 | 场地 | 班级。
-func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *excelize.File, tenantID string, overwrite bool) *scheduleImportResult {
+// termID 为目标学期（可为空）：为空时从第一个有效课程匹配教学计划推断；
+// 非空时校验租户拥有该学期，并按该学期匹配教学计划条目。
+func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *excelize.File, tenantID, termID string, overwrite bool) *scheduleImportResult {
 	result := &scheduleImportResult{}
 	rows, err := xlsx.GetRows("课程列表")
 	if err != nil {
@@ -257,15 +261,23 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		return result
 	}
 
-	// 先解析出该学期（从第一个有效课程匹配教学计划）
-	termID := ""
-	_ = h.Store.Q().QueryRow(ctx, `
-		SELECT p.term_id::text FROM teaching_plan_entries e
-		JOIN teaching_plans p ON p.id = e.plan_id
-		WHERE p.tenant_id = $1 AND e.course_name = $2 LIMIT 1
-	`, tenantID, items[0].courseName).Scan(&termID)
+	// 确定目标学期：优先使用请求携带的 termId，其次从第一个有效课程匹配教学计划推断
+	if termID != "" {
+		var exists string
+		if err := h.Store.Q().QueryRow(ctx, `SELECT id::text FROM terms WHERE tenant_id = $1 AND id = $2`, tenantID, termID).Scan(&exists); err != nil {
+			result.Errors = append(result.Errors, "学期不存在或不属于当前租户")
+			result.Failed++
+			return result
+		}
+	} else {
+		_ = h.Store.Q().QueryRow(ctx, `
+			SELECT p.term_id::text FROM teaching_plan_entries e
+			JOIN teaching_plans p ON p.id = e.plan_id
+			WHERE p.tenant_id = $1 AND e.course_name = $2 LIMIT 1
+		`, tenantID, items[0].courseName).Scan(&termID)
+	}
 	if termID == "" {
-		result.Errors = append(result.Errors, "无法从课程列表识别所属学期，请确认课程来自已生成的教学计划")
+		result.Errors = append(result.Errors, "无法识别所属学期，请先选择目标学期再导入")
 		result.Failed++
 		return result
 	}

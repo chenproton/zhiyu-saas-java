@@ -60,11 +60,16 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importPreview: async (entity: string, files: File | File[]): Promise<ImportPreviewResult> => {
+  importPreview: async (
+    entity: string,
+    files: File | File[],
+    extraQuery?: Record<string, string>,
+  ): Promise<ImportPreviewResult> => {
     const form = new FormData()
     const fileArr = Array.isArray(files) ? files : [files]
     fileArr.forEach((f) => form.append('file', f))
-    const res = await authedFetch(`/import/${entity}/preview`, { method: 'POST', body: form })
+    const suffix = extraQuery ? `?${new URLSearchParams(extraQuery).toString()}` : ''
+    const res = await authedFetch(`/import/${entity}/preview${suffix}`, { method: 'POST', body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -76,6 +81,7 @@ export const importExportApi = {
     files: File | File[],
     overwrite = false,
     rename = false,
+    extraQuery?: Record<string, string>,
   ): Promise<{
     created: number
     failed: number
@@ -92,8 +98,9 @@ export const importExportApi = {
     const form = new FormData()
     const fileArr = Array.isArray(files) ? files : [files]
     fileArr.forEach((f) => form.append('file', f))
+    const suffix = extraQuery ? `&${new URLSearchParams(extraQuery).toString()}` : ''
     const res = await authedFetch(
-      `/import/${entity}/excel?overwrite=${overwrite}&rename=${rename}`,
+      `/import/${entity}/excel?overwrite=${overwrite}&rename=${rename}${suffix}`,
       {
         method: 'POST',
         body: form,
@@ -105,8 +112,11 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importExcelPreview: (entity: string, files: File | File[]): Promise<ImportPreviewResult> =>
-    importExportApi.importPreview(entity, files),
+  importExcelPreview: (
+    entity: string,
+    files: File | File[],
+    extraQuery?: Record<string, string>,
+  ): Promise<ImportPreviewResult> => importExportApi.importPreview(entity, files, extraQuery),
   downloadTemplate: (
     entity:
       | 'positions'

@@ -37,6 +37,7 @@ export function ScheduleImportBar({ termId, onImported }: ScheduleImportBarProps
     importType: 'schedules',
     entityLabel: t('排课'),
     templateFileName: '排课批量导入模板.xlsx',
+    extraQuery: { termId },
     onSuccess: async () => {
       onImported()
     },

@@ -11,9 +11,16 @@ export interface UseImportFlowOptions {
   entityLabel: string
   templateFileName: string
   onSuccess: () => Promise<void> | void
+  /** 追加到导入接口 URL 的查询参数（如 termId），预览与执行共用 */
+  extraQuery?: Record<string, string>
 }
 
-export function useImportFlow({ importType, templateFileName, onSuccess }: UseImportFlowOptions) {
+export function useImportFlow({
+  importType,
+  templateFileName,
+  onSuccess,
+  extraQuery,
+}: UseImportFlowOptions) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importFiles, setImportFiles] = useState<File[]>([])
@@ -48,6 +55,7 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
         importFiles,
         mode === 'overwrite',
         mode === 'new',
+        extraQuery,
       )
       const errorHint =
         result.errors && result.errors.length > 0
@@ -81,7 +89,7 @@ export function useImportFlow({ importType, templateFileName, onSuccess }: UseIm
     if (importFiles.length === 0) return
     setIsImporting(true)
     try {
-      const preview = await importExportApi.importExcelPreview(importType, importFiles)
+      const preview = await importExportApi.importExcelPreview(importType, importFiles, extraQuery)
       if (preview.duplicates > 0) {
         setImportPreview(preview)
         setIsImporting(false)
