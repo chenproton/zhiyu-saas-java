@@ -31,8 +31,6 @@ import {
   Sparkles,
   Plus,
   X,
-  Check,
-  RefreshCw,
   Loader2,
   Award,
   ExternalLink,
@@ -51,6 +49,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
 import { AiAssistProgressDialog } from './ai-assist-progress-dialog'
+import { AiCompareOverlay } from './ai-compare-overlay'
 
 /** AI 辅助编写一键流程的步骤（与字段顺序一一对应） */
 const AI_ASSIST_STEPS = [
@@ -96,51 +95,6 @@ interface Certificate {
   image?: string
 }
 
-interface AiSuggestionCardProps {
-  title: string
-  children: React.ReactNode
-  regenerating?: boolean
-  onAdopt: () => void
-  onRegenerate: () => void
-  onDismiss: () => void
-}
-
-/** AI 建议卡片：采纳 / 重新生成 / 不采纳（对齐原型 ai-assisted_2 交互） */
-function AiSuggestionCard({
-  title,
-  children,
-  regenerating,
-  onAdopt,
-  onRegenerate,
-  onDismiss,
-}: AiSuggestionCardProps) {
-  return (
-    <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-3">
-      <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-        <span className="text-xs font-medium text-purple-800">{title}</span>
-      </div>
-      <div className="mb-3">{children}</div>
-      <div className="flex items-center justify-end gap-2">
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onDismiss}>
-          <X className="h-3 w-3 mr-1" /> 不采纳
-        </Button>
-        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onRegenerate} disabled={regenerating}>
-          {regenerating ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3 w-3 mr-1" />
-          )}
-          重新生成
-        </Button>
-        <Button size="sm" className="h-7 text-xs bg-purple-600 hover:bg-purple-700" onClick={onAdopt}>
-          <Check className="h-3 w-3 mr-1" /> 采纳
-        </Button>
-      </div>
-    </div>
-  )
-}
-
 function isValidImageUrl(url?: string): boolean {
   return !!url && !url.startsWith('blob:')
 }
@@ -166,6 +120,8 @@ export function StepBasicInfo({
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPhase, setAiPhase] = useState(0)
   const [aiProgress, setAiProgress] = useState(0)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [confirmRegenOpen, setConfirmRegenOpen] = useState(false)
   const [notConfiguredOpen, setNotConfiguredOpen] = useState(false)
   const [quickFillOpen, setQuickFillOpen] = useState(false)
   const [quickFill, setQuickFill] = useState({
@@ -442,20 +398,24 @@ export function StepBasicInfo({
     runAiAssist(ctx)
   }
 
-  /** 一键流程：按字段顺序逐个生成，进度弹窗逐步展示 */
+  /** 一键流程：按字段顺序逐个生成，进度弹窗逐步展示；结束后打开左右对比浮层 */
   const runAiAssist = async (ctx?: ReturnType<typeof buildAiContext>) => {
     notConfiguredRef.current = false
     const context = ctx || buildAiContext()
     setAiOpen(true)
     setAiPhase(0)
     setAiProgress(3)
+    let produced = false
     for (let i = 0; i < AI_ASSIST_FIELDS.length; i++) {
       if (notConfiguredRef.current) break
       const field = AI_ASSIST_FIELDS[i]
       setIsGenerating(field)
       try {
         const res = await positionAiAssist({ field, position: context })
-        if (res) applySuggestion(field, res)
+        if (res) {
+          applySuggestion(field, res)
+          produced = true
+        }
       } catch (err) {
         if (err instanceof Error && err.message === 'ai_not_configured') {
           notConfiguredRef.current = true
@@ -475,6 +435,7 @@ export function StepBasicInfo({
       }
     }
     setAiOpen(false)
+    if (produced) setCompareOpen(true)
   }
 
   const startAiAssist = () => {
@@ -482,13 +443,30 @@ export function StepBasicInfo({
       openQuickFill()
       return
     }
+    // 每次点击均先弹确认，明确"将重新生成全部内容"的意图
+    setConfirmRegenOpen(true)
+  }
+
+  const confirmRegenAndRun = () => {
+    setConfirmRegenOpen(false)
     runAiAssist()
   }
 
-  /** 区块内「AI 生成」快捷按钮（description 复用 polish 润色结果） */
+  /** 区块内「重新生成」快捷按钮（基本信息卡片右上角复用 polish 润色结果） */
   const handleAIGenerate = async (field: AIPositionAssistField) => {
     const res = await callAssist(field)
-    if (res) applySuggestion(field, res)
+    if (res) {
+      applySuggestion(field, res)
+      setCompareOpen(true)
+    }
+  }
+
+  /** 全部采纳：应用所有仍有建议的字段后关闭对比浮层 */
+  const handleAdoptAll = () => {
+    for (const field of AI_ASSIST_FIELDS) {
+      if (suggestions[field]) adoptSuggestion(field)
+    }
+    setCompareOpen(false)
   }
 
   // 回车新增行后聚焦到新输入框
@@ -660,39 +638,6 @@ export function StepBasicInfo({
             {t('AI 辅助编写')}
           </Button>
         </div>
-      )}
-
-      {/* AI 润色建议：基础信息（名称/简称/简介/薪资） */}
-      {suggestions.polish && (
-        <AiSuggestionCard
-          title={t('AI 润色建议：基础信息')}
-          regenerating={isGenerating === 'polish'}
-          onAdopt={() => adoptSuggestion('polish')}
-          onRegenerate={() => regenerateSuggestion('polish')}
-          onDismiss={() => dismissSuggestion('polish')}
-        >
-          <div className="space-y-2 text-sm text-gray-700">
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('岗位名称：')}</span>
-              <span className="font-medium">{suggestions.polish.name}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('岗位简称：')}</span>
-              <span>{suggestions.polish.shortName}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('岗位简介：')}</span>
-              <span className="whitespace-pre-line">{suggestions.polish.description}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('参考薪资：')}</span>
-              <span>
-                {suggestions.polish.salaryMin.toLocaleString()} -{' '}
-                {suggestions.polish.salaryMax.toLocaleString()} {t('元/月')}
-              </span>
-            </div>
-          </div>
-        </AiSuggestionCard>
       )}
 
       {/* Merged Basic Info Card */}
@@ -876,27 +821,6 @@ export function StepBasicInfo({
               <span />
             </div>
           </div>
-
-          {suggestions.responsibilities && (
-            <AiSuggestionCard
-              title={t('AI 建议：工作职责')}
-              regenerating={isGenerating === 'responsibilities'}
-              onAdopt={() => adoptSuggestion('responsibilities')}
-              onRegenerate={() => regenerateSuggestion('responsibilities')}
-              onDismiss={() => dismissSuggestion('responsibilities')}
-            >
-              <div className="space-y-1.5">
-                {suggestions.responsibilities.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {i + 1}
-                    </Badge>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </AiSuggestionCard>
-          )}
         </CardContent>
       </Card>
 
@@ -955,27 +879,6 @@ export function StepBasicInfo({
               <span />
             </div>
           </div>
-
-          {suggestions.requirements && (
-            <AiSuggestionCard
-              title={t('AI 建议：任职要求')}
-              regenerating={isGenerating === 'requirements'}
-              onAdopt={() => adoptSuggestion('requirements')}
-              onRegenerate={() => regenerateSuggestion('requirements')}
-              onDismiss={() => dismissSuggestion('requirements')}
-            >
-              <div className="space-y-1.5">
-                {suggestions.requirements.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {i + 1}
-                    </Badge>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </AiSuggestionCard>
-          )}
         </CardContent>
       </Card>
 
@@ -992,18 +895,6 @@ export function StepBasicInfo({
             placeholder={t('请描述该岗位的职业发展路径，如横向发展和纵向晋升方向...')}
             rows={6}
           />
-
-          {suggestions.careerPath && (
-            <AiSuggestionCard
-              title={t('AI 建议：晋升路径')}
-              regenerating={isGenerating === 'careerPath'}
-              onAdopt={() => adoptSuggestion('careerPath')}
-              onRegenerate={() => regenerateSuggestion('careerPath')}
-              onDismiss={() => dismissSuggestion('careerPath')}
-            >
-              <p className="text-sm text-gray-700 whitespace-pre-line">{suggestions.careerPath}</p>
-            </AiSuggestionCard>
-          )}
         </CardContent>
       </Card>
 
@@ -1024,31 +915,6 @@ export function StepBasicInfo({
           )}
         </CardHeader>
         <CardContent>
-          {suggestions.certificates && (
-            <div className="mb-4">
-              <AiSuggestionCard
-                title={t('AI 建议：证书推荐')}
-                regenerating={isGenerating === 'certificates'}
-                onAdopt={() => adoptSuggestion('certificates')}
-                onRegenerate={() => regenerateSuggestion('certificates')}
-                onDismiss={() => dismissSuggestion('certificates')}
-              >
-                <div className="grid gap-2">
-                  {suggestions.certificates.map((cert, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg border border-purple-100 bg-white p-2.5"
-                    >
-                      <p className="text-sm font-medium text-gray-800">{cert.name}</p>
-                      {cert.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">{cert.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </AiSuggestionCard>
-            </div>
-          )}
           {!position.certificates || position.certificates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Award className="h-10 w-10 mx-auto mb-2 opacity-50" />
@@ -1429,6 +1295,42 @@ export function StepBasicInfo({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 每次 AI 辅助编写前的意图确认弹窗 */}
+      <Dialog open={confirmRegenOpen} onOpenChange={setConfirmRegenOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              {t('确认重新生成全部内容？')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('AI 将基于当前填写的岗位信息（名称、行业、简介、职责、要求等）重新生成：岗位简介、工作职责、任职要求、晋升路径与证书推荐。生成结果将以左右对比形式展示，供您逐项采纳。')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmRegenOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 gap-1" onClick={confirmRegenAndRun}>
+              <Sparkles className="h-4 w-4" />
+              {t('确认生成')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 辅助编写结果左右对比浮层（全屏覆盖，临时让出右侧封面/批次等区域） */}
+      <AiCompareOverlay
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        position={position}
+        suggestions={suggestions}
+        regenerating={isGenerating}
+        onAdopt={adoptSuggestion}
+        onRegenerate={regenerateSuggestion}
+        onAdoptAll={handleAdoptAll}
+      />
     </div>
   )
 }
