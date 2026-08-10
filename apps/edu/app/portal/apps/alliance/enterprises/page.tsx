@@ -48,27 +48,14 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
 import type { AllianceEnterprise } from '@/lib/types'
-
-const SECONDARY_COLLEGES = [
-  '智能制造学院',
-  '信息技术学院',
-  '经济管理学院',
-  '艺术设计学院',
-  '新能源工程学院',
-  '生物医药学院',
-  '现代服务学院',
-  '国际教育学院',
-  '创新创业学院',
-  '继续教育学院',
-  '基础教育学院',
-  '马克思主义学院',
-]
 
 export default function AllianceEnterprisesPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
+  const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { enterprises: [], projects: [], achievements: [], agreements: [] }
@@ -386,7 +373,7 @@ export default function AllianceEnterprisesPage() {
             </FormFieldRow>
             <FormFieldRow label={t('关联二级学院')}>
               <MultiSelect
-                options={SECONDARY_COLLEGES}
+                options={secondaryCollegeOptions}
                 value={item.secondaryColleges || []}
                 onChange={(v: string[]) => setItem({ ...item, secondaryColleges: v })}
                 placeholder={t('选择归属学院')}

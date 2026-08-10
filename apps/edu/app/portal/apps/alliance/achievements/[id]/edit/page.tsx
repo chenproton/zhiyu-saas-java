@@ -22,22 +22,8 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
 import type { AllianceAchievement } from '@/lib/types'
-
-const SECONDARY_COLLEGES = [
-  '智能制造学院',
-  '信息技术学院',
-  '经济管理学院',
-  '艺术设计学院',
-  '新能源工程学院',
-  '生物医药学院',
-  '现代服务学院',
-  '国际教育学院',
-  '创新创业学院',
-  '继续教育学院',
-  '基础教育学院',
-  '马克思主义学院',
-]
 
 export default function AllianceAchievementEditPage() {
   const { id } = useParams<{ id: string }>()
@@ -45,6 +31,7 @@ export default function AllianceAchievementEditPage() {
   const { toast } = useToast()
   const t = useT()
   const router = useRouter()
+  const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const [item, setItem] = useState<AllianceAchievement | null>(null)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
@@ -199,7 +186,7 @@ export default function AllianceAchievementEditPage() {
             </CardHeader>
             <CardContent>
               <MultiSelect
-                options={SECONDARY_COLLEGES}
+                options={secondaryCollegeOptions}
                 value={secondaryColleges}
                 onChange={(v) => setField('secondaryColleges', v)}
                 placeholder={t('选择归属学院')}
