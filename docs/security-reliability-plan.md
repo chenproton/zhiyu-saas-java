@@ -117,7 +117,7 @@
 
 - P0 完成后：未登录访问 `/uploads/*` 返回 401；跨租户访问文件返回 403/404；路由审计测试入 CI。
 - P1 完成后：教师角色调用用户列表/详情，手机号/身份证为掩码；核心实体 store 层 `Get(id)` 无 tenantID 参数无法编译；`/health/ready` 在 DB 断连时返回 503；导入接口超限返回 429。
-- P2 完成后：定时任务每次执行有记录可查；`/metrics` 可抓取；任意 5xx 均有结构化日志且含 request_id。
+- P2 完成后：定时任务每次执行有记录可查；`/metrics` 可抓取；任意 5xx 均有结构化日志且含 request_id（`respondServerError` 已带 request_id，与 X-Request-ID 响应头对应）。
 
 ## 六、实施状态（2026-08）
 
@@ -131,13 +131,13 @@
 | P1 健康检查分层 | ✅ 已实施 | `/health`（存活，兼容历史）+ `/health/ready`（DB+Redis Ping，3s 超时，失败 503）；docker-compose healthcheck 切到 ready |
 | P1 限流扩展 | ✅ 已实施 | `cache.RateLimitByUser`（按用户限流，未登录退 IP）；导入/导出 10 次/分钟、上传 20 次/分钟 |
 | P0 前端配套 | ✅ 已实施 | 登录/选租户下发 `zhiyu_auth` HttpOnly cookie（Path=/uploads，`<img>`/zip 预览零改动通过认证）；资源预览弹窗对 kkFileView 先换取签名 URL |
-| P2 定时任务执行记录 | ✅ 已实施 | `job_run_logs` 表（migration 147）+ scheduler 统一 `runJob` runner（panic recover + 失败重试 1 次 + 执行记录落库，记录写失败不影响任务） |
+| P2 定时任务执行记录与告警 | ✅ 已实施 | `job_run_logs` 表（migration 147）+ scheduler 统一 `runJob` runner（panic recover + 失败重试 1 次 + 执行记录落库，记录写失败不影响任务）；最终失败触发告警 webhook（`ALERT_WEBHOOK_URL` 环境变量，JSON POST，失败仅记日志不影响主流程） |
 | P2 监控指标 | ✅ 已实施 | Prometheus client_golang（vendor 已固化）：`/metrics` 端点 + HTTP 请求数/耗时/状态（路由模式标签防高基数）+ DB 连接池 Total/Idle 指标；middleware 挂 router 根部 |
 | P2 统一错误码 | ✅ 已实施 | `error_codes.go` 常量表（bad_request/unauthorized/forbidden/not_found/conflict/too_many_requests/internal_error，预留 ai_not_configured/ai_upstream_error）；`respondError` 响应体扩展为 `{code, error}`（error 字段保持兼容）；前端 request 层透传 code，全局错误处理按 code 优先分支 |
 | P2 残留清理 | ✅ 已实施 | 20 处 500 绕过全部改走 `respondServerError`（原始 error 落日志）；5 个 import handler 全部从 `WithTxRaw` 迁回 `WithTx`（`WithTxRaw` 已删除）；`import_common.go` 拼 SQL（knowledge_points/resource_library/majors 查找创建）下沉 `store/imports.go`；affairs-config/schedule 导入 SQL 一并下沉 store（`ImportTerm/ImportVenue/ImportPeriodSlot/ReplaceProgramCourses/SchedulePlanEntry` 系列），handler 层不再拼 SQL |
 | P3 chi 静默覆盖防护 | ✅ 已实施 | `router_dup_test.go`：recordingRouter 代理拦截全部注册入口，同 method+pattern 重复注册即 fail（曾导致 `/files/sign-url` 被 partner 组顶替的同类问题不再复发） |
 | P3 租户校验中间件化试点 | ✅ 试点完成 | `middleware.TenantOwnedContent(db, table, idParam)`：路由声明资源表，携带 `{id}` 的请求在路由层校验租户归属，跨租户一律 404；试点挂载 exams/scenarios 写路由（`registerContentWriteRoutes` 统一包裹），验证后推广；授权感知（grant）场景随中间件演进 |
-| P3 业务权限声明化 | ⏳ 评估中 | 路由组（systemAdmin/businessUser/portalWorkspace/jobViewer）已构成声明层，17 处内联 `canManagePortal` 属更细粒度操作（联盟管理等），收敛方案待试点评估后随重构推进 |
+| P3 业务权限声明化 | ✅ 联盟模块试点完成 | 新增 `middleware.RequireAllianceManager()`（语义与 canManageAlliance 等价：教师/校管/平台管理员/系统菜单权限，企业导师 B13 收窄），联盟 40+ 写路由统一挂路由组声明，收敛 29 处内联 `canManageAlliance`；其余 `canManagePortal` 内联属纵深防御（对应写路由已在 systemAdmin 组有第一道门禁）或数据逻辑（脱敏判断非授权门禁），保留合理并已注明 |
 | ui-smoke 巡检脚本 | ✅ 已修复 | `clicker.mjs` maxForms 在声明前使用（TDZ）导致场景编辑页巡检误报，已调整声明顺序 |
 
 **部署注意（人工执行）**：`deploy.sh` 部署后需在服务停止写入窗口执行一次

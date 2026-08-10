@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode"
 
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -105,18 +106,24 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	})
 }
 
-// respondServerError 统一返回 500 并记录原始错误，便于线上排查。
+// respondServerError 统一返回 500 并记录原始错误（含 request_id，与
+// X-Request-ID 响应头对应，便于按请求号检索日志链路）。
 func respondServerError(w http.ResponseWriter, r *http.Request, err error, message string) {
 	errDetail := "<nil>"
 	if err != nil {
 		errDetail = err.Error()
 	}
-	slog.Error("handler server error",
+	reqID := chimw.GetReqID(r.Context())
+	logAttrs := []any{
 		slog.String("method", r.Method),
 		slog.String("path", r.URL.Path),
 		slog.String("message", message),
 		slog.String("error", errDetail),
-	)
+	}
+	if reqID != "" {
+		logAttrs = append(logAttrs, slog.String("request_id", reqID))
+	}
+	slog.Error("handler server error", logAttrs...)
 	respondError(w, http.StatusInternalServerError, message)
 }
 

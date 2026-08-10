@@ -162,6 +162,35 @@ func RequireSystemPermission() func(http.Handler) http.Handler {
 	}
 }
 
+// RequireAllianceManager 联盟（产教融合）模块管理权限中间件（P3 业务权限声明化试点）：
+// 语义与 handler.canManageAlliance 完全一致——教师/学校管理员/平台管理员，
+// 或有系统设置菜单权限的角色可放行；企业导师（enterprise_mentor）仅保留
+// 岗位/场景共建与测评打分，不再有联盟管理权限（B13 角色收窄）。
+func RequireAllianceManager() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := CurrentUser(r)
+			if claims == nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			for _, code := range []string{
+				domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RolePlatformAdmin,
+			} {
+				if HasRole(claims, code) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			if HasSystemPermission(claims) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, `{"error":"permission denied"}`, http.StatusForbidden)
+		})
+	}
+}
+
 // RequireUserRead returns a middleware that allows reading user lists/details
 // for business users (teacher, school_admin, enterprise_mentor, platform_admin)
 // and users with system management permissions. Write operations still require
