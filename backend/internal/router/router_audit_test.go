@@ -101,7 +101,7 @@ func TestPublicRoutesWhitelistReachable(t *testing.T) {
 // 该用例同时防"chi 同 method+path 静默覆盖"——若文件路由被挪入单一平台组重复注册，
 // 另一平台 token 将得到 403 而非进入 handler，测试即失败。
 func TestFileRoutesPlatformMatrix(t *testing.T) {
-	rt := New(nil, "test-secret", nil, nil, nil)
+	rt := New(nil, "test-secret", nil, nil, nil, "test-ai-secret")
 	svr := httptest.NewServer(rt.Handler)
 	defer svr.Close()
 
