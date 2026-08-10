@@ -337,7 +337,7 @@ func (s *SchedulingStore) DeleteScheduleWithRestore(ctx context.Context, tx Quer
 	if planEntryID != nil && *planEntryID != "" {
 		if _, err := tx.Exec(ctx, `
 			UPDATE teaching_plan_entries SET status = 'planned'
-			WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM schedule_entries WHERE plan_entry_id = $1)
+			WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM schedule_entries WHERE plan_entry_id = $1 AND status = 'draft')
 		`, *planEntryID); err != nil {
 			return err
 		}
@@ -397,7 +397,7 @@ func checkScheduleConflicts(ctx context.Context, q Queryer, tenantID, termID str
 		LEFT JOIN organizations o ON o.id = se.class_node_id
 		LEFT JOIN users u ON u.id = se.teacher_id
 		LEFT JOIN venues v ON v.id = se.venue_id
-		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.day_of_week = $3
+		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.status = 'draft' AND se.day_of_week = $3
 			AND NOT (se.end_week < $4 OR se.start_week > $5)
 			AND (se.week_pattern = $6 OR se.week_pattern = 'all' OR $6 = 'all')
 			AND se.periods ?| $7
@@ -663,7 +663,7 @@ func (s *SchedulingStore) ListTermScheduleBriefs(ctx context.Context, q Queryer,
 		SELECT se.id, se.plan_entry_id, COALESCE(se.class_node_id::text, ''), COALESCE(se.class_node_ids, '{}'),
 			se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id
 		FROM schedule_entries se
-		WHERE se.tenant_id = $1 AND se.term_id = $2
+		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.status = 'draft'
 	`, tenantID, termID)
 	if err != nil {
 		return nil, err
@@ -687,20 +687,34 @@ func (s *SchedulingStore) ListTermScheduleBriefs(ctx context.Context, q Queryer,
 	return items, rows.Err()
 }
 
-// PublishScheduleEntries 批量发布排课，返回发布数与新版本。
-func (s *SchedulingStore) PublishScheduleEntries(ctx context.Context, tenantID, termID string) (int64, int, error) {
-	tag, err := s.q.Exec(ctx, `
-		UPDATE schedule_entries SET status = 'published', version = version + 1, updated_at = NOW()
+// PublishScheduleEntries 批量发布排课，返回发布数与新版本（service 层 WithTx 事务内调用）。
+// 草稿与已发布并存：发布 = 用当前草稿整体覆盖已发布（删旧 published 行 + 从 draft 复制为新 published 行），
+// 草稿保留继续调整，再次发布再次覆盖。版本号为已发布区最大值 +1，首次发布为 1。
+func (s *SchedulingStore) PublishScheduleEntries(ctx context.Context, tx Queryer, tenantID, termID string) (int64, int, error) {
+	// 已发布区当前版本
+	var curVersion int
+	_ = tx.QueryRow(ctx, `
+		SELECT COALESCE(MAX(version), 0) FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = 'published'
+	`, tenantID, termID).Scan(&curVersion)
+	newVersion := curVersion + 1
+
+	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = 'published'`, tenantID, termID); err != nil {
+		return 0, 0, err
+	}
+	tag, err := tx.Exec(ctx, `
+		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
+			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+			venue_id, scenario_id, source, status, version)
+		SELECT gen_random_uuid(), tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
+			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+			venue_id, scenario_id, source, 'published', $3
+		FROM schedule_entries
 		WHERE tenant_id = $1 AND term_id = $2 AND status = 'draft'
-	`, tenantID, termID)
+	`, tenantID, termID, newVersion)
 	if err != nil {
 		return 0, 0, err
 	}
-	var version int
-	_ = s.q.QueryRow(ctx, `
-		SELECT COALESCE(MAX(version), 1) FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2
-	`, tenantID, termID).Scan(&version)
-	return tag.RowsAffected(), version, nil
+	return tag.RowsAffected(), newVersion, nil
 }
 
 // ListTimetableEntries 查询课表条目。
@@ -938,7 +952,7 @@ func (s *SchedulingStore) ListScheduledExportMap(ctx context.Context, tenantID, 
 		FROM schedule_entries se
 		LEFT JOIN users u ON u.id = se.teacher_id
 		LEFT JOIN venues v ON v.id = se.venue_id
-		WHERE se.tenant_id = $1 AND se.term_id = $2
+		WHERE se.tenant_id = $1 AND se.term_id = $2 AND se.status = 'draft'
 	`, tenantID, termID)
 	if err != nil {
 		return nil, err

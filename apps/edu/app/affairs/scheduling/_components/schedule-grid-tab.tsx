@@ -85,7 +85,8 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     setGridLoading(true)
     try {
       // TODO: 场地筛选在前端进行，超过 200 条时筛选结果不完整，需改为服务端筛选/分页
-      setScheduleEntries((await scheduleApi.list({ termId: plan.termId, limit: 200 })).items)
+      // 网格为草稿编辑区，只展示草稿（已发布是发布时的快照，在课表视图中查看）
+      setScheduleEntries((await scheduleApi.list({ termId: plan.termId, status: 'draft', limit: 200 })).items)
     } catch (err) {
       reportError(err, '加载排课数据')
     } finally {

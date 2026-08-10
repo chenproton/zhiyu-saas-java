@@ -406,9 +406,16 @@ func periodsOverlap(a, b []string) bool {
 	return false
 }
 
-// PublishSchedules 批量发布排课。
+// PublishSchedules 批量发布排课（事务：删旧已发布 + 从草稿复制，保证草稿与已发布原子覆盖）。
 func (s *AffairsService) PublishSchedules(ctx context.Context, tenantID, termID string) (int64, int, error) {
-	return s.st.Scheduling().PublishScheduleEntries(ctx, tenantID, termID)
+	var published int64
+	var version int
+	err := s.st.WithTx(ctx, func(txStore *store.Store) error {
+		var err error
+		published, version, err = txStore.Scheduling().PublishScheduleEntries(ctx, txStore.Q(), tenantID, termID)
+		return err
+	})
+	return published, version, err
 }
 
 // QueryerForStore 返回 Store（contentActions 用）。
