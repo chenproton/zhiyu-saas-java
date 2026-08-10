@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X } from 'lucide-react'
+import Link from 'next/link'
+import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X, ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useGraphData } from './graph-data-context'
 import type { GraphNode } from './types'
@@ -302,6 +303,13 @@ export function GraphNodeDetail({
     })
     return (
       <div className="space-y-4">
+        <Link
+          href={`/lesson/landing/${node.id}`}
+          className="flex items-center justify-center gap-1.5 rounded-lg bg-[#06b6d4] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#06b6d4]/90"
+        >
+          {t('进入课程详情')}
+          <ArrowRight className="size-4" />
+        </Link>
         <div className="divide-y">
           <Field label={t('资源类型')} value={t(COURSE_TYPE_LABEL[node.type])} t={t} />
         </div>

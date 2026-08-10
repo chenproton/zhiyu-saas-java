@@ -231,6 +231,7 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
           )}
           {selected && selectedType === 'image' && (
             <div className="flex-1 min-h-0 flex items-center justify-center p-2 overflow-auto bg-gray-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={selectedBlobUrl}
                 alt={selected.name}

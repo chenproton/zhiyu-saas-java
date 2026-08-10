@@ -165,6 +165,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
       <CardContent className="p-7">
         <div className="flex items-start gap-4">
           {schoolInfo.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={schoolInfo.logoUrl}
               alt={schoolInfo.name}

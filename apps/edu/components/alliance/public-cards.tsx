@@ -55,6 +55,7 @@ export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise 
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-44 overflow-hidden bg-slate-800">
           {img ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={img}
               alt={enterprise.name}
@@ -122,6 +123,7 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {project.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={project.coverImage}
               alt={project.name}
@@ -181,6 +183,7 @@ export function AchievementCard({ achievement }: { achievement: AllianceAchievem
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {achievement.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={achievement.coverImage}
               alt={achievement.title}
@@ -288,6 +291,7 @@ export function BrandCard({ brand }: { brand: AllianceBrand }) {
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-36 overflow-hidden">
           {brand.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={brand.coverImage}
               alt={brand.name}
