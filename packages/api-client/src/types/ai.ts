@@ -34,3 +34,52 @@ export interface AIChatResponse {
   reply: string
   usage: AIUsage
 }
+
+// ===== 岗位 AI 辅助编写（POST /ai/position-assist）=====
+
+export type AIPositionAssistField =
+  | 'polish'
+  | 'responsibilities'
+  | 'requirements'
+  | 'careerPath'
+  | 'certificates'
+
+export interface AIPositionAssistBody {
+  field: AIPositionAssistField
+  position: {
+    name: string
+    shortName: string
+    /** 行业名称（前端由字典 ID 解析后传入） */
+    industry: string
+    majors: string[]
+    salaryRange: [number, number]
+    description: string
+    responsibilities: string[]
+    requirements: string[]
+    careerPath: string
+  }
+}
+
+/** polish 字段结果：基础信息润色（行业/专业为字典 ID，不由 LLM 生成） */
+export interface AIPositionPolish {
+  name: string
+  shortName: string
+  description: string
+  salaryMin: number
+  salaryMax: number
+}
+
+export interface AISuggestedCertificate {
+  name: string
+  description?: string
+  url?: string
+}
+
+export interface AIPositionAssistResponse {
+  field: AIPositionAssistField
+  polish?: AIPositionPolish
+  responsibilities?: string[]
+  requirements?: string[]
+  careerPath?: string
+  certificates?: AISuggestedCertificate[]
+}
