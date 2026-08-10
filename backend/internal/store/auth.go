@@ -169,10 +169,10 @@ func (s *AuthStore) GetTenantByID(ctx context.Context, id string) *domain.Tenant
 	var t domain.Tenant
 	var logo, domainVal, enterpriseCode, contact, phone, address, description *string
 	err := s.q.QueryRow(ctx, `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at
+		SELECT id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at
 		FROM tenants WHERE id = $1
 	`, id).Scan(
-		&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+		&t.ID, &t.Name, &t.Code, &t.Type, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
 		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {

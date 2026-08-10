@@ -10,12 +10,15 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AllianceHandler struct {
 	Store *store.AllianceStore
 	Links *store.AllianceEnterpriseLinkStore
+	// PartnerService 学校代注册企业（创建企业租户+主体+管理员，router 装配时注入）。
+	PartnerService *service.PartnerService
 }
 
 // ===== 通用响应结构 =====
@@ -140,6 +143,84 @@ func (h *AllianceHandler) SearchEnterprises(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceEnterprise]{Items: items, Total: len(items)})
+}
+
+// registerEnterpriseRequest 学校代注册企业请求（企业管理员账号由学校代填后转交企业）。
+type registerEnterpriseRequest struct {
+	EnterpriseName          string `json:"enterpriseName" validate:"required"`
+	Username                string `json:"username" validate:"required"`
+	Password                string `json:"password" validate:"required"`
+	UnifiedSocialCreditCode string `json:"unifiedSocialCreditCode"`
+	ContactPerson           string `json:"contactPerson"`
+	ContactPhone            string `json:"contactPhone"`
+	ContactEmail            string `json:"contactEmail"`
+}
+
+// RegisterEnterprise 学校代注册企业：创建企业租户+主体+管理员账号，并直接建立
+// 本校-企业合作关联（status=active）。企业已存在时由前端改走"引入企业"流程。
+func (h *AllianceHandler) RegisterEnterprise(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	var req registerEnterpriseRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.EnterpriseName == "" || req.Username == "" {
+		respondError(w, http.StatusBadRequest, "企业名称和用户名不能为空")
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	res, err := h.PartnerService.Register(r.Context(), &service.PartnerRegisterParams{
+		EnterpriseName:          req.EnterpriseName,
+		Username:                req.Username,
+		Password:                req.Password,
+		UnifiedSocialCreditCode: req.UnifiedSocialCreditCode,
+		ContactPerson:           req.ContactPerson,
+		ContactPhone:            req.ContactPhone,
+		ContactEmail:            req.ContactEmail,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrPartnerUsernameExists):
+			respondError(w, http.StatusConflict, "用户名已被注册")
+		case isUniqueViolation(err):
+			respondError(w, http.StatusConflict, "企业名称已被注册，可在「引入企业」中搜索并引入")
+		default:
+			respondServerError(w, r, err, "代注册企业失败")
+		}
+		return
+	}
+
+	// 建立本校-企业合作关联（合作中）
+	if _, err := h.Links.CreateLink(r.Context(), &store.AllianceEnterpriseLinkCreateParams{
+		TenantID:     tenantID,
+		EnterpriseID: res.EnterpriseID,
+		RelationType: "alliance",
+		Status:       "active",
+		CreatedBy:    &claims.UserID,
+	}); err != nil {
+		respondServerError(w, r, err, "代注册企业失败")
+		return
+	}
+
+	item, err := h.Links.GetLinkedByEnterprise(r.Context(), res.EnterpriseID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "代注册企业失败")
+		return
+	}
+	respondJSON(w, http.StatusCreated, item)
 }
 
 // linkEnterpriseRequest 引入企业请求（均为可选，默认值由 store 兜底）。

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,10 +16,15 @@ import (
 type TenantHandler struct {
 	Service      *service.TenantService
 	AdminService *service.TenantAdminService
+	// PartnerService 企业租户创建/主体信息查询（router 装配时注入）。
+	PartnerService *service.PartnerService
 }
 type CreateTenantRequest struct {
 	Name           string  `json:"name"`
 	Code           string  `json:"code"`
+	Type           string  `json:"type"`
+	Username       string  `json:"username"`
+	Password       string  `json:"password"`
 	LogoURL        *string `json:"logoUrl"`
 	Domain         *string `json:"domain"`
 	EnterpriseCode *string `json:"enterpriseCode"`
@@ -26,6 +32,14 @@ type CreateTenantRequest struct {
 	Phone          *string `json:"phone"`
 	Address        *string `json:"address"`
 	Description    *string `json:"description"`
+}
+
+// strValue 解引用可选字符串，nil 视为空串。
+func strValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 type UpdateTenantRequest struct {
@@ -67,6 +81,8 @@ type adminUserInfo struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
 	LoginName string `json:"loginName"`
+	// InitialPassword 企业租户创建时下发初始密码（学校租户不返回）。
+	InitialPassword *string `json:"initialPassword,omitempty"`
 }
 
 func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +293,17 @@ func (h *TenantHandler) AdminCreate(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-	if req.Name == "" || req.Code == "" {
+	if req.Name == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	// 企业租户：复用 partner 注册流程（租户+角色种子+企业主体+管理员账号）
+	if req.Type == string(domain.TenantTypeEnterprise) {
+		h.adminCreateEnterprise(w, r, &req)
+		return
+	}
+	if req.Code == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
@@ -315,6 +341,149 @@ func (h *TenantHandler) AdminCreate(w http.ResponseWriter, r *http.Request) {
 			LoginName: result.AdminUser,
 		},
 	})
+}
+
+// adminCreateEnterprise 超管创建企业租户：企业租户 + 企业主体 + 管理员账号（与 partner 自助注册一致）。
+func (h *TenantHandler) adminCreateEnterprise(w http.ResponseWriter, r *http.Request, req *CreateTenantRequest) {
+	if req.Username == "" {
+		respondError(w, http.StatusBadRequest, "企业管理员用户名不能为空")
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	res, err := h.PartnerService.Register(r.Context(), &service.PartnerRegisterParams{
+		EnterpriseName:          req.Name,
+		Username:                req.Username,
+		Password:                req.Password,
+		ContactName:             strValue(req.Contact),
+		UnifiedSocialCreditCode: strValue(req.EnterpriseCode),
+		ContactPerson:           strValue(req.Contact),
+		ContactPhone:            strValue(req.Phone),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrPartnerUsernameExists):
+			respondError(w, http.StatusConflict, "用户名已被注册")
+		case isUniqueViolation(err):
+			respondError(w, http.StatusConflict, "企业名称已被注册")
+		default:
+			respondServerError(w, r, err, "创建企业租户失败")
+		}
+		return
+	}
+
+	tenant, err := h.Service.Get(r.Context(), res.TenantID)
+	if err != nil {
+		respondServerError(w, r, err, "创建企业租户失败")
+		return
+	}
+	respondJSON(w, http.StatusCreated, CreateTenantResponse{
+		Tenant: *tenant,
+		AdminUser: &adminUserInfo{
+			ID:              res.User.ID,
+			Username:        res.User.Username,
+			LoginName:       res.User.Username,
+			InitialPassword: &req.Password,
+		},
+	})
+}
+
+// AdminGetEnterprise 超管查看企业租户的企业主体信息（信用代码/联系人/展示开关等）。
+func (h *TenantHandler) AdminGetEnterprise(w http.ResponseWriter, r *http.Request) {
+	tenantID := chi.URLParam(r, "id")
+	tenant, err := h.Service.Get(r.Context(), tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "租户不存在")
+		return
+	}
+	if tenant.Type != domain.TenantTypeEnterprise {
+		respondError(w, http.StatusBadRequest, "非企业租户")
+		return
+	}
+	profile, err := h.PartnerService.GetProfile(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询企业信息失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"tenant": tenant, "enterprise": profile})
+}
+
+// AdminUpdateEnterprise 超管编辑企业租户主体信息（信用代码/联系人/电话/邮箱/展示开关）。
+func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Request) {
+	tenantID := chi.URLParam(r, "id")
+	tenant, err := h.Service.Get(r.Context(), tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "租户不存在")
+		return
+	}
+	if tenant.Type != domain.TenantTypeEnterprise {
+		respondError(w, http.StatusBadRequest, "非企业租户")
+		return
+	}
+
+	existing, err := h.PartnerService.GetProfile(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询企业信息失败")
+		return
+	}
+
+	var req adminEnterpriseUpdateRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+
+	// 部分更新兜底：未携带字段保留原值
+	creditCode := store.StrPtrIfNonEmpty(req.UnifiedSocialCreditCode)
+	if creditCode == nil {
+		creditCode = existing.UnifiedSocialCreditCode
+	}
+	contactPerson := store.StrPtrIfNonEmpty(req.ContactPerson)
+	if contactPerson == nil {
+		contactPerson = existing.ContactPerson
+	}
+	contactPhone := store.StrPtrIfNonEmpty(req.ContactPhone)
+	if contactPhone == nil {
+		contactPhone = existing.ContactPhone
+	}
+	contactEmail := store.StrPtrIfNonEmpty(req.ContactEmail)
+	if contactEmail == nil {
+		contactEmail = existing.ContactEmail
+	}
+	enablePublic := existing.EnablePublic
+	if req.EnablePublic != nil {
+		enablePublic = *req.EnablePublic
+	}
+
+	if _, err := h.PartnerService.UpdateProfile(r.Context(), tenantID, &store.AllianceEnterpriseProfileUpdateParams{
+		Name:                    existing.Name,
+		UnifiedSocialCreditCode: creditCode,
+		ContactPerson:           contactPerson,
+		ContactPhone:            contactPhone,
+		ContactEmail:            contactEmail,
+		EnablePublic:            enablePublic,
+	}); err != nil {
+		respondServerError(w, r, err, "更新企业信息失败")
+		return
+	}
+
+	updated, err := h.PartnerService.GetProfile(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询企业信息失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, updated)
+}
+
+// adminEnterpriseUpdateRequest 超管编辑企业主体信息请求。
+type adminEnterpriseUpdateRequest struct {
+	UnifiedSocialCreditCode string `json:"unifiedSocialCreditCode"`
+	ContactPerson           string `json:"contactPerson"`
+	ContactPhone            string `json:"contactPhone"`
+	ContactEmail            string `json:"contactEmail"`
+	EnablePublic            *bool  `json:"enablePublic"`
 }
 
 func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {

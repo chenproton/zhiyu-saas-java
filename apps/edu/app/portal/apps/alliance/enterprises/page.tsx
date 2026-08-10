@@ -22,7 +22,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Pencil, ExternalLink, Link2, Search, Loader2, Unlink } from 'lucide-react'
+import {
+  Pencil,
+  ExternalLink,
+  Link2,
+  Search,
+  Loader2,
+  Unlink,
+  Building2,
+  PlusCircle,
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
@@ -116,6 +125,69 @@ export default function AllianceEnterprisesPage() {
     }
   }
 
+  // ── 代注册企业（学校为企业创建租户+账号，直接建立合作关联） ───────
+  const [registerDialog, setRegisterDialog] = useState(false)
+  const [registering, setRegistering] = useState(false)
+  const [reg, setReg] = useState({
+    enterpriseName: '',
+    unifiedSocialCreditCode: '',
+    contactPerson: '',
+    contactPhone: '',
+    contactEmail: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+  })
+
+  const doRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (reg.password !== reg.confirmPassword) {
+      toast({ title: t('两次输入的密码不一致'), variant: 'destructive' })
+      return
+    }
+    setRegistering(true)
+    try {
+      await allianceEnterpriseApi.register({
+        enterpriseName: reg.enterpriseName,
+        unifiedSocialCreditCode: reg.unifiedSocialCreditCode || undefined,
+        contactPerson: reg.contactPerson || undefined,
+        contactPhone: reg.contactPhone || undefined,
+        contactEmail: reg.contactEmail || undefined,
+        username: reg.username,
+        password: reg.password,
+      })
+      toast({
+        title: t('代注册成功'),
+        description: t(
+          '已创建企业账号 {username}，请将用户名和密码转交企业，企业即可登录企业服务台',
+          {
+            username: reg.username,
+          },
+        ),
+      })
+      setRegisterDialog(false)
+      setReg({
+        enterpriseName: '',
+        unifiedSocialCreditCode: '',
+        contactPerson: '',
+        contactPhone: '',
+        contactEmail: '',
+        username: '',
+        password: '',
+        confirmPassword: '',
+      })
+      await refresh()
+    } catch (err: any) {
+      toast({
+        title: t('代注册失败'),
+        description: err.message || t('未知错误'),
+        variant: 'destructive',
+      })
+    } finally {
+      setRegistering(false)
+    }
+  }
+
   // ── 解除引入 ──────────────────────────────────────────────
   const [unlinkTarget, setUnlinkTarget] = useState<AllianceEnterprise | null>(null)
   const [unlinking, setUnlinking] = useState(false)
@@ -160,10 +232,16 @@ export default function AllianceEnterprisesPage() {
           )
         }
         headerActions={
-          <Button size="sm" onClick={() => setLinkDialog(true)}>
-            <Link2 className="h-4 w-4 mr-1" />
-            {t('引入企业')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setRegisterDialog(true)}>
+              <Building2 className="h-4 w-4 mr-1" />
+              {t('代注册企业')}
+            </Button>
+            <Button size="sm" onClick={() => setLinkDialog(true)}>
+              <Link2 className="h-4 w-4 mr-1" />
+              {t('引入企业')}
+            </Button>
+          </div>
         }
         hideCreate
         colSpan={13}
@@ -411,6 +489,140 @@ export default function AllianceEnterprisesPage() {
               {t('关闭')}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 代注册企业：学校为企业创建租户+管理员账号 */}
+      <Dialog
+        open={registerDialog}
+        onOpenChange={(o) => {
+          setRegisterDialog(o)
+          if (!o)
+            setReg({
+              enterpriseName: '',
+              unifiedSocialCreditCode: '',
+              contactPerson: '',
+              contactPhone: '',
+              contactEmail: '',
+              username: '',
+              password: '',
+              confirmPassword: '',
+            })
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('代注册企业')}</DialogTitle>
+            <DialogDescription>
+              {t('为企业创建账号，注册后直接建立本校合作关联；请将用户名和密码转交企业。')}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={doRegister} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>
+                {t('企业名称')} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                placeholder={t('请输入企业全称')}
+                value={reg.enterpriseName}
+                onChange={(e) => setReg((p) => ({ ...p, enterpriseName: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('统一社会信用代码')}</Label>
+              <Input
+                placeholder={t('如：91320594MA1P7XXXX1')}
+                value={reg.unifiedSocialCreditCode}
+                onChange={(e) => setReg((p) => ({ ...p, unifiedSocialCreditCode: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t('联系人')}</Label>
+                <Input
+                  placeholder={t('请输入联系人姓名')}
+                  value={reg.contactPerson}
+                  onChange={(e) => setReg((p) => ({ ...p, contactPerson: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('手机号')}</Label>
+                <Input
+                  placeholder={t('请输入手机号')}
+                  value={reg.contactPhone}
+                  onChange={(e) => setReg((p) => ({ ...p, contactPhone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('联系邮箱（选填）')}</Label>
+              <Input
+                type="email"
+                placeholder={t('请输入联系邮箱')}
+                value={reg.contactEmail}
+                onChange={(e) => setReg((p) => ({ ...p, contactEmail: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                {t('用户名')} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                placeholder={t('设置登录用户名（企业内唯一）')}
+                value={reg.username}
+                onChange={(e) => setReg((p) => ({ ...p, username: e.target.value }))}
+                autoComplete="username"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>
+                  {t('密码')} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="password"
+                  placeholder={t('设置登录密码')}
+                  value={reg.password}
+                  onChange={(e) => setReg((p) => ({ ...p, password: e.target.value }))}
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  {t('确认密码')} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="password"
+                  placeholder={t('再次输入密码')}
+                  value={reg.confirmPassword}
+                  onChange={(e) => setReg((p) => ({ ...p, confirmPassword: e.target.value }))}
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRegisterDialog(false)}
+                disabled={registering}
+              >
+                {t('取消')}
+              </Button>
+              <Button type="submit" disabled={registering}>
+                {registering ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                )}
+                {t('代注册并关联')}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
