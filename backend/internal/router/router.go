@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/metrics"
 )
 
 type contentRoutes interface {
@@ -108,6 +109,7 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	// 导致限流/操作日志的 IP 可被伪造绕过；RemoteAddr 保持为 TCP 连接真实地址
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(metrics.Middleware)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -133,11 +135,15 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	r.With(authmw.OptionalJWT(jwtSecret)).Get("/uploads/{tenantID}/{filename}", fileHandler.Serve)
 
 	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo, aiSecret)
+	metrics.RegisterPool(db)
 
 	// /health 保持进程存活探针（历史兼容），/health/ready 为就绪探针（DB+Redis）
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+	// /metrics 暴露 Prometheus 指标（请求量/耗时/5xx + DB 连接池）
+	r.Get("/metrics", metrics.Handler().ServeHTTP)
+
 	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
