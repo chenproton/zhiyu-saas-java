@@ -71,7 +71,7 @@ func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := fill(ctx, f, tenantID, req.IDs); err != nil {
-		respondError(w, http.StatusInternalServerError, "填充export data失败")
+		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Reque
 		"students":      "学生导出.xlsx",
 		"teachers":      "教师导出.xlsx",
 	}[entity]
-	writeExcel(w, f, filename)
+	writeExcel(w, r, f, filename)
 }
 
 func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *excelize.File, tenantID string, ids []string) error {

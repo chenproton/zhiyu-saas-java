@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -86,26 +85,16 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	aggregated := &examImportResult{}
 	// 覆盖导入整体包在事务内：overwrite 清空旧题目后按新文件重建，
 	// 任一步失败整体回滚，防止"题目已清空、新题未写入"的中间态。
-	tx, err := h.Store.WithTxRaw(ctx)
-	if err != nil {
-		respondServerError(w, r, err, "开启导入事务失败")
-		return
-	}
-	defer func() {
-		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			slog.Error("[exam-import] 事务回滚失败", "error", err)
-		}
-	}()
-
-	mfu.ForEach(func(xlsx *excelize.File) {
-		examMap := make(map[string]string)
-		h.importExams(ctx, tx, xlsx, tenantID, claims.UserID, false, overwrite, rename, examMap, aggregated)
-		if len(examMap) > 0 {
-			h.importExamQuestions(ctx, tx, xlsx, tenantID, examMap, aggregated)
-		}
-	})
-
-	if err := tx.Commit(ctx); err != nil {
+	if err := h.Store.WithTx(ctx, func(txStore *store.Store) error {
+		mfu.ForEach(func(xlsx *excelize.File) {
+			examMap := make(map[string]string)
+			h.importExams(ctx, txStore.Q(), xlsx, tenantID, claims.UserID, false, overwrite, rename, examMap, aggregated)
+			if len(examMap) > 0 {
+				h.importExamQuestions(ctx, txStore.Q(), xlsx, tenantID, examMap, aggregated)
+			}
+		})
+		return nil
+	}); err != nil {
 		slog.Error("[exam-import] 事务提交失败", "error", err)
 		respondServerError(w, r, err, "导入提交失败")
 		return

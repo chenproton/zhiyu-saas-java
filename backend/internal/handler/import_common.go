@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -364,69 +363,21 @@ func parseMultiImportRequest(w http.ResponseWriter, r *http.Request, requirePort
 	}
 }
 
-// findOrCreateKnowledgePoints 按租户+名称批量查找知识点，不存在则创建，返回命中的 ID 列表。
-// 供课程/场景/颗粒课/题库题面等导入复用。
+// findOrCreateKnowledgePoints 按租户+名称批量查找知识点，不存在则创建（SQL 在 store 层）。
 func findOrCreateKnowledgePoints(ctx context.Context, db store.Queryer, tenantID string, names []string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		var id string
-		err := db.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		code, codeErr := store.GenerateUniqueEntityCode(ctx, db, "KP", "knowledge_points", tenantID)
-		if codeErr != nil {
-			code = store.GenerateEntityCode("KP")
-		}
-		_, _ = db.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, id, tenantID, name, code)
-		var existing string
-		_ = db.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
-	}
-	return ids
+	return store.FindOrCreateKnowledgePointsByNames(ctx, db, tenantID, names)
 }
 
 // findOrCreateResources 按租户+名称批量查找资源库资源，不存在则按文件后缀推断类型创建
-// （无后缀/未知后缀归入 other），返回命中的 ID 列表。供课程/场景/颗粒课导入复用。
+// （无后缀/未知后缀归入 other），返回命中的 ID 列表。SQL 在 store 层。
 func findOrCreateResources(ctx context.Context, db store.Queryer, tenantID string, names []string, userID string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
 	ids := []string{}
-	for _, name := range names {
-		name = strings.TrimSpace(name)
-		if name == "" {
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if n == "" {
 			continue
 		}
-		var id string
-		err := db.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, _ = db.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,$4::resource_type,$5) ON CONFLICT DO NOTHING`,
-			id, tenantID, name, resourceTypeByExt(name), userID)
-		var existing string
-		_ = db.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
+		ids = append(ids, store.FindOrCreateResourcesByNames(ctx, db, tenantID, []string{n}, resourceTypeByExt(n), userID)...)
 	}
 	return ids
 }
@@ -482,15 +433,7 @@ func lookupBatchID(ctx context.Context, db store.Queryer, table, tenantID, name 
 	return &id
 }
 
-// lookupMajorID 按租户+名称（NFKC 归一化）查找专业 ID，找不到返回 nil。
+// lookupMajorID 按租户+名称（NFKC 归一化）查找专业 ID，找不到返回 nil（SQL 在 store 层）。
 func lookupMajorID(ctx context.Context, db store.Queryer, tenantID, name string) *string {
-	if name == "" {
-		return nil
-	}
-	var id string
-	err := db.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
-	if err != nil {
-		return nil
-	}
-	return &id
+	return store.FindMajorIDByNormalizedName(ctx, db, tenantID, name)
 }

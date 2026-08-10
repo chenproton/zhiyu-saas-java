@@ -236,7 +236,9 @@ func (h *QuestionBankHandler) actions() contentActions {
 		targetType: "question_bank",
 		inviteCol:  "collaborator_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			return h.Service.GetQuestionBank(ctx, id)
+			// 状态流转前的 checkTenantAccess 已完成租户归属校验，回读时从上下文 claims 取租户
+			claims, _ := ctx.Value(middleware.ContextKeyUser).(*middleware.Claims)
+			return h.Service.GetQuestionBank(ctx, tenantIDOf(claims), id)
 		},
 	}
 }

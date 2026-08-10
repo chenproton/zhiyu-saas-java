@@ -12,8 +12,8 @@ func (s *ApprovalService) ListApprovals(ctx context.Context, p store.ListParams,
 }
 
 // GetApproval 查询单个审批记录。
-func (s *ApprovalService) GetApproval(ctx context.Context, id string) (*domain.ApprovalRecord, error) {
-	return s.st.Approvals().Get(ctx, id)
+func (s *ApprovalService) GetApproval(ctx context.Context, tenantID, id string) (*domain.ApprovalRecord, error) {
+	return s.st.Approvals().Get(ctx, tenantID, id)
 }
 
 // CreateApproval 创建审批记录。

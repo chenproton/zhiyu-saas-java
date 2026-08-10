@@ -27,12 +27,12 @@ func (s *UserExtensionFieldService) List(ctx context.Context, tenantID string) (
 }
 
 // Get 查询单个扩展字段。
-func (s *UserExtensionFieldService) Get(ctx context.Context, id string) (*domain.UserExtensionField, error) {
-	return s.st.UserExtensionFields().Get(ctx, id)
+func (s *UserExtensionFieldService) Get(ctx context.Context, tenantID, id string) (*domain.UserExtensionField, error) {
+	return s.st.UserExtensionFields().Get(ctx, tenantID, id)
 }
 
 // Update 更新扩展字段（角色编码先过滤为租户内真实存在的）。
 func (s *UserExtensionFieldService) Update(ctx context.Context, tenantID, id string, p *store.UserExtensionFieldUpdateParams) (*domain.UserExtensionField, error) {
 	p.ApplicableRoleCodes = s.st.UserExtensionFields().FilterTenantRoleCodes(ctx, tenantID, p.ApplicableRoleCodes)
-	return s.st.UserExtensionFields().Update(ctx, id, p)
+	return s.st.UserExtensionFields().Update(ctx, tenantID, id, p)
 }

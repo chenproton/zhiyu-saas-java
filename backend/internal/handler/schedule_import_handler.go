@@ -263,18 +263,13 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 
 	// 确定目标学期：优先使用请求携带的 termId，其次从第一个有效课程匹配教学计划推断
 	if termID != "" {
-		var exists string
-		if err := h.Store.Q().QueryRow(ctx, `SELECT id::text FROM terms WHERE tenant_id = $1 AND id = $2`, tenantID, termID).Scan(&exists); err != nil {
+		if _, err := h.Store.Terms().Get(ctx, termID, tenantID); err != nil {
 			result.Errors = append(result.Errors, "学期不存在或不属于当前租户")
 			result.Failed++
 			return result
 		}
 	} else {
-		_ = h.Store.Q().QueryRow(ctx, `
-			SELECT p.term_id::text FROM teaching_plan_entries e
-			JOIN teaching_plans p ON p.id = e.plan_id
-			WHERE p.tenant_id = $1 AND e.course_name = $2 LIMIT 1
-		`, tenantID, items[0].courseName).Scan(&termID)
+		termID, _ = store.InferTermByCourseName(ctx, h.Store.Q(), tenantID, items[0].courseName)
 	}
 	if termID == "" {
 		result.Errors = append(result.Errors, "无法识别所属学期，请先选择目标学期再导入")
@@ -282,150 +277,119 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		return result
 	}
 
-	tx, err := h.Store.WithTxRaw(ctx)
-	if err != nil {
-		result.Errors = append(result.Errors, "开启事务失败")
-		result.Failed++
-		return result
-	}
-	defer tx.Rollback(ctx)
-
 	// 课程列表格式为「清空重排」：回传文件代表该学期完整草稿排课，清空草稿区后重建，不触碰已发布版本
-	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = 'draft'`, tenantID, termID); err != nil {
-		result.Errors = append(result.Errors, "清空旧排课失败")
-		result.Failed++
-		return result
-	}
-	// 教学计划条目全部恢复为待排
-	if _, err := tx.Exec(ctx, `
-		UPDATE teaching_plan_entries e SET status = 'planned'
-		FROM teaching_plans p WHERE p.id = e.plan_id AND p.tenant_id = $1 AND p.term_id = $2
-	`, tenantID, termID); err != nil {
-		result.Errors = append(result.Errors, "恢复待排状态失败")
-		result.Failed++
-		return result
-	}
-
-	// 课程/班级/教师/场地查询缓存，避免同课程多天重复查询
-	planEntryCache := map[string]struct {
-		id                     string
-		teacherID, classNodeID *string
-		scenarioID, courseID   *string
-		courseCode             *string
-	}{}
-	classCache := map[string]string{}
-	teacherCache := map[string]string{}
-	venueCache := map[string]string{}
-
-	created := 0
-	for _, it := range items {
-		// 匹配教学计划条目（按课程名+类型）
-		pe, ok := planEntryCache[it.courseName]
-		if !ok {
-			var planEntryID string
-			var peTeacherID, peClassNodeID *string
-			_ = tx.QueryRow(ctx, `
-				SELECT e.id::text, e.teacher_id::text, e.class_node_id::text FROM teaching_plan_entries e
-				JOIN teaching_plans p ON p.id = e.plan_id
-				WHERE p.tenant_id = $1 AND p.term_id = $2 AND e.course_name = $3 LIMIT 1
-			`, tenantID, termID, it.courseName).Scan(&planEntryID, &peTeacherID, &peClassNodeID)
-			if planEntryID == "" {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]未匹配到教学计划条目", it.courseName))
-				continue
-			}
-			var scenarioID, courseID *string
-			var courseCode *string
-			_ = tx.QueryRow(ctx, `SELECT scenario_id::text, course_id::text, course_code FROM teaching_plan_entries WHERE id = $1`, planEntryID).Scan(&scenarioID, &courseID, &courseCode)
-			pe = struct {
-				id                     string
-				teacherID, classNodeID *string
-				scenarioID, courseID   *string
-				courseCode             *string
-			}{planEntryID, peTeacherID, peClassNodeID, scenarioID, courseID, courseCode}
-			planEntryCache[it.courseName] = pe
-		}
-
-		// 解析班级（逗号分隔）
-		var classIDs []string
-		parseOK := true
-		for _, cn := range strings.Split(strings.ReplaceAll(it.classes, ",", "，"), "，") {
-			cn = strings.TrimSpace(cn)
-			if cn == "" {
-				continue
-			}
-			cid, ok := classCache[cn]
-			if !ok {
-				if err := tx.QueryRow(ctx, `SELECT id::text FROM organizations WHERE tenant_id = $1 AND name = $2 LIMIT 1`, tenantID, cn).Scan(&cid); err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]班级[%s]不存在", it.courseName, cn))
-					parseOK = false
-					break
-				}
-				classCache[cn] = cid
-			}
-			classIDs = append(classIDs, cid)
-		}
-		if !parseOK || len(classIDs) == 0 {
-			continue
-		}
-
-		// 解析教师
-		var teacherID *string
-		if it.teacherName != "" {
-			tid, ok := teacherCache[it.teacherName]
-			if !ok {
-				if err := tx.QueryRow(ctx, `SELECT id::text FROM users WHERE tenant_id=$1 AND (name=$2 OR username=$2) LIMIT 1`, tenantID, it.teacherName).Scan(&tid); err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]教师[%s]不存在", it.courseName, it.teacherName))
-					continue
-				}
-				teacherCache[it.teacherName] = tid
-			}
-			teacherID = &tid
-		}
-
-		// 解析场地
-		var venueID *string
-		if it.venueName != "" {
-			vid, ok := venueCache[it.venueName]
-			if !ok {
-				if err := tx.QueryRow(ctx, `SELECT id::text FROM venues WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, it.venueName).Scan(&vid); err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]场地[%s]不存在", it.courseName, it.venueName))
-					continue
-				}
-				venueCache[it.venueName] = vid
-			}
-			venueID = &vid
-		}
-
-		id := uuid.NewString()
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
-				class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'imported', 'draft', 1)
-		`, id, tenantID, termID, pe.id, it.courseName, pe.courseCode, pe.courseID, it.entryType,
-			classIDs[0], classIDs, teacherID, it.day, it.periods, it.startWeek, it.endWeek, it.weekPattern,
-			venueID, pe.scenarioID); err != nil {
+	err = h.Store.WithTx(ctx, func(txStore *store.Store) error {
+		if err := store.ClearDraftScheduleEntries(ctx, txStore.Q(), tenantID, termID); err != nil {
+			result.Errors = append(result.Errors, "清空旧排课失败")
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]导入失败: %v", it.courseName, err))
-			continue
+			return err
 		}
-		// 标记已排（失败计入错误，避免计划条目状态与排课不一致）
-		if _, err := tx.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, pe.id); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]计划条目标记失败: %v", it.courseName, err))
+		// 教学计划条目全部恢复为待排
+		if err := store.ResetPlanEntriesToPlanned(ctx, txStore.Q(), tenantID, termID); err != nil {
+			result.Errors = append(result.Errors, "恢复待排状态失败")
+			result.Failed++
+			return err
 		}
-		created++
-	}
 
-	if err := tx.Commit(ctx); err != nil {
+		// 课程/班级/教师/场地查询缓存，避免同课程多天重复查询
+		planEntryCache := map[string]store.SchedulePlanEntry{}
+		classCache := map[string]string{}
+		teacherCache := map[string]string{}
+		venueCache := map[string]string{}
+
+		for _, it := range items {
+			// 匹配教学计划条目（按课程名）
+			pe, ok := planEntryCache[it.courseName]
+			if !ok {
+				pe, err = store.FindPlanEntryByCourse(ctx, txStore.Q(), tenantID, termID, it.courseName)
+				if err != nil || pe.ID == "" {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]未匹配到教学计划条目", it.courseName))
+					continue
+				}
+				planEntryCache[it.courseName] = pe
+			}
+
+			// 解析班级（逗号分隔）
+			var classIDs []string
+			parseOK := true
+			for _, cn := range strings.Split(strings.ReplaceAll(it.classes, ",", "，"), "，") {
+				cn = strings.TrimSpace(cn)
+				if cn == "" {
+					continue
+				}
+				cid, ok := classCache[cn]
+				if !ok {
+					cid, err = store.FindOrgIDByName(ctx, txStore.Q(), tenantID, cn)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]班级[%s]不存在", it.courseName, cn))
+						parseOK = false
+						break
+					}
+					classCache[cn] = cid
+				}
+				classIDs = append(classIDs, cid)
+			}
+			if !parseOK || len(classIDs) == 0 {
+				continue
+			}
+
+			// 解析教师
+			var teacherID *string
+			if it.teacherName != "" {
+				tid, ok := teacherCache[it.teacherName]
+				if !ok {
+					tid, err = store.FindTeacherIDByName(ctx, txStore.Q(), tenantID, it.teacherName)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]教师[%s]不存在", it.courseName, it.teacherName))
+						continue
+					}
+					teacherCache[it.teacherName] = tid
+				}
+				teacherID = &tid
+			}
+
+			// 解析场地
+			var venueID *string
+			if it.venueName != "" {
+				vid, ok := venueCache[it.venueName]
+				if !ok {
+					vid, err = store.FindVenueIDByName(ctx, txStore.Q(), tenantID, it.venueName)
+					if err != nil {
+						result.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]场地[%s]不存在", it.courseName, it.venueName))
+						continue
+					}
+					venueCache[it.venueName] = vid
+				}
+				venueID = &vid
+			}
+
+			if err := store.InsertScheduleEntry(ctx, txStore.Q(), store.ScheduleEntryInsertParams{
+				ID: uuid.NewString(), TenantID: tenantID, TermID: termID, PlanEntryID: pe.ID,
+				CourseName: it.courseName, CourseCode: pe.CourseCode, CourseID: pe.CourseID, EntryType: it.entryType,
+				ClassIDs: classIDs, TeacherID: teacherID, Day: it.day, Periods: it.periods,
+				StartWeek: it.startWeek, EndWeek: it.endWeek, WeekPattern: it.weekPattern,
+				VenueID: venueID, ScenarioID: pe.ScenarioID,
+			}); err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]导入失败: %v", it.courseName, err))
+				continue
+			}
+			// 标记已排（失败计入错误，避免计划条目状态与排课不一致）
+			if err := store.MarkPlanEntryScheduled(ctx, txStore.Q(), pe.ID); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]计划条目标记失败: %v", it.courseName, err))
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		result.Errors = append(result.Errors, "提交事务失败")
 		result.Failed++
 		return result
 	}
-	result.Created = created
 	return result
 }
 

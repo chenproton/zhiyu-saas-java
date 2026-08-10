@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -52,24 +53,24 @@ func (c contentActions) invalidateAfterWrite(r *http.Request) {
 }
 
 // tableFor returns the sanitized table name for contentActions queries.
-func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
+func (c contentActions) tableFor(w http.ResponseWriter, r *http.Request) (string, bool) {
 	for _, a := range store.AllowedContentTables {
 		if c.table == a {
 			return c.table, true
 		}
 	}
-	respondError(w, http.StatusInternalServerError, "表配置无效")
+	respondServerError(w, r, fmt.Errorf("表配置无效: %s", c.table), "表配置无效")
 	return "", false
 }
 
 // inviteColFor returns the sanitized invite column name for invite().
-func (c contentActions) inviteColFor(w http.ResponseWriter) (string, bool) {
+func (c contentActions) inviteColFor(w http.ResponseWriter, r *http.Request) (string, bool) {
 	for _, a := range store.AllowedInviteColumns {
 		if c.inviteCol == a {
 			return c.inviteCol, true
 		}
 	}
-	respondError(w, http.StatusInternalServerError, "邀请列配置无效")
+	respondServerError(w, r, fmt.Errorf("邀请列配置无效: %s", c.inviteCol), "邀请列配置无效")
 	return "", false
 }
 
@@ -78,7 +79,7 @@ func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
 	}
-	table, ok := c.tableFor(w)
+	table, ok := c.tableFor(w, r)
 	if !ok {
 		return false
 	}
@@ -113,7 +114,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
-	table, ok := c.tableFor(w)
+	table, ok := c.tableFor(w, r)
 	if !ok {
 		return
 	}
@@ -171,7 +172,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
-	table, ok := c.tableFor(w)
+	table, ok := c.tableFor(w, r)
 	if !ok {
 		return
 	}
@@ -203,11 +204,11 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
-	table, ok := c.tableFor(w)
+	table, ok := c.tableFor(w, r)
 	if !ok {
 		return
 	}
-	inviteCol, ok := c.inviteColFor(w)
+	inviteCol, ok := c.inviteColFor(w, r)
 	if !ok {
 		return
 	}

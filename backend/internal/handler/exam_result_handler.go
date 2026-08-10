@@ -79,7 +79,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usage, err := h.Service.Store().ExamUsages().Get(r.Context(), req.ExamUsageID)
+	usage, err := h.Service.Store().ExamUsages().Get(r.Context(), tenantID, req.ExamUsageID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return

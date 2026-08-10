@@ -3,6 +3,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -20,18 +21,77 @@ type Scheduler struct {
 // Start 启动定时任务：每天 02:00 汇聚所有已发布认证规则的岗位能力结果。
 func Start(pool *pgxpool.Pool) *Scheduler {
 	c := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
-	if _, err := c.AddFunc("0 2 * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-		defer cancel()
-		slog.Info("开始定时岗位能力汇聚")
-		if err := aggregateAll(ctx, pool); err != nil {
-			slog.Error("定时岗位能力汇聚失败", "error", err)
+	register := func(spec, jobName string, fn func(ctx context.Context) error) {
+		if _, err := c.AddFunc(spec, func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+			defer cancel()
+			runJob(ctx, pool, jobName, fn)
+		}); err != nil {
+			slog.Error("注册定时任务失败", "job", jobName, "error", err)
 		}
-	}); err != nil {
-		slog.Error("注册定时岗位能力汇聚任务失败", "error", err)
 	}
+	register("0 2 * * *", "job-ability-aggregate", func(ctx context.Context) error {
+		return aggregateAll(ctx, pool)
+	})
 	c.Start()
 	return &Scheduler{cron: c}
+}
+
+// runJob 统一执行入口：panic recover + 失败重试 1 次 + 执行记录落库 job_run_logs。
+// 执行记录写失败不影响任务本身（记录为尽力而为）。
+func runJob(ctx context.Context, pool *pgxpool.Pool, jobName string, fn func(ctx context.Context) error) {
+	slog.Info("开始定时任务", "job", jobName)
+	started := time.Now()
+	logID := startJobRun(ctx, pool, jobName)
+
+	run := func() (err error) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				err = fmt.Errorf("panic: %v", rec)
+			}
+		}()
+		return fn(ctx)
+	}
+
+	err := run()
+	if err != nil {
+		slog.Error("定时任务失败，重试一次", "job", jobName, "error", err)
+		err = run()
+	}
+	finishJobRun(ctx, pool, logID, jobName, started, err)
+}
+
+// startJobRun 写入执行开始记录，返回日志 ID（写失败返回空串，后续跳过更新）。
+func startJobRun(ctx context.Context, pool *pgxpool.Pool, jobName string) string {
+	var id string
+	err := pool.QueryRow(ctx, `INSERT INTO job_run_logs (job_name, status) VALUES ($1, 'running') RETURNING id`, jobName).Scan(&id)
+	if err != nil {
+		slog.Warn("定时任务执行记录写入失败", "job", jobName, "error", err)
+		return ""
+	}
+	return id
+}
+
+// finishJobRun 回填执行结果；retry 前的首次失败在日志中不可见（仅记录最终结果），
+// 重试语义由日志字段 status/error 体现。
+func finishJobRun(ctx context.Context, pool *pgxpool.Pool, logID, jobName string, started time.Time, err error) {
+	if logID == "" {
+		return
+	}
+	status := "success"
+	errorText := ""
+	if err != nil {
+		status = "failed"
+		errorText = err.Error()
+	}
+	if _, uerr := pool.Exec(ctx,
+		`UPDATE job_run_logs SET finished_at = $1, status = $2, error = $3 WHERE id = $4`,
+		time.Now(), status, errorText, logID); uerr != nil {
+		slog.Warn("定时任务执行记录回填失败", "job", jobName, "error", uerr)
+	}
+	if err != nil {
+		slog.Error("定时任务最终失败", "job", jobName, "error", err, "elapsed", time.Since(started).String())
+	}
 }
 
 // aggregateAll 使用专用连接执行汇聚，解除全局 statement_timeout=15s 约束（单条汇聚语句可能超过 15 秒）。

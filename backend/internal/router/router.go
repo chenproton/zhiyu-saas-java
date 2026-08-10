@@ -49,18 +49,23 @@ func registerContentRoutes(r chi.Router, base string, h contentRoutes) {
 
 // registerContentWriteRoutes 只注册内容资源的写操作路由，
 // 两个 GET（List/Get）由 registerContentReadRoutes 挂在更宽的角色组（如含学生的 jobViewer）。
-func registerContentWriteRoutes(r chi.Router, base string, h contentRoutes) {
-	r.Post(base, h.Create)
-	r.Put(base+"/{id}", h.Update)
-	r.Delete(base+"/{id}", h.Delete)
-	r.Post(base+"/{id}/submit", h.Submit)
-	r.Post(base+"/{id}/review", h.Review)
-	r.Post(base+"/{id}/publish", h.Publish)
-	r.Post(base+"/{id}/archive", h.Archive)
-	r.Post(base+"/{id}/unpublish", h.Unpublish)
-	r.Post(base+"/{id}/withdraw", h.Withdraw)
-	r.Post(base+"/{id}/save-draft", h.SaveDraft)
-	r.Post(base+"/{id}/invite", h.Invite)
+// 试点：写路由统一挂租户归属中间件（跨租户 {id} 请求在路由层 404），
+// 后续推广到全部 id 型资源路由后可收敛 handler 层手工归属校验。
+func registerContentWriteRoutes(r chi.Router, base, table string, db *pgxpool.Pool, h contentRoutes) {
+	r.Group(func(r chi.Router) {
+		r.Use(authmw.TenantOwnedContent(db, table, "id"))
+		r.Post(base, h.Create)
+		r.Put(base+"/{id}", h.Update)
+		r.Delete(base+"/{id}", h.Delete)
+		r.Post(base+"/{id}/submit", h.Submit)
+		r.Post(base+"/{id}/review", h.Review)
+		r.Post(base+"/{id}/publish", h.Publish)
+		r.Post(base+"/{id}/archive", h.Archive)
+		r.Post(base+"/{id}/unpublish", h.Unpublish)
+		r.Post(base+"/{id}/withdraw", h.Withdraw)
+		r.Post(base+"/{id}/save-draft", h.SaveDraft)
+		r.Post(base+"/{id}/invite", h.Invite)
+	})
 }
 
 func registerContentReadRoutes(r chi.Router, base string, h contentRoutes) {

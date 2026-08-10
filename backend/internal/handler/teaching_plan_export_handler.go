@@ -35,7 +35,7 @@ func (h *TeachingPlanHandler) ExportExcel(w http.ResponseWriter, r *http.Request
 	}
 
 	f := buildTeachingPlanExcel(plan, entries)
-	writeExcel(w, f, fmt.Sprintf("教学计划_%s.xlsx", plan.TermName))
+	writeExcel(w, r, f, fmt.Sprintf("教学计划_%s.xlsx", plan.TermName))
 }
 
 func buildTeachingPlanExcel(plan *domain.TeachingPlan, entries []domain.TeachingPlanEntry) *excelize.File {

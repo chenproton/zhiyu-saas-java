@@ -73,8 +73,8 @@ func (s *ApprovalStore) ListConfig() ListQueryConfig[domain.ApprovalRecord] {
 }
 
 // Get 查询单个审批记录。
-func (s *ApprovalStore) Get(ctx context.Context, id string) (*domain.ApprovalRecord, error) {
-	ar, err := s.fetchApproval(ctx, id)
+func (s *ApprovalStore) Get(ctx context.Context, tenantID, id string) (*domain.ApprovalRecord, error) {
+	ar, err := s.fetchApproval(ctx, tenantID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -109,7 +109,7 @@ func (s *ApprovalStore) Create(ctx context.Context, tenantID *string, p *Approva
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, *tenantID, id)
 }
 
 // ExistsPending 判断目标是否已有待审批记录。
@@ -202,20 +202,20 @@ type ApprovalCreateParams struct {
 	History     domain.JSONSlice
 }
 
-func (s *ApprovalStore) fetchApproval(ctx context.Context, id string) (*domain.ApprovalRecord, error) {
+func (s *ApprovalStore) fetchApproval(ctx context.Context, tenantID, id string) (*domain.ApprovalRecord, error) {
 	var ar domain.ApprovalRecord
-	var tenantID, workflowID *string
+	var tenantPtr, workflowID *string
 	var history domain.JSONSlice
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status,
 			submitter_id, history, created_at, updated_at
-		FROM approval_records WHERE id = $1
-	`, id).Scan(&ar.ID, &tenantID, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
+		FROM approval_records WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(&ar.ID, &tenantPtr, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
 		&ar.Status, &ar.SubmitterID, &history, &ar.CreatedAt, &ar.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
-	ar.TenantID = tenantID
+	ar.TenantID = tenantPtr
 	ar.WorkflowID = workflowID
 	ar.History = history
 	return &ar, nil
@@ -226,13 +226,13 @@ func ScanApprovalRows(rows pgx.Rows) ([]domain.ApprovalRecord, error) {
 	items := make([]domain.ApprovalRecord, 0)
 	for rows.Next() {
 		var ar domain.ApprovalRecord
-		var tenantID, workflowID *string
+		var tenantPtr, workflowID *string
 		var history domain.JSONSlice
-		if err := rows.Scan(&ar.ID, &tenantID, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
+		if err := rows.Scan(&ar.ID, &tenantPtr, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
 			&ar.Status, &ar.SubmitterID, &history, &ar.CreatedAt, &ar.UpdatedAt); err != nil {
 			return nil, err
 		}
-		ar.TenantID = tenantID
+		ar.TenantID = tenantPtr
 		ar.WorkflowID = workflowID
 		ar.History = history
 		items = append(items, ar)

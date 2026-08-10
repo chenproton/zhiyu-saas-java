@@ -116,26 +116,16 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	aggregated := &courseImportResult{}
 	// 覆盖导入整体包在事务内：overwrite 会清空旧课程节点再重建，
 	// 任一步失败整体回滚，防止"旧数据已清空、新数据未写入"的不可恢复中间态。
-	tx, err := h.Store.WithTxRaw(ctx)
-	if err != nil {
-		respondServerError(w, r, err, "开启导入事务失败")
-		return
-	}
-	defer func() {
-		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			slog.Error("[course-import] 事务回滚失败", "error", err)
-		}
-	}()
-
-	mfu.ForEach(func(xlsx *excelize.File) {
-		courseMap := make(map[string]string)
-		h.importCourses(ctx, tx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
-		if len(courseMap) > 0 {
-			h.importNodes(ctx, tx, xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
-		}
-	})
-
-	if err := tx.Commit(ctx); err != nil {
+	if err := h.Store.WithTx(ctx, func(txStore *store.Store) error {
+		mfu.ForEach(func(xlsx *excelize.File) {
+			courseMap := make(map[string]string)
+			h.importCourses(ctx, txStore.Q(), xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
+			if len(courseMap) > 0 {
+				h.importNodes(ctx, txStore.Q(), xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
+			}
+		})
+		return nil
+	}); err != nil {
 		slog.Error("[course-import] 事务提交失败", "error", err)
 		respondServerError(w, r, err, "导入提交失败")
 		return

@@ -48,8 +48,12 @@ func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Reques
 	}
 
 	id := chi.URLParam(r, "id")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
-	existing, err := h.Service.Get(r.Context(), id)
+	existing, err := h.Service.Get(r.Context(), tenantID, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "扩展字段不存在")
 		return

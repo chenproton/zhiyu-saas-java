@@ -37,11 +37,11 @@ func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.R
 	f := th.generateQuestionBankTemplate(ctx, tenantID)
 
 	if err := h.fillBanksData(ctx, f, tenantID, ids); err != nil {
-		respondError(w, http.StatusInternalServerError, "填充export data失败")
+		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
-	writeExcel(w, f, "题库导出.xlsx")
+	writeExcel(w, r, f, "题库导出.xlsx")
 }
 
 func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *excelize.File, tenantID string, bankIDs []string) error {

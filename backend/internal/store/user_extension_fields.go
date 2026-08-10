@@ -37,8 +37,8 @@ func (s *UserExtensionFieldStore) List(ctx context.Context, tenantID string) ([]
 }
 
 // Get 按 ID 查询扩展字段。
-func (s *UserExtensionFieldStore) Get(ctx context.Context, id string) (*domain.UserExtensionField, error) {
-	f, err := s.fetchField(ctx, id)
+func (s *UserExtensionFieldStore) Get(ctx context.Context, tenantID, id string) (*domain.UserExtensionField, error) {
+	f, err := s.fetchField(ctx, tenantID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -49,8 +49,8 @@ func (s *UserExtensionFieldStore) Get(ctx context.Context, id string) (*domain.U
 }
 
 // Update 更新扩展字段。
-func (s *UserExtensionFieldStore) Update(ctx context.Context, id string, p *UserExtensionFieldUpdateParams) (*domain.UserExtensionField, error) {
-	if _, err := s.fetchField(ctx, id); err != nil {
+func (s *UserExtensionFieldStore) Update(ctx context.Context, tenantID, id string, p *UserExtensionFieldUpdateParams) (*domain.UserExtensionField, error) {
+	if _, err := s.fetchField(ctx, tenantID, id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -59,12 +59,12 @@ func (s *UserExtensionFieldStore) Update(ctx context.Context, id string, p *User
 	_, err := s.q.Exec(ctx, `
 		UPDATE user_extension_fields SET field_name = $1, is_enabled = $2, is_required = $3,
 			applicable_role_codes = $4
-		WHERE id = $5
-	`, p.FieldName, p.IsEnabled, p.IsRequired, p.ApplicableRoleCodes, id)
+		WHERE id = $5 AND tenant_id = $6
+	`, p.FieldName, p.IsEnabled, p.IsRequired, p.ApplicableRoleCodes, id, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	return s.fetchField(ctx, id)
+	return s.fetchField(ctx, tenantID, id)
 }
 
 // EnsureDefaultSlots 补齐 1-20 号默认槽位。
@@ -135,7 +135,7 @@ type UserExtensionFieldUpdateParams struct {
 	ApplicableRoleCodes []string
 }
 
-func (s *UserExtensionFieldStore) fetchField(ctx context.Context, id string) (*domain.UserExtensionField, error) {
+func (s *UserExtensionFieldStore) fetchField(ctx context.Context, tenantID, id string) (*domain.UserExtensionField, error) {
 	var field domain.UserExtensionField
 	var applicableCodes []string
 

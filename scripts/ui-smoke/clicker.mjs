@@ -361,6 +361,7 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
     const basePath = new URL(page.url()).pathname
     const dangerousRe = buildDangerousRe(cfg)
     const triggerRe = cfg.clickOnly ? null : buildTriggerRe(cfg)
+    const maxForms = cfg.maxFormSubmits || 3
     let formAttempts = 0
 
     // 独立编辑页：表单已可见，直接填充提交
@@ -372,7 +373,6 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
         if (recordFormResult(routeResult, rec, 'edit')) formAttempts++
       }
     }
-    const maxForms = cfg.maxFormSubmits || 3
     const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复耗尽额度
     const attempted = new Set()
     const queue = await collectClickables(page, cfg, dangerousRe, 'page', triggerRe)

@@ -200,9 +200,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Group(func(r chi.Router) {
 				r.Use(businessUser)
 				registerJobRoutes(r, h)
-				registerSceneRoutes(r, h)
+				registerSceneRoutes(r, db, h)
 				registerLessonRoutes(r, h)
-				registerEvaluationRoutes(r, h)
+				registerEvaluationRoutes(r, db, h)
 				registerLibraryRoutes(r, h)
 				registerAffairsRoutes(r, h)
 

@@ -1,10 +1,16 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
-type ApiErrorHandler = (message: string, status: number, path: string) => void
+type ApiErrorHandler = (message: string, status: number, path: string, code?: string) => void
 let globalErrorHandler: ApiErrorHandler | null = null
 
 export function setGlobalErrorHandler(handler: ApiErrorHandler | null) {
   globalErrorHandler = handler
+}
+
+/** 带后端统一错误码的 API 错误（code 字段，见后端 handler/error_codes.go）。 */
+export interface ApiErrorWithCode extends Error {
+  code?: string
+  status?: number
 }
 
 export interface ApiError {
@@ -201,6 +207,9 @@ async function requestWithPlatform<T>(
 
   if (!res.ok) {
     const errorMessage = (data as any).error || `HTTP ${res.status}`
+    const err: ApiErrorWithCode = new Error(errorMessage)
+    err.code = (data as any).code
+    err.status = res.status
     if (res.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem(TOKEN_KEYS[platform])
       const loginPath =
@@ -209,9 +218,9 @@ async function requestWithPlatform<T>(
         window.location.href = loginPath
       }
     } else if (globalErrorHandler) {
-      globalErrorHandler(errorMessage, res.status, path)
+      globalErrorHandler(errorMessage, res.status, path, err.code)
     }
-    throw new Error(errorMessage)
+    throw err
   }
 
   return data as T
