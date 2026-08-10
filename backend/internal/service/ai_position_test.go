@@ -36,6 +36,7 @@ func TestValidPositionAssistField(t *testing.T) {
 	for _, f := range []PositionAssistField{
 		PositionAssistPolish, PositionAssistResponsibilities, PositionAssistRequirements,
 		PositionAssistCareerPath, PositionAssistCertificates,
+		PositionAssistAbilities, PositionAssistCompetency,
 	} {
 		if !ValidPositionAssistField(f) {
 			t.Fatalf("field %q 应为合法值", f)
@@ -148,6 +149,28 @@ func TestParsePositionAssistOutput(t *testing.T) {
 			text:    `{"certificates":[]}`,
 			wantErr: true,
 		},
+		{
+			name:  "abilities",
+			field: PositionAssistAbilities,
+			text:  `{"abilities":[{"name":"微服务架构设计","domain":"专业技能","attributes":["技能","其他"],"rubricDescription":"能独立完成微服务拆分"}]}`,
+		},
+		{
+			name:    "abilities empty",
+			field:   PositionAssistAbilities,
+			text:    `{"abilities":[{"name":" ","domain":"x","attributes":[],"rubricDescription":""}]}`,
+			wantErr: true,
+		},
+		{
+			name:  "competency",
+			field: PositionAssistCompetency,
+			text:  `{"competencies":[{"name":"微服务架构设计","level":"proficient","rubricDescription":"能独立完成架构设计"},{"name":"xx","level":"bogus","rubricDescription":"非法等级应被过滤"}]}`,
+		},
+		{
+			name:    "competency empty",
+			field:   PositionAssistCompetency,
+			text:    `{"competencies":[{"name":"","level":"master","rubricDescription":""}]}`,
+			wantErr: true,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -172,7 +195,46 @@ func TestParsePositionAssistOutput(t *testing.T) {
 			if len(result.Certificates) == 1 && result.Certificates[0].Name != "软考" {
 				t.Fatalf("certificates 未过滤空 name: %v", result.Certificates)
 			}
+			if len(result.Abilities) == 1 {
+				a := result.Abilities[0]
+				if a.Name != "微服务架构设计" || len(a.Attributes) != 1 || a.Attributes[0] != "技能" {
+					t.Fatalf("abilities 属性过滤/字段错误: %+v", a)
+				}
+			}
+			if len(result.Competencies) == 1 {
+				c := result.Competencies[0]
+				if c.Name != "微服务架构设计" || c.Level != "proficient" {
+					t.Fatalf("competency 未过滤非法等级: %+v", c)
+				}
+			}
 		})
+	}
+}
+
+// TestPositionAssistPromptAbilitiesAndCompetency 新字段提示词应包含职责/能力点清单上下文。
+func TestPositionAssistPromptAbilitiesAndCompetency(t *testing.T) {
+	in := PositionAssistInput{
+		Name:               "Java 后端开发工程师",
+		Industry:           "互联网/IT",
+		Description:        "负责后端服务开发",
+		Responsibilities:   []string{"接口开发", "系统设计"},
+		ResponsibilityName: "系统设计",
+	}
+	p := positionAssistPrompt(PositionAssistAbilities, in)
+	for _, want := range []string{"系统设计", "岗位与行业认知", "知识 / 素养 / 技能", `"abilities"`} {
+		if !strings.Contains(p, want) {
+			t.Fatalf("abilities prompt 缺少 %q:\n%s", want, p)
+		}
+	}
+
+	in.Abilities = []PositionAbilityContext{
+		{Name: "微服务架构设计", Domain: "专业技能", Attributes: []string{"技能"}},
+	}
+	p2 := positionAssistPrompt(PositionAssistCompetency, in)
+	for _, want := range []string{"微服务架构设计", "proficient", "expert", `"competencies"`} {
+		if !strings.Contains(p2, want) {
+			t.Fatalf("competency prompt 缺少 %q:\n%s", want, p2)
+		}
 	}
 }
 

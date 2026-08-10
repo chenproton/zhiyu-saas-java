@@ -19,9 +19,22 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { CheckCircle2, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
+import { positionAiAssist } from '@/lib/api'
+import { ToastAction } from '@/components/ui/toast'
+import { toast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { AiAssistProgressDialog } from '../ai-assist-progress-dialog'
 
 const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'understand', label: '了解' },
@@ -49,6 +62,10 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
   const t = useT()
   const bindings = position.abilityBindings
   const [aiNotice] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiPhase, setAiPhase] = useState(0)
+  const [aiRunning, setAiRunning] = useState(false)
+  const [confirmAiOpen, setConfirmAiOpen] = useState(false)
 
   const handleUpdateBinding = (bindingId: string, updates: Partial<PositionAbilityBinding>) => {
     onUpdate({
@@ -56,6 +73,74 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
         b.id === bindingId ? { ...b, ...updates } : b,
       ),
     })
+  }
+
+  /** AI 一键填充：为所有能力点生成掌握程度与胜任标准，直接写入表格 */
+  const runAiFill = async () => {
+    if (bindings.length === 0 || aiRunning) return
+    setConfirmAiOpen(false)
+    setAiRunning(true)
+    setAiOpen(true)
+    setAiPhase(0)
+    const snapshot = bindings
+    try {
+      const res = await positionAiAssist({
+        field: 'competency',
+        position: {
+          name: position.name,
+          shortName: position.shortName,
+          industry: position.industry,
+          majors: [],
+          salaryRange: position.salaryRange,
+          description: position.description,
+          responsibilities: position.responsibilities.map((r) => r.name),
+          requirements: position.requirements,
+          careerPath: position.careerPath,
+          abilities: bindings.map((b) => ({
+            name: b.name,
+            domain: b.domain,
+            attributes: b.attributes || [],
+            description: b.rubricDescription || '',
+          })),
+        },
+      })
+      setAiPhase(1)
+      const fills = res?.competencies || []
+      if (fills.length > 0) {
+        const byName = new Map(fills.map((f) => [f.name, f]))
+        onUpdate({
+          abilityBindings: position.abilityBindings.map((b) => {
+            const fill = byName.get(b.name)
+            if (!fill) return b
+            return {
+              ...b,
+              level: fill.level as CompetencyLevel,
+              rubricDescription: fill.rubricDescription || b.rubricDescription,
+            }
+          }),
+        })
+        toast({
+          title: t('AI 已填充 {n} 个能力点的掌握标准', { n: fills.length }),
+          description: t('10 秒内可撤销'),
+          duration: 10000,
+          action: (
+            <ToastAction
+              altText={t('撤销')}
+              className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
+              onClick={() => {
+                onUpdate({ abilityBindings: snapshot })
+                toast({ title: t('已撤销') })
+              }}
+            >
+              {t('撤销')}
+            </ToastAction>
+          ),
+        })
+      }
+    } finally {
+      setAiOpen(false)
+      setAiRunning(false)
+    }
   }
 
   const groups = new Map<string, typeof bindings>()
@@ -79,27 +164,45 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="py-4 text-center">
-            <p className="text-xs text-gray-500">{t('工作职责')}</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">
-              {position.responsibilities.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 text-center">
-            <p className="text-xs text-gray-500">{t('能力点')}</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">{bindings.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 text-center">
-            <p className="text-xs text-gray-500">{t('能力域')}</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">{domainCount}</p>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-between">
+        <div className="grid grid-cols-3 gap-4 flex-1">
+          <Card>
+            <CardContent className="py-4 text-center">
+              <p className="text-xs text-gray-500">{t('工作职责')}</p>
+              <p className="text-2xl font-semibold text-gray-900 mt-1">
+                {position.responsibilities.length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4 text-center">
+              <p className="text-xs text-gray-500">{t('能力点')}</p>
+              <p className="text-2xl font-semibold text-gray-900 mt-1">{bindings.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4 text-center">
+              <p className="text-xs text-gray-500">{t('能力域')}</p>
+              <p className="text-2xl font-semibold text-gray-900 mt-1">{domainCount}</p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="pl-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
+            disabled={aiRunning || bindings.length === 0}
+            onClick={() => setConfirmAiOpen(true)}
+          >
+            {aiRunning ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {aiRunning ? t('AI 填充中...') : t('AI 辅助编写')}
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -209,6 +312,43 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
           )}
         </CardContent>
       </Card>
+
+      {/* AI 填充意图确认弹窗 */}
+      <Dialog open={confirmAiOpen} onOpenChange={setConfirmAiOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              {t('确认 AI 填充掌握标准？')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('AI 将为 {n} 个能力点生成掌握程度与胜任标准描述并直接写入表格，可一键撤销。', { n: bindings.length })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmAiOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 gap-1" onClick={runAiFill}>
+              <Sparkles className="h-4 w-4" />
+              {t('确认生成')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 填充进度弹窗 */}
+      <AiAssistProgressDialog
+        open={aiOpen}
+        onOpenChange={(open) => {
+          if (!open && !aiRunning) setAiOpen(false)
+        }}
+        title={t('AI 辅助填充')}
+        description={t('大模型正在为能力点生成掌握程度与胜任标准')}
+        steps={[t('分析能力点特征'), t('生成掌握程度与胜任标准')]}
+        currentStep={aiPhase}
+        progress={aiPhase > 0 ? 100 : 40}
+      />
     </div>
   )
 }

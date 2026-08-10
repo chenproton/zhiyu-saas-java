@@ -114,3 +114,17 @@
     display: none;
   }
 }
+
+/* AI 字段写入高亮：短暂紫色光圈提示"此处被 AI 覆盖" */
+@keyframes ai-write-flash {
+  0% {
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0);
+  }
+}
+.ai-write-flash {
+  animation: ai-write-flash 1.2s ease-out;
+  border-radius: 0.5rem;
+}

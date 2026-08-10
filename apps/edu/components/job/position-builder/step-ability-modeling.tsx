@@ -16,8 +16,21 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
-import { Plus, Search, Trash2, Brain, AlertCircle, Check, Pencil, Library, X } from 'lucide-react'
-import { abilityApi, positionApi } from '@/lib/api'
+import {
+  Plus,
+  Search,
+  Trash2,
+  Brain,
+  AlertCircle,
+  Check,
+  Pencil,
+  Library,
+  X,
+  Sparkles,
+  Loader2,
+} from 'lucide-react'
+import { abilityApi, positionApi, positionAiAssist, industryApi } from '@/lib/api'
+import { ToastAction } from '@/components/ui/toast'
 import { reportError } from '@/lib/error-handling'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
 import type {
@@ -28,6 +41,7 @@ import type {
 } from '@/lib/types/job-source'
 import { toast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { AiAssistProgressDialog } from './ai-assist-progress-dialog'
 
 interface StepAbilityModelingProps {
   position: Position
@@ -107,9 +121,25 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
   const [showAddRespDialog, setShowAddRespDialog] = useState(false)
   const [newRespNames, setNewRespNames] = useState<string[]>([''])
 
+  // AI 辅助拆解状态
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiPhase, setAiPhase] = useState(0)
+  const [aiRunning, setAiRunning] = useState(false)
+  const [confirmAiOpen, setConfirmAiOpen] = useState(false)
+  const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
+
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const pendingFocusRespRef = useRef<string | null>(null)
+
+  // 行业名解析（portal 端字典；企业共建端无字典源时原样透传）
+  useEffect(() => {
+    if (abilityPoolSource) return
+    industryApi
+      .list({ limit: 1000 })
+      .then((res) => setIndustries((res.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name }))))
+      .catch(() => setIndustries([]))
+  }, [abilityPoolSource])
 
   useEffect(() => {
     if (abilityPoolSource) {
@@ -425,6 +455,89 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
   const totalBindings = position.abilityBindings.length
   const totalResponsibilities = position.responsibilities.length
 
+  // ===== AI 辅助拆解能力点（直接写入 + 自动续拆）=====
+
+  const resolveIndustryName = (id: string) => {
+    if (!id) return ''
+    return industries.find((i) => i.id === id)?.name || id
+  }
+
+  const aiSteps = [
+    t('阅读岗位信息'),
+    ...position.responsibilities.map((r) => `${t('拆解「{name}」能力点', { name: (r.name || t('未命名')).slice(0, 12) })}`),
+  ]
+
+  const runAiAssist = async () => {
+    const resps = position.responsibilities
+    if (resps.length === 0 || aiRunning) return
+    setConfirmAiOpen(false)
+    setAiRunning(true)
+    const bindingsSnapshot = position.abilityBindings
+    setAiOpen(true)
+    setAiPhase(0)
+    try {
+      let allBindings = [...bindingsSnapshot]
+      for (let i = 0; i < resps.length; i++) {
+        const resp = resps[i]
+        setAiPhase(i + 1)
+        setSelectedRespId(resp.id)
+        scrollToResp(resp.id)
+        const res = await positionAiAssist({
+          field: 'abilities',
+          position: {
+            name: position.name,
+            shortName: position.shortName,
+            industry: resolveIndustryName(position.industry),
+            majors: [],
+            salaryRange: position.salaryRange,
+            description: position.description,
+            responsibilities: position.responsibilities.map((r) => r.name),
+            requirements: position.requirements,
+            careerPath: position.careerPath,
+            responsibilityName: resp.name,
+          },
+        })
+        const items = res?.abilities
+        if (items && items.length > 0) {
+          const newBindings: PositionAbilityBinding[] = items.map((a) => ({
+            id: `bind-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            responsibilityId: resp.id,
+            source: 'custom',
+            name: a.name,
+            level: 'understand',
+            rubricDescription: a.rubricDescription || '',
+            description: '',
+            attributes: a.attributes || [],
+            domain: a.domain || undefined,
+          }))
+          allBindings = [...allBindings.filter((b) => b.responsibilityId !== resp.id), ...newBindings]
+          onUpdate({ abilityBindings: allBindings })
+        }
+      }
+      setAiOpen(false)
+      // 生成完成后支持一键撤销到拆解前
+      toast({
+        title: t('AI 已为 {n} 项职责生成能力点', { n: resps.length }),
+        description: t('10 秒内可撤销'),
+        duration: 10000,
+        action: (
+          <ToastAction
+            altText={t('撤销')}
+            className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
+            onClick={() => {
+              onUpdate({ abilityBindings: bindingsSnapshot })
+              toast({ title: t('已撤销') })
+            }}
+          >
+            {t('撤销')}
+          </ToastAction>
+        ),
+      })
+    } finally {
+      setAiRunning(false)
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[500px] rounded-xl border border-gray-200 bg-white overflow-hidden">
       {/* Sidebar - Responsibilities */}
@@ -549,6 +662,21 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-semibold text-gray-800">{t('能力点列表')}</h3>
             <span className="text-[11px] text-gray-400">{t('共 {n} 个能力点', { n: totalBindings })}</span>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs rounded-full border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
+              disabled={aiRunning || position.responsibilities.length === 0}
+              onClick={() => setConfirmAiOpen(true)}
+            >
+              {aiRunning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              {aiRunning ? t('AI 拆解中...') : t('AI 辅助编写')}
+            </Button>
           </div>
         </div>
 
@@ -1204,6 +1332,43 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI 拆解意图确认弹窗 */}
+      <Dialog open={confirmAiOpen} onOpenChange={setConfirmAiOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              {t('确认 AI 拆解能力点？')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('AI 将按 {n} 项工作职责逐条拆解 3-5 个能力点并直接写入（已有的能力点将被替换），自动切换到下一项职责，完成后可一键撤销。', { n: position.responsibilities.length })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmAiOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 gap-1" onClick={runAiAssist}>
+              <Sparkles className="h-4 w-4" />
+              {t('确认生成')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 拆解进度弹窗 */}
+      <AiAssistProgressDialog
+        open={aiOpen}
+        onOpenChange={(open) => {
+          if (!open && !aiRunning) setAiOpen(false)
+        }}
+        title={t('AI 辅助拆解能力点')}
+        description={t('大模型正在按工作职责逐个生成能力点并写入')}
+        steps={aiSteps}
+        currentStep={aiPhase}
+        progress={Math.round((aiPhase / Math.max(aiSteps.length - 1, 1)) * 100)}
+      />
     </div>
   )
 }

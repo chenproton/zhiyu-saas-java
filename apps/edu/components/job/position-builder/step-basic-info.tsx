@@ -31,8 +31,7 @@ import {
   Sparkles,
   Plus,
   X,
-  Check,
-  RefreshCw,
+  Undo2,
   Loader2,
   Award,
   ExternalLink,
@@ -41,13 +40,8 @@ import {
   Settings,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
-import { ToastAction } from '@/components/ui/toast'
 import { industryApi, majorApi, certificateLibraryApi, fileApi, positionAiAssist } from '@/lib/api'
-import type {
-  AIPositionAssistField,
-  AIPositionPolish,
-  AISuggestedCertificate,
-} from '@/lib/api'
+import type { AIPositionAssistField } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
@@ -62,21 +56,31 @@ const AI_ASSIST_STEPS = [
   '生成晋升路径',
   '推荐相关证书',
 ]
-const AI_ASSIST_FIELDS: AIPositionAssistField[] = [
-  'polish',
+
+/** AI 可直接写入的字段键（基础信息 4 个 + 区块 4 个），各含 1 级撤销历史 */
+type AiWriteKey =
+  | 'name'
+  | 'shortName'
+  | 'description'
+  | 'salaryRange'
+  | 'responsibilities'
+  | 'requirements'
+  | 'careerPath'
+  | 'certificates'
+
+const AI_WRITE_KEYS: AiWriteKey[] = [
+  'name',
+  'shortName',
+  'description',
+  'salaryRange',
   'responsibilities',
   'requirements',
   'careerPath',
   'certificates',
 ]
 
-interface AiSuggestions {
-  polish?: AIPositionPolish
-  responsibilities?: string[]
-  requirements?: string[]
-  careerPath?: string
-  certificates?: AISuggestedCertificate[]
-}
+/** 基础信息中可由 AI 单独填充的字段（polish 一次返回 4 个，按目标字段单独应用） */
+type PolishFieldKey = 'name' | 'shortName' | 'description' | 'salaryRange'
 
 interface StepBasicInfoProps {
   position: Position
@@ -95,66 +99,6 @@ interface Certificate {
   url: string
   description: string
   image?: string
-}
-
-interface AiSuggestionCardProps {
-  title: string
-  /** 附加说明（如"当前 3 条 → 建议 5 条"） */
-  meta?: string
-  /** 一键生成批次内展示 NEW 角标，引导用户关注 */
-  isNew?: boolean
-  children: React.ReactNode
-  regenerating?: boolean
-  onAdopt: () => void
-  onRegenerate: () => void
-  onDismiss: () => void
-}
-
-/** AI 建议卡片：采纳 / 重新生成 / 不采纳（对齐原型 ai-assisted_2 交互） */
-function AiSuggestionCard({
-  title,
-  meta,
-  isNew,
-  children,
-  regenerating,
-  onAdopt,
-  onRegenerate,
-  onDismiss,
-}: AiSuggestionCardProps) {
-  return (
-    <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-3">
-      <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" />
-        <span className="text-xs font-medium text-purple-800">{title}</span>
-        {meta && <span className="text-xs text-gray-400">{meta}</span>}
-        {isNew && (
-          <Badge
-            variant="outline"
-            className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-white"
-          >
-            NEW
-          </Badge>
-        )}
-      </div>
-      <div className="mb-3">{children}</div>
-      <div className="flex items-center justify-end gap-2">
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onDismiss}>
-          <X className="h-3 w-3 mr-1" /> 不采纳
-        </Button>
-        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onRegenerate} disabled={regenerating}>
-          {regenerating ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3 w-3 mr-1" />
-          )}
-          重新生成
-        </Button>
-        <Button size="sm" className="h-7 text-xs bg-purple-600 hover:bg-purple-700" onClick={onAdopt}>
-          <Check className="h-3 w-3 mr-1" /> 采纳
-        </Button>
-      </div>
-    </div>
-  )
 }
 
 function isValidImageUrl(url?: string): boolean {
@@ -178,7 +122,6 @@ export function StepBasicInfo({
   const [aiNotice, setAiNotice] = useState<string | null>(null)
 
   // AI 辅助编写状态
-  const [suggestions, setSuggestions] = useState<AiSuggestions>({})
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPhase, setAiPhase] = useState(0)
   const [aiProgress, setAiProgress] = useState(0)
@@ -192,13 +135,11 @@ export function StepBasicInfo({
     requirements: '',
   })
   const [confirmRegenOpen, setConfirmRegenOpen] = useState(false)
-  // 一键生成完成后的结果提示条（值为建议数量）
-  const [resultBanner, setResultBanner] = useState<number | null>(null)
-  // 采纳撤销：暂存采纳前快照与采纳的建议（撤销后恢复表单 + 重新挂出建议卡）
-  const [undoEntry, setUndoEntry] = useState<{
-    snapshot: Partial<Position>
-    fields: { field: AIPositionAssistField; suggestion: AiSuggestions[AIPositionAssistField] }[]
-  } | null>(null)
+  // 字段级 AI 写入历史（1 级）：key 为字段，值为该字段被 AI 覆盖前的快照，用于「恢复上版」
+  const [aiHistories, setAiHistories] = useState<Partial<Record<AiWriteKey, Partial<Position>>>>({})
+  // 写入高亮字段（短暂紫色闪烁，提示"哪里被 AI 改了"）
+  const [flashKey, setFlashKey] = useState<AiWriteKey | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const notConfiguredRef = useRef(false)
   // 最新 position 快照：AI 回调时读取，避免闭包内拿到过期值
   const positionRef = useRef(position)
@@ -344,187 +285,140 @@ export function StepBasicInfo({
     }
   }
 
-  const applySuggestion = (field: AIPositionAssistField, res: NonNullable<Awaited<ReturnType<typeof callAssist>>>) => {
-    setSuggestions((prev) => {
-      const next = { ...prev }
-      if (field === 'polish') next.polish = res.polish
-      else if (field === 'responsibilities') next.responsibilities = res.responsibilities
-      else if (field === 'requirements') next.requirements = res.requirements
-      else if (field === 'careerPath') next.careerPath = res.careerPath
-      else if (field === 'certificates') next.certificates = res.certificates
-      return next
-    })
-  }
+  // ===== AI 直接写入（逐字段）=====
 
-  /** 撤销后重新挂出某字段的建议 */
-  const applySuggestionValue = (
-    field: AIPositionAssistField,
-    value: AiSuggestions[AIPositionAssistField],
-  ) => {
-    setSuggestions((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const dismissSuggestion = (field: AIPositionAssistField) => {
-    setSuggestions((prev) => {
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }
-
-  const regenerateSuggestion = async (field: AIPositionAssistField) => {
-    const res = await callAssist(field)
-    if (res) applySuggestion(field, res)
-  }
-
-  // 当前仍挂出的建议数（提示条在全部处理完后自动隐藏）
-  const remainingSuggestions = useMemo(
-    () => AI_ASSIST_FIELDS.filter((f) => suggestions[f]).length,
-    [suggestions],
-  )
-
-  /** 采纳前快照指定字段的原值（用于撤销恢复） */
-  const snapshotFields = (fields: AIPositionAssistField[]): Partial<Position> => {
+  /** 某字段被 AI 覆盖前的快照（1 级历史用） */
+  const snapshotField = (key: AiWriteKey): Partial<Position> => {
     const cur = positionRef.current
-    const snap: Partial<Position> = {}
-    for (const f of fields) {
-      switch (f) {
-        case 'polish':
-          Object.assign(snap, {
-            name: cur.name,
-            shortName: cur.shortName,
-            description: cur.description,
-            salaryRange: cur.salaryRange,
-          })
-          break
-        case 'responsibilities':
-          snap.responsibilities = cur.responsibilities
-          break
-        case 'requirements':
-          snap.requirements = cur.requirements
-          break
-        case 'careerPath':
-          snap.careerPath = cur.careerPath
-          break
-        case 'certificates':
-          snap.certificates = cur.certificates
-          break
-      }
+    switch (key) {
+      case 'name':
+        return { name: cur.name }
+      case 'shortName':
+        return { shortName: cur.shortName }
+      case 'description':
+        return { description: cur.description }
+      case 'salaryRange':
+        return { salaryRange: cur.salaryRange }
+      case 'responsibilities':
+        return { responsibilities: cur.responsibilities }
+      case 'requirements':
+        return { requirements: cur.requirements }
+      case 'careerPath':
+        return { careerPath: cur.careerPath }
+      case 'certificates':
+        return { certificates: cur.certificates }
     }
-    return snap
   }
 
-  /** 将某字段建议写入表单；返回是否有实际变更（不弹撤销、不移除卡片） */
-  const applyAdoptedField = (field: AIPositionAssistField): boolean => {
-    const s = suggestions
-    if (field === 'polish' && s.polish) {
-      const p = s.polish
-      const next: Partial<Position> = {}
-      if (p.name.trim()) next.name = p.name.trim()
-      if (p.shortName.trim()) next.shortName = p.shortName.trim()
-      if (p.description.trim()) next.description = p.description.trim()
-      if (p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
-        next.salaryRange = [p.salaryMin, p.salaryMax]
-      }
-      if (Object.keys(next).length > 0) {
-        onUpdate(next)
-        return true
-      }
-    } else if (field === 'responsibilities' && s.responsibilities) {
-      onUpdate({
-        responsibilities: s.responsibilities.map((name) => ({
-          id: `resp-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          name,
-          description: '',
-        })),
-      })
-      return true
-    } else if (field === 'requirements' && s.requirements) {
-      onUpdate({ requirements: s.requirements })
-      return true
-    } else if (field === 'careerPath' && s.careerPath) {
-      onUpdate({ careerPath: s.careerPath })
-      return true
-    } else if (field === 'certificates' && s.certificates) {
-      const existing = positionRef.current.certificates || []
-      const existingNames = new Set(existing.map((c) => c.name))
-      const toAdd = s.certificates
-        .filter((c) => !existingNames.has(c.name))
-        .map((c) => ({
-          id: `cert-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          name: c.name,
-          url: c.url || '',
-          description: c.description || '',
-        }))
-      if (toAdd.length > 0) {
-        onUpdate({ certificates: [...existing, ...toAdd] })
-        return true
-      }
-    }
-    return false
+  /** 触发写入高亮闪烁 */
+  const flashField = (key: AiWriteKey) => {
+    setFlashKey(key)
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setFlashKey(null), 1400)
   }
 
-  /** 撤销：恢复采纳前快照，并重新挂出被采纳的建议卡 */
-  const restoreFromUndo = () => {
-    if (!undoEntry) return
-    onUpdate(undoEntry.snapshot)
-    for (const item of undoEntry.fields) {
-      if (item.suggestion) applySuggestionValue(item.field, item.suggestion)
-    }
-    setUndoEntry(null)
+  /**
+   * 直接写入某字段：记录首次覆盖前的快照（1 级历史）+ 应用新值 + 高亮。
+   * 多次覆盖同一字段不覆盖历史，保证「恢复上版」回到 AI 介入前的原值。
+   */
+  const writeField = (key: AiWriteKey, values: Partial<Position>) => {
+    setAiHistories((prev) => {
+      if (prev[key] !== undefined) return prev
+      return { ...prev, [key]: snapshotField(key) }
+    })
+    onUpdate(values)
+    flashField(key)
   }
 
-  const showUndoToast = (title: string) => {
-    toast({
-      title,
-      description: t('10 秒内可撤销'),
-      duration: 10000,
-      action: (
-        <ToastAction
-          altText={t('撤销')}
-          className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
-          onClick={() => {
-            restoreFromUndo()
-            toast({ title: t('已撤销') })
-          }}
-        >
-          {t('撤销')}
-        </ToastAction>
-      ),
+  /** 恢复某字段到 AI 覆盖前的值（清除该字段历史） */
+  const restoreField = (key: AiWriteKey) => {
+    const snapshot = aiHistories[key]
+    if (snapshot) onUpdate(snapshot)
+    setAiHistories((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
     })
   }
 
-  const adoptSuggestion = (field: AIPositionAssistField) => {
-    if (!suggestions[field]) return
-    const snapshot = snapshotFields([field])
-    const applied = applyAdoptedField(field)
-    dismissSuggestion(field)
-    if (applied) {
-      setUndoEntry({ snapshot, fields: [{ field, suggestion: suggestions[field] }] })
-      showUndoToast(t('已采纳 AI 建议'))
+  /** 全部撤销：恢复所有被 AI 覆盖的字段 */
+  const handleRestoreAll = () => {
+    const snaps = AI_WRITE_KEYS.map((k) => aiHistories[k]).filter(
+      (s): s is Partial<Position> => s !== undefined,
+    )
+    if (snaps.length > 0) {
+      const merged: Partial<Position> = {}
+      for (const snap of snaps) Object.assign(merged, snap)
+      onUpdate(merged)
+    }
+    setAiHistories({})
+    toast({ title: t('已全部恢复 AI 覆盖前的内容') })
+  }
+
+  /** 基础信息单字段生成：调 polish 一次，仅应用目标字段 */
+  const handlePolishField = async (target: PolishFieldKey) => {
+    const res = await callAssist('polish')
+    if (!res?.polish) return
+    const p = res.polish
+    if (target === 'name' && p.name.trim()) writeField('name', { name: p.name.trim() })
+    else if (target === 'shortName' && p.shortName.trim()) {
+      writeField('shortName', { shortName: p.shortName.trim() })
+    } else if (target === 'description' && p.description.trim()) {
+      writeField('description', { description: p.description.trim() })
+    } else if (target === 'salaryRange' && p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
+      writeField('salaryRange', { salaryRange: [p.salaryMin, p.salaryMax] })
     }
   }
 
-  /** 全部采纳：应用所有建议后关闭提示条，支持一键撤销 */
-  const handleAdoptAll = () => {
-    const fields = AI_ASSIST_FIELDS.filter((f) => suggestions[f])
-    if (fields.length === 0) {
-      setResultBanner(null)
-      return
-    }
-    const snapshot = snapshotFields(fields)
-    for (const f of fields) applyAdoptedField(f)
-    for (const f of fields) dismissSuggestion(f)
-    setUndoEntry({ snapshot, fields: fields.map((f) => ({ field: f, suggestion: suggestions[f] })) })
-    setResultBanner(null)
-    showUndoToast(t('已全部采纳 AI 建议'))
+  /** 职责整节替换 */
+  const handleWriteResponsibilities = async () => {
+    const res = await callAssist('responsibilities')
+    if (!res?.responsibilities) return
+    writeField('responsibilities', {
+      responsibilities: res.responsibilities.map((name) => ({
+        id: `resp-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name,
+        description: '',
+      })),
+    })
   }
 
-  /** 忽略全部：关闭提示条并清除所有建议卡 */
-  const handleIgnoreAll = () => {
-    setResultBanner(null)
-    setSuggestions({})
+  /** 要求整节替换 */
+  const handleWriteRequirements = async () => {
+    const res = await callAssist('requirements')
+    if (res?.requirements) writeField('requirements', { requirements: res.requirements })
   }
+
+  /** 晋升路径替换 */
+  const handleWriteCareerPath = async () => {
+    const res = await callAssist('careerPath')
+    if (res?.careerPath) writeField('careerPath', { careerPath: res.careerPath })
+  }
+
+  /** 证书追加 */
+  const handleWriteCertificates = async () => {
+    const res = await callAssist('certificates')
+    if (!res?.certificates) return
+    const existing = positionRef.current.certificates || []
+    const existingNames = new Set(existing.map((c) => c.name))
+    const toAdd = res.certificates
+      .filter((c) => !existingNames.has(c.name))
+      .map((c) => ({
+        id: `cert-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: c.name,
+        url: c.url || '',
+        description: c.description || '',
+      }))
+    if (toAdd.length > 0) {
+      writeField('certificates', { certificates: [...existing, ...toAdd] })
+    }
+  }
+
+  /** 当前被 AI 覆盖且未恢复的字段数 */
+  const updatedCount = useMemo(
+    () => AI_WRITE_KEYS.filter((k) => aiHistories[k] !== undefined).length,
+    [aiHistories],
+  )
 
   const getMissingFields = () => {
     const missing: AIPositionAssistField[] = []
@@ -590,17 +484,61 @@ export function StepBasicInfo({
     setAiOpen(true)
     setAiPhase(0)
     setAiProgress(3)
-    let producedCount = 0
-    for (let i = 0; i < AI_ASSIST_FIELDS.length; i++) {
+    // polish 一次返回 4 个基础字段，逐个直接写入（各自独立历史/高亮）
+    const applyPolish = (res: NonNullable<Awaited<ReturnType<typeof positionAiAssist>>>) => {
+      const p = res.polish
+      if (!p) return
+      if (p.name.trim()) writeField('name', { name: p.name.trim() })
+      if (p.shortName.trim()) writeField('shortName', { shortName: p.shortName.trim() })
+      if (p.description.trim()) writeField('description', { description: p.description.trim() })
+      if (p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
+        writeField('salaryRange', { salaryRange: [p.salaryMin, p.salaryMax] })
+      }
+    }
+    const tasks: { field: AIPositionAssistField; apply: (res: NonNullable<Awaited<ReturnType<typeof positionAiAssist>>>) => void }[] = [
+      { field: 'polish', apply: applyPolish },
+      { field: 'responsibilities', apply: (res) => {
+        if (res.responsibilities) {
+          writeField('responsibilities', {
+            responsibilities: res.responsibilities.map((name) => ({
+              id: `resp-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              name,
+              description: '',
+            })),
+          })
+        }
+      } },
+      { field: 'requirements', apply: (res) => {
+        if (res.requirements) writeField('requirements', { requirements: res.requirements })
+      } },
+      { field: 'careerPath', apply: (res) => {
+        if (res.careerPath) writeField('careerPath', { careerPath: res.careerPath })
+      } },
+      { field: 'certificates', apply: (res) => {
+        if (res.certificates) {
+          const existing = positionRef.current.certificates || []
+          const existingNames = new Set(existing.map((c) => c.name))
+          const toAdd = res.certificates
+            .filter((c) => !existingNames.has(c.name))
+            .map((c) => ({
+              id: `cert-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              name: c.name,
+              url: c.url || '',
+              description: c.description || '',
+            }))
+          if (toAdd.length > 0) {
+            writeField('certificates', { certificates: [...existing, ...toAdd] })
+          }
+        }
+      } },
+    ]
+    for (let i = 0; i < tasks.length; i++) {
       if (notConfiguredRef.current) break
-      const field = AI_ASSIST_FIELDS[i]
+      const { field, apply } = tasks[i]
       setIsGenerating(field)
       try {
         const res = await positionAiAssist({ field, position: context })
-        if (res) {
-          applySuggestion(field, res)
-          producedCount++
-        }
+        if (res) apply(res)
       } catch (err) {
         if (err instanceof Error && err.message === 'ai_not_configured') {
           notConfiguredRef.current = true
@@ -620,7 +558,6 @@ export function StepBasicInfo({
       }
     }
     setAiOpen(false)
-    if (producedCount > 0) setResultBanner(producedCount)
   }
 
   const startAiAssist = () => {
@@ -635,12 +572,6 @@ export function StepBasicInfo({
   const confirmRegenAndRun = () => {
     setConfirmRegenOpen(false)
     runAiAssist()
-  }
-
-  /** 区块内「重新生成」快捷按钮（description 复用 polish 润色结果） */
-  const handleAIGenerate = async (field: AIPositionAssistField) => {
-    const res = await callAssist(field)
-    if (res) applySuggestion(field, res)
   }
 
   // 回车新增行后聚焦到新输入框
@@ -773,23 +704,101 @@ export function StepBasicInfo({
     }
   }
 
-  const renderAIButton = (field: AIPositionAssistField, label: string) => {
+  /** 区块级 AI 控件：重新生成 + 已更新标记/恢复上版 */
+  const renderSectionAiControls = (key: AiWriteKey) => {
+    const regen =
+      key === 'responsibilities'
+        ? handleWriteResponsibilities
+        : key === 'requirements'
+          ? handleWriteRequirements
+          : key === 'careerPath'
+            ? handleWriteCareerPath
+            : handleWriteCertificates
+    const field: AIPositionAssistField =
+      key === 'responsibilities'
+        ? 'responsibilities'
+        : key === 'requirements'
+          ? 'requirements'
+          : key === 'careerPath'
+            ? 'careerPath'
+            : 'certificates'
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleAIGenerate(field)}
-        disabled={isGenerating !== null}
-      >
-        {isGenerating === field ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Sparkles className="mr-2 h-4 w-4" />
+      <div className="flex items-center gap-1.5">
+        {aiHistories[key] !== undefined && (
+          <>
+            <Badge
+              variant="outline"
+              className="h-5 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-purple-50/50 shrink-0"
+            >
+              {t('AI 已更新')}
+            </Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-purple-700 hover:bg-purple-50"
+              onClick={() => restoreField(key)}
+            >
+              <Undo2 className="h-3 w-3 mr-1" />
+              {t('恢复上版')}
+            </Button>
+          </>
         )}
-        {label}
-      </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800"
+          onClick={regen}
+          disabled={isGenerating !== null}
+        >
+          {isGenerating === field ? (
+            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="mr-1 h-3.5 w-3.5" />
+          )}
+          {t('重新生成')}
+        </Button>
+      </div>
     )
   }
+
+  /** 基础信息单字段 AI 控件：生成按钮 + 已更新标记/恢复上版 */
+  const renderFieldAiControls = (key: PolishFieldKey) => (
+    <div className="flex items-center gap-1.5">
+      {aiHistories[key] !== undefined && (
+        <>
+          <Badge
+            variant="outline"
+            className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-purple-50/50 shrink-0"
+          >
+            {t('已更新')}
+          </Badge>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-1.5 text-[11px] text-purple-700 hover:bg-purple-50"
+            onClick={() => restoreField(key)}
+          >
+            <Undo2 className="h-3 w-3 mr-0.5" />
+            {t('恢复上版')}
+          </Button>
+        </>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-purple-600 hover:bg-purple-50 hover:text-purple-800"
+        onClick={() => handlePolishField(key)}
+        disabled={isGenerating !== null}
+        title={t('AI 生成')}
+      >
+        {isGenerating === 'polish' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Sparkles className="h-3.5 w-3.5" />
+        )}
+      </Button>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -814,81 +823,47 @@ export function StepBasicInfo({
         </div>
       )}
 
-      {/* 一键生成完成后的结果提示条 */}
-      {aiMode && resultBanner !== null && remainingSuggestions > 0 && (
+      {/* AI 覆盖内容常驻撤销横幅 */}
+      {aiMode && updatedCount > 0 && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-purple-200 bg-purple-50/50 px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-purple-900 min-w-0">
             <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
             <span className="truncate">
-              {t('AI 已生成 {count} 项建议，请逐项查看采纳', { count: resultBanner })}
+              {t('AI 已更新 {count} 项内容，可逐项恢复上版或全部撤销', { count: updatedCount })}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button
               size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-purple-700 hover:bg-purple-100"
-              onClick={handleIgnoreAll}
+              variant="outline"
+              className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+              onClick={handleRestoreAll}
             >
-              <X className="h-3 w-3 mr-1" />
-              {t('忽略全部')}
-            </Button>
-            <Button
-              size="sm"
-              className="h-7 text-xs bg-purple-600 hover:bg-purple-700"
-              onClick={handleAdoptAll}
-            >
-              <Check className="h-3 w-3 mr-1" />
-              {t('全部采纳')}
+              <Undo2 className="h-3 w-3 mr-1" />
+              {t('全部撤销')}
             </Button>
           </div>
         </div>
       )}
 
-      {/* AI 润色建议：基础信息（名称/简称/简介/薪资） */}
-      {suggestions.polish && (
-        <AiSuggestionCard
-          title={t('AI 润色建议：基础信息')}
-          isNew={resultBanner !== null}
-          regenerating={isGenerating === 'polish'}
-          onAdopt={() => adoptSuggestion('polish')}
-          onRegenerate={() => regenerateSuggestion('polish')}
-          onDismiss={() => dismissSuggestion('polish')}
-        >
-          <div className="space-y-2 text-sm text-gray-700">
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('岗位名称：')}</span>
-              <span className="font-medium">{suggestions.polish.name}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('岗位简称：')}</span>
-              <span>{suggestions.polish.shortName}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('岗位简介：')}</span>
-              <span className="whitespace-pre-line">{suggestions.polish.description}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 mr-1">{t('参考薪资：')}</span>
-              <span>
-                {suggestions.polish.salaryMin.toLocaleString()} -{' '}
-                {suggestions.polish.salaryMax.toLocaleString()} {t('元/月')}
-              </span>
-            </div>
-          </div>
-        </AiSuggestionCard>
-      )}
-
       {/* Merged Basic Info Card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
+      <Card className={flashKey && ['name', 'shortName', 'description', 'salaryRange'].includes(flashKey) ? 'ai-write-flash' : undefined}>
+        <CardHeader>
           <CardTitle>{t('基本信息')}</CardTitle>
-          {aiMode && renderAIButton('polish', t('重新生成'))}
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Row 1: Name + Short Name */}
           <FormFieldGrid cols={2}>
-            <FormFieldRow label={t('岗位名称')} htmlFor="name">
+            <FormFieldRow
+              label={
+                <span className="flex items-center gap-2">
+                  {t('岗位名称')}
+                  {aiMode && renderFieldAiControls('name')}
+                </span>
+              }
+              htmlFor="name"
+              className={flashKey === 'name' ? 'ai-write-flash' : undefined}
+            >
               <Input
                 id="name"
                 value={position.name}
@@ -896,7 +871,16 @@ export function StepBasicInfo({
                 placeholder={t('例如：Java 后端开发工程师')}
               />
             </FormFieldRow>
-            <FormFieldRow label={t('岗位简称')} htmlFor="shortName">
+            <FormFieldRow
+              label={
+                <span className="flex items-center gap-2">
+                  {t('岗位简称')}
+                  {aiMode && renderFieldAiControls('shortName')}
+                </span>
+              }
+              htmlFor="shortName"
+              className={flashKey === 'shortName' ? 'ai-write-flash' : undefined}
+            >
               <Input
                 id="shortName"
                 value={position.shortName}
@@ -945,8 +929,11 @@ export function StepBasicInfo({
           </FormFieldGrid>
 
           {/* Row 3: Salary Range */}
-          <div className="grid gap-2">
-            <Label>{t('薪资范围（元/月）')}</Label>
+          <div className={`grid gap-2 ${flashKey === 'salaryRange' ? 'ai-write-flash' : ''}`}>
+            <Label className="flex items-center gap-2">
+              {t('薪资范围（元/月）')}
+              {aiMode && renderFieldAiControls('salaryRange')}
+            </Label>
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Input
@@ -985,8 +972,11 @@ export function StepBasicInfo({
           </div>
 
           {/* Description */}
-          <div className="grid gap-2">
-            <Label htmlFor="description">{t('岗位背景介绍')}</Label>
+          <div className={`grid gap-2 ${flashKey === 'description' ? 'ai-write-flash' : ''}`}>
+            <Label htmlFor="description" className="flex items-center gap-2">
+              {t('岗位背景介绍')}
+              {aiMode && renderFieldAiControls('description')}
+            </Label>
             <Textarea
               id="description"
               value={position.description}
@@ -1006,10 +996,10 @@ export function StepBasicInfo({
       )}
 
       {/* Responsibilities */}
-      <Card>
+      <Card className={flashKey === 'responsibilities' ? 'ai-write-flash' : undefined}>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('工作职责')}</CardTitle>
-          {aiMode && renderAIButton('responsibilities', t('重新生成'))}
+          {aiMode && renderSectionAiControls('responsibilities')}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -1060,40 +1050,14 @@ export function StepBasicInfo({
               <span />
             </div>
           </div>
-
-          {suggestions.responsibilities && (
-            <AiSuggestionCard
-              title={t('AI 建议：工作职责')}
-              meta={t('当前 {n} 条 → 建议 {m} 条', {
-                n: position.responsibilities.filter((r) => r.name.trim()).length,
-                m: suggestions.responsibilities.length,
-              })}
-              isNew={resultBanner !== null}
-              regenerating={isGenerating === 'responsibilities'}
-              onAdopt={() => adoptSuggestion('responsibilities')}
-              onRegenerate={() => regenerateSuggestion('responsibilities')}
-              onDismiss={() => dismissSuggestion('responsibilities')}
-            >
-              <div className="space-y-1.5">
-                {suggestions.responsibilities.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {i + 1}
-                    </Badge>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </AiSuggestionCard>
-          )}
         </CardContent>
       </Card>
 
       {/* Requirements */}
-      <Card>
+      <Card className={flashKey === 'requirements' ? 'ai-write-flash' : undefined}>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('任职要求')}</CardTitle>
-          {aiMode && renderAIButton('requirements', t('重新生成'))}
+          {aiMode && renderSectionAiControls('requirements')}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -1144,40 +1108,14 @@ export function StepBasicInfo({
               <span />
             </div>
           </div>
-
-          {suggestions.requirements && (
-            <AiSuggestionCard
-              title={t('AI 建议：任职要求')}
-              meta={t('当前 {n} 条 → 建议 {m} 条', {
-                n: position.requirements.filter(Boolean).length,
-                m: suggestions.requirements.length,
-              })}
-              isNew={resultBanner !== null}
-              regenerating={isGenerating === 'requirements'}
-              onAdopt={() => adoptSuggestion('requirements')}
-              onRegenerate={() => regenerateSuggestion('requirements')}
-              onDismiss={() => dismissSuggestion('requirements')}
-            >
-              <div className="space-y-1.5">
-                {suggestions.requirements.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {i + 1}
-                    </Badge>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </AiSuggestionCard>
-          )}
         </CardContent>
       </Card>
 
       {/* Career Path */}
-      <Card>
+      <Card className={flashKey === 'careerPath' ? 'ai-write-flash' : undefined}>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('发展路径')}</CardTitle>
-          {aiMode && renderAIButton('careerPath', t('重新生成'))}
+          {aiMode && renderSectionAiControls('careerPath')}
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
@@ -1186,69 +1124,29 @@ export function StepBasicInfo({
             placeholder={t('请描述该岗位的职业发展路径，如横向发展和纵向晋升方向...')}
             rows={6}
           />
-
-          {suggestions.careerPath && (
-            <AiSuggestionCard
-              title={t('AI 建议：晋升路径')}
-              isNew={resultBanner !== null}
-              regenerating={isGenerating === 'careerPath'}
-              onAdopt={() => adoptSuggestion('careerPath')}
-              onRegenerate={() => regenerateSuggestion('careerPath')}
-              onDismiss={() => dismissSuggestion('careerPath')}
-            >
-              <p className="text-sm text-gray-700 whitespace-pre-line">{suggestions.careerPath}</p>
-            </AiSuggestionCard>
-          )}
         </CardContent>
       </Card>
 
       {/* Certificates */}
-      <Card>
+      <Card className={flashKey === 'certificates' ? 'ai-write-flash' : undefined}>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('相关证书')}</CardTitle>
-          {certificateLibraryEnabled && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={openCertDialog}>
-                {t('从证书库选择')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setIsNewCertDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('新增证书')}
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {aiMode && renderSectionAiControls('certificates')}
+            {certificateLibraryEnabled && (
+              <>
+                <Button variant="outline" size="sm" onClick={openCertDialog}>
+                  {t('从证书库选择')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsNewCertDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('新增证书')}
+                </Button>
+              </>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          {suggestions.certificates && (
-            <div className="mb-4">
-              <AiSuggestionCard
-                title={t('AI 建议：证书推荐')}
-                meta={t('当前 {n} 个 → 推荐 {m} 个', {
-                  n: (position.certificates || []).length,
-                  m: suggestions.certificates.length,
-                })}
-                isNew={resultBanner !== null}
-                regenerating={isGenerating === 'certificates'}
-                onAdopt={() => adoptSuggestion('certificates')}
-                onRegenerate={() => regenerateSuggestion('certificates')}
-                onDismiss={() => dismissSuggestion('certificates')}
-              >
-                <div className="grid gap-2">
-                  {suggestions.certificates.map((cert, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg border border-purple-100 bg-white p-2.5"
-                    >
-                      <p className="text-sm font-medium text-gray-800">{cert.name}</p>
-                      {cert.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">{cert.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </AiSuggestionCard>
-            </div>
-          )}
           {!position.certificates || position.certificates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Award className="h-10 w-10 mx-auto mb-2 opacity-50" />
@@ -1639,7 +1537,10 @@ export function StepBasicInfo({
               {t('确认重新生成全部内容？')}
             </DialogTitle>
             <DialogDescription>
-              {t('AI 将基于当前填写的岗位信息（名称、行业、简介、职责、要求等）重新生成：岗位简介、工作职责、任职要求、晋升路径与证书推荐。生成结果将以建议卡片形式展示，供您逐项采纳。')}
+              {t('AI 将基于当前填写的岗位信息重新生成并直接覆盖：岗位名称、岗位简称、岗位简介、参考薪资、工作职责（{n} 条）、任职要求（{m} 条）、晋升路径与证书推荐。每个字段均可单独「恢复上版」，也可全部撤销。', {
+                n: position.responsibilities.filter((r) => r.name.trim()).length,
+                m: position.requirements.filter(Boolean).length,
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

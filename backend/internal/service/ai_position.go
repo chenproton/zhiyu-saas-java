@@ -21,6 +21,8 @@ const (
 	PositionAssistRequirements     PositionAssistField = "requirements"     // 任职要求条目
 	PositionAssistCareerPath       PositionAssistField = "careerPath"       // 晋升路径
 	PositionAssistCertificates     PositionAssistField = "certificates"     // 证书推荐
+	PositionAssistAbilities        PositionAssistField = "abilities"        // 按工作职责拆解能力点
+	PositionAssistCompetency       PositionAssistField = "competency"       // 能力绑定掌握程度+胜任标准填充
 )
 
 // PositionAssistInput 岗位 AI 辅助请求的业务上下文（供提示词使用，不含 id 等无关字段）。
@@ -34,6 +36,18 @@ type PositionAssistInput struct {
 	Responsibilities []string `json:"responsibilities"`
 	Requirements     []string `json:"requirements"`
 	CareerPath       string   `json:"careerPath"`
+	// abilities 字段使用：当前待拆解的工作职责名称
+	ResponsibilityName string `json:"responsibilityName"`
+	// competency 字段使用：现有能力绑定清单（名称/领域/属性/描述）
+	Abilities []PositionAbilityContext `json:"abilities"`
+}
+
+// PositionAbilityContext 能力绑定上下文（供 competency 提示词使用）。
+type PositionAbilityContext struct {
+	Name        string   `json:"name"`
+	Domain      string   `json:"domain"`
+	Attributes  []string `json:"attributes"`
+	Description string   `json:"description"`
 }
 
 // PositionPolish AI 润色的基础信息结果。
@@ -53,6 +67,21 @@ type AISuggestedCertificate struct {
 	URL         string `json:"url"`
 }
 
+// AISuggestedAbility AI 为某职责拆解的能力点（source=custom 写入绑定）。
+type AISuggestedAbility struct {
+	Name              string   `json:"name"`
+	Domain            string   `json:"domain"`
+	Attributes        []string `json:"attributes"`
+	RubricDescription string   `json:"rubricDescription"`
+}
+
+// AICompetencyFill AI 为单个能力绑定填充的掌握程度与胜任标准。
+type AICompetencyFill struct {
+	Name              string `json:"name"`
+	Level             string `json:"level"`
+	RubricDescription string `json:"rubricDescription"`
+}
+
 // PositionAssistResult 岗位 AI 辅助结果：仅包含请求 field 对应的字段。
 type PositionAssistResult struct {
 	Field            PositionAssistField      `json:"field"`
@@ -61,13 +90,16 @@ type PositionAssistResult struct {
 	Requirements     []string                 `json:"requirements,omitempty"`
 	CareerPath       string                   `json:"careerPath,omitempty"`
 	Certificates     []AISuggestedCertificate `json:"certificates,omitempty"`
+	Abilities        []AISuggestedAbility     `json:"abilities,omitempty"`
+	Competencies     []AICompetencyFill       `json:"competencies,omitempty"`
 }
 
 // ValidPositionAssistField 校验 field 枚举。
 func ValidPositionAssistField(f PositionAssistField) bool {
 	switch f {
 	case PositionAssistPolish, PositionAssistResponsibilities, PositionAssistRequirements,
-		PositionAssistCareerPath, PositionAssistCertificates:
+		PositionAssistCareerPath, PositionAssistCertificates,
+		PositionAssistAbilities, PositionAssistCompetency:
 		return true
 	}
 	return false
@@ -104,6 +136,18 @@ func positionAssistPrompt(field PositionAssistField, in PositionAssistInput) str
 	case PositionAssistCertificates:
 		task = "推荐 2-3 个与该岗位相关的职业资格证书：name 为证书全称，description 为一句介绍（40 字以内），url 为证书官网地址（不确定时留空字符串）。"
 		spec = `{"certificates": [{"name": "string", "description": "string", "url": "string"}]}`
+	case PositionAssistAbilities:
+		task = "针对「" + in.ResponsibilityName + "」这条工作职责，拆解 3-5 个岗位能力点：\n" +
+			"1. name：能力点名称（名词短语，如：微服务架构设计）；\n" +
+			"2. domain：所属能力领域，必须从以下枚举中选一个：岗位与行业认知 / 专业知识 / 专业技能 / 通用能力 / 职业素养/价值观；\n" +
+			"3. attributes：能力属性数组，从 知识 / 素养 / 技能 中选 1 个；\n" +
+			"4. rubricDescription：胜任标准描述，一句话（40 字以内），描述该能力点在本岗位的达标表现。"
+		spec = `{"abilities": [{"name": "string", "domain": "string", "attributes": ["string"], "rubricDescription": "string"}]}`
+	case PositionAssistCompetency:
+		task = "为下方能力点清单中的每个能力点，输出：\n" +
+			"1. level：掌握程度，必须从枚举中选择：understand（了解）/ comprehend（理解）/ master（掌握）/ proficient（熟练）/ expert（精通）；\n" +
+			"2. rubricDescription：胜任标准描述，结合能力点与岗位，一句话（40-60 字）。"
+		spec = `{"competencies": [{"name": "string", "level": "understand|comprehend|master|proficient|expert", "rubricDescription": "string"}]}`
 	default:
 		return ""
 	}
@@ -140,6 +184,13 @@ func positionAssistPrompt(field PositionAssistField, in PositionAssistInput) str
 	}
 	if in.CareerPath != "" {
 		b.WriteString("- 晋升路径：" + in.CareerPath + "\n")
+	}
+	if field == PositionAssistCompetency && len(in.Abilities) > 0 {
+		b.WriteString("- 能力点清单：\n")
+		for _, a := range in.Abilities {
+			b.WriteString(fmt.Sprintf("  · %s（领域：%s；属性：%s；现有描述：%s）\n",
+				a.Name, a.Domain, strings.Join(a.Attributes, "/"), a.Description))
+		}
 	}
 
 	b.WriteString("\n任务：" + task + "\n")
@@ -294,10 +345,75 @@ func parsePositionAssistOutput(field PositionAssistField, text string, result *P
 		if len(result.Certificates) == 0 {
 			return errors.New("ai returned empty certificates")
 		}
+	case PositionAssistAbilities:
+		var out struct {
+			Items []AISuggestedAbility `json:"abilities"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			return fmt.Errorf("parse abilities output: %w", err)
+		}
+		for _, a := range out.Items {
+			a.Name = strings.TrimSpace(a.Name)
+			if a.Name == "" {
+				continue
+			}
+			// 属性只保留 知识/素养/技能；领域/描述留空则清理
+			a.Attributes = filterAbilityAttributes(a.Attributes)
+			a.Domain = strings.TrimSpace(a.Domain)
+			a.RubricDescription = strings.TrimSpace(a.RubricDescription)
+			result.Abilities = append(result.Abilities, a)
+		}
+		if len(result.Abilities) == 0 {
+			return errors.New("ai returned empty abilities")
+		}
+	case PositionAssistCompetency:
+		var out struct {
+			Items []AICompetencyFill `json:"competencies"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			return fmt.Errorf("parse competency output: %w", err)
+		}
+		for _, c := range out.Items {
+			c.Name = strings.TrimSpace(c.Name)
+			if c.Name == "" || !validCompetencyLevel(c.Level) {
+				continue
+			}
+			c.RubricDescription = strings.TrimSpace(c.RubricDescription)
+			result.Competencies = append(result.Competencies, c)
+		}
+		if len(result.Competencies) == 0 {
+			return errors.New("ai returned empty competencies")
+		}
 	default:
 		return fmt.Errorf("service: unsupported position assist field %q", field)
 	}
 	return nil
+}
+
+// abilityAttributeWhitelist 能力属性白名单（与前端 ABILITY_ATTRIBUTES 一致）。
+var abilityAttributeWhitelist = map[string]bool{"知识": true, "素养": true, "技能": true}
+
+func filterAbilityAttributes(items []string) []string {
+	out := make([]string, 0, 1)
+	for _, it := range items {
+		it = strings.TrimSpace(it)
+		if abilityAttributeWhitelist[it] && !containsString(out, it) {
+			out = append(out, it)
+		}
+	}
+	if len(out) == 0 {
+		out = append(out, "技能")
+	}
+	return out
+}
+
+// validCompetencyLevel 校验掌握程度枚举。
+func validCompetencyLevel(level string) bool {
+	switch level {
+	case "understand", "comprehend", "master", "proficient", "expert":
+		return true
+	}
+	return false
 }
 
 func trimNonEmpty(items []string) []string {

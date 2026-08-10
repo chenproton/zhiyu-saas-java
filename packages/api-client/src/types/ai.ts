@@ -43,6 +43,15 @@ export type AIPositionAssistField =
   | 'requirements'
   | 'careerPath'
   | 'certificates'
+  | 'abilities'
+  | 'competency'
+
+export interface AIPositionAbilityContext {
+  name: string
+  domain?: string
+  attributes?: string[]
+  description?: string
+}
 
 export interface AIPositionAssistBody {
   field: AIPositionAssistField
@@ -57,6 +66,10 @@ export interface AIPositionAssistBody {
     responsibilities: string[]
     requirements: string[]
     careerPath: string
+    /** abilities 字段使用：当前待拆解的工作职责名称 */
+    responsibilityName?: string
+    /** competency 字段使用：现有能力绑定清单 */
+    abilities?: AIPositionAbilityContext[]
   }
 }
 
@@ -75,6 +88,21 @@ export interface AISuggestedCertificate {
   url?: string
 }
 
+/** abilities 结果：AI 为某职责拆解的能力点 */
+export interface AISuggestedAbility {
+  name: string
+  domain: string
+  attributes: string[]
+  rubricDescription: string
+}
+
+/** competency 结果：AI 填充的掌握程度与胜任标准（按 name 与绑定匹配） */
+export interface AICompetencyFill {
+  name: string
+  level: 'understand' | 'comprehend' | 'master' | 'proficient' | 'expert'
+  rubricDescription: string
+}
+
 export interface AIPositionAssistResponse {
   field: AIPositionAssistField
   polish?: AIPositionPolish
@@ -82,4 +110,6 @@ export interface AIPositionAssistResponse {
   requirements?: string[]
   careerPath?: string
   certificates?: AISuggestedCertificate[]
+  abilities?: AISuggestedAbility[]
+  competencies?: AICompetencyFill[]
 }
