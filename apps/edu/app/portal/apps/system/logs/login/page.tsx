@@ -11,6 +11,7 @@ import { portalLogApi } from '@/lib/api'
 import type { LoginLog } from '@/lib/types/backend'
 import { LogTableShell, type LogColumn } from '@/components/shared/log-table-shell'
 import { useT } from '@/lib/i18n/locale-provider'
+import { describeDevice } from '@/lib/format-utils'
 
 const PAGE_SIZE = 20
 
@@ -106,7 +107,11 @@ export default function LoginLogsPage() {
     { header: t('登录地点'), cell: (log) => log.location || '-' },
     {
       header: t('设备'),
-      cell: (log) => <span className="text-muted-foreground">{log.device || '-'}</span>,
+      cell: (log) => (
+        <span className="text-muted-foreground" title={log.device || ''}>
+          {describeDevice(log.device) || '-'}
+        </span>
+      ),
     },
     {
       header: t('状态'),

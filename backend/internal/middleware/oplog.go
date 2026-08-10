@@ -81,10 +81,34 @@ func (sr *statusRecorder) WriteHeader(code int) {
 	sr.ResponseWriter.WriteHeader(code)
 }
 
+// ClientIP 获取客户端真实 IP。
+// 后端仅暴露于内网并经 nginx 网关转发（网关已透传 X-Real-IP / X-Forwarded-For），
+// 故当直接连接方为回环/内网地址时优先取 X-Forwarded-For 首个地址，其次 X-Real-IP，
+// 最后回退 RemoteAddr；直连方为公网地址时（理论上不可达）不回退代理头，防伪造。
 func ClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	if ip == nil || (!ip.IsLoopback() && !ip.IsPrivate()) {
+		return host
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		for _, part := range strings.Split(xff, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			if p := net.ParseIP(strings.Trim(part, "[]")); p != nil {
+				return part
+			}
+		}
+	}
+	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
+		if p := net.ParseIP(strings.Trim(xri, "[]")); p != nil {
+			return xri
+		}
 	}
 	return host
 }

@@ -68,3 +68,69 @@ export function computeTotalScore(
 ): number {
   return examResultTotal ?? examTotal ?? questions.reduce((sum, q) => sum + (q.score ?? 0), 0)
 }
+
+const NT_VERSION: Record<string, string> = {
+  '6.1': '7',
+  '6.2': '8',
+  '6.3': '8.1',
+  '10.0': '10',
+}
+
+/**
+ * 将 User-Agent 解析为人类可读的设备描述，如：
+ *   iOS 17.2 · Chrome 126.0.0.0
+ *   Android 14 · Safari 17.2
+ *   PC web · Windows 10 · Edge 126.0.0.0
+ *   PC web · macOS 14.2.1 · Firefox 127.0
+ * 非原始 UA（已格式化/空值）原样返回。
+ */
+export function describeDevice(ua: string | null | undefined): string {
+  if (!ua) return ''
+  if (!/Mozilla/i.test(ua)) return ua
+
+  const parts: string[] = []
+
+  // 平台与系统版本
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    const m = ua.match(/CPU OS (\d+)[_](\d+)(?:[_](\d+))?/)
+    parts.push(m ? `iOS ${m[1]}.${m[2]}` : 'iOS')
+  } else if (/Android/i.test(ua)) {
+    const m = ua.match(/Android (\d+(?:\.\d+)?)/)
+    parts.push(m ? `Android ${m[1]}` : 'Android')
+  } else if (/Windows/i.test(ua)) {
+    const m = ua.match(/Windows NT (\d+\.\d+)/)
+    const ver = m ? NT_VERSION[m[1]] || m[1] : ''
+    parts.push(`PC web · Windows${ver ? ' ' + ver : ''}`)
+  } else if (/Mac OS X|Macintosh/i.test(ua)) {
+    const m = ua.match(/Mac OS X (\d+)[_](\d+)(?:[_](\d+))?/)
+    parts.push(m ? `PC web · macOS ${m[1]}.${m[2]}` : 'PC web · macOS')
+  } else if (/Linux/i.test(ua)) {
+    parts.push('PC web · Linux')
+  } else {
+    parts.push('未知设备')
+  }
+
+  // 浏览器型号与版本
+  if (/MicroMessenger/i.test(ua)) {
+    parts.push('微信内置浏览器')
+  } else if (/Edg\//i.test(ua)) {
+    const v = ua.match(/Edg\/([\d.]+)/)?.[1]
+    parts.push(v ? `Edge ${v}` : 'Edge')
+  } else if (/OPR\//i.test(ua)) {
+    const v = ua.match(/OPR\/([\d.]+)/)?.[1]
+    parts.push(v ? `Opera ${v}` : 'Opera')
+  } else if (/Chrome\//i.test(ua)) {
+    const v = ua.match(/Chrome\/([\d.]+)/)?.[1]
+    parts.push(v ? `Chrome ${v}` : 'Chrome')
+  } else if (/Firefox\//i.test(ua)) {
+    const v = ua.match(/Firefox\/([\d.]+)/)?.[1]
+    parts.push(v ? `Firefox ${v}` : 'Firefox')
+  } else if (/Safari\//i.test(ua)) {
+    const v = ua.match(/Version\/([\d.]+)/)?.[1]
+    parts.push(v ? `Safari ${v}` : 'Safari')
+  } else {
+    parts.push('其他浏览器')
+  }
+
+  return parts.join(' · ')
+}
