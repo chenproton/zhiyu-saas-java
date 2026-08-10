@@ -1218,8 +1218,8 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     id: 'ai',
     label: 'AI 智能服务平台',
     icon: 'sparkles',
-    href: '#',
-    subModules: [],
+    href: '/portal/apps/ai/chat',
+    subModules: [{ id: 'chat', label: 'AI 助手', href: '/portal/apps/ai/chat' }],
   },
   opc: {
     id: 'opc',
@@ -1268,6 +1268,7 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'affairs-teaching-approval': '维护审批流程与批次管理',
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
+  'ai-chat': '基于租户自有 AI 服务的智能对话助手',
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {

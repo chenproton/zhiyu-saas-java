@@ -86,6 +86,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 			registerLandingRoutes(r, h)
 
+			// AI 对话：租户内任意登录用户可用（handler 内校验 TenantID 与未配置 412）
+			r.Post("/ai/chat", h.aiHandler.Chat)
+
 			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
 			r.Group(func(r chi.Router) {
 				r.Use(businessUser)
@@ -495,6 +498,11 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Get("/tenants", h.tenantHandler.List)
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
 	r.Put("/tenants/{id}", h.tenantHandler.Update)
+
+	// 租户 AI 服务配置（管理端；对话入口 /ai/chat 在 portal 平台组单独注册）
+	r.Get("/ai/config", h.aiHandler.GetConfig)
+	r.Put("/ai/config", h.aiHandler.SaveConfig)
+	r.Delete("/ai/config", h.aiHandler.DeleteConfig)
 
 	r.Get("/admins", h.tenantHandler.ListSchoolAdmins)
 	r.Post("/admins", h.tenantHandler.CreateSchoolAdmin)

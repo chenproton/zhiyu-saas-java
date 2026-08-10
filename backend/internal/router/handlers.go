@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/ai"
 	"github.com/zhiyu-saas/backend/internal/geo"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -33,6 +34,7 @@ type Handlers struct {
 	questionExportHandler         *handler.QuestionExportHandler
 	examExportHandler             *handler.ExamExportHandler
 	tenantHandler                 *handler.TenantHandler
+	aiHandler                     *handler.AIHandler
 	orgHandler                    *handler.OrgHandler
 	orgTypeHandler                *handler.OrgTypeHandler
 	userManagementHandler         *handler.UserManagementHandler
@@ -114,7 +116,7 @@ type Handlers struct {
 	tagHandler                    *handler.TagHandler
 }
 
-func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client, geo *geo.Searcher) *Handlers {
+func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client, geo *geo.Searcher, aiSecret string) *Handlers {
 	st := store.New(db)
 	svc := service.New(st)
 	authSvc := service.NewAuthService(svc)
@@ -158,6 +160,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		questionExportHandler:         &handler.QuestionExportHandler{Store: st},
 		examExportHandler:             &handler.ExamExportHandler{Store: st},
 		tenantHandler:                 tenantH,
+		aiHandler:                     &handler.AIHandler{Service: service.NewAIService(svc, redisClient, ai.NewClient(), aiSecret)},
 		orgHandler:                    &handler.OrgHandler{Service: service.NewOrgService(svc)},
 		orgTypeHandler:                &handler.OrgTypeHandler{Store: st.OrgTypes()},
 		userManagementHandler:         &handler.UserManagementHandler{Service: service.NewUserService(svc)},

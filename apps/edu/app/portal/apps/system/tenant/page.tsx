@@ -37,13 +37,16 @@ import {
   BookOpen,
   Monitor,
   User,
+  Sparkles,
 } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest } from '@/lib/api'
+import { portalRequest, getAIConfig, saveAIConfig, deleteAIConfig } from '@/lib/api'
+import type { AIConfigView } from '@/lib/api'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { SchoolAdminManager } from './_components/school-admin-manager'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -148,6 +151,11 @@ export default function TenantPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+  const [aiConfig, setAiConfig] = useState<AIConfigView | null>(null)
+  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false)
+  const [aiForm, setAiForm] = useState({ baseUrl: '', apiKey: '', model: '' })
+  const [aiSubmitting, setAISubmitting] = useState(false)
+  const [aiDeleteConfirm, setAIDeleteConfirm] = useState(false)
   const { toast } = useToast()
   const t = useT()
 
@@ -204,6 +212,77 @@ export default function TenantPage() {
       await fetchTenant()
     })()
   }, [fetchTenant, authLoading])
+
+  const fetchAIConfig = useCallback(async () => {
+    if (!tenantId) return
+    try {
+      setAiConfig(await getAIConfig())
+    } catch {
+      // 配置读取失败不阻塞主页面，展示为未配置
+      setAiConfig(null)
+    }
+  }, [tenantId])
+
+  useEffect(() => {
+    if (authLoading) return
+    ;(async () => {
+      await fetchAIConfig()
+    })()
+  }, [fetchAIConfig, authLoading])
+
+  const openAIDialog = () => {
+    setAiForm({
+      baseUrl: aiConfig?.baseUrl || '',
+      apiKey: '',
+      model: aiConfig?.model || '',
+    })
+    setIsAIDialogOpen(true)
+  }
+
+  const handleAISave = async () => {
+    if (!aiForm.baseUrl || !aiForm.model) {
+      toast({ title: t('请填写 Base URL 与模型'), variant: 'destructive' })
+      return
+    }
+    setAISubmitting(true)
+    try {
+      await saveAIConfig({
+        baseUrl: aiForm.baseUrl,
+        model: aiForm.model,
+        ...(aiForm.apiKey ? { apiKey: aiForm.apiKey } : {}),
+      })
+      setIsAIDialogOpen(false)
+      toast({ title: t('保存成功') })
+      await fetchAIConfig()
+    } catch (err) {
+      toast({
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+    } finally {
+      setAISubmitting(false)
+    }
+  }
+
+  const handleAIDelete = async () => {
+    setAISubmitting(true)
+    try {
+      await deleteAIConfig()
+      setAIDeleteConfirm(false)
+      setIsAIDialogOpen(false)
+      toast({ title: t('已清除 AI 配置') })
+      await fetchAIConfig()
+    } catch (err) {
+      toast({
+        title: t('清除失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+    } finally {
+      setAISubmitting(false)
+    }
+  }
 
   const handleUpdate = async () => {
     if (!formData.name || !tenant) {
@@ -343,6 +422,35 @@ export default function TenantPage() {
                   </div>
                 </div>
               )}
+            </div>
+            <div className="mt-6 rounded-lg border border-gray-100 bg-white shadow-sm">
+              <div className="px-6 py-5 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold">{t('AI 服务配置')}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {t('接入租户自有 OpenAI 兼容服务，token 成本租户自负')}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    status={aiConfig?.configured ? 'active' : 'inactive'}
+                    label={t(aiConfig?.configured ? '已配置' : '未配置')}
+                    className="ml-auto"
+                  />
+                  <Button size="sm" variant="outline" onClick={openAIDialog}>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    {t('配置')}
+                  </Button>
+                </div>
+              </div>
+              <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <F icon={Globe} label={t('Base URL')} v={aiConfig?.baseUrl || '-'} />
+                <F icon={Sparkles} label={t('模型')} v={aiConfig?.model || '-'} />
+                <F icon={Shield} label={t('API Key')} v={aiConfig?.apiKeyMasked || '-'} />
+              </div>
             </div>
             {tenantId && (
               <div className="mt-6">
@@ -563,6 +671,68 @@ export default function TenantPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={isAIDialogOpen} onOpenChange={setIsAIDialogOpen}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>{t('AI 服务配置')}</DialogTitle>
+            <DialogDescription>
+              {t('填写 OpenAI 兼容服务的接入信息，API Key 将加密存储')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-5 py-4">
+            <FormFieldRow label={t('Base URL')} required>
+              <Input
+                value={aiForm.baseUrl}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
+                placeholder="https://api.openai.com/v1"
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('API Key')} required={!aiConfig?.configured}>
+              <Input
+                type="password"
+                value={aiForm.apiKey}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, apiKey: e.target.value }))}
+                placeholder={aiConfig?.configured ? t('留空则不修改') : 'sk-...'}
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('模型')} required>
+              <Input
+                value={aiForm.model}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, model: e.target.value }))}
+                placeholder="gpt-4o-mini"
+              />
+            </FormFieldRow>
+          </div>
+          <DialogFooter>
+            {aiConfig?.configured && (
+              <Button
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => setAIDeleteConfirm(true)}
+                disabled={aiSubmitting}
+              >
+                {t('清除配置')}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setIsAIDialogOpen(false)} disabled={aiSubmitting}>
+              {t('取消')}
+            </Button>
+            <Button onClick={handleAISave} disabled={aiSubmitting}>
+              {aiSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              {t('保存')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={aiDeleteConfirm}
+        onOpenChange={setAIDeleteConfirm}
+        title={t('确认清除')}
+        description={t('确定清除当前租户的 AI 服务配置吗？清除后租户内所有 AI 功能将不可用。')}
+        confirmText={t('清除')}
+        variant="destructive"
+        onConfirm={handleAIDelete}
+      />
     </PortalCrudPage>
   )
 }

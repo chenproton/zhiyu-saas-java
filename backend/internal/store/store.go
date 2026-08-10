@@ -101,6 +101,7 @@ type Store struct {
 	community        *CommunityStore
 	favorites        *FavoritesStore
 	platformSettings *PlatformSettingsStore
+	aiConfigs        *AIConfigStore
 	tags             *TagStore
 }
 
@@ -191,6 +192,7 @@ func newStore(q Queryer) *Store {
 		community:        NewCommunityStore(q),
 		favorites:        NewFavoritesStore(q, beginner),
 		platformSettings: NewPlatformSettingsStore(q),
+		aiConfigs:        NewAIConfigStore(q),
 		tags:             NewTagStore(q, beginner),
 	}
 }
@@ -666,6 +668,11 @@ func (s *Store) Favorites() *FavoritesStore {
 // PlatformSettings 返回平台级配置 store。
 func (s *Store) PlatformSettings() *PlatformSettingsStore {
 	return s.platformSettings
+}
+
+// AIConfigs 返回租户 AI 配置 store。
+func (s *Store) AIConfigs() *AIConfigStore {
+	return s.aiConfigs
 }
 
 // Tags 返回标签 store。
