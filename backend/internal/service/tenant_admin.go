@@ -50,16 +50,9 @@ func (s *TenantAdminService) Create(ctx context.Context, tenantID, roleCode, rol
 	return admin, plain, nil
 }
 
-// CreateEnterpriseAdmin 创建企业管理员：partner 平台用户名全局唯一（应用层前置校验），
-// 绑定 enterprise_admin 角色（platform=partner）。
+// CreateEnterpriseAdmin 创建企业管理员：绑定 enterprise_admin 角色（platform=partner）。
+// 用户名按租户内唯一（login_name 唯一约束兜底），同一用户名可在多个企业存在。
 func (s *TenantAdminService) CreateEnterpriseAdmin(ctx context.Context, tenantID, username, name string) (*store.TenantAdminItem, string, error) {
-	exists, err := s.st.Partner().PartnerUsernameExists(ctx, username)
-	if err != nil {
-		return nil, "", err
-	}
-	if exists {
-		return nil, "", store.ErrPartnerUsernameExists
-	}
 	return s.Create(ctx, tenantID, domain.RoleEnterpriseAdmin, string(domain.UserRoleEnterprise), string(domain.UserPlatformPartner), username, name)
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -14,7 +13,6 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -150,8 +148,6 @@ func (h *AuthHandler) PartnerRegister(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, store.ErrPartnerUsernameExists):
-			respondError(w, http.StatusConflict, "用户名已被注册")
 		case isUniqueViolation(err):
 			respondError(w, http.StatusConflict, "企业名称已被注册")
 		default:

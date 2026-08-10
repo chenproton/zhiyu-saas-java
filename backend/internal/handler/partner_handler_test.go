@@ -99,17 +99,6 @@ func TestPartner_RegisterLoginMe(t *testing.T) {
 	}
 	defer cleanupPartnerTenant(env, tenantID)
 
-	t.Run("register duplicate username conflict", func(t *testing.T) {
-		w := doNoAuthJSON(r, http.MethodPost, "/auth/partner/register", map[string]interface{}{
-			"enterpriseName": "另一家企业-" + suffix,
-			"username":       username,
-			"password":       password,
-		})
-		if w.Code != http.StatusConflict {
-			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
-		}
-	})
-
 	t.Run("register duplicate enterprise name conflict", func(t *testing.T) {
 		w := doNoAuthJSON(r, http.MethodPost, "/auth/partner/register", map[string]interface{}{
 			"enterpriseName": enterpriseName,
@@ -1048,4 +1037,202 @@ func TestPartner_MentorTasks(t *testing.T) {
 	if item.AssignedCount != 2 || item.GradedCount != 1 {
 		t.Fatalf("评分进度应为 assignedCount=2 gradedCount=1（他企影子账号记录不计入）: %+v", item)
 	}
+}
+
+// partnerLoginResp2 多租户登录响应（含企业候选）。
+type partnerLoginResp2 struct {
+	Token                string                 `json:"token"`
+	NeedsTenantSelection bool                   `json:"needsTenantSelection"`
+	PreAuthToken         string                 `json:"preAuthToken"`
+	Tenants              []handler.TenantOption `json:"tenants"`
+}
+
+// TestPartner_MultiEnterpriseLogin 同一用户名可在多个企业注册：
+// 登录返回企业候选列表，选择企业后签发对应租户 token，me 返回对应企业主体。
+func TestPartner_MultiEnterpriseLogin(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	authH := newPartnerAuthHandler(env)
+	r := chi.NewRouter()
+	r.Post("/auth/partner/register", authH.PartnerRegister)
+	r.Post("/auth/partner/login", authH.PartnerLogin)
+	r.Post("/auth/select-tenant", authH.SelectTenant)
+	r.With(middleware.JWT(testhelper.TestJWTSecret)).Get("/auth/partner/me", authH.PartnerMe)
+
+	suffix := uuid.NewString()[:8]
+	username := "multi_ent_" + suffix
+	password := "abc12345"
+	entAName := "多企业A-" + suffix
+	entBName := "多企业B-" + suffix
+
+	var tenantAID, tenantBID string
+	defer func() {
+		if tenantAID != "" {
+			cleanupPartnerTenant(env, tenantAID)
+		}
+		if tenantBID != "" {
+			cleanupPartnerTenant(env, tenantBID)
+		}
+	}()
+
+	t.Run("register A then B with same username", func(t *testing.T) {
+		w := doNoAuthJSON(r, http.MethodPost, "/auth/partner/register", map[string]interface{}{
+			"enterpriseName": entAName,
+			"username":       username,
+			"password":       password,
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("register A: %d %s", w.Code, w.Body.String())
+		}
+		var resp partnerLoginResp
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal A: %v", err)
+		}
+		tenantAID = *resp.User.TenantID
+
+		// 同用户名注册企业 B 应成功（不再全局唯一）
+		w2 := doNoAuthJSON(r, http.MethodPost, "/auth/partner/register", map[string]interface{}{
+			"enterpriseName": entBName,
+			"username":       username,
+			"password":       password,
+		})
+		if w2.Code != http.StatusOK {
+			t.Fatalf("register B with same username: %d %s", w2.Code, w2.Body.String())
+		}
+		var resp2 partnerLoginResp
+		if err := json.Unmarshal(w2.Body.Bytes(), &resp2); err != nil {
+			t.Fatalf("unmarshal B: %v", err)
+		}
+		tenantBID = *resp2.User.TenantID
+		if tenantAID == tenantBID {
+			t.Fatalf("两个企业应创建不同租户")
+		}
+	})
+
+	t.Run("login returns tenant selection", func(t *testing.T) {
+		w := doNoAuthJSON(r, http.MethodPost, "/auth/partner/login", map[string]interface{}{
+			"username": username,
+			"password": password,
+		})
+		if w.Code != http.StatusOK {
+			t.Fatalf("login: %d %s", w.Code, w.Body.String())
+		}
+		var resp partnerLoginResp2
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if !resp.NeedsTenantSelection || resp.PreAuthToken == "" {
+			t.Fatalf("应返回企业选择: %s", w.Body.String())
+		}
+		if len(resp.Tenants) != 2 {
+			t.Fatalf("应有 2 个企业候选, got %d", len(resp.Tenants))
+		}
+		names := map[string]bool{}
+		for _, tn := range resp.Tenants {
+			names[tn.TenantName] = true
+		}
+		if !names[entAName] || !names[entBName] {
+			t.Fatalf("候选企业名不符: %+v", resp.Tenants)
+		}
+	})
+
+	var preAuthToken string
+	t.Run("select tenant A and me returns enterprise A", func(t *testing.T) {
+		wl := doNoAuthJSON(r, http.MethodPost, "/auth/partner/login", map[string]interface{}{
+			"username": username,
+			"password": password,
+		})
+		var lr partnerLoginResp2
+		if err := json.Unmarshal(wl.Body.Bytes(), &lr); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		preAuthToken = lr.PreAuthToken
+
+		ws := doNoAuthJSON(r, http.MethodPost, "/auth/select-tenant", map[string]interface{}{
+			"preAuthToken": preAuthToken,
+			"tenantId":     tenantAID,
+		})
+		if ws.Code != http.StatusOK {
+			t.Fatalf("select A: %d %s", ws.Code, ws.Body.String())
+		}
+		var sr partnerLoginResp
+		if err := json.Unmarshal(ws.Body.Bytes(), &sr); err != nil {
+			t.Fatalf("unmarshal select: %v", err)
+		}
+		if sr.Token == "" {
+			t.Fatalf("应签发 token")
+		}
+		// 用签发的 token 访问 me，应返回企业 A
+		req := httptest.NewRequest(http.MethodGet, "/auth/partner/me", nil)
+		req.Header.Set("Authorization", "Bearer "+sr.Token)
+		wme := httptest.NewRecorder()
+		r.ServeHTTP(wme, req)
+		if wme.Code != http.StatusOK {
+			t.Fatalf("me: %d %s", wme.Code, wme.Body.String())
+		}
+		var me struct {
+			Tenant *struct {
+				ID string `json:"id"`
+			} `json:"tenant"`
+			Enterprise *struct {
+				Name string `json:"name"`
+			} `json:"enterprise"`
+		}
+		if err := json.Unmarshal(wme.Body.Bytes(), &me); err != nil {
+			t.Fatalf("unmarshal me: %v", err)
+		}
+		if me.Tenant == nil || me.Tenant.ID != tenantAID {
+			t.Fatalf("me 应归属企业 A: %s", wme.Body.String())
+		}
+		if me.Enterprise == nil || me.Enterprise.Name != entAName {
+			t.Fatalf("me 应返回企业 A 主体: %s", wme.Body.String())
+		}
+	})
+
+	t.Run("select tenant B with new pre-auth token", func(t *testing.T) {
+		wl := doNoAuthJSON(r, http.MethodPost, "/auth/partner/login", map[string]interface{}{
+			"username": username,
+			"password": password,
+		})
+		var lr partnerLoginResp2
+		if err := json.Unmarshal(wl.Body.Bytes(), &lr); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		ws := doNoAuthJSON(r, http.MethodPost, "/auth/select-tenant", map[string]interface{}{
+			"preAuthToken": lr.PreAuthToken,
+			"tenantId":     tenantBID,
+		})
+		if ws.Code != http.StatusOK {
+			t.Fatalf("select B: %d %s", ws.Code, ws.Body.String())
+		}
+		var sr partnerLoginResp
+		if err := json.Unmarshal(ws.Body.Bytes(), &sr); err != nil {
+			t.Fatalf("unmarshal select: %v", err)
+		}
+		req := httptest.NewRequest(http.MethodGet, "/auth/partner/me", nil)
+		req.Header.Set("Authorization", "Bearer "+sr.Token)
+		wme := httptest.NewRecorder()
+		r.ServeHTTP(wme, req)
+		if wme.Code != http.StatusOK {
+			t.Fatalf("me: %d %s", wme.Code, wme.Body.String())
+		}
+		var me struct {
+			Tenant *struct {
+				ID string `json:"id"`
+			} `json:"tenant"`
+			Enterprise *struct {
+				Name string `json:"name"`
+			} `json:"enterprise"`
+		}
+		if err := json.Unmarshal(wme.Body.Bytes(), &me); err != nil {
+			t.Fatalf("unmarshal me: %v", err)
+		}
+		if me.Tenant == nil || me.Tenant.ID != tenantBID {
+			t.Fatalf("me 应归属企业 B: %s", wme.Body.String())
+		}
+		if me.Enterprise == nil || me.Enterprise.Name != entBName {
+			t.Fatalf("me 应返回企业 B 主体: %s", wme.Body.String())
+		}
+	})
 }

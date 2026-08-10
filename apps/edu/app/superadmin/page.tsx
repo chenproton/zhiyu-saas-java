@@ -1233,7 +1233,7 @@ export default function SuperAdminPage() {
                     {t('企业管理员用户名')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    placeholder={t('企业登录用户名，全局唯一')}
+                    placeholder={t('企业登录用户名（同一账号可加入多个企业）')}
                     value={entUsername}
                     onChange={(e) => setEntUsername(e.target.value)}
                     autoComplete="off"

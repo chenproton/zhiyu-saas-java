@@ -1,6 +1,6 @@
 // 企业平台（Partner）API，契约见 docs/spec/partner-enterprise-platform.md §5
 import { partnerRequest, buildQuery } from '../api-helpers'
-import type { LoginRequest, LoginResponse, ListResponse } from '../api-helpers'
+import type { LoginRequest, LoginResponse, ListResponse, SelectTenantRequest } from '../api-helpers'
 import type {
   PartnerEnterprise,
   PartnerEnterpriseUpdateRequest,
@@ -28,6 +28,12 @@ export const partnerAuthApi = {
     }),
   register: (req: PartnerRegisterRequest) =>
     partnerRequest<LoginResponse>('/auth/partner/register', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  // 多企业候选登录：选择企业后签发对应租户 token（公开接口，无平台限制）
+  selectTenant: (req: SelectTenantRequest) =>
+    partnerRequest<LoginResponse>('/auth/select-tenant', {
       method: 'POST',
       body: JSON.stringify(req),
     }),

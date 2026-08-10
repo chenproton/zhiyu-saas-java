@@ -18,19 +18,6 @@ func NewPartnerStore(q Queryer) *PartnerStore {
 	return &PartnerStore{q: q}
 }
 
-// ErrPartnerUsernameExists partner 平台内用户名已被占用。
-var ErrPartnerUsernameExists = errors.New("partner username exists")
-
-// PartnerUsernameExists partner 平台内 username 全局唯一校验（应用层防线，
-// 现有 users 唯一约束是租户级 login_name，不动）。
-func (s *PartnerStore) PartnerUsernameExists(ctx context.Context, username string) (bool, error) {
-	var exists bool
-	err := s.q.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND platform = $2)`,
-		username, domain.UserPlatformPartner).Scan(&exists)
-	return exists, err
-}
-
 // GetRoleIDByCode 按租户+角色 code 查询角色 ID（企业租户种子角色绑定用）。
 func (s *PartnerStore) GetRoleIDByCode(ctx context.Context, tenantID, code string) (string, error) {
 	var id string

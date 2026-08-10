@@ -193,8 +193,6 @@ func (h *AllianceHandler) RegisterEnterprise(w http.ResponseWriter, r *http.Requ
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, store.ErrPartnerUsernameExists):
-			respondError(w, http.StatusConflict, "用户名已被注册")
 		case isUniqueViolation(err):
 			respondError(w, http.StatusConflict, "企业名称已被注册，可在「引入企业」中搜索并引入")
 		default:

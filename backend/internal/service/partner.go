@@ -42,23 +42,16 @@ type PartnerRegisterResult struct {
 }
 
 // Register 企业自助注册：事务内创建「企业租户 + 企业主体 + 管理员账号 + 角色种子」。
-// partner 平台内 username 全局唯一（注册前置应用层校验）。
+// 用户名按租户内唯一（login_name = tenantID_username 由 DB 唯一约束兜底）；
+// 同一用户名可在多个企业注册（同一个人加入多个企业，登录时选择企业）。
 func (s *PartnerService) Register(ctx context.Context, p *PartnerRegisterParams) (*PartnerRegisterResult, error) {
-	exists, err := s.st.Partner().PartnerUsernameExists(ctx, p.Username)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, store.ErrPartnerUsernameExists
-	}
-
 	contactName := p.ContactName
 	if contactName == "" {
 		contactName = p.EnterpriseName + "管理员"
 	}
 
 	var result PartnerRegisterResult
-	err = s.st.WithTx(ctx, func(txStore *store.Store) error {
+	err := s.st.WithTx(ctx, func(txStore *store.Store) error {
 		// 企业租户（type=enterprise）+ 角色种子
 		tenantCode := "ent-" + uuid.NewString()[:8]
 		tenantRes, err := txStore.Tenants().CreateEnterpriseTenant(ctx, txStore.Q(), &store.TenantCreateParams{
@@ -204,16 +197,10 @@ func (s *PartnerService) ListMentorTasks(ctx context.Context, tenantID string) (
 }
 
 // CreateMember 管理员添加成员账号（绑定 enterprise_admin 或 enterprise_member）。
+// 用户名按租户内唯一（login_name 唯一约束兜底），同一用户名可在多个企业存在。
 func (s *PartnerService) CreateMember(ctx context.Context, tenantID, username, password, name, roleCode string, phone, email *string) (*domain.User, error) {
 	if roleCode != domain.RoleEnterpriseAdmin && roleCode != domain.RoleEnterpriseMember {
 		return nil, fmt.Errorf("无效角色: %s", roleCode)
-	}
-	exists, err := s.st.Partner().PartnerUsernameExists(ctx, username)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, store.ErrPartnerUsernameExists
 	}
 	roleID, err := s.st.Partner().GetRoleIDByCode(ctx, tenantID, roleCode)
 	if err != nil {

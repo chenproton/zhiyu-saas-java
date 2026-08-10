@@ -7,8 +7,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { AlertCircle, User, Lock, Building2, Phone, Mail, IdCard } from 'lucide-react'
 import { partnerAuthApi, setToken } from '@/lib/api'
+import type { TenantOption } from '@/lib/api'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -22,6 +30,12 @@ export default function PartnerLoginPage() {
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+
+  // 多企业候选登录：账号关联多个企业时弹窗选择
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([])
+  const [preAuthToken, setPreAuthToken] = useState('')
+  const [showTenantSelect, setShowTenantSelect] = useState(false)
+  const [selectingTenant, setSelectingTenant] = useState(false)
 
   const [reg, setReg] = useState({
     enterpriseName: '',
@@ -40,12 +54,32 @@ export default function PartnerLoginPage() {
     router.replace('/partner/workspace')
   }
 
+  const handleSelectTenant = async (tenantId: string) => {
+    setSelectingTenant(true)
+    try {
+      const res = await partnerAuthApi.selectTenant({ preAuthToken, tenantId })
+      await doLogin(res.token)
+    } catch (err: any) {
+      setError(err.message || t('选择企业失败'))
+      setShowTenantSelect(false)
+    } finally {
+      setSelectingTenant(false)
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
       const res = await partnerAuthApi.login({ username, password })
+      if (res.needsTenantSelection && res.preAuthToken && res.tenants) {
+        setTenantOptions(res.tenants)
+        setPreAuthToken(res.preAuthToken)
+        setShowTenantSelect(true)
+        setLoading(false)
+        return
+      }
       await doLogin(res.token)
     } catch (err: any) {
       setError(err.message || t('登录失败'))
@@ -269,7 +303,7 @@ export default function PartnerLoginPage() {
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
                     <Input
-                      placeholder={t('设置登录用户名（企业内唯一）')}
+                      placeholder={t('设置登录用户名（同一账号可加入多个企业）')}
                       className="h-10 rounded-lg border-slate-200 bg-slate-50/80 pl-10 text-sm"
                       value={reg.username}
                       onChange={(e) => setRegField('username', e.target.value)}
@@ -316,7 +350,7 @@ export default function PartnerLoginPage() {
                   {loading ? t('注册中...') : t('注册并登录')}
                 </Button>
                 <p className="text-center text-xs text-slate-400">
-                  {t('注册即创建企业管理员账号，无需审核，立即可用')}
+                  {t('注册即创建企业管理员账号，无需审核，立即可用；同一用户名可加入多个企业')}
                 </p>
               </form>
             )}
@@ -324,9 +358,43 @@ export default function PartnerLoginPage() {
         </Card>
 
         <p className="mt-7 px-6 text-center text-xs leading-relaxed text-slate-400">
-          {t('版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1')}
+          {t(
+            '版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1',
+          )}
         </p>
       </div>
+
+      {/* 多企业候选登录：选择要登录的企业 */}
+      <Dialog open={showTenantSelect} onOpenChange={setShowTenantSelect}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('选择企业')}</DialogTitle>
+            <DialogDescription>{t('您的账号关联了多个企业，请选择要登录的企业')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-4">
+            {tenantOptions.map((opt) => (
+              <Button
+                key={opt.tenantId}
+                variant="outline"
+                className="justify-start gap-3 h-auto py-4"
+                onClick={() => handleSelectTenant(opt.tenantId)}
+                disabled={selectingTenant}
+              >
+                <Building2 className="h-5 w-5 text-primary shrink-0" />
+                <div className="text-left">
+                  <div className="font-medium">{opt.tenantName}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

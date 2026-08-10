@@ -4143,5 +4143,11 @@
   "租户名称": "Tenant name",
   "企业管理员配置": "Enterprise Admin Config",
   "管理租户「{name}」的企业管理员账号（可登录企业服务台）": "Manage enterprise admin accounts of tenant \"{name}\" (can sign in to the enterprise console)",
-  "暂无企业管理员": "No enterprise admins"
+  "暂无企业管理员": "No enterprise admins",
+  "选择企业": "Select Enterprise",
+  "您的账号关联了多个企业，请选择要登录的企业": "Your account is linked to multiple enterprises. Select one to sign in",
+  "选择企业失败": "Failed to select enterprise",
+  "设置登录用户名（同一账号可加入多个企业）": "Set login username (one account can join multiple enterprises)",
+  "注册即创建企业管理员账号，无需审核，立即可用；同一用户名可加入多个企业": "Registration creates an enterprise admin account instantly; the same username can be used in multiple enterprises",
+  "企业登录用户名（同一账号可加入多个企业）": "Enterprise login username (one account can join multiple enterprises)"
 }

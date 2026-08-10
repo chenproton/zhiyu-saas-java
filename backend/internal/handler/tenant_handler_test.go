@@ -555,15 +555,36 @@ func TestAdmin_CreateEnterpriseTenant(t *testing.T) {
 		}
 	})
 
-	t.Run("duplicate username conflict", func(t *testing.T) {
+	t.Run("same username in another enterprise ok (multi-tenant login)", func(t *testing.T) {
+		// 同一用户名可在多个企业注册（同一个人多个企业），登录时选择企业
 		w := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
 			"name":     "另一家企业-" + suffix,
 			"type":     "enterprise",
 			"username": username,
 			"password": password,
 		}, env.SaasAdminToken)
-		if w.Code != http.StatusConflict {
-			t.Fatalf("expected 409, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		other, _ := testhelper.Unmarshal[createTenantResp](w)
+		defer cleanupEnterpriseTenant(env, other.Tenant.ID)
+
+		// 登录应返回多企业候选
+		wl := env.DoNoAuth("POST", "/api/v1/auth/partner/login", map[string]string{
+			"username": username,
+			"password": password,
+		})
+		if wl.Code != http.StatusOK {
+			t.Fatalf("login: %d %s", wl.Code, testhelper.ErrMsg(wl))
+		}
+		var lr partnerLoginResp2
+		var err error
+		lr, err = testhelper.Unmarshal[partnerLoginResp2](wl)
+		if err != nil {
+			t.Fatalf("unmarshal login: %v", err)
+		}
+		if !lr.NeedsTenantSelection || len(lr.Tenants) != 2 {
+			t.Fatalf("expected 2 tenant options, got %+v", lr)
 		}
 	})
 }
@@ -650,20 +671,35 @@ func TestAdmin_EnterpriseAdminCRUD(t *testing.T) {
 		}
 	})
 
-	t.Run("duplicate username conflict (partner global)", func(t *testing.T) {
-		// 先在另一个企业租户注册同名用户
+	t.Run("same username in another enterprise ok", func(t *testing.T) {
+		// 跨企业同名用户名允许（多企业登录场景）：在另一个企业创建与当前企业同名的管理员
 		w2 := env.DoWithToken("POST", "/api/v1/admin/tenants", map[string]interface{}{
 			"name":     "另一家企业-" + suffix,
 			"type":     "enterprise",
 			"username": "other_ent_" + suffix,
 			"password": "abc12345",
 		}, env.SaasAdminToken)
+		if w2.Code != http.StatusCreated {
+			t.Fatalf("create other enterprise: %d %s", w2.Code, testhelper.ErrMsg(w2))
+		}
 		other, _ := testhelper.Unmarshal[createTenantResp](w2)
 		defer cleanupEnterpriseTenant(env, other.Tenant.ID)
 
+		// 在另一家企业添加与当前企业初始管理员同名的管理员 → 应成功
+		w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+other.Tenant.ID+"/enterprise-admins", map[string]string{
+			"username": username,
+			"name":     "同名管理员",
+		}, env.SaasAdminToken)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("duplicate username within same tenant conflict", func(t *testing.T) {
+		// 同租户内重复用户名 → login_name 唯一约束 → 409
 		w := env.DoWithToken("POST", "/api/v1/admin/tenants/"+tenantID+"/enterprise-admins", map[string]string{
-			"username": "other_ent_" + suffix,
-			"name":     "重复用户名",
+			"username": username,
+			"name":     "重复管理员",
 		}, env.SaasAdminToken)
 		if w.Code != http.StatusConflict {
 			t.Fatalf("expected 409, got %d: %s", w.Code, testhelper.ErrMsg(w))

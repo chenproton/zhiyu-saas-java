@@ -377,14 +377,11 @@ func (h *PartnerHandler) CreateMember(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.Service.CreateMember(r.Context(), tenantID, req.Username, req.Password, req.Name, req.RoleCode, req.Phone, req.Email)
 	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrPartnerUsernameExists):
+		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "用户名已被注册")
-		case isUniqueViolation(err):
-			respondError(w, http.StatusConflict, "用户名已存在")
-		default:
-			respondServerError(w, r, err, "创建成员失败")
+			return
 		}
+		respondServerError(w, r, err, "创建成员失败")
 		return
 	}
 	user.PasswordHash = ""

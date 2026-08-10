@@ -616,15 +616,22 @@ func TestAlliance_RegisterEnterprise(t *testing.T) {
 		}
 	})
 
-	t.Run("duplicate username conflict", func(t *testing.T) {
+	t.Run("same username in another enterprise ok", func(t *testing.T) {
+		// 跨企业同名用户名允许（同一个人多个企业），代注册成功并建立 link
 		w := doWithClaims(r, http.MethodPost, "/alliance/enterprises/register", map[string]interface{}{
 			"enterpriseName": "另一家代注册企业-" + suffix,
 			"username":       username,
 			"password":       password,
 		}, claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa21", domain.RoleTeacher))
-		if w.Code != http.StatusConflict {
-			t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
 		}
+		var item domain.AllianceLinkedEnterprise
+		if err := json.Unmarshal(w.Body.Bytes(), &item); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		defer cleanupPartnerTenant(env, item.TenantID)
+		defer env.DB.Exec(context.Background(), `DELETE FROM alliance_enterprise_links WHERE enterprise_id = $1`, item.ID)
 	})
 
 	t.Run("duplicate enterprise name conflict", func(t *testing.T) {

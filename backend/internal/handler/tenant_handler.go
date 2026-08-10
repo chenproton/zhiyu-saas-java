@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -366,14 +365,11 @@ func (h *TenantHandler) adminCreateEnterprise(w http.ResponseWriter, r *http.Req
 		ContactEmail:            strValue(req.ContactEmail),
 	})
 	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrPartnerUsernameExists):
-			respondError(w, http.StatusConflict, "用户名已被注册")
-		case isUniqueViolation(err):
+		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "企业名称已被注册")
-		default:
-			respondServerError(w, r, err, "创建企业租户失败")
+			return
 		}
+		respondServerError(w, r, err, "创建企业租户失败")
 		return
 	}
 
@@ -709,8 +705,6 @@ func (h *TenantHandler) adminCreateAdmin(w http.ResponseWriter, r *http.Request,
 	}
 	if err != nil {
 		switch {
-		case errors.Is(err, store.ErrPartnerUsernameExists):
-			respondError(w, http.StatusConflict, "用户名已被注册")
 		case isUniqueViolation(err):
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 		default:
