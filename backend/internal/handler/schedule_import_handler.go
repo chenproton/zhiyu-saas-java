@@ -81,7 +81,6 @@ func (h *ScheduleImportHandler) previewCourseList(ctx context.Context, xlsx *exc
 		result.Failed++
 		return result
 	}
-	dayMap := map[string]bool{"周一": true, "周二": true, "周三": true, "周四": true, "周五": true, "周六": true, "周日": true, "1": true, "2": true, "3": true, "4": true, "5": true, "6": true, "7": true}
 	for i, row := range rows {
 		if i < 2 {
 			continue
@@ -92,7 +91,7 @@ func (h *ScheduleImportHandler) previewCourseList(ctx context.Context, xlsx *exc
 		day := strings.TrimSpace(col(row, 5))
 		period := strings.TrimSpace(col(row, 6))
 		classes := strings.TrimSpace(col(row, 9))
-		if dayMap[day] && period != "" && classes != "" {
+		if parseDayOfWeek(day) > 0 && period != "" && classes != "" {
 			result.Created++
 		}
 	}
@@ -161,8 +160,6 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		return result
 	}
 
-	dayMap := map[string]int{"周一": 1, "周二": 2, "周三": 3, "周四": 4, "周五": 5, "周六": 6, "周日": 7, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7}
-
 	// 收集有排课信息的行
 	type rowData struct {
 		courseName, entryType           string
@@ -204,7 +201,7 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 			weekPattern = "even"
 		}
 		dayStr := strings.TrimSpace(col(row, 5))
-		day := dayMap[dayStr]
+		day := parseDayOfWeek(dayStr)
 		periodStr := strings.TrimSpace(col(row, 6))
 		teacherName := strings.TrimSpace(col(row, 7))
 		venueName := strings.TrimSpace(col(row, 8))
@@ -215,11 +212,8 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 			continue
 		}
 		var periods []string
-		for _, p := range strings.Split(periodStr, "，") {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				periods = append(periods, p)
-			}
+		for _, p := range splitTrim(strings.ReplaceAll(periodStr, "，", ","), ",") {
+			periods = append(periods, p)
 		}
 		if len(periods) == 0 {
 			continue
@@ -723,7 +717,7 @@ func parseDayOfWeek(s string) int {
 		return 5
 	case "周六", "星期六", "6":
 		return 6
-	case "周日", "星期日", "周天", "7":
+	case "周日", "星期日", "周天", "星期天", "7":
 		return 7
 	}
 	return 0
