@@ -48,15 +48,30 @@ func aiConfigCacheKey(tenantID string) string {
 	return "ai:cfg:" + tenantID
 }
 
+// aiConfigCacheEntry 缓存载荷：独立结构，不直接序列化 domain.TenantAIConfig——
+// 其 APIKeyEncrypted 带 json:"-"，直接 marshal 会丢 key，命中缓存后解密必失败。
+type aiConfigCacheEntry struct {
+	TenantID        string `json:"t"`
+	BaseURL         string `json:"b"`
+	APIKeyEncrypted string `json:"k"`
+	Model           string `json:"m"`
+}
+
 // loadConfig 读穿缓存获取配置（缓存存密文版 JSON，命中后由调用方在内存中解密）；
 // Redis 任意错误降级直查 DB 并尽力回填，不影响主流程。
 func (s *AIService) loadConfig(ctx context.Context, tenantID string) (*domain.TenantAIConfig, error) {
 	key := aiConfigCacheKey(tenantID)
 	if s.redis != nil {
 		if data, err := s.redis.Get(ctx, key).Bytes(); err == nil {
-			var cfg domain.TenantAIConfig
-			if json.Unmarshal(data, &cfg) == nil {
-				return &cfg, nil
+			var entry aiConfigCacheEntry
+			// APIKeyEncrypted 为空视为坏缓存（如旧版本写入的缺 key 载荷），按未命中处理
+			if json.Unmarshal(data, &entry) == nil && entry.APIKeyEncrypted != "" {
+				return &domain.TenantAIConfig{
+					TenantID:        entry.TenantID,
+					BaseURL:         entry.BaseURL,
+					APIKeyEncrypted: entry.APIKeyEncrypted,
+					Model:           entry.Model,
+				}, nil
 			}
 		}
 	}
@@ -65,7 +80,12 @@ func (s *AIService) loadConfig(ctx context.Context, tenantID string) (*domain.Te
 		return nil, err
 	}
 	if s.redis != nil {
-		if data, mErr := json.Marshal(cfg); mErr == nil {
+		if data, mErr := json.Marshal(aiConfigCacheEntry{
+			TenantID:        cfg.TenantID,
+			BaseURL:         cfg.BaseURL,
+			APIKeyEncrypted: cfg.APIKeyEncrypted,
+			Model:           cfg.Model,
+		}); mErr == nil {
 			_ = s.redis.Set(ctx, key, data, aiConfigCacheTTL).Err()
 		}
 	}

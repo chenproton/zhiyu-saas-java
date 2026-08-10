@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/ai"
 	"github.com/zhiyu-saas/backend/internal/crypto"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -149,5 +151,33 @@ func TestMaskAPIKey(t *testing.T) {
 	}
 	if got := maskAPIKey("sk-abcd1234"); got != "sk-****1234" {
 		t.Fatalf("maskAPIKey = %q, want sk-****1234", got)
+	}
+}
+
+// TestAIConfigCacheEntryRoundtrip 回归：缓存载荷必须保留密文 key。
+// 曾因直接 json.Marshal(domain.TenantAIConfig)（APIKeyEncrypted 带 json:"-"）
+// 导致缓存命中后 key 丢失、Chat 报 crypto: invalid token。
+func TestAIConfigCacheEntryRoundtrip(t *testing.T) {
+	cfg := &domain.TenantAIConfig{
+		TenantID:        "t1",
+		BaseURL:         "https://api.openai.com/v1",
+		APIKeyEncrypted: "enc-key-abc",
+		Model:           "gpt-4o-mini",
+	}
+	data, err := json.Marshal(aiConfigCacheEntry{
+		TenantID:        cfg.TenantID,
+		BaseURL:         cfg.BaseURL,
+		APIKeyEncrypted: cfg.APIKeyEncrypted,
+		Model:           cfg.Model,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var entry aiConfigCacheEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if entry.APIKeyEncrypted != cfg.APIKeyEncrypted {
+		t.Fatalf("缓存载荷丢失密文 key: %q", entry.APIKeyEncrypted)
 	}
 }
