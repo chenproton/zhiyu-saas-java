@@ -203,6 +203,9 @@ export interface Position {
   createdAt: string
   updatedAt: string
 
+  /** 来源：school=学校自建（默认），enterprise=企业端资源共建写入（列表徽章用） */
+  sourceType?: 'school' | 'enterprise'
+
   // 收藏数
   favoriteCount: number
 }

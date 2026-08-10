@@ -3,30 +3,32 @@ package domain
 import "time"
 
 type Scenario struct {
-	ID               string         `json:"id"`
-	Name             string         `json:"name"`
-	Code             string         `json:"code"`
-	CoverImage       *string        `json:"coverImage,omitempty"`
-	CareerPositionID *string        `json:"careerPositionId,omitempty"`
-	IndustryIDs      []string       `json:"industryIds,omitempty"`
-	IndustryNames    []string       `json:"industryNames,omitempty"`
-	ProfessionIDs    []string       `json:"professionIds,omitempty"`
-	ProfessionNames  []string       `json:"professionNames,omitempty"`
-	BatchID          *string        `json:"batchId,omitempty"`
-	Difficulty       int            `json:"difficulty"`
-	Version          string         `json:"version"`
-	Status           ScenarioStatus `json:"status"`
-	Background       *string        `json:"background,omitempty"`
-	DeliveryGoal     *string        `json:"deliveryGoal,omitempty"`
-	CreatorID        string         `json:"creatorId"`
-	CreatorName      string         `json:"creatorName,omitempty"`
-	CoBuilderIDs     []string       `json:"coBuilderIds,omitempty"`
-	TenantID         *string        `json:"tenantId,omitempty"`
-	CreatedAt        time.Time      `json:"createdAt"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
-	PublishTime      *time.Time     `json:"publishTime,omitempty"`
-	ViewCount        int            `json:"viewCount"`
-	TaskCount        int            `json:"taskCount"`
+	ID                 string         `json:"id"`
+	Name               string         `json:"name"`
+	Code               string         `json:"code"`
+	CoverImage         *string        `json:"coverImage,omitempty"`
+	CareerPositionID   *string        `json:"careerPositionId,omitempty"`
+	IndustryIDs        []string       `json:"industryIds,omitempty"`
+	IndustryNames      []string       `json:"industryNames,omitempty"`
+	ProfessionIDs      []string       `json:"professionIds,omitempty"`
+	ProfessionNames    []string       `json:"professionNames,omitempty"`
+	BatchID            *string        `json:"batchId,omitempty"`
+	Difficulty         int            `json:"difficulty"`
+	Version            string         `json:"version"`
+	Status             ScenarioStatus `json:"status"`
+	Background         *string        `json:"background,omitempty"`
+	DeliveryGoal       *string        `json:"deliveryGoal,omitempty"`
+	CreatorID          string         `json:"creatorId"`
+	CreatorName        string         `json:"creatorName,omitempty"`
+	CoBuilderIDs       []string       `json:"coBuilderIds,omitempty"`
+	TenantID           *string        `json:"tenantId,omitempty"`
+	CreatedAt          time.Time      `json:"createdAt"`
+	UpdatedAt          time.Time      `json:"updatedAt"`
+	PublishTime        *time.Time     `json:"publishTime,omitempty"`
+	ViewCount          int            `json:"viewCount"`
+	TaskCount          int            `json:"taskCount"`
+	SourceType         string         `json:"sourceType"`
+	SourceEnterpriseID *string        `json:"sourceEnterpriseId,omitempty"`
 }
 
 type ScenarioTask struct {

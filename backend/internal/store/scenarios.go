@@ -29,7 +29,7 @@ func (s *ScenarioStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 
 const scenarioListFrom = "scenarios s"
 const scenarioListJoins = " LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true LEFT JOIN users cr_u ON cr_u.id = s.creator_id"
-const scenarioListSelectColumns = "s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, COALESCE(cr_u.name, s.creator_id::text) AS creator_name, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count"
+const scenarioListSelectColumns = "s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, COALESCE(cr_u.name, s.creator_id::text) AS creator_name, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count, s.source_type, s.source_enterprise_id"
 
 // ListConfig 返回场景列表查询配置，SQL 片段沉淀在 store 层。
 func (s *ScenarioStore) ListConfig() ListQueryConfig[domain.Scenario] {
@@ -78,14 +78,19 @@ func (s *ScenarioStore) Get(ctx context.Context, id string) (*domain.Scenario, e
 // Create 创建场景（draft 状态）。
 func (s *ScenarioStore) Create(ctx context.Context, tenantID string, p *ScenarioCreateParams) (*domain.Scenario, error) {
 	id := uuid.NewString()
+	// 来源标记默认 school（学校端调用方不传，行为不变）；企业共建由 service 显式赋值
+	sourceType := p.SourceType
+	if sourceType == "" {
+		sourceType = "school"
+	}
 	_, err := s.q.Exec(ctx, `
 		INSERT INTO scenarios (id, name, code, cover_image, career_position_id, industry_ids,
 			profession_ids, batch_id, difficulty, version, status, background,
-			delivery_goal, creator_id, co_builder_ids, tenant_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
+			delivery_goal, creator_id, co_builder_ids, tenant_id, source_type, source_enterprise_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15, $16, $17)
 	`, id, p.Name, p.Code, p.CoverImage, p.CareerPositionID, p.IndustryIDs,
 		p.ProfessionIDs, p.BatchID, p.Difficulty, p.Version, p.Background,
-		p.DeliveryGoal, p.CreatorID, p.CoBuilderIDs, tenantID)
+		p.DeliveryGoal, p.CreatorID, p.CoBuilderIDs, tenantID, sourceType, p.SourceEnterpriseID)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +177,9 @@ type ScenarioCreateParams struct {
 	DeliveryGoal     *string
 	CreatorID        string
 	CoBuilderIDs     []string
+	// SourceType 来源标记：空串按 school 处理；企业共建传 enterprise + SourceEnterpriseID
+	SourceType         string
+	SourceEnterpriseID *string
 }
 
 // ScenarioUpdateParams 更新场景参数（已解析 nullable 后的最终值）。
@@ -197,7 +205,7 @@ func (s *ScenarioStore) fetchScenario(ctx context.Context, id string) (*domain.S
 			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
 			s.batch_id, s.difficulty, s.version, s.status, s.background,
 			s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
-			COALESCE(vc.cnt, 0) AS view_count
+			COALESCE(vc.cnt, 0) AS view_count, s.source_type, s.source_enterprise_id
 		FROM scenarios s
 		LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id
 		WHERE s.id = $1
@@ -205,6 +213,7 @@ func (s *ScenarioStore) fetchScenario(ctx context.Context, id string) (*domain.S
 		&sc.ID, &sc.Name, &sc.Code, &sc.CoverImage, &sc.CareerPositionID, &sc.IndustryIDs, &sc.IndustryNames,
 		&sc.ProfessionIDs, &sc.ProfessionNames, &sc.BatchID, &sc.Difficulty, &sc.Version, &sc.Status, &sc.Background,
 		&sc.DeliveryGoal, &sc.CreatorID, &sc.CoBuilderIDs, &sc.TenantID, &sc.CreatedAt, &sc.UpdatedAt, &sc.PublishTime, &sc.ViewCount,
+		&sc.SourceType, &sc.SourceEnterpriseID,
 	)
 	if err != nil {
 		return nil, err
@@ -212,18 +221,58 @@ func (s *ScenarioStore) fetchScenario(ctx context.Context, id string) (*domain.S
 	return &sc, nil
 }
 
+// scanScenarioRow 扫描一行场景（列序与 scenarioListSelectColumns 一致），extra 追加尾部扩展列。
+func scanScenarioRow(row interface{ Scan(...any) error }, extra ...any) (domain.Scenario, error) {
+	var sc domain.Scenario
+	targets := append([]any{
+		&sc.ID, &sc.Name, &sc.Code, &sc.CoverImage, &sc.CareerPositionID, &sc.IndustryIDs, &sc.IndustryNames,
+		&sc.ProfessionIDs, &sc.ProfessionNames, &sc.BatchID, &sc.Difficulty, &sc.Version, &sc.Status, &sc.Background,
+		&sc.DeliveryGoal, &sc.CreatorID, &sc.CreatorName, &sc.CoBuilderIDs, &sc.TenantID, &sc.CreatedAt, &sc.UpdatedAt, &sc.PublishTime, &sc.ViewCount, &sc.TaskCount,
+		&sc.SourceType, &sc.SourceEnterpriseID,
+	}, extra...)
+	if err := row.Scan(targets...); err != nil {
+		return sc, err
+	}
+	return sc, nil
+}
+
 func scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, error) {
 	items := make([]domain.Scenario, 0)
 	for rows.Next() {
-		var sc domain.Scenario
-		if err := rows.Scan(
-			&sc.ID, &sc.Name, &sc.Code, &sc.CoverImage, &sc.CareerPositionID, &sc.IndustryIDs, &sc.IndustryNames,
-			&sc.ProfessionIDs, &sc.ProfessionNames, &sc.BatchID, &sc.Difficulty, &sc.Version, &sc.Status, &sc.Background,
-			&sc.DeliveryGoal, &sc.CreatorID, &sc.CreatorName, &sc.CoBuilderIDs, &sc.TenantID, &sc.CreatedAt, &sc.UpdatedAt, &sc.PublishTime, &sc.ViewCount, &sc.TaskCount,
-		); err != nil {
+		sc, err := scanScenarioRow(rows)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, sc)
+	}
+	return items, rows.Err()
+}
+
+// ListBySourceEnterprise 企业共建场景列表（来源企业视角，join tenants 出校名）。
+// schoolTenantID 非空时按学校过滤；按 updated_at 倒序，上限 200 条。
+func (s *ScenarioStore) ListBySourceEnterprise(ctx context.Context, enterpriseID string, schoolTenantID *string) ([]domain.PartnerCoBuildScenario, error) {
+	query := `SELECT ` + scenarioListSelectColumns + `, t.name AS school_name
+		FROM ` + scenarioListFrom + scenarioListJoins + ` JOIN tenants t ON t.id = s.tenant_id
+		WHERE s.source_enterprise_id = $1`
+	args := []any{enterpriseID}
+	if schoolTenantID != nil && *schoolTenantID != "" {
+		query += ` AND s.tenant_id = $2`
+		args = append(args, *schoolTenantID)
+	}
+	query += ` ORDER BY s.updated_at DESC LIMIT 200`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]domain.PartnerCoBuildScenario, 0)
+	for rows.Next() {
+		var schoolName string
+		sc, err := scanScenarioRow(rows, &schoolName)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, domain.PartnerCoBuildScenario{Scenario: sc, SchoolName: schoolName})
 	}
 	return items, rows.Err()
 }

@@ -22,6 +22,7 @@ function mapScenario(
     code: backend.code,
     version: backend.version,
     status: backend.status as ScenarioListItem['status'],
+    sourceType: backend.sourceType,
     batchId: backend.batchId,
     positionName: '-',
     batchName: undefined,

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -139,6 +140,9 @@ export function PositionList({
                     </Link>
                     <div className="flex items-center gap-1.5 mt-1">
                       <StatusBadge status={position.status} />
+                      {position.sourceType === 'enterprise' && (
+                        <Badge variant="secondary">{t('企业共建')}</Badge>
+                      )}
                       <span className="text-xs text-slate-400">v{position.version}</span>
                     </div>
                   </TableCell>

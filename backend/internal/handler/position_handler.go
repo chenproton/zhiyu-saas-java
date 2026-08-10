@@ -361,36 +361,8 @@ type SaveFullPositionRequest struct {
 	AbilityDomains   []FullPositionAbilityDomain  `json:"abilityDomains"`
 }
 
-func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	existing, err := h.Service.Get(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "岗位不存在")
-		return
-	}
-	if !verifyTenantOwnership(w, r, existing.TenantID) {
-		return
-	}
-
-	var req SaveFullPositionRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Name == "" || req.PositionType == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
-
+// toFullPositionSaveParams 将 SaveFull 请求体映射为 store 保存参数（portal 与企业共建共用）。
+func toFullPositionSaveParams(req *SaveFullPositionRequest) *store.FullPositionSaveParams {
 	var batchID *string
 	if req.BatchID != "" {
 		batchID = &req.BatchID
@@ -462,7 +434,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	err = h.Service.SaveFull(r.Context(), tenantID, id, &store.FullPositionSaveParams{
+	return &store.FullPositionSaveParams{
 		BatchID:          batchID,
 		Name:             req.Name,
 		ShortName:        req.ShortName,
@@ -480,7 +452,40 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		Responsibilities: responsibilities,
 		AbilityBindings:  abilityBindings,
 		AbilityDomains:   abilityDomains,
-	})
+	}
+}
+
+func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	existing, err := h.Service.Get(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, existing.TenantID) {
+		return
+	}
+
+	var req SaveFullPositionRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.Name == "" || req.PositionType == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	err = h.Service.SaveFull(r.Context(), tenantID, id, toFullPositionSaveParams(&req))
 	if err != nil {
 		respondServerError(w, r, err, "保存岗位失败")
 		return

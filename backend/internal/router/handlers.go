@@ -49,6 +49,7 @@ type Handlers struct {
 	allianceHandler               *handler.AllianceHandler
 	allianceMentorHandler         *handler.AllianceMentorHandler
 	partnerHandler                *handler.PartnerHandler
+	partnerCoBuildHandler         *handler.PartnerCoBuildHandler
 	positionHandler               *handler.PositionHandler
 	positionCloneHandler          *handler.PositionCloneHandler
 	abilityHandler                *handler.AbilityHandler
@@ -168,6 +169,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		allianceHandler:               &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()},
 		allianceMentorHandler:         &handler.AllianceMentorHandler{Service: service.NewAllianceMentorService(svc)},
 		partnerHandler:                &handler.PartnerHandler{Service: partnerSvc},
+		partnerCoBuildHandler:         &handler.PartnerCoBuildHandler{Service: service.NewPartnerCoBuildService(svc)},
 		positionHandler:               &handler.PositionHandler{Service: positionSvc, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc)},
 		abilityHandler:                &handler.AbilityHandler{Service: positionSvc},
