@@ -11,6 +11,9 @@ export const CLICKABLE_SELECTOR = ['button', 'a[href]', '[role="tab"]', '[role="
 export const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"], [data-radix-dialog-content]'
 export const DIALOG_VISIBLE_SELECTOR = '[role="dialog"]:visible, [role="alertdialog"]:visible'
 
+// 表单字段选择器（与 forms.mjs 保持一致，避免循环依赖）
+const FIELD_SELECTOR = 'input, textarea, select, [role="combobox"]'
+
 // 角色对应的 localStorage token 键与登录页路径（partner 企业端为独立认证门户）
 export const tokenKeyForRole = role => (role === 'partner' ? 'zhiyu-partner-token' : 'zhiyu-portal-token')
 export const loginPathForRole = role => (role === 'partner' ? '/partner/login' : '/portal/login')
@@ -335,6 +338,42 @@ async function handleCrudAction(page, cfg, pick, pickText) {
   }
 }
 
+// 判断当前编辑页的实体是否为巡检创建的 SMOKE_ 测试数据：
+// 取页面上名称/标题类输入框的现值，非空且不以 SMOKE_ 开头 → 真实实体，禁止填充提交
+export async function isSmokeEntityPage(page, cfg) {
+  const marker = cfg.crudMarker || 'SMOKE_'
+  try {
+    return await page.evaluate(({ fieldSel, marker }) => {
+      const visible = el => el.offsetParent !== null || el.getClientRects().length > 0
+      const scope = [...document.querySelectorAll('form')].find(visible)
+        || document.querySelector('main')
+        || document.querySelector('article')
+        || document.body
+        || null
+      if (!scope) return true
+      const els = [...scope.querySelectorAll(fieldSel)]
+      let seenNameField = false
+      for (const el of els) {
+        if (!visible(el) || el.disabled) continue
+        const id = el.id
+        let label = ''
+        if (id) label = scope.querySelector(`label[for="${id}"]`)?.innerText || ''
+        if (!label && el.labels?.length) label = el.labels[0].innerText || ''
+        if (!label) label = el.getAttribute('aria-label') || el.getAttribute('placeholder') || ''
+        const hint = `${el.name || ''} ${label}`.toLowerCase()
+        if (!/名称|标题|姓名|名字|\bname\b|\btitle\b|\bcode\b|编码|代号/.test(hint)) continue
+        seenNameField = true
+        const value = (el.value || '').trim()
+        if (value && !value.startsWith(marker)) return false // 真实实体，跳过
+      }
+      // 无名称类字段（如纯配置页）或名称字段为空/已是 SMOKE_：允许表单测试
+      return true
+    }, { fieldSel: FIELD_SELECTOR, marker })
+  } catch {
+    return false // 页面异常时保守跳过表单测试
+  }
+}
+
 // 单页巡检：队列式点击全部唯一可点元素
 export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, token, globalSeen = null) {
   cfg = routeCfg(cfg, route) // per-route 配置覆盖（前缀匹配，最长优先）
@@ -364,13 +403,17 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
     const maxForms = cfg.maxFormSubmits || 3
     let formAttempts = 0
 
-    // 独立编辑页：表单已可见，直接填充提交
+    // 独立编辑页：表单已可见，直接填充提交（仅限巡检创建的 SMOKE_ 实体，真实数据不碰）
     const isEditPage = /\/(edit|modify)(\/|$)/.test(route)
     if (!cfg.clickOnly && !crudDisabled && isEditPage) {
       const hasForm = await page.locator('form:visible').count() > 0 || await page.evaluate(() => !!document.querySelector('main input, article input'))
       if (hasForm && formAttempts < maxForms) {
-        const rec = await maybeTestForm(page, cfg, '(编辑页)', null, { isEdit: true }).catch(() => null)
-        if (recordFormResult(routeResult, rec, 'edit')) formAttempts++
+        if (await isSmokeEntityPage(page, cfg)) {
+          const rec = await maybeTestForm(page, cfg, '(编辑页)', null, { isEdit: true }).catch(() => null)
+          if (recordFormResult(routeResult, rec, 'edit')) formAttempts++
+        } else {
+          routeResult.crudActions.push({ action: 'edit', target: '(编辑页)', status: 'skip', reason: '非 SMOKE_ 实体，不填充提交' })
+        }
       }
     }
     const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复耗尽额度

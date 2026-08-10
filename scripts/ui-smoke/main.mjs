@@ -329,7 +329,8 @@ export async function main() {
         for (const l of loginListeners) page.off(l.kind, l.handler)
       }
 
-      // 动态路由（拉真实实体 id）；--route 单页调试模式跳过；partner 角色只巡检固定的门户页面
+      // 动态路由（拉真实实体 id）；--route 单页调试模式跳过。
+      // portal 与 partner 都解析：各自 token 调各自域接口（异域接口自然 403 跳过，不阻塞）
       let dynamicRoutes = []
       let roleToken = ''
       if (!cfg.route) {
@@ -337,10 +338,8 @@ export async function main() {
           roleToken = await page.evaluate(k => {
             try { return localStorage.getItem(k) || '' } catch { return '' }
           }, tokenKeyForRole(role))
-          if (role !== 'partner') {
-            dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, roleToken)
-            if (dynamicRoutes.length) console.log(`  [${role}] 动态路由 ${dynamicRoutes.length} 个（拉取真实实体 id）`)
-          }
+          dynamicRoutes = await resolveDynamicRoutes(cfg, cfg.baseUrl, roleToken)
+          if (dynamicRoutes.length) console.log(`  [${role}] 动态路由 ${dynamicRoutes.length} 个（拉取真实实体 id）`)
         } catch {
           dynamicRoutes = []
         }

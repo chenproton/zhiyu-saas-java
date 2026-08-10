@@ -31,9 +31,10 @@ const DEFAULTS = {
   excludeRoutes: ['/partner', '/superadmin'],
   dynamicRoutes: {},
   expectedAuthPages: [],
-  // 会修改/提交数据的按钮文本（中英双语），默认跳过（防止污染数据）
-  dangerousWords: ['保存', '提交', '删除', '发布', '确认', '确定', '归档', '驳回', '通过', '启用', '停用', '禁用', '冻结', '锁定', '重置密码', '退出', '注销', '登出', '批量', '创建', '新增', '新建', '添加', '完成', '设为', '切换'],
-  dangerousWordsEn: ['Save', 'Submit', 'Delete', 'Publish', 'Confirm', 'OK', 'Archive', 'Reject', 'Approve', 'Enable', 'Disable', 'Freeze', 'Lock', 'Reset', 'Logout', 'Sign out', 'Batch', 'Create', 'Add', 'Complete', 'Finish', 'Remove'],
+  // 会修改/提交数据的按钮文本（中英双语），默认跳过（防止污染数据）。
+  // 「重新生成/AI 生成」触发真实 LLM 调用（按 token 计费），全量巡检必须跳过
+  dangerousWords: ['保存', '提交', '删除', '发布', '确认', '确定', '归档', '驳回', '通过', '启用', '停用', '禁用', '冻结', '锁定', '重置密码', '退出', '注销', '登出', '批量', '创建', '新增', '新建', '添加', '完成', '设为', '切换', '重新生成', 'AI 生成'],
+  dangerousWordsEn: ['Save', 'Submit', 'Delete', 'Publish', 'Confirm', 'OK', 'Archive', 'Reject', 'Approve', 'Enable', 'Disable', 'Freeze', 'Lock', 'Reset', 'Logout', 'Sign out', 'Batch', 'Create', 'Add', 'Complete', 'Finish', 'Remove', 'Regenerate'],
   // 语言切换按钮文本：点击会改变全局语言，导致危险词失效，必须跳过
   localeSwitchWords: ['中文', 'English', '简体中文', '语言'],
   // 种子数据/已知噪音（正则片段）；静态资源 404 由 response 监听以外的 console 兜底产生，页面可用性另由 pageerror 保障

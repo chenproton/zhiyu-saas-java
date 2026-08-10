@@ -21,6 +21,8 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/evaluation/scene-results/[id]': { api: '/api/v1/evaluation/scene-results?limit=10', url: '/evaluation/scene-results/{id}' },
   '/job/landing/[id]': { api: '/api/v1/job/public/positions?limit=10', url: '/job/landing/{id}' },
   '/job/landing/[id]/learn': { api: '/api/v1/job/public/positions?limit=10', url: '/job/landing/{id}/learn' },
+  // 岗位编辑页（含 AI 辅助编写）：从岗位列表拉真实 id
+  '/job/positions/[id]/edit': { api: '/api/v1/job/positions?limit=10', url: '/job/positions/{id}/edit' },
   '/lesson/landing/[id]': { api: '/api/v1/lesson/courses?limit=10', url: '/lesson/landing/{id}' },
   '/lesson/landing/[id]/learn': { api: '/api/v1/lesson/courses?limit=10', url: '/lesson/landing/{id}/learn' },
   // 注意：/library/resources/[type] 的 [type] 是资源类型枚举（course/scene 等），非实体 id，不配置动态路由
@@ -40,6 +42,15 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/scene/scenarios/[id]': { api: '/api/v1/scene/scenarios?limit=10', url: '/scene/scenarios/{id}' },
   '/scene/scenarios/[id]/edit': { api: '/api/v1/scene/scenarios?limit=10', url: '/scene/scenarios/{id}/edit' },
   '/scene/scenarios/[id]/edit/tasks': { api: '/api/v1/scene/scenarios?limit=10', url: '/scene/scenarios/{id}/edit/tasks' },
+
+  // ===== partner（企业端独立门户）动态路由 =====
+  // 企业专家详情/编辑
+  '/partner/experts/[id]': { api: '/api/v1/partner/experts?limit=10', url: '/partner/experts/{id}' },
+  '/partner/experts/[id]/edit': { api: '/api/v1/partner/experts?limit=10', url: '/partner/experts/{id}/edit' },
+  // 企业端资源共建：岗位/场景详情编辑与任务配置
+  '/partner/co-build/positions/[id]/edit': { api: '/api/v1/partner/co-build/positions?limit=10', url: '/partner/co-build/positions/{id}/edit' },
+  '/partner/co-build/scenes/[id]/edit': { api: '/api/v1/partner/co-build/scenes?limit=10', url: '/partner/co-build/scenes/{id}/edit' },
+  '/partner/co-build/scenes/[id]/edit/tasks': { api: '/api/v1/partner/co-build/scenes?limit=10', url: '/partner/co-build/scenes/{id}/edit/tasks' },
 }
 
 // 静态路由枚举：跳过动态段 [id]（由 resolveDynamicRoutes 单独处理）；(group) 分组段不占 URL，继续向下遍历

@@ -6,6 +6,10 @@
   "excludeRoutes": ["/partner", "/superadmin"],
   "expectedAuthPages": ["/superadmin"],
   "cleanupApis": [
-    { "list": "/api/v1/tenants?limit=100", "del": "/api/v1/tenants/{id}", "fields": ["name"] }
+    { "list": "/api/v1/tenants?limit=100", "del": "/api/v1/tenants/{id}", "fields": ["name"] },
+    { "list": "/api/v1/job/positions?limit=100", "del": "/api/v1/job/positions/{id}", "fields": ["name"] },
+    { "list": "/api/v1/partner/co-build/positions?limit=100", "del": "/api/v1/partner/co-build/positions/{id}", "fields": ["name"] },
+    { "list": "/api/v1/partner/co-build/scenes?limit=100", "del": "/api/v1/partner/co-build/scenes/{id}", "fields": ["name"] },
+    { "list": "/api/v1/partner/experts?limit=100", "del": "/api/v1/partner/experts/{id}", "fields": ["name"] }
   ]
 }
