@@ -43,9 +43,10 @@ export function PartnerAuthProvider({ children }: { children: React.ReactNode })
 
   const fetchMe = useCallback(async () => {
     const seq = ++meSeqRef.current
-    // 登录/注册页不获取登录态：未登录不触发请求，失效 token 也不会被 401 跳转
+    // 登录/注册页不获取登录态：未登录不触发请求，失效 token 也不会被 401 跳转。
+    // 同时保持 loading=true 不重置：登录成功后跳转 workspace 的第一帧若处于
+    // loading=false + user=undefined，PartnerAuthGuard 会误判未登录把用户弹回登录页。
     if (pathname === '/partner/login') {
-      setState({ loading: false })
       return
     }
     const token = getToken('partner')
