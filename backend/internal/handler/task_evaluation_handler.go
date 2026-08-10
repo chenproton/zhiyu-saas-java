@@ -19,6 +19,65 @@ type TaskEvaluationMethodListResponse struct {
 	Methods []domain.TaskEvaluationMethod `json:"methods"`
 }
 
+// toMethodSaveInputs 将测评方式保存请求映射为 service 输入（portal 与企业共建共用）。
+func toMethodSaveInputs(req *SaveTaskEvaluationMethodsRequest) []*service.MethodSaveInput {
+	inputs := make([]*service.MethodSaveInput, 0, len(req.Methods))
+	for _, m := range req.Methods {
+		evalPoints := make([]service.EvalPointSaveInput, 0, len(m.EvalPoints))
+		for _, ep := range m.EvalPoints {
+			evalPoints = append(evalPoints, service.EvalPointSaveInput{
+				Name:              ep.Name,
+				Description:       ep.Description,
+				SubType:           ep.SubType,
+				Types:             coalesceStringSlice(ep.Types),
+				Weight:            ep.Weight,
+				ScoringMethod:     ep.ScoringMethod,
+				GradeMapping:      ep.GradeMapping,
+				KnowledgePointIDs: coalesceStringSlice(ep.KnowledgePointIDs),
+				AbilityPointIDs:   coalesceStringSlice(ep.AbilityPointIDs),
+				SortOrder:         ep.SortOrder,
+			})
+		}
+		reviewSteps := make([]service.ReviewStepSaveInput, 0, len(m.ReviewSteps))
+		for _, rs := range m.ReviewSteps {
+			reviewSteps = append(reviewSteps, service.ReviewStepSaveInput{
+				Label:           rs.Label,
+				Description:     rs.Description,
+				Enabled:         rs.Enabled,
+				SubjectType:     rs.SubjectType,
+				Weight:          rs.Weight,
+				SortOrder:       rs.SortOrder,
+				AssignedUserIDs: coalesceStringSlice(rs.AssignedUserIDs),
+			})
+		}
+		scoreRules := make([]service.ScoreRuleSaveInput, 0, len(m.ScoreRules))
+		for _, sr := range m.ScoreRules {
+			scoreRules = append(scoreRules, service.ScoreRuleSaveInput{
+				Name:        sr.Name,
+				Description: sr.Description,
+				Rule:        sr.Rule,
+				Weight:      sr.Weight,
+				SortOrder:   sr.SortOrder,
+			})
+		}
+		inputs = append(inputs, &service.MethodSaveInput{
+			MethodKey:      m.MethodKey,
+			Weight:         m.Weight,
+			EvalObject:     m.EvalObject,
+			ScoreType:      m.ScoreType,
+			EvalSubjects:   m.EvalSubjects,
+			StandardName:   m.StandardName,
+			StandardMode:   m.StandardMode,
+			ResourceConfig: m.ResourceConfig,
+			IsEnabled:      m.IsEnabled,
+			EvalPoints:     evalPoints,
+			ScoreRules:     scoreRules,
+			ReviewSteps:    reviewSteps,
+		})
+	}
+	return inputs
+}
+
 type SaveTaskEvaluationMethodsRequest struct {
 	Version int                         `json:"version"`
 	Methods []TaskEvaluationMethodInput `json:"methods"`
@@ -127,62 +186,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		creatorID = claims.UserID
 	}
 
-	inputs := make([]*service.MethodSaveInput, 0, len(req.Methods))
-	for _, m := range req.Methods {
-		evalPoints := make([]service.EvalPointSaveInput, 0, len(m.EvalPoints))
-		for _, ep := range m.EvalPoints {
-			evalPoints = append(evalPoints, service.EvalPointSaveInput{
-				Name:              ep.Name,
-				Description:       ep.Description,
-				SubType:           ep.SubType,
-				Types:             coalesceStringSlice(ep.Types),
-				Weight:            ep.Weight,
-				ScoringMethod:     ep.ScoringMethod,
-				GradeMapping:      ep.GradeMapping,
-				KnowledgePointIDs: coalesceStringSlice(ep.KnowledgePointIDs),
-				AbilityPointIDs:   coalesceStringSlice(ep.AbilityPointIDs),
-				SortOrder:         ep.SortOrder,
-			})
-		}
-		reviewSteps := make([]service.ReviewStepSaveInput, 0, len(m.ReviewSteps))
-		for _, rs := range m.ReviewSteps {
-			reviewSteps = append(reviewSteps, service.ReviewStepSaveInput{
-				Label:           rs.Label,
-				Description:     rs.Description,
-				Enabled:         rs.Enabled,
-				SubjectType:     rs.SubjectType,
-				Weight:          rs.Weight,
-				SortOrder:       rs.SortOrder,
-				AssignedUserIDs: coalesceStringSlice(rs.AssignedUserIDs),
-			})
-		}
-		scoreRules := make([]service.ScoreRuleSaveInput, 0, len(m.ScoreRules))
-		for _, sr := range m.ScoreRules {
-			scoreRules = append(scoreRules, service.ScoreRuleSaveInput{
-				Name:        sr.Name,
-				Description: sr.Description,
-				Rule:        sr.Rule,
-				Weight:      sr.Weight,
-				SortOrder:   sr.SortOrder,
-			})
-		}
-		inputs = append(inputs, &service.MethodSaveInput{
-			MethodKey:      m.MethodKey,
-			Weight:         m.Weight,
-			EvalObject:     m.EvalObject,
-			ScoreType:      m.ScoreType,
-			EvalSubjects:   m.EvalSubjects,
-			StandardName:   m.StandardName,
-			StandardMode:   m.StandardMode,
-			ResourceConfig: m.ResourceConfig,
-			IsEnabled:      m.IsEnabled,
-			EvalPoints:     evalPoints,
-			ScoreRules:     scoreRules,
-			ReviewSteps:    reviewSteps,
-		})
-	}
-
-	configs, err := h.Service.SaveMethods(r.Context(), tenantID, taskID, creatorID, req.Version, inputs)
+	configs, err := h.Service.SaveMethods(r.Context(), tenantID, taskID, creatorID, req.Version, toMethodSaveInputs(&req))
 	if err != nil {
 		if err == service.ErrMethodVersionConflict {
 			respondError(w, http.StatusConflict, "评价规则已被其他会话修改")

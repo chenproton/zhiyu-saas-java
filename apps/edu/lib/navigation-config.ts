@@ -1,5 +1,6 @@
 import type { PlatformNavigationConfig } from '@/components/platform-shell'
 import {
+  Briefcase,
   Building,
   ClipboardList,
   Database,
@@ -9,6 +10,7 @@ import {
   School,
   UserCog,
   Users,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -941,6 +943,20 @@ export const partnerNavigationConfig: PlatformNavigationConfig = {
       icon: Handshake,
       href: '/partner/cooperation',
       matchers: ['/partner/cooperation$'],
+    },
+    {
+      id: 'cobuild-positions',
+      label: '岗位共建',
+      icon: Briefcase,
+      href: '/partner/co-build/positions',
+      matchers: ['/partner/co-build/positions'],
+    },
+    {
+      id: 'cobuild-scenes',
+      label: '场景共建',
+      icon: Workflow,
+      href: '/partner/co-build/scenes',
+      matchers: ['/partner/co-build/scenes'],
     },
     {
       id: 'tasks',

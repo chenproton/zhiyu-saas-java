@@ -32,6 +32,15 @@ import { useT } from '@/lib/i18n/locale-provider'
 interface StepAbilityModelingProps {
   position: Position
   onUpdate: (data: Partial<Position>) => void
+  /**
+   * 能力点库数据源覆盖（缺省走 portal 公共能力库 + 岗位列表）。
+   * 企业共建端注入学校只读能力列表：readOnly=true 时隐藏池内能力点的编辑/删除入口，
+   * 且不加载岗位过滤下拉（无 partner 侧岗位绑定查询端点）。
+   */
+  abilityPoolSource?: {
+    loadAbilities: () => Promise<Ability[]>
+    readOnly?: boolean
+  }
 }
 
 const ABILITY_ATTRIBUTES = ['知识', '素养', '技能']
@@ -62,7 +71,7 @@ function arrayEquals(a: string[], b: string[]): boolean {
   return sortedA.every((v, i) => v === sortedB[i])
 }
 
-export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingProps) {
+export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: StepAbilityModelingProps) {
   const t = useT()
   const competencyLevels: { value: CompetencyLevel; label: string; description: string }[] = [
     { value: 'understand', label: t('了解'), description: t('了解基本概念，能在指导下完成简单任务') },
@@ -103,6 +112,13 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
   const pendingFocusRespRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (abilityPoolSource) {
+      abilityPoolSource
+        .loadAbilities()
+        .then(setAbilities)
+        .catch((err) => reportError(err, '加载能力点列表'))
+      return
+    }
     abilityApi
       .list({ limit: 1000, isPublic: true })
       .then((res) => setAbilities(res.items.map(convertApiAbilityToLocal)))
@@ -111,6 +127,7 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
       .list({ limit: 1000 })
       .then((res) => setAbilityPoolPositions(res.items.map((p) => ({ id: p.id, name: p.name }))))
       .catch((err) => reportError(err, '加载岗位列表'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -975,26 +992,28 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-medium text-gray-500 mr-1">{t('关联岗位')}</span>
-              <ComboboxSelect
-                value={abilityPoolFilterPosition || ''}
-                onChange={(v) => setAbilityPoolFilterPosition(v || null)}
-                options={abilityPoolPositions.map((p) => ({ value: p.id, label: p.name }))}
-                placeholder={t('选择岗位')}
-                searchPlaceholder={t('搜索岗位...')}
-                emptyText={t('暂无匹配岗位')}
-                className="h-7 text-[11px]"
-              />
-              {abilityPoolFilterPosition && (
-                <button
-                  onClick={() => setAbilityPoolFilterPosition(null)}
-                  className="text-[11px] text-gray-400 hover:text-gray-600 ml-1"
-                >
-                  {t('清空')}
-                </button>
-              )}
-            </div>
+            {!abilityPoolSource && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-medium text-gray-500 mr-1">{t('关联岗位')}</span>
+                <ComboboxSelect
+                  value={abilityPoolFilterPosition || ''}
+                  onChange={(v) => setAbilityPoolFilterPosition(v || null)}
+                  options={abilityPoolPositions.map((p) => ({ value: p.id, label: p.name }))}
+                  placeholder={t('选择岗位')}
+                  searchPlaceholder={t('搜索岗位...')}
+                  emptyText={t('暂无匹配岗位')}
+                  className="h-7 text-[11px]"
+                />
+                {abilityPoolFilterPosition && (
+                  <button
+                    onClick={() => setAbilityPoolFilterPosition(null)}
+                    className="text-[11px] text-gray-400 hover:text-gray-600 ml-1"
+                  >
+                    {t('清空')}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto mt-3 rounded-lg border bg-white">
@@ -1155,22 +1174,24 @@ export function StepAbilityModeling({ position, onUpdate }: StepAbilityModelingP
                                     {t('添加')}
                                   </Button>
                                 ))}
-                              <div className="flex items-center gap-0.5 border border-gray-200 rounded-full overflow-hidden">
-                                <button
-                                  onClick={() => handleStartEditAbility(ability)}
-                                  className="px-2.5 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                                  title={t('编辑')}
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteAbility(ability.id)}
-                                  className="px-2.5 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
-                                  title={t('删除')}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
+                              {!abilityPoolSource?.readOnly && (
+                                <div className="flex items-center gap-0.5 border border-gray-200 rounded-full overflow-hidden">
+                                  <button
+                                    onClick={() => handleStartEditAbility(ability)}
+                                    className="px-2.5 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                                    title={t('编辑')}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteAbility(ability.id)}
+                                    className="px-2.5 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
+                                    title={t('删除')}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>

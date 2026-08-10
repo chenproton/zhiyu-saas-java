@@ -106,6 +106,15 @@ export interface EvaluationRulesEditorProps {
    * 不传时仅通过 onChange 上抛配置（如课程侧由父组件统一持久化）。
    */
   onPersistStandard?: (methodKey: string, config: EvalRuleConfig) => Promise<void> | void
+  /**
+   * 数据源覆盖（缺省走 portal 接口）。企业共建端注入：
+   * - loadRubricTemplates：量规模板改为学校只读列表（partner token 调不通 portal 模板接口）
+   * - skipPortalPreload：跳过试卷/现场问答题/专业等 portal 数据集预加载（这些面板在企业端无数据源）
+   */
+  dataSource?: {
+    loadRubricTemplates?: () => Promise<RubricScheme[]>
+    skipPortalPreload?: boolean
+  }
 }
 
 interface ReviewStep {
@@ -158,6 +167,7 @@ export function EvaluationRulesEditor({
   className,
   title = '配置评价规则',
   onPersistStandard,
+  dataSource,
 }: EvaluationRulesEditorProps) {
   const t = useT()
   const { toast } = useToast()
@@ -482,6 +492,14 @@ export function EvaluationRulesEditor({
   }, [])
 
   const loadRubricTemplates = useCallback(async () => {
+    if (dataSource?.loadRubricTemplates) {
+      try {
+        setRubricLibrary(await dataSource.loadRubricTemplates())
+      } catch (err) {
+        reportError(err, { source: '加载评价标准模板列表' })
+      }
+      return
+    }
     try {
       const res = await taskEvaluationApi.listTemplates({ limit: 200 }).catch((err) => {
         reportError(err, { source: '加载评价标准模板列表' })
@@ -512,7 +530,7 @@ export function EvaluationRulesEditor({
     } catch (err) {
       reportError(err, { source: '解析评价标准模板' })
     }
-  }, [])
+  }, [dataSource])
 
   const handleCreateRdq = useCallback(async () => {
     if (!newRdqForm.name.trim()) return
@@ -574,12 +592,17 @@ export function EvaluationRulesEditor({
   // Mount 时预加载一次依赖数据；在微任务回调中触发加载，避免在 effect 体内同步 setState
   useEffect(() => {
     Promise.resolve().then(() => {
+      if (dataSource?.skipPortalPreload) {
+        // 企业共建端：试卷/现场问答题/专业均为 portal 数据集（partner token 调不通），只加载注入的量规模板
+        loadRubricTemplates()
+        return
+      }
       loadPapers()
       loadRdqQuestions()
       loadMajors()
       loadRubricTemplates()
     })
-  }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates])
+  }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates, dataSource?.skipPortalPreload])
 
   const majorOptions = useMemo(
     () => [{ id: 'all', name: t('全部') }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))],

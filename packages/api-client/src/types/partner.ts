@@ -2,6 +2,8 @@
 import type { User } from '../../../shared-types/src/shared-models'
 import type { AllianceExpert } from '../../../shared-types/src/alliance'
 import type { Role } from './backend'
+import type { CareerPosition } from './job'
+import type { Scenario, ScenarioTask } from './scene'
 
 /** 企业主体（partner_enterprises，全局唯一，企业侧自维护） */
 export interface PartnerEnterprise {
@@ -182,3 +184,84 @@ export interface PartnerMentorTask {
 export interface PartnerMentorTaskList {
   items: PartnerMentorTask[]
 }
+
+/* ============================================================
+   企业端资源共建（/partner/co-build/*）
+   响应 DTO 对齐 portal 对应端点，外加 schoolTenantId/schoolName；
+   sourceType/sourceEnterpriseId 已在 CareerPosition/Scenario 上（可选）。
+   ============================================================ */
+
+/** 共建内容状态（与学校端内容状态一致，六态） */
+export type CoBuildStatus =
+  | 'draft'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'published'
+  | 'archived'
+
+/** GET/POST /partner/co-build/positions：企业为学校共建的岗位（数据落在学校租户） */
+export interface CoBuildPosition extends CareerPosition {
+  schoolTenantId: string
+  schoolName?: string
+}
+
+/** POST /partner/co-build/positions：只需学校 + 名称，后端落 draft + source 标记 */
+export interface CoBuildPositionCreateRequest {
+  schoolTenantId: string
+  name: string
+}
+
+/** POST /partner/co-build/positions/{id}/save-full：与 portal 岗位 save-full 请求同形 */
+export interface CoBuildPositionSaveFullRequest {
+  batchId: string
+  name: string
+  shortName: string
+  industry: string
+  majors: string[]
+  positionType: string
+  salaryRange: [number, number]
+  coverImage?: string
+  description?: string
+  requirements: string[]
+  careerPath?: string
+  version: string
+  collaborators: string[]
+  responsibilities: { id: string; name: string; description?: string }[]
+  certificates: {
+    id: string
+    name: string
+    url?: string
+    description?: string
+    image?: string
+  }[]
+  abilityBindings: {
+    id: string
+    responsibilityId: string
+    source: string
+    publicAbilityId?: string
+    abilityPointId?: string
+    name: string
+    level: string
+    rubricDescription?: string
+    description?: string
+    attributes?: string[]
+    domain?: string
+  }[]
+  abilityDomains: { id: string; name: string; description?: string; bindingIds: string[] }[]
+}
+
+/** GET/POST /partner/co-build/scenes：企业为学校共建的场景 */
+export interface CoBuildScenario extends Scenario {
+  schoolTenantId: string
+  schoolName?: string
+}
+
+/** POST /partner/co-build/scenes：只需学校 + 名称，后端落 draft + source 标记 */
+export interface CoBuildScenarioCreateRequest {
+  schoolTenantId: string
+  name: string
+}
+
+/** 共建场景任务（/partner/co-build/scenes/{id}/tasks 与 /partner/co-build/tasks/{taskId}） */
+export type CoBuildTask = ScenarioTask

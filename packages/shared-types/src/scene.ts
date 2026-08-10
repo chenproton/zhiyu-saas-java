@@ -13,6 +13,10 @@ export interface Scenario {
   version: string
   viewCount?: number
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
+  /** 来源：school=学校自建（默认），enterprise=企业端资源共建写入 */
+  sourceType?: 'school' | 'enterprise'
+  /** sourceType=enterprise 时的来源企业 ID */
+  sourceEnterpriseId?: string
   background?: string
   deliveryGoal?: string
   creatorId: string

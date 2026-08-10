@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -24,6 +25,8 @@ export interface ScenarioListItem {
   code: string
   version: string
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
+  /** 来源：school=学校自建（默认），enterprise=企业端资源共建写入（列表徽章用） */
+  sourceType?: 'school' | 'enterprise'
   batchId?: string
   positionName?: string
   batchName?: string
@@ -142,8 +145,11 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         {scenario.name}
                       </p>
                     </Link>
-                    <div className="mt-1">
+                    <div className="flex items-center gap-1.5 mt-1">
                       <StatusBadge status={scenario.status} />
+                      {scenario.sourceType === 'enterprise' && (
+                        <Badge variant="secondary">{t('企业共建')}</Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-slate-600">{scenario.code}</TableCell>

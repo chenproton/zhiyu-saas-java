@@ -46,6 +46,10 @@ interface StepBasicInfoProps {
   onUpdate: (data: Partial<Position>) => void
   aiMode?: boolean
   variant?: 'default' | 'create'
+  /** 是否展示"面向行业/适用专业"（缺省 true；企业共建端无行业/专业字典数据源时传 false 隐藏，已有值随保存原样回传） */
+  showIndustryMajor?: boolean
+  /** 是否启用证书库选择/新增（缺省 true；企业共建端无证书库数据源时传 false，仅展示/移除已关联证书） */
+  certificateLibraryEnabled?: boolean
 }
 
 interface Certificate {
@@ -67,6 +71,8 @@ export function StepBasicInfo({
   onUpdate,
   aiMode = false,
   variant = 'default',
+  showIndustryMajor = true,
+  certificateLibraryEnabled = true,
 }: StepBasicInfoProps) {
   const t = useT()
   const isCreate = variant === 'create'
@@ -81,6 +87,7 @@ export function StepBasicInfo({
   
   // 加载真实行业/专业数据
   useEffect(() => {
+    if (!showIndustryMajor) return
     let cancelled = false
     ;(async () => {
       setOptionsLoading(true)
@@ -108,7 +115,7 @@ export function StepBasicInfo({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [showIndustryMajor])
 
   // 证书相关状态
   const [isCertDialogOpen, setIsCertDialogOpen] = useState(false)
@@ -118,6 +125,7 @@ export function StepBasicInfo({
 
   // 加载证书库
   useEffect(() => {
+    if (!certificateLibraryEnabled) return
     let cancelled = false
     ;(async () => {
       try {
@@ -143,7 +151,7 @@ export function StepBasicInfo({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [certificateLibraryEnabled])
 
   // 同步已选证书状态，防止异步加载/重新进入编辑页后选择框与保存数据不一致
   useEffect(() => {
@@ -350,22 +358,26 @@ export function StepBasicInfo({
 
           {/* Row 2: Industry + Major + Position Type */}
           <FormFieldGrid cols={3}>
-            <FormFieldRow label={t('面向行业')} htmlFor="industry">
-              <MultiSelect
-                options={industries.map((i) => ({ label: i.name, value: i.id }))}
-                value={position.industry ? [position.industry] : []}
-                onChange={(values) => onUpdate({ industry: values[values.length - 1] || '' })}
-                placeholder={optionsLoading ? t('加载中...') : t('选择行业')}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('适用专业')} htmlFor="major">
-              <MultiSelect
-                options={majors.map((m) => ({ label: m.name, value: m.id }))}
-                value={position.majors}
-                onChange={(values) => onUpdate({ majors: values })}
-                placeholder={optionsLoading ? t('加载中...') : t('选择专业')}
-              />
-            </FormFieldRow>
+            {showIndustryMajor && (
+              <>
+                <FormFieldRow label={t('面向行业')} htmlFor="industry">
+                  <MultiSelect
+                    options={industries.map((i) => ({ label: i.name, value: i.id }))}
+                    value={position.industry ? [position.industry] : []}
+                    onChange={(values) => onUpdate({ industry: values[values.length - 1] || '' })}
+                    placeholder={optionsLoading ? t('加载中...') : t('选择行业')}
+                  />
+                </FormFieldRow>
+                <FormFieldRow label={t('适用专业')} htmlFor="major">
+                  <MultiSelect
+                    options={majors.map((m) => ({ label: m.name, value: m.id }))}
+                    value={position.majors}
+                    onChange={(values) => onUpdate({ majors: values })}
+                    placeholder={optionsLoading ? t('加载中...') : t('选择专业')}
+                  />
+                </FormFieldRow>
+              </>
+            )}
             <FormFieldRow label={t('岗位类型')} htmlFor="positionType">
               <Select
                 value={position.positionType}
@@ -582,15 +594,17 @@ export function StepBasicInfo({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('相关证书')}</CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={openCertDialog}>
-              {t('从证书库选择')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setIsNewCertDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('新增证书')}
-            </Button>
-          </div>
+          {certificateLibraryEnabled && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={openCertDialog}>
+                {t('从证书库选择')}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsNewCertDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t('新增证书')}
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {!position.certificates || position.certificates.length === 0 ? (

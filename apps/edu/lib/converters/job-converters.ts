@@ -47,6 +47,7 @@ export function convertCareerPositionToPosition(cp: CareerPosition): Position {
     collaborators: cp.collaborators,
     createdAt: cp.createdAt,
     updatedAt: cp.updatedAt,
+    sourceType: cp.sourceType,
     favoriteCount: 0,
   }
 }
