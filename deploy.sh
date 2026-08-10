@@ -543,6 +543,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
        echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
+      echo "GO_CACHE_LIMIT_MB=${GO_CACHE_LIMIT_MB:-8192}"
+      echo "BUILD_CACHE_LIMIT_GB=${BUILD_CACHE_LIMIT_GB:-10}"
     } >> "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     log "已生成 .env（管理员: admin / admin123）"
@@ -694,7 +696,11 @@ LOCK_FILE="/tmp/zhiyu-deploy.lock"
 if command -v flock >/dev/null 2>&1; then
   exec {LOCK_FD}>"$LOCK_FILE"
   flock "$LOCK_FD" || { log "等待部署锁..."; flock "$LOCK_FD"; }
-  cleanup() { exec {LOCK_FD}>&- 2>/dev/null || true; }
+  cleanup() {
+    # 清理构建残留（docker build 中途失败时 TMPCTX 会残留）
+    [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
+    exec {LOCK_FD}>&- 2>/dev/null || true
+  }
   trap cleanup EXIT
 else
   warn "flock 不可用，跳过部署锁（建议安装 util-linux）"
@@ -746,6 +752,47 @@ mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" \
 # 记录当前镜像（用于回滚）
 PREV_BACKEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-backend 2>/dev/null || true)"
 PREV_FRONTEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-edu 2>/dev/null || true)"
+
+# 部署失败统一回滚：compose up / 迁移 / 健康检查任一环节失败均回到旧镜像。
+# 与旧版"tag 失败被 || true 吞掉、回滚结果不校验"不同，这里逐步校验：
+#   1. 旧镜像 tag 失败（已被清理/不存在）→ 报错退出，不假装回滚成功
+#   2. compose up 回滚失败 → 报错退出
+#   3. 回滚后重新做健康检查，未就绪也报错退出（不静默通过）
+# 首次部署（无旧镜像）→ 直接失败退出，提示人工排查。
+rollback_deploy() {
+  local reason="$1"
+  log "部署失败（${reason}），回滚旧镜像..."
+  if [[ -z "$PREV_BACKEND" || -z "$PREV_FRONTEND" ]]; then
+    compose logs backend --tail 30 2>/dev/null || true
+    die "部署失败，且没有旧镜像可回滚（首次部署），请排查后重试"
+  fi
+  docker tag "$PREV_BACKEND" "zhiyu-backend:rollback" 2>/dev/null || {
+    warn "旧后端镜像 $PREV_BACKEND 已不存在，无法回滚"
+    die "回滚失败，请人工排查（旧镜像: $PREV_BACKEND / $PREV_FRONTEND）"
+  }
+  docker tag "$PREV_FRONTEND" "zhiyu-edu:rollback" 2>/dev/null || {
+    warn "旧前端镜像 $PREV_FRONTEND 已不存在，无法回滚"
+    die "回滚失败，请人工排查（旧镜像: $PREV_BACKEND / $PREV_FRONTEND）"
+  }
+  if ! IMAGE_TAG=rollback compose up -d --no-deps backend frontend 2>&1 | tail -5; then
+    die "回滚容器启动失败，请人工排查（旧镜像: $PREV_BACKEND / $PREV_FRONTEND）"
+  fi
+  for svc in backend frontend; do
+    found=false
+    for i in $(seq 1 45); do
+      S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
+      [[ "$S" == "healthy" ]] && { log "  $svc 回滚后 healthy"; found=true; break; }
+      sleep 2
+    done
+    $found || warn "$svc 回滚后未就绪"
+  done
+  compose logs backend --tail 30 2>/dev/null || true
+  # 迁移环节失败时数据库可能处于中间状态（仅 psql 兜底部分应用场景），提示人工恢复路径
+  if [[ -s "${BACKUP_FILE:-}" ]]; then
+    warn "如需恢复数据库，可执行: psql \"$MIGRATE_URL\" -f \"$BACKUP_FILE\"（请先人工确认库状态）"
+  fi
+  die "部署失败，已回滚到旧镜像"
+}
 
 # 构建前先清理旧镜像，为本次构建腾出磁盘空间（在用镜像不受影响）
 prune_old_images "zhiyu-backend" 1
@@ -921,8 +968,7 @@ rm -f "$COMPOSE_UP_LOG"
 if ! compose up -d --remove-orphans >"$COMPOSE_UP_LOG" 2>&1; then
   echo "docker compose up 失败日志：" >&2
   tail -n 50 "$COMPOSE_UP_LOG" >&2 || true
-  compose logs --tail 30 >&2 || true
-  die "docker compose up 失败，请检查上方容器日志"
+  rollback_deploy "docker compose up 失败"
 fi
 tail -n 5 "$COMPOSE_UP_LOG"
 
@@ -945,18 +991,18 @@ ls -t "$DEPLOY_DIR"/backups/zhiyu-saas-*.sql 2>/dev/null | tail -n +8 | xargs -r
 
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
-  psql "$MIGRATE_URL" -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3
+  psql "$MIGRATE_URL" -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 || rollback_deploy "baseline 迁移失败"
   psql "$MIGRATE_URL" -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
   touch "$DEPLOY_DIR/.migration-done"
 
   # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
-  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || die "数据库迁移失败"
+  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
 
   log "初始化种子数据..."
   (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" go run ./cmd/seed/main.go) || warn "种子初始化失败"
   log "  运营方租户: platform / 管理员: admin / ${SEED_ADMIN_PASSWORD:-admin123}"
 else
-  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || die "数据库迁移失败"
+  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
 fi
 
 # 健康检查
@@ -973,24 +1019,17 @@ for svc in backend frontend; do
 done
 
 if ! $OK; then
-  if [[ -z "$PREV_BACKEND" || -z "$PREV_FRONTEND" ]]; then
-    compose logs backend --tail 30
-    die "部署失败，且没有旧镜像可回滚（首次部署），请排查后重试"
-  fi
-  log "部署失败，回滚旧镜像..."
-  docker tag "$PREV_BACKEND" "zhiyu-backend:rollback" 2>/dev/null || true
-  docker tag "$PREV_FRONTEND" "zhiyu-edu:rollback" 2>/dev/null || true
-  IMAGE_TAG=rollback compose up -d --no-deps backend frontend 2>&1 | tail -3
-  compose logs backend --tail 30
-  die "部署失败，已回滚"
+  rollback_deploy "健康检查未通过"
 fi
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
+  KK_READY=false
   for i in $(seq 1 60); do
-    wget -qO- http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
+    wget -qO- http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; KK_READY=true; break; }
     sleep 2
   done
+  $KK_READY || warn "kkfileview 120 秒未就绪，文档预览功能可能不可用（可稍后 docker compose logs kkfileview 排查）"
 fi
 
 compose ps
@@ -1027,9 +1066,11 @@ prune_old_images "fangzhengjin/kkfileview" 1
 prune_extra_tags "zhiyu-backend" "$BACKEND_HASH"
 prune_extra_tags "zhiyu-edu" "$FRONTEND_HASH"
 
-# Go 编译缓存超限（默认 2GB）时整体清理，避免无限增长（下次后端构建全量重编，可接受）
+# Go 编译缓存超限（默认 8GB）时整体清理，避免无限增长（下次后端构建全量重编，可接受）。
+# 阈值不宜过小：全局 GOCACHE 若与 deploy 共用同一目录（go env -w GOCACHE=...），
+# 过小的阈值会在每次部署时连带清空日常开发编译缓存。
 GO_CACHE_DIR="$BUILD_CACHE/go-cache"
-GO_CACHE_LIMIT="${GO_CACHE_LIMIT_MB:-2048}"
+GO_CACHE_LIMIT="${GO_CACHE_LIMIT_MB:-8192}"
 if [[ -d "$GO_CACHE_DIR" ]] && \
    [[ "$(du -sm "$GO_CACHE_DIR" 2>/dev/null | awk '{print $1}')" -gt "$GO_CACHE_LIMIT" ]]; then
   rm -rf "$GO_CACHE_DIR"
