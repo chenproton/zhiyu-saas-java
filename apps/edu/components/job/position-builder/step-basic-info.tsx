@@ -41,6 +41,7 @@ import {
   Settings,
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
+import { ToastAction } from '@/components/ui/toast'
 import { industryApi, majorApi, certificateLibraryApi, fileApi, positionAiAssist } from '@/lib/api'
 import type {
   AIPositionAssistField,
@@ -98,6 +99,10 @@ interface Certificate {
 
 interface AiSuggestionCardProps {
   title: string
+  /** 附加说明（如"当前 3 条 → 建议 5 条"） */
+  meta?: string
+  /** 一键生成批次内展示 NEW 角标，引导用户关注 */
+  isNew?: boolean
   children: React.ReactNode
   regenerating?: boolean
   onAdopt: () => void
@@ -108,6 +113,8 @@ interface AiSuggestionCardProps {
 /** AI 建议卡片：采纳 / 重新生成 / 不采纳（对齐原型 ai-assisted_2 交互） */
 function AiSuggestionCard({
   title,
+  meta,
+  isNew,
   children,
   regenerating,
   onAdopt,
@@ -116,9 +123,18 @@ function AiSuggestionCard({
 }: AiSuggestionCardProps) {
   return (
     <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-3">
-      <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" />
         <span className="text-xs font-medium text-purple-800">{title}</span>
+        {meta && <span className="text-xs text-gray-400">{meta}</span>}
+        {isNew && (
+          <Badge
+            variant="outline"
+            className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-white"
+          >
+            NEW
+          </Badge>
+        )}
       </div>
       <div className="mb-3">{children}</div>
       <div className="flex items-center justify-end gap-2">
@@ -176,6 +192,13 @@ export function StepBasicInfo({
     requirements: '',
   })
   const [confirmRegenOpen, setConfirmRegenOpen] = useState(false)
+  // 一键生成完成后的结果提示条（值为建议数量）
+  const [resultBanner, setResultBanner] = useState<number | null>(null)
+  // 采纳撤销：暂存采纳前快照与采纳的建议（撤销后恢复表单 + 重新挂出建议卡）
+  const [undoEntry, setUndoEntry] = useState<{
+    snapshot: Partial<Position>
+    fields: { field: AIPositionAssistField; suggestion: AiSuggestions[AIPositionAssistField] }[]
+  } | null>(null)
   const notConfiguredRef = useRef(false)
   // 最新 position 快照：AI 回调时读取，避免闭包内拿到过期值
   const positionRef = useRef(position)
@@ -333,6 +356,14 @@ export function StepBasicInfo({
     })
   }
 
+  /** 撤销后重新挂出某字段的建议 */
+  const applySuggestionValue = (
+    field: AIPositionAssistField,
+    value: AiSuggestions[AIPositionAssistField],
+  ) => {
+    setSuggestions((prev) => ({ ...prev, [field]: value }))
+  }
+
   const dismissSuggestion = (field: AIPositionAssistField) => {
     setSuggestions((prev) => {
       const next = { ...prev }
@@ -346,7 +377,45 @@ export function StepBasicInfo({
     if (res) applySuggestion(field, res)
   }
 
-  const adoptSuggestion = (field: AIPositionAssistField) => {
+  // 当前仍挂出的建议数（提示条在全部处理完后自动隐藏）
+  const remainingSuggestions = useMemo(
+    () => AI_ASSIST_FIELDS.filter((f) => suggestions[f]).length,
+    [suggestions],
+  )
+
+  /** 采纳前快照指定字段的原值（用于撤销恢复） */
+  const snapshotFields = (fields: AIPositionAssistField[]): Partial<Position> => {
+    const cur = positionRef.current
+    const snap: Partial<Position> = {}
+    for (const f of fields) {
+      switch (f) {
+        case 'polish':
+          Object.assign(snap, {
+            name: cur.name,
+            shortName: cur.shortName,
+            description: cur.description,
+            salaryRange: cur.salaryRange,
+          })
+          break
+        case 'responsibilities':
+          snap.responsibilities = cur.responsibilities
+          break
+        case 'requirements':
+          snap.requirements = cur.requirements
+          break
+        case 'careerPath':
+          snap.careerPath = cur.careerPath
+          break
+        case 'certificates':
+          snap.certificates = cur.certificates
+          break
+      }
+    }
+    return snap
+  }
+
+  /** 将某字段建议写入表单；返回是否有实际变更（不弹撤销、不移除卡片） */
+  const applyAdoptedField = (field: AIPositionAssistField): boolean => {
     const s = suggestions
     if (field === 'polish' && s.polish) {
       const p = s.polish
@@ -357,7 +426,10 @@ export function StepBasicInfo({
       if (p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
         next.salaryRange = [p.salaryMin, p.salaryMax]
       }
-      if (Object.keys(next).length > 0) onUpdate(next)
+      if (Object.keys(next).length > 0) {
+        onUpdate(next)
+        return true
+      }
     } else if (field === 'responsibilities' && s.responsibilities) {
       onUpdate({
         responsibilities: s.responsibilities.map((name) => ({
@@ -366,10 +438,13 @@ export function StepBasicInfo({
           description: '',
         })),
       })
+      return true
     } else if (field === 'requirements' && s.requirements) {
       onUpdate({ requirements: s.requirements })
+      return true
     } else if (field === 'careerPath' && s.careerPath) {
       onUpdate({ careerPath: s.careerPath })
+      return true
     } else if (field === 'certificates' && s.certificates) {
       const existing = positionRef.current.certificates || []
       const existingNames = new Set(existing.map((c) => c.name))
@@ -381,9 +456,74 @@ export function StepBasicInfo({
           url: c.url || '',
           description: c.description || '',
         }))
-      if (toAdd.length > 0) onUpdate({ certificates: [...existing, ...toAdd] })
+      if (toAdd.length > 0) {
+        onUpdate({ certificates: [...existing, ...toAdd] })
+        return true
+      }
     }
+    return false
+  }
+
+  /** 撤销：恢复采纳前快照，并重新挂出被采纳的建议卡 */
+  const restoreFromUndo = () => {
+    if (!undoEntry) return
+    onUpdate(undoEntry.snapshot)
+    for (const item of undoEntry.fields) {
+      if (item.suggestion) applySuggestionValue(item.field, item.suggestion)
+    }
+    setUndoEntry(null)
+  }
+
+  const showUndoToast = (title: string) => {
+    toast({
+      title,
+      description: t('10 秒内可撤销'),
+      duration: 10000,
+      action: (
+        <ToastAction
+          altText={t('撤销')}
+          className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
+          onClick={() => {
+            restoreFromUndo()
+            toast({ title: t('已撤销') })
+          }}
+        >
+          {t('撤销')}
+        </ToastAction>
+      ),
+    })
+  }
+
+  const adoptSuggestion = (field: AIPositionAssistField) => {
+    if (!suggestions[field]) return
+    const snapshot = snapshotFields([field])
+    const applied = applyAdoptedField(field)
     dismissSuggestion(field)
+    if (applied) {
+      setUndoEntry({ snapshot, fields: [{ field, suggestion: suggestions[field] }] })
+      showUndoToast(t('已采纳 AI 建议'))
+    }
+  }
+
+  /** 全部采纳：应用所有建议后关闭提示条，支持一键撤销 */
+  const handleAdoptAll = () => {
+    const fields = AI_ASSIST_FIELDS.filter((f) => suggestions[f])
+    if (fields.length === 0) {
+      setResultBanner(null)
+      return
+    }
+    const snapshot = snapshotFields(fields)
+    for (const f of fields) applyAdoptedField(f)
+    for (const f of fields) dismissSuggestion(f)
+    setUndoEntry({ snapshot, fields: fields.map((f) => ({ field: f, suggestion: suggestions[f] })) })
+    setResultBanner(null)
+    showUndoToast(t('已全部采纳 AI 建议'))
+  }
+
+  /** 忽略全部：关闭提示条并清除所有建议卡 */
+  const handleIgnoreAll = () => {
+    setResultBanner(null)
+    setSuggestions({})
   }
 
   const getMissingFields = () => {
@@ -443,20 +583,24 @@ export function StepBasicInfo({
     runAiAssist(ctx)
   }
 
-  /** 一键流程：按字段顺序逐个生成，进度弹窗逐步展示 */
+  /** 一键流程：按字段顺序逐个生成，进度弹窗逐步展示；结束后顶部出现结果提示条 */
   const runAiAssist = async (ctx?: ReturnType<typeof buildAiContext>) => {
     notConfiguredRef.current = false
     const context = ctx || buildAiContext()
     setAiOpen(true)
     setAiPhase(0)
     setAiProgress(3)
+    let producedCount = 0
     for (let i = 0; i < AI_ASSIST_FIELDS.length; i++) {
       if (notConfiguredRef.current) break
       const field = AI_ASSIST_FIELDS[i]
       setIsGenerating(field)
       try {
         const res = await positionAiAssist({ field, position: context })
-        if (res) applySuggestion(field, res)
+        if (res) {
+          applySuggestion(field, res)
+          producedCount++
+        }
       } catch (err) {
         if (err instanceof Error && err.message === 'ai_not_configured') {
           notConfiguredRef.current = true
@@ -476,6 +620,7 @@ export function StepBasicInfo({
       }
     }
     setAiOpen(false)
+    if (producedCount > 0) setResultBanner(producedCount)
   }
 
   const startAiAssist = () => {
@@ -669,10 +814,42 @@ export function StepBasicInfo({
         </div>
       )}
 
+      {/* 一键生成完成后的结果提示条 */}
+      {aiMode && resultBanner !== null && remainingSuggestions > 0 && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-purple-200 bg-purple-50/50 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-purple-900 min-w-0">
+            <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+            <span className="truncate">
+              {t('AI 已生成 {count} 项建议，请逐项查看采纳', { count: resultBanner })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-purple-700 hover:bg-purple-100"
+              onClick={handleIgnoreAll}
+            >
+              <X className="h-3 w-3 mr-1" />
+              {t('忽略全部')}
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 text-xs bg-purple-600 hover:bg-purple-700"
+              onClick={handleAdoptAll}
+            >
+              <Check className="h-3 w-3 mr-1" />
+              {t('全部采纳')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* AI 润色建议：基础信息（名称/简称/简介/薪资） */}
       {suggestions.polish && (
         <AiSuggestionCard
           title={t('AI 润色建议：基础信息')}
+          isNew={resultBanner !== null}
           regenerating={isGenerating === 'polish'}
           onAdopt={() => adoptSuggestion('polish')}
           onRegenerate={() => regenerateSuggestion('polish')}
@@ -887,6 +1064,11 @@ export function StepBasicInfo({
           {suggestions.responsibilities && (
             <AiSuggestionCard
               title={t('AI 建议：工作职责')}
+              meta={t('当前 {n} 条 → 建议 {m} 条', {
+                n: position.responsibilities.filter((r) => r.name.trim()).length,
+                m: suggestions.responsibilities.length,
+              })}
+              isNew={resultBanner !== null}
               regenerating={isGenerating === 'responsibilities'}
               onAdopt={() => adoptSuggestion('responsibilities')}
               onRegenerate={() => regenerateSuggestion('responsibilities')}
@@ -966,6 +1148,11 @@ export function StepBasicInfo({
           {suggestions.requirements && (
             <AiSuggestionCard
               title={t('AI 建议：任职要求')}
+              meta={t('当前 {n} 条 → 建议 {m} 条', {
+                n: position.requirements.filter(Boolean).length,
+                m: suggestions.requirements.length,
+              })}
+              isNew={resultBanner !== null}
               regenerating={isGenerating === 'requirements'}
               onAdopt={() => adoptSuggestion('requirements')}
               onRegenerate={() => regenerateSuggestion('requirements')}
@@ -1003,6 +1190,7 @@ export function StepBasicInfo({
           {suggestions.careerPath && (
             <AiSuggestionCard
               title={t('AI 建议：晋升路径')}
+              isNew={resultBanner !== null}
               regenerating={isGenerating === 'careerPath'}
               onAdopt={() => adoptSuggestion('careerPath')}
               onRegenerate={() => regenerateSuggestion('careerPath')}
@@ -1035,6 +1223,11 @@ export function StepBasicInfo({
             <div className="mb-4">
               <AiSuggestionCard
                 title={t('AI 建议：证书推荐')}
+                meta={t('当前 {n} 个 → 推荐 {m} 个', {
+                  n: (position.certificates || []).length,
+                  m: suggestions.certificates.length,
+                })}
+                isNew={resultBanner !== null}
                 regenerating={isGenerating === 'certificates'}
                 onAdopt={() => adoptSuggestion('certificates')}
                 onRegenerate={() => regenerateSuggestion('certificates')}
