@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X, ArrowRight } from 'lucide-react'
+import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X, ArrowRight, Map, ClipboardList } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useGraphData } from './graph-data-context'
 import type { GraphNode } from './types'
 import { cn } from '@/lib/utils'
-import type { PositionAbilityBinding, AbilityDomain } from '@zhiyu/shared-types'
+import type { PositionAbilityBinding, AbilityDomain, KnowledgePoint } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export type NodeLite = { id: string; type: GraphNode['type']; label: string }
@@ -125,7 +125,143 @@ export function GraphNodeDetail({
   onNavigate?: (node: NodeLite) => void
 }) {
   const t = useT()
-  const { position, domains, units, bindings, tasks, knowledgePoints, courses } = useGraphData()
+  const {
+    position,
+    domains,
+    units,
+    bindings,
+    tasks,
+    knowledgePoints,
+    courses,
+    mode,
+    scenario,
+  } = useGraphData()
+
+  if (mode === 'scene') {
+    // 场景图谱语义：场景 → 任务（domain）→ 知识点 → 颗粒课
+    if (node.type === 'position') {
+      const relatedTaskItems: NodeLite[] = (tasks ?? []).map((task) => ({
+        id: task.id,
+        type: 'domain',
+        label: task.name || task.code || t('任务'),
+      }))
+      return (
+        <div className="space-y-4">
+          <div className="divide-y">
+            <Field label={t('场景名称')} value={scenario?.name} t={t} />
+          </div>
+          <Section title={t('下级任务')} count={relatedTaskItems.length} t={t}>
+            <Chips
+              items={relatedTaskItems}
+              empty={t('暂无关联任务')}
+              onNavigate={onNavigate}
+              t={t}
+            />
+          </Section>
+        </div>
+      )
+    }
+
+    if (node.type === 'domain') {
+      const task = tasks?.find((task) => task.id === node.id)
+      const relatedKnowledgeItems: NodeLite[] = (task?.knowledgePointIds || [])
+        .map((kid) => knowledgePoints?.get(kid))
+        .filter((kp): kp is KnowledgePoint => Boolean(kp))
+        .map((kp) => ({ id: kp.id, type: 'knowledge', label: kp.name || kp.code || t('知识点') }))
+      const parentSceneItems: NodeLite[] = scenario
+        ? [{ id: scenario.id, type: 'position', label: scenario.name || t('场景') }]
+        : []
+      return (
+        <div className="space-y-4">
+          <div className="divide-y">
+            <Field label={t('任务名称')} value={task?.name} t={t} />
+            <Field label={t('任务编码')} value={task?.code} t={t} />
+          </div>
+          <Section title={t('所属场景')} count={parentSceneItems.length} t={t}>
+            <Chips
+              items={parentSceneItems}
+              empty={t('暂无关联场景')}
+              onNavigate={onNavigate}
+              t={t}
+            />
+          </Section>
+          <Section title={t('下级知识点')} count={relatedKnowledgeItems.length} t={t}>
+            <Chips
+              items={relatedKnowledgeItems}
+              empty={t('暂无关联知识点')}
+              onNavigate={onNavigate}
+              t={t}
+            />
+          </Section>
+        </div>
+      )
+    }
+
+    if (node.type === 'knowledge') {
+      const relatedTaskItems: NodeLite[] = (tasks ?? [])
+        .filter((task) => (task.knowledgePointIds || []).includes(node.id))
+        .map((task) => ({
+          id: task.id,
+          type: 'domain',
+          label: task.name || task.code || t('任务'),
+        }))
+      const relatedCourseItems: NodeLite[] = []
+      ;(knowledgePoints?.get(node.id)?.granularLessonIds || []).forEach((cid) => {
+        const course = courses?.get(cid)
+        if (!course) return
+        relatedCourseItems.push({ id: cid, type: 'course', label: course.name })
+      })
+      return (
+        <div className="space-y-4">
+          <Section title={t('上级任务')} count={relatedTaskItems.length} t={t}>
+            <Chips
+              items={relatedTaskItems}
+              empty={t('暂无关联任务')}
+              onNavigate={onNavigate}
+              t={t}
+            />
+          </Section>
+          <Section title={t('下级颗粒课')} count={relatedCourseItems.length} t={t}>
+            <Chips
+              items={relatedCourseItems}
+              empty={t('暂无关联颗粒课')}
+              onNavigate={onNavigate}
+              t={t}
+            />
+          </Section>
+        </div>
+      )
+    }
+
+    if (node.type === 'course') {
+      const relatedKnowledgeItems: NodeLite[] = []
+      knowledgePoints?.forEach((kp) => {
+        if (!(kp.granularLessonIds || []).includes(node.id)) return
+        relatedKnowledgeItems.push({ id: kp.id, type: 'knowledge', label: kp.name })
+      })
+      return (
+        <div className="space-y-4">
+          <Link
+            href={`/lesson/landing/${node.id}`}
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-[#06b6d4] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#06b6d4]/90"
+          >
+            {t('进入课程详情')}
+            <ArrowRight className="size-4" />
+          </Link>
+          <Section title={t('上级知识点')} count={relatedKnowledgeItems.length} t={t}>
+            <Chips
+              items={relatedKnowledgeItems}
+              empty={t('暂无关联知识点')}
+              onNavigate={onNavigate}
+              t={t}
+            />
+          </Section>
+        </div>
+      )
+    }
+
+    return null
+  }
 
   if (node.type === 'position') {
     const relatedDomainItems: NodeLite[] = (domains ?? []).map((d) => ({
@@ -335,6 +471,7 @@ export function GraphDetailStack({
   onClose: () => void
 }) {
   const t = useT()
+  const { mode } = useGraphData()
   const [stack, setStack] = useState<NodeLite[]>([])
 
   useEffect(() => {
@@ -362,7 +499,26 @@ export function GraphDetailStack({
     <div className="pointer-events-none fixed inset-0 z-50">
       {stack.map((node, i) => {
         const depth = stack.length - 1 - i
-        const meta = GRAPH_TYPE_META[node.type]
+        const meta =
+          mode === 'scene'
+            ? {
+                color: GRAPH_TYPE_META[node.type].color,
+                icon:
+                  node.type === 'position' ? (
+                    <Map className="size-4" />
+                  ) : node.type === 'domain' ? (
+                    <ClipboardList className="size-4" />
+                  ) : (
+                    GRAPH_TYPE_META[node.type].icon
+                  ),
+                label:
+                  node.type === 'position'
+                    ? t('场景')
+                    : node.type === 'domain'
+                      ? t('任务')
+                      : GRAPH_TYPE_META[node.type].label,
+              }
+            : GRAPH_TYPE_META[node.type]
         return (
           <div
             key={`${node.type}-${node.id}-${i}`}
