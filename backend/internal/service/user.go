@@ -31,8 +31,8 @@ func (s *UserService) List(ctx context.Context, p store.ListParams, cfg store.Li
 }
 
 // Get 查询单个用户。
-func (s *UserService) Get(ctx context.Context, id string) (*domain.User, error) {
-	return s.st.Users().Get(ctx, id)
+func (s *UserService) Get(ctx context.Context, tenantID, id string) (*domain.User, error) {
+	return s.st.Users().Get(ctx, tenantID, id)
 }
 
 // Create 创建用户（事务内）。
@@ -76,7 +76,7 @@ func (s *UserService) BatchCreate(ctx context.Context, params []*store.UserCreat
 
 // Update 更新用户基础信息与可选角色重绑（事务内）。
 func (s *UserService) Update(ctx context.Context, id, tenantID string, p *store.UserUpdateParams, roleID string) error {
-	existing, err := s.st.Users().Get(ctx, id)
+	existing, err := s.st.Users().Get(ctx, tenantID, id)
 	if err != nil {
 		return err
 	}
@@ -84,6 +84,7 @@ func (s *UserService) Update(ctx context.Context, id, tenantID string, p *store.
 		return fmt.Errorf("用户缺少租户信息")
 	}
 	return s.WithTx(ctx, func(txStore *store.Store) error {
+		p.TenantID = tenantID
 		if err := txStore.Users().ValidateOrgMajor(ctx, txStore.Q(), *existing.TenantID, p.OrgNodeID, p.MajorID); err != nil {
 			return err
 		}
@@ -100,8 +101,8 @@ func (s *UserService) Update(ctx context.Context, id, tenantID string, p *store.
 }
 
 // Delete 删除用户。
-func (s *UserService) Delete(ctx context.Context, id string) error {
-	return s.st.Users().Delete(ctx, id)
+func (s *UserService) Delete(ctx context.Context, tenantID, id string) error {
+	return s.st.Users().Delete(ctx, tenantID, id)
 }
 
 // UpdateStatus 更新用户状态。

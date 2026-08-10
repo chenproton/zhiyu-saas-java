@@ -16,8 +16,8 @@ func (s *EvaluationService) ListExams(ctx context.Context, p store.ListParams, c
 }
 
 // GetExam 查询单个试卷（含题目）。
-func (s *EvaluationService) GetExam(ctx context.Context, id string) (*domain.Exam, error) {
-	return s.st.Exams().Get(ctx, id)
+func (s *EvaluationService) GetExam(ctx context.Context, tenantID, id string) (*domain.Exam, error) {
+	return s.st.Exams().Get(ctx, tenantID, id)
 }
 
 // ExamTenantID 查询试卷租户。
@@ -31,14 +31,14 @@ func (s *EvaluationService) CreateExam(ctx context.Context, tenantID string, p *
 }
 
 // UpdateExam 更新试卷。
-func (s *EvaluationService) UpdateExam(ctx context.Context, id string, p *store.ExamUpdateParams) (*domain.Exam, error) {
-	return s.st.Exams().Update(ctx, id, p)
+func (s *EvaluationService) UpdateExam(ctx context.Context, tenantID, id string, p *store.ExamUpdateParams) (*domain.Exam, error) {
+	return s.st.Exams().Update(ctx, tenantID, id, p)
 }
 
 // DeleteExam 删除试卷（题目与试卷同一事务）。
-func (s *EvaluationService) DeleteExam(ctx context.Context, id string) error {
+func (s *EvaluationService) DeleteExam(ctx context.Context, tenantID, id string) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
-		return txStore.Exams().Delete(ctx, txStore.Q(), id)
+		return txStore.Exams().Delete(ctx, txStore.Q(), tenantID, id)
 	})
 }
 

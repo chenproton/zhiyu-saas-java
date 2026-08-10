@@ -248,6 +248,15 @@ func requireTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return *claims.TenantID, true
 }
 
+// tenantIDOf 取 claims 中的租户 ID；未登录或无租户时返回空串
+// （store 层租户强制的调用方在多数场景下已通过 requireTenant/verifyTenantOwnership 校验）。
+func tenantIDOf(claims *middleware.Claims) string {
+	if claims == nil || claims.TenantID == nil {
+		return ""
+	}
+	return *claims.TenantID
+}
+
 // verifyTenantOwnership checks that the entity's tenantID matches the caller's tenant.
 // Writes a 403 response and returns false when they don't match.
 func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantID string) bool {

@@ -202,7 +202,7 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusForbidden, "仅可生成本人的画像")
 		return
 	}
-	user, err := h.Service.Store().Users().Get(r.Context(), req.UserID)
+	user, err := h.Service.Store().Users().Get(r.Context(), tenantID, req.UserID)
 	if err != nil || user.TenantID == nil || *user.TenantID != tenantID {
 		respondError(w, http.StatusForbidden, "无权操作：用户不属于您的租户")
 		return

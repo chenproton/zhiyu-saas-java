@@ -65,7 +65,11 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	exam, err := h.Service.GetExam(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	exam, err := h.Service.GetExam(r.Context(), tenantID, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试不存在")
@@ -155,7 +159,11 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.Service.GetExam(r.Context(), id)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	existing, err := h.Service.GetExam(r.Context(), tenantID, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试不存在")
@@ -205,7 +213,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		duration = &req.Duration
 	}
 
-	exam, err := h.Service.UpdateExam(r.Context(), id, &store.ExamUpdateParams{
+	exam, err := h.Service.UpdateExam(r.Context(), tenantID, id, &store.ExamUpdateParams{
 		Name:                req.Name,
 		Description:         description,
 		Duration:            duration,
@@ -236,6 +244,10 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	tenantID, err := h.Service.ExamTenantID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
@@ -248,7 +260,7 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, tenantID) {
 		return
 	}
-	if err := h.Service.DeleteExam(r.Context(), id); err != nil {
+	if err := h.Service.DeleteExam(r.Context(), tenantID, id); err != nil {
 		respondServerError(w, r, err, "删除考试失败")
 		return
 	}
@@ -269,7 +281,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	exam, err := h.Service.GetExam(r.Context(), id)
+	exam, err := h.Service.GetExam(r.Context(), tenantID, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试不存在")
@@ -310,7 +322,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "添加题目失败")
 		return
 	}
-	exam, err = h.Service.GetExam(r.Context(), id)
+	exam, err = h.Service.GetExam(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "操作成功但查询结果失败")
 		return
@@ -326,8 +338,12 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 	questionID := chi.URLParam(r, "questionId")
-	exam, err := h.Service.GetExam(r.Context(), id)
+	exam, err := h.Service.GetExam(r.Context(), tenantID, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试不存在")
@@ -343,7 +359,7 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "移除题目失败")
 		return
 	}
-	exam, err = h.Service.GetExam(r.Context(), id)
+	exam, err = h.Service.GetExam(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "操作成功但查询结果失败")
 		return
@@ -357,6 +373,10 @@ type UpdateExamQuestionScoreRequest struct {
 
 func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
@@ -374,7 +394,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	exam, err := h.Service.GetExam(r.Context(), examID)
+	exam, err := h.Service.GetExam(r.Context(), tenantID, examID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试不存在")
@@ -396,7 +416,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "更新question score失败")
 		return
 	}
-	exam, err = h.Service.GetExam(r.Context(), examID)
+	exam, err = h.Service.GetExam(r.Context(), tenantID, examID)
 	if err != nil {
 		respondServerError(w, r, err, "操作成功但查询结果失败")
 		return
@@ -408,6 +428,10 @@ type BulkUpdateScoresRequest map[string]float64
 
 func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
@@ -428,7 +452,7 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	exam, err := h.Service.GetExam(r.Context(), examID)
+	exam, err := h.Service.GetExam(r.Context(), tenantID, examID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试不存在")
@@ -444,7 +468,7 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "批量更新分数失败")
 		return
 	}
-	exam, err = h.Service.GetExam(r.Context(), examID)
+	exam, err = h.Service.GetExam(r.Context(), tenantID, examID)
 	if err != nil {
 		respondServerError(w, r, err, "操作成功但查询结果失败")
 		return
@@ -468,7 +492,10 @@ func (h *ExamHandler) actions() contentActions {
 		inviteCol:  "collaborator_ids",
 		invalidate: h.clearLandingExamsCache,
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			return h.Service.GetExam(ctx, id)
+			// 状态流转前的 checkTenantAccess 已完成租户归属校验，
+			// 回读时从上下文 claims 取租户保持 SQL 级租户限定
+			claims, _ := ctx.Value(middleware.ContextKeyUser).(*middleware.Claims)
+			return h.Service.GetExam(ctx, tenantIDOf(claims), id)
 		},
 	}
 }

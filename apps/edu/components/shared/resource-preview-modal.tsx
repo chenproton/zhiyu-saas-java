@@ -6,6 +6,7 @@ import { DialogBranch } from '@/components/ui/dialog'
 import { ExternalLink, X, FileText } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { cn } from '@/lib/utils'
+import { fileApi } from '@zhiyu/api-client'
 import type { TaskResource } from '@/lib/types'
 import { isSafeExternalUrl } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -35,6 +36,12 @@ function buildKkFileViewUrl(fileUrl: string): string {
   return `/kkfileview/onlinePreview?url=${btoa(`${origin}${fileUrl}`)}`
 }
 
+// 仅在文件路径位于本系统上传区时生成签名 URL（kkFileView 服务端抓取无登录态，
+// 需短时签名放行）；外链/第三方 URL 保持原样直通
+function mayNeedSignUrl(fileUrl: string): boolean {
+  return fileUrl.startsWith('/uploads/')
+}
+
 interface ResourcePreviewModalProps {
   resource: TaskResource | null
   open: boolean
@@ -59,6 +66,10 @@ function ResourcePreviewModalInner({
   const [resizing, setResizing] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [zIndex, setZIndex] = useState(0)
+  // kkFileView 预览地址：本系统上传文件先换取短时签名 URL，否则直接用原 URL；
+  // previewFor 记录签名结果对应的资源，避免新资源打开瞬间渲染旧资源
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const [previewFor, setPreviewFor] = useState<string>('')
 
   const contentRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -87,6 +98,32 @@ function ResourcePreviewModalInner({
       applyLayoutRef.current()
     }
   }, [])
+
+  useEffect(() => {
+    if (!open || !resource?.url || isZipUrl(resource.url)) return
+    const url = resource.url
+    let cancelled = false
+    const apply = (u: string) => {
+      if (!cancelled) {
+        setPreviewSrc(u)
+        setPreviewFor(url)
+      }
+    }
+    if (mayNeedSignUrl(url)) {
+      fileApi
+        .signUrl(url)
+        .then(apply)
+        .catch(() => apply(url))
+    } else {
+      Promise.resolve(url).then(apply)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [open, resource])
+
+  const iframeSrc =
+    previewFor === resource?.url && previewSrc ? buildKkFileViewUrl(previewSrc) : null
 
   useEffect(() => {
     ;(async () => {
@@ -255,16 +292,20 @@ function ResourcePreviewModalInner({
           {resource?.url ? (
             isZipUrl(resource.url) ? (
               <ZipPreview key={resource.url} url={resource.url} name={resource.name} />
-            ) : (
+            ) : iframeSrc ? (
               <iframe
                 ref={iframeRef}
-                src={buildKkFileViewUrl(resource.url)}
+                src={iframeSrc}
                 title={resource.name}
                 className="w-full h-full border-0"
                 allowFullScreen
                 loading="lazy"
                 style={{ pointerEvents: dragging || resizing ? 'none' : 'auto' }}
               />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                {t('加载中…')}
+              </div>
             )
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-400">

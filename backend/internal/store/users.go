@@ -57,9 +57,10 @@ func (s *UserStore) ListConfig() ListQueryConfig[domain.User] {
 	}
 }
 
-// Get 按 ID 查询用户（含平台字段）。
-func (s *UserStore) Get(ctx context.Context, id string) (*domain.User, error) {
-	u, err := s.fetchUser(ctx, s.q, id)
+// Get 按 ID 查询用户（含平台字段）。租户为强制参数：SQL 级限定
+// tenant_id，杜绝"漏写归属校验即跨租户 IDOR"。
+func (s *UserStore) Get(ctx context.Context, tenantID, id string) (*domain.User, error) {
+	u, err := s.fetchUser(ctx, s.q, tenantID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -126,7 +127,7 @@ func (s *UserStore) Create(ctx context.Context, tx Queryer, p *UserCreateParams)
 		}
 	}
 
-	return s.fetchUser(ctx, tx, id)
+	return s.fetchUser(ctx, tx, p.TenantID, id)
 }
 
 // Update 更新用户基础信息。
@@ -136,10 +137,10 @@ func (s *UserStore) Update(ctx context.Context, p *UserUpdateParams) error {
 		UPDATE users SET institution_id = COALESCE($1, institution_id), org_node_id = COALESCE($2, org_node_id), major_id = COALESCE($3, major_id),
 			role = $4, login_name = $5, username = $6, name = $7, email = COALESCE($8, email), phone = COALESCE($9, phone), avatar_url = COALESCE($10, avatar_url),
 			student_no = COALESCE($11, student_no), work_id = COALESCE($12, work_id), id_card = COALESCE($13, id_card), title_ids = COALESCE($14::uuid[], '{}'::uuid[]), updated_at = NOW()
-		WHERE id = $15
+		WHERE id = $15 AND tenant_id = $16
 	`, p.InstitutionID, p.OrgNodeID, p.MajorID,
 		p.Role, p.GlobalLoginName, p.Username, p.Name, p.Email, p.Phone, p.AvatarURL,
-		p.StudentNo, p.WorkID, p.IDCard, p.TitleIDs, p.ID)
+		p.StudentNo, p.WorkID, p.IDCard, p.TitleIDs, p.ID, p.TenantID)
 	return err
 }
 
@@ -172,7 +173,7 @@ func (s *UserStore) ResetPassword(ctx context.Context, id, plainPassword string)
 }
 
 // Delete 删除用户并递减其角色计数。
-func (s *UserStore) Delete(ctx context.Context, id string) error {
+func (s *UserStore) Delete(ctx context.Context, tenantID, id string) error {
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `
 			UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
@@ -180,7 +181,7 @@ func (s *UserStore) Delete(ctx context.Context, id string) error {
 		`, id); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+		_, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 		return err
 	})
 }
@@ -394,6 +395,7 @@ type UserCreateParams struct {
 // UserUpdateParams 更新用户参数。
 type UserUpdateParams struct {
 	ID              string
+	TenantID        string
 	InstitutionID   *string
 	OrgNodeID       *string
 	MajorID         *string
@@ -452,13 +454,13 @@ func scanUser(s rowScanner, withPasswordHash bool) (domain.User, string, error) 
 	return user, passwordHash, nil
 }
 
-func (s *UserStore) fetchUser(ctx context.Context, q Queryer, id string) (*domain.User, error) {
+func (s *UserStore) fetchUser(ctx context.Context, q Queryer, tenantID, id string) (*domain.User, error) {
 	user, passwordHash, err := scanUser(q.QueryRow(ctx, `
 		SELECT id, tenant_id, institution_id, org_node_id, major_id,
 			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id), true)
+		FROM users WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID), true)
 	if err != nil {
 		return nil, err
 	}

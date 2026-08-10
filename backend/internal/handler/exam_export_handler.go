@@ -50,7 +50,7 @@ func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File,
 	examNameMap := make(map[string]string)
 
 	for ri, eid := range examIDs {
-		exam, err := h.Store.Exams().Get(ctx, eid)
+		exam, err := h.Store.Exams().Get(ctx, tenantID, eid)
 		if err != nil || exam.TenantID == nil || *exam.TenantID != tenantID {
 			slog.Warn("导出试卷行跳过", "examId", eid, "error", err)
 			continue

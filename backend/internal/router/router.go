@@ -1,8 +1,10 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -118,20 +120,36 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	if uploadDir == "" {
 		uploadDir = "../public/uploads"
 	}
-	fileHandler := &handler.FileHandler{UploadDir: uploadDir}
+	fileHandler := &handler.FileHandler{UploadDir: uploadDir, JWTSecret: jwtSecret}
 
-	r.Get("/uploads/{filename}", fileHandler.Serve)
-
-	r.Group(func(r chi.Router) {
-		r.Use(authmw.JWT(jwtSecret))
-		r.Use(authmw.OperationLog(db, oplogBuffer))
-		r.Post("/api/v1/files/upload", fileHandler.Upload)
-		r.Get("/api/v1/files/preview", fileHandler.Preview)
-	})
+	// /uploads/{tenantID}/{filename}：混合鉴权——签名 URL（公开，kkFileView 等
+	// 无登录态服务端抓取）或登录态（Authorization 头 / HttpOnly cookie，<img> 直出），
+	// 未登录且无签名返回 401，跨租户返回 403（见 FileHandler.Serve）
+	r.With(authmw.OptionalJWT(jwtSecret)).Get("/uploads/{tenantID}/{filename}", fileHandler.Serve)
 
 	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo)
 
+	// /health 保持进程存活探针（历史兼容），/health/ready 为就绪探针（DB+Redis）
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		if db != nil {
+			if err := db.Ping(ctx); err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte(`{"status":"unavailable","reason":"db"}`))
+				return
+			}
+		}
+		if redisClient != nil {
+			if err := redisClient.Ping(ctx).Err(); err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte(`{"status":"unavailable","reason":"redis"}`))
+				return
+			}
+		}
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 

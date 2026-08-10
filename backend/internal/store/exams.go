@@ -27,9 +27,10 @@ func (s *ExamStore) List(ctx context.Context, p ListParams, cfg ListQueryConfig[
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanExamRows)
 }
 
-// Get 查询单个试卷（含题目列表）。
-func (s *ExamStore) Get(ctx context.Context, id string) (*domain.Exam, error) {
-	e, err := s.fetchExam(ctx, id)
+// Get 查询单个试卷（含题目列表）。租户为强制参数：SQL 级限定
+// tenant_id，杜绝"漏写归属校验即跨租户 IDOR"。
+func (s *ExamStore) Get(ctx context.Context, tenantID, id string) (*domain.Exam, error) {
+	e, err := s.fetchExam(ctx, tenantID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -58,30 +59,30 @@ func (s *ExamStore) Create(ctx context.Context, tenantID string, p *ExamCreatePa
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, tenantID, id)
 }
 
 // Update 更新试卷。
-func (s *ExamStore) Update(ctx context.Context, id string, p *ExamUpdateParams) (*domain.Exam, error) {
-	if _, err := s.fetchExam(ctx, id); err != nil {
+func (s *ExamStore) Update(ctx context.Context, tenantID, id string, p *ExamUpdateParams) (*domain.Exam, error) {
+	if _, err := s.fetchExam(ctx, tenantID, id); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE exams SET name = $1, description = $2, duration = $3, cover_image = $4,
 			collaborator_ids = $5, collaborator_dept_ids = $6, batch_id = $7, updated_at = NOW()
-		WHERE id = $8
-	`, p.Name, p.Description, p.Duration, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id); err != nil {
+		WHERE id = $8 AND tenant_id = $9
+	`, p.Name, p.Description, p.Duration, p.CoverImage, p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID, id, tenantID); err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, tenantID, id)
 }
 
 // Delete 删除试卷（题目与试卷在同一事务内，防止半删状态）。
-func (s *ExamStore) Delete(ctx context.Context, q Queryer, id string) error {
+func (s *ExamStore) Delete(ctx context.Context, q Queryer, tenantID, id string) error {
 	if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id); err != nil {
 		return fmt.Errorf("delete exam questions: %w", err)
 	}
-	_, err := q.Exec(ctx, `DELETE FROM exams WHERE id = $1`, id)
+	_, err := q.Exec(ctx, `DELETE FROM exams WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
@@ -201,9 +202,9 @@ type ExamUpdateParams struct {
 	BatchID             *string
 }
 
-func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, error) {
+func (s *ExamStore) fetchExam(ctx context.Context, tenantID, id string) (*domain.Exam, error) {
 	var e domain.Exam
-	var coverImage, description, creatorID, batchID, tenantID *string
+	var coverImage, description, creatorID, batchID, tenantID2 *string
 	err := s.q.QueryRow(ctx, `
 		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
@@ -215,10 +216,10 @@ func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, err
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
 			e.collaborator_dept_ids, e.batch_id, COALESCE(e.version, 'v1.0') AS version, e.owner_type, e.creator_id, e.created_at, e.updated_at, e.tenant_id
-		FROM exams e WHERE e.id = $1
-	`, id).Scan(
+		FROM exams e WHERE e.id = $1 AND e.tenant_id = $2
+	`, id, tenantID).Scan(
 		&e.ID, &e.Code, &e.Name, &description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt, &tenantID,
+		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt, &tenantID2,
 	)
 	if err != nil {
 		return nil, err
@@ -229,7 +230,7 @@ func (s *ExamStore) fetchExam(ctx context.Context, id string) (*domain.Exam, err
 	e.CoverImage = coverImage
 	e.CreatorID = creatorID
 	e.BatchID = batchID
-	e.TenantID = tenantID
+	e.TenantID = tenantID2
 	questions, err := s.fetchExamQuestions(ctx, id)
 	if err == nil {
 		e.Questions = questions

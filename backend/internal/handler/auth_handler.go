@@ -314,6 +314,8 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 	user.PasswordHash = ""
 	// OAuth 第三方凭据不随登录响应下发
 	user.Oauth = nil
+	// 文件资源通道：HttpOnly cookie 供 <img>/kkFileView 等无 Authorization 头的请求使用
+	middleware.SetAuthCookie(w, token)
 	respondJSON(w, http.StatusOK, LoginResponse{Token: token, User: *user})
 }
 
