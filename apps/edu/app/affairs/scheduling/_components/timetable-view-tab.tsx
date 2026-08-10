@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +16,7 @@ import { OrgNodePicker } from '@/components/shared/org-node-picker'
 import { ScheduleGrid } from '@/components/shared/schedule-grid'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { usePortalUsers } from '@/hooks/use-portal-users'
+import { useOrgTree } from '@/hooks/use-org-tree'
 import { periodSlotApi, scheduleApi } from '@/lib/api'
 import type { AffairsTerm, PeriodSlot, ScheduleEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     roleCode: 'teacher',
     pageSize: 100,
   })
+  const { orgTree, orgTypeMap } = useOrgTree(tenantId)
 
   const [viewMode, setViewMode] = useState<ViewMode>('class')
   const [viewStatus, setViewStatus] = useState<'draft' | 'published'>('draft')
@@ -48,6 +50,30 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
   const [periodSlots, setPeriodSlots] = useState<PeriodSlot[]>([])
   const [publishOpen, setPublishOpen] = useState(false)
   const [publishing, setPublishing] = useState(false)
+
+  // 默认填充：未选择班级/教师时自动选中第一个班级节点或第一位教师，保证课表有数据可看
+  const firstClassNodeId = useMemo(() => {
+    const walk = (nodes: typeof orgTree): string | undefined => {
+      for (const node of nodes) {
+        if (orgTypeMap.get(node.typeId)?.name === '班级') return node.id
+        const found = node.children ? walk(node.children) : undefined
+        if (found) return found
+      }
+      return undefined
+    }
+    return walk(orgTree)
+  }, [orgTree, orgTypeMap])
+
+  useEffect(() => {
+    if (!term) return
+    if (viewMode === 'class' && !classNodeId && firstClassNodeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setClassNodeId(firstClassNodeId)
+    }
+    if (viewMode === 'teacher' && !teacherId && teachers.length > 0) {
+      setTeacherId(teachers[0].id)
+    }
+  }, [term, viewMode, classNodeId, teacherId, firstClassNodeId, teachers])
 
   const loadTimetable = useCallback(async () => {
     if (!term) return
