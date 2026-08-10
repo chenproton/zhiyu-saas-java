@@ -48,7 +48,7 @@ import {
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { PaginationBar } from '@/components/shared/pagination-bar'
+import { LogTableShell } from '@/components/shared/log-table-shell'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
@@ -112,6 +112,7 @@ export default function SuperAdminPage() {
   const [tenants, setTenants] = useState<AdminTenant[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -340,7 +341,7 @@ export default function SuperAdminPage() {
     setError(null)
     try {
       const params = new URLSearchParams()
-      if (searchTerm) params.set('search', searchTerm)
+      if (debouncedSearch) params.set('search', debouncedSearch)
       params.set('limit', String(PAGE_SIZE))
       params.set('offset', String((page - 1) * PAGE_SIZE))
       const res = await adminFetch<ListResponse<AdminTenant>>(`?${params.toString()}`)
@@ -354,13 +355,24 @@ export default function SuperAdminPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, page, t])
+  }, [debouncedSearch, page, t])
+
+  // 仅搜索输入防抖：停止输入 300ms 后回到第 1 页并刷新；翻页立即请求，不再经过防抖
+  useEffect(() => {
+    if (!authenticated) return
+    const timer = setTimeout(() => {
+      setPage(1)
+      setDebouncedSearch(searchTerm)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm, authenticated])
 
   useEffect(() => {
     if (!authenticated) return
-    const timer = setTimeout(() => fetchTenants(), 300)
-    return () => clearTimeout(timer)
-  }, [searchTerm, page, authenticated, fetchTenants])
+    ;(async () => {
+      await fetchTenants()
+    })()
+  }, [authenticated, fetchTenants])
 
   const openAdminModal = (ten: AdminTenant) => {
     setAdminModalTenant(ten)
@@ -774,10 +786,7 @@ export default function SuperAdminPage() {
           <Input
             placeholder={t('搜索企业名称或标识...')}
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
           />
         </div>
@@ -821,123 +830,107 @@ export default function SuperAdminPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground w-24">{t('租户标识')}</TableHead>
-                  <TableHead className="text-muted-foreground">{t('企业名称')}</TableHead>
-                  <TableHead className="text-muted-foreground">{t('联系人')}</TableHead>
-                  <TableHead className="text-muted-foreground">{t('联系电话')}</TableHead>
-                  <TableHead className="text-muted-foreground">{t('状态')}</TableHead>
-                  <TableHead className="text-muted-foreground">{t('创建时间')}</TableHead>
-                  <TableHead className="text-muted-foreground text-right w-16">{t('操作')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tenants.map((ten) => (
-                  <TableRow key={ten.id} className="border-border group">
-                    <TableCell className="font-mono text-sm text-muted-foreground">
-                      {ten.code}
-                    </TableCell>
-                    <TableCell className="font-medium">{ten.name}</TableCell>
-                    <TableCell>{ten.contact || '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">{ten.phone || '-'}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={ten.status} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {formatDate(ten.createdAt)}
-                    </TableCell>
-                    <TableRowActions>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openAdminModal(ten)}
-                      >
-                        <Users className="mr-1 h-3 w-3" />
-                        {t('学校管理员配置')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openSubscriptionModal(ten)}
-                      >
-                        <Package className="mr-1 h-3 w-3" />
-                        {t('套餐配置')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openTenantTheme(ten)}
-                      >
-                        <Palette className="mr-1 h-3 w-3" />
-                        {t('主题配置')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => openEdit(ten)}
-                      >
-                        <Pencil className="mr-1 h-3 w-3" />
-                        {t('编辑')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleToggleClick(ten)}
-                      >
-                        <Power className="mr-1 h-3 w-3" />
-                        {t(ten.status === 'active' ? '停用' : '启用')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => handleDeleteClick(ten)}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        {t('删除')}
-                      </Button>
-                    </TableRowActions>
-                  </TableRow>
-                ))}
-                {tenants.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-center text-sm text-muted-foreground py-8"
-                    >
-                      {t('暂无租户')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-            <span>{t('共 {total} 条记录', { total })}</span>
-            <PaginationBar
-              page={page}
-              totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-              onPageChange={setPage}
-              disabled={loading}
-            />
-          </div>
-        </>
-      )}
+      <LogTableShell
+        loading={loading}
+        items={tenants}
+        columns={[
+          {
+            header: t('租户标识'),
+            className: 'font-mono text-sm text-muted-foreground w-24',
+            cell: (ten) => ten.code,
+          },
+          {
+            header: t('企业名称'),
+            className: 'font-medium',
+            cell: (ten) => ten.name,
+          },
+          {
+            header: t('联系人'),
+            cell: (ten) => ten.contact || '-',
+          },
+          {
+            header: t('联系电话'),
+            className: 'text-muted-foreground',
+            cell: (ten) => ten.phone || '-',
+          },
+          {
+            header: t('状态'),
+            cell: (ten) => <StatusBadge status={ten.status} />,
+          },
+          {
+            header: t('创建时间'),
+            className: 'text-muted-foreground whitespace-nowrap',
+            cell: (ten) => formatDate(ten.createdAt),
+          },
+          {
+            header: t('操作'),
+            className: 'text-right w-16',
+            cell: (ten) => (
+              <TableRowActions>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openAdminModal(ten)}
+                >
+                  <Users className="mr-1 h-3 w-3" />
+                  {t('学校管理员配置')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openSubscriptionModal(ten)}
+                >
+                  <Package className="mr-1 h-3 w-3" />
+                  {t('套餐配置')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openTenantTheme(ten)}
+                >
+                  <Palette className="mr-1 h-3 w-3" />
+                  {t('主题配置')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openEdit(ten)}
+                >
+                  <Pencil className="mr-1 h-3 w-3" />
+                  {t('编辑')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => handleToggleClick(ten)}
+                >
+                  <Power className="mr-1 h-3 w-3" />
+                  {t(ten.status === 'active' ? '停用' : '启用')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                  onClick={() => handleDeleteClick(ten)}
+                >
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  {t('删除')}
+                </Button>
+              </TableRowActions>
+            ),
+          },
+        ]}
+        emptyText={t('暂无租户')}
+        total={total}
+        page={page}
+        totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+        onPageChange={setPage}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
