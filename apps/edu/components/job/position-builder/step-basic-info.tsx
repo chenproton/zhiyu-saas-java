@@ -697,8 +697,9 @@ export function StepBasicInfo({
 
       {/* Merged Basic Info Card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle>{t('基本信息')}</CardTitle>
+          {aiMode && renderAIButton('polish', t('重新生成'))}
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Row 1: Name + Short Name */}
@@ -801,10 +802,7 @@ export function StepBasicInfo({
 
           {/* Description */}
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description">{t('岗位背景介绍')}</Label>
-              {aiMode && renderAIButton('polish', t('AI 生成'))}
-            </div>
+            <Label htmlFor="description">{t('岗位背景介绍')}</Label>
             <Textarea
               id="description"
               value={position.description}
@@ -827,7 +825,7 @@ export function StepBasicInfo({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('工作职责')}</CardTitle>
-          {aiMode && renderAIButton('responsibilities', t('AI 生成'))}
+          {aiMode && renderAIButton('responsibilities', t('重新生成'))}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -906,7 +904,7 @@ export function StepBasicInfo({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('任职要求')}</CardTitle>
-          {aiMode && renderAIButton('requirements', t('AI 生成'))}
+          {aiMode && renderAIButton('requirements', t('重新生成'))}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -985,7 +983,7 @@ export function StepBasicInfo({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">{t('发展路径')}</CardTitle>
-          {aiMode && renderAIButton('careerPath', t('AI 生成'))}
+          {aiMode && renderAIButton('careerPath', t('重新生成'))}
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
