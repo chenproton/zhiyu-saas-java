@@ -2,12 +2,16 @@ package router
 
 import (
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 // publicAPIRoutes 公开路由白名单：无需认证即可访问的 /api/v1 路由。
@@ -52,6 +56,7 @@ func TestAPIRoutesRequireAuthzMiddleware(t *testing.T) {
 			// 故按中间件原函数名关键字匹配，而非包路径
 			if strings.Contains(n, "RequireRole") ||
 				strings.Contains(n, "RequirePlatform") ||
+				strings.Contains(n, "RequireAnyPlatform") ||
 				strings.Contains(n, "RequireSystemPermission") ||
 				strings.Contains(n, "RequireUserRead") {
 				return nil
@@ -89,4 +94,59 @@ func TestPublicRoutesWhitelistReachable(t *testing.T) {
 			t.Errorf("白名单路由未注册（或已被覆盖）：%s", r)
 		}
 	}
+}
+
+// TestFileRoutesPlatformMatrix 文件路由（upload/preview/sign-url）平台矩阵回归：
+// portal/partner token 必须可用，saas token 必须 403，未登录必须 401。
+// 该用例同时防"chi 同 method+path 静默覆盖"——若文件路由被挪入单一平台组重复注册，
+// 另一平台 token 将得到 403 而非进入 handler，测试即失败。
+func TestFileRoutesPlatformMatrix(t *testing.T) {
+	rt := New(nil, "test-secret", nil, nil, nil)
+	svr := httptest.NewServer(rt.Handler)
+	defer svr.Close()
+
+	portal := newPlatformToken(t, "test-secret", domain.UserPlatformPortal)
+	partner := newPlatformToken(t, "test-secret", domain.UserPlatformPartner)
+	saas := newPlatformToken(t, "test-secret", domain.UserPlatformSaas)
+
+	cases := []struct {
+		name   string
+		token  string
+		tenant string
+		want   int
+	}{
+		{"portal可用", portal, "t-portal", http.StatusNotFound}, // 进入 handler：文件不存在 404
+		{"partner可用", partner, "t-partner", http.StatusNotFound},
+		{"saas拒绝", saas, "t-saas", http.StatusForbidden},
+		{"未登录拒绝", "", "", http.StatusUnauthorized},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			u := svr.URL + "/api/v1/files/sign-url?name=" + url.QueryEscape("/uploads/"+tc.tenant+"/x.png")
+			req, _ := http.NewRequest(http.MethodGet, u, nil)
+			if tc.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.token)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.want)
+			}
+		})
+	}
+}
+
+func newPlatformToken(t *testing.T, secret string, platform domain.UserPlatform) string {
+	t.Helper()
+	tid := "t-" + string(platform)
+	tok, err := middleware.GenerateToken(secret, middleware.TokenInput{
+		User: &domain.User{ID: "u-test", TenantID: &tid, Platform: platform},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tok
 }

@@ -124,7 +124,7 @@
 | 项 | 状态 | 落点 |
 |---|------|------|
 | P0 文件下载鉴权与租户隔离 | ✅ 已实施 | `/uploads/{tenantID}/{filename}` 混合鉴权（签名 URL / cookie / Bearer）；上传按租户分目录；`/api/v1/files/sign-url` 签发短时签名 URL（15 分钟，HMAC-SHA256 绑定路径+过期时间）；存量迁移脚本 `scripts/migrate_uploads.sh`（按 information_schema 动态枚举 URL 类列，含数组列） |
-| P0 默认拒绝兜底 | ✅ 已实施 | 路由审计测试 `router_audit_test.go`（chi.Walk 遍历中间件链，凡 `/api/v1` 非白名单路由必须命中角色/平台级授权中间件；白名单路由反向校验可达性）；`files/upload\|preview\|sign-url` 移入 portal/partner 平台组（补 `RequirePlatform`）；`auth/select-tenant` 挂登录限流 |
+| P0 默认拒绝兜底 | ✅ 已实施 | 路由审计测试 `router_audit_test.go`（chi.Walk 遍历中间件链，凡 `/api/v1` 非白名单路由必须命中角色/平台级授权中间件；白名单路由反向校验可达性）；`files/upload\|preview\|sign-url` 单点注册 + `RequireAnyPlatform(portal, partner)`（多平台接口重复注册会被 chi 静默覆盖，配平台矩阵回归测试）；`auth/select-tenant` 挂登录限流 |
 | P0 上传类型白名单 | ✅ 已实施 | 上传扩展名白名单与下载侧 `allowedServeExts` 对齐 + 服务端 sniff（HTML/JS/可执行内容与扩展名不符即拒绝） |
 | P1 统一脱敏组件 | ✅ 已实施 | `internal/mask` 包（手机号/身份证/邮箱/学号工号 + `User(manageUsers, u)` 入口），接入用户列表/详情（原 ad-hoc 身份证掩码移除） |
 | P1 store 层单条读写强制租户 | ✅ 首批完成 | users `Get/Update/Delete`、exams `Get/Update/Delete` 签名增加 tenantID，SQL 级 `AND tenant_id = $n`；调用点编译期强制（handler 统一 `requireTenant`/`tenantIDOf`）。其余实体按"分批"延续 |

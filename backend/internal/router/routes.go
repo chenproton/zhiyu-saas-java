@@ -67,17 +67,22 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 		r.Use(auth)
 		r.Use(authmw.OperationLog(db, oplogBuffer))
 
+		// 文件上传/预览/签名 URL：单点注册 + 多平台白名单（portal/partner）。
+		// 注意：不得在 portal/partner 平台组内重复注册——chi 同 method+path
+		// 静默覆盖，后注册组会顶替先注册组（曾导致 sign-url 被 partner 组顶替）
+		r.Group(func(r chi.Router) {
+			r.Use(authmw.RequireAnyPlatform(domain.UserPlatformPortal, domain.UserPlatformPartner))
+			r.With(uploadLimiter).Post("/files/upload", h.fileHandler.Upload)
+			r.Get("/files/preview", h.fileHandler.Preview)
+			r.Get("/files/sign-url", h.fileHandler.SignURL)
+		})
+
 		// ========== Portal 教育端（强制 portal 平台 token）==========
 		r.Group(func(r chi.Router) {
 			r.Use(authmw.RequirePlatform(domain.UserPlatformPortal))
 
 			r.Get("/auth/portal/me", h.authHandler.PortalMe)
 			r.Get("/subscriptions", h.subscriptionHandler.Get)
-
-			// 文件上传/预览/签名 URL：平台隔离，portal token 专属
-			r.With(uploadLimiter).Post("/files/upload", h.fileHandler.Upload)
-			r.Get("/files/preview", h.fileHandler.Preview)
-			r.Get("/files/sign-url", h.fileHandler.SignURL)
 
 			registerLandingRoutes(r, h)
 
@@ -274,12 +279,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 		// ========== Partner 企业端（强制 partner 平台 token）==========
 		r.Group(func(r chi.Router) {
 			r.Use(authmw.RequirePlatform(domain.UserPlatformPartner))
-
-			// 文件上传/预览/签名 URL：平台隔离，partner token 专属
-			r.With(uploadLimiter).Post("/files/upload", h.fileHandler.Upload)
-			r.Get("/files/preview", h.fileHandler.Preview)
-			r.Get("/files/sign-url", h.fileHandler.SignURL)
-
 			registerPartnerRoutes(r, h)
 		})
 	})
