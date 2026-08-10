@@ -118,6 +118,20 @@ func (h *PartnerCoBuildHandler) GetPosition(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, http.StatusOK, pos)
 }
 
+// EditSourcePosition 学校授权编辑：复制学校自建岗位为 draft 副本（幂等，返回副本）。
+func (h *PartnerCoBuildHandler) EditSourcePosition(w http.ResponseWriter, r *http.Request) {
+	partnerTenantID, userID, ok := h.partnerCaller(w, r)
+	if !ok {
+		return
+	}
+	pos, err := h.Service.EditSourcePosition(r.Context(), partnerTenantID, userID, chi.URLParam(r, "id"))
+	if err != nil {
+		respondCoBuildError(w, r, err, "岗位不存在或未授权", "创建编辑稿失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, pos)
+}
+
 func (h *PartnerCoBuildHandler) CreatePosition(w http.ResponseWriter, r *http.Request) {
 	partnerTenantID, userID, ok := h.partnerCaller(w, r)
 	if !ok {
@@ -405,6 +419,20 @@ func (h *PartnerCoBuildHandler) GetScenario(w http.ResponseWriter, r *http.Reque
 	sc, err := h.Service.GetScenario(r.Context(), partnerTenantID, chi.URLParam(r, "id"))
 	if err != nil {
 		respondCoBuildError(w, r, err, "场景方案不存在", "查询共建场景失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, sc)
+}
+
+// EditSourceScenario 学校授权编辑：复制学校自建场景为 draft 副本（幂等，返回副本）。
+func (h *PartnerCoBuildHandler) EditSourceScenario(w http.ResponseWriter, r *http.Request) {
+	partnerTenantID, userID, ok := h.partnerCaller(w, r)
+	if !ok {
+		return
+	}
+	sc, err := h.Service.EditSourceScenario(r.Context(), partnerTenantID, userID, chi.URLParam(r, "id"))
+	if err != nil {
+		respondCoBuildError(w, r, err, "场景不存在或未授权", "创建编辑稿失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, sc)

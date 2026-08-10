@@ -401,6 +401,9 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Post("/enterprises/{id}/link", h.allianceHandler.LinkEnterprise)
 		r.Delete("/enterprises/{id}/link", h.allianceHandler.UnlinkEnterprise)
 		r.Delete("/enterprises/{id}", h.allianceHandler.UnlinkEnterprise)
+		r.Get("/grants", h.allianceHandler.ListGrants)
+		r.Put("/grants", h.allianceHandler.SaveGrants)
+		r.Get("/grants/resource-options", h.allianceHandler.ListGrantResourceOptions)
 
 		r.Get("/enterprises/{eid}/agreements", h.allianceHandler.ListEnterpriseAgreements)
 		r.Post("/enterprises/{eid}/agreements", h.allianceHandler.CreateEnterpriseAgreement)

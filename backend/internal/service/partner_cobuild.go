@@ -67,6 +67,7 @@ func requireCoBuildEditable(status domain.ContentStatus) error {
 }
 
 // ownedPosition 按 id 查岗位并校验归属本企业（source_enterprise_id 不符按不存在处理）。
+// 用于写操作（编辑/删除/提交），仅限本企业共建的 draft 资源。
 func (s *PartnerCoBuildService) ownedPosition(ctx context.Context, enterpriseID, id string) (*domain.CareerPosition, error) {
 	pos, err := s.st.Positions().Get(ctx, id)
 	if err != nil {
@@ -78,13 +79,52 @@ func (s *PartnerCoBuildService) ownedPosition(ctx context.Context, enterpriseID,
 	return pos, nil
 }
 
+// accessiblePosition 读操作可见性：本企业共建的，或学校授权（grant）给本企业的资源。
+func (s *PartnerCoBuildService) accessiblePosition(ctx context.Context, enterpriseID, id string) (*domain.CareerPosition, error) {
+	pos, err := s.st.Positions().Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if pos.SourceEnterpriseID != nil && *pos.SourceEnterpriseID == enterpriseID {
+		return pos, nil
+	}
+	granted, err := s.st.AllianceGrants().IsGranted(ctx, enterpriseID, "position", id)
+	if err != nil {
+		return nil, err
+	}
+	if !granted {
+		return nil, store.ErrNotFound
+	}
+	return pos, nil
+}
+
 // ownedScenario 按 id 查场景并校验归属本企业。
+// 用于写操作（编辑/删除/提交），仅限本企业共建的 draft 资源。
 func (s *PartnerCoBuildService) ownedScenario(ctx context.Context, enterpriseID, id string) (*domain.Scenario, error) {
 	sc, err := s.st.Scenarios().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if sc.TenantID == nil || sc.SourceEnterpriseID == nil || *sc.SourceEnterpriseID != enterpriseID {
+		return nil, store.ErrNotFound
+	}
+	return sc, nil
+}
+
+// accessibleScenario 读操作可见性：本企业共建的，或学校授权（grant）给本企业的资源。
+func (s *PartnerCoBuildService) accessibleScenario(ctx context.Context, enterpriseID, id string) (*domain.Scenario, error) {
+	sc, err := s.st.Scenarios().Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if sc.TenantID != nil && sc.SourceEnterpriseID != nil && *sc.SourceEnterpriseID == enterpriseID {
+		return sc, nil
+	}
+	granted, err := s.st.AllianceGrants().IsGranted(ctx, enterpriseID, "scene", id)
+	if err != nil {
+		return nil, err
+	}
+	if !granted {
 		return nil, store.ErrNotFound
 	}
 	return sc, nil
@@ -106,13 +146,54 @@ func (s *PartnerCoBuildService) ListPositions(ctx context.Context, partnerTenant
 	return s.st.Positions().ListBySourceEnterprise(ctx, ent.ID, schoolTenantID)
 }
 
-// GetPosition 共建岗位详情（仅本企业资源可见）。
+// GetPosition 共建岗位详情（本企业共建或学校授权资源可见）。
 func (s *PartnerCoBuildService) GetPosition(ctx context.Context, partnerTenantID, id string) (*domain.CareerPosition, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, err
 	}
-	return s.ownedPosition(ctx, ent.ID, id)
+	return s.accessiblePosition(ctx, ent.ID, id)
+}
+
+// EditSourcePosition 学校授权编辑：把学校自建岗位复制为 draft 副本（幂等：
+// 已有未完结编辑稿时直接返回），专家在副本上编辑，提交后学校审批覆盖原资源。
+func (s *PartnerCoBuildService) EditSourcePosition(ctx context.Context, partnerTenantID, userID, id string) (*domain.CareerPosition, error) {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return nil, err
+	}
+	src, err := s.st.Positions().Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// 本企业共建资源可直接编辑，无需复制（走现有 draft 编辑流程）
+	if src.SourceEnterpriseID != nil && *src.SourceEnterpriseID == ent.ID {
+		return nil, ErrCoBuildNotEditable
+	}
+	granted, err := s.st.AllianceGrants().IsGranted(ctx, ent.ID, "position", id)
+	if err != nil {
+		return nil, err
+	}
+	if !granted {
+		return nil, store.ErrNotFound
+	}
+	if err := s.requireActiveLink(ctx, ent.ID, src.TenantID); err != nil {
+		return nil, err
+	}
+	// 幂等：已有未完结编辑稿直接返回
+	if existing, err := s.st.Positions().FindDraftBySource(ctx, ent.ID, id); err == nil {
+		return existing, nil
+	}
+	var draftID string
+	err = s.st.WithTx(ctx, func(txStore *store.Store) error {
+		newID, err := txStore.Positions().CopyPositionAsDraft(ctx, txStore.Q(), id, src.TenantID, ent.ID, userID)
+		draftID = newID
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Positions().Get(ctx, draftID)
 }
 
 // CreatePosition 在合作学校租户创建共建岗位（draft + enterprise 来源标记）。
@@ -311,13 +392,56 @@ func (s *PartnerCoBuildService) ListScenarios(ctx context.Context, partnerTenant
 	return s.st.Scenarios().ListBySourceEnterprise(ctx, ent.ID, schoolTenantID)
 }
 
-// GetScenario 共建场景详情（仅本企业资源可见）。
+// GetScenario 共建场景详情（本企业共建或学校授权资源可见）。
 func (s *PartnerCoBuildService) GetScenario(ctx context.Context, partnerTenantID, id string) (*domain.Scenario, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, err
 	}
-	return s.ownedScenario(ctx, ent.ID, id)
+	return s.accessibleScenario(ctx, ent.ID, id)
+}
+
+// EditSourceScenario 学校授权编辑：把学校自建场景复制为 draft 副本（幂等），
+// 专家在副本上编辑，提交后学校审批覆盖原资源。
+func (s *PartnerCoBuildService) EditSourceScenario(ctx context.Context, partnerTenantID, userID, id string) (*domain.Scenario, error) {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return nil, err
+	}
+	src, err := s.st.Scenarios().Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if src.TenantID == nil {
+		return nil, store.ErrNotFound
+	}
+	// 本企业共建资源可直接编辑，无需复制
+	if src.SourceEnterpriseID != nil && *src.SourceEnterpriseID == ent.ID {
+		return nil, ErrCoBuildNotEditable
+	}
+	granted, err := s.st.AllianceGrants().IsGranted(ctx, ent.ID, "scene", id)
+	if err != nil {
+		return nil, err
+	}
+	if !granted {
+		return nil, store.ErrNotFound
+	}
+	if err := s.requireActiveLink(ctx, ent.ID, *src.TenantID); err != nil {
+		return nil, err
+	}
+	if existing, err := s.st.Scenarios().FindDraftBySource(ctx, ent.ID, id); err == nil {
+		return existing, nil
+	}
+	var draftID string
+	err = s.st.WithTx(ctx, func(txStore *store.Store) error {
+		newID, err := txStore.Scenarios().CopyScenarioAsDraft(ctx, txStore.Q(), id, *src.TenantID, ent.ID, userID)
+		draftID = newID
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Scenarios().Get(ctx, draftID)
 }
 
 // CreateScenario 在合作学校租户创建共建场景（draft + enterprise 来源标记）。

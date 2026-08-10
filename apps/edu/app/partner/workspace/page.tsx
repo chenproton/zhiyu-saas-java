@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Users, School, UserCog, ArrowRight, ClipboardList, FileText, Handshake } from 'lucide-react'
+import {
+  Building2,
+  Users,
+  School,
+  ArrowRight,
+  ClipboardList,
+  FileText,
+  Handshake,
+} from 'lucide-react'
 import { partnerWorkspaceApi, partnerSchoolApi, partnerMentorTaskApi } from '@/lib/api'
 import { useAsync, LoadingView, ErrorState } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
@@ -11,7 +19,7 @@ import { getEnterpriseMissingFields } from '@/lib/partner-enterprise-completenes
 
 export default function PartnerWorkspacePage() {
   const t = useT()
-  const { user, enterprise, isAdmin, loading: authLoading } = usePartnerAuth()
+  const { user, enterprise, loading: authLoading } = usePartnerAuth()
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (authLoading || !user) return null
@@ -31,14 +39,15 @@ export default function PartnerWorkspacePage() {
   const stats = [
     { label: t('专家资源'), value: data?.dashboard.expertCount ?? 0, href: '/partner/experts' },
     { label: t('合作学校'), value: data?.dashboard.schoolCount ?? 0, href: '/partner/schools' },
-    { label: t('成员账号'), value: data?.dashboard.memberCount ?? 0, href: '/partner/members' },
+    { label: t('专家账号'), value: data?.dashboard.memberCount ?? 0, href: '/partner/experts' },
   ]
 
   // 待办：待确认合作学校（negotiating）
   const negotiatingCount = (data?.schools ?? []).filter((s) => s.status === 'negotiating').length
   // 待办：未完成测评任务（未分配评分对象或评分未齐）
   const unfinishedTaskCount = (data?.tasks ?? []).filter(
-    (task) => (task.assignedCount ?? 0) === 0 || (task.gradedCount ?? 0) < (task.assignedCount ?? 0),
+    (task) =>
+      (task.assignedCount ?? 0) === 0 || (task.gradedCount ?? 0) < (task.assignedCount ?? 0),
   ).length
   // 待办：企业资料缺失项
   const missingFields = getEnterpriseMissingFields(enterprise ?? {})
@@ -95,16 +104,6 @@ export default function PartnerWorkspacePage() {
       href: '/partner/schools',
       icon: School,
     },
-    ...(isAdmin
-      ? [
-          {
-            title: t('成员账号'),
-            desc: t('管理企业成员登录账号与角色'),
-            href: '/partner/members',
-            icon: UserCog,
-          },
-        ]
-      : []),
   ]
 
   return (

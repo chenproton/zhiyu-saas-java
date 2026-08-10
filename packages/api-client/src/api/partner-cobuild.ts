@@ -26,6 +26,11 @@ export const partnerCobuildPositionApi = {
       `/partner/co-build/positions${buildQuery(params || {})}`,
     ),
   get: (id: string) => partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}`),
+  // 学校授权编辑：复制学校自建岗位为 draft 副本（幂等，返回副本）
+  editSource: (id: string) =>
+    partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}/edit`, {
+      method: 'POST',
+    }),
   create: (req: CoBuildPositionCreateRequest) =>
     partnerRequest<CoBuildPosition>('/partner/co-build/positions', {
       method: 'POST',
@@ -77,6 +82,11 @@ export const partnerCobuildScenarioApi = {
       `/partner/co-build/scenes${buildQuery(params || {})}`,
     ),
   get: (id: string) => partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}`),
+  // 学校授权编辑：复制学校自建场景为 draft 副本（幂等，返回副本）
+  editSource: (id: string) =>
+    partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}/edit`, {
+      method: 'POST',
+    }),
   create: (req: CoBuildScenarioCreateRequest) =>
     partnerRequest<CoBuildScenario>('/partner/co-build/scenes', {
       method: 'POST',

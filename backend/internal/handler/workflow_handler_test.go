@@ -81,18 +81,28 @@ func TestWorkflow_DeleteBlockedByPendingApproval(t *testing.T) {
 	}
 	defer env.DB.Exec(ctx, `DELETE FROM workflows WHERE id = $1`, wfID)
 
+	// 预置真实提交人（approval_records.submitter_id 有 FK 约束，不依赖测试库残留用户）
+	submitterID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
+		VALUES ($1, $2, 'school', 'portal', 'wf_submitter', 'wf_submitter', $3, '审批提交人', 'active', '{}')
+	`, submitterID, testhelper.TestTenantID, "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"); err != nil {
+		t.Fatalf("预置提交人失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM users WHERE id = $1`, submitterID)
+
 	svc := service.New(store.New(env.DB))
 	h := &handler.WorkflowHandler{Service: service.NewApprovalService(svc)}
 	r := chi.NewRouter()
 	r.Delete("/workflows/{id}", h.Delete)
 
-	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11", domain.RoleTeacher)
+	claims := claimsWithRoles(submitterID, domain.RoleTeacher)
 
 	t.Run("有待处理审批单时阻止删除", func(t *testing.T) {
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO approval_records (id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id)
 			VALUES ($1, $2, 'course', $3, $4, 0, 'pending', $5)`,
-			recordID, testhelper.TestTenantID, uuid.NewString(), wfID, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11"); err != nil {
+			recordID, testhelper.TestTenantID, uuid.NewString(), wfID, submitterID); err != nil {
 			t.Fatalf("预置待审批记录失败: %v", err)
 		}
 		defer env.DB.Exec(ctx, `DELETE FROM approval_records WHERE id = $1`, recordID)

@@ -222,6 +222,70 @@ func (s *PartnerService) CreateMember(ctx context.Context, tenantID, username, p
 // ErrInvalidOldPassword 修改密码时旧密码校验失败。
 var ErrInvalidOldPassword = errors.New("invalid old password")
 
+// CreateExpertWithAccount 创建专家档案 + 自动生成专家账号（enterprise_member）并绑定 user_id。
+// 返回明文密码（管理员填写，创建时回显确认）；用户名租户内唯一（login_name 唯一约束兜底）。
+func (s *PartnerService) CreateExpertWithAccount(ctx context.Context, tenantID, enterpriseID string, e *domain.AllianceExpert, username, password string) (*domain.AllianceExpert, string, error) {
+	roleID, err := s.st.Partner().GetRoleIDByCode(ctx, tenantID, domain.RoleEnterpriseMember)
+	if err != nil {
+		return nil, "", err
+	}
+	var expert *domain.AllianceExpert
+	err = s.st.WithTx(ctx, func(txStore *store.Store) error {
+		user, err := txStore.Users().Create(ctx, txStore.Q(), &store.UserCreateParams{
+			TenantID: tenantID,
+			Role:     string(domain.UserRoleEnterprise),
+			RoleID:   roleID,
+			Platform: string(domain.UserPlatformPartner),
+			Username: username,
+			Password: password,
+			Name:     e.Name,
+		})
+		if err != nil {
+			return err
+		}
+		e.UserID = &user.ID
+		id, err := txStore.Alliance().CreateExpert(ctx, e)
+		if err != nil {
+			return err
+		}
+		expert, err = txStore.Alliance().GetExpertByID(ctx, id, tenantID)
+		return err
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	return expert, password, nil
+}
+
+// ResetExpertPassword 重置专家账号密码（admin 编辑专家时可选）。
+func (s *PartnerService) ResetExpertPassword(ctx context.Context, expertUserID, plainPassword string) error {
+	return s.st.Users().ResetPassword(ctx, expertUserID, plainPassword)
+}
+
+// DeleteExpertWithAccount 删除专家档案及其绑定账号（事务）。
+func (s *PartnerService) DeleteExpertWithAccount(ctx context.Context, tenantID, expertID string) error {
+	return s.st.WithTx(ctx, func(txStore *store.Store) error {
+		expert, err := txStore.Alliance().GetExpertByID(ctx, expertID, tenantID)
+		if err != nil {
+			return err
+		}
+		if expert.UserID != nil {
+			if _, err := txStore.Q().Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, *expert.UserID); err != nil {
+				return err
+			}
+			if _, err := txStore.Q().Exec(ctx, `DELETE FROM users WHERE id = $1`, *expert.UserID); err != nil {
+				return err
+			}
+		}
+		return txStore.Alliance().DeleteExpert(ctx, expertID, tenantID)
+	})
+}
+
+// GetMyExpert 专家本人的档案（按绑定账号 user_id 查询）。
+func (s *PartnerService) GetMyExpert(ctx context.Context, tenantID, userID string) (*domain.AllianceExpert, error) {
+	return s.st.Alliance().GetExpertByUserID(ctx, tenantID, userID)
+}
+
 // ChangeMyPassword 修改本人密码（先校验旧密码，与登录同用 bcrypt 比对）。
 func (s *PartnerService) ChangeMyPassword(ctx context.Context, userID, oldPassword, newPassword string) error {
 	user, err := s.st.Users().Get(ctx, userID)

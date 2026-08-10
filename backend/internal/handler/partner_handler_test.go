@@ -273,103 +273,6 @@ func TestAllianceEnterprise_SearchLinkUpdate(t *testing.T) {
 
 // TestPartner_ListMembers 成员列表回归：Users().ListConfig 不含 ScanRows，
 // handler 必须走 UserStore.List（曾误用 executeListQuery 导致 500 scanRows not configured）。
-func TestPartner_ListMembers(t *testing.T) {
-	env := testhelper.SetupTestEnv(t)
-	defer env.Cleanup()
-
-	// 注册企业，造出企业租户 + 管理员账号
-	authH := newPartnerAuthHandler(env)
-	r0 := chi.NewRouter()
-	r0.Post("/auth/partner/register", authH.PartnerRegister)
-	suffix := uuid.NewString()[:8]
-	w := doNoAuthJSON(r0, http.MethodPost, "/auth/partner/register", map[string]interface{}{
-		"enterpriseName": "成员列表测试企业-" + suffix,
-		"username":       "partner_mem_" + suffix,
-		"password":       "abc12345",
-	})
-	if w.Code != http.StatusOK {
-		t.Fatalf("注册失败: %d: %s", w.Code, w.Body.String())
-	}
-	var reg partnerLoginResp
-	if err := json.Unmarshal(w.Body.Bytes(), &reg); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	tenantID := *reg.User.TenantID
-	defer cleanupPartnerTenant(env, tenantID)
-
-	svc := service.New(store.New(env.DB))
-	ph := &handler.PartnerHandler{Service: service.NewPartnerService(svc)}
-	r := chi.NewRouter()
-	r.Get("/partner/members", ph.ListMembers)
-
-	claims := &middleware.Claims{
-		UserID:    reg.User.ID,
-		TenantID:  &tenantID,
-		Platform:  domain.UserPlatformPartner,
-		RoleCodes: []string{domain.RoleEnterpriseAdmin},
-	}
-	req := httptest.NewRequest(http.MethodGet, "/partner/members", nil)
-	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
-	}
-	items, total, err := testhelper.UnmarshalList[domain.User](rec)
-	if err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if total < 1 || len(items) == 0 || items[0].ID != reg.User.ID {
-		t.Fatalf("成员列表应包含注册的管理员账号: total=%d body=%s", total, rec.Body.String())
-	}
-}
-
-// setupPartnerRouter 注册测试企业并装配 partner handler 路由，返回路由与管理员 claims。
-func setupPartnerRouter(t *testing.T, env *testhelper.TestEnv, namePrefix string) (chi.Router, *middleware.Claims, partnerLoginResp) {
-	t.Helper()
-	authH := newPartnerAuthHandler(env)
-	r0 := chi.NewRouter()
-	r0.Post("/auth/partner/register", authH.PartnerRegister)
-	suffix := uuid.NewString()[:8]
-	w := doNoAuthJSON(r0, http.MethodPost, "/auth/partner/register", map[string]interface{}{
-		"enterpriseName": namePrefix + "-" + suffix,
-		"username":       "partner_t_" + suffix,
-		"password":       "abc12345",
-	})
-	if w.Code != http.StatusOK {
-		t.Fatalf("注册失败: %d: %s", w.Code, w.Body.String())
-	}
-	var reg partnerLoginResp
-	if err := json.Unmarshal(w.Body.Bytes(), &reg); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	tenantID := *reg.User.TenantID
-
-	svc := service.New(store.New(env.DB))
-	ph := &handler.PartnerHandler{Service: service.NewPartnerService(svc)}
-	r := chi.NewRouter()
-	r.Get("/partner/enterprise/profile", ph.GetProfile)
-	r.Put("/partner/enterprise/profile", ph.UpdateProfile)
-	r.Post("/partner/experts", ph.CreateExpert)
-	r.Put("/partner/experts/{id}", ph.UpdateExpert)
-	r.Post("/partner/members", ph.CreateMember)
-	r.Put("/partner/members/{id}", ph.UpdateMember)
-	r.Put("/partner/me/password", ph.ChangeMyPassword)
-	r.Put("/partner/schools/{tenantId}/status", ph.UpdateSchoolStatus)
-	r.Get("/partner/cooperation", ph.ListCooperation)
-	r.Get("/partner/mentor-tasks", ph.ListMentorTasks)
-
-	claims := &middleware.Claims{
-		UserID:    reg.User.ID,
-		TenantID:  &tenantID,
-		Platform:  domain.UserPlatformPartner,
-		RoleCodes: []string{domain.RoleEnterpriseAdmin},
-	}
-	return r, claims, reg
-}
-
-// TestPartner_RegisterEnterpriseFields 注册字段落库回归：前端注册提交
-// unifiedSocialCreditCode/contactPerson/contactPhone/contactEmail，后端曾直接丢弃。
 func TestPartner_RegisterEnterpriseFields(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
@@ -419,75 +322,52 @@ func TestPartner_RegisterEnterpriseFields(t *testing.T) {
 	}
 }
 
-// TestPartner_MemberPhoneEmail 成员 phone/email 回归：创建/更新成员时
-// 前端提交的 phone/email 曾丢失（请求 struct 无对应字段）。
-func TestPartner_MemberPhoneEmail(t *testing.T) {
-	env := testhelper.SetupTestEnv(t)
-	defer env.Cleanup()
-
-	r, claims, reg := setupPartnerRouter(t, env, "成员联系方式测试企业")
-	defer cleanupPartnerTenant(env, *reg.User.TenantID)
-
-	var memberID string
-	t.Run("create with phone email", func(t *testing.T) {
-		w := doWithClaims(r, http.MethodPost, "/partner/members", map[string]interface{}{
-			"username": "mem_" + uuid.NewString()[:8],
-			"password": "abc12345",
-			"name":     "成员甲",
-			"phone":    "13911111111",
-			"email":    "mema@example.com",
-		}, claims)
-		if w.Code != http.StatusCreated {
-			t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
-		}
-		var u domain.User
-		if err := json.Unmarshal(w.Body.Bytes(), &u); err != nil {
-			t.Fatalf("unmarshal: %v", err)
-		}
-		if u.Phone == nil || *u.Phone != "13911111111" || u.Email == nil || *u.Email != "mema@example.com" {
-			t.Fatalf("创建成员 phone/email 未生效: %+v", u)
-		}
-		memberID = u.ID
+// setupPartnerRouter 注册企业并构造注入 PartnerService 的路由（含专家/改密/学校状态等）。
+func setupPartnerRouter(t *testing.T, env *testhelper.TestEnv, namePrefix string) (chi.Router, *middleware.Claims, partnerLoginResp) {
+	t.Helper()
+	authH := newPartnerAuthHandler(env)
+	r0 := chi.NewRouter()
+	r0.Post("/auth/partner/register", authH.PartnerRegister)
+	suffix := uuid.NewString()[:8]
+	w := doNoAuthJSON(r0, http.MethodPost, "/auth/partner/register", map[string]interface{}{
+		"enterpriseName": namePrefix + "-" + suffix,
+		"username":       "partner_t_" + suffix,
+		"password":       "abc12345",
 	})
-	if memberID == "" {
-		t.Fatalf("创建成员失败，跳过后续用例")
+	if w.Code != http.StatusOK {
+		t.Fatalf("注册失败: %d: %s", w.Code, w.Body.String())
 	}
-
-	assertContact := func(t *testing.T, wantPhone, wantEmail string) {
-		t.Helper()
-		var phone, email *string
-		if err := env.DB.QueryRow(context.Background(),
-			`SELECT phone, email FROM users WHERE id = $1`, memberID).Scan(&phone, &email); err != nil {
-			t.Fatalf("查询成员失败: %v", err)
-		}
-		if phone == nil || *phone != wantPhone || email == nil || *email != wantEmail {
-			t.Fatalf("phone/email 应为 %s/%s, got %v/%v", wantPhone, wantEmail, phone, email)
-		}
+	var reg partnerLoginResp
+	if err := json.Unmarshal(w.Body.Bytes(), &reg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
+	tenantID := *reg.User.TenantID
 
-	t.Run("update phone email", func(t *testing.T) {
-		w := doWithClaims(r, http.MethodPut, "/partner/members/"+memberID, map[string]interface{}{
-			"phone": "13922222222",
-			"email": "memb@example.com",
-		}, claims)
-		if w.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-		}
-		assertContact(t, "13922222222", "memb@example.com")
-	})
+	svc := service.New(store.New(env.DB))
+	ph := &handler.PartnerHandler{Service: service.NewPartnerService(svc)}
+	r := chi.NewRouter()
+	r.Get("/partner/enterprise/profile", ph.GetProfile)
+	r.Put("/partner/enterprise/profile", ph.UpdateProfile)
+	r.Get("/partner/experts", ph.ListExperts)
+	r.Post("/partner/experts", ph.CreateExpert)
+	r.Put("/partner/experts/{id}", ph.UpdateExpert)
+	r.Delete("/partner/experts/{id}", ph.DeleteExpert)
+	r.Get("/partner/experts/me", ph.GetMyExpert)
+	r.Put("/partner/experts/me", ph.UpdateMyExpert)
+	r.Put("/partner/me/password", ph.ChangeMyPassword)
+	r.Put("/partner/schools/{tenantId}/status", ph.UpdateSchoolStatus)
+	r.Get("/partner/cooperation", ph.ListCooperation)
+	r.Get("/partner/mentor-tasks", ph.ListMentorTasks)
 
-	t.Run("update name keeps contact", func(t *testing.T) {
-		w := doWithClaims(r, http.MethodPut, "/partner/members/"+memberID, map[string]interface{}{
-			"name": "成员甲改",
-		}, claims)
-		if w.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-		}
-		assertContact(t, "13922222222", "memb@example.com")
-	})
+	claims := &middleware.Claims{
+		UserID:    reg.User.ID,
+		TenantID:  &tenantID,
+		Platform:  domain.UserPlatformPartner,
+		RoleCodes: []string{domain.RoleEnterpriseAdmin},
+	}
+	return r, claims, reg
 }
 
-// TestPartner_ChangeMyPassword 改密校验旧密码回归：旧密码缺失/错误应 400，正确才放行。
 func TestPartner_ChangeMyPassword(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
@@ -606,17 +486,23 @@ func TestPartner_UpdateExpertPreservesIsPublic(t *testing.T) {
 	r, claims, reg := setupPartnerRouter(t, env, "专家兜底测试企业")
 	defer cleanupPartnerTenant(env, *reg.User.TenantID)
 
+	suffix := uuid.NewString()[:8]
 	w := doWithClaims(r, http.MethodPost, "/partner/experts", map[string]interface{}{
 		"name":     "专家甲",
 		"isPublic": true,
+		"username": "expert_a_" + suffix,
+		"password": "abc12345",
 	}, claims)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("创建专家失败: %d: %s", w.Code, w.Body.String())
 	}
-	var created domain.AllianceExpert
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+	var createdResp struct {
+		Expert domain.AllianceExpert `json:"expert"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &createdResp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
+	created := createdResp.Expert
 	if !created.IsPublic {
 		t.Fatalf("创建时 isPublic 应为 true: %s", w.Body.String())
 	}

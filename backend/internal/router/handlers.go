@@ -132,7 +132,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	authH.PartnerService = partnerSvc
 	tenantH := &handler.TenantHandler{Service: service.NewTenantService(svc), AdminService: service.NewTenantAdminService(svc)}
 	tenantH.PartnerService = partnerSvc
-	allianceH := &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks()}
+	allianceH := &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks(), Grants: st.AllianceGrants()}
 	allianceH.PartnerService = partnerSvc
 	return &Handlers{
 		authHandler:                   authH,

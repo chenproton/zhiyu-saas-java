@@ -157,24 +157,40 @@ func (h *PartnerHandler) ownEnterpriseID(w http.ResponseWriter, r *http.Request,
 	return enterprise.ID, true
 }
 
+// expertCreateRequest 创建专家请求：档案字段 + 自动生成的登录账号（用户名+密码）。
+type expertCreateRequest struct {
+	domain.AllianceExpert
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func (h *PartnerHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-	var e domain.AllianceExpert
-	if !decodeBody(w, r, &e) {
+	var req expertCreateRequest
+	if !decodeBody(w, r, &req) {
 		return
 	}
-	if e.Name == "" {
+	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "专家姓名不能为空")
+		return
+	}
+	if req.Username == "" {
+		respondError(w, http.StatusBadRequest, "登录用户名不能为空")
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	enterpriseID, ok := h.ownEnterpriseID(w, r, tenantID)
 	if !ok {
 		return
 	}
+	e := req.AllianceExpert
 	e.TenantID = tenantID
 	e.EnterpriseID = &enterpriseID
 	e.CreatedBy = &claims.UserID
@@ -182,17 +198,20 @@ func (h *PartnerHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
 		e.Status = "active"
 	}
 
-	id, err := h.Service.Store().Alliance().CreateExpert(r.Context(), &e)
+	expert, plainPassword, err := h.Service.CreateExpertWithAccount(r.Context(), tenantID, enterpriseID, &e, req.Username, req.Password)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
+			return
+		}
 		respondServerError(w, r, err, "创建专家失败")
 		return
 	}
-	expert, err := h.Service.Store().Alliance().GetExpertByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondServerError(w, r, err, "创建专家失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, expert)
+	respondJSON(w, http.StatusCreated, map[string]interface{}{
+		"expert":          expert,
+		"username":        req.Username,
+		"initialPassword": plainPassword,
+	})
 }
 
 // expertUpdateRequest 专家更新请求：IsPublic 指针区分"未携带"与"置为 false"，
@@ -200,6 +219,8 @@ func (h *PartnerHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
 type expertUpdateRequest struct {
 	domain.AllianceExpert
 	IsPublic *bool `json:"isPublic"`
+	// Password 选填：重置专家账号登录密码。
+	Password string `json:"password"`
 }
 
 func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
@@ -305,6 +326,19 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "更新专家失败")
 		return
 	}
+	// 选填：重置专家账号登录密码
+	if req.Password != "" {
+		if err := validatePassword(req.Password); err != nil {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if existing.UserID != nil {
+			if err := h.Service.ResetExpertPassword(r.Context(), *existing.UserID, req.Password); err != nil {
+				respondServerError(w, r, err, "重置专家密码失败")
+				return
+			}
+		}
+	}
 	expert, err := h.Service.Store().Alliance().GetExpertByID(r.Context(), id, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "更新专家失败")
@@ -319,178 +353,76 @@ func (h *PartnerHandler) DeleteExpert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if err := h.Service.Store().Alliance().DeleteExpert(r.Context(), id, tenantID); err != nil {
+	if err := h.Service.DeleteExpertWithAccount(r.Context(), tenantID, id); err != nil {
 		respondServerError(w, r, err, "删除专家失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-// ===== 成员账号（仅 enterprise_admin——路由层控制） =====
-
-func (h *PartnerHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
-	// Users().ListConfig 不含 ScanRows（扫描函数由 UserStore.List 内部注入），
-	// 不能走通用 executeListQuery，须与 user_management_handler.List 同款调用
-	params, ok := listParamsFromRequest(r, true)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	items, total, err := h.Service.Store().Users().List(r.Context(), params, h.Service.Store().Users().ListConfig())
-	if err != nil {
-		respondServerError(w, r, err, "查询成员列表失败")
-		return
-	}
-	h.Service.Store().Users().AttachUserRoles(r.Context(), items)
-	respondJSON(w, http.StatusOK, ListResponse[domain.User]{Items: items, Total: total})
-}
-
-type partnerMemberCreateRequest struct {
-	Username string  `json:"username"`
-	Password string  `json:"password"`
-	Name     string  `json:"name"`
-	RoleCode string  `json:"roleCode"`
-	Phone    *string `json:"phone"`
-	Email    *string `json:"email"`
-}
-
-func (h *PartnerHandler) CreateMember(w http.ResponseWriter, r *http.Request) {
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	var req partnerMemberCreateRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	if req.Username == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "用户名和姓名不能为空")
-		return
-	}
-	if err := validatePassword(req.Password); err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if req.RoleCode == "" {
-		req.RoleCode = domain.RoleEnterpriseMember
-	}
-
-	user, err := h.Service.CreateMember(r.Context(), tenantID, req.Username, req.Password, req.Name, req.RoleCode, req.Phone, req.Email)
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "用户名已被注册")
-			return
-		}
-		respondServerError(w, r, err, "创建成员失败")
-		return
-	}
-	user.PasswordHash = ""
-	user.Oauth = nil
-	respondJSON(w, http.StatusCreated, user)
-}
-
-type partnerMemberUpdateRequest struct {
-	Name     *string `json:"name"`
-	Status   *string `json:"status"`
-	RoleCode *string `json:"roleCode"`
-	Password *string `json:"password"`
-	Phone    *string `json:"phone"`
-	Email    *string `json:"email"`
-}
-
-// verifyMemberTenant 校验目标用户属于本企业租户（防跨租户操作）。
-func (h *PartnerHandler) verifyMemberTenant(w http.ResponseWriter, r *http.Request, tenantID, userID string) (*domain.User, bool) {
-	user, err := h.Service.Store().Users().Get(r.Context(), userID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "成员不存在")
-		return nil, false
-	}
-	if user.TenantID == nil || *user.TenantID != tenantID || user.Platform != domain.UserPlatformPartner {
-		respondError(w, http.StatusForbidden, "无权操作：成员不属于本企业")
-		return nil, false
-	}
-	return user, true
-}
-
-func (h *PartnerHandler) UpdateMember(w http.ResponseWriter, r *http.Request) {
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if _, ok := h.verifyMemberTenant(w, r, tenantID, id); !ok {
-		return
-	}
-	var req partnerMemberUpdateRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	users := h.Service.Store().Users()
-	if req.Name != nil && *req.Name != "" {
-		if err := users.UpdateSelfName(r.Context(), id, *req.Name); err != nil {
-			respondServerError(w, r, err, "更新成员失败")
-			return
-		}
-	}
-	if req.Phone != nil || req.Email != nil {
-		if err := users.UpdateContact(r.Context(), id, req.Email, req.Phone); err != nil {
-			respondServerError(w, r, err, "更新成员失败")
-			return
-		}
-	}
-	if req.Status != nil && *req.Status != "" {
-		if err := users.UpdateStatus(r.Context(), id, *req.Status); err != nil {
-			respondServerError(w, r, err, "更新成员失败")
-			return
-		}
-	}
-	if req.RoleCode != nil && *req.RoleCode != "" {
-		roleID, err := h.Service.Store().Partner().GetRoleIDByCode(r.Context(), tenantID, *req.RoleCode)
-		if err != nil {
-			respondError(w, http.StatusBadRequest, "无效角色")
-			return
-		}
-		if err := users.BindRoles(r.Context(), h.Service.Store().Q(), id, []string{roleID}); err != nil {
-			respondServerError(w, r, err, "更新成员失败")
-			return
-		}
-	}
-	if req.Password != nil && *req.Password != "" {
-		if err := validatePassword(*req.Password); err != nil {
-			respondError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		if err := users.ResetPassword(r.Context(), id, *req.Password); err != nil {
-			respondServerError(w, r, err, "重置密码失败")
-			return
-		}
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *PartnerHandler) DeleteMember(w http.ResponseWriter, r *http.Request) {
+// GetMyExpert 专家本人的档案（按绑定账号 user_id 查询）。
+func (h *PartnerHandler) GetMyExpert(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-	id := chi.URLParam(r, "id")
-	if id == claims.UserID {
-		respondError(w, http.StatusBadRequest, "不能删除当前登录账号")
+	expert, err := h.Service.GetMyExpert(r.Context(), tenantID, claims.UserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "未找到我的专家档案")
+			return
+		}
+		respondServerError(w, r, err, "查询专家档案失败")
 		return
 	}
-	if _, ok := h.verifyMemberTenant(w, r, tenantID, id); !ok {
-		return
-	}
-	if err := h.Service.Store().Users().Delete(r.Context(), id); err != nil {
-		respondServerError(w, r, err, "删除成员失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	respondJSON(w, http.StatusOK, expert)
 }
 
-// ===== 个人 =====
+// UpdateMyExpert 专家维护自己的档案（仅本人，user_id 强制绑定当前账号）。
+func (h *PartnerHandler) UpdateMyExpert(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	existing, err := h.Service.GetMyExpert(r.Context(), tenantID, claims.UserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "未找到我的专家档案")
+			return
+		}
+		respondServerError(w, r, err, "查询专家档案失败")
+		return
+	}
+	var req expertUpdateRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	e := req.AllianceExpert
+	// 本人维护仅允许更新档案展示字段，账号/归属字段不可改
+	if e.UserID == nil {
+		e.UserID = existing.UserID
+	}
+	e.TenantID = tenantID
+	e.EnterpriseID = existing.EnterpriseID
+	e.CreatedBy = existing.CreatedBy
+	if req.IsPublic == nil {
+		e.IsPublic = existing.IsPublic
+	}
+	if err := h.Service.Store().Alliance().UpdateExpert(r.Context(), existing.ID, tenantID, &e); err != nil {
+		respondServerError(w, r, err, "更新专家档案失败")
+		return
+	}
+	expert, err := h.Service.Store().Alliance().GetExpertByID(r.Context(), existing.ID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "更新专家档案失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, expert)
+}
 
+// partnerChangePasswordRequest 修改本人密码请求。
 type partnerChangePasswordRequest struct {
 	OldPassword string `json:"oldPassword"`
 	NewPassword string `json:"newPassword"`

@@ -48,6 +48,7 @@ type CareerPosition struct {
 	AbilityCount       int                  `json:"abilityCount"`
 	SourceType         string               `json:"sourceType"`
 	SourceEnterpriseID *string              `json:"sourceEnterpriseId,omitempty"`
+	SourceResourceID   *string              `json:"sourceResourceId,omitempty"`
 	CreatedAt          time.Time            `json:"createdAt"`
 	UpdatedAt          time.Time            `json:"updatedAt"`
 }

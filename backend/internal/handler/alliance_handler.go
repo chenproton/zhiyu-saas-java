@@ -15,8 +15,9 @@ import (
 )
 
 type AllianceHandler struct {
-	Store *store.AllianceStore
-	Links *store.AllianceEnterpriseLinkStore
+	Store  *store.AllianceStore
+	Links  *store.AllianceEnterpriseLinkStore
+	Grants *store.AllianceGrantStore
 	// PartnerService 学校代注册企业（创建企业租户+主体+管理员，router 装配时注入）。
 	PartnerService *service.PartnerService
 }
@@ -271,6 +272,109 @@ func (h *AllianceHandler) LinkEnterprise(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	respondJSON(w, http.StatusCreated, item)
+}
+
+// ===== 学校-企业资源授权（alliance_resource_grants） =====
+
+// ListGrants 学校查看某企业的资源授权（position/scene 两行）。
+func (h *AllianceHandler) ListGrants(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	enterpriseID := r.URL.Query().Get("enterpriseId")
+	if enterpriseID == "" {
+		respondError(w, http.StatusBadRequest, "缺少企业参数")
+		return
+	}
+	items, err := h.Grants.ListBySchool(r.Context(), tenantID, enterpriseID)
+	if err != nil {
+		respondServerError(w, r, err, "查询授权失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"enterpriseId": enterpriseID,
+		"grants":       items,
+	})
+}
+
+// saveGrantsRequest 保存授权请求（覆盖式：整组替换某类型资源授权）。
+type saveGrantsRequest struct {
+	EnterpriseID string   `json:"enterpriseId"`
+	ResourceType string   `json:"resourceType"` // position | scene
+	ResourceIDs  []string `json:"resourceIds"`
+}
+
+// SaveGrants 保存某企业对某类型资源的编辑授权（空数组 = 清空授权）。
+func (h *AllianceHandler) SaveGrants(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	var req saveGrantsRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.EnterpriseID == "" {
+		respondError(w, http.StatusBadRequest, "缺少企业参数")
+		return
+	}
+	if req.ResourceType != "position" && req.ResourceType != "scene" {
+		respondError(w, http.StatusBadRequest, "无效资源类型")
+		return
+	}
+	// 仅允许对本校已引入企业授权
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), req.EnterpriseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "企业未引入或不存在")
+		return
+	}
+	if err := h.Grants.Upsert(r.Context(), tenantID, req.EnterpriseID, req.ResourceType, req.ResourceIDs, claims.UserID); err != nil {
+		respondServerError(w, r, err, "保存授权失败")
+		return
+	}
+	items, err := h.Grants.ListBySchool(r.Context(), tenantID, req.EnterpriseID)
+	if err != nil {
+		respondServerError(w, r, err, "查询授权失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"enterpriseId": req.EnterpriseID,
+		"grants":       items,
+	})
+}
+
+// ListGrantResourceOptions 学校可授权资源候选（该企业共建 + 学校自建已发布）。
+func (h *AllianceHandler) ListGrantResourceOptions(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	enterpriseID := r.URL.Query().Get("enterpriseId")
+	if enterpriseID == "" {
+		respondError(w, http.StatusBadRequest, "缺少企业参数")
+		return
+	}
+	items, err := h.Grants.ResourceOptions(r.Context(), tenantID, enterpriseID)
+	if err != nil {
+		respondServerError(w, r, err, "查询资源失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceGrantResourceOption]{Items: items, Total: len(items)})
 }
 
 // UnlinkEnterprise 解除引入（删除 link；历史协议/项目/成果引用保留，页面不再展示）。

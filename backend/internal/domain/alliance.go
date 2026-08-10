@@ -82,6 +82,30 @@ type AllianceLinkedEnterprise struct {
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 }
 
+// ===== 学校-企业资源授权（alliance_resource_grants） =====
+// 企业级授权：学校把岗位/场景资源的编辑权授予合作企业（企业内专家/管理员可见）。
+
+// AllianceResourceGrant 学校对企业的资源编辑授权（按资源类型一行，resource_ids 覆盖式保存）。
+type AllianceResourceGrant struct {
+	ID           string    `json:"id"`
+	TenantID     string    `json:"tenantId"`
+	EnterpriseID string    `json:"enterpriseId"`
+	ResourceType string    `json:"resourceType"` // position | scene
+	ResourceIDs  []string  `json:"resourceIds"`
+	CreatedBy    *string   `json:"createdBy,omitempty"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+}
+
+// AllianceGrantResourceOption 学校可授权资源候选（企业共建 + 学校自建）。
+type AllianceGrantResourceOption struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`   // position | scene
+	Source     string `json:"source"` // enterprise（企业共建）| school（学校自建）
+	SchoolName string `json:"schoolName,omitempty"`
+}
+
 // ===== 企业侧合作学校反向视图（link + 学校名称） =====
 type AlliancePartnerSchool struct {
 	LinkID         string    `json:"linkId"`

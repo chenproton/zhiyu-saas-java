@@ -1,17 +1,112 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
-import { Pencil, Trash2, ExternalLink } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Pencil, Trash2, ExternalLink, Save } from 'lucide-react'
 import Link from 'next/link'
 import { partnerExpertApi } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, LoadingView } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { PartnerExpert } from '@/lib/api'
+import {
+  PartnerExpertForm,
+  PartnerExpertSettingsCard,
+  emptyPartnerExpertForm,
+  type PartnerExpertFormState,
+} from './_components/expert-form'
+
+// 专家（enterprise_member）我的档案视图：只能查看/编辑本人档案
+function MyExpertProfile() {
+  const t = useT()
+  const { toast } = useToast()
+  const { loading: authLoading } = usePartnerAuth()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [item, setItem] = useState<PartnerExpertFormState>(emptyPartnerExpertForm)
+
+  useEffect(() => {
+    if (authLoading) return
+    partnerExpertApi
+      .me()
+      .then((expert) =>
+        setItem({
+          name: expert.name || '',
+          gender: expert.gender || 'male',
+          age: expert.age,
+          city: expert.city || '',
+          title: expert.title || '',
+          position: expert.position || '',
+          experienceYears: expert.experienceYears,
+          education: expert.education || '',
+          industry: expert.industry || '',
+          specialties: expert.specialties || [],
+          introduction: expert.introduction || '',
+          workExperience: expert.workExperience || '',
+          avatarUrl: expert.avatarUrl || '',
+          coverImage: expert.coverImage || '',
+          attachments: expert.attachments || [],
+          status: expert.status || 'active',
+          isPublic: expert.isPublic || false,
+        }),
+      )
+      .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
+      .finally(() => setLoading(false))
+  }, [authLoading, toast, t])
+
+  const handleSave = async () => {
+    if (!item.name) {
+      toast({ title: t('请填写姓名'), variant: 'destructive' })
+      return
+    }
+    setSaving(true)
+    try {
+      await partnerExpertApi.updateMe(item)
+      toast({ title: t('档案已更新') })
+    } catch (e: any) {
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (authLoading || loading) return <LoadingView />
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">{t('我的专家档案')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('维护你的专家档案，档案将共享给引入本企业的合作学校（学校端只读）。')}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="col-span-2 space-y-6">
+          <PartnerExpertForm item={item} onChange={setItem} />
+        </div>
+        <div className="space-y-6">
+          <PartnerExpertSettingsCard item={item} onChange={setItem} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold">{t('保存')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-1" />
+                {saving ? t('保存中...') : t('保存档案')}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function PartnerExpertsPage() {
   const { user, isAdmin, loading: authLoading } = usePartnerAuth()
@@ -28,6 +123,9 @@ export default function PartnerExpertsPage() {
   )
 
   const experts = data ?? []
+
+  // 专家（member）只展示我的档案
+  if (!isAdmin) return <MyExpertProfile />
 
   return (
     <PortalCrudPage

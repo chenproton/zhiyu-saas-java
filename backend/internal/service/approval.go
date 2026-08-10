@@ -22,6 +22,8 @@ func (s *ApprovalService) CreateApproval(ctx context.Context, tenantID *string, 
 }
 
 // ReviewApproval 评审审批（事务：更新记录+同步实体状态）。
+// 审批通过且目标为「学校自建资源编辑稿」（source_resource_id 非空）时，
+// 用 draft 内容覆盖原资源并删除 draft，而不是仅同步状态。
 func (s *ApprovalService) ReviewApproval(ctx context.Context, id, action, newStatus string, stepIdx int, oldStepIdx int, history domain.JSONSlice, targetType, targetID string, tenantID *string, syncStatus bool) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
 		if action == string(domain.ApprovalStatusRejected) {
@@ -47,6 +49,12 @@ func (s *ApprovalService) ReviewApproval(ctx context.Context, id, action, newSta
 			return store.ErrNotFound
 		}
 		if syncStatus && tenantID != nil {
+			// 学校自建资源编辑稿审批通过 → 合并覆盖原资源
+			if merged, err := txStore.MergeSourceEditDraft(ctx, txStore.Q(), targetType, targetID, *tenantID); err != nil {
+				return err
+			} else if merged {
+				return nil
+			}
 			if err := txStore.Approvals().SyncEntityStatus(ctx, txStore.Q(), targetType, newStatus, targetID, *tenantID); err != nil {
 				return err
 			}

@@ -50,6 +50,47 @@ export const allianceEnterpriseApi = {
     }),
 }
 
+export interface AllianceResourceGrant {
+  id: string
+  tenantId: string
+  enterpriseId: string
+  resourceType: 'position' | 'scene'
+  resourceIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AllianceGrantResourceOption {
+  id: string
+  name: string
+  type: 'position' | 'scene'
+  source: 'enterprise' | 'school'
+}
+
+/** 学校-企业资源授权（企业级：岗位/场景编辑权授予合作企业） */
+export const allianceGrantApi = {
+  // 某企业的授权（position/scene 两行）
+  list: (enterpriseId: string) =>
+    portalRequest<{ enterpriseId: string; grants: AllianceResourceGrant[] }>(
+      `/alliance/grants${buildQuery({ enterpriseId })}`,
+    ),
+  // 覆盖式保存某类型授权（空数组=清空）
+  save: (req: {
+    enterpriseId: string
+    resourceType: 'position' | 'scene'
+    resourceIds: string[]
+  }) =>
+    portalRequest<{ enterpriseId: string; grants: AllianceResourceGrant[] }>('/alliance/grants', {
+      method: 'PUT',
+      body: JSON.stringify(req),
+    }),
+  // 可授权资源候选（该企业共建 + 学校自建已发布）
+  resourceOptions: (enterpriseId: string) =>
+    list<AllianceGrantResourceOption>(
+      `/alliance/grants/resource-options${buildQuery({ enterpriseId })}`,
+    ),
+}
+
 export const allianceProjectApi = {
   list: (params?: ListParams) => list<AllianceProject>('/alliance/projects', params),
   get: (id: string) => portalRequest<AllianceProject>(`/alliance/projects/${id}`),
