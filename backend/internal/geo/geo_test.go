@@ -34,6 +34,8 @@ func TestLocation(t *testing.T) {
 		{ip: "223.5.5.5", expect: "杭州"},
 		{ip: "1.2.4.8", expect: "北京"},
 		{ip: "8.8.8.8", expect: "United States"},
+		{ip: "203.0.113.42", expect: ""}, // TEST-NET 保留段
+		{ip: "192.0.2.1", expect: ""},    // TEST-NET 保留段
 		{ip: "127.0.0.1", expect: ""},
 		{ip: "10.1.2.3", expect: ""},
 		{ip: "192.168.1.1", expect: ""},

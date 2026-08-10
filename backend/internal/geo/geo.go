@@ -54,7 +54,10 @@ func (s *Searcher) Location(ip string) string {
 	if len(parts) > 2 {
 		city = strings.TrimSpace(parts[2])
 	}
-	if province == "" || province == "0" || province == "内网IP" {
+	// IANA 保留网段（TEST-NET 等）xdb 标记为 Reserved/保留，无实际归属地
+	if country == "Reserved" || country == "保留" ||
+		province == "Reserved" || province == "保留" ||
+		province == "" || province == "0" || province == "内网IP" {
 		return ""
 	}
 	if country != "" && country != "中国" {
