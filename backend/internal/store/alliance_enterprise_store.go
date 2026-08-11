@@ -180,8 +180,13 @@ func (s *AllianceStore) UpdateEnterpriseProfile(ctx context.Context, id, tenantI
 // tenantID 为空 → 全局联盟展示（仅企业侧开关）；非空 → 该校落地页（link.is_public + enable_public 双控，且排除已终止合作）。
 // 带 tenantID 时额外返回学校侧评级（link.rating，前台评级筛选用）。
 
-// publicEnterpriseColumns 公开企业列：企业主体全列 + 学校侧评级（仅 tenant 分支有值）。
-const publicEnterpriseColumns = enterpriseColumns + `, l.rating`
+// publicEnterpriseColumns 公开企业列：企业主体全列（带 pe. 前缀，JOIN links 时避免共有列歧义）
+// + 学校侧评级（仅 tenant 分支有值）。
+const publicEnterpriseColumns = `pe.id, pe.tenant_id, pe.name, pe.industry, pe.region, pe.description,
+	pe.logo_url, pe.cover_image, pe.cooperation_types, pe.contact_person,
+	pe.contact_phone, pe.contact_email, pe.address, pe.unified_social_credit_code,
+	pe.established_year, pe.employee_count, pe.business_license_photos, pe.qualification_photos,
+	pe.intellectual_property_photos, pe.cover_photos, pe.enable_public, pe.created_at, pe.updated_at, l.rating`
 
 func (s *AllianceStore) ScanPublicEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnterprise, error) {
 	items := make([]domain.AllianceEnterprise, 0)

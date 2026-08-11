@@ -205,9 +205,13 @@ func (s *AllianceStore) GetExpertByIDGlobal(ctx context.Context, id string) (*do
 	`, id)
 }
 
-// publicExpertColumns 公开专家列：专家全列 + 企业名称（前台展示归属企业用）。
+// expertColumnsQualified 专家全列带表别名前缀（public 查询 JOIN partner_enterprises 时用，
+// 避免 id/name/status 等两表共有列名歧义；扫描顺序与 expertColumns 一致）。
+const expertColumnsQualified = "x.id, x.tenant_id, x.name, x.gender, x.age, x.title, x.position, x.expert_type, x.industry, x.professional_fields, x.specialties, x.experience_years, x.education, x.introduction, x.work_experience, x.city, x.avatar_url, x.cover_image, x.photos, x.attachments, x.enterprise_id, x.organization, x.rating, x.status, x.partner_source, x.position_direction, x.secondary_colleges, x.is_public, x.user_id, x.created_by, x.created_at, x.updated_at"
+
+// publicExpertColumns 公开专家列：专家全列（带前缀）+ 企业名称（前台展示归属企业用）。
 // 扫描顺序与 ScanPublicExpertRows 一致。
-const publicExpertColumns = expertColumns + `, pe.name AS enterprise_name`
+const publicExpertColumns = expertColumnsQualified + `, pe.name AS enterprise_name`
 
 func (s *AllianceStore) ScanPublicExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, error) {
 	items := make([]domain.AllianceExpert, 0)
