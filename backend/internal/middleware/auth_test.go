@@ -219,3 +219,50 @@ func TestJWT_TamperedToken(t *testing.T) {
 		t.Errorf("expected 401 for tampered token, got %d", w.Code)
 	}
 }
+
+// TestJWTSetsAuthCookieWhenMissing 旧会话自愈：带 Bearer token 但无 cookie 的请求，
+// 认证成功后应补发 zhiyu_auth cookie（否则 <img> 等 /uploads 请求 401，封面无法展示）。
+func TestJWTSetsAuthCookieWhenMissing(t *testing.T) {
+	handler := middleware.JWT(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool}
+	tokenStr, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	setCookie := w.Header().Get("Set-Cookie")
+	if !strings.Contains(setCookie, "zhiyu_auth=") || !strings.Contains(setCookie, "Path=/uploads") {
+		t.Fatalf("应补发 zhiyu_auth cookie，实际 Set-Cookie: %q", setCookie)
+	}
+}
+
+// TestJWTSkipsCookieWhenAlreadySet cookie 已与 token 一致时不应重复下发。
+func TestJWTSkipsCookieWhenAlreadySet(t *testing.T) {
+	handler := middleware.JWT(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool}
+	tokenStr, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	req.AddCookie(&http.Cookie{Name: middleware.AuthCookieName, Value: tokenStr, Path: "/uploads"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if got := w.Header().Get("Set-Cookie"); got != "" {
+		t.Fatalf("cookie 已一致不应重复下发，实际 Set-Cookie: %q", got)
+	}
+}
