@@ -370,7 +370,7 @@ export default function SuperAdminPage() {
     setLoginLoading(true)
     setLoginError(null)
     if (captchaRequired && !captchaAnswer) {
-      setLoginError(t('请先完成滑块验证'))
+      setLoginError(t('请先输入验证码'))
       setLoginLoading(false)
       return
     }
@@ -397,7 +397,7 @@ export default function SuperAdminPage() {
     } catch (err: any) {
       if (err?.code === 'captcha_required') {
         setCaptchaRequired(true)
-        setLoginError(t('请完成滑块验证后重新登录'))
+        setLoginError(t('请先输入验证码后再登录'))
       } else if (err?.code === 'captcha_wrong') {
         refreshCaptcha()
         setLoginError(t('验证码不正确，请重试'))

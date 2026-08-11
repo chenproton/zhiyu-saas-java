@@ -1567,7 +1567,6 @@
   "验证码加载中...": "Loading captcha...",
   "验证码加载失败": "Failed to load captcha",
   "请完成滑块验证": "Please complete the slider verification",
-  "请完成滑块验证后重新登录": "Please complete the slider verification and sign in again",
   "验证码不正确，请重试": "Incorrect captcha, please try again",
   "知识库": "Knowledge base",
   "管理员电话：0000-12345678": "Admin phone: 0000-12345678",
@@ -4190,5 +4189,7 @@
   "已创建编辑稿，编辑完成后提交学校审批": "Edit draft created. Submit it for school approval after editing",
   "创建编辑稿失败": "Failed to create edit draft",
   "创建中...": "Creating...",
-  "学校授权": "School Granted"
+  "学校授权": "School Granted",
+  "请先输入验证码": "Please enter the captcha",
+  "请先输入验证码后再登录": "Please enter the captcha and sign in again"
 }

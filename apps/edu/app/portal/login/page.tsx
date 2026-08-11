@@ -89,7 +89,7 @@ export default function PortalLoginPage() {
     setError('')
 
     if (captchaRequired && !captchaAnswer) {
-      setError(t('请先完成滑块验证'))
+      setError(t('请先输入验证码'))
       return
     }
 
@@ -112,10 +112,10 @@ export default function PortalLoginPage() {
       }
       await doLogin(res.token)
     } catch (err: any) {
-      // 后端要求验证码：展示滑块并提示；验证码错误：刷新滑块
+      // 后端要求验证码：展示输入框并提示；验证码错误：刷新验证码
       if (err?.code === 'captcha_required') {
         setCaptchaRequired(true)
-        setError(t('请完成滑块验证后重新登录'))
+        setError(t('请先输入验证码后再登录'))
       } else if (err?.code === 'captcha_wrong') {
         refreshCaptcha()
         setError(t('验证码不正确，请重试'))
