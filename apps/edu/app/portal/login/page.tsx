@@ -114,6 +114,8 @@ export default function PortalLoginPage() {
     } catch (err: any) {
       // 后端要求验证码：展示输入框并提示；验证码错误：刷新验证码
       if (err?.code === 'captcha_required') {
+        // 验证码已消费/过期：刷新验证码并清空已填字符（否则旧 id 永远校验失败）
+        refreshCaptcha()
         setCaptchaRequired(true)
         setError(t('请先输入验证码后再登录'))
       } else if (err?.code === 'captcha_wrong') {
