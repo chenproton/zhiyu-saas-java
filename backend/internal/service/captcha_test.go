@@ -25,6 +25,14 @@ func TestCaptchaService_GenerateAndVerify(t *testing.T) {
 	if !strings.HasPrefix(out.Thumb, "data:image/png;base64,") {
 		t.Fatalf("thumb data url invalid: %s", out.Thumb[:40])
 	}
+	// 回归护栏：data url 前缀只能出现一次（go-captcha ToBase64 已带前缀，
+	// 拼接层不得重复拼接，否则浏览器无法解析图片）
+	if strings.Count(out.Image, "data:image/jpeg;base64,") != 1 {
+		t.Fatalf("master image has duplicate data url prefix")
+	}
+	if strings.Count(out.Thumb, "data:image/png;base64,") != 1 {
+		t.Fatalf("thumb image has duplicate data url prefix")
+	}
 	if out.ThumbWidth <= 0 || out.ThumbHeight <= 0 {
 		t.Fatalf("thumb size invalid: %dx%d", out.ThumbWidth, out.ThumbHeight)
 	}

@@ -112,12 +112,14 @@ func (s *CaptchaService) Generate(ctx context.Context) (*CaptchaOut, error) {
 		return nil, fmt.Errorf("captcha encode thumb: %w", err)
 	}
 
+	// 注意：go-captcha 的 ToBase64() 已包含 data:image/...;base64, 前缀，
+	// 这里直接透传，禁止再拼前缀（否则出现双重前缀导致浏览器无法解析）
 	id := newCaptchaID()
 	s.storeAnswer(ctx, id, block.X, block.Y)
 	return &CaptchaOut{
 		CaptchaID:   id,
-		Image:       "data:image/jpeg;base64," + masterBase64,
-		Thumb:       "data:image/png;base64," + thumbBase64,
+		Image:       masterBase64,
+		Thumb:       thumbBase64,
 		ThumbX:      block.DX,
 		ThumbY:      block.DY,
 		ThumbWidth:  block.Width,
