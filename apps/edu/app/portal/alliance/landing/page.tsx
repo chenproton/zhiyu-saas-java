@@ -14,13 +14,14 @@ import {
   Sparkles,
   ArrowUpRight,
   MapPin,
+  Globe,
+  School,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { portalRequest } from '@/lib/api'
 import type {
-  AllianceSchoolInfo,
   AlliancePublicStats,
   AllianceBrand,
   AllianceEnterprise,
@@ -45,7 +46,7 @@ import {
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface LandingData {
-  schoolInfo: AllianceSchoolInfo | null
+  schoolInfo: HeroSchool | null
   stats: AlliancePublicStats | null
   enterprises: AllianceEnterprise[]
   projects: AllianceProject[]
@@ -85,21 +86,37 @@ const STAT_GRADIENTS = [
   'from-primary/90 to-primary/70',
 ]
 
-/** 租户（学校信息页数据源）→ 展示页学校信息 */
-function mapTenantToSchoolInfo(t: BackendTenant): AllianceSchoolInfo {
+/** hero 学校卡数据：取 /portal/apps/alliance/school（tenants）全部展示信息 */
+interface HeroSchool {
+  name: string
+  shortName?: string
+  logoUrl?: string
+  website?: string
+  address?: string
+  province?: string
+  city?: string
+  educationLevel?: string
+  educationNature?: string
+  description?: string
+  scaleData: Record<string, any>
+  secondaryColleges: Array<{ name: string; description?: string }>
+}
+
+/** 租户（学校信息页数据源）→ hero 学校卡数据 */
+function mapTenantToSchoolInfo(t: BackendTenant): HeroSchool {
   return {
-    id: t.id,
-    tenantId: t.id,
     name: t.name,
     shortName: t.shortName,
-    address: t.address,
-    website: t.website,
-    description: t.description,
     logoUrl: t.logoUrl,
+    website: t.website,
+    address: t.address,
+    province: t.province,
+    city: t.city,
+    educationLevel: t.educationLevel,
+    educationNature: t.educationNature,
+    description: t.description,
     scaleData: (t.scaleData || {}) as Record<string, any>,
     secondaryColleges: (t.secondaryColleges || []) as Array<{ name: string; description?: string }>,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
   }
 }
 
@@ -145,7 +162,7 @@ function ViewAllLink({ href }: { href: string }) {
   )
 }
 
-function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null }) {
+function HeroSchoolCard({ schoolInfo }: { schoolInfo: HeroSchool | null }) {
   const t = useT()
   if (!schoolInfo) {
     return (
@@ -182,69 +199,109 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
   const hasScaleData =
     scale.studentCount != null || scale.teacherCount != null || scale.majorCount != null || collegeCount > 0
 
+  // 徽章：办学层次 / 办学性质 / 省市
+  const badges = [
+    schoolInfo.educationLevel,
+    schoolInfo.educationNature,
+    [schoolInfo.province, schoolInfo.city].filter(Boolean).join(' '),
+  ].filter(Boolean) as string[]
+
+  const displayName = schoolInfo.shortName || schoolInfo.name
+
   return (
-    <Card className="border border-white/10 shadow-2xl shadow-black/20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
-      <CardContent className="p-7">
-        <div className="flex items-start gap-4">
+    <Card className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-2xl shadow-black/20">
+      {/* 顶部渐变装饰 */}
+      <div className="h-1.5 bg-gradient-to-r from-primary via-white/40 to-transparent" />
+      <CardContent className="p-6">
+        <div className="flex items-center gap-4">
           {schoolInfo.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={schoolInfo.logoUrl}
               alt={schoolInfo.name}
-              className="w-16 h-16 rounded-xl object-cover border border-white/20 shadow-md bg-white"
+              className="w-14 h-14 rounded-2xl object-cover border border-white/25 shadow-lg bg-white shrink-0"
             />
           ) : (
             <GradientPlaceholder
               seed={schoolInfo.name}
-              className="w-16 h-16 rounded-xl border border-white/20 shadow-md"
+              className="w-14 h-14 rounded-2xl border border-white/25 shadow-lg shrink-0"
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg text-white">{schoolInfo.name}</h3>
-            {schoolInfo.website && (
-              <a
-                href={schoolInfo.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-white/70 hover:text-white mt-1 inline-flex items-center gap-1"
-              >
-                {t('前往官网')} <ArrowUpRight className="h-3 w-3" />
-              </a>
-            )}
-            {schoolInfo.address && (
-              <p className="text-sm text-white/70 mt-1.5 inline-flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                {schoolInfo.address}
-              </p>
-            )}
+            <h3 className="font-semibold text-lg text-white leading-snug truncate">
+              {displayName}
+            </h3>
+            <p className="text-xs text-white/60 mt-0.5 truncate">{t('校企合作联盟')}</p>
           </div>
         </div>
+
+        {badges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-4">
+            {badges.map((b) => (
+              <span
+                key={b}
+                className="text-[11px] font-medium text-white/90 bg-white/15 border border-white/20 rounded-full px-2.5 py-1"
+              >
+                {b}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-2 mt-4">
+          {schoolInfo.website && (
+            <a
+              href={schoolInfo.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-white/80 hover:text-white flex items-center gap-2 transition-colors"
+            >
+              <Globe className="h-3.5 w-3.5 shrink-0 text-white/50" />
+              <span className="truncate">{schoolInfo.website.replace(/^https?:\/\//, '')}</span>
+              <ArrowUpRight className="h-3 w-3 shrink-0" />
+            </a>
+          )}
+          {schoolInfo.address && (
+            <p className="text-sm text-white/80 flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-white/50" />
+              <span className="truncate">{schoolInfo.address}</span>
+            </p>
+          )}
+          {collegeCount > 0 && (
+            <p className="text-sm text-white/80 flex items-center gap-2">
+              <School className="h-3.5 w-3.5 shrink-0 text-white/50" />
+              <span>{t('{count} 个二级学院', { count: collegeCount })}</span>
+            </p>
+          )}
+        </div>
+
         {hasScaleData && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-7 py-6 border-y border-white/10">
+          <div className="grid grid-cols-3 gap-2 mt-5 py-4 border-y border-white/10">
             <div className="text-center min-w-0">
-              <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">
+              <p className="text-lg sm:text-xl font-bold text-white/90 truncate">
                 {scale.studentCount?.toLocaleString?.() ?? '—'}
               </p>
-              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">{t('在校生')}</p>
+              <p className="text-[11px] text-white/50 mt-0.5">{t('在校生')}</p>
             </div>
             <div className="text-center min-w-0">
-              <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">
+              <p className="text-lg sm:text-xl font-bold text-white/90 truncate">
                 {scale.teacherCount ?? '—'}
               </p>
-              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">{t('教师')}</p>
+              <p className="text-[11px] text-white/50 mt-0.5">{t('教师')}</p>
             </div>
             <div className="text-center min-w-0">
-              <p className="text-xl sm:text-3xl font-bold text-slate-300 truncate">
+              <p className="text-lg sm:text-xl font-bold text-white/90 truncate">
                 {scale.majorCount ?? collegeCount}
               </p>
-              <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
+              <p className="text-[11px] text-white/50 mt-0.5">
                 {scale.majorCount ? t('专业') : t('二级学院')}
               </p>
             </div>
           </div>
         )}
+
         {schoolInfo.description && (
-          <p className="text-sm text-slate-300 mt-5 leading-relaxed line-clamp-3">
+          <p className="text-[13px] text-white/70 mt-4 leading-relaxed line-clamp-3">
             {schoolInfo.description}
           </p>
         )}
