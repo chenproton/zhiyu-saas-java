@@ -21,7 +21,7 @@ func (s *SubscriptionStore) Get(ctx context.Context, id string) (*domain.Subscri
 	var validUntil *string
 	var modules domain.JSONMap
 	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, name, valid_until, modules, status, created_at, updated_at
+		SELECT id, tenant_id, name, valid_until::text, modules, status, created_at, updated_at
 		FROM subscription_packages WHERE id = $1
 	`, id).Scan(&sub.ID, &sub.TenantID, &sub.Name, &validUntil, &modules, &sub.Status, &sub.CreatedAt, &sub.UpdatedAt)
 	if err != nil {
@@ -38,7 +38,7 @@ func (s *SubscriptionStore) GetByTenant(ctx context.Context, tenantID string) (*
 	var validUntil *string
 	var modules domain.JSONMap
 	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, name, valid_until, modules, status, created_at, updated_at
+		SELECT id, tenant_id, name, valid_until::text, modules, status, created_at, updated_at
 		FROM subscription_packages WHERE tenant_id = $1
 		ORDER BY created_at DESC
 		LIMIT 1

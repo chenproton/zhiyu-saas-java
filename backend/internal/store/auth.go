@@ -31,7 +31,7 @@ func (s *AuthStore) FindUsersByUsername(ctx context.Context, username string, pl
 		       u.role, u.platform, u.login_name, u.username, u.password_hash, u.name, u.email,
 		       u.phone, u.avatar_url, u.student_no, u.work_id, u.id_card, u.title_ids, u.oauth,
 		       u.status, u.created_at, u.updated_at,
-		       t.name as tenant_name, t.status as tenant_status, t.valid_from, t.valid_until
+		       t.name as tenant_name, t.status as tenant_status, t.valid_from::text, t.valid_until::text
 		FROM users u
 		JOIN tenants t ON t.id = u.tenant_id
 		WHERE u.username = $1 AND u.platform = $2
