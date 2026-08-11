@@ -616,7 +616,7 @@ func (s *Store) Partner() *PartnerStore {
 func (s *Store) MergeSourceEditDraft(ctx context.Context, tx Queryer, targetType, targetID, tenantID string) (bool, error) {
 	switch targetType {
 	case "career_position":
-		var srcID string
+		var srcID *string
 		err := tx.QueryRow(ctx, `
 			SELECT source_resource_id FROM career_positions WHERE id = $1 AND tenant_id = $2
 		`, targetID, tenantID).Scan(&srcID)
@@ -626,7 +626,7 @@ func (s *Store) MergeSourceEditDraft(ctx context.Context, tx Queryer, targetType
 			}
 			return false, err
 		}
-		if srcID == "" {
+		if srcID == nil || *srcID == "" {
 			return false, nil
 		}
 		if err := s.positions.MergePositionDraftToSource(ctx, tx, targetID, tenantID); err != nil {
@@ -634,7 +634,7 @@ func (s *Store) MergeSourceEditDraft(ctx context.Context, tx Queryer, targetType
 		}
 		return true, nil
 	case "scenario":
-		var srcID string
+		var srcID *string
 		err := tx.QueryRow(ctx, `
 			SELECT source_resource_id FROM scenarios WHERE id = $1 AND tenant_id = $2
 		`, targetID, tenantID).Scan(&srcID)
@@ -644,7 +644,7 @@ func (s *Store) MergeSourceEditDraft(ctx context.Context, tx Queryer, targetType
 			}
 			return false, err
 		}
-		if srcID == "" {
+		if srcID == nil || *srcID == "" {
 			return false, nil
 		}
 		if err := s.scenarios.MergeScenarioDraftToSource(ctx, tx, targetID, tenantID); err != nil {
