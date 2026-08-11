@@ -350,7 +350,7 @@ export async function main() {
       } catch (e) {
         console.error(`  [${role}] ${e.message}，跳过该角色`)
         results[role] = { login: 'failed', error: e.message, routes: [] }
-        await ctx.close().catch(() => {})
+        await withTimeout(ctx.close().catch(() => {}), 5000, "closeCtx")
         continue
       } finally {
         for (const l of loginListeners) page.off(l.kind, l.handler)
@@ -451,7 +451,7 @@ export async function main() {
       }))
 
       results[role] = { login: 'ok', routes: perRole.sort((a, b) => a.route.localeCompare(b.route)) }
-      await ctx.close().catch(() => {})
+      await withTimeout(ctx.close().catch(() => {}), 5000, "closeCtx")
     }
   } finally {
     if (watchdogTimer) clearTimeout(watchdogTimer)
