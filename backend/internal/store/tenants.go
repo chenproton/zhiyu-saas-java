@@ -190,13 +190,13 @@ func (s *TenantStore) Update(ctx context.Context, id string, p *TenantUpdatePara
 			phone = $6, address = $7, description = $8,
 			short_name = $9, school_type = $10, province = COALESCE(NULLIF($11,''), province), city = COALESCE(NULLIF($12,''), city),
 			website = $13, contact_phone = $14, scale_data = $15, secondary_colleges = $16,
-			education_level = $17, education_nature = $18,
+			education_level = $17, education_nature = $18, valid_from = $19, valid_until = $20,
 			updated_at = NOW()
-		WHERE id = $19
+		WHERE id = $21
 	`, p.Name, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description,
 		p.ShortName, p.SchoolType, p.Province, p.City,
 		p.Website, p.ContactPhone, p.ScaleData, p.SecondaryColleges,
-		p.EducationLevel, p.EducationNature, id)
+		p.EducationLevel, p.EducationNature, p.ValidFrom, p.ValidUntil, id)
 	return err
 }
 
@@ -226,6 +226,8 @@ type TenantUpdateParams struct {
 	SecondaryColleges json.RawMessage
 	EducationLevel    *string
 	EducationNature   *string
+	ValidFrom         *string
+	ValidUntil        *string
 }
 
 func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenant, error) {
@@ -233,18 +235,18 @@ func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenan
 	var logo, domainVal, enterpriseCode, contact, phone, address, description *string
 	var shortName, schoolType, province, city, website, contactPhone *string
 	var scaleData, secondaryColleges json.RawMessage
-	var edLevel, edNature *string
+	var edLevel, edNature, validFrom, validUntil *string
 
 	err := s.q.QueryRow(ctx, `
 		SELECT id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description,
 			short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges,
-			education_level, education_nature,
+			education_level, education_nature, valid_from, valid_until,
 			admin_ids, status, created_at, updated_at
 		FROM tenants WHERE id = $1
 	`, id).Scan(
 		&t.ID, &t.Name, &t.Code, &t.Type, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
 		&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
-		&edLevel, &edNature,
+		&edLevel, &edNature, &validFrom, &validUntil,
 		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
@@ -267,6 +269,8 @@ func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenan
 	t.SecondaryColleges = secondaryColleges
 	t.EducationLevel = edLevel
 	t.EducationNature = edNature
+	t.ValidFrom = validFrom
+	t.ValidUntil = validUntil
 	return &t, nil
 }
 
@@ -277,11 +281,11 @@ func scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
 		var logo, domainVal, enterpriseCode, contact, phone, address, description *string
 		var shortName, schoolType, province, city, website, contactPhone *string
 		var scaleData, secondaryColleges json.RawMessage
-		var edLevel, edNature *string
+		var edLevel, edNature, validFrom, validUntil *string
 		if err := rows.Scan(
 			&t.ID, &t.Name, &t.Code, &t.Type, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
 			&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
-			&edLevel, &edNature,
+			&edLevel, &edNature, &validFrom, &validUntil,
 			&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -303,6 +307,8 @@ func scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
 		t.SecondaryColleges = secondaryColleges
 		t.EducationLevel = edLevel
 		t.EducationNature = edNature
+		t.ValidFrom = validFrom
+		t.ValidUntil = validUntil
 		items = append(items, t)
 	}
 	return items, rows.Err()
@@ -342,9 +348,9 @@ func (s *TenantStore) CreateWithDefaults(ctx context.Context, tx Queryer, p *Ten
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
-	`, id, p.Name, p.Code, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description); err != nil {
+		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, valid_from, valid_until, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')
+	`, id, p.Name, p.Code, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description, p.ValidFrom, p.ValidUntil); err != nil {
 		return nil, err
 	}
 
@@ -536,9 +542,9 @@ func (s *TenantStore) CreateEnterpriseTenant(ctx context.Context, tx Queryer, p 
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status, type)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', 'enterprise')
-	`, id, p.Name, p.Code, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description); err != nil {
+		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, valid_from, valid_until, status, type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', 'enterprise')
+	`, id, p.Name, p.Code, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description, p.ValidFrom, p.ValidUntil); err != nil {
 		return nil, err
 	}
 
@@ -596,6 +602,8 @@ type TenantCreateParams struct {
 	Phone          *string
 	Address        *string
 	Description    *string
+	ValidFrom      *string
+	ValidUntil     *string
 }
 
 // ErrCodeExists 租户标识已存在。

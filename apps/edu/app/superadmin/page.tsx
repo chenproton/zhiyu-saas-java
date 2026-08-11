@@ -80,6 +80,8 @@ interface AdminTenant {
   phone?: string
   address?: string
   description?: string
+  validFrom?: string
+  validUntil?: string
   adminIds: string[]
   status: 'active' | 'inactive'
   createdAt: string
@@ -146,6 +148,8 @@ export default function SuperAdminPage() {
     enterpriseCode: '',
     address: '',
     description: '',
+    validFrom: '',
+    validUntil: '',
     status: 'active' as 'active' | 'inactive',
   })
 
@@ -388,6 +392,8 @@ export default function SuperAdminPage() {
       enterpriseCode: '',
       address: '',
       description: '',
+      validFrom: '',
+      validUntil: '',
       status: 'active',
     })
     setEntUsername('')
@@ -405,6 +411,8 @@ export default function SuperAdminPage() {
       enterpriseCode: ten.enterpriseCode || '',
       address: ten.address || '',
       description: ten.description || '',
+      validFrom: ten.validFrom || '',
+      validUntil: ten.validUntil || '',
       status: ten.status,
     })
   }
@@ -770,6 +778,8 @@ export default function SuperAdminPage() {
               contactEmail: entForm.contactEmail || null,
               enablePublic: profileForm.enablePublic,
               status: formData.status,
+              validFrom: formData.validFrom || '',
+              validUntil: formData.validUntil || '',
             }),
           })
           toast({ title: t('更新成功') })
@@ -784,6 +794,8 @@ export default function SuperAdminPage() {
               enterpriseCode: formData.enterpriseCode || null,
               address: formData.address || null,
               description: formData.description || null,
+              validFrom: formData.validFrom || null,
+              validUntil: formData.validUntil || null,
             }),
           })
           toast({ title: t('更新成功') })
@@ -803,6 +815,8 @@ export default function SuperAdminPage() {
             phone: entForm.contactPhone || null,
             contactEmail: entForm.contactEmail || null,
             enterpriseCode: entForm.creditCode || null,
+            validFrom: formData.validFrom || null,
+            validUntil: formData.validUntil || null,
           }),
         })
         toast({
@@ -827,6 +841,8 @@ export default function SuperAdminPage() {
             enterpriseCode: formData.enterpriseCode || null,
             address: formData.address || null,
             description: formData.description || null,
+            validFrom: formData.validFrom || null,
+            validUntil: formData.validUntil || null,
           }),
         })
         toast({ title: t('创建成功') })
@@ -1090,6 +1106,14 @@ export default function SuperAdminPage() {
           {
             header: t('状态'),
             cell: (ten) => <StatusBadge status={ten.status} />,
+          },
+          {
+            header: t('有效期'),
+            className: 'text-muted-foreground whitespace-nowrap',
+            cell: (ten) => {
+              if (!ten.validFrom && !ten.validUntil) return t('不限')
+              return [ten.validFrom || '-', ten.validUntil || '-'].join(' ~ ')
+            },
           },
           {
             header: t('创建时间'),
@@ -1394,6 +1418,27 @@ export default function SuperAdminPage() {
                 )}
               </>
             )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>{t('有效期开始日期')}</Label>
+                <Input
+                  type="date"
+                  value={formData.validFrom}
+                  onChange={(e) => setFormData((p) => ({ ...p, validFrom: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>{t('有效期结束日期')}</Label>
+                <Input
+                  type="date"
+                  value={formData.validUntil}
+                  onChange={(e) => setFormData((p) => ({ ...p, validUntil: e.target.value }))}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('留空表示不限；有效期外租户内所有用户无法登录')}
+            </p>
           </div>
           {error && (
             <div className="mb-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">

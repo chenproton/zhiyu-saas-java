@@ -118,6 +118,8 @@ type Tenant struct {
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	EducationLevel    *string         `json:"educationLevel,omitempty"`
 	EducationNature   *string         `json:"educationNature,omitempty"`
+	ValidFrom         *string         `json:"validFrom,omitempty"`
+	ValidUntil        *string         `json:"validUntil,omitempty"`
 	AdminIDs          []string        `json:"adminIds,omitempty"`
 	Status            TenantStatus    `json:"status"`
 	CreatedAt         time.Time       `json:"createdAt"`

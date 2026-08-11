@@ -32,6 +32,8 @@ type CreateTenantRequest struct {
 	ContactEmail   *string `json:"contactEmail"`
 	Address        *string `json:"address"`
 	Description    *string `json:"description"`
+	ValidFrom      *string `json:"validFrom"`
+	ValidUntil     *string `json:"validUntil"`
 }
 
 // strValue 解引用可选字符串，nil 视为空串。
@@ -61,6 +63,8 @@ type UpdateTenantRequest struct {
 	SecondaryColleges json.RawMessage `json:"secondaryColleges"`
 	EducationLevel    *string         `json:"educationLevel"`
 	EducationNature   *string         `json:"educationNature"`
+	ValidFrom         *string         `json:"validFrom"`
+	ValidUntil        *string         `json:"validUntil"`
 }
 
 type UpdateTenantStatusRequest struct {
@@ -143,6 +147,8 @@ func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Phone:          req.Phone,
 		Address:        req.Address,
 		Description:    req.Description,
+		ValidFrom:      req.ValidFrom,
+		ValidUntil:     req.ValidUntil,
 	})
 	if err != nil {
 		if service.IsConflict(err) {
@@ -216,6 +222,8 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 		SecondaryColleges: req.SecondaryColleges,
 		EducationLevel:    req.EducationLevel,
 		EducationNature:   req.EducationNature,
+		ValidFrom:         req.ValidFrom,
+		ValidUntil:        req.ValidUntil,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新租户失败")
@@ -318,6 +326,8 @@ func (h *TenantHandler) AdminCreate(w http.ResponseWriter, r *http.Request) {
 		Phone:          req.Phone,
 		Address:        req.Address,
 		Description:    req.Description,
+		ValidFrom:      req.ValidFrom,
+		ValidUntil:     req.ValidUntil,
 	})
 	if err != nil {
 		if service.IsConflict(err) {
@@ -363,6 +373,8 @@ func (h *TenantHandler) adminCreateEnterprise(w http.ResponseWriter, r *http.Req
 		ContactPerson:           strValue(req.Contact),
 		ContactPhone:            strValue(req.Phone),
 		ContactEmail:            strValue(req.ContactEmail),
+		ValidFrom:               req.ValidFrom,
+		ValidUntil:              req.ValidUntil,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -478,6 +490,13 @@ func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Req
 	}
 
 	// 2. 租户同步（名称/联系人/电话/企业代码与主体一致，其余字段保持原值）
+	validFrom, validUntil := tenant.ValidFrom, tenant.ValidUntil
+	if req.ValidFrom != nil {
+		validFrom = emptyStrToNil(req.ValidFrom)
+	}
+	if req.ValidUntil != nil {
+		validUntil = emptyStrToNil(req.ValidUntil)
+	}
 	if err := h.Service.Update(r.Context(), tenantID, &store.TenantUpdateParams{
 		Name:              name,
 		LogoURL:           tenant.LogoURL,
@@ -497,6 +516,8 @@ func (h *TenantHandler) AdminUpdateEnterprise(w http.ResponseWriter, r *http.Req
 		SecondaryColleges: tenant.SecondaryColleges,
 		EducationLevel:    tenant.EducationLevel,
 		EducationNature:   tenant.EducationNature,
+		ValidFrom:         validFrom,
+		ValidUntil:        validUntil,
 	}); err != nil {
 		respondServerError(w, r, err, "更新企业租户失败")
 		return
@@ -532,6 +553,9 @@ type adminEnterpriseUpdateRequest struct {
 	ContactEmail            string `json:"contactEmail"`
 	EnablePublic            *bool  `json:"enablePublic"`
 	Status                  string `json:"status"`
+	// 有效期：nil=未携带保留原值；空串=清除限制；否则=设置日期
+	ValidFrom  *string `json:"validFrom"`
+	ValidUntil *string `json:"validUntil"`
 }
 
 func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
@@ -569,6 +593,8 @@ func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 		SecondaryColleges: req.SecondaryColleges,
 		EducationLevel:    req.EducationLevel,
 		EducationNature:   req.EducationNature,
+		ValidFrom:         req.ValidFrom,
+		ValidUntil:        req.ValidUntil,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新租户失败")
