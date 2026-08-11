@@ -396,6 +396,8 @@ export default function SuperAdminPage() {
       setAuthUser(data.user.username || data.user.name || t('管理员'))
     } catch (err: any) {
       if (err?.code === 'captcha_required') {
+        // 验证码已消费/过期：刷新验证码并清空已填字符（否则旧 id 永远校验失败）
+        refreshCaptcha()
         setCaptchaRequired(true)
         setLoginError(t('请先输入验证码后再登录'))
       } else if (err?.code === 'captcha_wrong') {
