@@ -2,6 +2,9 @@ package store
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -24,6 +27,9 @@ func (s *SubscriptionStore) Get(ctx context.Context, id string) (*domain.Subscri
 		SELECT id, tenant_id, name, valid_until::text, modules, status, created_at, updated_at
 		FROM subscription_packages WHERE id = $1
 	`, id).Scan(&sub.ID, &sub.TenantID, &sub.Name, &validUntil, &modules, &sub.Status, &sub.CreatedAt, &sub.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +49,9 @@ func (s *SubscriptionStore) GetByTenant(ctx context.Context, tenantID string) (*
 		ORDER BY created_at DESC
 		LIMIT 1
 	`, tenantID).Scan(&sub.ID, &sub.TenantID, &sub.Name, &validUntil, &modules, &sub.Status, &sub.CreatedAt, &sub.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
