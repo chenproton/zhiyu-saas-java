@@ -227,7 +227,7 @@ func TestJWTSetsAuthCookieWhenMissing(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool}
+	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool, Platform: domain.UserPlatformPortal}
 	tokenStr, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
@@ -239,8 +239,8 @@ func TestJWTSetsAuthCookieWhenMissing(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	setCookie := w.Header().Get("Set-Cookie")
-	if !strings.Contains(setCookie, "zhiyu_auth=") || !strings.Contains(setCookie, "Path=/uploads") {
-		t.Fatalf("应补发 zhiyu_auth cookie，实际 Set-Cookie: %q", setCookie)
+	if !strings.Contains(setCookie, "zhiyu_auth_portal=") || !strings.Contains(setCookie, "Path=/uploads") {
+		t.Fatalf("应补发平台 cookie，实际 Set-Cookie: %q", setCookie)
 	}
 }
 
@@ -250,7 +250,7 @@ func TestJWTSkipsCookieWhenAlreadySet(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool}
+	user := &domain.User{ID: "u1", Role: domain.UserRoleSchool, Platform: domain.UserPlatformPortal}
 	tokenStr, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
@@ -258,11 +258,51 @@ func TestJWTSkipsCookieWhenAlreadySet(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenStr)
-	req.AddCookie(&http.Cookie{Name: middleware.AuthCookieName, Value: tokenStr, Path: "/uploads"})
+	req.AddCookie(&http.Cookie{Name: "zhiyu_auth_portal", Value: tokenStr, Path: "/uploads"})
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
 	if got := w.Header().Get("Set-Cookie"); got != "" {
 		t.Fatalf("cookie 已一致不应重复下发，实际 Set-Cookie: %q", got)
+	}
+}
+
+// TestAuthCookiesPerPlatform 双平台共存：portal 与 partner cookie 各自独立，
+// 后登录不覆盖另一端；Serve（OptionalJWT）按租户匹配取用任一 cookie。
+func TestAuthCookiesPerPlatform(t *testing.T) {
+	portalTok, _ := middleware.GenerateToken(testSecret, middleware.TokenInput{
+		User: &domain.User{ID: "u-p", Platform: domain.UserPlatformPortal, TenantID: strPtr("t-portal")},
+	})
+	partnerTok, _ := middleware.GenerateToken(testSecret, middleware.TokenInput{
+		User: &domain.User{ID: "u-e", Platform: domain.UserPlatformPartner, TenantID: strPtr("t-partner")},
+	})
+
+	// 1) 先登录 portal，再登录 partner：登录响应各写各的 cookie 名
+	w1 := httptest.NewRecorder()
+	middleware.SetAuthCookie(w1, domain.UserPlatformPortal, portalTok)
+	if !strings.Contains(w1.Header().Get("Set-Cookie"), "zhiyu_auth_portal=") {
+		t.Fatalf("portal 登录应写 zhiyu_auth_portal，实际 %q", w1.Header().Get("Set-Cookie"))
+	}
+	w2 := httptest.NewRecorder()
+	middleware.SetAuthCookie(w2, domain.UserPlatformPartner, partnerTok)
+	if !strings.Contains(w2.Header().Get("Set-Cookie"), "zhiyu_auth_partner=") {
+		t.Fatalf("partner 登录应写 zhiyu_auth_partner，实际 %q", w2.Header().Get("Set-Cookie"))
+	}
+
+	// 2) 浏览器同时携带两个 cookie，OptionalJWT 应解析出对应平台 claims
+	var gotPlatform domain.UserPlatform
+	handler := middleware.OptionalJWT(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if c := middleware.CurrentUser(r); c != nil {
+			gotPlatform = c.Platform
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest("GET", "/uploads/t-portal/x.png", nil)
+	req.AddCookie(&http.Cookie{Name: "zhiyu_auth_portal", Value: portalTok, Path: "/uploads"})
+	req.AddCookie(&http.Cookie{Name: "zhiyu_auth_partner", Value: partnerTok, Path: "/uploads"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if gotPlatform != domain.UserPlatformPortal {
+		t.Fatalf("应解析到 portal claims（平台 cookie 优先），实际 %s", gotPlatform)
 	}
 }

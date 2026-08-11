@@ -88,7 +88,7 @@ func TestFileServeRequiresAuth(t *testing.T) {
 				req.Header.Set("Authorization", "Bearer "+tc.header)
 			}
 			if tc.cookie != "" {
-				req.Header.Set("Cookie", middleware.AuthCookieName+"="+tc.cookie)
+				req.Header.Set("Cookie", "zhiyu_auth_portal="+tc.cookie)
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -207,5 +207,43 @@ func TestUploadTenantDirAndWhitelist(t *testing.T) {
 	h.Upload(w, req)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("未登录上传应 403, got %d", w.Code)
+	}
+}
+
+// TestFileServeDualPlatformCookies 双端登录共存：浏览器同时携带 portal/partner cookie，
+// 访问任一租户文件均应 200（Serve 按 URL 租户在候选 claims 中匹配）。
+func TestFileServeDualPlatformCookies(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+	writeTestFile(t, dir, "tenant-b", "y.png", "pngdata")
+
+	h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
+	r := newUploadsRouter(h, "sec")
+	svr := httptest.NewServer(r)
+	defer svr.Close()
+
+	portalTok := tokenFor(t, "sec", "tenant-a")
+	partnerTok := tokenFor(t, "sec", "tenant-b")
+
+	for _, tc := range []struct {
+		name string
+		file string
+		want int
+	}{
+		{"portal 租户文件", "tenant-a/x.png", http.StatusOK},
+		{"partner 租户文件", "tenant-b/y.png", http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodGet, svr.URL+"/uploads/"+tc.file, nil)
+			req.Header.Set("Cookie", "zhiyu_auth_portal="+portalTok+"; zhiyu_auth_partner="+partnerTok)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.want)
+			}
+		})
 	}
 }
