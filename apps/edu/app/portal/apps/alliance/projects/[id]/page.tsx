@@ -9,13 +9,6 @@ import { DateInput } from '@/components/shared/date-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -72,15 +65,6 @@ export default function AllianceProjectDetailPage() {
   const [linkSelected, setLinkSelected] = useState<string[]>([])
   const [achLinkDialog, setAchLinkDialog] = useState(false)
   const [achLinkSelected, setAchLinkSelected] = useState<string[]>([])
-  const [newAgrDialog, setNewAgrDialog] = useState(false)
-  const [aForm, setAForm] = useState({
-    name: '',
-    type: '',
-    startDate: '',
-    endDate: '',
-    status: 'draft',
-    content: '',
-  })
   const [savingA, setSavingA] = useState(false)
 
   const loadData = () => {
@@ -140,26 +124,6 @@ export default function AllianceProjectDetailPage() {
       loadData()
     } catch (e: any) {
       toast({ title: t('操作失败'), description: e.message, variant: 'destructive' })
-    }
-  }
-
-  const createProjectAgreement = async () => {
-    if (!aForm.name) {
-      toast({ title: t('请填写协议名称'), variant: 'destructive' })
-      return
-    }
-    setSavingA(true)
-    try {
-      const data = await allianceAgreementApi.create(aForm)
-      await syncAgreementProjectLinks(data.id, [id])
-      toast({ title: t('协议已创建并关联项目') })
-      setNewAgrDialog(false)
-      setAForm({ name: '', type: '', startDate: '', endDate: '', status: 'draft', content: '' })
-      loadData()
-    } catch (e: any) {
-      toast({ title: t('创建失败'), description: e.message, variant: 'destructive' })
-    } finally {
-      setSavingA(false)
     }
   }
 
@@ -404,9 +368,11 @@ export default function AllianceProjectDetailPage() {
               <Link2 className="h-4 w-4 mr-1" />
               {t('关联已有协议')}
             </Button>
-            <Button size="sm" onClick={() => setNewAgrDialog(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              {t('新增协议')}
+            <Button size="sm" asChild>
+              <Link href={`/portal/apps/alliance/agreements/new?projectId=${id}`}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t('新增协议')}
+              </Link>
             </Button>
           </div>
           <div className="rounded-md border overflow-x-auto">
@@ -461,7 +427,7 @@ export default function AllianceProjectDetailPage() {
       badge: linkedAchievements.length,
       content: (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -472,6 +438,12 @@ export default function AllianceProjectDetailPage() {
             >
               <Link2 className="h-4 w-4 mr-1" />
               {t('关联已有成果')}
+            </Button>
+            <Button size="sm" asChild>
+              <Link href={`/portal/apps/alliance/achievements/new?projectId=${id}`}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t('新增成果')}
+              </Link>
             </Button>
           </div>
           <div className="rounded-md border overflow-x-auto">
@@ -648,74 +620,6 @@ export default function AllianceProjectDetailPage() {
             <Button onClick={saveLinkAgr} disabled={savingA || linkSelected.length === 0}>
               {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               {t('关联 ({count})', { count: linkSelected.length })}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 新增协议（自动关联当前项目） */}
-      <Dialog open={newAgrDialog} onOpenChange={(o) => !o && setNewAgrDialog(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('新增协议（自动关联当前项目）')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label>{t('协议名称 *')}</Label>
-              <Input
-                value={aForm.name}
-                onChange={(e) => setAForm({ ...aForm, name: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('协议类型')}</Label>
-              <Input
-                value={aForm.type}
-                onChange={(e) => setAForm({ ...aForm, type: e.target.value })}
-                placeholder={t('如：战略合作协议')}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('协议状态')}</Label>
-              <Select value={aForm.status} onValueChange={(v) => setAForm({ ...aForm, status: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">{t('草稿')}</SelectItem>
-                  <SelectItem value="active">{t('生效中')}</SelectItem>
-                  <SelectItem value="expired">{t('已失效')}</SelectItem>
-                  <SelectItem value="renewed">{t('已续签')}</SelectItem>
-                  <SelectItem value="terminated">{t('已终止')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t('开始日期')}</Label>
-                <DateInput
-                  type="date"
-                  value={aForm.startDate}
-                  onChange={(e) => setAForm({ ...aForm, startDate: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('结束日期')}</Label>
-                <DateInput
-                  type="date"
-                  value={aForm.endDate}
-                  onChange={(e) => setAForm({ ...aForm, endDate: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewAgrDialog(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={createProjectAgreement} disabled={savingA}>
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('创建并关联')}
             </Button>
           </DialogFooter>
         </DialogContent>
