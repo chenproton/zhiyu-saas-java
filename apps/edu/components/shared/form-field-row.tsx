@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
@@ -64,6 +65,41 @@ export function FormFieldGrid({ cols = 2, className, children }: FormFieldGridPr
       )}
     >
       {children}
+    </div>
+  )
+}
+
+/** 带图标的输入框：图标常驻左侧，输入内容自动缩进，提高字段辨识度与视觉美观 */
+export function IconInput({
+  icon: Icon,
+  ...props
+}: { icon: React.ElementType } & React.ComponentProps<typeof Input>) {
+  return (
+    <div className="relative">
+      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input className="pl-9" {...props} />
+    </div>
+  )
+}
+
+/** 只读字段展示行：图标 + 标签 + 值（详情卡片网格用） */
+export function FieldValue({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType
+  label: string
+  value: string | number | undefined | null
+}) {
+  const v = value == null || value === '' ? '-' : String(value)
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm break-all">{v}</p>
+      </div>
     </div>
   )
 }

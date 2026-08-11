@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -42,7 +41,12 @@ import { portalRequest } from '@/lib/api'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { MultiSelect } from '@/components/ui/multi-select'
-import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import {
+  FormFieldRow,
+  FormFieldGrid,
+  IconInput,
+  FieldValue,
+} from '@/components/shared/form-field-row'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
@@ -127,15 +131,6 @@ const CHINA_REGION: Record<string, string[]> = {
   西藏: ['拉萨', '日喀则', '昌都', '林芝', '山南', '那曲'],
 }
 const PROVINCES = Object.keys(CHINA_REGION)
-
-function IconInput({ icon: Icon, ...props }: { icon: any } & React.ComponentProps<typeof Input>) {
-  return (
-    <div className="relative">
-      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-      <Input className="pl-9" {...props} />
-    </div>
-  )
-}
 
 export default function AllianceSchoolPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -304,19 +299,19 @@ export default function AllianceSchoolPage() {
             </div>
           </div>
           <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <F
+            <FieldValue
               icon={Phone}
               label={t('联系人')}
-              v={`${tenant.contact} / ${tenant.contactPhone !== '-' ? tenant.contactPhone : tenant.phone}`}
+              value={`${tenant.contact} / ${tenant.contactPhone !== '-' ? tenant.contactPhone : tenant.phone}`}
             />
-            <F icon={School} label={t('学校简称')} v={tenant.shortName} />
-            <F icon={BookOpen} label={t('办学层次')} v={tenant.educationLevel} />
-            <F icon={MapPin} label={t('省份/城市')} v={`${tenant.province} ${tenant.city}`} />
-            <F icon={Globe} label={t('官网')} v={tenant.website} />
-            <F icon={Globe} label={t('绑定域名')} v={tenant.domain} />
-            <F icon={MapPin} label={t('学校地址')} v={tenant.address} />
-            <F icon={Hash} label={t('学校代码')} v={tenant.enterpriseCode} />
-            <F icon={Calendar} label={t('创建时间')} v={tenant.createdAt} />
+            <FieldValue icon={School} label={t('学校简称')} value={tenant.shortName} />
+            <FieldValue icon={BookOpen} label={t('办学层次')} value={tenant.educationLevel} />
+            <FieldValue icon={MapPin} label={t('省份/城市')} value={`${tenant.province} ${tenant.city}`} />
+            <FieldValue icon={Globe} label={t('官网')} value={tenant.website} />
+            <FieldValue icon={Globe} label={t('绑定域名')} value={tenant.domain} />
+            <FieldValue icon={MapPin} label={t('学校地址')} value={tenant.address} />
+            <FieldValue icon={Hash} label={t('学校代码')} value={tenant.enterpriseCode} />
+            <FieldValue icon={Calendar} label={t('创建时间')} value={tenant.createdAt} />
           </div>
           {tenant.description && tenant.description !== '-' && (
             <div className="px-6 py-4 border-t border-gray-100">
@@ -560,18 +555,6 @@ export default function AllianceSchoolPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
-
-function F({ icon: Icon, label, v }: { icon: any; label: string; v: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm">{v === '- -' ? '-' : v}</p>
-      </div>
     </div>
   )
 }
