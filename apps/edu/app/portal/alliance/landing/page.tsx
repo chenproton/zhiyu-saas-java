@@ -13,6 +13,7 @@ import {
   Heart,
   Sparkles,
   ArrowUpRight,
+  MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,6 +28,7 @@ import type {
   AllianceExpert,
   AllianceAchievement,
 } from '@/lib/types'
+import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -82,6 +84,24 @@ const STAT_GRADIENTS = [
   'from-primary/80 to-primary/60',
   'from-primary/90 to-primary/70',
 ]
+
+/** 租户（学校信息页数据源）→ 展示页学校信息 */
+function mapTenantToSchoolInfo(t: BackendTenant): AllianceSchoolInfo {
+  return {
+    id: t.id,
+    tenantId: t.id,
+    name: t.name,
+    shortName: t.shortName,
+    address: t.address,
+    website: t.website,
+    description: t.description,
+    logoUrl: t.logoUrl,
+    scaleData: (t.scaleData || {}) as Record<string, any>,
+    secondaryColleges: (t.secondaryColleges || []) as Array<{ name: string; description?: string }>,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  }
+}
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -159,6 +179,8 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
 
   const scale = schoolInfo.scaleData || {}
   const collegeCount = schoolInfo.secondaryColleges?.length ?? 0
+  const hasScaleData =
+    scale.studentCount != null || scale.teacherCount != null || scale.majorCount != null || collegeCount > 0
 
   return (
     <Card className="border border-white/10 shadow-2xl shadow-black/20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl">
@@ -189,8 +211,15 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
                 {t('前往官网')} <ArrowUpRight className="h-3 w-3" />
               </a>
             )}
+            {schoolInfo.address && (
+              <p className="text-sm text-white/70 mt-1.5 inline-flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                {schoolInfo.address}
+              </p>
+            )}
           </div>
         </div>
+        {hasScaleData && (
           <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-7 py-6 border-y border-white/10">
             <div className="text-center min-w-0">
               <p className="text-xl sm:text-3xl font-bold text-white/90 truncate">
@@ -213,6 +242,7 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: AllianceSchoolInfo | null 
               </p>
             </div>
           </div>
+        )}
         {schoolInfo.description && (
           <p className="text-sm text-slate-300 mt-5 leading-relaxed line-clamp-3">
             {schoolInfo.description}
@@ -267,9 +297,9 @@ export default function AllianceLandingPage() {
     ]
 
     const schoolInfoRequest = tenantId
-      ? portalRequest<AllianceSchoolInfo>(
-          `/alliance/public/school-info?tenantId=${tenantId}`,
-        ).catch(() => null)
+      ? portalRequest<BackendTenant>(`/tenants/${tenantId}`)
+          .then(mapTenantToSchoolInfo)
+          .catch(() => null)
       : Promise.resolve(null)
 
     Promise.all([schoolInfoRequest, ...requests])

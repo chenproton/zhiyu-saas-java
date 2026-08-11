@@ -43,6 +43,7 @@ import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
 
@@ -63,6 +64,7 @@ interface Tenant {
   contactPhone: string
   educationLevel: string
   educationNature: string
+  logoUrl: string
   status: 'active' | 'inactive'
   createdAt: string
 }
@@ -85,6 +87,7 @@ function mapBackendTenant(t: BackendTenant): Tenant {
     contactPhone: (t as any).contactPhone || '-',
     educationLevel: (t as any).educationLevel || '-',
     educationNature: (t as any).educationNature || '-',
+    logoUrl: (t as any).logoUrl || '-',
     status: t.status,
     createdAt: t.createdAt,
   }
@@ -167,6 +170,7 @@ export default function AllianceSchoolPage() {
       description: t.description === '-' ? '' : t.description,
       educationLevel: t.educationLevel === '-' ? '' : t.educationLevel,
       educationNature: t.educationNature === '-' ? '' : t.educationNature,
+      logoUrl: t.logoUrl === '-' ? '' : t.logoUrl,
       secondaryColleges: (t as any).secondaryColleges || [],
     })
   }
@@ -207,6 +211,7 @@ export default function AllianceSchoolPage() {
         method: 'PUT',
         body: JSON.stringify({
           name: formData.name,
+          logoUrl: formData.logoUrl || null,
           contact: formData.contact || null,
           phone: formData.phone || formData.contactPhone || null,
           domain: formData.domain || null,
@@ -277,9 +282,18 @@ export default function AllianceSchoolPage() {
         <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
           <div className="px-6 py-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Building className="w-5 h-5 text-primary" />
-              </div>
+              {tenant.logoUrl && tenant.logoUrl !== '-' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={tenant.logoUrl}
+                  alt={tenant.enterpriseName}
+                  className="w-10 h-10 rounded-lg object-cover border border-gray-100 bg-white"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building className="w-5 h-5 text-primary" />
+                </div>
+              )}
               <div>
                 <h2 className="text-lg font-semibold">{tenant.enterpriseName}</h2>
                 <p className="text-sm text-muted-foreground">
@@ -330,6 +344,11 @@ export default function AllianceSchoolPage() {
                 {t('基础信息')}
               </Label>
               <div className="space-y-4">
+                <SingleImageUpload
+                  label={t('学校 Logo')}
+                  value={formData.logoUrl || ''}
+                  onChange={(v) => setF('logoUrl', v)}
+                />
                 <FormFieldRow label={t('学校名称')} required>
                   <IconInput
                     icon={Building}
