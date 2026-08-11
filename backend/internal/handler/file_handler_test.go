@@ -88,7 +88,7 @@ func TestFileServeRequiresAuth(t *testing.T) {
 				req.Header.Set("Authorization", "Bearer "+tc.header)
 			}
 			if tc.cookie != "" {
-				req.Header.Set("Cookie", middleware.AuthCookieName+"="+tc.cookie)
+				req.Header.Set("Cookie", "zhiyu_auth_portal="+tc.cookie)
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {

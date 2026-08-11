@@ -130,7 +130,7 @@
 | P1 store 层单条读写强制租户 | ✅ 两批完成 | 首批：users/exams `Get/Update/Delete`；第二批：question_banks（删裸 `Get` 只留 `GetScoped`）、exam_usages、approvals、user_extension_fields 签名增加 tenantID，SQL 级 `AND tenant_id = $n`。**注意**：scenarios/positions/resource_library 等存在经联盟授权（grant）的合法跨租户读，不能简单强制租户，待 P3 授权感知中间件承接 |
 | P1 健康检查分层 | ✅ 已实施 | `/health`（存活，兼容历史）+ `/health/ready`（DB+Redis Ping，3s 超时，失败 503）；docker-compose healthcheck 切到 ready |
 | P1 限流扩展 | ✅ 已实施 | `cache.RateLimitByUser`（按用户限流，未登录退 IP）；导入/导出 10 次/分钟、上传 20 次/分钟 |
-| P0 前端配套 | ✅ 已实施 | 登录/选租户下发 `zhiyu_auth` HttpOnly cookie（Path=/uploads，`<img>`/zip 预览零改动通过认证）；资源预览弹窗对 kkFileView 先换取签名 URL |
+| P0 前端配套 | ✅ 已实施 | 登录/选租户下发平台独立 HttpOnly cookie（`zhiyu_auth_portal`/`zhiyu_auth_partner`/`zhiyu_auth_saas`，Path=/uploads；同浏览器双端登录互不覆盖，旧 `zhiyu_auth` 兼容读取；`<img>`/zip 预览零改动通过认证；JWT 中间件按需补发，旧会话自动治愈）；资源预览弹窗对 kkFileView 先换取签名 URL |
 | P2 定时任务执行记录与告警 | ✅ 已实施 | `job_run_logs` 表（migration 147）+ scheduler 统一 `runJob` runner（panic recover + 失败重试 1 次 + 执行记录落库，记录写失败不影响任务）；最终失败触发告警 webhook（`ALERT_WEBHOOK_URL` 环境变量，JSON POST，失败仅记日志不影响主流程） |
 | P2 监控指标 | ✅ 已实施 | Prometheus client_golang（vendor 已固化）：`/metrics` 端点 + HTTP 请求数/耗时/状态（路由模式标签防高基数）+ DB 连接池 Total/Idle 指标；middleware 挂 router 根部 |
 | P2 统一错误码 | ✅ 已实施 | `error_codes.go` 常量表（bad_request/unauthorized/forbidden/not_found/conflict/too_many_requests/internal_error，预留 ai_not_configured/ai_upstream_error）；`respondError` 响应体扩展为 `{code, error}`（error 字段保持兼容）；前端 request 层透传 code，全局错误处理按 code 优先分支 |

@@ -14,9 +14,48 @@ type contextKey string
 
 const ContextKeyUser contextKey = "user"
 
-// AuthCookieName 登录成功后下发的 HttpOnly Cookie（仅 /uploads 路径发送），
-// 供 <img> 等无法携带 Authorization 头的资源请求通过认证。
-const AuthCookieName = "zhiyu_auth"
+// AuthCookieNameLegacy 早期版本的统一 cookie 名（兼容读取：升级前已下发的
+// cookie 无平台区分，升级后按 claims.Platform 写入平台独立 cookie 并自然替换）。
+const AuthCookieNameLegacy = "zhiyu_auth"
+
+// authCookieNames 平台独立 cookie 名：portal/partner 共用同一域名时，
+// 单一 cookie 会被后登录的平台覆盖，导致另一端 <img> 资源请求 403；
+// 按平台各写各的，浏览器同时携带，Serve 端按租户匹配取用。
+var authCookieNames = map[domain.UserPlatform]string{
+	domain.UserPlatformPortal:  "zhiyu_auth_portal",
+	domain.UserPlatformPartner: "zhiyu_auth_partner",
+	domain.UserPlatformSaas:    "zhiyu_auth_saas",
+}
+
+// authCookieName 返回平台对应的 cookie 名，未知平台回落旧 cookie 名。
+func authCookieName(platform domain.UserPlatform) string {
+	if n, ok := authCookieNames[platform]; ok {
+		return n
+	}
+	return AuthCookieNameLegacy
+}
+
+// authCookieCandidates 读取 cookie 时尝试的顺序：平台独立 cookie → 旧 cookie。
+func authCookieCandidates(r *http.Request) []string {
+	names := []string{
+		authCookieNames[domain.UserPlatformPortal],
+		authCookieNames[domain.UserPlatformPartner],
+		authCookieNames[domain.UserPlatformSaas],
+		AuthCookieNameLegacy,
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, n := range names {
+		if n == "" || seen[n] {
+			continue
+		}
+		seen[n] = true
+		if c, err := r.Cookie(n); err == nil && c.Value != "" {
+			out = append(out, c.Value)
+		}
+	}
+	return out
+}
 
 type Claims struct {
 	UserID        string              `json:"userId"`
@@ -39,7 +78,7 @@ func JWT(secret string) func(http.Handler) http.Handler {
 				http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
 				return
 			}
-			ensureAuthCookie(w, r)
+			ensureAuthCookie(w, r, claims)
 
 			ctx := context.WithValue(r.Context(), ContextKeyUser, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -58,7 +97,7 @@ func OptionalJWT(secret string) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			ensureAuthCookie(w, r)
+			ensureAuthCookie(w, r, claims)
 			ctx := context.WithValue(r.Context(), ContextKeyUser, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -67,24 +106,27 @@ func OptionalJWT(secret string) func(http.Handler) http.Handler {
 
 // ensureAuthCookie 认证成功后按需补发文件通道 cookie：
 // 修复「部署前登录的旧会话」——localStorage 有 token 但浏览器从未获得
-// zhiyu_auth cookie，<img> 等无 Authorization 头的 /uploads 请求将 401。
-// 仅在 token 来自 Authorization 头且 cookie 缺失/不一致时补发（幂等），
+// 文件 cookie，<img> 等无 Authorization 头的 /uploads 请求将 401。
+// 按 claims.Platform 写入平台独立 cookie（portal/partner 互不覆盖）；
+// 仅在 token 来自 Authorization 头且对应 cookie 缺失/不一致时补发（幂等），
 // 旧会话用户任意一次 API 调用即自动治愈，无需重新登录。
-func ensureAuthCookie(w http.ResponseWriter, r *http.Request) {
+func ensureAuthCookie(w http.ResponseWriter, r *http.Request, claims *Claims) {
 	auth := r.Header.Get("Authorization")
 	tokenStr := strings.TrimPrefix(auth, "Bearer ")
 	if tokenStr == "" || tokenStr == auth {
 		return
 	}
-	if c, err := r.Cookie(AuthCookieName); err == nil && c.Value == tokenStr {
+	name := authCookieName(claims.Platform)
+	if c, err := r.Cookie(name); err == nil && c.Value == tokenStr {
 		return
 	}
-	SetAuthCookie(w, tokenStr)
+	SetAuthCookie(w, claims.Platform, tokenStr)
 }
 
-// tokenClaims 从 Authorization: Bearer 头（优先）或 AuthCookieName cookie
-// 中解析 JWT，返回 claims。强制 UserID 非空：排除预授权令牌（同密钥 HS256
-// 但无 userId）等签名正确但结构不全的令牌类型混淆。
+// tokenClaims 从 Authorization: Bearer 头（优先）或文件通道 cookie
+// （平台独立 cookie + 旧 cookie 兼容）中解析 JWT，返回 claims。
+// 强制 UserID 非空：排除预授权令牌（同密钥 HS256 但无 userId）等
+// 签名正确但结构不全的令牌类型混淆。
 func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
 	tokenStr := ""
 	auth := r.Header.Get("Authorization")
@@ -95,8 +137,11 @@ func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
 		}
 	}
 	if tokenStr == "" {
-		if c, err := r.Cookie(AuthCookieName); err == nil {
-			tokenStr = c.Value
+		for _, v := range authCookieCandidates(r) {
+			tokenStr = v
+			if tokenStr != "" {
+				break
+			}
 		}
 	}
 	if tokenStr == "" {
@@ -117,11 +162,12 @@ func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
 	return claims, true
 }
 
-// SetAuthCookie 下发登录态 Cookie（HttpOnly + SameSite=Lax，仅 /uploads 路径）。
-// 调用时机与 GenerateToken 一一对应，保证文件资源请求与 Bearer 通道同源同权。
-func SetAuthCookie(w http.ResponseWriter, token string) {
+// SetAuthCookie 下发平台独立的登录态 Cookie（HttpOnly + SameSite=Lax，仅 /uploads 路径）。
+// 调用时机与 GenerateToken 一一对应，保证文件资源请求与 Bearer 通道同源同权；
+// portal/partner 各自独立，同一浏览器双端登录互不覆盖。
+func SetAuthCookie(w http.ResponseWriter, platform domain.UserPlatform, token string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     AuthCookieName,
+		Name:     authCookieName(platform),
 		Value:    token,
 		Path:     "/uploads",
 		HttpOnly: true,
