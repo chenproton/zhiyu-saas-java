@@ -25,10 +25,19 @@ async function login(ctx, page, cfg, role, listeners) {
   // 监听登录响应，区分失败原因（先建监听，再操作页面）
   const loginStatusPromise = new Promise(resolve => {
     const timer = setTimeout(() => resolve('timeout'), cfg.loginTimeoutMs + 5000)
-    const onResponse = res => {
+    const onResponse = async res => {
       if (res.url().includes('/auth/portal/login') && res.request().method() === 'POST') {
         clearTimeout(timer)
-        resolve(res.status())
+        const status = res.status()
+        if (status === 400) {
+          // 防爆破滑块验证码拦截：同一 IP 登录失败过多（阈值内），需人工/等待解除
+          const body = await res.json().catch(() => null)
+          if (body?.code === 'captcha_required' || body?.code === 'captcha_wrong') {
+            resolve(`captcha:${body.code}`)
+            return
+          }
+        }
+        resolve(status)
       }
     }
     page.on('response', onResponse)
@@ -48,6 +57,10 @@ async function login(ctx, page, cfg, role, listeners) {
   if (status === 401) throw new Error(`登录失败: 用户名或密码错误（401），或账号已被禁用`)
   if (status === 429) throw new Error(`登录失败: 登录限流（429），请稍后重试`)
   if (status === 'timeout') throw new Error(`登录超时: 登录请求未完成`)
+  if (typeof status === 'string' && status.startsWith('captcha:')) {
+    throw new Error(`登录被防爆破滑块验证码拦截（${status}）：同一 IP 登录失败次数过多。` +
+      `可等待 10 分钟计数过期，或清除验证码失败计数后重试（redis: DEL "zhiyu:captcha:fail:*"）`)
+  }
 
   await sleep(800)
   // 多租户账号需在弹出的租户选择框中选第一个
