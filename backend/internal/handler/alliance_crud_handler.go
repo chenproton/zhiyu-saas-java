@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -321,6 +322,10 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 	}
 	cfg.PrepareCreate = func(t *domain.AllianceBrand, tenantID, userID string) {
 		t.TenantID = tenantID
+		// data 列 NOT NULL（默认 '{}'）；请求未携带时补齐空对象，避免显式 NULL 绕过列默认值
+		if len(t.Data) == 0 {
+			t.Data = json.RawMessage(`{}`)
+		}
 	}
 	cfg.CreateFn = func(ctx context.Context, t *domain.AllianceBrand, tenantID, userID string) (string, error) {
 		return h.Store.CreateBrand(ctx, t)
@@ -331,6 +336,9 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 		}
 		if t.Status == "" {
 			t.Status = existing.Status
+		}
+		if len(t.Data) == 0 {
+			t.Data = existing.Data
 		}
 		if t.CoverImage == nil {
 			t.CoverImage = existing.CoverImage

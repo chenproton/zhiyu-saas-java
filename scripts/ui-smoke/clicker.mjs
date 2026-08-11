@@ -92,7 +92,8 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     const deleteRe = crudMode && deleteSrc ? new RegExp(deleteSrc) : { test: () => false }
     const enableRe = crudMode && enableSrc ? new RegExp(enableSrc) : { test: () => false }
     const disableRe = crudMode && disableSrc ? new RegExp(disableSrc) : { test: () => false }
-    const rowSel = 'tr, li, [role="listitem"], [role="row"], article, [class*="card"], [class*="Card"]'
+    const rowSel = 'tr, li, [role="listitem"], [role="row"]'
+    const cardSel = 'article, [class*="card"], [class*="Card"]'
     // 动作分类：CRUD 动作 > 危险删除类 > 弹层内提交 > 页面级表单入口 > 导航
     const classify = (el, effText, href) => {
       if (effText) {
@@ -115,6 +116,16 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
       if (el.tagName === 'A' && href) return 'nav'
       if (!effText) return 'unknown'
       return 'overlay'
+    }
+    // 判定元素所在"数据行"是否含 SMOKE_ 标记：
+    // 优先行级容器（tr/li/row/listitem）；卡片容器仅在内部不含表格/列表时使用，
+    // 防止整页大卡片容器把"任一 SMOKE_ 行"扩散成"全部行都是 SMOKE_"
+    const rowOf = el => {
+      const rowEl = el.closest(rowSel)
+      if (rowEl) return rowEl
+      const cardEl = el.closest(cardSel)
+      if (cardEl && !cardEl.querySelector('table, tr, li, [role="row"]')) return cardEl
+      return null
     }
     const countByKey = new Map()
     const out = []
@@ -150,7 +161,7 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
       countByKey.set(base, n)
       // 全局/共享元素（侧边栏、顶部导航等）只在第一次遇到时点击，避免每页重复点击拖慢全量回归
       const isGlobal = scope !== 'dialog' && !!el.closest('nav, aside, header, [role="navigation"], [role="banner"]')
-      const row = el.closest(rowSel)
+      const row = rowOf(el)
       const inSmokeRow = !!(marker && row && (row.innerText || '').includes(marker))
       out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal, inSmokeRow })
     })
@@ -340,8 +351,7 @@ async function handleCrudAction(page, cfg, pick, pickText) {
 
 // 判断当前编辑页的实体是否为巡检创建的 SMOKE_ 测试数据：
 // 取页面上名称/标题类输入框的现值，非空且不以 SMOKE_ 开头 → 真实实体，禁止填充提交
-export async function isSmokeEntityPage(page, cfg) {
-  const marker = cfg.crudMarker || 'SMOKE_'
+export async function isSmokeEntityPage(page, cfg) {  const marker = cfg.crudMarker || 'SMOKE_'
   try {
     return await page.evaluate(({ fieldSel, marker }) => {
       const visible = el => el.offsetParent !== null || el.getClientRects().length > 0
@@ -371,6 +381,36 @@ export async function isSmokeEntityPage(page, cfg) {
     }, { fieldSel: FIELD_SELECTOR, marker })
   } catch {
     return false // 页面异常时保守跳过表单测试
+  }
+}
+
+// 点击前复核：CRUD 行操作（编辑/删除/启用/禁用）的目标按钮所在行，
+// 在点击瞬间仍必须包含 SMOKE_ 标记。防止表内数据变化（如删除后 DOM 前移、
+// 分页刷新）导致按 index 误命中真实数据行（曾批量误禁用真实账户）。
+export async function isSmokeRowAtClick(page, cfg, pick) {
+  const marker = cfg.crudMarker || 'SMOKE_'
+  try {
+    return await page.evaluate(({ selector, key, index, marker }) => {
+      let base = key.slice(0, key.lastIndexOf('|'))
+      if (base.startsWith('dlg|')) base = base.slice(4)
+      const matchKey = el => {
+        const text = (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40)
+        const label = (el.getAttribute('aria-label') || el.getAttribute('title') || '').trim().slice(0, 40)
+        const href = el.getAttribute('href') || ''
+        return `${el.tagName}|${text || label}|${href}` === base
+      }
+      const els = [...document.querySelectorAll(selector)]
+      const el = els[index] && matchKey(els[index]) ? els[index] : els.find(matchKey)
+      if (!el) return false
+      const rowSel = 'tr, li, [role="listitem"], [role="row"]'
+      const cardSel = 'article, [class*="card"], [class*="Card"]'
+      const rowEl = el.closest(rowSel)
+      const cardEl = el.closest(cardSel)
+      const row = rowEl || (cardEl && !cardEl.querySelector('table, tr, li, [role="row"]') ? cardEl : null)
+      return !!(row && (row.innerText || '').includes(marker))
+    }, { selector: CLICKABLE_SELECTOR, key: pick.key, index: pick.index, marker })
+  } catch {
+    return false // 页面异常时保守跳过（不点击）
   }
 }
 
@@ -446,6 +486,16 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
         await closeOverlays(page, cfg)
         await ensureZhLocale(page, cfg)
         continue
+      }
+      // CRUD 行操作点击前复核：目标行必须仍是 SMOKE_ 测试数据。
+      // 防止删除/翻页后 DOM 前移，按 index 误命中真实数据行（曾批量误禁用真实账户）。
+      if (!cfg.clickOnly && !crudDisabled && ['edit', 'delete', 'enable', 'disable'].includes(pick.actionType)) {
+        const stillSmoke = await isSmokeRowAtClick(page, cfg, pick).catch(() => false)
+        if (!stillSmoke) {
+          routeResult.crudActions.push({ action: pick.actionType, target: pickText, status: 'skip', reason: '点击前校验：行已变化或非 SMOKE_ 测试数据' })
+          await closeOverlays(page, cfg)
+          continue
+        }
       }
       await clickByIndex(page, pick)
       routeResult.clicks++
