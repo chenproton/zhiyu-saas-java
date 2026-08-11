@@ -137,7 +137,7 @@ func (s *TenantStore) List(ctx context.Context, p ListParams, cfg ListQueryConfi
 func (s *TenantStore) ListConfig() ListQueryConfig[domain.Tenant] {
 	return ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
-		SelectColumns: "id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		SelectColumns: "id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, valid_from::text, valid_until::text, admin_ids, status, created_at, updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "id",
 		SearchColumns: []string{"name", "code"},
@@ -156,7 +156,7 @@ func (s *TenantStore) ListConfig() ListQueryConfig[domain.Tenant] {
 func (s *TenantStore) AdminListConfig() ListQueryConfig[domain.Tenant] {
 	return ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
-		SelectColumns: "id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		SelectColumns: "id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, valid_from::text, valid_until::text, admin_ids, status, created_at, updated_at",
 		SearchColumns: []string{"name", "code"},
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if status := p.Values["status"]; status != "" {
@@ -240,7 +240,7 @@ func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenan
 	err := s.q.QueryRow(ctx, `
 		SELECT id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description,
 			short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges,
-			education_level, education_nature, valid_from, valid_until,
+			education_level, education_nature, valid_from::text, valid_until::text,
 			admin_ids, status, created_at, updated_at
 		FROM tenants WHERE id = $1
 	`, id).Scan(
