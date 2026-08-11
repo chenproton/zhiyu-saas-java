@@ -110,6 +110,11 @@ export const allianceProjectApi = {
     portalRequest<AllianceListResponse<AllianceProjectMilestone>>(
       `/alliance/projects/${projectId}/milestones`,
     ),
+  // 前台公开里程碑（本校链接双控，tenantId 可选）
+  listPublicMilestones: (projectId: string, tenantId?: string) =>
+    portalRequest<AllianceListResponse<AllianceProjectMilestone>>(
+      `/alliance/public/projects/${projectId}/milestones${buildQuery({ tenantId })}`,
+    ),
 }
 
 export const allianceAgreementApi = {

@@ -483,6 +483,7 @@ func registerAlliancePublicRoutes(r chi.Router, h *Handlers) {
 		r.Get("/enterprises/{id}", h.allianceHandler.GetPublicEnterprise)
 		r.Get("/projects", h.allianceHandler.ListPublicProjects)
 		r.Get("/projects/{id}", h.allianceHandler.GetPublicProject)
+		r.Get("/projects/{pid}/milestones", h.allianceHandler.ListPublicMilestones)
 		r.Get("/achievements", h.allianceHandler.ListPublicAchievements)
 		r.Get("/achievements/{id}", h.allianceHandler.GetPublicAchievement)
 		r.Get("/agreements", h.allianceHandler.ListPublicAgreements)

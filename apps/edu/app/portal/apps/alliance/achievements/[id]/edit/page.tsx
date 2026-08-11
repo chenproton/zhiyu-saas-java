@@ -18,6 +18,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
+import { TagInput } from '@/components/shared/tag-input'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
@@ -82,6 +84,12 @@ export default function AllianceAchievementEditPage() {
   const enterpriseIds: string[] = (item as any).enterpriseIds || []
   const projectIds: string[] = (item as any).projectIds || []
   const secondaryColleges: string[] = (item as any).secondaryColleges || []
+  const attachments: string[] = (item as any).attachments || []
+  const ownerPersons: string[] = (item as any).ownerPersons || []
+  const coBuilders: string[] = (item as any).coBuilders || []
+  const relatedScenes: string[] = (item as any).relatedScenes || []
+  const relatedCourses: string[] = (item as any).relatedCourses || []
+  const relatedPositions: string[] = (item as any).relatedPositions || []
 
   return (
     <div className="space-y-6">
@@ -138,6 +146,72 @@ export default function AllianceAchievementEditPage() {
                 onChange={(e) => setField('description', e.target.value)}
                 rows={5}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('展示设置')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormFieldRow label={t('成果封面')}>
+                <SingleImageUpload
+                  label={t('成果封面')}
+                  value={(item as any).coverImage || ''}
+                  onChange={(v) => setField('coverImage', v)}
+                />
+              </FormFieldRow>
+              <FormFieldRow label={t('引用原因 / 核心亮点')}>
+                <Textarea
+                  value={(item as any).citationReason || ''}
+                  onChange={(e) => setField('citationReason', e.target.value)}
+                  rows={4}
+                />
+              </FormFieldRow>
+              <FormFieldGrid>
+                <FormFieldRow label={t('成果归属人')}>
+                  <TagInput value={ownerPersons} onChange={(v) => setField('ownerPersons', v)} />
+                </FormFieldRow>
+                <FormFieldRow label={t('成果共建人')}>
+                  <TagInput value={coBuilders} onChange={(v) => setField('coBuilders', v)} />
+                </FormFieldRow>
+              </FormFieldGrid>
+              <FormFieldRow label={t('成果佐证材料')}>
+                <TagInput
+                  value={attachments}
+                  onChange={(v) => setField('attachments', v)}
+                  placeholder={t('输入文件名后回车添加')}
+                />
+              </FormFieldRow>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('关联资源')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormFieldRow label={t('关联实践场景')}>
+                <TagInput
+                  value={relatedScenes}
+                  onChange={(v) => setField('relatedScenes', v)}
+                  placeholder={t('输入场景名称后回车添加')}
+                />
+              </FormFieldRow>
+              <FormFieldRow label={t('关联数字课程')}>
+                <TagInput
+                  value={relatedCourses}
+                  onChange={(v) => setField('relatedCourses', v)}
+                  placeholder={t('输入课程名称后回车添加')}
+                />
+              </FormFieldRow>
+              <FormFieldRow label={t('关联职业岗位')}>
+                <TagInput
+                  value={relatedPositions}
+                  onChange={(v) => setField('relatedPositions', v)}
+                  placeholder={t('输入岗位名称后回车添加')}
+                />
+              </FormFieldRow>
             </CardContent>
           </Card>
         </div>

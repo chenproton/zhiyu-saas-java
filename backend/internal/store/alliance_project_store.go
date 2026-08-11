@@ -258,3 +258,35 @@ func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id, tenantID s
 		  )
 	`, id)
 }
+
+// ListPublicMilestones 前台公开里程碑：仅公开项目的里程碑；
+// tenantID 非空时按本校链接双控校验（与 GetPublicProjectByID 同规则）。
+func (s *AllianceStore) ListPublicMilestones(ctx context.Context, projectID, tenantID string) ([]domain.AllianceProjectMilestone, error) {
+	const cols = `m.id, m.tenant_id, m.project_id, m.name, m.description, m.due_date, m.completed_date,
+		m.is_completed, m.sort_order, m.created_at, m.updated_at`
+	if tenantID != "" {
+		return queryList(ctx, s.q, s.ScanMilestoneRows, `
+			SELECT `+cols+`
+			FROM alliance_project_milestones m
+			JOIN alliance_projects p ON p.id = m.project_id
+			WHERE m.project_id = $1 AND p.is_public = true AND p.tenant_id = $2
+			  AND EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated'
+			  )
+			ORDER BY m.sort_order ASC
+		`, projectID, tenantID)
+	}
+	return queryList(ctx, s.q, s.ScanMilestoneRows, `
+		SELECT `+cols+`
+		FROM alliance_project_milestones m
+		JOIN alliance_projects p ON p.id = m.project_id
+		WHERE m.project_id = $1 AND p.is_public = true
+		  AND EXISTS (
+			SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
+			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  )
+		ORDER BY m.sort_order ASC
+	`, projectID)
+}

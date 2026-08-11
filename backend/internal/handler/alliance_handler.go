@@ -1196,6 +1196,22 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 	}, "项目不存在")
 }
 
+// ListPublicMilestones 前台公开里程碑（含本校链接双控，规则同 GetPublicProject）。
+func (h *AllianceHandler) ListPublicMilestones(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.URL.Query().Get("tenantId")
+	projectID := chi.URLParam(r, "pid")
+	if projectID == "" {
+		respondError(w, http.StatusBadRequest, "缺少项目 id")
+		return
+	}
+	items, err := h.Store.ListPublicMilestones(r.Context(), projectID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询里程碑失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceProjectMilestone]{Items: items, Total: len(items)})
+}
+
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceAchievement, error) {
