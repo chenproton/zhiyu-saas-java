@@ -58,7 +58,8 @@ func (s *PositionStore) CopyPositionAsDraft(ctx context.Context, tx Queryer, src
 // MergePositionDraftToSource 审批通过后：用 draft 内容覆盖原资源并删除 draft（保留子表行 id 改挂原资源）。
 func (s *PositionStore) MergePositionDraftToSource(ctx context.Context, tx Queryer, draftID, tenantID string) error {
 	// 读 draft 最终 name（剥离「（编辑稿）」后缀），draft 临时改名后用于覆盖
-	var draftName, srcID string
+	var draftName string
+	var srcID *string
 	if err := tx.QueryRow(ctx, `
 		SELECT name, source_resource_id FROM career_positions WHERE id = $1 AND tenant_id = $2
 	`, draftID, tenantID).Scan(&draftName, &srcID); err != nil {
