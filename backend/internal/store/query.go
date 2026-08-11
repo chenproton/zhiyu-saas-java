@@ -207,7 +207,7 @@ var (
 		"id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
 		"id, name, code, description, attributes, is_public, creator_id, created_at",
 		"id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at",
-		"id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		"id, name, code, type, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, valid_from::text, valid_until::text, admin_ids, status, created_at, updated_at",
 		"id, name, description, position_ids, steps, created_at, updated_at",
 		"id, tenant_id, code, name, description, user_count, status, created_at",
 		"id, node_id, module_key, mode, data",
