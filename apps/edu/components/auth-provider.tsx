@@ -7,6 +7,7 @@ import type { Organization, Major, Role } from '@/lib/types/backend'
 import { checkMenuPermission } from '@/lib/menu-permissions'
 import { useSubscriptionModules } from '@/hooks/use-subscription-modules'
 import { persistActiveRole, resolveActiveRole } from '@/lib/active-role'
+import { useRegisterAllianceDicts } from '@/lib/alliance-dicts'
 import { isPublicPage } from '@/lib/public-routes'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -225,5 +226,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ],
   )
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={contextValue}>
+      <AllianceDictRegister />
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+/** 登录后注册联盟字典到 allianceLabel：列表/详情展示文案跟随字典管理页配置 */
+function AllianceDictRegister() {
+  const { tenantId } = useAuth()
+  useRegisterAllianceDicts(tenantId)
+  return null
 }

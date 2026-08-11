@@ -385,9 +385,22 @@ export const ALLIANCE_DICTS = {
 
 export type AllianceDictKey = keyof typeof ALLIANCE_DICTS
 
+// 运行时字典（由联盟字典管理页配置，前端登录后注册覆盖静态映射）：
+// key = ALLIANCE_DICTS 的键（如 enterpriseStatus），value = code → 展示名。
+let runtimeAllianceDicts: Record<string, Record<string, string>> | null = null
+
+/** 注册运行时字典（联盟字典管理页数据），allianceLabel 优先取用，未注册/缺失时回退静态映射。 */
+export function registerAllianceDicts(
+  dicts: Record<string, Record<string, string>>,
+): void {
+  runtimeAllianceDicts = dicts
+}
+
 /** 将英文枚举值转换为中文展示文案，未知值原样返回。 */
 export function allianceLabel(dictKey: AllianceDictKey, value?: string | null): string {
   if (value == null || value === '') return '-'
-  const dict = ALLIANCE_DICTS[dictKey] as Record<string, string>
+  const dict =
+    (runtimeAllianceDicts && runtimeAllianceDicts[dictKey]) ||
+    (ALLIANCE_DICTS[dictKey] as Record<string, string>)
   return dict[value] ?? value
 }

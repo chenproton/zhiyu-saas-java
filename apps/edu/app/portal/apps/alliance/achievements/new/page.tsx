@@ -25,6 +25,7 @@ import { useToast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 
 export default function AllianceAchievementNewPage() {
   const { toast } = useToast()
@@ -32,6 +33,7 @@ export default function AllianceAchievementNewPage() {
   const router = useRouter()
   const { tenantId } = usePortalAuth()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
+  const { items: typeItems } = useAllianceDictionary('achievement_type', tenantId)
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
@@ -116,10 +118,11 @@ export default function AllianceAchievementNewPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="job">{t('岗位')}</SelectItem>
-                      <SelectItem value="scene">{t('场景')}</SelectItem>
-                      <SelectItem value="course">{t('课程')}</SelectItem>
-                      <SelectItem value="custom">{t('自定义')}</SelectItem>
+                      {mergeDictOptions(typeItems, item.type).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.label)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FormFieldRow>

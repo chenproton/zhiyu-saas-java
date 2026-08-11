@@ -25,21 +25,16 @@ import { syncAgreementProjectLinks } from '@/lib/alliance-links'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
-
-const AGREEMENT_TYPES = [
-  '战略合作协议',
-  '产学研合作协议',
-  '实习实训协议',
-  '人才培养协议',
-  '就业合作协议',
-  '课程共建协议',
-  '技术服务协议',
-]
+import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 
 export default function AllianceAgreementNewPage() {
   const { toast } = useToast()
   const t = useT()
   const router = useRouter()
+  const { tenantId } = usePortalAuth()
+  const { items: typeItems } = useAllianceDictionary('agreement_type', tenantId)
+  const { items: statusItems } = useAllianceDictionary('agreement_status', tenantId)
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
@@ -132,9 +127,9 @@ export default function AllianceAgreementNewPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {AGREEMENT_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {t(type)}
+                      {mergeDictOptions(typeItems, item.type).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -146,11 +141,11 @@ export default function AllianceAgreementNewPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">{t('草稿')}</SelectItem>
-                      <SelectItem value="active">{t('生效中')}</SelectItem>
-                      <SelectItem value="expired">{t('已失效')}</SelectItem>
-                      <SelectItem value="renewed">{t('已续签')}</SelectItem>
-                      <SelectItem value="terminated">{t('已终止')}</SelectItem>
+                      {mergeDictOptions(statusItems, item.status).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.label)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
