@@ -114,8 +114,6 @@ export default function AllianceEmployerBrandPage() {
           isFeatured: false as any,
           viewCount: 0,
           enabled: true as any,
-          createdAt: '',
-          updatedAt: '',
         }) as AllianceBrand & { enabled?: boolean }
       }
       renderForm={(item: any, setItem: any) => (
