@@ -14,7 +14,7 @@ const (
 	CodeInternalError   = "internal_error"
 	CodeAINotConfigured = "ai_not_configured"
 	CodeAIUpstreamError = "ai_upstream_error"
-	// CodeCaptchaRequired 登录需先完成滑块验证码（尚未提供或验证码已失效）。
+	// CodeCaptchaRequired 登录需先完成验证码（尚未提供或验证码已失效）。
 	CodeCaptchaRequired = "captcha_required"
 	// CodeCaptchaWrong 验证码答案不匹配，前端应刷新验证码后重试。
 	CodeCaptchaWrong = "captcha_wrong"

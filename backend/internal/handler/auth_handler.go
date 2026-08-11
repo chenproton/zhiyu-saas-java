@@ -25,7 +25,7 @@ type AuthHandler struct {
 
 	// PartnerService 企业平台注册/主体查询（router 装配时注入）。
 	PartnerService *service.PartnerService
-	// Captcha 滑块验证码服务（router 装配时注入）。nil 时登录不校验验证码。
+	// Captcha 字符验证码服务（router 装配时注入）。nil 时登录不校验验证码。
 	Captcha *service.CaptchaService
 }
 
@@ -172,7 +172,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// 防爆破：同一 IP 登录失败达到阈值后，必须通过滑块验证码（校验失败直接返回，
+	// 防爆破：同一 IP 登录失败达到阈值后，必须通过字符验证码（校验失败直接返回，
 	// 不泄露账号是否存在）。验证码未配置（Captcha == nil）时跳过。
 	if h.Captcha != nil {
 		ip := middleware.ClientIP(r)
@@ -186,7 +186,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 				} else {
 					respondJSON(w, http.StatusBadRequest, errorResponse{
 						Code:  CodeCaptchaRequired,
-						Error: "请完成滑块验证",
+						Error: "请完成验证码",
 					})
 				}
 				return
