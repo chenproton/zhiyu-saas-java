@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/shared/date-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -544,7 +545,7 @@ export default function AllianceEnterpriseDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{t('开始日期')}</Label>
-                <Input
+                <DateInput
                   type="date"
                   value={aForm.startDate}
                   onChange={(e) => setAForm({ ...aForm, startDate: e.target.value })}
@@ -552,7 +553,7 @@ export default function AllianceEnterpriseDetailPage() {
               </div>
               <div className="grid gap-2">
                 <Label>{t('结束日期')}</Label>
-                <Input
+                <DateInput
                   type="date"
                   value={aForm.endDate}
                   onChange={(e) => setAForm({ ...aForm, endDate: e.target.value })}

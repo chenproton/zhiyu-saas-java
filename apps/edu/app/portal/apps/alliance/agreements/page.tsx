@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/shared/date-input'
 import {
   Select,
   SelectContent,
@@ -191,14 +192,14 @@ export default function AllianceAgreementsPage() {
           </FormFieldRow>
           <FormFieldGrid>
             <FormFieldRow label={t('开始日期')}>
-              <Input
+              <DateInput
                 type="date"
                 value={item.startDate || ''}
                 onChange={(e: any) => setItem({ ...item, startDate: e.target.value })}
               />
             </FormFieldRow>
             <FormFieldRow label={t('结束日期')}>
-              <Input
+              <DateInput
                 type="date"
                 value={item.endDate || ''}
                 onChange={(e: any) => setItem({ ...item, endDate: e.target.value })}

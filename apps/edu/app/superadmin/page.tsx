@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@zhiyu/ui'
 import {
@@ -50,6 +50,7 @@ import {
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { DateInput } from '@/components/shared/date-input'
 import { LogTableShell } from '@/components/shared/log-table-shell'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
@@ -68,24 +69,6 @@ import {
 
 const TENANTS_API = '/admin/tenants'
 const PAGE_SIZE = 20
-
-// 日期输入框：点击任意位置弹出日历（Chrome 默认仅右侧图标区域可点）
-function DateInput(props: ComponentProps<typeof Input>) {
-  return (
-    <Input
-      {...props}
-      type="date"
-      onClick={(e) => {
-        try {
-          e.currentTarget.showPicker()
-        } catch {
-          /* 已打开或环境不支持时忽略 */
-        }
-        props.onClick?.(e)
-      }}
-    />
-  )
-}
 
 interface AdminTenant {
   id: string

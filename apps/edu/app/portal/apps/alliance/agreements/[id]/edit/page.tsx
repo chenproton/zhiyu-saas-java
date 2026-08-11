@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/shared/date-input'
 import {
   Select,
   SelectContent,
@@ -162,14 +163,14 @@ export default function AllianceAgreementEditPage() {
                   </Select>
                 </FormFieldRow>
                 <FormFieldRow label={t('生效日期')} required>
-                  <Input
+                  <DateInput
                     type="date"
                     value={item.startDate}
                     onChange={(e) => setField('startDate', e.target.value)}
                   />
                 </FormFieldRow>
                 <FormFieldRow label={t('到期日期')} required>
-                  <Input
+                  <DateInput
                     type="date"
                     value={item.endDate}
                     onChange={(e) => setField('endDate', e.target.value)}
