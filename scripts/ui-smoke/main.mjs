@@ -45,6 +45,7 @@ async function login(ctx, page, cfg, role, listeners) {
   if (role === 'partner') return loginPartner(ctx, page, cfg, role, cred)
 
   // 提交一次登录表单，返回响应状态；captcha_required/captcha_wrong 返回 'captcha:...'
+  // 注意：必须先调用本函数（注册监听）再点击提交，否则本地毫秒级响应会在监听注册前返回，事件错过
   const submitAndWait = () => new Promise(resolve => {
     const timer = setTimeout(() => resolve('timeout'), cfg.loginTimeoutMs + 5000)
     const onResponse = async res => {
@@ -65,6 +66,12 @@ async function login(ctx, page, cfg, role, listeners) {
     page.on('response', onResponse)
     listeners.push({ handler: onResponse, kind: 'response' })
   })
+
+  // 提交并等待响应：先注册监听，再点击（监听器在 resolve 时自移除，重复调用安全）
+  const submit = () => {
+    const wait = submitAndWait()
+    return page.click('button[type="submit"]').then(() => wait)
+  }
 
   // 页面出现验证码后：主动刷新验证码（确保在监听之后发请求）→ 从 Redis 读答案 → 填入输入框
   const solveCaptchaViaUi = async () => {
@@ -94,22 +101,29 @@ async function login(ctx, page, cfg, role, listeners) {
 
   try {
     await page.goto(`${cfg.baseUrl}/portal/login`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    // 等待 React 水合完成（DOM 元素挂上 __reactProps 即事件处理器就绪）：
+    // 否则点击提交会走原生表单提交（POST 打到页面路径而非 /api），登录响应永远等不到
+    await page.waitForFunction(
+      () => {
+        const btn = document.querySelector('button[type="submit"]')
+        return btn && Object.keys(btn).some(k => k.startsWith('__reactProps'))
+      },
+      null, { timeout: 20000 },
+    ).catch(() => {})
     // 固定设备标识：信任跨运行累积，避免每次巡检都触发新设备验证码
     await page.evaluate(() => { try { localStorage.setItem('zhiyu-device-id', SMOKE_DEVICE_ID) } catch { /* ignore */ } })
     await page.fill('#username', cred.username)
     await page.fill('#password', cred.password)
-    await page.click('button[type="submit"]')
   } catch (e) {
     throw new Error(`登录页操作失败: ${e.message}`)
   }
 
   // 新设备/失败计数触发验证码：自动识别并重试（最多 3 轮）
-  let status = await submitAndWait()
+  let status = await submit()
   let captchaTries = 0
   while (typeof status === 'string' && status.startsWith('captcha:') && captchaTries < 3) {
     await solveCaptchaViaUi()
-    await page.click('button[type="submit"]')
-    status = await submitAndWait()
+    status = await submit()
     captchaTries++
   }
 
