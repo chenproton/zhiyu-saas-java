@@ -26,11 +26,13 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/lesson/landing/[id]': { api: '/api/v1/lesson/courses?limit=10', url: '/lesson/landing/{id}' },
   '/lesson/landing/[id]/learn': { api: '/api/v1/lesson/courses?limit=10', url: '/lesson/landing/{id}/learn' },
   // 注意：/library/resources/[type] 的 [type] 是资源类型枚举（course/scene 等），非实体 id，不配置动态路由
-  '/portal/alliance/achievements/[id]': { api: '/api/v1/alliance/public/achievements?limit=10', url: '/portal/alliance/achievements/{id}' },
-  '/portal/alliance/brands/[id]': { api: '/api/v1/alliance/public/brands?limit=10', url: '/portal/alliance/brands/{id}' },
-  '/portal/alliance/enterprises/[id]': { api: '/api/v1/alliance/public/enterprises?limit=10', url: '/portal/alliance/enterprises/{id}' },
-  '/portal/alliance/experts/[id]': { api: '/api/v1/alliance/public/experts?limit=10', url: '/portal/alliance/experts/{id}' },
-  '/portal/alliance/projects/[id]': { api: '/api/v1/alliance/public/projects?limit=10', url: '/portal/alliance/projects/{id}' },
+  // 注意：/portal/alliance 详情页带 tenantId（本校数据），拉 id 必须同步带 tenantId，
+  // 否则全局列表拉到非本校实体，详情页 404 造成误报（{tenantId} 由 resolveDynamicRoutes 从 token 注入）
+  '/portal/alliance/achievements/[id]': { api: '/api/v1/alliance/public/achievements?limit=10&tenantId={tenantId}', url: '/portal/alliance/achievements/{id}' },
+  '/portal/alliance/brands/[id]': { api: '/api/v1/alliance/public/brands?limit=10&tenantId={tenantId}', url: '/portal/alliance/brands/{id}' },
+  '/portal/alliance/enterprises/[id]': { api: '/api/v1/alliance/public/enterprises?limit=10&tenantId={tenantId}', url: '/portal/alliance/enterprises/{id}' },
+  '/portal/alliance/experts/[id]': { api: '/api/v1/alliance/public/experts?limit=10&tenantId={tenantId}', url: '/portal/alliance/experts/{id}' },
+  '/portal/alliance/projects/[id]': { api: '/api/v1/alliance/public/projects?limit=10&tenantId={tenantId}', url: '/portal/alliance/projects/{id}' },
   '/portal/apps/alliance/achievements/[id]': { api: '/api/v1/alliance/achievements?limit=10', url: '/portal/apps/alliance/achievements/{id}' },
   '/portal/apps/alliance/agreements/[id]': { api: '/api/v1/alliance/agreements?limit=10', url: '/portal/apps/alliance/agreements/{id}' },
   '/portal/apps/alliance/brands/[id]': { api: '/api/v1/alliance/brands?limit=10', url: '/portal/apps/alliance/brands/{id}' },
@@ -104,16 +106,30 @@ async function discoverDynamicPatterns() {
   return patterns
 }
 
+// 从 JWT payload 解出 tenantId（alliance public 等按租户过滤的列表拉 id 用）。
+function tokenTenantId(token) {
+  if (!token) return ''
+  try {
+    const payload = token.split('.')[1]
+    const claims = JSON.parse(Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString())
+    return claims?.tenantId || ''
+  } catch {
+    return ''
+  }
+}
+
 // 从后端 API 拉真实实体 id，生成动态路由实例
 export async function resolveDynamicRoutes(cfg, baseUrl, token) {
   const patterns = await discoverDynamicPatterns()
   const resolved = []
   const seen = new Set()
+  const tenantId = tokenTenantId(token)
   for (const pattern of patterns) {
     const spec = cfg.dynamicRoutes?.[pattern] || BUILTIN_DYNAMIC_ROUTES[pattern]
     if (!spec) continue
     try {
-      const res = await fetch(baseUrl + spec.api, {
+      const api = spec.api.replace(/\{tenantId\}/g, tenantId)
+      const res = await fetch(baseUrl + api, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         signal: AbortSignal.timeout(8000),
       })
