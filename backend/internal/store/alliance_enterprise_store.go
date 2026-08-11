@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -176,120 +175,73 @@ func (s *AllianceStore) UpdateEnterpriseProfile(ctx context.Context, id, tenantI
 
 // ===== 企业合作协议 =====
 
-type AllianceEnterpriseAgreementCreateParams struct {
-	TenantID     string
-	EnterpriseID string
-	Name         string
-	Type         *string
-	StartDate    *string
-	EndDate      *string
-	Status       string
-	Content      *string
-	Attachments  json.RawMessage
-}
+// ===== 公开查询（门户前台） =====
+// 数据源（§3.2 双控原则）：企业控制 enable_public（"愿不愿意"），学校控制 link.is_public（"在不在本校出现"）。
+// tenantID 为空 → 全局联盟展示（仅企业侧开关）；非空 → 该校落地页（link.is_public + enable_public 双控，且排除已终止合作）。
+// 带 tenantID 时额外返回学校侧评级（link.rating，前台评级筛选用）。
 
-type AllianceEnterpriseAgreementUpdateParams struct {
-	Name        string
-	Type        *string
-	StartDate   *string
-	EndDate     *string
-	Status      string
-	Content     *string
-	Attachments json.RawMessage
-}
+// publicEnterpriseColumns 公开企业列：企业主体全列 + 学校侧评级（仅 tenant 分支有值）。
+const publicEnterpriseColumns = enterpriseColumns + `, l.rating`
 
-func (s *AllianceStore) ScanEnterpriseAgreementRows(rows pgx.Rows) ([]domain.AllianceEnterpriseAgreement, error) {
-	items := make([]domain.AllianceEnterpriseAgreement, 0)
+func (s *AllianceStore) ScanPublicEnterpriseRows(rows pgx.Rows) ([]domain.AllianceEnterprise, error) {
+	items := make([]domain.AllianceEnterprise, 0)
 	for rows.Next() {
-		var a domain.AllianceEnterpriseAgreement
-		var typ, content *string
-		var startDate, endDate *time.Time
-		var attachments json.RawMessage
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.EnterpriseID, &a.Name, &typ, &startDate,
-			&endDate, &a.Status, &content, &attachments, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		var e domain.AllianceEnterprise
+		var industry, region, description, logoURL, coverImage *string
+		var contactPerson, contactPhone, contactEmail, address, creditCode *string
+		var establishedYear, employeeCount *int
+		var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos json.RawMessage
+		var rating *string
+		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &industry, &region,
+			&description, &logoURL, &coverImage, &coopTypes,
+			&contactPerson, &contactPhone, &contactEmail, &address, &creditCode,
+			&establishedYear, &employeeCount, &bizPhotos, &qualPhotos, &ipPhotos,
+			&coverPhotos, &e.EnablePublic, &e.CreatedAt, &e.UpdatedAt, &rating); err != nil {
 			return nil, err
 		}
-		a.Type = typ
-		a.StartDate = formatDate(startDate)
-		a.EndDate = formatDate(endDate)
-		a.Content = content
-		a.Attachments = attachments
-		items = append(items, a)
+		e.Industry = industry
+		e.Region = region
+		e.Description = description
+		e.LogoURL = logoURL
+		e.CoverImage = coverImage
+		e.CooperationTypes = coopTypes
+		e.ContactPerson = contactPerson
+		e.ContactPhone = contactPhone
+		e.ContactEmail = contactEmail
+		e.Address = address
+		e.UnifiedSocialCreditCode = creditCode
+		e.EstablishedYear = establishedYear
+		e.EmployeeCount = employeeCount
+		e.BusinessLicensePhotos = bizPhotos
+		e.QualificationPhotos = qualPhotos
+		e.IntellectualPropertyPhotos = ipPhotos
+		e.CoverPhotos = coverPhotos
+		e.Rating = rating
+		items = append(items, e)
 	}
 	return items, rows.Err()
 }
 
-func (s *AllianceStore) GetEnterpriseAgreementByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterpriseAgreement, error) {
-	var a domain.AllianceEnterpriseAgreement
-	var typ, content *string
-	var startDate, endDate *time.Time
-	var attachments json.RawMessage
-	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date, status,
-			content, attachments, created_at, updated_at
-		FROM alliance_enterprise_agreements WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&a.ID, &a.TenantID, &a.EnterpriseID, &a.Name, &typ, &startDate,
-		&endDate, &a.Status, &content, &attachments, &a.CreatedAt, &a.UpdatedAt)
-	if err != nil {
-		return nil, err
+// ListPublicEnterprises 门户前台公开企业列表。
+// limit/offset 分页；limit<=0 时默认 100。
+func (s *AllianceStore) ListPublicEnterprises(ctx context.Context, tenantID string, limit, offset int) ([]domain.AllianceEnterprise, error) {
+	if limit <= 0 {
+		limit = 100
 	}
-	a.Type = typ
-	a.StartDate = formatDate(startDate)
-	a.EndDate = formatDate(endDate)
-	a.Content = content
-	a.Attachments = attachments
-	return &a, nil
-}
-
-func (s *AllianceStore) CreateEnterpriseAgreement(ctx context.Context, p *AllianceEnterpriseAgreementCreateParams) (string, error) {
-	id := uuid.NewString()
-	_, err := s.q.Exec(ctx, `
-		INSERT INTO alliance_enterprise_agreements (id, tenant_id, enterprise_id, name, type,
-			start_date, end_date, status, content, attachments, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
-	`, id, p.TenantID, p.EnterpriseID, p.Name, p.Type, p.StartDate, p.EndDate, p.Status, p.Content, emptyJSON(p.Attachments))
-	if err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
-func (s *AllianceStore) UpdateEnterpriseAgreement(ctx context.Context, id, tenantID string, p *AllianceEnterpriseAgreementUpdateParams) error {
-	_, err := s.q.Exec(ctx, `
-		UPDATE alliance_enterprise_agreements SET
-			name = $1, type = $2, start_date = $3, end_date = $4, status = $5,
-			content = $6, attachments = $7, updated_at = NOW()
-		WHERE id = $8 AND tenant_id = $9
-	`, p.Name, p.Type, p.StartDate, p.EndDate, p.Status, p.Content, emptyJSON(p.Attachments), id, tenantID)
-	return err
-}
-
-func (s *AllianceStore) DeleteEnterpriseAgreement(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM alliance_enterprise_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
-}
-
-// ===== 公开查询（门户前台） =====
-// 数据源（§3.2 双控原则）：企业控制 enable_public（"愿不愿意"），学校控制 link.is_public（"在不在本校出现"）。
-// tenantID 为空 → 全局联盟展示（仅企业侧开关）；非空 → 该校落地页（link.is_public + enable_public 双控，且排除已终止合作）。
-
-func (s *AllianceStore) ListPublicEnterprises(ctx context.Context, tenantID string) ([]domain.AllianceEnterprise, error) {
 	if tenantID != "" {
-		return queryList(ctx, s.q, s.ScanEnterpriseRows, `
-			SELECT `+enterpriseColumns+`
+		return queryList(ctx, s.q, s.ScanPublicEnterpriseRows, `
+			SELECT `+publicEnterpriseColumns+`
 			FROM partner_enterprises pe
-			WHERE pe.enable_public = true AND EXISTS (
-				SELECT 1 FROM alliance_enterprise_links l
-				WHERE l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
-			)
-			ORDER BY pe.created_at DESC LIMIT 100
-		`, tenantID)
+			JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+			WHERE pe.enable_public = true
+			ORDER BY pe.created_at DESC LIMIT $2 OFFSET $3
+		`, tenantID, limit, offset)
 	}
 	return queryList(ctx, s.q, s.ScanEnterpriseRows, `
 		SELECT `+enterpriseColumns+`
 		FROM partner_enterprises pe WHERE pe.enable_public = true
-		ORDER BY pe.created_at DESC LIMIT 100
-	`)
+		ORDER BY pe.created_at DESC LIMIT $1 OFFSET $2
+	`, limit, offset)
 }
 
 func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterprise, error) {

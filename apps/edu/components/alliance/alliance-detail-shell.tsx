@@ -25,6 +25,8 @@ export interface DetailTab {
 interface AllianceDetailShellProps {
   backHref: string
   backLabel?: string
+  /** 隐藏返回按钮（如企业端预览 Dialog 内，无返回列表语境） */
+  showBack?: boolean
   /** 无 logo/图片时的渐变图标头像 */
   icon?: LucideIcon
   iconImage?: { src: string; alt: string }
@@ -99,6 +101,7 @@ export function DetailSectionCard({
 export function AllianceDetailShell({
   backHref,
   backLabel,
+  showBack = true,
   icon: Icon,
   iconImage,
   iconGradient = 'from-blue-500 to-blue-600',
@@ -117,14 +120,16 @@ export function AllianceDetailShell({
         <div className={`absolute inset-0 bg-gradient-to-br ${glowClass}`} />
         <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[120px] ${glowClass.split(' ')[0]?.replace('/5', '/10')}`} />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link href={backHref}>
-              <Button variant="ghost" size="sm" className="rounded-full hover:bg-white/50">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                {backLabel || t('返回列表')}
-              </Button>
-            </Link>
-          </div>
+          {showBack && (
+            <div className="mb-8">
+              <Link href={backHref}>
+                <Button variant="ghost" size="sm" className="rounded-full hover:bg-white/50">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  {backLabel || t('返回列表')}
+                </Button>
+              </Link>
+            </div>
+          )}
 
           <div className="flex flex-col md:flex-row md:items-start gap-6">
             {iconImage ? (

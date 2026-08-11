@@ -75,8 +75,11 @@ func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.Allianc
 // 且至少关联一家"双控通过的企业"（enterprise_ids 直接关联）
 // 或关联"双控通过的项目"（project_ids 二次关联，经项目关联企业）；
 // 带 tenantID 时限定该校协议并叠加 link.is_public 双控、排除已终止合作。仅返回公开字段，content/attachments 不下发。
-func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string) ([]domain.AlliancePublicAgreement, error) {
+func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string, limit, offset int) ([]domain.AlliancePublicAgreement, error) {
 	const cols = `id, name, type, status, start_date, end_date, enterprise_ids, project_ids`
+	if limit <= 0 {
+		limit = 100
+	}
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 			SELECT `+cols+`
@@ -96,8 +99,8 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 				)
 			  )
-			ORDER BY a.created_at DESC LIMIT 100
-		`, tenantID)
+			ORDER BY a.created_at DESC LIMIT $2 OFFSET $3
+		`, tenantID, limit, offset)
 	}
 	return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 		SELECT `+cols+`
@@ -144,7 +147,17 @@ func (s *AllianceStore) UpdateAgreement(ctx context.Context, id, tenantID string
 	return err
 }
 
+// DeleteAgreement 删除协议并清理项目侧 agreement_ids 反指（避免残留死 id）。
 func (s *AllianceStore) DeleteAgreement(ctx context.Context, id, tenantID string) error {
+	if _, err := s.q.Exec(ctx, `
+		UPDATE alliance_projects
+		SET agreement_ids = COALESCE((
+			SELECT jsonb_agg(x) FROM jsonb_array_elements_text(agreement_ids) x WHERE x <> $1
+		), '[]'::jsonb), updated_at = NOW()
+		WHERE agreement_ids ? $1
+	`, id); err != nil {
+		return err
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM alliance_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }

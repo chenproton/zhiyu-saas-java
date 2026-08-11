@@ -8,6 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { EnterpriseCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const RATING_TABS = [
@@ -25,11 +26,15 @@ export default function AlliancePublicEnterprisesPage() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    // 与后台 /portal/apps/alliance/enterprises 一致：仅展示本校链接且企业愿意展示的
-    portalRequest<{ items: AllianceEnterprise[] }>(
-      `/alliance/public/enterprises${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    // 与后台 /portal/apps/alliance/enterprises 一致：仅展示本校链接且企业愿意展示的；
+    // 分页全量拉取避免 public 接口 100 条截断导致搜索/评级筛选不全
+    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    fetchAllPages((page, pageSize) =>
+      portalRequest<{ items: AllianceEnterprise[] }>(
+        `/alliance/public/enterprises${q}${q ? '&' : '?'}limit=${pageSize}&offset=${page * pageSize}`,
+      ),
     )
-      .then((data) => setItems(data.items || []))
+      .then((items) => setItems(items))
       .catch((err) => {
         reportError(err, { source: '加载合作企业列表' })
       })

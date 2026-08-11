@@ -4238,5 +4238,12 @@
   "暂无可关联的成果": "No achievements available to link",
   "已关联 {count} 个项目": "Linked {count} projects",
   "已关联 {count} 项成果": "Linked {count} achievements",
-  "选择归属项目（可多选）": "Select projects (multiple)"
+  "选择归属项目（可多选）": "Select projects (multiple)",
+  "专家团队": "Expert team",
+  "归属企业": "Affiliated enterprise",
+  "个人简介": "Profile",
+  "暂无简介": "No profile yet",
+  "暂无照片": "No photos yet",
+  "专家类型": "Expert type",
+  "专业领域与专长": "Fields & expertise"
 }

@@ -2,19 +2,31 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Image from 'next/image'
-import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  AllianceDetailShell,
+  DetailEmpty,
+  DetailInfoBlock,
+  DetailSectionCard,
+} from '@/components/alliance/alliance-detail-shell'
+import {
+  UserCircle,
+  Building2,
+  ArrowUpRight,
+  Star,
+  Award,
+  Camera,
+} from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-
 import { useT } from '@/lib/i18n/locale-provider'
+
 export default function AlliancePublicExpertDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
@@ -38,146 +50,159 @@ export default function AlliancePublicExpertDetailPage() {
   if (!expert)
     return <div className="text-center py-12 text-muted-foreground">{t('专家不存在')}</div>
 
+  const enterpriseName = expert.enterpriseName || expert.organization
+  const professionalFields = expert.professionalFields ?? []
+  const specialties = expert.specialties ?? []
+  const photos = expert.photos ?? []
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/portal/alliance/experts"
-          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" /> {t('返回列表')}
-        </Link>
-      </div>
-
-      <div className="flex items-start gap-4">
-        {expert.avatarUrl && (
-          <Image
-            src={expert.avatarUrl}
-            alt={expert.name}
-            width={80}
-            height={80}
-            className="h-20 w-20 rounded-full object-cover"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold break-words">{expert.name}</h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                {[expert.title, expert.position].filter(Boolean).join(' · ') || ''}
-              </p>
-            </div>
-            <Badge variant="outline" className="shrink-0">
-              {expert.rating
-                ? allianceLabel('expertRating', expert.rating)
-                : allianceLabel('expertStatus', expert.status)}
-            </Badge>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('基本信息')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">{t('行业：')}</span>
-              {expert.industry || '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('城市：')}</span>
-              {expert.city || '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('从业年限：')}</span>
-              {expert.experienceYears ? t('{years}年', { years: expert.experienceYears }) : '-'}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{t('学历：')}</span>
-              {expert.education || '-'}
-            </p>
-          </CardContent>
-        </Card>
-        {expert.professionalFields && expert.professionalFields.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('专业领域')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {expert.professionalFields.map((field) => (
-                  <Badge key={field} variant="secondary">
-                    {field}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {expert.specialties && expert.specialties.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('专长')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {expert.specialties.map((s) => (
-                <Badge key={s} variant="secondary">
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {expert.introduction && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('简介')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{expert.introduction}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {expert.workExperience && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('工作经历')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{expert.workExperience}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {expert.photos && expert.photos.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('照片')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {expert.photos.map((photo, idx) => (
-                <div key={idx} className="relative w-full h-40 rounded-lg overflow-hidden">
-                  <Image
-                    src={photo}
-                    alt={t('{name} 照片 {idx}', { name: expert.name, idx: idx + 1 })}
-                    fill
-                    className="object-cover"
+    <AllianceDetailShell
+      backHref="/portal/alliance/experts"
+      backLabel={t('返回列表')}
+      icon={UserCircle}
+      iconImage={
+        expert.avatarUrl ? { src: expert.avatarUrl, alt: expert.name } : undefined
+      }
+      iconGradient="from-blue-500 to-violet-600"
+      pageGradient="from-slate-50/80 via-white to-blue-50/30"
+      title={expert.name}
+      subtitle={[expert.title, expert.position].filter(Boolean).join(' · ') || undefined}
+      badges={[
+        expert.rating && (
+          <Badge key="rating" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
+            <Star className="h-3 w-3 mr-1 text-amber-500" />
+            {allianceLabel('expertRating', expert.rating)}
+          </Badge>
+        ),
+        <Badge key="status" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
+          {allianceLabel('expertStatus', expert.status)}
+        </Badge>,
+      ].filter(Boolean)}
+      tabs={[
+        {
+          value: 'info',
+          label: t('基本信息'),
+          content: (
+            <div className="grid lg:grid-cols-3 gap-6">
+              <DetailSectionCard title={t('基本信息')} className="lg:col-span-2">
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+                  <DetailInfoBlock label={t('行业')} value={expert.industry} />
+                  <DetailInfoBlock label={t('城市')} value={expert.city} />
+                  <DetailInfoBlock
+                    label={t('从业年限')}
+                    value={
+                      expert.experienceYears
+                        ? t('{years}年', { years: expert.experienceYears })
+                        : undefined
+                    }
                   />
+                  <DetailInfoBlock label={t('学历')} value={expert.education} />
+                  <DetailInfoBlock label={t('专家类型')} value={expert.expertType} />
                 </div>
-              ))}
+                {enterpriseName && (
+                  <div className="mt-5">
+                    <p className="text-sm text-slate-500 mb-2.5">{t('归属企业')}</p>
+                    {expert.enterpriseId ? (
+                      <Link
+                        href={`/portal/alliance/enterprises/${expert.enterpriseId}`}
+                        className="inline-flex items-center gap-1 font-medium text-slate-900 hover:text-blue-600 transition-colors"
+                      >
+                        <Building2 className="h-4 w-4" />
+                        {enterpriseName} <ArrowUpRight className="h-3.5 w-3.5" />
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-900">
+                        <Building2 className="h-4 w-4" />
+                        {enterpriseName}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </DetailSectionCard>
+
+              {(professionalFields.length > 0 || specialties.length > 0) && (
+                <DetailSectionCard title={t('专业领域与专长')} className="h-fit self-start">
+                  <div className="space-y-4">
+                    {professionalFields.length > 0 && (
+                      <div>
+                        <p className="text-sm text-slate-500 mb-2">{t('专业领域')}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {professionalFields.map((field) => (
+                            <Badge key={field} variant="secondary" className="font-normal">
+                              {field}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {specialties.length > 0 && (
+                      <div>
+                        <p className="text-sm text-slate-500 mb-2">{t('专长')}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {specialties.map((s) => (
+                            <Badge key={s} variant="secondary" className="font-normal">
+                              {s}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DetailSectionCard>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          ),
+        },
+        {
+          value: 'introduction',
+          label: t('个人简介'),
+          content: (
+            <DetailSectionCard icon={Award} title={t('个人简介')}>
+              {expert.introduction ? (
+                <p className="text-slate-700 leading-7 text-[15px] whitespace-pre-wrap">
+                  {expert.introduction}
+                </p>
+              ) : (
+                <DetailEmpty icon={UserCircle} title={t('暂无简介')} />
+              )}
+              {expert.workExperience && (
+                <div className="border-t pt-6 mt-6">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3">{t('工作经历')}</h4>
+                  <p className="text-slate-700 leading-7 text-[15px] whitespace-pre-wrap">
+                    {expert.workExperience}
+                  </p>
+                </div>
+              )}
+            </DetailSectionCard>
+          ),
+        },
+        {
+          value: 'photos',
+          label: t('照片'),
+          count: photos.length,
+          content: (
+            <Card className="border-0 shadow-sm rounded-3xl">
+              <CardContent className="p-6">
+                {photos.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {photos.map((photo, idx) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={idx}
+                        src={photo}
+                        alt={`${expert.name} ${idx + 1}`}
+                        className="w-full aspect-[4/3] object-cover rounded-2xl border border-slate-100 shadow-sm"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <DetailEmpty icon={Camera} title={t('暂无照片')} />
+                )}
+              </CardContent>
+            </Card>
+          ),
+        },
+      ]}
+    />
   )
 }

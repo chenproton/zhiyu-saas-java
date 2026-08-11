@@ -49,8 +49,10 @@ type AllianceEnterprise struct {
 	IntellectualPropertyPhotos json.RawMessage `json:"intellectualPropertyPhotos,omitempty"`
 	CoverPhotos                json.RawMessage `json:"coverPhotos,omitempty"`
 	EnablePublic               bool            `json:"enablePublic"`
-	CreatedAt                  time.Time       `json:"createdAt"`
-	UpdatedAt                  time.Time       `json:"updatedAt"`
+	// 学校侧评级（link.rating）；仅租户范围的公开列表返回，前台评级筛选用
+	Rating    *string   `json:"rating,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ===== 学校-企业合作关联（alliance_enterprise_links，tenant_id = 学校租户） =====
@@ -194,21 +196,6 @@ type AllianceMentorOption struct {
 }
 
 // ===== 企业合作协议 =====
-type AllianceEnterpriseAgreement struct {
-	ID           string          `json:"id"`
-	TenantID     string          `json:"tenantId"`
-	EnterpriseID string          `json:"enterpriseId"`
-	Name         string          `json:"name"`
-	Type         *string         `json:"type,omitempty"`
-	StartDate    *string         `json:"startDate,omitempty"`
-	EndDate      *string         `json:"endDate,omitempty"`
-	Status       string          `json:"status"`
-	Content      *string         `json:"content,omitempty"`
-	Attachments  json.RawMessage `json:"attachments,omitempty"`
-	CreatedAt    time.Time       `json:"createdAt"`
-	UpdatedAt    time.Time       `json:"updatedAt"`
-}
-
 // ===== 合作项目 =====
 type AllianceProject struct {
 	ID                string          `json:"id"`
@@ -297,6 +284,7 @@ type AllianceExpert struct {
 	Photos             json.RawMessage `json:"photos,omitempty"`
 	Attachments        json.RawMessage `json:"attachments,omitempty"`
 	EnterpriseID       *string         `json:"enterpriseId,omitempty"`
+	EnterpriseName     *string         `json:"enterpriseName,omitempty"`
 	Organization       *string         `json:"organization,omitempty"`
 	Rating             *string         `json:"rating,omitempty"`
 	Status             string          `json:"status"`

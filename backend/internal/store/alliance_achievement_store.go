@@ -148,11 +148,14 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 // ListPublicAchievements 门户前台公开成果列表：is_public 为唯一展示门槛，归属"双控通过的企业"
 // （enterprise_ids 直接关联）或关联"双控通过的项目"（project_ids 二次关联，§3.2）；
 // 带 tenantID 时限定该校自有成果且叠加 link.is_public 双控、排除已终止合作。
-func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID string) ([]domain.AllianceAchievement, error) {
+func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID string, limit, offset int) ([]domain.AllianceAchievement, error) {
 	const cols = `id, tenant_id, title, type, description, achievement_date, cover_image,
 		attachments, citation_reason, images, owner_persons, co_builders,
 		enterprise_ids, project_ids, related_positions, related_scenes,
 		related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at`
+	if limit <= 0 {
+		limit = 100
+	}
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanAchievementRows, `
 			SELECT `+cols+`
@@ -173,8 +176,8 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID str
 					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 				)
 			  )
-			ORDER BY a.created_at DESC LIMIT 100
-		`, tenantID)
+			ORDER BY a.created_at DESC LIMIT $2 OFFSET $3
+		`, tenantID, limit, offset)
 	}
 	return queryList(ctx, s.q, s.ScanAchievementRows, `
 		SELECT `+cols+`

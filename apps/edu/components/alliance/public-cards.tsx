@@ -250,7 +250,7 @@ export function ExpertCard({ expert }: { expert: AllianceExpert }) {
             <div className="flex justify-between gap-2 min-w-0">
               <span className="text-slate-400 shrink-0">{t('企业')}</span>
               <span className="text-right truncate min-w-0">
-                {expert.organization || expert.enterpriseId || '—'}
+                {expert.organization || expert.enterpriseName || '—'}
               </span>
             </div>
             <div className="flex justify-between gap-2 min-w-0">

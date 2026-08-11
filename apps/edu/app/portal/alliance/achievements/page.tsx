@@ -8,6 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { AchievementCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const TYPE_TABS = [
@@ -26,11 +27,14 @@ export default function AlliancePublicAchievementsPage() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    // 与后台一致：仅展示本校公开且关联已链接企业的成果
-    portalRequest<{ items: AllianceAchievement[] }>(
-      `/alliance/public/achievements?sort=latest${tenantId ? `&tenantId=${tenantId}` : ''}`,
+    // 与后台一致：仅展示本校公开且关联已链接企业的成果；分页全量拉取避免截断
+    const q = tenantId ? `&tenantId=${tenantId}` : ''
+    fetchAllPages((page, pageSize) =>
+      portalRequest<{ items: AllianceAchievement[] }>(
+        `/alliance/public/achievements?sort=latest${q}&limit=${pageSize}&offset=${page * pageSize}`,
+      ),
     )
-      .then((data) => setItems(data.items || []))
+      .then((items) => setItems(items))
       .catch((err) => {
         reportError(err, { source: '加载成果列表' })
       })

@@ -18,7 +18,9 @@ import {
 } from '@/components/ui/dialog'
 import {
   partnerEnterpriseApi,
+  partnerExpertApi,
   type PartnerEnterprise,
+  type PartnerExpert,
 } from '@/lib/api'
 import { useToast, LoadingView, ErrorState } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
@@ -81,6 +83,16 @@ export default function PartnerEnterprisePage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewExperts, setPreviewExperts] = useState<PartnerExpert[] | null>(null)
+
+  // 预览 Dialog 首次打开时拉取一次企业专家
+  useEffect(() => {
+    if (!previewOpen || previewExperts !== null) return
+    partnerExpertApi
+      .list({ limit: 200 })
+      .then((res) => setPreviewExperts(res.items || []))
+      .catch(() => setPreviewExperts([]))
+  }, [previewOpen, previewExperts])
 
   const load = async () => {
     try {
@@ -360,9 +372,11 @@ export default function PartnerEnterprisePage() {
           </DialogHeader>
           <EnterpriseDetailView
             enterprise={toPreview(item)}
+            experts={previewExperts ?? []}
             projects={[]}
             achievements={[]}
             agreements={[]}
+            showBack={false}
             schoolSectionsNote={t(
               '合作项目、合作成果、合作协议由合作学校维护，将在学校端展示页显示',
             )}

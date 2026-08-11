@@ -8,6 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { ProjectCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const PHASE_TABS = [
@@ -26,11 +27,14 @@ export default function AlliancePublicProjectsPage() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    // 与后台一致：仅展示本校公开且关联已链接企业的项目
-    portalRequest<{ items: AllianceProject[] }>(
-      `/alliance/public/projects${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    // 与后台一致：仅展示本校公开且关联已链接企业的项目；分页全量拉取避免截断
+    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    fetchAllPages((page, pageSize) =>
+      portalRequest<{ items: AllianceProject[] }>(
+        `/alliance/public/projects${q}${q ? '&' : '?'}limit=${pageSize}&offset=${page * pageSize}`,
+      ),
     )
-      .then((data) => setItems(data.items || []))
+      .then((items) => setItems(items))
       .catch((err) => {
         reportError(err, { source: '加载合作项目列表' })
       })

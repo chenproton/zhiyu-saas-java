@@ -47,6 +47,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { tenantId } = usePortalAuth()
   const [enterprise, setEnterprise] = useState<ShowcaseEnterprise | null>(null)
+  const [experts, setExperts] = useState<AllianceExpert[]>([])
   const [projects, setProjects] = useState<AllianceProject[]>([])
   const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
   const [agreements, setAgreements] = useState<AlliancePublicAgreement[]>([])
@@ -63,8 +64,9 @@ export default function AlliancePublicEnterpriseDetailPage() {
       portalRequest<{ items: AllianceAchievement[] }>(`/alliance/public/achievements${q}`),
       portalRequest<{ items: AlliancePublicAgreement[] }>(`/alliance/public/agreements${q}`),
     ])
-      .then(([ent, , projectsRes, achievementsRes, agreementsRes]) => {
+      .then(([ent, expertsRes, projectsRes, achievementsRes, agreementsRes]) => {
         setEnterprise(toShowcase(ent))
+        setExperts((expertsRes.items ?? []).filter((e) => e.enterpriseId === id))
         // 本企业直接关联的项目（企业项目集，供协议/成果二次关联过滤）
         const enterpriseProjects = (projectsRes.items ?? []).filter((p) =>
           (p.enterpriseIds ?? []).includes(id),
@@ -99,6 +101,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
   return (
     <EnterpriseDetailView
       enterprise={enterprise}
+      experts={experts}
       projects={projects}
       achievements={achievements}
       agreements={agreements}

@@ -174,6 +174,8 @@ export interface AllianceExpert {
   photos?: string[]
   attachments?: string[]
   enterpriseId?: string
+  /** 归属企业名称（前台公开接口返回） */
+  enterpriseName?: string
   organization?: string
   /** 绑定的企业成员账号（partner 平台 users.id，可空） */
   userId?: string

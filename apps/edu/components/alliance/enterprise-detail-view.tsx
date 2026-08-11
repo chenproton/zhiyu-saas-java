@@ -31,6 +31,7 @@ import type {
 } from '@/lib/types'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
+import { ExpertCard } from './public-cards'
 
 
 export interface ShowcaseEnterprise {
@@ -60,6 +61,8 @@ export interface EnterpriseDetailViewProps {
   agreements?: AlliancePublicAgreement[]
   /** 企业端预览模式提示语：合作项目/成果/协议由合作学校维护 */
   schoolSectionsNote?: string
+  /** 预览模式隐藏"返回列表"按钮（企业端预览 Dialog 内） */
+  showBack?: boolean
 }
 
 function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
@@ -91,10 +94,12 @@ function ContactRow({ icon: Icon, text }: { icon: React.ElementType; text: strin
 /** 企业详情视图：portal 前台企业详情页与企业端「预览展示页」共用（两端统一样式） */
 export function EnterpriseDetailView({
   enterprise,
+  experts,
   projects,
   achievements,
   agreements,
   schoolSectionsNote,
+  showBack = true,
 }: EnterpriseDetailViewProps) {
   const t = useT()
 
@@ -132,6 +137,7 @@ export function EnterpriseDetailView({
     },
   ]
 
+  const expertItems = experts ?? []
   const schoolNote = schoolSectionsNote ? (
     <div className="rounded-2xl bg-blue-50/60 border border-blue-100 p-5 text-sm text-slate-500">
       {schoolSectionsNote}
@@ -146,6 +152,7 @@ export function EnterpriseDetailView({
     <AllianceDetailShell
       backHref="/portal/alliance/enterprises"
       backLabel={t('返回列表')}
+      showBack={showBack}
       icon={Building2}
       iconImage={
         enterprise.logoUrl ? { src: enterprise.logoUrl, alt: enterprise.name } : undefined
@@ -168,6 +175,26 @@ export function EnterpriseDetailView({
       ))}
       stats={stats}
       tabs={[
+        {
+          value: 'experts',
+          label: t('专家团队'),
+          count: expertItems.length,
+          content: (
+            <Card className="border-0 shadow-sm rounded-3xl">
+              <CardContent className="p-6">
+                {expertItems.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {expertItems.map((expert) => (
+                      <ExpertCard key={expert.id} expert={expert} />
+                    ))}
+                  </div>
+                ) : (
+                  <DetailEmpty icon={Users} title={t('暂无专家')} />
+                )}
+              </CardContent>
+            </Card>
+          ),
+        },
         {
           value: 'info',
           label: t('基本信息'),

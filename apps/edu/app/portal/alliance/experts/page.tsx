@@ -8,6 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { ExpertCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { fetchAllPages } from '@/lib/fetch-all'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const RATING_TABS = [
@@ -25,11 +26,14 @@ export default function AlliancePublicExpertsPage() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    // 与后台一致：仅展示本校链接企业的公开专家
-    portalRequest<{ items: AllianceExpert[] }>(
-      `/alliance/public/experts${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    // 与后台一致：仅展示本校链接企业的公开专家；分页全量拉取避免截断
+    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    fetchAllPages((page, pageSize) =>
+      portalRequest<{ items: AllianceExpert[] }>(
+        `/alliance/public/experts${q}${q ? '&' : '?'}limit=${pageSize}&offset=${page * pageSize}`,
+      ),
     )
-      .then((data) => setItems(data.items || []))
+      .then((items) => setItems(items))
       .catch((err) => {
         reportError(err, { source: '加载企业专家列表' })
       })

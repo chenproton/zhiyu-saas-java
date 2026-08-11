@@ -460,159 +460,6 @@ func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, http.StatusOK, item)
 }
 
-// ===== 企业合作协议 =====
-
-func (h *AllianceHandler) ListEnterpriseAgreements(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	eid := chi.URLParam(r, "eid")
-	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-
-	items, err := h.Store.ListEnterpriseAgreements(r.Context(), eid, tenantID)
-	if err != nil {
-		respondServerError(w, r, err, "查询失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.AllianceEnterpriseAgreement]{Items: items, Total: len(items)})
-}
-
-func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	eid := chi.URLParam(r, "eid")
-	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-	var p store.AllianceEnterpriseAgreementCreateParams
-	if !decodeBody(w, r, &p) {
-		return
-	}
-	p.TenantID = tenantID
-	p.EnterpriseID = eid
-	if p.Name == "" {
-		respondError(w, http.StatusBadRequest, "协议名称不能为空")
-		return
-	}
-
-	id, err := h.Store.CreateEnterpriseAgreement(r.Context(), &p)
-	if err != nil {
-		respondServerError(w, r, err, "创建失败")
-		return
-	}
-
-	item, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondServerError(w, r, err, "创建失败")
-		return
-	}
-	respondJSON(w, http.StatusCreated, item)
-}
-
-func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	eid := chi.URLParam(r, "eid")
-	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	existing, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "协议不存在")
-		return
-	}
-
-	var p store.AllianceEnterpriseAgreementUpdateParams
-	if !decodeBody(w, r, &p) {
-		return
-	}
-	// 部分更新兜底：缺失字段回退已有值，防止全列覆盖清空数据
-	if p.Name == "" {
-		p.Name = existing.Name
-	}
-	if p.Status == "" {
-		p.Status = existing.Status
-	}
-	if p.Type == nil {
-		p.Type = existing.Type
-	}
-	if p.StartDate == nil {
-		p.StartDate = existing.StartDate
-	}
-	if p.EndDate == nil {
-		p.EndDate = existing.EndDate
-	}
-	if p.Content == nil {
-		p.Content = existing.Content
-	}
-	if len(p.Attachments) == 0 {
-		p.Attachments = existing.Attachments
-	}
-	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, tenantID, &p); err != nil {
-		respondServerError(w, r, err, "更新失败")
-		return
-	}
-
-	item, err := h.Store.GetEnterpriseAgreementByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondServerError(w, r, err, "更新失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, item)
-}
-
-func (h *AllianceHandler) DeleteEnterpriseAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	eid := chi.URLParam(r, "eid")
-	if _, err := h.Links.GetLinkByEnterprise(r.Context(), eid, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if err := h.Store.DeleteEnterpriseAgreement(r.Context(), id, tenantID); err != nil {
-		respondServerError(w, r, err, "删除失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
 // ===== 合作项目 =====
 
 func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
@@ -1170,8 +1017,9 @@ func (h *AllianceHandler) GetPublicSchoolInfo(w http.ResponseWriter, r *http.Req
 
 func (h *AllianceHandler) ListPublicEnterprises(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
+	limit, offset := publicListParams(r)
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceEnterprise, error) {
-		return h.Store.ListPublicEnterprises(ctx, tenantID)
+		return h.Store.ListPublicEnterprises(ctx, tenantID, limit, offset)
 	})
 }
 
@@ -1182,10 +1030,27 @@ func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Req
 	}, "企业不存在")
 }
 
+// publicListParams 解析公开列表分页参数（limit 默认 100，上限 500；offset 默认 0）。
+func publicListParams(r *http.Request) (limit, offset int) {
+	if v, err := parseInt(r.URL.Query().Get("limit"), 100); err == nil && v > 0 {
+		limit = v
+	} else {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		offset = v
+	}
+	return limit, offset
+}
+
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
+	limit, offset := publicListParams(r)
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceProject, error) {
-		return h.Store.ListPublicProjects(ctx, tenantID)
+		return h.Store.ListPublicProjects(ctx, tenantID, limit, offset)
 	})
 }
 
@@ -1214,8 +1079,9 @@ func (h *AllianceHandler) ListPublicMilestones(w http.ResponseWriter, r *http.Re
 
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
+	limit, offset := publicListParams(r)
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceAchievement, error) {
-		return h.Store.ListPublicAchievements(ctx, tenantID)
+		return h.Store.ListPublicAchievements(ctx, tenantID, limit, offset)
 	})
 }
 
@@ -1228,15 +1094,17 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 
 func (h *AllianceHandler) ListPublicAgreements(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
+	limit, offset := publicListParams(r)
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AlliancePublicAgreement, error) {
-		return h.Store.ListPublicAgreements(ctx, tenantID)
+		return h.Store.ListPublicAgreements(ctx, tenantID, limit, offset)
 	})
 }
 
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
+	limit, offset := publicListParams(r)
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
-		return h.Store.ListPublicExperts(ctx, tenantID)
+		return h.Store.ListPublicExperts(ctx, tenantID, limit, offset)
 	})
 }
 

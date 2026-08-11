@@ -201,10 +201,13 @@ func (s *AllianceStore) DeleteMilestone(ctx context.Context, id, tenantID string
 
 // ListPublicProjects 门户前台公开项目列表：is_public 为唯一展示门槛，归属"双控通过的企业"
 // （enterprise_ids 关联判断，§3.2）；带 tenantID 时限定该校自有项目且叠加 link.is_public 双控、排除已终止合作。
-func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string) ([]domain.AllianceProject, error) {
+func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string, limit, offset int) ([]domain.AllianceProject, error) {
 	const cols = `id, tenant_id, name, type, description, phase, publish_status,
 		start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 		is_public, created_by, created_at, updated_at`
+	if limit <= 0 {
+		limit = 100
+	}
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanProjectRows, `
 			SELECT `+cols+`
@@ -216,8 +219,8 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string)
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
 				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			  )
-			ORDER BY p.created_at DESC LIMIT 100
-		`, tenantID)
+			ORDER BY p.created_at DESC LIMIT $2 OFFSET $3
+		`, tenantID, limit, offset)
 	}
 	return queryList(ctx, s.q, s.ScanProjectRows, `
 		SELECT `+cols+`
@@ -227,8 +230,8 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string)
 			SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid
 			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
 		  )
-		ORDER BY p.created_at DESC LIMIT 100
-	`)
+		ORDER BY p.created_at DESC LIMIT $1 OFFSET $2
+	`, limit, offset)
 }
 
 func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id, tenantID string) (*domain.AllianceProject, error) {

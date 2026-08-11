@@ -205,42 +205,98 @@ func (s *AllianceStore) GetExpertByIDGlobal(ctx context.Context, id string) (*do
 	`, id)
 }
 
-// ListPublicExperts 门户前台公开专家列表（双控：企业 enable_public + 专家 is_public；
-// 带 tenantID 时叠加该校 link.is_public 且合作未终止，§3.2）。
-func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string) ([]domain.AllianceExpert, error) {
-	if tenantID != "" {
-		return queryList(ctx, s.q, s.ScanExpertRows, `
-			SELECT `+expertColumns+`
-			FROM alliance_experts x
-			WHERE x.is_public = true AND x.status = 'active'
-			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
-			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated')
-			ORDER BY x.created_at DESC LIMIT 100
-		`, tenantID)
+// publicExpertColumns 公开专家列：专家全列 + 企业名称（前台展示归属企业用）。
+// 扫描顺序与 ScanPublicExpertRows 一致。
+const publicExpertColumns = expertColumns + `, pe.name AS enterprise_name`
+
+func (s *AllianceStore) ScanPublicExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, error) {
+	items := make([]domain.AllianceExpert, 0)
+	for rows.Next() {
+		var e domain.AllianceExpert
+		var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
+		var age, expYrs *int
+		var proFields, specs, photos, attachs json.RawMessage
+		var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization, enterpriseName *string
+		var colleges json.RawMessage
+		var userID, createdBy *string
+		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
+			&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
+			&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
+			&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &userID, &createdBy, &e.CreatedAt, &e.UpdatedAt,
+			&enterpriseName); err != nil {
+			return nil, err
+		}
+		e.Gender = gender
+		e.Age = age
+		e.Title = ttl
+		e.Position = pos
+		e.ExpertType = etype
+		e.Industry = industry
+		e.ProfessionalFields = proFields
+		e.Specialties = specs
+		e.ExperienceYears = expYrs
+		e.Education = edu
+		e.Introduction = intro
+		e.WorkExperience = workExp
+		e.City = city
+		e.AvatarURL = avatar
+		e.CoverImage = coverImage
+		e.Photos = photos
+		e.Attachments = attachs
+		e.EnterpriseID = enterpriseID
+		e.EnterpriseName = enterpriseName
+		e.Organization = organization
+		e.Rating = rating
+		e.PartnerSource = partnerSource
+		e.PositionDirection = positionDirection
+		e.SecondaryColleges = colleges
+		e.UserID = userID
+		e.CreatedBy = createdBy
+		items = append(items, e)
 	}
-	return queryList(ctx, s.q, s.ScanExpertRows, `
-		SELECT `+expertColumns+`
+	return items, rows.Err()
+}
+
+// ListPublicExperts 门户前台公开专家列表（双控：企业 enable_public + 专家 is_public；
+// 带 tenantID 时叠加该校 link.is_public 且合作未终止，§3.2）。返回含企业名称。
+// limit/offset 分页；limit<=0 时默认 100。
+func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string, limit, offset int) ([]domain.AllianceExpert, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if tenantID != "" {
+		return queryList(ctx, s.q, s.ScanPublicExpertRows, `
+			SELECT `+publicExpertColumns+`
+			FROM alliance_experts x
+			JOIN partner_enterprises pe ON pe.id = x.enterprise_id
+			WHERE x.is_public = true AND x.status = 'active' AND pe.enable_public = true
+			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated')
+			ORDER BY x.created_at DESC LIMIT $2 OFFSET $3
+		`, tenantID, limit, offset)
+	}
+	return queryList(ctx, s.q, s.ScanPublicExpertRows, `
+		SELECT `+publicExpertColumns+`
 		FROM alliance_experts x
-		WHERE x.is_public = true AND x.status = 'active'
-		  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
-		ORDER BY x.created_at DESC LIMIT 100
-	`)
+		JOIN partner_enterprises pe ON pe.id = x.enterprise_id
+		WHERE x.is_public = true AND x.status = 'active' AND pe.enable_public = true
+		ORDER BY x.created_at DESC LIMIT $1 OFFSET $2
+	`, limit, offset)
 }
 
 func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id, tenantID string) (*domain.AllianceExpert, error) {
 	if tenantID != "" {
-		return queryOne(ctx, s.q, s.ScanExpertRows, `
-			SELECT `+expertColumns+`
+		return queryOne(ctx, s.q, s.ScanPublicExpertRows, `
+			SELECT `+publicExpertColumns+`
 			FROM alliance_experts x
-			WHERE x.id = $1 AND x.is_public = true AND x.status = 'active'
-			  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
+			JOIN partner_enterprises pe ON pe.id = x.enterprise_id
+			WHERE x.id = $1 AND x.is_public = true AND x.status = 'active' AND pe.enable_public = true
 			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated')
 		`, id, tenantID)
 	}
-	return queryOne(ctx, s.q, s.ScanExpertRows, `
-		SELECT `+expertColumns+`
+	return queryOne(ctx, s.q, s.ScanPublicExpertRows, `
+		SELECT `+publicExpertColumns+`
 		FROM alliance_experts x
-		WHERE x.id = $1 AND x.is_public = true AND x.status = 'active'
-		  AND EXISTS (SELECT 1 FROM partner_enterprises pe WHERE pe.id = x.enterprise_id AND pe.enable_public = true)
+		JOIN partner_enterprises pe ON pe.id = x.enterprise_id
+		WHERE x.id = $1 AND x.is_public = true AND x.status = 'active' AND pe.enable_public = true
 	`, id)
 }
