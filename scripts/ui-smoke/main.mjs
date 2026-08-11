@@ -14,6 +14,28 @@ import { promises as fs } from 'fs'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
+// ── 验证码（新设备登录自动识别）──────────────────────────────
+// 登录页固定设备标识：信任跨运行累积（30 天滑窗），第二次起不再触发新设备验证码；
+// 首次运行/信任过期时由下面逻辑从 Redis 读取答案自动填写。
+const SMOKE_DEVICE_ID = 'smoke-device-portal'
+
+/**
+ * 从 Redis 读取验证码明文答案（base64Captcha 答案仅存服务端 Redis，
+ * 巡检环境可直接读取；生产环境验证码答案只在服务端内存流转）。
+ */
+function captchaAnswer(captchaId) {
+  if (!captchaId) return null
+  try {
+    const out = execFileSync(
+      'docker', ['exec', 'zhiyu-redis', 'redis-cli', 'GET', `zhiyu:captcha:answer:${captchaId}`],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    )
+    return (out || '').trim() || null
+  } catch {
+    return null
+  }
+}
+
 // ── 登录 ──────────────────────────────────────────────────
 async function login(ctx, page, cfg, role, listeners) {
   const cred = cfg.accounts?.[role]
@@ -22,15 +44,15 @@ async function login(ctx, page, cfg, role, listeners) {
   // partner（企业端）为独立认证门户（/partner/login），走最小分支：直接调接口拿 token
   if (role === 'partner') return loginPartner(ctx, page, cfg, role, cred)
 
-  // 监听登录响应，区分失败原因（先建监听，再操作页面）
-  const loginStatusPromise = new Promise(resolve => {
+  // 提交一次登录表单，返回响应状态；captcha_required/captcha_wrong 返回 'captcha:...'
+  const submitAndWait = () => new Promise(resolve => {
     const timer = setTimeout(() => resolve('timeout'), cfg.loginTimeoutMs + 5000)
     const onResponse = async res => {
       if (res.url().includes('/auth/portal/login') && res.request().method() === 'POST') {
         clearTimeout(timer)
+        page.off('response', onResponse)
         const status = res.status()
         if (status === 400) {
-          // 防爆破滑块验证码拦截：同一 IP 登录失败过多（阈值内），需人工/等待解除
           const body = await res.json().catch(() => null)
           if (body?.code === 'captcha_required' || body?.code === 'captcha_wrong') {
             resolve(`captcha:${body.code}`)
@@ -44,8 +66,36 @@ async function login(ctx, page, cfg, role, listeners) {
     listeners.push({ handler: onResponse, kind: 'response' })
   })
 
+  // 页面出现验证码后：主动刷新验证码（确保在监听之后发请求）→ 从 Redis 读答案 → 填入输入框
+  const solveCaptchaViaUi = async () => {
+    const input = page.locator('input[aria-label="验证码"]')
+    await input.waitFor({ state: 'visible', timeout: 5000 })
+    const captchaIdPromise = new Promise(resolve => {
+      const h = async res => {
+        if (res.url().includes('/auth/captcha') && res.request().method() === 'GET') {
+          page.off('response', h)
+          const body = await res.json().catch(() => null)
+          resolve(body?.captchaId || null)
+        }
+      }
+      page.on('response', h)
+      setTimeout(() => { page.off('response', h); resolve(null) }, 10000)
+    })
+    // 点击验证码图片刷新，触发一次新的 GET /auth/captcha（注册监听后发请求，避免竞态）
+    const imgBtn = page.locator('button[title="点击刷新验证码"]')
+    await imgBtn.waitFor({ state: 'visible', timeout: 5000 })
+    await imgBtn.click()
+    const captchaId = await captchaIdPromise
+    if (!captchaId) throw new Error('验证码自动识别失败: 未获取到 captchaId')
+    const code = captchaAnswer(captchaId)
+    if (!code) throw new Error(`验证码自动识别失败: Redis 无答案 ${captchaId}`)
+    await input.fill(code)
+  }
+
   try {
     await page.goto(`${cfg.baseUrl}/portal/login`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    // 固定设备标识：信任跨运行累积，避免每次巡检都触发新设备验证码
+    await page.evaluate(() => { try { localStorage.setItem('zhiyu-device-id', SMOKE_DEVICE_ID) } catch { /* ignore */ } })
     await page.fill('#username', cred.username)
     await page.fill('#password', cred.password)
     await page.click('button[type="submit"]')
@@ -53,13 +103,22 @@ async function login(ctx, page, cfg, role, listeners) {
     throw new Error(`登录页操作失败: ${e.message}`)
   }
 
-  const status = await loginStatusPromise
+  // 新设备/失败计数触发验证码：自动识别并重试（最多 3 轮）
+  let status = await submitAndWait()
+  let captchaTries = 0
+  while (typeof status === 'string' && status.startsWith('captcha:') && captchaTries < 3) {
+    await solveCaptchaViaUi()
+    await page.click('button[type="submit"]')
+    status = await submitAndWait()
+    captchaTries++
+  }
+
   if (status === 401) throw new Error(`登录失败: 用户名或密码错误（401），或账号已被禁用`)
   if (status === 429) throw new Error(`登录失败: 登录限流（429），请稍后重试`)
   if (status === 'timeout') throw new Error(`登录超时: 登录请求未完成`)
   if (typeof status === 'string' && status.startsWith('captcha:')) {
-    throw new Error(`登录被防爆破验证码拦截（${status}）：同一 IP 登录失败次数过多。` +
-      `可等待 10 分钟计数过期，或清除验证码失败计数后重试（redis: DEL "zhiyu:captcha:fail:*"）`)
+    throw new Error(`登录被验证码拦截（${status}）：自动识别 3 轮仍失败，请人工确认。` +
+      `或清除验证码失败计数后重试（redis: DEL "zhiyu:captcha:fail:*"）`)
   }
 
   await sleep(800)
@@ -86,7 +145,29 @@ async function loginPartner(ctx, page, cfg, role, cred) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(cfg.loginTimeoutMs),
   })
-  let res = await post('/api/v1/auth/partner/login', { username: cred.username, password: cred.password })
+  const getCaptcha = async () => {
+    const r = await fetch(`${cfg.baseUrl}/api/v1/auth/captcha`, {
+      signal: AbortSignal.timeout(cfg.loginTimeoutMs),
+    })
+    if (!r.ok) throw new Error(`验证码获取失败: HTTP ${r.status}`)
+    return r.json()
+  }
+  // 无 deviceId 的接口登录每次都要验证码；带固定设备标识 + 自动读 Redis 答案通过
+  const deviceId = 'smoke-device-partner'
+  let res = await post('/api/v1/auth/partner/login', { username: cred.username, password: cred.password, deviceId })
+  let captchaTries = 0
+  while (res.status === 400 && captchaTries < 3) {
+    const body = await res.json().catch(() => null)
+    if (body?.code !== 'captcha_required' && body?.code !== 'captcha_wrong') break
+    const cap = await getCaptcha()
+    const code = captchaAnswer(cap.captchaId)
+    if (!code) throw new Error('partner 验证码自动识别失败: Redis 无答案')
+    res = await post('/api/v1/auth/partner/login', {
+      username: cred.username, password: cred.password, deviceId,
+      captchaId: cap.captchaId, captchaCode: code,
+    })
+    captchaTries++
+  }
   if (res.status === 401) {
     // 账号不存在（或密码错误）：尝试注册巡检企业；409 说明用户名已注册但密码不符
     const enterpriseName = cred.enterpriseName || '巡检测试企业'

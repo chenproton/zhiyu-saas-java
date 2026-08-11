@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestCaptchaService_GenerateAndVerify 生成→正确字符校验通过（redis nil 走内存降级）。
@@ -101,5 +102,86 @@ func TestCaptchaService_IPIsolation(t *testing.T) {
 	n, _ := svc.FailCount(ctx, "10.0.0.2")
 	if n != 0 {
 		t.Fatalf("other ip should be 0, got %d", n)
+	}
+}
+
+// TestCaptchaService_DeviceTrust 设备信任标记：新设备无信任 → 登录成功标记 → 常用设备有信任。
+func TestCaptchaService_DeviceTrust(t *testing.T) {
+	svc := NewCaptchaService(nil)
+	ctx := context.Background()
+
+	if svc.IsTrustedDevice(ctx, "portal", "alice", "dev-1") {
+		t.Fatal("new device should not be trusted")
+	}
+
+	svc.MarkTrustedDevice(ctx, "portal", "Alice", "dev-1")
+	if !svc.IsTrustedDevice(ctx, "portal", "alice", "dev-1") {
+		t.Fatal("device should be trusted after login")
+	}
+	// 其他账号/平台/设备不受影响
+	if svc.IsTrustedDevice(ctx, "portal", "alice", "dev-2") {
+		t.Fatal("other device should not be trusted")
+	}
+	if svc.IsTrustedDevice(ctx, "saas", "alice", "dev-1") {
+		t.Fatal("other platform should not be trusted")
+	}
+	if svc.IsTrustedDevice(ctx, "portal", "bob", "dev-1") {
+		t.Fatal("other account should not be trusted")
+	}
+}
+
+// TestCaptchaService_DeviceFailCount 账号×设备失败计数：达到阈值生效，成功后清零，账号/设备隔离。
+func TestCaptchaService_DeviceFailCount(t *testing.T) {
+	svc := NewCaptchaService(nil)
+	ctx := context.Background()
+
+	for i := 0; i < CaptchaFailThreshold; i++ {
+		svc.RecordFailureForDevice(ctx, "portal", "alice", "dev-1")
+	}
+	n, err := svc.FailCountForDevice(ctx, "portal", "alice", "dev-1")
+	if err != nil {
+		t.Fatalf("fail count: %v", err)
+	}
+	if n != CaptchaFailThreshold {
+		t.Fatalf("expected %d failures, got %d", CaptchaFailThreshold, n)
+	}
+
+	// 同账号其他设备 / 其他账号同设备互不影响
+	if other, _ := svc.FailCountForDevice(ctx, "portal", "alice", "dev-2"); other != 0 {
+		t.Fatalf("other device should be 0, got %d", other)
+	}
+	if other, _ := svc.FailCountForDevice(ctx, "portal", "bob", "dev-1"); other != 0 {
+		t.Fatalf("other account should be 0, got %d", other)
+	}
+
+	svc.ResetFailureForDevice(ctx, "portal", "alice", "dev-1")
+	if n, _ := svc.FailCountForDevice(ctx, "portal", "alice", "dev-1"); n != 0 {
+		t.Fatalf("expected 0 after reset, got %d", n)
+	}
+}
+
+// TestCaptchaService_DeviceTrustExpire 信任标记过期后重新视为新设备。
+func TestCaptchaService_DeviceTrustExpire(t *testing.T) {
+	svc := NewCaptchaService(nil)
+	ctx := context.Background()
+
+	svc.MarkTrustedDevice(ctx, "portal", "alice", "dev-1")
+	svc.mu.Lock()
+	svc.trusts[captchaTrustKey("portal", "alice", "dev-1")] = captchaMemEntry{
+		answer: "1",
+		expire: time.Now().Add(-time.Minute),
+	}
+	svc.mu.Unlock()
+
+	if svc.IsTrustedDevice(ctx, "portal", "alice", "dev-1") {
+		t.Fatal("expired trust should be treated as new device")
+	}
+	// pruneLocked 清理过期信任
+	svc.mu.Lock()
+	svc.pruneLocked()
+	_, ok := svc.trusts[captchaTrustKey("portal", "alice", "dev-1")]
+	svc.mu.Unlock()
+	if ok {
+		t.Fatal("expired trust should be pruned")
 	}
 }

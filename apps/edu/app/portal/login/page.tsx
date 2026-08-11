@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { AlertCircle, User, Lock, Building2, History } from 'lucide-react'
-import { authApi, setToken } from '@/lib/api'
+import { authApi, setToken, getDeviceId } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAuth } from '@/components/auth-provider'
@@ -99,6 +99,7 @@ export default function PortalLoginPage() {
       const res = await authApi.portalLogin({
         username,
         password,
+        deviceId: getDeviceId(),
         ...(captchaAnswer
           ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),

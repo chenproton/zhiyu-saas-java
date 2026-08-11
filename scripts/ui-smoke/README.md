@@ -123,6 +123,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 ## 注意事项
 
 - 测试账号 `school/school123`、`teacher/teacher123`、`student/student123` 需存在于目标环境（`--account` 可覆盖）
+- **登录验证码自动识别**：登录接口要求验证码（新设备/失败计数触发）时，巡检会自动从 Redis 读取答案并填写（`docker exec zhiyu-redis redis-cli GET zhiyu:captcha:answer:{id}`，需 Redis 容器可达）；portal/partner 登录使用固定设备标识 `smoke-device-*`，信任标记（30 天滑窗）在首次巡检写入后，后续运行不再触发新设备验证码
 - `partner` 角色默认账号 `smokepartner/smoke123`：登录接口返回 401 时自动调用 `POST /api/v1/auth/partner/register` 注册巡检企业「巡检测试企业」并直接登录（无需预建账号）；若账号已存在但密码不符（注册冲突 409）会报错提示用 `--account partner:user:pass` 修正。巡检企业是空数据企业，页面多为空态属正常
 - 默认进入 CRUD 测试模式：创建数据带 `SMOKE_` 前缀，编辑/删除/启用/禁用只操作带 `SMOKE_` 标记的行，结束后自动清理（`--no-cleanup` 可关闭）
 - `/superadmin` 与 `/portal/apps/system/org-user/roles` 默认不触发 CRUD 操作，防止改乱权限影响后续测试

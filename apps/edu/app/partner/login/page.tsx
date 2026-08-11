@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AlertCircle, User, Lock, Building2, Phone, Mail, IdCard } from 'lucide-react'
-import { partnerAuthApi, setToken } from '@/lib/api'
+import { partnerAuthApi, setToken, getDeviceId } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -96,6 +96,7 @@ export default function PartnerLoginPage() {
       const res = await partnerAuthApi.login({
         username,
         password,
+        deviceId: getDeviceId(),
         ...(captchaAnswer
           ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),

@@ -55,7 +55,7 @@ import { LogTableShell } from '@/components/shared/log-table-shell'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
-import { authApi } from '@/lib/api'
+import { authApi, getDeviceId } from '@/lib/api'
 import CaptchaInput from '@/components/shared/captcha-input'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -378,6 +378,7 @@ export default function SuperAdminPage() {
       const data = await authApi.saasLogin({
         username: loginUsername,
         password: loginPassword,
+        deviceId: getDeviceId(),
         ...(captchaAnswer
           ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),
