@@ -168,6 +168,19 @@ export default function PartnerEnterprisePage() {
     }
   }
 
+  /** 展示开关即时生效：切换即保存（部分更新，不影响未保存的表单改动） */
+  const handleTogglePublic = async (v: boolean) => {
+    const prev = item.enablePublic
+    setItem({ ...item, enablePublic: v })
+    try {
+      await partnerEnterpriseApi.updateProfile({ enablePublic: v })
+      toast({ title: v ? t('已开启对外展示') : t('已关闭对外展示') })
+    } catch (e: any) {
+      setItem({ ...item, enablePublic: prev })
+      toast({ title: t('操作失败'), description: e.message, variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -178,6 +191,10 @@ export default function PartnerEnterprisePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-1" title={t('开启后企业才会出现在各学校的产业联盟展示页；具体是否在某学校前台出现，由该校在引入时决定。')}>
+            <Label className="text-sm text-muted-foreground">{t('愿意对外展示')}</Label>
+            <Switch checked={item.enablePublic} onCheckedChange={handleTogglePublic} />
+          </div>
           <Button variant="outline" onClick={() => setPreviewOpen(true)}>
             <Eye className="h-4 w-4 mr-1" />
             {t('预览展示页')}
@@ -205,8 +222,8 @@ export default function PartnerEnterprisePage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      <div className="space-y-6">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{t('基本信息')}</CardTitle>
@@ -343,28 +360,6 @@ export default function PartnerEnterprisePage() {
                 onChange={(e) => setField('description', e.target.value)}
                 rows={5}
               />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('展示设置')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>{t('愿意对外展示')}</Label>
-                <Switch
-                  checked={item.enablePublic}
-                  onCheckedChange={(v) => setField('enablePublic', v)}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t(
-                  '开启后企业才会出现在各学校的产业联盟展示页；具体是否在某学校前台出现，由该校在引入时决定。',
-                )}
-              </p>
             </CardContent>
           </Card>
         </div>

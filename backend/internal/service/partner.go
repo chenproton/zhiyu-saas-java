@@ -66,7 +66,7 @@ func (s *PartnerService) Register(ctx context.Context, p *PartnerRegisterParams)
 			return err
 		}
 
-		// 企业主体（全局唯一，name 冲突由 DB 唯一约束兜底）
+		// 企业主体（全局唯一，name 冲突由 DB 唯一约束兜底）；默认开启"愿意对外展示"
 		enterpriseID, err := txStore.Alliance().CreateEnterprise(ctx, &store.AllianceEnterpriseCreateParams{
 			TenantID:                tenantRes.TenantID,
 			Name:                    p.EnterpriseName,
@@ -74,6 +74,7 @@ func (s *PartnerService) Register(ctx context.Context, p *PartnerRegisterParams)
 			ContactPerson:           store.StrPtrIfNonEmpty(p.ContactPerson),
 			ContactPhone:            store.StrPtrIfNonEmpty(p.ContactPhone),
 			ContactEmail:            store.StrPtrIfNonEmpty(p.ContactEmail),
+			EnablePublic:            true,
 		})
 		if err != nil {
 			return err
