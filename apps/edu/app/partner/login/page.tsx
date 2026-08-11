@@ -87,7 +87,7 @@ export default function PartnerLoginPage() {
     setError('')
 
     if (captchaRequired && !captchaAnswer) {
-      setError(t('请先完成滑块验证'))
+      setError(t('请先输入验证码'))
       return
     }
 
@@ -111,7 +111,7 @@ export default function PartnerLoginPage() {
     } catch (err: any) {
       if (err?.code === 'captcha_required') {
         setCaptchaRequired(true)
-        setError(t('请完成滑块验证后重新登录'))
+        setError(t('请先输入验证码后再登录'))
       } else if (err?.code === 'captcha_wrong') {
         refreshCaptcha()
         setError(t('验证码不正确，请重试'))
