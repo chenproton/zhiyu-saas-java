@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,10 +59,13 @@ func (h *AuthHandler) Shutdown() {
 type LoginRequest struct {
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required"`
-	// 字符验证码：登录失败达到阈值后必填（captchaId 由 GET /auth/captcha 下发，
+	// 字符验证码：登录失败达到阈值或新设备登录时必填（captchaId 由 GET /auth/captcha 下发，
 	// captchaCode 为用户输入的验证码字符）。
 	CaptchaID   string `json:"captchaId"`
 	CaptchaCode string `json:"captchaCode"`
+	// DeviceID 前端持久化的设备标识（localStorage）：新设备登录必须附带验证码，
+	// 常用设备仅连续失败达到阈值后要求；缺省（纯接口客户端）时每次登录都必须验证码。
+	DeviceID string `json:"deviceId"`
 }
 
 type LoginResponse struct {
@@ -172,11 +176,30 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// 防爆破：同一 IP 登录失败达到阈值后，必须通过字符验证码（校验失败直接返回，
-	// 不泄露账号是否存在）。验证码未配置（Captcha == nil）时跳过。
+	// 防爆破/新设备验证码策略：
+	//   1. 无 deviceId（纯接口客户端）→ 每次登录都必须通过验证码；
+	//   2. 新设备（该账号×设备无信任标记）→ 必须通过验证码；
+	//   3. 常用设备连续失败达到阈值 → 必须通过验证码；
+	//   4. 同一 IP 登录失败达到阈值 → 必须通过验证码（纵深防御）。
+	// 校验失败直接返回，不泄露账号是否存在。验证码未配置（Captcha == nil）时跳过。
 	if h.Captcha != nil {
 		ip := middleware.ClientIP(r)
-		if fail, _ := h.Captcha.FailCount(r.Context(), ip); fail >= service.CaptchaFailThreshold {
+		deviceKey := strings.TrimSpace(req.DeviceID)
+		needCaptcha := deviceKey == ""
+		if deviceKey != "" {
+			needCaptcha = !h.Captcha.IsTrustedDevice(r.Context(), string(platform), req.Username, deviceKey)
+			if !needCaptcha {
+				if fail, _ := h.Captcha.FailCountForDevice(r.Context(), string(platform), req.Username, deviceKey); fail >= service.CaptchaFailThreshold {
+					needCaptcha = true
+				}
+			}
+		}
+		if !needCaptcha {
+			if fail, _ := h.Captcha.FailCount(r.Context(), ip); fail >= service.CaptchaFailThreshold {
+				needCaptcha = true
+			}
+		}
+		if needCaptcha {
 			if err := h.Captcha.Verify(r.Context(), req.CaptchaID, req.CaptchaCode); err != nil {
 				if errors.Is(err, service.ErrCaptchaWrong) {
 					respondJSON(w, http.StatusBadRequest, errorResponse{
@@ -232,12 +255,24 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 			respondError(w, http.StatusForbidden, "租户不在有效期内，请联系管理员")
 			return
 		}
-		// 凭证错误：计入该 IP 失败次数（达到阈值后要求验证码）
+		// 凭证错误：计入该 IP 与账号×设备失败次数（达到阈值后要求验证码）
 		if h.Captcha != nil {
-			h.Captcha.RecordFailure(r.Context(), middleware.ClientIP(r))
+			ip := middleware.ClientIP(r)
+			h.Captcha.RecordFailure(r.Context(), ip)
+			if deviceKey := strings.TrimSpace(req.DeviceID); deviceKey != "" {
+				h.Captcha.RecordFailureForDevice(r.Context(), string(platform), req.Username, deviceKey)
+			}
 		}
 		respondError(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
+	}
+
+	// 认证成功：该设备标记为常用设备并清零失败计数（单用户/多租户分支统一处理）
+	if h.Captcha != nil {
+		if deviceKey := strings.TrimSpace(req.DeviceID); deviceKey != "" {
+			h.Captcha.MarkTrustedDevice(r.Context(), string(platform), req.Username, deviceKey)
+			h.Captcha.ResetFailureForDevice(r.Context(), string(platform), req.Username, deviceKey)
+		}
 	}
 
 	if len(candidates) == 1 {

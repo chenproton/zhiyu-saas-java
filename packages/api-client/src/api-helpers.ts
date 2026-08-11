@@ -29,6 +29,8 @@ export interface LoginRequest {
   password: string
   captchaId?: string
   captchaCode?: string
+  /** 持久化设备标识：新设备登录后端要求验证码，常用设备免验证码 */
+  deviceId?: string
 }
 
 /** 字符验证码数据（GET /auth/captcha）。 */
