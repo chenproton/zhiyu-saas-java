@@ -5,7 +5,6 @@ import Link from 'next/link'
 import {
   ArrowLeft,
   ChevronDown,
-  ChevronRight,
   ListChecks,
   ListOrdered,
   Save,
@@ -55,7 +54,6 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
   const [model, setModel] = useState<CertificationPositionModel | null>(null)
   const [pointWeights, setPointWeights] = useState<Record<string, number>>({})
   const [taskWeights, setTaskWeights] = useState<Record<string, number>>({})
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [pointDialogOpen, setPointDialogOpen] = useState(false)
   const [taskDialogPoint, setTaskDialogPoint] = useState<DomainPoint | null>(null)
   const [levelDialogPoint, setLevelDialogPoint] = useState<DomainPoint | null>(null)
@@ -105,15 +103,6 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
       ),
     [model],
   )
-
-  const toggleExpanded = (abilityPointId: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(abilityPointId)) next.delete(abilityPointId)
-      else next.add(abilityPointId)
-      return next
-    })
-  }
 
   const handleSave = async () => {
     const errors: string[] = []
@@ -231,33 +220,29 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                     <TableHead className="w-[100px]">{t('能力点权重')}</TableHead>
                     <TableHead className="w-[100px]">{t('胜任标准')}</TableHead>
                     <TableHead>{t('胜任标准描述')}</TableHead>
+                    <TableHead className="w-[260px]">{t('任务/课程')}</TableHead>
                     <TableHead className="w-[210px] text-right">{t('操作')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(model?.domains ?? []).map((domain) =>
-                    domain.points.map((point, idx) => {
-                      const isExpanded = expanded.has(point.abilityPointId)
-                      return (
-                        <PointRows
-                          key={point.abilityPointId}
-                          point={point}
-                          isExpanded={isExpanded}
-                          pointWeight={pointWeights[point.abilityPointId] ?? point.weight}
-                          taskWeights={taskWeights}
-                          onToggle={() => toggleExpanded(point.abilityPointId)}
-                          onOpenTaskWeights={() =>
-                            setTaskDialogPoint({ ...point, domainName: domain.name })
-                          }
-                          domainName={domain.name}
-                          domainCount={domain.points.length}
-                          isFirstInDomain={idx === 0}
-                          onOpenLevels={() =>
-                            setLevelDialogPoint({ ...point, domainName: domain.name })
-                          }
-                        />
-                      )
-                    }),
+                    domain.points.map((point, idx) => (
+                      <PointRows
+                        key={point.abilityPointId}
+                        point={point}
+                        pointWeight={pointWeights[point.abilityPointId] ?? point.weight}
+                        taskWeights={taskWeights}
+                        onOpenTaskWeights={() =>
+                          setTaskDialogPoint({ ...point, domainName: domain.name })
+                        }
+                        domainName={domain.name}
+                        domainCount={domain.points.length}
+                        isFirstInDomain={idx === 0}
+                        onOpenLevels={() =>
+                          setLevelDialogPoint({ ...point, domainName: domain.name })
+                        }
+                      />
+                    )),
                   )}
                 </TableBody>
               </Table>
@@ -340,10 +325,8 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
 
 function PointRows({
   point,
-  isExpanded,
   pointWeight,
   taskWeights,
-  onToggle,
   onOpenTaskWeights,
   onOpenLevels,
   domainName,
@@ -351,10 +334,8 @@ function PointRows({
   isFirstInDomain,
 }: {
   point: CertificationModelPoint
-  isExpanded: boolean
   pointWeight: number
   taskWeights: Record<string, number>
-  onToggle: () => void
   onOpenTaskWeights: () => void
   onOpenLevels: () => void
   domainName: string
@@ -362,113 +343,96 @@ function PointRows({
   isFirstInDomain: boolean
 }) {
   const t = useT()
+  const [tasksExpanded, setTasksExpanded] = useState(false)
+  const hasMoreTasks = point.tasks.length > 5
+  const visibleTasks = hasMoreTasks && !tasksExpanded ? point.tasks.slice(0, 5) : point.tasks
   return (
-    <>
-      <TableRow>
-        {isFirstInDomain && (
-          <TableCell rowSpan={domainCount} className="align-middle">
-            <div className="flex flex-col items-start gap-1">
-              <Badge variant="outline" className="text-[10px]">
-                {domainName}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground">
-                {t('{n} 个能力点', { n: domainCount })}
-              </span>
-            </div>
-          </TableCell>
-        )}
-        <TableCell>
-          <button
-            type="button"
-            onClick={onToggle}
-            className="flex items-center gap-1.5 text-left text-sm font-medium"
-          >
-            {isExpanded ? (
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-            )}
-            <span className="line-clamp-1">{point.name}</span>
-          </button>
+    <TableRow>
+      {isFirstInDomain && (
+        <TableCell rowSpan={domainCount} className="align-middle">
+          <div className="flex flex-col items-start gap-1">
+            <Badge variant="outline" className="text-[10px]">
+              {domainName}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground">
+              {t('{n} 个能力点', { n: domainCount })}
+            </span>
+          </div>
         </TableCell>
-        <TableCell>
-          <span className="text-sm font-medium">{pointWeight}%</span>
-        </TableCell>
-        <TableCell>
-          <Badge variant="outline" className="text-xs">
-            {t(COMPETENCY_LEVEL_LABELS[point.requiredLevel] ?? point.requiredLevel)}
-          </Badge>
-        </TableCell>
-        <TableCell className="max-w-[320px]">
-          <span
-            className="line-clamp-1 text-sm text-muted-foreground"
-            title={point.rubricDescription}
-          >
-            {point.rubricDescription || point.description || '-'}
-          </span>
-        </TableCell>
-        <TableCell className="text-right">
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
-            <ListOrdered className="mr-1 size-3" />
-            {t('分档配置')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={onOpenTaskWeights}
-            disabled={point.tasks.length === 0}
-          >
-            <ListChecks className="mr-1 size-3" />
-            {t('任务权重')}
-          </Button>
-        </TableCell>
-      </TableRow>
-      {isExpanded && (
-        <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={6} className="bg-muted/30 p-0">
-            {point.tasks.length === 0 ? (
-              <p className="px-10 py-4 text-sm text-muted-foreground">
-                {t('暂无关联任务（请在场景编辑页关联能力点）')}
-              </p>
-            ) : (
-              <div className="px-10 py-3">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('任务名称')}</TableHead>
-                      <TableHead className="w-[200px]">{t('所属场景')}</TableHead>
-                      <TableHead className="w-[90px]">{t('权重')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {point.tasks.map((task) => (
-                      <TableRow key={task.taskId}>
-                        <TableCell className="text-sm">{task.taskName}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {task.scenarioName}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={cn(
-                              'text-sm',
-                              taskWeights[taskKey(point.abilityPointId, task.taskId)] !==
-                                undefined && 'font-medium',
-                            )}
-                          >
-                            {taskWeights[taskKey(point.abilityPointId, task.taskId)] ?? task.weight}
-                            %
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TableCell>
-        </TableRow>
       )}
-    </>
+      <TableCell>
+        <span className="text-sm font-medium">{point.name}</span>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm font-medium">{pointWeight}%</span>
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline" className="text-xs">
+          {t(COMPETENCY_LEVEL_LABELS[point.requiredLevel] ?? point.requiredLevel)}
+        </Badge>
+      </TableCell>
+      <TableCell className="max-w-[320px]">
+        <span
+          className="line-clamp-1 text-sm text-muted-foreground"
+          title={point.rubricDescription}
+        >
+          {point.rubricDescription || point.description || '-'}
+        </span>
+      </TableCell>
+      <TableCell className="align-top">
+        {point.tasks.length === 0 ? (
+          <span className="text-sm text-muted-foreground">{t('暂无关联任务')}</span>
+        ) : (
+          <>
+            <div className="space-y-1.5">
+              {visibleTasks.map((task) => (
+                <div key={task.taskId} className="flex items-center gap-1.5 text-sm">
+                  <span className="truncate" title={task.taskName}>
+                    {task.taskName}
+                  </span>
+                  <span
+                    className={cn(
+                      'shrink-0 text-muted-foreground',
+                      taskWeights[taskKey(point.abilityPointId, task.taskId)] !== undefined &&
+                        'font-medium text-foreground',
+                    )}
+                  >
+                    {taskWeights[taskKey(point.abilityPointId, task.taskId)] ?? task.weight}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            {hasMoreTasks && (
+              <button
+                type="button"
+                onClick={() => setTasksExpanded((prev) => !prev)}
+                className="mt-1.5 flex items-center gap-0.5 text-xs text-primary"
+              >
+                <ChevronDown
+                  className={cn('size-3 transition-transform', tasksExpanded && 'rotate-180')}
+                />
+                {tasksExpanded ? t('收起') : t('展开全部 {n} 项', { n: point.tasks.length })}
+              </button>
+            )}
+          </>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
+          <ListOrdered className="mr-1 size-3" />
+          {t('分档配置')}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={onOpenTaskWeights}
+          disabled={point.tasks.length === 0}
+        >
+          <ListChecks className="mr-1 size-3" />
+          {t('任务权重')}
+        </Button>
+      </TableCell>
+    </TableRow>
   )
 }
