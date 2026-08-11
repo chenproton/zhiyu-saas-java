@@ -21,7 +21,7 @@ func TestPosition_CRUD(t *testing.T) {
 		body := map[string]interface{}{
 			"name":         "Test Position",
 			"positionType": "enterprise",
-			"version":      "v1.0",
+			"version":      "V1.0",
 		}
 		w := env.Do("POST", "/api/v1/job/positions", body)
 		if w.Code != http.StatusCreated {

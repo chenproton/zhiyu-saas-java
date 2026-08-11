@@ -15,9 +15,10 @@ import (
 // TestRespondServerErrorIncludesRequestID 验收标准 P2：任意 5xx 结构化日志含 request_id，
 // 与 X-Request-ID 请求头/响应头对应，便于按请求号检索日志链路。
 func TestRespondServerErrorIncludesRequestID(t *testing.T) {
+	orig := slog.Default()
 	var buf bytes.Buffer
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-	defer slog.SetDefault(slog.New(slog.NewTextHandler(nil, nil)))
+	defer slog.SetDefault(orig)
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, errors.New("boom"), "测试失败")

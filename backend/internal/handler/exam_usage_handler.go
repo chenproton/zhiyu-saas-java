@@ -66,6 +66,9 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *ExamUsageRequest) (string, bool) {
 			return requireTenant(w, r)
 		},
+		// Update/Delete 的 store SQL 按 tenant_id 过滤（uuid 列），必须解析租户，
+		// 否则 tenantID 为空串导致 "invalid input syntax for type uuid" 500。
+		TenantFn: requireTenant,
 		ValidateUpdate: func(t *ExamUsageRequest) string {
 			if t.Name == "" {
 				return "缺少必填字段"
