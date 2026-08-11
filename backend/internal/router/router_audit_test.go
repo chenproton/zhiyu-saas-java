@@ -17,6 +17,7 @@ import (
 // publicAPIRoutes 公开路由白名单：无需认证即可访问的 /api/v1 路由。
 // 新增公开路由必须显式登记在此处，否则审计测试直接 fail。
 var publicAPIRoutes = map[string]bool{
+	"GET /api/v1/auth/captcha":           true,
 	"POST /api/v1/auth/login":            true,
 	"POST /api/v1/auth/saas/login":       true,
 	"POST /api/v1/auth/portal/login":     true,

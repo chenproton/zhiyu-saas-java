@@ -19,6 +19,7 @@ import { partnerAuthApi, setToken } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
+import SliderCaptcha from '@/components/shared/slider-captcha'
 
 export default function PartnerLoginPage() {
   const t = useT()
@@ -48,6 +49,22 @@ export default function PartnerLoginPage() {
     confirmPassword: '',
   })
 
+  // 防爆破滑块验证码：后端返回 captcha_required 后展示，拖动完成随登录请求提交
+  const [captchaRequired, setCaptchaRequired] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  )
+  const [captchaVersion, setCaptchaVersion] = useState(0)
+
+  const handleCaptchaPass = (captchaId: string, x: number, y: number) => {
+    setCaptchaAnswer({ id: captchaId, x, y })
+  }
+
+  const refreshCaptcha = () => {
+    setCaptchaVersion((v) => v + 1)
+    setCaptchaAnswer(null)
+  }
+
   const doLogin = async (token: string) => {
     setToken(token, 'partner')
     await refresh()
@@ -70,9 +87,21 @@ export default function PartnerLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (captchaRequired && !captchaAnswer) {
+      setError(t('请先完成滑块验证'))
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await partnerAuthApi.login({ username, password })
+      const res = await partnerAuthApi.login({
+        username,
+        password,
+        ...(captchaAnswer
+          ? { captchaId: captchaAnswer.id, captchaX: captchaAnswer.x, captchaY: captchaAnswer.y }
+          : {}),
+      })
       if (res.needsTenantSelection && res.preAuthToken && res.tenants) {
         setTenantOptions(res.tenants)
         setPreAuthToken(res.preAuthToken)
@@ -82,7 +111,15 @@ export default function PartnerLoginPage() {
       }
       await doLogin(res.token)
     } catch (err: any) {
-      setError(err.message || t('登录失败'))
+      if (err?.code === 'captcha_required') {
+        setCaptchaRequired(true)
+        setError(t('请完成滑块验证后重新登录'))
+      } else if (err?.code === 'captcha_wrong') {
+        refreshCaptcha()
+        setError(t('验证码不正确，请重试'))
+      } else {
+        setError(err.message || t('登录失败'))
+      }
       setLoading(false)
     }
   }
@@ -213,6 +250,14 @@ export default function PartnerLoginPage() {
                     />
                   </div>
                 </div>
+
+                {captchaRequired && (
+                  <SliderCaptcha
+                    key={captchaVersion}
+                    onPass={handleCaptchaPass}
+                    onError={() => setCaptchaRequired(true)}
+                  />
+                )}
 
                 {errorView}
 

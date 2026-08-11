@@ -1,5 +1,11 @@
 import { request, portalRequest } from '../api-helpers'
-import type { LoginRequest, LoginResponse, SelectTenantRequest, MeResponse } from '../api-helpers'
+import type {
+  LoginRequest,
+  LoginResponse,
+  SelectTenantRequest,
+  MeResponse,
+  CaptchaData,
+} from '../api-helpers'
 
 export const authApi = {
   login: (req: LoginRequest) =>
@@ -11,6 +17,7 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
+  captcha: () => request<CaptchaData>('/auth/captcha', { method: 'GET' }),
   selectTenant: (req: SelectTenantRequest) =>
     request<LoginResponse>('/auth/select-tenant', { method: 'POST', body: JSON.stringify(req) }),
   me: () => request<MeResponse>('/auth/me'),

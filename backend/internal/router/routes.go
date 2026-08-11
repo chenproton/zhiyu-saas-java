@@ -37,6 +37,9 @@ func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Hand
 
 func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) {
 	loginLimiter := cache.RateLimit(redisClient, 30, time.Minute)
+	// 验证码生成有图片合成开销，按 IP 收紧限流防刷爆 CPU
+	captchaLimiter := cache.RateLimit(redisClient, 10, time.Minute)
+	r.With(captchaLimiter).Get("/auth/captcha", h.captchaHandler.Get)
 	r.With(loginLimiter).Post("/auth/login", h.authHandler.Login)
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
 	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)

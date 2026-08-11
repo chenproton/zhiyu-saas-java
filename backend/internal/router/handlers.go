@@ -12,6 +12,7 @@ import (
 
 type Handlers struct {
 	authHandler                   *handler.AuthHandler
+	captchaHandler                *handler.CaptchaHandler
 	fileHandler                   *handler.FileHandler
 	statsHandler                  *handler.StatsHandler
 	portalHandler                 *handler.PortalHandler
@@ -121,6 +122,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	svc := service.New(st)
 	authSvc := service.NewAuthService(svc)
 	authSvc.Geo = geo
+	captchaSvc := service.NewCaptchaService(redisClient)
 	positionSvc := service.NewPositionService(svc)
 	affairsPlanSvc := service.NewAffairsPlanService(svc)
 	portalSvc := service.NewPortalService(svc)
@@ -132,12 +134,14 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	partnerSvc := service.NewPartnerService(svc)
 	authH := handler.NewAuthHandler(authSvc, jwtSecret)
 	authH.PartnerService = partnerSvc
+	authH.Captcha = captchaSvc
 	tenantH := &handler.TenantHandler{Service: service.NewTenantService(svc), AdminService: service.NewTenantAdminService(svc)}
 	tenantH.PartnerService = partnerSvc
 	allianceH := &handler.AllianceHandler{Store: st.Alliance(), Links: st.AllianceEnterpriseLinks(), Grants: st.AllianceGrants()}
 	allianceH.PartnerService = partnerSvc
 	return &Handlers{
 		authHandler:                   authH,
+		captchaHandler:                &handler.CaptchaHandler{Service: captchaSvc},
 		fileHandler:                   fileHandler,
 		statsHandler:                  &handler.StatsHandler{},
 		portalHandler:                 &handler.PortalHandler{Service: positionSvc},

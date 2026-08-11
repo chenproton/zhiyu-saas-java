@@ -55,6 +55,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
 import { authApi } from '@/lib/api'
+import SliderCaptcha from '@/components/shared/slider-captcha'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
@@ -127,6 +128,21 @@ export default function SuperAdminPage() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
+  // 防爆破滑块验证码：后端返回 captcha_required 后展示，拖动完成随登录请求提交
+  const [captchaRequired, setCaptchaRequired] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  )
+  const [captchaVersion, setCaptchaVersion] = useState(0)
+
+  const handleCaptchaPass = (captchaId: string, x: number, y: number) => {
+    setCaptchaAnswer({ id: captchaId, x, y })
+  }
+
+  const refreshCaptcha = () => {
+    setCaptchaVersion((v) => v + 1)
+    setCaptchaAnswer(null)
+  }
 
   const [tenants, setTenants] = useState<AdminTenant[]>([])
   const [total, setTotal] = useState(0)
@@ -354,8 +370,19 @@ export default function SuperAdminPage() {
     e.preventDefault()
     setLoginLoading(true)
     setLoginError(null)
+    if (captchaRequired && !captchaAnswer) {
+      setLoginError(t('请先完成滑块验证'))
+      setLoginLoading(false)
+      return
+    }
     try {
-      const data = await authApi.saasLogin({ username: loginUsername, password: loginPassword })
+      const data = await authApi.saasLogin({
+        username: loginUsername,
+        password: loginPassword,
+        ...(captchaAnswer
+          ? { captchaId: captchaAnswer.id, captchaX: captchaAnswer.x, captchaY: captchaAnswer.y }
+          : {}),
+      })
       const payload = JSON.parse(
         atob(
           data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/') +
@@ -368,8 +395,16 @@ export default function SuperAdminPage() {
       setToken(data.token, 'saas')
       setAuthenticated(true)
       setAuthUser(data.user.username || data.user.name || t('管理员'))
-    } catch (err) {
-      setLoginError(err instanceof Error ? err.message : t('登录失败'))
+    } catch (err: any) {
+      if (err?.code === 'captcha_required') {
+        setCaptchaRequired(true)
+        setLoginError(t('请完成滑块验证后重新登录'))
+      } else if (err?.code === 'captcha_wrong') {
+        refreshCaptcha()
+        setLoginError(t('验证码不正确，请重试'))
+      } else {
+        setLoginError(err instanceof Error ? err.message : t('登录失败'))
+      }
     } finally {
       setLoginLoading(false)
     }
@@ -949,6 +984,14 @@ export default function SuperAdminPage() {
                   disabled={loginLoading}
                 />
               </div>
+
+              {captchaRequired && (
+                <SliderCaptcha
+                  key={captchaVersion}
+                  onPass={handleCaptchaPass}
+                  onError={() => setCaptchaRequired(true)}
+                />
+              )}
 
               {loginError && (
                 <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">

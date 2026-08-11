@@ -22,6 +22,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import { resolveActiveRole } from '@/lib/active-role'
+import SliderCaptcha from '@/components/shared/slider-captcha'
 
 function getPostLoginPath(roleCode?: string): string {
   switch (roleCode) {
@@ -48,6 +49,21 @@ export default function PortalLoginPage() {
   const [preAuthToken, setPreAuthToken] = useState('')
   const [showTenantSelect, setShowTenantSelect] = useState(false)
   const [selectingTenant, setSelectingTenant] = useState(false)
+  // 防爆破滑块验证码：后端返回 captcha_required 后展示，拖动完成随登录请求提交
+  const [captchaRequired, setCaptchaRequired] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  )
+  const [captchaVersion, setCaptchaVersion] = useState(0)
+
+  const handleCaptchaPass = (captchaId: string, x: number, y: number) => {
+    setCaptchaAnswer({ id: captchaId, x, y })
+  }
+
+  const refreshCaptcha = () => {
+    setCaptchaVersion((v) => v + 1)
+    setCaptchaAnswer(null)
+  }
 
   const doLogin = async (token: string) => {
     setToken(token, 'portal')
@@ -73,10 +89,22 @@ export default function PortalLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (captchaRequired && !captchaAnswer) {
+      setError(t('请先完成滑块验证'))
+      return
+    }
+
     setLoading(true)
 
     try {
-      const res = await authApi.portalLogin({ username, password })
+      const res = await authApi.portalLogin({
+        username,
+        password,
+        ...(captchaAnswer
+          ? { captchaId: captchaAnswer.id, captchaX: captchaAnswer.x, captchaY: captchaAnswer.y }
+          : {}),
+      })
       if (res.needsTenantSelection && res.preAuthToken && res.tenants) {
         setTenantOptions(res.tenants)
         setPreAuthToken(res.preAuthToken)
@@ -86,7 +114,16 @@ export default function PortalLoginPage() {
       }
       await doLogin(res.token)
     } catch (err: any) {
-      setError(err.message || t('登录失败'))
+      // 后端要求验证码：展示滑块并提示；验证码错误：刷新滑块
+      if (err?.code === 'captcha_required') {
+        setCaptchaRequired(true)
+        setError(t('请完成滑块验证后重新登录'))
+      } else if (err?.code === 'captcha_wrong') {
+        refreshCaptcha()
+        setError(t('验证码不正确，请重试'))
+      } else {
+        setError(err.message || t('登录失败'))
+      }
       setLoading(false)
     }
   }
@@ -186,6 +223,14 @@ export default function PortalLoginPage() {
                   />
                 </div>
               </div>
+
+              {captchaRequired && (
+                <SliderCaptcha
+                  key={captchaVersion}
+                  onPass={handleCaptchaPass}
+                  onError={() => setCaptchaRequired(true)}
+                />
+              )}
 
               {error && (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">

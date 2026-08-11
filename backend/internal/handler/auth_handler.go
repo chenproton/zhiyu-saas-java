@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -24,6 +25,8 @@ type AuthHandler struct {
 
 	// PartnerService 企业平台注册/主体查询（router 装配时注入）。
 	PartnerService *service.PartnerService
+	// Captcha 滑块验证码服务（router 装配时注入）。nil 时登录不校验验证码。
+	Captcha *service.CaptchaService
 }
 
 func NewAuthHandler(svc *service.AuthService, jwtSecret string) *AuthHandler {
@@ -55,6 +58,11 @@ func (h *AuthHandler) Shutdown() {
 type LoginRequest struct {
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required"`
+	// 滑块验证码：登录失败达到阈值后必填（captchaId 由 GET /auth/captcha 下发，
+	// captchaX/captchaY 为拼图块最终位置，服务端与缺口坐标比对）。
+	CaptchaID string `json:"captchaId"`
+	CaptchaX  int    `json:"captchaX"`
+	CaptchaY  int    `json:"captchaY"`
 }
 
 type LoginResponse struct {
@@ -165,6 +173,28 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
+	// 防爆破：同一 IP 登录失败达到阈值后，必须通过滑块验证码（校验失败直接返回，
+	// 不泄露账号是否存在）。验证码未配置（Captcha == nil）时跳过。
+	if h.Captcha != nil {
+		ip := middleware.ClientIP(r)
+		if fail, _ := h.Captcha.FailCount(r.Context(), ip); fail >= service.CaptchaFailThreshold {
+			if err := h.Captcha.Verify(r.Context(), req.CaptchaID, req.CaptchaX, req.CaptchaY); err != nil {
+				if errors.Is(err, service.ErrCaptchaWrong) {
+					respondJSON(w, http.StatusBadRequest, errorResponse{
+						Code:  CodeCaptchaWrong,
+						Error: "验证码不正确，请重试",
+					})
+				} else {
+					respondJSON(w, http.StatusBadRequest, errorResponse{
+						Code:  CodeCaptchaRequired,
+						Error: "请完成滑块验证",
+					})
+				}
+				return
+			}
+		}
+	}
+
 	type candidate struct {
 		user   domain.User
 		tenant domain.Tenant
@@ -202,6 +232,10 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		if expiredTenant {
 			respondError(w, http.StatusForbidden, "租户不在有效期内，请联系管理员")
 			return
+		}
+		// 凭证错误：计入该 IP 失败次数（达到阈值后要求验证码）
+		if h.Captcha != nil {
+			h.Captcha.RecordFailure(r.Context(), middleware.ClientIP(r))
 		}
 		respondError(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
@@ -318,6 +352,10 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, user *domain.User) {
+	// 认证成功：清零该 IP 登录失败计数（登录/注册/选租户统一入口）
+	if h.Captcha != nil {
+		h.Captcha.ResetFailure(r.Context(), middleware.ClientIP(r))
+	}
 	h.Service.UpdateLastLogin(r.Context(), user.ID, time.Now())
 	h.recordLoginLog(r, user, "success")
 
