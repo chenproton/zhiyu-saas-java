@@ -27,6 +27,17 @@ export default function SliderCaptcha({ onPass, onError, className }: SliderCapt
   const [data, setData] = useState<CaptchaData | null>(null)
   const [loadError, setLoadError] = useState('')
   const idRef = useRef('')
+  // onError/t 用 ref 持有最新值：登录页每次 re-render 都会生成新的内联
+  // onError 引用，若直接放进 useEffect 依赖，会导致 effect 反复重跑、
+  // 验证码被反复重新拉取（提交失败后图片"刷新"的根因）。
+  const onErrorRef = useRef(onError)
+  const tRef = useRef(t)
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
 
   const fetchCaptcha = useCallback(() => authApi.captcha(), [])
 
@@ -35,7 +46,7 @@ export default function SliderCaptcha({ onPass, onError, className }: SliderCapt
     setData(d)
   }, [])
 
-  // 挂载即拉取验证码（异步回调中 setState，避免同步 setState 触发级联渲染）
+  // 挂载即拉取验证码（依赖仅稳定引用，父组件 re-render 不会重拉；异步回调中 setState）
   useEffect(() => {
     let cancelled = false
     fetchCaptcha()
@@ -44,13 +55,13 @@ export default function SliderCaptcha({ onPass, onError, className }: SliderCapt
       })
       .catch((err: any) => {
         if (cancelled) return
-        setLoadError(err.message || t('验证码加载失败'))
-        onError?.(err)
+        setLoadError(err.message || tRef.current('验证码加载失败'))
+        onErrorRef.current?.(err)
       })
     return () => {
       cancelled = true
     }
-  }, [fetchCaptcha, applyCaptcha, onError, t])
+  }, [fetchCaptcha, applyCaptcha])
 
   // 刷新按钮：事件处理器内 setState 无级联渲染问题
   const load = useCallback(async () => {
@@ -58,10 +69,10 @@ export default function SliderCaptcha({ onPass, onError, className }: SliderCapt
     try {
       applyCaptcha(await fetchCaptcha())
     } catch (err: any) {
-      setLoadError(err.message || t('验证码加载失败'))
-      onError?.(err)
+      setLoadError(err.message || tRef.current('验证码加载失败'))
+      onErrorRef.current?.(err)
     }
-  }, [fetchCaptcha, applyCaptcha, onError, t])
+  }, [fetchCaptcha, applyCaptcha])
 
   if (loadError) {
     return (
@@ -109,7 +120,12 @@ export default function SliderCaptcha({ onPass, onError, className }: SliderCapt
           title: t('向右拖动滑块完成拼图'),
         }}
         events={{
-          confirm: (point) => onPass(idRef.current, point.x, point.y),
+          // 官方组件的 reset 让滑块归位，便于用户再次拖动；captchaAnswer 由
+          // 登录页在下一次 confirm 时覆盖
+          confirm: (point, reset) => {
+            onPass(idRef.current, point.x, point.y)
+            reset()
+          },
           refresh: load,
         }}
       />
