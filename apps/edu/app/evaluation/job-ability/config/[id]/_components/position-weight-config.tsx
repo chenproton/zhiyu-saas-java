@@ -220,7 +220,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                     <TableHead className="w-[100px]">{t('能力点权重')}</TableHead>
                     <TableHead className="w-[100px]">{t('胜任标准')}</TableHead>
                     <TableHead>{t('胜任标准描述')}</TableHead>
-                    <TableHead className="w-[260px]">{t('任务/课程')}</TableHead>
+                    <TableHead className="w-[260px]">{t('分数来源')}</TableHead>
                     <TableHead className="w-[210px] text-right">{t('操作')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -392,9 +392,9 @@ function PointRows({
                   </span>
                   <span
                     className={cn(
-                      'shrink-0 text-muted-foreground',
+                      'shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary',
                       taskWeights[taskKey(point.abilityPointId, task.taskId)] !== undefined &&
-                        'font-medium text-foreground',
+                        'font-semibold',
                     )}
                   >
                     {taskWeights[taskKey(point.abilityPointId, task.taskId)] ?? task.weight}%
