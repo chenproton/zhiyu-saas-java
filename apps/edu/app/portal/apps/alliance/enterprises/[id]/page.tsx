@@ -52,11 +52,17 @@ export default function AllianceEnterpriseDetailPage() {
   const [agreements, setAgreements] = useState<AllianceAgreement[]>([])
   const [allAgreements, setAllAgreements] = useState<AllianceAgreement[]>([])
   const [projects, setProjects] = useState<AllianceProject[]>([])
+  const [allProjects, setAllProjects] = useState<AllianceProject[]>([])
   const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
+  const [allAchievements, setAllAchievements] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
   const [savingA, setSavingA] = useState(false)
   const [linkDialog, setLinkDialog] = useState(false)
   const [linkSelected, setLinkSelected] = useState<string[]>([])
+  const [projLinkDialog, setProjLinkDialog] = useState(false)
+  const [projLinkSelected, setProjLinkSelected] = useState<string[]>([])
+  const [achLinkDialog, setAchLinkDialog] = useState(false)
+  const [achLinkSelected, setAchLinkSelected] = useState<string[]>([])
   const [newDialog, setNewDialog] = useState(false)
   const [aForm, setAForm] = useState({
     name: '',
@@ -79,9 +85,29 @@ export default function AllianceEnterpriseDetailPage() {
       .then(([ent, agr, proj, ach]) => {
         setEnterprise(ent)
         setAllAgreements(agr)
-        setAgreements(agr.filter((a) => (a.enterpriseIds || []).includes?.(id)))
-        setProjects(proj.filter((p: AllianceProject) => (p.enterpriseIds as any)?.includes?.(id)))
-        setAchievements(ach.filter((a: AllianceAchievement) => (a.enterpriseIds as any)?.includes?.(id)))
+        setAllProjects(proj)
+        setAllAchievements(ach)
+        // 本企业直接关联的项目（企业项目集，供协议/成果二次关联过滤）
+        const enterpriseProjects = proj.filter((p: AllianceProject) =>
+          (p.enterpriseIds as any)?.includes?.(id),
+        )
+        const projectIds = enterpriseProjects.map((p) => p.id)
+        setProjects(enterpriseProjects)
+        // 协议/成果：直接关联 + 经项目二次关联（去重）
+        setAgreements(
+          agr.filter(
+            (a) =>
+              (a.enterpriseIds || []).includes?.(id) ||
+              (a.projectIds || []).some((pid) => projectIds.includes(pid)),
+          ),
+        )
+        setAchievements(
+          ach.filter(
+            (a: AllianceAchievement) =>
+              (a.enterpriseIds as any)?.includes?.(id) ||
+              (a.projectIds || []).some((pid) => projectIds.includes(pid)),
+          ),
+        )
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
@@ -136,6 +162,82 @@ export default function AllianceEnterpriseDetailPage() {
       await allianceAgreementApi.update(aid, {
         ...agreement,
         enterpriseIds: (agreement.enterpriseIds || []).filter((x) => x !== id),
+      })
+      toast({ title: t('已取消关联') })
+      loadData()
+    } catch (e: any) {
+      toast({ title: t('操作失败'), description: e.message, variant: 'destructive' })
+    }
+  }
+
+  /** 关联已有项目：写入项目.enterprise_ids */
+  const saveLinkProjects = async () => {
+    setSavingA(true)
+    try {
+      for (const pid of projLinkSelected) {
+        const project = allProjects.find((p) => p.id === pid)
+        if (!project) continue
+        await allianceProjectApi.update(pid, {
+          ...project,
+          enterpriseIds: [...new Set([...(project.enterpriseIds || []), id])],
+        })
+      }
+      toast({ title: t('已关联 {count} 个项目', { count: projLinkSelected.length }) })
+      setProjLinkDialog(false)
+      setProjLinkSelected([])
+      loadData()
+    } catch (e: any) {
+      toast({ title: t('关联失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setSavingA(false)
+    }
+  }
+
+  const unlinkProject = async (pid: string) => {
+    const project = allProjects.find((p) => p.id === pid)
+    if (!project) return
+    try {
+      await allianceProjectApi.update(pid, {
+        ...project,
+        enterpriseIds: (project.enterpriseIds || []).filter((x) => x !== id),
+      })
+      toast({ title: t('已取消关联') })
+      loadData()
+    } catch (e: any) {
+      toast({ title: t('操作失败'), description: e.message, variant: 'destructive' })
+    }
+  }
+
+  /** 关联已有成果：写入成果.enterprise_ids */
+  const saveLinkAchievements = async () => {
+    setSavingA(true)
+    try {
+      for (const achId of achLinkSelected) {
+        const achievement = allAchievements.find((a) => a.id === achId)
+        if (!achievement) continue
+        await allianceAchievementApi.update(achId, {
+          ...achievement,
+          enterpriseIds: [...new Set([...(achievement.enterpriseIds || []), id])],
+        })
+      }
+      toast({ title: t('已关联 {count} 项成果', { count: achLinkSelected.length }) })
+      setAchLinkDialog(false)
+      setAchLinkSelected([])
+      loadData()
+    } catch (e: any) {
+      toast({ title: t('关联失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setSavingA(false)
+    }
+  }
+
+  const unlinkAchievement = async (achId: string) => {
+    const achievement = allAchievements.find((a) => a.id === achId)
+    if (!achievement) return
+    try {
+      await allianceAchievementApi.update(achId, {
+        ...achievement,
+        enterpriseIds: (achievement.enterpriseIds || []).filter((x) => x !== id),
       })
       toast({ title: t('已取消关联') })
       loadData()
@@ -343,20 +445,95 @@ export default function AllianceEnterpriseDetailPage() {
                     </td>
                   </tr>
                 ) : (
-                  agreements.map((a) => (
-                    <tr key={a.id} className="border-b">
-                      <TableCell className="font-medium">{a.name}</TableCell>
-                      <TableCell>{a.type || '-'}</TableCell>
-                      <TableCell>{allianceLabel('agreementStatus', a.status)}</TableCell>
-                      <TableCell>
-                        {a.startDate || '-'} ~ {a.endDate || '-'}
-                      </TableCell>
+                  agreements.map((a) => {
+                    // 直接关联（enterprise_ids）可取消；经项目二次关联仅展示
+                    const direct = (a.enterpriseIds || []).includes(id)
+                    return (
+                      <tr key={a.id} className="border-b">
+                        <TableCell className="font-medium">
+                          {a.name}
+                          {!direct && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              （{t('经项目关联')}）
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{a.type || '-'}</TableCell>
+                        <TableCell>{allianceLabel('agreementStatus', a.status)}</TableCell>
+                        <TableCell>
+                          {a.startDate || '-'} ~ {a.endDate || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {direct && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() => unlinkAgreement(a.id)}
+                            >
+                              {t('取消关联')}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'projects',
+      label: t('合作项目'),
+      badge: projects.length,
+      content: (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setProjLinkSelected([])
+                setProjLinkDialog(true)
+              }}
+              disabled={allProjects.filter((p) => !(p.enterpriseIds || []).includes?.(id)).length === 0}
+            >
+              <Link2 className="h-4 w-4 mr-1" />
+              {t('关联已有项目')}
+            </Button>
+          </div>
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead className="bg-muted/50 border-b">
+                <tr>
+                  <TableHead>{t('项目名称')}</TableHead>
+                  <TableHead>{t('阶段')}</TableHead>
+                  <TableHead>{t('开始日期')}</TableHead>
+                  <TableHead>{t('操作')}</TableHead>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
+                      {t('暂无合作项目')}
+                    </td>
+                  </tr>
+                ) : (
+                  projects.map((p) => (
+                    <tr key={p.id} className="border-b">
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{allianceLabel('projectPhase', p.phase)}</TableCell>
+                      <TableCell>{p.startDate || '-'}</TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-red-600"
-                          onClick={() => unlinkAgreement(a.id)}
+                          onClick={() => unlinkProject(p.id)}
                         >
                           {t('取消关联')}
                         </Button>
@@ -371,72 +548,78 @@ export default function AllianceEnterpriseDetailPage() {
       ),
     },
     {
-      key: 'projects',
-      label: t('合作项目'),
-      badge: projects.length,
-      content: (
-        <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
-            <thead className="bg-muted/50 border-b">
-              <tr>
-                <TableHead>{t('项目名称')}</TableHead>
-                <TableHead>{t('阶段')}</TableHead>
-                <TableHead>{t('开始日期')}</TableHead>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="text-center py-8 text-muted-foreground">
-                    {t('暂无合作项目')}
-                  </td>
-                </tr>
-              ) : (
-                projects.map((p) => (
-                  <tr key={p.id} className="border-b">
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{allianceLabel('projectPhase', p.phase)}</TableCell>
-                    <TableCell>{p.startDate || '-'}</TableCell>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      ),
-    },
-    {
       key: 'achievements',
       label: t('合作成果'),
       badge: achievements.length,
       content: (
-        <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
-            <thead className="bg-muted/50 border-b">
-              <tr>
-                <TableHead>{t('成果名称')}</TableHead>
-                <TableHead>{t('类型')}</TableHead>
-                <TableHead>{t('状态')}</TableHead>
-              </tr>
-            </thead>
-            <tbody>
-              {achievements.length === 0 ? (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setAchLinkSelected([])
+                setAchLinkDialog(true)
+              }}
+              disabled={
+                allAchievements.filter((a) => !(a.enterpriseIds || []).includes?.(id)).length === 0
+              }
+            >
+              <Link2 className="h-4 w-4 mr-1" />
+              {t('关联已有成果')}
+            </Button>
+          </div>
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead className="bg-muted/50 border-b">
                 <tr>
-                  <td colSpan={3} className="text-center py-8 text-muted-foreground">
-                    {t('暂无合作成果')}
-                  </td>
+                  <TableHead>{t('成果名称')}</TableHead>
+                  <TableHead>{t('类型')}</TableHead>
+                  <TableHead>{t('状态')}</TableHead>
+                  <TableHead>{t('操作')}</TableHead>
                 </tr>
-              ) : (
-                achievements.map((a) => (
-                  <tr key={a.id} className="border-b">
-                    <TableCell className="font-medium">{a.title}</TableCell>
-                    <TableCell>{allianceLabel('achievementType', a.type)}</TableCell>
-                    <TableCell>{allianceLabel('achievementStatus', a.status)}</TableCell>
+              </thead>
+              <tbody>
+                {achievements.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
+                      {t('暂无合作成果')}
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  achievements.map((a) => {
+                    const direct = (a.enterpriseIds || []).includes(id)
+                    return (
+                      <tr key={a.id} className="border-b">
+                        <TableCell className="font-medium">
+                          {a.title}
+                          {!direct && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              （{t('经项目关联')}）
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{allianceLabel('achievementType', a.type)}</TableCell>
+                        <TableCell>{allianceLabel('achievementStatus', a.status)}</TableCell>
+                        <TableCell>
+                          {direct && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() => unlinkAchievement(a.id)}
+                            >
+                              {t('取消关联')}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       ),
     },
@@ -500,6 +683,107 @@ export default function AllianceEnterpriseDetailPage() {
             <Button onClick={saveLink} disabled={savingA || linkSelected.length === 0}>
               {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               {t('关联 ({count})', { count: linkSelected.length })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 关联已有项目 */}
+      <Dialog open={projLinkDialog} onOpenChange={(o) => !o && setProjLinkDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('关联已有项目')}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+            {allProjects
+              .filter((p) => !(p.enterpriseIds || []).includes?.(id))
+              .map((p) => (
+                <label
+                  key={p.id}
+                  className="flex items-center gap-2 p-2 rounded border hover:bg-muted/40 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={projLinkSelected.includes(p.id)}
+                    onCheckedChange={(v) =>
+                      setProjLinkSelected((prev) =>
+                        v ? [...prev, p.id] : prev.filter((x) => x !== p.id),
+                      )
+                    }
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {allianceLabel('projectPhase', p.phase)}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            {allProjects.filter((p) => !(p.enterpriseIds || []).includes?.(id)).length === 0 && (
+              <p className="text-center py-6 text-sm text-muted-foreground">
+                {t('暂无可关联的项目')}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProjLinkDialog(false)}>
+              {t('取消')}
+            </Button>
+            <Button onClick={saveLinkProjects} disabled={savingA || projLinkSelected.length === 0}>
+              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {t('关联 ({count})', { count: projLinkSelected.length })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 关联已有成果 */}
+      <Dialog open={achLinkDialog} onOpenChange={(o) => !o && setAchLinkDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('关联已有成果')}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+            {allAchievements
+              .filter((a) => !(a.enterpriseIds || []).includes?.(id))
+              .map((a) => (
+                <label
+                  key={a.id}
+                  className="flex items-center gap-2 p-2 rounded border hover:bg-muted/40 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={achLinkSelected.includes(a.id)}
+                    onCheckedChange={(v) =>
+                      setAchLinkSelected((prev) =>
+                        v ? [...prev, a.id] : prev.filter((x) => x !== a.id),
+                      )
+                    }
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{a.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {allianceLabel('achievementType', a.type)} ·{' '}
+                      {allianceLabel('achievementStatus', a.status)}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            {allAchievements.filter((a) => !(a.enterpriseIds || []).includes?.(id)).length ===
+              0 && (
+              <p className="text-center py-6 text-sm text-muted-foreground">
+                {t('暂无可关联的成果')}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAchLinkDialog(false)}>
+              {t('取消')}
+            </Button>
+            <Button
+              onClick={saveLinkAchievements}
+              disabled={savingA || achLinkSelected.length === 0}
+            >
+              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {t('关联 ({count})', { count: achLinkSelected.length })}
             </Button>
           </DialogFooter>
         </DialogContent>

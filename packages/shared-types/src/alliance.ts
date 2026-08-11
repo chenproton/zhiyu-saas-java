@@ -100,6 +100,8 @@ export interface AllianceProject {
   budget?: string
   coverImage?: string
   enterpriseIds?: string[]
+  /** 关联的合作协议 id 列表（与协议.projectIds 双向同步） */
+  agreementIds?: string[]
   secondaryColleges?: string[]
   isPublic: boolean
   createdBy?: string
@@ -230,6 +232,8 @@ export interface AlliancePublicAgreement {
   startDate?: string
   endDate?: string
   enterpriseIds?: string[]
+  /** 关联的项目 id（前台协议-项目二次关联） */
+  projectIds?: string[]
 }
 
 export interface AlliancePermission {

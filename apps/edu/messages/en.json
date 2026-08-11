@@ -4230,5 +4230,13 @@
   "{count} 项协议": "{count} agreements",
   "{count} 项成果": "{count} achievements",
   "计划：{date}": "Planned: {date}",
-  "完成：{date}": "Completed: {date}"
+  "完成：{date}": "Completed: {date}",
+  "经项目关联": "Linked via project",
+  "关联已有项目": "Link existing projects",
+  "关联已有成果": "Link existing achievements",
+  "暂无可关联的项目": "No projects available to link",
+  "暂无可关联的成果": "No achievements available to link",
+  "已关联 {count} 个项目": "Linked {count} projects",
+  "已关联 {count} 项成果": "Linked {count} achievements",
+  "选择归属项目（可多选）": "Select projects (multiple)"
 }

@@ -64,8 +64,10 @@ export default function AlliancePublicProjectDetailPage() {
         const entIds = p.enterpriseIds ?? []
         setPartners((entsRes.items ?? []).filter((e) => entIds.includes(e.id)))
         setAgreements(
-          (agrRes.items ?? []).filter((a) =>
-            (a.enterpriseIds ?? []).some((eid) => entIds.includes(eid)),
+          (agrRes.items ?? []).filter(
+            (a) =>
+              (a.projectIds ?? []).includes(id) ||
+              (p.agreementIds ?? []).includes(a.id),
           ),
         )
         setAchievements(

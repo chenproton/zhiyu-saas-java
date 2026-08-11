@@ -146,7 +146,8 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 }
 
 // ListPublicAchievements 门户前台公开成果列表：is_public 为唯一展示门槛，归属"双控通过的企业"
-// （enterprise_ids 关联判断，§3.2）；带 tenantID 时限定该校自有成果且叠加 link.is_public 双控、排除已终止合作。
+// （enterprise_ids 直接关联）或关联"双控通过的项目"（project_ids 二次关联，§3.2）；
+// 带 tenantID 时限定该校自有成果且叠加 link.is_public 双控、排除已终止合作。
 func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID string) ([]domain.AllianceAchievement, error) {
 	const cols = `id, tenant_id, title, type, description, achievement_date, cover_image,
 		attachments, citation_reason, images, owner_persons, co_builders,
@@ -158,10 +159,19 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID str
 			FROM alliance_achievements a
 			WHERE a.is_public = true
 			  AND a.tenant_id = $1
-			  AND EXISTS (
-				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
-				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
-				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+			  AND (
+				EXISTS (
+					SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+					JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+				)
+				OR EXISTS (
+					SELECT 1 FROM jsonb_array_elements_text(a.project_ids) pid
+					JOIN alliance_projects p ON p.id = pid::uuid AND p.is_public = true AND p.tenant_id = $1
+					JOIN jsonb_array_elements_text(p.enterprise_ids) eid ON true
+					JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+				)
 			  )
 			ORDER BY a.created_at DESC LIMIT 100
 		`, tenantID)
@@ -170,9 +180,17 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID str
 		SELECT `+cols+`
 		FROM alliance_achievements a
 		WHERE a.is_public = true
-		  AND EXISTS (
-			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
-			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  AND (
+			EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			)
+			OR EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.project_ids) pid
+				JOIN alliance_projects p ON p.id = pid::uuid AND p.is_public = true
+				JOIN jsonb_array_elements_text(p.enterprise_ids) eid ON true
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			)
 		  )
 		ORDER BY a.created_at DESC LIMIT 100
 	`)
@@ -189,10 +207,19 @@ func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id, tenant
 			FROM alliance_achievements a
 			WHERE a.id = $1 AND a.is_public = true
 			  AND a.tenant_id = $2
-			  AND EXISTS (
-				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
-				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
-				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated'
+			  AND (
+				EXISTS (
+					SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+					JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated'
+				)
+				OR EXISTS (
+					SELECT 1 FROM jsonb_array_elements_text(a.project_ids) pid
+					JOIN alliance_projects p ON p.id = pid::uuid AND p.is_public = true AND p.tenant_id = $2
+					JOIN jsonb_array_elements_text(p.enterprise_ids) eid ON true
+					JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated'
+				)
 			  )
 		`, id, tenantID)
 	}
@@ -200,9 +227,17 @@ func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id, tenant
 		SELECT `+cols+`
 		FROM alliance_achievements a
 		WHERE a.id = $1 AND a.is_public = true
-		  AND EXISTS (
-			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
-			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  AND (
+			EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			)
+			OR EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.project_ids) pid
+				JOIN alliance_projects p ON p.id = pid::uuid AND p.is_public = true
+				JOIN jsonb_array_elements_text(p.enterprise_ids) eid ON true
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			)
 		  )
 	`, id)
 }

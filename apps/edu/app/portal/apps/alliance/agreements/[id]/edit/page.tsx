@@ -21,6 +21,7 @@ import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { syncAgreementProjectLinks } from '@/lib/alliance-links'
 import { useToast, LoadingView } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -98,6 +99,8 @@ export default function AllianceAgreementEditPage() {
     setSaving(true)
     try {
       await allianceAgreementApi.update(id, item)
+      // 双向同步：协议.project_ids ↔ 项目.agreement_ids
+      await syncAgreementProjectLinks(id, item.projectIds)
       toast({ title: t('协议已更新') })
       router.push(`/portal/apps/alliance/agreements/${id}`)
     } catch (e: any) {

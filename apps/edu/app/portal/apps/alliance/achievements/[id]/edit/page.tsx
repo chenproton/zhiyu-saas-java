@@ -222,22 +222,12 @@ export default function AllianceAchievementEditPage() {
               <CardTitle>{t('归属项目')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <Select
-                value={projectIds?.[0] || '__none'}
-                onValueChange={(v) => setField('projectIds', v === '__none' ? [] : [v])}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('选择归属项目（可选）')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">{t('不关联项目')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={projects}
+                value={projectIds}
+                onChange={(v) => setField('projectIds', v)}
+                placeholder={t('选择归属项目（可多选）')}
+              />
             </CardContent>
           </Card>
 

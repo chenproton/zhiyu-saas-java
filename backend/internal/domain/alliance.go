@@ -339,6 +339,7 @@ type AlliancePublicAgreement struct {
 	StartDate     *string         `json:"startDate,omitempty"`
 	EndDate       *string         `json:"endDate,omitempty"`
 	EnterpriseIDs json.RawMessage `json:"enterpriseIds,omitempty"`
+	ProjectIDs    json.RawMessage `json:"projectIds,omitempty"`
 }
 
 // ===== 合作权限 =====

@@ -55,31 +55,54 @@ func TestAlliancePublicAgreements(t *testing.T) {
 	secretContent := "SECRET-AGREEMENT-CONTENT-" + suffix
 	secretAttachment := "secret-agreement-" + suffix + ".pdf"
 
+	// 公开项目（关联公开企业 entPub），供"仅关联项目"的协议 a5 使用
+	projectID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO alliance_projects (id, tenant_id, name, enterprise_ids, is_public)
+		VALUES ($1, $2, $3, jsonb_build_array($4::text), true)
+	`, projectID, testhelper.TestTenantID, "公开协议关联项目-"+suffix, entPub); err != nil {
+		t.Fatalf("预置项目失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_projects WHERE id = $1`, projectID)
+
 	// a1 应可见（is_public=true + 公开企业，status=draft 不再影响展示）；a2 is_public=false 排除；
-	// a3 仅关联非公开企业排除；a4 关联已终止合作企业（tenant 分支排除）
-	a1, a2, a3, a4 := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
+	// a3 仅关联非公开企业排除；a4 关联已终止合作企业（tenant 分支排除）；
+	// a5 仅关联项目（project_ids，未直接关联企业）——经项目二次关联应可见
+	a1, a2, a3, a4, a5 := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
 	seed := []struct {
 		id       string
 		name     string
 		status   string
 		isPublic bool
 		entID    string
+		projID   string
 		content  string
 	}{
-		{a1, "公开协议-" + suffix, "draft", true, entPub, secretContent},
-		{a2, "隐藏协议-" + suffix, "active", false, entPub, secretContent},
-		{a3, "私企协议-" + suffix, "active", true, entPriv, secretContent},
-		{a4, "终止合作协议-" + suffix, "active", true, entTerm, secretContent},
+		{a1, "公开协议-" + suffix, "draft", true, entPub, "", secretContent},
+		{a2, "隐藏协议-" + suffix, "active", false, entPub, "", secretContent},
+		{a3, "私企协议-" + suffix, "active", true, entPriv, "", secretContent},
+		{a4, "终止合作协议-" + suffix, "active", true, entTerm, "", secretContent},
+		{a5, "项目协议-" + suffix, "active", true, "", projectID, secretContent},
 	}
 	for _, s := range seed {
-		if _, err := env.DB.Exec(ctx, `
-			INSERT INTO alliance_agreements (id, tenant_id, name, status, enterprise_ids, content, attachments, is_public)
-			VALUES ($1, $2, $3, $4, jsonb_build_array($5::text), $6, jsonb_build_array($7::text), $8)
-		`, s.id, testhelper.TestTenantID, s.name, s.status, s.entID, s.content, secretAttachment, s.isPublic); err != nil {
+		var q string
+		args := []any{s.id, testhelper.TestTenantID, s.name, s.status, s.content, secretAttachment, s.isPublic}
+		if s.entID != "" {
+			q = `
+				INSERT INTO alliance_agreements (id, tenant_id, name, status, enterprise_ids, content, attachments, is_public)
+				VALUES ($1, $2, $3, $4, jsonb_build_array($5::text), $6, jsonb_build_array($7::text), $8)`
+			args = []any{s.id, testhelper.TestTenantID, s.name, s.status, s.entID, s.content, secretAttachment, s.isPublic}
+		} else {
+			q = `
+				INSERT INTO alliance_agreements (id, tenant_id, name, status, project_ids, content, attachments, is_public)
+				VALUES ($1, $2, $3, $4, jsonb_build_array($5::text), $6, jsonb_build_array($7::text), $8)`
+			args = []any{s.id, testhelper.TestTenantID, s.name, s.status, s.projID, s.content, secretAttachment, s.isPublic}
+		}
+		if _, err := env.DB.Exec(ctx, q, args...); err != nil {
 			t.Fatalf("预置协议失败: %v", err)
 		}
 	}
-	defer env.DB.Exec(ctx, `DELETE FROM alliance_agreements WHERE id IN ($1,$2,$3,$4)`, a1, a2, a3, a4)
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_agreements WHERE id IN ($1,$2,$3,$4,$5)`, a1, a2, a3, a4, a5)
 
 	type item struct {
 		ID            string   `json:"id"`
@@ -97,8 +120,13 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if len(items) != 1 || items[0].ID != a1 {
-			t.Fatalf("应只返回公开协议 %s: %s", a1, w.Body.String())
+		// 应返回：直接关联的 a1 + 仅项目关联的 a5
+		ids := map[string]bool{}
+		for _, it := range items {
+			ids[it.ID] = true
+		}
+		if len(items) != 2 || !ids[a1] || !ids[a5] {
+			t.Fatalf("应返回 a1 与 a5（项目二次关联）: %s", w.Body.String())
 		}
 	})
 
@@ -111,17 +139,20 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		var found bool
+		var foundA1, foundA5 bool
 		for _, it := range items {
 			if it.ID == a2 || it.ID == a3 {
 				t.Fatalf("is_public=false/非公开企业协议不应公开: %s", w.Body.String())
 			}
 			if it.ID == a1 {
-				found = true
+				foundA1 = true
+			}
+			if it.ID == a5 {
+				foundA5 = true
 			}
 		}
-		if !found {
-			t.Fatalf("公开协议 %s 未返回: %s", a1, w.Body.String())
+		if !foundA1 || !foundA5 {
+			t.Fatalf("公开协议 a1/a5 未返回: %s", w.Body.String())
 		}
 	})
 

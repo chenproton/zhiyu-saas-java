@@ -61,7 +61,7 @@ func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.Allianc
 	for rows.Next() {
 		var a domain.AlliancePublicAgreement
 		var startDate, endDate *time.Time
-		if err := rows.Scan(&a.ID, &a.Name, &a.Type, &a.Status, &startDate, &endDate, &a.EnterpriseIDs); err != nil {
+		if err := rows.Scan(&a.ID, &a.Name, &a.Type, &a.Status, &startDate, &endDate, &a.EnterpriseIDs, &a.ProjectIDs); err != nil {
 			return nil, err
 		}
 		a.StartDate = formatDate(startDate)
@@ -72,19 +72,29 @@ func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.Allianc
 }
 
 // ListPublicAgreements 门户前台公开协议列表：is_public 为唯一展示门槛（业务状态不再参与过滤），
-// 且至少关联一家"双控通过的企业"（enterprise_ids 关联判断，参照 ListPublicProjects）；
+// 且至少关联一家"双控通过的企业"（enterprise_ids 直接关联）
+// 或关联"双控通过的项目"（project_ids 二次关联，经项目关联企业）；
 // 带 tenantID 时限定该校协议并叠加 link.is_public 双控、排除已终止合作。仅返回公开字段，content/attachments 不下发。
 func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string) ([]domain.AlliancePublicAgreement, error) {
-	const cols = `id, name, type, status, start_date, end_date, enterprise_ids`
+	const cols = `id, name, type, status, start_date, end_date, enterprise_ids, project_ids`
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 			SELECT `+cols+`
 			FROM alliance_agreements a
 			WHERE a.is_public = true AND a.tenant_id = $1
-			  AND EXISTS (
-				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
-				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
-				JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+			  AND (
+				EXISTS (
+					SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+					JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+				)
+				OR EXISTS (
+					SELECT 1 FROM jsonb_array_elements_text(a.project_ids) pid
+					JOIN alliance_projects p ON p.id = pid::uuid AND p.is_public = true AND p.tenant_id = $1
+					JOIN jsonb_array_elements_text(p.enterprise_ids) eid ON true
+					JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+					JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
+				)
 			  )
 			ORDER BY a.created_at DESC LIMIT 100
 		`, tenantID)
@@ -93,9 +103,17 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 		SELECT `+cols+`
 		FROM alliance_agreements a
 		WHERE a.is_public = true
-		  AND EXISTS (
-			SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
-			JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+		  AND (
+			EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			)
+			OR EXISTS (
+				SELECT 1 FROM jsonb_array_elements_text(a.project_ids) pid
+				JOIN alliance_projects p ON p.id = pid::uuid AND p.is_public = true
+				JOIN jsonb_array_elements_text(p.enterprise_ids) eid ON true
+				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
+			)
 		  )
 		ORDER BY a.created_at DESC LIMIT 100
 	`)

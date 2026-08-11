@@ -65,14 +65,25 @@ export default function AlliancePublicEnterpriseDetailPage() {
     ])
       .then(([ent, , projectsRes, achievementsRes, agreementsRes]) => {
         setEnterprise(toShowcase(ent))
-        setProjects(
-          (projectsRes.items ?? []).filter((p) => (p.enterpriseIds ?? []).includes(id)),
+        // 本企业直接关联的项目（企业项目集，供协议/成果二次关联过滤）
+        const enterpriseProjects = (projectsRes.items ?? []).filter((p) =>
+          (p.enterpriseIds ?? []).includes(id),
         )
+        const projectIds = enterpriseProjects.map((p) => p.id)
+        setProjects(enterpriseProjects)
         setAchievements(
-          (achievementsRes.items ?? []).filter((a) => (a.enterpriseIds ?? []).includes(id)),
+          (achievementsRes.items ?? []).filter(
+            (a) =>
+              (a.enterpriseIds ?? []).includes(id) ||
+              (a.projectIds ?? []).some((pid) => projectIds.includes(pid)),
+          ),
         )
         setAgreements(
-          (agreementsRes.items ?? []).filter((a) => (a.enterpriseIds ?? []).includes(id)),
+          (agreementsRes.items ?? []).filter(
+            (a) =>
+              (a.enterpriseIds ?? []).includes(id) ||
+              (a.projectIds ?? []).some((pid) => projectIds.includes(pid)),
+          ),
         )
       })
       .catch((err) => {
