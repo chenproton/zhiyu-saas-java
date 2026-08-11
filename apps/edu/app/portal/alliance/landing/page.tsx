@@ -207,10 +207,8 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: HeroSchool | null }) {
   ].filter(Boolean) as string[]
 
   return (
-    <Card className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-2xl shadow-black/20">
-      {/* 顶部渐变装饰 */}
-      <div className="h-1 bg-gradient-to-r from-primary via-white/40 to-transparent" />
-      <CardContent className="px-6 pt-4 pb-6">
+    <Card className="relative rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-2xl shadow-black/20 overflow-hidden">
+      <CardContent className="px-6 pt-3 pb-6">
         <div className="flex items-center gap-3.5">
           {schoolInfo.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
