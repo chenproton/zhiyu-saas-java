@@ -2,20 +2,45 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
-import { FormFieldRow } from '@/components/shared/form-field-row'
-import { Loader2, Eye } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  SingleImageUpload,
+  ImageListUpload,
+} from '@/components/shared/image-list-upload'
+import {
+  FormFieldRow,
+  FormFieldGrid,
+  IconInput,
+  FieldValue,
+} from '@/components/shared/form-field-row'
+import {
+  Loader2,
+  Pencil,
+  Eye,
+  Building,
+  Hash,
+  Briefcase,
+  MapPin,
+  Calendar,
+  Users,
+  User,
+  Phone,
+  Mail,
+  FileText,
+  Image as ImageIcon,
+} from 'lucide-react'
 import {
   partnerEnterpriseApi,
   partnerExpertApi,
@@ -75,13 +100,33 @@ function toForm(e: PartnerEnterprise): FormState {
   }
 }
 
+/** 只读图片栅格（与前台展示页一致的缩略图样式） */
+function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
+  const t = useT()
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {photos.map((photo, idx) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={idx}
+          src={photo}
+          alt={t('{name} 照片 {idx}', { name: alt, idx: idx + 1 })}
+          className="w-full aspect-[4/3] object-cover rounded-2xl border border-slate-100 shadow-sm"
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function PartnerEnterprisePage() {
   const { toast } = useToast()
   const t = useT()
   const { user, loading: authLoading, refresh } = usePartnerAuth()
   const [item, setItem] = useState<FormState | null>(null)
+  const [form, setForm] = useState<FormState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewExperts, setPreviewExperts] = useState<PartnerExpert[] | null>(null)
 
@@ -126,8 +171,6 @@ export default function PartnerEnterprisePage() {
   if (loadError) return <ErrorState description={loadError} onRetry={load} />
   if (!item) return null
 
-  const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
-
   /** 资料完整度检查：任一项缺失都在页面顶部提示补全（影响对外展示效果） */
   const missingFields = getEnterpriseMissingFields(item).map((f) => t(f))
 
@@ -151,14 +194,26 @@ export default function PartnerEnterprisePage() {
     address: f.address || undefined,
   })
 
+  const openEdit = () => {
+    if (!item) return
+    setForm({ ...item })
+    setEditOpen(true)
+  }
+
+  const setField = (field: keyof FormState, value: any) =>
+    setForm((prev) => (prev ? { ...prev, [field]: value } : prev))
+
   const handleSave = async () => {
-    if (!item.name) {
+    if (!form) return
+    if (!form.name) {
       toast({ title: t('请填写企业名称'), variant: 'destructive' })
       return
     }
     setSaving(true)
     try {
-      await partnerEnterpriseApi.updateProfile(item)
+      await partnerEnterpriseApi.updateProfile(form)
+      setItem(form)
+      setEditOpen(false)
       toast({ title: t('企业信息已保存') })
       await refresh()
     } catch (e: any) {
@@ -181,9 +236,13 @@ export default function PartnerEnterprisePage() {
     }
   }
 
+  const coverPhotos = item.coverImage ? [item.coverImage, ...item.coverPhotos] : item.coverPhotos
+  const licensePhotos = item.businessLicensePhotos
+  const badge = [item.industry, item.region].filter(Boolean).join(' · ')
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-full">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">{t('企业信息')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -191,23 +250,26 @@ export default function PartnerEnterprisePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 mr-1" title={t('开启后企业才会出现在各学校的产业联盟展示页；具体是否在某学校前台出现，由该校在引入时决定。')}>
+          <div
+            className="flex items-center gap-2 mr-1"
+            title={t('开启后企业才会出现在各学校的产业联盟展示页；具体是否在某学校前台出现，由该校在引入时决定。')}
+          >
             <Label className="text-sm text-muted-foreground">{t('愿意对外展示')}</Label>
             <Switch checked={item.enablePublic} onCheckedChange={handleTogglePublic} />
           </div>
-          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
             <Eye className="h-4 w-4 mr-1" />
             {t('预览展示页')}
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-            {t('保存')}
+          <Button size="sm" onClick={openEdit}>
+            <Pencil className="h-4 w-4 mr-1" />
+            {t('编辑')}
           </Button>
         </div>
       </div>
 
       {missingFields.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50">
+        <Card className="border-amber-200 bg-amber-50/50 mb-6">
           <CardContent className="pt-6">
             <div className="text-sm font-medium text-foreground">{t('资料待补全')}</div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -222,148 +284,293 @@ export default function PartnerEnterprisePage() {
         </Card>
       )}
 
-      <div className="space-y-6">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('基本信息')}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormFieldRow label={t('企业名称')} required>
-                <Input value={item.name} onChange={(e) => setField('name', e.target.value)} />
-              </FormFieldRow>
-              <FormFieldRow label={t('统一社会信用代码')}>
-                <Input
-                  value={item.unifiedSocialCreditCode}
-                  onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('所属行业')}>
-                <Input
-                  value={item.industry}
-                  onChange={(e) => setField('industry', e.target.value)}
-                  placeholder={t('如：信息技术')}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('所在地区')}>
-                <Input
-                  value={item.region}
-                  onChange={(e) => setField('region', e.target.value)}
-                  placeholder={t('如：深圳')}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('成立年份')}>
-                <Input
-                  type="number"
-                  value={item.establishedYear ?? ''}
-                  onChange={(e) =>
-                    setField('establishedYear', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                  placeholder={t('如：2010')}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('企业规模（人数）')}>
-                <Input
-                  type="number"
-                  value={item.employeeCount ?? ''}
-                  onChange={(e) =>
-                    setField('employeeCount', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                  placeholder={t('如：500')}
-                />
-              </FormFieldRow>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('企业形象')}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SingleImageUpload
-                label={t('企业 Logo')}
-                value={item.logoUrl}
-                onChange={(v) => setField('logoUrl', v)}
+      <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            {item.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.logoUrl}
+                alt={item.name}
+                className="w-10 h-10 rounded-lg object-cover border border-gray-100 bg-white"
               />
-              <SingleImageUpload
-                label={t('企业主页封面')}
-                value={item.coverImage}
-                onChange={(v) => setField('coverImage', v)}
-              />
-              <ImageListUpload
-                label={t('企业风采照片')}
-                value={item.coverPhotos}
-                onChange={(v) => setField('coverPhotos', v)}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('企业证照')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ImageListUpload
-                label={t('企业营业执照')}
-                value={item.businessLicensePhotos}
-                onChange={(v) => setField('businessLicensePhotos', v)}
-              />
-              <ImageListUpload
-                label={t('企业知识产权')}
-                value={item.intellectualPropertyPhotos}
-                onChange={(v) => setField('intellectualPropertyPhotos', v)}
-              />
-              <ImageListUpload
-                label={t('企业荣誉资质')}
-                value={item.qualificationPhotos}
-                onChange={(v) => setField('qualificationPhotos', v)}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('联系信息')}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormFieldRow label={t('联系人')}>
-                <Input
-                  value={item.contactPerson}
-                  onChange={(e) => setField('contactPerson', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系电话')}>
-                <Input
-                  value={item.contactPhone}
-                  onChange={(e) => setField('contactPhone', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系邮箱')}>
-                <Input
-                  value={item.contactEmail}
-                  onChange={(e) => setField('contactEmail', e.target.value)}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('详细地址')}>
-                <Input value={item.address} onChange={(e) => setField('address', e.target.value)} />
-              </FormFieldRow>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('企业简介')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={item.description}
-                onChange={(e) => setField('description', e.target.value)}
-                rows={5}
-              />
-            </CardContent>
-          </Card>
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building className="w-5 h-5 text-primary" />
+              </div>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold">{item.name}</h2>
+              {badge && <p className="text-sm text-muted-foreground">{badge}</p>}
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FieldValue icon={User} label={t('联系人')} value={item.contactPerson} />
+          <FieldValue icon={Phone} label={t('联系电话')} value={item.contactPhone} />
+          <FieldValue icon={Mail} label={t('联系邮箱')} value={item.contactEmail} />
+          <FieldValue
+            icon={Hash}
+            label={t('统一社会信用代码')}
+            value={item.unifiedSocialCreditCode}
+          />
+          <FieldValue icon={Calendar} label={t('成立年份')} value={item.establishedYear} />
+          <FieldValue
+            icon={Users}
+            label={t('企业规模（人数）')}
+            value={item.employeeCount != null ? `${item.employeeCount.toLocaleString()} 人` : undefined}
+          />
+          <FieldValue icon={MapPin} label={t('所在地区')} value={item.region} />
+          <FieldValue icon={MapPin} label={t('详细地址')} value={item.address} />
+        </div>
+        {item.description && (
+          <div className="px-6 py-4 border-t border-gray-100">
+            <div className="flex items-start gap-3">
+              <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">{t('企业简介')}</p>
+                <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{item.description}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="px-6 py-5 border-t border-gray-100">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1">
+            <ImageIcon className="w-3.5 h-3.5" />
+            {t('企业形象')}
+          </p>
+          {coverPhotos.length > 0 ? (
+            <PhotoGrid photos={coverPhotos} alt={item.name} />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('暂无形象图片')}</p>
+          )}
+        </div>
+        <div className="px-6 py-5 border-t border-gray-100">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1">
+            <FileText className="w-3.5 h-3.5" />
+            {t('企业证照')}
+          </p>
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">{t('企业营业执照')}</p>
+              {licensePhotos.length > 0 ? (
+                <PhotoGrid photos={licensePhotos} alt={t('企业营业执照')} />
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('暂无')}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">{t('企业知识产权')}</p>
+              {item.intellectualPropertyPhotos.length > 0 ? (
+                <PhotoGrid photos={item.intellectualPropertyPhotos} alt={t('企业知识产权')} />
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('暂无')}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">{t('企业荣誉资质')}</p>
+              {item.qualificationPhotos.length > 0 ? (
+                <PhotoGrid photos={item.qualificationPhotos} alt={t('企业荣誉资质')} />
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('暂无')}</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{t('编辑企业信息')}</DialogTitle>
+            <DialogDescription>
+              {t('修改企业主体信息，保存后共享给合作学校的产业联盟展示页')}
+            </DialogDescription>
+          </DialogHeader>
+          {form && (
+            <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+              <Separator />
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
+                  {t('基础信息')}
+                </Label>
+                <div className="space-y-4">
+                  <FormFieldRow label={t('企业名称')} required>
+                    <IconInput
+                      icon={Building}
+                      value={form.name}
+                      onChange={(e) => setField('name', e.target.value)}
+                    />
+                  </FormFieldRow>
+                  <FormFieldGrid>
+                    <FormFieldRow label={t('统一社会信用代码')}>
+                      <IconInput
+                        icon={Hash}
+                        value={form.unifiedSocialCreditCode}
+                        onChange={(e) => setField('unifiedSocialCreditCode', e.target.value)}
+                      />
+                    </FormFieldRow>
+                    <FormFieldRow label={t('所属行业')}>
+                      <IconInput
+                        icon={Briefcase}
+                        value={form.industry}
+                        onChange={(e) => setField('industry', e.target.value)}
+                        placeholder={t('如：信息技术')}
+                      />
+                    </FormFieldRow>
+                  </FormFieldGrid>
+                  <FormFieldGrid>
+                    <FormFieldRow label={t('所在地区')}>
+                      <IconInput
+                        icon={MapPin}
+                        value={form.region}
+                        onChange={(e) => setField('region', e.target.value)}
+                        placeholder={t('如：深圳')}
+                      />
+                    </FormFieldRow>
+                    <FormFieldRow label={t('成立年份')}>
+                      <IconInput
+                        icon={Calendar}
+                        type="number"
+                        value={form.establishedYear ?? ''}
+                        onChange={(e) =>
+                          setField(
+                            'establishedYear',
+                            e.target.value ? Number(e.target.value) : undefined,
+                          )
+                        }
+                        placeholder={t('如：2010')}
+                      />
+                    </FormFieldRow>
+                  </FormFieldGrid>
+                  <FormFieldRow label={t('企业规模（人数）')}>
+                    <IconInput
+                      icon={Users}
+                      type="number"
+                      value={form.employeeCount ?? ''}
+                      onChange={(e) =>
+                        setField('employeeCount', e.target.value ? Number(e.target.value) : undefined)
+                      }
+                      placeholder={t('如：500')}
+                    />
+                  </FormFieldRow>
+                  <FormFieldRow label={t('企业简介')}>
+                    <Textarea
+                      value={form.description}
+                      onChange={(e) => setField('description', e.target.value)}
+                      rows={4}
+                    />
+                  </FormFieldRow>
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
+                  {t('企业形象')}
+                </Label>
+                <div className="space-y-4">
+                  <FormFieldGrid>
+                    <SingleImageUpload
+                      label={t('企业 Logo')}
+                      value={form.logoUrl}
+                      onChange={(v) => setField('logoUrl', v)}
+                      allowUrlInput={false}
+                    />
+                    <SingleImageUpload
+                      label={t('企业主页封面')}
+                      value={form.coverImage}
+                      onChange={(v) => setField('coverImage', v)}
+                      allowUrlInput={false}
+                    />
+                  </FormFieldGrid>
+                  <ImageListUpload
+                    label={t('企业风采照片')}
+                    value={form.coverPhotos}
+                    onChange={(v) => setField('coverPhotos', v)}
+                    allowUrlInput={false}
+                  />
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
+                  {t('企业证照')}
+                </Label>
+                <div className="space-y-4">
+                  <ImageListUpload
+                    label={t('企业营业执照')}
+                    value={form.businessLicensePhotos}
+                    onChange={(v) => setField('businessLicensePhotos', v)}
+                    allowUrlInput={false}
+                  />
+                  <ImageListUpload
+                    label={t('企业知识产权')}
+                    value={form.intellectualPropertyPhotos}
+                    onChange={(v) => setField('intellectualPropertyPhotos', v)}
+                    allowUrlInput={false}
+                  />
+                  <ImageListUpload
+                    label={t('企业荣誉资质')}
+                    value={form.qualificationPhotos}
+                    onChange={(v) => setField('qualificationPhotos', v)}
+                    allowUrlInput={false}
+                  />
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
+                  {t('联系信息')}
+                </Label>
+                <div className="space-y-4">
+                  <FormFieldGrid>
+                    <FormFieldRow label={t('联系人')}>
+                      <IconInput
+                        icon={User}
+                        value={form.contactPerson}
+                        onChange={(e) => setField('contactPerson', e.target.value)}
+                      />
+                    </FormFieldRow>
+                    <FormFieldRow label={t('联系电话')}>
+                      <IconInput
+                        icon={Phone}
+                        value={form.contactPhone}
+                        onChange={(e) => setField('contactPhone', e.target.value)}
+                      />
+                    </FormFieldRow>
+                  </FormFieldGrid>
+                  <FormFieldGrid>
+                    <FormFieldRow label={t('联系邮箱')}>
+                      <IconInput
+                        icon={Mail}
+                        type="email"
+                        value={form.contactEmail}
+                        onChange={(e) => setField('contactEmail', e.target.value)}
+                      />
+                    </FormFieldRow>
+                    <FormFieldRow label={t('详细地址')}>
+                      <IconInput
+                        icon={MapPin}
+                        value={form.address}
+                        onChange={(e) => setField('address', e.target.value)}
+                      />
+                    </FormFieldRow>
+                  </FormFieldGrid>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              {t('取消')}
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              {t('保存')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">

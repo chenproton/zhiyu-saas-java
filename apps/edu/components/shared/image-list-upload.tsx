@@ -18,6 +18,8 @@ export interface UploadFieldProps {
   onChange: (value: string[]) => void
   multiple?: boolean
   placeholder?: string
+  /** 是否显示 URL 直填输入框（默认 true；仅本地上传的场景传 false） */
+  allowUrlInput?: boolean
 }
 
 function uploadFile(file: File): Promise<string> {
@@ -31,6 +33,7 @@ export function ImageListUpload({
   onChange,
   multiple = true,
   placeholder,
+  allowUrlInput = true,
 }: UploadFieldProps) {
   const t = useT()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -159,17 +162,19 @@ export function ImageListUpload({
         onConfirm={(file) => finishEdit(file)}
         onCancel={() => finishEdit()}
       />
-      <div className="flex gap-2">
-        <Input
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          placeholder={placeholder ?? t('上传图片或输入 URL')}
-          className="h-8 text-xs"
-        />
-        <Button type="button" variant="outline" size="sm" onClick={addUrl} className="h-8 text-xs">
-          {t('添加')}
-        </Button>
-      </div>
+      {allowUrlInput && (
+        <div className="flex gap-2">
+          <Input
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            placeholder={placeholder ?? t('上传图片或输入 URL')}
+            className="h-8 text-xs"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addUrl} className="h-8 text-xs">
+            {t('添加')}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -179,10 +184,12 @@ export function SingleImageUpload({
   label,
   value,
   onChange,
+  allowUrlInput = true,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  allowUrlInput?: boolean
 }) {
   const t = useT()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -269,29 +276,31 @@ export function SingleImageUpload({
         onConfirm={(file) => finishEdit(file)}
         onCancel={() => finishEdit()}
       />
-      <div className="flex gap-2">
-        <Input
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          placeholder={t('或输入图片 URL')}
-          className="h-8 text-xs"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const u = urlInput.trim()
-            if (u) {
-              onChange(u)
-              setUrlInput('')
-            }
-          }}
-          className="h-8 text-xs"
-        >
-          {t('设置')}
-        </Button>
-      </div>
+      {allowUrlInput && (
+        <div className="flex gap-2">
+          <Input
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            placeholder={t('或输入图片 URL')}
+            className="h-8 text-xs"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const u = urlInput.trim()
+              if (u) {
+                onChange(u)
+                setUrlInput('')
+              }
+            }}
+            className="h-8 text-xs"
+          >
+            {t('设置')}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
