@@ -28,21 +28,13 @@ export interface LoginRequest {
   username: string
   password: string
   captchaId?: string
-  captchaX?: number
-  captchaY?: number
+  captchaCode?: string
 }
 
-/** 滑块验证码数据（GET /auth/captcha），坐标均为原图像素值。 */
+/** 字符验证码数据（GET /auth/captcha）。 */
 export interface CaptchaData {
   captchaId: string
   image: string
-  thumb: string
-  thumbX: number
-  thumbY: number
-  thumbWidth: number
-  thumbHeight: number
-  imageWidth: number
-  imageHeight: number
 }
 
 export interface LoginResponse {

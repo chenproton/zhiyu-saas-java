@@ -21,12 +21,8 @@ func TestCaptcha_Get(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	for _, field := range []string{"captchaId", "image", "thumb", "imageWidth", "imageHeight", "thumbX", "thumbY", "thumbWidth", "thumbHeight"} {
-		if v, ok := resp[field]; !ok || v == "" || v == 0 {
-			// thumbX 可为 0 边界值，单独豁免；其余字段必须非空
-			if field == "thumbX" && v == 0 {
-				continue
-			}
+	for _, field := range []string{"captchaId", "image"} {
+		if v, ok := resp[field]; !ok || v == "" {
 			t.Fatalf("field %s missing or empty: %v", field, v)
 		}
 	}
@@ -77,7 +73,7 @@ func TestLogin_CaptchaWrong(t *testing.T) {
 		})
 	}
 
-	// 获取验证码（答案存在服务端），提交明显错误的坐标
+	// 获取验证码（答案存在服务端），提交错误字符
 	captchaResp := env.DoNoAuth(http.MethodGet, "/api/v1/auth/captcha", nil)
 	captcha, err := testhelper.Unmarshal[map[string]interface{}](captchaResp)
 	if err != nil {
@@ -85,11 +81,10 @@ func TestLogin_CaptchaWrong(t *testing.T) {
 	}
 
 	w := env.DoNoAuth(http.MethodPost, "/api/v1/auth/portal/login", map[string]interface{}{
-		"username":  "seedtestuser",
-		"password":  "wrongpass",
-		"captchaId": captcha["captchaId"],
-		"captchaX":  99999,
-		"captchaY":  99999,
+		"username":    "seedtestuser",
+		"password":    "wrongpass",
+		"captchaId":   captcha["captchaId"],
+		"captchaCode": "zzzz",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())

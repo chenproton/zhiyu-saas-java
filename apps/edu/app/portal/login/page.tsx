@@ -22,7 +22,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import { resolveActiveRole } from '@/lib/active-role'
-import SliderCaptcha from '@/components/shared/slider-captcha'
+import CaptchaInput from '@/components/shared/captcha-input'
 
 function getPostLoginPath(roleCode?: string): string {
   switch (roleCode) {
@@ -49,15 +49,13 @@ export default function PortalLoginPage() {
   const [preAuthToken, setPreAuthToken] = useState('')
   const [showTenantSelect, setShowTenantSelect] = useState(false)
   const [selectingTenant, setSelectingTenant] = useState(false)
-  // 防爆破滑块验证码：后端返回 captcha_required 后展示，拖动完成随登录请求提交
+  // 防爆破验证码：后端返回 captcha_required 后展示，输入完成后随登录请求提交
   const [captchaRequired, setCaptchaRequired] = useState(false)
-  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; x: number; y: number } | null>(
-    null,
-  )
+  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; code: string } | null>(null)
   const [captchaVersion, setCaptchaVersion] = useState(0)
 
-  const handleCaptchaPass = (captchaId: string, x: number, y: number) => {
-    setCaptchaAnswer({ id: captchaId, x, y })
+  const handleCaptchaPass = (captchaId: string, code: string) => {
+    setCaptchaAnswer({ id: captchaId, code })
   }
 
   const refreshCaptcha = () => {
@@ -102,7 +100,7 @@ export default function PortalLoginPage() {
         username,
         password,
         ...(captchaAnswer
-          ? { captchaId: captchaAnswer.id, captchaX: captchaAnswer.x, captchaY: captchaAnswer.y }
+          ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),
       })
       if (res.needsTenantSelection && res.preAuthToken && res.tenants) {
@@ -225,7 +223,7 @@ export default function PortalLoginPage() {
               </div>
 
               {captchaRequired && (
-                <SliderCaptcha
+                <CaptchaInput
                   key={captchaVersion}
                   onPass={handleCaptchaPass}
                   onError={() => setCaptchaRequired(true)}
