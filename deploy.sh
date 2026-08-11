@@ -922,7 +922,12 @@ if $BUILD_FRONTEND; then
     rsync -a --delete "$BUILD_ROOT/offline/image-editor/" "$EDU_DIR/public/image-editor/"
   fi
 
+  # Next.js standalone 会把 rewrites 目标在构建期序列化进 required-server-files.json，
+  # 运行时改 API_PROXY_URL 无效，必须构建时注入（容器网络内直连 backend；
+  # 生产 nginx 直连 backend 不受影响，此值服务于直连 3020/开发场景）
+  FRONTEND_API_PROXY_URL="${API_PROXY_URL:-http://zhiyu-backend:8080}"
   (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+    API_PROXY_URL="$FRONTEND_API_PROXY_URL" \
     pnpm --filter @zhiyu/edu build) || die "前端构建失败"
 
   SD="$EDU_DIR/.next/standalone/apps/edu"

@@ -129,6 +129,9 @@ services:
       NODE_ENV: production
       PORT: "3020"
       HOSTNAME: 0.0.0.0
+      # Next.js rewrite（/api、/uploads 等）在容器网络内直连 backend，
+      # 不能用 127.0.0.1（容器自身），否则 rewrite 一律 500
+      API_PROXY_URL: "http://zhiyu-backend:8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3020/portal/login || exit 1"]
       interval: 10s

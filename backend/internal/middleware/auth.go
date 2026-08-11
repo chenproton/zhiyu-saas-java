@@ -39,6 +39,7 @@ func JWT(secret string) func(http.Handler) http.Handler {
 				http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
 				return
 			}
+			ensureAuthCookie(w, r)
 
 			ctx := context.WithValue(r.Context(), ContextKeyUser, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -57,10 +58,28 @@ func OptionalJWT(secret string) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
+			ensureAuthCookie(w, r)
 			ctx := context.WithValue(r.Context(), ContextKeyUser, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// ensureAuthCookie 认证成功后按需补发文件通道 cookie：
+// 修复「部署前登录的旧会话」——localStorage 有 token 但浏览器从未获得
+// zhiyu_auth cookie，<img> 等无 Authorization 头的 /uploads 请求将 401。
+// 仅在 token 来自 Authorization 头且 cookie 缺失/不一致时补发（幂等），
+// 旧会话用户任意一次 API 调用即自动治愈，无需重新登录。
+func ensureAuthCookie(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+	tokenStr := strings.TrimPrefix(auth, "Bearer ")
+	if tokenStr == "" || tokenStr == auth {
+		return
+	}
+	if c, err := r.Cookie(AuthCookieName); err == nil && c.Value == tokenStr {
+		return
+	}
+	SetAuthCookie(w, tokenStr)
 }
 
 // tokenClaims 从 Authorization: Bearer 头（优先）或 AuthCookieName cookie
