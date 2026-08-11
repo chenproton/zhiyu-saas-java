@@ -418,20 +418,22 @@ function PointRows({
         )}
       </TableCell>
       <TableCell className="text-right">
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
-          <ListOrdered className="mr-1 size-3" />
-          {t('分档配置')}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          onClick={onOpenTaskWeights}
-          disabled={point.tasks.length === 0}
-        >
-          <ListChecks className="mr-1 size-3" />
-          {t('任务权重')}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={onOpenTaskWeights}
+            disabled={point.tasks.length === 0}
+          >
+            <ListChecks className="mr-1 size-3" />
+            {t('分数来源权重')}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
+            <ListOrdered className="mr-1 size-3" />
+            {t('总分胜任标准转换')}
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   )
