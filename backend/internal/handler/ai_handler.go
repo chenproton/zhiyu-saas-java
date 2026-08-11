@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/ai"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -118,6 +119,71 @@ func (h *AIHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tenantID := tenantIDRequired(w, r)
+	if tenantID == "" {
+		return
+	}
+	if err := h.Service.DeleteConfig(r.Context(), tenantID); err != nil {
+		respondServerError(w, r, err, "清除 AI 配置失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// ===== 超管视角（/admin/tenants/{tenantId}/ai/config）：与租户同表读写，仅入口不同 =====
+
+// adminTenantIDRequired 提取路径租户 ID；缺失时写 400 并返回空串。
+func adminTenantIDRequired(w http.ResponseWriter, r *http.Request) string {
+	tenantID := chi.URLParam(r, "tenantId")
+	if tenantID == "" {
+		respondError(w, http.StatusBadRequest, "缺少租户ID")
+		return ""
+	}
+	return tenantID
+}
+
+// AdminGetConfig GET /admin/tenants/{tenantId}/ai/config：超管查看指定租户 AI 配置（脱敏）。
+func (h *AIHandler) AdminGetConfig(w http.ResponseWriter, r *http.Request) {
+	tenantID := adminTenantIDRequired(w, r)
+	if tenantID == "" {
+		return
+	}
+	view, err := h.Service.GetConfig(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "获取 AI 配置失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, view)
+}
+
+// AdminSaveConfig PUT /admin/tenants/{tenantId}/ai/config：超管保存指定租户 AI 配置；
+// apiKey 留空表示不修改（首次配置必填）。
+func (h *AIHandler) AdminSaveConfig(w http.ResponseWriter, r *http.Request) {
+	tenantID := adminTenantIDRequired(w, r)
+	if tenantID == "" {
+		return
+	}
+	var req saveAIConfigRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.BaseURL == "" || req.Model == "" {
+		respondError(w, http.StatusBadRequest, "baseUrl 与 model 不能为空")
+		return
+	}
+	if err := h.Service.SaveConfig(r.Context(), tenantID, req.BaseURL, req.APIKey, req.Model); err != nil {
+		if errors.Is(err, service.ErrAIKeyRequired) {
+			respondError(w, http.StatusBadRequest, "首次配置必须填写 apiKey")
+			return
+		}
+		respondServerError(w, r, err, "保存 AI 配置失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// AdminDeleteConfig DELETE /admin/tenants/{tenantId}/ai/config：超管清除指定租户 AI 配置。
+func (h *AIHandler) AdminDeleteConfig(w http.ResponseWriter, r *http.Request) {
+	tenantID := adminTenantIDRequired(w, r)
 	if tenantID == "" {
 		return
 	}

@@ -46,6 +46,18 @@ import {
   Shield,
   Palette,
   Eye,
+  Settings,
+  Briefcase,
+  Layers,
+  BookOpen,
+  CheckCircle,
+  Share2,
+  Calendar,
+  Sparkles,
+  Rocket,
+  BarChart3,
+  GraduationCap,
+  Check,
 } from 'lucide-react'
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { useToast } from '@zhiyu/ui'
@@ -54,8 +66,17 @@ import { DateInput } from '@/components/shared/date-input'
 import { LogTableShell } from '@/components/shared/log-table-shell'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
-import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
+import {
+  getToken,
+  setToken,
+  removeToken,
+  saasRequest,
+  adminAiApi,
+  type ListResponse,
+  type AIConfigView,
+} from '@zhiyu/api-client'
 import { authApi, getDeviceId } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import CaptchaInput from '@/components/shared/captcha-input'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -121,6 +142,25 @@ interface TenantAdmin {
 function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   return saasRequest<T>(`${TENANTS_API}${path}`, options)
 }
+
+// 平台模块卡片样式（图标+配色与 /portal/apps 平台选择一致）
+const platformCardStyles: Record<string, { icon: typeof Settings; color: string; bg: string }> = {
+  system: { icon: Settings, color: 'text-blue-600', bg: 'bg-blue-50' },
+  career: { icon: Briefcase, color: 'text-purple-600', bg: 'bg-purple-50' },
+  scene: { icon: Layers, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  course: { icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50' },
+  ability: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  resource: { icon: Share2, color: 'text-blue-600', bg: 'bg-blue-50' },
+  affairs: { icon: Calendar, color: 'text-teal-600', bg: 'bg-teal-50' },
+  alliance: { icon: Users, color: 'text-rose-600', bg: 'bg-rose-50' },
+  ai: { icon: Sparkles, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  opc: { icon: Rocket, color: 'text-orange-600', bg: 'bg-orange-50' },
+  decision: { icon: BarChart3, color: 'text-sky-600', bg: 'bg-sky-50' },
+  research: { icon: GraduationCap, color: 'text-violet-600', bg: 'bg-violet-50' },
+}
+
+// AI 套餐额度换算：2 元 / 1M token → 1 元 = 500,000 token
+const AI_TOKEN_PER_RMB = 500000
 
 export default function SuperAdminPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
@@ -196,13 +236,19 @@ export default function SuperAdminPage() {
   const [subscriptionTenant, setSubscriptionTenant] = useState<AdminTenant | null>(null)
   const [subscriptionData, setSubscriptionData] = useState<{
     id: string
-    name: string
-    validUntil: string
-    status: 'active' | 'inactive'
     modules: Record<string, boolean>
-  }>({ id: '', name: '', validUntil: '', status: 'active', modules: {} })
+    aiTokenQuota: number
+  }>({ id: '', modules: {}, aiTokenQuota: 0 })
+  const [quotaRmb, setQuotaRmb] = useState('')
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [subscriptionSubmitting, setSubscriptionSubmitting] = useState(false)
+
+  // 超管代租户维护的 AI 服务配置（与租户自身同表 tenant_ai_configs）
+  const [aiConfig, setAiConfig] = useState<AIConfigView | null>(null)
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [aiForm, setAiForm] = useState({ baseUrl: '', apiKey: '', model: '' })
+  const [aiSubmitting, setAISubmitting] = useState(false)
+  const [aiDeleteConfirm, setAIDeleteConfirm] = useState(false)
 
   const [themeColor, setThemeColor] = useState(DEFAULT_BRAND_COLOR)
   const [themeSaving, setThemeSaving] = useState(false)
@@ -648,25 +694,20 @@ export default function SuperAdminPage() {
     setSubscriptionTenant(ten)
     setSubscriptionDialogOpen(true)
     setSubscriptionLoading(true)
+    setAiConfig(null)
     adminFetch<{
       id: string
-      name: string
-      validUntil?: string
-      status: string
       modules: Record<string, boolean>
+      aiTokenQuota: number
     }>(`/${ten.id}/subscription`)
       .then((res) => {
         const defaultModules: Record<string, boolean> = {}
         Object.keys(platformModuleDefs).forEach((key) => {
           defaultModules[key] = res.modules?.[key] ?? false
         })
-        setSubscriptionData({
-          id: res.id || '',
-          name: res.name || '默认套餐',
-          validUntil: res.validUntil || '',
-          status: (res.status as 'active' | 'inactive') || 'active',
-          modules: defaultModules,
-        })
+        const quota = res.aiTokenQuota || 0
+        setSubscriptionData({ id: res.id || '', modules: defaultModules, aiTokenQuota: quota })
+        setQuotaRmb(quota > 0 ? String(quota / AI_TOKEN_PER_RMB) : '')
       })
       .catch((err) => {
         toast({
@@ -676,23 +717,21 @@ export default function SuperAdminPage() {
         })
       })
       .finally(() => setSubscriptionLoading(false))
+    void adminAiApi
+      .getConfig(ten.id)
+      .then(setAiConfig)
+      .catch(() => setAiConfig(null))
   }
 
   const handleSubscriptionSubmit = async () => {
     if (!subscriptionTenant) return
-    if (!subscriptionData.name) {
-      toast({ variant: 'destructive', title: t('套餐名称不能为空') })
-      return
-    }
     setSubscriptionSubmitting(true)
     try {
       await adminFetch(`/${subscriptionTenant.id}/subscription`, {
         method: 'PUT',
         body: JSON.stringify({
-          name: subscriptionData.name,
-          validUntil: subscriptionData.validUntil || null,
-          status: subscriptionData.status,
           modules: subscriptionData.modules,
+          aiTokenQuota: subscriptionData.aiTokenQuota,
         }),
       })
       toast({ title: t('保存成功') })
@@ -712,6 +751,71 @@ export default function SuperAdminPage() {
     setSubscriptionData((prev) => ({
       ...prev,
       modules: { ...prev.modules, [key]: !prev.modules[key] },
+    }))
+  }
+
+  const openAIDialog = () => {
+    setAiForm({
+      baseUrl: aiConfig?.baseUrl || '',
+      apiKey: '',
+      model: aiConfig?.model || '',
+    })
+    setAiDialogOpen(true)
+  }
+
+  const handleAISave = async () => {
+    if (!subscriptionTenant) return
+    if (!aiForm.baseUrl || !aiForm.model) {
+      toast({ title: t('请填写 Base URL 与模型'), variant: 'destructive' })
+      return
+    }
+    setAISubmitting(true)
+    try {
+      await adminAiApi.saveConfig(subscriptionTenant.id, {
+        baseUrl: aiForm.baseUrl,
+        model: aiForm.model,
+        ...(aiForm.apiKey ? { apiKey: aiForm.apiKey } : {}),
+      })
+      setAiDialogOpen(false)
+      toast({ title: t('保存成功') })
+      setAiConfig(await adminAiApi.getConfig(subscriptionTenant.id))
+    } catch (err) {
+      toast({
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+    } finally {
+      setAISubmitting(false)
+    }
+  }
+
+  const handleAIDelete = async () => {
+    if (!subscriptionTenant) return
+    setAISubmitting(true)
+    try {
+      await adminAiApi.deleteConfig(subscriptionTenant.id)
+      setAIDeleteConfirm(false)
+      setAiDialogOpen(false)
+      toast({ title: t('已清除 AI 配置') })
+      setAiConfig(await adminAiApi.getConfig(subscriptionTenant.id))
+    } catch (err) {
+      toast({
+        title: t('清除失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+    } finally {
+      setAISubmitting(false)
+    }
+  }
+
+  const handleQuotaRmbChange = (v: string) => {
+    setQuotaRmb(v)
+    const n = parseFloat(v)
+    setSubscriptionData((prev) => ({
+      ...prev,
+      aiTokenQuota: Number.isFinite(n) && n > 0 ? Math.round(n * AI_TOKEN_PER_RMB) : 0,
     }))
   }
 
@@ -1603,63 +1707,119 @@ export default function SuperAdminPage() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>
-                    {t('套餐名称')} <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    placeholder={t('如：默认全功能套餐')}
-                    value={subscriptionData.name}
-                    onChange={(e) => setSubscriptionData((p) => ({ ...p, name: e.target.value }))}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('有效期至')}</Label>
-                  <DateInput
-                    value={subscriptionData.validUntil}
-                    onChange={(e) =>
-                      setSubscriptionData((p) => ({ ...p, validUntil: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('状态')}</Label>
-                <Select
-                  value={subscriptionData.status}
-                  onValueChange={(v) =>
-                    setSubscriptionData((p) => ({ ...p, status: v as 'active' | 'inactive' }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">{t('启用')}</SelectItem>
-                    <SelectItem value="inactive">{t('停用')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
+            <div className="grid gap-6 py-4">
+              {/* 平台模块卡片式勾选 */}
+              <div className="grid gap-3">
                 <Label>{t('平台模块')}</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg border border-border p-3">
-                  {Object.entries(platformModuleDefs).map(([key, def]) => (
-                    <label
-                      key={key}
-                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-2 rounded-md"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                        checked={!!subscriptionData.modules[key]}
-                        onChange={() => toggleModule(key)}
-                      />
-                      <span>{def.label}</span>
-                    </label>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(platformModuleDefs).map(([key, def]) => {
+                    const style = platformCardStyles[key]
+                    const Icon = style?.icon ?? Package
+                    const checked = !!subscriptionData.modules[key]
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleModule(key)}
+                        className={cn(
+                          'flex items-center gap-3 rounded-xl border p-4 text-left transition-all cursor-pointer',
+                          checked
+                            ? 'border-primary/40 bg-primary/5 shadow-sm'
+                            : 'border-border bg-card hover:border-primary/30 hover:bg-muted/40',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+                            style?.bg ?? 'bg-muted',
+                          )}
+                        >
+                          <Icon className={cn('w-5 h-5', style?.color ?? 'text-muted-foreground')} />
+                        </div>
+                        <span className="flex-1 text-sm font-medium">{t(def.label)}</span>
+                        <span
+                          className={cn(
+                            'w-5 h-5 rounded-md border flex items-center justify-center shrink-0',
+                            checked
+                              ? 'bg-primary border-primary text-white'
+                              : 'border-border bg-background',
+                          )}
+                        >
+                          {checked ? <Check className="w-3.5 h-3.5" /> : null}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
+              </div>
+
+              {/* AI 服务配置（与租户自身配置同表，超管代管） */}
+              <div className="rounded-xl border border-border">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-[18px] h-[18px] text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{t('AI 服务配置')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('接入租户自有 OpenAI 兼容服务，token 成本租户自负')}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    status={aiConfig?.configured ? 'active' : 'inactive'}
+                    label={t(aiConfig?.configured ? '已配置' : '未配置')}
+                  />
+                  <Button size="sm" variant="outline" onClick={openAIDialog}>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    {t('配置')}
+                  </Button>
+                </div>
+                <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t('Base URL')}</p>
+                    <p className="mt-1 truncate">{aiConfig?.baseUrl || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t('模型')}</p>
+                    <p className="mt-1 truncate">{aiConfig?.model || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t('API Key')}</p>
+                    <p className="mt-1 font-mono truncate">{aiConfig?.apiKeyMasked || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI 套餐额度（人民币 → token） */}
+              <div className="grid gap-3">
+                <Label>{t('AI 套餐额度')}</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1 max-w-xs">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      ¥
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder={t('如：100')}
+                      className="pl-8"
+                      value={quotaRmb}
+                      onChange={(e) => handleQuotaRmbChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {t('≈ {tokens} tokens', {
+                      tokens: subscriptionData.aiTokenQuota
+                        ? subscriptionData.aiTokenQuota.toLocaleString()
+                        : '0',
+                    })}
+                    <span className="ml-1 text-xs">（2 元 / 1M token）</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('按套餐额度换算 token 上限，租户用量看板将展示消耗占比')}
+                </p>
               </div>
             </div>
           )}
@@ -1681,6 +1841,83 @@ export default function SuperAdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 超管代租户配置 AI 服务 */}
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>{t('AI 服务配置')}</DialogTitle>
+            <DialogDescription>
+              {subscriptionTenant
+                ? t('为租户「{name}」配置 OpenAI 兼容服务，API Key 将加密存储', {
+                    name: subscriptionTenant.name,
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-5 py-4">
+            <div className="grid gap-2">
+              <Label>
+                {t('Base URL')} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={aiForm.baseUrl}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
+                placeholder="https://api.openai.com/v1"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>
+                {t('API Key')} {!aiConfig?.configured && <span className="text-destructive">*</span>}
+              </Label>
+              <Input
+                type="password"
+                value={aiForm.apiKey}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, apiKey: e.target.value }))}
+                placeholder={aiConfig?.configured ? t('留空则不修改') : 'sk-...'}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>
+                {t('模型')} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={aiForm.model}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, model: e.target.value }))}
+                placeholder="gpt-4o-mini"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            {aiConfig?.configured && (
+              <Button
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => setAIDeleteConfirm(true)}
+                disabled={aiSubmitting}
+              >
+                {t('清除配置')}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setAiDialogOpen(false)} disabled={aiSubmitting}>
+              {t('取消')}
+            </Button>
+            <Button onClick={handleAISave} disabled={aiSubmitting}>
+              {aiSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              {t('保存')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={aiDeleteConfirm}
+        onOpenChange={setAIDeleteConfirm}
+        title={t('确认清除')}
+        description={t('确定清除该租户的 AI 服务配置吗？清除后租户内所有 AI 功能将不可用。')}
+        confirmText={t('清除')}
+        variant="destructive"
+        onConfirm={handleAIDelete}
+      />
 
       <Dialog
         open={tenantThemeTarget !== null}

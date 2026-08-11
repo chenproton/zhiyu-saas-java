@@ -4246,5 +4246,18 @@
   "暂无照片": "No photos yet",
   "专家类型": "Expert type",
   "专业领域与专长": "Fields & expertise",
-  "{count} 个二级学院": "{count} colleges"
+  "{count} 个二级学院": "{count} colleges",
+  "AI 服务配置": "AI Service Config",
+  "当前用量": "Current Usage",
+  "未设置套餐额度": "No quota configured",
+  "联系管理员在套餐中配置 AI 额度": "Contact admin to configure AI quota in subscription",
+  "AI 套餐 token 额度": "AI subscription token quota",
+  "AI 套餐额度": "AI Subscription Quota",
+  "≈ {tokens} tokens": "≈ {tokens} tokens",
+  "按套餐额度换算 token 上限，租户用量看板将展示消耗占比": "Token limit derived from the quota; the tenant usage dashboard shows consumption ratio",
+  "为租户「{name}」配置 OpenAI 兼容服务，API Key 将加密存储": "Configure OpenAI-compatible service for tenant \"{name}\"; the API key is encrypted at rest",
+  "确定清除该租户的 AI 服务配置吗？清除后租户内所有 AI 功能将不可用。": "Clear this tenant's AI service config? All AI features of the tenant will become unavailable.",
+  "留空则不修改": "Leave empty to keep current",
+  "请填写 Base URL 与模型": "Please fill in Base URL and model",
+  "清除配置": "Clear config"
 }

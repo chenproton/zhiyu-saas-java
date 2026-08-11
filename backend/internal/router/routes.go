@@ -315,6 +315,11 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 	r.Get("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminGet)
 	r.Put("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminUpdate)
 
+	// 超管代租户维护 AI 服务配置（与租户自身配置同表 tenant_ai_configs）
+	r.Get("/admin/tenants/{tenantId}/ai/config", h.aiHandler.AdminGetConfig)
+	r.Put("/admin/tenants/{tenantId}/ai/config", h.aiHandler.AdminSaveConfig)
+	r.Delete("/admin/tenants/{tenantId}/ai/config", h.aiHandler.AdminDeleteConfig)
+
 	r.Get("/admin/settings/theme", h.settingsHandler.GetTheme)
 	r.Put("/admin/settings/theme", h.settingsHandler.UpdateTheme)
 

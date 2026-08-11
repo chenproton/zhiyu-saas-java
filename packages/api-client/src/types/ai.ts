@@ -47,6 +47,8 @@ export interface AIUsageDay {
 export interface AIUsageStats {
   totalRequests: number
   totalTokens: number
+  /** AI 套餐 token 额度（来自订阅 ai_token_quota，未设置时为 0） */
+  tokenQuota: number
   /** 近 30 天每日序列（含今天，后端已补齐无数据日期为 0） */
   daily: AIUsageDay[]
 }

@@ -40,8 +40,20 @@ import {
   Sparkles,
   Zap,
   Coins,
+  Gauge,
 } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { useToast } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, getAIConfig, saveAIConfig, deleteAIConfig, getAIUsage } from '@/lib/api'
@@ -475,7 +487,7 @@ export default function TenantPage() {
               </div>
               {aiConfig?.configured && aiUsage && (
                 <div className="px-6 py-5 border-t border-gray-100">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <div className="rounded-lg border border-gray-100 p-4 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         <Zap className="w-5 h-5 text-primary" />
@@ -498,6 +510,7 @@ export default function TenantPage() {
                         </p>
                       </div>
                     </div>
+                    <AITokenQuotaCard usage={aiUsage} />
                   </div>
                   <p className="text-sm font-medium mb-3">{t('每日 Token 消耗（近 30 天）')}</p>
                   <div className="h-56">
@@ -816,6 +829,70 @@ function F({ icon: Icon, label, v }: { icon: any; label: string; v: string }) {
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm">{v === '- -' ? '-' : v}</p>
+      </div>
+    </div>
+  )
+}
+
+/** 当前用量卡片：总 Token 消耗 / AI 套餐 token 额度，饼图展示百分比。 */
+function AITokenQuotaCard({ usage }: { usage: AIUsageStats }) {
+  const t = useT()
+  const quota = usage.tokenQuota || 0
+  if (quota <= 0) {
+    return (
+      <div className="rounded-lg border border-gray-100 p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
+          <Gauge className="w-5 h-5 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{t('当前用量')}</p>
+          <p className="text-lg font-semibold mt-0.5">{t('未设置套餐额度')}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('联系管理员在套餐中配置 AI 额度')}</p>
+        </div>
+      </div>
+    )
+  }
+  const used = Math.min(usage.totalTokens, quota)
+  const percent = quota > 0 ? Math.round((usage.totalTokens / quota) * 1000) / 10 : 0
+  const pieData = [
+    { name: 'used', value: used },
+    { name: 'rest', value: Math.max(quota - used, 0) },
+  ]
+  const color = percent >= 90 ? '#ef4444' : percent >= 70 ? '#f59e0b' : '#6366f1'
+  return (
+    <div className="rounded-lg border border-gray-100 p-4 flex items-center gap-3">
+      <div className="w-14 h-14 relative shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              innerRadius={20}
+              outerRadius={28}
+              startAngle={90}
+              endAngle={-270}
+              strokeWidth={0}
+            >
+              <Cell fill={color} />
+              <Cell fill="#eef0f4" />
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[11px] font-semibold" style={{ color }}>
+            {Math.min(percent, 100)}%
+          </span>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{t('当前用量')}</p>
+        <p className="text-base font-semibold mt-0.5 truncate">
+          {usage.totalTokens.toLocaleString()}
+          <span className="text-xs font-normal text-muted-foreground">
+            {' '}/ {quota.toLocaleString()} {t('tokens')}
+          </span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('AI 套餐 token 额度')}</p>
       </div>
     </div>
   )

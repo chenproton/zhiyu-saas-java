@@ -1,4 +1,4 @@
-import { portalRequest } from '../api-helpers'
+import { portalRequest, saasRequest } from '../api-helpers'
 import type {
   AIChatBody,
   AIChatResponse,
@@ -17,6 +17,20 @@ export const aiApi = {
   deleteConfig: () =>
     portalRequest<{ status: string }>('/ai/config', { method: 'DELETE' }),
   getUsage: () => portalRequest<AIUsageStats>('/ai/usage'),
+}
+
+// 超管视角（/admin/tenants/{tenantId}/ai/config）：代租户维护 AI 服务配置，
+// 与租户自身配置同一张表 tenant_ai_configs，仅以 SaaS 平台 token 访问。
+export const adminAiApi = {
+  getConfig: (tenantId: string) =>
+    saasRequest<AIConfigView>(`/admin/tenants/${tenantId}/ai/config`),
+  saveConfig: (tenantId: string, body: AIConfigSaveBody) =>
+    saasRequest<{ status: string }>(`/admin/tenants/${tenantId}/ai/config`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  deleteConfig: (tenantId: string) =>
+    saasRequest<{ status: string }>(`/admin/tenants/${tenantId}/ai/config`, { method: 'DELETE' }),
 }
 
 export function sendAIChat(body: AIChatBody) {

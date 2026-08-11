@@ -182,14 +182,15 @@ type ResourceCode struct {
 }
 
 type SubscriptionPackage struct {
-	ID         string    `json:"id"`
-	TenantID   string    `json:"tenantId"`
-	Name       string    `json:"name"`
-	ValidUntil *string   `json:"validUntil,omitempty"`
-	Modules    JSONMap   `json:"modules"`
-	Status     string    `json:"status"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	ID           string    `json:"id"`
+	TenantID     string    `json:"tenantId"`
+	Name         string    `json:"name"`
+	ValidUntil   *string   `json:"validUntil,omitempty"`
+	Modules      JSONMap   `json:"modules"`
+	Status       string    `json:"status"`
+	AITokenQuota int64     `json:"aiTokenQuota"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type UserExtensionField struct {

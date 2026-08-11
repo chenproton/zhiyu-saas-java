@@ -20,6 +20,8 @@ type UpdateSubscriptionRequest struct {
 	ValidUntil *string        `json:"validUntil"`
 	Modules    domain.JSONMap `json:"modules"`
 	Status     string         `json:"status"`
+	// AITokenQuota AI token 额度（token 数）；nil 表示不修改。
+	AITokenQuota *int64 `json:"aiTokenQuota"`
 }
 
 func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +62,7 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Modules = domain.JSONMap{}
 	}
 	sub, err := h.Service.UpdateSubscription(r.Context(), id, &store.SubscriptionUpdateParams{
-		Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
+		Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status, AITokenQuota: req.AITokenQuota,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新订阅失败")
@@ -103,10 +105,6 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 	if !decodeBody(w, r, &req) {
 		return
 	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
 	if req.Modules == nil {
 		req.Modules = domain.JSONMap{}
 	}
@@ -118,9 +116,28 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 		respondServerError(w, r, err, "查询订阅失败")
 		return
 	}
-	if err == nil && existing.ID != "" {
+	// 名称/有效期/状态已不在超管弹窗展示：更新时保留原值，创建时给默认值
+	if req.Name == "" {
+		if existing != nil && existing.ID != "" {
+			req.Name = existing.Name
+		} else {
+			req.Name = "默认套餐"
+		}
+	}
+	if req.Status == "" {
+		if existing != nil && existing.ID != "" {
+			req.Status = existing.Status
+		} else {
+			req.Status = "active"
+		}
+	}
+	if req.ValidUntil == nil && existing != nil && existing.ID != "" {
+		req.ValidUntil = existing.ValidUntil
+	}
+
+	if existing != nil && existing.ID != "" {
 		updated, err := h.Service.UpdateSubscription(ctx, existing.ID, &store.SubscriptionUpdateParams{
-			Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
+			Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status, AITokenQuota: req.AITokenQuota,
 		})
 		if err != nil {
 			respondServerError(w, r, err, "更新订阅失败")
@@ -131,7 +148,7 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 	}
 
 	sub, err := h.Service.CreateSubscription(ctx, &store.SubscriptionUpdateParams{
-		TenantID: tenantID, Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
+		TenantID: tenantID, Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status, AITokenQuota: req.AITokenQuota,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "创建订阅失败")

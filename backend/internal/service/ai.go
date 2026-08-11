@@ -183,11 +183,13 @@ type AIUsageDay struct {
 	Requests int64  `json:"requests"`
 }
 
-// AIUsageStats 租户 AI 用量统计：全量合计 + 近 30 天每日序列（缺数据日期补 0）。
+// AIUsageStats 租户 AI 用量统计：全量合计 + AI 套餐 token 额度 + 近 30 天每日序列（缺数据日期补 0）。
 type AIUsageStats struct {
-	TotalRequests int64        `json:"totalRequests"`
-	TotalTokens   int64        `json:"totalTokens"`
-	Daily         []AIUsageDay `json:"daily"`
+	TotalRequests int64 `json:"totalRequests"`
+	TotalTokens   int64 `json:"totalTokens"`
+	// TokenQuota AI 套餐 token 额度（来自订阅 ai_token_quota，未设置时为 0）。
+	TokenQuota int64        `json:"tokenQuota"`
+	Daily      []AIUsageDay `json:"daily"`
 }
 
 // aiUsageDailyDays 用量看板每日序列天数（含今天）。
@@ -240,12 +242,18 @@ func (s *AIService) Chat(ctx context.Context, tenantID, userID string, messages 
 	return reply, usage, nil
 }
 
-// GetUsageStats 返回租户 AI 用量统计：全量请求数/Token 数 + 近 30 天每日序列，
-// 无数据的日期补 0，前端可直接渲染。
+// GetUsageStats 返回租户 AI 用量统计：全量请求数/Token 数 + 套餐 token 额度 + 近 30 天每日序列，
+// 无数据的日期补 0，前端可直接渲染。订阅缺失时额度按 0 处理，不阻塞用量统计。
 func (s *AIService) GetUsageStats(ctx context.Context, tenantID string) (*AIUsageStats, error) {
 	totalRequests, totalTokens, err := s.st.AIUsage().Totals(ctx, tenantID)
 	if err != nil {
 		return nil, err
+	}
+	var quota int64
+	if sub, err := s.st.Subscriptions().GetByTenant(ctx, tenantID); err == nil {
+		quota = sub.AITokenQuota
+	} else if !errors.Is(err, store.ErrNotFound) {
+		slog.Warn("load subscription for ai usage failed", "tenantId", tenantID, "error", err)
 	}
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -270,6 +278,7 @@ func (s *AIService) GetUsageStats(ctx context.Context, tenantID string) (*AIUsag
 	return &AIUsageStats{
 		TotalRequests: totalRequests,
 		TotalTokens:   totalTokens,
+		TokenQuota:    quota,
 		Daily:         daily,
 	}, nil
 }
