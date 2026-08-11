@@ -94,7 +94,7 @@
 - 前台页面：`landing`（学校信息卡 + 统计卡 + 企业/项目/成果/专家区块 + 品牌 Tab）、各列表页/详情页（public-cards.tsx）
 
 **目标流程**：
-1. 企业侧：注册 → 维护主体信息 → 开启 `enable_public`（企业"愿意对外展示"）；专家档案 `is_public`（语义改为企业侧维护，专家"愿意被展示"）
+1. 企业侧：注册（默认开启 `enable_public`）→ 维护主体信息 → 按需关闭 `enable_public`（企业"愿意对外展示"）；专家档案 `is_public`（语义改为企业侧维护，专家"愿意被展示"）
 2. 学校侧：引入企业（link）→ `link.is_public`（学校"愿在本校前台出现"）
 3. 展示规则（public 接口数据源改造）：
    - 无 `tenantId`（全局联盟展示）：`enable_public=true` 的全局企业去重 + 其公开专家/项目/成果
@@ -174,7 +174,7 @@ ALTER TABLE tenants ADD COLUMN type varchar(16) NOT NULL DEFAULT 'school';
 
 - `tenant_id` 语义改变：从"学校租户"变为"企业自己的租户"（企业注册时创建企业租户）
 - **保留主体字段**：`name`、`unified_social_credit_code`、`industry`、`region`、`description`、`logo_url`、`cover_image`、`cooperation_types`、`contact_person`、`contact_phone`、`contact_email`、`address`、`established_year`、`employee_count`、`business_license_photos`、`qualification_photos`、`intellectual_property_photos`、`cover_photos`
-- **新增**：`enable_public boolean NOT NULL DEFAULT false`（企业侧"愿意对外展示"开关，互动流程一的双控之一，企业服务台维护）
+- **新增**：`enable_public boolean NOT NULL DEFAULT true`（企业侧"愿意对外展示"开关，互动流程一的双控之一，企业服务台维护；注册时默认开启）
 - **移除（移到 link 表）**：`enterprise_type`、`rating`、`status`、`is_public`、`secondary_colleges`、`rating_record`、`created_by`
 - `name` 增加全局唯一约束（企业主体唯一）
 - 重命名后 `alliance_experts.enterprise_id` 外键自动指向新表名（PostgreSQL RENAME 行为）

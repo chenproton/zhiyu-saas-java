@@ -302,11 +302,15 @@ func TestPartner_RegisterEnterpriseFields(t *testing.T) {
 	defer cleanupPartnerTenant(env, tenantID)
 
 	var creditCode, person, phone, email *string
+	var enablePublic bool
 	if err := env.DB.QueryRow(context.Background(), `
-		SELECT unified_social_credit_code, contact_person, contact_phone, contact_email
+		SELECT unified_social_credit_code, contact_person, contact_phone, contact_email, enable_public
 		FROM partner_enterprises WHERE tenant_id = $1`, tenantID).
-		Scan(&creditCode, &person, &phone, &email); err != nil {
+		Scan(&creditCode, &person, &phone, &email, &enablePublic); err != nil {
 		t.Fatalf("查询企业主体失败: %v", err)
+	}
+	if !enablePublic {
+		t.Fatal("注册企业默认应开启对外展示（enable_public=true）")
 	}
 	if creditCode == nil || *creditCode != "91330100MA00"+suffix[:6] {
 		t.Fatalf("统一社会信用代码未落库: %v", creditCode)
