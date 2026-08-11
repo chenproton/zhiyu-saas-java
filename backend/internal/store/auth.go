@@ -31,7 +31,7 @@ func (s *AuthStore) FindUsersByUsername(ctx context.Context, username string, pl
 		       u.role, u.platform, u.login_name, u.username, u.password_hash, u.name, u.email,
 		       u.phone, u.avatar_url, u.student_no, u.work_id, u.id_card, u.title_ids, u.oauth,
 		       u.status, u.created_at, u.updated_at,
-		       t.name as tenant_name
+		       t.name as tenant_name, t.status as tenant_status, t.valid_from, t.valid_until
 		FROM users u
 		JOIN tenants t ON t.id = u.tenant_id
 		WHERE u.username = $1 AND u.platform = $2
@@ -47,11 +47,12 @@ func (s *AuthStore) FindUsersByUsername(ctx context.Context, username string, pl
 		var phone, avatarURL, studentNo, workID, idCard *string
 		var titleIDs []string
 		var oauth domain.JSONMap
+		var tenantValidFrom, tenantValidUntil *string
 		if err := rows.Scan(
 			&u.User.ID, &tenantID, &u.User.InstitutionID, &orgNodeID, &majorID,
 			&u.User.Role, &u.User.Platform, &loginName, &u.User.Username, &u.User.PasswordHash, &u.User.Name, &u.User.Email,
 			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &u.User.Status,
-			&u.User.CreatedAt, &u.User.UpdatedAt, &u.Tenant.Name,
+			&u.User.CreatedAt, &u.User.UpdatedAt, &u.Tenant.Name, &u.Tenant.Status, &tenantValidFrom, &tenantValidUntil,
 		); err != nil {
 			continue
 		}
@@ -69,6 +70,8 @@ func (s *AuthStore) FindUsersByUsername(ctx context.Context, username string, pl
 		if tenantID != nil {
 			u.Tenant.ID = *tenantID
 		}
+		u.Tenant.ValidFrom = tenantValidFrom
+		u.Tenant.ValidUntil = tenantValidUntil
 		items = append(items, u)
 	}
 	return items, rows.Err()

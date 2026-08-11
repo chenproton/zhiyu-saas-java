@@ -1,0 +1,2 @@
+ALTER TABLE tenants DROP COLUMN IF EXISTS valid_from;
+ALTER TABLE tenants DROP COLUMN IF EXISTS valid_until;

@@ -32,6 +32,8 @@ type PartnerRegisterParams struct {
 	ContactPerson           string // 联系人（可选）
 	ContactPhone            string // 联系电话（可选）
 	ContactEmail            string // 联系邮箱（可选）
+	ValidFrom               *string
+	ValidUntil              *string
 }
 
 // PartnerRegisterResult 注册结果（handler 据此签发 token）。
@@ -55,8 +57,10 @@ func (s *PartnerService) Register(ctx context.Context, p *PartnerRegisterParams)
 		// 企业租户（type=enterprise）+ 角色种子
 		tenantCode := "ent-" + uuid.NewString()[:8]
 		tenantRes, err := txStore.Tenants().CreateEnterpriseTenant(ctx, txStore.Q(), &store.TenantCreateParams{
-			Name: p.EnterpriseName,
-			Code: tenantCode,
+			Name:       p.EnterpriseName,
+			Code:       tenantCode,
+			ValidFrom:  p.ValidFrom,
+			ValidUntil: p.ValidUntil,
 		})
 		if err != nil {
 			return err

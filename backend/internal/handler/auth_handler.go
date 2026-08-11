@@ -177,6 +177,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	}
 
 	var candidates []candidate
+	var expiredTenant bool
 	for _, row := range rows {
 		u := candidate{user: row.User, tenant: row.Tenant}
 		// 停用用户 / 停用租户不允许登录
@@ -186,12 +187,22 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		if u.tenant.Status != "" && string(u.tenant.Status) != string(domain.TenantStatusActive) {
 			continue
 		}
-		if err := bcrypt.CompareHashAndPassword([]byte(u.user.PasswordHash), []byte(req.Password)); err == nil {
-			candidates = append(candidates, u)
+		if err := bcrypt.CompareHashAndPassword([]byte(u.user.PasswordHash), []byte(req.Password)); err != nil {
+			continue
 		}
+		// 租户不在有效期内（未开始或已过期）不允许登录
+		if !isTenantWithinValidity(u.tenant) {
+			expiredTenant = true
+			continue
+		}
+		candidates = append(candidates, u)
 	}
 
 	if len(candidates) == 0 {
+		if expiredTenant {
+			respondError(w, http.StatusForbidden, "租户不在有效期内，请联系管理员")
+			return
+		}
 		respondError(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
@@ -234,6 +245,18 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		PreAuthToken:         preAuthToken,
 		Tenants:              options,
 	})
+}
+
+// isTenantWithinValidity 判断租户是否在有效期内（valid_from/valid_until 为 YYYY-MM-DD，空表示不限）。
+func isTenantWithinValidity(t domain.Tenant) bool {
+	today := time.Now().Format("2006-01-02")
+	if t.ValidFrom != nil && *t.ValidFrom != "" && *t.ValidFrom > today {
+		return false
+	}
+	if t.ValidUntil != nil && *t.ValidUntil != "" && *t.ValidUntil < today {
+		return false
+	}
+	return true
 }
 
 func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
