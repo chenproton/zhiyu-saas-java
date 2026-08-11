@@ -146,14 +146,19 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
                               {task.taskType === 'assessment' ? t('测评任务') : t('训练任务')}
                             </span>
-                            {task.abilityPointIds?.map((aid) => (
+                            {task.abilityPointNames?.slice(0, 7).map((name) => (
                               <span
-                                key={aid}
+                                key={name}
                                 className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]"
                               >
-                                {t('能力点')}
+                                {name}
                               </span>
                             ))}
+                            {task.abilityPointNames && task.abilityPointNames.length > 7 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                                +{task.abilityPointNames.length - 7}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
