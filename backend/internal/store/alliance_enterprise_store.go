@@ -266,6 +266,22 @@ func (s *AllianceStore) GetPublicEnterpriseByID(ctx context.Context, id, tenantI
 	`, id)
 }
 
+// HasPublicEnterpriseAccess 判定 viewerTenantID 是否可查看 enterpriseTenantID 名下企业的公开文件：
+// 存在企业主体（enable_public=true，归属 enterpriseTenantID）且与 viewerTenantID 有
+// is_public=true 且未终止的合作链接。用于 /uploads 跨租户文件放行（联盟前台展示）。
+func (s *AllianceStore) HasPublicEnterpriseAccess(ctx context.Context, enterpriseTenantID, viewerTenantID string) (bool, error) {
+	var ok bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM partner_enterprises pe
+			JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id
+			WHERE pe.tenant_id = $1 AND pe.enable_public = true
+			  AND l.tenant_id = $2 AND l.is_public = true AND l.status <> 'terminated'
+		)
+	`, enterpriseTenantID, viewerTenantID).Scan(&ok)
+	return ok, err
+}
+
 func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.AllianceBrand, error) {
 	return queryOne(ctx, s.q, s.ScanBrandRows, `
 		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,

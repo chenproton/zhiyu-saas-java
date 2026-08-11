@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -52,6 +53,10 @@ func pageNum(name string) int {
 type FileHandler struct {
 	UploadDir string
 	JWTSecret string
+	// CrossTenantAccess 跨租户文件访问判定（可选）：当请求租户与文件归属租户不一致时调用。
+	// 当前实现为联盟公开企业文件放行——文件租户存在对本请求租户公开可见的企业
+	// （enable_public + 学校侧 is_public 未终止链接）时返回 true。
+	CrossTenantAccess func(ctx context.Context, fileTenantID, viewerTenantID string) (bool, error)
 }
 
 type UploadResponse struct {
@@ -254,6 +259,8 @@ func (h *FileHandler) verifySignURL(r *http.Request) bool {
 // resolveTenant 解析请求所属租户：签名 URL（公开可验证）直接取路径段；
 // 否则要求登录态且租户匹配，未登录 401、跨租户 403。
 // 双端登录（portal+partner cookie 共存）时，按 URL 租户在候选 claims 中匹配取用。
+// 租户仍不匹配时，若配置了 CrossTenantAccess 且判定放行（联盟公开企业文件），
+// 允许跨租户访问；判定失败/未配置一律 403。
 func (h *FileHandler) resolveTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
 	tenantID := chi.URLParam(r, "tenantID")
 	if h.verifySignURL(r) {
@@ -267,6 +274,12 @@ func (h *FileHandler) resolveTenant(w http.ResponseWriter, r *http.Request) (str
 		// 当前 claims 租户不匹配：尝试其它候选（另一平台的登录态）
 		for _, c := range middleware.UserCandidates(r) {
 			if c.TenantID != nil && *c.TenantID == tenantID {
+				return tenantID, true
+			}
+		}
+		// 跨租户联盟公开文件：请求方租户对该文件租户的企业公开可见
+		if claims.TenantID != nil && h.CrossTenantAccess != nil {
+			if ok, err := h.CrossTenantAccess(r.Context(), tenantID, *claims.TenantID); err == nil && ok {
 				return tenantID, true
 			}
 		}

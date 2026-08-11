@@ -14,6 +14,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/metrics"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type contentRoutes interface {
@@ -128,6 +129,10 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 		uploadDir = "../public/uploads"
 	}
 	fileHandler := &handler.FileHandler{UploadDir: uploadDir, JWTSecret: jwtSecret}
+
+	// 联盟公开企业文件跨租户放行：文件归属租户的企业对请求租户公开可见时允许访问
+	// （学校端联盟前台展示企业 Logo/封面/证照照片/专家头像等 <img> 直出）
+	fileHandler.CrossTenantAccess = store.New(db).Alliance().HasPublicEnterpriseAccess
 
 	// /uploads/{tenantID}/{filename}：混合鉴权——签名 URL（公开，kkFileView 等
 	// 无登录态服务端抓取）或登录态（Authorization 头 / HttpOnly cookie，<img> 直出），

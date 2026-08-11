@@ -247,3 +247,51 @@ func TestFileServeDualPlatformCookies(t *testing.T) {
 		})
 	}
 }
+
+// TestFileServeCrossTenantPublicEnterprise 联盟公开企业文件跨租户放行：
+// 学校租户（tenant-b）登录访问企业租户（tenant-a）文件时，CrossTenantAccess
+// 判定通过返回 200，未配置/判定拒绝保持 403。
+func TestFileServeCrossTenantPublicEnterprise(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+
+	accessCheck := func(_ context.Context, fileTenantID, viewerTenantID string) (bool, error) {
+		return fileTenantID == "tenant-a" && viewerTenantID == "tenant-b", nil
+	}
+
+	t.Run("判定通过返回200", func(t *testing.T) {
+		h := &FileHandler{UploadDir: dir, JWTSecret: "sec", CrossTenantAccess: accessCheck}
+		r := newUploadsRouter(h, "sec")
+		req, _ := http.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
+		req = withClaims(req, tenantClaims("tenant-b"))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", w.Code)
+		}
+	})
+
+	t.Run("判定拒绝仍403", func(t *testing.T) {
+		h := &FileHandler{UploadDir: dir, JWTSecret: "sec", CrossTenantAccess: accessCheck}
+		r := newUploadsRouter(h, "sec")
+		req, _ := http.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
+		req = withClaims(req, tenantClaims("tenant-c"))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want 403", w.Code)
+		}
+	})
+
+	t.Run("未配置保持403", func(t *testing.T) {
+		h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
+		r := newUploadsRouter(h, "sec")
+		req, _ := http.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
+		req = withClaims(req, tenantClaims("tenant-b"))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want 403", w.Code)
+		}
+	})
+}
