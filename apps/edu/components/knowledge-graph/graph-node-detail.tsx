@@ -279,7 +279,7 @@ export function GraphNodeDetail({
       relatedUnitItems.push({
         id: b.abilityPointId,
         type: 'unit',
-        label: abilityPoint?.name || b.domain || t('未命名能力'),
+        label: abilityPoint?.name || b.abilityName || b.domain || t('未命名能力'),
       })
     })
 
@@ -310,7 +310,7 @@ export function GraphNodeDetail({
       relatedUnitItems.push({
         id: b.abilityPointId,
         type: 'unit',
-        label: abilityPoint?.name || b.domain || t('未命名能力'),
+        label: abilityPoint?.name || b.abilityName || b.domain || t('未命名能力'),
       })
     })
     return (
@@ -399,14 +399,19 @@ export function GraphNodeDetail({
     // 关联能力点：出现该知识点的任务所关联的能力点
     const unitIdSet = new Set<string>()
     const relatedUnitItems: NodeLite[] = []
-    tasks?.forEach((t) => {
-      if (!(t.knowledgePointIds || []).includes(node.id)) return
-      ;(t.abilityPointIds || []).forEach((aid) => {
+    tasks?.forEach((task) => {
+      if (!(task.knowledgePointIds || []).includes(node.id)) return
+      ;(task.abilityPointIds || []).forEach((aid) => {
         if (unitIdSet.has(aid)) return
         const unit = units?.find((u) => u.id === aid)
-        if (!unit) return
+        if (!unit && !bindings?.some((b) => b.abilityPointId === aid)) return
         unitIdSet.add(aid)
-        relatedUnitItems.push({ id: aid, type: 'unit', label: unit.name })
+        const binding = bindings?.find((b) => b.abilityPointId === aid)
+        relatedUnitItems.push({
+          id: aid,
+          type: 'unit',
+          label: unit?.name || binding?.abilityName || binding?.domain || t('未命名能力'),
+        })
       })
     })
 
