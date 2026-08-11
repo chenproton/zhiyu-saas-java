@@ -12,7 +12,12 @@ import (
 
 type contextKey string
 
-const ContextKeyUser contextKey = "user"
+const (
+	ContextKeyUser contextKey = "user"
+	// ContextKeyUserCandidates 携带全部可解析的 claims（OptionalJWT 多 cookie 场景），
+	// Serve 端按 URL 租户在候选中匹配取用（双端登录时 portal/partner cookie 共存）。
+	ContextKeyUserCandidates contextKey = "user_candidates"
+)
 
 // AuthCookieNameLegacy 早期版本的统一 cookie 名（兼容读取：升级前已下发的
 // cookie 无平台区分，升级后按 claims.Platform 写入平台独立 cookie 并自然替换）。
@@ -86,22 +91,32 @@ func JWT(secret string) func(http.Handler) http.Handler {
 	}
 }
 
-// OptionalJWT 解析 Authorization 头或 AuthCookieName cookie 中的令牌；
+// OptionalJWT 解析 Authorization 头或文件通道 cookie 中的令牌；
 // 令牌缺失/无效时不拦截请求（无 claims 继续放行），由业务侧决定如何响应。
 // 用于 /uploads 这类既需签名 URL（公开）又需登录鉴权（cookie/header）的混合场景。
+// 双端登录（portal+partner cookie 共存）时，全部候选 claims 一并放入
+// ContextKeyUserCandidates，供 Serve 按 URL 租户匹配取用。
 func OptionalJWT(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := tokenClaims(r, secret)
-			if !ok {
+			claimsList := tokenClaimsAll(r, secret)
+			if len(claimsList) == 0 {
 				next.ServeHTTP(w, r)
 				return
 			}
-			ensureAuthCookie(w, r, claims)
-			ctx := context.WithValue(r.Context(), ContextKeyUser, claims)
+			ensureAuthCookie(w, r, claimsList[0])
+			ctx := context.WithValue(r.Context(), ContextKeyUser, claimsList[0])
+			ctx = context.WithValue(ctx, ContextKeyUserCandidates, claimsList)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// UserCandidates 返回本次请求全部可解析的 claims（多 cookie 场景按序），
+// 首个为默认（header 优先），其余为其它平台/会话的候选。
+func UserCandidates(r *http.Request) []*Claims {
+	v, _ := r.Context().Value(ContextKeyUserCandidates).([]*Claims)
+	return v
 }
 
 // ensureAuthCookie 认证成功后按需补发文件通道 cookie：
@@ -124,19 +139,13 @@ func ensureAuthCookie(w http.ResponseWriter, r *http.Request, claims *Claims) {
 }
 
 // tokenClaims 从 Authorization: Bearer 头（优先）或文件通道 cookie
-// （平台独立 cookie + 旧 cookie 兼容）中解析 JWT，返回 claims。
+// （平台独立 cookie + 旧 cookie 兼容）中解析 JWT，返回首个有效 claims。
 // 强制 UserID 非空：排除预授权令牌（同密钥 HS256 但无 userId）等
 // 签名正确但结构不全的令牌类型混淆。
 func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
-	tokenStr := ""
 	auth := r.Header.Get("Authorization")
-	if auth != "" {
-		tokenStr = strings.TrimPrefix(auth, "Bearer ")
-		if tokenStr == auth {
-			return nil, false
-		}
-	}
-	if tokenStr == "" {
+	tokenStr := strings.TrimPrefix(auth, "Bearer ")
+	if tokenStr == "" || tokenStr == auth {
 		for _, v := range authCookieCandidates(r) {
 			tokenStr = v
 			if tokenStr != "" {
@@ -147,14 +156,35 @@ func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
 	if tokenStr == "" {
 		return nil, false
 	}
+	return parseToken(tokenStr, secret)
+}
 
+// tokenClaimsAll 解析 header（优先）+ 全部 cookie 候选，返回所有有效 claims。
+func tokenClaimsAll(r *http.Request, secret string) []*Claims {
+	var out []*Claims
+	if auth := r.Header.Get("Authorization"); auth != "" {
+		tokenStr := strings.TrimPrefix(auth, "Bearer ")
+		if tokenStr != auth {
+			if c, ok := parseToken(tokenStr, secret); ok {
+				out = append(out, c)
+			}
+		}
+	}
+	for _, v := range authCookieCandidates(r) {
+		if c, ok := parseToken(v, secret); ok {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func parseToken(tokenStr, secret string) (*Claims, bool) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil || !token.Valid {
 		return nil, false
 	}
-
 	claims, ok := token.Claims.(*Claims)
 	if !ok || claims.UserID == "" {
 		return nil, false

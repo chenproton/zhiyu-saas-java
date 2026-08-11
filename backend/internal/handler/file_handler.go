@@ -253,21 +253,30 @@ func (h *FileHandler) verifySignURL(r *http.Request) bool {
 
 // resolveTenant 解析请求所属租户：签名 URL（公开可验证）直接取路径段；
 // 否则要求登录态且租户匹配，未登录 401、跨租户 403。
+// 双端登录（portal+partner cookie 共存）时，按 URL 租户在候选 claims 中匹配取用。
 func (h *FileHandler) resolveTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
 	tenantID := chi.URLParam(r, "tenantID")
 	if h.verifySignURL(r) {
 		return tenantID, true
 	}
 	claims := middleware.CurrentUser(r)
-	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+	if claims != nil {
+		if claims.TenantID != nil && *claims.TenantID == tenantID {
+			return tenantID, true
+		}
+		// 当前 claims 租户不匹配：尝试其它候选（另一平台的登录态）
+		for _, c := range middleware.UserCandidates(r) {
+			if c.TenantID != nil && *c.TenantID == tenantID {
+				return tenantID, true
+			}
+		}
+	}
+	if claims == nil {
 		respondError(w, http.StatusUnauthorized, "需要登录")
 		return "", false
 	}
-	if *claims.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "无权访问该文件")
-		return "", false
-	}
-	return tenantID, true
+	respondError(w, http.StatusForbidden, "无权访问该文件")
+	return "", false
 }
 
 // SignURL 为 /uploads/{tenantID}/{filename} 生成短时签名 URL，供 kkFileView
