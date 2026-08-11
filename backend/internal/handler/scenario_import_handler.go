@@ -183,7 +183,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 		_, err = h.Store.Q().Exec(ctx, `
 			INSERT INTO scenarios (id, tenant_id, name, code, career_position_id, industry_ids, profession_ids,
 				batch_id, difficulty, version, status, background, creator_id, co_builder_ids)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'v1.0','draft',$10,$11,'{}')
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'V1.0','draft',$10,$11,'{}')
 		`, scenarioID, tenantID, name, code, careerPositionID, industryIDs, professionIDs,
 			batchID, difficulty, background, userID)
 		if err != nil {

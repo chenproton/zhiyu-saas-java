@@ -22,7 +22,7 @@ func seedSchoolPosition(t *testing.T, env *testhelper.TestEnv, name string) stri
 	id := uuid.NewString()
 	if _, err := env.DB.Exec(context.Background(), `
 		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, source_type, version, created_by)
-		VALUES ($1, $2, $3, $4, 'internship', 'published', 'school', 'v1.0', $5)
+		VALUES ($1, $2, $3, $4, 'internship', 'published', 'school', 'V1.0', $5)
 	`, id, testhelper.TestTenantID, "sch-"+uuid.NewString()[:8], name, testhelper.TestOperatorID); err != nil {
 		t.Fatalf("预置学校岗位失败: %v", err)
 	}

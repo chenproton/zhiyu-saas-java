@@ -146,7 +146,7 @@ func (h *PartnerCoBuildHandler) CreatePosition(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if req.Version == "" {
-		req.Version = "v1.0"
+		req.Version = "V1.0"
 	}
 	pos, err := h.Service.CreatePosition(r.Context(), partnerTenantID, userID, req.SchoolTenantID, &store.PositionCreateParams{
 		BatchID:       req.BatchID,
@@ -452,7 +452,7 @@ func (h *PartnerCoBuildHandler) CreateScenario(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if req.Version == "" {
-		req.Version = "v1.0"
+		req.Version = "V1.0"
 	}
 	sc, err := h.Service.CreateScenario(r.Context(), partnerTenantID, userID, req.SchoolTenantID, &store.ScenarioCreateParams{
 		Name:             req.Name,

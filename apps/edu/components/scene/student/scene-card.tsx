@@ -64,7 +64,7 @@ export function SceneCard({
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
               <span className="bg-[#0f172a]/40 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/20">
-                {scenario.version || 'v1.0'}
+                {scenario.version || 'V1.0'}
               </span>
               <span className="bg-[#0f172a]/40 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/20">
                 {t('创建人：{name}', { name: creatorName })}

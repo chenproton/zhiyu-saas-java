@@ -27,7 +27,7 @@ var importExportEntities = map[string]importExportEntity{
 		keyCol:      "name",
 		insertSQL: `
 			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool)
-			VALUES ($1, $2, $3, $4, 'draft', 0, $5, 'v1.0', 'tenant', FALSE)
+			VALUES ($1, $2, $3, $4, 'draft', 0, $5, 'V1.0', 'tenant', FALSE)
 		`,
 		updateSQL:   `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
 		defaultCols: []string{"id", "name", "description", "status", "created_at"},
@@ -37,7 +37,7 @@ var importExportEntities = map[string]importExportEntity{
 		keyCol:      "name",
 		insertSQL: `
 			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type)
-			VALUES ($1, $2, $3, $4, 'draft', 0, 60, $5, 'v1.0', 'tenant')
+			VALUES ($1, $2, $3, $4, 'draft', 0, 60, $5, 'V1.0', 'tenant')
 		`,
 		updateSQL:   `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
 		defaultCols: []string{"id", "name", "description", "status", "created_at"},
@@ -67,7 +67,7 @@ var importExportEntities = map[string]importExportEntity{
 		keyCol:      "name",
 		insertSQL: `
 			INSERT INTO scenarios (id, tenant_id, name, code, status, creator_id, co_builder_ids, version)
-			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'v1.0')
+			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'V1.0')
 		`,
 		updateSQL:   `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
 		defaultCols: []string{"id", "name", "code", "status", "created_at"},

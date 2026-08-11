@@ -256,7 +256,7 @@ export default function BankDetailPage() {
                       />
                     )}
                     <span className="absolute bottom-3 right-3 z-10 bg-[#0f172a]/40 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-[11px] border border-white/20">
-                      v{bank.version}
+                      {bank.version}
                     </span>
                   </div>
 

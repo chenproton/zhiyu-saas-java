@@ -76,7 +76,7 @@ func (s *QuestionBankStore) Create(ctx context.Context, tenantID string, p *Ques
 		err := tx.QueryRow(ctx, `
 			INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
 				collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
-			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', FALSE)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'V1.0', 'mine', FALSE)
 			RETURNING id
 		`, tenantID, p.Code, p.Name, p.Description, p.CoverImage, p.CreatorID,
 			p.CollaboratorIDs, p.CollaboratorDeptIDs, p.BatchID).Scan(&id)
@@ -184,7 +184,7 @@ func (s *QuestionBankStore) EnsureDraftPool(ctx context.Context, tenantID, userI
 	_, err = s.q.Exec(ctx, `
 		INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
 			collaborator_ids, collaborator_dept_ids, version, owner_type, is_draft_pool)
-		VALUES (gen_random_uuid(), $1, $2, '我的草稿库', '', 'draft', 0, $3, '{}', '{}', 'v1.0', 'mine', true)
+		VALUES (gen_random_uuid(), $1, $2, '我的草稿库', '', 'draft', 0, $3, '{}', '{}', 'V1.0', 'mine', true)
 	`, tenantID, code, userID)
 	return err
 }

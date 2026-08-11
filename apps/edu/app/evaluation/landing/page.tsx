@@ -44,7 +44,7 @@ function BankCard({ bank }: { bank: QuestionBank; index: number }) {
         >
           {!bank.coverImage && <Library className="w-12 h-12 text-white/80" />}
           <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
-            v{bank.version}
+            {bank.version}
           </span>
         </div>
         <div className="p-5 flex-1 flex flex-col">

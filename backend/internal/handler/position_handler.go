@@ -143,7 +143,7 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Version == "" {
-		req.Version = "v1.0"
+		req.Version = "V1.0"
 	}
 	tenantID, ok := requireTenant(w, r)
 	if !ok {

@@ -214,7 +214,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 		_, err = q.Exec(ctx, `
 			INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration,
 				batch_id, version, owner_type, creator_id, is_temp)
-			VALUES ($1,$2,$3,$4,$5,'draft',0,60,$6,'v1.0','mine',$7,false)
+			VALUES ($1,$2,$3,$4,$5,'draft',0,60,$6,'V1.0','mine',$7,false)
 		`, examID, tenantID, code, name, description, batchID, userID)
 		if err != nil {
 			result.Failed++

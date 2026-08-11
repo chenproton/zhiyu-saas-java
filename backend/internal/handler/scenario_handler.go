@@ -155,7 +155,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Version == "" {
-		req.Version = "v1.0"
+		req.Version = "V1.0"
 	}
 
 	var tenantID *string

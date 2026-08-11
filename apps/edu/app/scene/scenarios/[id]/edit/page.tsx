@@ -64,7 +64,7 @@ export default function ScenarioEditPage() {
   const [creatorName] = useState(t('当前用户'))
   const [creatorId, setCreatorId] = useState<string>('')
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
-  const [version, setVersion] = useState('v1.0')
+  const [version, setVersion] = useState('V1.0')
   const [coverImage, setCoverImage] = useState('')
   const [coverUploading, setCoverUploading] = useState(false)
   const [scenarioStatus, setScenarioStatus] = useState<string>('draft')
@@ -96,7 +96,7 @@ export default function ScenarioEditPage() {
         setBackground(scenario.background || '')
         setCreatorId(scenario.creatorId || '')
         setCoBuilderIds((scenario.coBuilderIds || []).filter((id) => id !== scenario.creatorId))
-        setVersion(scenario.version || 'v1.0')
+        setVersion(scenario.version || 'V1.0')
         setCoverImage(scenario.coverImage || '')
         setScenarioStatus(scenario.status || 'draft')
       } catch (err: any) {

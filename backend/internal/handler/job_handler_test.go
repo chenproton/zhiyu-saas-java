@@ -37,8 +37,8 @@ func TestPosition_CRUD(t *testing.T) {
 		if string(pos.PositionType) != "enterprise" {
 			t.Errorf("positionType = %q, want enterprise", pos.PositionType)
 		}
-		if pos.Version != "v1.0" {
-			t.Errorf("version = %q, want v1.0", pos.Version)
+		if pos.Version != "V1.0" {
+			t.Errorf("version = %q, want V1.0", pos.Version)
 		}
 		createdID = pos.ID
 		createdVersion = pos.Version

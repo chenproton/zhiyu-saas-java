@@ -143,7 +143,7 @@ export function PositionList({
                       {position.sourceType === 'enterprise' && (
                         <Badge variant="secondary">{t('企业共建')}</Badge>
                       )}
-                      <span className="text-xs text-slate-400">v{position.version}</span>
+                      <span className="text-xs text-slate-400">{position.version}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-slate-600">

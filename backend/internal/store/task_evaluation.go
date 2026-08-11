@@ -471,7 +471,7 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 	_, err = tx.Exec(ctx, `
 		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $6, TRUE)
+		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
 	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam: %w", err)

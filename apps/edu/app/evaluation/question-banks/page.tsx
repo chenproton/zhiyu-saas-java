@@ -74,7 +74,7 @@ export default function QuestionBanksPage() {
           batchId: data.batchId || '',
           status: 'draft',
           ownerType: 'mine',
-          version: 'v1.0',
+          version: 'V1.0',
         })
         setRefreshKey((k) => k + 1)
         router.push(`/evaluation/question-banks/${newItem.id}?new=true`)

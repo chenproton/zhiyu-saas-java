@@ -141,7 +141,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Version == nil || *req.Version == "" {
-		v := "v1.0"
+		v := "V1.0"
 		req.Version = &v
 	}
 

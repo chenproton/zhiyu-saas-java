@@ -164,7 +164,7 @@ function BankCard({
             }
           >
             {!bank.coverImage && <Library className="w-12 h-12 text-white/80" />}
-            <CoverBadge label={`v${bank.version}`} />
+            <CoverBadge label={bank.version || 'V1.0'} />
           </div>
           <div className="p-4 flex-1 flex flex-col">
             <h3 className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{bank.name}</h3>

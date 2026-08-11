@@ -78,7 +78,7 @@ export default function ExamsPage() {
           batchId: data.batchId || '',
           status: 'draft',
           ownerType: 'mine',
-          version: 'v1.0',
+          version: 'V1.0',
           questions: [],
         })
         setRefreshKey((k) => k + 1)

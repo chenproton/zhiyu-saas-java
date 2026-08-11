@@ -75,7 +75,7 @@ export default function SceneHallPage() {
         name: `${t('新建场景')}_${draftSuffix()}`,
         code: generateCode('SC'),
         difficulty: 1,
-        version: 'v1.0',
+        version: 'V1.0',
         status: 'draft',
         creatorId: uid,
         coBuilderIds: [],

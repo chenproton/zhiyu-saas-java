@@ -808,7 +808,7 @@ export default function SceneDetailPage() {
                           {scenario.name}
                         </h1>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 font-medium shrink-0 border border-slate-200">
-                          v{scenario.version}
+                          {scenario.version}
                         </span>
                       </div>
                     </div>

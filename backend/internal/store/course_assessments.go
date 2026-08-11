@@ -131,7 +131,7 @@ func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, t
 	_, err = q.Exec(ctx, `
 		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, '', 'published', 0, $5, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $6, TRUE)
+		VALUES ($1, $2, $3, $4, '', 'published', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
 	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
 		return "", fmt.Errorf("创建临时考试失败: %w", err)
