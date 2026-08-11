@@ -6,7 +6,8 @@
   "excludeRoutes": ["/partner", "/superadmin"],
   "expectedAuthPages": ["/superadmin"],
   "routeOverrides": {
-    "/evaluation/question-banks": { "maxClicks": 25, "routeTimeoutSec": 300 }
+    "/evaluation/question-banks": { "maxClicks": 25, "routeTimeoutSec": 300 },
+    "/evaluation/landing/banks": { "maxClicks": 25, "routeTimeoutSec": 300 }
   },
   "cleanupApis": [
     { "list": "/api/v1/tenants?limit=100", "del": "/api/v1/tenants/{id}", "fields": ["name"] },

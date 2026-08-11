@@ -166,13 +166,14 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
       }
       const base = `${el.tagName}|${effText}|${href}`
       const row = rowOf(el)
-      // 列表行内按钮去重提速：同一按钮类型（如"编辑/删除/查看"）只保留前 maxRowClicks 行
-      // 的实例（大表页 5000+ 可点元素 → 几十个），SMOKE_ 测试数据行豁免（保 CRUD 覆盖）
+      // 列表行内按钮去重提速：同一按钮类型只保留前 maxRowClicks 行的实例。
+      // 类型键不含 href——行内"查看/详情"链接的 href 每行不同，若带 href 则去重失效。
       if (row && maxRowClicks >= 0) {
-        let seen = rowsByType.get(base)
+        const typeKey = `${el.tagName}|${effText}`
+        let seen = rowsByType.get(typeKey)
         if (!seen) {
           seen = new Set()
-          rowsByType.set(base, seen)
+          rowsByType.set(typeKey, seen)
         }
         const rowKey = seqFor(row)
         const isSmokeRow = !!(marker && (row.innerText || '').includes(marker))
