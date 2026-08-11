@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@zhiyu/ui'
 import {
@@ -68,6 +68,24 @@ import {
 
 const TENANTS_API = '/admin/tenants'
 const PAGE_SIZE = 20
+
+// 日期输入框：点击任意位置弹出日历（Chrome 默认仅右侧图标区域可点）
+function DateInput(props: ComponentProps<typeof Input>) {
+  return (
+    <Input
+      {...props}
+      type="date"
+      onClick={(e) => {
+        try {
+          e.currentTarget.showPicker()
+        } catch {
+          /* 已打开或环境不支持时忽略 */
+        }
+        props.onClick?.(e)
+      }}
+    />
+  )
+}
 
 interface AdminTenant {
   id: string
@@ -1464,16 +1482,14 @@ export default function SuperAdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{t('有效期开始日期')}</Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={formData.validFrom}
                   onChange={(e) => setFormData((p) => ({ ...p, validFrom: e.target.value }))}
                 />
               </div>
               <div className="grid gap-2">
                 <Label>{t('有效期结束日期')}</Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={formData.validUntil}
                   onChange={(e) => setFormData((p) => ({ ...p, validUntil: e.target.value }))}
                 />
@@ -1617,8 +1633,7 @@ export default function SuperAdminPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>{t('有效期至')}</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={subscriptionData.validUntil}
                     onChange={(e) =>
                       setSubscriptionData((p) => ({ ...p, validUntil: e.target.value }))
