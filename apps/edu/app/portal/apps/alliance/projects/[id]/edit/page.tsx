@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/shared/date-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -145,14 +146,14 @@ export default function AllianceProjectEditPage() {
                   />
                 </FormFieldRow>
                 <FormFieldRow label={t('开始日期')}>
-                  <Input
+                  <DateInput
                     value={item.startDate || ''}
                     onChange={(e) => setField('startDate', e.target.value)}
                     type="date"
                   />
                 </FormFieldRow>
                 <FormFieldRow label={t('结束日期')}>
-                  <Input
+                  <DateInput
                     value={item.endDate || ''}
                     onChange={(e) => setField('endDate', e.target.value)}
                     type="date"

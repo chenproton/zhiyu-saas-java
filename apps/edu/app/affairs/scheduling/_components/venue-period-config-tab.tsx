@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Plus, FileEdit, Trash2, Lightbulb, CalendarDays, MapPin, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/shared/date-input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { formatDate, formatDuration } from '@/lib/format-utils'
@@ -1089,7 +1090,7 @@ function StartTimeRow({
   return (
     <div className="flex items-center gap-2">
       <span className="w-16 shrink-0 text-xs text-muted-foreground">{t('开始时间')}</span>
-      <Input
+      <DateInput
         type="time"
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -1,7 +1,7 @@
 'use client'
 
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/shared/date-input'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -69,7 +69,7 @@ export function ExamActivationConfig({ value, onChange }: ExamActivationConfigPr
       {mode === 'scheduled' && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormFieldRow label={t('启用时间')} labelClassName="text-xs text-gray-500">
-            <Input
+            <DateInput
               type="datetime-local"
               value={value.scheduledTime ?? ''}
               onChange={(e) => onChange({ scheduledTime: e.target.value })}
@@ -78,7 +78,7 @@ export function ExamActivationConfig({ value, onChange }: ExamActivationConfigPr
             />
           </FormFieldRow>
           <FormFieldRow label={t('停用时间')} labelClassName="text-xs text-gray-500">
-            <Input
+            <DateInput
               type="datetime-local"
               value={value.scheduledEndTime ?? ''}
               onChange={(e) => onChange({ scheduledEndTime: e.target.value })}
