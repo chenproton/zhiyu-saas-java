@@ -5,8 +5,6 @@ import Link from 'next/link'
 import {
   ArrowLeft,
   ChevronDown,
-  ListChecks,
-  ListOrdered,
   Save,
   SlidersHorizontal,
 } from 'lucide-react'
@@ -24,12 +22,16 @@ import {
 import { LoadingView, useToast } from '@zhiyu/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { certApi, positionApi } from '@/lib/api'
-import type { CertificationModelPoint, CertificationPositionModel } from '@/lib/types'
+import type {
+  CertificationModelPoint,
+  CertificationPositionModel,
+  LevelMapping,
+} from '@/lib/types'
 import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import { WeightConfigDialog } from './weight-config-dialog'
-import { LevelConfigDialog } from './level-config-dialog'
+import { CombinedConfigDialog } from './combined-config-dialog'
 
 function taskKey(abilityPointId: string, taskId: string): string {
   return `${abilityPointId}:${taskId}`
@@ -55,8 +57,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
   const [pointWeights, setPointWeights] = useState<Record<string, number>>({})
   const [taskWeights, setTaskWeights] = useState<Record<string, number>>({})
   const [pointDialogOpen, setPointDialogOpen] = useState(false)
-  const [taskDialogPoint, setTaskDialogPoint] = useState<DomainPoint | null>(null)
-  const [levelDialogPoint, setLevelDialogPoint] = useState<DomainPoint | null>(null)
+  const [configPoint, setConfigPoint] = useState<DomainPoint | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -104,7 +105,11 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
     [model],
   )
 
-  const handleSave = async () => {
+  /** 两级权重合法性校验；可传入单点任务权重覆盖（合并弹窗保存时用） */
+  const validateWeights = (pointTaskOverrides?: {
+    abilityPointId: string
+    weights: Record<string, number>
+  }): string[] => {
     const errors: string[] = []
     if (allPoints.length > 0) {
       const sum = allPoints.reduce((s, p) => s + (pointWeights[p.abilityPointId] ?? 0), 0)
@@ -115,8 +120,12 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
     for (const point of allPoints) {
       // 无关联任务的能力点不参与任务权重校验
       if (point.tasks.length === 0) continue
+      const tw =
+        pointTaskOverrides?.abilityPointId === point.abilityPointId
+          ? pointTaskOverrides.weights
+          : taskWeights
       const sum = point.tasks.reduce(
-        (s, t) => s + (taskWeights[taskKey(point.abilityPointId, t.taskId)] ?? 0),
+        (s, task) => s + (tw[taskKey(point.abilityPointId, task.taskId)] ?? 0),
         0,
       )
       if (Math.abs(sum - 100) > 0.01) {
@@ -125,6 +134,11 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         )
       }
     }
+    return errors
+  }
+
+  const handleSave = async () => {
+    const errors = validateWeights()
     if (errors.length > 0) {
       toast({ title: t('权重校验未通过'), description: errors.join('；'), variant: 'destructive' })
       return
@@ -154,6 +168,57 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         description: err instanceof Error ? err.message : t('保存权重配置失败'),
         variant: 'destructive',
       })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** 合并弹窗保存：分档与权重立即持久化，返回是否成功（失败时弹窗停留） */
+  const handleConfigSave = async (
+    point: DomainPoint,
+    pointTaskWeights: Record<string, number>,
+    mapping: LevelMapping[],
+  ): Promise<boolean> => {
+    const errors = validateWeights({
+      abilityPointId: point.abilityPointId,
+      weights: pointTaskWeights,
+    })
+    if (errors.length > 0) {
+      toast({ title: t('权重校验未通过'), description: errors.join('；'), variant: 'destructive' })
+      return false
+    }
+    setSaving(true)
+    try {
+      await certApi.putPointLevels(positionId, point.abilityPointId, mapping)
+      const tw: Record<string, number> = { ...taskWeights }
+      Object.entries(pointTaskWeights).forEach(([taskId, weight]) => {
+        tw[taskKey(point.abilityPointId, taskId)] = weight
+      })
+      setTaskWeights(tw)
+      await certApi.putPositionWeights(positionId, {
+        pointWeights: allPoints.map((p) => ({
+          abilityPointId: p.abilityPointId,
+          weight: pointWeights[p.abilityPointId] ?? p.weight,
+        })),
+        taskWeights: allPoints.flatMap((p) =>
+          p.tasks.map((task) => ({
+            abilityPointId: p.abilityPointId,
+            taskId: task.taskId,
+            weight: tw[taskKey(p.abilityPointId, task.taskId)] ?? task.weight,
+          })),
+        ),
+      })
+      toast({ title: t('保存成功'), description: t('胜任配置已保存') })
+      setLoading(true)
+      setReloadKey((k) => k + 1)
+      return true
+    } catch (err) {
+      toast({
+        title: t('保存失败'),
+        description: err instanceof Error ? err.message : t('保存胜任配置失败'),
+        variant: 'destructive',
+      })
+      return false
     } finally {
       setSaving(false)
     }
@@ -232,15 +297,12 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
                         point={point}
                         pointWeight={pointWeights[point.abilityPointId] ?? point.weight}
                         taskWeights={taskWeights}
-                        onOpenTaskWeights={() =>
-                          setTaskDialogPoint({ ...point, domainName: domain.name })
+                        onOpenConfig={() =>
+                          setConfigPoint({ ...point, domainName: domain.name })
                         }
                         domainName={domain.name}
                         domainCount={domain.points.length}
                         isFirstInDomain={idx === 0}
-                        onOpenLevels={() =>
-                          setLevelDialogPoint({ ...point, domainName: domain.name })
-                        }
                       />
                     )),
                   )}
@@ -266,58 +328,28 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         onSave={(weights) => setPointWeights((prev) => ({ ...prev, ...weights }))}
       />
 
-      {/* 单个能力点的任务权重弹窗：该点各任务合计 100% */}
-      <WeightConfigDialog
-        open={taskDialogPoint !== null}
+      {/* 单个能力点的合并胜任配置弹窗：左侧分数来源权重表格 + 右侧总分胜任标准转换 */}
+      <CombinedConfigDialog
+        open={configPoint !== null}
         onOpenChange={(open) => {
-          if (!open) setTaskDialogPoint(null)
+          if (!open) setConfigPoint(null)
         }}
-        title={
-          taskDialogPoint
-            ? t('任务权重配置 · {name}', { name: taskDialogPoint.name })
-            : t('任务权重配置')
-        }
-        description={t('配置各任务得分占该能力点得分的权重，合计必须为 100%')}
-        items={(taskDialogPoint?.tasks ?? []).map((t) => ({
-          id: t.taskId,
-          name: t.taskName,
-          weight: taskDialogPoint
-            ? (taskWeights[taskKey(taskDialogPoint.abilityPointId, t.taskId)] ?? t.weight)
-            : t.weight,
-          group: t.scenarioName,
-        }))}
-        onSave={(weights) => {
-          if (!taskDialogPoint) return
-          setTaskWeights((prev) => {
-            const next = { ...prev }
-            Object.entries(weights).forEach(([taskId, weight]) => {
-              next[taskKey(taskDialogPoint.abilityPointId, taskId)] = weight
-            })
-            return next
-          })
-        }}
-      />
-
-      {/* 单个能力点的五档分数线弹窗 */}
-      <LevelConfigDialog
-        open={levelDialogPoint !== null}
-        onOpenChange={(open) => {
-          if (!open) setLevelDialogPoint(null)
-        }}
-        positionId={positionId}
         point={
-          levelDialogPoint
-            ? {
-                abilityPointId: levelDialogPoint.abilityPointId,
-                name: levelDialogPoint.name,
-                levelMapping: levelDialogPoint.levelMapping,
-              }
-            : { abilityPointId: '', name: '' }
+          configPoint ?? { abilityPointId: '', name: '', tasks: [], levelMapping: undefined }
         }
-        onSaved={() => {
-          setLoading(true)
-          setReloadKey((k) => k + 1)
-        }}
+        initialTaskWeights={Object.fromEntries(
+          (configPoint?.tasks ?? []).map((task) => [
+            task.taskId,
+            configPoint
+              ? (taskWeights[taskKey(configPoint.abilityPointId, task.taskId)] ?? task.weight)
+              : task.weight,
+          ]),
+        )}
+        onSave={
+          configPoint
+            ? (taskWeights, mapping) => handleConfigSave(configPoint, taskWeights, mapping)
+            : async () => false
+        }
       />
     </div>
   )
@@ -327,8 +359,7 @@ function PointRows({
   point,
   pointWeight,
   taskWeights,
-  onOpenTaskWeights,
-  onOpenLevels,
+  onOpenConfig,
   domainName,
   domainCount,
   isFirstInDomain,
@@ -336,8 +367,7 @@ function PointRows({
   point: CertificationModelPoint
   pointWeight: number
   taskWeights: Record<string, number>
-  onOpenTaskWeights: () => void
-  onOpenLevels: () => void
+  onOpenConfig: () => void
   domainName: string
   domainCount: number
   isFirstInDomain: boolean
@@ -418,22 +448,10 @@ function PointRows({
         )}
       </TableCell>
       <TableCell className="text-right">
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={onOpenTaskWeights}
-            disabled={point.tasks.length === 0}
-          >
-            <ListChecks className="mr-1 size-3" />
-            {t('分数来源权重')}
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenLevels}>
-            <ListOrdered className="mr-1 size-3" />
-            {t('总分胜任标准转换')}
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onOpenConfig}>
+          <SlidersHorizontal className="mr-1 size-3" />
+          {t('胜任配置')}
+        </Button>
       </TableCell>
     </TableRow>
   )
