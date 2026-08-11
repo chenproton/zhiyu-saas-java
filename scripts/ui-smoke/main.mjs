@@ -58,7 +58,7 @@ async function login(ctx, page, cfg, role, listeners) {
   if (status === 429) throw new Error(`登录失败: 登录限流（429），请稍后重试`)
   if (status === 'timeout') throw new Error(`登录超时: 登录请求未完成`)
   if (typeof status === 'string' && status.startsWith('captcha:')) {
-    throw new Error(`登录被防爆破滑块验证码拦截（${status}）：同一 IP 登录失败次数过多。` +
+    throw new Error(`登录被防爆破验证码拦截（${status}）：同一 IP 登录失败次数过多。` +
       `可等待 10 分钟计数过期，或清除验证码失败计数后重试（redis: DEL "zhiyu:captcha:fail:*"）`)
   }
 
