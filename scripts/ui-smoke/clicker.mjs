@@ -76,7 +76,7 @@ export function routeCfg(cfg, route) {
 // crud 模式下额外识别 edit/delete/enable/disable，并标注元素所在行是否含 SMOKE_ 标记。
 export async function collectClickables(page, cfg, dangerousRe, scope = 'page', triggerRe = null) {
   const crudMode = !cfg.clickOnly
-  return page.evaluate(({ selector, dialogSel, re, triggerSrc, submitWords, destructiveWords, navWords, clickDangerous, allowIconButtons, localeWords, scope, crudMode, editSrc, deleteSrc, enableSrc, disableSrc, marker }) => {
+  return page.evaluate(({ selector, dialogSel, re, triggerSrc, submitWords, destructiveWords, navWords, clickDangerous, allowIconButtons, localeWords, scope, crudMode, editSrc, deleteSrc, enableSrc, disableSrc, marker, maxRowClicks }) => {
     const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     // 空词表时正则永不命中（否则 ^(?:) 会匹配一切）
     const wordRe = (words, anchorEnd) => words.length
@@ -129,6 +129,14 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     }
     const countByKey = new Map()
     const out = []
+    // 行内按钮去重：rowsByType[类型] = 已收录的行序号集合（上限 maxRowClicks）
+    const rowsByType = new Map()
+    const rowSeq = new Map()
+    let rowSeqCounter = 0
+    const seqFor = row => {
+      if (!rowSeq.has(row)) rowSeq.set(row, rowSeqCounter++)
+      return rowSeq.get(row)
+    }
     const els = [...document.querySelectorAll(selector)]
     els.forEach((el, index) => {
       const inDialog = !!el.closest(dialogSel)
@@ -157,11 +165,24 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
         }
       }
       const base = `${el.tagName}|${effText}|${href}`
+      const row = rowOf(el)
+      // 列表行内按钮去重提速：同一按钮类型（如"编辑/删除/查看"）只保留前 maxRowClicks 行
+      // 的实例（大表页 5000+ 可点元素 → 几十个），SMOKE_ 测试数据行豁免（保 CRUD 覆盖）
+      if (row && maxRowClicks >= 0) {
+        let seen = rowsByType.get(base)
+        if (!seen) {
+          seen = new Set()
+          rowsByType.set(base, seen)
+        }
+        const rowKey = seqFor(row)
+        const isSmokeRow = !!(marker && (row.innerText || '').includes(marker))
+        if (seen.size >= maxRowClicks && !seen.has(rowKey) && !isSmokeRow) return
+        seen.add(rowKey)
+      }
       const n = (countByKey.get(base) || 0) + 1
       countByKey.set(base, n)
       // 全局/共享元素（侧边栏、顶部导航等）只在第一次遇到时点击，避免每页重复点击拖慢全量回归
       const isGlobal = scope !== 'dialog' && !!el.closest('nav, aside, header, [role="navigation"], [role="banner"]')
-      const row = rowOf(el)
       const inSmokeRow = !!(marker && row && (row.innerText || '').includes(marker))
       out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal, inSmokeRow })
     })
@@ -184,6 +205,7 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     enableSrc: buildEnableRe(cfg).source,
     disableSrc: buildDisableRe(cfg).source,
     marker: cfg.crudMarker || '',
+    maxRowClicks: cfg.maxRowClicks ?? 1,
   })
 }
 

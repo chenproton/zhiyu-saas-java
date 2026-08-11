@@ -13,12 +13,15 @@ npm install
 ## 使用
 
 ```bash
-# 全量 CRUD 巡检（四角色 × 全部页面，测试增删改查按钮并自动清理 SMOKE_ 数据）
+# 全量 CRUD 巡检（默认 school 角色，大表页行内按钮只点首行，约 15-25 分钟）
 node scripts/ui-smoke/ui-smoke.mjs
 
-# 单角色快速巡检（partner 为企业端独立门户）
+# 全角色巡检（school/teacher/student/partner，约 1 小时）
+node scripts/ui-smoke/ui-smoke.mjs --all-roles
+
+# 指定角色
 node scripts/ui-smoke/ui-smoke.mjs --roles teacher
-node scripts/ui-smoke/ui-smoke.mjs --roles partner
+node scripts/ui-smoke/ui-smoke.mjs --roles school,teacher,student
 
 # 重构后定向巡检：只跑 git 改动涉及的路由（几分钟出结果）
 node scripts/ui-smoke/ui-smoke.mjs --git-diff
@@ -41,7 +44,8 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 | 选项 | 默认 | 说明 |
 |---|---|---|
 | `--base-url` | `http://127.0.0.1` | 目标站点，**必须走 nginx 网关**；直连 3020 时容器内 Next rewrite 会失败 |
-| `--roles` | `school,teacher,student,partner` | 逗号分隔角色列表 |
+| `--roles` | `school` | 逗号分隔角色列表（默认只跑 school 提速；全量用 `--all-roles`） |
+| `--all-roles` | - | 跑全部角色 school,teacher,student,partner |
 | `--account` | - | 覆盖角色账号，如 `--account school:school:newpass` |
 | `--max-clicks` | `100` | 每页点击次数安全阀（默认点完所有唯一可点元素） |
 | `--workers` | `1` | 并发巡检路数（CRUD 模式会强制降为 1） |
@@ -66,7 +70,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 - **角色**：`school`/`teacher`/`student` 走 portal 登录页（`/portal/login`）；`partner`（企业端）为独立认证门户（`/partner/login`），巡检 `/partner` 下全部页面（workspace/enterprise/experts/members/schools/cooperation/tasks/settings，可在 `smoke.config.json` 用 `partnerRoutes` 覆盖）
 - **静态路由**：自动枚举 `apps/edu/app` 下全部页面（含 `(group)` 分组段，跳过动态段 `[id]`）
 - **动态路由**：从后端 API 拉真实实体 id，直接访问 `[id]` 详情/编辑页（含岗位编辑页 `/job/positions/[id]/edit`、企业专家 `/partner/experts/[id]([/edit])`、企业共建 `/partner/co-build/positions/scenes/[id]/edit([/tasks])` 等；portal/partner 各自用本域 token 解析）
-- **每页交互**：点完所有唯一可点元素（按钮/链接/Tab，含弹窗内按钮、表格每行按钮逐个点），弹窗/下拉打开后 Esc 关闭，跳转后回访继续，点击产生的新元素（Tab 切换等）增量补充
+- **每页交互**：点完所有唯一可点元素（按钮/链接/Tab，含弹窗内按钮），**列表行内按钮去重**：同一按钮类型只点前 `maxRowClicks` 行（默认 1 行，大表页从 5000+ 元素降到几十，SMOKE_ 测试数据行豁免以保 CRUD 覆盖）；弹窗/下拉打开后 Esc 关闭，跳转后回访继续，点击产生的新元素（Tab 切换等）增量补充
 - **CRUD 测试**（默认）：识别"创建/新增/编辑/删除/启用/禁用"类按钮，创建数据时使用 `SMOKE_` 前缀，编辑/删除/启用/禁用只操作带 `SMOKE_` 标记的测试数据行，最后自动清理；**独立编辑页表单测试仅对巡检创建的 `SMOKE_` 实体执行**（真实实体编辑页只点击不提交，防止改名/覆盖真实数据）
 - **无权限页**：自动识别（遮罩/全 401/403）记为 `skip`，不算错误
 - **安全性**：默认只操作 `SMOKE_` 前缀测试数据；`/superadmin` 与 `/portal/apps/system/org-user/roles` 默认不触发 CRUD 操作，避免改乱权限；语言切换按钮不点（防止危险词失效）；locale 被切英文时自动切回；**「重新生成/AI 生成」类按钮默认跳过**（会真实调用 LLM 按 token 计费，全量巡检不触发）

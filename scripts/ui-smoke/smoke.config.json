@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1",
-  "roles": ["school", "teacher", "student", "partner"],
+  "roles": ["school"],
   "workers": 1,
   "maxClicks": 100,
   "excludeRoutes": ["/partner", "/superadmin"],

@@ -13,7 +13,8 @@ export const DEFAULT_REPORT = path.join(STATE_DIR, 'report.json')
 
 const DEFAULTS = {
   baseUrl: 'http://127.0.0.1',
-  roles: ['school', 'teacher', 'student', 'partner'],
+  // 默认只巡检 school 角色（提速）；全角色用 --all-roles 或 --roles school,teacher,student,partner
+  roles: ['school'],
   accounts: {
     school: { username: 'school', password: 'school123' },
     teacher: { username: 'teacher', password: 'teacher123' },
@@ -40,9 +41,11 @@ const DEFAULTS = {
   // 种子数据/已知噪音（正则片段）；静态资源 404 由 response 监听以外的 console 兜底产生，页面可用性另由 pageerror 保障
   noisePatterns: ['example\\.com', 'Failed to load resource: the server responded with a status of 404'],
   // 点击时序（默认值偏保守，全量回归时可在 smoke.config.json 中覆盖）
-  clickIntervalMs: 60,
-  dialogEscMs: 120,
-  settleMs: 300,
+  clickIntervalMs: 30,
+  dialogEscMs: 80,
+  settleMs: 200,
+  // 列表行内按钮去重：同一按钮类型只保留前 N 行的实例（大表页提速；SMOKE_ 行豁免）
+  maxRowClicks: 1,
   // networkidle 仅在导航后尝试，超时短（带轮询的页面永远到不了 idle）
   navWaitMs: 2500,
   loginTimeoutMs: 20000,
@@ -118,6 +121,7 @@ export function parseArgs(argv) {
     switch (a) {
       case '--base-url': args.baseUrl = next(); break
       case '--roles': args.roles = next().split(',').map(s => s.trim()); break
+      case '--all-roles': args.roles = ['school', 'teacher', 'student', 'partner']; break
       case '--account': {
         // --account school:user:pass 覆盖指定角色账号
         const [role, username, password] = next().split(':')
@@ -151,7 +155,8 @@ export function parseArgs(argv) {
 用法: node scripts/ui-smoke/ui-smoke.mjs [选项]
 
   --base-url <url>      目标站点（默认 http://127.0.0.1，必须走 nginx 网关）
-  --roles <a,b,c>       角色列表（默认 school,teacher,student,partner；partner 账号不存在时自动注册巡检企业）
+  --roles <a,b,c>       角色列表（默认 school；--all-roles 或显式列出跑多角色）
+  --all-roles           跑全部角色 school,teacher,student,partner（默认只跑 school）
   --account r:u:p       覆盖指定角色账号，如 --account school:school:newpass
   --max-clicks <n>      每页点击安全阀（默认 100）
   --workers <n>         并发路数（默认 1）
