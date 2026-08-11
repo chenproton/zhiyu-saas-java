@@ -49,6 +49,9 @@ github.com/joho/godotenv
 ## explicit; go 1.18
 github.com/lionsoul2014/ip2region/binding/golang/service
 github.com/lionsoul2014/ip2region/binding/golang/xdb
+# github.com/mojocn/base64Captcha v1.3.8
+## explicit; go 1.16
+github.com/mojocn/base64Captcha
 # github.com/prometheus/client_golang v1.19.1
 ## explicit; go 1.20
 github.com/prometheus/client_golang/prometheus
@@ -96,42 +99,6 @@ github.com/robfig/cron/v3
 # github.com/tiendc/go-deepcopy v1.7.2
 ## explicit; go 1.18
 github.com/tiendc/go-deepcopy
-# github.com/wenlng/go-captcha-assets v1.0.7
-## explicit; go 1.16
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_1
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_10
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_11
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_12
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_13
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_14
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_15
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_16
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_2
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_3
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_4
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_5
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_6
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_7
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_8
-github.com/wenlng/go-captcha-assets/bindata/images/image_v2_9
-github.com/wenlng/go-captcha-assets/bindata/tiles/tile_1
-github.com/wenlng/go-captcha-assets/bindata/tiles/tile_2
-github.com/wenlng/go-captcha-assets/bindata/tiles/tile_3
-github.com/wenlng/go-captcha-assets/bindata/tiles/tile_4
-github.com/wenlng/go-captcha-assets/helper
-github.com/wenlng/go-captcha-assets/resources/imagesv2
-github.com/wenlng/go-captcha-assets/resources/tiles
-# github.com/wenlng/go-captcha/v2 v2.0.5
-## explicit; go 1.18
-github.com/wenlng/go-captcha/v2/base/canvas
-github.com/wenlng/go-captcha/v2/base/codec
-github.com/wenlng/go-captcha/v2/base/helper
-github.com/wenlng/go-captcha/v2/base/imagedata
-github.com/wenlng/go-captcha/v2/base/logger
-github.com/wenlng/go-captcha/v2/base/option
-github.com/wenlng/go-captcha/v2/base/randgen
-github.com/wenlng/go-captcha/v2/base/random
-github.com/wenlng/go-captcha/v2/slide
 # github.com/xuri/efp v0.0.1
 ## explicit; go 1.11
 github.com/xuri/efp
@@ -152,9 +119,7 @@ golang.org/x/crypto/md4
 golang.org/x/crypto/ripemd160
 # golang.org/x/image v0.38.0
 ## explicit; go 1.25.0
-golang.org/x/image/draw
 golang.org/x/image/font
-golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
 # golang.org/x/net v0.56.0
 ## explicit; go 1.25.0

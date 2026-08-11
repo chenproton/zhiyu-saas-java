@@ -19,7 +19,7 @@ import { partnerAuthApi, setToken } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
-import SliderCaptcha from '@/components/shared/slider-captcha'
+import CaptchaInput from '@/components/shared/captcha-input'
 
 export default function PartnerLoginPage() {
   const t = useT()
@@ -49,15 +49,13 @@ export default function PartnerLoginPage() {
     confirmPassword: '',
   })
 
-  // 防爆破滑块验证码：后端返回 captcha_required 后展示，拖动完成随登录请求提交
+  // 防爆破验证码：后端返回 captcha_required 后展示，输入完成后随登录请求提交
   const [captchaRequired, setCaptchaRequired] = useState(false)
-  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; x: number; y: number } | null>(
-    null,
-  )
+  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; code: string } | null>(null)
   const [captchaVersion, setCaptchaVersion] = useState(0)
 
-  const handleCaptchaPass = (captchaId: string, x: number, y: number) => {
-    setCaptchaAnswer({ id: captchaId, x, y })
+  const handleCaptchaPass = (captchaId: string, code: string) => {
+    setCaptchaAnswer({ id: captchaId, code })
   }
 
   const refreshCaptcha = () => {
@@ -99,7 +97,7 @@ export default function PartnerLoginPage() {
         username,
         password,
         ...(captchaAnswer
-          ? { captchaId: captchaAnswer.id, captchaX: captchaAnswer.x, captchaY: captchaAnswer.y }
+          ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),
       })
       if (res.needsTenantSelection && res.preAuthToken && res.tenants) {
@@ -252,7 +250,7 @@ export default function PartnerLoginPage() {
                 </div>
 
                 {captchaRequired && (
-                  <SliderCaptcha
+                  <CaptchaInput
                     key={captchaVersion}
                     onPass={handleCaptchaPass}
                     onError={() => setCaptchaRequired(true)}

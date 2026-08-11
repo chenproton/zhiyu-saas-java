@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20260809012320-907400bb3023
+	github.com/mojocn/base64Captcha v1.3.8
 	github.com/prometheus/client_golang v1.19.1
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -29,8 +30,6 @@ require (
 	github.com/richardlehane/mscfb v1.0.7 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
-	github.com/wenlng/go-captcha-assets v1.0.7 // indirect
-	github.com/wenlng/go-captcha/v2 v2.0.5 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	go.uber.org/atomic v1.11.0 // indirect

@@ -58,11 +58,10 @@ func (h *AuthHandler) Shutdown() {
 type LoginRequest struct {
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required"`
-	// 滑块验证码：登录失败达到阈值后必填（captchaId 由 GET /auth/captcha 下发，
-	// captchaX/captchaY 为拼图块最终位置，服务端与缺口坐标比对）。
-	CaptchaID string `json:"captchaId"`
-	CaptchaX  int    `json:"captchaX"`
-	CaptchaY  int    `json:"captchaY"`
+	// 字符验证码：登录失败达到阈值后必填（captchaId 由 GET /auth/captcha 下发，
+	// captchaCode 为用户输入的验证码字符）。
+	CaptchaID   string `json:"captchaId"`
+	CaptchaCode string `json:"captchaCode"`
 }
 
 type LoginResponse struct {
@@ -178,7 +177,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	if h.Captcha != nil {
 		ip := middleware.ClientIP(r)
 		if fail, _ := h.Captcha.FailCount(r.Context(), ip); fail >= service.CaptchaFailThreshold {
-			if err := h.Captcha.Verify(r.Context(), req.CaptchaID, req.CaptchaX, req.CaptchaY); err != nil {
+			if err := h.Captcha.Verify(r.Context(), req.CaptchaID, req.CaptchaCode); err != nil {
 				if errors.Is(err, service.ErrCaptchaWrong) {
 					respondJSON(w, http.StatusBadRequest, errorResponse{
 						Code:  CodeCaptchaWrong,

@@ -56,7 +56,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
 import { getToken, setToken, removeToken, saasRequest, type ListResponse } from '@zhiyu/api-client'
 import { authApi } from '@/lib/api'
-import SliderCaptcha from '@/components/shared/slider-captcha'
+import CaptchaInput from '@/components/shared/captcha-input'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
@@ -129,15 +129,13 @@ export default function SuperAdminPage() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
-  // 防爆破滑块验证码：后端返回 captcha_required 后展示，拖动完成随登录请求提交
+  // 防爆破验证码：后端返回 captcha_required 后展示，输入完成后随登录请求提交
   const [captchaRequired, setCaptchaRequired] = useState(false)
-  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; x: number; y: number } | null>(
-    null,
-  )
+  const [captchaAnswer, setCaptchaAnswer] = useState<{ id: string; code: string } | null>(null)
   const [captchaVersion, setCaptchaVersion] = useState(0)
 
-  const handleCaptchaPass = (captchaId: string, x: number, y: number) => {
-    setCaptchaAnswer({ id: captchaId, x, y })
+  const handleCaptchaPass = (captchaId: string, code: string) => {
+    setCaptchaAnswer({ id: captchaId, code })
   }
 
   const refreshCaptcha = () => {
@@ -381,7 +379,7 @@ export default function SuperAdminPage() {
         username: loginUsername,
         password: loginPassword,
         ...(captchaAnswer
-          ? { captchaId: captchaAnswer.id, captchaX: captchaAnswer.x, captchaY: captchaAnswer.y }
+          ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),
       })
       const payload = JSON.parse(
@@ -987,7 +985,7 @@ export default function SuperAdminPage() {
               </div>
 
               {captchaRequired && (
-                <SliderCaptcha
+                <CaptchaInput
                   key={captchaVersion}
                   onPass={handleCaptchaPass}
                   onError={() => setCaptchaRequired(true)}

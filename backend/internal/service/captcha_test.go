@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestCaptchaService_GenerateAndVerify 生成→正确坐标校验通过（redis nil 走内存降级）。
+// TestCaptchaService_GenerateAndVerify 生成→正确字符校验通过（redis nil 走内存降级）。
 func TestCaptchaService_GenerateAndVerify(t *testing.T) {
 	svc := NewCaptchaService(nil)
 	ctx := context.Background()
@@ -19,28 +19,11 @@ func TestCaptchaService_GenerateAndVerify(t *testing.T) {
 	if out.CaptchaID == "" {
 		t.Fatal("captchaId empty")
 	}
-	if !strings.HasPrefix(out.Image, "data:image/jpeg;base64,") {
-		t.Fatalf("master image data url invalid: %s", out.Image[:40])
-	}
-	if !strings.HasPrefix(out.Thumb, "data:image/png;base64,") {
-		t.Fatalf("thumb data url invalid: %s", out.Thumb[:40])
-	}
-	// 回归护栏：data url 前缀只能出现一次（go-captcha ToBase64 已带前缀，
-	// 拼接层不得重复拼接，否则浏览器无法解析图片）
-	if strings.Count(out.Image, "data:image/jpeg;base64,") != 1 {
-		t.Fatalf("master image has duplicate data url prefix")
-	}
-	if strings.Count(out.Thumb, "data:image/png;base64,") != 1 {
-		t.Fatalf("thumb image has duplicate data url prefix")
-	}
-	if out.ThumbWidth <= 0 || out.ThumbHeight <= 0 {
-		t.Fatalf("thumb size invalid: %dx%d", out.ThumbWidth, out.ThumbHeight)
-	}
-	if out.ImageWidth != CaptchaImageWidth || out.ImageHeight != CaptchaImageHeight {
-		t.Fatalf("image size invalid: %dx%d", out.ImageWidth, out.ImageHeight)
+	if !strings.HasPrefix(out.Image, "data:image/png;base64,") {
+		t.Fatalf("image data url invalid: %s", out.Image[:40])
 	}
 
-	// 答案从内存降级存储读取（redis nil 场景），模拟前端拖到缺口位置
+	// 答案从内存降级存储读取（redis nil 场景），模拟用户输入
 	svc.mu.Lock()
 	entry, ok := svc.answers[captchaAnswerKey(out.CaptchaID)]
 	svc.mu.Unlock()
@@ -48,12 +31,12 @@ func TestCaptchaService_GenerateAndVerify(t *testing.T) {
 		t.Fatal("answer not stored")
 	}
 
-	// 正确坐标 → 通过
-	if err := svc.Verify(ctx, out.CaptchaID, entry.value, entry.value2); err != nil {
+	// 正确字符 → 通过（大小写不敏感）
+	if err := svc.Verify(ctx, out.CaptchaID, strings.ToUpper(entry.answer)); err != nil {
 		t.Fatalf("verify correct answer: %v", err)
 	}
 	// 一次性消费：再次校验同一 id → 已失效
-	if err := svc.Verify(ctx, out.CaptchaID, entry.value, entry.value2); !errors.Is(err, ErrCaptchaExpired) {
+	if err := svc.Verify(ctx, out.CaptchaID, entry.answer); !errors.Is(err, ErrCaptchaExpired) {
 		t.Fatalf("expected expired after consume, got %v", err)
 	}
 }
@@ -66,17 +49,17 @@ func TestCaptchaService_VerifyWrong(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	// 离谱坐标 → 答案不匹配
-	err = svc.Verify(ctx, out.CaptchaID, 99999, 99999)
+	// 错误字符 → 答案不匹配
+	err = svc.Verify(ctx, out.CaptchaID, "xxxx")
 	if !errors.Is(err, ErrCaptchaWrong) {
 		t.Fatalf("expected ErrCaptchaWrong, got %v", err)
 	}
 	// 空 id → 视为已失效
-	if err := svc.Verify(ctx, "", 0, 0); !errors.Is(err, ErrCaptchaExpired) {
+	if err := svc.Verify(ctx, "", "abc"); !errors.Is(err, ErrCaptchaExpired) {
 		t.Fatalf("expected expired for empty id, got %v", err)
 	}
 	// 不存在的 id → 已失效
-	if err := svc.Verify(ctx, "no-such-id", 0, 0); !errors.Is(err, ErrCaptchaExpired) {
+	if err := svc.Verify(ctx, "no-such-id", "abc"); !errors.Is(err, ErrCaptchaExpired) {
 		t.Fatalf("expected expired for unknown id, got %v", err)
 	}
 }
