@@ -499,10 +499,11 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
 	r.Put("/tenants/{id}", h.tenantHandler.Update)
 
-	// 租户 AI 服务配置（管理端；对话入口 /ai/chat 在 portal 平台组单独注册）
+	// 租户 AI 服务配置与用量统计（管理端；对话入口 /ai/chat 在 portal 平台组单独注册）
 	r.Get("/ai/config", h.aiHandler.GetConfig)
 	r.Put("/ai/config", h.aiHandler.SaveConfig)
 	r.Delete("/ai/config", h.aiHandler.DeleteConfig)
+	r.Get("/ai/usage", h.aiHandler.GetUsage)
 
 	r.Get("/admins", h.tenantHandler.ListSchoolAdmins)
 	r.Post("/admins", h.tenantHandler.CreateSchoolAdmin)

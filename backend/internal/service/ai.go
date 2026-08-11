@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -175,9 +176,42 @@ func (s *AIService) DeleteConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
 
+// AIUsageDay 单日用量（对外视图，Date 为 2006-01-02 格式）。
+type AIUsageDay struct {
+	Date     string `json:"date"`
+	Tokens   int64  `json:"tokens"`
+	Requests int64  `json:"requests"`
+}
+
+// AIUsageStats 租户 AI 用量统计：全量合计 + 近 30 天每日序列（缺数据日期补 0）。
+type AIUsageStats struct {
+	TotalRequests int64        `json:"totalRequests"`
+	TotalTokens   int64        `json:"totalTokens"`
+	Daily         []AIUsageDay `json:"daily"`
+}
+
+// aiUsageDailyDays 用量看板每日序列天数（含今天）。
+const aiUsageDailyDays = 30
+
+// recordUsage best-effort 记录 token 用量：落库失败只记日志，不影响主流程。
+// 所有 LLM 调用路径（Chat/PositionAssist 等）成功后都必须调用。
+func (s *AIService) recordUsage(ctx context.Context, tenantID, userID, model string, usage ai.Usage) {
+	if err := s.st.AIUsage().Insert(ctx, &domain.AIUsageLog{
+		TenantID:         tenantID,
+		UserID:           userID,
+		Model:            model,
+		PromptTokens:     usage.PromptTokens,
+		CompletionTokens: usage.CompletionTokens,
+		TotalTokens:      usage.TotalTokens,
+	}); err != nil {
+		slog.Warn("record ai usage failed", "tenantId", tenantID, "error", err)
+	}
+}
+
 // Chat 用租户自有 AI 配置发起对话（非流式）。
 // 未配置返回 ErrAINotConfigured；上游错误以 *ai.UpstreamError 透传。
-func (s *AIService) Chat(ctx context.Context, tenantID string, messages []ai.Message, temperature *float64, maxTokens *int) (string, ai.Usage, error) {
+// 上游调用成功后 best-effort 记录 token 用量（落库失败只记日志，不影响响应）。
+func (s *AIService) Chat(ctx context.Context, tenantID, userID string, messages []ai.Message, temperature *float64, maxTokens *int) (string, ai.Usage, error) {
 	var usage ai.Usage
 	cfg, err := s.loadConfig(ctx, tenantID)
 	if errors.Is(err, store.ErrAIConfigNotFound) {
@@ -190,7 +224,7 @@ func (s *AIService) Chat(ctx context.Context, tenantID string, messages []ai.Mes
 	if err != nil {
 		return "", usage, err
 	}
-	return s.client.ChatCompletion(ctx, ai.Config{
+	reply, usage, err := s.client.ChatCompletion(ctx, ai.Config{
 		BaseURL: cfg.BaseURL,
 		APIKey:  apiKey,
 		Model:   cfg.Model,
@@ -199,4 +233,43 @@ func (s *AIService) Chat(ctx context.Context, tenantID string, messages []ai.Mes
 		Temperature: temperature,
 		MaxTokens:   maxTokens,
 	})
+	if err != nil {
+		return "", usage, err
+	}
+	s.recordUsage(ctx, tenantID, userID, cfg.Model, usage)
+	return reply, usage, nil
+}
+
+// GetUsageStats 返回租户 AI 用量统计：全量请求数/Token 数 + 近 30 天每日序列，
+// 无数据的日期补 0，前端可直接渲染。
+func (s *AIService) GetUsageStats(ctx context.Context, tenantID string) (*AIUsageStats, error) {
+	totalRequests, totalTokens, err := s.st.AIUsage().Totals(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	since := today.AddDate(0, 0, -(aiUsageDailyDays - 1))
+	rows, err := s.st.AIUsage().Daily(ctx, tenantID, since)
+	if err != nil {
+		return nil, err
+	}
+	byDay := make(map[string]store.DailyUsage, len(rows))
+	for _, r := range rows {
+		byDay[r.Day.Format("2006-01-02")] = r
+	}
+	daily := make([]AIUsageDay, 0, aiUsageDailyDays)
+	for d := since; !d.After(today); d = d.AddDate(0, 0, 1) {
+		day := AIUsageDay{Date: d.Format("2006-01-02")}
+		if r, ok := byDay[day.Date]; ok {
+			day.Tokens = r.Tokens
+			day.Requests = r.Requests
+		}
+		daily = append(daily, day)
+	}
+	return &AIUsageStats{
+		TotalRequests: totalRequests,
+		TotalTokens:   totalTokens,
+		Daily:         daily,
+	}, nil
 }

@@ -35,6 +35,22 @@ export interface AIChatResponse {
   usage: AIUsage
 }
 
+// ===== AI 用量统计（GET /ai/usage）=====
+
+export interface AIUsageDay {
+  /** 2006-01-02 格式日期 */
+  date: string
+  tokens: number
+  requests: number
+}
+
+export interface AIUsageStats {
+  totalRequests: number
+  totalTokens: number
+  /** 近 30 天每日序列（含今天，后端已补齐无数据日期为 0） */
+  daily: AIUsageDay[]
+}
+
 // ===== 岗位 AI 辅助编写（POST /ai/position-assist）=====
 
 export type AIPositionAssistField =

@@ -38,11 +38,14 @@ import {
   Monitor,
   User,
   Sparkles,
+  Zap,
+  Coins,
 } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useToast } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { portalRequest, getAIConfig, saveAIConfig, deleteAIConfig } from '@/lib/api'
-import type { AIConfigView } from '@/lib/api'
+import { portalRequest, getAIConfig, saveAIConfig, deleteAIConfig, getAIUsage } from '@/lib/api'
+import type { AIConfigView, AIUsageStats } from '@/lib/api'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
 import { SchoolAdminManager } from './_components/school-admin-manager'
@@ -152,6 +155,7 @@ export default function TenantPage() {
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [aiConfig, setAiConfig] = useState<AIConfigView | null>(null)
+  const [aiUsage, setAIUsage] = useState<AIUsageStats | null>(null)
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false)
   const [aiForm, setAiForm] = useState({ baseUrl: '', apiKey: '', model: '' })
   const [aiSubmitting, setAISubmitting] = useState(false)
@@ -162,6 +166,12 @@ export default function TenantPage() {
   const cities = useMemo(
     () => (formData.province ? CHINA_REGION[formData.province] || [] : []),
     [formData.province],
+  )
+
+  // 每日 token 消耗柱形图数据（X 轴展示 MM-DD）
+  const aiUsageChartData = useMemo(
+    () => (aiUsage?.daily || []).map((d) => ({ label: d.date.slice(5), tokens: d.tokens })),
+    [aiUsage],
   )
 
   const loadTenantToForm = (ten: Tenant) => {
@@ -216,10 +226,22 @@ export default function TenantPage() {
   const fetchAIConfig = useCallback(async () => {
     if (!tenantId) return
     try {
-      setAiConfig(await getAIConfig())
+      const view = await getAIConfig()
+      setAiConfig(view)
+      if (view.configured) {
+        try {
+          setAIUsage(await getAIUsage())
+        } catch {
+          // 用量统计读取失败不阻塞页面，看板隐藏
+          setAIUsage(null)
+        }
+      } else {
+        setAIUsage(null)
+      }
     } catch {
       // 配置读取失败不阻塞主页面，展示为未配置
       setAiConfig(null)
+      setAIUsage(null)
     }
   }, [tenantId])
 
@@ -451,6 +473,56 @@ export default function TenantPage() {
                 <F icon={Sparkles} label={t('模型')} v={aiConfig?.model || '-'} />
                 <F icon={Shield} label={t('API Key')} v={aiConfig?.apiKeyMasked || '-'} />
               </div>
+              {aiConfig?.configured && aiUsage && (
+                <div className="px-6 py-5 border-t border-gray-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div className="rounded-lg border border-gray-100 p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Zap className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('总 API 请求次数')}</p>
+                        <p className="text-2xl font-semibold mt-0.5">
+                          {aiUsage.totalRequests.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Coins className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('总 Token 消耗')}</p>
+                        <p className="text-2xl font-semibold mt-0.5">
+                          {aiUsage.totalTokens.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium mb-3">{t('每日 Token 消耗（近 30 天）')}</p>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={aiUsageChartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={4}
+                        />
+                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          cursor={{ fill: 'rgba(99,102,241,0.06)' }}
+                          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                          formatter={(value: any) => [Number(value).toLocaleString(), t('Token 消耗')]}
+                        />
+                        <Bar dataKey="tokens" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
             {tenantId && (
               <div className="mt-6">

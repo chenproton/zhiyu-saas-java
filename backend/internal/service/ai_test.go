@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -33,12 +36,17 @@ func setupAITest(t *testing.T) (*pgxpool.Pool, *AIService, string) {
 	}
 	t.Cleanup(pool.Close)
 
-	upSQL, err := os.ReadFile("../../migrations/147_tenant_ai_configs.up.sql")
-	if err != nil {
-		t.Fatalf("read migration: %v", err)
-	}
-	if _, err := pool.Exec(ctx, string(upSQL)); err != nil && !strings.Contains(err.Error(), "already exists") {
-		t.Fatalf("apply migration 147: %v", err)
+	for _, mig := range []string{
+		"../../migrations/147_tenant_ai_configs.up.sql",
+		"../../migrations/149_ai_usage_logs.up.sql",
+	} {
+		upSQL, err := os.ReadFile(mig)
+		if err != nil {
+			t.Fatalf("read migration %s: %v", mig, err)
+		}
+		if _, err := pool.Exec(ctx, string(upSQL)); err != nil && !strings.Contains(err.Error(), "already exists") {
+			t.Fatalf("apply migration %s: %v", mig, err)
+		}
 	}
 
 	tenantID := uuid.NewString()
@@ -128,7 +136,7 @@ func TestAISaveFirstTimeWithoutKeyRejected(t *testing.T) {
 
 func TestAIChatNotConfigured(t *testing.T) {
 	_, svc, tenantID := setupAITest(t)
-	_, _, err := svc.Chat(context.Background(), tenantID, []ai.Message{{Role: "user", Content: "hi"}}, nil, nil)
+	_, _, err := svc.Chat(context.Background(), tenantID, uuid.NewString(), []ai.Message{{Role: "user", Content: "hi"}}, nil, nil)
 	if !errors.Is(err, ErrAINotConfigured) {
 		t.Fatalf("未配置租户 Chat 应返回 ErrAINotConfigured, got: %v", err)
 	}
@@ -142,6 +150,163 @@ func TestAIGetConfigNotConfigured(t *testing.T) {
 	}
 	if view.Configured {
 		t.Fatal("未配置 configured 应为 false")
+	}
+}
+
+// dailyByDate 便于按日期断言每日序列。
+func dailyByDate(stats *AIUsageStats) map[string]AIUsageDay {
+	m := make(map[string]AIUsageDay, len(stats.Daily))
+	for _, d := range stats.Daily {
+		m[d.Date] = d
+	}
+	return m
+}
+
+// assertDailyContinuous 校验每日序列长度 30、日期连续且以今天结尾。
+func assertDailyContinuous(t *testing.T, stats *AIUsageStats) {
+	t.Helper()
+	if len(stats.Daily) != aiUsageDailyDays {
+		t.Fatalf("Daily 长度 = %d, want %d", len(stats.Daily), aiUsageDailyDays)
+	}
+	prev, err := time.Parse("2006-01-02", stats.Daily[0].Date)
+	if err != nil {
+		t.Fatalf("解析首日日期: %v", err)
+	}
+	for i, d := range stats.Daily[1:] {
+		cur, err := time.Parse("2006-01-02", d.Date)
+		if err != nil {
+			t.Fatalf("解析日期 %q: %v", d.Date, err)
+		}
+		if !cur.Equal(prev.AddDate(0, 0, 1)) {
+			t.Fatalf("Daily 日期不连续: [%d]=%s 应为 %s 的后一天", i+1, d.Date, prev.Format("2006-01-02"))
+		}
+		prev = cur
+	}
+	if stats.Daily[len(stats.Daily)-1].Date != time.Now().Format("2006-01-02") {
+		t.Fatalf("Daily 最后一天应为今天, got %s", stats.Daily[len(stats.Daily)-1].Date)
+	}
+}
+
+func TestAIUsageStatsAggregates(t *testing.T) {
+	pool, svc, tenantID := setupAITest(t)
+	ctx := context.Background()
+
+	now := time.Now()
+	noon := func(daysAgo int) time.Time {
+		d := now.AddDate(0, 0, -daysAgo)
+		return time.Date(d.Year(), d.Month(), d.Day(), 12, 0, 0, 0, d.Location())
+	}
+	// 今天 2 条、3 天前 1 条（均在 30 天窗口内）；40 天前 1 条（计入全量合计，不进每日序列）
+	rows := []struct {
+		daysAgo                 int
+		prompt, completion, tot int
+	}{
+		{0, 60, 40, 100},
+		{0, 30, 20, 50},
+		{3, 120, 80, 200},
+		{40, 180, 120, 300},
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO ai_usage_logs (tenant_id, model, prompt_tokens, completion_tokens, total_tokens, created_at)
+			VALUES ($1, 'gpt-4o-mini', $2, $3, $4, $5)
+		`, tenantID, r.prompt, r.completion, r.tot, noon(r.daysAgo)); err != nil {
+			t.Fatalf("insert usage log: %v", err)
+		}
+	}
+
+	stats, err := svc.GetUsageStats(ctx, tenantID)
+	if err != nil {
+		t.Fatalf("GetUsageStats: %v", err)
+	}
+	if stats.TotalRequests != 4 || stats.TotalTokens != 650 {
+		t.Fatalf("totals = (%d, %d), want (4, 650)", stats.TotalRequests, stats.TotalTokens)
+	}
+	assertDailyContinuous(t, stats)
+
+	byDate := dailyByDate(stats)
+	todayKey := now.Format("2006-01-02")
+	if d := byDate[todayKey]; d.Tokens != 150 || d.Requests != 2 {
+		t.Fatalf("今天 = %+v, want tokens=150 requests=2", d)
+	}
+	threeDaysKey := now.AddDate(0, 0, -3).Format("2006-01-02")
+	if d := byDate[threeDaysKey]; d.Tokens != 200 || d.Requests != 1 {
+		t.Fatalf("3 天前 = %+v, want tokens=200 requests=1", d)
+	}
+	// 无数据日期补 0
+	fiveDaysKey := now.AddDate(0, 0, -5).Format("2006-01-02")
+	if d := byDate[fiveDaysKey]; d.Tokens != 0 || d.Requests != 0 {
+		t.Fatalf("无数据日期应为 0, got %+v", d)
+	}
+	// 40 天前的记录不在 30 天窗口内
+	if _, ok := byDate[now.AddDate(0, 0, -40).Format("2006-01-02")]; ok {
+		t.Fatal("40 天前的日期不应出现在近 30 天序列中")
+	}
+}
+
+func TestAIUsageStatsEmpty(t *testing.T) {
+	_, svc, tenantID := setupAITest(t)
+	stats, err := svc.GetUsageStats(context.Background(), tenantID)
+	if err != nil {
+		t.Fatalf("GetUsageStats: %v", err)
+	}
+	if stats.TotalRequests != 0 || stats.TotalTokens != 0 {
+		t.Fatalf("无数据 totals 应为 0, got (%d, %d)", stats.TotalRequests, stats.TotalTokens)
+	}
+	assertDailyContinuous(t, stats)
+	for _, d := range stats.Daily {
+		if d.Tokens != 0 || d.Requests != 0 {
+			t.Fatalf("无数据租户每日应全 0, got %+v", d)
+		}
+	}
+}
+
+// TestAIChatRecordsUsage 回归：Chat 成功后自动落库 token 用量（mock 上游 server）。
+func TestAIChatRecordsUsage(t *testing.T) {
+	pool, svc, tenantID := setupAITest(t)
+	ctx := context.Background()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"choices": [{"message": {"role": "assistant", "content": "你好"}}],
+			"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+		}`))
+	}))
+	defer srv.Close()
+
+	if err := svc.SaveConfig(ctx, tenantID, srv.URL, "sk-test-key", "gpt-4o-mini"); err != nil {
+		t.Fatalf("SaveConfig: %v", err)
+	}
+	userID := uuid.NewString()
+	reply, usage, err := svc.Chat(ctx, tenantID, userID, []ai.Message{{Role: "user", Content: "hi"}}, nil, nil)
+	if err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if reply != "你好" || usage.TotalTokens != 15 {
+		t.Fatalf("Chat 返回错误: reply=%q usage=%+v", reply, usage)
+	}
+
+	var (
+		gotModel                                  string
+		gotUserID                                 *string
+		gotPrompt, gotCompletion, gotTotal, count int
+	)
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*), COALESCE(MAX(user_id::text), ''), MAX(model),
+		       COALESCE(SUM(prompt_tokens), 0), COALESCE(SUM(completion_tokens), 0), COALESCE(SUM(total_tokens), 0)
+		FROM ai_usage_logs WHERE tenant_id = $1
+	`, tenantID).Scan(&count, &gotUserID, &gotModel, &gotPrompt, &gotCompletion, &gotTotal); err != nil {
+		t.Fatalf("query usage logs: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("usage logs 条数 = %d, want 1", count)
+	}
+	if gotUserID == nil || *gotUserID != userID {
+		t.Fatalf("user_id = %v, want %s", gotUserID, userID)
+	}
+	if gotModel != "gpt-4o-mini" || gotPrompt != 10 || gotCompletion != 5 || gotTotal != 15 {
+		t.Fatalf("用量记录错误: model=%s prompt=%d completion=%d total=%d", gotModel, gotPrompt, gotCompletion, gotTotal)
 	}
 }
 

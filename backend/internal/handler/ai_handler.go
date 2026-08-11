@@ -55,6 +55,25 @@ func (h *AIHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, view)
 }
 
+// GetUsage GET /ai/usage：租户 AI 用量统计（全量合计 + 近 30 天每日序列），鉴权同 GetConfig。
+func (h *AIHandler) GetUsage(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManagePortal(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID := tenantIDRequired(w, r)
+	if tenantID == "" {
+		return
+	}
+	stats, err := h.Service.GetUsageStats(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "获取 AI 用量统计失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, stats)
+}
+
 type saveAIConfigRequest struct {
 	BaseURL string `json:"baseUrl"`
 	APIKey  string `json:"apiKey"`
@@ -127,6 +146,10 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	if tenantID == "" {
 		return
 	}
+	var userID string
+	if claims := middleware.CurrentUser(r); claims != nil {
+		userID = claims.UserID
+	}
 	var req aiChatRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -141,7 +164,7 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	reply, usage, err := h.Service.Chat(r.Context(), tenantID, req.Messages, req.Temperature, req.MaxTokens)
+	reply, usage, err := h.Service.Chat(r.Context(), tenantID, userID, req.Messages, req.Temperature, req.MaxTokens)
 	if errors.Is(err, service.ErrAINotConfigured) {
 		respondError(w, http.StatusPreconditionFailed, "ai_not_configured")
 		return
@@ -193,7 +216,7 @@ func (h *AIHandler) PositionAssist(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	result, err := h.Service.PositionAssist(r.Context(), tenantID, req.Field, req.Position)
+	result, err := h.Service.PositionAssist(r.Context(), tenantID, middleware.CurrentUser(r).UserID, req.Field, req.Position)
 	if errors.Is(err, service.ErrAINotConfigured) {
 		respondError(w, http.StatusPreconditionFailed, "ai_not_configured")
 		return

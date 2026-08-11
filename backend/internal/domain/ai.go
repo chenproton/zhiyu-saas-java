@@ -13,3 +13,15 @@ type TenantAIConfig struct {
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
+
+// AIUsageLog 一次 LLM 调用的 token 用量记录（上游调用成功后落库）。
+type AIUsageLog struct {
+	ID               string    `json:"id"`
+	TenantID         string    `json:"tenantId"`
+	UserID           string    `json:"userId,omitempty"`
+	Model            string    `json:"model"`
+	PromptTokens     int       `json:"promptTokens"`
+	CompletionTokens int       `json:"completionTokens"`
+	TotalTokens      int       `json:"totalTokens"`
+	CreatedAt        time.Time `json:"createdAt"`
+}

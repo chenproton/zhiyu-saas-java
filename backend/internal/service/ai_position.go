@@ -200,7 +200,8 @@ func positionAssistPrompt(field PositionAssistField, in PositionAssistInput) str
 
 // PositionAssist 用租户自有 AI 配置生成岗位内容建议。
 // 未配置返回 ErrAINotConfigured；上游错误以 *ai.UpstreamError 透传；解析失败返回普通 error。
-func (s *AIService) PositionAssist(ctx context.Context, tenantID string, field PositionAssistField, in PositionAssistInput) (*PositionAssistResult, error) {
+// 上游调用成功后 best-effort 记录 token 用量（同 Chat）。
+func (s *AIService) PositionAssist(ctx context.Context, tenantID, userID string, field PositionAssistField, in PositionAssistInput) (*PositionAssistResult, error) {
 	if !ValidPositionAssistField(field) {
 		return nil, fmt.Errorf("service: unsupported position assist field %q", field)
 	}
@@ -224,10 +225,11 @@ func (s *AIService) PositionAssist(ctx context.Context, tenantID string, field P
 		{Role: "system", Content: positionAssistSystemPrompt},
 		{Role: "user", Content: prompt},
 	}
-	text, err := s.chatWithJSONModeFallback(ctx, ai.Config{BaseURL: cfg.BaseURL, APIKey: apiKey, Model: cfg.Model}, messages)
+	text, usage, err := s.chatWithJSONModeFallback(ctx, ai.Config{BaseURL: cfg.BaseURL, APIKey: apiKey, Model: cfg.Model}, messages)
 	if err != nil {
 		return nil, err
 	}
+	s.recordUsage(ctx, tenantID, userID, cfg.Model, usage)
 
 	result := &PositionAssistResult{Field: field}
 	if err := parsePositionAssistOutput(field, text, result); err != nil {
@@ -238,27 +240,28 @@ func (s *AIService) PositionAssist(ctx context.Context, tenantID string, field P
 
 // chatWithJSONModeFallback 优先以 response_format json_object 请求；
 // 部分 OpenAI 兼容服务不支持该参数（400/422），去掉后重试一次。
-func (s *AIService) chatWithJSONModeFallback(ctx context.Context, cfg ai.Config, messages []ai.Message) (string, error) {
+// 返回最终成功调用的用量（重试成功的返回重试那次）。
+func (s *AIService) chatWithJSONModeFallback(ctx context.Context, cfg ai.Config, messages []ai.Message) (string, ai.Usage, error) {
 	temperature := 0.4
-	text, _, err := s.client.ChatCompletion(ctx, cfg, ai.ChatRequest{
+	text, usage, err := s.client.ChatCompletion(ctx, cfg, ai.ChatRequest{
 		Messages:       messages,
 		Temperature:    &temperature,
 		ResponseFormat: map[string]string{"type": "json_object"},
 	})
 	if err == nil {
-		return text, nil
+		return text, usage, nil
 	}
 	var upErr *ai.UpstreamError
 	if errors.As(err, &upErr) && (upErr.StatusCode == 400 || upErr.StatusCode == 422) {
-		retry, _, retryErr := s.client.ChatCompletion(ctx, cfg, ai.ChatRequest{
+		retry, retryUsage, retryErr := s.client.ChatCompletion(ctx, cfg, ai.ChatRequest{
 			Messages:    messages,
 			Temperature: &temperature,
 		})
 		if retryErr == nil {
-			return retry, nil
+			return retry, retryUsage, nil
 		}
 	}
-	return "", err
+	return "", ai.Usage{}, err
 }
 
 // extractJSONObject 从 LLM 输出中提取 JSON 对象：容忍 ```json 代码块包裹与前后说明文字。
