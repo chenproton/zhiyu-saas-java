@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,9 @@ export default function AllianceAgreementNewPage() {
   const { tenantId } = usePortalAuth()
   const { items: typeItems } = useAllianceDictionary('agreement_type', tenantId)
   const { items: statusItems } = useAllianceDictionary('agreement_status', tenantId)
+  const searchParams = useSearchParams()
+  const linkEnterpriseId = searchParams.get('enterpriseId')
+  const linkProjectId = searchParams.get('projectId')
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
@@ -45,8 +48,8 @@ export default function AllianceAgreementNewPage() {
     startDate: '',
     endDate: '',
     content: '',
-    enterpriseIds: [] as string[],
-    projectIds: [] as string[],
+    enterpriseIds: linkEnterpriseId ? [linkEnterpriseId] : [] as string[],
+    projectIds: linkProjectId ? [linkProjectId] : [] as string[],
     attachments: [] as string[],
     isPublic: false,
   })

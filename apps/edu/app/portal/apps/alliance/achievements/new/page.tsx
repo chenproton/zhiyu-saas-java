@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -31,6 +31,9 @@ export default function AllianceAchievementNewPage() {
   const { toast } = useToast()
   const t = useT()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const linkEnterpriseId = searchParams.get('enterpriseId')
+  const linkProjectId = searchParams.get('projectId')
   const { tenantId } = usePortalAuth()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const { items: typeItems } = useAllianceDictionary('achievement_type', tenantId)
@@ -43,8 +46,8 @@ export default function AllianceAchievementNewPage() {
     description: '',
     achievementDate: '',
     isPublic: false,
-    enterpriseIds: [] as string[],
-    projectIds: [] as string[],
+    enterpriseIds: linkEnterpriseId ? [linkEnterpriseId] : [] as string[],
+    projectIds: linkProjectId ? [linkProjectId] : [] as string[],
     secondaryColleges: [] as string[],
   })
 
@@ -157,22 +160,12 @@ export default function AllianceAchievementNewPage() {
               <CardTitle>{t('归属项目')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <Select
-                value={item.projectIds?.[0] || '__none'}
-                onValueChange={(v) => setField('projectIds', v === '__none' ? [] : [v])}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('选择归属项目（可选）')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">{t('不关联项目')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={projects}
+                value={item.projectIds}
+                onChange={(v) => setField('projectIds', v)}
+                placeholder={t('选择归属项目（可多选）')}
+              />
             </CardContent>
           </Card>
 

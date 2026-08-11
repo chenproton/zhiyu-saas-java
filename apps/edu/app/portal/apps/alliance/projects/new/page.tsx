@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,6 +32,8 @@ export default function AllianceProjectNewPage() {
   const { toast } = useToast()
   const t = useT()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const linkEnterpriseId = searchParams.get('enterpriseId')
   const { tenantId } = usePortalAuth()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const { items: projectTypeItems } = useAllianceDictionary('project_type', tenantId)
@@ -47,7 +49,7 @@ export default function AllianceProjectNewPage() {
     description: '',
     isPublic: false,
     coverImage: '',
-    enterpriseIds: [] as string[],
+    enterpriseIds: linkEnterpriseId ? [linkEnterpriseId] : [] as string[],
     secondaryColleges: [] as string[],
   })
 

@@ -4247,6 +4247,7 @@
   "专家类型": "Expert type",
   "专业领域与专长": "Fields & expertise",
   "{count} 个二级学院": "{count} colleges",
+<<<<<<< HEAD
   "AI 服务配置": "AI Service Config",
   "AI 套餐用量": "AI Subscription Usage",
   "未设置套餐额度": "No quota configured",
@@ -4258,5 +4259,7 @@
   "确定清除该租户的 AI 服务配置吗？清除后租户内所有 AI 功能将不可用。": "Clear this tenant's AI service config? All AI features of the tenant will become unavailable.",
   "留空则不修改": "Leave empty to keep current",
   "请填写 Base URL 与模型": "Please fill in Base URL and model",
-  "清除配置": "Clear config"
+  "清除配置": "Clear config",
+  "新增项目": "Add project",
+  "新增成果": "Add achievement"
 }
