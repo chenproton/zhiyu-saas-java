@@ -6,6 +6,7 @@ import type {
   AIConfigView,
   AIPositionAssistBody,
   AIPositionAssistResponse,
+  AIUsageStats,
 } from '../types/ai'
 
 // 租户 AI 服务配置（portal 系统管理）与统一对话入口
@@ -15,6 +16,7 @@ export const aiApi = {
     portalRequest<{ status: string }>('/ai/config', { method: 'PUT', body: JSON.stringify(body) }),
   deleteConfig: () =>
     portalRequest<{ status: string }>('/ai/config', { method: 'DELETE' }),
+  getUsage: () => portalRequest<AIUsageStats>('/ai/usage'),
 }
 
 export function sendAIChat(body: AIChatBody) {
@@ -32,3 +34,4 @@ export function positionAiAssist(body: AIPositionAssistBody) {
 export const getAIConfig = aiApi.getConfig
 export const saveAIConfig = aiApi.saveConfig
 export const deleteAIConfig = aiApi.deleteConfig
+export const getAIUsage = aiApi.getUsage

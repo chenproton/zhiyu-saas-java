@@ -15,7 +15,7 @@ import (
 func TestPositionAssistNotConfigured(t *testing.T) {
 	_, svc, tenantID := setupAITest(t)
 	ctx := context.Background()
-	_, err := svc.PositionAssist(ctx, tenantID, PositionAssistResponsibilities, PositionAssistInput{
+	_, err := svc.PositionAssist(ctx, tenantID, "user-1", PositionAssistResponsibilities, PositionAssistInput{
 		Name:     "Java 后端开发工程师",
 		Industry: "互联网/IT",
 	})
@@ -26,7 +26,7 @@ func TestPositionAssistNotConfigured(t *testing.T) {
 
 func TestPositionAssistInvalidField(t *testing.T) {
 	_, svc, tenantID := setupAITest(t)
-	_, err := svc.PositionAssist(context.Background(), tenantID, "bogus", PositionAssistInput{})
+	_, err := svc.PositionAssist(context.Background(), tenantID, "user-1", "bogus", PositionAssistInput{})
 	if err == nil {
 		t.Fatal("非法 field 应报错")
 	}
@@ -268,7 +268,7 @@ func TestChatWithJSONModeFallbackSmoke(t *testing.T) {
 		t.Skip("TEST_DATABASE_URL not set, skipping")
 	}
 	_, svc, _ := setupAITest(t)
-	_, err := svc.chatWithJSONModeFallback(context.Background(), ai.Config{
+	_, _, err := svc.chatWithJSONModeFallback(context.Background(), ai.Config{
 		BaseURL: "http://127.0.0.1:1", APIKey: "sk-test", Model: "m",
 	}, []ai.Message{{Role: "user", Content: "hi"}})
 	if err == nil {
