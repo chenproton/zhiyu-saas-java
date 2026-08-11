@@ -200,6 +200,98 @@ func TestPosition_StatusTransitions(t *testing.T) {
 	})
 }
 
+func TestPosition_PublishBumpsVersion(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	// publishFlow 走完 提交→审核通过→发布 完整流程并返回发布后的实体。
+	publishFlow := func(t *testing.T, id string) *domain.CareerPosition {
+		t.Helper()
+		steps := []struct {
+			path string
+			body map[string]interface{}
+		}{
+			{"submit", nil},
+			{"review", map[string]interface{}{"status": "approved"}},
+			{"publish", nil},
+		}
+		var pos domain.CareerPosition
+		for _, s := range steps {
+			w := env.Do("POST", fmt.Sprintf("/api/v1/job/positions/%s/%s", id, s.path), s.body)
+			if w.Code != http.StatusOK {
+				t.Fatalf("%s: expected 200, got %d: %s", s.path, w.Code, testhelper.ErrMsg(w))
+			}
+			var err error
+			pos, err = testhelper.Unmarshal[domain.CareerPosition](w)
+			if err != nil {
+				t.Fatalf("unmarshal %s: %v", s.path, err)
+			}
+		}
+		return &pos
+	}
+
+	create := func(t *testing.T, name, version string) string {
+		t.Helper()
+		body := map[string]interface{}{"name": name, "positionType": "enterprise"}
+		if version != "" {
+			body["version"] = version
+		}
+		w := env.Do("POST", "/api/v1/job/positions", body)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		pos, err := testhelper.Unmarshal[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		t.Cleanup(func() { env.DB.Exec(context.Background(), "DELETE FROM career_positions WHERE id = $1", pos.ID) })
+		return pos.ID
+	}
+
+	t.Run("初始版本为 V1.0，每次发布 +0.1", func(t *testing.T) {
+		id := create(t, "Version Bump Position", "")
+		w := env.Do("GET", "/api/v1/job/positions/"+id, nil)
+		pos, err := testhelper.Unmarshal[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if pos.Version != "V1.0" {
+			t.Fatalf("初始版本 = %q, want V1.0", pos.Version)
+		}
+
+		posP := publishFlow(t, id)
+		if posP.Version != "V1.1" {
+			t.Errorf("首次发布后版本 = %q, want V1.1", posP.Version)
+		}
+
+		// 撤下草稿后可再次提交审核并发布，版本继续 +0.1
+		w = env.Do("POST", fmt.Sprintf("/api/v1/job/positions/%s/unpublish", id), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("unpublish: %d %s", w.Code, testhelper.ErrMsg(w))
+		}
+		posP = publishFlow(t, id)
+		if posP.Version != "V1.2" {
+			t.Errorf("再次发布后版本 = %q, want V1.2", posP.Version)
+		}
+	})
+
+	t.Run("1.9 进位到 2.0", func(t *testing.T) {
+		id := create(t, "Version Carry Position", "V1.9")
+		pos := publishFlow(t, id)
+		if pos.Version != "V2.0" {
+			t.Errorf("V1.9 发布后版本 = %q, want V2.0", pos.Version)
+		}
+	})
+
+	t.Run("历史脏值 v1 发布后归一 V1.1", func(t *testing.T) {
+		id := create(t, "Version Dirty Position", "v1")
+		pos := publishFlow(t, id)
+		if pos.Version != "V1.1" {
+			t.Errorf("v1 发布后版本 = %q, want V1.1", pos.Version)
+		}
+	})
+}
+
 func TestPosition_SaveFull(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

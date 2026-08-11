@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -18,6 +20,39 @@ var AllowedContentTables = []string{"career_positions", "courses", "exams", "que
 
 // AllowedInviteColumns 内容动作允许更新的协作者列白名单（handler 侧校验共用，单一真相）。
 var AllowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
+
+// versionedContentTables 含 version 列的内容实体：每次发布（重新发布）时版本号自动 +0.1。
+var versionedContentTables = map[string]bool{
+	"career_positions": true,
+	"courses":          true,
+	"exams":            true,
+	"question_banks":   true,
+	"scenarios":        true,
+}
+
+// NextVersion 计算发布后的版本号：次版本 +0.1，满 10 进 1（1.9→2.0），保留 V 大写前缀。
+// 解析规则：剥离首尾空白与 v/V 前缀，取前两段数字；无法解析或为空时按 V1.0 起算。
+func NextVersion(v string) string {
+	major, minor := 1, 0
+	digits := strings.Trim(strings.TrimSpace(v), "vV")
+	parts := strings.Split(digits, ".")
+	if len(parts) > 0 {
+		if n, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil {
+			major = n
+		}
+	}
+	if len(parts) > 1 {
+		if n, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+			minor = n
+		}
+	}
+	minor++
+	if minor >= 10 {
+		major++
+		minor = 0
+	}
+	return fmt.Sprintf("V%d.%d", major, minor)
+}
 
 // allowedStatusTransitions 定义内容实体允许的状态流转。
 // key 为当前状态，value 为可进入的目标状态集合。
@@ -125,6 +160,17 @@ func (s *ContentActionStore) Transition(ctx context.Context, table, id string, t
 				WHERE target_type = $1 AND target_id = $2 AND status = $3
 			`, targetType, id, string(domain.ApprovalStatusPending)); err != nil {
 				return fmt.Errorf("delete approval records: %w", err)
+			}
+		}
+
+		// 发布时自动递增版本号：V1.0→V1.1，1.9→2.0（含 version 列的实体）
+		if to == domain.StatusPublished && versionedContentTables[tbl] {
+			var v string
+			if err := tx.QueryRow(ctx, `SELECT COALESCE(version, '') FROM `+tbl+` WHERE id = $1`, id).Scan(&v); err != nil {
+				return fmt.Errorf("read version: %w", err)
+			}
+			if _, err := tx.Exec(ctx, `UPDATE `+tbl+` SET version = $1, updated_at = NOW() WHERE id = $2`, NextVersion(v), id); err != nil {
+				return fmt.Errorf("bump version: %w", err)
 			}
 		}
 

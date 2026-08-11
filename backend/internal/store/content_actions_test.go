@@ -126,3 +126,27 @@ func TestParsePageLimitClamps(t *testing.T) {
 		t.Error("non-numeric should return error")
 	}
 }
+
+func TestNextVersion(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"初始版本发布", "V1.0", "V1.1"},
+		{"小写前缀", "v1.0", "V1.1"},
+		{"无前缀", "1.0", "V1.1"},
+		{"缺次版本", "v1", "V1.1"},
+		{"双重前缀历史脏值", "vV1.0", "V1.1"},
+		{"次版本满十进位", "V1.9", "V2.0"},
+		{"大版本进位", "V9.9", "V10.0"},
+		{"忽略第三段补丁号", "V2.3.4", "V2.4"},
+		{"空值按 V1.0 起算", "", "V1.1"},
+		{"无法解析按 V1.0 起算", "abc", "V1.1"},
+	}
+	for _, c := range cases {
+		if got := NextVersion(c.in); got != c.want {
+			t.Errorf("NextVersion(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
