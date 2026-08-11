@@ -7,6 +7,7 @@ import type { AllianceProject } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { ProjectCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const PHASE_TABS = [
@@ -18,19 +19,23 @@ const PHASE_TABS = [
 
 export default function AlliancePublicProjectsPage() {
   const t = useT()
+  const { tenantId } = usePortalAuth()
   const [items, setItems] = useState<AllianceProject[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    portalRequest<{ items: AllianceProject[] }>('/alliance/public/projects')
+    // 与后台一致：仅展示本校公开且关联已链接企业的项目
+    portalRequest<{ items: AllianceProject[] }>(
+      `/alliance/public/projects${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    )
       .then((data) => setItems(data.items || []))
       .catch((err) => {
         reportError(err, { source: '加载合作项目列表' })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [tenantId])
 
   const tabs = useMemo(
     () => [

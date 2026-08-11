@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
   EnterpriseShowcase,
   type ShowcaseEnterprise,
@@ -46,6 +47,7 @@ function toShowcase(e: AllianceEnterprise): ShowcaseEnterprise {
 export default function AlliancePublicEnterpriseDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
+  const { tenantId } = usePortalAuth()
   const [enterprise, setEnterprise] = useState<ShowcaseEnterprise | null>(null)
   const [experts, setExperts] = useState<AllianceExpert[]>([])
   const [projects, setProjects] = useState<AllianceProject[]>([])
@@ -55,12 +57,14 @@ export default function AlliancePublicEnterpriseDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    // 与后台一致：详情与关联内容均限定本校链接范围，其他租户/已解除合作的企业不可见
+    const q = tenantId ? `?tenantId=${tenantId}` : ''
     Promise.all([
-      portalRequest<AllianceEnterprise>(`/alliance/public/enterprises/${id}`),
-      portalRequest<{ items: AllianceExpert[] }>('/alliance/public/experts'),
-      portalRequest<{ items: AllianceProject[] }>('/alliance/public/projects'),
-      portalRequest<{ items: AllianceAchievement[] }>('/alliance/public/achievements'),
-      portalRequest<{ items: AlliancePublicAgreement[] }>('/alliance/public/agreements'),
+      portalRequest<AllianceEnterprise>(`/alliance/public/enterprises/${id}${q}`),
+      portalRequest<{ items: AllianceExpert[] }>(`/alliance/public/experts${q}`),
+      portalRequest<{ items: AllianceProject[] }>(`/alliance/public/projects${q}`),
+      portalRequest<{ items: AllianceAchievement[] }>(`/alliance/public/achievements${q}`),
+      portalRequest<{ items: AlliancePublicAgreement[] }>(`/alliance/public/agreements${q}`),
     ])
       .then(([ent, expertsRes, projectsRes, achievementsRes, agreementsRes]) => {
         setEnterprise(toShowcase(ent))
@@ -79,7 +83,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
         reportError(err, { source: '加载合作企业详情' })
       })
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, tenantId])
 
   if (loading) return <LoadingView />
   if (!enterprise)

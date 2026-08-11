@@ -12,23 +12,27 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceAchievement } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 export default function AlliancePublicAchievementDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
+  const { tenantId } = usePortalAuth()
   const [achievement, setAchievement] = useState<AllianceAchievement | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
-    portalRequest<AllianceAchievement>(`/alliance/public/achievements/${id}`)
+    portalRequest<AllianceAchievement>(
+      `/alliance/public/achievements/${id}${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    )
       .then(setAchievement)
       .catch((err) => {
         reportError(err, { source: '加载成果详情' })
       })
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, tenantId])
 
   if (loading) return <LoadingView />
   if (!achievement)

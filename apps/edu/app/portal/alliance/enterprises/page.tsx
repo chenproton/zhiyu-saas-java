@@ -7,6 +7,7 @@ import type { AllianceEnterprise } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { EnterpriseCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const RATING_TABS = [
@@ -17,19 +18,23 @@ const RATING_TABS = [
 
 export default function AlliancePublicEnterprisesPage() {
   const t = useT()
+  const { tenantId } = usePortalAuth()
   const [items, setItems] = useState<AllianceEnterprise[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    portalRequest<{ items: AllianceEnterprise[] }>('/alliance/public/enterprises')
+    // 与后台 /portal/apps/alliance/enterprises 一致：仅展示本校链接且企业愿意展示的
+    portalRequest<{ items: AllianceEnterprise[] }>(
+      `/alliance/public/enterprises${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    )
       .then((data) => setItems(data.items || []))
       .catch((err) => {
         reportError(err, { source: '加载合作企业列表' })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [tenantId])
 
   const tabs = useMemo(
     () => [

@@ -7,6 +7,7 @@ import type { AllianceAchievement } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { AchievementCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const TYPE_TABS = [
@@ -18,19 +19,23 @@ const TYPE_TABS = [
 
 export default function AlliancePublicAchievementsPage() {
   const t = useT()
+  const { tenantId } = usePortalAuth()
   const [items, setItems] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    portalRequest<{ items: AllianceAchievement[] }>('/alliance/public/achievements?sort=latest')
+    // 与后台一致：仅展示本校公开且关联已链接企业的成果
+    portalRequest<{ items: AllianceAchievement[] }>(
+      `/alliance/public/achievements?sort=latest${tenantId ? `&tenantId=${tenantId}` : ''}`,
+    )
       .then((data) => setItems(data.items || []))
       .catch((err) => {
         reportError(err, { source: '加载成果列表' })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [tenantId])
 
   const tabs = useMemo(
     () => [

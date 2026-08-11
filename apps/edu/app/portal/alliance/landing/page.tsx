@@ -268,6 +268,8 @@ export default function AllianceLandingPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // 前台展示与后台管理页同租户数据一致：全部带 tenantId 按本校链接过滤（其他租户/已解除合作的企业不展示）
+    const q = tenantId ? `?tenantId=${tenantId}` : ''
     const requests: [
       Promise<AlliancePublicStats | null>,
       Promise<{ items: AllianceEnterprise[] } | null>,
@@ -276,18 +278,18 @@ export default function AllianceLandingPage() {
       Promise<{ items: AllianceAchievement[] } | null>,
       Promise<{ items: AllianceBrand[] } | null>,
     ] = [
-      portalRequest<AlliancePublicStats>('/alliance/public/stats').catch(() => null),
-      portalRequest<{ items: AllianceEnterprise[] }>('/alliance/public/enterprises').catch(() => ({
+      portalRequest<AlliancePublicStats>(`/alliance/public/stats${q}`).catch(() => null),
+      portalRequest<{ items: AllianceEnterprise[] }>(`/alliance/public/enterprises${q}`).catch(
+        () => ({ items: [] }),
+      ),
+      portalRequest<{ items: AllianceProject[] }>(`/alliance/public/projects${q}`).catch(() => ({
         items: [],
       })),
-      portalRequest<{ items: AllianceProject[] }>('/alliance/public/projects').catch(() => ({
-        items: [],
-      })),
-      portalRequest<{ items: AllianceExpert[] }>('/alliance/public/experts').catch(() => ({
+      portalRequest<{ items: AllianceExpert[] }>(`/alliance/public/experts${q}`).catch(() => ({
         items: [],
       })),
       portalRequest<{ items: AllianceAchievement[] }>(
-        '/alliance/public/achievements?sort=latest',
+        `/alliance/public/achievements?sort=latest${tenantId ? `&tenantId=${tenantId}` : ''}`,
       ).catch(() => ({
         items: [],
       })),

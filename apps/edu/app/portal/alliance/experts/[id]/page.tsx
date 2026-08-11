@@ -12,23 +12,27 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 export default function AlliancePublicExpertDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
+  const { tenantId } = usePortalAuth()
   const [expert, setExpert] = useState<AllianceExpert | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
-    portalRequest<AllianceExpert>(`/alliance/public/experts/${id}`)
+    portalRequest<AllianceExpert>(
+      `/alliance/public/experts/${id}${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    )
       .then(setExpert)
       .catch((err) => {
         reportError(err, { source: '加载企业专家详情' })
       })
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, tenantId])
 
   if (loading) return <LoadingView />
   if (!expert)

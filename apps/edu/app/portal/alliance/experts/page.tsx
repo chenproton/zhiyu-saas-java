@@ -7,6 +7,7 @@ import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { ExpertCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const RATING_TABS = [
@@ -17,19 +18,23 @@ const RATING_TABS = [
 
 export default function AlliancePublicExpertsPage() {
   const t = useT()
+  const { tenantId } = usePortalAuth()
   const [items, setItems] = useState<AllianceExpert[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    portalRequest<{ items: AllianceExpert[] }>('/alliance/public/experts')
+    // 与后台一致：仅展示本校链接企业的公开专家
+    portalRequest<{ items: AllianceExpert[] }>(
+      `/alliance/public/experts${tenantId ? `?tenantId=${tenantId}` : ''}`,
+    )
       .then((data) => setItems(data.items || []))
       .catch((err) => {
         reportError(err, { source: '加载企业专家列表' })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [tenantId])
 
   const tabs = useMemo(
     () => [
