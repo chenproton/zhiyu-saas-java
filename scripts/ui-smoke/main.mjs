@@ -280,11 +280,36 @@ export async function main() {
   }
 
   const backendStart = new Date().toISOString()
-  const browser = await chromium.launch({
-    headless: !cfg.headed,
-    channel: process.env.UI_SMOKE_CHANNEL || 'chrome',
-    args: process.getuid?.() === 0 ? ['--no-sandbox', '--disable-dev-shm-usage'] : [],
-  })
+  const launchBrowser = async () => {
+    const b = await chromium.launch({
+      headless: !cfg.headed,
+      channel: process.env.UI_SMOKE_CHANNEL || 'chrome',
+      args: [
+        ...(process.getuid?.() === 0 ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
+        '--disable-gpu',
+        '--disable-background-networking',
+      ],
+    })
+    bstate.browser = b
+    return b
+  }
+  // 浏览器实例状态容器：chrome 进程偶发崩溃（内存/环境因素）时检测并重启续跑
+  const bstate = { browser: await launchBrowser() }
+  const browser = bstate.browser
+
+  // playwright 操作在浏览器进程死亡后可能永远挂起（CDP 连接悬置），统一加超时兜底
+  const withTimeout = (p, ms, label) =>
+    Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} 超时（${ms}ms）`)), ms))])
+
+  // 检查浏览器是否存活；死亡则重启并返回新实例
+  const ensureBrowser = async () => {
+    try {
+      if (bstate.browser.isConnected()) return bstate.browser
+    } catch { /* isConnected 异常按断开处理 */ }
+    console.warn('  [browser] 浏览器进程已断开，重启浏览器续跑...')
+    await bstate.browser.close().catch(() => {})
+    return launchBrowser()
+  }
 
   const results = {}
   const allCrashes = { count: 0, routes: [] }
@@ -294,7 +319,7 @@ export async function main() {
   if (cfg.timeoutMin) {
     watchdogTimer = setTimeout(() => {
       console.error(`\n[watchdog] 超过 ${cfg.timeoutMin} 分钟，强制结束（已巡检结果保留）`)
-      browser.close().catch(() => {})
+      bstate.browser.close().catch(() => {})
     }, cfg.timeoutMin * 60000)
   }
 
@@ -303,7 +328,8 @@ export async function main() {
       console.log(`\n=== [${role}] 开始巡检 ===`)
       let ctx
       try {
-        ctx = await browser.newContext()
+        await ensureBrowser()
+        ctx = await withTimeout(bstate.browser.newContext(), 20000, 'newContext')
       } catch (e) {
         if (/browser has been closed|context or browser has been closed/i.test(e.message)) {
           console.error(`  [${role}] 浏览器已被关闭，停止后续角色巡检`)
@@ -356,25 +382,37 @@ export async function main() {
       const roleCreatedIds = new Set()
 
       await Promise.all(chunks.map(async (chunk, wi) => {
-        const wctx = await browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) })
-        let wpage = await wctx.newPage()
+        // 浏览器可能已在登录/上一角色阶段崩溃，先确保存活再开 worker 上下文
+        await ensureBrowser()
+        let wctx = await withTimeout(bstate.browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) }), 20000, 'newContext')
+        let wpage = await withTimeout(wctx.newPage(), 20000, 'newPage')
         let wsink = []
         const wstate = { clickIndex: -1, url: '', dynamicUrls }
         const globalSeen = new Set() // 全局/共享元素每个 worker 只点一次
         attachListeners(wpage, wsink, cfg, wstate)
+        const refreshWorkerPage = async () => {
+          await withTimeout(wpage.close().catch(() => {}), 5000, 'closePage')
+          wpage = await withTimeout(wctx.newPage(), 20000, 'newPage')
+          wsink = []
+          attachListeners(wpage, wsink, cfg, wstate)
+        }
         try {
           for (const route of chunk) {
+            // 浏览器进程偶发崩溃自愈：断开则重启浏览器并重建上下文，续跑剩余路由
+            if (!bstate.browser.isConnected()) {
+              console.warn(`  [${role}] worker 检测到浏览器断开，重启浏览器续跑...`)
+              await ensureBrowser()
+              await withTimeout(wctx.close().catch(() => {}), 5000, 'closeContext')
+              wctx = await withTimeout(bstate.browser.newContext({ storageState: path.join(STATE_DIR, `state-${role}.json`) }), 20000, 'newContext')
+              await refreshWorkerPage()
+            }
             let r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken, globalSeen)
             if (r.timedOut) {
               // 单路由超时：换新页面继续，不重试
-              await wpage.close().catch(() => {})
-              wpage = await wctx.newPage()
-              wsink = []
-              attachListeners(wpage, wsink, cfg, wstate)
+              await refreshWorkerPage()
             }
             for (let attempt = 0; r.crashed && attempt < cfg.retryCrashes; attempt++) {
-              await wpage.close().catch(() => {})
-              wpage = await wctx.newPage()
+              await refreshWorkerPage()
               const oldSink = wsink
               wsink = []
               attachListeners(wpage, wsink, cfg, wstate)
@@ -392,16 +430,10 @@ export async function main() {
             for (let attempt = 0; r.errors.length && r.errors.every(isTransientError) && attempt < maxTransient; attempt++) {
               console.log(`  [${role}] ${route} 触发瞬态错误，${attempt + 1}/${maxTransient} 后重试...`)
               await sleep(cfg.retryTransientDelayMs || 1200)
-              await wpage.close().catch(() => {})
-              wpage = await wctx.newPage()
-              wsink = []
-              attachListeners(wpage, wsink, cfg, wstate)
+              await refreshWorkerPage()
               r = await runRouteWithTimeout(wpage, wctx, route, cfg, role, wsink, wstate, roleToken, globalSeen)
               if (r.timedOut) {
-                await wpage.close().catch(() => {})
-                wpage = await wctx.newPage()
-                wsink = []
-                attachListeners(wpage, wsink, cfg, wstate)
+                await refreshWorkerPage()
               }
             }
             perRole.push(r)
@@ -413,7 +445,7 @@ export async function main() {
         } catch (e) {
           console.error(`  [${role}] worker#${wi} 异常（已保留其他结果）: ${e.message}`)
         } finally {
-          await wctx.close().catch(() => {})
+          await withTimeout(wctx.close().catch(() => {}), 5000, 'closeContext')
         }
       }))
 
@@ -422,7 +454,7 @@ export async function main() {
     }
   } finally {
     if (watchdogTimer) clearTimeout(watchdogTimer)
-    await browser.close().catch(() => {})
+    await bstate.browser.close().catch(() => {})
   }
 
   // CRUD 测试数据清理（SMOKE_ 前缀），跨角色按 id 去重
