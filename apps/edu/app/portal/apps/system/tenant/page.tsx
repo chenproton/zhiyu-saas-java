@@ -845,7 +845,7 @@ function AITokenQuotaCard({ usage }: { usage: AIUsageStats }) {
           <Gauge className="w-5 h-5 text-muted-foreground" />
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">{t('当前用量')}</p>
+          <p className="text-xs text-muted-foreground">{t('AI 套餐用量')}</p>
           <p className="text-lg font-semibold mt-0.5">{t('未设置套餐额度')}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{t('联系管理员在套餐中配置 AI 额度')}</p>
         </div>
@@ -878,21 +878,12 @@ function AITokenQuotaCard({ usage }: { usage: AIUsageStats }) {
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] font-semibold" style={{ color }}>
-            {Math.min(percent, 100)}%
-          </span>
-        </div>
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{t('当前用量')}</p>
-        <p className="text-base font-semibold mt-0.5 truncate">
-          {usage.totalTokens.toLocaleString()}
-          <span className="text-xs font-normal text-muted-foreground">
-            {' '}/ {quota.toLocaleString()} {t('tokens')}
-          </span>
+        <p className="text-xs text-muted-foreground">{t('AI 套餐用量')}</p>
+        <p className="text-2xl font-bold mt-1" style={{ color }}>
+          {Math.min(percent, 100).toFixed(2)}%
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">{t('AI 套餐 token 额度')}</p>
       </div>
     </div>
   )

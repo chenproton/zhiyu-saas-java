@@ -1709,9 +1709,9 @@ export default function SuperAdminPage() {
           ) : (
             <div className="grid gap-6 py-4">
               {/* 平台模块卡片式勾选 */}
-              <div className="grid gap-3">
+              <div className="grid gap-2">
                 <Label>{t('平台模块')}</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {Object.entries(platformModuleDefs).map(([key, def]) => {
                     const style = platformCardStyles[key]
                     const Icon = style?.icon ?? Package
@@ -1722,7 +1722,7 @@ export default function SuperAdminPage() {
                         type="button"
                         onClick={() => toggleModule(key)}
                         className={cn(
-                          'flex items-center gap-3 rounded-xl border p-4 text-left transition-all cursor-pointer',
+                          'flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer',
                           checked
                             ? 'border-primary/40 bg-primary/5 shadow-sm'
                             : 'border-border bg-card hover:border-primary/30 hover:bg-muted/40',
@@ -1730,22 +1730,24 @@ export default function SuperAdminPage() {
                       >
                         <div
                           className={cn(
-                            'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+                            'w-7 h-7 rounded-md flex items-center justify-center shrink-0',
                             style?.bg ?? 'bg-muted',
                           )}
                         >
-                          <Icon className={cn('w-5 h-5', style?.color ?? 'text-muted-foreground')} />
+                          <Icon className={cn('w-4 h-4', style?.color ?? 'text-muted-foreground')} />
                         </div>
-                        <span className="flex-1 text-sm font-medium">{t(def.label)}</span>
+                        <span className="flex-1 text-xs font-medium leading-tight">
+                          {t(def.label)}
+                        </span>
                         <span
                           className={cn(
-                            'w-5 h-5 rounded-md border flex items-center justify-center shrink-0',
+                            'w-4 h-4 rounded border flex items-center justify-center shrink-0',
                             checked
                               ? 'bg-primary border-primary text-white'
                               : 'border-border bg-background',
                           )}
                         >
-                          {checked ? <Check className="w-3.5 h-3.5" /> : null}
+                          {checked ? <Check className="w-3 h-3" /> : null}
                         </span>
                       </button>
                     )
@@ -1753,15 +1755,15 @@ export default function SuperAdminPage() {
                 </div>
               </div>
 
-              {/* AI 服务配置（与租户自身配置同表，超管代管） */}
-              <div className="rounded-xl border border-border">
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-[18px] h-[18px] text-primary" />
+              {/* AI 服务与套餐额度（一张卡片：接入配置 + token 额度） */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/20">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">{t('AI 服务配置')}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {t('接入租户自有 OpenAI 兼容服务，token 成本租户自负')}
                     </p>
                   </div>
@@ -1770,31 +1772,27 @@ export default function SuperAdminPage() {
                     label={t(aiConfig?.configured ? '已配置' : '未配置')}
                   />
                   <Button size="sm" variant="outline" onClick={openAIDialog}>
-                    <Pencil className="h-4 w-4 mr-1" />
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
                     {t('配置')}
                   </Button>
                 </div>
-                <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                  <div>
+                <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{t('Base URL')}</p>
-                    <p className="mt-1 truncate">{aiConfig?.baseUrl || '-'}</p>
+                    <p className="mt-0.5 truncate text-xs">{aiConfig?.baseUrl || '-'}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{t('模型')}</p>
-                    <p className="mt-1 truncate">{aiConfig?.model || '-'}</p>
+                    <p className="mt-0.5 truncate text-xs">{aiConfig?.model || '-'}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{t('API Key')}</p>
-                    <p className="mt-1 font-mono truncate">{aiConfig?.apiKeyMasked || '-'}</p>
+                    <p className="mt-0.5 font-mono truncate text-xs">{aiConfig?.apiKeyMasked || '-'}</p>
                   </div>
                 </div>
-              </div>
-
-              {/* AI 套餐额度（人民币 → token） */}
-              <div className="grid gap-3">
-                <Label>{t('AI 套餐额度')}</Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1 max-w-xs">
+                <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2">
+                  <Label className="shrink-0 text-sm">{t('AI 套餐额度')}</Label>
+                  <div className="relative w-40">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                       ¥
                     </span>
@@ -1803,7 +1801,7 @@ export default function SuperAdminPage() {
                       min={0}
                       step="0.01"
                       placeholder={t('如：100')}
-                      className="pl-8"
+                      className="pl-8 h-9"
                       value={quotaRmb}
                       onChange={(e) => handleQuotaRmbChange(e.target.value)}
                     />
@@ -1816,10 +1814,10 @@ export default function SuperAdminPage() {
                     })}
                     <span className="ml-1 text-xs">（2 元 / 1M token）</span>
                   </div>
+                  <p className="sm:ml-auto text-xs text-muted-foreground">
+                    {t('租户用量看板将展示消耗占比')}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('按套餐额度换算 token 上限，租户用量看板将展示消耗占比')}
-                </p>
               </div>
             </div>
           )}
