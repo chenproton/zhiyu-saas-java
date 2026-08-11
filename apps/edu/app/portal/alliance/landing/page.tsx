@@ -206,32 +206,32 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: HeroSchool | null }) {
     [schoolInfo.province, schoolInfo.city].filter(Boolean).join(' '),
   ].filter(Boolean) as string[]
 
-  const displayName = schoolInfo.shortName || schoolInfo.name
-
   return (
     <Card className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-2xl shadow-black/20">
       {/* 顶部渐变装饰 */}
-      <div className="h-1.5 bg-gradient-to-r from-primary via-white/40 to-transparent" />
-      <CardContent className="p-6">
-        <div className="flex items-center gap-4">
+      <div className="h-1 bg-gradient-to-r from-primary via-white/40 to-transparent" />
+      <CardContent className="px-6 pt-4 pb-6">
+        <div className="flex items-center gap-3.5">
           {schoolInfo.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={schoolInfo.logoUrl}
               alt={schoolInfo.name}
-              className="w-14 h-14 rounded-2xl object-cover border border-white/25 shadow-lg bg-white shrink-0"
+              className="w-12 h-12 rounded-xl object-cover border border-white/25 shadow-lg bg-white shrink-0"
             />
           ) : (
             <GradientPlaceholder
               seed={schoolInfo.name}
-              className="w-14 h-14 rounded-2xl border border-white/25 shadow-lg shrink-0"
+              className="w-12 h-12 rounded-xl border border-white/25 shadow-lg shrink-0"
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg text-white leading-snug truncate">
-              {displayName}
+            <h3 className="font-semibold text-base text-white leading-snug truncate">
+              {schoolInfo.name}
             </h3>
-            <p className="text-xs text-white/60 mt-0.5 truncate">{t('校企合作联盟')}</p>
+            <p className="text-xs text-white/60 mt-0.5 truncate">
+              {schoolInfo.shortName || t('校企合作联盟')}
+            </p>
           </div>
         </div>
 
