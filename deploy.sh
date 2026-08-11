@@ -1219,3 +1219,16 @@ echo "   后端容器: http://localhost:${BACKEND_PORT}"
 echo "   前端容器: http://localhost:${EDU_PORT}"
 echo "   管理: admin / ${SEED_ADMIN_PASSWORD:-admin123}  (SaaS 登录)"
 echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
+
+# 旧布局上传文件检测：新版 /uploads/{tenantID}/{filename} 要求文件位于租户子目录。
+# 若 uploads 卷根目录存在单段文件名（旧布局），提醒执行迁移脚本，否则旧图片全部 404。
+UPLOAD_VOLUME=$(docker volume inspect "$(docker volume ls -q | grep -i upload | head -1)" --format '{{.Mountpoint}}' 2>/dev/null || true)
+if [[ -n "$UPLOAD_VOLUME" ]] && [[ -d "$UPLOAD_VOLUME" ]]; then
+  LEGACY_COUNT=$(find "$UPLOAD_VOLUME" -maxdepth 1 -type f | wc -l)
+  if [[ "$LEGACY_COUNT" -gt 0 ]]; then
+    warn "检测到 uploads 卷根目录有 $LEGACY_COUNT 个旧布局文件（未按租户分目录），部署后旧图片将 404！"
+    warn "请立即执行文件迁移（宿主环境，脚本会移动文件+回写 DB URL+修正属主）："
+    warn "  cd $PROJECT_ROOT"
+    warn "  DATABASE_URL=\"\$(grep ^DATABASE_URL $ENV_FILE | cut -d= -f2-)\" UPLOAD_DIR=$UPLOAD_VOLUME ./scripts/migrate_uploads.sh"
+  fi
+fi
