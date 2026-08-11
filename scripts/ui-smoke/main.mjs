@@ -280,6 +280,7 @@ export async function main() {
   }
 
   const backendStart = new Date().toISOString()
+  const bstate = {}
   const launchBrowser = async () => {
     const b = await chromium.launch({
       headless: !cfg.headed,
@@ -294,7 +295,7 @@ export async function main() {
     return b
   }
   // 浏览器实例状态容器：chrome 进程偶发崩溃（内存/环境因素）时检测并重启续跑
-  const bstate = { browser: await launchBrowser() }
+  bstate.browser = await launchBrowser()
   const browser = bstate.browser
 
   // playwright 操作在浏览器进程死亡后可能永远挂起（CDP 连接悬置），统一加超时兜底
