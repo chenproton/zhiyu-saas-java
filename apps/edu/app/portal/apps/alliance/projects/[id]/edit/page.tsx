@@ -25,18 +25,8 @@ import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, LoadingView } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceProject } from '@/lib/types'
-
-const PROJECT_TYPES = [
-  '人才培养项目',
-  '技术研发项目',
-  '基地建设项目',
-  '技能竞赛项目',
-  '创新创业项目',
-  '师资培训项目',
-  '课程开发项目',
-  '专业共建项目',
-]
 
 export default function AllianceProjectEditPage() {
   const { id } = useParams<{ id: string }>()
@@ -45,6 +35,7 @@ export default function AllianceProjectEditPage() {
   const t = useT()
   const router = useRouter()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
+  const { items: projectTypeItems } = useAllianceDictionary('project_type', tenantId)
   const [item, setItem] = useState<AllianceProject | null>(null)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,16 +102,16 @@ export default function AllianceProjectEditPage() {
                 </FormFieldRow>
                 <FormFieldRow label={t('合作类型')}>
                   <Select
-                    value={item.type || PROJECT_TYPES[0]}
+                    value={item.type || projectTypeItems[0]?.code || ''}
                     onValueChange={(v) => setField('type', v)}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROJECT_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {t(type)}
+                      {mergeDictOptions(projectTypeItems, item.type).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>

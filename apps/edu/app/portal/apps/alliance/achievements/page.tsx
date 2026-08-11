@@ -23,12 +23,14 @@ import { FormFieldRow } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
 import { Switch } from '@/components/ui/switch'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceAchievement } from '@/lib/types'
 
 export default function AllianceAchievementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
+  const { items: typeItems } = useAllianceDictionary('achievement_type', tenantId)
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { items: [], enterprises: [], projects: [] }
@@ -161,10 +163,11 @@ export default function AllianceAchievementsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="job">{t('岗位成果')}</SelectItem>
-                <SelectItem value="scene">{t('场景成果')}</SelectItem>
-                <SelectItem value="course">{t('课程成果')}</SelectItem>
-                <SelectItem value="custom">{t('自定义')}</SelectItem>
+                {mergeDictOptions(typeItems, item.type || 'custom').map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {t(opt.label)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormFieldRow>

@@ -26,17 +26,7 @@ import { useToast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
-
-const PROJECT_TYPES = [
-  '人才培养项目',
-  '技术研发项目',
-  '基地建设项目',
-  '技能竞赛项目',
-  '创新创业项目',
-  '师资培训项目',
-  '课程开发项目',
-  '专业共建项目',
-]
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 
 export default function AllianceProjectNewPage() {
   const { toast } = useToast()
@@ -44,6 +34,7 @@ export default function AllianceProjectNewPage() {
   const router = useRouter()
   const { tenantId } = usePortalAuth()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
+  const { items: projectTypeItems } = useAllianceDictionary('project_type', tenantId)
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
@@ -127,9 +118,9 @@ export default function AllianceProjectNewPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROJECT_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {t(type)}
+                      {mergeDictOptions(projectTypeItems, item.type).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>

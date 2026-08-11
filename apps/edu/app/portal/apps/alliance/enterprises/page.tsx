@@ -49,6 +49,7 @@ import { FormFieldRow } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceEnterprise } from '@/lib/types'
 
 export default function AllianceEnterprisesPage() {
@@ -56,6 +57,8 @@ export default function AllianceEnterprisesPage() {
   const { toast } = useToast()
   const t = useT()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
+  const { items: statusItems } = useAllianceDictionary('enterprise_status', tenantId)
+  const { items: ratingItems } = useAllianceDictionary('cooperation_rating', tenantId)
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { enterprises: [], projects: [], achievements: [], agreements: [] }
@@ -349,10 +352,11 @@ export default function AllianceEnterprisesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="negotiating">{t('洽谈中')}</SelectItem>
-                  <SelectItem value="active">{t('合作中')}</SelectItem>
-                  <SelectItem value="paused">{t('已暂停')}</SelectItem>
-                  <SelectItem value="terminated">{t('已终止')}</SelectItem>
+                  {mergeDictOptions(statusItems, item.status || 'negotiating').map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {t(opt.label)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormFieldRow>
@@ -365,9 +369,11 @@ export default function AllianceEnterprisesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="strategic">{t('战略合作')}</SelectItem>
-                  <SelectItem value="deep">{t('深度合作')}</SelectItem>
-                  <SelectItem value="general">{t('一般合作')}</SelectItem>
+                  {mergeDictOptions(ratingItems, item.rating || 'general').map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {t(opt.label)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormFieldRow>

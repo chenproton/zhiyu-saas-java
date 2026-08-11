@@ -24,12 +24,15 @@ import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceAgreement } from '@/lib/types'
 
 export default function AllianceAgreementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
+  const { items: typeItems } = useAllianceDictionary('agreement_type', tenantId)
+  const { items: statusItems } = useAllianceDictionary('agreement_status', tenantId)
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return { items: [], enterprises: [], projects: [] }
@@ -168,10 +171,21 @@ export default function AllianceAgreementsPage() {
             />
           </FormFieldRow>
           <FormFieldRow label={t('协议类型')}>
-            <Input
+            <Select
               value={item.type || ''}
-              onChange={(e: any) => setItem({ ...item, type: e.target.value })}
-            />
+              onValueChange={(v: any) => setItem({ ...item, type: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t('请选择协议类型')} />
+              </SelectTrigger>
+              <SelectContent>
+                {mergeDictOptions(typeItems, item.type).map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {t(opt.label)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormFieldRow>
           <FormFieldRow label={t('状态')}>
             <Select
@@ -182,11 +196,11 @@ export default function AllianceAgreementsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">{t('草稿')}</SelectItem>
-                <SelectItem value="active">{t('生效中')}</SelectItem>
-                <SelectItem value="expired">{t('已过期')}</SelectItem>
-                <SelectItem value="renewed">{t('已续签')}</SelectItem>
-                <SelectItem value="terminated">{t('已终止')}</SelectItem>
+                {mergeDictOptions(statusItems, item.status || 'draft').map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {t(opt.label)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormFieldRow>

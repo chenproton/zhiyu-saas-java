@@ -26,6 +26,7 @@ import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } fro
 import { useToast, LoadingView } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
+import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceAchievement } from '@/lib/types'
 
 export default function AllianceAchievementEditPage() {
@@ -35,6 +36,7 @@ export default function AllianceAchievementEditPage() {
   const t = useT()
   const router = useRouter()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
+  const { items: typeItems } = useAllianceDictionary('achievement_type', tenantId)
   const [item, setItem] = useState<AllianceAchievement | null>(null)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
@@ -118,10 +120,11 @@ export default function AllianceAchievementEditPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="job">{t('岗位')}</SelectItem>
-                      <SelectItem value="scene">{t('场景')}</SelectItem>
-                      <SelectItem value="course">{t('课程')}</SelectItem>
-                      <SelectItem value="custom">{t('自定义')}</SelectItem>
+                      {mergeDictOptions(typeItems, item.type).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.label)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FormFieldRow>
