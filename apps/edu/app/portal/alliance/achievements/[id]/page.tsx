@@ -27,6 +27,10 @@ import {
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
+import {
+  RelatedObjectCard,
+  normalizeRelatedRefs,
+} from '@/components/alliance/related-object-card'
 import type {
   AllianceAchievement,
   AllianceEnterprise,
@@ -122,9 +126,9 @@ export default function AlliancePublicAchievementDetailPage() {
     return <div className="text-center py-12 text-muted-foreground">{t('成果不存在')}</div>
 
   const attachments = achievement.attachments ?? []
-  const scenes = achievement.relatedScenes ?? []
-  const courses = achievement.relatedCourses ?? []
-  const positions = achievement.relatedPositions ?? []
+  const scenes = normalizeRelatedRefs(achievement.relatedScenes)
+  const courses = normalizeRelatedRefs(achievement.relatedCourses)
+  const positions = normalizeRelatedRefs(achievement.relatedPositions)
   const ownerPersons = achievement.ownerPersons ?? []
   const coBuilders = achievement.coBuilders ?? []
 
@@ -145,8 +149,10 @@ export default function AlliancePublicAchievementDetailPage() {
         <Badge key="type" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
           {allianceLabel('achievementType', achievement.type)}
         </Badge>,
-        <Badge key="status" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
-          {allianceLabel('achievementStatus', achievement.status)}
+        <Badge key="date" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
+          {achievement.achievementDate
+            ? new Date(achievement.achievementDate).toLocaleDateString('zh-CN')
+            : '-'}
         </Badge>,
       ]}
       tabs={[
@@ -295,17 +301,9 @@ export default function AlliancePublicAchievementDetailPage() {
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
                 {scenes.length > 0 ? (
-                  <div className="grid gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {scenes.map((scene) => (
-                      <div
-                        key={scene}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100"
-                      >
-                        <div className="h-10 w-10 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                          <Layers className="h-5 w-5 text-amber-600" />
-                        </div>
-                        <span className="font-medium text-slate-800 text-sm">{scene}</span>
-                      </div>
+                      <RelatedObjectCard key={scene.id} item={scene} kind="scenes" />
                     ))}
                   </div>
                 ) : (
@@ -323,17 +321,9 @@ export default function AlliancePublicAchievementDetailPage() {
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
                 {courses.length > 0 ? (
-                  <div className="grid gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {courses.map((course) => (
-                      <div
-                        key={course}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100"
-                      >
-                        <div className="h-10 w-10 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                          <BookOpen className="h-5 w-5 text-sky-600" />
-                        </div>
-                        <span className="font-medium text-slate-800 text-sm">{course}</span>
-                      </div>
+                      <RelatedObjectCard key={course.id} item={course} kind="courses" />
                     ))}
                   </div>
                 ) : (
@@ -351,17 +341,9 @@ export default function AlliancePublicAchievementDetailPage() {
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
                 {positions.length > 0 ? (
-                  <div className="grid gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {positions.map((position) => (
-                      <div
-                        key={position}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100"
-                      >
-                        <div className="h-10 w-10 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                          <Briefcase className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <span className="font-medium text-slate-800 text-sm">{position}</span>
-                      </div>
+                      <RelatedObjectCard key={position.id} item={position} kind="positions" />
                     ))}
                   </div>
                 ) : (

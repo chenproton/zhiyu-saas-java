@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -13,17 +14,51 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { allianceAchievementApi, portalRequest } from '@/lib/api'
+import { allianceAchievementApi, courseApi, portalRequest, scenarioApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
-import { allianceLabel } from '@zhiyu/shared-types'
+import { allianceLabel, type AllianceRelatedRef } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import { Plus, Trash2 } from 'lucide-react'
+import {
+  RelatedObjectCard,
+  normalizeRelatedRefs,
+} from '@/components/alliance/related-object-card'
+import { Loader2, Plus, Search, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
-import type { AllianceAchievement } from '@/lib/types'
+import type { AllianceAchievement, CareerPosition } from '@/lib/types'
 
-interface RelatedRef {
-  id: string
-  name: string
+type RelatedKind = 'positions' | 'scenes' | 'courses'
+type RelatedKey = 'relatedPositions' | 'relatedScenes' | 'relatedCourses'
+
+const KIND_TO_KEY: Record<RelatedKind, RelatedKey> = {
+  positions: 'relatedPositions',
+  scenes: 'relatedScenes',
+  courses: 'relatedCourses',
+}
+
+const KIND_TO_LABEL: Record<RelatedKind, string> = {
+  positions: '岗位',
+  scenes: '场景',
+  courses: '课程',
+}
+
+function toRelatedRef(item: { id: string; name: string; code?: string; coverImage?: string }) {
+  return { id: item.id, name: item.name, code: item.code, coverImage: item.coverImage }
+}
+
+async function searchRelated(kind: RelatedKind, keyword: string): Promise<AllianceRelatedRef[]> {
+  const q = keyword.trim()
+  if (kind === 'positions') {
+    const res = await portalRequest<{ items: CareerPosition[] }>(
+      `/job/positions?search=${encodeURIComponent(q)}&limit=20`,
+    )
+    return (res.items || []).map(toRelatedRef)
+  }
+  if (kind === 'scenes') {
+    const res = await scenarioApi.list({ search: q, limit: 20 })
+    return (res.items || []).map(toRelatedRef)
+  }
+  const res = await courseApi.list({ type: 'system', search: q, limit: 20 } as any)
+  return (res.items || []).map(toRelatedRef)
 }
 
 export default function AllianceAchievementDetailPage() {
@@ -32,30 +67,23 @@ export default function AllianceAchievementDetailPage() {
   const { toast } = useToast()
   const t = useT()
   const [achievement, setAchievement] = useState<AllianceAchievement | null>(null)
-  const [positions, setPositions] = useState<RelatedRef[]>([])
-  const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [pickDialog, setPickDialog] = useState<{
     open: boolean
-    kind: 'positions' | 'scenes' | 'courses'
-    selected?: string
+    kind: RelatedKind
   }>({ open: false, kind: 'positions' })
+  const [keyword, setKeyword] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [results, setResults] = useState<AllianceRelatedRef[]>([])
+  const [selected, setSelected] = useState<string>('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const loadData = () => {
     if (!tenantId || !id) return
-    Promise.all([
-      allianceAchievementApi.get(id),
-      portalRequest<{ items: RelatedRef[] }>('/job/positions?limit=200').catch(() => ({
-        items: [],
-      })),
-      allianceAchievementApi.list({ limit: 200 }),
-    ])
-      .then(([a, pos, ach]) => {
-        setAchievement(a)
-        setPositions(pos.items || [])
-        setAchievements(ach.items || [])
-      })
+    allianceAchievementApi
+      .get(id)
+      .then((a) => setAchievement(a))
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }
@@ -63,10 +91,7 @@ export default function AllianceAchievementDetailPage() {
     loadData()
   }, [tenantId, id]) // eslint-disable-line
 
-  const saveRelated = async (
-    key: 'relatedPositions' | 'relatedScenes' | 'relatedCourses',
-    items: RelatedRef[],
-  ) => {
+  const saveRelated = async (key: RelatedKey, items: AllianceRelatedRef[]) => {
     if (!achievement) return
     setSaving(true)
     try {
@@ -81,47 +106,52 @@ export default function AllianceAchievementDetailPage() {
     }
   }
 
-  const currentItems = (): RelatedRef[] => {
-    const key =
-      pickDialog.kind === 'positions'
-        ? 'relatedPositions'
-        : pickDialog.kind === 'scenes'
-          ? 'relatedScenes'
-          : 'relatedCourses'
-    return (achievement?.[key] as any) || []
+  const currentItems = (): AllianceRelatedRef[] => {
+    const key = KIND_TO_KEY[pickDialog.kind]
+    return normalizeRelatedRefs((achievement?.[key] as any) || [])
   }
 
-  const optionsFor = (kind: 'positions' | 'scenes' | 'courses'): RelatedRef[] => {
-    if (kind === 'positions') return positions
-    // kind 为复数（scenes/courses），achievement.type 枚举为单数（scene/course）
-    const typeKey = kind === 'scenes' ? 'scene' : 'course'
-    const source = achievements.filter((a) => a.type === typeKey)
-    return source.map((a) => ({ id: a.id, name: a.title }))
+  const runSearch = (kind: RelatedKind, kw: string) => {
+    setSearching(true)
+    searchRelated(kind, kw)
+      .then((items) => {
+        const linked = new Set(currentItems().map((x) => x.id))
+        setResults(items.filter((x) => !linked.has(x.id)))
+        setSelected('')
+      })
+      .catch(() => {
+        setResults([])
+        toast({ title: t('搜索失败'), variant: 'destructive' })
+      })
+      .finally(() => setSearching(false))
+  }
+
+  const openPicker = (kind: RelatedKind) => {
+    setPickDialog({ open: true, kind })
+    setKeyword('')
+    setResults([])
+    setSelected('')
+    runSearch(kind, '')
+  }
+
+  const onKeywordChange = (v: string) => {
+    setKeyword(v)
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => runSearch(pickDialog.kind, v), 300)
   }
 
   const addItem = async () => {
-    const opt = optionsFor(pickDialog.kind).find((o) => o.id === pickDialog.selected)
+    const opt = results.find((o) => o.id === selected)
     if (!opt) return
-    const key =
-      pickDialog.kind === 'positions'
-        ? 'relatedPositions'
-        : pickDialog.kind === 'scenes'
-          ? 'relatedScenes'
-          : 'relatedCourses'
-    const items = currentItems()
-    if (items.some((x) => x.id === opt.id)) {
-      setPickDialog({ open: false, kind: pickDialog.kind })
-      return
-    }
-    await saveRelated(key, [...items, opt])
+    const key = KIND_TO_KEY[pickDialog.kind]
+    await saveRelated(key, [...currentItems(), opt])
     setPickDialog({ open: false, kind: pickDialog.kind })
   }
 
-  const removeItem = async (
-    key: 'relatedPositions' | 'relatedScenes' | 'relatedCourses',
-    refId: string,
-  ) => {
-    const items = ((achievement?.[key] as any) || []).filter((x: RelatedRef) => x.id !== refId)
+  const removeItem = async (key: RelatedKey, refId: string) => {
+    const items = normalizeRelatedRefs((achievement?.[key] as any) || []).filter(
+      (x: AllianceRelatedRef) => x.id !== refId,
+    )
     await saveRelated(key, items)
   }
 
@@ -136,20 +166,12 @@ export default function AllianceAchievementDetailPage() {
     )
   }
 
-  const renderRelated = (
-    key: 'relatedPositions' | 'relatedScenes' | 'relatedCourses',
-    kind: 'positions' | 'scenes' | 'courses',
-    label: string,
-  ) => {
-    const items: RelatedRef[] = (achievement?.[key] as any) || []
+  const renderRelated = (key: RelatedKey, kind: RelatedKind, label: string) => {
+    const items = normalizeRelatedRefs((achievement?.[key] as any) || [])
     return (
       <div className="space-y-4">
         <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={() => setPickDialog({ open: true, kind })}
-            disabled={optionsFor(kind).length === 0}
-          >
+          <Button size="sm" onClick={() => openPicker(kind)}>
             <Plus className="h-4 w-4 mr-1" />
             {t('添加{label}', { label })}
           </Button>
@@ -159,20 +181,17 @@ export default function AllianceAchievementDetailPage() {
             {t('暂无关联{label}', { label })}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((ref) => (
-              <div
-                key={ref.id}
-                className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm bg-muted/20"
-              >
-                <span>{ref.name}</span>
+              <RelatedObjectCard key={ref.id} item={ref} kind={kind}>
                 <button
-                  className="text-red-500 hover:text-red-700"
+                  className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                  title={t('取消关联')}
                   onClick={() => removeItem(key, ref.id)}
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
-              </div>
+              </RelatedObjectCard>
             ))}
           </div>
         )}
@@ -285,12 +304,21 @@ export default function AllianceAchievementDetailPage() {
           {(achievement?.attachments || []).length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">{t('暂无佐证材料')}</p>
           ) : (
-            (achievement?.attachments || []).map((f, i) => (
-              <div key={i} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
-                <span className="text-muted-foreground">📄</span>
-                <span>{typeof f === 'string' ? f : (f as any)?.name || t('附件')}</span>
-              </div>
-            ))
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {(achievement?.attachments || []).map((f, i) => {
+                const src = typeof f === 'string' ? f : (f as any)?.url || (f as any)?.name
+                return (
+                  <a key={i} href={src} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={src}
+                      alt={t('佐证材料 {idx}', { idx: i + 1 })}
+                      className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-100 shadow-sm hover:opacity-80 transition-opacity"
+                    />
+                  </a>
+                )
+              })}
+            </div>
           )}
         </div>
       ),
@@ -298,27 +326,24 @@ export default function AllianceAchievementDetailPage() {
     {
       key: 'positions',
       label: t('关联职业岗位'),
-      badge: ((achievement as any)?.relatedPositions || []).length,
+      badge: normalizeRelatedRefs((achievement as any)?.relatedPositions || []).length,
       content: renderRelated('relatedPositions', 'positions', t('岗位')),
     },
     {
       key: 'scenes',
       label: t('关联实践场景'),
-      badge: ((achievement as any)?.relatedScenes || []).length,
+      badge: normalizeRelatedRefs((achievement as any)?.relatedScenes || []).length,
       content: renderRelated('relatedScenes', 'scenes', t('场景')),
     },
     {
       key: 'courses',
       label: t('关联数字课程'),
-      badge: ((achievement as any)?.relatedCourses || []).length,
+      badge: normalizeRelatedRefs((achievement as any)?.relatedCourses || []).length,
       content: renderRelated('relatedCourses', 'courses', t('课程')),
     },
   ]
 
-  const pickLabel = t(
-    pickDialog.kind === 'positions' ? '岗位' : pickDialog.kind === 'scenes' ? '场景' : '课程',
-  )
-  const pickOptions = optionsFor(pickDialog.kind)
+  const pickLabel = t(KIND_TO_LABEL[pickDialog.kind])
 
   return (
     <>
@@ -349,21 +374,40 @@ export default function AllianceAchievementDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('添加关联{pickLabel}', { pickLabel })}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-1">
-            {pickOptions.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setPickDialog({ ...pickDialog, selected: opt.id })}
-                className={`w-full text-left px-3 py-2 rounded border text-sm hover:bg-muted/40 ${pickDialog.selected === opt.id ? 'border-primary bg-primary/5' : ''}`}
-              >
-                {opt.name}
-              </button>
-            ))}
-            {pickOptions.length === 0 && (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-8"
+              placeholder={t('搜索{pickLabel}名称或编码', { pickLabel })}
+              value={keyword}
+              onChange={(e) => onKeywordChange(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-[45vh] overflow-y-auto space-y-1">
+            {searching ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                {t('搜索中...')}
+              </div>
+            ) : results.length === 0 ? (
               <p className="text-center py-6 text-sm text-muted-foreground">
                 {t('暂无可选{pickLabel}', { pickLabel })}
               </p>
+            ) : (
+              results.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSelected(selected === opt.id ? '' : opt.id)}
+                  className={`w-full text-left px-3 py-2 rounded border text-sm hover:bg-muted/40 ${selected === opt.id ? 'border-primary bg-primary/5' : ''}`}
+                >
+                  <span className="font-medium">{opt.name}</span>
+                  {opt.code && (
+                    <span className="ml-2 text-xs text-muted-foreground">{opt.code}</span>
+                  )}
+                </button>
+              ))
             )}
           </div>
           <DialogFooter>
@@ -373,7 +417,7 @@ export default function AllianceAchievementDetailPage() {
             >
               {t('取消')}
             </Button>
-            <Button onClick={addItem} disabled={saving || !pickDialog.selected}>
+            <Button onClick={addItem} disabled={saving || !selected}>
               {saving ? t('保存中...') : t('添加')}
             </Button>
           </DialogFooter>

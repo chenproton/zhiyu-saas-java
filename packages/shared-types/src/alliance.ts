@@ -123,6 +123,14 @@ export interface AllianceProjectMilestone {
   updatedAt: string
 }
 
+/** 成果关联对象（岗位/场景/课程）快照：关联时保存关键展示字段，前台据此渲染对象卡片 */
+export interface AllianceRelatedRef {
+  id: string
+  name: string
+  code?: string
+  coverImage?: string
+}
+
 export interface AllianceAchievement {
   id: string
   tenantId: string
@@ -138,9 +146,9 @@ export interface AllianceAchievement {
   coBuilders?: string[]
   enterpriseIds?: string[]
   projectIds?: string[]
-  relatedPositions?: string[]
-  relatedScenes?: string[]
-  relatedCourses?: string[]
+  relatedPositions?: AllianceRelatedRef[]
+  relatedScenes?: AllianceRelatedRef[]
+  relatedCourses?: AllianceRelatedRef[]
   status: string
   viewCount: number
   secondaryColleges?: string[]
