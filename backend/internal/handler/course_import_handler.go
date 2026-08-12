@@ -403,10 +403,10 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, nr.knowledgeNames), baseKnowledgeIDs)
 	for _, kpID := range knowledgePointIDs {
 		_, _ = q.Exec(ctx, `
-			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
-			VALUES ($1,$2,$3,$4,NOW())
+			INSERT INTO node_knowledge_point_bindings (id, node_id, knowledge_point_id, created_at)
+			VALUES ($1,$2,$3,NOW())
 			ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
-		`, uuid.NewString(), tenantID, nodeID, kpID)
+		`, uuid.NewString(), nodeID, kpID)
 	}
 
 	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, h.Store.Q(), tenantID, nr.resourceNames, userID), baseResourceIDs)
