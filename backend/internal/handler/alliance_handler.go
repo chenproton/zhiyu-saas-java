@@ -976,11 +976,70 @@ func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Re
 // ===== 品牌 =====
 
 func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("brandType") == "employer" {
+		h.listEmployerBrands(w, r)
+		return
+	}
 	allianceList(w, r, h.Store.Q(), h.Store.ListBrandsConfig(), "查询品牌列表失败")
 }
 
+// listEmployerBrands 雇主品牌列表（含引用企业资料，支持名称搜索与分页）。
+func (h *AllianceHandler) listEmployerBrands(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	search := r.URL.Query().Get("search")
+	limit, offset := 20, 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := parseInt(v, 0); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := parseInt(v, 0); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	items, total, err := h.Store.ListEmployerBrands(r.Context(), tenantID, search, limit, offset)
+	if err != nil {
+		respondServerError(w, r, err, "查询品牌列表失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.EmployerBrand]{Items: items, Total: total})
+}
+
 func (h *AllianceHandler) GetBrand(w http.ResponseWriter, r *http.Request) {
-	crudGet(w, r, h.brandCRUD())
+	if !crudCheckPermit(w, r, func(r *http.Request) bool { return canManageAlliance(middleware.CurrentUser(r)) }) {
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	item, err := h.Store.GetBrandByID(r.Context(), id, tenantID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "品牌不存在")
+			return
+		}
+		respondServerError(w, r, err, "查询失败")
+		return
+	}
+	if item.BrandType == "employer" {
+		if eb, err := h.Store.GetEmployerBrandByID(r.Context(), id, tenantID); err == nil {
+			respondJSON(w, http.StatusOK, eb)
+			return
+		}
+	}
+	respondJSON(w, http.StatusOK, item)
 }
 
 func (h *AllianceHandler) CreateBrand(w http.ResponseWriter, r *http.Request) {
@@ -993,6 +1052,96 @@ func (h *AllianceHandler) UpdateBrand(w http.ResponseWriter, r *http.Request) {
 
 func (h *AllianceHandler) DeleteBrand(w http.ResponseWriter, r *http.Request) {
 	crudDelete(w, r, h.brandCRUD())
+}
+
+// ===== 人才画像排名 =====
+
+func (h *AllianceHandler) ListTalentRanking(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"))
+	if err != nil {
+		respondServerError(w, r, err, "查询人才画像排名失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": groups})
+}
+
+func (h *AllianceHandler) ListBrandMajorRankConfigs(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.Store.ListBrandMajorRankConfigs(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询专业排名配置失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// SaveBrandMajorRankConfigs 批量保存专业排名启用配置（路由挂 RequireAllianceManager）。
+func (h *AllianceHandler) SaveBrandMajorRankConfigs(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Configs []domain.BrandMajorRankConfig `json:"configs"`
+	}
+	if !decodeBody(w, r, &body) {
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	if err := h.Store.SaveBrandMajorRankConfigs(r.Context(), tenantID, body.Configs); err != nil {
+		respondServerError(w, r, err, "保存专业排名配置失败")
+		return
+	}
+	items, err := h.Store.ListBrandMajorRankConfigs(r.Context(), tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询专业排名配置失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// ListPublicTalentRanking 公开人才画像排名：仅启用专业，每专业前 rankLimit 名（供前台 landing）。
+func (h *AllianceHandler) ListPublicTalentRanking(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.URL.Query().Get("tenantId")
+	if tenantID == "" {
+		respondError(w, http.StatusBadRequest, "缺少 tenantId")
+		return
+	}
+	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"))
+	if err != nil {
+		respondServerError(w, r, err, "查询人才画像排名失败")
+		return
+	}
+	out := make([]domain.TalentRankMajorGroup, 0, len(groups))
+	for _, g := range groups {
+		if !g.Enabled {
+			continue
+		}
+		if len(g.Students) > g.RankLimit {
+			g.Students = g.Students[:g.RankLimit]
+		}
+		for i := range g.Students {
+			g.Students[i].Positions = nil
+		}
+		out = append(out, g)
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
 // ===== 公开 API（门户前台） =====

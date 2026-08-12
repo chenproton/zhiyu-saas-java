@@ -438,6 +438,8 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Get("/permissions/{id}", h.allianceHandler.GetPermission)
 		r.Get("/dictionaries/{dictType}", h.allianceHandler.ListDictionaryItems)
 		r.Get("/brands", h.allianceHandler.ListBrands)
+		r.Get("/brands/talent-ranking", h.allianceHandler.ListTalentRanking)
+		r.Get("/brands/rank-configs", h.allianceHandler.ListBrandMajorRankConfigs)
 		r.Get("/brands/{id}", h.allianceHandler.GetBrand)
 
 		// 写操作声明化：挂 RequireAllianceManager（教师/学校管理员/平台管理员/系统菜单权限），
@@ -475,6 +477,7 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 			r.Post("/brands", h.allianceHandler.CreateBrand)
 			r.Put("/brands/{id}", h.allianceHandler.UpdateBrand)
 			r.Delete("/brands/{id}", h.allianceHandler.DeleteBrand)
+			r.Put("/brands/rank-configs", h.allianceHandler.SaveBrandMajorRankConfigs)
 		})
 	})
 }
@@ -492,6 +495,7 @@ func registerAlliancePublicRoutes(r chi.Router, h *Handlers) {
 		r.Get("/experts", h.allianceHandler.ListPublicExperts)
 		r.Get("/experts/{id}", h.allianceHandler.GetPublicExpert)
 		r.Get("/brands", h.allianceHandler.ListPublicBrands)
+		r.Get("/brands/talent-ranking", h.allianceHandler.ListPublicTalentRanking)
 		r.Get("/brands/{id}", h.allianceHandler.GetPublicBrand)
 		r.Get("/stats", h.allianceHandler.GetPublicStats)
 	})

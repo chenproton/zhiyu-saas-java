@@ -344,13 +344,12 @@ func (s *AllianceStore) CountMonthlyContentByEnterprise(ctx context.Context, ent
 	return out, rows.Err()
 }
 
-func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.AllianceBrand, error) {
-	return queryOne(ctx, s.q, s.ScanBrandRows, `
-		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-			cover_image, cover_video, description, data,
-			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
-			sort_order, view_count, created_at, updated_at
-		FROM alliance_brands WHERE id = $1 AND is_public = true AND status = 'published'
+func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.EmployerBrand, error) {
+	return queryOne(ctx, s.q, s.ScanEmployerBrandRows, `
+		SELECT `+employerBrandSelect+`
+		FROM alliance_brands b
+		LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id
+		WHERE b.id = $1 AND b.is_public = true AND b.status = 'published'
 	`, id)
 }
 

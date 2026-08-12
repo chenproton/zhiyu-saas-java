@@ -9,6 +9,7 @@ import { allianceBrandApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { EmployerBrandDetail } from '@/components/alliance/employer-brand-detail'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand } from '@/lib/types'
 
@@ -28,6 +29,10 @@ export default function AllianceBrandDetailPage() {
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
   }, [tenantId, id, toast, t])
+
+  if (brand?.brandType === 'employer' && id) {
+    return <EmployerBrandDetail id={id} />
+  }
 
   if (!brand && !loading) {
     return (
