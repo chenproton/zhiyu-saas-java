@@ -201,7 +201,8 @@ func (s *AllianceStore) ScanPublicEnterpriseRows(rows pgx.Rows) ([]domain.Allian
 			&description, &logoURL, &coverImage, &coopTypes,
 			&contactPerson, &contactPhone, &contactEmail, &address, &creditCode,
 			&establishedYear, &employeeCount, &bizPhotos, &qualPhotos, &ipPhotos,
-			&coverPhotos, &e.EnablePublic, &e.CreatedAt, &e.UpdatedAt, &rating); err != nil {
+			&coverPhotos, &e.EnablePublic, &e.CreatedAt, &e.UpdatedAt, &rating,
+			&e.ProjectCount, &e.AgreementCount, &e.AchievementCount); err != nil {
 			return nil, err
 		}
 		e.Industry = industry
@@ -235,7 +236,13 @@ func (s *AllianceStore) ListPublicEnterprises(ctx context.Context, tenantID stri
 	}
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanPublicEnterpriseRows, `
-			SELECT `+publicEnterpriseColumns+`
+			SELECT `+publicEnterpriseColumns+`,
+				(SELECT COUNT(*) FROM alliance_projects p
+				 WHERE p.tenant_id = $1 AND p.is_public = true AND p.enterprise_ids @> jsonb_build_array(pe.id)) AS project_count,
+				(SELECT COUNT(*) FROM alliance_agreements a
+				 WHERE a.tenant_id = $1 AND a.enterprise_ids @> jsonb_build_array(pe.id)) AS agreement_count,
+				(SELECT COUNT(*) FROM alliance_achievements ac
+				 WHERE ac.tenant_id = $1 AND ac.is_public = true AND ac.enterprise_ids @> jsonb_build_array(pe.id)) AS achievement_count
 			FROM partner_enterprises pe
 			JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated'
 			WHERE pe.enable_public = true

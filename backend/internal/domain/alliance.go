@@ -50,9 +50,13 @@ type AllianceEnterprise struct {
 	CoverPhotos                json.RawMessage `json:"coverPhotos,omitempty"`
 	EnablePublic               bool            `json:"enablePublic"`
 	// 学校侧评级（link.rating）；仅租户范围的公开列表返回，前台评级筛选用
-	Rating    *string   `json:"rating,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Rating *string `json:"rating,omitempty"`
+	// 门户前台公开列表返回：该校与该企业的合作内容统计（仅 ListPublicEnterprises 带 tenantId 分支返回）
+	ProjectCount     int       `json:"projectCount,omitempty"`
+	AgreementCount   int       `json:"agreementCount,omitempty"`
+	AchievementCount int       `json:"achievementCount,omitempty"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
 }
 
 // ===== 学校-企业合作关联（alliance_enterprise_links，tenant_id = 学校租户） =====

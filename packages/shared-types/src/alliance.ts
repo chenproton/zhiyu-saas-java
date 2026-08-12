@@ -47,6 +47,12 @@ export interface AllianceEnterprise {
   isPublic: boolean
   /** 企业侧主体字段：企业"愿意对外展示"开关（企业服务台维护，学校只读） */
   enablePublic?: boolean
+  /** 门户前台公开列表返回：该校与该企业的合作项目数 */
+  projectCount?: number
+  /** 门户前台公开列表返回：该校与该企业的合作协议数 */
+  agreementCount?: number
+  /** 门户前台公开列表返回：该校与该企业的合作成果数 */
+  achievementCount?: number
   createdBy?: string
   createdAt: string
   updatedAt: string

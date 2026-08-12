@@ -106,21 +106,26 @@ export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise 
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-4 min-h-[2.6em]">
             {enterprise.description || t('暂无企业简介')}
           </p>
-          {enterprise.rating ? (
-            <Badge
-              variant="outline"
-              className="self-start text-xs px-3 py-1 rounded-full border-slate-200 text-slate-600"
-            >
-              {allianceLabel('enterpriseRating', enterprise.rating)}
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="self-start text-xs px-3 py-1 rounded-full border-slate-200 text-slate-600"
-            >
-              {allianceLabel('enterpriseStatus', enterprise.status)}
-            </Badge>
-          )}
+          <div className="mt-auto grid grid-cols-3 gap-2 pt-3.5 border-t border-slate-100">
+            <div className="text-center min-w-0">
+              <p className="text-base font-bold text-slate-800 leading-tight">
+                {enterprise.projectCount ?? 0}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t('合作项目')}</p>
+            </div>
+            <div className="text-center min-w-0">
+              <p className="text-base font-bold text-slate-800 leading-tight">
+                {enterprise.agreementCount ?? 0}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t('合作协议')}</p>
+            </div>
+            <div className="text-center min-w-0">
+              <p className="text-base font-bold text-slate-800 leading-tight">
+                {enterprise.achievementCount ?? 0}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t('合作成果')}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </Link>
