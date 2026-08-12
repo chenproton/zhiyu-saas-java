@@ -196,7 +196,9 @@ func (s *PartnerCoBuildService) EditSourcePosition(ctx context.Context, partnerT
 	return s.st.Positions().Get(ctx, draftID)
 }
 
-// CreatePosition 在合作学校租户创建共建岗位（draft + enterprise 来源标记）。
+// CreatePosition 在合作学校租户创建共建岗位（draft + enterprise 来源标记），
+// 同事务自动关联授权给当前企业：岗位数据落学校 /job/positions，
+// 授权记录与学校手动授权资源统一处理（学校权限管理页可见、可管理）。
 func (s *PartnerCoBuildService) CreatePosition(ctx context.Context, partnerTenantID, userID, schoolTenantID string, p *store.PositionCreateParams) (*domain.CareerPosition, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
@@ -209,7 +211,25 @@ func (s *PartnerCoBuildService) CreatePosition(ctx context.Context, partnerTenan
 	p.CreatedBy = userID
 	p.SourceType = "enterprise"
 	p.SourceEnterpriseID = &ent.ID
-	return s.positions.Create(ctx, schoolTenantID, p)
+	// 与 PositionService.Create 的编码/创建步骤保持一致（事务内追加授权记录，
+	// 保证"岗位可见 + 自动授权"原子生效）
+	var pos *domain.CareerPosition
+	err = s.WithTx(ctx, func(txStore *store.Store) error {
+		code, err := store.GenerateUniqueEntityCode(ctx, txStore.Q(), "GW", "career_positions", schoolTenantID)
+		if err != nil {
+			return err
+		}
+		p.Code = code
+		pos, err = txStore.Positions().Create(ctx, txStore.Q(), schoolTenantID, p)
+		if err != nil {
+			return err
+		}
+		return txStore.AllianceGrants().AddResourceID(ctx, schoolTenantID, ent.ID, "position", pos.ID, userID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pos, nil
 }
 
 // checkPositionWritable 共建岗位写操作公共校验：归属本企业 + 状态可写 + 学校 link 仍 active。
@@ -464,7 +484,8 @@ func (s *PartnerCoBuildService) EditSourceScenario(ctx context.Context, partnerT
 	return s.st.Scenarios().Get(ctx, draftID)
 }
 
-// CreateScenario 在合作学校租户创建共建场景（draft + enterprise 来源标记）。
+// CreateScenario 在合作学校租户创建共建场景（draft + enterprise 来源标记），
+// 同事务自动关联授权给当前企业（与岗位共建一致，学校权限管理页可见、可管理）。
 func (s *PartnerCoBuildService) CreateScenario(ctx context.Context, partnerTenantID, userID, schoolTenantID string, p *store.ScenarioCreateParams) (*domain.Scenario, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
@@ -473,15 +494,26 @@ func (s *PartnerCoBuildService) CreateScenario(ctx context.Context, partnerTenan
 	if err := s.requireActiveLink(ctx, ent.ID, schoolTenantID); err != nil {
 		return nil, err
 	}
-	code, err := s.GenerateEntityCode(ctx, "CJ", "scenarios", schoolTenantID)
-	if err != nil {
-		return nil, err
-	}
-	p.Code = code
 	p.CreatorID = userID
 	p.SourceType = "enterprise"
 	p.SourceEnterpriseID = &ent.ID
-	return s.scenarios.Create(ctx, schoolTenantID, p)
+	var sc *domain.Scenario
+	err = s.WithTx(ctx, func(txStore *store.Store) error {
+		code, err := store.GenerateUniqueEntityCode(ctx, txStore.Q(), "CJ", "scenarios", schoolTenantID)
+		if err != nil {
+			return err
+		}
+		p.Code = code
+		sc, err = txStore.Scenarios().Create(ctx, schoolTenantID, p)
+		if err != nil {
+			return err
+		}
+		return txStore.AllianceGrants().AddResourceID(ctx, schoolTenantID, ent.ID, "scene", sc.ID, userID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sc, nil
 }
 
 // checkScenarioWritable 共建场景写操作公共校验：归属本企业 + 状态可写 + 学校 link 仍 active。

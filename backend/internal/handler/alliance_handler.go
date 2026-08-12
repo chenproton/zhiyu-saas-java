@@ -338,7 +338,8 @@ func (h *AllianceHandler) SaveGrants(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "企业未引入或不存在")
 		return
 	}
-	if err := h.Grants.Upsert(r.Context(), tenantID, req.EnterpriseID, req.ResourceType, req.ResourceIDs, claims.UserID); err != nil {
+	// 保存时自动并入该企业共建资源（新建共建资源已自动授权，此处防止整组保存误删）
+	if err := h.Grants.UpsertMergingCoBuilt(r.Context(), tenantID, req.EnterpriseID, req.ResourceType, req.ResourceIDs, claims.UserID); err != nil {
 		respondServerError(w, r, err, "保存授权失败")
 		return
 	}

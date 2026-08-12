@@ -330,3 +330,138 @@ func TestSourceEdit_DraftAndMerge(t *testing.T) {
 		t.Fatalf("draft 应已删除")
 	}
 }
+
+// seedCoBuiltPositionForGrant 预置企业共建岗位（source_enterprise_id 标记，指定状态）。
+func seedCoBuiltPositionForGrant(t *testing.T, env *testhelper.TestEnv, enterpriseID, name, status string) string {
+	t.Helper()
+	id := uuid.NewString()
+	if _, err := env.DB.Exec(context.Background(), `
+		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, source_type, source_enterprise_id, version, created_by)
+		VALUES ($1, $2, $3, $4, 'enterprise', $5, 'enterprise', $6, 'V1.0', $7)
+	`, id, testhelper.TestTenantID, "gw-"+uuid.NewString()[:8], name, status, enterpriseID, testhelper.TestOperatorID); err != nil {
+		t.Fatalf("预置共建岗位: %v", err)
+	}
+	return id
+}
+
+// grantedSetByType 直查某学校-企业某类型授权 id 集合。
+func grantedSetByType(t *testing.T, env *testhelper.TestEnv, tenantID, enterpriseID, resourceType string) map[string]bool {
+	t.Helper()
+	var ids []string
+	if err := env.DB.QueryRow(context.Background(), `
+		SELECT resource_ids::text[] FROM alliance_resource_grants
+		WHERE tenant_id = $1 AND enterprise_id = $2 AND resource_type = $3
+	`, tenantID, enterpriseID, resourceType).Scan(&ids); err != nil {
+		t.Fatalf("查询授权集合: %v", err)
+	}
+	got := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		got[id] = true
+	}
+	return got
+}
+
+// TestGrant_SaveMergesCoBuilt 学校保存授权时自动并入企业共建资源：
+// 共建岗位始终处于授权状态（不被整组覆盖误删），归档共建资源不并入。
+func TestGrant_SaveMergesCoBuilt(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	// 注册企业 A + active link
+	authH := newPartnerAuthHandler(env)
+	r0 := chi.NewRouter()
+	r0.Post("/auth/partner/register", authH.PartnerRegister)
+	suffix := uuid.NewString()[:8]
+	w := doNoAuthJSON(r0, http.MethodPost, "/auth/partner/register", map[string]interface{}{
+		"enterpriseName": "合并授权企业-" + suffix,
+		"username":       "merge_grant_" + suffix,
+		"password":       "abc12345",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("注册企业失败: %d %s", w.Code, w.Body.String())
+	}
+	var reg partnerLoginResp
+	if err := json.Unmarshal(w.Body.Bytes(), &reg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	ent, err := store.New(env.DB).Alliance().GetEnterpriseByTenant(ctx, *reg.User.TenantID)
+	if err != nil {
+		t.Fatalf("查询企业主体: %v", err)
+	}
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_enterprise_links (id, tenant_id, enterprise_id, status) VALUES ($1,$2,$3,'active')`,
+		uuid.NewString(), testhelper.TestTenantID, ent.ID); err != nil {
+		t.Fatalf("预置 link 失败: %v", err)
+	}
+
+	// 共建岗位（已发布 + 已归档各一）+ 学校自建岗位
+	coBuiltID := seedCoBuiltPositionForGrant(t, env, ent.ID, "共建岗位-"+suffix, "published")
+	defer env.DB.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, coBuiltID)
+	archivedID := seedCoBuiltPositionForGrant(t, env, ent.ID, "归档共建岗位-"+suffix, "archived")
+	defer env.DB.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, archivedID)
+	schoolPosID := seedSchoolPosition(t, env, "学校自建岗位-"+suffix)
+	defer env.DB.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, schoolPosID)
+
+	allianceH := &handler.AllianceHandler{Store: store.New(env.DB).Alliance(), Links: store.New(env.DB).AllianceEnterpriseLinks(), Grants: store.New(env.DB).AllianceGrants()}
+	rAlliance := chi.NewRouter()
+	rAlliance.Put("/alliance/grants", allianceH.SaveGrants)
+	teacherClaims := claimsWithRoles(uuid.NewString(), domain.RoleTeacher)
+
+	// 只勾选学校自建岗位保存 → 共建岗位自动并入，归档的不并入
+	wa := doWithClaims(rAlliance, http.MethodPut, "/alliance/grants", map[string]interface{}{
+		"enterpriseId": ent.ID,
+		"resourceType": "position",
+		"resourceIds":  []string{schoolPosID},
+	}, teacherClaims)
+	if wa.Code != http.StatusOK {
+		t.Fatalf("保存授权失败: %d %s", wa.Code, wa.Body.String())
+	}
+	got := grantedSetByType(t, env, testhelper.TestTenantID, ent.ID, "position")
+	if len(got) != 2 || !got[schoolPosID] || !got[coBuiltID] {
+		t.Fatalf("应并入非归档共建岗位并保留学校自建: %v", got)
+	}
+	if got[archivedID] {
+		t.Fatalf("归档共建岗位不应并入: %v", got)
+	}
+
+	// 清空授权保存 → 共建岗位仍保留
+	wb := doWithClaims(rAlliance, http.MethodPut, "/alliance/grants", map[string]interface{}{
+		"enterpriseId": ent.ID,
+		"resourceType": "position",
+		"resourceIds":  []string{},
+	}, teacherClaims)
+	if wb.Code != http.StatusOK {
+		t.Fatalf("清空授权失败: %d %s", wb.Code, wb.Body.String())
+	}
+	got = grantedSetByType(t, env, testhelper.TestTenantID, ent.ID, "position")
+	if len(got) != 1 || !got[coBuiltID] {
+		t.Fatalf("清空后共建岗位应保留: %v", got)
+	}
+
+	// 场景类型同样并入
+	sceneID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO scenarios (id, tenant_id, code, name, status, source_type, source_enterprise_id, version, creator_id)
+		VALUES ($1, $2, $3, $4, 'draft', 'enterprise', $5, 'V1.0', $6)
+	`, sceneID, testhelper.TestTenantID, "cj-"+suffix, "共建场景-"+suffix, ent.ID, testhelper.TestOperatorID); err != nil {
+		t.Fatalf("预置共建场景: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, sceneID)
+	wc := doWithClaims(rAlliance, http.MethodPut, "/alliance/grants", map[string]interface{}{
+		"enterpriseId": ent.ID,
+		"resourceType": "scene",
+		"resourceIds":  []string{},
+	}, teacherClaims)
+	if wc.Code != http.StatusOK {
+		t.Fatalf("保存场景授权失败: %d %s", wc.Code, wc.Body.String())
+	}
+	got = grantedSetByType(t, env, testhelper.TestTenantID, ent.ID, "scene")
+	if len(got) != 1 || !got[sceneID] {
+		t.Fatalf("场景共建资源应并入: %v", got)
+	}
+
+	// 清理授权记录（企业租户删除前）
+	env.DB.Exec(ctx, `DELETE FROM alliance_resource_grants WHERE tenant_id = $1`, testhelper.TestTenantID)
+}

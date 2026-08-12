@@ -203,6 +203,9 @@ func (s *PositionStore) Delete(ctx context.Context, id string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM certification_rules WHERE career_position_id = $1`, id); err != nil {
 			return fmt.Errorf("cleanup certification rules: %w", err)
 		}
+		if err := NewAllianceGrantStore(tx).RemoveResourceID(ctx, "position", id); err != nil {
+			return fmt.Errorf("cleanup alliance grants: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("delete position: %w", err)
 		}

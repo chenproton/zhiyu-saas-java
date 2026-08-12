@@ -144,6 +144,9 @@ func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
 		if err := rows.Err(); err != nil {
 			return err
 		}
+		if err := NewAllianceGrantStore(tx).RemoveResourceID(ctx, "scene", id); err != nil {
+			return fmt.Errorf("cleanup alliance grants: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, id); err != nil {
 			return err
 		}

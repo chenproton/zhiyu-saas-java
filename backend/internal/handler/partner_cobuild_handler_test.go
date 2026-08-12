@@ -781,3 +781,83 @@ func TestPartnerCoBuild_GrantedPositionSubResources(t *testing.T) {
 		t.Fatalf("授权岗位职责列表不符: total=%d body=%s", total, w.Body.String())
 	}
 }
+
+// assertGranted 断言学校-企业某类型授权记录是否包含指定资源 id。
+func assertGranted(t *testing.T, env *testhelper.TestEnv, schoolTenantID, enterpriseID, resourceType, resourceID string, want bool) {
+	t.Helper()
+	var exists bool
+	if err := env.DB.QueryRow(context.Background(), `
+		SELECT EXISTS(
+			SELECT 1 FROM alliance_resource_grants
+			WHERE tenant_id = $1 AND enterprise_id = $2 AND resource_type = $3 AND $4::uuid = ANY(resource_ids)
+		)`, schoolTenantID, enterpriseID, resourceType, resourceID).Scan(&exists); err != nil {
+		t.Fatalf("查询授权记录失败: %v", err)
+	}
+	if exists != want {
+		t.Fatalf("授权记录存在性应为 %v, got %v (type=%s id=%s)", want, exists, resourceType, resourceID)
+	}
+}
+
+// TestPartnerCoBuild_AutoGrantLifecycle 新建共建岗位/场景自动关联授权给当前企业
+// （与学校授权资源统一处理），删除后授权记录同步清理。
+func TestPartnerCoBuild_AutoGrantLifecycle(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	r, claims, reg, enterpriseID := setupCoBuildRouter(t, env, "自动授权测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "自动授权学校-"+suffix)
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "active")
+	t.Cleanup(func() { cleanupCoBuildRows(env, schoolID) })
+
+	// 新建岗位 → 自动授权
+	w := doWithClaims(r, http.MethodPost, "/partner/co-build/positions", map[string]interface{}{
+		"schoolTenantId": schoolID,
+		"name":           "自动授权岗位-" + suffix,
+		"positionType":   "enterprise",
+	}, claims)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var pos domain.CareerPosition
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	assertGranted(t, env, schoolID, enterpriseID, "position", pos.ID, true)
+
+	// 新建场景 → 自动授权
+	ws := doWithClaims(r, http.MethodPost, "/partner/co-build/scenes", map[string]interface{}{
+		"schoolTenantId": schoolID,
+		"name":           "自动授权场景-" + suffix,
+	}, claims)
+	if ws.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", ws.Code, ws.Body.String())
+	}
+	var sc domain.Scenario
+	if err := json.Unmarshal(ws.Body.Bytes(), &sc); err != nil {
+		t.Fatalf("unmarshal scene: %v", err)
+	}
+	assertGranted(t, env, schoolID, enterpriseID, "scene", sc.ID, true)
+
+	// 删除岗位 → 授权记录同步清理
+	wd := doWithClaims(r, http.MethodDelete, "/partner/co-build/positions/"+pos.ID, nil, claims)
+	if wd.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", wd.Code, wd.Body.String())
+	}
+	assertGranted(t, env, schoolID, enterpriseID, "position", pos.ID, false)
+
+	// 删除场景 → 授权记录同步清理
+	wsd := doWithClaims(r, http.MethodDelete, "/partner/co-build/scenes/"+sc.ID, nil, claims)
+	if wsd.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", wsd.Code, wsd.Body.String())
+	}
+	assertGranted(t, env, schoolID, enterpriseID, "scene", sc.ID, false)
+
+	// 其他企业不应拿到本企业共建资源的授权记录
+	if _, err := env.DB.Exec(ctx, `DELETE FROM alliance_resource_grants WHERE tenant_id = $1`, schoolID); err != nil {
+		t.Fatalf("清理授权记录: %v", err)
+	}
+}

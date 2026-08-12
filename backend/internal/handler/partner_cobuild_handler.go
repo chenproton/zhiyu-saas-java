@@ -452,6 +452,10 @@ func (h *PartnerCoBuildHandler) CreateScenario(w http.ResponseWriter, r *http.Re
 	if req.Version == "" {
 		req.Version = "V1.0"
 	}
+	// 快速创建未填难度：场景 difficulty 检查约束要求 1-5，默认 1（草稿由编辑页完善）
+	if req.Difficulty == 0 {
+		req.Difficulty = 1
+	}
 	sc, err := h.Service.CreateScenario(r.Context(), partnerTenantID, userID, req.SchoolTenantID, &store.ScenarioCreateParams{
 		Name:             req.Name,
 		CoverImage:       req.CoverImage,
