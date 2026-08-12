@@ -9,21 +9,20 @@
 // - 删除 portal 专属：批次选择器、共建人 UserSelector、预览跳转（/job/landing）、收藏、发布/归档
 // - 行业/专业字典、证书库、能力点编辑删除均无 partner 端点：StepBasicInfo 传 showIndustryMajor/certificateLibraryEnabled=false，
 //   StepAbilityModeling 注入 abilityPoolSource（学校能力只读）
-// - 按 status 控制：draft/rejected 可编辑+提交审核，pending 可编辑+撤回，approved/published/archived 整页只读
+// - 授权即可编辑：本企业共建或学校授权资源均可编辑，保存后状态回写草稿，发布由学校端进行
 import { Suspense, useState, useEffect, use, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
-import { Loader2, Send, Undo2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
 import { StepAbilityModeling } from '@/components/job/position-builder/step-ability-modeling'
 import { Step3ResultTable } from '@/components/job/position-builder/ai-assisted-2/step3-result-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import type { Position } from '@/lib/types/job-source'
 import { partnerCobuildPositionApi, partnerCobuildSchoolApi, fileApi } from '@/lib/api'
-import type { CoBuildPosition, CoBuildStatus } from '@/lib/api'
+import type { CoBuildPosition } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertApiResponsibilityToLocal,
@@ -35,12 +34,8 @@ import {
 import { toast } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
-
-// 可编辑状态：draft/rejected 可编辑+提交审核，pending 可编辑+撤回；其余整页只读（后端同样强制）
-const EDITABLE_STATUSES: CoBuildStatus[] = ['draft', 'pending', 'rejected']
 
 // 共建岗位主表：get 端点返回岗位主表字段（tenantId 为学校租户）；详情子表走 list* 端点单独加载
 type CoBuildPositionDetail = CoBuildPosition & { tenantId?: string }
@@ -61,18 +56,14 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
   const [loading, setLoading] = useState(true)
   const [activeStep, setActiveStep] = useState('basic')
   const [isSaving, setIsSaving] = useState(false)
-  const [acting, setActing] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
   const [detailsLoaded, setDetailsLoaded] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [schoolTenantId, setSchoolTenantId] = useState('')
   const [schoolName, setSchoolName] = useState('')
   const [coverUploading, setCoverUploading] = useState(false)
-  const [confirmAction, setConfirmAction] = useState<'submit' | 'withdraw' | null>(null)
   const hasSavedRef = useRef(false)
   const isNewPosition = searchParams.get('new') === 'true'
-
-  const readOnly = !!position && !EDITABLE_STATUSES.includes(position.status as CoBuildStatus)
 
   // 能力点库数据源：学校能力只读列表（partner token 调不通 portal 公共能力库）
   const abilityPoolSource = useMemo(
@@ -237,10 +228,8 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
         abilityDomains: position.abilityDomains,
       })
       hasSavedRef.current = true
-      if (res.position?.status && res.position.status !== position.status) {
-        setPosition((prev) =>
-          prev ? { ...prev, status: res.position.status as Position['status'] } : prev,
-        )
+      if (res.status && res.status !== position.status) {
+        setPosition((prev) => (prev ? { ...prev, status: res.status as Position['status'] } : prev))
       }
       toast({ title: t('已保存') })
       return true
@@ -257,27 +246,6 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
     const ok = await handleSave()
     if (ok) {
       router.push('/partner/co-build/positions')
-    }
-  }
-
-  const handleTransition = async () => {
-    if (!confirmAction || !position) return
-    setActing(true)
-    try {
-      const updated =
-        confirmAction === 'submit'
-          ? await partnerCobuildPositionApi.submit(position.id)
-          : await partnerCobuildPositionApi.withdraw(position.id)
-      setPosition((prev) =>
-        prev ? { ...prev, status: (updated.status || prev.status) as Position['status'] } : prev,
-      )
-      toast({ title: confirmAction === 'submit' ? t('已提交审核') : t('已撤回') })
-      setConfirmAction(null)
-    } catch (err: any) {
-      reportError(err, confirmAction === 'submit' ? '提交审核' : '撤回审核')
-      toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
-    } finally {
-      setActing(false)
     }
   }
 
@@ -337,20 +305,20 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
       }}
       step={currentStepIndex + 1}
       stepLabel={currentStep.label}
-      onSaveDraft={readOnly ? undefined : handleSave}
+      onSaveDraft={handleSave}
       isSaving={isSaving}
       saveText={t('保存')}
       // 详情子表未加载完禁止保存：避免刷新后在空详情状态下 save-full 清空已保存数据
       saveDisabled={!detailsLoaded}
-      onPrev={!readOnly && canGoPrev ? handlePrev : undefined}
-      onNext={!readOnly && canGoNext ? handleNext : undefined}
-      onSubmit={!readOnly && !canGoNext ? handleFinish : undefined}
+      onPrev={canGoPrev ? handlePrev : undefined}
+      onNext={canGoNext ? handleNext : undefined}
+      onSubmit={!canGoNext ? handleFinish : undefined}
       submitText={t('完成配置')}
       submitDisabled={!detailsLoaded}
       loadingText={detailsLoading ? t('加载详情中') : undefined}
       title={position.name}
     >
-      <fieldset disabled={readOnly} className="contents">
+      <fieldset className="contents">
         {activeStep === 'basic' ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -398,29 +366,6 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
                     <Label className="text-gray-500 text-xs">{t('当前版本号')}</Label>
                     <p className="font-medium text-gray-800 mt-1">{position.version}</p>
                   </div>
-                  {(position.status === 'draft' || position.status === 'rejected') && (
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      disabled={acting}
-                      onClick={() => setConfirmAction('submit')}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {t('提交审核')}
-                    </Button>
-                  )}
-                  {position.status === 'pending' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      disabled={acting}
-                      onClick={() => setConfirmAction('withdraw')}
-                    >
-                      <Undo2 className="mr-2 h-4 w-4" />
-                      {t('撤回')}
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
             </div>
@@ -440,20 +385,6 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
           </div>
         )}
       </fieldset>
-
-      <ConfirmDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => !open && setConfirmAction(null)}
-        title={confirmAction === 'submit' ? t('提交审核') : t('撤回审核')}
-        description={
-          confirmAction === 'submit'
-            ? t('提交后由合作学校审批，审批期间可撤回。确认提交？')
-            : t('撤回后岗位将退回草稿状态，可继续编辑。确认撤回？')
-        }
-        confirmText={confirmAction === 'submit' ? t('确认提交') : t('确认撤回')}
-        cancelText={t('取消')}
-        onConfirm={handleTransition}
-      />
     </EditorShell>
   )
 }

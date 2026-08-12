@@ -26,11 +26,6 @@ export const partnerCobuildPositionApi = {
       `/partner/co-build/positions${buildQuery(params || {})}`,
     ),
   get: (id: string) => partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}`),
-  // 学校授权编辑：复制学校自建岗位为 draft 副本（幂等，返回副本）
-  editSource: (id: string) =>
-    partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}/edit`, {
-      method: 'POST',
-    }),
   create: (req: CoBuildPositionCreateRequest) =>
     partnerRequest<CoBuildPosition>('/partner/co-build/positions', {
       method: 'POST',
@@ -43,16 +38,9 @@ export const partnerCobuildPositionApi = {
     }),
   delete: (id: string) =>
     partnerRequest<{ id: string }>(`/partner/co-build/positions/${id}`, { method: 'DELETE' }),
-  submit: (id: string) =>
-    partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}/submit`, {
-      method: 'POST',
-    }),
-  withdraw: (id: string) =>
-    partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}/withdraw`, {
-      method: 'POST',
-    }),
+  // 保存走 save-full：授权资源也可保存，保存后状态回写草稿，发布由学校端进行
   saveFull: (id: string, req: CoBuildPositionSaveFullRequest) =>
-    partnerRequest<{ position: CoBuildPosition }>(`/partner/co-build/positions/${id}/save-full`, {
+    partnerRequest<CoBuildPosition>(`/partner/co-build/positions/${id}/save-full`, {
       method: 'POST',
       body: JSON.stringify(req),
     }),
@@ -82,16 +70,12 @@ export const partnerCobuildScenarioApi = {
       `/partner/co-build/scenes${buildQuery(params || {})}`,
     ),
   get: (id: string) => partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}`),
-  // 学校授权编辑：复制学校自建场景为 draft 副本（幂等，返回副本）
-  editSource: (id: string) =>
-    partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}/edit`, {
-      method: 'POST',
-    }),
   create: (req: CoBuildScenarioCreateRequest) =>
     partnerRequest<CoBuildScenario>('/partner/co-build/scenes', {
       method: 'POST',
       body: JSON.stringify(req),
     }),
+  // 场景保存走 update：授权资源也可保存，保存后状态回写草稿，发布由学校端进行
   update: (id: string, req: Partial<CoBuildScenario>) =>
     partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}`, {
       method: 'PUT',
@@ -99,10 +83,6 @@ export const partnerCobuildScenarioApi = {
     }),
   delete: (id: string) =>
     partnerRequest<{ id: string }>(`/partner/co-build/scenes/${id}`, { method: 'DELETE' }),
-  submit: (id: string) =>
-    partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}/submit`, { method: 'POST' }),
-  withdraw: (id: string) =>
-    partnerRequest<CoBuildScenario>(`/partner/co-build/scenes/${id}/withdraw`, { method: 'POST' }),
   listTasks: (scenarioId: string) =>
     partnerRequest<ListResponse<CoBuildTask>>(`/partner/co-build/scenes/${scenarioId}/tasks`),
   createTask: (scenarioId: string, req: Partial<CoBuildTask>) =>

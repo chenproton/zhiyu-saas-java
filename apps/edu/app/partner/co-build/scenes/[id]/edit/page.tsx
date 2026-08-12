@@ -7,12 +7,11 @@
 // - 删除 portal 专属：所属批次 sceneBatchApi、共建人 UserSelector、预览跳转（/scene/landing）
 // - 行业/专业无 partner 字典端点：改为只读展示已有值（更新时不携带对应字段，后端保留原值）
 // - 目标岗位收窄为本企业共建岗位（partnerCobuildPositionApi.list({ schoolTenantId })）
-// - 按 status 控制：draft/rejected 可编辑+提交审核，pending 可编辑+撤回，approved/published/archived 整页只读
-import { Star, X, Send, Undo2 } from 'lucide-react'
+// - 授权即可编辑：本企业共建或学校授权场景均可编辑，保存后状态回写草稿，发布由学校端进行
+import { Star, X } from 'lucide-react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
@@ -31,16 +30,12 @@ import {
   partnerCobuildPositionApi,
   fileApi,
 } from '@/lib/api'
-import type { CoBuildPosition, CoBuildScenario, CoBuildStatus } from '@/lib/api'
+import type { CoBuildPosition, CoBuildScenario } from '@/lib/api'
 import { toast } from '@zhiyu/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { EditorShell } from '@/components/shared/editor-shell'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
-
-// 可编辑状态：draft/rejected 可编辑+提交审核，pending 可编辑+撤回；其余整页只读（后端同样强制）
-const EDITABLE_STATUSES: CoBuildStatus[] = ['draft', 'pending', 'rejected']
 
 // get 端点当前只返回场景主表字段（tenantId 为学校租户）
 type CoBuildScenarioDetail = CoBuildScenario & { tenantId?: string }
@@ -57,7 +52,6 @@ export default function PartnerScenarioEditPage() {
   const [coBuildPositions, setCoBuildPositions] = useState<CoBuildPosition[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [acting, setActing] = useState(false)
 
   const [scenarioName, setScenarioName] = useState('')
   const [positionId, setPositionId] = useState('')
@@ -70,10 +64,6 @@ export default function PartnerScenarioEditPage() {
   const [scenarioStatus, setScenarioStatus] = useState<string>('draft')
   const [industryNames, setIndustryNames] = useState<string[]>([])
   const [professionNames, setProfessionNames] = useState<string[]>([])
-
-  const [confirmAction, setConfirmAction] = useState<'submit' | 'withdraw' | null>(null)
-
-  const readOnly = !EDITABLE_STATUSES.includes(scenarioStatus as CoBuildStatus)
 
   useEffect(() => {
     const loadData = async () => {
@@ -161,25 +151,6 @@ export default function PartnerScenarioEditPage() {
     }
   }
 
-  const handleTransition = async () => {
-    if (!confirmAction) return
-    setActing(true)
-    try {
-      const updated =
-        confirmAction === 'submit'
-          ? await partnerCobuildScenarioApi.submit(scenarioId)
-          : await partnerCobuildScenarioApi.withdraw(scenarioId)
-      setScenarioStatus(updated.status || scenarioStatus)
-      toast({ title: confirmAction === 'submit' ? t('已提交审核') : t('已撤回') })
-      setConfirmAction(null)
-    } catch (err: any) {
-      reportError(err, confirmAction === 'submit' ? '提交审核' : '撤回审核')
-      toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
-    } finally {
-      setActing(false)
-    }
-  }
-
   const handleCoverUpload = async (file: File) => {
     setCoverUploading(true)
     try {
@@ -210,11 +181,11 @@ export default function PartnerScenarioEditPage() {
       }}
       step={1}
       stepLabel={t('基础信息编辑')}
-      onSaveDraft={readOnly ? undefined : handleSaveDraft}
+      onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
       saveText={t('保存')}
       saveDisabled={!scenarioName}
-      onNext={readOnly ? undefined : handleProceed}
+      onNext={handleProceed}
       nextText={isSaving ? t('保存中...') : t('下一步')}
       nextDisabled={!scenarioName}
       title={t('编辑实践场景')}
@@ -225,7 +196,7 @@ export default function PartnerScenarioEditPage() {
           <p className="text-gray-500">{t('加载中...')}</p>
         </div>
       ) : (
-        <fieldset disabled={readOnly} className="contents">
+        <fieldset className="contents">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="space-y-6 lg:col-span-2">
               <Card>
@@ -367,49 +338,12 @@ export default function PartnerScenarioEditPage() {
                     <p className="font-medium text-gray-800 mt-1">{version}</p>
                   </div>
 
-                  {(scenarioStatus === 'draft' || scenarioStatus === 'rejected') && (
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      disabled={acting}
-                      onClick={() => setConfirmAction('submit')}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {t('提交审核')}
-                    </Button>
-                  )}
-                  {scenarioStatus === 'pending' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      disabled={acting}
-                      onClick={() => setConfirmAction('withdraw')}
-                    >
-                      <Undo2 className="mr-2 h-4 w-4" />
-                      {t('撤回')}
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
             </div>
           </div>
         </fieldset>
       )}
-
-      <ConfirmDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => !open && setConfirmAction(null)}
-        title={confirmAction === 'submit' ? t('提交审核') : t('撤回审核')}
-        description={
-          confirmAction === 'submit'
-            ? t('提交后由合作学校审批，审批期间可撤回。确认提交？')
-            : t('撤回后场景将退回草稿状态，可继续编辑。确认撤回？')
-        }
-        confirmText={confirmAction === 'submit' ? t('确认提交') : t('确认撤回')}
-        cancelText={t('取消')}
-        onConfirm={handleTransition}
-      />
     </EditorShell>
   )
 }

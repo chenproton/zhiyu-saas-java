@@ -17,8 +17,6 @@ import {
   Plus,
   Star,
   Trash2,
-  Send,
-  Undo2,
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useRef, useCallback, useEffect } from 'react'
@@ -50,7 +48,7 @@ import {
   partnerCobuildTaskApi,
   partnerCobuildSchoolApi,
 } from '@/lib/api'
-import type { CoBuildScenario, CoBuildStatus } from '@/lib/api'
+import type { CoBuildScenario } from '@/lib/api'
 import type { ScenarioTask as ApiScenarioTask } from '@/lib/types/scene'
 import { EvaluationRulesEditor } from '@/components/evaluation-rules'
 import type { RubricScheme } from '@/components/evaluation-rules/types'
@@ -80,8 +78,6 @@ import {
   type TaskState,
 } from '../../../../../../scene/scenarios/[id]/edit/tasks/_components/tasks-logic'
 
-// 可编辑状态：draft/rejected 可编辑+提交审核，pending 可编辑+撤回；其余整页只读（后端同样强制）
-const EDITABLE_STATUSES: CoBuildStatus[] = ['draft', 'pending', 'rejected']
 
 // 企业端只开放四种卡片（knowledge/ability/resources/weight 为 portal 专属，已裁剪）
 const PARTNER_CARD_TYPES: CardType[] = ['info', 'description', 'evaluation', 'evaluationRules']
@@ -156,7 +152,6 @@ export default function PartnerTasksEditPage() {
   const [positionName, setPositionName] = useState('')
   const [loadFailed, setLoadFailed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [acting, setActing] = useState(false)
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
@@ -168,9 +163,6 @@ export default function PartnerTasksEditPage() {
 
   const schoolTenantId = existingScenario?.schoolTenantId || existingScenario?.tenantId || ''
   const datasets = useCoBuildDatasets(schoolTenantId)
-
-  const readOnly =
-    !!existingScenario && !EDITABLE_STATUSES.includes(existingScenario.status as CoBuildStatus)
 
   // 首屏加载 effect 仅以 scenarioId 触发一次；易变依赖（locale/t）用 ref 持有，避免整页重载重建 taskStates（未保存编辑丢失）
   const toastRef = useRef(toast)
@@ -272,7 +264,6 @@ export default function PartnerTasksEditPage() {
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<{ id: string; name: string } | null>(
     null,
   )
-  const [confirmAction, setConfirmAction] = useState<'submit' | 'withdraw' | null>(null)
 
   const [newTask, setNewTask] = useState({
     name: '',
@@ -517,27 +508,6 @@ export default function PartnerTasksEditPage() {
     }
   }
 
-  const handleTransition = async () => {
-    if (!confirmAction || !existingScenario) return
-    setActing(true)
-    try {
-      const updated =
-        confirmAction === 'submit'
-          ? await partnerCobuildScenarioApi.submit(scenarioId)
-          : await partnerCobuildScenarioApi.withdraw(scenarioId)
-      setExistingScenario((prev) =>
-        prev ? { ...prev, status: (updated.status || prev.status) as CoBuildStatus } : prev,
-      )
-      toast({ title: confirmAction === 'submit' ? t('已提交审核') : t('已撤回') })
-      setConfirmAction(null)
-    } catch (err: any) {
-      reportError(err, confirmAction === 'submit' ? '提交审核' : '撤回审核')
-      toast({ title: err?.message || t('请稍后重试'), variant: 'destructive' })
-    } finally {
-      setActing(false)
-    }
-  }
-
   return (
     <EditorShell
       mode="inline"
@@ -545,13 +515,11 @@ export default function PartnerTasksEditPage() {
       onBack={() => router.push('/partner/co-build/scenes')}
       step={2}
       stepLabel={t('任务链配置')}
-      onSaveDraft={readOnly ? undefined : handleSaveDraft}
+      onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
       saveText={t('保存')}
-      onPrev={
-        readOnly ? undefined : () => router.push(`/partner/co-build/scenes/${scenarioId}/edit`)
-      }
-      onSubmit={readOnly ? undefined : handleFinish}
+      onPrev={() => router.push(`/partner/co-build/scenes/${scenarioId}/edit`)}
+      onSubmit={handleFinish}
       submitText={t('完成配置')}
       contentMaxWidth="max-w-[1400px]"
     >
@@ -617,39 +585,14 @@ export default function PartnerTasksEditPage() {
           <Badge variant="secondary">{t('{n} 个任务', { n: tasks.length })}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {existingScenario &&
-            (existingScenario.status === 'draft' || existingScenario.status === 'rejected') && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={acting}
-                onClick={() => setConfirmAction('submit')}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {t('提交审核')}
-              </Button>
-            )}
-          {existingScenario?.status === 'pending' && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={acting}
-              onClick={() => setConfirmAction('withdraw')}
-            >
-              <Undo2 className="mr-2 h-4 w-4" />
-              {t('撤回')}
-            </Button>
-          )}
-          {!readOnly && (
-            <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('添加任务')}
-            </Button>
-          )}
+          <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('添加任务')}
+          </Button>
         </div>
       </div>
 
-      <fieldset disabled={readOnly} className="contents">
+      <fieldset className="contents">
         {/* Task List with unified horizontal scroll */}
         <div className="overflow-x-auto pb-2 -mx-2 px-2">
           {/* Column Headers — mirror row structure for precise alignment */}
@@ -671,14 +614,14 @@ export default function PartnerTasksEditPage() {
             {tasks.map((task, idx) => (
               <div
                 key={task.id}
-                draggable={!readOnly}
+                draggable
                 onDragStart={() => setDraggedIdx(idx)}
                 onDragOver={(e) => {
                   e.preventDefault()
                 }}
                 onDrop={(e) => {
                   e.preventDefault()
-                  if (readOnly || draggedIdx === null || draggedIdx === idx) {
+                  if (draggedIdx === null || draggedIdx === idx) {
                     setDraggedIdx(null)
                     return
                   }
@@ -772,12 +715,10 @@ export default function PartnerTasksEditPage() {
               <div className="py-16 text-center">
                 <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 mb-4">{t('暂无任务，点击添加第一个任务')}</p>
-                {!readOnly && (
-                  <Button onClick={() => setIsAddTaskOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('添加任务')}
-                  </Button>
-                )}
+                <Button onClick={() => setIsAddTaskOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('添加任务')}
+                </Button>
               </div>
             )}
           </div>
@@ -883,21 +824,6 @@ export default function PartnerTasksEditPage() {
           loadRubricTemplates={datasets.loadRubricTemplates}
         />
       )}
-
-      {/* Submit/Withdraw Confirm Dialog */}
-      <ConfirmDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => !open && setConfirmAction(null)}
-        title={confirmAction === 'submit' ? t('提交审核') : t('撤回审核')}
-        description={
-          confirmAction === 'submit'
-            ? t('提交后由合作学校审批，审批期间可撤回。确认提交？')
-            : t('撤回后场景将退回草稿状态，可继续编辑。确认撤回？')
-        }
-        confirmText={confirmAction === 'submit' ? t('确认提交') : t('确认撤回')}
-        cancelText={t('取消')}
-        onConfirm={handleTransition}
-      />
 
       {/* Delete Confirm Dialog */}
       <ConfirmDialog

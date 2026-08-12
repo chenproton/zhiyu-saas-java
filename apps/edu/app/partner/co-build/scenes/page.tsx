@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Pencil, Trash2, Send, Undo2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { partnerCobuildScenarioApi, partnerSchoolApi } from '@/lib/api'
 import type { CoBuildScenario } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
@@ -30,7 +30,6 @@ export default function PartnerCoBuildScenesPage() {
   const t = useT()
   const router = useRouter()
   const [schoolFilter, setSchoolFilter] = useState('')
-  const [actingId, setActingId] = useState<string | null>(null)
 
   // 已确认合作（active）的学校：用于顶部筛选与"新建"弹窗选学校
   const { data: schoolsData } = useAsync(
@@ -57,46 +56,7 @@ export default function PartnerCoBuildScenesPage() {
 
   const scenes = data ?? []
 
-  const doTransition = async (item: CoBuildScenario, action: 'submit' | 'withdraw') => {
-    setActingId(item.id)
-    try {
-      if (action === 'submit') {
-        await partnerCobuildScenarioApi.submit(item.id)
-        toast({ title: t('已提交审核') })
-      } else {
-        await partnerCobuildScenarioApi.withdraw(item.id)
-        toast({ title: t('已撤回') })
-      }
-      await refresh()
-    } catch (e) {
-      toast({
-        variant: 'destructive',
-        title: t('操作失败'),
-        description: e instanceof Error ? e.message : t('未知错误'),
-      })
-    } finally {
-      setActingId(null)
-    }
-  }
-
-  // 学校授权资源：编辑前先创建编辑稿（draft 副本），编辑稿提交学校审批后覆盖原资源
-  const doEditSource = async (item: CoBuildScenario) => {
-    setActingId(item.id)
-    try {
-      const draft = await partnerCobuildScenarioApi.editSource(item.id)
-      toast({ title: t('已创建编辑稿，编辑完成后提交学校审批') })
-      router.push(`/partner/co-build/scenes/${draft.id}/edit`)
-    } catch (e: any) {
-      toast({
-        variant: 'destructive',
-        title: t('创建编辑稿失败'),
-        description: e.message,
-      })
-    } finally {
-      setActingId(null)
-    }
-  }
-
+  // 编辑一律直接进入编辑页：保存后状态回写草稿，发布由学校端进行（含学校授权资源）
   const schoolSelector = (value: string, onChange: (v: string) => void, includeAll: boolean) => (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-full sm:w-56">
@@ -116,7 +76,7 @@ export default function PartnerCoBuildScenesPage() {
   return (
     <PortalCrudPage
       title={t('场景共建')}
-      description={t('为已确认合作的学校创建场景资源，提交后由学校审批生效。')}
+      description={t('为合作学校创建或编辑场景资源，保存后状态为草稿，由学校端审核发布。')}
       entityLabel={t('场景')}
       searchPlaceholder={t('搜索场景名称...')}
       createButtonLabel={t('新建场景')}
@@ -189,47 +149,13 @@ export default function PartnerCoBuildScenesPage() {
           </TableCell>
           <TableCell>{formatDateTime(s.updatedAt)}</TableCell>
           <TableRowActions>
-            {s.sourceType === 'enterprise' ? (
-              <Link href={`/partner/co-build/scenes/${s.id}/edit`}>
-                <Button variant="ghost" size="sm">
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
-                  {t('编辑')}
-                </Button>
-              </Link>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={actingId === s.id}
-                onClick={() => doEditSource(s)}
-              >
+            <Link href={`/partner/co-build/scenes/${s.id}/edit`}>
+              <Button variant="ghost" size="sm">
                 <Pencil className="h-3.5 w-3.5 mr-1" />
-                {actingId === s.id ? t('创建中...') : t('编辑')}
+                {t('编辑')}
               </Button>
-            )}
-            {(s.status === 'draft' || s.status === 'rejected') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={actingId === s.id}
-                onClick={() => doTransition(s, 'submit')}
-              >
-                <Send className="h-3.5 w-3.5 mr-1" />
-                {t('提交审核')}
-              </Button>
-            )}
-            {s.status === 'pending' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={actingId === s.id}
-                onClick={() => doTransition(s, 'withdraw')}
-              >
-                <Undo2 className="h-3.5 w-3.5 mr-1" />
-                {t('撤回')}
-              </Button>
-            )}
-            {(s.status === 'draft' || s.status === 'rejected') && (
+            </Link>
+            {s.sourceType === 'enterprise' && (s.status === 'draft' || s.status === 'rejected') && (
               <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 {t('删除')}
