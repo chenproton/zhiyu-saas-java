@@ -260,7 +260,6 @@ export default function AlliancePublicAchievementDetailPage() {
                       label={t('更新时间')}
                       value={new Date(achievement.updatedAt).toLocaleDateString('zh-CN')}
                     />
-                    <DetailInfoBlock label={t('浏览次数')} value={achievement.viewCount ?? 0} />
                   </div>
                 </DetailSectionCard>
               </div>

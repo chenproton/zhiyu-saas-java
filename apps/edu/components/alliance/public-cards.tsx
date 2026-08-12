@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Calendar, Eye } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type {
   AllianceEnterprise,
@@ -158,9 +158,6 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
             <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
               {allianceLabel('projectPhase', project.phase)}
             </Badge>
-            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
-              {allianceLabel('publishStatus', project.publishStatus)}
-            </Badge>
           </div>
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
@@ -228,13 +225,6 @@ export function AchievementCard({ achievement }: { achievement: AllianceAchievem
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.6em]">
             {achievement.description || t('暂无成果描述')}
           </p>
-          <div className="mt-auto flex items-center justify-between text-xs text-slate-500 pt-2.5 border-t border-slate-100">
-            <span className="flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" />
-              {achievement.viewCount ?? 0}
-            </span>
-            <span>{achievement.achievementDate ?? ''}</span>
-          </div>
         </CardContent>
       </Card>
     </Link>
