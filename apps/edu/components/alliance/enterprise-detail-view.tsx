@@ -63,7 +63,7 @@ export interface EnterpriseDetailViewProps {
   showBack?: boolean
 }
 
-function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
+export function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
   const t = useT()
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -80,7 +80,7 @@ function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
   )
 }
 
-function ContactRow({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
+export function ContactRow({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50">
       <Icon className="h-4 w-4 text-slate-500 shrink-0" />

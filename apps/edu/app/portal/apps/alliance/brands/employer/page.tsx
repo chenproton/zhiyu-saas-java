@@ -31,13 +31,35 @@ const brandType = 'employer'
 interface EnterpriseInfo {
   name?: string
   creditCode?: string
+  unifiedSocialCreditCode?: string
   industry?: string
+  region?: string
+  establishedYear?: number
+  employeeCount?: number
   contactPerson?: string
   contactPhone?: string
   contactEmail?: string
+  address?: string
   description?: string
   logo?: string
+  logoUrl?: string
   coverImage?: string
+  coverPhotos?: string[]
+  qualificationPhotos?: string[]
+  intellectualPropertyPhotos?: string[]
+}
+
+/** 图片 URL 列表 → 每行一个的文本（表单展示） */
+function photosToText(photos?: string[]): string {
+  return (photos ?? []).join('\n')
+}
+
+/** 每行一个的文本 → 图片 URL 列表（保存时去空） */
+function textToPhotos(text: string): string[] {
+  return text
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 function enterpriseInfoOf(item?: EmployerBrand | null): EnterpriseInfo {
@@ -376,14 +398,44 @@ export default function AllianceEmployerBrandPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormFieldRow label={t('统一社会信用代码')}>
                 <Input
-                  value={editInfo.creditCode || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, creditCode: e.target.value })}
+                  value={editInfo.creditCode || editInfo.unifiedSocialCreditCode || ''}
+                  onChange={(e) =>
+                    setEditInfo({ ...editInfo, unifiedSocialCreditCode: e.target.value })
+                  }
                 />
               </FormFieldRow>
               <FormFieldRow label={t('所属行业')}>
                 <Input
                   value={editInfo.industry || ''}
                   onChange={(e) => setEditInfo({ ...editInfo, industry: e.target.value })}
+                />
+              </FormFieldRow>
+              <FormFieldRow label={t('所在地区')}>
+                <Input
+                  value={editInfo.region || ''}
+                  onChange={(e) => setEditInfo({ ...editInfo, region: e.target.value })}
+                  placeholder={t('如：江苏省苏州市')}
+                />
+              </FormFieldRow>
+              <FormFieldRow label={t('成立年份')}>
+                <Input
+                  type="number"
+                  min={1900}
+                  max={2100}
+                  value={editInfo.establishedYear ?? ''}
+                  onChange={(e) =>
+                    setEditInfo({ ...editInfo, establishedYear: Number(e.target.value) || undefined })
+                  }
+                />
+              </FormFieldRow>
+              <FormFieldRow label={t('企业规模（人数）')}>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editInfo.employeeCount ?? ''}
+                  onChange={(e) =>
+                    setEditInfo({ ...editInfo, employeeCount: Number(e.target.value) || undefined })
+                  }
                 />
               </FormFieldRow>
               <FormFieldRow label={t('联系人')}>
@@ -404,11 +456,17 @@ export default function AllianceEmployerBrandPage() {
                   onChange={(e) => setEditInfo({ ...editInfo, contactEmail: e.target.value })}
                 />
               </FormFieldRow>
+              <FormFieldRow label={t('详细地址')}>
+                <Input
+                  value={editInfo.address || ''}
+                  onChange={(e) => setEditInfo({ ...editInfo, address: e.target.value })}
+                />
+              </FormFieldRow>
             </div>
             <FormFieldRow label={t('Logo URL')}>
               <Input
-                value={editInfo.logo || ''}
-                onChange={(e) => setEditInfo({ ...editInfo, logo: e.target.value })}
+                value={editInfo.logoUrl || editInfo.logo || ''}
+                onChange={(e) => setEditInfo({ ...editInfo, logoUrl: e.target.value })}
                 placeholder="https://..."
               />
             </FormFieldRow>
@@ -417,6 +475,37 @@ export default function AllianceEmployerBrandPage() {
                 value={editInfo.coverImage || ''}
                 onChange={(e) => setEditInfo({ ...editInfo, coverImage: e.target.value })}
                 placeholder="https://..."
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('企业展示封面图 URL')}>
+              <Textarea
+                value={photosToText(editInfo.coverPhotos)}
+                onChange={(e) => setEditInfo({ ...editInfo, coverPhotos: textToPhotos(e.target.value) })}
+                rows={3}
+                placeholder={t('每行一个 URL')}
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('企业荣誉资质图 URL')}>
+              <Textarea
+                value={photosToText(editInfo.qualificationPhotos)}
+                onChange={(e) =>
+                  setEditInfo({ ...editInfo, qualificationPhotos: textToPhotos(e.target.value) })
+                }
+                rows={3}
+                placeholder={t('每行一个 URL')}
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('知识产权图 URL')}>
+              <Textarea
+                value={photosToText(editInfo.intellectualPropertyPhotos)}
+                onChange={(e) =>
+                  setEditInfo({
+                    ...editInfo,
+                    intellectualPropertyPhotos: textToPhotos(e.target.value),
+                  })
+                }
+                rows={3}
+                placeholder={t('每行一个 URL')}
               />
             </FormFieldRow>
             <FormFieldRow label={t('企业简介')}>

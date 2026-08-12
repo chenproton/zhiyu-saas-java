@@ -1,13 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Image from 'next/image'
-import { ArrowLeft, Briefcase } from 'lucide-react'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  AllianceDetailShell,
+  DetailEmpty,
+  DetailInfoBlock,
+  DetailSectionCard,
+  type DetailStat,
+} from '@/components/alliance/alliance-detail-shell'
+import { ContactRow, PhotoGrid } from '@/components/alliance/enterprise-detail-view'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -16,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Building2, Briefcase, Users, Eye, Calendar, Image as ImageIcon, FileText } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand } from '@/lib/types'
@@ -41,6 +46,28 @@ interface HiredStudent {
   jobName?: string
 }
 
+/** 独立雇主企业资料（data.enterpriseInfo），字段与企业详情展示对齐 */
+interface EnterpriseInfo {
+  name?: string
+  creditCode?: string
+  unifiedSocialCreditCode?: string
+  industry?: string
+  region?: string
+  establishedYear?: number
+  employeeCount?: number
+  contactPerson?: string
+  contactPhone?: string
+  contactEmail?: string
+  address?: string
+  description?: string
+  logo?: string
+  logoUrl?: string
+  coverImage?: string
+  coverPhotos?: string[]
+  qualificationPhotos?: string[]
+  intellectualPropertyPhotos?: string[]
+}
+
 function salaryText(p: PositionSnapshot) {
   if (p.salaryMin == null && p.salaryMax == null) return '-'
   if (p.salaryMin == null) return `${p.salaryMax}K`
@@ -64,78 +91,97 @@ export default function AlliancePublicBrandDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  const isEmployer = brand?.brandType === 'employer'
+  const isIndependent = isEmployer && !brand?.enterpriseId
+
+  /** 企业资料归一化（与企业详情展示字段一致） */
+  const enterprise = useMemo(() => {
+    if (!brand || !isEmployer) return null
+    if (!isIndependent) {
+      return {
+        name: brand.enterpriseName ?? brand.name,
+        logoUrl: brand.enterpriseLogo,
+        industry: brand.enterpriseIndustry,
+        region: brand.enterpriseRegion,
+        unifiedSocialCreditCode: brand.enterpriseCreditCode,
+        contactPerson: brand.enterpriseContactPerson,
+        contactPhone: brand.enterpriseContactPhone,
+        contactEmail: brand.enterpriseContactEmail,
+        address: brand.enterpriseAddress,
+        description: brand.enterpriseDescription,
+      }
+    }
+    const info = (brand.data?.enterpriseInfo ?? {}) as EnterpriseInfo
+    return {
+      name: info.name ?? brand.name,
+      logoUrl: info.logoUrl ?? info.logo,
+      coverImage: info.coverImage,
+      industry: info.industry,
+      region: info.region,
+      establishedYear: info.establishedYear,
+      employeeCount: info.employeeCount,
+      unifiedSocialCreditCode: info.unifiedSocialCreditCode ?? info.creditCode,
+      contactPerson: info.contactPerson,
+      contactPhone: info.contactPhone,
+      contactEmail: info.contactEmail,
+      address: info.address,
+      description: info.description,
+      coverPhotos: info.coverPhotos ?? [],
+      qualificationPhotos: info.qualificationPhotos ?? [],
+      intellectualPropertyPhotos: info.intellectualPropertyPhotos ?? [],
+    }
+  }, [brand, isEmployer, isIndependent])
+
   if (loading) return <LoadingView />
   if (!brand)
     return <div className="text-center py-12 text-muted-foreground">{t('品牌不存在')}</div>
 
-  if (brand.brandType !== 'employer') {
-    return (
-      <div className="space-y-6">
-        <BackLink />
-        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold break-words">{brand.name}</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {allianceLabel('brandType', brand.brandType)}
-            </p>
-          </div>
-          <div className="flex gap-2 items-center shrink-0">
-            <Badge variant="outline">{allianceLabel('brandStatus', brand.status)}</Badge>
-            <span className="text-sm text-muted-foreground">
-              {t('{count} 次浏览', { count: brand.viewCount })}
-            </span>
-          </div>
-        </div>
+  const positions: PositionSnapshot[] = isEmployer ? (brand.data?.positions ?? []) : []
+  const hiredStudents: HiredStudent[] = isEmployer ? (brand.data?.hiredStudents ?? []) : []
 
-        {brand.coverImage && (
-          <Image
-            src={brand.coverImage}
-            alt={brand.name}
-            width={1200}
-            height={675}
-            className="w-full max-h-64 object-cover rounded-xl"
-          />
-        )}
+  const badges: string[] = []
+  if (enterprise?.industry) badges.push(enterprise.industry)
+  if (enterprise?.region) badges.push(enterprise.region)
+  if (enterprise?.establishedYear)
+    badges.push(t('{year} 年成立', { year: enterprise.establishedYear }))
+  if (enterprise?.employeeCount)
+    badges.push(t('{count} 人', { count: enterprise.employeeCount }))
 
-        {brand.description && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('品牌介绍')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{brand.description}</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    )
-  }
-
-  const isIndependent = !brand.enterpriseId
-  const info = (brand.data?.enterpriseInfo ?? {}) as Record<string, any>
-  const positions: PositionSnapshot[] = brand.data?.positions ?? []
-  const hiredStudents: HiredStudent[] = brand.data?.hiredStudents ?? []
-  const enterpriseRows: { label: string; value?: string }[] = isIndependent
+  const stats: DetailStat[] = isEmployer
     ? [
-        { label: t('企业名称'), value: brand.name },
-        { label: t('统一社会信用代码'), value: info.creditCode },
-        { label: t('所属行业'), value: info.industry },
-        { label: t('联系人'), value: info.contactPerson },
-        { label: t('联系电话'), value: info.contactPhone },
-        { label: t('联系邮箱'), value: info.contactEmail },
-        { label: t('企业地址'), value: info.address },
+        {
+          label: t('关联岗位'),
+          value: positions.length,
+          icon: Briefcase,
+          gradient: 'from-primary to-primary/80',
+        },
+        {
+          label: t('已招聘学生'),
+          value: hiredStudents.length,
+          icon: Users,
+          gradient: 'from-primary/90 to-primary/70',
+        },
+        {
+          label: t('浏览次数'),
+          value: brand.viewCount,
+          icon: Eye,
+          gradient: 'from-primary/80 to-primary/60',
+        },
+        {
+          label: t('成立年份'),
+          value: enterprise?.establishedYear || '-',
+          icon: Calendar,
+          gradient: 'from-primary/90 to-primary/70',
+        },
       ]
     : [
-        { label: t('统一社会信用代码'), value: brand.enterpriseCreditCode },
-        { label: t('所属行业'), value: brand.enterpriseIndustry },
-        { label: t('所在地区'), value: brand.enterpriseRegion },
-        { label: t('联系人'), value: brand.enterpriseContactPerson },
-        { label: t('联系电话'), value: brand.enterpriseContactPhone },
-        { label: t('联系邮箱'), value: brand.enterpriseContactEmail },
-        { label: t('企业地址'), value: brand.enterpriseAddress },
-      ].filter((x) => x.value)
-  const enterpriseDesc = isIndependent ? info.description : brand.enterpriseDescription
-  const enterpriseLogo = isIndependent ? info.logo : brand.enterpriseLogo
+        {
+          label: t('浏览次数'),
+          value: brand.viewCount,
+          icon: Eye,
+          gradient: 'from-primary to-primary/80',
+        },
+      ]
 
   const studentsByJob = new Map<string, HiredStudent[]>()
   for (const s of hiredStudents) {
@@ -144,184 +190,221 @@ export default function AlliancePublicBrandDetailPage() {
     studentsByJob.get(key)!.push(s)
   }
 
-  return (
-    <div className="space-y-6">
-      <BackLink />
-
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="flex min-w-0 items-center gap-4">
-          {enterpriseLogo && (
-            <Image
-              src={enterpriseLogo}
-              alt={brand.name}
-              width={64}
-              height={64}
-              className="h-16 w-16 rounded-xl border object-cover"
+  const infoTab = isEmployer ? (
+    <div className="grid lg:grid-cols-3 gap-6">
+      <DetailSectionCard title={t('企业简介')} className="lg:col-span-2">
+        <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+          {enterprise?.description || '-'}
+        </p>
+        <div className="border-t pt-6 mt-6">
+          <h4 className="text-sm font-semibold text-slate-900 mb-4">{t('其他信息')}</h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+            <DetailInfoBlock
+              label={t('统一社会信用代码')}
+              value={enterprise?.unifiedSocialCreditCode}
             />
-          )}
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold break-words">{brand.name}</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {allianceLabel('brandType', brand.brandType)} ·{' '}
-              {isIndependent ? t('独立雇主企业') : t('合作企业')}
-            </p>
+            <DetailInfoBlock label={t('成立年份')} value={enterprise?.establishedYear} />
+            <DetailInfoBlock
+              label={t('企业规模（人数）')}
+              value={
+                enterprise?.employeeCount
+                  ? `${enterprise.employeeCount.toLocaleString()} 人`
+                  : undefined
+              }
+            />
+            <DetailInfoBlock label={t('所在地区')} value={enterprise?.region} />
+            <DetailInfoBlock label={t('详细地址')} value={enterprise?.address} />
           </div>
         </div>
-        <div className="flex gap-2 items-center shrink-0">
-          <Badge variant="outline">{allianceLabel('brandStatus', brand.status)}</Badge>
-          <span className="text-sm text-muted-foreground">
-            {t('{count} 次浏览', { count: brand.viewCount })}
-          </span>
+      </DetailSectionCard>
+
+      <DetailSectionCard title={t('联系信息')} className="h-fit self-start">
+        <div className="space-y-3">
+          {enterprise?.contactPerson && (
+            <ContactRow icon={Users} text={`${t('联系人')}：${enterprise.contactPerson}`} />
+          )}
+          {enterprise?.contactPhone && (
+            <ContactRow icon={Building2} text={enterprise.contactPhone} />
+          )}
+          {enterprise?.contactEmail && (
+            <ContactRow icon={Building2} text={enterprise.contactEmail} />
+          )}
+          {enterprise?.address && <ContactRow icon={Building2} text={enterprise.address} />}
+          {!enterprise?.contactPerson &&
+            !enterprise?.contactPhone &&
+            !enterprise?.contactEmail &&
+            !enterprise?.address && <p className="text-sm text-slate-400">{t('暂无联系信息')}</p>}
         </div>
-      </div>
+      </DetailSectionCard>
 
-      <Tabs defaultValue="info" className="w-full">
-        <TabsList>
-          <TabsTrigger value="info" className="rounded-lg">
-            {t('基本信息')}
-          </TabsTrigger>
-          <TabsTrigger value="positions" className="rounded-lg">
-            {t('关联岗位 ({count})', { count: positions.length })}
-          </TabsTrigger>
-          <TabsTrigger value="students" className="rounded-lg">
-            {t('已招聘学生 ({count})', { count: hiredStudents.length })}
-          </TabsTrigger>
-        </TabsList>
+      {brand.description && (
+        <DetailSectionCard
+          icon={FileText}
+          title={t('品牌介绍')}
+          className="lg:col-span-3"
+        >
+          <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{brand.description}</p>
+        </DetailSectionCard>
+      )}
 
-        <TabsContent value="info" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {brand.coverImage && (
-              <Image
-                src={brand.coverImage}
-                alt={brand.name}
-                width={1200}
-                height={675}
-                className="w-full max-h-64 object-cover rounded-xl"
-              />
-            )}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('企业资料')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {enterpriseRows.map((r) => (
-                  <p key={r.label}>
-                    <span className="text-muted-foreground">{r.label}：</span>
-                    {r.value || t('暂无')}
-                  </p>
-                ))}
-                {enterpriseDesc && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap pt-2">
-                    {enterpriseDesc}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-            {brand.description && (
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>{t('品牌介绍')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm whitespace-pre-wrap">{brand.description}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
+      {enterprise?.intellectualPropertyPhotos &&
+        enterprise.intellectualPropertyPhotos.length > 0 && (
+          <DetailSectionCard icon={ImageIcon} title={t('知识产权')} className="lg:col-span-3">
+            <PhotoGrid photos={enterprise.intellectualPropertyPhotos} alt={brand.name} />
+          </DetailSectionCard>
+        )}
 
-        <TabsContent value="positions" className="mt-4">
-          {positions.length === 0 ? (
-            <div className="rounded-lg border bg-white p-12 text-center text-sm text-muted-foreground">
-              {t('暂未关联岗位')}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('岗位名称')}</TableHead>
-                      <TableHead>{t('分类')}</TableHead>
-                      <TableHead>{t('薪资范围')}</TableHead>
-                      <TableHead>{t('面向专业')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {positions.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.name}</TableCell>
-                        <TableCell>
-                          {p.positionType === 'teaching'
-                            ? t('教学岗位')
-                            : p.positionType === 'enterprise'
-                              ? t('非教学岗位')
-                              : '-'}
-                        </TableCell>
-                        <TableCell>{salaryText(p)}</TableCell>
-                        <TableCell className="max-w-56 truncate">
-                          {p.majorNames?.join('、') || '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      {enterprise?.qualificationPhotos && enterprise.qualificationPhotos.length > 0 && (
+        <DetailSectionCard icon={ImageIcon} title={t('企业荣誉资质')} className="lg:col-span-3">
+          <PhotoGrid photos={enterprise.qualificationPhotos} alt={brand.name} />
+        </DetailSectionCard>
+      )}
 
-        <TabsContent value="students" className="mt-4">
-          {hiredStudents.length === 0 ? (
-            <div className="rounded-lg border bg-white p-12 text-center text-sm text-muted-foreground">
-              {t('暂未关联学生')}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {[...studentsByJob.entries()].map(([jobId, students]) => {
-                const job = positions.find((p) => p.id === jobId)
-                return (
-                  <Card key={jobId}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-sm">
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        {job?.name || t('未分配岗位')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                      {students.map((s) => (
-                        <span
-                          key={s.studentId}
-                          className="inline-flex items-center gap-2 rounded-full border border-gray-100 bg-muted/40 px-3 py-1.5 text-sm"
-                        >
-                          <span className="font-medium">{s.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {s.studentNo || '-'}
-                          </span>
-                        </span>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      {enterprise?.coverPhotos && enterprise.coverPhotos.length > 0 && (
+        <DetailSectionCard icon={ImageIcon} title={t('企业展示封面')} className="lg:col-span-3">
+          <PhotoGrid photos={enterprise.coverPhotos} alt={brand.name} />
+        </DetailSectionCard>
+      )}
+    </div>
+  ) : (
+    <div className="grid lg:grid-cols-3 gap-6">
+      <DetailSectionCard title={t('品牌介绍')} className="lg:col-span-3">
+        {brand.coverImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brand.coverImage}
+            alt={brand.name}
+            className="w-full max-h-64 object-cover rounded-2xl mb-6"
+          />
+        )}
+        {brand.description ? (
+          <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{brand.description}</p>
+        ) : (
+          <DetailEmpty icon={FileText} title={t('暂无品牌介绍')} />
+        )}
+      </DetailSectionCard>
     </div>
   )
-}
 
-function BackLink() {
-  const t = useT()
   return (
-    <div className="flex items-center gap-4">
-      <Link
-        href="/portal/alliance/brands"
-        className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-      >
-        <ArrowLeft className="h-4 w-4" /> {t('返回列表')}
-      </Link>
-    </div>
+    <AllianceDetailShell
+      breadcrumbs={[
+        { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+        { label: t('品牌列表'), href: '/portal/alliance/brands' },
+        { label: brand.name },
+      ]}
+      backHref="/portal/alliance/brands"
+      icon={Building2}
+      iconImage={
+        enterprise?.logoUrl ? { src: enterprise.logoUrl, alt: brand.name } : undefined
+      }
+      iconGradient="from-blue-500 to-blue-600"
+      coverImage={enterprise?.coverImage}
+      title={brand.name}
+      subtitle={
+        isEmployer
+          ? `${allianceLabel('brandType', brand.brandType)} · ${
+              isIndependent ? t('独立雇主企业') : t('合作企业')
+            }`
+          : allianceLabel('brandType', brand.brandType)
+      }
+      badges={badges.map((b) => (
+        <Badge key={b} variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
+          {b}
+        </Badge>
+      ))}
+      stats={stats}
+      tabs={[
+        { value: 'info', label: t('基本信息'), content: infoTab },
+        ...(isEmployer
+          ? [
+              {
+                value: 'positions',
+                label: t('关联岗位'),
+                count: positions.length,
+                content: (
+                  <Card className="border-0 shadow-sm rounded-3xl">
+                    <CardContent className="p-6">
+                      {positions.length === 0 ? (
+                        <DetailEmpty icon={Briefcase} title={t('暂未关联岗位')} />
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>{t('岗位名称')}</TableHead>
+                              <TableHead>{t('分类')}</TableHead>
+                              <TableHead>{t('薪资范围')}</TableHead>
+                              <TableHead>{t('面向专业')}</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {positions.map((p) => (
+                              <TableRow key={p.id}>
+                                <TableCell className="font-medium">{p.name}</TableCell>
+                                <TableCell>
+                                  {p.positionType === 'teaching'
+                                    ? t('教学岗位')
+                                    : p.positionType === 'enterprise'
+                                      ? t('非教学岗位')
+                                      : '-'}
+                                </TableCell>
+                                <TableCell>{salaryText(p)}</TableCell>
+                                <TableCell className="max-w-56 truncate">
+                                  {p.majorNames?.join('、') || '-'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                ),
+              },
+              {
+                value: 'students',
+                label: t('已招聘学生'),
+                count: hiredStudents.length,
+                content: (
+                  <Card className="border-0 shadow-sm rounded-3xl">
+                    <CardContent className="p-6">
+                      {hiredStudents.length === 0 ? (
+                        <DetailEmpty icon={Users} title={t('暂未关联学生')} />
+                      ) : (
+                        <div className="space-y-4">
+                          {[...studentsByJob.entries()].map(([jobId, students]) => {
+                            const job = positions.find((p) => p.id === jobId)
+                            return (
+                              <div key={jobId}>
+                                <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-3">
+                                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                  {job?.name || t('未分配岗位')}
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {students.map((s) => (
+                                    <span
+                                      key={s.studentId}
+                                      className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-slate-50 px-3 py-1.5 text-sm"
+                                    >
+                                      <span className="font-medium">{s.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {s.studentNo || '-'}
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ),
+              },
+            ]
+          : []),
+      ]}
+    />
   )
 }
