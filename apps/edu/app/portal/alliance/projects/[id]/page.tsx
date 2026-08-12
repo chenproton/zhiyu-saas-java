@@ -36,6 +36,7 @@ import type {
 import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import { AchievementCard } from '@/components/alliance/public-cards'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AlliancePublicProjectDetailPage() {
@@ -366,7 +367,7 @@ export default function AlliancePublicProjectDetailPage() {
             </Card>
           ),
         },
-        {
+         {
           value: 'achievements',
           label: t('关联成果'),
           count: achievements.length,
@@ -374,31 +375,9 @@ export default function AlliancePublicProjectDetailPage() {
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
                 {achievements.length > 0 ? (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {achievements.map((item) => (
-                      <Card key={item.id} className="border-0 shadow-sm rounded-3xl bg-slate-50">
-                        <CardContent className="p-5">
-                          <Link
-                            href={`/portal/alliance/achievements/${item.id}`}
-                            className="font-semibold text-slate-900 hover:text-blue-600 transition-colors inline-flex items-center gap-1 text-base line-clamp-2"
-                          >
-                            {item.title} <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
-                          </Link>
-                          <p className="text-xs text-slate-400 mt-1">
-                            {item.achievementDate || item.createdAt?.slice(0, 10) || '-'}
-                          </p>
-                          {item.description && (
-                            <p className="text-sm text-slate-500 line-clamp-2 mt-2">
-                              {item.description}
-                            </p>
-                          )}
-                          <div className="mt-3">
-                            <Badge variant="secondary">
-                              {allianceLabel('achievementType', item.type)}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <AchievementCard key={item.id} achievement={item} />
                     ))}
                   </div>
                 ) : (
