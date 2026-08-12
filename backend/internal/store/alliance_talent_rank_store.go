@@ -55,6 +55,8 @@ func (s *AllianceStore) listRankPositions(ctx context.Context, tenantID string) 
 }
 
 // listRankStudents 查询租户全部学生（含无评估记录者），按专业名 + 平均达成率降序。
+// 专业判断：优先 users.major_id（用户显式设置）；为空则沿组织树从班级向上找「专业」类型节点，
+// 节点名匹配 majors 字典拿到专业 ID 参与分组，匹配不到以组织节点 ID 兜底分组（专业名用节点名）。
 func (s *AllianceStore) listRankStudents(ctx context.Context, tenantID, search string) ([]domain.TalentRankStudent, error) {
 	args := []any{tenantID}
 	where := "u.tenant_id = $1 AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = u.id AND r2.code = 'student')"
@@ -64,12 +66,11 @@ func (s *AllianceStore) listRankStudents(ctx context.Context, tenantID, search s
 	}
 	query := `
 		SELECT u.id, COALESCE(u.student_no, u.username, u.login_name), COALESCE(u.name, ''),
-			u.major_id, COALESCE(m.name, ''),
+			mr.eff_major_id, mr.eff_major_name,
 			COALESCE(o.name, '') AS class_name,
 			COALESCE(dept.dept_name, ''),
 			agg.avg_rate, agg.avg_comp, agg.avg_comp_v2, agg.avg_cog, agg.pos_count, agg.latest_at
 		FROM users u
-		LEFT JOIN majors m ON m.id = u.major_id
 		LEFT JOIN organizations o ON o.id = u.org_node_id
 		LEFT JOIN LATERAL (
 			SELECT AVG(jar.achievement_rate) AS avg_rate,
@@ -81,9 +82,37 @@ func (s *AllianceStore) listRankStudents(ctx context.Context, tenantID, search s
 			FROM job_ability_results jar
 			WHERE jar.user_id = u.id AND jar.tenant_id = u.tenant_id
 		) agg ON true
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(u.major_id, org_major.matched_id, org_major.org_id) AS eff_major_id,
+				COALESCE(mj.name, org_major.major_name, '') AS eff_major_name
+			FROM (
+				SELECT n.id AS org_id, o.name AS major_name, mm.id AS matched_id
+				FROM (
+					WITH RECURSIVE org_chain AS (
+						SELECT o.id, o.type_id, o.parent_id, 0 AS depth
+						FROM organizations o
+						WHERE o.id = u.org_node_id
+						UNION ALL
+						SELECT o.id, o.type_id, o.parent_id, c.depth + 1
+						FROM organizations o
+						JOIN org_chain c ON o.id = c.parent_id
+					)
+					SELECT c.id, c.depth
+					FROM org_chain c
+					JOIN organizations o ON o.id = c.id
+					JOIN org_types t ON t.id = o.type_id AND t.tenant_id = o.tenant_id
+					WHERE t.name = '专业'
+					ORDER BY c.depth
+					LIMIT 1
+				) n
+				JOIN organizations o ON o.id = n.id
+				LEFT JOIN majors mm ON mm.tenant_id = o.tenant_id AND mm.name = o.name
+			) org_major
+			LEFT JOIN majors mj ON mj.id = u.major_id
+		) mr ON true
 		` + departmentNameSQL + `
 		WHERE ` + where + `
-		ORDER BY COALESCE(m.name, ''), agg.avg_rate DESC NULLS LAST, u.name ASC
+		ORDER BY mr.eff_major_name, agg.avg_rate DESC NULLS LAST, u.name ASC
 		LIMIT 1000`
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
@@ -112,6 +141,7 @@ func (s *AllianceStore) listRankStudents(ctx context.Context, tenantID, search s
 
 // ListTalentRanking 返回租户全部学生按专业分组的画像排名。
 // 分组内按平均岗位能力达成率降序（无评估学生排后）；未配置专业的默认 enabled=true、rankLimit=10。
+// 学生专业取 listRankStudents 推导结果（users.major_id → 组织树「专业」节点 → 节点名兜底）。
 func (s *AllianceStore) ListTalentRanking(ctx context.Context, tenantID, search string) ([]domain.TalentRankMajorGroup, error) {
 	students, err := s.listRankStudents(ctx, tenantID, search)
 	if err != nil {

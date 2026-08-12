@@ -159,6 +159,35 @@ func TestListTalentRanking(t *testing.T) {
 	}
 }
 
+func TestListTalentRankingOrgTreeMajorFallback(t *testing.T) {
+	q := &fakeRankQueryer{queries: [][][]any{
+		{ // 学生：users.major_id 为空，SQL 层已沿组织树推导出「专业」节点 → 未匹配字典时以组织节点 ID 兜底分组
+			{"stu-3", "20240003", "王五", "org-node-9", "人工智能", "AI班", "信息学院", nil, nil, nil, nil, 0, nil},
+		},
+		{}, // 无岗位评估明细
+		{}, // 无排名配置
+	}}
+	s := NewAllianceStore(q)
+
+	groups, err := s.ListTalentRanking(context.Background(), "tenant-1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(groups) != 1 {
+		t.Fatalf("应返回 1 个专业分组，实际 %d", len(groups))
+	}
+	g := groups[0]
+	if g.MajorID != "org-node-9" || g.MajorName != "人工智能" {
+		t.Fatalf("组织树兜底分组应使用组织节点 ID + 节点名，实际 %+v", g)
+	}
+	if !g.Enabled || g.RankLimit != 10 {
+		t.Fatalf("无配置的分组应默认 enabled=true rankLimit=10，实际 %+v", g)
+	}
+	if len(g.Students) != 1 || g.Students[0].MajorName != "人工智能" {
+		t.Fatalf("学生应继承推导专业名，实际 %+v", g.Students)
+	}
+}
+
 func TestListEmployerBrandsJoinEnterprise(t *testing.T) {
 	q := &fakeRankQueryer{queries: [][][]any{
 		{{"b-1", "tenant-1", "employer", "苏州智联", "published", true, false, nil, nil, nil, nil, nil, "ent-1", nil, nil, nil, nil, 0, 10, time.Now(), time.Now(),
