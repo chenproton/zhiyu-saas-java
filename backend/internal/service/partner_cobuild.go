@@ -508,14 +508,13 @@ func (s *PartnerCoBuildService) UpdateScenario(ctx context.Context, partnerTenan
 	if _, err := s.accessibleScenario(ctx, ent.ID, id); err != nil {
 		return nil, err
 	}
-	sc, err := s.scenarios.Update(ctx, id, p)
-	if err != nil {
+	if _, err := s.scenarios.Update(ctx, id, p); err != nil {
 		return nil, err
 	}
 	if err := s.resetCoBuildToDraft(ctx, "scenarios", id, "scenario"); err != nil {
 		return nil, err
 	}
-	return sc, nil
+	return s.st.Scenarios().Get(ctx, id)
 }
 
 // DeleteScenario 删除共建场景。

@@ -371,13 +371,14 @@ func TestPartnerCoBuild_GrantedDirectEdit(t *testing.T) {
 
 	t.Run("granted published position save resets to draft", func(t *testing.T) {
 		pos, err := st.Positions().Create(ctx, env.DB, schoolID, &store.PositionCreateParams{
-			Name:         "学校自建岗位-" + suffix,
-			PositionType: "enterprise",
-			Version:      "V1.0",
-			Status:       domain.StatusPublished,
-			CreatedBy:    reg.User.ID,
-			SourceType:   "school",
-			Requirements: []string{"需求一"},
+			Name:          "学校自建岗位-" + suffix,
+			PositionType:  "enterprise",
+			Version:       "V1.0",
+			Status:        domain.StatusPublished,
+			CreatedBy:     reg.User.ID,
+			SourceType:    "school",
+			Collaborators: []string{},
+			Requirements:  []string{"需求一"},
 		})
 		if err != nil {
 			t.Fatalf("创建学校岗位失败: %v", err)
@@ -420,9 +421,13 @@ func TestPartnerCoBuild_GrantedDirectEdit(t *testing.T) {
 
 	t.Run("granted published scenario update resets to draft", func(t *testing.T) {
 		sc, err := st.Scenarios().Create(ctx, schoolID, &store.ScenarioCreateParams{
-			Name:       "学校自建场景-" + suffix,
-			Difficulty: 3,
-			Version:    "V1.0",
+			Name:          "学校自建场景-" + suffix,
+			Difficulty:    3,
+			Version:       "V1.0",
+			CreatorID:     reg.User.ID,
+			IndustryIDs:   []string{},
+			ProfessionIDs: []string{},
+			CoBuilderIDs:  []string{},
 		})
 		if err != nil {
 			t.Fatalf("创建学校场景失败: %v", err)
