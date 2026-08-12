@@ -109,13 +109,17 @@ func (s *PartnerService) GetProfile(ctx context.Context, tenantID string) (*doma
 	return s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
 }
 
-// UpdateProfile 更新企业主体信息（含 enable_public 展示开关）。
+// UpdateProfile 更新企业主体信息（含 enable_public 展示开关），
+// 并回写租户同名同值字段（名称/联系人/电话/企业代码），保证超管端与前台看到同一份数据。
 func (s *PartnerService) UpdateProfile(ctx context.Context, tenantID string, p *store.AllianceEnterpriseProfileUpdateParams) (*domain.AllianceEnterprise, error) {
 	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.st.Alliance().UpdateEnterpriseProfile(ctx, enterprise.ID, tenantID, p); err != nil {
+		return nil, err
+	}
+	if err := s.st.Tenants().SyncEnterpriseProfileFields(ctx, tenantID, &p.Name, p.ContactPerson, p.ContactPhone, p.UnifiedSocialCreditCode); err != nil {
 		return nil, err
 	}
 	return s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
