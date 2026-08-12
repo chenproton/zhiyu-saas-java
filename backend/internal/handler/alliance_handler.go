@@ -1100,12 +1100,50 @@ func (h *AllianceHandler) ListPublicAgreements(w http.ResponseWriter, r *http.Re
 	})
 }
 
+// ListPublicExperts 前台公开专家列表；includeNonPublic=true 时忽略专家 is_public（企业详情页"专家团队"用）。
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	limit, offset := publicListParams(r)
+	includeNonPublic := r.URL.Query().Get("includeNonPublic") == "true"
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
-		return h.Store.ListPublicExperts(ctx, tenantID, limit, offset)
+		return h.Store.ListPublicExperts(ctx, tenantID, limit, offset, includeNonPublic)
 	})
+}
+
+// ToggleExpertDisplay 学校侧维护专家"前台展示"开关（PUT /alliance/experts/{id}/display）。
+// 仅控制专家在联盟首页等 is_public 双控场景的展示，企业详情页"专家团队"不受影响。
+// 越权防线与 GetExpert 一致：专家所属企业必须已引入本校。
+func (h *AllianceHandler) ToggleExpertDisplay(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	expertID := chi.URLParam(r, "id")
+	var req struct {
+		IsPublic bool `json:"isPublic"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "请求参数错误")
+		return
+	}
+	expert, err := h.Store.GetExpertByIDGlobal(r.Context(), expertID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	if expert.EnterpriseID == nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	if _, err := h.Links.GetLinkByEnterprise(r.Context(), *expert.EnterpriseID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	if err := h.Store.UpdateExpertIsPublic(r.Context(), expertID, req.IsPublic); err != nil {
+		respondServerError(w, r, err, "更新前台展示失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"id": expertID, "isPublic": req.IsPublic})
 }
 
 func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request) {

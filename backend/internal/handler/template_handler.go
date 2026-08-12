@@ -1445,12 +1445,12 @@ func (h *TemplateHandler) generateAgreementTemplate(ctx context.Context, tenantI
 	s1, _ := f.NewSheet("合作协议")
 	f.SetActiveSheet(s1)
 	f.DeleteSheet("Sheet1")
-	headers := []string{"协议名称 *", "协议类型", "协议状态", "开始日期", "结束日期", "内容", "合作企业", "关联项目", "公开显示"}
-	widths := []float64{28, 22, 20, 16, 16, 48, 40, 40, 14}
-	setA1("合作协议", 9, "填写说明：\n* 必填列。\n协议类型：文本，选填（如：实验室共建 / 实训基地 / 协同创新 / 实践基地）\n协议状态：草稿 / 生效中 / 已失效 / 已续签 / 已终止（或 draft / active / expired / renewed / terminated），默认为 草稿\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n内容：文本，选填\n合作企业：企业名称，选填，多值用中文分号「；」分隔，需与系统「合作企业」中的企业名称一致（按名称自动关联）\n关联项目：项目名称，选填，多值用中文分号「；」分隔，需与系统「合作项目」中的项目名称一致（按名称自动关联）\n公开显示：是 / 否（或 true / false），选填，默认为 否")
+	headers := []string{"协议名称 *", "协议类型", "协议状态", "开始日期", "结束日期", "内容", "合作企业", "关联项目"}
+	widths := []float64{28, 22, 20, 16, 16, 48, 40, 40}
+	setA1("合作协议", 8, "填写说明：\n* 必填列。\n协议类型：文本，选填（如：实验室共建 / 实训基地 / 协同创新 / 实践基地）\n协议状态：草稿 / 生效中 / 已失效 / 已续签 / 已终止（或 draft / active / expired / renewed / terminated），默认为 草稿\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n内容：文本，选填\n合作企业：企业名称，选填，多值用中文分号「；」分隔，需与系统「合作企业」中的企业名称一致（按名称自动关联）\n关联项目：项目名称，选填，多值用中文分号「；」分隔，需与系统「合作项目」中的项目名称一致（按名称自动关联）\n前台展示跟随关联的合作企业/项目，无独立开关")
 	setHdr("合作协议", 2, headers, widths)
 	f.SetPanes("合作协议", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("合作协议", "A2:I2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("合作协议", "A2:H2", []excelize.AutoFilterOptions{})
 
 	return f
 }

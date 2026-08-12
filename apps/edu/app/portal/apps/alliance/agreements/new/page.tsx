@@ -49,7 +49,6 @@ export default function AllianceAgreementNewPage() {
     enterpriseIds: linkEnterpriseId ? [linkEnterpriseId] : [] as string[],
     projectIds: linkProjectId ? [linkProjectId] : [] as string[],
     attachments: [] as string[],
-    isPublic: false,
   })
 
   useEffect(() => {

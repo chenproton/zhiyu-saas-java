@@ -1178,7 +1178,8 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 	return previewRes, result
 }
 
-// Sheet: 合作协议（与新建页字段一一对应：协议名称*、协议类型、协议状态、开始日期、结束日期、内容、合作企业、关联项目、公开显示；附件图片除外）
+// Sheet: 合作协议（与新建页字段一一对应：协议名称*、协议类型、协议状态、开始日期、结束日期、内容、合作企业、关联项目；附件图片除外）
+// 前台展示无独立开关，跟随关联的合作企业/项目展示，导入不再含"公开显示"列。
 func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1210,7 +1211,6 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 		content := nullableStr(col(row, 5))
 		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 6))
 		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 7))
-		isPublic := parseImportBool(col(row, 8))
 
 		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_agreements", tenantID, name)
 		if existingID != "" {
@@ -1224,9 +1224,9 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 				if !preview {
 					_, err := h.Store.Q().Exec(ctx, `
 						UPDATE alliance_agreements SET type=$1, start_date=$2, end_date=$3,
-							status=$4, content=$5, project_ids=$6, enterprise_ids=$7, is_public=$8, updated_at=NOW()
-						WHERE id=$9 AND tenant_id=$10
-					`, agmtType, startDate, endDate, status, content, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), isPublic, existingID, tenantID)
+							status=$4, content=$5, project_ids=$6, enterprise_ids=$7, updated_at=NOW()
+						WHERE id=$8 AND tenant_id=$9
+					`, agmtType, startDate, endDate, status, content, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]更新失败: %v", name, err))
@@ -1249,9 +1249,9 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 			_, err := h.Store.Q().Exec(ctx, `
 				INSERT INTO alliance_agreements (id, tenant_id, name, type, content, start_date,
 					end_date, status, enterprise_ids, project_ids, attachments, is_public, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false,NOW(),NOW())
 			`, id, tenantID, name, agmtType, content, startDate, endDate,
-				status, jsonBytes(enterpriseIDs), jsonBytes(projectIDs), []byte("[]"), isPublic)
+				status, jsonBytes(enterpriseIDs), jsonBytes(projectIDs), []byte("[]"))
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]创建失败: %v", name, err))
