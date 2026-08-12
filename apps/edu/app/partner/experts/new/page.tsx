@@ -13,7 +13,6 @@ import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
   PartnerExpertForm,
-  PartnerExpertSettingsCard,
   emptyPartnerExpertForm,
   type PartnerExpertFormState,
 } from '../_components/expert-form'
@@ -24,7 +23,10 @@ export default function PartnerExpertNewPage() {
   const router = useRouter()
   const { isAdmin, loading: authLoading } = usePartnerAuth()
   const [saving, setSaving] = useState(false)
-  const [item, setItem] = useState<PartnerExpertFormState>(emptyPartnerExpertForm)
+  const [item, setItem] = useState<PartnerExpertFormState>({
+    ...emptyPartnerExpertForm,
+    isPublic: true,
+  })
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
@@ -120,7 +122,6 @@ export default function PartnerExpertNewPage() {
               </Button>
             </CardContent>
           </Card>
-          <PartnerExpertSettingsCard item={item} onChange={setItem} />
         </div>
       </div>
     </div>
