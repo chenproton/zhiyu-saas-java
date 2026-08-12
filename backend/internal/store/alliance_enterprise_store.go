@@ -389,7 +389,7 @@ func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*dom
 		SELECT `+employerBrandSelect+`
 		FROM alliance_brands b
 		LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id
-		WHERE b.id = $1 AND b.is_public = true AND b.status = 'published'
+		WHERE b.id = $1 AND b.is_public = true AND b.status <> 'archived'
 	`, id)
 }
 
@@ -463,6 +463,6 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 			  )`)
 	}
 	// 品牌为学校侧内容（§3.2 逻辑保持），不参与企业双控
-	st.BrandCount = count(`SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status = 'published'`)
+	st.BrandCount = count(`SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status <> 'archived'`)
 	return st
 }

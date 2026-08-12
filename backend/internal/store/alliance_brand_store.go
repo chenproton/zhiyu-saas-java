@@ -121,12 +121,14 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 	return &b, nil
 }
 
+// ListPublicBrands 门户前台公开品牌列表：is_public 为展示开关，status 仅排除已归档。
+// 不要求 published：品牌页创建即 draft 且雇主品牌无发布入口，开关语义与项目/成果（is_public 唯一门槛）对齐。
 func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) ([]domain.AllianceBrand, error) {
 	query := `SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
 		cover_image, cover_video, description, data,
 		student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
 		sort_order, view_count, created_at, updated_at
-		FROM alliance_brands WHERE is_public = true AND status = 'published'`
+		FROM alliance_brands WHERE is_public = true AND status <> 'archived'`
 	args := []interface{}{}
 	if brandType != "" {
 		query += " AND brand_type = $1"
