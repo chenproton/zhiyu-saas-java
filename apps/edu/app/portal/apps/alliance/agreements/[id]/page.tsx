@@ -144,12 +144,24 @@ export default function AllianceAgreementDetailPage() {
               <CardHeader>
                 <CardTitle>{t('协议附件')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
-                {agreement.attachments.map((a, i) => (
-                  <p key={i} className="text-sm text-muted-foreground">
-                    📄 {typeof a === 'string' ? a : (a as any)?.name || t('附件')}
-                  </p>
-                ))}
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {agreement.attachments.map((a, i) => (
+                    <a
+                      key={i}
+                      href={typeof a === 'string' ? a : (a as any)?.url || (a as any)?.name}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={typeof a === 'string' ? a : (a as any)?.url || (a as any)?.name}
+                        alt={t('协议附件 {idx}', { idx: i + 1 })}
+                        className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-100 shadow-sm hover:opacity-80 transition-opacity"
+                      />
+                    </a>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
