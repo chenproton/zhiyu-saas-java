@@ -1043,6 +1043,12 @@ export const allianceNavigationConfig: PlatformNavigationConfig = {
           matchers: ['/portal/apps/alliance/projects'],
         },
         {
+          id: 'agreements',
+          label: '合作协议',
+          href: '/portal/apps/alliance/agreements',
+          matchers: ['/portal/apps/alliance/agreements'],
+        },
+        {
           id: 'achievements',
           label: '合作成果',
           href: '/portal/apps/alliance/achievements',
@@ -1055,14 +1061,8 @@ export const allianceNavigationConfig: PlatformNavigationConfig = {
           matchers: ['/portal/apps/alliance/experts'],
         },
         {
-          id: 'agreements',
-          label: '合作协议',
-          href: '/portal/apps/alliance/agreements',
-          matchers: ['/portal/apps/alliance/agreements'],
-        },
-        {
           id: 'permissions',
-          label: '合作权限',
+          label: '专家合作权限',
           href: '/portal/apps/alliance/permissions',
           matchers: ['/portal/apps/alliance/permissions'],
         },

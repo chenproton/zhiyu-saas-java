@@ -180,26 +180,6 @@ export function EnterpriseDetailView({
       stats={stats}
       tabs={[
         {
-          value: 'experts',
-          label: t('专家团队'),
-          count: expertItems.length,
-          content: (
-            <Card className="border-0 shadow-sm rounded-3xl">
-              <CardContent className="p-6">
-                {expertItems.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {expertItems.map((expert) => (
-                      <ExpertCard key={expert.id} expert={expert} />
-                    ))}
-                  </div>
-                ) : (
-                  <DetailEmpty icon={Users} title={t('暂无专家')} />
-                )}
-              </CardContent>
-            </Card>
-          ),
-        },
-        {
           value: 'info',
           label: t('基本信息'),
           content: (
@@ -275,37 +255,20 @@ export function EnterpriseDetailView({
           ),
         },
         {
-          value: 'agreements',
-          label: t('合作协议'),
-          count: agreementItems.length,
+          value: 'experts',
+          label: t('专家团队'),
+          count: expertItems.length,
           content: (
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
-                {schoolNote}
-                {agreementItems.length > 0 ? (
-                  <div className="space-y-4 mt-4">
-                    {agreementItems.map((agreement) => (
-                      <div
-                        key={agreement.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 rounded-2xl gap-3"
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-900">{agreement.name}</p>
-                          <p className="text-sm text-slate-500">
-                            {agreement.type} ·{' '}
-                            {t('有效期至 {date}', { date: agreement.endDate || '-' })}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">
-                          {allianceLabel('agreementStatus', agreement.status)}
-                        </Badge>
-                      </div>
+                {expertItems.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {expertItems.map((expert) => (
+                      <ExpertCard key={expert.id} expert={expert} />
                     ))}
                   </div>
                 ) : (
-                  !schoolNote && (
-                    <DetailEmpty icon={FileText} title={t('暂无合作协议')} />
-                  )
+                  <DetailEmpty icon={Users} title={t('暂无专家')} />
                 )}
               </CardContent>
             </Card>
@@ -346,6 +309,43 @@ export function EnterpriseDetailView({
                 ) : (
                   !schoolNote && (
                     <DetailEmpty icon={Award} title={t('暂无合作项目')} />
+                  )
+                )}
+              </CardContent>
+            </Card>
+          ),
+        },
+        {
+          value: 'agreements',
+          label: t('合作协议'),
+          count: agreementItems.length,
+          content: (
+            <Card className="border-0 shadow-sm rounded-3xl">
+              <CardContent className="p-6">
+                {schoolNote}
+                {agreementItems.length > 0 ? (
+                  <div className="space-y-4 mt-4">
+                    {agreementItems.map((agreement) => (
+                      <div
+                        key={agreement.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 rounded-2xl gap-3"
+                      >
+                        <div>
+                          <p className="font-semibold text-slate-900">{agreement.name}</p>
+                          <p className="text-sm text-slate-500">
+                            {agreement.type} ·{' '}
+                            {t('有效期至 {date}', { date: agreement.endDate || '-' })}
+                          </p>
+                        </div>
+                        <Badge variant="secondary">
+                          {allianceLabel('agreementStatus', agreement.status)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !schoolNote && (
+                    <DetailEmpty icon={FileText} title={t('暂无合作协议')} />
                   )
                 )}
               </CardContent>
