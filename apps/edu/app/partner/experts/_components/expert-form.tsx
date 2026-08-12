@@ -159,11 +159,13 @@ export function PartnerExpertForm({
             label={t('专家头像')}
             value={item.avatarUrl}
             onChange={(v) => setField('avatarUrl', v)}
+            allowUrlInput={false}
           />
           <SingleImageUpload
             label={t('专家主页封面')}
             value={item.coverImage}
             onChange={(v) => setField('coverImage', v)}
+            allowUrlInput={false}
           />
         </CardContent>
       </Card>

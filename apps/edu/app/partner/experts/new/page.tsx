@@ -27,10 +27,6 @@ export default function PartnerExpertNewPage() {
   const [item, setItem] = useState<PartnerExpertFormState>(emptyPartnerExpertForm)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [createdAccount, setCreatedAccount] = useState<{
-    username: string
-    password: string
-  } | null>(null)
 
   // 写操作仅 enterprise_admin
   useEffect(() => {
@@ -49,9 +45,15 @@ export default function PartnerExpertNewPage() {
     setSaving(true)
     try {
       const data = await partnerExpertApi.create({ ...item, username, password })
-      setCreatedAccount({ username: data.username, password: data.initialPassword })
-      toast({ title: t('专家已创建') })
-      if (createdAccount) router.push(`/partner/experts/${data.expert.id}`)
+      // 保存成功后回到专家列表页；登录账号信息随 toast 提示转交
+      toast({
+        title: t('专家已创建'),
+        description: t('用户名：{username} ｜ 初始密码：{pwd}，请转交专家本人', {
+          username: data.username,
+          pwd: data.initialPassword,
+        }),
+      })
+      router.push('/partner/experts')
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -109,17 +111,6 @@ export default function PartnerExpertNewPage() {
                   autoComplete="new-password"
                 />
               </div>
-              {createdAccount && (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
-                  <p className="font-medium text-primary">{t('账号创建成功')}</p>
-                  <p className="mt-1 text-muted-foreground">
-                    {t('用户名：{username} ｜ 初始密码：{pwd}，请转交专家本人', {
-                      username: createdAccount.username,
-                      pwd: createdAccount.password,
-                    })}
-                  </p>
-                </div>
-              )}
               <Button className="w-full" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('创建')}
