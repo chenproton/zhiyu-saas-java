@@ -43,7 +43,11 @@ func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 		SearchColumns: []string{"name"},
 		ScanRows:      ScanExamUsageRows,
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
-			qb.AddCondition("(target_type IN (" + manualExamUsageTargetTypesSQL + ") OR (target_type IN ('task', 'node') AND activation_mode IN ('manual', 'scheduled')))")
+			// 默认展示范围：手动创建的（class/major/department/public）+ 自动创建且定时/手动启停的（task/node）。
+			// 学生作答/结果回看等场景传 scope=all 时不做范围过滤，任务/节点随时作答（always）的自动考试安排也可查到。
+			if p.Values["scope"] != "all" {
+				qb.AddCondition("(target_type IN (" + manualExamUsageTargetTypesSQL + ") OR (target_type IN ('task', 'node') AND activation_mode IN ('manual', 'scheduled')))")
+			}
 			if examID := p.Values["examId"]; examID != "" {
 				qb.AddCondition("exam_id = " + qb.NextArg(examID))
 			}

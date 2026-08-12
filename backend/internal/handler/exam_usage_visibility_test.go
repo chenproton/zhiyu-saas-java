@@ -82,6 +82,25 @@ func TestExamUsage_Visibility(t *testing.T) {
 		}
 	}
 
+	// 3.1 scope=all：学生作答/结果回看等场景需查到随时作答（always）的自动考试安排
+	w = env.Do("GET", "/api/v1/evaluation/exam-usages?scope=all", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list exam usages scope=all: expected 200, got %d", w.Code)
+	}
+	items, _, err = testhelper.UnmarshalList[domain.ExamUsage](w)
+	if err != nil {
+		t.Fatalf("unmarshal exam usages scope=all: %v", err)
+	}
+	allIDs := map[string]bool{}
+	for _, u := range items {
+		allIDs[u.ID] = true
+	}
+	for _, id := range []string{manualUsageID, taskUsageID, taskManualUsageID, nodeUsageID, courseUsageID} {
+		if !allIDs[id] {
+			t.Fatalf("scope=all 列表应包含考试安排 %s，实际 %v", id, allIDs)
+		}
+	}
+
 	// 4. 学生（班级命中 manualUsage 的目标班级，验证考试相关展示与班级过滤）
 	studentID := uuid.NewString()
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)

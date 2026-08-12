@@ -589,7 +589,7 @@ export default function GradingDetailPage() {
             try {
               const [examData, usageRes] = await Promise.all([
                 examApi.get(examId),
-                examUsageApi.list({ examId, limit: 50 }),
+                examUsageApi.list({ examId, limit: 50, scope: 'all' }),
               ])
               if (cfg.resourceConfig?.questionScores) {
                 const scores = cfg.resourceConfig.questionScores as Record<string, number>

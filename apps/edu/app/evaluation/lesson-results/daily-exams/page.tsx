@@ -63,7 +63,8 @@ export default function DailyExamsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await examUsageApi.list({ limit: 500 })
+        // scope=all：课程节点随时作答（always）的自动考试安排不在管理列表默认范围，日常考试需全量
+        const res = await examUsageApi.list({ limit: 500, scope: 'all' })
         const items = res.items || []
         setUsages(items)
         const firstId = items[0]?.id ?? null
