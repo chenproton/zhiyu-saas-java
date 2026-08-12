@@ -57,6 +57,10 @@ type FileHandler struct {
 	// 当前实现为联盟公开企业文件放行——文件租户存在对本请求租户公开可见的企业
 	// （enable_public + 学校侧 is_public 未终止链接）时返回 true。
 	CrossTenantAccess func(ctx context.Context, fileTenantID, viewerTenantID string) (bool, error)
+	// IsPublicAllianceFile 联盟公开前台文件判定（可选）：文件被公开联盟数据
+	// （enable_public 企业 / is_public 成果/项目/品牌/专家）引用时对任意访问者放行，
+	// 与公开接口（enable_public/is_public 即对外可见）语义对齐，修复"接口返回数据但图片 403"。
+	IsPublicAllianceFile func(ctx context.Context, fileTenantID, fileURL string) (bool, error)
 }
 
 type UploadResponse struct {
@@ -265,6 +269,13 @@ func (h *FileHandler) resolveTenant(w http.ResponseWriter, r *http.Request) (str
 	tenantID := chi.URLParam(r, "tenantID")
 	if h.verifySignURL(r) {
 		return tenantID, true
+	}
+	// 联盟公开前台文件：数据公开（enable_public/is_public）且文件被其引用时，
+	// 任意访问者（含未登录访客）可访问，与公开接口的可见性语义保持一致
+	if h.IsPublicAllianceFile != nil {
+		if ok, err := h.IsPublicAllianceFile(r.Context(), tenantID, r.URL.Path); err == nil && ok {
+			return tenantID, true
+		}
 	}
 	claims := middleware.CurrentUser(r)
 	if claims != nil {

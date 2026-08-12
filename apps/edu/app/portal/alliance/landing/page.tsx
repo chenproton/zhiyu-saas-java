@@ -336,8 +336,11 @@ export default function AllianceLandingPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // auth 就绪前不发起访客请求：portal 页面均需登录，未就绪时发起会拉取
+    // 全量公开数据并在登录视角渲染跨租户图片（图片 403/排行接口 400）
+    if (!tenantId) return
     // 前台展示与后台管理页同租户数据一致：全部带 tenantId 按本校链接过滤（其他租户/已解除合作的企业不展示）
-    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    const q = `?tenantId=${tenantId}`
     const requests: [
       Promise<AlliancePublicStats | null>,
       Promise<{ items: AllianceEnterprise[] } | null>,

@@ -51,8 +51,8 @@ export default function AlliancePublicProjectDetailPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!id) return
-    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    if (!id || !tenantId) return
+    const q = `?tenantId=${tenantId}`
     Promise.all([
       portalRequest<AllianceProject>(`/alliance/public/projects/${id}${q}`),
       portalRequest<{ items: AllianceEnterprise[] }>(`/alliance/public/enterprises${q}`),

@@ -27,8 +27,9 @@ export default function AlliancePublicProjectsPage() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
+    if (!tenantId) return
     // 与后台一致：仅展示本校公开且关联已链接企业的项目；分页全量拉取避免截断
-    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    const q = `?tenantId=${tenantId}`
     fetchAllPages((page, pageSize) =>
       portalRequest<{ items: AllianceProject[] }>(
         `/alliance/public/projects${q}${q ? '&' : '?'}limit=${pageSize}&offset=${page * pageSize}`,

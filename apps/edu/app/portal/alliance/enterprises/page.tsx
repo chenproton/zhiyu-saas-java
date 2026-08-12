@@ -26,9 +26,10 @@ export default function AlliancePublicEnterprisesPage() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
+    if (!tenantId) return
     // 与后台 /portal/apps/alliance/enterprises 一致：仅展示本校链接且企业愿意展示的；
     // 分页全量拉取避免 public 接口 100 条截断导致搜索/评级筛选不全
-    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    const q = `?tenantId=${tenantId}`
     fetchAllPages((page, pageSize) =>
       portalRequest<{ items: AllianceEnterprise[] }>(
         `/alliance/public/enterprises${q}${q ? '&' : '?'}limit=${pageSize}&offset=${page * pageSize}`,
