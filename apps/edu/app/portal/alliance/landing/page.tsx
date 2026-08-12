@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Building2,
@@ -20,7 +20,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { portalRequest } from '@/lib/api'
 import type {
   AlliancePublicStats,
@@ -36,14 +35,18 @@ import { reportError } from '@/lib/error-handling'
 import { LoadingView } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { LandingShell, LandingEmpty } from '@/components/shared/landing-shell'
-import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import {
   GradientPlaceholder,
   EnterpriseCard,
   ProjectCard,
   AchievementCard,
   ExpertCard,
-  BrandCard,
+  TalentBrandCard,
+  EmployerBrandRow,
+  JobBrandCard,
+  MajorBrandCard,
+  TeacherBrandCard,
+  CultureBrandCard,
 } from '@/components/alliance/public-cards'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -322,7 +325,6 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: HeroSchool | null }) {
 
 export default function AllianceLandingPage() {
   const { tenantId } = usePortalAuth()
-  const [brandTab, setBrandTab] = useState(BRAND_CATEGORIES[0].id)
   const [data, setData] = useState<LandingData>({
     schoolInfo: null,
     stats: null,
@@ -422,11 +424,22 @@ export default function AllianceLandingPage() {
     ]
   }, [data.stats, t])
 
+  /** 各类型品牌独立限量展示（不做全局截断，保证六类同时铺开时都有露出） */
   const featuredBrandsByType = useMemo(() => {
-    const featured = data.brands.filter((b) => b.isFeatured || b.isPublic).slice(0, 12)
+    const featured = data.brands.filter((b) => b.isFeatured || b.isPublic)
+    const limit: Record<string, number> = {
+      talent: 2,
+      employer: 3,
+      job: 3,
+      major: 3,
+      teacher: 4,
+      culture: 3,
+    }
     const byType: Record<string, AllianceBrand[]> = {}
     BRAND_CATEGORIES.forEach((cat) => {
-      byType[cat.id] = featured.filter((b) => b.brandType === cat.id).slice(0, 4)
+      byType[cat.id] = featured
+        .filter((b) => b.brandType === cat.id)
+        .slice(0, limit[cat.id] ?? 3)
     })
     return byType
   }, [data.brands])
@@ -438,6 +451,168 @@ export default function AllianceLandingPage() {
     })
     return counts
   }, [data.brands])
+
+  /** 六类品牌分区（有内容才渲染），每类一种卡片样式；区间内由渐变分隔线衔接 */
+  const brandSections = useMemo(() => {
+    const talentBrands = featuredBrandsByType['talent'] ?? []
+    const employerBrands = featuredBrandsByType['employer'] ?? []
+    const jobBrands = featuredBrandsByType['job'] ?? []
+    const majorBrands = featuredBrandsByType['major'] ?? []
+    const teacherBrands = featuredBrandsByType['teacher'] ?? []
+    const cultureBrands = featuredBrandsByType['culture'] ?? []
+
+    const sections: React.ReactNode[] = []
+
+    // 人才品牌：横版旗舰卡 + 人才画像排名
+    if (talentBrands.length > 0 || data.talentRanking.length > 0) {
+      sections.push(
+        <div key="talent">
+          <SectionSubHeading
+            title={t('人才品牌')}
+            action={<ViewAllLink href="/portal/alliance/brands?type=talent" />}
+          />
+          {data.talentRanking.length > 0 && (
+            <div className={talentBrands.length > 0 ? 'mb-8' : ''}>
+              <div className="mb-4 flex items-center gap-2">
+                <Medal className="h-4 w-4 text-primary" />
+                <h4 className="text-sm font-semibold text-slate-800">{t('人才画像排名')}</h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {data.talentRanking.map((g) => (
+                  <div
+                    key={g.majorId}
+                    className="rounded-xl border border-slate-200 bg-white shadow-sm"
+                  >
+                    <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                      {g.majorName}
+                    </div>
+                    <div className="divide-y divide-slate-50">
+                      {g.students.slice(0, 5).map((s, idx) => (
+                        <div key={s.studentId} className="flex items-center gap-3 px-4 py-2">
+                          <span
+                            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                              idx < 3
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span className="truncate text-sm font-medium">{s.name}</span>
+                          <span className="ml-auto shrink-0 text-sm font-semibold text-primary">
+                            {s.avgAchievementRate == null
+                              ? '-'
+                              : `${s.avgAchievementRate.toFixed(1)}%`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {talentBrands.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {talentBrands.map((brand) => (
+                <TalentBrandCard key={brand.id} brand={brand} />
+              ))}
+            </div>
+          )}
+        </div>,
+      )
+    }
+
+    // 雇主品牌（行式列表）+ 岗位品牌（紧凑文本卡）：双栏并置
+    if (employerBrands.length > 0 || jobBrands.length > 0) {
+      sections.push(
+        <div
+          key="employer-job"
+          className={`grid gap-10 ${employerBrands.length > 0 && jobBrands.length > 0 ? 'lg:grid-cols-2' : ''}`}
+        >
+          {employerBrands.length > 0 && (
+            <div>
+              <SectionSubHeading
+                title={t('雇主品牌')}
+                action={<ViewAllLink href="/portal/alliance/brands?type=employer" />}
+              />
+              <div className="space-y-4">
+                {employerBrands.map((brand) => (
+                  <EmployerBrandRow key={brand.id} brand={brand} />
+                ))}
+              </div>
+            </div>
+          )}
+          {jobBrands.length > 0 && (
+            <div>
+              <SectionSubHeading
+                title={t('岗位品牌')}
+                action={<ViewAllLink href="/portal/alliance/brands?type=job" />}
+              />
+              <div className="space-y-4">
+                {jobBrands.map((brand) => (
+                  <JobBrandCard key={brand.id} brand={brand} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>,
+      )
+    }
+
+    // 专业品牌：高图覆盖卡
+    if (majorBrands.length > 0) {
+      sections.push(
+        <div key="major">
+          <SectionSubHeading
+            title={t('专业品牌')}
+            action={<ViewAllLink href="/portal/alliance/brands?type=major" />}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {majorBrands.map((brand) => (
+              <MajorBrandCard key={brand.id} brand={brand} />
+            ))}
+          </div>
+        </div>,
+      )
+    }
+
+    // 师资品牌：头像交叠卡
+    if (teacherBrands.length > 0) {
+      sections.push(
+        <div key="teacher">
+          <SectionSubHeading
+            title={t('师资品牌')}
+            action={<ViewAllLink href="/portal/alliance/brands?type=teacher" />}
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            {teacherBrands.map((brand) => (
+              <TeacherBrandCard key={brand.id} brand={brand} />
+            ))}
+          </div>
+        </div>,
+      )
+    }
+
+    // 文化品牌：杂志卡
+    if (cultureBrands.length > 0) {
+      sections.push(
+        <div key="culture">
+          <SectionSubHeading
+            title={t('文化品牌')}
+            action={<ViewAllLink href="/portal/alliance/brands?type=culture" />}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {cultureBrands.map((brand) => (
+              <CultureBrandCard key={brand.id} brand={brand} />
+            ))}
+          </div>
+        </div>,
+      )
+    }
+
+    return sections
+  }, [featuredBrandsByType, data.talentRanking, t])
 
   if (loading) return <LoadingView />
 
@@ -577,90 +752,15 @@ export default function AllianceLandingPage() {
           })}
         </div>
 
-        {/* Featured brands grouped by type */}
-        {(data.brands.length > 0 || data.talentRanking.length > 0) && (
-          <Tabs value={brandTab} onValueChange={setBrandTab} className="w-full">
-            <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary/80 to-primary/60" />
-                <h3 className="text-lg font-semibold text-slate-800">{t('推荐品牌')}</h3>
-              </div>
-              <MobileTabDropdown
-                items={BRAND_CATEGORIES.map((cat) => ({ value: cat.id, label: cat.title }))}
-                value={brandTab}
-                onValueChange={setBrandTab}
-                className="md:hidden w-full"
-              />
-              <TabsList className="hidden md:inline-flex rounded-xl">
-                {BRAND_CATEGORIES.map((cat) => (
-                  <TabsTrigger key={cat.id} value={cat.id} className="rounded-lg text-xs">
-                    {t(cat.title)}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <ViewAllLink href="/portal/alliance/brands" />
-            </div>
-            {BRAND_CATEGORIES.map((cat) => {
-              const items = featuredBrandsByType[cat.id] ?? []
-              return (
-                <TabsContent key={cat.id} value={cat.id}>
-                  {cat.id === 'talent' && data.talentRanking.length > 0 && (
-                    <div className="mb-8">
-                      <div className="mb-4 flex items-center gap-2">
-                        <Medal className="h-4 w-4 text-primary" />
-                        <h4 className="text-sm font-semibold text-slate-800">
-                          {t('人才画像排名')}
-                        </h4>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {data.talentRanking.map((g) => (
-                          <div
-                            key={g.majorId}
-                            className="rounded-xl border border-slate-200 bg-white shadow-sm"
-                          >
-                            <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
-                              {g.majorName}
-                            </div>
-                            <div className="divide-y divide-slate-50">
-                              {g.students.slice(0, 5).map((s, idx) => (
-                                <div key={s.studentId} className="flex items-center gap-3 px-4 py-2">
-                                  <span
-                                    className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                                      idx < 3
-                                        ? 'bg-amber-100 text-amber-700'
-                                        : 'bg-muted text-muted-foreground'
-                                    }`}
-                                  >
-                                    {idx + 1}
-                                  </span>
-                                  <span className="truncate text-sm font-medium">{s.name}</span>
-                                  <span className="ml-auto shrink-0 text-sm font-semibold text-primary">
-                                    {s.avgAchievementRate == null
-                                      ? '-'
-                                      : `${s.avgAchievementRate.toFixed(1)}%`}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {items.length === 0 ? (
-                    <LandingEmpty title={t('暂无{title}', { title: t(cat.title) })} />
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {items.map((brand) => (
-                        <BrandCard key={brand.id} brand={brand} />
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              )
-            })}
-          </Tabs>
-        )}
+        {/* 六类品牌同时铺开：每类一种展示样式，体现系统多样性 */}
+        {brandSections.map((node, i) => (
+          <Fragment key={i}>
+            {i > 0 && (
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent my-12 sm:my-16" />
+            )}
+            {node}
+          </Fragment>
+        ))}
       </section>
 
       {/* CTA */}
