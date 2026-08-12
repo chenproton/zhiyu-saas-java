@@ -192,10 +192,6 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
 			return
 		}
-		if err == service.ErrInvalidMentorAssignment {
-			respondError(w, http.StatusBadRequest, "企业导师评分人无效：须为本校已启用的共建导师")
-			return
-		}
 		respondServerError(w, r, err, "保存测评方式失败")
 		return
 	}

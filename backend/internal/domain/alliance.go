@@ -228,26 +228,15 @@ type AlliancePartnerMentorTask struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
-// ===== 专家 ↔ 学校影子账号（阶段二互动流程使用） =====
-type AllianceExpertMentorLink struct {
-	ID        string    `json:"id"`
-	TenantID  string    `json:"tenantId"`
-	ExpertID  string    `json:"expertId"`
-	UserID    string    `json:"userId"`
-	Enabled   bool      `json:"enabled"`
-	CreatedBy *string   `json:"createdBy,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
-}
-
-// ===== 共建导师选择器数据源（本校已引入企业的专家 + 影子账号启用状态） =====
-// UserID 为影子账号 id，未启用时为 null（前端共建人选择器/任务分配据此区分）。
+// ===== 共建导师选择器数据源（本校已引入企业的专家，绑定企业侧账号） =====
+// UserID 为专家绑定的企业成员账号（partner 平台 users.id，创建专家档案时建立），
+// 无绑定账号的专家为 null（前端共建人选择器据此不可勾选）。
 type AllianceMentorOption struct {
 	ExpertID       string  `json:"expertId"`
 	Name           string  `json:"name"`
 	Title          *string `json:"title,omitempty"`
 	EnterpriseID   string  `json:"enterpriseId"`
 	EnterpriseName string  `json:"enterpriseName"`
-	Enabled        bool    `json:"enabled"`
 	UserID         *string `json:"userId"`
 }
 

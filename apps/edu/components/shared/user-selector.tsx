@@ -40,7 +40,6 @@ import {
   allianceExpertApi,
 } from '@/lib/api'
 import type { User } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import type { AllianceMentorOption } from '@/lib/types'
@@ -136,7 +135,6 @@ export function UserSelector({
   showEnterpriseExperts = false,
 }: UserSelectorProps) {
   const t = useT()
-  const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [orgs, setOrgs] = useState<(Organization & { children?: Organization[] })[]>([])
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
@@ -156,7 +154,6 @@ export function UserSelector({
   // 企业专家分组：右侧列表切换为专家视图（null=未加载）
   const [expertView, setExpertView] = useState(false)
   const [mentorOptions, setMentorOptions] = useState<AllianceMentorOption[] | null>(null)
-  const [enablingExpertId, setEnablingExpertId] = useState<string | null>(null)
 
   const excludeUserIdsRef = useRef(excludeUserIds)
   useEffect(() => {
@@ -270,14 +267,25 @@ export function UserSelector({
     })()
   }, [open, loadUsers])
 
-  // 企业专家分组数据源：弹窗打开后按需加载一次（dialog 生命周期内复用）
+  // 企业专家分组数据源：弹窗打开后按需加载一次（dialog 生命周期内复用）；
+  // 已选专家账号不在学校租户用户列表，加载后同步注入名字缓存供回显
   useEffect(() => {
     if (!open || !showEnterpriseExperts || mentorOptions !== null) return
     let cancelled = false
     allianceExpertApi
       .mentorOptions()
       .then((options) => {
-        if (!cancelled) setMentorOptions(options.items || [])
+        if (cancelled) return
+        const items = options.items || []
+        setMentorOptions(items)
+        const selected = items.filter((o) => o.userId && value.includes(o.userId))
+        if (selected.length > 0) {
+          mergeUserCache(
+            selected.map(
+              (o) => ({ id: o.userId as string, name: o.name, username: o.name }) as User,
+            ),
+          )
+        }
       })
       .catch(() => {
         if (!cancelled) setMentorOptions([])
@@ -285,7 +293,7 @@ export function UserSelector({
     return () => {
       cancelled = true
     }
-  }, [open, showEnterpriseExperts, mentorOptions])
+  }, [open, showEnterpriseExperts, mentorOptions, mergeUserCache, value])
 
   const expertLabel = useCallback(
     (o: AllianceMentorOption) =>
@@ -293,7 +301,7 @@ export function UserSelector({
     [],
   )
 
-  // 右侧专家列表：搜索词本地过滤 + excludeUserIds 过滤（按影子账号 id）
+  // 右侧专家列表：搜索词本地过滤 + excludeUserIds 过滤（按绑定账号 id）
   const visibleExperts = useMemo(() => {
     if (!mentorOptions) return []
     const kw = debouncedUserSearch.trim().toLowerCase()
@@ -305,36 +313,11 @@ export function UserSelector({
     })
   }, [mentorOptions, debouncedUserSearch, excludeUserIds, expertLabel])
 
-  // 未启用的专家：先启用为共建导师（创建影子账号）再自动勾选
-  const enableExpertAndSelect = async (option: AllianceMentorOption) => {
-    if (enablingExpertId) return
-    setEnablingExpertId(option.expertId)
-    try {
-      const res = await allianceExpertApi.mentorLink(option.expertId)
-      setMentorOptions(
-        (prev) =>
-          prev?.map((o) =>
-            o.expertId === option.expertId ? { ...o, enabled: true, userId: res.userId } : o,
-          ) || prev,
-      )
-      if (res.initialPassword) {
-        toast({
-          title: t('已启用为共建导师并选中'),
-          description: t('初始密码：{pwd}（请转告导师修改密码）', { pwd: res.initialPassword }),
-        })
-      } else {
-        toast({ title: t('已启用为共建导师并选中') })
-      }
-      toggleUser(res.userId)
-    } catch (err: any) {
-      toast({
-        title: t('启用失败'),
-        description: err?.message,
-        variant: 'destructive',
-      })
-    } finally {
-      setEnablingExpertId(null)
-    }
+  // 勾选专家时同步名字到用户缓存（专家账号不在学校租户用户列表，触发区/已选徽标需回显）
+  const toggleExpert = (option: AllianceMentorOption) => {
+    if (!option.userId) return
+    mergeUserCache([{ id: option.userId, name: option.name, username: option.name } as User])
+    toggleUser(option.userId)
   }
 
   // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
@@ -533,12 +516,12 @@ export function UserSelector({
                         <TableRow>
                           <TableHead className="w-10">{multiple ? '' : ''}</TableHead>
                           <TableHead className="text-xs">{t('专家')}</TableHead>
-                          <TableHead className="text-xs">{t('共建导师')}</TableHead>
+                          <TableHead className="text-xs">{t('账号')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {visibleExperts.map((o) => {
-                          const selectable = o.enabled && !!o.userId
+                          const selectable = !!o.userId
                           return (
                             <TableRow
                               key={o.expertId}
@@ -549,7 +532,7 @@ export function UserSelector({
                                   : '',
                               )}
                               onClick={() => {
-                                if (selectable && o.userId) toggleUser(o.userId)
+                                if (selectable) toggleExpert(o)
                               }}
                             >
                               <TableCell>
@@ -559,26 +542,8 @@ export function UserSelector({
                                 />
                               </TableCell>
                               <TableCell className="text-sm">{expertLabel(o)}</TableCell>
-                              <TableCell
-                                className="text-sm text-muted-foreground"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {selectable ? (
-                                  t('已启用')
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    disabled={enablingExpertId === o.expertId}
-                                    onClick={() => enableExpertAndSelect(o)}
-                                  >
-                                    {enablingExpertId === o.expertId && (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                                    )}
-                                    {t('启用')}
-                                  </Button>
-                                )}
+                              <TableCell className="text-sm text-muted-foreground">
+                                {selectable ? t('有企业账号') : t('无企业账号')}
                               </TableCell>
                             </TableRow>
                           )

@@ -798,7 +798,7 @@ func TestPartner_Cooperation(t *testing.T) {
 	}
 }
 
-// TestPartner_MentorTasks 专家测评任务只读列表：影子账号被指派的评审步骤返回，
+// TestPartner_MentorTasks 专家测评任务只读列表：本企业专家账号被指派的评审步骤返回，
 // 他企业专家/禁用步骤被排除。
 func TestPartner_MentorTasks(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
@@ -830,35 +830,31 @@ func TestPartner_MentorTasks(t *testing.T) {
 	t.Cleanup(func() {
 		env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, otherEnterpriseID)
 	})
+	// 专家绑定账号（无 FK，模拟企业侧 partner 账号）；本企业专家已被步骤指派
+	shadowUser, otherShadowUser := uuid.NewString(), uuid.NewString()
+
 	if _, err := env.DB.Exec(ctx,
-		`INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status) VALUES ($1,$2,$3,$4,'active')`,
-		expertID, *reg.User.TenantID, "测评专家甲-"+suffix, enterpriseID); err != nil {
+		`INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, user_id) VALUES ($1,$2,$3,$4,'active',$5)`,
+		expertID, *reg.User.TenantID, "测评专家甲-"+suffix, enterpriseID, shadowUser); err != nil {
 		t.Fatalf("预置专家失败: %v", err)
 	}
 	if _, err := env.DB.Exec(ctx,
-		`INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status) VALUES ($1,$2,$3,$4,'active')`,
-		otherExpertID, otherEntTenant, "他企专家-"+suffix, otherEnterpriseID); err != nil {
+		`INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, user_id) VALUES ($1,$2,$3,$4,'active',$5)`,
+		otherExpertID, otherEntTenant, "他企专家-"+suffix, otherEnterpriseID, otherShadowUser); err != nil {
 		t.Fatalf("预置他企专家失败: %v", err)
 	}
 	t.Cleanup(func() {
 		env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id IN ($1,$2)`, expertID, otherExpertID)
 	})
 
-	// 影子账号（无 FK，模拟学校侧 enterprise_mentor 账号）
-	shadowUser, otherShadowUser := uuid.NewString(), uuid.NewString()
-	linkID, otherLinkID := uuid.NewString(), uuid.NewString()
+	// 本企业 → 学校引入 link（ListMentorTasks 依赖 link 关联任务归属学校）
 	if _, err := env.DB.Exec(ctx,
-		`INSERT INTO alliance_expert_mentor_links (id, tenant_id, expert_id, user_id, enabled) VALUES ($1,$2,$3,$4,true)`,
-		linkID, schoolID, expertID, shadowUser); err != nil {
-		t.Fatalf("预置 mentor link 失败: %v", err)
-	}
-	if _, err := env.DB.Exec(ctx,
-		`INSERT INTO alliance_expert_mentor_links (id, tenant_id, expert_id, user_id, enabled) VALUES ($1,$2,$3,$4,true)`,
-		otherLinkID, schoolID, otherExpertID, otherShadowUser); err != nil {
-		t.Fatalf("预置他企 mentor link 失败: %v", err)
+		`INSERT INTO alliance_enterprise_links (tenant_id, enterprise_id) VALUES ($1,$2)`,
+		schoolID, enterpriseID); err != nil {
+		t.Fatalf("预置引入 link 失败: %v", err)
 	}
 	t.Cleanup(func() {
-		env.DB.Exec(ctx, `DELETE FROM alliance_expert_mentor_links WHERE id IN ($1,$2)`, linkID, otherLinkID)
+		env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id = $2`, schoolID, enterpriseID)
 	})
 
 	// 任务链：scenario → scenario_task → evaluation_method → review_steps
@@ -904,8 +900,8 @@ func TestPartner_MentorTasks(t *testing.T) {
 		env.DB.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, scenarioID)
 	})
 
-	// 评分记录（scene_evaluation_results 的 evaluator/evaluatee 有 users FK，影子账号需真实 users 行）：
-	// 本专家影子账号 2 条指派（1 条已评）；他企影子账号 1 条（同任务同校但 evaluator 不同，不应计入）
+	// 评分记录（scene_evaluation_results 的 evaluator/evaluatee 有 users FK，账号需真实 users 行）：
+	// 本企业专家账号 2 条指派（1 条已评）；他企专家账号 1 条（同任务同校但 evaluator 不同，不应计入）
 	for _, u := range []struct{ id, name string }{
 		{shadowUser, "影子账号甲-" + suffix},
 		{otherShadowUser, "他企影子账号-" + suffix},

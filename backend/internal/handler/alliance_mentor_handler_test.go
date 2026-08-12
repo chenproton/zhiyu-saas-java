@@ -3,7 +3,6 @@ package handler_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,49 +16,40 @@ import (
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
-// ===== 阶段二（B10~B14）校企互动闭环测试 =====
+// ===== 校企互动：共建导师选择器 + 任务级企业导师分配（概念标注）测试 =====
 
-// mentorFixture 导师测试夹具：企业 + 专家 + 引入 link + enterprise_mentor 角色。
+// mentorFixture 导师测试夹具：企业 + 绑定账号的专家 + 引入 link。
 type mentorFixture struct {
 	enterpriseID string
 	expertID     string
+	userID       string
 }
 
-// setupMentorFixture 预置企业/专家/引入 link/enterprise_mentor 角色（linkPublic 控制 link.is_public）。
+// setupMentorFixture 预置企业/专家（绑定企业侧账号 user_id）/引入 link。
 // 返回清理函数，调用方须 defer（须在 defer env.Cleanup() 之后注册，保证连接池关闭前执行）。
 func setupMentorFixture(t *testing.T, env *testhelper.TestEnv, ctx context.Context, linkPublic bool) (mentorFixture, func()) {
 	t.Helper()
 	tenantID := testhelper.TestTenantID
-	entID, expID, roleID := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	entID, expID, userID := uuid.NewString(), uuid.NewString(), uuid.NewString()
 
 	if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name, enable_public) VALUES ($1,$2,$3,true)`,
 		entID, tenantID, "导师测试企业-"+entID[:8]); err != nil {
 		t.Fatalf("预置企业失败: %v", err)
 	}
-	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, is_public) VALUES ($1,$2,$3,$4,'active',true)`,
-		expID, tenantID, "导师测试专家-"+expID[:8], entID); err != nil {
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, is_public, user_id) VALUES ($1,$2,$3,$4,'active',true,$5)`,
+		expID, tenantID, "导师测试专家-"+expID[:8], entID, userID); err != nil {
 		t.Fatalf("预置专家失败: %v", err)
 	}
 	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_enterprise_links (tenant_id, enterprise_id, is_public) VALUES ($1,$2,$3)`,
 		tenantID, entID, linkPublic); err != nil {
 		t.Fatalf("预置 link 失败: %v", err)
 	}
-	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status, created_at)
-		VALUES ($1,$2,'enterprise_mentor','企业导师','','{}',0,'active',NOW())
-	`, roleID, tenantID); err != nil {
-		t.Fatalf("预置角色失败: %v", err)
-	}
 	cleanup := func() {
-		env.DB.Exec(ctx, `DELETE FROM alliance_expert_mentor_links WHERE tenant_id = $1 AND expert_id = $2`, tenantID, expID)
-		env.DB.Exec(ctx, `DELETE FROM user_roles WHERE role_id = $1`, roleID)
-		env.DB.Exec(ctx, `DELETE FROM roles WHERE id = $1`, roleID)
 		env.DB.Exec(ctx, `DELETE FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id = $2`, tenantID, entID)
 		env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id = $1`, expID)
 		env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, entID)
-		env.DB.Exec(ctx, `DELETE FROM users WHERE tenant_id = $1 AND username LIKE 'em_%'`, tenantID)
 	}
-	return mentorFixture{enterpriseID: entID, expertID: expID}, cleanup
+	return mentorFixture{enterpriseID: entID, expertID: expID, userID: userID}, cleanup
 }
 
 func newMentorTestHandler(env *testhelper.TestEnv) *handler.AllianceMentorHandler {
@@ -67,133 +57,10 @@ func newMentorTestHandler(env *testhelper.TestEnv) *handler.AllianceMentorHandle
 	return &handler.AllianceMentorHandler{Service: service.NewAllianceMentorService(service.New(st))}
 }
 
-// TestMentorLink_EnableIdempotentAndDisable B10：启用幂等（重复启用返回已有记录、不重建账号）、
-// 停用仅置 enabled=false（不删影子账号）、停用后再启用复用同一账号。
-func TestMentorLink_EnableIdempotentAndDisable(t *testing.T) {
-	env := testhelper.SetupTestEnv(t)
-	defer env.Cleanup()
-	ctx := context.Background()
-	fx, cleanup := setupMentorFixture(t, env, ctx, true)
-	defer cleanup()
-
-	h := newMentorTestHandler(env)
-	r := chi.NewRouter()
-	r.Post("/alliance/experts/{id}/mentor-link", h.EnableMentorLink)
-	r.Delete("/alliance/experts/{id}/mentor-link", h.DisableMentorLink)
-	r.Get("/alliance/experts/mentor-options", h.ListMentorOptions)
-
-	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11", domain.RoleTeacher)
-
-	type linkResp struct {
-		UserID          string `json:"userId"`
-		Enabled         bool   `json:"enabled"`
-		Username        string `json:"username"`
-		InitialPassword string `json:"initialPassword"`
-	}
-
-	// 1. 首次启用 → 201，返回影子账号 + 一次性初始密码
-	w := doWithClaims(r, http.MethodPost, "/alliance/experts/"+fx.expertID+"/mentor-link", nil, claims)
-	if w.Code != http.StatusCreated {
-		t.Fatalf("enable: expected 201, got %d: %s", w.Code, w.Body.String())
-	}
-	var first linkResp
-	if err := json.Unmarshal(w.Body.Bytes(), &first); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if first.UserID == "" || first.InitialPassword == "" {
-		t.Fatalf("应返回影子账号与初始密码: %+v", first)
-	}
-	wantUsername := "em_" + fx.enterpriseID[:8] + "_" + fx.expertID[:8]
-	if first.Username != wantUsername {
-		t.Fatalf("username 规范化不符: got %q, want %q", first.Username, wantUsername)
-	}
-	// 影子账号属性：platform=portal、role=school、tenant=本校、绑定 enterprise_mentor
-	var platform, role string
-	if err := env.DB.QueryRow(ctx, `SELECT platform, role FROM users WHERE id = $1`, first.UserID).Scan(&platform, &role); err != nil {
-		t.Fatalf("查询影子账号失败: %v", err)
-	}
-	if platform != "portal" || role != "school" {
-		t.Fatalf("影子账号属性不符: platform=%s role=%s", platform, role)
-	}
-	var hasMentorRole bool
-	if err := env.DB.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id
-			WHERE ur.user_id = $1 AND r2.code = 'enterprise_mentor')
-	`, first.UserID).Scan(&hasMentorRole); err != nil || !hasMentorRole {
-		t.Fatalf("影子账号应绑定 enterprise_mentor 角色: %v %v", hasMentorRole, err)
-	}
-
-	// 2. 幂等：重复启用 → 200，同一影子账号，不再返回初始密码
-	w = doWithClaims(r, http.MethodPost, "/alliance/experts/"+fx.expertID+"/mentor-link", nil, claims)
-	if w.Code != http.StatusOK {
-		t.Fatalf("re-enable: expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	var second linkResp
-	if err := json.Unmarshal(w.Body.Bytes(), &second); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if second.UserID != first.UserID || second.InitialPassword != "" {
-		t.Fatalf("幂等启用应复用账号且不返回密码: %+v", second)
-	}
-
-	// 3. mentor-options：已启用，userId 为影子账号
-	w = doWithClaims(r, http.MethodGet, "/alliance/experts/mentor-options", nil, claims)
-	if w.Code != http.StatusOK {
-		t.Fatalf("mentor-options: expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	options, _, err := testhelper.UnmarshalList[domain.AllianceMentorOption](w)
-	if err != nil {
-		t.Fatalf("unmarshal options: %v", err)
-	}
-	var opt *domain.AllianceMentorOption
-	for i := range options {
-		if options[i].ExpertID == fx.expertID {
-			opt = &options[i]
-		}
-	}
-	if opt == nil || !opt.Enabled || opt.UserID == nil || *opt.UserID != first.UserID {
-		t.Fatalf("mentor-options 启用状态不符: %+v", opt)
-	}
-	if opt.EnterpriseID != fx.enterpriseID || opt.EnterpriseName == "" {
-		t.Fatalf("mentor-options 企业信息不符: %+v", opt)
-	}
-
-	// 4. 停用 → enabled=false，账号保留；options 中 userId 为 null
-	w = doWithClaims(r, http.MethodDelete, "/alliance/experts/"+fx.expertID+"/mentor-link", nil, claims)
-	if w.Code != http.StatusOK {
-		t.Fatalf("disable: expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	var userStillExists bool
-	if err := env.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, first.UserID).Scan(&userStillExists); err != nil || !userStillExists {
-		t.Fatalf("停用不应删除影子账号: %v %v", userStillExists, err)
-	}
-	w = doWithClaims(r, http.MethodGet, "/alliance/experts/mentor-options", nil, claims)
-	options, _, _ = testhelper.UnmarshalList[domain.AllianceMentorOption](w)
-	for i := range options {
-		if options[i].ExpertID == fx.expertID {
-			if options[i].Enabled || options[i].UserID != nil {
-				t.Fatalf("停用后 options 应 enabled=false 且 userId=null: %+v", options[i])
-			}
-		}
-	}
-
-	// 5. 停用后再次启用 → 复用同一影子账号（不新建）
-	w = doWithClaims(r, http.MethodPost, "/alliance/experts/"+fx.expertID+"/mentor-link", nil, claims)
-	if w.Code != http.StatusOK {
-		t.Fatalf("re-enable after disable: expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	var third linkResp
-	if err := json.Unmarshal(w.Body.Bytes(), &third); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if third.UserID != first.UserID || !third.Enabled {
-		t.Fatalf("再启用应复用原账号: %+v", third)
-	}
-}
-
-// TestMentorLink_PermissionGuard B10 越权防线 + B13 角色收窄回归：
-// 未引入企业的专家 403；不存在专家 404；学生/企业导师角色 403。
-func TestMentorLink_PermissionGuard(t *testing.T) {
+// TestMentorOptions_DataAndPermission 共建导师选择器：
+// 已引入企业的专家返回并携带绑定账号 user_id（无账号专家 userId=null）；
+// 未引入企业/不存在专家不返回；学生/企业导师角色 403。
+func TestMentorOptions_DataAndPermission(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
@@ -201,35 +68,59 @@ func TestMentorLink_PermissionGuard(t *testing.T) {
 
 	h := newMentorTestHandler(env)
 	r := chi.NewRouter()
-	r.Post("/alliance/experts/{id}/mentor-link", h.EnableMentorLink)
 	r.Get("/alliance/experts/mentor-options", h.ListMentorOptions)
 
-	// 未引入企业 + 其专家
-	entB, expB := uuid.NewString(), uuid.NewString()
+	fx, cleanup := setupMentorFixture(t, env, ctx, true)
+	defer cleanup()
+
+	// 未引入企业 + 其专家（不应出现在选择器）
+	entB, expB, userB := uuid.NewString(), uuid.NewString(), uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`,
 		entB, tenantID, "越权导师企业-"+entB[:8]); err != nil {
 		t.Fatalf("预置企业失败: %v", err)
 	}
-	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status) VALUES ($1,$2,$3,$4,'active')`,
-		expB, tenantID, "越权导师专家", entB); err != nil {
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, is_public, user_id) VALUES ($1,$2,$3,$4,'active',true,$5)`,
+		expB, tenantID, "越权导师专家", entB, userB); err != nil {
 		t.Fatalf("预置专家失败: %v", err)
 	}
-	defer env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id = $1`, expB)
+	// 已引入企业 + 无绑定账号的专家（userId 应为 null）
+	expNoUser := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, status, is_public) VALUES ($1,$2,$3,$4,'active',true)`,
+		expNoUser, tenantID, "无账号专家", fx.enterpriseID); err != nil {
+		t.Fatalf("预置专家失败: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id IN ($1,$2)`, expB, expNoUser)
 	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id = $1`, entB)
 
 	teacher := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11", domain.RoleTeacher)
 
-	t.Run("unlinked enterprise expert forbidden", func(t *testing.T) {
-		w := doWithClaims(r, http.MethodPost, "/alliance/experts/"+expB+"/mentor-link", nil, teacher)
-		if w.Code != http.StatusForbidden {
-			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+	t.Run("linked expert with bound account", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodGet, "/alliance/experts/mentor-options", nil, teacher)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
-	})
-
-	t.Run("nonexistent expert not found", func(t *testing.T) {
-		w := doWithClaims(r, http.MethodPost, "/alliance/experts/"+uuid.NewString()+"/mentor-link", nil, teacher)
-		if w.Code != http.StatusNotFound {
-			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		options, _, err := testhelper.UnmarshalList[domain.AllianceMentorOption](w)
+		if err != nil {
+			t.Fatalf("unmarshal options: %v", err)
+		}
+		var opt *domain.AllianceMentorOption
+		for i := range options {
+			switch options[i].ExpertID {
+			case fx.expertID:
+				opt = &options[i]
+			case expNoUser:
+				if options[i].UserID != nil {
+					t.Fatalf("无绑定账号专家 userId 应为 null: %+v", options[i])
+				}
+			case expB:
+				t.Fatalf("未引入企业的专家不应出现: %+v", options[i])
+			}
+		}
+		if opt == nil || opt.UserID == nil || *opt.UserID != fx.userID {
+			t.Fatalf("选择器应返回绑定账号 user_id: %+v", opt)
+		}
+		if opt.EnterpriseID != fx.enterpriseID || opt.EnterpriseName == "" {
+			t.Fatalf("选择器企业信息不符: %+v", opt)
 		}
 	})
 
@@ -445,31 +336,14 @@ func TestPublicAlliance_DoubleControl(t *testing.T) {
 	})
 }
 
-// TestSaveMethods_MentorAssignment B12：任务级企业导师分配。
-// subject_type='enterprise_mentor' 步骤的 assignedUserIds 必须 ∈ 本校已启用 mentor_links 影子账号。
+// TestSaveMethods_MentorAssignment 任务级企业导师分配（概念标注）：
+// enterprise_mentor 步骤的 assignedUserIds 持久化（不再校验影子账号）；
+// 非 enterprise_mentor 主体的 assignedUserIds 不持久化（落空数组）。
 func TestSaveMethods_MentorAssignment(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
 	tenantID := testhelper.TestTenantID
-	fx, cleanup := setupMentorFixture(t, env, ctx, true)
-	defer cleanup()
-
-	// 已启用导师绑定（影子账号）
-	mentorUserID := uuid.NewString()
-	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'school','portal',$3,$4,'x','分配测试导师','active','{}')
-	`, mentorUserID, tenantID, "em_assign_"+mentorUserID[:8], tenantID+"_em_assign_"+mentorUserID[:8]); err != nil {
-		t.Fatalf("预置影子账号失败: %v", err)
-	}
-	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO alliance_expert_mentor_links (id, tenant_id, expert_id, user_id, enabled)
-		VALUES ($1,$2,$3,$4,true)
-	`, uuid.NewString(), tenantID, fx.expertID, mentorUserID); err != nil {
-		t.Fatalf("预置导师绑定失败: %v", err)
-	}
-	defer env.DB.Exec(ctx, `DELETE FROM users WHERE id = $1`, mentorUserID)
 
 	scenarioID := uuid.NewString()
 	execOrFail(t, env, ctx, `
@@ -488,47 +362,35 @@ func TestSaveMethods_MentorAssignment(t *testing.T) {
 	st := store.New(env.DB)
 	taskSvc := service.NewTaskEvaluationService(service.New(st))
 	subject := "enterprise_mentor"
+	expertUserID := uuid.NewString()
 
-	// 1. 合法分配 → 保存成功且 ListMethods 带回 assignedUserIds
+	// 1. enterprise_mentor 步骤分配（任意账号 id，概念标注）→ 持久化且 ListMethods 带回
 	methods, err := taskSvc.SaveMethods(ctx, tenantID, taskID, testhelper.TestOperatorID, 0, []*service.MethodSaveInput{
 		{
 			MethodKey: "homework", IsEnabled: true, EvalObject: "individual",
 			ReviewSteps: []service.ReviewStepSaveInput{
-				{Label: "企业导师评审", Enabled: true, SubjectType: &subject, Weight: 100, SortOrder: 0, AssignedUserIDs: []string{mentorUserID}},
+				{Label: "企业导师评审", Enabled: true, SubjectType: &subject, Weight: 100, SortOrder: 0, AssignedUserIDs: []string{expertUserID}},
 			},
 		},
 	})
 	if err != nil {
-		t.Fatalf("合法分配保存失败: %v", err)
+		t.Fatalf("enterprise_mentor 步骤保存失败: %v", err)
 	}
 	if len(methods) != 1 || len(methods[0].ReviewSteps) != 1 {
 		t.Fatalf("应返回 1 个方法 1 个步骤: %+v", methods)
 	}
 	got := methods[0].ReviewSteps[0].AssignedUserIDs
-	if len(got) != 1 || got[0] != mentorUserID {
+	if len(got) != 1 || got[0] != expertUserID {
 		t.Fatalf("assignedUserIds 未持久化: %+v", got)
 	}
 
-	// 2. 非法分配（非已启用影子账号）→ ErrInvalidMentorAssignment
-	_, err = taskSvc.SaveMethods(ctx, tenantID, taskID, testhelper.TestOperatorID, 1, []*service.MethodSaveInput{
-		{
-			MethodKey: "homework", IsEnabled: true, EvalObject: "individual",
-			ReviewSteps: []service.ReviewStepSaveInput{
-				{Label: "企业导师评审", Enabled: true, SubjectType: &subject, Weight: 100, SortOrder: 0, AssignedUserIDs: []string{uuid.NewString()}},
-			},
-		},
-	})
-	if !errors.Is(err, service.ErrInvalidMentorAssignment) {
-		t.Fatalf("非法分配应返回 ErrInvalidMentorAssignment: %v", err)
-	}
-
-	// 3. 非 enterprise_mentor 主体的 assignedUserIds 不持久化（落空数组）
+	// 2. 非 enterprise_mentor 主体的 assignedUserIds 不持久化（落空数组）
 	teacherSubject := "teacher"
-	methods, err = taskSvc.SaveMethods(ctx, tenantID, taskID, testhelper.TestOperatorID, 2, []*service.MethodSaveInput{
+	methods, err = taskSvc.SaveMethods(ctx, tenantID, taskID, testhelper.TestOperatorID, 1, []*service.MethodSaveInput{
 		{
 			MethodKey: "homework", IsEnabled: true, EvalObject: "individual",
 			ReviewSteps: []service.ReviewStepSaveInput{
-				{Label: "教师评审", Enabled: true, SubjectType: &teacherSubject, Weight: 100, SortOrder: 0, AssignedUserIDs: []string{mentorUserID}},
+				{Label: "教师评审", Enabled: true, SubjectType: &teacherSubject, Weight: 100, SortOrder: 0, AssignedUserIDs: []string{expertUserID}},
 			},
 		},
 	})

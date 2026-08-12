@@ -351,8 +351,8 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | F11 | 导航：`partnerNavigationConfig`（复用菜单/权限机制） | `lib/navigation-config.ts` |
 | F12 | 学校侧 enterprises：已引入列表 + "引入企业"搜索 Dialog；保留评级/状态/前台展示管理；移除新建/编辑主体/导入入口 | 改造 |
 | F13 | 学校侧 enterprises/[id]：主体只读 + 管理字段 + 协议/项目/成果 Tab 不变；移除 new/[id]/edit 页 | 改造 |
-| F14 | 学校侧 experts：只读列表（企业筛选）+ 专家详情"启用为共建导师"操作（mentor-link），移除 new/edit | 改造 |
-| F15 | 互动：岗位/场景共建人选择器（UserSelector）支持"企业专家"来源（mentor-options 数据源 + 已启用标识） | `components/shared/user-selector.tsx`、job/scene 编辑页 |
+| F14 | 学校侧 experts：只读列表（企业筛选）+ 专家详情（共建导师入口已移除，共建人选专家走选择器直接勾选企业账号），移除 new/edit | 改造 |
+| F15 | 互动：岗位/场景共建人选择器（UserSelector）支持"企业专家"来源（mentor-options 数据源，直接绑定企业侧账号，无影子账号） | `components/shared/user-selector.tsx`、job/scene 编辑页 |
 | F16 | 互动：enterprise_mentor 评分菜单授权（种子菜单补 `/evaluation/scene-results` 等） + 任务级企业导师分配 UI（任务编辑页） | 种子权限、任务编辑组件 |
 | F17 | 互动：毕业设计课题页企业导师选择（复用 mentor-options） | graduation 前端（如有页面） |
 

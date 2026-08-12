@@ -320,3 +320,28 @@ func (s *AllianceStore) UpdateExpertIsPublic(ctx context.Context, id string, isP
 	`, id, isPublic)
 	return err
 }
+
+// ListMentorOptionsBySchoolTenant 共建导师选择器数据源（GET /alliance/experts/mentor-options）：
+// 本校已引入企业的全部专家，携带绑定账号（partner 平台 users.id，null=无账号不可选）。
+func (s *AllianceStore) ListMentorOptionsBySchoolTenant(ctx context.Context, tenantID string) ([]domain.AllianceMentorOption, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT x.id, x.name, x.title, e.id, e.name, x.user_id
+		FROM alliance_experts x
+		JOIN alliance_enterprise_links l ON l.enterprise_id = x.enterprise_id AND l.tenant_id = $1
+		JOIN partner_enterprises e ON e.id = x.enterprise_id
+		ORDER BY e.name, x.created_at DESC
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]domain.AllianceMentorOption, 0)
+	for rows.Next() {
+		var o domain.AllianceMentorOption
+		if err := rows.Scan(&o.ExpertID, &o.Name, &o.Title, &o.EnterpriseID, &o.EnterpriseName, &o.UserID); err != nil {
+			return nil, err
+		}
+		items = append(items, o)
+	}
+	return items, rows.Err()
+}

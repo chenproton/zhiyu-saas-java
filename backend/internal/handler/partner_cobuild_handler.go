@@ -43,8 +43,6 @@ func respondCoBuildError(w http.ResponseWriter, r *http.Request, err error, notF
 		respondError(w, http.StatusConflict, "该内容已有待审批记录")
 	case errors.Is(err, service.ErrMethodVersionConflict):
 		respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
-	case errors.Is(err, service.ErrInvalidMentorAssignment):
-		respondError(w, http.StatusBadRequest, "企业导师评分人无效：须为本校已启用的共建导师")
 	case err != nil && strings.HasPrefix(err.Error(), "invalid transition"):
 		respondError(w, http.StatusBadRequest, err.Error())
 	default:

@@ -1740,16 +1740,15 @@ export function EvaluationRulesEditor({
                             <p className="text-[11px] text-gray-500">
                               {t('指定评分人（企业导师）')}
                             </p>
-                            {(mentorOptions || []).filter((o) => o.enabled && o.userId).length ===
-                            0 ? (
+                            {(mentorOptions || []).filter((o) => o.userId).length === 0 ? (
                               <p className="text-xs text-gray-400">
                                 {mentorOptions === null
                                   ? t('加载中...')
-                                  : t('暂无已启用的企业导师，可先在产业联盟专家详情页启用')}
+                                  : t('暂无绑定企业账号的专家，可在企业端专家库完善账号后重试')}
                               </p>
                             ) : (
                               (mentorOptions || [])
-                                .filter((o) => o.enabled && o.userId)
+                                .filter((o) => o.userId)
                                 .map((o) => (
                                   <label
                                     key={o.expertId}

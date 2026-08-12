@@ -485,26 +485,26 @@ func (s *PartnerStore) GetCooperationAgreement(ctx context.Context, enterpriseID
 // ===== 专家测评任务只读列表（GET /partner/mentor-tasks） =====
 
 // ListMentorTasks 本企业专家被学校指派为评审人的测评任务
-// （学校给专家创建的影子账号 ml.user_id 被评审步骤 assigned_user_ids 指派）。
-// assignedCount/gradedCount：该任务+该校下影子账号被指派的评分记录数 / 其中已评（status='evaluated'）数。
+// （专家绑定账号 x.user_id 被评审步骤 assigned_user_ids 指派，无需影子账号）。
+// assignedCount/gradedCount：该任务+该校下专家账号被指派的评分记录数 / 其中已评（status='evaluated'）数。
 func (s *PartnerStore) ListMentorTasks(ctx context.Context, enterpriseID string) ([]domain.AlliancePartnerMentorTask, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT st.id, st.name, rs.label, t.name, x.name, rs.updated_at,
 			COALESCE(prog.assigned_count, 0), COALESCE(prog.graded_count, 0)
-		FROM alliance_expert_mentor_links ml
-		JOIN alliance_experts x ON x.id = ml.expert_id
-		JOIN tenants t ON t.id = ml.tenant_id
-		JOIN task_review_steps rs ON rs.tenant_id = ml.tenant_id
-			AND ml.user_id = ANY(rs.assigned_user_ids) AND rs.enabled = true
+		FROM alliance_experts x
+		JOIN alliance_enterprise_links l ON l.enterprise_id = x.enterprise_id
+		JOIN tenants t ON t.id = l.tenant_id
+		JOIN task_review_steps rs ON rs.tenant_id = l.tenant_id
+			AND x.user_id = ANY(rs.assigned_user_ids) AND rs.enabled = true
 		JOIN task_evaluation_methods em ON em.id = rs.config_id AND em.is_enabled = true
 		JOIN scenario_tasks st ON st.id = em.task_id
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*) AS assigned_count,
 				COUNT(*) FILTER (WHERE er.status = 'evaluated') AS graded_count
 			FROM scene_evaluation_results er
-			WHERE er.task_id = st.id AND er.tenant_id = ml.tenant_id AND er.evaluator_id = ml.user_id
+			WHERE er.task_id = st.id AND er.tenant_id = l.tenant_id AND er.evaluator_id = x.user_id
 		) prog ON true
-		WHERE x.enterprise_id = $1 AND ml.enabled = true
+		WHERE x.enterprise_id = $1 AND x.user_id IS NOT NULL
 		ORDER BY rs.updated_at DESC LIMIT 200
 	`, enterpriseID)
 	if err != nil {

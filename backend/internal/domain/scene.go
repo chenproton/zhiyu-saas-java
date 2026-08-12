@@ -124,7 +124,7 @@ type TaskReviewStep struct {
 	Weight      float64 `json:"weight"`
 	SortOrder   int     `json:"sortOrder"`
 	// AssignedUserIds 任务级企业导师分配（subject_type='enterprise_mentor' 时生效）：
-	// 本校已启用 mentor_links 的影子账号 users.id 集合。
+	// 企业专家绑定账号（partner 平台 users.id）集合，仅概念标注 + 企业端任务展示数据源。
 	AssignedUserIDs []string `json:"assignedUserIds"`
 }
 

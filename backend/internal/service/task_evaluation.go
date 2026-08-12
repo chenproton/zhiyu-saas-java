@@ -32,9 +32,6 @@ func (s *TaskEvaluationService) TaskTenantID(ctx context.Context, taskID string)
 
 // SaveMethods 保存任务测评方式（乐观锁 + 事务内软删/重写，临时考试联动在锁内执行）。
 func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskID, creatorID string, version int, inputs []*MethodSaveInput) ([]domain.TaskEvaluationMethod, error) {
-	if err := s.validateMentorAssignments(ctx, tenantID, inputs); err != nil {
-		return nil, err
-	}
 	taskName := "未命名任务"
 	if name, err := s.st.TaskEval().TaskName(ctx, s.st.Q(), taskID); err == nil && name != "" {
 		taskName = name
@@ -93,43 +90,6 @@ func (s *TaskEvaluationService) SaveMethods(ctx context.Context, tenantID, taskI
 		return nil, err
 	}
 	return s.st.TaskEval().FetchTaskMethods(ctx, taskID, tenantID)
-}
-
-// validateMentorAssignments 任务级企业导师分配校验（B12）：
-// subject_type='enterprise_mentor' 步骤的每个 assignedUserId 必须 ∈ 本校已启用 mentor_links 的影子账号。
-func (s *TaskEvaluationService) validateMentorAssignments(ctx context.Context, tenantID string, inputs []*MethodSaveInput) error {
-	needValidate := false
-	for _, m := range inputs {
-		for _, rs := range m.ReviewSteps {
-			if rs.SubjectType != nil && *rs.SubjectType == domain.RoleEnterpriseMentor && len(rs.AssignedUserIDs) > 0 {
-				needValidate = true
-			}
-		}
-	}
-	if !needValidate {
-		return nil
-	}
-	enabledIDs, err := s.st.AllianceExpertMentorLinks().ListEnabledMentorUserIDs(ctx, tenantID)
-	if err != nil {
-		return err
-	}
-	allowed := make(map[string]bool, len(enabledIDs))
-	for _, id := range enabledIDs {
-		allowed[id] = true
-	}
-	for _, m := range inputs {
-		for _, rs := range m.ReviewSteps {
-			if rs.SubjectType == nil || *rs.SubjectType != domain.RoleEnterpriseMentor {
-				continue
-			}
-			for _, id := range rs.AssignedUserIDs {
-				if !allowed[id] {
-					return ErrInvalidMentorAssignment
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // ListTemplates 查询评分模板列表。
@@ -205,7 +165,7 @@ type ReviewStepSaveInput struct {
 	Weight      float64
 	SortOrder   int
 	// AssignedUserIDs 任务级企业导师分配（subject_type='enterprise_mentor' 时生效，
-	// 每个 id 必须是本校已启用 mentor_links 的影子账号）。
+	// 企业专家绑定账号 users.id 集合，仅概念标注 + 企业端任务展示数据源）。
 	AssignedUserIDs []string
 }
 
@@ -269,7 +229,8 @@ func convertScoreRules(rules []ScoreRuleSaveInput) []store.TaskScoreRuleInput {
 func convertReviewSteps(steps []ReviewStepSaveInput) []store.TaskReviewStepInput {
 	out := make([]store.TaskReviewStepInput, 0, len(steps))
 	for _, rs := range steps {
-		// 任务级企业导师分配仅对 enterprise_mentor 步骤持久化；其他主体一律落空数组，避免悬空引用
+		// 任务级企业导师分配仅对 enterprise_mentor 步骤持久化（概念标注 + 企业端任务展示数据源）；
+		// 其他主体一律落空数组，避免悬空引用
 		assigned := []string{}
 		if rs.SubjectType != nil && *rs.SubjectType == domain.RoleEnterpriseMentor && len(rs.AssignedUserIDs) > 0 {
 			assigned = rs.AssignedUserIDs
@@ -289,6 +250,3 @@ func convertReviewSteps(steps []ReviewStepSaveInput) []store.TaskReviewStepInput
 
 // ErrMethodVersionConflict 版本冲突（其他会话已修改）。
 var ErrMethodVersionConflict = errors.New("method version conflict")
-
-// ErrInvalidMentorAssignment 任务级企业导师分配非法（评分人非本校已启用导师影子账号）。
-var ErrInvalidMentorAssignment = errors.New("invalid enterprise mentor assignment")

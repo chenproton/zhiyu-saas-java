@@ -1,27 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, Copy, UserCheck, UserX } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useT } from '@/lib/i18n/locale-provider'
-import type { AllianceExpert, AllianceEnterprise, AllianceMentorOption } from '@/lib/types'
+import type { AllianceExpert, AllianceEnterprise } from '@/lib/types'
 
 export default function AllianceExpertDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -31,22 +20,6 @@ export default function AllianceExpertDetailPage() {
   const [expert, setExpert] = useState<AllianceExpert | null>(null)
   const [enterprise, setEnterprise] = useState<AllianceEnterprise | null>(null)
   const [loading, setLoading] = useState(true)
-  // 共建导师（影子账号）启用状态：null 表示未加载/不在 mentor-options 中
-  const [mentorOption, setMentorOption] = useState<AllianceMentorOption | null>(null)
-  const [mentorPending, setMentorPending] = useState(false)
-  const [initialPassword, setInitialPassword] = useState<string | null>(null)
-  const [passwordCopied, setPasswordCopied] = useState(false)
-  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
-
-  const loadMentorOption = useCallback(() => {
-    if (!id) return
-    allianceExpertApi
-      .mentorOptions()
-      .then((options) =>
-        setMentorOption((options.items || []).find((o) => o.expertId === id) || null),
-      )
-      .catch(() => setMentorOption(null))
-  }, [id])
 
   useEffect(() => {
     if (!tenantId || !id) return
@@ -59,52 +32,7 @@ export default function AllianceExpertDetailPage() {
         toast({ title: t('加载失败'), description: err.message, variant: 'destructive' }),
       )
       .finally(() => setLoading(false))
-    loadMentorOption()
-  }, [tenantId, id, toast, t, loadMentorOption])
-
-  const handleEnableMentor = async () => {
-    if (!id || mentorPending) return
-    setMentorPending(true)
-    try {
-      const res = await allianceExpertApi.mentorLink(id)
-      if (res.initialPassword) {
-        setPasswordCopied(false)
-        setInitialPassword(res.initialPassword)
-      } else {
-        toast({ title: t('已启用为共建导师') })
-      }
-      loadMentorOption()
-    } catch (err: any) {
-      toast({ title: t('启用失败'), description: err.message, variant: 'destructive' })
-    } finally {
-      setMentorPending(false)
-    }
-  }
-
-  const handleDisableMentor = async () => {
-    if (!id || mentorPending) return
-    setMentorPending(true)
-    try {
-      await allianceExpertApi.unlinkMentor(id)
-      toast({ title: t('已停用共建导师') })
-      setDisableConfirmOpen(false)
-      loadMentorOption()
-    } catch (err: any) {
-      toast({ title: t('停用失败'), description: err.message, variant: 'destructive' })
-    } finally {
-      setMentorPending(false)
-    }
-  }
-
-  const copyInitialPassword = async () => {
-    if (!initialPassword) return
-    try {
-      await navigator.clipboard.writeText(initialPassword)
-      setPasswordCopied(true)
-    } catch {
-      toast({ title: t('复制失败，请手动复制'), variant: 'destructive' })
-    }
-  }
+  }, [tenantId, id, toast, t])
 
   if (!expert && !loading) {
     return (
@@ -150,10 +78,6 @@ export default function AllianceExpertDetailPage() {
               <p>
                 <span className="text-muted-foreground">{t('前台展示：')}</span>
                 {expert?.isPublic ? t('是') : t('否')}
-              </p>
-              <p>
-                <span className="text-muted-foreground">{t('共建导师：')}</span>
-                {mentorOption?.enabled ? t('已启用') : t('未启用')}
               </p>
               <p>
                 <span className="text-muted-foreground">{t('创建人：')}</span>
@@ -288,66 +212,6 @@ export default function AllianceExpertDetailPage() {
         tabs={tabs}
         defaultTab="info"
         loading={loading}
-        actions={
-          mentorOption?.enabled ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={mentorPending}
-              onClick={() => setDisableConfirmOpen(true)}
-            >
-              <UserX className="h-4 w-4 mr-1" />
-              {t('停用共建导师')}
-            </Button>
-          ) : (
-            <Button size="sm" disabled={mentorPending} onClick={handleEnableMentor}>
-              <UserCheck className="h-4 w-4 mr-1" />
-              {t('启用为共建导师')}
-            </Button>
-          )
-        }
-      />
-
-      {/* 首次启用返回初始密码：展示并提示转告导师修改密码 */}
-      <Dialog
-        open={!!initialPassword}
-        onOpenChange={(open) => {
-          if (!open) setInitialPassword(null)
-        }}
-      >
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>{t('已启用为共建导师')}</DialogTitle>
-            <DialogDescription>
-              {t('已为其创建共建导师账号，请将初始密码转告导师，并提醒导师登录后及时修改密码。')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-            <code className="flex-1 text-sm font-mono select-all">{initialPassword}</code>
-            <Button variant="outline" size="sm" onClick={copyInitialPassword}>
-              {passwordCopied ? (
-                <Check className="h-4 w-4 mr-1" />
-              ) : (
-                <Copy className="h-4 w-4 mr-1" />
-              )}
-              {passwordCopied ? t('已复制') : t('复制')}
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setInitialPassword(null)}>{t('知道了')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={disableConfirmOpen}
-        onOpenChange={setDisableConfirmOpen}
-        title={t('停用共建导师')}
-        description={t('停用后该导师将无法登录参与共建，确认停用？')}
-        confirmText={t('停用')}
-        variant="destructive"
-        pending={mentorPending}
-        onConfirm={handleDisableMentor}
       />
     </>
   )

@@ -462,8 +462,6 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 			r.Post("/achievements", h.allianceHandler.CreateAchievement)
 			r.Put("/achievements/{id}", h.allianceHandler.UpdateAchievement)
 			r.Delete("/achievements/{id}", h.allianceHandler.DeleteAchievement)
-			r.Post("/experts/{id}/mentor-link", h.allianceMentorHandler.EnableMentorLink)
-			r.Delete("/experts/{id}/mentor-link", h.allianceMentorHandler.DisableMentorLink)
 			r.Put("/experts/{id}/display", h.allianceHandler.ToggleExpertDisplay)
 			r.Post("/agreements", h.allianceHandler.CreateAgreement)
 			r.Put("/agreements/{id}", h.allianceHandler.UpdateAgreement)

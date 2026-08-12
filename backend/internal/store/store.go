@@ -95,7 +95,6 @@ type Store struct {
 	onSiteQuestions  *OnSiteQuestionLibraryStore
 	alliance         *AllianceStore
 	allianceLinks    *AllianceEnterpriseLinkStore
-	allianceMentors  *AllianceExpertMentorLinkStore
 	allianceGrants   *AllianceGrantStore
 	partner          *PartnerStore
 	community        *CommunityStore
@@ -187,7 +186,6 @@ func newStore(q Queryer) *Store {
 		onSiteQuestions:  NewOnSiteQuestionLibraryStore(q),
 		alliance:         NewAllianceStore(q),
 		allianceLinks:    NewAllianceEnterpriseLinkStore(q),
-		allianceMentors:  NewAllianceExpertMentorLinkStore(q),
 		allianceGrants:   NewAllianceGrantStore(q),
 		partner:          NewPartnerStore(q),
 		community:        NewCommunityStore(q),
@@ -596,11 +594,6 @@ func (s *Store) Alliance() *AllianceStore {
 // AllianceEnterpriseLinks 返回学校-企业合作关联 store。
 func (s *Store) AllianceEnterpriseLinks() *AllianceEnterpriseLinkStore {
 	return s.allianceLinks
-}
-
-// AllianceExpertMentorLinks 返回专家-学校影子账号绑定 store。
-func (s *Store) AllianceExpertMentorLinks() *AllianceExpertMentorLinkStore {
-	return s.allianceMentors
 }
 
 // AllianceGrants 返回学校-企业资源授权 store。
