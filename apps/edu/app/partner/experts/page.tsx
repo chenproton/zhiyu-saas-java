@@ -115,11 +115,11 @@ export default function PartnerExpertsPage() {
 
   const { data, loading, error, refresh } = useAsync(
     async () => {
-      if (authLoading || !user) return []
+      if (authLoading || !user || !isAdmin) return []
       const res = await partnerExpertApi.list({ limit: 200 })
       return res.items || []
     },
-    { deps: [authLoading, user?.id], onError: () => true },
+    { deps: [authLoading, user?.id, isAdmin], onError: () => true },
   )
 
   const experts = data ?? []
