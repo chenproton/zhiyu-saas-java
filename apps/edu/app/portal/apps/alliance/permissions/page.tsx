@@ -38,20 +38,23 @@ export default function AlliancePermissionsPage() {
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState(false)
 
+  // 未手动选择时默认选中第一个企业，保证页面不空数据
+  const currentEnterpriseId = enterpriseId || enterprises?.[0]?.id || ''
+
   // 选中企业后加载：授权现状 + 资源候选
   const { data, refresh } = useAsync(
     async () => {
-      if (!tenantId || !enterpriseId)
+      if (!tenantId || !currentEnterpriseId)
         return { options: [] as GrantOption[], granted: new Set<string>() }
       const [optRes, grantRes] = await Promise.all([
-        allianceGrantApi.resourceOptions(enterpriseId),
-        allianceGrantApi.list(enterpriseId),
+        allianceGrantApi.resourceOptions(currentEnterpriseId),
+        allianceGrantApi.list(currentEnterpriseId),
       ])
       const granted = new Set<string>()
       grantRes.grants.forEach((g) => g.resourceIds.forEach((id) => granted.add(id)))
       return { options: optRes.items || [], granted }
     },
-    { deps: [tenantId, enterpriseId, authLoading], onError: () => true },
+    { deps: [tenantId, currentEnterpriseId, authLoading], onError: () => true },
   )
 
   const options = data?.options ?? []
@@ -83,7 +86,11 @@ export default function AlliancePermissionsPage() {
         </CardHeader>
         <CardContent>
           <div className="max-w-md">
-            <Select value={enterpriseId} onValueChange={selectEnterprise} disabled={entLoading}>
+            <Select
+              value={currentEnterpriseId}
+              onValueChange={selectEnterprise}
+              disabled={entLoading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder={t('请选择企业')} />
               </SelectTrigger>
@@ -99,7 +106,7 @@ export default function AlliancePermissionsPage() {
         </CardContent>
       </Card>
 
-      {enterpriseId && options.length === 0 && (
+      {currentEnterpriseId && options.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             {t('该企业暂无共建资源，本校也暂无可授权资源')}
@@ -107,7 +114,7 @@ export default function AlliancePermissionsPage() {
         </Card>
       )}
 
-      {enterpriseId && options.length > 0 && (
+      {currentEnterpriseId && options.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
@@ -123,7 +130,9 @@ export default function AlliancePermissionsPage() {
               {(['position', 'scene'] as const).map((type) => {
                 const typeOptions = options.filter((o) => o.type === type)
                 if (typeOptions.length === 0) return null
-                const allChecked = typeOptions.every((o) => checked[o.id] || granted.has(o.id))
+                const isChecked = (o: GrantOption) =>
+                  checked[o.id] === undefined ? granted.has(o.id) : checked[o.id]
+                const allChecked = typeOptions.every((o) => isChecked(o))
                 return (
                   <div key={type} className="rounded-lg border border-gray-100">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -164,7 +173,7 @@ export default function AlliancePermissionsPage() {
                           <input
                             type="checkbox"
                             className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                            checked={!!checked[o.id] || granted.has(o.id)}
+                            checked={isChecked(o)}
                             onChange={(e) =>
                               setChecked((prev) => ({ ...prev, [o.id]: e.target.checked }))
                             }
@@ -204,7 +213,7 @@ export default function AlliancePermissionsPage() {
                           .filter((o) => o.type === type && checked[o.id])
                           .map((o) => o.id)
                         await allianceGrantApi.save({
-                          enterpriseId,
+                          enterpriseId: currentEnterpriseId,
                           resourceType: type,
                           resourceIds: ids,
                         })
