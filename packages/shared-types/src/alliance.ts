@@ -104,6 +104,8 @@ export interface AllianceProject {
   agreementIds?: string[]
   secondaryColleges?: string[]
   isPublic: boolean
+  /** 里程碑完成率（0-100），公开接口返回：已完成里程碑数 / 里程碑总数 × 100 */
+  progress?: number
   createdBy?: string
   createdAt: string
   updatedAt: string

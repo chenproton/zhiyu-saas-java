@@ -34,19 +34,6 @@ export function getInitials(name?: string | null) {
   return name.slice(0, 2)
 }
 
-function getProjectProgress(project: AllianceProject) {
-  if (!project.phase) return 0
-  const phaseMap: Record<string, number> = {
-    initiation: 20,
-    execution: 55,
-    acceptance: 85,
-    closure: 100,
-    archived: 100,
-    terminated: 0,
-  }
-  return phaseMap[project.phase] ?? 0
-}
-
 export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise }) {
   const t = useT()
   const img = enterprise.coverImage
@@ -117,7 +104,7 @@ export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise 
 
 export function ProjectCard({ project }: { project: AllianceProject }) {
   const t = useT()
-  const progress = getProjectProgress(project)
+  const progress = project.progress ?? 0
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
