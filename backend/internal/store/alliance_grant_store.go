@@ -184,17 +184,17 @@ func (s *AllianceGrantStore) IsGranted(ctx context.Context, enterpriseID, resour
 // 携带状态、所属批次分组与来源企业信息（前端按批次分组展示 + 批量授权）。
 func (s *AllianceGrantStore) ResourceOptions(ctx context.Context, tenantID, enterpriseID string) ([]domain.AllianceGrantResourceOption, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT cp.id::text, cp.name, 'position',
-			CASE WHEN cp.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END,
-			cp.source_enterprise_id, pe.name, cp.status, cp.batch_id, b.name
+		SELECT cp.id::text AS id, cp.name, 'position' AS type,
+			CASE WHEN cp.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END AS source,
+			cp.source_enterprise_id, pe.name AS source_enterprise_name, cp.status, cp.batch_id, b.name AS batch_name
 		FROM career_positions cp
 		LEFT JOIN partner_enterprises pe ON pe.id = cp.source_enterprise_id
 		LEFT JOIN batches b ON b.id = cp.batch_id
 		WHERE cp.tenant_id = $1
 		UNION ALL
-		SELECT s.id::text, s.name, 'scene',
-			CASE WHEN s.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END,
-			s.source_enterprise_id, pe.name, s.status, s.batch_id, sb.name
+		SELECT s.id::text AS id, s.name, 'scene' AS type,
+			CASE WHEN s.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END AS source,
+			s.source_enterprise_id, pe.name AS source_enterprise_name, s.status, s.batch_id, sb.name AS batch_name
 		FROM scenarios s
 		LEFT JOIN partner_enterprises pe ON pe.id = s.source_enterprise_id
 		LEFT JOIN scene_batches sb ON sb.id = s.batch_id
