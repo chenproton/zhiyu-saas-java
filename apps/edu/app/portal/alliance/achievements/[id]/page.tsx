@@ -130,12 +130,15 @@ export default function AlliancePublicAchievementDetailPage() {
 
   return (
     <AllianceDetailShell
+      breadcrumbs={[
+        { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+        { label: t('合作成果列表'), href: '/portal/alliance/achievements' },
+        { label: achievement.title },
+      ]}
       backHref="/portal/alliance/achievements"
-      backLabel={t('返回列表')}
       icon={Award}
       iconGradient="from-violet-500 to-purple-600"
-      pageGradient="from-slate-50/80 via-white to-violet-50/30"
-      glowClass="from-violet-600/5 via-transparent to-purple-600/5"
+      pageGradient="from-slate-50 via-white to-violet-50/40"
       title={achievement.title}
       subtitle={allianceLabel('achievementType', achievement.type)}
       badges={[

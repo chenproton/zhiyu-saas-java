@@ -57,14 +57,18 @@ export default function AlliancePublicExpertDetailPage() {
 
   return (
     <AllianceDetailShell
+      breadcrumbs={[
+        { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+        { label: t('企业专家列表'), href: '/portal/alliance/experts' },
+        { label: expert.name },
+      ]}
       backHref="/portal/alliance/experts"
-      backLabel={t('返回列表')}
       icon={UserCircle}
       iconImage={
         expert.avatarUrl ? { src: expert.avatarUrl, alt: expert.name } : undefined
       }
       iconGradient="from-blue-500 to-violet-600"
-      pageGradient="from-slate-50/80 via-white to-blue-50/30"
+      pageGradient="from-slate-50 via-white to-blue-50/40"
       title={expert.name}
       subtitle={[expert.title, expert.position].filter(Boolean).join(' · ') || undefined}
       badges={[
