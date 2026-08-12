@@ -91,6 +91,47 @@ func TestAlliancePublicMilestones(t *testing.T) {
 		IsCompleted bool   `json:"isCompleted"`
 	}
 
+	type projectItem struct {
+		ID       string `json:"id"`
+		Progress int    `json:"progress"`
+	}
+
+	t.Run("公开项目列表返回里程碑完成率 progress", func(t *testing.T) {
+		// pPub 两条里程碑一完成一未完成 → 50%；无里程碑项目 → 0%
+		w := env.Do(http.MethodGet, "/api/v1/alliance/public/projects?tenantId="+testhelper.TestTenantID, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		items, _, err := testhelper.UnmarshalList[projectItem](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		found := false
+		for _, p := range items {
+			if p.ID == pPub {
+				found = true
+				if p.Progress != 50 {
+					t.Fatalf("pPub progress 应为 50, got %d", p.Progress)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("公开列表应包含 pPub: %s", w.Body.String())
+		}
+		w2 := env.Do(http.MethodGet, "/api/v1/alliance/public/projects/"+pPub+"?tenantId="+testhelper.TestTenantID, nil)
+		if w2.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w2.Code, w2.Body.String())
+		}
+		var detail projectItem
+		detail, err = testhelper.Unmarshal[projectItem](w2)
+		if err != nil {
+			t.Fatalf("unmarshal detail: %v", err)
+		}
+		if detail.Progress != 50 {
+			t.Fatalf("详情 progress 应为 50, got %d", detail.Progress)
+		}
+	})
+
 	t.Run("tenant 双控：仅公开项目的里程碑", func(t *testing.T) {
 		w := env.Do(http.MethodGet, "/api/v1/alliance/public/projects/"+pPub+"/milestones?tenantId="+testhelper.TestTenantID, nil)
 		if w.Code != http.StatusOK {

@@ -268,6 +268,8 @@ type AllianceProject struct {
 	CreatedBy         *string         `json:"createdBy,omitempty"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
+	// Progress 里程碑完成率（0-100），仅公开接口返回：已完成里程碑数 / 里程碑总数 × 100
+	Progress int `json:"progress"`
 }
 
 // ===== 项目里程碑 =====

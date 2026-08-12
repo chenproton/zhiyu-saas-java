@@ -199,6 +199,45 @@ func (s *AllianceStore) DeleteMilestone(ctx context.Context, id, tenantID string
 	return err
 }
 
+// ScanPublicProjectRows 公开项目扫描器：在 ScanProjectRows 基础上多扫 progress（里程碑完成率）列，
+// 仅用于 ListPublicProjects / GetPublicProjectByID（SQL 末尾带进度子查询）。
+func (s *AllianceStore) ScanPublicProjectRows(rows pgx.Rows) ([]domain.AllianceProject, error) {
+	items := make([]domain.AllianceProject, 0)
+	for rows.Next() {
+		var p domain.AllianceProject
+		var typ, description, budget, coverImage *string
+		var startDate, endDate *time.Time
+		var enterpriseIDs, agreementIDs, colleges json.RawMessage
+		var createdBy *string
+		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
+			&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
+			&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt,
+			&p.Progress); err != nil {
+			return nil, err
+		}
+		p.Type = typ
+		p.Description = description
+		p.StartDate = formatDate(startDate)
+		p.EndDate = formatDate(endDate)
+		p.Budget = budget
+		p.CoverImage = coverImage
+		p.EnterpriseIDs = enterpriseIDs
+		p.AgreementIDs = agreementIDs
+		p.SecondaryColleges = colleges
+		p.CreatedBy = createdBy
+		items = append(items, p)
+	}
+	return items, rows.Err()
+}
+
+// progressCol 里程碑完成率子查询：每个里程碑均分 100% 进度，已完成计满分、未完成计 0；
+// 无里程碑时返回 0（与前端 Math.round(done/total*100) 一致）。
+const progressCol = `,
+	COALESCE((
+		SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE m.is_completed) / NULLIF(COUNT(*), 0))::int
+		FROM alliance_project_milestones m WHERE m.project_id = p.id
+	), 0) AS progress`
+
 // ListPublicProjects 门户前台公开项目列表：is_public 为唯一展示门槛，归属"双控通过的企业"
 // （enterprise_ids 关联判断，§3.2）；带 tenantID 时限定该校自有项目且叠加 link.is_public 双控、排除已终止合作。
 func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string, limit, offset int) ([]domain.AllianceProject, error) {
@@ -209,8 +248,8 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string,
 		limit = 100
 	}
 	if tenantID != "" {
-		return queryList(ctx, s.q, s.ScanProjectRows, `
-			SELECT `+cols+`
+		return queryList(ctx, s.q, s.ScanPublicProjectRows, `
+			SELECT `+cols+progressCol+`
 			FROM alliance_projects p
 			WHERE p.is_public = true
 			  AND p.tenant_id = $1
@@ -222,8 +261,8 @@ func (s *AllianceStore) ListPublicProjects(ctx context.Context, tenantID string,
 			ORDER BY p.created_at DESC LIMIT $2 OFFSET $3
 		`, tenantID, limit, offset)
 	}
-	return queryList(ctx, s.q, s.ScanProjectRows, `
-		SELECT `+cols+`
+	return queryList(ctx, s.q, s.ScanPublicProjectRows, `
+		SELECT `+cols+progressCol+`
 		FROM alliance_projects p
 		WHERE p.is_public = true
 		  AND EXISTS (
@@ -239,8 +278,8 @@ func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id, tenantID s
 		start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 		is_public, created_by, created_at, updated_at`
 	if tenantID != "" {
-		return queryOne(ctx, s.q, s.ScanProjectRows, `
-			SELECT `+cols+`
+		return queryOne(ctx, s.q, s.ScanPublicProjectRows, `
+			SELECT `+cols+progressCol+`
 			FROM alliance_projects p
 			WHERE p.id = $1 AND p.is_public = true
 			  AND p.tenant_id = $2
@@ -251,8 +290,8 @@ func (s *AllianceStore) GetPublicProjectByID(ctx context.Context, id, tenantID s
 			  )
 		`, id, tenantID)
 	}
-	return queryOne(ctx, s.q, s.ScanProjectRows, `
-		SELECT `+cols+`
+	return queryOne(ctx, s.q, s.ScanPublicProjectRows, `
+		SELECT `+cols+progressCol+`
 		FROM alliance_projects p
 		WHERE p.id = $1 AND p.is_public = true
 		  AND EXISTS (

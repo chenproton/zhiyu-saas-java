@@ -16,6 +16,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { TableCell, TableHead } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { Progress } from '@/components/ui/progress'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
   portalRequest,
@@ -27,7 +29,6 @@ import { syncAgreementProjectLinks } from '@/lib/alliance-links'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { Plus, Pencil, Trash2, Loader2, Link2 } from 'lucide-react'
 import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -59,8 +60,8 @@ export default function AllianceProjectDetailPage() {
     description: '',
     dueDate: '',
     completedDate: '',
-    isCompleted: false,
   })
+  const [togglingMilestone, setTogglingMilestone] = useState<string | null>(null)
   const [linkDialog, setLinkDialog] = useState(false)
   const [linkSelected, setLinkSelected] = useState<string[]>([])
   const [achLinkDialog, setAchLinkDialog] = useState(false)
@@ -173,9 +174,8 @@ export default function AllianceProjectDetailPage() {
             description: m.description || '',
             dueDate: m.dueDate || '',
             completedDate: m.completedDate || '',
-            isCompleted: m.isCompleted || false,
           }
-        : { name: '', description: '', dueDate: '', completedDate: '', isCompleted: false },
+        : { name: '', description: '', dueDate: '', completedDate: '' },
     )
     setMilestoneDialog({ open: true, edit: m })
   }
@@ -213,6 +213,37 @@ export default function AllianceProjectDetailPage() {
       toast({ title: t('删除失败'), description: e.message, variant: 'destructive' })
     }
   }
+  /** 里程碑完成开关：点击立即保存；切为完成时完成日期自动填当天，切回未完成时清空 */
+  const toggleMilestone = async (m: AllianceProjectMilestone) => {
+    const next = !m.isCompleted
+    const today = new Date().toISOString().slice(0, 10)
+    setTogglingMilestone(m.id)
+    try {
+      await portalRequest(`/alliance/projects/${id}/milestones/${m.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          isCompleted: next,
+          completedDate: next ? today : '',
+        }),
+      })
+      setMilestones((prev) =>
+        prev.map((x) =>
+          x.id === m.id ? { ...x, isCompleted: next, completedDate: next ? today : '' } : x,
+        ),
+      )
+      toast({ title: next ? t('已标记完成') : t('已标记未完成') })
+    } catch (e: any) {
+      toast({ title: t('更新失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setTogglingMilestone(null)
+    }
+  }
+
+  // 总体进度：每个里程碑均分 100%，未完成计 0、已完成获得均分（与全站口径一致）
+  const milestoneProgress =
+    milestones.length > 0
+      ? Math.round((milestones.filter((m) => m.isCompleted).length / milestones.length) * 100)
+      : 0
 
   if (!project && !loading) {
     return (
@@ -289,6 +320,21 @@ export default function AllianceProjectDetailPage() {
       badge: milestones.length,
       content: (
         <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-md border p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">{t('总体进度')}</span>
+              <span className="text-sm text-muted-foreground">
+                {t('{done}/{total} 个里程碑已完成', {
+                  done: milestones.filter((m) => m.isCompleted).length,
+                  total: milestones.length,
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 w-1/2">
+              <Progress value={milestoneProgress} className="h-2 flex-1" />
+              <span className="text-sm font-medium w-10 text-right">{milestoneProgress}%</span>
+            </div>
+          </div>
           <div className="flex justify-end">
             <Button size="sm" onClick={() => openMForm()}>
               <Plus className="h-4 w-4 mr-1" />
@@ -303,7 +349,7 @@ export default function AllianceProjectDetailPage() {
                   <TableHead>{t('描述')}</TableHead>
                   <TableHead>{t('截止日期')}</TableHead>
                   <TableHead>{t('完成日期')}</TableHead>
-                  <TableHead>{t('状态')}</TableHead>
+                  <TableHead>{t('完成状态')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
                 </tr>
               </thead>
@@ -324,7 +370,22 @@ export default function AllianceProjectDetailPage() {
                       <TableCell>{m.dueDate || '-'}</TableCell>
                       <TableCell>{m.completedDate || '-'}</TableCell>
                       <TableCell>
-                        <StatusBadge status={m.isCompleted ? 'completed' : 'pending'} />
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={m.isCompleted}
+                            disabled={togglingMilestone === m.id}
+                            onCheckedChange={() => toggleMilestone(m)}
+                          />
+                          <span
+                            className={
+                              m.isCompleted
+                                ? 'text-xs font-medium text-green-600'
+                                : 'text-xs text-muted-foreground'
+                            }
+                          >
+                            {m.isCompleted ? t('已完成') : t('未完成')}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
