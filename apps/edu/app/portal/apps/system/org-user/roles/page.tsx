@@ -52,6 +52,7 @@ const MENU_TREE_PLATFORM_MAP: Record<string, string> = {
   scene: 'scene',
   ability: 'ability',
   resource: 'resource',
+  affairs: 'affairs',
   alliance: 'alliance',
 }
 

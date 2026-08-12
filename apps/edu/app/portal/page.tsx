@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Footer } from '@/components/portal/footer'
+import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const features = [
@@ -354,9 +355,12 @@ function GradientTile({
   gridRow: string
 }) {
   const t = useT()
+  const { user, loading, hasMenuPermission } = useAuth()
   const isBig = variant === 'big'
   const effectiveUrl = INTERNAL_ROUTES[item.id] || ''
-  const isLocked = !effectiveUrl
+  // 认证状态确认前不判定，避免加载期间卡片闪烁锁定；已登录且角色未授权（含套餐未订阅）时锁定
+  const noPermission = !!user && !loading && !hasMenuPermission(effectiveUrl)
+  const isLocked = !effectiveUrl || noPermission
   const isRelative = effectiveUrl.startsWith('/')
   const isExternal = /^https?:\/\//i.test(effectiveUrl)
 
@@ -402,7 +406,7 @@ function GradientTile({
             <path d="M7 11V7a5 5 0 0110 0v4" />
           </svg>
           <span className="text-[9px] font-medium text-[#8590a6] whitespace-nowrap">
-            {t('暂未开放')}
+            {t(effectiveUrl ? '暂无权限' : '暂未开放')}
           </span>
         </div>
       )}

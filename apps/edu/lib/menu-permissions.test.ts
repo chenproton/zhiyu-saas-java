@@ -87,3 +87,12 @@ describe('checkMenuPermission 订阅模块开关', () => {
     expect(checkMenuPermission({}, '/some/unknown', { career: false })).toBe(true)
   })
 })
+
+describe('checkMenuPermission 教务平台订阅链路', () => {
+  it('教务未订阅时拒绝，订阅后按菜单授权判断', () => {
+    const menus = { '/affairs/programs': true }
+    expect(checkMenuPermission(menus, '/affairs/programs', { affairs: false })).toBe(false)
+    expect(checkMenuPermission(menus, '/affairs/programs', { affairs: true })).toBe(true)
+    expect(checkMenuPermission({}, '/affairs/programs', { affairs: true })).toBe(false)
+  })
+})
