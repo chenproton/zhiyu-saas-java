@@ -76,6 +76,37 @@ func (s *AllianceEnterpriseLinkStore) DeleteLink(ctx context.Context, enterprise
 	return err
 }
 
+// EnsureLinksByEnterpriseIDs 确保某校与给定企业主体均存在合作关联（已存在则跳过），
+// 供导入场景补建关联，保证学校侧页面按已引入企业正常显示企业名称；
+// 并发重复插入按已存在忽略。
+func (s *AllianceEnterpriseLinkStore) EnsureLinksByEnterpriseIDs(ctx context.Context, tenantID string, enterpriseIDs []string, createdBy *string) error {
+	for _, eid := range enterpriseIDs {
+		var exists bool
+		if err := s.q.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM alliance_enterprise_links WHERE tenant_id = $1 AND enterprise_id = $2)
+		`, tenantID, eid).Scan(&exists); err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		if _, err := s.CreateLink(ctx, &AllianceEnterpriseLinkCreateParams{
+			TenantID:       tenantID,
+			EnterpriseID:   eid,
+			RelationType:   "alliance",
+			Status:         "active",
+			EnterpriseType: "cooperation",
+			CreatedBy:      createdBy,
+		}); err != nil {
+			if isUniqueViolation(err) {
+				continue
+			}
+			return err
+		}
+	}
+	return nil
+}
+
 // GetLinkByEnterprise 查询某校与某企业的合作关联（越权校验的数据基础）。
 func (s *AllianceEnterpriseLinkStore) GetLinkByEnterprise(ctx context.Context, enterpriseID, tenantID string) (*domain.AllianceEnterpriseLink, error) {
 	var l domain.AllianceEnterpriseLink

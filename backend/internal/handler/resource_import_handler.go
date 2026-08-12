@@ -1027,6 +1027,11 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 		endDate := nullableStr(col(row, 5))
 		description := nullableStr(col(row, 6))
 		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 7))
+		if !preview && len(enterpriseIDs) > 0 {
+			if err := h.Store.AllianceEnterpriseLinks().EnsureLinksByEnterpriseIDs(ctx, tenantID, enterpriseIDs, nullableStr(userID)); err != nil {
+				slog.Warn("导入项目补建企业合作关联失败", "project", name, "error", err)
+			}
+		}
 		secondaryColleges := splitNames(col(row, 8))
 		isPublic := parseImportBool(col(row, 9))
 
@@ -1115,6 +1120,11 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 		description := nullableStr(col(row, 3))
 		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 4))
 		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 5))
+		if !preview && len(enterpriseIDs) > 0 {
+			if err := h.Store.AllianceEnterpriseLinks().EnsureLinksByEnterpriseIDs(ctx, tenantID, enterpriseIDs, nullableStr(userID)); err != nil {
+				slog.Warn("导入成果补建企业合作关联失败", "achievement", title, "error", err)
+			}
+		}
 		secondaryColleges := splitNames(col(row, 6))
 		isPublic := parseImportBool(col(row, 7))
 
@@ -1210,6 +1220,11 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 		endDate := nullableStr(col(row, 4))
 		content := nullableStr(col(row, 5))
 		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 6))
+		if !preview && len(enterpriseIDs) > 0 {
+			if err := h.Store.AllianceEnterpriseLinks().EnsureLinksByEnterpriseIDs(ctx, tenantID, enterpriseIDs, nullableStr(userID)); err != nil {
+				slog.Warn("导入协议补建企业合作关联失败", "agreement", name, "error", err)
+			}
+		}
 		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 7))
 
 		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_agreements", tenantID, name)
@@ -1389,6 +1404,11 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 		coverImage := nullableStr(col(row, 6))
 		studentID := lookupSingleIDByName(ctx, h.Store.Q(), "users", tenantID, col(row, 7))
 		enterpriseID := lookupSingleIDByName(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 8))
+		if !preview && enterpriseID != nil && *enterpriseID != "" {
+			if err := h.Store.AllianceEnterpriseLinks().EnsureLinksByEnterpriseIDs(ctx, tenantID, []string{*enterpriseID}, nullableStr(userID)); err != nil {
+				slog.Warn("导入品牌补建企业合作关联失败", "brand", name, "error", err)
+			}
+		}
 		positionID := lookupSingleIDByName(ctx, h.Store.Q(), "career_positions", tenantID, col(row, 9))
 		majorID := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, col(row, 10))
 		teacherID := lookupSingleIDByName(ctx, h.Store.Q(), "users", tenantID, col(row, 11))

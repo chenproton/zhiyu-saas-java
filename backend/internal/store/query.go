@@ -548,6 +548,8 @@ var lookupByNameTables = []string{
 }
 
 // LookupByTableAndName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
+// partner_enterprises 为全局企业主体表（名称全局唯一，tenant_id 归属企业自身租户），
+// 学校侧仅经 alliance_enterprise_links 关联，按全局名称匹配、不按学校租户过滤。
 // 表名经白名单校验（与 SanitizeIdentifier 一致），仅限白名单内的字典/实体表。
 func LookupByTableAndName(ctx context.Context, q Queryer, tableName, tenantID, name string) (string, error) {
 	table, err := SanitizeIdentifier(tableName, lookupByNameTables)
@@ -555,10 +557,17 @@ func LookupByTableAndName(ctx context.Context, q Queryer, tableName, tenantID, n
 		return "", fmt.Errorf("不支持的表名: %s", tableName)
 	}
 	var id string
-	err = q.QueryRow(ctx,
-		fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1", table),
-		tenantID, name,
-	).Scan(&id)
+	if table == "partner_enterprises" {
+		err = q.QueryRow(ctx,
+			fmt.Sprintf("SELECT id FROM %s WHERE name=$1 LIMIT 1", table),
+			name,
+		).Scan(&id)
+	} else {
+		err = q.QueryRow(ctx,
+			fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1", table),
+			tenantID, name,
+		).Scan(&id)
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", nil

@@ -21,6 +21,8 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	defer env.Cleanup()
 
 	tenantID := testhelper.TestTenantID
+	// 企业主体归属企业自身租户（全局实体，tenant_id ≠ 学校租户），模拟生产数据归属
+	entTenantID := "00000000-0000-0000-0000-0000000000aa"
 	claims := &middleware.Claims{
 		UserID:      testhelper.TestOperatorID,
 		TenantID:    &tenantID,
@@ -34,12 +36,13 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	} {
 		env.DB.Exec(ctx, "DELETE FROM "+tbl+" WHERE tenant_id=$1", tenantID)
 	}
-	env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE tenant_id=$1 AND name=$2`, tenantID, "测试企业甲")
+	env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE tenant_id=$1 AND name=$2`, entTenantID, "测试企业甲")
 
 	// 预置企业主体（Partner 平台维护的全局实体，学校侧仅通过名称关联）
+	env.DB.Exec(ctx, `INSERT INTO tenants (id, name, code, status) VALUES ($1, '测试企业甲租户', 'ent-test-aa', 'active') ON CONFLICT (id) DO NOTHING`, entTenantID)
 	entID := uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`,
-		entID, tenantID, "测试企业甲"); err != nil {
+		entID, entTenantID, "测试企业甲"); err != nil {
 		t.Fatalf("预置企业失败: %v", err)
 	}
 	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id=$1`, entID)
@@ -71,6 +74,15 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	json.Unmarshal(projEntIDs, &projEntList)
 	if len(projEntList) != 1 || projEntList[0] != entID {
 		t.Fatalf("项目关联企业未按名称匹配: %v", projEntList)
+	}
+	// 导入执行阶段应自动补建本校-企业合作关联（学校侧页面按已引入企业显示名称）
+	var linkCount int
+	if err := env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alliance_enterprise_links WHERE tenant_id=$1 AND enterprise_id=$2`,
+		tenantID, entID).Scan(&linkCount); err != nil {
+		t.Fatalf("查询企业关联失败: %v", err)
+	}
+	if linkCount != 1 {
+		t.Fatalf("导入未补建企业合作关联: %d", linkCount)
 	}
 	var projCollegeList []string
 	json.Unmarshal(projColleges, &projCollegeList)
