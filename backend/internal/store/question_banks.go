@@ -165,6 +165,9 @@ func (s *QuestionBankStore) Delete(ctx context.Context, id, tenantID string) err
 }
 
 // EnsureDraftPool 为用户创建默认草稿池（不存在时）。
+// 先查后插存在并发竞态（巡检/多请求并发首次访问同一用户时，
+// 两个请求同时查无草稿池→同时 INSERT 冲突 uq_question_banks_tenant_name），
+// 故 INSERT 用 ON CONFLICT DO NOTHING 幂等化。
 func (s *QuestionBankStore) EnsureDraftPool(ctx context.Context, tenantID, userID string) error {
 	var count int
 	err := s.q.QueryRow(ctx,
@@ -185,6 +188,7 @@ func (s *QuestionBankStore) EnsureDraftPool(ctx context.Context, tenantID, userI
 		INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
 			collaborator_ids, collaborator_dept_ids, version, owner_type, is_draft_pool)
 		VALUES (gen_random_uuid(), $1, $2, '我的草稿库', '', 'draft', 0, $3, '{}', '{}', 'V1.0', 'mine', true)
+		ON CONFLICT (tenant_id, name) DO NOTHING
 	`, tenantID, code, userID)
 	return err
 }

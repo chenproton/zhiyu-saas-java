@@ -213,7 +213,7 @@ async function findSubmitButton(page, submitRe, preferredText = null) {
  */
 export async function maybeTestForm(page, cfg, triggerText, submitClick = null, opts = {}) {
   // 表单（尤其是弹层/创建页）可能需要短暂时间完成挂载
-  await sleep(1000)
+  await sleep(300)
   const rand = Math.random().toString(36).slice(2, 8)
   const rec = { trigger: triggerText || '(页面内表单)', filled: 0, skippedFields: [], submitStatus: 'none', apiResult: null, createdId: null }
 
@@ -260,10 +260,11 @@ export async function maybeTestForm(page, cfg, triggerText, submitClick = null, 
   }
   await sleep(cfg.clickIntervalMs)
 
-  // 提交并等待写接口响应
+  // 提交并等待写接口响应（后端响应毫秒级；3s 超时足够，避免"预期写请求未发生"时
+  // 等满 8s 拖慢巡检——无写请求走下方 no-request 分支判定）
   const respPromise = page.waitForResponse(
     res => ['POST', 'PUT', 'PATCH'].includes(res.request().method()) && res.url().includes('/api/'),
-    { timeout: 8000 },
+    { timeout: 3000 },
   ).catch(() => null)
   if (cfg.verbose) {
     const label = submitClick ? `(trigger click)` : await submitBtn.innerText().catch(() => '?')
