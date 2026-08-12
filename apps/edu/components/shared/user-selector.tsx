@@ -329,21 +329,40 @@ export function UserSelector({
     const missing = value.filter((id) => !userCache[id] && !fetchedIdsRef.current.has(id))
     if (missing.length === 0) return
     missing.forEach((id) => fetchedIdsRef.current.add(id))
-    const api = usePortalApi ? portalUserManagementApi : userManagementApi
     let cancelled = false
-    Promise.allSettled(missing.map((id) => api.get(id))).then((results) => {
+    ;(async () => {
+      // 已选企业专家账号不在本校租户用户表（跨租户共建人），先经导师选项解析名字，
+      // 避免逐个 GET /users/{id} 触发 404「用户不存在」；其余 id 仍走用户详情接口
+      let expertUsers: User[] = []
+      if (showEnterpriseExperts) {
+        try {
+          const options = await allianceExpertApi.mentorOptions()
+          expertUsers = (options.items || [])
+            .filter((o) => o.userId && missing.includes(o.userId))
+            .map(
+              (o) => ({ id: o.userId as string, name: o.name, username: o.name }) as User,
+            )
+        } catch {
+          /* 导师数据源加载失败不阻塞回显 */
+        }
+      }
+      if (cancelled) return
+      const expertIds = new Set(expertUsers.map((u) => u.id))
+      const rest = missing.filter((id) => !expertIds.has(id))
+      const api = usePortalApi ? portalUserManagementApi : userManagementApi
+      const results = await Promise.allSettled(rest.map((id) => api.get(id)))
       if (cancelled) return
       const fetched = results.filter(
         (r): r is PromiseFulfilledResult<User> => r.status === 'fulfilled' && !!r.value,
       )
-      if (fetched.length === 0) return
-      mergeUserCache(fetched.map((r) => r.value))
-    })
+      if (fetched.length > 0) mergeUserCache(fetched.map((r) => r.value))
+      if (expertUsers.length > 0) mergeUserCache(expertUsers)
+    })()
     return () => {
       cancelled = true
     }
     // valueKey 已稳定化 value 内容，避免数组引用变化导致重复请求
-  }, [valueKey, value, userCache, usePortalApi, mergeUserCache])
+  }, [valueKey, value, userCache, usePortalApi, mergeUserCache, showEnterpriseExperts])
 
   useEffect(() => {
     if (open) queueMicrotask(() => setSelectedIds([...value]))
