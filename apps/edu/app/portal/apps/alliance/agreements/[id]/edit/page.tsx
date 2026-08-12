@@ -47,7 +47,6 @@ export default function AllianceAgreementEditPage() {
     enterpriseIds: [] as string[],
     projectIds: [] as string[],
     attachments: [] as string[],
-    isPublic: false,
   })
 
   useEffect(() => {
@@ -68,7 +67,6 @@ export default function AllianceAgreementEditPage() {
           enterpriseIds: a.enterpriseIds || [],
           projectIds: a.projectIds || [],
           attachments: a.attachments || [],
-          isPublic: a.isPublic || false,
         })
         // 已终止合作的企业不再出现在下拉选项中
         setEnterprises(

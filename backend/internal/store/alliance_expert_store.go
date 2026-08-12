@@ -262,18 +262,24 @@ func (s *AllianceStore) ScanPublicExpertRows(rows pgx.Rows) ([]domain.AllianceEx
 }
 
 // ListPublicExperts 门户前台公开专家列表（双控：企业 enable_public + 专家 is_public；
-// 带 tenantID 时叠加该校 link.is_public 且合作未终止，§3.2）。返回含企业名称。
+// 带 tenantID 时叠加该校 link.is_public 且合作未终止，§3.2）。
+// includeNonPublic=true 时忽略专家 is_public 条件（仅企业/学校侧公开校验仍生效），
+// 供企业详情页"专家团队"使用：专家是否上联盟首页（is_public）不影响企业页展示。返回含企业名称。
 // limit/offset 分页；limit<=0 时默认 100。
-func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string, limit, offset int) ([]domain.AllianceExpert, error) {
+func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string, limit, offset int, includeNonPublic bool) ([]domain.AllianceExpert, error) {
 	if limit <= 0 {
 		limit = 100
+	}
+	publicCond := "x.is_public = true"
+	if includeNonPublic {
+		publicCond = "true"
 	}
 	if tenantID != "" {
 		return queryList(ctx, s.q, s.ScanPublicExpertRows, `
 			SELECT `+publicExpertColumns+`
 			FROM alliance_experts x
 			JOIN partner_enterprises pe ON pe.id = x.enterprise_id
-			WHERE x.is_public = true AND x.status = 'active' AND pe.enable_public = true
+			WHERE `+publicCond+` AND x.status = 'active' AND pe.enable_public = true
 			  AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $1 AND l.is_public = true AND l.status <> 'terminated')
 			ORDER BY x.created_at DESC LIMIT $2 OFFSET $3
 		`, tenantID, limit, offset)
@@ -282,7 +288,7 @@ func (s *AllianceStore) ListPublicExperts(ctx context.Context, tenantID string, 
 		SELECT `+publicExpertColumns+`
 		FROM alliance_experts x
 		JOIN partner_enterprises pe ON pe.id = x.enterprise_id
-		WHERE x.is_public = true AND x.status = 'active' AND pe.enable_public = true
+		WHERE `+publicCond+` AND x.status = 'active' AND pe.enable_public = true
 		ORDER BY x.created_at DESC LIMIT $1 OFFSET $2
 	`, limit, offset)
 }
@@ -303,4 +309,14 @@ func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id, tenantID st
 		JOIN partner_enterprises pe ON pe.id = x.enterprise_id
 		WHERE x.id = $1 AND x.is_public = true AND x.status = 'active' AND pe.enable_public = true
 	`, id)
+}
+
+// UpdateExpertIsPublic 学校侧维护专家"前台展示"开关（跨租户更新专家 is_public；
+// 调用方须先校验专家所属企业已引入本校）。仅影响联盟首页（landing）等 is_public 双控展示，
+// 企业详情页"专家团队"不受此开关控制。
+func (s *AllianceStore) UpdateExpertIsPublic(ctx context.Context, id string, isPublic bool) error {
+	_, err := s.q.Exec(ctx, `
+		UPDATE alliance_experts SET is_public = $2, updated_at = NOW() WHERE id = $1
+	`, id, isPublic)
+	return err
 }

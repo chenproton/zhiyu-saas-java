@@ -117,11 +117,11 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		t.Fatalf("成果公开显示未导入: %v", achPublic)
 	}
 
-	// 3. 合作协议：关联归属项目 + 关联合作企业（按名称匹配）+ 公开显示
+	// 3. 合作协议：关联归属项目 + 关联合作企业（按名称匹配）；前台展示跟随企业/项目，无独立开关
 	agrFile := buildExcel(t, "合作协议", [][]interface{}{
 		{"填写说明"},
-		{"协议名称 *", "协议类型", "协议状态", "开始日期", "结束日期", "内容", "合作企业", "关联项目", "公开显示"},
-		{"测试共建实验室协议", "实验室共建", "生效中", "2026-01-10", "2027-01-09", "协议内容", "测试企业甲", "测试联合研发项目", "是"},
+		{"协议名称 *", "协议类型", "协议状态", "开始日期", "结束日期", "内容", "合作企业", "关联项目"},
+		{"测试共建实验室协议", "实验室共建", "生效中", "2026-01-10", "2027-01-09", "协议内容", "测试企业甲", "测试联合研发项目"},
 	})
 	hAgr := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
@@ -145,7 +145,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	if len(agrProjList) != 1 || agrProjList[0] != projID {
 		t.Fatalf("协议关联项目未按名称匹配: %v", agrProjList)
 	}
-	if !agrPublic {
-		t.Fatalf("协议公开显示未导入: %v", agrPublic)
+	if agrPublic {
+		t.Fatalf("协议导入不再写入前台展示开关: %v", agrPublic)
 	}
 }

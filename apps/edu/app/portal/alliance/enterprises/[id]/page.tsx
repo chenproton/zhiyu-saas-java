@@ -57,9 +57,13 @@ export default function AlliancePublicEnterpriseDetailPage() {
     if (!id) return
     // 与后台一致：详情与关联内容均限定本校链接范围，其他租户/已解除合作的企业不可见
     const q = tenantId ? `?tenantId=${tenantId}` : ''
+    // 专家团队展示全部已引入企业专家（includeNonPublic=true），
+    // 不受专家"前台展示"开关影响（该开关仅控制联盟首页展示）
     Promise.all([
       portalRequest<AllianceEnterprise>(`/alliance/public/enterprises/${id}${q}`),
-      portalRequest<{ items: AllianceExpert[] }>(`/alliance/public/experts${q}`),
+      portalRequest<{ items: AllianceExpert[] }>(
+        `/alliance/public/experts${q}${q ? '&' : '?'}includeNonPublic=true`,
+      ),
       portalRequest<{ items: AllianceProject[] }>(`/alliance/public/projects${q}`),
       portalRequest<{ items: AllianceAchievement[] }>(`/alliance/public/achievements${q}`),
       portalRequest<{ items: AlliancePublicAgreement[] }>(`/alliance/public/agreements${q}`),

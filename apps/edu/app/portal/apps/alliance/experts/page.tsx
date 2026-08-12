@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
-import { useAsync } from '@zhiyu/ui'
+import { useAsync, useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -24,6 +25,7 @@ import type { AllianceExpert } from '@/lib/types'
 export default function AllianceExpertsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const t = useT()
+  const { toast } = useToast()
   const [enterpriseFilter, setEnterpriseFilter] = useState<string>('all')
 
   // 专家档案由企业侧维护，学校端只读；企业筛选数据源 = 本校已引入企业
@@ -98,7 +100,7 @@ export default function AllianceExpertsPage() {
           <TableHead>{t('操作')}</TableHead>
         </>
       )}
-      renderTableRow={(e: AllianceExpert) => (
+      renderTableRow={(e: AllianceExpert, actions: any) => (
         <>
           <TableCell className="font-medium">
             <Link href={`/portal/apps/alliance/experts/${e.id}`} className="hover:underline">
@@ -112,7 +114,13 @@ export default function AllianceExpertsPage() {
           </TableCell>
           <TableCell>{e.industry || '-'}</TableCell>
           <TableCell>{allianceLabel('expertStatus', e.status)}</TableCell>
-          <TableCell>{e.isPublic ? t('是') : t('否')}</TableCell>
+          <TableCell>
+            <Switch
+              checked={e.isPublic || false}
+              onCheckedChange={actions.toggle}
+              aria-label={t('前台展示')}
+            />
+          </TableCell>
           <TableRowActions>
             <Link href={`/portal/apps/alliance/experts/${e.id}`}>
               <Button variant="ghost" size="sm">
@@ -123,6 +131,11 @@ export default function AllianceExpertsPage() {
           </TableRowActions>
         </>
       )}
+      onToggleEnabled={async (item: AllianceExpert) => {
+        // 仅控制联盟首页（landing）展示；企业详情页"专家团队"不受该开关影响
+        await allianceExpertApi.updateDisplay(item.id, !item.isPublic)
+        toast({ title: item.isPublic ? t('已取消前台展示') : t('已开启前台展示') })
+      }}
     />
   )
 }

@@ -155,6 +155,13 @@ export const allianceAchievementApi = {
 export const allianceExpertApi = {
   list: (params?: ListParams) => list<AllianceExpert>('/alliance/experts', params),
   get: (id: string) => portalRequest<AllianceExpert>(`/alliance/experts/${id}`),
+  // 学校侧维护"前台展示"开关：仅控制专家在联盟首页等 is_public 双控场景展示，
+  // 企业详情页"专家团队"不受影响
+  updateDisplay: (id: string, isPublic: boolean) =>
+    portalRequest<{ id: string; isPublic: boolean }>(`/alliance/experts/${id}/display`, {
+      method: 'PUT',
+      body: JSON.stringify({ isPublic }),
+    }),
   // 共建导师选项：本校已引入企业的专家 + 影子账号启用状态
   mentorOptions: () =>
     portalRequest<AllianceListResponse<AllianceMentorOption>>('/alliance/experts/mentor-options'),
