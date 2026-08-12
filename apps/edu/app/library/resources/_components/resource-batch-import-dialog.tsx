@@ -158,7 +158,7 @@ export function ResourceBatchImportDialog({
     if (failed > 0) {
       toast({
         variant: 'destructive',
-        title: t('批量导入完成'),
+        title: t('批量上传完成'),
         description: t('成功 {ok} 个，失败 {fail} 个', {
           ok: success,
           fail: failed,
@@ -166,7 +166,7 @@ export function ResourceBatchImportDialog({
       })
     } else {
       toast({
-        title: t('批量导入成功'),
+        title: t('批量上传成功'),
         description: t('成功导入 {n} 个资源', { n: success }) + skippedMsg + permissionMsg,
       })
     }
@@ -199,7 +199,7 @@ export function ResourceBatchImportDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('批量导入资源')}</DialogTitle>
+          <DialogTitle>{t('批量上传资源')}</DialogTitle>
           <DialogDescription>{t('支持同时选择多个文件，自动以文件名作为资源名称')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">

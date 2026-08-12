@@ -279,7 +279,7 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setBatchOpen(true)}>
               <Upload className="size-4 mr-1" />
-              {t('批量导入')}
+              {t('批量上传')}
             </Button>
             <Button onClick={handleOpenAddWithType} size="sm">
               <Plus className="size-4 mr-1" />
