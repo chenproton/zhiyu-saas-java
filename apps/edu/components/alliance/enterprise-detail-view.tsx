@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -21,7 +20,6 @@ import {
   Mail,
   MapPin,
   Image as ImageIcon,
-  ArrowUpRight,
 } from 'lucide-react'
 import type {
   AllianceExpert,
@@ -31,7 +29,7 @@ import type {
 } from '@/lib/types'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
-import { ExpertCard } from './public-cards'
+import { ExpertCard, ProjectCard, AchievementCard } from './public-cards'
 
 
 export interface ShowcaseEnterprise {
@@ -283,27 +281,9 @@ export function EnterpriseDetailView({
               <CardContent className="p-6">
                 {schoolNote}
                 {projectItems.length > 0 ? (
-                  <div className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                     {projectItems.map((project) => (
-                      <div
-                        key={project.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 rounded-2xl gap-3"
-                      >
-                        <div>
-                          <Link
-                            href={`/portal/alliance/projects/${project.id}`}
-                            className="font-semibold text-slate-900 hover:text-blue-600 transition-colors inline-flex items-center gap-1"
-                          >
-                            {project.name} <ArrowUpRight className="h-3.5 w-3.5" />
-                          </Link>
-                          <p className="text-sm text-slate-500">
-                            {project.type} · {project.startDate || '-'} - {project.endDate || '-'}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">
-                          {allianceLabel('projectPhase', project.phase)}
-                        </Badge>
-                      </div>
+                      <ProjectCard key={project.id} project={project} />
                     ))}
                   </div>
                 ) : (
@@ -361,27 +341,9 @@ export function EnterpriseDetailView({
               <CardContent className="p-6">
                 {schoolNote}
                 {achievementItems.length > 0 ? (
-                  <div className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                     {achievementItems.map((achievement) => (
-                      <div
-                        key={achievement.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 rounded-2xl gap-3"
-                      >
-                        <div>
-                          <Link
-                            href={`/portal/alliance/achievements/${achievement.id}`}
-                            className="font-semibold text-slate-900 hover:text-blue-600 transition-colors inline-flex items-center gap-1"
-                          >
-                            {achievement.title} <ArrowUpRight className="h-3.5 w-3.5" />
-                          </Link>
-                          <p className="text-sm text-slate-500">
-                            {t('{date} 发布', { date: achievement.achievementDate || achievement.createdAt?.slice(0, 10) || '-' })}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">
-                          {allianceLabel('achievementType', achievement.type)}
-                        </Badge>
-                      </div>
+                      <AchievementCard key={achievement.id} achievement={achievement} />
                     ))}
                   </div>
                 ) : (
