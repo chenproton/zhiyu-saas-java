@@ -322,7 +322,7 @@ export default function PartnerCooperationPage() {
       })}
 
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{detail?.name ?? ''}</DialogTitle>
           </DialogHeader>
@@ -344,8 +344,8 @@ export default function PartnerCooperationPage() {
                   </button>
                 )}
               </div>
-            ) : detailData ? (
-              <DetailBody kind={detail!.kind} data={detailData} />
+            ) : detail && detailData ? (
+              <DetailBody kind={detail.kind} data={detailData} />
             ) : null}
           </div>
         </DialogContent>
