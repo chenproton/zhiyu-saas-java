@@ -144,8 +144,10 @@ export default function ExamDetailPage() {
 
   useEffect(() => {
     if (!examId) return
+    // scope=all：场景任务/课程节点随时作答（always）的自动考试安排不在管理列表默认范围，
+    // 学生作答入口需按 examId 查到对应安排，否则无法开始考试。
     examUsageApi
-      .list({ examId })
+      .list({ examId, scope: 'all' })
       .then((res) => {
         const items = res.items || []
         const usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null

@@ -83,6 +83,8 @@ export const examUsageApi = {
     search?: string
     limit?: number
     offset?: number
+    /** scope=all 时不做范围过滤（学生作答/结果回看需查随时作答的自动考试安排） */
+    scope?: string
   }) => request<ListResponse<ExamUsage>>(`/evaluation/exam-usages${buildQuery(params || {})}`),
   get: (id: string) => request<ExamUsage>(`/evaluation/exam-usages/${id}`),
   create: (req: Omit<ExamUsage, 'id' | 'createdAt' | 'updatedAt'>) =>
