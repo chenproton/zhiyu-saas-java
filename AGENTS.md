@@ -155,3 +155,4 @@
    - `apps/edu/public/image-editor`：指向 `offline/image-editor` 的符号链接；`deploy.sh` 构建时替换为实体文件（已 gitignore，禁止提交实体文件）
    - `backend/vendor/`：`go mod vendor` 产物；`deploy.sh` 以 `-mod=vendor` 构建，**不可移动位置**
    - `node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`：依赖目录与构建/运行产物
+7. **默认不做端到端验证**：除非用户**主动要求**，不执行 UI Smoke 全站巡检、`--route` 单页巡检、浏览器自动化等端到端验证（包括新功能/修复完成后的验证环节）；本地验证以编译、类型检查、lint、单测为准，部署后的功能表现由用户人工确认
