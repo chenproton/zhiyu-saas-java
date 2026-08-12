@@ -41,6 +41,40 @@ func (s *PartnerStore) CountExpertsByTenant(ctx context.Context, tenantID string
 	return n, err
 }
 
+// ExpertStatusCount 专家账号状态计数。
+type ExpertStatusCount struct {
+	Status string
+	Count  int
+}
+
+// CountExpertStatusByTenant 企业租户专家账号状态分布（服务台图表）。
+func (s *PartnerStore) CountExpertStatusByTenant(ctx context.Context, tenantID string) ([]ExpertStatusCount, error) {
+	rows, err := s.q.Query(ctx,
+		`SELECT status, COUNT(*) FROM alliance_experts WHERE tenant_id = $1 GROUP BY status`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ExpertStatusCount
+	for rows.Next() {
+		var c ExpertStatusCount
+		if err := rows.Scan(&c.Status, &c.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// CountPublicExpertsByTenant 企业租户公开专家数量（服务台统计）。
+func (s *PartnerStore) CountPublicExpertsByTenant(ctx context.Context, tenantID string) (int, error) {
+	var n int
+	err := s.q.QueryRow(ctx,
+		`SELECT COUNT(*) FROM alliance_experts WHERE tenant_id = $1 AND is_public = true AND status = 'active'`,
+		tenantID).Scan(&n)
+	return n, err
+}
+
 // CountMembersByTenant 企业租户成员账号数量（服务台统计）。
 func (s *PartnerStore) CountMembersByTenant(ctx context.Context, tenantID string) (int, error) {
 	var n int

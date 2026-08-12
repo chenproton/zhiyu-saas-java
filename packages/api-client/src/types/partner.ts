@@ -100,6 +100,12 @@ export interface PartnerDashboard {
   schoolCount: number
   memberCount: number
   publicExpertCount?: number
+  /** 合作学校状态分布（服务台图表） */
+  schoolStatusCounts?: { status: string; count: number }[]
+  /** 专家账号状态分布（服务台图表） */
+  expertStatusCounts?: { status: string; count: number }[]
+  /** 近 6 个月每月新增合作学校数（服务台柱状图） */
+  monthlySchoolCounts?: { month: string; count: number }[]
 }
 
 /** GET /partner/schools：合作学校（link 反向视图，对应后端 domain.AlliancePartnerSchool） */
