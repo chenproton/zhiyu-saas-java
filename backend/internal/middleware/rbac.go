@@ -7,6 +7,9 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
+// systemMenuPrefix 系统管理菜单路径前缀，与前端权限树一致。
+const systemMenuPrefix = "/portal/apps/system"
+
 // RequireRole returns a middleware that only allows users bound to at least
 // one role whose code is in the given allow-list.
 func RequireRole(allowedCodes ...string) func(http.Handler) http.Handler {
@@ -88,8 +91,15 @@ func HasRole(claims *Claims, code string) bool {
 // granted menu path in their permissions. Returns false when no menus key
 // exists or no entry is set to true (empty menus = backward compat → full
 // access, handled by HasSystemPermission).
+// 新令牌读取精简载荷 HasMenu；旧令牌（7 天有效期内）回退解析完整权限 map。
 func HasAnyMenuPermission(claims *Claims) bool {
-	if claims == nil || len(claims.Permissions) == 0 {
+	if claims == nil {
+		return false
+	}
+	if claims.HasMenu {
+		return true
+	}
+	if len(claims.Permissions) == 0 {
 		return false
 	}
 	menusVal, ok := claims.Permissions["menus"]
@@ -117,9 +127,13 @@ func HasAnyMenuPermission(claims *Claims) bool {
 // Users with no permissions configuration are denied; callers such as
 // RequireSystemPermission still admit school_admin/platform_admin by role, so
 // tightening the default here does not affect role-based access.
+// 新令牌读取精简载荷（Admin/SystemMenus）；旧令牌回退解析完整权限 map。
 func HasSystemPermission(claims *Claims) bool {
 	if claims == nil {
 		return false
+	}
+	if claims.Admin || len(claims.SystemMenus) > 0 {
+		return true
 	}
 	if len(claims.Permissions) == 0 {
 		return false
@@ -136,7 +150,7 @@ func HasSystemPermission(claims *Claims) bool {
 		return false
 	}
 	for path, granted := range menus {
-		if val, ok := granted.(bool); ok && val && strings.HasPrefix(path, "/portal/apps/system") {
+		if val, ok := granted.(bool); ok && val && strings.HasPrefix(path, systemMenuPrefix) {
 			return true
 		}
 	}

@@ -71,7 +71,15 @@ type Claims struct {
 	Role          domain.UserRole     `json:"role"`
 	Platform      domain.UserPlatform `json:"platform"`
 	Username      string              `json:"username"`
-	Permissions   domain.JSONMap      `json:"permissions,omitempty"`
+	// 权限精简载荷（JWT 瘦身）：仅保留服务端鉴权实际消费的字段，
+	// 避免完整权限 map（含全部菜单路径与操作码）写入 token 导致
+	// Set-Cookie 超过浏览器 4096 字节上限、响应头超 nginx 缓冲区。
+	Admin       bool     `json:"admin,omitempty"`
+	HasMenu     bool     `json:"hasMenu,omitempty"`
+	SystemMenus []string `json:"systemMenus,omitempty"`
+	// Permissions 仅用于兼容旧令牌（签发后 7 天内）的鉴权回退，
+	// 新令牌不再写入完整权限 map。
+	Permissions domain.JSONMap `json:"permissions,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -233,7 +241,9 @@ func GenerateToken(secret string, input TokenInput) (string, error) {
 		Role:          user.Role,
 		Platform:      user.Platform,
 		Username:      user.Username,
-		Permissions:   input.Permissions,
+		Admin:         hasAdminFlag(input.Permissions),
+		HasMenu:       hasAnyGrantedMenu(input.Permissions),
+		SystemMenus:   grantedSystemMenus(input.Permissions),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -241,4 +251,37 @@ func GenerateToken(secret string, input TokenInput) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
+}
+
+// hasAdminFlag 判断权限 map 是否含 admin: true（超管全权限标记）。
+func hasAdminFlag(perms domain.JSONMap) bool {
+	v, ok := perms["admin"].(bool)
+	return ok && v
+}
+
+// hasAnyGrantedMenu 判断权限 map 中是否有任意勾选的菜单路径。
+func hasAnyGrantedMenu(perms domain.JSONMap) bool {
+	for _, granted := range menusOf(perms) {
+		if v, ok := granted.(bool); ok && v {
+			return true
+		}
+	}
+	return false
+}
+
+// grantedSystemMenus 收集权限 map 中勾选的系统管理（/portal/apps/system）菜单路径。
+func grantedSystemMenus(perms domain.JSONMap) []string {
+	var out []string
+	for path, granted := range menusOf(perms) {
+		if v, ok := granted.(bool); ok && v && strings.HasPrefix(path, systemMenuPrefix) {
+			out = append(out, path)
+		}
+	}
+	return out
+}
+
+// menusOf 提取权限 map 中的 menus 子 map，结构不符时返回空。
+func menusOf(perms domain.JSONMap) map[string]interface{} {
+	m, _ := perms["menus"].(map[string]interface{})
+	return m
 }
