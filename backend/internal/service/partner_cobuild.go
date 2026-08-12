@@ -338,13 +338,15 @@ func (s *PartnerCoBuildService) WithdrawPosition(ctx context.Context, partnerTen
 
 // ===== 岗位编辑子资源只读（编辑器数据源，复用 portal 同一 store 查询） =====
 
-// ownedPositionTenant 只读归属校验：source_enterprise_id 必须为本企业，返回学校租户。
+// ownedPositionTenant 只读可见性校验：本企业共建或学校授权（grant）资源，返回学校租户。
+// 与 GetPosition/ListPositions 的 accessiblePosition 可见性一致，保证列表可见的岗位
+// （含学校授权资源）其子资源只读接口同样可访问。
 func (s *PartnerCoBuildService) ownedPositionTenant(ctx context.Context, partnerTenantID, positionID string) (string, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return "", err
 	}
-	pos, err := s.ownedPosition(ctx, ent.ID, positionID)
+	pos, err := s.accessiblePosition(ctx, ent.ID, positionID)
 	if err != nil {
 		return "", err
 	}
@@ -581,13 +583,13 @@ func (s *PartnerCoBuildService) WithdrawScenario(ctx context.Context, partnerTen
 
 // ===== 场景任务 =====
 
-// ListTasks 共建场景任务列表（归属经场景反查校验）。
+// ListTasks 共建场景任务列表（可见性经场景反查校验：本企业共建或学校授权）。
 func (s *PartnerCoBuildService) ListTasks(ctx context.Context, partnerTenantID, scenarioID string) ([]domain.ScenarioTask, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, err
 	}
-	sc, err := s.ownedScenario(ctx, ent.ID, scenarioID)
+	sc, err := s.accessibleScenario(ctx, ent.ID, scenarioID)
 	if err != nil {
 		return nil, err
 	}
@@ -684,13 +686,20 @@ func (s *PartnerCoBuildService) ReorderTasks(ctx context.Context, partnerTenantI
 
 // ===== 任务测评方式 =====
 
-// GetTaskEvaluationMethods 查看共建任务测评方式（tenant 取学校）。
+// GetTaskEvaluationMethods 查看共建任务测评方式（tenant 取学校；本企业共建或学校授权可见）。
 func (s *PartnerCoBuildService) GetTaskEvaluationMethods(ctx context.Context, partnerTenantID, taskID string) ([]domain.TaskEvaluationMethod, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, err
 	}
-	_, sc, err := s.ownedTaskScenario(ctx, ent.ID, taskID)
+	task, err := s.st.ScenarioTasks().Get(ctx, taskID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+	sc, err := s.accessibleScenario(ctx, ent.ID, task.ScenarioID)
 	if err != nil {
 		return nil, err
 	}
