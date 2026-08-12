@@ -150,8 +150,12 @@ export function EnterpriseDetailView({
 
   return (
     <AllianceDetailShell
+      breadcrumbs={[
+        { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+        { label: t('合作企业列表'), href: '/portal/alliance/enterprises' },
+        { label: enterprise.name },
+      ]}
       backHref="/portal/alliance/enterprises"
-      backLabel={t('返回列表')}
       showBack={showBack}
       icon={Building2}
       iconImage={

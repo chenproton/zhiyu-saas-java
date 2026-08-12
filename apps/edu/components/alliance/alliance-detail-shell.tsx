@@ -1,10 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, type LucideIcon } from 'lucide-react'
+import { ChevronRight, type LucideIcon } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface DetailStat {
@@ -22,10 +21,17 @@ export interface DetailTab {
   content: React.ReactNode
 }
 
+export interface BreadcrumbItem {
+  label: string
+  href?: string
+}
+
 interface AllianceDetailShellProps {
+  /** 面包屑导航（如：联盟首页 > 列表 > 当前对象）；提供时优先于 backHref 按钮 */
+  breadcrumbs?: BreadcrumbItem[]
   backHref: string
   backLabel?: string
-  /** 隐藏返回按钮（如企业端预览 Dialog 内，无返回列表语境） */
+  /** 隐藏返回按钮/面包屑（如企业端预览 Dialog 内，无导航语境） */
   showBack?: boolean
   /** 无 logo/图片时的渐变图标头像 */
   icon?: LucideIcon
@@ -38,8 +44,6 @@ interface AllianceDetailShellProps {
   tabs: DetailTab[]
   /** 页面背景渐变（默认蓝紫调） */
   pageGradient?: string
-  /** hero 装饰光斑色调（默认蓝紫） */
-  glowClass?: string
 }
 
 /** 信息块：原型统一样式（label 上、value 下，灰底圆角） */
@@ -95,10 +99,11 @@ export function DetailSectionCard({
 }
 
 /**
- * 联盟前台详情页公共壳：渐变 hero（返回/头像/标题/徽章）+ 统计卡 + 圆角 Tabs。
- * 合作企业/合作项目/合作成果三个详情页复用；企业端「预览展示页」同步复用。
+ * 联盟前台详情页公共壳：浅渐变全屏背景（无边框/无分区）+ 面包屑 + 头像/标题/徽章 + 统计卡 + 圆角 Tabs。
+ * 合作企业/合作项目/合作成果/专家详情页复用；企业端「预览展示页」同步复用。
  */
 export function AllianceDetailShell({
+  breadcrumbs,
   backHref,
   backLabel,
   showBack = true,
@@ -110,28 +115,45 @@ export function AllianceDetailShell({
   badges,
   stats,
   tabs,
-  pageGradient = 'from-slate-50/80 via-white to-blue-50/30',
-  glowClass = 'from-blue-600/5 via-transparent to-violet-600/5',
+  pageGradient = 'from-slate-50 via-white to-blue-50/40',
 }: AllianceDetailShellProps) {
   const t = useT()
+  const crumbs = breadcrumbs ?? (showBack ? [{ label: backLabel || t('返回列表'), href: backHref }] : [])
   return (
     <div className={`min-h-screen bg-gradient-to-b ${pageGradient}`}>
-      <section className="relative overflow-hidden py-10 lg:py-16">
-        <div className={`absolute inset-0 bg-gradient-to-br ${glowClass}`} />
-        <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[120px] ${glowClass.split(' ')[0]?.replace('/5', '/10')}`} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {showBack && (
-            <div className="mb-8">
-              <Link href={backHref}>
-                <Button variant="ghost" size="sm" className="rounded-full hover:bg-white/50">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  {backLabel || t('返回列表')}
-                </Button>
-              </Link>
-            </div>
+      {/* 标题区：无独立背景块，直接铺在页面渐变上，顶部紧凑 */}
+      <section className="pt-3 lg:pt-6 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {showBack && crumbs.length > 0 && (
+            <nav className="flex items-center gap-1 text-[13px] text-slate-400 mb-4 flex-wrap">
+              {crumbs.map((crumb, idx) => {
+                const last = idx === crumbs.length - 1
+                return (
+                  <span key={idx} className="flex items-center gap-1 min-w-0">
+                    {idx > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" />}
+                    {crumb.href && !last ? (
+                      <Link
+                        href={crumb.href}
+                        className="hover:text-primary transition-colors whitespace-nowrap"
+                      >
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span
+                        className={`whitespace-nowrap ${
+                          last ? 'text-slate-700 font-medium truncate max-w-[260px]' : ''
+                        }`}
+                      >
+                        {crumb.label}
+                      </span>
+                    )}
+                  </span>
+                )
+              })}
+            </nav>
           )}
 
-          <div className="flex flex-col md:flex-row md:items-start gap-6">
+          <div className="flex flex-col md:flex-row md:items-start gap-5">
             {iconImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -146,7 +168,7 @@ export function AllianceDetailShell({
                 <Icon className="w-12 h-12" />
               </div>
             ) : null}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h1 className="text-2xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-2 break-words">
                 {title}
               </h1>

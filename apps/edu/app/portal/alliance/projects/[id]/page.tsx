@@ -127,12 +127,15 @@ export default function AlliancePublicProjectDetailPage() {
 
   return (
     <AllianceDetailShell
+      breadcrumbs={[
+        { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+        { label: t('合作项目列表'), href: '/portal/alliance/projects' },
+        { label: project.name },
+      ]}
       backHref="/portal/alliance/projects"
-      backLabel={t('返回列表')}
       icon={FolderKanban}
       iconGradient="from-indigo-500 to-violet-600"
-      pageGradient="from-slate-50/80 via-white to-indigo-50/30"
-      glowClass="from-indigo-600/5 via-transparent to-blue-600/5"
+      pageGradient="from-slate-50 via-white to-indigo-50/40"
       title={project.name}
       subtitle={project.type}
       badges={[
