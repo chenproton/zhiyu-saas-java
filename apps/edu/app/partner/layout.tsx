@@ -33,12 +33,14 @@ function PartnerShell({ children }: { children: React.ReactNode }) {
   const { user, enterprise, isAdmin, logout } = usePartnerAuth()
 
   // 导航裁剪：admin 可见全部（成员管理已移除）；专家（member）只可见
-  // 专家资源（我的档案）/岗位共建/场景共建/账号安全
+  // 专家资源（我的档案）/岗位共建/场景共建/测评任务/账号安全
   const translatedConfig = useMemo(() => {
     const items = partnerNavigationConfig.sideNavItems
       .filter((item) => {
         if (isAdmin) return true
-        return ['experts', 'cobuild-positions', 'cobuild-scenes', 'settings'].includes(item.id)
+        return ['experts', 'cobuild-positions', 'cobuild-scenes', 'tasks', 'settings'].includes(
+          item.id,
+        )
       })
       .map((item) => ({
         ...item,
