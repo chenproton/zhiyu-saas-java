@@ -296,6 +296,70 @@ export interface AllianceBrand {
   updatedAt: string
 }
 
+// EmployerBrand 雇主品牌视图（引用企业资料只读展示）
+export interface EmployerBrand extends AllianceBrand {
+  enterpriseName?: string
+  enterpriseLogo?: string
+  enterpriseIndustry?: string
+  enterpriseRegion?: string
+  enterpriseDescription?: string
+  enterpriseCreditCode?: string
+  enterpriseContactPerson?: string
+  enterpriseContactPhone?: string
+  enterpriseContactEmail?: string
+  enterpriseAddress?: string
+}
+
+// BrandMajorRankConfig 人才画像排名-专业启用配置
+export interface BrandMajorRankConfig {
+  majorId: string
+  enabled: boolean
+  rankLimit: number
+}
+
+// TalentRankPosition 学生单个岗位评估明细
+export interface TalentRankPosition {
+  positionId: string
+  positionName: string
+  achievementRate: number
+  positionCompetency?: number
+  positionCompetencyV2?: number
+  abilityCognitionScore?: number
+  totalAbilityPoints: number
+  achievedAbilityPoints: number
+  grade?: string
+  evaluatedAt: string
+  abilityPointDetails?: any
+}
+
+// TalentRankStudent 学生画像排名行（多岗位四指标平均）
+export interface TalentRankStudent {
+  studentId: string
+  studentNo: string
+  name: string
+  majorId?: string
+  majorName: string
+  className: string
+  departmentName: string
+  avgAchievementRate?: number
+  avgPositionCompetency?: number
+  avgPositionCompetencyV2?: number
+  avgAbilityCognitionScore?: number
+  positionCount: number
+  latestEvaluatedAt?: string
+  positions?: TalentRankPosition[]
+}
+
+// TalentRankMajorGroup 人才画像排名-专业分组
+export interface TalentRankMajorGroup {
+  majorId: string
+  majorName: string
+  enabled: boolean
+  rankLimit: number
+  studentCount: number
+  students: TalentRankStudent[]
+}
+
 export interface AlliancePublicStats {
   enterpriseCount: number
   projectCount: number

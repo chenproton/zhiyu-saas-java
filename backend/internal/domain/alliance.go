@@ -434,3 +434,68 @@ type AllianceBrand struct {
 	CreatedAt    time.Time       `json:"createdAt"`
 	UpdatedAt    time.Time       `json:"updatedAt"`
 }
+
+// EmployerBrand 雇主品牌视图（brandType=employer 时附带引用企业资料，只读）。
+type EmployerBrand struct {
+	AllianceBrand
+	EnterpriseName          *string `json:"enterpriseName,omitempty"`
+	EnterpriseLogo          *string `json:"enterpriseLogo,omitempty"`
+	EnterpriseIndustry      *string `json:"enterpriseIndustry,omitempty"`
+	EnterpriseRegion        *string `json:"enterpriseRegion,omitempty"`
+	EnterpriseDescription   *string `json:"enterpriseDescription,omitempty"`
+	EnterpriseCreditCode    *string `json:"enterpriseCreditCode,omitempty"`
+	EnterpriseContactPerson *string `json:"enterpriseContactPerson,omitempty"`
+	EnterpriseContactPhone  *string `json:"enterpriseContactPhone,omitempty"`
+	EnterpriseContactEmail  *string `json:"enterpriseContactEmail,omitempty"`
+	EnterpriseAddress       *string `json:"enterpriseAddress,omitempty"`
+}
+
+// BrandMajorRankConfig 人才画像排名-专业启用配置（每专业是否展示 + 前 N 名上限）。
+type BrandMajorRankConfig struct {
+	MajorID   string `json:"majorId"`
+	Enabled   bool   `json:"enabled"`
+	RankLimit int    `json:"rankLimit"`
+}
+
+// TalentRankPosition 学生单个岗位评估明细（job_ability_results 一行）。
+type TalentRankPosition struct {
+	PositionID            string          `json:"positionId"`
+	PositionName          string          `json:"positionName"`
+	AchievementRate       float64         `json:"achievementRate"`
+	PositionCompetency    *float64        `json:"positionCompetency,omitempty"`
+	PositionCompetencyV2  *float64        `json:"positionCompetencyV2,omitempty"`
+	AbilityCognitionScore *float64        `json:"abilityCognitionScore,omitempty"`
+	TotalAbilityPoints    int             `json:"totalAbilityPoints"`
+	AchievedAbilityPoints int             `json:"achievedAbilityPoints"`
+	Grade                 *string         `json:"grade,omitempty"`
+	EvaluatedAt           time.Time       `json:"evaluatedAt"`
+	AbilityPointDetails   json.RawMessage `json:"abilityPointDetails,omitempty"`
+}
+
+// TalentRankStudent 学生画像排名行（多岗位四指标平均，无评估数据时指标为空）。
+type TalentRankStudent struct {
+	StudentID                string               `json:"studentId"`
+	StudentNo                string               `json:"studentNo"`
+	Name                     string               `json:"name"`
+	MajorID                  *string              `json:"majorId,omitempty"`
+	MajorName                string               `json:"majorName"`
+	ClassName                string               `json:"className"`
+	DepartmentName           string               `json:"departmentName"`
+	AvgAchievementRate       *float64             `json:"avgAchievementRate,omitempty"`
+	AvgPositionCompetency    *float64             `json:"avgPositionCompetency,omitempty"`
+	AvgPositionCompetencyV2  *float64             `json:"avgPositionCompetencyV2,omitempty"`
+	AvgAbilityCognitionScore *float64             `json:"avgAbilityCognitionScore,omitempty"`
+	PositionCount            int                  `json:"positionCount"`
+	LatestEvaluatedAt        *time.Time           `json:"latestEvaluatedAt,omitempty"`
+	Positions                []TalentRankPosition `json:"positions,omitempty"`
+}
+
+// TalentRankMajorGroup 人才画像排名-专业分组。
+type TalentRankMajorGroup struct {
+	MajorID      string              `json:"majorId"`
+	MajorName    string              `json:"majorName"`
+	Enabled      bool                `json:"enabled"`
+	RankLimit    int                 `json:"rankLimit"`
+	StudentCount int                 `json:"studentCount"`
+	Students     []TalentRankStudent `json:"students"`
+}

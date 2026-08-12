@@ -16,6 +16,7 @@ import {
   MapPin,
   Globe,
   School,
+  Medal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,6 +29,7 @@ import type {
   AllianceProject,
   AllianceExpert,
   AllianceAchievement,
+  TalentRankMajorGroup,
 } from '@/lib/types'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { reportError } from '@/lib/error-handling'
@@ -53,6 +55,7 @@ interface LandingData {
   experts: AllianceExpert[]
   achievements: AllianceAchievement[]
   brands: AllianceBrand[]
+  talentRanking: TalentRankMajorGroup[]
 }
 
 const BRAND_CATEGORIES = [
@@ -328,6 +331,7 @@ export default function AllianceLandingPage() {
     experts: [],
     achievements: [],
     brands: [],
+    talentRanking: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -341,6 +345,7 @@ export default function AllianceLandingPage() {
       Promise<{ items: AllianceExpert[] } | null>,
       Promise<{ items: AllianceAchievement[] } | null>,
       Promise<{ items: AllianceBrand[] } | null>,
+      Promise<{ items: TalentRankMajorGroup[] } | null>,
     ] = [
       portalRequest<AlliancePublicStats>(`/alliance/public/stats${q}`).catch(() => null),
       portalRequest<{ items: AllianceEnterprise[] }>(`/alliance/public/enterprises${q}`).catch(
@@ -360,6 +365,11 @@ export default function AllianceLandingPage() {
       portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands').catch(() => ({
         items: [],
       })),
+      portalRequest<{ items: TalentRankMajorGroup[] }>(
+        `/alliance/public/brands/talent-ranking${tenantId ? `?tenantId=${tenantId}` : ''}`,
+      ).catch(() => ({
+        items: [],
+      })),
     ]
 
     const schoolInfoRequest = tenantId
@@ -369,17 +379,29 @@ export default function AllianceLandingPage() {
       : Promise.resolve(null)
 
     Promise.all([schoolInfoRequest, ...requests])
-      .then(([schoolInfo, stats, enterprises, projects, experts, achievements, brands]) => {
-        setData({
+      .then(
+        ([
           schoolInfo,
           stats,
-          enterprises: enterprises?.items?.slice(0, 6) ?? [],
-          projects: projects?.items?.slice(0, 8) ?? [],
-          experts: experts?.items?.slice(0, 6) ?? [],
-          achievements: achievements?.items?.slice(0, 8) ?? [],
-          brands: brands?.items ?? [],
-        })
-      })
+          enterprises,
+          projects,
+          experts,
+          achievements,
+          brands,
+          talentRanking,
+        ]) => {
+          setData({
+            schoolInfo,
+            stats,
+            enterprises: enterprises?.items?.slice(0, 6) ?? [],
+            projects: projects?.items?.slice(0, 8) ?? [],
+            experts: experts?.items?.slice(0, 6) ?? [],
+            achievements: achievements?.items?.slice(0, 8) ?? [],
+            brands: brands?.items ?? [],
+            talentRanking: talentRanking?.items ?? [],
+          })
+        },
+      )
       .catch((err) => {
         reportError(err, { source: '加载校企合作联盟首页' })
       })
@@ -553,7 +575,7 @@ export default function AllianceLandingPage() {
         </div>
 
         {/* Featured brands grouped by type */}
-        {data.brands.length > 0 && (
+        {(data.brands.length > 0 || data.talentRanking.length > 0) && (
           <Tabs value={brandTab} onValueChange={setBrandTab} className="w-full">
             <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
               <div className="flex items-center gap-3">
@@ -579,6 +601,49 @@ export default function AllianceLandingPage() {
               const items = featuredBrandsByType[cat.id] ?? []
               return (
                 <TabsContent key={cat.id} value={cat.id}>
+                  {cat.id === 'talent' && data.talentRanking.length > 0 && (
+                    <div className="mb-8">
+                      <div className="mb-4 flex items-center gap-2">
+                        <Medal className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-semibold text-slate-800">
+                          {t('人才画像排名')}
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {data.talentRanking.map((g) => (
+                          <div
+                            key={g.majorId}
+                            className="rounded-xl border border-slate-200 bg-white shadow-sm"
+                          >
+                            <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                              {g.majorName}
+                            </div>
+                            <div className="divide-y divide-slate-50">
+                              {g.students.slice(0, 5).map((s, idx) => (
+                                <div key={s.studentId} className="flex items-center gap-3 px-4 py-2">
+                                  <span
+                                    className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                                      idx < 3
+                                        ? 'bg-amber-100 text-amber-700'
+                                        : 'bg-muted text-muted-foreground'
+                                    }`}
+                                  >
+                                    {idx + 1}
+                                  </span>
+                                  <span className="truncate text-sm font-medium">{s.name}</span>
+                                  <span className="ml-auto shrink-0 text-sm font-semibold text-primary">
+                                    {s.avgAchievementRate == null
+                                      ? '-'
+                                      : `${s.avgAchievementRate.toFixed(1)}%`}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {items.length === 0 ? (
                     <LandingEmpty title={t('暂无{title}', { title: t(cat.title) })} />
                   ) : (

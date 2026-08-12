@@ -11,6 +11,8 @@ import type {
   AllianceAgreement,
   AlliancePermission,
   AllianceBrand,
+  BrandMajorRankConfig,
+  TalentRankMajorGroup,
   AllianceListResponse,
 } from '../types/alliance'
 import { portalRequest, buildQuery } from '../api-helpers'
@@ -190,6 +192,19 @@ export const allianceBrandApi = {
     }),
   delete: (id: string) =>
     portalRequest<{ id: string }>(`/alliance/brands/${id}`, { method: 'DELETE' }),
+  // 人才画像排名（管理端，返回全部专业分组）
+  talentRanking: (params?: ListParams) =>
+    portalRequest<AllianceListResponse<TalentRankMajorGroup>>(
+      `/alliance/brands/talent-ranking${buildQuery(params || {})}`,
+    ),
+  // 专业排名启用配置
+  rankConfigs: () =>
+    portalRequest<AllianceListResponse<BrandMajorRankConfig>>('/alliance/brands/rank-configs'),
+  saveRankConfigs: (configs: BrandMajorRankConfig[]) =>
+    portalRequest<AllianceListResponse<BrandMajorRankConfig>>('/alliance/brands/rank-configs', {
+      method: 'PUT',
+      body: JSON.stringify({ configs }),
+    }),
 }
 
 export const alliancePermissionApi = {
