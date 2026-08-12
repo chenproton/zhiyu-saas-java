@@ -2068,6 +2068,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               placeholder={t('点击选择共建人')}
               tenantId={tenantId}
               excludeUserIds={inviteTarget?.creatorId ? [inviteTarget.creatorId] : undefined}
+              showEnterpriseExperts
             />
           </div>
           <DialogFooter>
