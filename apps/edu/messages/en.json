@@ -4266,5 +4266,7 @@
   "合作项目列表": "Project list",
   "合作成果列表": "Achievement list",
   "企业专家列表": "Expert list",
-  "专家合作权限": "Expert cooperation permissions"
+  "专家合作权限": "Expert cooperation permissions",
+  "佐证材料 {idx}": "Evidence {idx}",
+  "上传佐证图片（可多选）": "Upload evidence images (multiple)"
 }

@@ -269,17 +269,15 @@ export default function AlliancePublicAchievementDetailPage() {
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
                 {attachments.length > 0 ? (
-                  <div className="grid gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {attachments.map((file, idx) => (
-                      <div
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
                         key={idx}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100"
-                      >
-                        <div className="h-10 w-10 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                          <FileText className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 break-all">{file}</span>
-                      </div>
+                        src={file}
+                        alt={t('佐证材料 {idx}', { idx: idx + 1 })}
+                        className="w-full aspect-[4/3] object-cover rounded-2xl border border-slate-100 shadow-sm"
+                      />
                     ))}
                   </div>
                 ) : (
