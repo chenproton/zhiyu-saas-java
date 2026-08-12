@@ -44,6 +44,8 @@ interface AllianceDetailShellProps {
   tabs: DetailTab[]
   /** 页面背景渐变（默认蓝紫调） */
   pageGradient?: string
+  /** 头图：存在时标题区以封面模糊图 + 白色遮罩为背景 */
+  coverImage?: string
 }
 
 /** 信息块：原型统一样式（label 上、value 下，灰底圆角） */
@@ -88,7 +90,7 @@ export function DetailSectionCard({
     <Card className={`border-0 shadow-sm rounded-3xl ${className ?? ''}`}>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
-          <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-violet-500" />
+          <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary/80 to-primary/60" />
           {Icon ? <Icon className="h-4 w-4" /> : null}
           {title}
         </CardTitle>
@@ -116,14 +118,27 @@ export function AllianceDetailShell({
   stats,
   tabs,
   pageGradient = 'from-slate-50 via-white to-blue-50/40',
+  coverImage,
 }: AllianceDetailShellProps) {
   const t = useT()
   const crumbs = breadcrumbs ?? (showBack ? [{ label: backLabel || t('返回列表'), href: backHref }] : [])
   return (
     <div className={`min-h-screen bg-gradient-to-b ${pageGradient}`}>
-      {/* 标题区：无独立背景块，直接铺在页面渐变上，顶部紧凑 */}
-      <section className="pt-3 lg:pt-6 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* 标题区：无独立背景块，直接铺在页面渐变上，顶部紧凑；有封面时叠加模糊封面背景 */}
+      <section className="relative pt-3 lg:pt-6 pb-8 overflow-hidden">
+        {coverImage && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverImage}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-50 pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/75 to-white/95 pointer-events-none" />
+          </>
+        )}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {showBack && crumbs.length > 0 && (
             <nav className="flex items-center gap-1 text-[13px] text-slate-400 mb-4 flex-wrap">
               {crumbs.map((crumb, idx) => {
@@ -208,9 +223,13 @@ export function AllianceDetailShell({
           <Tabs defaultValue={tabs[0]?.value} className="space-y-6">
             <TabsList className="rounded-2xl p-1 bg-white shadow-sm border border-slate-100">
               {tabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} className="rounded-xl">
+                <TabsTrigger key={tab.value} value={tab.value} className="group rounded-xl">
                   {tab.label}
-                  {typeof tab.count === 'number' && ` (${tab.count})`}
+                  {typeof tab.count === 'number' && (
+                    <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-500 group-data-[state=active]:bg-primary/10 group-data-[state=active]:text-primary">
+                      {tab.count}
+                    </span>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>

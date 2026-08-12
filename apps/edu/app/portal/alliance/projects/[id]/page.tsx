@@ -97,25 +97,25 @@ export default function AlliancePublicProjectDetailPage() {
       label: t('里程碑进度'),
       value: `${progress}%`,
       icon: Target,
-      gradient: 'from-blue-500 to-blue-600',
+      gradient: 'from-primary to-primary/80',
     },
     {
       label: t('合作协议'),
       value: agreements.length,
       icon: FileText,
-      gradient: 'from-violet-500 to-violet-600',
+      gradient: 'from-primary/90 to-primary/70',
     },
     {
       label: t('关联成果'),
       value: achievements.length,
       icon: Award,
-      gradient: 'from-emerald-500 to-emerald-600',
+      gradient: 'from-primary/80 to-primary/60',
     },
     {
       label: t('合作主体'),
       value: partners.length,
       icon: Building2,
-      gradient: 'from-amber-500 to-amber-600',
+      gradient: 'from-primary/90 to-primary/70',
     },
   ]
 
@@ -137,6 +137,7 @@ export default function AlliancePublicProjectDetailPage() {
       icon={FolderKanban}
       iconGradient="from-indigo-500 to-violet-600"
       pageGradient="from-slate-50 via-white to-indigo-50/40"
+      coverImage={project.coverImage}
       title={project.name}
       subtitle={project.type}
       badges={[

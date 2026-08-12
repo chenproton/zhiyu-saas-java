@@ -120,12 +120,20 @@ function mapTenantToSchoolInfo(t: BackendTenant): HeroSchool {
   }
 }
 
-function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionHeading({
+  eyebrow,
+  title,
+  subtitle,
+}: {
+  eyebrow: string
+  title: string
+  subtitle: string
+}) {
   return (
     <div className="text-center mb-8 sm:mb-14">
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-primary text-xs font-medium mb-4">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-primary text-xs font-medium mb-4 tracking-wide">
         <Sparkles className="w-3.5 h-3.5" />
-        {title}
+        {eyebrow}
       </div>
       <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900 mb-3 tracking-tight">
         {title}
@@ -220,7 +228,8 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: HeroSchool | null }) {
           ) : (
             <GradientPlaceholder
               seed={schoolInfo.name}
-              className="w-12 h-12 rounded-xl border border-white/25 shadow-lg shrink-0"
+              label={schoolInfo.name}
+              className="w-12 h-12 rounded-xl border border-white/25 shadow-lg shrink-0 text-lg"
             />
           )}
           <div className="flex-1 min-w-0">
@@ -397,6 +406,14 @@ export default function AllianceLandingPage() {
     return byType
   }, [data.brands])
 
+  const brandCountByType = useMemo(() => {
+    const counts: Record<string, number> = {}
+    data.brands.forEach((b) => {
+      counts[b.brandType] = (counts[b.brandType] ?? 0) + 1
+    })
+    return counts
+  }, [data.brands])
+
   if (loading) return <LoadingView />
 
   return (
@@ -426,78 +443,86 @@ export default function AllianceLandingPage() {
       {/* 产教融合成果库 */}
       <section className="relative py-10">
         <SectionHeading
+          eyebrow={t('精选 · FEATURED')}
           title={t('产教融合成果库')}
           subtitle={t(
             '多元主体协同，以产业需求为牵引，以学生能力为中心，以场景实践为载体，以跨专业融合为特征',
           )}
         />
 
-        <SectionSubHeading
-          title={t('合作企业')}
-          action={<ViewAllLink href="/portal/alliance/enterprises" />}
-        />
-        {data.enterprises.length === 0 ? (
-          <div className="mb-20">
+        {/* 合作企业 */}
+        <div className="mb-20 rounded-3xl border border-slate-200/70 bg-white/80 p-6 sm:p-8 shadow-sm">
+          <SectionSubHeading
+            title={t('合作企业')}
+            action={<ViewAllLink href="/portal/alliance/enterprises" />}
+          />
+          {data.enterprises.length === 0 ? (
             <LandingEmpty title={t('暂无合作企业')} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
-            {data.enterprises.map((enterprise) => (
-              <EnterpriseCard key={enterprise.id} enterprise={enterprise} />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {data.enterprises.map((enterprise) => (
+                <EnterpriseCard key={enterprise.id} enterprise={enterprise} />
+              ))}
+            </div>
+          )}
+        </div>
 
-        <SectionSubHeading
-          title={t('合作项目')}
-          action={<ViewAllLink href="/portal/alliance/projects" />}
-        />
-        {data.projects.length === 0 ? (
-          <div className="mb-20">
+        {/* 合作项目 */}
+        <div className="mb-20">
+          <SectionSubHeading
+            title={t('合作项目')}
+            action={<ViewAllLink href="/portal/alliance/projects" />}
+          />
+          {data.projects.length === 0 ? (
             <LandingEmpty title={t('暂无合作项目')} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
-            {data.projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {data.projects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
+        </div>
 
-        <SectionSubHeading
-          title={t('合作成果')}
-          action={<ViewAllLink href="/portal/alliance/achievements" />}
-        />
-        {data.achievements.length === 0 ? (
-          <div className="mb-20">
+        {/* 合作成果 */}
+        <div className="mb-20 rounded-3xl border border-slate-200/70 bg-white/80 p-6 sm:p-8 shadow-sm">
+          <SectionSubHeading
+            title={t('合作成果')}
+            action={<ViewAllLink href="/portal/alliance/achievements" />}
+          />
+          {data.achievements.length === 0 ? (
             <LandingEmpty title={t('暂无合作成果')} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
-            {data.achievements.map((achievement) => (
-              <AchievementCard key={achievement.id} achievement={achievement} />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {data.achievements.map((achievement) => (
+                <AchievementCard key={achievement.id} achievement={achievement} />
+              ))}
+            </div>
+          )}
+        </div>
 
-        <SectionSubHeading
-          title={t('专家资源')}
-          action={<ViewAllLink href="/portal/alliance/experts" />}
-        />
-        {data.experts.length === 0 ? (
-          <LandingEmpty title={t('暂无专家资源')} />
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-            {data.experts.map((expert) => (
-              <ExpertCard key={expert.id} expert={expert} />
-            ))}
-          </div>
-        )}
+        {/* 专家资源 */}
+        <div>
+          <SectionSubHeading
+            title={t('专家资源')}
+            action={<ViewAllLink href="/portal/alliance/experts" />}
+          />
+          {data.experts.length === 0 ? (
+            <LandingEmpty title={t('暂无专家资源')} />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+              {data.experts.map((expert) => (
+                <ExpertCard key={expert.id} expert={expert} />
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* 产教品牌库 */}
       <section className="relative py-14">
         <SectionHeading
+          eyebrow={t('品牌 · BRANDS')}
           title={t('产教品牌库')}
           subtitle={t('人才培养、校企合作、专业建设等各领域品牌成果')}
         />
@@ -506,15 +531,21 @@ export default function AllianceLandingPage() {
         <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-16">
           {BRAND_CATEGORIES.map((cat) => {
             const Icon = cat.icon
+            const count = brandCountByType[cat.id] ?? 0
             return (
               <Link key={cat.id} href={cat.href}>
                 <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-all duration-300 hover:-translate-y-0.5">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
                     <Icon className="h-[18px] w-[18px] text-primary" />
                   </div>
-                  <span className="font-medium text-slate-700 group-hover:text-primary transition-colors">
-                    {t(cat.title)}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-slate-700 group-hover:text-primary transition-colors leading-tight">
+                      {t(cat.title)}
+                    </span>
+                    <span className="text-xs text-slate-400 group-hover:text-primary/60 transition-colors mt-0.5">
+                      {t('{count} 个品牌', { count })}
+                    </span>
+                  </div>
                 </div>
               </Link>
             )

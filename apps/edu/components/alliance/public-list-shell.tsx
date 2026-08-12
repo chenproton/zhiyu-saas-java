@@ -52,8 +52,17 @@ export function PublicListShell({
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f8ff]">
       {/* 页头 */}
-      <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/75 to-primary/40">
+        <div
+          className="absolute inset-0 opacity-[0.08] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
+            backgroundSize: '52px 52px',
+          }}
+        />
+        <div className="absolute top-[-80px] right-[-5%] w-[360px] h-[360px] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-100px] left-[10%] w-[300px] h-[300px] rounded-full bg-black/10 blur-[100px] pointer-events-none" />
+        <div className="relative max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
           <Link
             href={backHref}
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
@@ -88,9 +97,12 @@ export function PublicListShell({
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="px-3 sm:px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
+                    className="group px-3 sm:px-5 rounded-[10px] text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white"
                   >
-                    {tab.label} ({tab.count})
+                    {tab.label}
+                    <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-500 group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">
+                      {tab.count}
+                    </span>
                   </TabsTrigger>
                 ))}
               </TabsList>
