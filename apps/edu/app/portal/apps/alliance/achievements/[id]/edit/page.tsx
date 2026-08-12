@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { DateInput } from '@/components/shared/date-input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -15,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
@@ -227,21 +225,6 @@ export default function AllianceAchievementEditPage() {
                 onChange={(v) => setField('secondaryColleges', v)}
                 placeholder={t('选择归属学院')}
               />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('设置')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>{t('公开显示')}</Label>
-                <Switch
-                  checked={item.isPublic || false}
-                  onCheckedChange={(v) => setField('isPublic', v)}
-                />
-              </div>
             </CardContent>
           </Card>
 

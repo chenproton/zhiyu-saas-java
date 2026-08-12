@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { DateInput } from '@/components/shared/date-input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -15,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
@@ -154,9 +152,7 @@ export default function AllianceAchievementNewPage() {
               />
             </CardContent>
           </Card>
-        </div>
 
-        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{t('成果封面')}</CardTitle>
@@ -169,7 +165,9 @@ export default function AllianceAchievementNewPage() {
               />
             </CardContent>
           </Card>
+        </div>
 
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{t('归属项目')}</CardTitle>
@@ -209,18 +207,6 @@ export default function AllianceAchievementNewPage() {
                 onChange={(v) => setField('secondaryColleges', v)}
                 placeholder={t('选择归属学院')}
               />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('设置')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>{t('公开显示')}</Label>
-                <Switch checked={item.isPublic} onCheckedChange={(v) => setField('isPublic', v)} />
-              </div>
             </CardContent>
           </Card>
 
