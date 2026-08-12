@@ -19,6 +19,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/router"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -36,10 +37,24 @@ type TestEnv struct {
 	OperatorToken string
 	// SaasAdminToken saas 平台 token（platform_admin），用于 /api/v1/admin/* 平台管理接口。
 	SaasAdminToken string
-	Cleanup        func()
+	// Captcha 验证码服务（SetupTestEnvWithCaptcha 时非 nil），供测试预信任设备。
+	Captcha *service.CaptchaService
+	Cleanup func()
 }
 
+// SetupTestEnv 构建测试环境：默认关闭登录验证码挂载（登录流程测试不受验证码干扰），
+// 验证码专属测试请使用 SetupTestEnvWithCaptcha。
 func SetupTestEnv(t *testing.T) *TestEnv {
+	return setupTestEnv(t, false)
+}
+
+// SetupTestEnvWithCaptcha 构建带登录验证码的测试环境（验证码规则与生产一致：
+// 无 deviceId 每次必须验证码；新设备必须验证码；常用设备失败达阈值后必须验证码）。
+func SetupTestEnvWithCaptcha(t *testing.T) *TestEnv {
+	return setupTestEnv(t, true)
+}
+
+func setupTestEnv(t *testing.T, keepCaptcha bool) *TestEnv {
 	t.Helper()
 
 	_ = godotenv.Load("../../../.env")
@@ -86,6 +101,11 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	r := chi.NewRouter()
 	router.RegisterAPIRoutes(r, TestJWTSecret, pool, h, nil, nil)
 
+	if !keepCaptcha {
+		// 登录流程测试专注登录本身：解除验证码挂载后登录即回到无验证码路径
+		h.AuthHandler().Captcha = nil
+	}
+
 	generateTestToken := func(userID, tenantID string, role domain.UserRole, platform domain.UserPlatform) string {
 		u := &domain.User{ID: userID, TenantID: &tenantID, Role: role, Platform: platform, Username: "test-user"}
 		token, _ := middleware.GenerateToken(TestJWTSecret, middleware.TokenInput{User: u, RoleCodes: []string{domain.RolePlatformAdmin}})
@@ -105,10 +125,20 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		Router:         r,
 		OperatorToken:  operatorToken,
 		SaasAdminToken: saasAdminToken,
+		Captcha:        h.CaptchaService(),
 		Cleanup: func() {
 			pool.Close()
 		},
 	}
+}
+
+// TrustDevice 将指定账号×设备预标记为常用设备（等价于该设备此前成功登录过），
+// 使验证码规则跳过"新设备必须验证码"，仅保留失败阈值触发。无验证码环境为空操作。
+func (e *TestEnv) TrustDevice(platform domain.UserPlatform, username, deviceID string) {
+	if e.Captcha == nil {
+		return
+	}
+	e.Captcha.MarkTrustedDevice(context.Background(), string(platform), username, deviceID)
 }
 
 func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {

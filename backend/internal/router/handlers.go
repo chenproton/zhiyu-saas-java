@@ -115,6 +115,17 @@ type Handlers struct {
 	settingsHandler               *handler.SettingsHandler
 	favoritesHandler              *handler.FavoritesHandler
 	tagHandler                    *handler.TagHandler
+	captchaSvc                    *service.CaptchaService
+}
+
+// AuthHandler 暴露登录处理器：测试环境可关闭/替换验证码挂载（生产调用方无感）。
+func (h *Handlers) AuthHandler() *handler.AuthHandler {
+	return h.authHandler
+}
+
+// CaptchaService 暴露验证码服务：供测试预信任设备、校验验证码行为。
+func (h *Handlers) CaptchaService() *service.CaptchaService {
+	return h.captchaSvc
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client, geo *geo.Searcher, aiSecret string) *Handlers {
@@ -142,6 +153,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	return &Handlers{
 		authHandler:                   authH,
 		captchaHandler:                &handler.CaptchaHandler{Service: captchaSvc},
+		captchaSvc:                    captchaSvc,
 		fileHandler:                   fileHandler,
 		statsHandler:                  &handler.StatsHandler{},
 		portalHandler:                 &handler.PortalHandler{Service: positionSvc},
