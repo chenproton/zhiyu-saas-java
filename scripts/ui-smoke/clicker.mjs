@@ -229,10 +229,17 @@ export function clickByIndex(page, pick) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-// 等待页面稳定：导航后尝试 networkidle（短超时），否则 load + 短延时
+// 等待页面稳定：导航后等待 load + settle 延时。
+// 不追求 networkidle：页面普遍带轮询/长连接，networkidle 必然超时吃满 navWaitMs，
+// 单页导航白等 2.5s、跳转回访再等一遍，是全量巡检耗时主因。
+// Next.js SSR 首屏直出，load 后 DOM 已可点；点击结果由 waitForResponse/错误监听兜底。
 export async function waitSettled(page, cfg, settleOverride, afterNav = false) {
-  const state = afterNav ? 'networkidle' : 'load'
-  await page.waitForLoadState(state, { timeout: cfg.navWaitMs }).catch(() => {})
+  if (afterNav) {
+    await page.waitForLoadState('load', { timeout: cfg.navWaitMs }).catch(() => {})
+    await sleep(settleOverride ?? 400)
+    return
+  }
+  await page.waitForLoadState('load', { timeout: cfg.navWaitMs }).catch(() => {})
   await sleep(settleOverride ?? cfg.settleMs)
 }
 
@@ -354,11 +361,11 @@ async function handleCrudAction(page, cfg, pick, pickText) {
   } catch { /* ignore */ }
   if (!confirmed) return { action: pick.actionType, target: pickText, status: 'skip', reason: '未找到确认按钮' }
 
-  // 等待写接口响应（DELETE/PATCH/PUT）
+  // 等待写接口响应（DELETE/PATCH/PUT；后端毫秒级，3s 超时足够）
   try {
     const res = await page.waitForResponse(
       r => ['DELETE', 'PATCH', 'PUT'].includes(r.request().method()) && r.url().includes('/api/'),
-      { timeout: 8000 },
+      { timeout: 3000 },
     )
     const status = res.status()
     return {
@@ -550,11 +557,11 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
       // 点击若打开了弹窗，先把弹窗内元素入队再关闭
       await enqueueDialogItems(page, cfg, dangerousRe, queue, attempted, triggerRe)
       await closeOverlays(page, cfg)
-      // 跳转回访
+      // 跳转回访：点击跳走后再回到原页继续点其余元素（回访等待从简：load + 短延时）
       const nowPath = new URL(page.url()).pathname
       if (nowPath !== basePath && !nowPath.includes(loginPathForRole(role))) {
         await page.goto(cfg.baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
-        await waitSettled(page, cfg, 400, true)
+        await waitSettled(page, cfg, 300, true)
       }
       // locale 防护
       await ensureZhLocale(page, cfg)

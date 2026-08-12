@@ -108,7 +108,12 @@ func respondError(w http.ResponseWriter, status int, message string) {
 
 // respondServerError 统一返回 500 并记录原始错误（含 request_id，与
 // X-Request-ID 响应头对应，便于按请求号检索日志链路）。
+// 客户端已取消（context canceled，如页面跳转/关闭导致的在途请求中断）时静默退出：
+// 请求方已放弃，返回 500 无意义且污染日志（巡检点击跳转会大量触发）。
 func respondServerError(w http.ResponseWriter, r *http.Request, err error, message string) {
+	if errors.Is(err, context.Canceled) {
+		return
+	}
 	errDetail := "<nil>"
 	if err != nil {
 		errDetail = err.Error()
