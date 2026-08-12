@@ -43,8 +43,8 @@ func (s *PartnerStore) CountExpertsByTenant(ctx context.Context, tenantID string
 
 // ExpertStatusCount 专家账号状态计数。
 type ExpertStatusCount struct {
-	Status string
-	Count  int
+	Status string `json:"status"`
+	Count  int    `json:"count"`
 }
 
 // CountExpertStatusByTenant 企业租户专家账号状态分布（服务台图表）。

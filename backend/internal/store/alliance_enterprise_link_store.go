@@ -285,8 +285,8 @@ func (s *AllianceEnterpriseLinkStore) CountByEnterpriseTenant(ctx context.Contex
 
 // CountSchoolStatusByEnterpriseTenant 企业侧合作学校状态分布（服务台图表）。
 type SchoolStatusCount struct {
-	Status string
-	Count  int
+	Status string `json:"status"`
+	Count  int    `json:"count"`
 }
 
 func (s *AllianceEnterpriseLinkStore) CountSchoolStatusByEnterpriseTenant(ctx context.Context, enterpriseTenantID string) ([]SchoolStatusCount, error) {
@@ -314,8 +314,8 @@ func (s *AllianceEnterpriseLinkStore) CountSchoolStatusByEnterpriseTenant(ctx co
 
 // MonthCount 按月聚合计数。
 type MonthCount struct {
-	Month string
-	Count int
+	Month string `json:"month"`
+	Count int    `json:"count"`
 }
 
 // CountMonthlyLinksByEnterpriseTenant 近 months 个月每月新增合作学校数（服务台柱状图）。
