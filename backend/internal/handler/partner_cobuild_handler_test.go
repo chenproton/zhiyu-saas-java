@@ -345,6 +345,111 @@ func TestPartnerCoBuild_LinkAndOwnershipGuards(t *testing.T) {
 }
 
 // TestPartnerCoBuild_ScenarioTaskFlow 场景全流程：建场景 → 建任务 → 重排 → 测评方式 → 删任务 → 提交/撤回。
+// TestPartnerCoBuild_GrantedDirectEdit 学校授权资源直接编辑：合作 link 非 active（negotiating）
+// 亦可保存；保存后状态回写草稿（发布由学校端进行）。
+func TestPartnerCoBuild_GrantedDirectEdit(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	ctx := context.Background()
+	r, claims, reg, enterpriseID := setupCoBuildRouter(t, env, "授权直编测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "授权直编学校-"+suffix)
+	// negotiating 而非 active：验证保存不再要求 active link
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "negotiating")
+	t.Cleanup(func() { cleanupCoBuildRows(env, schoolID) })
+
+	st := store.New(env.DB)
+	grant := func(resourceType, resourceID string) {
+		t.Helper()
+		if err := st.AllianceGrants().Upsert(ctx, schoolID, enterpriseID, resourceType, []string{resourceID}, reg.User.ID); err != nil {
+			t.Fatalf("授权失败: %v", err)
+		}
+	}
+
+	t.Run("granted published position save resets to draft", func(t *testing.T) {
+		pos, err := st.Positions().Create(ctx, env.DB, schoolID, &store.PositionCreateParams{
+			Name:         "学校自建岗位-" + suffix,
+			PositionType: "enterprise",
+			Version:      "V1.0",
+			Status:       domain.StatusPublished,
+			CreatedBy:    reg.User.ID,
+			SourceType:   "school",
+			Requirements: []string{"需求一"},
+		})
+		if err != nil {
+			t.Fatalf("创建学校岗位失败: %v", err)
+		}
+		grant("position", pos.ID)
+
+		// 编辑页加载（读）可用
+		w := doWithClaims(r, http.MethodGet, "/partner/co-build/positions/"+pos.ID, nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("授权资源读取应 200, got %d: %s", w.Code, w.Body.String())
+		}
+		// save-full 保存：不再 403，保存后回写草稿
+		w = doWithClaims(r, http.MethodPost, "/partner/co-build/positions/"+pos.ID+"/save-full", map[string]interface{}{
+			"name":         "学校自建岗位改-" + suffix,
+			"positionType": "enterprise",
+			"version":      "V1.1",
+			"requirements": []string{"需求一"},
+		}, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("授权资源保存应 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var saved domain.CareerPosition
+		if err := json.Unmarshal(w.Body.Bytes(), &saved); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if saved.Status != domain.StatusDraft {
+			t.Fatalf("保存后应回写草稿, got %s", saved.Status)
+		}
+		if saved.SourceType != "school" {
+			t.Fatalf("学校自建资源不应被改写来源标记, got %s", saved.SourceType)
+		}
+		// 未授权企业不可见（404）
+		otherRouter, otherClaims, otherReg, _ := setupCoBuildRouter(t, env, "无关企业-"+suffix)
+		defer cleanupPartnerTenant(env, *otherReg.User.TenantID)
+		w = doWithClaims(otherRouter, http.MethodGet, "/partner/co-build/positions/"+pos.ID, nil, otherClaims)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("未授权企业读取应 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("granted published scenario update resets to draft", func(t *testing.T) {
+		sc, err := st.Scenarios().Create(ctx, schoolID, &store.ScenarioCreateParams{
+			Name:       "学校自建场景-" + suffix,
+			Difficulty: 3,
+			Version:    "V1.0",
+		})
+		if err != nil {
+			t.Fatalf("创建学校场景失败: %v", err)
+		}
+		if _, err := env.DB.Exec(ctx, `UPDATE scenarios SET status = 'published' WHERE id = $1`, sc.ID); err != nil {
+			t.Fatalf("置为已发布失败: %v", err)
+		}
+		grant("scene", sc.ID)
+
+		w := doWithClaims(r, http.MethodPut, "/partner/co-build/scenes/"+sc.ID, map[string]interface{}{
+			"name":       "学校自建场景改-" + suffix,
+			"difficulty": 4,
+			"version":    "V1.1",
+		}, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("授权场景保存应 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var saved domain.Scenario
+		if err := json.Unmarshal(w.Body.Bytes(), &saved); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if saved.Status != domain.StatusDraft {
+			t.Fatalf("保存后应回写草稿, got %s", saved.Status)
+		}
+	})
+}
+
 func TestPartnerCoBuild_ScenarioTaskFlow(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

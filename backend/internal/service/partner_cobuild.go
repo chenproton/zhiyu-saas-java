@@ -252,19 +252,37 @@ func (s *PartnerCoBuildService) DeletePosition(ctx context.Context, partnerTenan
 }
 
 // SaveFullPosition 完整保存共建岗位（复用 PositionService.SaveFull）。
+// 授权即可编辑：本企业共建或学校授权（grant）的资源均可保存，不再要求合作 link 为 active；
+// 保存后状态回写草稿，发布由学校端进行。
 func (s *PartnerCoBuildService) SaveFullPosition(ctx context.Context, partnerTenantID, id string, p *store.FullPositionSaveParams) (*domain.CareerPosition, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, err
 	}
-	pos, err := s.checkPositionWritable(ctx, ent.ID, id)
+	pos, err := s.accessiblePosition(ctx, ent.ID, id)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.positions.SaveFull(ctx, pos.TenantID, id, p); err != nil {
 		return nil, err
 	}
+	if err := s.resetCoBuildToDraft(ctx, "career_positions", id, "career_position"); err != nil {
+		return nil, err
+	}
 	return s.st.Positions().Get(ctx, id)
+}
+
+// resetCoBuildToDraft 保存后回写草稿：已是 draft 跳过（状态机不允许 draft→draft），
+// 其余状态（rejected/pending/approved/published/archived）均可回到 draft。
+func (s *PartnerCoBuildService) resetCoBuildToDraft(ctx context.Context, table, id, targetType string) error {
+	status, err := s.st.ContentActions().GetStatus(ctx, table, id)
+	if err != nil {
+		return err
+	}
+	if status == domain.StatusDraft {
+		return nil
+	}
+	return s.st.ContentActions().Transition(ctx, table, id, domain.StatusDraft, targetType, nil)
 }
 
 // SubmitPosition 提交共建岗位审核：draft→pending（ContentActionStore），
@@ -479,16 +497,25 @@ func (s *PartnerCoBuildService) checkScenarioWritable(ctx context.Context, enter
 	return sc, nil
 }
 
-// UpdateScenario 更新共建场景。
+// UpdateScenario 更新共建场景（场景编辑页保存走此接口）。
+// 授权即可编辑：本企业共建或学校授权（grant）的场景均可保存，不再要求合作 link 为 active；
+// 保存后状态回写草稿，发布由学校端进行。
 func (s *PartnerCoBuildService) UpdateScenario(ctx context.Context, partnerTenantID, id string, p *store.ScenarioUpdateParams) (*domain.Scenario, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.checkScenarioWritable(ctx, ent.ID, id); err != nil {
+	if _, err := s.accessibleScenario(ctx, ent.ID, id); err != nil {
 		return nil, err
 	}
-	return s.scenarios.Update(ctx, id, p)
+	sc, err := s.scenarios.Update(ctx, id, p)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.resetCoBuildToDraft(ctx, "scenarios", id, "scenario"); err != nil {
+		return nil, err
+	}
+	return sc, nil
 }
 
 // DeleteScenario 删除共建场景。
