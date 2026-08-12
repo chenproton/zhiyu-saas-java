@@ -1369,12 +1369,12 @@ func (h *TemplateHandler) generateProjectTemplate(ctx context.Context, tenantID 
 	s1, _ := f.NewSheet("合作项目")
 	f.SetActiveSheet(s1)
 	f.DeleteSheet("Sheet1")
-	headers := []string{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述", "预算", "关联合作企业"}
-	widths := []float64{28, 20, 22, 16, 16, 48, 20, 40}
-	setA1("合作项目", 8, "填写说明：\n* 必填列。\n项目类型：文本，选填（如：联合研发 / 产教融合 / 人才共育 / 现代学徒制 / 协同创新）\n项目阶段：启动 / 执行中 / 验收 / 关闭（或 initiation / execution / acceptance / closure），默认为 启动\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n描述：文本，选填\n预算：文本，选填（如：300万）\n关联合作企业：企业名称，选填，多值用中文分号「；」分隔，需与「合作企业」Sheet 中的企业名称一致")
+	headers := []string{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述", "预算", "关联合作企业", "关联二级学院", "公开显示"}
+	widths := []float64{28, 20, 22, 16, 16, 48, 20, 40, 30, 14}
+	setA1("合作项目", 10, "填写说明：\n* 必填列。\n项目类型：文本，选填（如：联合研发 / 产教融合 / 人才共育 / 现代学徒制 / 协同创新）\n项目阶段：启动 / 执行中 / 验收 / 关闭（或 initiation / execution / acceptance / closure），默认为 启动\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n描述：文本，选填\n预算：文本，选填（如：300万）\n关联合作企业：企业名称，选填，多值用中文分号「；」分隔，需与系统「合作企业」中的企业名称一致\n关联二级学院：学院名称，选填，多值用中文分号「；」分隔，需与组织架构中的二级学院名称一致\n公开显示：是 / 否（或 true / false），选填，默认为 否")
 	setHdr("合作项目", 2, headers, widths)
 	f.SetPanes("合作项目", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("合作项目", "A2:H2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("合作项目", "A2:J2", []excelize.AutoFilterOptions{})
 
 	return f
 }
@@ -1407,12 +1407,12 @@ func (h *TemplateHandler) generateAchievementTemplate(ctx context.Context, tenan
 	s1, _ := f.NewSheet("合作成果")
 	f.SetActiveSheet(s1)
 	f.DeleteSheet("Sheet1")
-	headers := []string{"成果名称 *", "成果类型", "描述", "成果日期", "关联归属项目", "关联合作企业"}
-	widths := []float64{28, 22, 48, 16, 40, 40}
-	setA1("合作成果", 6, "填写说明：\n* 必填列。\n成果类型：岗位成果 / 场景成果 / 课程成果 / 自定义成果（或 job / scene / course / custom），默认为 自定义成果\n描述：文本，选填\n成果日期：格式 YYYY-MM-DD，选填\n关联归属项目：项目名称，选填，多值用中文分号「；」分隔，需与「合作项目」Sheet 中的项目名称一致\n关联合作企业：企业名称，选填，多值用中文分号「；」分隔，需与「合作企业」Sheet 中的企业名称一致")
+	headers := []string{"成果名称 *", "成果类型", "描述", "成果日期", "关联归属项目", "关联合作企业", "关联二级学院", "公开显示"}
+	widths := []float64{28, 22, 48, 16, 40, 40, 30, 14}
+	setA1("合作成果", 8, "填写说明：\n* 必填列。\n成果类型：岗位成果 / 场景成果 / 课程成果 / 自定义成果（或 job / scene / course / custom），默认为 自定义成果\n描述：文本，选填\n成果日期：格式 YYYY-MM-DD，选填\n关联归属项目：项目名称，选填，多值用中文分号「；」分隔，需与系统「合作项目」中的项目名称一致\n关联合作企业：企业名称，选填，多值用中文分号「；」分隔，需与系统「合作企业」中的企业名称一致\n关联二级学院：学院名称，选填，多值用中文分号「；」分隔，需与组织架构中的二级学院名称一致\n公开显示：是 / 否（或 true / false），选填，默认为 否")
 	setHdr("合作成果", 2, headers, widths)
 	f.SetPanes("合作成果", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("合作成果", "A2:F2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("合作成果", "A2:H2", []excelize.AutoFilterOptions{})
 
 	return f
 }
@@ -1445,12 +1445,12 @@ func (h *TemplateHandler) generateAgreementTemplate(ctx context.Context, tenantI
 	s1, _ := f.NewSheet("合作协议")
 	f.SetActiveSheet(s1)
 	f.DeleteSheet("Sheet1")
-	headers := []string{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容", "关联归属项目", "关联合作企业"}
-	widths := []float64{28, 22, 16, 16, 20, 48, 40, 40}
-	setA1("合作协议", 8, "填写说明：\n* 必填列。\n协议类型：文本，选填（如：实验室共建 / 实训基地 / 协同创新 / 实践基地）\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n状态：草稿 / 生效中 / 已失效 / 已续签 / 已终止（或 draft / active / expired / renewed / terminated），默认为 草稿\n内容：文本，选填\n关联归属项目：项目名称，选填，多值用中文分号「；」分隔，需与「合作项目」Sheet 中的项目名称一致\n关联合作企业：企业名称，选填，多值用中文分号「；」分隔，需与「合作企业」Sheet 中的企业名称一致")
+	headers := []string{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容", "关联归属项目", "关联合作企业", "公开显示"}
+	widths := []float64{28, 22, 16, 16, 20, 48, 40, 40, 14}
+	setA1("合作协议", 9, "填写说明：\n* 必填列。\n协议类型：文本，选填（如：实验室共建 / 实训基地 / 协同创新 / 实践基地）\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n状态：草稿 / 生效中 / 已失效 / 已续签 / 已终止（或 draft / active / expired / renewed / terminated），默认为 草稿\n内容：文本，选填\n关联归属项目：项目名称，选填，多值用中文分号「；」分隔，需与系统「合作项目」中的项目名称一致\n关联合作企业：企业名称，选填，多值用中文分号「；」分隔，需与系统「合作企业」中的企业名称一致\n公开显示：是 / 否（或 true / false），选填，默认为 否")
 	setHdr("合作协议", 2, headers, widths)
 	f.SetPanes("合作协议", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("合作协议", "A2:H2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("合作协议", "A2:I2", []excelize.AutoFilterOptions{})
 
 	return f
 }

@@ -44,11 +44,11 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	}
 	defer env.DB.Exec(ctx, `DELETE FROM partner_enterprises WHERE id=$1`, entID)
 
-	// 1. 合作项目：预算 + 关联合作企业（按名称匹配）
+	// 1. 合作项目：预算 + 关联合作企业（按名称匹配）+ 二级学院 + 公开显示
 	projFile := buildExcel(t, "合作项目", [][]interface{}{
 		{"填写说明"},
-		{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述", "预算", "关联合作企业"},
-		{"测试联合研发项目", "联合研发", "执行中", "2026-01-15", "2027-06-30", "项目描述", "300万", "测试企业甲"},
+		{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述", "预算", "关联合作企业", "关联二级学院", "公开显示"},
+		{"测试联合研发项目", "联合研发", "执行中", "2026-01-15", "2027-06-30", "项目描述", "300万", "测试企业甲", "智能制造学院；人工智能学院", "是"},
 	})
 	hProj := &handler.ResourceImportHandler{Store: env.Store}
 	w := httptest.NewRecorder()
@@ -57,9 +57,10 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		t.Fatalf("项目导入失败: %d %s", w.Code, w.Body.String())
 	}
 	var projID, budget string
-	var projEntIDs []byte
-	err := env.DB.QueryRow(ctx, `SELECT id, budget, enterprise_ids FROM alliance_projects WHERE tenant_id=$1 AND name=$2`,
-		tenantID, "测试联合研发项目").Scan(&projID, &budget, &projEntIDs)
+	var projEntIDs, projColleges []byte
+	var projPublic bool
+	err := env.DB.QueryRow(ctx, `SELECT id, budget, enterprise_ids, secondary_colleges, is_public FROM alliance_projects WHERE tenant_id=$1 AND name=$2`,
+		tenantID, "测试联合研发项目").Scan(&projID, &budget, &projEntIDs, &projColleges, &projPublic)
 	if err != nil {
 		t.Fatalf("查询项目失败: %v", err)
 	}
@@ -71,12 +72,20 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	if len(projEntList) != 1 || projEntList[0] != entID {
 		t.Fatalf("项目关联企业未按名称匹配: %v", projEntList)
 	}
+	var projCollegeList []string
+	json.Unmarshal(projColleges, &projCollegeList)
+	if len(projCollegeList) != 2 || projCollegeList[0] != "智能制造学院" || projCollegeList[1] != "人工智能学院" {
+		t.Fatalf("项目二级学院未按名称导入: %v", projCollegeList)
+	}
+	if !projPublic {
+		t.Fatalf("项目公开显示未导入: %v", projPublic)
+	}
 
-	// 2. 合作成果：关联归属项目 + 关联合作企业（按名称匹配）
+	// 2. 合作成果：关联归属项目 + 关联合作企业（按名称匹配）+ 二级学院 + 公开显示
 	achFile := buildExcel(t, "合作成果", [][]interface{}{
 		{"填写说明"},
-		{"成果名称 *", "成果类型", "描述", "成果日期", "关联归属项目", "关联合作企业"},
-		{"测试视觉质检标准", "自定义成果", "成果描述", "2026-05-20", "测试联合研发项目", "测试企业甲"},
+		{"成果名称 *", "成果类型", "描述", "成果日期", "关联归属项目", "关联合作企业", "关联二级学院", "公开显示"},
+		{"测试视觉质检标准", "自定义成果", "成果描述", "2026-05-20", "测试联合研发项目", "测试企业甲", "智能制造学院", "是"},
 	})
 	hAch := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
@@ -84,27 +93,35 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	if w.Code != 200 {
 		t.Fatalf("成果导入失败: %d %s", w.Code, w.Body.String())
 	}
-	var achEntIDs, achProjIDs []byte
-	err = env.DB.QueryRow(ctx, `SELECT enterprise_ids, project_ids FROM alliance_achievements WHERE tenant_id=$1 AND title=$2`,
-		tenantID, "测试视觉质检标准").Scan(&achEntIDs, &achProjIDs)
+	var achEntIDs, achProjIDs, achColleges []byte
+	var achPublic bool
+	err = env.DB.QueryRow(ctx, `SELECT enterprise_ids, project_ids, secondary_colleges, is_public FROM alliance_achievements WHERE tenant_id=$1 AND title=$2`,
+		tenantID, "测试视觉质检标准").Scan(&achEntIDs, &achProjIDs, &achColleges, &achPublic)
 	if err != nil {
 		t.Fatalf("查询成果失败: %v", err)
 	}
-	var achEntList, achProjList []string
+	var achEntList, achProjList, achCollegeList []string
 	json.Unmarshal(achEntIDs, &achEntList)
 	json.Unmarshal(achProjIDs, &achProjList)
+	json.Unmarshal(achColleges, &achCollegeList)
 	if len(achEntList) != 1 || achEntList[0] != entID {
 		t.Fatalf("成果关联企业未按名称匹配: %v", achEntList)
 	}
 	if len(achProjList) != 1 || achProjList[0] != projID {
 		t.Fatalf("成果关联项目未按名称匹配: %v", achProjList)
 	}
+	if len(achCollegeList) != 1 || achCollegeList[0] != "智能制造学院" {
+		t.Fatalf("成果二级学院未按名称导入: %v", achCollegeList)
+	}
+	if !achPublic {
+		t.Fatalf("成果公开显示未导入: %v", achPublic)
+	}
 
-	// 3. 合作协议：关联归属项目 + 关联合作企业（按名称匹配）
+	// 3. 合作协议：关联归属项目 + 关联合作企业（按名称匹配）+ 公开显示
 	agrFile := buildExcel(t, "合作协议", [][]interface{}{
 		{"填写说明"},
-		{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容", "关联归属项目", "关联合作企业"},
-		{"测试共建实验室协议", "实验室共建", "2026-01-10", "2027-01-09", "生效中", "协议内容", "测试联合研发项目", "测试企业甲"},
+		{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容", "关联归属项目", "关联合作企业", "公开显示"},
+		{"测试共建实验室协议", "实验室共建", "2026-01-10", "2027-01-09", "生效中", "协议内容", "测试联合研发项目", "测试企业甲", "是"},
 	})
 	hAgr := &handler.ResourceImportHandler{Store: env.Store}
 	w = httptest.NewRecorder()
@@ -113,8 +130,9 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		t.Fatalf("协议导入失败: %d %s", w.Code, w.Body.String())
 	}
 	var agrEntIDs, agrProjIDs []byte
-	err = env.DB.QueryRow(ctx, `SELECT enterprise_ids, project_ids FROM alliance_agreements WHERE tenant_id=$1 AND name=$2`,
-		tenantID, "测试共建实验室协议").Scan(&agrEntIDs, &agrProjIDs)
+	var agrPublic bool
+	err = env.DB.QueryRow(ctx, `SELECT enterprise_ids, project_ids, is_public FROM alliance_agreements WHERE tenant_id=$1 AND name=$2`,
+		tenantID, "测试共建实验室协议").Scan(&agrEntIDs, &agrProjIDs, &agrPublic)
 	if err != nil {
 		t.Fatalf("查询协议失败: %v", err)
 	}
@@ -126,5 +144,8 @@ func TestAllianceImportWithRelations(t *testing.T) {
 	}
 	if len(agrProjList) != 1 || agrProjList[0] != projID {
 		t.Fatalf("协议关联项目未按名称匹配: %v", agrProjList)
+	}
+	if !agrPublic {
+		t.Fatalf("协议公开显示未导入: %v", agrPublic)
 	}
 }

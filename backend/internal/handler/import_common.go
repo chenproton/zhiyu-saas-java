@@ -158,6 +158,25 @@ func nullableStr(s string) *string {
 	return &s
 }
 
+// splitNames 按中文分号/逗号拆分名称列表（模板中"关联"列统一使用中文分号「；」分隔）。
+func splitNames(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return splitTrim(s, "；")
+}
+
+// parseImportBool 解析导入的布尔列：是/否、true/false、1/0（大小写不敏感），
+// 空值返回 false；无法识别时也按 false 处理（页面开关默认关）。
+func parseImportBool(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "是", "true", "1", "yes", "y", "t":
+		return true
+	default:
+		return false
+	}
+}
+
 // parseIntDefault 将字符串解析为整数，空或无效时返回默认值。
 func parseIntDefault(s string, defaultVal int) int {
 	s = strings.TrimSpace(s)
