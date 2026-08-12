@@ -573,7 +573,10 @@ export default function PartnerEnterprisePage() {
       </Dialog>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          size="xl"
+          className="sm:max-w-[min(1280px,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>{t('展示页预览')}</DialogTitle>
           </DialogHeader>
