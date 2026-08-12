@@ -995,8 +995,7 @@ func (h *ResourceImportHandler) ImportBrands(w http.ResponseWriter, r *http.Requ
 // ===== Alliance doImport functions =====
 
 // Sheet: 合作项目
-// Sheet: 合作项目（与新建页字段一一对应，图片/附件除外）
-// Columns: 项目名称*, 项目类型, 项目阶段, 开始日期, 结束日期, 描述, 预算, 关联合作企业, 关联二级学院, 公开显示
+// Sheet: 合作项目（与新建页字段一一对应：项目名称*、合作类型、项目阶段、预算、开始日期、结束日期、项目描述、合作企业、二级学院、公开显示；封面图片除外）
 func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1023,10 +1022,10 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 		if phase == "" {
 			phase = "initiation"
 		}
-		startDate := nullableStr(col(row, 3))
-		endDate := nullableStr(col(row, 4))
-		description := nullableStr(col(row, 5))
-		budget := nullableStr(col(row, 6))
+		budget := nullableStr(col(row, 3))
+		startDate := nullableStr(col(row, 4))
+		endDate := nullableStr(col(row, 5))
+		description := nullableStr(col(row, 6))
 		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 7))
 		secondaryColleges := splitNames(col(row, 8))
 		isPublic := parseImportBool(col(row, 9))
@@ -1086,8 +1085,7 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 	return previewRes, result
 }
 
-// Sheet: 合作成果（与新建页字段一一对应，图片/附件除外）
-// Columns: 成果名称*, 成果类型, 描述, 成果日期, 关联归属项目, 关联合作企业, 关联二级学院, 公开显示
+// Sheet: 合作成果（与新建页字段一一对应：成果名称*、成果类型、成果日期、成果描述、归属项目、合作企业、二级学院、公开显示；封面图片除外）
 func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1113,8 +1111,8 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 		if achType == "" {
 			achType = "custom"
 		}
-		description := nullableStr(col(row, 2))
-		achievementDate := nullableStr(col(row, 3))
+		achievementDate := nullableStr(col(row, 2))
+		description := nullableStr(col(row, 3))
 		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 4))
 		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 5))
 		secondaryColleges := splitNames(col(row, 6))
@@ -1180,8 +1178,7 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 	return previewRes, result
 }
 
-// Sheet: 合作协议（与新建页字段一一对应，图片/附件除外）
-// Columns: 协议名称*, 协议类型, 开始日期, 结束日期, 状态, 内容, 关联归属项目, 关联合作企业, 公开显示
+// Sheet: 合作协议（与新建页字段一一对应：协议名称*、协议类型、协议状态、开始日期、结束日期、内容、合作企业、关联项目、公开显示；附件图片除外）
 func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
@@ -1204,15 +1201,15 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 		}
 		name := strings.TrimSpace(row[0])
 		agmtType := nullableStr(col(row, 1))
-		startDate := nullableStr(col(row, 2))
-		endDate := nullableStr(col(row, 3))
-		status := mapAgreementStatus(col(row, 4))
+		status := mapAgreementStatus(col(row, 2))
 		if status == "" {
 			status = "draft"
 		}
+		startDate := nullableStr(col(row, 3))
+		endDate := nullableStr(col(row, 4))
 		content := nullableStr(col(row, 5))
-		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 6))
-		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 7))
+		enterpriseIDs := lookupIDsByNames(ctx, h.Store.Q(), "partner_enterprises", tenantID, col(row, 6))
+		projectIDs := lookupIDsByNames(ctx, h.Store.Q(), "alliance_projects", tenantID, col(row, 7))
 		isPublic := parseImportBool(col(row, 8))
 
 		existingID, _ := lookupIDByName(ctx, h.Store.Q(), "alliance_agreements", tenantID, name)
