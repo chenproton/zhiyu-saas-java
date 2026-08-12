@@ -99,27 +99,27 @@ func (s *AllianceGrantStore) IsGranted(ctx context.Context, enterpriseID, resour
 	return exists, err
 }
 
-// ResourceOptions 学校可授权资源候选：该企业共建的岗位/场景（非 archived）
-// + 学校自建的岗位/场景（已发布）。
+// ResourceOptions 学校可授权资源候选：本校全部岗位/场景（所有状态，含企业来源共建与自建），
+// 携带状态、所属批次分组与来源企业信息（前端按批次分组展示 + 批量授权）。
 func (s *AllianceGrantStore) ResourceOptions(ctx context.Context, tenantID, enterpriseID string) ([]domain.AllianceGrantResourceOption, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT id::text, name, 'position' AS type, 'enterprise' AS source, '' AS school_name
-		FROM career_positions
-		WHERE source_enterprise_id = $2 AND status <> 'archived'
+		SELECT cp.id::text, cp.name, 'position',
+			CASE WHEN cp.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END,
+			cp.source_enterprise_id, pe.name, cp.status, cp.batch_id, b.name
+		FROM career_positions cp
+		LEFT JOIN partner_enterprises pe ON pe.id = cp.source_enterprise_id
+		LEFT JOIN batches b ON b.id = cp.batch_id
+		WHERE cp.tenant_id = $1
 		UNION ALL
-		SELECT id::text, name, 'position' AS type, 'school' AS source, '' AS school_name
-		FROM career_positions
-		WHERE tenant_id = $1 AND source_enterprise_id IS NULL AND status = 'published'
-		UNION ALL
-		SELECT id::text, name, 'scene' AS type, 'enterprise' AS source, '' AS school_name
-		FROM scenarios
-		WHERE source_enterprise_id = $2 AND status <> 'archived'
-		UNION ALL
-		SELECT id::text, name, 'scene' AS type, 'school' AS source, '' AS school_name
-		FROM scenarios
-		WHERE tenant_id = $1 AND source_enterprise_id IS NULL AND status = 'published'
+		SELECT s.id::text, s.name, 'scene',
+			CASE WHEN s.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END,
+			s.source_enterprise_id, pe.name, s.status, s.batch_id, sb.name
+		FROM scenarios s
+		LEFT JOIN partner_enterprises pe ON pe.id = s.source_enterprise_id
+		LEFT JOIN scene_batches sb ON sb.id = s.batch_id
+		WHERE s.tenant_id = $1
 		ORDER BY type, name
-	`, tenantID, enterpriseID)
+	`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,8 @@ func (s *AllianceGrantStore) ResourceOptions(ctx context.Context, tenantID, ente
 	items := make([]domain.AllianceGrantResourceOption, 0)
 	for rows.Next() {
 		var o domain.AllianceGrantResourceOption
-		if err := rows.Scan(&o.ID, &o.Name, &o.Type, &o.Source, &o.SchoolName); err != nil {
+		if err := rows.Scan(&o.ID, &o.Name, &o.Type, &o.Source,
+			&o.SourceEnterpriseID, &o.SourceEnterpriseName, &o.Status, &o.BatchID, &o.BatchName); err != nil {
 			return nil, err
 		}
 		items = append(items, o)

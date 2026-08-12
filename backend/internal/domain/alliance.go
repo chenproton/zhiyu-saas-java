@@ -103,13 +103,19 @@ type AllianceResourceGrant struct {
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
-// AllianceGrantResourceOption 学校可授权资源候选（企业共建 + 学校自建）。
+// AllianceGrantResourceOption 学校可授权资源候选（本校全部岗位/场景，含全部状态）。
 type AllianceGrantResourceOption struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Type       string `json:"type"`   // position | scene
-	Source     string `json:"source"` // enterprise（企业共建）| school（学校自建）
-	SchoolName string `json:"schoolName,omitempty"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"` // position | scene
+	// Source 来源类型：enterprise（企业来源共建）| school（学校自建）
+	Source               string  `json:"source"`
+	SourceEnterpriseID   *string `json:"sourceEnterpriseId,omitempty"`
+	SourceEnterpriseName *string `json:"sourceEnterpriseName,omitempty"`
+	Status               string  `json:"status"`
+	BatchID              *string `json:"batchId,omitempty"`
+	BatchName            *string `json:"batchName,omitempty"`
+	SchoolName           string  `json:"schoolName,omitempty"`
 }
 
 // ===== 企业侧合作学校反向视图（link + 学校名称） =====

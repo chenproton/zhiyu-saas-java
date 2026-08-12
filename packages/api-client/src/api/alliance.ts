@@ -65,7 +65,13 @@ export interface AllianceGrantResourceOption {
   id: string
   name: string
   type: 'position' | 'scene'
+  /** 来源类型：enterprise（企业来源共建）| school（学校自建） */
   source: 'enterprise' | 'school'
+  sourceEnterpriseId?: string
+  sourceEnterpriseName?: string
+  status: string
+  batchId?: string
+  batchName?: string
 }
 
 /** 学校-企业资源授权（企业级：岗位/场景编辑权授予合作企业） */
