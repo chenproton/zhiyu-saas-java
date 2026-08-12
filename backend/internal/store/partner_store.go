@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -348,6 +350,136 @@ func (s *PartnerStore) collectCooperationAgreements(ctx context.Context, enterpr
 		}
 	}
 	return rows.Err()
+}
+
+// ===== 合作内容详情（GET /partner/cooperation/{kind}/{id}） =====
+
+// cooperationDetailFilter 详情单行过滤骨架：$1 = 企业 id，$2 = 内容 id。
+// 与列表同源：内容归属学校与本企业存在未终止 link，且 enterprise_ids 包含本企业。
+const cooperationDetailFilter = `
+	AND EXISTS (
+		SELECT 1 FROM alliance_enterprise_links l
+		WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = $1 AND l.status <> 'terminated'
+	) AND EXISTS (
+		SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = $1::text
+	)`
+
+// GetCooperationProject 合作项目详情（含里程碑，按 sort_order 排序）。
+func (s *PartnerStore) GetCooperationProject(ctx context.Context, enterpriseID, projectID string) (*domain.AlliancePartnerCooperationProjectDetail, error) {
+	var v domain.AlliancePartnerCooperationProjectDetail
+	var typ, description, budget *string
+	var startDate, endDate *time.Time
+	var colleges json.RawMessage
+	err := s.q.QueryRow(ctx, `
+		SELECT x.id, x.name, x.type, x.description, x.phase, x.publish_status,
+			x.start_date, x.end_date, x.budget, x.secondary_colleges, x.is_public,
+			x.created_at, x.updated_at
+		FROM alliance_projects x
+		WHERE x.id = $2`+cooperationDetailFilter, enterpriseID, projectID).
+		Scan(&v.ID, &v.Name, &typ, &description, &v.Phase, &v.PublishStatus,
+			&startDate, &endDate, &budget, &colleges, &v.IsPublic, &v.CreatedAt, &v.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	v.Type = typ
+	v.Description = description
+	v.StartDate = formatDate(startDate)
+	v.EndDate = formatDate(endDate)
+	v.Budget = budget
+	if len(colleges) > 0 {
+		_ = json.Unmarshal(colleges, &v.SecondaryColleges)
+	}
+	milestones, err := s.ListProjectMilestonesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	v.Milestones = milestones
+	return &v, nil
+}
+
+// ListProjectMilestonesByProject 项目里程碑（sort_order, created_at 升序）。
+func (s *PartnerStore) ListProjectMilestonesByProject(ctx context.Context, projectID string) ([]domain.AllianceProjectMilestone, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, tenant_id, project_id, name, description, due_date, completed_date,
+			is_completed, sort_order, created_at, updated_at
+		FROM alliance_project_milestones
+		WHERE project_id = $1
+		ORDER BY sort_order, created_at
+	`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]domain.AllianceProjectMilestone, 0)
+	for rows.Next() {
+		var m domain.AllianceProjectMilestone
+		var description *string
+		var dueDate, completedDate *time.Time
+		if err := rows.Scan(&m.ID, &m.TenantID, &m.ProjectID, &m.Name, &description,
+			&dueDate, &completedDate, &m.IsCompleted, &m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, err
+		}
+		m.Description = description
+		m.DueDate = formatDate(dueDate)
+		m.CompletedDate = formatDate(completedDate)
+		items = append(items, m)
+	}
+	return items, rows.Err()
+}
+
+// GetCooperationAchievement 合作成果详情。
+func (s *PartnerStore) GetCooperationAchievement(ctx context.Context, enterpriseID, achievementID string) (*domain.AlliancePartnerCooperationAchievementDetail, error) {
+	var v domain.AlliancePartnerCooperationAchievementDetail
+	var description, citationReason *string
+	var achievementDate *time.Time
+	var ownerPersons, coBuilders, colleges json.RawMessage
+	err := s.q.QueryRow(ctx, `
+		SELECT x.id, x.title, x.type, x.description, x.achievement_date, x.citation_reason,
+			x.owner_persons, x.co_builders, x.secondary_colleges, x.status, x.view_count,
+			x.is_public, x.created_at, x.updated_at
+		FROM alliance_achievements x
+		WHERE x.id = $2`+cooperationDetailFilter, enterpriseID, achievementID).
+		Scan(&v.ID, &v.Title, &v.Type, &description, &achievementDate, &citationReason,
+			&ownerPersons, &coBuilders, &colleges, &v.Status, &v.ViewCount,
+			&v.IsPublic, &v.CreatedAt, &v.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	v.Description = description
+	v.AchievementDate = formatDate(achievementDate)
+	v.CitationReason = citationReason
+	if len(ownerPersons) > 0 {
+		_ = json.Unmarshal(ownerPersons, &v.OwnerPersons)
+	}
+	if len(coBuilders) > 0 {
+		_ = json.Unmarshal(coBuilders, &v.CoBuilders)
+	}
+	if len(colleges) > 0 {
+		_ = json.Unmarshal(colleges, &v.SecondaryColleges)
+	}
+	return &v, nil
+}
+
+// GetCooperationAgreement 合作协议详情。
+func (s *PartnerStore) GetCooperationAgreement(ctx context.Context, enterpriseID, agreementID string) (*domain.AlliancePartnerCooperationAgreementDetail, error) {
+	var v domain.AlliancePartnerCooperationAgreementDetail
+	var typ, content *string
+	var startDate, endDate *time.Time
+	err := s.q.QueryRow(ctx, `
+		SELECT x.id, x.name, x.type, x.content, x.start_date, x.end_date, x.status,
+			x.is_public, x.created_at, x.updated_at
+		FROM alliance_agreements x
+		WHERE x.id = $2`+cooperationDetailFilter, enterpriseID, agreementID).
+		Scan(&v.ID, &v.Name, &typ, &content, &startDate, &endDate, &v.Status,
+			&v.IsPublic, &v.CreatedAt, &v.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	v.Type = typ
+	v.Content = content
+	v.StartDate = formatDate(startDate)
+	v.EndDate = formatDate(endDate)
+	return &v, nil
 }
 
 // ===== 专家测评任务只读列表（GET /partner/mentor-tasks） =====

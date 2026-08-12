@@ -11,6 +11,9 @@ import type {
   PartnerSchool,
   PartnerSchoolStatus,
   PartnerCooperationOverview,
+  PartnerCooperationProjectDetail,
+  PartnerCooperationAchievementDetail,
+  PartnerCooperationAgreementDetail,
   PartnerMentorTaskList,
   PartnerChangePasswordRequest,
 } from '../types/partner'
@@ -94,6 +97,14 @@ export const partnerSchoolApi = {
 
 export const partnerCooperationApi = {
   overview: () => partnerRequest<PartnerCooperationOverview>('/partner/cooperation'),
+  project: (id: string) =>
+    partnerRequest<PartnerCooperationProjectDetail>(`/partner/cooperation/projects/${id}`),
+  achievement: (id: string) =>
+    partnerRequest<PartnerCooperationAchievementDetail>(
+      `/partner/cooperation/achievements/${id}`,
+    ),
+  agreement: (id: string) =>
+    partnerRequest<PartnerCooperationAgreementDetail>(`/partner/cooperation/agreements/${id}`),
 }
 
 export const partnerMentorTaskApi = {

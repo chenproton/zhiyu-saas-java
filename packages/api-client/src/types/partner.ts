@@ -186,6 +186,63 @@ export interface PartnerCooperationOverview {
   schools: PartnerCooperationSchool[]
 }
 
+/** GET /partner/cooperation/projects/{id}：合作项目详情（仅合作学校内容，企业只读） */
+export interface PartnerCooperationProjectDetail {
+  id: string
+  name: string
+  type?: string
+  description?: string
+  phase: string
+  publishStatus: string
+  startDate?: string
+  endDate?: string
+  budget?: string
+  secondaryColleges: string[]
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+  milestones: {
+    id: string
+    name: string
+    description?: string
+    dueDate?: string
+    completedDate?: string
+    isCompleted: boolean
+  }[]
+}
+
+/** GET /partner/cooperation/achievements/{id}：合作成果详情（仅合作学校内容，企业只读） */
+export interface PartnerCooperationAchievementDetail {
+  id: string
+  title: string
+  type: string
+  description?: string
+  achievementDate?: string
+  citationReason?: string
+  ownerPersons: string[]
+  coBuilders: string[]
+  secondaryColleges: string[]
+  status: string
+  viewCount: number
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** GET /partner/cooperation/agreements/{id}：合作协议详情（企业为合作当事方，可见正文） */
+export interface PartnerCooperationAgreementDetail {
+  id: string
+  name: string
+  type?: string
+  content?: string
+  startDate?: string
+  endDate?: string
+  status: string
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 /** GET /partner/mentor-tasks：本企业专家被学校分配的测评任务（打分在学校端进行，企业只读） */
 export interface PartnerMentorTask {
   taskId: string

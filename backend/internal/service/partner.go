@@ -225,6 +225,33 @@ func (s *PartnerService) ListCooperation(ctx context.Context, tenantID string) (
 	return s.st.Partner().ListCooperation(ctx, enterprise.ID)
 }
 
+// GetCooperationProject 合作项目详情（受合作关联过滤，无权限返回 pgx.ErrNoRows）。
+func (s *PartnerService) GetCooperationProject(ctx context.Context, tenantID, projectID string) (*domain.AlliancePartnerCooperationProjectDetail, error) {
+	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Partner().GetCooperationProject(ctx, enterprise.ID, projectID)
+}
+
+// GetCooperationAchievement 合作成果详情（受合作关联过滤，无权限返回 pgx.ErrNoRows）。
+func (s *PartnerService) GetCooperationAchievement(ctx context.Context, tenantID, achievementID string) (*domain.AlliancePartnerCooperationAchievementDetail, error) {
+	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Partner().GetCooperationAchievement(ctx, enterprise.ID, achievementID)
+}
+
+// GetCooperationAgreement 合作协议详情（受合作关联过滤，无权限返回 pgx.ErrNoRows）。
+func (s *PartnerService) GetCooperationAgreement(ctx context.Context, tenantID, agreementID string) (*domain.AlliancePartnerCooperationAgreementDetail, error) {
+	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	return s.st.Partner().GetCooperationAgreement(ctx, enterprise.ID, agreementID)
+}
+
 // ListMentorTasks 本企业专家被学校指派的测评任务只读列表。
 func (s *PartnerService) ListMentorTasks(ctx context.Context, tenantID string) ([]domain.AlliancePartnerMentorTask, error) {
 	enterprise, err := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)

@@ -160,6 +160,58 @@ type AlliancePartnerCooperationSchool struct {
 	Agreements   []AlliancePartnerCooperationAgreement   `json:"agreements"`
 }
 
+// ===== 企业侧合作内容详情（GET /partner/cooperation/{kind}/{id}，只读，受合作关联过滤） =====
+
+// AlliancePartnerCooperationProjectDetail 合作项目详情（含里程碑）。
+type AlliancePartnerCooperationProjectDetail struct {
+	ID                string                     `json:"id"`
+	Name              string                     `json:"name"`
+	Type              *string                    `json:"type,omitempty"`
+	Description       *string                    `json:"description,omitempty"`
+	Phase             string                     `json:"phase"`
+	PublishStatus     string                     `json:"publishStatus"`
+	StartDate         *string                    `json:"startDate,omitempty"`
+	EndDate           *string                    `json:"endDate,omitempty"`
+	Budget            *string                    `json:"budget,omitempty"`
+	SecondaryColleges []string                   `json:"secondaryColleges"`
+	IsPublic          bool                       `json:"isPublic"`
+	CreatedAt         time.Time                  `json:"createdAt"`
+	UpdatedAt         time.Time                  `json:"updatedAt"`
+	Milestones        []AllianceProjectMilestone `json:"milestones"`
+}
+
+// AlliancePartnerCooperationAchievementDetail 合作成果详情。
+type AlliancePartnerCooperationAchievementDetail struct {
+	ID                string    `json:"id"`
+	Title             string    `json:"title"`
+	Type              string    `json:"type"`
+	Description       *string   `json:"description,omitempty"`
+	AchievementDate   *string   `json:"achievementDate,omitempty"`
+	CitationReason    *string   `json:"citationReason,omitempty"`
+	OwnerPersons      []string  `json:"ownerPersons"`
+	CoBuilders        []string  `json:"coBuilders"`
+	SecondaryColleges []string  `json:"secondaryColleges"`
+	Status            string    `json:"status"`
+	ViewCount         int       `json:"viewCount"`
+	IsPublic          bool      `json:"isPublic"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+}
+
+// AlliancePartnerCooperationAgreementDetail 合作协议详情（企业为合作当事方，可见正文）。
+type AlliancePartnerCooperationAgreementDetail struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Type      *string   `json:"type,omitempty"`
+	Content   *string   `json:"content,omitempty"`
+	StartDate *string   `json:"startDate,omitempty"`
+	EndDate   *string   `json:"endDate,omitempty"`
+	Status    string    `json:"status"`
+	IsPublic  bool      `json:"isPublic"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 // ===== 企业侧专家测评任务只读条目（GET /partner/mentor-tasks） =====
 type AlliancePartnerMentorTask struct {
 	TaskID        string    `json:"taskId"`

@@ -25,6 +25,9 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 		r.Get("/partner/workspace/dashboard", h.partnerHandler.Dashboard)
 		r.Get("/partner/schools", h.partnerHandler.ListSchools)
 		r.Get("/partner/cooperation", h.partnerHandler.ListCooperation)
+		r.Get("/partner/cooperation/projects/{id}", h.partnerHandler.GetCooperationProject)
+		r.Get("/partner/cooperation/achievements/{id}", h.partnerHandler.GetCooperationAchievement)
+		r.Get("/partner/cooperation/agreements/{id}", h.partnerHandler.GetCooperationAgreement)
 		r.Get("/partner/mentor-tasks", h.partnerHandler.ListMentorTasks)
 		r.Put("/partner/me/password", h.partnerHandler.ChangeMyPassword)
 

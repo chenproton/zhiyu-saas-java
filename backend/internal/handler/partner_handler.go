@@ -580,6 +580,60 @@ func (h *PartnerHandler) ListCooperation(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, map[string]interface{}{"schools": schools})
 }
 
+// GetCooperationProject 合作项目详情（只读，受合作关联过滤）。
+func (h *PartnerHandler) GetCooperationProject(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	detail, err := h.Service.GetCooperationProject(r.Context(), tenantID, chi.URLParam(r, "id"))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "项目不存在或无权查看")
+			return
+		}
+		respondServerError(w, r, err, "查询合作项目详情失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, detail)
+}
+
+// GetCooperationAchievement 合作成果详情（只读，受合作关联过滤）。
+func (h *PartnerHandler) GetCooperationAchievement(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	detail, err := h.Service.GetCooperationAchievement(r.Context(), tenantID, chi.URLParam(r, "id"))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "成果不存在或无权查看")
+			return
+		}
+		respondServerError(w, r, err, "查询合作成果详情失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, detail)
+}
+
+// GetCooperationAgreement 合作协议详情（只读，受合作关联过滤）。
+func (h *PartnerHandler) GetCooperationAgreement(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	detail, err := h.Service.GetCooperationAgreement(r.Context(), tenantID, chi.URLParam(r, "id"))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "协议不存在或无权查看")
+			return
+		}
+		respondServerError(w, r, err, "查询合作协议详情失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, detail)
+}
+
 // ListMentorTasks 专家测评任务只读列表：本企业专家被学校指派的评审任务。
 func (h *PartnerHandler) ListMentorTasks(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
