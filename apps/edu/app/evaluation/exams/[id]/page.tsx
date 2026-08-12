@@ -43,6 +43,7 @@ import {
 import { useData } from '@/components/providers/data-provider'
 import type {
   Question,
+  Exam,
   ExamQuestion,
   ExamFormData,
   QuestionType,
@@ -52,6 +53,7 @@ import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, canP
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
+import { examApi } from '@/lib/api'
 import { toast } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 export default function ExamComposerPage() {
@@ -80,6 +82,9 @@ export default function ExamComposerPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const dragTargetRef = useRef<number | null>(null)
 
+  // 列表接口不挂载 questions（性能优化），进入组卷页需拉取详情获取题目
+  const [fetchedExam, setFetchedExam] = useState<Exam | null>(null)
+
   useEffect(() => {
     if (getExam(examId) || triedReload.current) return
     triedReload.current = true
@@ -89,7 +94,32 @@ export default function ExamComposerPage() {
       .finally(() => setLoadingExam(false))
   }, [examId, getExam, loadExams])
 
-  const exam = getExam(examId)
+  useEffect(() => {
+    if (!examId || !getExam(examId) || fetchedExam) return
+    let cancelled = false
+    examApi
+      .get(examId)
+      .then((data) => {
+        if (!cancelled) setFetchedExam(data)
+      })
+      .catch((err) => {
+        if (!cancelled) reportError(err, '加载试卷题目')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [examId, getExam, fetchedExam])
+
+  const refreshExam = useCallback(async () => {
+    try {
+      const data = await examApi.get(examId)
+      setFetchedExam(data)
+    } catch (err) {
+      reportError(err, '加载试卷题目')
+    }
+  }, [examId])
+
+  const exam = fetchedExam ?? getExam(examId)
 
   const draftPoolBank = useMemo(() => {
     return questionBanks.find((b) => b.isDraftPool === true)
@@ -125,6 +155,7 @@ export default function ExamComposerPage() {
             delete next[questionId]
             return next
           })
+          refreshExam()
         })
         .catch((err) => {
           toast({
@@ -136,7 +167,7 @@ export default function ExamComposerPage() {
         })
         .finally(() => setSavingScoreId(null))
     },
-    [examId, editScores, updateExamQuestionScore, t],
+    [examId, editScores, updateExamQuestionScore, refreshExam, t],
   )
 
   const handleScoreKeyDown = useCallback(
@@ -225,6 +256,7 @@ export default function ExamComposerPage() {
       for (const question of questions) {
         await addQuestionToExam(examId, question)
       }
+      await refreshExam()
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('添加题目失败'), description: err.message })
     }
@@ -233,13 +265,15 @@ export default function ExamComposerPage() {
   const handleCreateQuestion = async (data: QuestionFormData) => {
     if (!draftPoolBank) return
     const newQuestion = await createQuestion(draftPoolBank.id, data)
-    addQuestionToExam(examId, newQuestion)
+    await addQuestionToExam(examId, newQuestion)
+    await refreshExam()
   }
 
   const handleRemoveQuestion = async () => {
     if (deleteConfirm) {
       try {
         await removeQuestionFromExam(examId, deleteConfirm.id)
+        await refreshExam()
         setDeleteConfirm(null)
       } catch (err: any) {
         toast({ variant: 'destructive', title: t('移除题目失败'), description: err.message })
@@ -276,6 +310,7 @@ export default function ExamComposerPage() {
 
     try {
       await reorderExamQuestions(examId, newQuestions)
+      refreshExam()
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('排序保存失败'), description: err.message })
     }
@@ -299,6 +334,7 @@ export default function ExamComposerPage() {
     })
     try {
       await updateExamQuestionScores?.(examId, scores)
+      refreshExam()
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('分数分配失败'), description: err.message })
     }
@@ -307,6 +343,7 @@ export default function ExamComposerPage() {
   const handleTypeDistribution = async (scores: Record<string, number>) => {
     try {
       await updateExamQuestionScores?.(examId, scores)
+      refreshExam()
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('分数分配失败'), description: err.message })
     }
@@ -337,6 +374,7 @@ export default function ExamComposerPage() {
     })
     try {
       await updateExamQuestionScores?.(examId, scores)
+      refreshExam()
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('分数分配失败'), description: err.message })
     }
