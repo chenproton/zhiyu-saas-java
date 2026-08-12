@@ -17,7 +17,6 @@ import {
   ArrowUpRight,
   Star,
   Award,
-  Camera,
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
@@ -53,7 +52,7 @@ export default function AlliancePublicExpertDetailPage() {
   const enterpriseName = expert.enterpriseName || expert.organization
   const professionalFields = expert.professionalFields ?? []
   const specialties = expert.specialties ?? []
-  const photos = expert.photos ?? []
+  const honors = expert.attachments ?? []
 
   return (
     <AllianceDetailShell
@@ -181,26 +180,27 @@ export default function AlliancePublicExpertDetailPage() {
           ),
         },
         {
-          value: 'photos',
-          label: t('照片'),
-          count: photos.length,
+          value: 'honors',
+          label: t('资质荣誉'),
+          count: honors.length,
           content: (
             <Card className="border-0 shadow-sm rounded-3xl">
               <CardContent className="p-6">
-                {photos.length > 0 ? (
+                {honors.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {photos.map((photo, idx) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={idx}
-                        src={photo}
-                        alt={`${expert.name} ${idx + 1}`}
-                        className="w-full aspect-[4/3] object-cover rounded-2xl border border-slate-100 shadow-sm"
-                      />
+                    {honors.map((honor, idx) => (
+                      <a key={idx} href={honor} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={honor}
+                          alt={t('资质荣誉 {idx}', { idx: idx + 1 })}
+                          className="w-full aspect-[4/3] object-cover rounded-2xl border border-slate-100 shadow-sm hover:opacity-80 transition-opacity"
+                        />
+                      </a>
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={Camera} title={t('暂无照片')} />
+                  <DetailEmpty icon={Award} title={t('暂无资质荣誉')} />
                 )}
               </CardContent>
             </Card>

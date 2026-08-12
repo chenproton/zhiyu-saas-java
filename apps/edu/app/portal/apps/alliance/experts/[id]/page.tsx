@@ -251,12 +251,19 @@ export default function AllianceExpertDetailPage() {
               <CardHeader>
                 <CardTitle>{t('资质荣誉')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
-                {((expert as any).attachments || []).map((a: string, i: number) => (
-                  <p key={i} className="text-sm text-muted-foreground">
-                    📄 {a}
-                  </p>
-                ))}
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {((expert as any).attachments || []).map((a: string, i: number) => (
+                    <a key={i} href={a} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={a}
+                        alt={t('资质荣誉 {idx}', { idx: i + 1 })}
+                        className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-100 shadow-sm hover:opacity-80 transition-opacity"
+                      />
+                    </a>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}

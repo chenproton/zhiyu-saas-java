@@ -4268,5 +4268,7 @@
   "企业专家列表": "Expert list",
   "专家合作权限": "Expert cooperation permissions",
   "佐证材料 {idx}": "Evidence {idx}",
-  "上传佐证图片（可多选）": "Upload evidence images (multiple)"
+  "上传佐证图片（可多选）": "Upload evidence images (multiple)",
+  "暂无资质荣誉": "No honors yet",
+  "资质荣誉 {idx}": "Honor {idx}"
 }
