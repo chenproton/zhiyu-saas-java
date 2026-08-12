@@ -282,6 +282,68 @@ func (s *AllianceStore) HasPublicEnterpriseAccess(ctx context.Context, enterpris
 	return ok, err
 }
 
+// ContentMonthCount 近 months 个月每月合作内容数量（项目/协议/成果，服务台折线图）。
+type ContentMonthCount struct {
+	Month        string `json:"month"`
+	Projects     int    `json:"projects"`
+	Agreements   int    `json:"agreements"`
+	Achievements int    `json:"achievements"`
+}
+
+// CountMonthlyContentByEnterprise 近 months 个月每月新增合作项目/协议/成果数
+// （enterprise_ids 关联本企业主体）。
+func (s *AllianceStore) CountMonthlyContentByEnterprise(ctx context.Context, enterpriseID string, months int) ([]ContentMonthCount, error) {
+	if months <= 0 || months > 12 {
+		months = 6
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT m.month,
+			COALESCE(p.cnt, 0) AS projects,
+			COALESCE(a.cnt, 0) AS agreements,
+			COALESCE(c.cnt, 0) AS achievements
+		FROM (
+			SELECT to_char(d, 'YYYY-MM') AS month
+			FROM generate_series(date_trunc('month', NOW()) - make_interval(months => $2 - 1),
+				date_trunc('month', NOW()), '1 month') d
+		) m
+		LEFT JOIN (
+			SELECT to_char(date_trunc('month', p.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt
+			FROM alliance_projects p, jsonb_array_elements_text(p.enterprise_ids) eid
+			WHERE eid = $1
+			  AND p.created_at >= date_trunc('month', NOW()) - make_interval(months => $2 - 1)
+			GROUP BY 1
+		) p ON p.month = m.month
+		LEFT JOIN (
+			SELECT to_char(date_trunc('month', a.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt
+			FROM alliance_agreements a, jsonb_array_elements_text(a.enterprise_ids) eid
+			WHERE eid = $1
+			  AND a.created_at >= date_trunc('month', NOW()) - make_interval(months => $2 - 1)
+			GROUP BY 1
+		) a ON a.month = m.month
+		LEFT JOIN (
+			SELECT to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt
+			FROM alliance_achievements c, jsonb_array_elements_text(c.enterprise_ids) eid
+			WHERE eid = $1
+			  AND c.created_at >= date_trunc('month', NOW()) - make_interval(months => $2 - 1)
+			GROUP BY 1
+		) c ON c.month = m.month
+		ORDER BY m.month
+	`, enterpriseID, months)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ContentMonthCount
+	for rows.Next() {
+		var c ContentMonthCount
+		if err := rows.Scan(&c.Month, &c.Projects, &c.Agreements, &c.Achievements); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.AllianceBrand, error) {
 	return queryOne(ctx, s.q, s.ScanBrandRows, `
 		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,

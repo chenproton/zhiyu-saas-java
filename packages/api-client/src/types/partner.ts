@@ -100,12 +100,25 @@ export interface PartnerDashboard {
   schoolCount: number
   memberCount: number
   publicExpertCount?: number
-  /** 合作学校状态分布（服务台图表） */
-  schoolStatusCounts?: { status: string; count: number }[]
-  /** 专家账号状态分布（服务台图表） */
-  expertStatusCounts?: { status: string; count: number }[]
+  /** 共建岗位/场景数量 */
+  coBuildPositionCount?: number
+  coBuildScenarioCount?: number
   /** 近 6 个月每月新增合作学校数（服务台柱状图） */
   monthlySchoolCounts?: { month: string; count: number }[]
+  /** 近 6 个月每月新增专家/共建岗位/共建场景数（卡片趋势） */
+  monthlyNewCounts?: {
+    month: string
+    experts: number
+    positions: number
+    scenarios: number
+  }[]
+  /** 近 6 个月每月合作项目/协议/成果数（折线图） */
+  contentMonthlyCounts?: {
+    month: string
+    projects: number
+    agreements: number
+    achievements: number
+  }[]
 }
 
 /** GET /partner/schools：合作学校（link 反向视图，对应后端 domain.AlliancePartnerSchool） */

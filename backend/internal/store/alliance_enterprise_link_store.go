@@ -283,35 +283,6 @@ func (s *AllianceEnterpriseLinkStore) CountByEnterpriseTenant(ctx context.Contex
 	return n, err
 }
 
-// CountSchoolStatusByEnterpriseTenant 企业侧合作学校状态分布（服务台图表）。
-type SchoolStatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
-}
-
-func (s *AllianceEnterpriseLinkStore) CountSchoolStatusByEnterpriseTenant(ctx context.Context, enterpriseTenantID string) ([]SchoolStatusCount, error) {
-	rows, err := s.q.Query(ctx, `
-		SELECT l.status, COUNT(*)
-		FROM alliance_enterprise_links l
-		JOIN partner_enterprises e ON e.id = l.enterprise_id
-		WHERE e.tenant_id = $1
-		GROUP BY l.status
-	`, enterpriseTenantID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []SchoolStatusCount
-	for rows.Next() {
-		var c SchoolStatusCount
-		if err := rows.Scan(&c.Status, &c.Count); err != nil {
-			return nil, err
-		}
-		out = append(out, c)
-	}
-	return out, rows.Err()
-}
-
 // MonthCount 按月聚合计数。
 type MonthCount struct {
 	Month string `json:"month"`

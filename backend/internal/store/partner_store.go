@@ -41,7 +41,7 @@ func (s *PartnerStore) CountExpertsByTenant(ctx context.Context, tenantID string
 	return n, err
 }
 
-// ExpertStatusCount 专家账号状态计数。
+// ExpertStatusCount 专家账号状态计数（当前服务台未使用，保留供后续图表扩展）。
 type ExpertStatusCount struct {
 	Status string `json:"status"`
 	Count  int    `json:"count"`
@@ -73,6 +73,92 @@ func (s *PartnerStore) CountPublicExpertsByTenant(ctx context.Context, tenantID 
 		`SELECT COUNT(*) FROM alliance_experts WHERE tenant_id = $1 AND is_public = true AND status = 'active'`,
 		tenantID).Scan(&n)
 	return n, err
+}
+
+// CountCoBuildResources 企业共建资源总数（岗位/场景，口径与 ListBySourceEnterprise 一致：
+// 来源企业标记或资源授权）。
+func (s *PartnerStore) CountCoBuildResources(ctx context.Context, enterpriseID string) (positions, scenarios int, err error) {
+	if err = s.q.QueryRow(ctx, `
+		SELECT COUNT(*) FROM career_positions cp
+		WHERE cp.source_enterprise_id = $1
+		   OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+				WHERE g.enterprise_id = $1 AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids))
+	`, enterpriseID).Scan(&positions); err != nil {
+		return 0, 0, err
+	}
+	if err = s.q.QueryRow(ctx, `
+		SELECT COUNT(*) FROM scenarios sc
+		WHERE sc.source_enterprise_id = $1
+		   OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+				WHERE g.enterprise_id = $1 AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids))
+	`, enterpriseID).Scan(&scenarios); err != nil {
+		return 0, 0, err
+	}
+	return positions, scenarios, nil
+}
+
+// NewMonthCount 近 months 个月每月新增数量（专家/共建岗位/共建场景，服务台卡片趋势）。
+type NewMonthCount struct {
+	Month     string `json:"month"`
+	Experts   int    `json:"experts"`
+	Positions int    `json:"positions"`
+	Scenarios int    `json:"scenarios"`
+}
+
+// CountMonthlyNewByEnterprise 近 months 个月每月新增专家/共建岗位/共建场景数。
+func (s *PartnerStore) CountMonthlyNewByEnterprise(ctx context.Context, tenantID, enterpriseID string, months int) ([]NewMonthCount, error) {
+	if months <= 0 || months > 12 {
+		months = 6
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT m.month,
+			COALESCE(e.cnt, 0) AS experts,
+			COALESCE(p.cnt, 0) AS positions,
+			COALESCE(sc.cnt, 0) AS scenarios
+		FROM (
+			SELECT to_char(d, 'YYYY-MM') AS month
+			FROM generate_series(date_trunc('month', NOW()) - make_interval(months => $3 - 1),
+				date_trunc('month', NOW()), '1 month') d
+		) m
+		LEFT JOIN (
+			SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt
+			FROM alliance_experts
+			WHERE tenant_id = $1 AND created_at >= date_trunc('month', NOW()) - make_interval(months => $3 - 1)
+			GROUP BY 1
+		) e ON e.month = m.month
+		LEFT JOIN (
+			SELECT to_char(date_trunc('month', cp.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt
+			FROM career_positions cp
+			WHERE (cp.source_enterprise_id = $2
+				OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+					WHERE g.enterprise_id = $2 AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))
+			  AND cp.created_at >= date_trunc('month', NOW()) - make_interval(months => $3 - 1)
+			GROUP BY 1
+		) p ON p.month = m.month
+		LEFT JOIN (
+			SELECT to_char(date_trunc('month', sc.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt
+			FROM scenarios sc
+			WHERE (sc.source_enterprise_id = $2
+				OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+					WHERE g.enterprise_id = $2 AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids)))
+			  AND sc.created_at >= date_trunc('month', NOW()) - make_interval(months => $3 - 1)
+			GROUP BY 1
+		) sc ON sc.month = m.month
+		ORDER BY m.month
+	`, tenantID, enterpriseID, months)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []NewMonthCount
+	for rows.Next() {
+		var c NewMonthCount
+		if err := rows.Scan(&c.Month, &c.Experts, &c.Positions, &c.Scenarios); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 // CountMembersByTenant 企业租户成员账号数量（服务台统计）。

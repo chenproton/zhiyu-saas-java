@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
@@ -122,13 +123,15 @@ func (s *PartnerService) UpdateProfile(ctx context.Context, tenantID string, p *
 
 // PartnerDashboard 服务台统计。
 type PartnerDashboard struct {
-	ExpertCount         int                       `json:"expertCount"`
-	SchoolCount         int                       `json:"schoolCount"`
-	MemberCount         int                       `json:"memberCount"`
-	PublicExpertCount   int                       `json:"publicExpertCount"`
-	SchoolStatusCounts  []store.SchoolStatusCount `json:"schoolStatusCounts"`
-	ExpertStatusCounts  []store.ExpertStatusCount `json:"expertStatusCounts"`
-	MonthlySchoolCounts []store.MonthCount        `json:"monthlySchoolCounts"`
+	ExpertCount          int                       `json:"expertCount"`
+	SchoolCount          int                       `json:"schoolCount"`
+	MemberCount          int                       `json:"memberCount"`
+	PublicExpertCount    int                       `json:"publicExpertCount"`
+	CoBuildPositionCount int                       `json:"coBuildPositionCount"`
+	CoBuildScenarioCount int                       `json:"coBuildScenarioCount"`
+	MonthlySchoolCounts  []store.MonthCount        `json:"monthlySchoolCounts"`
+	MonthlyNewCounts     []store.NewMonthCount     `json:"monthlyNewCounts"`
+	ContentMonthlyCounts []store.ContentMonthCount `json:"contentMonthlyCounts"`
 }
 
 func (s *PartnerService) Dashboard(ctx context.Context, tenantID string) (*PartnerDashboard, error) {
@@ -146,14 +149,24 @@ func (s *PartnerService) Dashboard(ctx context.Context, tenantID string) (*Partn
 	if d.PublicExpertCount, err = s.st.Partner().CountPublicExpertsByTenant(ctx, tenantID); err != nil {
 		return nil, err
 	}
-	if d.SchoolStatusCounts, err = s.st.AllianceEnterpriseLinks().CountSchoolStatusByEnterpriseTenant(ctx, tenantID); err != nil {
-		return nil, err
-	}
-	if d.ExpertStatusCounts, err = s.st.Partner().CountExpertStatusByTenant(ctx, tenantID); err != nil {
-		return nil, err
-	}
 	if d.MonthlySchoolCounts, err = s.st.AllianceEnterpriseLinks().CountMonthlyLinksByEnterpriseTenant(ctx, tenantID, 6); err != nil {
 		return nil, err
+	}
+	// 共建资源/合作内容按企业主体 id 统计（租户可能尚无企业主体，跳过图表数据）
+	enterprise, entErr := s.st.Alliance().GetEnterpriseByTenant(ctx, tenantID)
+	if entErr != nil && !errors.Is(entErr, pgx.ErrNoRows) {
+		return nil, entErr
+	}
+	if enterprise != nil {
+		if d.CoBuildPositionCount, d.CoBuildScenarioCount, err = s.st.Partner().CountCoBuildResources(ctx, enterprise.ID); err != nil {
+			return nil, err
+		}
+		if d.MonthlyNewCounts, err = s.st.Partner().CountMonthlyNewByEnterprise(ctx, tenantID, enterprise.ID, 6); err != nil {
+			return nil, err
+		}
+		if d.ContentMonthlyCounts, err = s.st.Alliance().CountMonthlyContentByEnterprise(ctx, enterprise.ID, 6); err != nil {
+			return nil, err
+		}
 	}
 	return &d, nil
 }
