@@ -46,6 +46,8 @@ const DEFAULTS = {
   settleMs: 200,
   // 列表行内按钮去重：同一按钮类型只保留前 N 行的实例（大表页提速；SMOKE_ 行豁免）
   maxRowClicks: 1,
+  // 下拉菜单项点击：点击一项后菜单关闭，重开触发器继续点剩余项的上限
+  maxMenuReopens: 3,
   // networkidle 仅在导航后尝试，超时短（带轮询的页面永远到不了 idle）
   navWaitMs: 2500,
   loginTimeoutMs: 20000,

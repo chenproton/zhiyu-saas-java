@@ -6,10 +6,14 @@
 
 import { maybeTestForm, buildTriggerRe, keyText } from './forms.mjs'
 
-export const CLICKABLE_SELECTOR = ['button', 'a[href]', '[role="tab"]', '[role="button"]'].join(',')
+export const CLICKABLE_SELECTOR = ['button', 'a[href]', '[role="tab"]', '[role="button"]', '[role="menuitem"]', '[role="menuitemradio"]', '[role="menuitemcheckbox"]'].join(',')
 // 弹层容器：Radix Dialog 是 dialog，AlertDialog（确认删除等）是 alertdialog，两者都必须纳入
 export const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"], [data-radix-dialog-content]'
 export const DIALOG_VISIBLE_SELECTOR = '[role="dialog"]:visible, [role="alertdialog"]:visible'
+// 下拉菜单（Radix DropdownMenu/ContextMenu 用 [role="menu"] + menuitem）：菜单项随菜单关闭即卸载，
+// 无法像弹窗那样延迟点击，必须在其打开期间立即点击（见 clickOpenMenuItems）
+export const MENU_SELECTOR = '[role="menu"]'
+export const MENU_VISIBLE_SELECTOR = '[role="menu"]:visible'
 
 // 表单字段选择器（与 forms.mjs 保持一致，避免循环依赖）
 const FIELD_SELECTOR = 'input, textarea, select, [role="combobox"]'
@@ -71,7 +75,8 @@ export function routeCfg(cfg, route) {
 }
 
 // 收集可见可点击元素（含文档序 index 与行内序号 key）。
-// scope='page'：只收弹层外元素（默认）；scope='dialog'：只收弹层内元素（key 加 dlg| 前缀）。
+// scope='page'：只收弹层外元素（默认）；scope='dialog'：只收弹层内元素（key 加 dlg| 前缀）；
+// scope='menu'：只收下拉菜单内元素（key 加 menu| 前缀）。
 // triggerRe：表单测试模式下，创建/编辑类入口词即使命中危险词也放行（点击后由 maybeTestForm 接管）。
 // crud 模式下额外识别 edit/delete/enable/disable，并标注元素所在行是否含 SMOKE_ 标记。
 export async function collectClickables(page, cfg, dangerousRe, scope = 'page', triggerRe = null) {
@@ -104,7 +109,7 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
           if (disableRe.test(effText)) return 'disable'
         }
         if (destructiveRe.test(effText)) return 'destructive'
-        if (scope === 'dialog') {
+        if (scope === 'dialog' || scope === 'menu') {
           if (submitRe.test(effText)) return 'submit'
           if (triggerRegex?.test(effText)) return 'form-trigger'
         } else {
@@ -140,8 +145,10 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     const els = [...document.querySelectorAll(selector)]
     els.forEach((el, index) => {
       const inDialog = !!el.closest(dialogSel)
-      if (scope === 'page' && inDialog) return
+      const inMenu = !!el.closest('[role="menu"]')
+      if (scope === 'page' && (inDialog || inMenu)) return
       if (scope === 'dialog' && !inDialog) return
+      if (scope === 'menu' && !inMenu) return
       const rect = el.getBoundingClientRect()
       if (rect.width < 4 || rect.height < 4) return
       const cs = getComputedStyle(el)
@@ -183,9 +190,9 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
       const n = (countByKey.get(base) || 0) + 1
       countByKey.set(base, n)
       // 全局/共享元素（侧边栏、顶部导航等）只在第一次遇到时点击，避免每页重复点击拖慢全量回归
-      const isGlobal = scope !== 'dialog' && !!el.closest('nav, aside, header, [role="navigation"], [role="banner"]')
+      const isGlobal = scope !== 'dialog' && scope !== 'menu' && !!el.closest('nav, aside, header, [role="navigation"], [role="banner"]')
       const inSmokeRow = !!(marker && row && (row.innerText || '').includes(marker))
-      out.push({ key: `${scope === 'dialog' ? 'dlg|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal, inSmokeRow })
+      out.push({ key: `${scope === 'dialog' ? 'dlg|' : scope === 'menu' ? 'menu|' : ''}${base}|${n}`, index, actionType: classify(el, effText, href), isGlobal, inSmokeRow })
     })
     return out
   }, {
@@ -215,6 +222,7 @@ export function clickByIndex(page, pick) {
   return page.evaluate(({ selector, key, index }) => {
     let base = key.slice(0, key.lastIndexOf('|'))
     if (base.startsWith('dlg|')) base = base.slice(4)
+    else if (base.startsWith('menu|')) base = base.slice(5)
     const matchKey = el => {
       const text = (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40)
       const label = (el.getAttribute('aria-label') || el.getAttribute('title') || '').trim().slice(0, 40)
@@ -287,6 +295,60 @@ async function enqueueDialogItems(page, cfg, dangerousRe, queue, attempted, trig
       if (!attempted.has(d.key) && !queue.some(q => q.key === d.key)) queue.push(d)
     }
   } catch { /* 页面可能已崩溃 */ }
+}
+
+// 点击当前打开的下拉菜单（[role="menu"]）里的安全项。
+// 菜单项随菜单关闭即卸载（Radix），无法像弹窗那样入队延迟点击，必须在其打开期间立即点击；
+// 点击一项后菜单关闭，通过重新点击触发器（reopenPick）继续点剩余项（最多 maxMenuReopens 次）。
+// 安全性：菜单项通常 portal 到 body，无法判定来源数据行，因此 CRUD 行操作（编辑/删除/启用/禁用）
+// 一律跳过（宁漏勿删）；导航/表单入口/普通覆盖层项可点，表单入口顺手走 maybeTestForm。
+async function clickOpenMenuItems(page, cfg, dangerousRe, routeResult, routeState, triggerRe, attempted, opts) {
+  const { reopenPick, basePath, role, formState } = opts
+  const maxReopens = cfg.maxMenuReopens ?? 3
+  let reopens = 0
+  for (;;) {
+    const open = await page.locator(MENU_VISIBLE_SELECTOR).count().catch(() => 0)
+    if (!open) {
+      if (reopens >= maxReopens) return
+      // 点击项后菜单已关闭：重开触发器继续点剩余项
+      await clickByIndex(page, reopenPick)
+      await sleep(cfg.clickIntervalMs)
+      await waitSettled(page, cfg, 200)
+      reopens++
+      continue
+    }
+    const items = await collectClickables(page, cfg, dangerousRe, 'menu', triggerRe).catch(() => [])
+    let clicked = false
+    for (const item of items) {
+      // 菜单项无法关联来源数据行，跳过 CRUD 行操作（宁漏勿删）
+      if (['edit', 'delete', 'enable', 'disable'].includes(item.actionType)) continue
+      if (attempted.has(item.key)) continue
+      attempted.add(item.key)
+      routeState.clickIndex = routeResult.clicks
+      routeState.url = page.url()
+      const itemText = keyText(item.key)
+      await clickByIndex(page, item)
+      routeResult.clicks++
+      routeResult.actions.push({ key: item.key, index: routeResult.clicks, actionType: item.actionType })
+      await sleep(cfg.clickIntervalMs)
+      // 表单入口：点击后可能打开带表单的弹窗，直接走表单测试
+      if (item.actionType === 'form-trigger' && formState.formAttempts < formState.maxForms && !formState.formTestedTriggers.has(itemText)) {
+        formState.formTestedTriggers.add(itemText)
+        const rec = await maybeTestForm(page, cfg, itemText).catch(() => null)
+        if (recordFormResult(routeResult, rec, 'create')) formState.formAttempts++
+      }
+      // 若点击项发生跳转，回访原页继续
+      const nowPath = new URL(page.url()).pathname
+      if (nowPath !== basePath && !nowPath.includes(loginPathForRole(role))) {
+        await page.goto(cfg.baseUrl + basePath, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+        await waitSettled(page, cfg, 300, true)
+      }
+      await ensureZhLocale(page, cfg)
+      clicked = true
+      break // 每轮只点一个：点击后菜单已关闭，靠重开触发器继续
+    }
+    if (!clicked) return
+  }
 }
 
 // 表单测试记录写入 routeResult 并返回是否消耗了一次提交额度
@@ -423,6 +485,7 @@ export async function isSmokeRowAtClick(page, cfg, pick) {
     return await page.evaluate(({ selector, key, index, marker }) => {
       let base = key.slice(0, key.lastIndexOf('|'))
       if (base.startsWith('dlg|')) base = base.slice(4)
+      else if (base.startsWith('menu|')) base = base.slice(5)
       const matchKey = el => {
         const text = (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40)
         const label = (el.getAttribute('aria-label') || el.getAttribute('title') || '').trim().slice(0, 40)
@@ -470,23 +533,22 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
     const basePath = new URL(page.url()).pathname
     const dangerousRe = buildDangerousRe(cfg)
     const triggerRe = cfg.clickOnly ? null : buildTriggerRe(cfg)
-    const maxForms = cfg.maxFormSubmits || 3
-    let formAttempts = 0
+    // 表单测试额度与已测入口：包进可变对象，供菜单项点击（clickOpenMenuItems）同步消费
+    const formState = { formAttempts: 0, maxForms: cfg.maxFormSubmits || 3, formTestedTriggers: new Set() }
 
     // 独立编辑页：表单已可见，直接填充提交（仅限巡检创建的 SMOKE_ 实体，真实数据不碰）
     const isEditPage = /\/(edit|modify)(\/|$)/.test(route)
     if (!cfg.clickOnly && !crudDisabled && isEditPage) {
       const hasForm = await page.locator('form:visible').count() > 0 || await page.evaluate(() => !!document.querySelector('main input, article input'))
-      if (hasForm && formAttempts < maxForms) {
+      if (hasForm && formState.formAttempts < formState.maxForms) {
         if (await isSmokeEntityPage(page, cfg)) {
           const rec = await maybeTestForm(page, cfg, '(编辑页)', null, { isEdit: true }).catch(() => null)
-          if (recordFormResult(routeResult, rec, 'edit')) formAttempts++
+          if (recordFormResult(routeResult, rec, 'edit')) formState.formAttempts++
         } else {
           routeResult.crudActions.push({ action: 'edit', target: '(编辑页)', status: 'skip', reason: '非 SMOKE_ 实体，不填充提交' })
         }
       }
     }
-    const formTestedTriggers = new Set() // 同一入口文案只测一次，避免重复耗尽额度
     const attempted = new Set()
     const queue = await collectClickables(page, cfg, dangerousRe, 'page', triggerRe)
     for (let qi = 0; qi < queue.length && routeResult.clicks < cfg.maxClicks; qi++) {
@@ -503,13 +565,13 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
       routeState.url = page.url()
       const pickText = keyText(pick.key)
       const isCreatePage = /\/(add|new)(\/|$)/.test(route)
-      if (pick.actionType === 'form-trigger' && isCreatePage && formAttempts < maxForms && !formTestedTriggers.has(pickText)) {
+      if (pick.actionType === 'form-trigger' && isCreatePage && formState.formAttempts < formState.maxForms && !formState.formTestedTriggers.has(pickText)) {
         // 独立创建页：表单已可见，直接填充提交，避免先点空提交。
         // 入口按钮本身就是提交按钮，直接复用该元素点击，避免在 body 里重新搜索被浮层按钮干扰。
-        formTestedTriggers.add(pickText)
+        formState.formTestedTriggers.add(pickText)
         const submitClick = () => clickByIndex(page, pick)
         const rec = await maybeTestForm(page, cfg, pickText, submitClick).catch(() => null)
-        if (recordFormResult(routeResult, rec)) formAttempts++
+        if (recordFormResult(routeResult, rec)) formState.formAttempts++
         routeResult.clicks++
         routeResult.actions.push({ key: pick.key, index: routeResult.clicks, actionType: pick.actionType })
         await sleep(cfg.clickIntervalMs)
@@ -531,18 +593,24 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
       routeResult.clicks++
       routeResult.actions.push({ key: pick.key, index: routeResult.clicks, actionType: pick.actionType })
       await sleep(cfg.clickIntervalMs)
+      // 下拉菜单项：菜单项随菜单关闭即卸载，无法走队列延迟点击，必须在打开期间立即点击
+      if (await page.locator(MENU_VISIBLE_SELECTOR).count().catch(() => 0)) {
+        await clickOpenMenuItems(page, cfg, dangerousRe, routeResult, routeState, triggerRe, attempted, {
+          reopenPick: pick, basePath, role, formState,
+        })
+      }
       // 弹层内表单：点击入口后打开弹窗，再填充提交
-      if (pick.actionType === 'form-trigger' && formAttempts < maxForms && !formTestedTriggers.has(pickText)) {
-        formTestedTriggers.add(pickText)
+      if (pick.actionType === 'form-trigger' && formState.formAttempts < formState.maxForms && !formState.formTestedTriggers.has(pickText)) {
+        formState.formTestedTriggers.add(pickText)
         const rec = await maybeTestForm(page, cfg, pickText).catch(() => null)
-        if (recordFormResult(routeResult, rec, 'create')) formAttempts++
+        if (recordFormResult(routeResult, rec, 'create')) formState.formAttempts++
       }
       // CRUD 编辑/删除/启用/禁用
       if (!cfg.clickOnly && !crudDisabled && ['edit', 'delete', 'enable', 'disable'].includes(pick.actionType)) {
         if (!pick.inSmokeRow) {
           routeResult.crudActions.push({ action: pick.actionType, target: pickText, status: 'skip', reason: '非 SMOKE_ 测试数据' })
-        } else if (formAttempts < maxForms && !formTestedTriggers.has(`crud:${pickText}`)) {
-          formTestedTriggers.add(`crud:${pickText}`)
+        } else if (formState.formAttempts < formState.maxForms && !formState.formTestedTriggers.has(`crud:${pickText}`)) {
+          formState.formTestedTriggers.add(`crud:${pickText}`)
           const rec = await handleCrudAction(page, cfg, pick, pickText).catch(() => null)
           if (rec) {
             routeResult.crudActions.push(rec)
@@ -550,7 +618,7 @@ export async function walkRoute(page, ctx, route, cfg, role, sink, routeState, t
             if (rec.status === 'error' && rec.apiResult) {
               routeResult.errors.push({ type: 'crud', message: `${rec.action} 操作失败: ${rec.apiResult.status} ${rec.apiResult.method} ${rec.apiResult.url}（触发: ${rec.target}）` })
             }
-            if (rec.action === 'edit' && ['pass', 'error', 'no-request'].includes(rec.status)) formAttempts++
+            if (rec.action === 'edit' && ['pass', 'error', 'no-request'].includes(rec.status)) formState.formAttempts++
           }
         }
       }

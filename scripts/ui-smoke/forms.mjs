@@ -10,10 +10,11 @@ const FIELD_SELECTOR = 'input, textarea, select, [role="combobox"]'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-// 从收集 key（TAG|text|href|n，可带 dlg| 前缀）提取按钮文本
+// 从收集 key（TAG|text|href|n，可带 dlg|/menu| 前缀）提取按钮文本
 export function keyText(key) {
   let base = key
   if (base.startsWith('dlg|')) base = base.slice(4)
+  else if (base.startsWith('menu|')) base = base.slice(5)
   const parts = base.split('|')
   return parts[1] || ''
 }

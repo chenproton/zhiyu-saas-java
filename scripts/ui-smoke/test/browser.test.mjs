@@ -132,6 +132,51 @@ test('collectClickables：动作分类 actionType 标注', async t => {
   browser = null
 })
 
+test('collectClickables：菜单作用域收集 menuitem', async t => {
+  let page
+  try {
+    if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
+    page = await browser.newPage()
+    await page.setContent(`
+      <html><body>
+        <button>更多</button>
+        <div role="menu">
+          <div role="menuitem">查看</div>
+          <div role="menuitem">编辑</div>
+          <div role="menuitem">删除</div>
+        </div>
+        <button>页面按钮</button>
+      </body></html>`)
+  } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
+  const cfg = {
+    clickOnly: false, clickDangerous: false, allowIconButtons: false, localeSwitchWords: [], crudMarker: 'SMOKE_',
+    maxRowClicks: 1,
+    dangerousWords: ['删除'], dangerousWordsEn: [],
+    editWords: ['编辑'], editWordsEn: ['Edit'],
+    deleteWords: ['删除'], deleteWordsEn: ['Delete'],
+    enableWords: [], disableWords: [],
+    submitWords: [], submitWordsEn: [],
+    destructiveWords: [], destructiveWordsEn: [],
+    navWords: ['查看'], navWordsEn: ['View'],
+    formTriggerWords: ['创建', '新增', '添加'], formTriggerWordsEn: [],
+  }
+  const re = buildDangerousRe(cfg)
+  const triggerRe = buildTriggerRe(cfg)
+  const pageScope = await collectClickables(page, cfg, re, 'page', triggerRe)
+  assert.ok(!pageScope.some(p => p.key.startsWith('menu|')), '菜单内元素应在 page 范围排除')
+  assert.ok(!pageScope.some(p => p.key.includes('查看')), '菜单项不应混入 page 范围')
+  const menuScope = await collectClickables(page, cfg, re, 'menu', triggerRe)
+  assert.ok(menuScope.some(p => p.key.startsWith('menu|') && p.key.includes('查看')), '菜单范围应收集 menuitem 并加 menu| 前缀')
+  const view = menuScope.find(p => p.key.includes('查看'))
+  assert.equal(view.actionType, 'nav', '查看项应分类为 nav')
+  const edit = menuScope.find(p => p.key.includes('编辑'))
+  assert.equal(edit.actionType, 'edit', '编辑项应分类为 edit（随后由 clickOpenMenuItems 因无法关联数据行而跳过）')
+  assert.ok(!menuScope.some(p => p.key.includes('页面按钮')), '菜单范围不应包含菜单外元素')
+  await page.close()
+  await browser?.close()
+  browser = null
+})
+
 test('collectClickables：CRUD 模式下识别 edit/delete/enable/disable', async t => {
   let page
   try {
@@ -149,6 +194,7 @@ test('collectClickables：CRUD 模式下识别 edit/delete/enable/disable', asyn
   } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
   const cfg = {
     clickOnly: false, clickDangerous: false, allowIconButtons: false, localeSwitchWords: [], crudMarker: 'SMOKE_',
+    maxRowClicks: 5, // 行内去重上限调大，保证 SMOKE_ 行与真实数据行的按钮都保留，用于校验 inSmokeRow 标注
     dangerousWords: ['新增', '编辑', '删除', '启用', '禁用'], dangerousWordsEn: [],
     editWords: ['编辑'], editWordsEn: ['Edit'],
     deleteWords: ['删除'], deleteWordsEn: ['Delete'],
@@ -177,8 +223,7 @@ test('collectClickables：CRUD 模式下识别 edit/delete/enable/disable', asyn
   browser = null
 })
 
-test('collectClickables：--click-only 跳过 CRUD 危险按钮', async t => {
-  let page
+test('collectClickables：--click-only 跳过 CRUD 危险按钮', async t => {  let page
   try {
     if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
     page = await browser.newPage()
