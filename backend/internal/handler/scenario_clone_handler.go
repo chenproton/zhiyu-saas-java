@@ -8,12 +8,15 @@ import (
 	"runtime/debug"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type ScenarioCloneHandler struct {
-	Service *service.ScenarioService
+	Service     *service.ScenarioService
+	RedisClient *redis.Client
 }
 
 type CloneScenarioRequest struct {
@@ -70,6 +73,8 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "获取cloned scenario失败")
 		return
 	}
+	// 列表接口挂租户级 2min 缓存（routes.go cachedPublicScenarios），克隆写入后须失效，否则前端刷新仍读到旧列表
+	cache.InvalidatePrefix(r.Context(), h.RedisClient, "zhiyu:"+tenantID+":public:scenarios")
 	slog.Info("[CloneScenario] success", "new_scenario_id", newID, "code", newCode)
 	respondJSON(w, http.StatusCreated, scenario)
 }

@@ -8,12 +8,15 @@ import (
 	"runtime/debug"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type PositionCloneHandler struct {
-	Service *service.PositionCloneService
+	Service     *service.PositionCloneService
+	RedisClient *redis.Client
 }
 
 type ClonePositionRequest struct {
@@ -69,6 +72,8 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "获取cloned position失败")
 		return
 	}
+	// 列表接口挂租户级 2min 缓存（routes.go cachedPublicPositions），克隆写入后须失效，否则前端刷新仍读到旧列表
+	cache.InvalidatePrefix(r.Context(), h.RedisClient, "zhiyu:"+tenantID+":public:positions")
 	slog.Info("[ClonePosition] success", "new_position_id", newID)
 	respondJSON(w, http.StatusCreated, pos)
 }
