@@ -44,7 +44,7 @@ const navItems = [
 
 export function TopNav() {
   const pathname = usePathname()
-  const { user, tenant, roles, activeRole, setActiveRole, logout } = useAuth()
+  const { user, tenant, roles, activeRole, setActiveRole, logout, hasMenuPermission } = useAuth()
   const { level, maxLevel, increase, decrease, reset } = useFontScale()
   const { locale, setLocale } = useI18n()
   const t = useT()
@@ -152,7 +152,12 @@ export function TopNav() {
 
           {isLoggedIn && (
             <nav className="flex items-center gap-1">
-              {navItems.map((item) => {
+              {navItems
+                .filter(
+                  (item) =>
+                    item.href !== '/portal/workspace' || hasMenuPermission('/portal/workspace'),
+                )
+                .map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
                 const label = t(item.label)
@@ -232,19 +237,23 @@ export function TopNav() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem asChild>
-                  <Link href="/portal/workspace">
-                    <User className="w-4 h-4" />
-                    {t('个人中心')}
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/portal/workspace?tab=profile">
-                    <Settings className="w-4 h-4" />
-                    {t('账号设置')}
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {hasMenuPermission('/portal/workspace') && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/portal/workspace">
+                        <User className="w-4 h-4" />
+                        {t('个人中心')}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/portal/workspace?tab=profile">
+                        <Settings className="w-4 h-4" />
+                        {t('账号设置')}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => setMobileAccessOpen(true)}>
                   <QrCode className="w-4 h-4" />
                   {t('移动端访问')}

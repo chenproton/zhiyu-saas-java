@@ -49,6 +49,28 @@ describe('checkMenuPermission 无订阅信息时', () => {
   })
 })
 
+describe('checkMenuPermission 我的服务台', () => {
+  it('menus 缺失（如学校管理员）放行', () => {
+    expect(checkMenuPermission(undefined, '/portal/workspace')).toBe(true)
+    expect(checkMenuPermission(null, '/portal/workspace')).toBe(true)
+  })
+
+  it('已勾选 /portal/workspace 放行', () => {
+    expect(checkMenuPermission({ '/portal/workspace': true }, '/portal/workspace')).toBe(true)
+  })
+
+  it('未勾选时隐藏入口', () => {
+    expect(checkMenuPermission({}, '/portal/workspace')).toBe(false)
+    expect(checkMenuPermission({ '/portal/apps/system': true }, '/portal/workspace')).toBe(false)
+  })
+
+  it('子路径继承 workspace 授权', () => {
+    expect(checkMenuPermission({ '/portal/workspace': true }, '/portal/workspace?tab=profile')).toBe(
+      true,
+    )
+  })
+})
+
 describe('checkMenuPermission 订阅模块开关', () => {
   it('模块未订阅时拒绝', () => {
     const menus = { '/job': true }

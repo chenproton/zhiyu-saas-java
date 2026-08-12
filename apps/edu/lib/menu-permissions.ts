@@ -68,7 +68,15 @@ export function buildMenuTree(): MenuTreeItem[] {
     href: '/portal/apps/system',
   })
 
+  // 我的服务台：入口开关统一指向 /portal/workspace，具体视图由角色自动匹配
+  const workspace: MenuTreeItem = {
+    id: 'workspace',
+    label: '门户服务台',
+    children: [{ id: 'workspace-main', label: '我的服务台', href: '/portal/workspace' }],
+  }
+
   return [
+    workspace,
     system,
     career,
     course,

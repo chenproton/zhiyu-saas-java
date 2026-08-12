@@ -539,6 +539,8 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		"/portal/apps/alliance/brands/talent": true, "/portal/apps/alliance/brands/employer": true,
 		"/portal/apps/alliance/brands/job": true, "/portal/apps/alliance/brands/major": true,
 		"/portal/apps/alliance/brands/teacher": true, "/portal/apps/alliance/brands/culture": true,
+		// 我的服务台
+		"/portal/workspace": true,
 	}
 	adminActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete", "review", "reject"}
 	modPerms := func(actions []string) domain.JSONMap {
@@ -567,6 +569,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 			"menus": domain.JSONMap{
 				"/job/landing": true, "/lesson/landing": true,
 				"/scene/landing": true, "/evaluation/landing": true, "/library/landing": true,
+				"/portal/workspace": true,
 			},
 		}},
 		{domain.RoleEnterpriseMentor, "企业导师", domain.JSONMap{
