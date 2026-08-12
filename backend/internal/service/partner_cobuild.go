@@ -760,21 +760,142 @@ func (s *PartnerCoBuildService) SaveTaskEvaluationMethods(ctx context.Context, p
 
 // ===== 学校数据只读列表（编辑器数据源） =====
 
+// ===== 学校数据只读列表（编辑器数据源） =====
+
+// requireSchoolAccess 校验企业与学校存在 active link，返回学校租户 id。
+func (s *PartnerCoBuildService) requireSchoolAccess(ctx context.Context, partnerTenantID, schoolTenantID string) (string, error) {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return "", err
+	}
+	if err := s.requireActiveLink(ctx, ent.ID, schoolTenantID); err != nil {
+		return "", err
+	}
+	return schoolTenantID, nil
+}
+
 // ListSchoolAbilities 合作学校能力点只读列表（岗位/任务编辑器数据源）。
 func (s *PartnerCoBuildService) ListSchoolAbilities(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.AbilityPoint, int, error) {
-	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
 	if err != nil {
 		return nil, 0, err
 	}
-	if err := s.requireActiveLink(ctx, ent.ID, schoolTenantID); err != nil {
-		return nil, 0, err
-	}
-	p.TenantID = schoolTenantID
+	p.TenantID = tenantID
 	return s.st.Abilities().List(ctx, p, s.st.Abilities().ListConfig())
 }
 
 // ListSchoolEvaluationMethods 合作学校评分模板（测评方法）只读列表（测评规则编辑器数据源）。
 func (s *PartnerCoBuildService) ListSchoolEvaluationMethods(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.RubricTemplate, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.TaskEval().ListRubricTemplates(ctx, p, s.st.TaskEval().ListConfig())
+}
+
+// ListSchoolKnowledgePoints 合作学校知识点库只读列表（任务链知识点选择器数据源）。
+func (s *PartnerCoBuildService) ListSchoolKnowledgePoints(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.KnowledgePoint, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.KnowledgePoints().List(ctx, p, s.st.KnowledgePoints().ListConfig())
+}
+
+// ListSchoolCourses 合作学校课程只读列表（任务链微课程选择器数据源，type=granular）。
+func (s *PartnerCoBuildService) ListSchoolCourses(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.Course, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.Courses().List(ctx, p, s.st.Courses().ListConfig())
+}
+
+// ListSchoolAbilityBindings 合作学校岗位能力绑定只读列表（任务链能力面板数据源）。
+func (s *PartnerCoBuildService) ListSchoolAbilityBindings(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.PositionAbilityBinding, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.PositionAbilities().List(ctx, p, s.st.PositionAbilities().ListConfig())
+}
+
+// ListSchoolQuestionBanks 合作学校题库只读列表（测评题库选择面板数据源）。
+func (s *PartnerCoBuildService) ListSchoolQuestionBanks(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.QuestionBank, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.QuestionBanks().List(ctx, p, s.st.QuestionBanks().ListConfig())
+}
+
+// ListSchoolQuestions 合作学校题目只读列表（按 bankId 过滤，测评题库选择面板数据源）。
+func (s *PartnerCoBuildService) ListSchoolQuestions(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.Question, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.Questions().List(ctx, p, s.st.Questions().ListConfig())
+}
+
+// ListSchoolRandomDrawQuestions 合作学校现场问答题只读列表（测评随机抽题面板数据源）。
+func (s *PartnerCoBuildService) ListSchoolRandomDrawQuestions(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.RandomDrawQuestion, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.RandomDrawQuestions().List(ctx, p, s.st.RandomDrawQuestions().ListConfig())
+}
+
+// ListSchoolExams 合作学校试卷只读列表（测评试卷方法面板数据源）。
+func (s *PartnerCoBuildService) ListSchoolExams(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.Exam, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.Exams().List(ctx, p, s.st.Exams().ListConfig())
+}
+
+// ListSchoolMajors 合作学校专业字典只读列表（测评编辑专业选择器数据源）。
+func (s *PartnerCoBuildService) ListSchoolMajors(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.Major, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return store.ExecuteListQuery(ctx, s.st.Q(), p, s.st.Majors().ListConfig())
+}
+
+// ListSchoolScenarios 合作学校场景只读列表（任务克隆候选数据源，学校视角全部场景）。
+func (s *PartnerCoBuildService) ListSchoolScenarios(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.Scenario, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.Scenarios().List(ctx, p, s.st.Scenarios().ListConfig())
+}
+
+// ListSchoolTasks 合作学校任务只读列表（任务克隆候选数据源，学校视角全部任务）。
+func (s *PartnerCoBuildService) ListSchoolTasks(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]domain.ScenarioTask, int, error) {
+	tenantID, err := s.requireSchoolAccess(ctx, partnerTenantID, schoolTenantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	p.TenantID = tenantID
+	return s.st.ScenarioTasks().List(ctx, p, s.st.ScenarioTasks().ListConfig())
+}
+
+// ListSchoolResources 合作学校资源库只读列表（任务链资源选择器数据源）。
+func (s *PartnerCoBuildService) ListSchoolResources(ctx context.Context, partnerTenantID, schoolTenantID, search, resourceType string, limit, offset int) ([]domain.ResourceLibraryItem, int, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
 		return nil, 0, err
@@ -782,8 +903,54 @@ func (s *PartnerCoBuildService) ListSchoolEvaluationMethods(ctx context.Context,
 	if err := s.requireActiveLink(ctx, ent.ID, schoolTenantID); err != nil {
 		return nil, 0, err
 	}
-	p.TenantID = schoolTenantID
-	return s.st.TaskEval().ListRubricTemplates(ctx, p, s.st.TaskEval().ListConfig())
+	return s.st.ResourceLibrary().List(ctx, schoolTenantID, store.ResourceFilter{
+		Search:       search,
+		ResourceType: resourceType,
+		Limit:        limit,
+		Offset:       offset,
+	})
+}
+
+// ListScenarioWeights 共建场景任务权重列表（本企业共建或学校授权资源可见）。
+func (s *PartnerCoBuildService) ListScenarioWeights(ctx context.Context, partnerTenantID, scenarioID string) ([]domain.ScenarioWeightConfig, error) {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return nil, err
+	}
+	sc, err := s.accessibleScenario(ctx, ent.ID, scenarioID)
+	if err != nil {
+		return nil, err
+	}
+	items, _, err := s.st.ScenarioWeights().List(ctx, store.ListParams{
+		TenantID: scenarioSchoolTenant(sc),
+		Limit:    200,
+		Values:   map[string]string{"scenarioId": scenarioID},
+	}, s.st.ScenarioWeights().ListConfig())
+	return items, err
+}
+
+// SaveScenarioWeights 批量保存共建场景任务权重（事务内逐条 upsert，
+// 场景归属本企业共建或学校授权且状态可写时允许）。
+func (s *PartnerCoBuildService) SaveScenarioWeights(ctx context.Context, partnerTenantID, scenarioID string, weights []store.ScenarioWeightUpsertParams) error {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return err
+	}
+	sc, err := s.checkScenarioWritable(ctx, ent.ID, scenarioID)
+	if err != nil {
+		return err
+	}
+	schoolTenantID := scenarioSchoolTenant(sc)
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		for i := range weights {
+			w := weights[i]
+			w.ScenarioID = scenarioID
+			if _, err := txStore.ScenarioWeights().Upsert(ctx, schoolTenantID, &w); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // ListSchoolCoBuilders 合作学校共建人候选（岗位编辑页共建人选择器数据源）：

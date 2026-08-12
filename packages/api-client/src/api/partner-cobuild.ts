@@ -18,6 +18,11 @@ import type {
   CoBuildTask,
   CoBuildUserOption,
 } from '../types/partner'
+import type { KnowledgePoint, Course } from '../types/lesson'
+import type { QuestionBank, Question, Exam, RandomDrawQuestion } from '../types/evaluation'
+import type { ScenarioWeightConfig } from '../types/scene'
+import type { Major } from '../types/backend'
+import type { ResourceLibraryItem } from '../types/library'
 
 type ListParams = Record<string, string | number | boolean | undefined>
 
@@ -120,17 +125,76 @@ export const partnerCobuildTaskApi = {
     ),
 }
 
-/** 合作学校数据只读视图（测评方法复用学校数据，能力点只读） */
+/** 共建场景任务权重（读写，形状同 portal /scene/weights） */
+export const partnerCobuildWeightApi = {
+  list: (scenarioId: string) =>
+    partnerRequest<ListResponse<ScenarioWeightConfig>>(
+      `/partner/co-build/scenes/${scenarioId}/weights`,
+    ),
+  save: (scenarioId: string, weights: { taskId: string; weight: number }[]) =>
+    partnerRequest<{ ok: boolean }>(`/partner/co-build/scenes/${scenarioId}/weights`, {
+      method: 'PUT',
+      body: JSON.stringify({ weights }),
+    }),
+}
+
+/** 合作学校数据只读视图（任务链编辑/测评规则/克隆等编辑器数据源，响应形状同 portal 对应接口） */
 export const partnerCobuildSchoolApi = {
-  abilities: (tenantId: string) =>
-    partnerRequest<ListResponse<AbilityPoint>>(`/partner/co-build/schools/${tenantId}/abilities`),
+  abilities: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<AbilityPoint>>(
+      `/partner/co-build/schools/${tenantId}/abilities${buildQuery(params || {})}`,
+    ),
   evaluationMethods: (tenantId: string) =>
     partnerRequest<{ items: RubricTemplate[]; total: number }>(
       `/partner/co-build/schools/${tenantId}/evaluation-methods`,
     ),
-  // 共建人候选（岗位编辑页选择器数据源：学校教师 + 企业专家）
+  // 共建人候选（岗位/场景编辑页选择器数据源：学校教师 + 企业专家）
   coBuilders: (tenantId: string) =>
     partnerRequest<ListResponse<CoBuildUserOption>>(
       `/partner/co-build/schools/${tenantId}/co-builders`,
+    ),
+  knowledgePoints: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<KnowledgePoint>>(
+      `/partner/co-build/schools/${tenantId}/knowledge-points${buildQuery(params || {})}`,
+    ),
+  courses: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<Course>>(
+      `/partner/co-build/schools/${tenantId}/courses${buildQuery(params || {})}`,
+    ),
+  abilityBindings: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<PositionAbilityBinding>>(
+      `/partner/co-build/schools/${tenantId}/ability-bindings${buildQuery(params || {})}`,
+    ),
+  questionBanks: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<QuestionBank>>(
+      `/partner/co-build/schools/${tenantId}/question-banks${buildQuery(params || {})}`,
+    ),
+  questions: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<Question>>(
+      `/partner/co-build/schools/${tenantId}/questions${buildQuery(params || {})}`,
+    ),
+  randomDrawQuestions: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<RandomDrawQuestion>>(
+      `/partner/co-build/schools/${tenantId}/random-draw-questions${buildQuery(params || {})}`,
+    ),
+  exams: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<Exam>>(
+      `/partner/co-build/schools/${tenantId}/exams${buildQuery(params || {})}`,
+    ),
+  majors: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<Major>>(
+      `/partner/co-build/schools/${tenantId}/majors${buildQuery(params || {})}`,
+    ),
+  scenarios: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<CoBuildScenario>>(
+      `/partner/co-build/schools/${tenantId}/scenarios${buildQuery(params || {})}`,
+    ),
+  tasks: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<CoBuildTask>>(
+      `/partner/co-build/schools/${tenantId}/tasks${buildQuery(params || {})}`,
+    ),
+  resources: (tenantId: string, params?: ListParams) =>
+    partnerRequest<ListResponse<ResourceLibraryItem>>(
+      `/partner/co-build/schools/${tenantId}/resources${buildQuery(params || {})}`,
     ),
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -61,6 +62,8 @@ func setupCoBuildRouter(t *testing.T, env *testhelper.TestEnv, namePrefix string
 	r.Post("/partner/co-build/scenes/{id}/submit", h.SubmitScenario)
 	r.Post("/partner/co-build/scenes/{id}/withdraw", h.WithdrawScenario)
 	r.Get("/partner/co-build/scenes/{id}/tasks", h.ListTasks)
+	r.Get("/partner/co-build/scenes/{id}/weights", h.ListScenarioWeights)
+	r.Put("/partner/co-build/scenes/{id}/weights", h.SaveScenarioWeights)
 	r.Post("/partner/co-build/scenes/{id}/tasks", h.CreateTask)
 	r.Post("/partner/co-build/scenes/{id}/tasks/reorder", h.ReorderTasks)
 	r.Put("/partner/co-build/tasks/{taskId}", h.UpdateTask)
@@ -69,6 +72,18 @@ func setupCoBuildRouter(t *testing.T, env *testhelper.TestEnv, namePrefix string
 	r.Put("/partner/co-build/tasks/{taskId}/evaluation-methods", h.PutTaskEvaluationMethods)
 	r.Get("/partner/co-build/schools/{tenantId}/abilities", h.ListSchoolAbilities)
 	r.Get("/partner/co-build/schools/{tenantId}/evaluation-methods", h.ListSchoolEvaluationMethods)
+	r.Get("/partner/co-build/schools/{tenantId}/co-builders", h.ListSchoolCoBuilders)
+	r.Get("/partner/co-build/schools/{tenantId}/knowledge-points", h.ListSchoolKnowledgePoints)
+	r.Get("/partner/co-build/schools/{tenantId}/courses", h.ListSchoolCourses)
+	r.Get("/partner/co-build/schools/{tenantId}/ability-bindings", h.ListSchoolAbilityBindings)
+	r.Get("/partner/co-build/schools/{tenantId}/question-banks", h.ListSchoolQuestionBanks)
+	r.Get("/partner/co-build/schools/{tenantId}/questions", h.ListSchoolQuestions)
+	r.Get("/partner/co-build/schools/{tenantId}/random-draw-questions", h.ListSchoolRandomDrawQuestions)
+	r.Get("/partner/co-build/schools/{tenantId}/exams", h.ListSchoolExams)
+	r.Get("/partner/co-build/schools/{tenantId}/majors", h.ListSchoolMajors)
+	r.Get("/partner/co-build/schools/{tenantId}/scenarios", h.ListSchoolScenarios)
+	r.Get("/partner/co-build/schools/{tenantId}/tasks", h.ListSchoolTasks)
+	r.Get("/partner/co-build/schools/{tenantId}/resources", h.ListSchoolResources)
 
 	// enterprise_member 亦可操作共建（路由层 partnerUser 组）
 	claims := &middleware.Claims{
@@ -862,6 +877,80 @@ func TestPartnerCoBuild_AutoGrantLifecycle(t *testing.T) {
 	}
 }
 
+// TestPartnerCoBuild_ScenarioWeights 共建场景任务权重：保存后读取一致，未授权企业 403。
+func TestPartnerCoBuild_ScenarioWeights(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	r, claims, reg, enterpriseID := setupCoBuildRouter(t, env, "权重测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "权重测试学校-"+suffix)
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "active")
+	t.Cleanup(func() { cleanupCoBuildRows(env, schoolID) })
+
+	// 新建场景
+	ws := doWithClaims(r, http.MethodPost, "/partner/co-build/scenes", map[string]interface{}{
+		"schoolTenantId": schoolID,
+		"name":           "权重场景-" + suffix,
+	}, claims)
+	if ws.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", ws.Code, ws.Body.String())
+	}
+	var sc domain.Scenario
+	if err := json.Unmarshal(ws.Body.Bytes(), &sc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	// 新建任务
+	wt := doWithClaims(r, http.MethodPost, "/partner/co-build/scenes/"+sc.ID+"/tasks", map[string]interface{}{
+		"name": "权重任务-" + suffix, "code": "TK-" + suffix, "taskType": "assessment", "difficulty": 2,
+	}, claims)
+	if wt.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", wt.Code, wt.Body.String())
+	}
+	var task domain.ScenarioTask
+	if err := json.Unmarshal(wt.Body.Bytes(), &task); err != nil {
+		t.Fatalf("unmarshal task: %v", err)
+	}
+
+	// 保存权重
+	wp := doWithClaims(r, http.MethodPut, "/partner/co-build/scenes/"+sc.ID+"/weights", map[string]interface{}{
+		"weights": []map[string]interface{}{{"taskId": task.ID, "weight": 60}},
+	}, claims)
+	if wp.Code != http.StatusOK {
+		t.Fatalf("保存权重失败: %d %s", wp.Code, wp.Body.String())
+	}
+
+	// 读取一致
+	wl := doWithClaims(r, http.MethodGet, "/partner/co-build/scenes/"+sc.ID+"/weights", nil, claims)
+	if wl.Code != http.StatusOK {
+		t.Fatalf("读取权重失败: %d %s", wl.Code, wl.Body.String())
+	}
+	items, total, err := testhelper.UnmarshalList[domain.ScenarioWeightConfig](wl)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if total != 1 || len(items) != 1 || items[0].TaskID != task.ID || items[0].Weight != 60 {
+		t.Fatalf("权重不符: total=%d items=%+v", total, items)
+	}
+
+	// 未授权企业 403
+	_, claimsB, regB, _ := setupCoBuildRouter(t, env, "权重测试企业乙")
+	defer cleanupPartnerTenant(env, *regB.User.TenantID)
+	wf := doWithClaims(r, http.MethodPut, "/partner/co-build/scenes/"+sc.ID+"/weights", map[string]interface{}{
+		"weights": []map[string]interface{}{{"taskId": task.ID, "weight": 30}},
+	}, claimsB)
+	if wf.Code != http.StatusNotFound {
+		t.Fatalf("他企业保存权重应 404, got %d: %s", wf.Code, wf.Body.String())
+	}
+
+	// 清理
+	env.DB.Exec(ctx, `DELETE FROM scenario_weight_configs WHERE scenario_id = $1`, sc.ID)
+}
+
 // TestPartnerCoBuild_ListSchoolCoBuilders 共建人候选接口：返回学校教师（排除学生）
 // 与企业专家（绑定账号），无 active link 的学校 403。
 func TestPartnerCoBuild_ListSchoolCoBuilders(t *testing.T) {
@@ -998,5 +1087,160 @@ func TestPartnerCoBuild_ListSchoolCoBuilders(t *testing.T) {
 	wf := doWithClaims(r, http.MethodGet, "/partner/co-build/schools/"+otherSchoolID+"/co-builders", nil, claims)
 	if wf.Code != http.StatusForbidden {
 		t.Fatalf("无合作学校应 403, got %d: %s", wf.Code, wf.Body.String())
+	}
+}
+
+// TestPartnerCoBuild_SchoolDataEndpoints 合作学校只读数据端点：知识点库/微课程/能力绑定/
+// 题库/题目/随机抽题/试卷/专业/场景/任务/资源库均返回该校数据，未合作学校 403。
+func TestPartnerCoBuild_SchoolDataEndpoints(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	r, claims, reg, enterpriseID := setupCoBuildRouter(t, env, "学校数据端点企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "学校数据端点学校-"+suffix)
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "active")
+	t.Cleanup(func() { cleanupCoBuildRows(env, schoolID) })
+
+	// ===== 预置学校数据 =====
+	kpID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4)`,
+		kpID, schoolID, "知识点甲-"+suffix, "K1"); err != nil {
+		t.Fatalf("预置知识点: %v", err)
+	}
+	t.Cleanup(func() { env.DB.Exec(ctx, `DELETE FROM knowledge_points WHERE id = $1`, kpID) })
+
+	courseID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id) VALUES ($1,$2,$3,$4,'granular','微课','published',$5)`,
+		courseID, schoolID, "C1-"+suffix, "微课程甲-"+suffix, reg.User.ID); err != nil {
+		t.Fatalf("预置微课程: %v", err)
+	}
+	t.Cleanup(func() { env.DB.Exec(ctx, `DELETE FROM courses WHERE id = $1`, courseID) })
+
+	abilityID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4)`,
+		abilityID, schoolID, "能力点甲-"+suffix, "AB1"); err != nil {
+		t.Fatalf("预置能力点: %v", err)
+	}
+	posID := uuid.NewString()
+	bindingID := uuid.NewString()
+	responsibilityID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, source_type, version, created_by) VALUES ($1,$2,$3,$4,'enterprise','draft','enterprise','V1.0',$5)`,
+		posID, schoolID, "GW-"+suffix, "能力绑定岗位-"+suffix, reg.User.ID); err != nil {
+		t.Fatalf("预置岗位: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order) VALUES ($1,$2,$3,$4,0)`,
+		responsibilityID, schoolID, posID, "职责甲-"+suffix); err != nil {
+		t.Fatalf("预置职责: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `INSERT INTO position_ability_bindings (id, career_position_id, responsibility_id, ability_point_id, required_level, tenant_id) VALUES ($1,$2,$3,$4,'L1',$5)`,
+		bindingID, posID, responsibilityID, abilityID, schoolID); err != nil {
+		t.Fatalf("预置能力绑定: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM position_ability_bindings WHERE id = $1`, bindingID)
+		env.DB.Exec(ctx, `DELETE FROM position_responsibilities WHERE id = $1`, responsibilityID)
+		env.DB.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, posID)
+		env.DB.Exec(ctx, `DELETE FROM ability_points WHERE id = $1`, abilityID)
+	})
+
+	bankID := uuid.NewString()
+	questionID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO question_banks (id, tenant_id, name, status, question_count, creator_id, version, owner_type, is_draft_pool, code) VALUES ($1,$2,$3,'published',1,$4,'V1.0','public',false,$5)`,
+		bankID, schoolID, "题库甲-"+suffix, reg.User.ID, "BK1-"+suffix); err != nil {
+		t.Fatalf("预置题库: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `INSERT INTO questions (id, bank_id, tenant_id, type, content, answer, score, difficulty, status, code) VALUES ($1,$2,$3,'choice',$4,'A',5,3,'published',$5)`,
+		questionID, bankID, schoolID, "题目甲-"+suffix, "Q1-"+suffix); err != nil {
+		t.Fatalf("预置题目: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM questions WHERE id = $1`, questionID)
+		env.DB.Exec(ctx, `DELETE FROM question_banks WHERE id = $1`, bankID)
+	})
+
+	rdqID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO random_draw_questions (id, tenant_id, name) VALUES ($1,$2,$3)`,
+		rdqID, schoolID, "随机题甲-"+suffix); err != nil {
+		t.Fatalf("预置随机抽题: %v", err)
+	}
+	t.Cleanup(func() { env.DB.Exec(ctx, `DELETE FROM random_draw_questions WHERE id = $1`, rdqID) })
+
+	examID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO exams (id, tenant_id, name, status, duration, creator_id, code, is_temp) VALUES ($1,$2,$3,'published',60,$4,$5,false)`,
+		examID, schoolID, "试卷甲-"+suffix, reg.User.ID, "EX1-"+suffix); err != nil {
+		t.Fatalf("预置试卷: %v", err)
+	}
+	t.Cleanup(func() { env.DB.Exec(ctx, `DELETE FROM exams WHERE id = $1`, examID) })
+
+	majorID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO majors (id, tenant_id, code, name) VALUES ($1,$2,$3,$4)`,
+		majorID, schoolID, "MJ1-"+suffix, "专业甲-"+suffix); err != nil {
+		t.Fatalf("预置专业: %v", err)
+	}
+	t.Cleanup(func() { env.DB.Exec(ctx, `DELETE FROM majors WHERE id = $1`, majorID) })
+
+	sceneID := uuid.NewString()
+	taskID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO scenarios (id, tenant_id, code, name, status, version, difficulty, creator_id) VALUES ($1,$2,$3,$4,'published','V1.0',3,$5)`,
+		sceneID, schoolID, "CJ-"+suffix, "克隆候选场景-"+suffix, reg.User.ID); err != nil {
+		t.Fatalf("预置场景: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `INSERT INTO scenario_tasks (id, scenario_id, tenant_id, name, code, sort_order, task_type, difficulty) VALUES ($1,$2,$3,$4,$5,0,'assessment',1)`,
+		taskID, sceneID, schoolID, "克隆候选任务-"+suffix, "TK-"+suffix); err != nil {
+		t.Fatalf("预置任务: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM scenario_tasks WHERE id = $1`, taskID)
+		env.DB.Exec(ctx, `DELETE FROM scenarios WHERE id = $1`, sceneID)
+	})
+
+	resourceID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document',$4)`,
+		resourceID, schoolID, "资源甲-"+suffix, reg.User.ID); err != nil {
+		t.Fatalf("预置资源: %v", err)
+	}
+	t.Cleanup(func() { env.DB.Exec(ctx, `DELETE FROM resource_library WHERE id = $1`, resourceID) })
+
+	// ===== 逐端点断言 =====
+	type endpointCheck struct {
+		path   string
+		expect string
+		query  string
+	}
+	checks := []endpointCheck{
+		{"/partner/co-build/schools/" + schoolID + "/knowledge-points", kpID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/courses", courseID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/ability-bindings?careerPositionId=" + posID, bindingID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/question-banks", bankID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/questions?bankId=" + bankID, questionID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/random-draw-questions", rdqID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/exams", examID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/majors", majorID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/scenarios", sceneID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/tasks", taskID, ""},
+		{"/partner/co-build/schools/" + schoolID + "/resources", resourceID, ""},
+	}
+	for _, c := range checks {
+		w := doWithClaims(r, http.MethodGet, c.path, nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("GET %s 应 200, got %d: %s", c.path, w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), c.expect) {
+			t.Fatalf("GET %s 应包含预置数据 %s, body=%s", c.path, c.expect, w.Body.String())
+		}
+	}
+
+	// 未合作学校 403（代表性抽查）
+	otherSchoolID := createSchoolTenant(t, env, "学校数据无关学校-"+suffix)
+	t.Cleanup(func() { cleanupCoBuildRows(env, otherSchoolID) })
+	for _, p := range []string{"knowledge-points", "question-banks", "resources"} {
+		w := doWithClaims(r, http.MethodGet, "/partner/co-build/schools/"+otherSchoolID+"/"+p, nil, claims)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("无合作学校 GET %s 应 403, got %d: %s", p, w.Code, w.Body.String())
+		}
 	}
 }

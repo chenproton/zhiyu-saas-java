@@ -17,9 +17,18 @@ import {
   Plus,
   Star,
   Trash2,
+  Copy,
+  Scale,
+  CheckCircle2,
+  Search,
+  PieChart as PieChartIcon,
+  Check,
+  Award,
+  Lock,
+  Unlock,
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,11 +50,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   partnerCobuildScenarioApi,
   partnerCobuildPositionApi,
   partnerCobuildTaskApi,
+  partnerCobuildWeightApi,
   partnerCobuildSchoolApi,
 } from '@/lib/api'
 import type { CoBuildScenario } from '@/lib/api'
@@ -64,6 +76,15 @@ import type { Task } from '@/lib/types/scene-mock'
 // 直接复用 portal 任务链页的纯逻辑与卡片组件（不复制）
 import { TaskInfoCard } from '../../../../../../scene/scenarios/[id]/edit/tasks/_components/task-info-card'
 import { TaskDescriptionCard } from '../../../../../../scene/scenarios/[id]/edit/tasks/_components/task-description-card'
+import { TaskWeightCard } from '../../../../../../scene/scenarios/[id]/edit/tasks/_components/task-weight-card'
+import { KnowledgeSelector } from '@/components/shared/knowledge-selector'
+import type { KnowledgePointItem } from '@/lib/types/lesson'
+import { ResourceSelector, type ResourceItem } from '@/components/shared/resource-selector'
+import type { Course } from '@/lib/types/lesson'
+import type {
+  TaskKnowledgePointItem,
+  TaskResourceItem,
+} from '../../../../../../scene/scenarios/[id]/edit/tasks/_components/hooks/use-task-datasets'
 import {
   cardConfigs,
   defaultGradeMapping,
@@ -79,34 +100,158 @@ import {
 } from '../../../../../../scene/scenarios/[id]/edit/tasks/_components/tasks-logic'
 
 
-// 企业端只开放四种卡片（knowledge/ability/resources/weight 为 portal 专属，已裁剪）
-const PARTNER_CARD_TYPES: CardType[] = ['info', 'description', 'evaluation', 'evaluationRules']
+// 全量卡片（与 portal 场景任务链编辑页一致：知识/能力/资源/权重卡片齐备）
+const PARTNER_CARD_TYPES: CardType[] = [
+  'info',
+  'description',
+  'knowledge',
+  'ability',
+  'resources',
+  'evaluation',
+  'evaluationRules',
+  'weight',
+]
 const partnerCardConfigs = cardConfigs.filter((c) => PARTNER_CARD_TYPES.includes(c.type))
 
 // get 端点当前只返回场景主表字段（tenantId 为学校租户）
 type CoBuildScenarioDetail = CoBuildScenario & { tenantId?: string }
 
-// evaluation 卡片所需数据集：学校能力点（只读）+ 学校量规模板（注入 EvaluationRulesEditor）
-function useCoBuildDatasets(schoolTenantId: string) {
-  const [abilityPoints, setAbilityPoints] = useState<
-    { id: string; name: string; description?: string }[]
-  >([])
+// 任务链编辑器数据集：全部走合作学校只读接口（partner token 调不通 portal 数据接口），
+// 与 portal useTaskDatasets 形状对齐（knowledge/ability/resources/evaluation/users/clone）。
+function useCoBuildDatasets(schoolTenantId: string, positionId?: string) {
+  const t = useT()
+  const [knowledgePoints, setKnowledgePoints] = useState<TaskKnowledgePointItem[]>([])
+  const [learningResources, setLearningResources] = useState<TaskResourceItem[]>([])
+  const [abilityPoints, setAbilityPoints] = useState<unknown[]>([])
+  const [granularLessons, setGranularLessons] = useState<Course[]>([])
+  const [users, setUsers] = useState<unknown[]>([])
+  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
+  const [positionAbilityBindings, setPositionAbilityBindings] = useState<unknown[]>([])
+  const [scenarios, setScenarios] = useState<unknown[]>([])
+  const [cloneDataVersion, setCloneDataVersion] = useState(0)
+  const [customKnowledgePointIds, setCustomKnowledgePointIds] = useState<Set<string>>(new Set())
+  const [customResourceIds, setCustomResourceIds] = useState<Set<string>>(new Set())
+  const persistedCustomKnowledgePointIds = useRef<Set<string>>(new Set())
+  const customAbilityPointIds = useRef<Set<string>>(new Set())
+  const loadedDatasetsRef = useRef<Set<string>>(new Set())
 
-  useEffect(() => {
-    if (!schoolTenantId) return
-    let cancelled = false
-    partnerCobuildSchoolApi
-      .abilities(schoolTenantId)
-      .then((res) => {
-        if (!cancelled) setAbilityPoints(res.items || [])
+  const loadDatasets = useCallback(
+    async (keys: string[]) => {
+      if (!schoolTenantId) return
+      const pending = keys.filter((k) => !loadedDatasetsRef.current.has(k))
+      if (pending.length === 0) return
+      pending.forEach((k) => loadedDatasetsRef.current.add(k))
+      const jobs = pending.map(async (key) => {
+        try {
+          if (key === 'knowledge') {
+            const [kpRes, glRes] = await Promise.all([
+              partnerCobuildSchoolApi.knowledgePoints(schoolTenantId, { limit: 1000 }),
+              partnerCobuildSchoolApi.courses(schoolTenantId, { type: 'granular', limit: 1000 }),
+            ])
+            const nextKp: TaskKnowledgePointItem[] = []
+            ;(kpRes.items || []).forEach((kp: any) => {
+              nextKp.push({
+                ...kp,
+                granularLessons: kp.granularLessonIds || kp.granularLessons || [],
+              })
+            })
+            setKnowledgePoints(nextKp)
+            setGranularLessons((glRes.items || []) as Course[])
+          } else if (key === 'ability') {
+            const apRes = await partnerCobuildSchoolApi.abilities(schoolTenantId, { limit: 1000 })
+            setAbilityPoints(apRes.items || [])
+            if (positionId) {
+              try {
+                const bindingsRes = await partnerCobuildSchoolApi.abilityBindings(schoolTenantId, {
+                  careerPositionId: positionId,
+                  limit: 1000,
+                })
+                setPositionAbilityBindings(bindingsRes.items || [])
+              } catch {
+                setPositionAbilityBindings([])
+              }
+            }
+          } else if (key === 'resources') {
+            const resRes = await partnerCobuildSchoolApi.resources(schoolTenantId, { limit: 1000 })
+            setLearningResources(
+              (resRes.items || []).map((res: any) => ({
+                ...res,
+                type: res.resourceType || res.type,
+                size: res.fileSize !== undefined ? String(res.fileSize) : res.size,
+              })),
+            )
+          } else if (key === 'evaluation') {
+            const res = await partnerCobuildSchoolApi.evaluationMethods(schoolTenantId)
+            const mapTemplate = (rt: any): RubricScheme => ({
+              id: rt.id,
+              name: rt.name,
+              types: rt.types || [],
+              desc: rt.description || '',
+              points: rt.mode === 'rubric' ? rt.data?.points || [] : [],
+              mode: (rt.mode || 'rubric') as RubricScheme['mode'],
+              scoreRuleItems: rt.mode === 'score_rule' ? rt.data?.scoreRuleItems : undefined,
+              isDeleted: rt.isDeleted || false,
+            })
+            setRubricLibrary((res.items || []).map(mapTemplate))
+          } else if (key === 'users') {
+            const res = await partnerCobuildSchoolApi.coBuilders(schoolTenantId)
+            setUsers(res.items || [])
+          } else if (key === 'clone') {
+            const [allScenariosRes, allTasksRes] = await Promise.all([
+              partnerCobuildSchoolApi.scenarios(schoolTenantId, { limit: 1000 }),
+              partnerCobuildSchoolApi.tasks(schoolTenantId, { limit: 1000 }),
+            ])
+            const scenarioNameMap = new Map<string, string>()
+            const scenarioMetaMap = new Map<
+              string,
+              { creatorId: string; coBuilderIds: string[]; status: string }
+            >()
+            for (const s of allScenariosRes.items) {
+              scenarioNameMap.set(s.id, s.name)
+              scenarioMetaMap.set(s.id, {
+                creatorId: s.creatorId,
+                coBuilderIds: s.coBuilderIds || [],
+                status: s.status,
+              })
+            }
+            const tasksByScenarioId = new Map<string, unknown[]>()
+            for (const item of allTasksRes.items) {
+              const sName = scenarioNameMap.get(item.scenarioId) || t('未知场景')
+              const sMeta = scenarioMetaMap.get(item.scenarioId) || {
+                creatorId: '',
+                coBuilderIds: [],
+                status: '',
+              }
+              const enhanced = {
+                ...item,
+                scenarioName: sName,
+                scenarioCreatorId: sMeta.creatorId,
+                scenarioCoBuilderIds: sMeta.coBuilderIds,
+                scenarioStatus: sMeta.status,
+              }
+              if (!tasksByScenarioId.has(item.scenarioId)) tasksByScenarioId.set(item.scenarioId, [])
+              tasksByScenarioId.get(item.scenarioId)!.push(enhanced)
+            }
+            const nextScenarios: unknown[] = []
+            for (const s of allScenariosRes.items) {
+              const tasksForScenario = tasksByScenarioId.get(s.id) || []
+              if (tasksForScenario.length > 0) {
+                nextScenarios.push({ ...s, tasks: tasksForScenario })
+              }
+            }
+            setScenarios(nextScenarios)
+            setCloneDataVersion((v) => v + 1)
+          }
+        } catch (err) {
+          reportError(err, `加载数据集 ${key}`)
+        }
       })
-      .catch((err) => reportError(err, '加载学校能力点'))
-    return () => {
-      cancelled = true
-    }
-  }, [schoolTenantId])
+      await Promise.all(jobs)
+    },
+    [schoolTenantId, positionId, t],
+  )
 
-  // 量规模板：partner token 调不通 portal 模板接口，改走学校只读列表；映射为编辑器内部 RubricScheme 结构
+  // 量规模板：学校只读列表 → 编辑器内部 RubricScheme 结构
   const loadRubricTemplates = useCallback(async (): Promise<RubricScheme[]> => {
     if (!schoolTenantId) return []
     const res = await partnerCobuildSchoolApi.evaluationMethods(schoolTenantId)
@@ -136,7 +281,115 @@ function useCoBuildDatasets(schoolTenantId: string) {
     }))
   }, [schoolTenantId])
 
-  return { abilityPoints, loadRubricTemplates }
+  // EvaluationRulesEditor 数据源注入：学校只读列表 + 只读模式（隐藏写操作）
+  const evalDataSource = useMemo(
+    () =>
+      schoolTenantId
+        ? {
+            readOnly: true,
+            skipPortalPreload: true,
+            loadRubricTemplates,
+            loadKnowledgePoints: async (search: string) => {
+              const res = await partnerCobuildSchoolApi.knowledgePoints(schoolTenantId, {
+                search,
+                limit: 200,
+              })
+              return (res.items || []) as any[]
+            },
+            loadAbilityPoints: async (search: string) => {
+              const res = await partnerCobuildSchoolApi.abilities(schoolTenantId, {
+                search,
+                limit: 200,
+              })
+              return (res.items || []) as any[]
+            },
+            loadRandomDrawQuestions: async () => {
+              const res = await partnerCobuildSchoolApi.randomDrawQuestions(schoolTenantId, {
+                limit: 1000,
+              })
+              return (res.items || []) as any[]
+            },
+            loadMajors: async () => {
+              const res = await partnerCobuildSchoolApi.majors(schoolTenantId, { limit: 1000 })
+              return (res.items || []).map((m: any) => ({ id: m.id, name: m.name }))
+            },
+            loadExams: async () => {
+              const res = await partnerCobuildSchoolApi.exams(schoolTenantId, { limit: 1000 })
+              return (res.items || []) as any[]
+            },
+            loadQuestionBanks: async () => {
+              const res = await partnerCobuildSchoolApi.questionBanks(schoolTenantId, {
+                limit: 1000,
+              })
+              return (res.items || []) as any[]
+            },
+            loadQuestions: async (bankId: string) => {
+              const res = await partnerCobuildSchoolApi.questions(schoolTenantId, {
+                bankId,
+                limit: 1000,
+              })
+              return (res.items || []) as any[]
+            },
+            getQuestion: async (id: string) => {
+              const res = await partnerCobuildSchoolApi.questions(schoolTenantId, {
+                search: id,
+                limit: 1,
+              })
+              return (res.items || [])[0] as any
+            },
+          }
+        : undefined,
+    [schoolTenantId, loadRubricTemplates],
+  )
+
+  return {
+    knowledgePoints,
+    setKnowledgePoints,
+    learningResources,
+    setLearningResources,
+    abilityPoints,
+    setAbilityPoints,
+    granularLessons,
+    setGranularLessons,
+    users,
+    setUsers,
+    rubricLibrary,
+    setRubricLibrary,
+    positionAbilityBindings,
+    setPositionAbilityBindings,
+    scenarios,
+    setScenarios,
+    cloneDataVersion,
+    bumpCloneDataVersion: () => setCloneDataVersion((v) => v + 1),
+    customKnowledgePointIds,
+    setCustomKnowledgePointIds,
+    markKnowledgePointCustom: (id: string, persisted = false) => {
+      setCustomKnowledgePointIds((prev) => {
+        if (prev.has(id)) return prev
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
+      if (persisted) {
+        persistedCustomKnowledgePointIds.current.add(id)
+      }
+    },
+    customResourceIds,
+    setCustomResourceIds,
+    markResourceCustom: (id: string) => {
+      setCustomResourceIds((prev) => {
+        if (prev.has(id)) return prev
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
+    },
+    persistedCustomKnowledgePointIds,
+    customAbilityPointIds,
+    loadDatasets,
+    loadRubricTemplates,
+    evalDataSource,
+  }
 }
 
 // ============ Main Page ============
@@ -162,7 +415,7 @@ export default function PartnerTasksEditPage() {
   }, [taskStates])
 
   const schoolTenantId = existingScenario?.schoolTenantId || existingScenario?.tenantId || ''
-  const datasets = useCoBuildDatasets(schoolTenantId)
+  const datasets = useCoBuildDatasets(schoolTenantId, existingScenario?.careerPositionId)
 
   // 首屏加载 effect 仅以 scenarioId 触发一次；易变依赖（locale/t）用 ref 持有，避免整页重载重建 taskStates（未保存编辑丢失）
   const toastRef = useRef(toast)
@@ -233,7 +486,7 @@ export default function PartnerTasksEditPage() {
         mockTasks.forEach((t, i) => {
           const methods = allMethods[i]?.methods || []
           const ts = taskStateFromMethods(methods)
-          // 知识/能力/资源卡片已裁剪，但已绑定的 id 保留在 state 中随保存原样回传，避免数据丢失
+          // 知识/能力/资源已绑定的 id 保留在 state 中随保存原样回传，避免数据丢失
           if (t.knowledgePoints) ts.knowledgePoints = t.knowledgePoints
           if (t.abilityPoints) ts.abilityPoints = t.abilityPoints
           if (t.resources) ts.resources = t.resources
@@ -243,6 +496,21 @@ export default function PartnerTasksEditPage() {
           ts.gradeMapping = JSON.parse(JSON.stringify(defaultGradeMapping))
           states[t.id] = ts
         })
+        // 已保存的权重优先：从后端读取覆盖均分默认值（含锁定标记）
+        try {
+          const wres = await partnerCobuildWeightApi.list(scenarioId)
+          const weightById = new Map(wres.items?.map((w) => [w.taskId, w.weight]) || [])
+          Object.keys(states).forEach((tid) => {
+            if (weightById.has(tid)) {
+              states[tid].weight = weightById.get(tid)!
+              states[tid].locked = true
+            }
+          })
+        } catch (err) {
+          // 权重拉取失败：中止加载——后续保存会把均分默认值覆盖后端真实权重，宁可明确报错
+          reportError(err, '加载任务权重')
+          throw err
+        }
         setTaskStates(states)
       } catch (err: any) {
         setLoadFailed(true)
@@ -264,6 +532,110 @@ export default function PartnerTasksEditPage() {
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<{ id: string; name: string } | null>(
     null,
   )
+
+  // 克隆/引用与权重配置（与 portal 任务链页一致）
+  const [isCloneOpen, setIsCloneOpen] = useState(false)
+  const [cloneMode, setCloneMode] = useState<'clone' | 'reference'>('clone')
+  const [cloneSearch, setCloneSearch] = useState('')
+  const [cloneTab, setCloneTab] = useState<'my' | 'collab' | 'public'>('my')
+  const [selectedClone, setSelectedClone] = useState<string[]>([])
+  const [isCloning, setIsCloning] = useState(false)
+  const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
+
+  // 打开克隆对话框时预取学校场景/任务候选
+  useEffect(() => {
+    if (isCloneOpen && schoolTenantId) {
+      datasets.loadDatasets(['clone'])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCloneOpen, schoolTenantId])
+
+  const allTasks = useMemo(() => {
+    void datasets.cloneDataVersion
+    return (datasets.scenarios as any[]).flatMap((s) =>
+      (s.tasks || []).map((t: any) => ({
+        ...t,
+        scenarioName: s.name,
+        scenarioCreatorId: t.scenarioCreatorId || s.creatorId || '',
+        scenarioCoBuilderIds: t.scenarioCoBuilderIds || s.coBuilderIds || [],
+        scenarioStatus: t.scenarioStatus || s.status || '',
+      })),
+    )
+  }, [datasets.scenarios, datasets.cloneDataVersion])
+
+  const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
+
+  const handleClone = async () => {
+    setIsCloning(true)
+    try {
+      const selected = allTasks.filter((t) => selectedClone.includes(t.id))
+      const count = tasks.length + selected.length
+
+      const newTasks = selected.map((t, i) => ({
+        ...t,
+        id: `task-${cloneMode}-${Date.now()}-${i}`,
+        order: tasks.length + i + 1,
+        isReferenced: cloneMode === 'reference',
+        sourceScenarioId: t.scenarioId,
+        sourceScenarioName: cloneMode === 'reference' ? t.scenarioName : undefined,
+      }))
+
+      const methodsResults = await Promise.all(
+        selected.map((t) =>
+          partnerCobuildTaskApi.listEvaluationMethods(t.id).catch(() => ({ methods: [] })),
+        ),
+      )
+
+      const newStates: Record<string, TaskState> = {}
+      selected.forEach((t, i) => {
+        const methods = methodsResults[i]?.methods || []
+        const ts = taskStateFromMethods(methods)
+        if (t.knowledgePointIds) ts.knowledgePoints = [...t.knowledgePointIds]
+        if (t.abilityPointIds) ts.abilityPoints = [...t.abilityPointIds]
+        if (t.resourceIds) ts.resources = [...t.resourceIds]
+        if (t.detailedDescription) ts.description = t.detailedDescription
+        if (t.descriptionPdf) ts.descriptionPdf = t.descriptionPdf
+        ts.weight =
+          count > 0 ? Math.floor(100 / count) + (tasks.length + i < 100 % count ? 1 : 0) : 0
+        newStates[newTasks[i].id] = ts
+      })
+
+      setTasks([...tasks, ...newTasks])
+      setTaskStates((prev) => ({ ...prev, ...newStates }))
+      setIsCloneOpen(false)
+      setSelectedClone([])
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('克隆失败'), description: err.message })
+    } finally {
+      setIsCloning(false)
+    }
+  }
+
+  // 持久化任务权重（仅对已落库任务；后端 ON CONFLICT (scenario_id, task_id) 幂等 upsert）
+  const persistWeights = async (taskList: Task[], states: Record<string, TaskState>) => {
+    const weights: { taskId: string; weight: number }[] = []
+    for (const t of taskList) {
+      if (t.id.startsWith('task-')) continue
+      const st = states[t.id]
+      if (!st) continue
+      weights.push({ taskId: t.id, weight: st.weight ?? 0 })
+    }
+    if (weights.length === 0) return 0
+    try {
+      await partnerCobuildWeightApi.save(scenarioId, weights)
+      return 0
+    } catch (err) {
+      reportError(err, { source: '保存任务权重' })
+      return weights.length
+    }
+  }
+
+  // 场景加载完成后预取数据集（知识/能力/资源/评价/用户），供卡片回显名称
+  useEffect(() => {
+    if (!schoolTenantId) return
+    datasets.loadDatasets(['knowledge', 'ability', 'resources', 'evaluation', 'users'])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolTenantId])
 
   const [newTask, setNewTask] = useState({
     name: '',
@@ -301,6 +673,59 @@ export default function PartnerTasksEditPage() {
         if (state.descriptionPdf) return t('已上传附件')
         return t('未填写')
       }
+      case 'knowledge': {
+        if (state.knowledgePoints.length === 0) return t('未配置')
+        // 优先使用服务端随任务返回的名称，再回退全量知识点列表
+        const apiNameById = new Map<string, string>()
+        ;(task.knowledgePointNames || []).forEach((n, i) => {
+          if (task.knowledgePoints[i] && n) apiNameById.set(task.knowledgePoints[i], n)
+        })
+        const kpNames = state.knowledgePoints
+          .map((id) => apiNameById.get(id) || datasets.knowledgePoints.find((k) => k.id === id)?.name)
+          .filter(Boolean)
+        return (
+          kpNames.slice(0, 3).join('、') +
+          (kpNames.length > 3 ? t(' 等{n}个', { n: state.knowledgePoints.length }) : '')
+        )
+      }
+      case 'ability': {
+        if (state.abilityPoints.length === 0) return t('未配置')
+        const apiNameById = new Map<string, string>()
+        ;(task.abilityPointNames || []).forEach((n, i) => {
+          if (task.abilityPoints[i] && n) apiNameById.set(task.abilityPoints[i], n)
+        })
+        const bindingNameById = new Map<string, string>()
+        datasets.positionAbilityBindings.forEach((b) => {
+          const binding = b as { abilityPointId?: string; abilityName?: string }
+          if (binding.abilityPointId && binding.abilityName) {
+            bindingNameById.set(binding.abilityPointId, binding.abilityName)
+          }
+        })
+        const abNames = state.abilityPoints
+          .map(
+            (id) =>
+              apiNameById.get(id) ||
+              (
+                datasets.abilityPoints.find((a) => (a as { id: string }).id === id) as
+                  { name?: string } | undefined
+              )?.name ||
+              bindingNameById.get(id),
+          )
+          .filter(Boolean)
+        return (
+          abNames.slice(0, 3).join('、') +
+          (abNames.length > 3 ? t(' 等{n}个', { n: state.abilityPoints.length }) : '')
+        )
+      }
+      case 'resources':
+        if (state.resources.length === 0) return t('未配置')
+        const resNames = state.resources
+          .map((id) => datasets.learningResources.find((r) => r.id === id)?.name)
+          .filter(Boolean)
+        return (
+          resNames.slice(0, 3).join('、') +
+          (resNames.length > 3 ? t(' 等{n}个', { n: state.resources.length }) : '')
+        )
       case 'evaluation':
         if (state.evaluationMethods.length === 0) return t('未配置')
         return state.evaluationMethods
@@ -337,8 +762,8 @@ export default function PartnerTasksEditPage() {
           })
           .join('、')
         return `${weightSummary}\n${t('权重合计 {n}%', { n: methodWeightTotal2 })}${methodWeightTotal2 !== 100 ? t(' (需等于100%)') : ''}`
-      default:
-        return ''
+      case 'weight':
+        return `${state.weight}%`
     }
   }
 
@@ -349,12 +774,18 @@ export default function PartnerTasksEditPage() {
         return true
       case 'description':
         return !!state.description || !!state.descriptionPdf
+      case 'knowledge':
+        return state.knowledgePoints.length > 0
+      case 'ability':
+        return state.abilityPoints.length > 0
+      case 'resources':
+        return state.resources.length > 0
       case 'evaluation':
         return state.evaluationMethods.length > 0
       case 'evaluationRules':
         return state.evaluationMethods.length > 0
-      default:
-        return false
+      case 'weight':
+        return state.weight > 0
     }
   }
 
@@ -481,6 +912,8 @@ export default function PartnerTasksEditPage() {
     }
     setTasks(newTasks)
     setTaskStates(updatedTaskStates)
+    // 持久化任务权重（新建/更新任务后统一写入）
+    await persistWeights(newTasks, updatedTaskStates)
   }
 
   const handleSaveDraft = async () => {
@@ -585,6 +1018,34 @@ export default function PartnerTasksEditPage() {
           <Badge variant="secondary">{t('{n} 个任务', { n: tasks.length })}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setCloneMode('clone')
+              setIsCloneOpen(true)
+            }}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            {t('克隆/引用任务')}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (!isWeightConfigOpen) void persistWeights(tasks, taskStates)
+              setIsWeightConfigOpen(true)
+            }}
+          >
+            <Scale className="mr-2 h-4 w-4" />
+            {t('配置权重')}
+          </Button>
+          <Badge
+            variant={totalWeight === 100 ? 'secondary' : 'destructive'}
+            className="text-[11px]"
+          >
+            {t('总权重 {n}%', { n: totalWeight })}
+          </Badge>
           <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             {t('添加任务')}
@@ -820,10 +1281,132 @@ export default function PartnerTasksEditPage() {
           }
           onClose={() => setEditingCard(null)}
           toast={toast}
-          abilityPoints={datasets.abilityPoints}
-          loadRubricTemplates={datasets.loadRubricTemplates}
+          datasets={datasets}
+          evalDataSource={datasets.evalDataSource}
+          positionId={existingScenario?.careerPositionId || ''}
         />
       )}
+
+      {/* Clone Dialog */}
+      <Dialog open={isCloneOpen} onOpenChange={setIsCloneOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{t('克隆/引用任务')}</DialogTitle>
+            <DialogDescription>{t('从合作学校的其他场景选择任务进行克隆或引用')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button
+                  variant={cloneMode === 'clone' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCloneMode('clone')}
+                >
+                  {t('克隆（可编辑）')}
+                </Button>
+                <Button
+                  variant={cloneMode === 'reference' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCloneMode('reference')}
+                >
+                  {t('引用（只读）')}
+                </Button>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={cloneSearch}
+                  onChange={(e) => setCloneSearch(e.target.value)}
+                  placeholder={t('搜索任务名称、编码...')}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <Tabs value={cloneTab} onValueChange={(v) => setCloneTab(v as 'my' | 'collab' | 'public')}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="my">{t('我的')}</TabsTrigger>
+                <TabsTrigger value="collab">{t('共建')}</TabsTrigger>
+                <TabsTrigger value="public">{t('公共库')}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex-1 overflow-y-auto border rounded-lg">
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0 min-w-[540px]">
+                  <div></div>
+                  <div>{t('任务名称')}</div>
+                  <div>{t('任务编码')}</div>
+                  <div>{t('关联场景')}</div>
+                  <div>{t('关联岗位')}</div>
+                </div>
+                {allTasks
+                  .filter((t) => {
+                    if (cloneTab === 'public') return t.scenarioStatus === 'published'
+                    return true
+                  })
+                  .filter(
+                    (t) =>
+                      !cloneSearch ||
+                      t.name.includes(cloneSearch) ||
+                      t.code?.includes(cloneSearch) ||
+                      t.scenarioName?.includes(cloneSearch),
+                  )
+                  .map((t) => {
+                    const selected = selectedClone.includes(t.id)
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() =>
+                          setSelectedClone((prev) =>
+                            prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id],
+                          )
+                        }
+                        className={cn(
+                          'grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-3 border-b cursor-pointer items-center text-sm hover:bg-gray-50 min-w-[540px]',
+                          selected ? 'bg-primary/5' : '',
+                        )}
+                      >
+                        <div className="flex justify-center">
+                          <div
+                            className={cn(
+                              'w-4 h-4 rounded border flex items-center justify-center',
+                              selected ? 'bg-primary border-primary' : 'border-gray-300',
+                            )}
+                          >
+                            {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                          </div>
+                        </div>
+                        <div className="font-medium">{t.name}</div>
+                        <div className="text-gray-500 text-xs">{t.code}</div>
+                        <div className="text-gray-500 text-xs truncate">{t.scenarioName}</div>
+                        <div className="text-gray-500 text-xs">{positionName || '-'}</div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCloneOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button onClick={handleClone} disabled={selectedClone.length === 0 || isCloning}>
+              {isCloning ? t('处理中...') : cloneMode === 'clone' ? t('克隆') : t('引用')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Weight Config Dialog */}
+      <WeightConfigDialog
+        open={isWeightConfigOpen}
+        onOpenChange={(v) => {
+          if (!v) persistWeights(tasks, taskStates)
+          setIsWeightConfigOpen(v)
+        }}
+        tasks={tasks}
+        taskStates={taskStates}
+        updateAnyState={(id, u) => updateState(id, u)}
+      />
 
       {/* Delete Confirm Dialog */}
       <ConfirmDialog
@@ -914,8 +1497,9 @@ function EditCardDialog({
   updateTask,
   onClose,
   toast,
-  abilityPoints,
-  loadRubricTemplates,
+  datasets,
+  evalDataSource,
+  positionId,
 }: {
   taskId: string
   cardType: CardType
@@ -929,11 +1513,13 @@ function EditCardDialog({
     description?: string
     variant?: 'default' | 'destructive'
   }) => void
-  abilityPoints: { id: string; name: string; description?: string }[]
-  loadRubricTemplates: () => Promise<RubricScheme[]>
+  datasets: ReturnType<typeof useCoBuildDatasets>
+  evalDataSource: ReturnType<typeof useCoBuildDatasets>['evalDataSource']
+  positionId: string
 }) {
   const t = useT()
   const config = partnerCardConfigs.find((c) => c.type === cardType)!
+  const [abilitySearch, setAbilitySearch] = useState('')
   const [localTask, setLocalTask] = useState({
     name: task.name,
     type: task.taskType,
@@ -1113,19 +1699,211 @@ function EditCardDialog({
             evaluationMethods={state.evaluationMethods}
             config={taskStateToEvalRuleConfig(state)}
             onChange={(config) => updateState(evalRuleConfigToTaskStateUpdates(config))}
-            knowledgePoints={[]}
-            abilityPoints={abilityPoints}
+            knowledgePoints={datasets.knowledgePoints as unknown as KnowledgePointItem[]}
+            abilityPoints={datasets.abilityPoints as { id: string; name: string; description?: string }[]}
             onPersistStandard={handlePersistStandard}
-            dataSource={{ loadRubricTemplates, skipPortalPreload: true }}
+            dataSource={evalDataSource}
           />
         )
+
+      case 'knowledge': {
+        const pool: KnowledgePointItem[] = datasets.knowledgePoints.map((kp) => ({
+          id: kp.id,
+          name: kp.name,
+          code: kp.code,
+          description: kp.description,
+          linked: !datasets.customKnowledgePointIds.has(kp.id),
+          granularLessons: kp.granularLessons || [],
+        }))
+        const kpNameById = new Map<string, string>()
+        ;(task.knowledgePoints || []).forEach((id, i) => {
+          const name = (task.knowledgePointNames || [])[i]
+          if (name) kpNameById.set(id, name)
+        })
+        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
+          const found = pool.find((p) => p.id === id)
+          return found || { id, name: kpNameById.get(id) || id, linked: false }
+        })
+        return (
+          <KnowledgeSelector
+            standalone={false}
+            selected={selected}
+            pool={pool}
+            onChange={(items) => {
+              const ids = items.map((i) => i.id)
+              datasets.setKnowledgePoints((prev) => {
+                const next = [...prev]
+                for (const item of items) {
+                  const idx = next.findIndex((k) => k.id === item.id)
+                  if (idx >= 0) {
+                    next[idx] = {
+                      ...next[idx],
+                      name: item.name,
+                      description: item.description || '',
+                      code: item.code || '',
+                      granularLessons: item.granularLessons || next[idx].granularLessons || [],
+                    }
+                  }
+                }
+                return next
+              })
+              updateState({ knowledgePoints: ids })
+            }}
+            onAddCustom={() => {}}
+          />
+        )
+      }
+
+      case 'ability': {
+        if (!positionId) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
+              <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-gray-600">
+                {t('请先在场景基础信息中关联岗位，再选择考察能力点')}
+              </p>
+            </div>
+          )
+        }
+        const bindings = (datasets.positionAbilityBindings as any[]).filter(
+          (b: any) => b.careerPositionId === positionId,
+        )
+        const abilityById = new Map(datasets.abilityPoints.map((ab: any) => [ab.id, ab]))
+        const relatedAbilities = bindings.map((b: any) => {
+          const ab = abilityById.get(b.abilityPointId) || {}
+          return {
+            ...ab,
+            id: b.abilityPointId,
+            name: b.abilityName || ab.name || t('未命名能力'),
+            positionIds: [positionId],
+            domain: b?.domain || ab.domain || t('其他'),
+            requiredLevel: b?.requiredLevel || ab.requiredLevel,
+            proficiencyDesc: b?.rubricDescription || ab.proficiencyDesc,
+          }
+        })
+        return (
+          <div className="h-full flex flex-col">
+            <div className="flex items-center gap-4 mb-4 shrink-0">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={abilitySearch}
+                  onChange={(e) => setAbilitySearch(e.target.value)}
+                  placeholder={t('搜索能力点名称、编码或描述...')}
+                  className="pl-9"
+                />
+              </div>
+              <div className="text-sm text-gray-500 shrink-0">
+                {t('共 {n} 个关联能力点，已选 {m} 个', {
+                  n: relatedAbilities.length,
+                  m: state.abilityPoints.length,
+                })}
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 border rounded-xl overflow-hidden">
+              <div className="h-full overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+                {relatedAbilities.length === 0 && (
+                  <div className="col-span-full text-center text-gray-400 py-16">
+                    <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">{t('目标岗位暂无关联能力点')}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {t('请先在学校端为岗位配置能力建模')}
+                    </p>
+                  </div>
+                )}
+                {relatedAbilities
+                  .filter(
+                    (ab: any) =>
+                      !abilitySearch ||
+                      (ab.name || '').includes(abilitySearch) ||
+                      (ab.description || '').includes(abilitySearch) ||
+                      (ab.code || '').includes(abilitySearch),
+                  )
+                  .map((ab: any) => {
+                    const selected = state.abilityPoints.includes(ab.id)
+                    return (
+                      <div
+                        key={ab.id}
+                        onClick={() => {
+                          const cur = state.abilityPoints
+                          updateState({
+                            abilityPoints: selected
+                              ? cur.filter((id) => id !== ab.id)
+                              : [...cur, ab.id],
+                          })
+                        }}
+                        className={cn(
+                          'border rounded-xl p-3.5 cursor-pointer transition-colors',
+                          selected
+                            ? 'bg-primary/[0.03] border-primary/40'
+                            : 'hover:bg-gray-50 border-gray-200',
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                              selected
+                                ? 'bg-primary border-primary'
+                                : 'border-gray-300',
+                            )}
+                          >
+                            {selected && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                          <span className="text-sm font-medium text-gray-800 truncate">
+                            {ab.name}
+                          </span>
+                          {ab.code && (
+                            <span className="text-[11px] text-gray-400 font-mono shrink-0">
+                              {ab.code}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-1.5 ml-6">
+                          {ab.description}
+                        </p>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      case 'resources': {
+        const rPool: ResourceItem[] = datasets.learningResources.map((r) => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          url: r.url,
+          description: r.description,
+          size: r.size,
+        }))
+        return (
+          <ResourceSelector
+            standalone={false}
+            pool={rPool}
+            selectedIds={state.resources || []}
+            onChange={(ids: string[]) => updateState({ resources: ids })}
+          />
+        )
+      }
+
+      case 'weight':
+        return <TaskWeightCard />
+
       default:
         return null
     }
   }
 
   const dialogSizeClass =
-    cardType === 'evaluationRules'
+    cardType === 'evaluationRules' ||
+    cardType === 'weight' ||
+    cardType === 'knowledge' ||
+    cardType === 'ability' ||
+    cardType === 'resources'
       ? 'sm:max-w-[95vw] max-h-[95vh] h-[95vh]'
       : cardType === 'evaluation'
         ? 'sm:max-w-[720px] max-h-[85vh]'
@@ -1150,6 +1928,201 @@ function EditCardDialog({
           </Button>
           <Button onClick={handleSave} disabled={isSavingCard}>
             {isSavingCard ? t('保存中...') : t('保存')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ============ Weight Config Dialog ============
+
+function WeightConfigDialog({
+  open,
+  onOpenChange,
+  tasks,
+  taskStates,
+  updateAnyState,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  tasks: Task[]
+  taskStates: Record<string, TaskState>
+  updateAnyState: (id: string, u: Partial<TaskState>) => void
+}) {
+  const t = useT()
+  const colors = [
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-purple-500',
+    'bg-orange-500',
+    'bg-cyan-500',
+    'bg-pink-500',
+  ]
+  const pieColors = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#06b6d4', '#ec4899']
+
+  const handleGlobalWeightChange = (tid: string, val: number) => {
+    updateAnyState(tid, { weight: Math.max(0, Math.min(100, val)) })
+  }
+
+  const toggleGlobalLock = (tid: string) => {
+    const s = taskStates[tid]
+    updateAnyState(tid, { locked: !s?.locked })
+  }
+
+  const distributeGlobal = () => {
+    const unlocked = tasks.filter((t) => !taskStates[t.id]?.locked)
+    const lockedWeight = tasks
+      .filter((t) => taskStates[t.id]?.locked)
+      .reduce((s, t) => s + (taskStates[t.id]?.weight || 0), 0)
+    const remaining = 100 - lockedWeight
+    const each = Math.floor(remaining / unlocked.length)
+    unlocked.forEach((t, i) => {
+      updateAnyState(t.id, { weight: each + (i < remaining % unlocked.length ? 1 : 0) })
+    })
+  }
+
+  const totalW = tasks.reduce((sum, t) => sum + (taskStates[t.id]?.weight || 0), 0)
+
+  const pieData = tasks
+    .map((t, i) => ({
+      name: t.name,
+      value: taskStates[t.id]?.weight || 0,
+      color: pieColors[i % pieColors.length],
+    }))
+    .filter((d) => d.value > 0)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-3xl max-h-[90vh] flex flex-col"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PieChartIcon className="h-5 w-5" />
+            {t('配置任务权重')}
+          </DialogTitle>
+          <DialogDescription>{t('调整所有任务的权重分配，总权重应为 100%')}</DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto py-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span
+                className={cn(
+                  'text-lg font-semibold',
+                  totalW === 100 ? 'text-green-600' : 'text-amber-600',
+                )}
+              >
+                {t('总权重: {n}%', { n: totalW })}
+              </span>
+              {totalW !== 100 && (
+                <span className="text-sm text-amber-600">
+                  {totalW > 100
+                    ? t('超出 {n}%', { n: totalW - 100 })
+                    : t('还需分配 {n}%', { n: 100 - totalW })}
+                </span>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={distributeGlobal}>
+              <Scale className="mr-2 h-4 w-4" />
+              {t('一键平均分配')}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `${value}%`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="h-64 overflow-y-auto space-y-2">
+              {tasks.map((t, i) => (
+                <div key={t.id} className="flex items-center gap-2 text-sm">
+                  <div className={cn('w-3 h-3 rounded-full shrink-0', colors[i % colors.length])} />
+                  <span className="truncate flex-1">{t.name}</span>
+                  <span className="text-gray-500 font-medium">
+                    {taskStates[t.id]?.weight || 0}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+            {tasks.map((t, i) => (
+              <div
+                key={t.id}
+                className={cn('transition-all duration-300', colors[i % colors.length])}
+                style={{ width: `${taskStates[t.id]?.weight || 0}%` }}
+              />
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {tasks.map((t, i) => {
+              const s = taskStates[t.id]
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-4 p-3 rounded-lg border border-gray-100 bg-white hover:border-gray-200 transition-colors"
+                >
+                  <div className={cn('w-3 h-8 rounded-full shrink-0', colors[i % colors.length])} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-medium text-gray-600">
+                        {i + 1}
+                      </span>
+                      <span className="font-medium text-gray-700 truncate text-sm">{t.name}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Input
+                      type="number"
+                      value={s?.weight || 0}
+                      onChange={(e) =>
+                        handleGlobalWeightChange(t.id, parseInt(e.target.value) || 0)
+                      }
+                      disabled={s?.locked}
+                      className={cn('w-20 text-center', s?.locked && 'bg-gray-50')}
+                      min={0}
+                      max={100}
+                    />
+                    <span className="text-gray-500 w-4">%</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleGlobalLock(t.id)}
+                    className={cn('h-8 w-8', s?.locked ? 'text-amber-500' : 'text-gray-400')}
+                  >
+                    {s?.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button disabled={totalW !== 100} onClick={() => onOpenChange(false)}>
+            {t('保存')}
           </Button>
         </DialogFooter>
       </DialogContent>

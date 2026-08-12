@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -47,6 +48,28 @@ func respondCoBuildError(w http.ResponseWriter, r *http.Request, err error, notF
 		respondError(w, http.StatusBadRequest, err.Error())
 	default:
 		respondServerError(w, r, err, serverMsg)
+	}
+}
+
+// respondSchoolScopedList 合作学校只读列表通用响应（错误映射 + ListResponse 包装）。
+func respondSchoolScopedList[T any](w http.ResponseWriter, r *http.Request, items []T, total int, err error, serverMsg string) {
+	if err != nil {
+		respondCoBuildError(w, r, err, "学校不存在", serverMsg)
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[T]{Items: items, Total: total})
+}
+
+// schoolListHandler 合作学校只读列表 handler 骨架（partner 租户 + 学校租户路径参数）。
+func schoolListHandler[T any](h *PartnerCoBuildHandler, list func(ctx context.Context, partnerTenantID, schoolTenantID string, p store.ListParams) ([]T, int, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		partnerTenantID, _, ok := h.partnerCaller(w, r)
+		if !ok {
+			return
+		}
+		schoolTenantID := chi.URLParam(r, "tenantId")
+		items, total, err := list(r.Context(), partnerTenantID, schoolTenantID, schoolListParams(r, schoolTenantID))
+		respondSchoolScopedList(w, r, items, total, err, "查询学校数据失败")
 	}
 }
 
@@ -732,36 +755,133 @@ func (h *PartnerCoBuildHandler) PutTaskEvaluationMethods(w http.ResponseWriter, 
 	respondJSON(w, http.StatusOK, TaskEvaluationMethodListResponse{Methods: configs})
 }
 
-// ===== 学校数据只读列表 =====
+// ===== 学校数据只读列表（编辑器数据源，与 portal 对应接口响应形状一致） =====
 
-// ListSchoolAbilities 合作学校能力点只读列表（编辑器数据源）。
 func (h *PartnerCoBuildHandler) ListSchoolAbilities(w http.ResponseWriter, r *http.Request) {
-	partnerTenantID, _, ok := h.partnerCaller(w, r)
-	if !ok {
-		return
-	}
-	schoolTenantID := chi.URLParam(r, "tenantId")
-	items, total, err := h.Service.ListSchoolAbilities(r.Context(), partnerTenantID, schoolTenantID, schoolListParams(r, schoolTenantID))
-	if err != nil {
-		respondCoBuildError(w, r, err, "学校不存在", "查询学校能力点失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.AbilityPoint]{Items: items, Total: total})
+	schoolListHandler(h, h.Service.ListSchoolAbilities)(w, r)
 }
 
-// ListSchoolEvaluationMethods 合作学校评分模板（测评方法）只读列表（编辑器数据源）。
 func (h *PartnerCoBuildHandler) ListSchoolEvaluationMethods(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolEvaluationMethods)(w, r)
+}
+
+// ListSchoolKnowledgePoints 合作学校知识点库只读列表（任务链知识点选择器数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolKnowledgePoints(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolKnowledgePoints)(w, r)
+}
+
+// ListSchoolCourses 合作学校课程只读列表（任务链微课程选择器数据源，type=granular）。
+func (h *PartnerCoBuildHandler) ListSchoolCourses(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolCourses)(w, r)
+}
+
+// ListSchoolAbilityBindings 合作学校岗位能力绑定只读列表（任务链能力面板数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolAbilityBindings(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolAbilityBindings)(w, r)
+}
+
+// ListSchoolQuestionBanks 合作学校题库只读列表（测评题库选择面板数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolQuestionBanks(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolQuestionBanks)(w, r)
+}
+
+// ListSchoolQuestions 合作学校题目只读列表（按 bankId 过滤）。
+func (h *PartnerCoBuildHandler) ListSchoolQuestions(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolQuestions)(w, r)
+}
+
+// ListSchoolRandomDrawQuestions 合作学校现场问答题只读列表（随机抽题面板数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolRandomDrawQuestions(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolRandomDrawQuestions)(w, r)
+}
+
+// ListSchoolExams 合作学校试卷只读列表（测评试卷方法面板数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolExams(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolExams)(w, r)
+}
+
+// ListSchoolMajors 合作学校专业字典只读列表（测评编辑专业选择器数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolMajors(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolMajors)(w, r)
+}
+
+// ListSchoolScenarios 合作学校场景只读列表（任务克隆候选数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolScenarios(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolScenarios)(w, r)
+}
+
+// ListSchoolTasks 合作学校任务只读列表（任务克隆候选数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolTasks(w http.ResponseWriter, r *http.Request) {
+	schoolListHandler(h, h.Service.ListSchoolTasks)(w, r)
+}
+
+// ListSchoolResources 合作学校资源库只读列表（任务链资源选择器数据源）。
+func (h *PartnerCoBuildHandler) ListSchoolResources(w http.ResponseWriter, r *http.Request) {
 	partnerTenantID, _, ok := h.partnerCaller(w, r)
 	if !ok {
 		return
 	}
 	schoolTenantID := chi.URLParam(r, "tenantId")
-	items, total, err := h.Service.ListSchoolEvaluationMethods(r.Context(), partnerTenantID, schoolTenantID, schoolListParams(r, schoolTenantID))
-	if err != nil {
-		respondCoBuildError(w, r, err, "学校不存在", "查询学校测评方法失败")
+	limit := 50
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
+		limit = v
+	}
+	offset := 0
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		offset = v
+	}
+	items, total, err := h.Service.ListSchoolResources(r.Context(), partnerTenantID, schoolTenantID,
+		r.URL.Query().Get("search"), r.URL.Query().Get("resourceType"), limit, offset)
+	respondSchoolScopedList(w, r, items, total, err, "查询学校资源失败")
+}
+
+// ListScenarioWeights 共建场景任务权重列表。
+func (h *PartnerCoBuildHandler) ListScenarioWeights(w http.ResponseWriter, r *http.Request) {
+	partnerTenantID, _, ok := h.partnerCaller(w, r)
+	if !ok {
 		return
 	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.RubricTemplate]{Items: items, Total: total})
+	items, err := h.Service.ListScenarioWeights(r.Context(), partnerTenantID, chi.URLParam(r, "id"))
+	if err != nil {
+		respondCoBuildError(w, r, err, "场景不存在或未授权", "查询任务权重失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.ScenarioWeightConfig]{Items: items, Total: len(items)})
+}
+
+// coBuildSaveWeightsRequest 批量保存任务权重请求。
+type coBuildSaveWeightsRequest struct {
+	Weights []coBuildWeightItem `json:"weights"`
+}
+
+type coBuildWeightItem struct {
+	TaskID string  `json:"taskId"`
+	Weight float64 `json:"weight"`
+}
+
+// SaveScenarioWeights 批量保存共建场景任务权重。
+func (h *PartnerCoBuildHandler) SaveScenarioWeights(w http.ResponseWriter, r *http.Request) {
+	partnerTenantID, _, ok := h.partnerCaller(w, r)
+	if !ok {
+		return
+	}
+	var req coBuildSaveWeightsRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	params := make([]store.ScenarioWeightUpsertParams, 0, len(req.Weights))
+	for _, item := range req.Weights {
+		if item.TaskID == "" {
+			respondError(w, http.StatusBadRequest, "缺少任务 id")
+			return
+		}
+		params = append(params, store.ScenarioWeightUpsertParams{TaskID: item.TaskID, Weight: item.Weight})
+	}
+	if err := h.Service.SaveScenarioWeights(r.Context(), partnerTenantID, chi.URLParam(r, "id"), params); err != nil {
+		respondCoBuildError(w, r, err, "场景不存在或未授权", "保存任务权重失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // ListSchoolCoBuilders 合作学校共建人候选（岗位编辑页共建人选择器数据源）：

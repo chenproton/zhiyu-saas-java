@@ -142,7 +142,16 @@ export default function PartnerCoBuildScenesPage() {
       )}
       renderTableRow={(s: CoBuildScenario, actions) => (
         <>
-          <TableCell className="font-medium">{s.name}</TableCell>
+          <TableCell className="font-medium">
+            <div className="flex items-center gap-2">
+              <span>{s.name}</span>
+              {s.sourceType !== 'enterprise' && (
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                  {t('学校授权')}
+                </span>
+              )}
+            </div>
+          </TableCell>
           <TableCell>{s.schoolName || '-'}</TableCell>
           <TableCell>
             <StatusBadge status={s.status} />

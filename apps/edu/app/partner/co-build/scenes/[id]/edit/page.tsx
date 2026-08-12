@@ -34,6 +34,7 @@ import type { CoBuildPosition, CoBuildScenario } from '@/lib/api'
 import { toast } from '@zhiyu/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { EditorShell } from '@/components/shared/editor-shell'
+import { CoBuildCollaboratorPicker } from '@/components/shared/co-build-collaborator-picker'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -64,6 +65,8 @@ export default function PartnerScenarioEditPage() {
   const [scenarioStatus, setScenarioStatus] = useState<string>('draft')
   const [industryNames, setIndustryNames] = useState<string[]>([])
   const [professionNames, setProfessionNames] = useState<string[]>([])
+  const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
+  const [schoolTenantId, setSchoolTenantId] = useState('')
 
   useEffect(() => {
     const loadData = async () => {
@@ -87,6 +90,10 @@ export default function PartnerScenarioEditPage() {
         setScenarioStatus(scenario.status || 'draft')
         setIndustryNames(scenario.industryNames || [])
         setProfessionNames(scenario.professionNames || [])
+        setCoBuilderIds(
+          (scenario.coBuilderIds || []).filter((id) => id !== scenario.creatorId),
+        )
+        setSchoolTenantId(schoolTenantId)
       } catch (err: any) {
         reportError(err, '加载场景表单数据')
         toast({ title: err.message || t('请刷新页面重试'), variant: 'destructive' })
@@ -107,7 +114,7 @@ export default function PartnerScenarioEditPage() {
     return groups
   }, [coBuildPositions, t])
 
-  // 行业/专业/批次/共建人无 partner 数据源：更新时不携带这些字段，后端保留原值
+  // 行业/专业/批次无 partner 数据源：更新时不携带这些字段，后端保留原值
   const buildPayload = () => {
     return {
       name: scenarioName.trim(),
@@ -116,6 +123,7 @@ export default function PartnerScenarioEditPage() {
       background: background || null,
       version,
       coverImage: coverImage || null,
+      coBuilderIds,
     }
   }
 
@@ -331,6 +339,18 @@ export default function PartnerScenarioEditPage() {
                   <div>
                     <Label className="block text-gray-500 text-xs">{t('创建人')}</Label>
                     <p className="font-medium text-gray-800 mt-1">{creatorName || t('当前用户')}</p>
+                  </div>
+
+                  <div>
+                    <Label className="block text-gray-500 text-xs">{t('共建人/共建部门')}</Label>
+                    <div className="mt-1">
+                      <CoBuildCollaboratorPicker
+                        schoolTenantId={schoolTenantId}
+                        value={coBuilderIds}
+                        onChange={setCoBuilderIds}
+                        placeholder={t('点击选择共建人')}
+                      />
+                    </div>
                   </div>
 
                   <div className="pt-3 border-t border-gray-100">

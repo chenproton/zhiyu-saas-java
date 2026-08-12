@@ -110,10 +110,21 @@ export interface EvaluationRulesEditorProps {
    * 数据源覆盖（缺省走 portal 接口）。企业共建端注入：
    * - loadRubricTemplates：量规模板改为学校只读列表（partner token 调不通 portal 模板接口）
    * - skipPortalPreload：跳过试卷/现场问答题/专业等 portal 数据集预加载（这些面板在企业端无数据源）
+   * - readOnly：只读模式（隐藏新增/编辑/删除/保存到模板等写操作，仅浏览与勾选）
+   * - 其余 load*：对应面板数据源替换为学校只读列表
    */
   dataSource?: {
     loadRubricTemplates?: () => Promise<RubricScheme[]>
     skipPortalPreload?: boolean
+    readOnly?: boolean
+    loadKnowledgePoints?: (search: string) => Promise<KnowledgePointItem[]>
+    loadAbilityPoints?: (search: string) => Promise<AbilityPointItem[]>
+    loadRandomDrawQuestions?: () => Promise<unknown[]>
+    loadMajors?: () => Promise<{ id: string; name: string }[]>
+    loadExams?: () => Promise<LoadedExam[]>
+    loadQuestionBanks?: () => Promise<unknown[]>
+    loadQuestions?: (bankId: string) => Promise<unknown[]>
+    getQuestion?: (id: string) => Promise<unknown>
   }
 }
 
@@ -173,6 +184,20 @@ export function EvaluationRulesEditor({
   const { toast } = useToast()
   const knowledgePoints = useMemo(() => kpProp || [], [kpProp])
   const abilityPoints = useMemo(() => abProp || [], [abProp])
+  const readOnly = dataSource?.readOnly || false
+
+  // 题库面板数据源透传（企业共建端注入学校题库/题目只读列表）
+  const bankDataSource = useMemo(
+    () =>
+      dataSource?.loadQuestionBanks || dataSource?.loadQuestions || dataSource?.getQuestion
+        ? {
+            loadBanks: dataSource.loadQuestionBanks,
+            loadQuestions: dataSource.loadQuestions,
+            getQuestion: dataSource.getQuestion,
+          }
+        : undefined,
+    [dataSource],
+  )
 
   const store = useEvalRuleStore({
     initialConfig: configProp,
@@ -297,18 +322,33 @@ export function EvaluationRulesEditor({
     if (!rubricKpSearchTerm) return
     const timer = setTimeout(() => {
       setRubricKpSearchLoading(true)
+      const apply = (items: any[]) => {
+        if (seq !== rubricKpSearchSeqRef.current) return
+        setRubricKpResults(
+          items.map((k) => ({
+            ...k,
+            granularLessons: (k as any).granularLessonIds || [],
+          })),
+        )
+        setRubricKpSearchLoading(false)
+      }
+      if (dataSource?.loadKnowledgePoints) {
+        dataSource
+          .loadKnowledgePoints(rubricKpSearchTerm)
+          .then((items) => {
+            if (seq !== rubricKpSearchSeqRef.current) return
+            apply(items as any[])
+          })
+          .catch(() => {
+            if (seq !== rubricKpSearchSeqRef.current) return
+            setRubricKpResults([])
+            setRubricKpSearchLoading(false)
+          })
+        return
+      }
       knowledgeApi
         .list({ search: rubricKpSearchTerm, limit: 200 })
-        .then((res) => {
-          if (seq !== rubricKpSearchSeqRef.current) return
-          setRubricKpResults(
-            (res.items || []).map((k) => ({
-              ...k,
-              granularLessons: (k as any).granularLessonIds || [],
-            })),
-          )
-          setRubricKpSearchLoading(false)
-        })
+        .then((res) => apply(res.items || []))
         .catch(() => {
           if (seq !== rubricKpSearchSeqRef.current) return
           setRubricKpResults([])
@@ -316,7 +356,7 @@ export function EvaluationRulesEditor({
         })
     }, 300)
     return () => clearTimeout(timer)
-  }, [rubricKpSearchTerm])
+  }, [rubricKpSearchTerm, dataSource])
 
   const rubricAbSearchTerm = rubricAbSearch.trim()
   useEffect(() => {
@@ -324,13 +364,28 @@ export function EvaluationRulesEditor({
     if (!rubricAbSearchTerm) return
     const timer = setTimeout(() => {
       setRubricAbSearchLoading(true)
+      const apply = (items: any[]) => {
+        if (seq !== rubricAbSearchSeqRef.current) return
+        setRubricAbResults(items)
+        setRubricAbSearchLoading(false)
+      }
+      if (dataSource?.loadAbilityPoints) {
+        dataSource
+          .loadAbilityPoints(rubricAbSearchTerm)
+          .then((items) => {
+            if (seq !== rubricAbSearchSeqRef.current) return
+            apply(items as any[])
+          })
+          .catch(() => {
+            if (seq !== rubricAbSearchSeqRef.current) return
+            setRubricAbResults([])
+            setRubricAbSearchLoading(false)
+          })
+        return
+      }
       abilityApi
         .list({ search: rubricAbSearchTerm, limit: 200 })
-        .then((res) => {
-          if (seq !== rubricAbSearchSeqRef.current) return
-          setRubricAbResults(res.items || [])
-          setRubricAbSearchLoading(false)
-        })
+        .then((res) => apply(res.items || []))
         .catch(() => {
           if (seq !== rubricAbSearchSeqRef.current) return
           setRubricAbResults([])
@@ -338,7 +393,7 @@ export function EvaluationRulesEditor({
         })
     }, 300)
     return () => clearTimeout(timer)
-  }, [rubricAbSearchTerm])
+  }, [rubricAbSearchTerm, dataSource])
 
   useEffect(() => {
     const incoming = configProp.reviewSteps || []
@@ -473,6 +528,12 @@ export function EvaluationRulesEditor({
   const loadRdqQuestions = useCallback(async () => {
     setLoadingRdq(true)
     try {
+      if (dataSource?.loadRandomDrawQuestions) {
+        const items = await dataSource.loadRandomDrawQuestions()
+        setRdqApiQuestions(items || [])
+        return
+      }
+      if (dataSource?.skipPortalPreload) return
       const res = await fetchAllPages((page, pageSize) => randomDrawQuestionApi.list({ limit: pageSize, offset: page * pageSize }))
       setRdqApiQuestions(res || [])
     } catch (err) {
@@ -480,16 +541,21 @@ export function EvaluationRulesEditor({
     } finally {
       setLoadingRdq(false)
     }
-  }, [])
+  }, [dataSource])
 
   const loadMajors = useCallback(async () => {
     try {
+      if (dataSource?.loadMajors) {
+        setMajors(await dataSource.loadMajors())
+        return
+      }
+      if (dataSource?.skipPortalPreload) return
       const res = await majorApi.list({ limit: 1000 })
       setMajors((res.items || []).map((m: any) => ({ id: m.id, name: m.name })))
     } catch (err) {
       reportError(err, { source: '加载专业列表' })
     }
-  }, [])
+  }, [dataSource])
 
   const loadRubricTemplates = useCallback(async () => {
     if (dataSource?.loadRubricTemplates) {
@@ -533,6 +599,7 @@ export function EvaluationRulesEditor({
   }, [dataSource])
 
   const handleCreateRdq = useCallback(async () => {
+    if (readOnly) return
     if (!newRdqForm.name.trim()) return
     try {
       if (rdqActionMode === 'edit' && rdqActionTarget) {
@@ -558,10 +625,11 @@ export function EvaluationRulesEditor({
     }
     setRdqActionOpen(false)
     setRdqSearch('')
-  }, [newRdqForm, rdqActionMode, rdqActionTarget, loadRdqQuestions, toast, t])
+  }, [newRdqForm, rdqActionMode, rdqActionTarget, loadRdqQuestions, toast, t, readOnly])
 
   const handleDeleteRdq = useCallback(
     async (id: string) => {
+      if (readOnly) return
       try {
         await randomDrawQuestionApi.delete(id)
         updateConfig({
@@ -573,12 +641,17 @@ export function EvaluationRulesEditor({
         toast({ variant: 'destructive', title: t('删除失败'), description: t('现场问答题删除失败') })
       }
     },
-    [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast, t],
+    [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast, t, readOnly],
   )
 
   const loadPapers = useCallback(async () => {
     setLoadingPapers(true)
     try {
+      if (dataSource?.loadExams) {
+        setPapers(await dataSource.loadExams())
+        return
+      }
+      if (dataSource?.skipPortalPreload) return
       // 每次挂载重新拉取，避免模块级缓存跨租户/跨页面串数据
       const res = await examApi.list({ limit: 1000 })
       setPapers((res.items || []) as LoadedExam[])
@@ -587,22 +660,18 @@ export function EvaluationRulesEditor({
     } finally {
       setLoadingPapers(false)
     }
-  }, [])
+  }, [dataSource])
 
   // Mount 时预加载一次依赖数据；在微任务回调中触发加载，避免在 effect 体内同步 setState
+  // （各 load* 内部自行判断：注入数据源优先，skipPortalPreload 时跳过 portal 数据集）
   useEffect(() => {
     Promise.resolve().then(() => {
-      if (dataSource?.skipPortalPreload) {
-        // 企业共建端：试卷/现场问答题/专业均为 portal 数据集（partner token 调不通），只加载注入的量规模板
-        loadRubricTemplates()
-        return
-      }
       loadPapers()
       loadRdqQuestions()
       loadMajors()
       loadRubricTemplates()
     })
-  }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates, dataSource?.skipPortalPreload])
+  }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates])
 
   const majorOptions = useMemo(
     () => [{ id: 'all', name: t('全部') }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))],
@@ -618,6 +687,7 @@ export function EvaluationRulesEditor({
 
   const handleCreatePaper = useCallback(
     async (data: any) => {
+      if (readOnly) return
       try {
         const created = await examApi.create(data as any)
         setPapers((prev) => [...prev, created as LoadedExam])
@@ -627,7 +697,7 @@ export function EvaluationRulesEditor({
         toast({ variant: 'destructive', title: t('创建失败'), description: t('创建试卷失败') })
       }
     },
-    [updateConfig, toast, t],
+    [updateConfig, toast, t, readOnly],
   )
 
   const mockResReview = getResourceConfig('review', {
@@ -1050,10 +1120,12 @@ export function EvaluationRulesEditor({
                     className="pl-9"
                   />
                 </div>
-                <Button onClick={handleAddRdqLocal}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  {t('新增现场问答题')}
-                </Button>
+                {!readOnly && (
+                  <Button onClick={handleAddRdqLocal}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    {t('新增现场问答题')}
+                  </Button>
+                )}
               </div>
               <div className="flex gap-4 max-lg:flex-col">
                 <div className="w-full lg:w-3/5 flex flex-col border rounded-xl p-3">
@@ -1163,32 +1235,36 @@ export function EvaluationRulesEditor({
                                       >
                                         {t('编辑')}
                                       </Button>
-                                      {isSelected ? (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-6 text-[11px] px-2"
-                                          onClick={() => handleToggleSelect(q.id)}
-                                        >
-                                          {t('取消')}
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          className="h-6 text-[11px] px-2"
-                                          onClick={() => handleToggleSelect(q.id)}
-                                        >
-                                          {t('选择')}
-                                        </Button>
+                                      {!readOnly && (
+                                        <>
+                                          {isSelected ? (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-6 text-[11px] px-2"
+                                              onClick={() => handleToggleSelect(q.id)}
+                                            >
+                                              {t('取消')}
+                                            </Button>
+                                          ) : (
+                                            <Button
+                                              size="sm"
+                                              className="h-6 text-[11px] px-2"
+                                              onClick={() => handleToggleSelect(q.id)}
+                                            >
+                                              {t('选择')}
+                                            </Button>
+                                          )}
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600"
+                                            onClick={() => handleDeleteRdq(q.id)}
+                                          >
+                                            {t('删除')}
+                                          </Button>
+                                        </>
                                       )}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600"
-                                        onClick={() => handleDeleteRdq(q.id)}
-                                      >
-                                        {t('删除')}
-                                      </Button>
                                     </div>
                                   </td>
                                 </tr>
@@ -1896,6 +1972,7 @@ export function EvaluationRulesEditor({
                       className="pl-9"
                     />
                   </div>
+                {!readOnly && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1907,6 +1984,7 @@ export function EvaluationRulesEditor({
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     {t('新建试卷')}
                   </Button>
+                )}
                 </div>
                 {loadingPapers ? (
                   <div className="text-center py-8 text-gray-400">{t('加载中...')}</div>
@@ -2093,6 +2171,7 @@ export function EvaluationRulesEditor({
                 field="questionBankQuestions"
                 selectedIds={config.questionBankQuestions}
                 onToggleQuestion={(qid) => toggleQuestion(qid, 'questionBankQuestions')}
+                dataSource={bankDataSource}
                 questionScores={
                   (getResourceConfig('question_bank', {}) as any).questionScores || {}
                 }
@@ -2400,6 +2479,7 @@ export function EvaluationRulesEditor({
                 selectedIds={config.quizQuestions}
                 maxCount={30}
                 onToggleQuestion={(qid) => toggleQuestion(qid, 'quizQuestions')}
+                dataSource={bankDataSource}
                 questionScores={(getResourceConfig('quiz', {}) as any).questionScores || {}}
                 onUpdateQuestionScore={(qid, score) =>
                   updateResourceConfig('quiz', {
@@ -3133,18 +3213,20 @@ export function EvaluationRulesEditor({
                 >
                   {isSavingStandard ? t('保存中…') : t('保存')}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-8"
-                  onClick={() => {
-                    setSaveTemplateDialogOpen(true)
-                    setSaveTemplateMode('new')
-                    setSelectedReplaceTemplateId(null)
-                  }}
-                >
-                  {t('保存到模板')}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={() => {
+                      setSaveTemplateDialogOpen(true)
+                      setSaveTemplateMode('new')
+                      setSelectedReplaceTemplateId(null)
+                    }}
+                  >
+                    {t('保存到模板')}
+                  </Button>
+                )}
               </div>
               <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
                 <DialogContent className="sm:max-w-md">

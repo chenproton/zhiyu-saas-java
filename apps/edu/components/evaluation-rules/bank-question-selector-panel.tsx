@@ -43,6 +43,12 @@ interface BankQuestionSelectorPanelProps {
   questionScores?: Record<string, number>
   onUpdateQuestionScore?: (qid: string, score: number) => void
   onUpdateQuestionScores?: (scores: Record<string, number>) => void
+  /** 数据源覆盖（缺省走 portal 接口）：企业共建端注入学校题库/题目只读列表 */
+  dataSource?: {
+    loadBanks?: () => Promise<unknown[]>
+    loadQuestions?: (bankId: string) => Promise<unknown[]>
+    getQuestion?: (id: string) => Promise<unknown>
+  }
 }
 
 export function BankQuestionSelectorPanel({
@@ -53,6 +59,7 @@ export function BankQuestionSelectorPanel({
   questionScores,
   onUpdateQuestionScore,
   onUpdateQuestionScores,
+  dataSource,
 }: BankQuestionSelectorPanelProps) {
   const t = useT()
   // 题库切换请求序号：丢弃过期响应
@@ -75,6 +82,10 @@ export function BankQuestionSelectorPanel({
   const loadBanks = useCallback(async () => {
     setLoadingBanks(true)
     try {
+      if (dataSource?.loadBanks) {
+        setBanks(await dataSource.loadBanks())
+        return
+      }
       const res = (await questionBankApi.list({ limit: 1000 })) as unknown as { items: any[] }
       setBanks(res.items)
     } catch (err) {
@@ -82,7 +93,7 @@ export function BankQuestionSelectorPanel({
     } finally {
       setLoadingBanks(false)
     }
-  }, [])
+  }, [dataSource])
 
   useEffect(() => {
     let cancelled = false
@@ -102,6 +113,9 @@ export function BankQuestionSelectorPanel({
     Promise.all(
       missingIds.map(async (qid) => {
         try {
+          if (dataSource?.getQuestion) {
+            return (await dataSource.getQuestion(qid)) as unknown as any
+          }
           return (await questionApi.get(qid)) as unknown as any
         } catch (err) {
           reportError(err, { source: '预加载题目详情', extras: { questionId: qid } })
@@ -119,31 +133,40 @@ export function BankQuestionSelectorPanel({
       })
       setPreloadedQuestions((prev) => [...prev, ...loaded])
     })
-  }, [selectedIds, preloadedQuestions, questionCache])
+  }, [selectedIds, preloadedQuestions, questionCache, dataSource])
 
-  const loadQuestions = useCallback(async (bankId: string) => {
-    const seq = ++loadSeqRef.current
-    setLoadingQuestions(true)
-    try {
-      const res = (await questionApi.list({ bankId, limit: 1000 })) as unknown as {
-        items: CachedQuestion[]
+  const loadQuestions = useCallback(
+    async (bankId: string) => {
+      const seq = ++loadSeqRef.current
+      setLoadingQuestions(true)
+      try {
+        let items: CachedQuestion[]
+        if (dataSource?.loadQuestions) {
+          items = (await dataSource.loadQuestions(bankId)) as CachedQuestion[]
+        } else {
+          const res = (await questionApi.list({ bankId, limit: 1000 })) as unknown as {
+            items: CachedQuestion[]
+          }
+          items = res.items
+        }
+        // 连续切换题库时丢弃过期响应，防止旧题库题目覆盖新题库
+        if (seq !== loadSeqRef.current) return
+        setQuestionCache((prev) => {
+          const next = new Map(prev)
+          items.forEach((q) => next.set(q.id, q))
+          return next
+        })
+        setAllQuestions(items)
+        setBankQuestions(items)
+      } catch (err) {
+        if (seq !== loadSeqRef.current) return
+        reportError(err, { source: '加载题库题目', extras: { bankId } })
+      } finally {
+        if (seq === loadSeqRef.current) setLoadingQuestions(false)
       }
-      // 连续切换题库时丢弃过期响应，防止旧题库题目覆盖新题库
-      if (seq !== loadSeqRef.current) return
-      setQuestionCache((prev) => {
-        const next = new Map(prev)
-        res.items.forEach((q) => next.set(q.id, q))
-        return next
-      })
-      setAllQuestions(res.items)
-      setBankQuestions(res.items)
-    } catch (err) {
-      if (seq !== loadSeqRef.current) return
-      reportError(err, { source: '加载题库题目', extras: { bankId } })
-    } finally {
-      if (seq === loadSeqRef.current) setLoadingQuestions(false)
-    }
-  }, [])
+    },
+    [dataSource],
+  )
 
   const handleSelectBank = (bankId: string, bankName: string) => {
     setSelectedBankId(bankId)
