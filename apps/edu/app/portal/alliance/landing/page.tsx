@@ -451,7 +451,7 @@ export default function AllianceLandingPage() {
         />
 
         {/* 合作企业 */}
-        <div className="mb-20 rounded-3xl border border-slate-200/70 bg-white/80 p-6 sm:p-8 shadow-sm">
+        <div className="mb-20">
           <SectionSubHeading
             title={t('合作企业')}
             action={<ViewAllLink href="/portal/alliance/enterprises" />}
@@ -485,7 +485,7 @@ export default function AllianceLandingPage() {
         </div>
 
         {/* 合作成果 */}
-        <div className="mb-20 rounded-3xl border border-slate-200/70 bg-white/80 p-6 sm:p-8 shadow-sm">
+        <div className="mb-20">
           <SectionSubHeading
             title={t('合作成果')}
             action={<ViewAllLink href="/portal/alliance/achievements" />}
