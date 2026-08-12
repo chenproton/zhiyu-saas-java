@@ -299,7 +299,8 @@ export function EvaluationRulesEditor({
     (s) => s.enabled && s.subjectType === 'enterprise_mentor',
   )
   useEffect(() => {
-    if (!hasEnterpriseMentorStep || mentorOptions !== null) return
+    // 企业共建端（注入数据源）不调 portal 企业导师接口，回退为空列表
+    if (!hasEnterpriseMentorStep || mentorOptions !== null || dataSource?.readOnly) return
     let cancelled = false
     allianceExpertApi
       .mentorOptions()
@@ -312,7 +313,7 @@ export function EvaluationRulesEditor({
     return () => {
       cancelled = true
     }
-  }, [hasEnterpriseMentorStep, mentorOptions])
+  }, [hasEnterpriseMentorStep, mentorOptions, dataSource?.readOnly])
 
   // 评价量规「关联考查知识点/能力点」搜索走后端接口（name/code/描述模糊匹配），
   // 可命中全部知识点/能力点，不受初始 pool（200 条钳制）限制

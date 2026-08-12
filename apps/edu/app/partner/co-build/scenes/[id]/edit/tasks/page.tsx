@@ -342,6 +342,45 @@ function useCoBuildDatasets(schoolTenantId: string, positionId?: string) {
     [schoolTenantId, loadRubricTemplates],
   )
 
+  // KnowledgeSelector 数据源注入：学校只读（岗位/场景/任务/知识点/微课程）
+  const knowledgeDataSource = useMemo(
+    () =>
+      schoolTenantId
+        ? {
+            readOnly: true,
+            loadGranularCourses: async () => {
+              const res = await partnerCobuildSchoolApi.courses(schoolTenantId, {
+                type: 'granular',
+                limit: 1000,
+              })
+              return (res.items || []) as Course[]
+            },
+            loadPositions: async () => {
+              const res = await partnerCobuildPositionApi.list({ schoolTenantId, limit: 200 })
+              return (res.items || []) as any[]
+            },
+            loadScenarios: async () => {
+              const res = await partnerCobuildSchoolApi.scenarios(schoolTenantId, { limit: 1000 })
+              return (res.items || []) as any[]
+            },
+            loadTasks: async (sid: string) => {
+              const res = await partnerCobuildScenarioApi.listTasks(sid)
+              return (res.items || []) as any[]
+            },
+            listKnowledgePoints: async (params: { limit: number; offset: number }) =>
+              partnerCobuildSchoolApi.knowledgePoints(schoolTenantId, params),
+            searchKnowledgePoints: async (search: string) => {
+              const res = await partnerCobuildSchoolApi.knowledgePoints(schoolTenantId, {
+                search,
+                limit: 200,
+              })
+              return (res.items || []) as any[]
+            },
+          }
+        : undefined,
+    [schoolTenantId],
+  )
+
   return {
     knowledgePoints,
     setKnowledgePoints,
@@ -361,6 +400,7 @@ function useCoBuildDatasets(schoolTenantId: string, positionId?: string) {
     setScenarios,
     cloneDataVersion,
     bumpCloneDataVersion: () => setCloneDataVersion((v) => v + 1),
+    knowledgeDataSource,
     customKnowledgePointIds,
     setCustomKnowledgePointIds,
     markKnowledgePointCustom: (id: string, persisted = false) => {
@@ -1729,6 +1769,7 @@ function EditCardDialog({
             standalone={false}
             selected={selected}
             pool={pool}
+            dataSource={datasets.knowledgeDataSource}
             onChange={(items) => {
               const ids = items.map((i) => i.id)
               datasets.setKnowledgePoints((prev) => {

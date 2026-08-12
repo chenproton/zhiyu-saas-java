@@ -68,6 +68,19 @@ interface KnowledgeSelectorProps {
   onChange?: (selected: KnowledgePointItem[]) => void
   onAddCustom?: (name: string, description?: string) => void
   standalone?: boolean
+  /** 数据源覆盖（缺省走 portal 接口）：企业共建端注入学校只读数据源，readOnly 隐藏写操作 */
+  dataSource?: {
+    readOnly?: boolean
+    loadGranularCourses?: () => Promise<Course[]>
+    loadPositions?: () => Promise<CareerPosition[]>
+    loadScenarios?: () => Promise<Scenario[]>
+    loadTasks?: (scenarioId: string) => Promise<ScenarioTask[]>
+    listKnowledgePoints?: (params: {
+      limit: number
+      offset: number
+    }) => Promise<{ items: unknown[]; total: number }>
+    searchKnowledgePoints?: (search: string) => Promise<unknown[]>
+  }
 }
 
 export function KnowledgeSelector({
@@ -76,6 +89,7 @@ export function KnowledgeSelector({
   onChange,
   onAddCustom,
   standalone = true,
+  dataSource,
 }: KnowledgeSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [kpSearch, setKpSearch] = useState('')
@@ -120,39 +134,69 @@ export function KnowledgeSelector({
   const t = useT()
 
   useEffect(() => {
+    if (dataSource?.loadGranularCourses) {
+      dataSource
+        .loadGranularCourses()
+        .then(setGranularCourses)
+        .catch(() => setGranularCourses([]))
+      return
+    }
     courseApi
       .list({ type: 'granular' })
       .then((res) => {
         setGranularCourses(res.items || [])
       })
       .catch(() => setGranularCourses([]))
-  }, [])
+  }, [dataSource])
 
   // 岗位/场景下拉数据（真实数据，分页拉全量）
   useEffect(() => {
+    if (dataSource?.loadPositions && dataSource?.loadScenarios) {
+      dataSource
+        .loadPositions()
+        .then(setPositions)
+        .catch(() => setPositions([]))
+      dataSource
+        .loadScenarios()
+        .then(setScenarios)
+        .catch(() => setScenarios([]))
+      return
+    }
     fetchAllPages(({ limit, offset }) => positionApi.list({ limit, offset }))
       .then(setPositions)
       .catch(() => setPositions([]))
     fetchAllPages(({ limit, offset }) => scenarioApi.list({ limit, offset }))
       .then(setScenarios)
       .catch(() => setScenarios([]))
-  }, [])
+  }, [dataSource])
 
   // 筛选命中集合非空时，懒加载全量知识点（超出 pool 200 条的部分也能筛出来）
   useEffect(() => {
     if (filterKpIds === null || allKps !== null) return
     let cancelled = false
+    const apply = (items: unknown[]) => {
+      if (!cancelled) setAllKps(items.map((k) => mapServerKp(k as any)))
+    }
+    if (dataSource?.listKnowledgePoints) {
+      dataSource
+        .listKnowledgePoints({ limit: 200, offset: 0 })
+        .then((res) => apply(res.items || []))
+        .catch(() => {
+          if (!cancelled) setAllKps([])
+        })
+      return () => {
+        cancelled = true
+      }
+    }
     fetchAllPages(({ limit, offset }) => knowledgeApi.list({ limit, offset }))
-      .then((items) => {
-        if (!cancelled) setAllKps(items.map(mapServerKp))
-      })
+      .then(apply)
       .catch(() => {
         if (!cancelled) setAllKps([])
       })
     return () => {
       cancelled = true
     }
-  }, [filterKpIds, allKps])
+  }, [filterKpIds, allKps, dataSource])
 
   const kpSearchTerm = kpSearch.trim()
 
@@ -162,13 +206,25 @@ export function KnowledgeSelector({
     if (!kpSearchTerm) return
     const timer = setTimeout(() => {
       setSearchLoading(true)
+      const apply = (items: unknown[]) => {
+        if (seq !== searchSeqRef.current) return
+        setSearchResults(items.map((k) => mapServerKp(k as any)))
+        setSearchLoading(false)
+      }
+      if (dataSource?.searchKnowledgePoints) {
+        dataSource
+          .searchKnowledgePoints(kpSearchTerm)
+          .then(apply)
+          .catch(() => {
+            if (seq !== searchSeqRef.current) return
+            setSearchResults([])
+            setSearchLoading(false)
+          })
+        return
+      }
       knowledgeApi
         .list({ search: kpSearchTerm, limit: 200 })
-        .then((res) => {
-          if (seq !== searchSeqRef.current) return
-          setSearchResults((res.items || []).map(mapServerKp))
-          setSearchLoading(false)
-        })
+        .then((res) => apply(res.items || []))
         .catch(() => {
           if (seq !== searchSeqRef.current) return
           setSearchResults([])
@@ -176,7 +232,7 @@ export function KnowledgeSelector({
         })
     }, 300)
     return () => clearTimeout(timer)
-  }, [kpSearchTerm])
+  }, [kpSearchTerm, dataSource])
 
   const isReferenceKp = (kp: KnowledgePointItem) => kp.linked
 
@@ -215,12 +271,14 @@ export function KnowledgeSelector({
     setFilterLoading(true)
     setFilterKpIds(new Set())
     const seq = ++filterSeqRef.current
-    taskApi
-      .list({ scenarioId: sid, limit: 200 })
-      .then((res) => {
+    const loadTasks = (sid: string) =>
+      dataSource?.loadTasks
+        ? dataSource.loadTasks(sid)
+        : taskApi.list({ scenarioId: sid, limit: 200 }).then((res) => res.items || [])
+    loadTasks(sid)
+      .then((tasks) => {
         if (seq !== filterSeqRef.current) return
-        const tasks = res.items || []
-        setSceneTasks(tasks)
+        setSceneTasks(tasks as ScenarioTask[])
         const ids = new Set<string>()
         for (const task of tasks) for (const id of task.knowledgePointIds || []) ids.add(id)
         setSceneKpIdSet(ids)
@@ -261,11 +319,15 @@ export function KnowledgeSelector({
     setFilterLoading(true)
     setFilterKpIds(new Set())
     const seq = ++filterSeqRef.current
-    Promise.all(posScenarios.map((s) => taskApi.list({ scenarioId: s.id, limit: 200 })))
+    const loadTasks = (sid: string) =>
+      dataSource?.loadTasks
+        ? dataSource.loadTasks(sid)
+        : taskApi.list({ scenarioId: sid, limit: 200 }).then((res) => res.items || [])
+    Promise.all(posScenarios.map((s) => loadTasks(s.id)))
       .then((results) => {
         if (seq !== filterSeqRef.current) return
         const ids = new Set<string>()
-        for (const r of results) for (const task of r.items || []) for (const id of task.knowledgePointIds || []) ids.add(id)
+        for (const r of results) for (const task of r || []) for (const id of task.knowledgePointIds || []) ids.add(id)
         setFilterKpIds(ids)
       })
       .catch(() => {
@@ -287,6 +349,7 @@ export function KnowledgeSelector({
   }
 
   const openAddKp = () => {
+    if (dataSource?.readOnly) return
     setNewKpForm({ name: kpSearch, description: '', code: generateKpCode(), granularLessons: [] })
     setKpNameError('')
     setKpActionMode('add')
@@ -295,6 +358,7 @@ export function KnowledgeSelector({
   }
 
   const openCloneKp = (kp: KnowledgePointItem) => {
+    if (dataSource?.readOnly) return
     setNewKpForm({
       name: `${kp.name}-copy`,
       description: kp.description || '',
@@ -308,6 +372,7 @@ export function KnowledgeSelector({
   }
 
   const openEditKp = (kp: KnowledgePointItem) => {
+    if (dataSource?.readOnly) return
     setNewKpForm({
       name: kp.name,
       description: kp.description || '',
@@ -424,10 +489,12 @@ export function KnowledgeSelector({
               className="pl-9"
             />
           </div>
-          <Button onClick={openAddKp}>
-            <Plus className="h-4 w-4 mr-1" />
-            {t('新增知识点')}
-          </Button>
+          {!dataSource?.readOnly && (
+            <Button onClick={openAddKp}>
+              <Plus className="h-4 w-4 mr-1" />
+              {t('新增知识点')}
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs text-gray-500 shrink-0">{t('筛选')}</span>
@@ -551,10 +618,12 @@ export function KnowledgeSelector({
           {isSearching && !searchLoading && !hasResults && (
             <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
               <p className="mb-2">{t('未找到 "{kpSearch}" 相关的知识点')}</p>
-              <Button variant="outline" size="sm" onClick={openAddKp}>
-                <Plus className="h-3 w-3 mr-1" />
-                {t('新增此知识点')}
-              </Button>
+              {!dataSource?.readOnly && (
+                <Button variant="outline" size="sm" onClick={openAddKp}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t('新增此知识点')}
+                </Button>
+              )}
             </div>
           )}
           {filtered.length > 0 && (
@@ -635,14 +704,16 @@ export function KnowledgeSelector({
                                 >
                                   {t('引用')}
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 text-[11px] px-2"
-                                  onClick={() => openCloneKp(kp)}
-                                >
-                                  {t('克隆')}
-                                </Button>
+                                {!dataSource?.readOnly && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[11px] px-2"
+                                    onClick={() => openCloneKp(kp)}
+                                  >
+                                    {t('克隆')}
+                                  </Button>
+                                )}
                               </>
                             )}
                           </div>
@@ -686,7 +757,7 @@ export function KnowledgeSelector({
                         : 'border-primary/20 bg-primary/5 hover:bg-primary/10',
                     )}
                     onClick={() => {
-                      if (isReference) {
+                      if (isReference || dataSource?.readOnly) {
                         setSelectedKpForDetail(kp.id)
                         setKpDetailOpen(true)
                       } else {
