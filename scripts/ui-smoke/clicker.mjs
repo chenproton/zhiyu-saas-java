@@ -87,7 +87,7 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
     const wordRe = (words, anchorEnd) => words.length
       ? new RegExp(`^(?:${words.map(escapeRe).join('|')})${anchorEnd ? '$' : ''}`)
       : { test: () => false }
-    const skipRe = new RegExp(re)
+    const skipRe = re ? new RegExp(re) : { test: () => false }
     const triggerRegex = triggerSrc ? new RegExp(triggerSrc) : null
     const submitRe = wordRe(submitWords)
     const destructiveRe = wordRe(destructiveWords)
@@ -217,7 +217,10 @@ export async function collectClickables(page, cfg, dangerousRe, scope = 'page', 
   })
 }
 
-// 按 index 定位点击，DOM 错位时按 key 回退
+// 按 index 定位点击，DOM 错位时按 key 回退。
+// 必须派发完整指针序列（pointerdown→pointerup→click）而非仅 el.click()：
+// Radix 下拉菜单/部分触发器以 pointerdown 打开，仅 click 事件不触发（曾导致菜单项零覆盖）；
+// dispatchEvent 对隐藏但挂载中的元素依然有效（弹窗退出动画期间延迟点击仍可命中）。
 export function clickByIndex(page, pick) {
   return page.evaluate(({ selector, key, index }) => {
     let base = key.slice(0, key.lastIndexOf('|'))
@@ -231,7 +234,12 @@ export function clickByIndex(page, pick) {
     }
     const els = [...document.querySelectorAll(selector)]
     const el = els[index] && matchKey(els[index]) ? els[index] : els.find(matchKey)
-    if (el) el.click()
+    if (el) {
+      const opts = { bubbles: true, cancelable: true, composed: true, button: 0, buttons: 1, pointerType: 'mouse' }
+      el.dispatchEvent(new PointerEvent('pointerdown', opts))
+      el.dispatchEvent(new PointerEvent('pointerup', opts))
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true, button: 0 }))
+    }
   }, { selector: CLICKABLE_SELECTOR, key: pick.key, index: pick.index }).catch(() => {})
 }
 

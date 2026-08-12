@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
-import { buildDangerousRe, collectClickables } from '../clicker.mjs'
+import { buildDangerousRe, collectClickables, clickByIndex } from '../clicker.mjs'
 import { buildTriggerRe } from '../forms.mjs'
 
 const CFG = {
@@ -127,6 +127,44 @@ test('collectClickables：动作分类 actionType 标注', async t => {
   assert.equal(byText['删除'], 'destructive')
   assert.equal(byText['查看'], 'nav')
   assert.equal(byText['内链'], 'nav')
+  await page.close()
+  await browser?.close()
+  browser = null
+})
+
+test('clickByIndex：派发指针序列可打开 pointerdown 触发的下拉菜单', async t => {
+  let page
+  try {
+    if (!browser) browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox'] })
+    page = await browser.newPage()
+    // 模拟 Radix：菜单在 pointerdown 时打开（仅 el.click() 不触发）
+    await page.setContent(`
+      <html><body>
+        <button id="trig">更多</button>
+        <div role="menu" style="display:none"><div role="menuitem">查看</div></div>
+        <script>
+          document.getElementById('trig').addEventListener('pointerdown', () => {
+            document.querySelector('[role=menu]').style.display = 'block'
+          })
+        </script>
+      </body></html>`)
+  } catch (e) { t.skip(`Chrome 不可用：${e.message}`); return }
+  const cfg = {
+    clickOnly: false, clickDangerous: false, allowIconButtons: false, localeSwitchWords: [], crudMarker: 'SMOKE_',
+    maxRowClicks: 1, dangerousWords: [], dangerousWordsEn: [],
+    editWords: [], deleteWords: [], enableWords: [], disableWords: [],
+    submitWords: [], submitWordsEn: [], destructiveWords: [], destructiveWordsEn: [],
+    navWords: ['查看'], navWordsEn: [],
+    formTriggerWords: ['创建', '新增', '添加'], formTriggerWordsEn: [],
+  }
+  const re = buildDangerousRe(cfg)
+  const items = await collectClickables(page, cfg, re, 'page', null)
+  const trig = items.find(p => p.key.includes('更多'))
+  assert.ok(trig, '触发器应被收集')
+  await clickByIndex(page, trig)
+  await page.waitForTimeout(100)
+  const menuVisible = await page.locator('[role="menu"]:visible').count()
+  assert.equal(menuVisible, 1, 'pointerdown 触发菜单应被打开（仅 el.click 打不开）')
   await page.close()
   await browser?.close()
   browser = null
