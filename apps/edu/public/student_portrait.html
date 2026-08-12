@@ -109,23 +109,23 @@ body{
 .ev-table tbody tr:hover{background:#fafbff;}
 .ev-table .dn{font-size:12px;font-weight:700;}
 .ev-table .ds{font-size:14px;font-weight:800;}
-.ev-table .ds.exceed{color:var(--exceed);}.ev-table .ds.meet{color:var(--pri);}.ev-table .ds.below{color:var(--below);}
+.ev-table .ds.exceed{color:var(--pri2);}.ev-table .ds.meet{color:var(--exceed);}.ev-table .ds.below{color:var(--below);}
 .ev-table .dl{font-size:11px;color:var(--ink3);}
 
 .ev-bar{height:18px;border-radius:6px;background:#eef1f8;overflow:hidden;}
 .ev-fill{height:100%;border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:10px;font-weight:700;color:#fff;transition:width 0.8s ease;}
-.ev-fill.exceed{background:var(--g-exceed);}
-.ev-fill.meet{background:var(--g-meet);}
+.ev-fill.exceed{background:linear-gradient(90deg,#8c6ff0,#b49df6);}
+.ev-fill.meet{background:var(--g-exceed);}
 .ev-fill.below{background:var(--g-below);}
 
 .lv{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;white-space:nowrap;}
 .lv .dot{width:6px;height:6px;border-radius:50%;}
 .lv.gray{background:#f0f2f8;color:var(--ink2);}
 .lv.gray .dot{background:#aab2c8;}
-.lv.exceed{background:rgba(39,176,138,.13);color:var(--exceed);}
-.lv.exceed .dot{background:var(--exceed);}
-.lv.meet{background:rgba(91,118,232,.13);color:var(--pri);}
-.lv.meet .dot{background:var(--pri);}
+.lv.exceed{background:rgba(140,111,240,.13);color:var(--pri2);}
+.lv.exceed .dot{background:var(--pri2);}
+.lv.meet{background:rgba(39,176,138,.13);color:var(--exceed);}
+.lv.meet .dot{background:var(--exceed);}
 .lv.below{background:rgba(232,155,58,.13);color:var(--below);}
 .lv.below .dot{background:var(--below);}
 
@@ -272,8 +272,8 @@ body{
           <div class="eval-top">
             <span class="mk"></span><h3>能力域达成分析</h3>
             <div class="lg">
-              <span><i style="background:var(--g-exceed)"></i>已超越</span>
-              <span><i style="background:var(--g-meet)"></i>已达标</span>
+              <span><i style="background:linear-gradient(90deg,#8c6ff0,#b49df6)"></i>已超越</span>
+              <span><i style="background:var(--g-exceed)"></i>已达标</span>
               <span><i style="background:var(--g-below)"></i>未达标</span>
             </div>
           </div>
