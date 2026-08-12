@@ -446,6 +446,26 @@ export function UserSelector({
                     <Building className="w-4 h-4 text-slate-600" />
                     <span>{t('全部组织')}</span>
                   </div>
+                  {showEnterpriseExperts && (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpertView(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setExpertView(true)
+                        }
+                      }}
+                      className={cn(
+                        'flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mb-1 border border-dashed border-primary/30 bg-primary/[0.02]',
+                        expertView ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+                      )}
+                    >
+                      <Briefcase className="w-4 h-4 text-slate-600" />
+                      <span>{t('企业专家')}</span>
+                    </div>
+                  )}
                   {orgs.map((node) => (
                     <OrgTreeRow
                       key={node.id}
@@ -461,26 +481,6 @@ export function UserSelector({
                       onToggle={toggleOrg}
                     />
                   ))}
-                  {showEnterpriseExperts && (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setExpertView(true)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setExpertView(true)
-                        }
-                      }}
-                      className={cn(
-                        'flex items-center gap-2 py-1.5 px-2 text-sm rounded-md cursor-pointer transition-colors mt-1',
-                        expertView ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
-                      )}
-                    >
-                      <Briefcase className="w-4 h-4 text-slate-600" />
-                      <span>{t('企业专家')}</span>
-                    </div>
-                  )}
                 </>
               )}
             </div>
