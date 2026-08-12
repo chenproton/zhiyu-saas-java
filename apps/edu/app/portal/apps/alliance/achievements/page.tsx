@@ -21,7 +21,6 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
-import { formatDate } from '@/lib/format-utils'
 import { Switch } from '@/components/ui/switch'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
@@ -71,7 +70,7 @@ export default function AllianceAchievementsPage() {
         templateFileName: t('合作成果批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/achievements/new"
-      colSpan={8}
+      colSpan={6}
       renderTableHeader={() => (
         <>
           <TableHead>{t('成果名称')}</TableHead>
@@ -79,8 +78,6 @@ export default function AllianceAchievementsPage() {
           <TableHead>{t('合作企业')}</TableHead>
           <TableHead>{t('关联项目')}</TableHead>
           <TableHead>{t('类型')}</TableHead>
-          <TableHead>{t('发布时间')}</TableHead>
-          <TableHead>{t('创建人')}</TableHead>
           <TableHead>{t('操作')}</TableHead>
         </>
       )}
@@ -109,8 +106,6 @@ export default function AllianceAchievementsPage() {
             </TableCell>
             <TableCell>{project?.name || '-'}</TableCell>
             <TableCell>{allianceLabel('achievementType', item.type)}</TableCell>
-            <TableCell>{formatDate(item.achievementDate)}</TableCell>
-            <TableCell>{item.createdBy || '-'}</TableCell>
             <TableRowActions>
               <Link href={`/portal/apps/alliance/achievements/${item.id}`}>
                 <Button variant="ghost" size="sm">

@@ -18,7 +18,6 @@ import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
-import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
@@ -72,16 +71,14 @@ export default function AllianceAgreementsPage() {
         templateFileName: t('合作协议批量导入模板.xlsx'),
       }}
       createHref="/portal/apps/alliance/agreements/new"
-      colSpan={9}
+      colSpan={7}
       renderTableHeader={() => (
         <>
           <TableHead>{t('协议名称')}</TableHead>
           <TableHead>{t('合作企业')}</TableHead>
           <TableHead>{t('关联项目')}</TableHead>
-          <TableHead>{t('类型')}</TableHead>
           <TableHead>{t('生效日期')}</TableHead>
           <TableHead>{t('到期日期')}</TableHead>
-          <TableHead>{t('状态')}</TableHead>
           <TableHead>{t('前台展示')}</TableHead>
           <TableHead>{t('操作')}</TableHead>
         </>
@@ -116,13 +113,11 @@ export default function AllianceAgreementsPage() {
                 ? (projects ?? []).find((p) => p.id === (item.projectIds || [])[0])?.name || '-'
                 : '-'}
             </TableCell>
-            <TableCell>{item.type || '-'}</TableCell>
             <TableCell>{formatDate(item.startDate)}</TableCell>
             <TableCell className={expiring ? 'text-amber-600 font-medium' : ''}>
               {formatDate(item.endDate)}
               {expiring && <span className="ml-1 text-xs">{t('（即将到期）')}</span>}
             </TableCell>
-            <TableCell>{allianceLabel('agreementStatus', item.status)}</TableCell>
             <TableCell>
               <Switch checked={item.isPublic || false} onCheckedChange={actions.toggle} />
             </TableCell>
