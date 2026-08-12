@@ -143,8 +143,9 @@ export default function AlliancePublicProjectDetailPage() {
         <Badge key="phase" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
           {allianceLabel('projectPhase', project.phase)}
         </Badge>,
-        <Badge key="publish" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
-          {allianceLabel('publishStatus', project.publishStatus)}
+        <Badge key="period" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
+          {project.startDate ? new Date(project.startDate).toLocaleDateString('zh-CN') : '-'} ~{' '}
+          {project.endDate ? new Date(project.endDate).toLocaleDateString('zh-CN') : '-'}
         </Badge>,
       ]}
       stats={stats}
