@@ -234,27 +234,25 @@ export default function AllianceEnterprisesPage() {
           </div>
         }
         hideCreate
-        colSpan={13}
+        colSpan={11}
         renderTableHeader={() => (
           <>
             <TableHead>{t('企业名称')}</TableHead>
             <TableHead>{t('前台展示')}</TableHead>
             <TableHead>{t('类型')}</TableHead>
-            <TableHead>{t('行业')}</TableHead>
             <TableHead>{t('地址')}</TableHead>
             <TableHead>{t('状态')}</TableHead>
             <TableHead>{t('评级')}</TableHead>
             <TableHead>{t('合作协议')}</TableHead>
             <TableHead>{t('合作项目')}</TableHead>
             <TableHead>{t('合作成果')}</TableHead>
-            <TableHead>{t('引入时间')}</TableHead>
             <TableHead>{t('更新时间')}</TableHead>
             <TableHead>{t('操作')}</TableHead>
           </>
         )}
         renderTableRow={(enterprise: AllianceEnterprise, actions: any) => (
           <>
-            <TableCell className="font-medium">
+            <TableCell className="font-medium max-w-[180px] truncate">
               <Link
                 href={`/portal/apps/alliance/enterprises/${enterprise.id}`}
                 className="hover:underline"
@@ -266,10 +264,12 @@ export default function AllianceEnterprisesPage() {
               <Switch checked={enterprise.isPublic || false} onCheckedChange={actions.toggle} />
             </TableCell>
             <TableCell>{allianceLabel('enterpriseType', enterprise.enterpriseType)}</TableCell>
-            <TableCell>{enterprise.industry || '-'}</TableCell>
-            <TableCell className="max-w-[160px] truncate">{enterprise.address || '-'}</TableCell>
+            <TableCell className="max-w-[140px] truncate">{enterprise.address || '-'}</TableCell>
             <TableCell>{allianceLabel('enterpriseStatus', enterprise.status)}</TableCell>
-            <TableCell>{allianceLabel('enterpriseRating', enterprise.rating)}</TableCell>
+            {/* 评级：与编辑弹窗一致，未设置时按默认评级 general 展示 */}
+            <TableCell>
+              {allianceLabel('enterpriseRating', enterprise.rating || 'general')}
+            </TableCell>
             <TableCell>
               <Link
                 href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`}
@@ -298,8 +298,7 @@ export default function AllianceEnterprisesPage() {
                 {countBy(achievements ?? [], 'enterpriseIds', enterprise.id)}
               </Link>
             </TableCell>
-            <TableCell>{formatDate(enterprise.createdAt)}</TableCell>
-            <TableCell>{formatDate(enterprise.updatedAt)}</TableCell>
+            <TableCell className="whitespace-nowrap">{formatDate(enterprise.updatedAt)}</TableCell>
             <TableRowActions>
               <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
                 <Button variant="ghost" size="sm">
