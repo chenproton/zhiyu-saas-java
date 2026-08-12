@@ -122,9 +122,13 @@ func (s *PartnerService) UpdateProfile(ctx context.Context, tenantID string, p *
 
 // PartnerDashboard 服务台统计。
 type PartnerDashboard struct {
-	ExpertCount int `json:"expertCount"`
-	SchoolCount int `json:"schoolCount"`
-	MemberCount int `json:"memberCount"`
+	ExpertCount         int                       `json:"expertCount"`
+	SchoolCount         int                       `json:"schoolCount"`
+	MemberCount         int                       `json:"memberCount"`
+	PublicExpertCount   int                       `json:"publicExpertCount"`
+	SchoolStatusCounts  []store.SchoolStatusCount `json:"schoolStatusCounts"`
+	ExpertStatusCounts  []store.ExpertStatusCount `json:"expertStatusCounts"`
+	MonthlySchoolCounts []store.MonthCount        `json:"monthlySchoolCounts"`
 }
 
 func (s *PartnerService) Dashboard(ctx context.Context, tenantID string) (*PartnerDashboard, error) {
@@ -137,6 +141,18 @@ func (s *PartnerService) Dashboard(ctx context.Context, tenantID string) (*Partn
 		return nil, err
 	}
 	if d.MemberCount, err = s.st.Partner().CountMembersByTenant(ctx, tenantID); err != nil {
+		return nil, err
+	}
+	if d.PublicExpertCount, err = s.st.Partner().CountPublicExpertsByTenant(ctx, tenantID); err != nil {
+		return nil, err
+	}
+	if d.SchoolStatusCounts, err = s.st.AllianceEnterpriseLinks().CountSchoolStatusByEnterpriseTenant(ctx, tenantID); err != nil {
+		return nil, err
+	}
+	if d.ExpertStatusCounts, err = s.st.Partner().CountExpertStatusByTenant(ctx, tenantID); err != nil {
+		return nil, err
+	}
+	if d.MonthlySchoolCounts, err = s.st.AllianceEnterpriseLinks().CountMonthlyLinksByEnterpriseTenant(ctx, tenantID, 6); err != nil {
 		return nil, err
 	}
 	return &d, nil

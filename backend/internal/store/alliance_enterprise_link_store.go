@@ -283,6 +283,69 @@ func (s *AllianceEnterpriseLinkStore) CountByEnterpriseTenant(ctx context.Contex
 	return n, err
 }
 
+// CountSchoolStatusByEnterpriseTenant 企业侧合作学校状态分布（服务台图表）。
+type SchoolStatusCount struct {
+	Status string
+	Count  int
+}
+
+func (s *AllianceEnterpriseLinkStore) CountSchoolStatusByEnterpriseTenant(ctx context.Context, enterpriseTenantID string) ([]SchoolStatusCount, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT l.status, COUNT(*)
+		FROM alliance_enterprise_links l
+		JOIN partner_enterprises e ON e.id = l.enterprise_id
+		WHERE e.tenant_id = $1
+		GROUP BY l.status
+	`, enterpriseTenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SchoolStatusCount
+	for rows.Next() {
+		var c SchoolStatusCount
+		if err := rows.Scan(&c.Status, &c.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// MonthCount 按月聚合计数。
+type MonthCount struct {
+	Month string
+	Count int
+}
+
+// CountMonthlyLinksByEnterpriseTenant 近 months 个月每月新增合作学校数（服务台柱状图）。
+func (s *AllianceEnterpriseLinkStore) CountMonthlyLinksByEnterpriseTenant(ctx context.Context, enterpriseTenantID string, months int) ([]MonthCount, error) {
+	if months <= 0 || months > 12 {
+		months = 6
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT to_char(date_trunc('month', l.created_at), 'YYYY-MM') AS month, COUNT(*)
+		FROM alliance_enterprise_links l
+		JOIN partner_enterprises e ON e.id = l.enterprise_id
+		WHERE e.tenant_id = $1
+		  AND l.created_at >= date_trunc('month', NOW()) - make_interval(months => $2 - 1)
+		GROUP BY 1 ORDER BY 1
+	`, enterpriseTenantID, months)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []MonthCount
+	for rows.Next() {
+		var c MonthCount
+		if err := rows.Scan(&c.Month, &c.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // SearchEnterprises 全局企业池关键词搜索（跨租户只读，排除已被该校引入的企业）。
 func (s *AllianceEnterpriseLinkStore) SearchEnterprises(ctx context.Context, schoolTenantID, keyword string, limit int) ([]domain.AllianceEnterprise, error) {
 	if limit <= 0 || limit > 50 {
