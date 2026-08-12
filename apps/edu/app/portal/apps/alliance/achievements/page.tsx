@@ -84,6 +84,12 @@ export default function AllianceAchievementsPage() {
       renderTableRow={(item: any, actions: any) => {
         const entIds: string[] = (item.enterpriseIds || []).map(String)
         const project = (projects ?? []).find((p) => p.id === (item.projectIds || [])[0])
+        const entNames =
+          entIds.length > 0
+            ? entIds
+                .map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid)
+                .join('、')
+            : '-'
         return (
           <>
             <TableCell className="font-medium">
@@ -97,12 +103,8 @@ export default function AllianceAchievementsPage() {
             <TableCell>
               <Switch checked={item.isPublic || false} onCheckedChange={actions.toggle} />
             </TableCell>
-            <TableCell className="max-w-[160px]">
-              {entIds.length > 0
-                ? entIds
-                    .map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid)
-                    .join('、')
-                : '-'}
+            <TableCell className="max-w-[160px] truncate" title={entNames}>
+              {entNames}
             </TableCell>
             <TableCell>{project?.name || '-'}</TableCell>
             <TableCell>{allianceLabel('achievementType', item.type)}</TableCell>

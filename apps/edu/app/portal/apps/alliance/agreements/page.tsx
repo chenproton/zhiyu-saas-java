@@ -83,6 +83,12 @@ export default function AllianceAgreementsPage() {
       )}
       renderTableRow={(item: any, actions: any) => {
         const entIds: string[] = (item.enterpriseIds || []).map(String)
+        const entNames =
+          entIds.length > 0
+            ? entIds
+                .map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid)
+                .join('、')
+            : '-'
         const expiring =
           item.endDate &&
           (() => {
@@ -99,12 +105,8 @@ export default function AllianceAgreementsPage() {
                 {item.name}
               </Link>
             </TableCell>
-            <TableCell className="max-w-[160px]">
-              {entIds.length > 0
-                ? entIds
-                    .map((eid) => (enterprises ?? []).find((e) => e.id === eid)?.name || eid)
-                    .join('、')
-                : '-'}
+            <TableCell className="max-w-[160px] truncate" title={entNames}>
+              {entNames}
             </TableCell>
             <TableCell>
               {(item.projectIds || []).length > 0

@@ -109,7 +109,10 @@ export default function AllianceExpertsPage() {
           </TableCell>
           <TableCell>{e.title || '-'}</TableCell>
           <TableCell>{e.position || '-'}</TableCell>
-          <TableCell className="max-w-[160px]">
+          <TableCell
+            className="max-w-[160px] truncate"
+            title={enterpriseName(e.enterpriseId) || e.organization || '-'}
+          >
             {enterpriseName(e.enterpriseId) || e.organization || '-'}
           </TableCell>
           <TableCell>{e.industry || '-'}</TableCell>

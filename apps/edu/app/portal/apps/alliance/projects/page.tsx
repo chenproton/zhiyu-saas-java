@@ -96,6 +96,7 @@ export default function AllianceProjectsPage() {
         const done = ms.filter((m) => m.isCompleted).length
         const progress = ms.length > 0 ? Math.round((done / ms.length) * 100) : 0
         const entIds: string[] = (p.enterpriseIds || []).map(String)
+        const entNames = entIds.length > 0 ? entIds.map(entName).join('、') : '-'
         return (
           <>
             <TableCell className="font-medium">
@@ -106,8 +107,8 @@ export default function AllianceProjectsPage() {
             <TableCell>
               <Switch checked={p.isPublic || false} onCheckedChange={actions.toggle} />
             </TableCell>
-            <TableCell className="max-w-[180px]">
-              {entIds.length > 0 ? entIds.map(entName).join('、') : '-'}
+            <TableCell className="max-w-[180px] truncate" title={entNames}>
+              {entNames}
             </TableCell>
             <TableCell>{p.type || '-'}</TableCell>
             <TableCell className="whitespace-nowrap">
