@@ -149,7 +149,7 @@ export default function PartnerExpertsPage() {
       }
       createHref={isAdmin ? '/partner/experts/new' : undefined}
       hideCreate={!isAdmin}
-      colSpan={8}
+      colSpan={7}
       renderTableHeader={() => (
         <>
           <TableHead>{t('姓名')}</TableHead>
@@ -158,7 +158,6 @@ export default function PartnerExpertsPage() {
           <TableHead>{t('行业')}</TableHead>
           <TableHead>{t('所在城市')}</TableHead>
           <TableHead>{t('状态')}</TableHead>
-          <TableHead>{t('对外展示')}</TableHead>
           <TableHead>{t('操作')}</TableHead>
         </>
       )}
@@ -174,7 +173,6 @@ export default function PartnerExpertsPage() {
           <TableCell>{e.industry || '-'}</TableCell>
           <TableCell>{e.city || '-'}</TableCell>
           <TableCell>{allianceLabel('expertStatus', e.status)}</TableCell>
-          <TableCell>{e.isPublic ? t('是') : t('否')}</TableCell>
           <TableRowActions>
             <Link href={`/partner/experts/${e.id}`}>
               <Button variant="ghost" size="sm">

@@ -6,7 +6,6 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -15,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { X, Plus } from 'lucide-react'
@@ -262,7 +260,7 @@ export function PartnerExpertForm({
   )
 }
 
-/** 右侧"设置"卡片：状态 + 对外展示开关 */
+/** 右侧"设置"卡片：状态（对外展示由学校侧开关控制） */
 export function PartnerExpertSettingsCard({
   item,
   onChange,
@@ -288,16 +286,6 @@ export function PartnerExpertSettingsCard({
             </SelectContent>
           </Select>
         </FormFieldRow>
-        <div className="flex items-center justify-between">
-          <Label>{t('允许对外展示')}</Label>
-          <Switch
-            checked={item.isPublic}
-            onCheckedChange={(v) => onChange({ ...item, isPublic: v })}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {t('开启后该专家档案可出现在产业联盟前台展示（需企业同步开启对外展示）。')}
-        </p>
       </CardContent>
     </Card>
   )

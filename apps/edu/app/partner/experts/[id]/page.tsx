@@ -69,10 +69,6 @@ export default function PartnerExpertDetailPage() {
                 <span className="text-muted-foreground">{t('行业方向：')}</span>
                 {expert?.industry || '-'}
               </p>
-              <p>
-                <span className="text-muted-foreground">{t('允许对外展示：')}</span>
-                {expert?.isPublic ? t('是') : t('否')}
-              </p>
             </CardContent>
           </Card>
           {expert?.avatarUrl && (
