@@ -276,6 +276,17 @@ export type CoBuildStatus =
   | 'published'
   | 'archived'
 
+/** GET /partner/co-build/schools/{tenantId}/co-builders：共建人候选
+ * （group=teacher 学校教师 | expert 企业专家；id 为可保存进 collaborators 的 users.id） */
+export interface CoBuildUserOption {
+  id: string
+  name: string
+  group: 'teacher' | 'expert'
+  title?: string
+  expertId?: string
+  enterpriseName?: string
+}
+
 /** GET/POST /partner/co-build/positions：企业为学校共建的岗位（数据落在学校租户） */
 export interface CoBuildPosition extends CareerPosition {
   schoolTenantId: string

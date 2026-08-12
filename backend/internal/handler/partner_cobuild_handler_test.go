@@ -861,3 +861,142 @@ func TestPartnerCoBuild_AutoGrantLifecycle(t *testing.T) {
 		t.Fatalf("清理授权记录: %v", err)
 	}
 }
+
+// TestPartnerCoBuild_ListSchoolCoBuilders 共建人候选接口：返回学校教师（排除学生）
+// 与企业专家（绑定账号），无 active link 的学校 403。
+func TestPartnerCoBuild_ListSchoolCoBuilders(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	svc := service.New(store.New(env.DB))
+	h := &handler.PartnerCoBuildHandler{Service: service.NewPartnerCoBuildService(svc)}
+	r := chi.NewRouter()
+	r.Get("/partner/co-build/schools/{tenantId}/co-builders", h.ListSchoolCoBuilders)
+
+	// 注册企业 + 学校 + active link
+	authH := newPartnerAuthHandler(env)
+	r0 := chi.NewRouter()
+	r0.Post("/auth/partner/register", authH.PartnerRegister)
+	suffix := uuid.NewString()[:8]
+	w := doNoAuthJSON(r0, http.MethodPost, "/auth/partner/register", map[string]interface{}{
+		"enterpriseName": "共建人候选企业-" + suffix,
+		"username":       "cobuilder_ent_" + suffix,
+		"password":       "abc12345",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("注册失败: %d: %s", w.Code, w.Body.String())
+	}
+	var reg partnerLoginResp
+	if err := json.Unmarshal(w.Body.Bytes(), &reg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	entTenantID := *reg.User.TenantID
+	enterpriseID := partnerEnterpriseID(t, env, entTenantID)
+	defer cleanupPartnerTenant(env, entTenantID)
+
+	schoolID := createSchoolTenant(t, env, "共建人候选学校-"+suffix)
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "active")
+	t.Cleanup(func() { cleanupCoBuildRows(env, schoolID) })
+
+	// 预置学校教师/学生（学生绑定 student 角色，应被排除）
+	teacherID := uuid.NewString()
+	studentID := uuid.NewString()
+	for _, u := range []struct {
+		id, name string
+	}{{teacherID, "共建教师-" + suffix}, {studentID, "学生-" + suffix}} {
+		if _, err := env.DB.Exec(ctx, `
+			INSERT INTO users (id, tenant_id, role, platform, username, password_hash, name, status)
+			VALUES ($1, $2, 'school', 'portal', $3, 'hash', $4, 'active')
+		`, u.id, schoolID, "cob_user_"+u.id[:8], u.name); err != nil {
+			t.Fatalf("预置用户失败: %v", err)
+		}
+	}
+	studentRoleID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO roles (id, tenant_id, code, name, status) VALUES ($1, $2, 'student', '学生', 'active')
+	`, studentRoleID, schoolID); err != nil {
+		t.Fatalf("预置学生角色失败: %v", err)
+	}
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO user_roles (id, user_id, role_id) VALUES ($1, $2, $3)
+	`, uuid.NewString(), studentID, studentRoleID); err != nil {
+		t.Fatalf("预置学生角色绑定失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM user_roles WHERE user_id = ANY($1::uuid[])`, []string{teacherID, studentID})
+		env.DB.Exec(ctx, `DELETE FROM roles WHERE id = $1`, studentRoleID)
+		env.DB.Exec(ctx, `DELETE FROM users WHERE id = ANY($1::uuid[])`, []string{teacherID, studentID})
+	})
+
+	// 预置企业专家（绑定企业账号）
+	expertID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO alliance_experts (id, tenant_id, name, title, enterprise_id, user_id, status)
+		VALUES ($1, $2, $3, '资深专家', $4, $5, 'active')
+	`, expertID, schoolID, "共建专家-"+suffix, enterpriseID, reg.User.ID); err != nil {
+		t.Fatalf("预置专家失败: %v", err)
+	}
+	// 无绑定账号的专家不可选
+	noAccountExpertID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO alliance_experts (id, tenant_id, name, enterprise_id, user_id, status)
+		VALUES ($1, $2, $3, $4, NULL, 'active')
+	`, noAccountExpertID, schoolID, "无账号专家-"+suffix, enterpriseID); err != nil {
+		t.Fatalf("预置无账号专家失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(ctx, `DELETE FROM alliance_experts WHERE id = ANY($1::uuid[])`, []string{expertID, noAccountExpertID})
+	})
+
+	claims := &middleware.Claims{
+		UserID:    reg.User.ID,
+		TenantID:  &entTenantID,
+		Platform:  domain.UserPlatformPartner,
+		RoleCodes: []string{domain.RoleEnterpriseMember},
+	}
+
+	// 正常返回：教师 + 专家，学生与无账号专家被排除
+	wk := doWithClaims(r, http.MethodGet, "/partner/co-build/schools/"+schoolID+"/co-builders", nil, claims)
+	if wk.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", wk.Code, wk.Body.String())
+	}
+	items, total, err := testhelper.UnmarshalList[domain.CoBuildUserOption](wk)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("应返回教师+专家两条, total=%d body=%s", total, wk.Body.String())
+	}
+	byID := map[string]domain.CoBuildUserOption{}
+	for _, it := range items {
+		byID[it.ID] = it
+	}
+	if _, ok := byID[teacherID]; !ok {
+		t.Fatalf("应包含学校教师: %+v", items)
+	}
+	if byID[teacherID].Group != "teacher" {
+		t.Fatalf("教师分组应为 teacher: %+v", byID[teacherID])
+	}
+	expert, ok := byID[reg.User.ID]
+	if !ok {
+		t.Fatalf("应包含企业专家（按绑定账号）: %+v", items)
+	}
+	if expert.Group != "expert" || expert.ExpertID != expertID || expert.EnterpriseName == "" {
+		t.Fatalf("专家字段不符: %+v", expert)
+	}
+	if _, ok := byID[studentID]; ok {
+		t.Fatalf("学生不应出现在共建人候选: %+v", items)
+	}
+	if _, ok := byID[noAccountExpertID]; ok {
+		t.Fatalf("无绑定账号专家不应出现: %+v", items)
+	}
+
+	// 未合作学校 403
+	otherSchoolID := createSchoolTenant(t, env, "共建人候选无关学校-"+suffix)
+	t.Cleanup(func() { cleanupCoBuildRows(env, otherSchoolID) })
+	wf := doWithClaims(r, http.MethodGet, "/partner/co-build/schools/"+otherSchoolID+"/co-builders", nil, claims)
+	if wf.Code != http.StatusForbidden {
+		t.Fatalf("无合作学校应 403, got %d: %s", wf.Code, wf.Body.String())
+	}
+}

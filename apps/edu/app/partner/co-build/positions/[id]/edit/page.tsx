@@ -34,6 +34,7 @@ import {
 import { toast } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
+import { CoBuildCollaboratorPicker } from '@/components/shared/co-build-collaborator-picker'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -362,7 +363,24 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
                     <Label className="text-gray-500 text-xs">{t('创建人')}</Label>
                     <p className="font-medium text-gray-800 mt-1">{currentUser.name}</p>
                   </div>
-                  <div className="pt-3 border-t border-gray-100">
+                  <div>
+                    <Label className="text-gray-500 text-xs">{t('共建人')}</Label>
+                    <div className="mt-1">
+                      <CoBuildCollaboratorPicker
+                        schoolTenantId={schoolTenantId}
+                        value={(position.collaborators || []).filter(
+                          (id) => id !== position.createdBy,
+                        )}
+                        onChange={(ids) =>
+                          updatePositionData({
+                            collaborators: ids.filter((id) => id !== position.createdBy),
+                          })
+                        }
+                        placeholder={t('点击选择共建人')}
+                      />
+                    </div>
+                  </div>
+                  <div>
                     <Label className="text-gray-500 text-xs">{t('当前版本号')}</Label>
                     <p className="font-medium text-gray-800 mt-1">{position.version}</p>
                   </div>

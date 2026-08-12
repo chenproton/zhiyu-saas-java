@@ -246,6 +246,18 @@ type AllianceMentorOption struct {
 	UserID         *string `json:"userId"`
 }
 
+// ===== 共建人候选（企业端共建岗位编辑页选择器数据源） =====
+// ID 为可保存进 collaborators 的 users.id；Group 区分来源分组：
+// teacher=学校教师（学校租户用户），expert=企业专家（绑定账号）。
+type CoBuildUserOption struct {
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Group          string  `json:"group"`
+	Title          *string `json:"title,omitempty"`
+	ExpertID       string  `json:"expertId,omitempty"`
+	EnterpriseName string  `json:"enterpriseName,omitempty"`
+}
+
 // ===== 企业合作协议 =====
 // ===== 合作项目 =====
 type AllianceProject struct {

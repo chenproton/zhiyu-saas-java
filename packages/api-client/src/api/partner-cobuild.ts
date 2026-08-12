@@ -16,6 +16,7 @@ import type {
   CoBuildScenario,
   CoBuildScenarioCreateRequest,
   CoBuildTask,
+  CoBuildUserOption,
 } from '../types/partner'
 
 type ListParams = Record<string, string | number | boolean | undefined>
@@ -126,5 +127,10 @@ export const partnerCobuildSchoolApi = {
   evaluationMethods: (tenantId: string) =>
     partnerRequest<{ items: RubricTemplate[]; total: number }>(
       `/partner/co-build/schools/${tenantId}/evaluation-methods`,
+    ),
+  // 共建人候选（岗位编辑页选择器数据源：学校教师 + 企业专家）
+  coBuilders: (tenantId: string) =>
+    partnerRequest<ListResponse<CoBuildUserOption>>(
+      `/partner/co-build/schools/${tenantId}/co-builders`,
     ),
 }

@@ -62,6 +62,7 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 		r.Put("/partner/co-build/tasks/{taskId}/evaluation-methods", h.partnerCoBuildHandler.PutTaskEvaluationMethods)
 		r.Get("/partner/co-build/schools/{tenantId}/abilities", h.partnerCoBuildHandler.ListSchoolAbilities)
 		r.Get("/partner/co-build/schools/{tenantId}/evaluation-methods", h.partnerCoBuildHandler.ListSchoolEvaluationMethods)
+		r.Get("/partner/co-build/schools/{tenantId}/co-builders", h.partnerCoBuildHandler.ListSchoolCoBuilders)
 	})
 
 	// 仅企业管理员（企业资料写 + 合作状态确认 + 专家库写）

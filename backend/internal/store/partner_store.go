@@ -99,6 +99,62 @@ func (s *PartnerStore) CountCoBuildResources(ctx context.Context, enterpriseID s
 	return positions, scenarios, nil
 }
 
+// ListSchoolCoBuilders 合作学校共建人候选（企业端共建岗位编辑页选择器数据源）：
+// 学校教师（学校租户 portal 用户，排除学生角色）+ 企业专家（该校已引入企业的专家，
+// 仅含绑定账号者，ID 为账号 users.id）。教师/专家统一为可选 group 标记。
+func (s *PartnerStore) ListSchoolCoBuilders(ctx context.Context, schoolTenantID string) ([]domain.CoBuildUserOption, error) {
+	items := make([]domain.CoBuildUserOption, 0)
+	rows, err := s.q.Query(ctx, `
+		SELECT u.id, u.name FROM users u
+		WHERE u.tenant_id = $1 AND u.platform = 'portal'
+			AND NOT EXISTS (
+				SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+				WHERE ur.user_id = u.id AND r.code = 'student'
+			)
+		ORDER BY u.name
+	`, schoolTenantID)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var o domain.CoBuildUserOption
+		if err := rows.Scan(&o.ID, &o.Name); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		o.Group = "teacher"
+		items = append(items, o)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// 企业专家（与 portal 共建导师选择器同源：该校已引入企业的专家，带绑定账号）
+	expertRows, err := s.q.Query(ctx, `
+		SELECT x.id, x.name, x.title, e.name, x.user_id
+		FROM alliance_experts x
+		JOIN alliance_enterprise_links l ON l.enterprise_id = x.enterprise_id AND l.tenant_id = $1
+		JOIN partner_enterprises e ON e.id = x.enterprise_id
+		WHERE x.user_id IS NOT NULL
+		ORDER BY e.name, x.created_at DESC
+	`, schoolTenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer expertRows.Close()
+	for expertRows.Next() {
+		var o domain.CoBuildUserOption
+		var userID string
+		if err := expertRows.Scan(&o.ExpertID, &o.Name, &o.Title, &o.EnterpriseName, &userID); err != nil {
+			return nil, err
+		}
+		o.ID = userID
+		o.Group = "expert"
+		items = append(items, o)
+	}
+	return items, expertRows.Err()
+}
+
 // NewMonthCount 近 months 个月每月新增数量（专家/共建岗位/共建场景，服务台卡片趋势）。
 type NewMonthCount struct {
 	Month     string `json:"month"`

@@ -785,3 +785,16 @@ func (s *PartnerCoBuildService) ListSchoolEvaluationMethods(ctx context.Context,
 	p.TenantID = schoolTenantID
 	return s.st.TaskEval().ListRubricTemplates(ctx, p, s.st.TaskEval().ListConfig())
 }
+
+// ListSchoolCoBuilders 合作学校共建人候选（岗位编辑页共建人选择器数据源）：
+// 学校教师 + 企业专家，需企业与学校存在 active 合作 link。
+func (s *PartnerCoBuildService) ListSchoolCoBuilders(ctx context.Context, partnerTenantID, schoolTenantID string) ([]domain.CoBuildUserOption, error) {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireActiveLink(ctx, ent.ID, schoolTenantID); err != nil {
+		return nil, err
+	}
+	return s.st.Partner().ListSchoolCoBuilders(ctx, schoolTenantID)
+}

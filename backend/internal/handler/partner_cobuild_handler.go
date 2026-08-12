@@ -763,3 +763,19 @@ func (h *PartnerCoBuildHandler) ListSchoolEvaluationMethods(w http.ResponseWrite
 	}
 	respondJSON(w, http.StatusOK, ListResponse[domain.RubricTemplate]{Items: items, Total: total})
 }
+
+// ListSchoolCoBuilders 合作学校共建人候选（岗位编辑页共建人选择器数据源）：
+// 学校教师 + 企业专家（与 portal 共建导师选择器同源，仅返回绑定账号者）。
+func (h *PartnerCoBuildHandler) ListSchoolCoBuilders(w http.ResponseWriter, r *http.Request) {
+	partnerTenantID, _, ok := h.partnerCaller(w, r)
+	if !ok {
+		return
+	}
+	schoolTenantID := chi.URLParam(r, "tenantId")
+	items, err := h.Service.ListSchoolCoBuilders(r.Context(), partnerTenantID, schoolTenantID)
+	if err != nil {
+		respondCoBuildError(w, r, err, "学校不存在", "查询共建人候选失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.CoBuildUserOption]{Items: items, Total: len(items)})
+}
