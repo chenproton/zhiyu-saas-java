@@ -59,7 +59,6 @@ export default function AllianceProjectDetailPage() {
     name: '',
     description: '',
     dueDate: '',
-    completedDate: '',
   })
   const [togglingMilestone, setTogglingMilestone] = useState<string | null>(null)
   const [linkDialog, setLinkDialog] = useState(false)
@@ -173,9 +172,8 @@ export default function AllianceProjectDetailPage() {
             name: m.name,
             description: m.description || '',
             dueDate: m.dueDate || '',
-            completedDate: m.completedDate || '',
           }
-        : { name: '', description: '', dueDate: '', completedDate: '' },
+        : { name: '', description: '', dueDate: '' },
     )
     setMilestoneDialog({ open: true, edit: m })
   }
@@ -610,23 +608,13 @@ export default function AllianceProjectDetailPage() {
                 rows={2}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t('截止日期')}</Label>
-                <DateInput
-                  type="date"
-                  value={mForm.dueDate}
-                  onChange={(e) => setMForm({ ...mForm, dueDate: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('完成日期')}</Label>
-                <DateInput
-                  type="date"
-                  value={mForm.completedDate}
-                  onChange={(e) => setMForm({ ...mForm, completedDate: e.target.value })}
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label>{t('截止日期')}</Label>
+              <DateInput
+                type="date"
+                value={mForm.dueDate}
+                onChange={(e) => setMForm({ ...mForm, dueDate: e.target.value })}
+              />
             </div>
           </div>
           <DialogFooter>
