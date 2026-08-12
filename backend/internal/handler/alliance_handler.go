@@ -1117,10 +1117,11 @@ func (h *AllianceHandler) SaveBrandMajorRankConfigs(w http.ResponseWriter, r *ht
 }
 
 // ListPublicTalentRanking 公开人才画像排名：仅启用专业，每专业前 rankLimit 名（供前台 landing）。
+// tenantId 缺失时（auth 未就绪的瞬态请求）返回空列表，避免 400 报错刷屏。
 func (h *AllianceHandler) ListPublicTalentRanking(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	if tenantID == "" {
-		respondError(w, http.StatusBadRequest, "缺少 tenantId")
+		respondJSON(w, http.StatusOK, map[string]any{"items": []any{}})
 		return
 	}
 	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"))

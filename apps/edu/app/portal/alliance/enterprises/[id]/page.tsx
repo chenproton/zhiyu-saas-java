@@ -54,9 +54,9 @@ export default function AlliancePublicEnterpriseDetailPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !tenantId) return
     // 与后台一致：详情与关联内容均限定本校链接范围，其他租户/已解除合作的企业不可见
-    const q = tenantId ? `?tenantId=${tenantId}` : ''
+    const q = `?tenantId=${tenantId}`
     // 专家团队展示全部已引入企业专家（includeNonPublic=true），
     // 不受专家"前台展示"开关影响（该开关仅控制联盟首页展示）
     Promise.all([

@@ -122,6 +122,53 @@ func TestFileServeRejectsPathTraversal(t *testing.T) {
 	}
 }
 
+func TestFileServePublicAllianceFile(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+
+	h := &FileHandler{
+		UploadDir: dir,
+		JWTSecret: "sec",
+		IsPublicAllianceFile: func(_ context.Context, fileTenantID, fileURL string) (bool, error) {
+			return fileTenantID == "tenant-a" && fileURL == "/uploads/tenant-a/x.png", nil
+		},
+	}
+	r := newUploadsRouter(h, "sec")
+	svr := httptest.NewServer(r)
+	defer svr.Close()
+
+	cases := []struct {
+		name   string
+		header string
+		want   int
+	}{
+		{"公开文件未登录放行", "", http.StatusOK},
+		{"公开文件跨租户放行", tokenFor(t, "sec", "tenant-b"), http.StatusOK},
+		{"非公开文件未登录仍401", "", http.StatusUnauthorized},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			url := svr.URL + "/uploads/tenant-a/x.png"
+			if tc.want == http.StatusUnauthorized {
+				// 非公开场景：切换 IsPublicAllianceFile 返回 false 的文件路径
+				url = svr.URL + "/uploads/tenant-a/y.png"
+			}
+			req, _ := http.NewRequest(http.MethodGet, url, nil)
+			if tc.header != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.header)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.want)
+			}
+		})
+	}
+}
+
 func TestFileServeSignedURL(t *testing.T) {
 	dir := t.TempDir()
 	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")

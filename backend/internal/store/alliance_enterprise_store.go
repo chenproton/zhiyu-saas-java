@@ -282,6 +282,39 @@ func (s *AllianceStore) HasPublicEnterpriseAccess(ctx context.Context, enterpris
 	return ok, err
 }
 
+// IsPublicAllianceFile 判定文件是否属于联盟公开前台内容（任意访问者可见，含访客）：
+// 文件被 enable_public 企业（logo/封面）、其名下专家（头像/封面/照片）、
+// is_public 成果（封面/图集）、项目或品牌（封面）引用。
+// 用于 /uploads 文件放行：与公开接口（enable_public/is_public 即对外可见）语义对齐，
+// 避免"接口返回了数据但图片 403"的不一致（公开数据归属租户名下可能没有 enable_public 企业，
+// 原 HasPublicEnterpriseAccess 无法覆盖）。
+func (s *AllianceStore) IsPublicAllianceFile(ctx context.Context, fileTenantID, fileURL string) (bool, error) {
+	var ok bool
+	err := s.q.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM partner_enterprises
+			WHERE tenant_id = $1 AND enable_public = true AND (logo_url = $2 OR cover_image = $2)
+			UNION ALL
+			SELECT 1 FROM alliance_experts x
+			JOIN partner_enterprises pe ON pe.id = x.enterprise_id AND pe.enable_public = true
+			WHERE x.tenant_id = $1
+			  AND ($2 = x.avatar_url OR $2 = x.cover_image
+			       OR $2 IN (SELECT jsonb_array_elements_text(x.photos)))
+			UNION ALL
+			SELECT 1 FROM alliance_achievements
+			WHERE tenant_id = $1 AND is_public = true
+			  AND ($2 = cover_image OR $2 IN (SELECT jsonb_array_elements_text(images)))
+			UNION ALL
+			SELECT 1 FROM alliance_projects
+			WHERE tenant_id = $1 AND is_public = true AND cover_image = $2
+			UNION ALL
+			SELECT 1 FROM alliance_brands
+			WHERE tenant_id = $1 AND is_public = true AND cover_image = $2
+		)
+	`, fileTenantID, fileURL).Scan(&ok)
+	return ok, err
+}
+
 // ContentMonthCount 近 months 个月每月合作内容数量（项目/协议/成果，服务台折线图）。
 type ContentMonthCount struct {
 	Month        string `json:"month"`

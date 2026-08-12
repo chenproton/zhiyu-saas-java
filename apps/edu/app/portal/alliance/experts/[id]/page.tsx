@@ -34,10 +34,8 @@ export default function AlliancePublicExpertDetailPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!id) return
-    portalRequest<AllianceExpert>(
-      `/alliance/public/experts/${id}${tenantId ? `?tenantId=${tenantId}` : ''}`,
-    )
+    if (!id || !tenantId) return
+    portalRequest<AllianceExpert>(`/alliance/public/experts/${id}?tenantId=${tenantId}`)
       .then(setExpert)
       .catch((err) => {
         reportError(err, { source: '加载企业专家详情' })

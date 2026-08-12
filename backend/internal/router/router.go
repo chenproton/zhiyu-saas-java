@@ -133,6 +133,9 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	// 联盟公开企业文件跨租户放行：文件归属租户的企业对请求租户公开可见时允许访问
 	// （学校端联盟前台展示企业 Logo/封面/证照照片/专家头像等 <img> 直出）
 	fileHandler.CrossTenantAccess = store.New(db).Alliance().HasPublicEnterpriseAccess
+	// 联盟公开前台文件对任意访问者放行（企业/成果/项目/品牌/专家等公开数据引用的文件），
+	// 修复公开接口返回数据但图片 403 的不一致
+	fileHandler.IsPublicAllianceFile = store.New(db).Alliance().IsPublicAllianceFile
 
 	// /uploads/{tenantID}/{filename}：混合鉴权——签名 URL（公开，kkFileView 等
 	// 无登录态服务端抓取）或登录态（Authorization 头 / HttpOnly cookie，<img> 直出），
