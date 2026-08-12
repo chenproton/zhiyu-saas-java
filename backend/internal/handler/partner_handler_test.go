@@ -425,15 +425,19 @@ func TestPartner_ChangeMyPassword(t *testing.T) {
 func TestPartner_UpdateProfilePreserves(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
+	ctx := context.Background()
 
 	r, claims, reg := setupPartnerRouter(t, env, "资料兜底测试企业")
 	defer cleanupPartnerTenant(env, *reg.User.TenantID)
 
 	w := doWithClaims(r, http.MethodPut, "/partner/enterprise/profile", map[string]interface{}{
-		"name":             "资料兜底测试企业",
-		"cooperationTypes": []string{"cooperation"},
-		"coverPhotos":      []string{"https://example.com/cover.png"},
-		"enablePublic":     true,
+		"name":                    "资料兜底测试企业",
+		"cooperationTypes":        []string{"cooperation"},
+		"coverPhotos":             []string{"https://example.com/cover.png"},
+		"enablePublic":            true,
+		"unifiedSocialCreditCode": "91330100TEST0001",
+		"industry":                "信息技术",
+		"contactPerson":           "陈云龙",
 	}, claims)
 	if w.Code != http.StatusOK {
 		t.Fatalf("预置资料失败: %d: %s", w.Code, w.Body.String())
@@ -477,6 +481,48 @@ func TestPartner_UpdateProfilePreserves(t *testing.T) {
 		}
 		if ent.EnablePublic {
 			t.Fatalf("显式传 false 应生效: %s", w.Body.String())
+		}
+	})
+
+	t.Run("toggle-only preserves all profile fields", func(t *testing.T) {
+		// 模拟顶部展示开关切换：仅携带 enablePublic，其余字段必须全部保留
+		w := doWithClaims(r, http.MethodPut, "/partner/enterprise/profile", map[string]interface{}{
+			"enablePublic": true,
+		}, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var ent domain.AllianceEnterprise
+		if err := json.Unmarshal(w.Body.Bytes(), &ent); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if !ent.EnablePublic {
+			t.Fatalf("enablePublic 应变为 true: %s", w.Body.String())
+		}
+		if ent.UnifiedSocialCreditCode == nil || *ent.UnifiedSocialCreditCode != "91330100TEST0001" {
+			t.Fatalf("信用代码未携带时应保留原值: %v", ent.UnifiedSocialCreditCode)
+		}
+		if ent.Industry == nil || *ent.Industry != "信息技术" {
+			t.Fatalf("行业未携带时应保留原值: %v", ent.Industry)
+		}
+		if ent.ContactPerson == nil || *ent.ContactPerson != "陈云龙" {
+			t.Fatalf("联系人未携带时应保留原值: %v", ent.ContactPerson)
+		}
+	})
+
+	t.Run("name change syncs tenant name", func(t *testing.T) {
+		w := doWithClaims(r, http.MethodPut, "/partner/enterprise/profile", map[string]interface{}{
+			"name": "资料兜底测试企业-改名",
+		}, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var tenantName string
+		if err := env.DB.QueryRow(ctx, `SELECT name FROM tenants WHERE id = $1`, *reg.User.TenantID).Scan(&tenantName); err != nil {
+			t.Fatalf("query tenant: %v", err)
+		}
+		if tenantName != "资料兜底测试企业-改名" {
+			t.Fatalf("企业端改名后 tenants.name 应同步: got %q", tenantName)
 		}
 	})
 }

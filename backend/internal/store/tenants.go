@@ -254,6 +254,23 @@ func (s *TenantStore) UpdateStatus(ctx context.Context, id string, status domain
 	return err
 }
 
+// SyncEnterpriseProfileFields 企业服务台端更新主体后回写租户同名同值字段
+// （名称/联系人/电话/企业代码），与超管端 AdminUpdateEnterprise 的双写语义保持一致，
+// 保证 /superadmin 与 /partner/enterprise 看到同一份数据；nil 字段保留租户原值
+// （支持仅携带部分字段的请求，如展示开关切换）。
+func (s *TenantStore) SyncEnterpriseProfileFields(ctx context.Context, tenantID string, name *string, contact, phone, enterpriseCode *string) error {
+	_, err := s.q.Exec(ctx, `
+		UPDATE tenants SET
+			name = COALESCE($1, name),
+			contact = COALESCE($2, contact),
+			phone = COALESCE($3, phone),
+			enterprise_code = COALESCE($4, enterprise_code),
+			updated_at = NOW()
+		WHERE id = $5
+	`, name, contact, phone, enterpriseCode, tenantID)
+	return err
+}
+
 // TenantUpdateParams 更新租户参数。
 type TenantUpdateParams struct {
 	Name              string

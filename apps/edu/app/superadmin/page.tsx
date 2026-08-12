@@ -276,6 +276,7 @@ export default function SuperAdminPage() {
   const [viewTarget, setViewTarget] = useState<AdminTenant | null>(null)
   const [viewProfile, setViewProfile] = useState<AdminEnterpriseProfile | null>(null)
   const [viewLoading, setViewLoading] = useState(false)
+  const [viewLoadError, setViewLoadError] = useState<string | null>(null)
   const [profileForm, setProfileForm] = useState<{
     unifiedSocialCreditCode: string
     contactPerson: string
@@ -836,6 +837,7 @@ export default function SuperAdminPage() {
 
   const loadEnterpriseProfile = async (ten: AdminTenant) => {
     setViewLoading(true)
+    setViewLoadError(null)
     try {
       const res = await adminFetch<{ tenant: AdminTenant; enterprise: AdminEnterpriseProfile }>(
         `/${ten.id}/enterprise`,
@@ -855,6 +857,8 @@ export default function SuperAdminPage() {
         enablePublic: res.enterprise.enablePublic,
       })
     } catch (err) {
+      // 加载失败明确报错：不静默留空表单（空表单保存会误导为"清空企业资料"）
+      setViewLoadError(err instanceof Error ? err.message : t('加载企业信息失败'))
       toast({
         variant: 'destructive',
         title: t('加载企业信息失败'),
@@ -1587,6 +1591,13 @@ export default function SuperAdminPage() {
               {t('留空表示不限；有效期外租户内所有用户无法登录')}
             </p>
           </div>
+          {viewLoadError && (
+            <div className="mb-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              {t('企业主体信息加载失败：{msg}。请关闭弹窗后重试，避免以空白表单覆盖企业资料。', {
+                msg: viewLoadError,
+              })}
+            </div>
+          )}
           {error && (
             <div className="mb-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -1596,7 +1607,10 @@ export default function SuperAdminPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
               {t('取消')}
             </Button>
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting || Boolean(editingTenant && viewLoadError)}
+            >
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
               {t(editingTenant ? '保存' : '创建')}
             </Button>

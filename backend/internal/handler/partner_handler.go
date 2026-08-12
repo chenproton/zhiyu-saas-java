@@ -76,11 +76,57 @@ func (h *PartnerHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 部分更新兜底：未携带字段保留原值，避免 PUT 全列覆盖擦除数据
+	// （如顶部展示开关只携带 enablePublic，其余字段须保留）
 	if req.Name == "" {
 		req.Name = existing.Name
 	}
+	if req.Industry == nil {
+		req.Industry = existing.Industry
+	}
+	if req.Region == nil {
+		req.Region = existing.Region
+	}
+	if req.Description == nil {
+		req.Description = existing.Description
+	}
+	if req.LogoURL == nil {
+		req.LogoURL = existing.LogoURL
+	}
+	if req.CoverImage == nil {
+		req.CoverImage = existing.CoverImage
+	}
 	if req.CooperationTypes == nil {
 		req.CooperationTypes = existing.CooperationTypes
+	}
+	if req.ContactPerson == nil {
+		req.ContactPerson = existing.ContactPerson
+	}
+	if req.ContactPhone == nil {
+		req.ContactPhone = existing.ContactPhone
+	}
+	if req.ContactEmail == nil {
+		req.ContactEmail = existing.ContactEmail
+	}
+	if req.Address == nil {
+		req.Address = existing.Address
+	}
+	if req.UnifiedSocialCreditCode == nil {
+		req.UnifiedSocialCreditCode = existing.UnifiedSocialCreditCode
+	}
+	if req.EstablishedYear == nil {
+		req.EstablishedYear = existing.EstablishedYear
+	}
+	if req.EmployeeCount == nil {
+		req.EmployeeCount = existing.EmployeeCount
+	}
+	if req.BusinessLicensePhotos == nil {
+		req.BusinessLicensePhotos = existing.BusinessLicensePhotos
+	}
+	if req.QualificationPhotos == nil {
+		req.QualificationPhotos = existing.QualificationPhotos
+	}
+	if req.IntellectualPropertyPhotos == nil {
+		req.IntellectualPropertyPhotos = existing.IntellectualPropertyPhotos
 	}
 	if req.CoverPhotos == nil {
 		req.CoverPhotos = existing.CoverPhotos
