@@ -16,7 +16,16 @@ import type {
 } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
 
-export function GradientPlaceholder({ className, seed }: { className?: string; seed?: string }) {
+export function GradientPlaceholder({
+  className,
+  seed,
+  label,
+}: {
+  className?: string
+  seed?: string
+  /** 传入时居中显示首字（半透明大字），字号由 className 中的 text-* 控制 */
+  label?: string
+}) {
   const gradients = [
     'from-primary to-primary/80',
     'from-primary/80 to-primary/60',
@@ -26,7 +35,22 @@ export function GradientPlaceholder({ className, seed }: { className?: string; s
     'from-primary/80 to-primary/70',
   ]
   const grad = gradients[(seed?.length ?? 0) % gradients.length]
-  return <div className={`bg-gradient-to-br ${grad} ${className ?? ''}`} />
+  return (
+    <div className={`relative overflow-hidden bg-gradient-to-br ${grad} ${className ?? ''}`}>
+      <div
+        className="absolute inset-0 opacity-20"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)`,
+          backgroundSize: '24px 24px',
+        }}
+      />
+      {label && (
+        <span className="absolute inset-0 flex items-center justify-center font-bold text-white/40 select-none">
+          {label.slice(0, 1)}
+        </span>
+      )}
+    </div>
+  )
 }
 
 export function getInitials(name?: string | null) {
@@ -53,7 +77,7 @@ export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise 
   return (
     <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative h-44 overflow-hidden bg-slate-800">
+        <div className="relative aspect-[16/9] overflow-hidden bg-slate-800">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -64,7 +88,8 @@ export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise 
           ) : (
             <GradientPlaceholder
               seed={enterprise.industry}
-              className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+              label={enterprise.name}
+              className="w-full h-full text-5xl group-hover:scale-105 transition-transform duration-500"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -121,7 +146,7 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
   return (
     <Link href={`/portal/alliance/projects/${project.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative aspect-[16/10] overflow-hidden">
           {project.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -132,7 +157,8 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
           ) : (
             <GradientPlaceholder
               seed={project.name}
-              className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+              label={project.name}
+              className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -181,7 +207,7 @@ export function AchievementCard({ achievement }: { achievement: AllianceAchievem
   return (
     <Link href={`/portal/alliance/achievements/${achievement.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative aspect-[16/10] overflow-hidden">
           {achievement.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -192,7 +218,8 @@ export function AchievementCard({ achievement }: { achievement: AllianceAchievem
           ) : (
             <GradientPlaceholder
               seed={achievement.title}
-              className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+              label={achievement.title}
+              className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/50 via-transparent to-transparent" />
@@ -228,7 +255,7 @@ export function ExpertCard({ expert }: { expert: AllianceExpert }) {
     <Link href={`/portal/alliance/experts/${expert.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
         <div className="h-16 relative">
-          <GradientPlaceholder seed={expert.industry} className="absolute inset-0 w-full h-full" />
+          <GradientPlaceholder seed={expert.industry} className="w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
             <Avatar className="h-14 w-14 ring-[3px] ring-white shadow-md">
@@ -289,7 +316,7 @@ export function BrandCard({ brand }: { brand: AllianceBrand }) {
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative aspect-[16/10] overflow-hidden">
           {brand.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -298,7 +325,11 @@ export function BrandCard({ brand }: { brand: AllianceBrand }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <GradientPlaceholder seed={brand.name} className="w-full h-full" />
+            <GradientPlaceholder
+              seed={brand.name}
+              label={brand.name}
+              className="w-full h-full text-4xl"
+            />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute top-3 left-3">

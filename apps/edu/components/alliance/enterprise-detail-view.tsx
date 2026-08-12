@@ -113,25 +113,25 @@ export function EnterpriseDetailView({
       label: t('合作协议'),
       value: agreements?.length ?? 0,
       icon: FileText,
-      gradient: 'from-blue-500 to-blue-600',
+      gradient: 'from-primary to-primary/80',
     },
     {
       label: t('合作项目'),
       value: projects?.length ?? 0,
       icon: Award,
-      gradient: 'from-violet-500 to-violet-600',
+      gradient: 'from-primary/90 to-primary/70',
     },
     {
       label: t('合作成果'),
       value: achievements?.length ?? 0,
       icon: Star,
-      gradient: 'from-emerald-500 to-emerald-600',
+      gradient: 'from-primary/80 to-primary/60',
     },
     {
       label: t('成立年份'),
       value: enterprise.establishedYear || '-',
       icon: Calendar,
-      gradient: 'from-amber-500 to-amber-600',
+      gradient: 'from-primary/90 to-primary/70',
     },
   ]
 
@@ -160,6 +160,7 @@ export function EnterpriseDetailView({
         enterprise.logoUrl ? { src: enterprise.logoUrl, alt: enterprise.name } : undefined
       }
       iconGradient="from-blue-500 to-blue-600"
+      coverImage={enterprise.coverImage}
       title={enterprise.name}
       subtitle={
         enterprise.industry
