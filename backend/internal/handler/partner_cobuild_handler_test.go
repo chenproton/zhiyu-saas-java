@@ -725,3 +725,59 @@ func TestPartnerCoBuild_PositionSubResources(t *testing.T) {
 		}
 	})
 }
+
+// TestPartnerCoBuild_GrantedPositionSubResources 学校授权（grant）岗位的子资源只读接口
+// 应对被授权企业开放（列表/详情可见性与子资源一致性回归：曾因 ownedPosition 仅认共建
+// 导致授权岗位子资源全部 404）。
+func TestPartnerCoBuild_GrantedPositionSubResources(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	r, claims, reg, enterpriseID := setupCoBuildRouter(t, env, "授权子资源测试企业")
+	defer cleanupPartnerTenant(env, *reg.User.TenantID)
+
+	suffix := uuid.NewString()[:8]
+	schoolID := createSchoolTenant(t, env, "授权子资源学校-"+suffix)
+	linkSchoolEnterprise(t, env, schoolID, enterpriseID, "active")
+	t.Cleanup(func() { cleanupCoBuildRows(env, schoolID) })
+
+	// 学校自建并发布岗位（source_enterprise_id 为空），带子资源数据
+	positionID := uuid.NewString()
+	if _, err := env.DB.Exec(context.Background(), `
+		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status)
+		VALUES ($1, $2, $3, $4, 'enterprise', 'published')
+	`, positionID, schoolID, "gr-"+suffix, "授权岗位-"+suffix); err != nil {
+		t.Fatalf("预置学校岗位失败: %v", err)
+	}
+	responsibilityID := uuid.NewString()
+	if _, err := env.DB.Exec(context.Background(), `
+		INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order)
+		VALUES ($1, $2, $3, $4, 0)
+	`, responsibilityID, schoolID, positionID, "授权职责-"+suffix); err != nil {
+		t.Fatalf("预置岗位职责失败: %v", err)
+	}
+
+	// 学校把岗位授权给企业
+	svc := store.New(env.DB)
+	if err := svc.AllianceGrants().Upsert(context.Background(), schoolID, enterpriseID, "position", []string{positionID}, "test"); err != nil {
+		t.Fatalf("预置授权失败: %v", err)
+	}
+	t.Cleanup(func() {
+		env.DB.Exec(context.Background(), `DELETE FROM alliance_resource_grants WHERE tenant_id = $1`, schoolID)
+	})
+
+	for _, sub := range []string{"responsibilities", "certificates", "ability-bindings", "ability-domains"} {
+		w := doWithClaims(r, http.MethodGet, "/partner/co-build/positions/"+positionID+"/"+sub, nil, claims)
+		if w.Code != http.StatusOK {
+			t.Fatalf("授权岗位 GET %s 应 200, got %d: %s", sub, w.Code, w.Body.String())
+		}
+	}
+	w := doWithClaims(r, http.MethodGet, "/partner/co-build/positions/"+positionID+"/responsibilities", nil, claims)
+	items, total, err := testhelper.UnmarshalList[domain.PositionResponsibility](w)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if total != 1 || len(items) != 1 || items[0].Name != "授权职责-"+suffix {
+		t.Fatalf("授权岗位职责列表不符: total=%d body=%s", total, w.Body.String())
+	}
+}

@@ -282,10 +282,11 @@ export interface CoBuildPosition extends CareerPosition {
   schoolName?: string
 }
 
-/** POST /partner/co-build/positions：只需学校 + 名称，后端落 draft + source 标记 */
+/** POST /partner/co-build/positions：学校 + 名称 + 岗位类型，后端落 draft + source 标记 */
 export interface CoBuildPositionCreateRequest {
   schoolTenantId: string
   name: string
+  positionType: string
 }
 
 /** POST /partner/co-build/positions/{id}/save-full：与 portal 岗位 save-full 请求同形 */

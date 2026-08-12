@@ -128,6 +128,7 @@ export default function PartnerCoBuildPositionsPage() {
         const created = await partnerCobuildPositionApi.create({
           schoolTenantId: item.schoolTenantId,
           name: t('未命名岗位'),
+          positionType: 'enterprise',
         })
         router.push(`/partner/co-build/positions/${created.id}/edit?new=true`)
       }}
