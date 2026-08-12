@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Calendar } from 'lucide-react'
+import { Briefcase, Calendar, Eye } from 'lucide-react'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type {
   AllianceEnterprise,
@@ -339,6 +339,324 @@ export function BrandCard({ brand }: { brand: AllianceBrand }) {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* 品牌库差异化展示卡（landing 产教品牌库区：六类品牌同时铺开，样式互不相同） */
+/* ------------------------------------------------------------------ */
+
+function brandTags(brand: AllianceBrand): string[] {
+  return Array.isArray(brand.data?.tags) ? (brand.data.tags as string[]) : []
+}
+
+function BrandViewCount({ count }: { count?: number }) {
+  return (
+    <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
+      <Eye className="h-3.5 w-3.5" />
+      {count ?? 0}
+    </span>
+  )
+}
+
+/** 人才品牌：横版旗舰卡（左封面右文案，双列大图） */
+export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
+  const t = useT()
+  const tags = brandTags(brand)
+  return (
+    <Link href={`/portal/alliance/brands/${brand.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full p-0 gap-0">
+        <div className="flex flex-col sm:flex-row h-full">
+          <div className="relative sm:w-[42%] aspect-[16/9] sm:aspect-auto overflow-hidden shrink-0">
+            {brand.coverImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.coverImage}
+                alt={brand.name}
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <div className="absolute inset-0">
+                <GradientPlaceholder
+                  seed={brand.name}
+                  label={brand.name}
+                  className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-black/10" />
+          </div>
+          <CardContent className="flex-1 p-5 flex flex-col justify-center min-w-0">
+            <h4 className="font-semibold text-slate-900 text-base group-hover:text-primary transition-colors line-clamp-1">
+              {brand.name}
+            </h4>
+            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mt-2">
+              {brand.description || t('暂无品牌描述')}
+            </p>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              {tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 min-w-0">
+                  {tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary border border-primary/10 font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span />
+              )}
+              <BrandViewCount count={brand.viewCount} />
+            </div>
+          </CardContent>
+        </div>
+      </Card>
+    </Link>
+  )
+}
+
+/** 雇主品牌：横向列表行（左侧小图 + 名称/简介，行式堆叠） */
+export function EmployerBrandRow({ brand }: { brand: AllianceBrand }) {
+  const t = useT()
+  const tags = brandTags(brand)
+  return (
+    <Link href={`/portal/alliance/brands/${brand.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30 rounded-2xl overflow-hidden bg-white p-0 gap-0">
+        <div className="flex h-28">
+          <div className="w-28 relative overflow-hidden shrink-0">
+            {brand.coverImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.coverImage}
+                alt={brand.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <GradientPlaceholder
+                seed={brand.name}
+                label={brand.name}
+                className="w-full h-full text-2xl"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+          </div>
+          <CardContent className="flex-1 p-4 flex flex-col justify-center min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-semibold text-slate-900 text-sm truncate group-hover:text-primary transition-colors">
+                {brand.name}
+              </h4>
+              <BrandViewCount count={brand.viewCount} />
+            </div>
+            <p className="text-xs text-slate-500 line-clamp-2 mt-1.5 leading-relaxed">
+              {brand.description || t('暂无品牌描述')}
+            </p>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </div>
+      </Card>
+    </Link>
+  )
+}
+
+/** 岗位品牌：紧凑无图文本卡（图标 + 标题 + 标签，强调信息密度） */
+export function JobBrandCard({ brand }: { brand: AllianceBrand }) {
+  const t = useT()
+  const tags = brandTags(brand)
+  return (
+    <Link href={`/portal/alliance/brands/${brand.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30 rounded-2xl bg-white h-full p-0 gap-0">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
+              <Briefcase className="h-4 w-4 text-primary" />
+            </div>
+            <BrandViewCount count={brand.viewCount} />
+          </div>
+          <h4 className="font-semibold text-slate-900 text-sm truncate group-hover:text-primary transition-colors">
+            {brand.name}
+          </h4>
+          <p className="text-xs text-slate-500 line-clamp-1 mt-1">
+            {brand.description || t('暂无品牌描述')}
+          </p>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2.5">
+              {tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+/** 专业品牌：高图覆盖卡（名称/标签叠在封面渐变遮罩上） */
+export function MajorBrandCard({ brand }: { brand: AllianceBrand }) {
+  const t = useT()
+  const tags = brandTags(brand)
+  return (
+    <Link href={`/portal/alliance/brands/${brand.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+        <div className="relative aspect-[4/3] overflow-hidden">
+          {brand.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.coverImage}
+              alt={brand.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <GradientPlaceholder
+              seed={brand.name}
+              label={brand.name}
+              className="w-full h-full text-5xl group-hover:scale-105 transition-transform duration-500"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <h4 className="font-semibold text-white text-base drop-shadow-md line-clamp-1">
+              {brand.name}
+            </h4>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/25 backdrop-blur-sm font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+            {brand.description || t('暂无品牌描述')}
+          </p>
+          <div className="mt-auto pt-3">
+            <BrandViewCount count={brand.viewCount} />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+/** 师资品牌：头像交叠卡（顶部色带 + 圆形首字头像半叠 + 居中排版） */
+export function TeacherBrandCard({ brand }: { brand: AllianceBrand }) {
+  const t = useT()
+  return (
+    <Link href={`/portal/alliance/brands/${brand.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+        <div className="h-14 relative shrink-0">
+          {brand.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.coverImage} alt={brand.name} className="w-full h-full object-cover" />
+          ) : (
+            <GradientPlaceholder seed={brand.name} className="w-full h-full" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2">
+            <Avatar className="h-12 w-12 ring-[3px] ring-white shadow-md">
+              <AvatarFallback className="text-base font-semibold bg-white text-slate-800">
+                {getInitials(brand.name)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+        <CardContent className="pt-8 pb-4 px-3.5 flex-1 flex flex-col">
+          <h4 className="font-semibold text-slate-900 text-center text-sm truncate group-hover:text-primary transition-colors">
+            {brand.name}
+          </h4>
+          <p className="text-xs text-slate-500 text-center line-clamp-2 mt-1.5 leading-relaxed">
+            {brand.description || t('暂无品牌描述')}
+          </p>
+          <div className="mt-auto pt-3 flex justify-center">
+            <BrandViewCount count={brand.viewCount} />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+/** 文化品牌：杂志卡（扁图 + 标题 + 简介 + 底栏标签） */
+export function CultureBrandCard({ brand }: { brand: AllianceBrand }) {
+  const t = useT()
+  const tags = brandTags(brand)
+  return (
+    <Link href={`/portal/alliance/brands/${brand.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+        <div className="relative aspect-[16/9] overflow-hidden">
+          {brand.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.coverImage}
+              alt={brand.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <GradientPlaceholder
+              seed={brand.name}
+              label={brand.name}
+              className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/40 via-transparent to-transparent" />
+          <div className="absolute top-3 left-3">
+            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
+              {t('文化品牌')}
+            </Badge>
+          </div>
+        </div>
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <h4 className="font-semibold text-slate-900 text-sm group-hover:text-primary transition-colors line-clamp-1">
+            {brand.name}
+          </h4>
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mt-1.5">
+            {brand.description || t('暂无品牌描述')}
+          </p>
+          <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-slate-100 mt-3">
+            {tags.length > 0 ? (
+              <div className="flex flex-wrap gap-1 min-w-0">
+                {tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span />
+            )}
+            <BrandViewCount count={brand.viewCount} />
+          </div>
         </CardContent>
       </Card>
     </Link>
