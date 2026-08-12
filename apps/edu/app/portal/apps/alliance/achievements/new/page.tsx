@@ -17,6 +17,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
@@ -45,6 +46,7 @@ export default function AllianceAchievementNewPage() {
     type: 'custom',
     description: '',
     achievementDate: '',
+    coverImage: '',
     isPublic: false,
     enterpriseIds: linkEnterpriseId ? [linkEnterpriseId] : [] as string[],
     projectIds: linkProjectId ? [linkProjectId] : [] as string[],
@@ -155,6 +157,19 @@ export default function AllianceAchievementNewPage() {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('成果封面')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SingleImageUpload
+                label={t('成果封面')}
+                value={item.coverImage}
+                onChange={(v) => setField('coverImage', v)}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>{t('归属项目')}</CardTitle>

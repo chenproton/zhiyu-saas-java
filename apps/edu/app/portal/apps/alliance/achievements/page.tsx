@@ -20,6 +20,7 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { formatDate } from '@/lib/format-utils'
 import { Switch } from '@/components/ui/switch'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -178,11 +179,11 @@ export default function AllianceAchievementsPage() {
               rows={4}
             />
           </FormFieldRow>
-          <FormFieldRow label={t('封面图 URL')}>
-            <Input
+          <FormFieldRow label={t('成果封面')}>
+            <SingleImageUpload
+              label={t('成果封面')}
               value={item.coverImage || ''}
-              onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
-              placeholder="https://..."
+              onChange={(v: any) => setItem({ ...item, coverImage: v })}
             />
           </FormFieldRow>
         </div>
