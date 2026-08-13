@@ -3,6 +3,7 @@ package cache
 import (
 	"net/http"
 
+	"github.com/zhiyu-saas/backend/internal/domain"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -46,11 +47,16 @@ func DashboardKey() KeyFunc {
 	}
 }
 
-// PublicScenariosKey 场景列表缓存键：租户 + 查询参数（管理端与学生端查询参数不同，天然隔离）。
+// PublicScenariosKey 场景列表缓存键：租户 + 查询参数 + 学生角色段。
+// 学生列表由服务端强制过滤为已发布（越权加固 A3），与教师查询参数相同但结果不同，
+// 键中必须带角色段，否则学生会命中教师缓存的未过滤列表。
 func PublicScenariosKey() KeyFunc {
 	return func(r *http.Request) string {
 		tenant := tenantFromRequest(r)
 		key := "zhiyu:" + tenant + ":public:scenarios"
+		if authmw.HasRole(authmw.CurrentUser(r), domain.RoleStudent) {
+			key += ":role:student"
+		}
 		v := r.URL.Query()
 		for _, p := range []string{"search", "status", "batchId", "careerPositionId", "limit", "offset"} {
 			if val := v.Get(p); val != "" {

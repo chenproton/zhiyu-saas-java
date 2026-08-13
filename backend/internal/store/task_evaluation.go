@@ -467,10 +467,12 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 	if err != nil {
 		return "", fmt.Errorf("generate exam code: %w", err)
 	}
+	// 临时考试统一为 published（文档 8.12：学生作答走 GET /evaluation/exams/{id}，
+	// 与课程侧 CreateTempExam 一致；历史 draft 临时卷由迁移 159 回填）。
 	_, err = tx.Exec(ctx, `
 		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
+		VALUES ($1, $2, $3, $4, '', 'published', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
 	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam: %w", err)

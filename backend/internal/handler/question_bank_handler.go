@@ -74,6 +74,11 @@ func (h *QuestionBankHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "题库不存在")
 		return
 	}
+	// 学生仅可读已发布题库（决策 7：draft 对学生不可见）
+	if middleware.HasRole(claims, domain.RoleStudent) && bank.Status != string(domain.StatusPublished) {
+		respondError(w, http.StatusNotFound, "题库不存在")
+		return
+	}
 	respondJSON(w, http.StatusOK, bank)
 }
 

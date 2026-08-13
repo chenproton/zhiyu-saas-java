@@ -87,6 +87,10 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	// 学生列表仅见已发布课程（越权加固 A3）；教师/管理员列表语义不变
+	if middleware.HasRole(middleware.CurrentUser(r), domain.RoleStudent) {
+		params.Values["status"] = string(domain.StatusPublished)
+	}
 	items, total, err := h.Service.ListCourses(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询课程列表失败")
@@ -114,6 +118,11 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		respondServerError(w, r, err, "查询失败")
+		return
+	}
+	// 学生仅可读已发布课程（决策 7：draft 对学生不可见）
+	if middleware.HasRole(middleware.CurrentUser(r), domain.RoleStudent) && course.Status != domain.StatusPublished {
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, course)

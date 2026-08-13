@@ -85,6 +85,7 @@ type Store struct {
 	auth             *AuthStore
 	trainingPrograms *TrainingProgramStore
 	contentActions   *ContentActionStore
+	snapshots        *SnapshotStore
 	orgTypes         *OrgTypesStore
 	roles            *RolesStore
 	majors           *MajorsStore
@@ -176,6 +177,7 @@ func newStore(q Queryer) *Store {
 		auth:             NewAuthStore(q),
 		trainingPrograms: NewTrainingProgramStore(q),
 		contentActions:   NewContentActionStore(q, beginner),
+		snapshots:        NewSnapshotStore(q),
 		orgTypes:         NewOrgTypesStore(q),
 		roles:            NewRolesStore(q, beginner),
 		majors:           NewMajorsStore(q),
@@ -544,6 +546,11 @@ func (s *Store) TrainingPrograms() *TrainingProgramStore {
 // ContentActions 返回内容型实体共享动作 store。
 func (s *Store) ContentActions() *ContentActionStore {
 	return s.contentActions
+}
+
+// Snapshots 返回资源快照 store。
+func (s *Store) Snapshots() *SnapshotStore {
+	return s.snapshots
 }
 
 // OrgTypes 返回组织类型 store。

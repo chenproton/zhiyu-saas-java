@@ -112,6 +112,7 @@ type Handlers struct {
 	affairsConfigImportHandler    *handler.AffairsConfigImportHandler
 	affairsBatchHandler           *handler.AffairsBatchHandler
 	communityHandler              *handler.CommunityHandler
+	snapshotHandler               *handler.SnapshotHandler
 	settingsHandler               *handler.SettingsHandler
 	favoritesHandler              *handler.FavoritesHandler
 	tagHandler                    *handler.TagHandler
@@ -253,6 +254,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		affairsConfigImportHandler:    &handler.AffairsConfigImportHandler{Store: st},
 		affairsBatchHandler:           handler.NewAffairsBatchHandler(positionSvc),
 		communityHandler:              &handler.CommunityHandler{Service: service.NewCommunityService(svc)},
+		snapshotHandler:               &handler.SnapshotHandler{Service: service.NewSnapshotService(svc)},
 		settingsHandler:               &handler.SettingsHandler{Store: st.PlatformSettings()},
 		favoritesHandler:              &handler.FavoritesHandler{Service: favoritesSvc},
 		tagHandler:                    &handler.TagHandler{Service: service.NewTagService(svc)},

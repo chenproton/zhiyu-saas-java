@@ -49,6 +49,10 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	// 学生列表仅见已发布试卷（与场景/课程列表加固一致）；教师/管理员语义不变
+	if middleware.HasRole(claims, domain.RoleStudent) {
+		params.Values["status"] = string(domain.StatusPublished)
+	}
 	items, total, err := h.Service.ListExams(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询考试失败")
@@ -79,6 +83,11 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if exam.TenantID != nil && (claims.TenantID == nil || *exam.TenantID != *claims.TenantID) {
+		respondError(w, http.StatusNotFound, "考试不存在")
+		return
+	}
+	// 学生仅可读已发布试卷（决策 7）；临时试卷已统一为 published（文档 8.12 + 迁移 159），可正常作答
+	if middleware.HasRole(claims, domain.RoleStudent) && exam.Status != string(domain.StatusPublished) {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}

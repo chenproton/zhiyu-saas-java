@@ -27,6 +27,11 @@ type PositionSourceFields struct {
 	TenantID      *string
 }
 
+// PositionInsertColumns 岗位插入列（克隆与快照 builder 共用，防字段漂移）。
+const PositionInsertColumns = `id, tenant_id, code, batch_id, name, short_name, industry_id, position_type,
+	salary_min, salary_max, cover_image, description, requirements, career_path,
+	version, status, created_by, collaborators`
+
 // PositionCloneStore 岗位克隆持久化（事务内多表复制）。
 type PositionCloneStore struct {
 	q Queryer
@@ -63,9 +68,7 @@ func (s *PositionCloneStore) FetchSource(ctx context.Context, id string) (*Posit
 func (s *PositionCloneStore) ClonePosition(ctx context.Context, tx Queryer, tenantID, oldPositionID, newName string, src *PositionSourceFields, createdBy string, code string) (string, error) {
 	newID := uuid.NewString()
 	_, err := tx.Exec(ctx, `
-		INSERT INTO career_positions (id, tenant_id, code, batch_id, name, short_name, industry_id, position_type,
-			salary_min, salary_max, cover_image, description, requirements, career_path,
-			version, status, created_by, collaborators)
+		INSERT INTO career_positions (`+PositionInsertColumns+`)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'draft', $16, $17)
 	`, newID, tenantID, code, src.BatchID, newName, src.ShortName, src.IndustryID, src.PositionType,
 		src.SalaryMin, src.SalaryMax, src.CoverImage, src.Description, src.Requirements,
