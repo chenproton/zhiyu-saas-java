@@ -225,24 +225,31 @@ func isMultiStatement(sql string) bool {
 	return strings.Count(sql, ";\n") >= 1
 }
 
-// splitSQLStatements 按 ";\n" 切分 SQL 语句，但跳过 $$...$$ 字面量块内的分号
+// splitSQLStatements 按 ";\n" 切分 SQL 语句，但跳过 dollar-quoted 字面量块内的分号
 // （DO 块 / PL/pgSQL 函数体内的分号不能被切碎）。
+// 支持 $$ 与 $tag$ 两种 dollar-quoting 形式（$tag$ 的开启与关闭必须同名）。
 func splitSQLStatements(sql string) []string {
 	var stmts []string
-	inDollar := false
+	openTag := "" // 非空表示当前处于 dollar-quoted 块内，值为开启标签（"$$" 或 "$tag$"）
 	start := 0
 	for i := 0; i < len(sql); i++ {
-		if !inDollar && i+1 < len(sql) && sql[i] == '$' && sql[i+1] == '$' {
-			inDollar = true
-			i++
-			continue
+		if sql[i] == '$' {
+			// 尝试匹配关闭标签
+			if openTag != "" && strings.HasPrefix(sql[i:], openTag) {
+				openTag = ""
+				i += len(openTag) - 1
+				continue
+			}
+			// 尝试匹配开启标签（$$ 或 $tag$）
+			if openTag == "" {
+				if tag := matchDollarTag(sql[i:]); tag != "" {
+					openTag = tag
+					i += len(tag) - 1
+					continue
+				}
+			}
 		}
-		if inDollar && i+1 < len(sql) && sql[i] == '$' && sql[i+1] == '$' {
-			inDollar = false
-			i++
-			continue
-		}
-		if !inDollar && sql[i] == ';' && (i+1 >= len(sql) || sql[i+1] == '\n') {
+		if openTag == "" && sql[i] == ';' && (i+1 >= len(sql) || sql[i+1] == '\n') {
 			stmts = append(stmts, sql[start:i+1])
 			start = i + 1
 		}
@@ -251,6 +258,53 @@ func splitSQLStatements(sql string) []string {
 		stmts = append(stmts, sql[start:])
 	}
 	return stmts
+}
+
+// matchDollarTag 匹配 s 起始处的 dollar-quoting 开启标签：$$ 或 $[标识符]$。
+func matchDollarTag(s string) string {
+	if strings.HasPrefix(s, "$$") {
+		return "$$"
+	}
+	if len(s) < 3 || s[0] != '$' {
+		return ""
+	}
+	for j := 1; j < len(s); j++ {
+		if s[j] == '$' {
+			tag := s[:j+1]
+			if j == 1 {
+				return "" // 裸 $$ 已在上方处理
+			}
+			// 标签必须为标识符（字母/数字/下划线，首字符非数字），与 PostgreSQL 规则一致
+			inner := s[1:j]
+			if inner == "" {
+				return ""
+			}
+			if !isIdentChar(inner[0], true) {
+				return ""
+			}
+			for k := 1; k < len(inner); k++ {
+				if !isIdentChar(inner[k], false) {
+					return ""
+				}
+			}
+			return tag
+		}
+		if !isIdentChar(s[j], false) && !isIdentChar(s[j], true) {
+			return ""
+		}
+	}
+	return ""
+}
+
+// isIdentChar 判断字符是否为 PostgreSQL 标识符字符（first 表示是否为首字符）。
+func isIdentChar(c byte, first bool) bool {
+	if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' {
+		return true
+	}
+	if !first && c >= '0' && c <= '9' {
+		return true
+	}
+	return false
 }
 
 func execMultiSQL(conn *pgx.Conn, sql string) error {

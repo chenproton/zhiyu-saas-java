@@ -52,7 +52,8 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 	result := map[string]interface{}{}
-	// 三 Sheet 导入包在同一事务：任一步骤失败整体回滚，防止中途失败留部分数据
+	// 三 Sheet 导入在同一事务中执行；行级错误跳过并计入结果（失败行不阻断其余行），
+	// 仅系统级错误（如 DB 故障）返回 error 使事务整体回滚
 	if err := h.Store.WithTx(ctx, func(txStore *store.Store) error {
 		if rows, _ := xlsx.GetRows("学期"); len(rows) > 2 {
 			created, skipped, failed := 0, 0, 0

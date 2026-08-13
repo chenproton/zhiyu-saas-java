@@ -258,7 +258,6 @@ type CoBuildUserOption struct {
 	EnterpriseName string  `json:"enterpriseName,omitempty"`
 }
 
-// ===== 企业合作协议 =====
 // ===== 合作项目 =====
 type AllianceProject struct {
 	ID                string          `json:"id"`
