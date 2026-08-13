@@ -754,8 +754,13 @@ func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string,
 	}
 
 	if roleID != "" {
-		_ = store.InsertUserRole(ctx, h.Store.Q(), uuid.NewString(), id, roleID)
-		_ = store.IncrementRoleUserCount(ctx, h.Store.Q(), roleID)
+		// 先判绑定插入错误，失败则不递增计数，避免 user_count 漂移
+		if err := store.InsertUserRole(ctx, h.Store.Q(), uuid.NewString(), id, roleID); err != nil {
+			return err
+		}
+		if err := store.IncrementRoleUserCount(ctx, h.Store.Q(), roleID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -770,7 +775,8 @@ func (h *ResourceImportHandler) findOrgNodeByPath(ctx context.Context, tenantID,
 		return "", fmt.Errorf("empty path")
 	}
 
-	var separators = []string{"-", "/", "\\", "->", "_"}
+	// "->" 必须排在 "-" 之前：否则含 "-" 的路径会先按 "-" 拆分产生孤立 ">" 段
+	var separators = []string{"->", "-", "/", "\\", "_"}
 	var segments []string
 	for _, sep := range separators {
 		if strings.Contains(path, sep) {

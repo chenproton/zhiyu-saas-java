@@ -3,7 +3,9 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -49,9 +51,10 @@ func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		IDs []string `json:"ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// No body or empty body means export all.
-		req.IDs = nil
+	// 空 body（EOF）导出全部；非法 JSON 返回 400，避免畸形请求触发全量导出
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return
 	}
 
 	ctx := r.Context()

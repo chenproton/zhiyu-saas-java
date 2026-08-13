@@ -133,6 +133,18 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		}
 
 		qType := mapQuestionType(strings.TrimSpace(row[0]))
+		if qType == "" {
+			msg := fmt.Sprintf("第%d行题型无法识别: %q", i+1, strings.TrimSpace(row[0]))
+			if preview {
+				previewRes.Failed++
+				previewRes.Errors = append(previewRes.Errors, msg)
+			} else {
+				execRes.Failed++
+				execRes.Errors = append(execRes.Errors, msg)
+			}
+			slog.Info(fmt.Sprintf("[import/questions] %s", msg))
+			continue
+		}
 		content := strings.TrimSpace(row[1])
 		options := []string{}
 		for idx := 2; idx <= 5 && idx < len(row); idx++ {
@@ -272,7 +284,8 @@ func mapQuestionType(t string) string {
 		case "single", "multiple", "judge", "fill", "essay", "short_answer":
 			return t
 		}
-		return "single"
+		// 未知题型返回空串，由调用方计入失败行，避免静默按单选题导入
+		return ""
 	}
 }
 
