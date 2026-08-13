@@ -108,17 +108,7 @@ func (s *ResourceLibraryStore) List(ctx context.Context, tenantID string, f Reso
 		return nil, 0, err
 	}
 
-	limit := f.Limit
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	offset := f.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset := ClampLimitOffset(f.Limit, f.Offset, 50)
 	args = append(args, limit, offset)
 	query := `
 		SELECT ` + resourceSelectColumns + `
@@ -195,15 +185,7 @@ func (s *ResourceLibraryStore) ListUncited(ctx context.Context, tenantID, resour
 	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM resource_library rl WHERE "+where+uncited, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset = ClampLimitOffset(limit, offset, 50)
 	args = append(args, limit, offset)
 	rows, err := s.q.Query(ctx, `
 		SELECT rl.id, rl.name, rl.created_at

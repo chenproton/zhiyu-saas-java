@@ -58,15 +58,7 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 		return nil, 0, err
 	}
 
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset = ClampLimitOffset(limit, offset, 50)
 	args = append(args, limit, offset)
 	query := `
 		SELECT r.id, r.initiator_id, init_u.name, COALESCE(init_org.name, ''),

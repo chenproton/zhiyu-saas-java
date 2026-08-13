@@ -484,6 +484,20 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 
 const maxPageSize = 200
 
+// ClampLimitOffset 将 limit/offset 钳制到合法范围（limit<=0 用 defaultLimit，上限 maxPageSize，offset<0 归零）。
+func ClampLimitOffset(limit, offset, defaultLimit int) (int, int) {
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+	if limit > maxPageSize {
+		limit = maxPageSize
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return limit, offset
+}
+
 // ParseInt 解析整数，空串返回默认值。
 func ParseInt(s string, defaultVal int) (int, error) {
 	if s == "" {

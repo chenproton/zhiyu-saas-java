@@ -178,15 +178,7 @@ func (s *AbilityStore) ListUncited(ctx context.Context, tenantID string, from, t
 	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM ability_points ap WHERE "+where+uncited, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset = ClampLimitOffset(limit, offset, 50)
 	args = append(args, limit, offset)
 	rows, err := s.q.Query(ctx, `
 		SELECT ap.id, ap.name, ap.created_at

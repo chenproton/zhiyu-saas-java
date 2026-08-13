@@ -73,15 +73,7 @@ func (s *KnowledgePointStore) ListUncited(ctx context.Context, tenantID string, 
 	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM knowledge_points kp WHERE "+where+uncited, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset = ClampLimitOffset(limit, offset, 50)
 	args = append(args, limit, offset)
 	rows, err := s.q.Query(ctx, `
 		SELECT kp.id, kp.name, kp.created_at

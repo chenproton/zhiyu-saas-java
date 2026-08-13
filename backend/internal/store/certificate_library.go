@@ -131,15 +131,7 @@ func (s *CertificateLibraryStore) ListUncited(ctx context.Context, tenantID stri
 	if err := s.Q().QueryRow(ctx, "SELECT COUNT(*) FROM certificate_library cl WHERE "+where+uncited, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset = ClampLimitOffset(limit, offset, 50)
 	args = append(args, limit, offset)
 	rows, err := s.Q().Query(ctx, `
 		SELECT cl.id, cl.name, cl.created_at
