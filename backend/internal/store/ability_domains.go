@@ -65,8 +65,15 @@ func (s *AbilityDomainStore) Update(ctx context.Context, id, tenantID string, p 
 
 // Delete 删除能力域。
 func (s *AbilityDomainStore) Delete(ctx context.Context, id, tenantID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM ability_domains WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	tag, err := s.q.Exec(ctx, `DELETE FROM ability_domains WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	if err != nil {
+		return err
+	}
+	// 与 abilities.go Delete 语义一致：不存在时报 NotFound
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // AbilityDomainParams 能力域参数。

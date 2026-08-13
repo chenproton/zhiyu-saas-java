@@ -230,6 +230,9 @@ func (s *Store) ImportSaveEnterprisePosition(ctx context.Context, tenantID, user
 // UpsertTeacherExpertProfile 校本师资导入：按教师 user_id 查找专家档案，
 // 存在则仅更新导入提供的字段（nil 字段保留原值），不存在则创建新档案。
 func (s *AllianceStore) UpsertTeacherExpertProfile(ctx context.Context, tenantID string, e *domain.AllianceExpert) (string, error) {
+	if e.UserID == nil {
+		return "", fmt.Errorf("专家档案缺少绑定账号 user_id")
+	}
 	existing, err := s.GetExpertByUserID(ctx, tenantID, *e.UserID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", err

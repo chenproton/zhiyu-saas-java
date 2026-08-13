@@ -792,8 +792,6 @@ func (s *PartnerCoBuildService) SaveTaskEvaluationMethods(ctx context.Context, p
 
 // ===== 学校数据只读列表（编辑器数据源） =====
 
-// ===== 学校数据只读列表（编辑器数据源） =====
-
 // requireSchoolAccess 校验企业与学校存在 active link，返回学校租户 id。
 func (s *PartnerCoBuildService) requireSchoolAccess(ctx context.Context, partnerTenantID, schoolTenantID string) (string, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)

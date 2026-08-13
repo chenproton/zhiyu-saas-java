@@ -30,7 +30,8 @@ func (s *PositionCloneService) Clone(ctx context.Context, tenantID, oldPositionI
 		}
 		return "", err
 	}
-	if src.TenantID != nil && *src.TenantID != tenantID {
+	// 源岗位租户缺失时同样拒绝，避免跨租户克隆
+	if src.TenantID == nil || *src.TenantID != tenantID {
 		return "", ErrPositionNotInTenant
 	}
 	if newName == "" {

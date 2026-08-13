@@ -49,6 +49,7 @@ func (s *AIConfigStore) Upsert(ctx context.Context, cfg *domain.TenantAIConfig) 
 			base_url = EXCLUDED.base_url,
 			api_key_encrypted = EXCLUDED.api_key_encrypted,
 			model = EXCLUDED.model,
+			extra = EXCLUDED.extra,
 			updated_at = now()
 	`, cfg.TenantID, cfg.BaseURL, cfg.APIKeyEncrypted, cfg.Model, cfg.Extra)
 	return err

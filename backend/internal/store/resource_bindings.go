@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -100,6 +101,9 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 // CreateResource 创建资源库条目并绑定到目标。
 // 可选 afterBind 回调（如课程资源同步 courses.resource_ids），在绑定后执行。
 func (s *ResourceBindingStore) CreateResource(ctx context.Context, tenantID, bindTable, bindCol, bindID string, p *ResourceCreateSimpleParams, afterBind func(ctx context.Context, q Queryer, bindID, resourceID string) error) (*ResourceRow, error) {
+	if bindTable != "" && !validBindingTarget(bindTable, bindCol) {
+		return nil, fmt.Errorf("invalid binding target: %s.%s", bindTable, bindCol)
+	}
 	id := uuid.NewString()
 	if err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `
@@ -133,6 +137,9 @@ func (s *ResourceBindingStore) CreateResource(ctx context.Context, tenantID, bin
 // Bind 绑定已有资源到目标。
 // 可选 afterBind 回调（如课程资源同步 courses.resource_ids），在绑定后执行。
 func (s *ResourceBindingStore) Bind(ctx context.Context, tenantID, bindTable, bindCol, bindID, resourceID string, afterBind func(ctx context.Context, q Queryer, bindID, resourceID string) error) (string, error) {
+	if !validBindingTarget(bindTable, bindCol) {
+		return "", fmt.Errorf("invalid binding target: %s.%s", bindTable, bindCol)
+	}
 	var id string
 	err := s.q.QueryRow(ctx, `
 		INSERT INTO `+bindTable+` (tenant_id, `+bindCol+`, resource_id)
@@ -156,8 +163,12 @@ func (s *ResourceBindingStore) Bind(ctx context.Context, tenantID, bindTable, bi
 // Unbind 解绑。绑定不存在时静默成功（保持原有 node/task 行为）。
 // afterUnbind 收到 (bindID, resourceID)。
 func (s *ResourceBindingStore) Unbind(ctx context.Context, bindTable, id string, afterUnbind func(ctx context.Context, q Queryer, bindID, resourceID string) error) error {
+	bindCol := bindColOf(bindTable)
+	if bindCol == "" {
+		return fmt.Errorf("invalid binding table: %s", bindTable)
+	}
 	var bindID, resourceID string
-	err := s.q.QueryRow(ctx, `SELECT `+bindColOf(bindTable)+`, resource_id FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID, &resourceID)
+	err := s.q.QueryRow(ctx, `SELECT `+bindCol+`, resource_id FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID, &resourceID)
 	if err != nil {
 		// 幂等删除：绑定不存在视为成功；DB 故障需上抛
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -178,21 +189,33 @@ func (s *ResourceBindingStore) Unbind(ctx context.Context, bindTable, id string,
 
 // BindTargetID 查询绑定行关联的主实体 ID（租户归属校验用）。
 func (s *ResourceBindingStore) BindTargetID(ctx context.Context, bindTable, id string) (string, error) {
+	bindCol := bindColOf(bindTable)
+	if bindCol == "" {
+		return "", fmt.Errorf("invalid binding table: %s", bindTable)
+	}
 	var bindID string
-	err := s.q.QueryRow(ctx, `SELECT `+bindColOf(bindTable)+` FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID)
+	err := s.q.QueryRow(ctx, `SELECT `+bindCol+` FROM `+bindTable+` WHERE id = $1`, id).Scan(&bindID)
 	return bindID, err
 }
 
-// bindColOf 绑定表的目标列名。
+// bindColOf 绑定表的目标列名；未知表返回空串（调用方必须校验）。
 func bindColOf(table string) string {
 	switch table {
 	case "node_resource_bindings":
 		return "node_id"
 	case "task_resource_bindings":
 		return "task_id"
-	default:
+	case "course_resource_bindings":
 		return "course_id"
+	default:
+		return ""
 	}
+}
+
+// validBindingTarget 校验绑定表/列白名单：表名与列名必须严格匹配（防动态拼接注入面）。
+func validBindingTarget(table, col string) bool {
+	expected := bindColOf(table)
+	return expected != "" && expected == col
 }
 
 // ResourceCreateSimpleParams 创建资源参数。

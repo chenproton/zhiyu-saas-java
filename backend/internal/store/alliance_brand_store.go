@@ -465,6 +465,9 @@ func (s *AllianceStore) ListEmployerBrands(ctx context.Context, tenantID, search
 	if limit <= 0 {
 		limit = 20
 	}
+	if limit > 200 {
+		limit = 200
+	}
 	items, err := queryList(ctx, s.q, s.ScanEmployerBrandRows, `
 		SELECT `+employerBrandSelect+`
 		FROM alliance_brands b
@@ -552,6 +555,9 @@ func (s *AllianceStore) ListJobBrands(ctx context.Context, tenantID, search stri
 	}
 	if limit <= 0 {
 		limit = 20
+	}
+	if limit > 200 {
+		limit = 200
 	}
 	items, err := queryList(ctx, s.q, s.ScanJobBrandRows, `
 		SELECT `+jobBrandSelect+`

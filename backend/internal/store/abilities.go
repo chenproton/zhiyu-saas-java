@@ -59,7 +59,8 @@ func (s *AbilityStore) Get(ctx context.Context, id, tenantID string) (*domain.Ab
 func (s *AbilityStore) Create(ctx context.Context, tenantID string, p *AbilityPointParams) (*domain.AbilityPoint, error) {
 	code, err := GenerateUniqueEntityCode(ctx, s.q, "NL", "ability_points", tenantID)
 	if err != nil {
-		code = GenerateEntityCode("NL")
+		// 不再静默降级随机码：掩盖底层故障且可能产生重复 code 触发唯一约束失败
+		return nil, err
 	}
 	var id string
 	err = s.q.QueryRow(ctx, `

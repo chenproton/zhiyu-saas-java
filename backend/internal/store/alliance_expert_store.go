@@ -135,6 +135,25 @@ func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) 
 	`, id, tenantID)
 }
 
+// DeleteExpertAccountReferences 删除专家账号关联（评审步骤引用清理 + 角色 + 用户）。
+// service 层 DeleteExpertWithAccount 事务内调用；SQL 唯一所在地。
+func (s *AllianceStore) DeleteExpertAccountReferences(ctx context.Context, tx Queryer, userID string) error {
+	// 从评审步骤的评审人数组中移除该账号（数组列无 FK，防悬空引用）
+	if _, err := tx.Exec(ctx, `
+		UPDATE task_review_steps SET assigned_user_ids = array_remove(assigned_user_ids, $1)
+		WHERE $1::uuid = ANY(assigned_user_ids)
+	`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetExpertByUserID 专家本人档案（按绑定账号 user_id 查询，同租户内）。
 func (s *AllianceStore) GetExpertByUserID(ctx context.Context, tenantID, userID string) (*domain.AllianceExpert, error) {
 	return queryOne(ctx, s.q, s.ScanExpertRows, `
