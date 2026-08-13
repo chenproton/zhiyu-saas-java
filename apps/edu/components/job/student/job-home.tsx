@@ -540,7 +540,7 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
         total: scenarios.length,
         industryCount: industrySet.size,
         taskCount: totalTasks,
-        majorCount: totalTasks,
+        majorCount: 0,
         favoriteTotal: positionSet.size,
         difficultyLevels: diffSet.size,
       }

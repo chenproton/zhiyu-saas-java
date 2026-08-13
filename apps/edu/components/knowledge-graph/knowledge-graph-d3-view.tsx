@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { GraphNodeDetail, GraphDetailStack } from './graph-node-detail'
 import { cn } from '@/lib/utils'
-import type { GraphNode, GraphEdge } from './types'
+import { GRAPH_NODE_TYPE_LABELS, type GraphNode, type GraphEdge } from './types'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const SIMULATION_ALPHA = 0.3
@@ -43,7 +43,6 @@ type GraphViewProps = {
   toolbarSlot?: React.ReactNode
   highlightNodeIds?: Set<string>
   nodeLabels?: Partial<Record<GraphNode['type'], string>>
-  role?: string
 }
 
 type SimNode = GraphNode & {
@@ -68,7 +67,7 @@ const TYPE_META_D3: Record<
   }
 > = {
   position: {
-    label: '岗位',
+    label: GRAPH_NODE_TYPE_LABELS.position,
     color: '#6366f1',
     bg: '#eef2ff',
     radius: 32,
@@ -76,7 +75,7 @@ const TYPE_META_D3: Record<
     icon: <Briefcase className="size-4" />,
   },
   domain: {
-    label: '能力领域',
+    label: GRAPH_NODE_TYPE_LABELS.domain,
     color: '#f43f5e',
     bg: '#fff1f2',
     radius: 20,
@@ -84,7 +83,7 @@ const TYPE_META_D3: Record<
     icon: <FileWarning className="size-4" />,
   },
   unit: {
-    label: '能力点',
+    label: GRAPH_NODE_TYPE_LABELS.unit,
     color: '#10b981',
     bg: '#ecfdf5',
     radius: 20,
@@ -92,7 +91,7 @@ const TYPE_META_D3: Record<
     icon: <Target className="size-4" />,
   },
   knowledge: {
-    label: '知识点',
+    label: GRAPH_NODE_TYPE_LABELS.knowledge,
     color: '#f59e0b',
     bg: '#fffbeb',
     radius: 12,
@@ -100,7 +99,7 @@ const TYPE_META_D3: Record<
     icon: <Lightbulb className="size-4" />,
   },
   course: {
-    label: '颗粒课',
+    label: GRAPH_NODE_TYPE_LABELS.course,
     color: '#06b6d4',
     bg: '#ecfeff',
     radius: 12,
@@ -640,17 +639,6 @@ export function KnowledgeGraphD3View({
                   <stop key={s.offset} offset={s.offset} stopColor={s.color} />
                 ))}
               </radialGradient>
-              <marker
-                id="arrow-d3"
-                viewBox="0 -5 10 10"
-                refX={20}
-                refY={0}
-                markerWidth={6}
-                markerHeight={6}
-                orient="auto"
-              >
-                <path d="M0,-5L10,0L0,5" fill="#c8d8f0" />
-              </marker>
             </defs>
             <g ref={gRef} />
           </svg>

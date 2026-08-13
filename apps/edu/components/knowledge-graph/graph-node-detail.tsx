@@ -5,28 +5,23 @@ import Link from 'next/link'
 import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X, ArrowRight, Map, ClipboardList } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useGraphData } from './graph-data-context'
-import type { GraphNode } from './types'
+import { GRAPH_NODE_TYPE_LABELS, type GraphNode } from './types'
 import { cn } from '@/lib/utils'
 import type { PositionAbilityBinding, AbilityDomain, KnowledgePoint } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export type NodeLite = { id: string; type: GraphNode['type']; label: string }
 
-const COURSE_TYPE_LABEL: Record<string, string> = {
-  course: '颗粒课',
-  material: '课件',
-  quiz: '测验',
-}
-
+// 资源类型字段对 course 节点恒为「颗粒课」，直接使用共享标签，无需映射表
 const GRAPH_TYPE_META: Record<
   GraphNode['type'],
   { label: string; color: string; icon: React.ReactNode }
 > = {
-  position: { label: '岗位', color: '#6366f1', icon: <Briefcase className="size-4" /> },
-  domain: { label: '能力领域', color: '#f43f5e', icon: <FileWarning className="size-4" /> },
-  unit: { label: '能力点', color: '#10b981', icon: <Target className="size-4" /> },
-  knowledge: { label: '知识点', color: '#f59e0b', icon: <Lightbulb className="size-4" /> },
-  course: { label: '颗粒课', color: '#06b6d4', icon: <BookOpen className="size-4" /> },
+  position: { label: GRAPH_NODE_TYPE_LABELS.position, color: '#6366f1', icon: <Briefcase className="size-4" /> },
+  domain: { label: GRAPH_NODE_TYPE_LABELS.domain, color: '#f43f5e', icon: <FileWarning className="size-4" /> },
+  unit: { label: GRAPH_NODE_TYPE_LABELS.unit, color: '#10b981', icon: <Target className="size-4" /> },
+  knowledge: { label: GRAPH_NODE_TYPE_LABELS.knowledge, color: '#f59e0b', icon: <Lightbulb className="size-4" /> },
+  course: { label: GRAPH_NODE_TYPE_LABELS.course, color: '#06b6d4', icon: <BookOpen className="size-4" /> },
 }
 
 function Field({
@@ -452,7 +447,7 @@ export function GraphNodeDetail({
           <ArrowRight className="size-4" />
         </Link>
         <div className="divide-y">
-          <Field label={t('资源类型')} value={t(COURSE_TYPE_LABEL[node.type])} t={t} />
+          <Field label={t('资源类型')} value={t('颗粒课')} t={t} />
         </div>
         <Section title={t('关联知识点')} count={relatedKnowledgeItems.length} t={t}>
           <Chips items={relatedKnowledgeItems} empty={t('暂无关联知识点')} onNavigate={onNavigate} t={t} />

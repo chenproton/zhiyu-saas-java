@@ -327,7 +327,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-[#94a3b8]">
-                    {t('{n}课时', { n: task.estimatedHours })}
+                    {t('{n}课时', { n: task.estimatedHours || 0 })}
                   </span>
                   <button
                     className="text-xs px-3 py-1.5 rounded-md bg-primary text-white hover:bg-purple-600 flex items-center gap-1"
