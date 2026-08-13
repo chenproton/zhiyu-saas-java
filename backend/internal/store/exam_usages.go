@@ -229,6 +229,7 @@ type ExamCenterItemRow struct {
 	ClassMatch    bool
 	Submitted     bool
 	Score         *float64
+	ExamVersion   *string
 }
 
 // ListExamCenter 考试中心列表：租户内所有手动考试安排（published/in_progress/finished），
@@ -241,7 +242,7 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 			(SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = eu.exam_id),
 			COALESCE(e.total_score, 0),
 			COALESCE(eu.target_type <> 'class' OR $2::uuid = ANY(eu.target_ids), false),
-			(er.id IS NOT NULL), er.score
+			(er.id IS NOT NULL), er.score, eu.exam_version
 		FROM exam_usages eu
 		JOIN exams e ON e.id = eu.exam_id
 		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
@@ -265,7 +266,7 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 		var startTime, endTime *time.Time
 		if err := rows.Scan(&r.ID, &r.ExamID, &r.UsageName, &r.ExamName, &r.Description,
 			&startTime, &endTime, &r.Duration, &r.Status, &r.QuestionCount, &r.TotalScore,
-			&r.ClassMatch, &r.Submitted, &r.Score); err != nil {
+			&r.ClassMatch, &r.Submitted, &r.Score, &r.ExamVersion); err != nil {
 			continue
 		}
 		if startTime != nil {

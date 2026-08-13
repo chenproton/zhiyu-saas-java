@@ -162,6 +162,8 @@ type ExamCenterItem struct {
 	Submitted      bool     `json:"submitted"`
 	Score          *float64 `json:"score,omitempty"`
 	StudentView    bool     `json:"studentView"`
+	// ExamVersion 安排绑定的试卷版本（exam_usages.exam_version，文档 5.3 下发）。
+	ExamVersion *string `json:"examVersion,omitempty"`
 }
 
 // SceneEvaluationResult represents the result of a scene task evaluation.

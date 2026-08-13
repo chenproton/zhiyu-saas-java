@@ -106,6 +106,7 @@ func (s *EvaluationService) ListExamCenter(ctx context.Context, tenantID, userID
 			Submitted:     r.Submitted,
 			Score:         r.Score,
 			StudentView:   isStudent,
+			ExamVersion:   r.ExamVersion,
 		}
 		item.Participatable = isStudent && r.ClassMatch
 		items = append(items, item)
