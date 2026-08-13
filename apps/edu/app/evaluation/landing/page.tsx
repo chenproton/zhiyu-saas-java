@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Library, ClipboardList, FileText, Clock, PlayCircle, BarChart3 } from 'lucide-react'
+import { ChevronRight, Library, ClipboardList, FileText, Clock, PlayCircle, BarChart3, Lock } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { questionBankApi, examApi, evaluationBatchApi, examUsageApi } from '@/lib/api'
@@ -69,49 +69,70 @@ function BankCard({ bank }: { bank: QuestionBank; index: number }) {
   )
 }
 
-function ExamCard({ exam }: { exam: Exam; index: number }) {
+function ExamCard({ exam, previewOnly = false }: { exam: Exam; index: number; previewOnly?: boolean }) {
   const t = useT()
+  const cardBody = (
+    <>
+      <div
+        className="h-[110px] flex items-center justify-center shrink-0 relative"
+        style={
+          exam.coverImage
+            ? {
+                backgroundImage: `url('${exam.coverImage}')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }
+            : { background: coverGradientFor(exam.id) }
+        }
+      >
+        {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
+        <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
+          {t('{n} 分钟', { n: exam.duration })}
+        </span>
+      </div>
+      <div className="p-5 flex-1 flex flex-col">
+        <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">{exam.name}</h3>
+        <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
+          {exam.description || t('暂无描述')}
+        </p>
+        <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-3 mb-3">
+          <span className="flex items-center gap-1">
+            <FileText className="w-3 h-3" />{' '}
+            {t('{n} 题', { n: exam.questionCount ?? (exam.questions || []).length })}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" /> {t('{n} 分钟', { n: exam.duration })}
+          </span>
+        </div>
+        {previewOnly ? (
+          <Button
+            disabled
+            className="w-full rounded-[10px] h-9 text-xs bg-slate-100 text-slate-400 cursor-not-allowed"
+          >
+            <Lock className="w-3.5 h-3.5 mr-1" /> {t('暂无考试安排')}
+          </Button>
+        ) : (
+          <Button className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
+            <PlayCircle className="w-3.5 h-3.5 mr-1" /> {t('去考试')}
+          </Button>
+        )}
+      </div>
+    </>
+  )
+  if (previewOnly) {
+    return (
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
+        {cardBody}
+      </div>
+    )
+  }
   return (
     <Link
       href={`/evaluation/landing/exams/${exam.id}`}
       className="group block no-underline text-inherit"
     >
       <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
-        <div
-          className="h-[110px] flex items-center justify-center shrink-0 relative"
-          style={
-            exam.coverImage
-              ? {
-                  backgroundImage: `url('${exam.coverImage}')`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }
-              : { background: coverGradientFor(exam.id) }
-          }
-        >
-          {!exam.coverImage && <ClipboardList className="w-12 h-12 text-white/80" />}
-          <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
-            {t('{n} 分钟', { n: exam.duration })}
-          </span>
-        </div>
-        <div className="p-5 flex-1 flex flex-col">
-          <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">{exam.name}</h3>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">
-            {exam.description || t('暂无描述')}
-          </p>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-3 mb-3">
-            <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" />{' '}
-              {t('{n} 题', { n: exam.questionCount ?? (exam.questions || []).length })}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {t('{n} 分钟', { n: exam.duration })}
-            </span>
-          </div>
-          <Button className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
-            <PlayCircle className="w-3.5 h-3.5 mr-1" /> {t('去考试')}
-          </Button>
-        </div>
+        {cardBody}
       </div>
     </Link>
   )
@@ -190,6 +211,19 @@ export default function LandingHomePage() {
     })
     return map
   }, [exams])
+
+  const recentExams = useMemo(
+    () =>
+      [...exams]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 3),
+    [exams],
+  )
+
+  const examPieData = useMemo(
+    () => [{ name: t('已发布试卷'), value: exams.length, color: '#2563eb' }],
+    [exams.length, t],
+  )
 
   const batches = useMemo(() => {
     const set = new Set<string>()
@@ -430,6 +464,94 @@ export default function LandingHomePage() {
                       item={item}
                       coverImage={examCoverMap.get(item.examId)}
                     />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : exams.length > 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-6 overflow-hidden">
+            <div className="px-6 pt-6 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#0f172a]">{t('考试中心')}</h2>
+                  <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                    {t('查看全部考试与你可参加的考试，按班级开放，进入后完成在线考试')}
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                className="bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-primary/20 transition-all shrink-0"
+              >
+                <Link href="/evaluation/landing/exam-center">
+                  {t('进入考试中心')} <ChevronRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+            <div className="p-5">
+              <div className="flex flex-col lg:flex-row gap-5">
+                <div className="lg:w-[250px] shrink-0">
+                  <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-4 h-full">
+                    <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-3">
+                      <BarChart3 className="w-4 h-4 text-primary" /> {t('试卷概览')}
+                    </div>
+                    <div className="relative">
+                      <ResponsiveContainer width="100%" height={140}>
+                        <PieChart>
+                          <Pie
+                            data={examPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
+                            outerRadius={58}
+                            paddingAngle={3}
+                            dataKey="value"
+                            strokeWidth={0}
+                          >
+                            {examPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number, name: string) => [
+                              t('{n} 份', { n: value }),
+                              name,
+                            ]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <div className="text-[20px] font-bold text-[#0f172a] leading-none">
+                          {exams.length}
+                        </div>
+                        <div className="text-[11px] text-[#64748b] mt-1">{t('已发布试卷')}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2 mt-4">
+                      {examPieData.map((d) => (
+                        <div key={d.name} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-2 text-[#475569]">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ background: d.color }}
+                            />
+                            {d.name}
+                          </span>
+                          <span className="font-semibold text-[#0f172a]">
+                            {t('{n} 份', { n: d.value })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {recentExams.map((exam, i) => (
+                    <ExamCard key={exam.id} exam={exam} index={i} previewOnly />
                   ))}
                 </div>
               </div>
