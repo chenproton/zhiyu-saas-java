@@ -37,7 +37,7 @@ export interface ScenarioListItem {
 }
 
 interface ScenarioListProps<T extends ScenarioListItem = ScenarioListItem> {
-  activeTab?: 'my' | 'collab' | 'public'
+  activeTab?: 'my' | 'collab' | 'public' | 'all'
   scenarios: T[]
   selectedIds?: string[]
   onSelectId?: (id: string, checked: boolean) => void

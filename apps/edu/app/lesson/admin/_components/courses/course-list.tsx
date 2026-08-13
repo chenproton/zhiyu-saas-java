@@ -18,7 +18,7 @@ import type { Course, CourseType } from '@/lib/types/lesson-source'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface CourseListProps {
-  activeTab?: 'my' | 'collab' | 'public'
+  activeTab?: 'my' | 'collab' | 'public' | 'all'
   courses: Course[]
   courseType: CourseType
   selectedIds?: string[]

@@ -180,7 +180,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 
 		var existingID, existingCreator string
 		var existingCoCreators []string
-		err := q.QueryRow(ctx, `SELECT id, creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
+		err := q.QueryRow(ctx, `SELECT id, COALESCE(creator_id, '') AS creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
 		exists := err == nil && existingID != ""
 
 		origName := ""

@@ -147,7 +147,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 
 		var existingID, existingCreator string
 		var existingCollaborators []string
-		err := q.QueryRow(ctx, `SELECT id, creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		err := q.QueryRow(ctx, `SELECT id, COALESCE(creator_id, '') AS creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		exists := err == nil && existingID != ""
 
 		if preview {

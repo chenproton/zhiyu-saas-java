@@ -121,7 +121,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 
 		var existingID, existingCreator string
 		var existingBuilders []string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id, creator_id, co_builder_ids FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingBuilders)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id, '') AS creator_id, co_builder_ids FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingBuilders)
 		exists := err == nil && existingID != ""
 
 		origName := ""

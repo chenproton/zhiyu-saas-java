@@ -231,7 +231,7 @@ export interface ListRenderProps<T extends ContentListItem> {
   extraProps?: Record<string, any>
 }
 
-type TabType = 'my' | 'collab' | 'public'
+type TabType = 'my' | 'collab' | 'public' | 'all'
 type ViewMode = 'list' | 'group'
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -272,10 +272,14 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   } = config
 
   const router = useRouter()
-  const { hasPermission, user, tenantId } = useAuth()
+  const { hasPermission, user, tenantId, activeRoleCode } = useAuth()
   const currentUserId = user?.id ?? ''
   const { toast } = useToast()
   const t = useT()
+
+  // 学校管理员（含平台管理员）可查看租户内全部用户的资源
+  const canViewAll =
+    activeRoleCode === 'school_admin' || activeRoleCode === 'platform_admin'
 
   const [frontItems, setFrontItems] = useState<T[]>([])
   const [batches, setBatches] = useState<ContentBatch[]>([])
@@ -494,6 +498,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         return frontItems.filter(
           (i) => i.creatorId !== currentUserId && i.coCreatorIds?.includes(currentUserId),
         )
+      case 'all':
+        return frontItems
       default:
         return frontItems.filter((i) => i.status === 'published')
     }
@@ -1406,7 +1412,9 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             setSelectedBatchId(null)
           }}
         >
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList
+            className={`grid w-full max-w-md ${canViewAll ? 'grid-cols-4' : 'grid-cols-3'}`}
+          >
             <TabsTrigger value="my" className="w-full">
               {t('我的{entityLabel}', { entityLabel })}
             </TabsTrigger>
@@ -1416,6 +1424,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             <TabsTrigger value="public" className="w-full">
               {t('公共{entityLabel}', { entityLabel })}
             </TabsTrigger>
+            {canViewAll && (
+              <TabsTrigger value="all" className="w-full">
+                {t('全部{entityLabel}', { entityLabel })}
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 

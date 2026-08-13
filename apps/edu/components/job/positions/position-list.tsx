@@ -21,7 +21,7 @@ import type { Position } from '@/lib/types/job-source'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface PositionListProps {
-  activeTab?: 'my' | 'collab' | 'public'
+  activeTab?: 'my' | 'collab' | 'public' | 'all'
   positions: Position[]
   selectedIds?: string[]
   onSelectId?: (id: string, checked: boolean) => void

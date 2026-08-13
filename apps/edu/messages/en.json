@@ -59,6 +59,7 @@
   "全部批次": "All batches",
   "全部状态": "All statuses",
   "全部组织": "All organizations",
+  "全部{entityLabel}": "All {entityLabel}",
   "关联审批流": "Link approval workflow",
   "关联颗粒课": "Link granular course",
   "关闭": "Close",

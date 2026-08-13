@@ -31,7 +31,7 @@ type CourseInfo struct {
 func (s *CourseAssessmentStore) FetchCourseInfo(ctx context.Context, q Queryer, courseID string) (*CourseInfo, error) {
 	var info CourseInfo
 	err := q.QueryRow(ctx, `
-		SELECT c.type, c.name, c.tenant_id, c.creator_id
+		SELECT c.type, c.name, c.tenant_id, COALESCE(c.creator_id, '') AS creator_id
 		FROM courses c
 		WHERE c.id = $1
 	`, courseID).Scan(&info.Type, &info.Name, &info.TenantID, &info.CreatorID)

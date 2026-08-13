@@ -73,11 +73,10 @@ func (s *PortalStore) DraftCourseCount(ctx context.Context, userID string, tenan
 	var count int
 	query := `
 		SELECT COUNT(*) FROM courses c
-		JOIN users u ON u.id = c.creator_id
 		WHERE c.status = 'draft' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
 	args := []any{userID}
 	if tenantID != nil {
-		query += ` AND u.tenant_id = $2`
+		query += ` AND c.tenant_id = $2`
 		args = append(args, *tenantID)
 	}
 	if err := s.q.QueryRow(ctx, query, args...).Scan(&count); err != nil {
@@ -271,10 +270,9 @@ func (s *PortalStore) TeacherStats(ctx context.Context, userID string, tenantID 
 		WITH teacher_courses AS (
 			SELECT c.id
 			FROM courses c
-			JOIN users u ON u.id = c.creator_id
 			WHERE c.status = 'published'
 			  AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)
-			  AND ($2::uuid IS NULL OR u.tenant_id = $2::uuid)
+			  AND ($2::uuid IS NULL OR c.tenant_id = $2::uuid)
 		)
 		SELECT
 			(SELECT COUNT(*) FROM teacher_courses),
@@ -291,8 +289,7 @@ func (s *PortalStore) StudentStats(ctx context.Context, tenantID *string) (int, 
 	_ = s.q.QueryRow(ctx, `
 		SELECT
 			(SELECT COUNT(*) FROM courses c
-			 JOIN users u ON u.id = c.creator_id
-			 WHERE c.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)),
+			 WHERE c.status = 'published' AND ($1::uuid IS NULL OR c.tenant_id = $1::uuid)),
 			(SELECT COUNT(*) FROM exam_usages eu
 			 JOIN users u ON u.id = eu.creator_id
 			 WHERE eu.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid))
@@ -419,10 +416,9 @@ func (s *PortalStore) ListScenePositions(ctx context.Context, tenantID, userID s
 	rows, err := s.q.Query(ctx, `
 		SELECT DISTINCT s.career_position_id, COALESCE(cp.name, '')
 		FROM scenarios s
-		JOIN users u ON u.id = s.creator_id
 		JOIN users st ON st.id = $2
 		LEFT JOIN career_positions cp ON cp.id = s.career_position_id
-		WHERE s.status = 'published' AND s.career_position_id IS NOT NULL AND u.tenant_id = $1
+		WHERE s.status = 'published' AND s.career_position_id IS NOT NULL AND s.tenant_id = $1
 			AND EXISTS (
 				SELECT 1 FROM schedule_entries se
 				WHERE se.scenario_id = s.id AND se.status = 'published' AND se.type = 'scene'
@@ -478,7 +474,7 @@ func (s *PortalStore) ListStudentCourses(ctx context.Context, userID string, ten
 		WHERE c.status = 'published'`
 	args := []any{userID}
 	if tenantID != nil {
-		query += ` AND (t.tenant_id = $2 OR c.creator_id IN (SELECT id FROM users WHERE tenant_id = $2))`
+		query += ` AND c.tenant_id = $2`
 		args = append(args, *tenantID)
 	}
 	query += ` AND EXISTS (
@@ -520,11 +516,10 @@ func (s *PortalStore) ListSceneTasks(ctx context.Context, userID string, tenantI
 		FROM scenario_tasks t
 		JOIN scenarios s ON s.id = t.scenario_id
 		JOIN users st ON st.id = $1
-		JOIN users u ON u.id = s.creator_id
 		WHERE s.status = 'published'`
 	args := []any{userID}
 	if tenantID != nil {
-		query += ` AND u.tenant_id = $2`
+		query += ` AND s.tenant_id = $2`
 		args = append(args, *tenantID)
 	}
 	query += ` AND EXISTS (
@@ -629,11 +624,10 @@ func (s *PortalStore) ListTeacherCourses(ctx context.Context, userID string, ten
 			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
 			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, '')
 		FROM courses c
-		JOIN users u ON u.id = c.creator_id
 		WHERE c.status = 'published' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
 	args := []any{userID}
 	if tenantID != nil {
-		query += ` AND u.tenant_id = $2`
+		query += ` AND c.tenant_id = $2`
 		args = append(args, *tenantID)
 	}
 	query += ` ORDER BY c.updated_at DESC LIMIT 50`

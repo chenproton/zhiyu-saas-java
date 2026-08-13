@@ -486,7 +486,7 @@ func (s *CourseCloneStore) FetchCourse(ctx context.Context, id string) (*domain.
 			c.ability_point_ids::text[] AS ability_point_ids,
 			c.resource_ids::text[] AS resource_ids,
 			c.eval_data,
-			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
+			COALESCE(c.creator_id, '') AS creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
 			COALESCE((SELECT COUNT(*) FROM system_course_nodes scn WHERE scn.course_id = c.id), 0) AS node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			COALESCE(vc.cnt, 0) AS view_count,
 			c.study_count, c.created_at, c.updated_at
