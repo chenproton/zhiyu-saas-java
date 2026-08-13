@@ -36,9 +36,10 @@ import {
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
-import type { AlliancePublicBrand } from '@/lib/types'
+import type { AlliancePublicBrand, AllianceEnterprise } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView, EmptyState } from '@zhiyu/ui'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -70,12 +71,14 @@ function salaryText(p: { salaryMin?: number; salaryMax?: number }) {
 export default function AlliancePublicBrandDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
+  const { tenantId } = usePortalAuth()
   const [brand, setBrand] = useState<AlliancePublicBrand | null>(null)
   const [loading, setLoading] = useState(true)
   // 岗位品牌列表：雇主品牌「关联岗位」卡片跳转对应的岗位品牌详情页
   const [jobBrands, setJobBrands] = useState<AlliancePublicBrand[]>([])
   // 专业品牌「专业合作企业」：独立雇主企业跳品牌详情，合作企业跳企业详情
   const [employerBrands, setEmployerBrands] = useState<AlliancePublicBrand[]>([])
+  const [publicEnterprises, setPublicEnterprises] = useState<AllianceEnterprise[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -90,18 +93,31 @@ export default function AlliancePublicBrandDetailPage() {
             .catch(() => setJobBrands([]))
         }
         if (b.brandType === 'major') {
-          return portalRequest<{ items: AlliancePublicBrand[] }>(
-            '/alliance/public/brands?brandType=employer',
-          )
-            .then((res) => setEmployerBrands(res.items || []))
-            .catch(() => setEmployerBrands([]))
+          return Promise.all([
+            portalRequest<{ items: AlliancePublicBrand[] }>(
+              '/alliance/public/brands?brandType=employer',
+            ),
+            tenantId
+              ? portalRequest<{ items: AllianceEnterprise[] }>(
+                  `/alliance/public/enterprises?tenantId=${tenantId}`,
+                )
+              : Promise.resolve({ items: [] as AllianceEnterprise[] }),
+          ])
+            .then(([brandsRes, entsRes]) => {
+              setEmployerBrands(brandsRes.items || [])
+              setPublicEnterprises(entsRes.items || [])
+            })
+            .catch(() => {
+              setEmployerBrands([])
+              setPublicEnterprises([])
+            })
         }
       })
       .catch((err) => {
         reportError(err, { source: '加载品牌详情' })
       })
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, tenantId])
 
   const isEmployer = brand?.brandType === 'employer'
   const isIndependent = isEmployer && !brand?.enterpriseId
@@ -168,6 +184,13 @@ export default function AlliancePublicBrandDetailPage() {
     return ids
   }, [employerBrands])
 
+  /** 可访问合作企业 id 集合（link active 且对外展示；未命中时降级为不可访问卡片） */
+  const publicEnterpriseIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const e of publicEnterprises) ids.add(e.id)
+    return ids
+  }, [publicEnterprises])
+
   const majorTabs = useMemo(() => {
     if (!isMajor || !majorData) return []
     return [
@@ -212,13 +235,35 @@ export default function AlliancePublicBrandDetailPage() {
                 />
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {majorData.enterprises.map((e) => (
-                    <RelatedObjectCard
-                      key={e.id}
-                      item={e}
-                      kind={employerBrandIds.has(e.id) ? 'brands' : 'enterprises'}
-                    />
-                  ))}
+                  {majorData.enterprises.map((e) => {
+                    const kind = employerBrandIds.has(e.id)
+                      ? ('brands' as const)
+                      : publicEnterpriseIds.has(e.id)
+                        ? ('enterprises' as const)
+                        : null
+                    if (!kind) {
+                      // 关联对象暂未对外展示（合作状态/展示开关未开）：置灰卡片提示
+                      return (
+                        <div
+                          key={e.id}
+                          className="group relative bg-slate-50 rounded-2xl overflow-hidden border border-dashed border-slate-200 flex flex-col"
+                        >
+                          <div className="h-28 relative flex items-center justify-center">
+                            <Building2 className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
+                          </div>
+                          <div className="px-3.5 pb-3.5">
+                            <div className="text-sm font-bold leading-snug line-clamp-2 text-slate-400">
+                              {e.name}
+                            </div>
+                            <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 font-medium">
+                              {t('企业暂未对外展示')}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return <RelatedObjectCard key={e.id} item={e} kind={kind} />
+                  })}
                 </div>
               )}
             </CardContent>
@@ -276,7 +321,7 @@ export default function AlliancePublicBrandDetailPage() {
         ),
       },
     ]
-  }, [isMajor, majorData, employerBrandIds, t])
+  }, [isMajor, majorData, employerBrandIds, publicEnterpriseIds, t])
 
   /** 岗位 positionId → 岗位品牌（关联岗位卡片跳转岗位品牌详情页） */
   const jobBrandByPosition = useMemo(() => {
