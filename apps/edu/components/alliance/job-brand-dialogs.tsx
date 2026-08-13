@@ -355,7 +355,7 @@ export function JobBrandEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="sm:!max-w-[96rem]">
+      <DialogContent className="sm:!max-w-[64rem]">
         <DialogHeader>
           <DialogTitle>{isEdit ? t('编辑企业岗位') : t('新增独立岗位')}</DialogTitle>
           <DialogDescription>
