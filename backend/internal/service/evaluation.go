@@ -28,9 +28,10 @@ func (s *EvaluationService) GetQuestionBank(ctx context.Context, tenantID, id st
 	return s.st.QuestionBanks().GetScoped(ctx, id, tenantID)
 }
 
-// GetQuestionBankInTenant 查询单个题库（租户限定）。
+// GetQuestionBankInTenant 查询单个题库（租户限定）；与 GetQuestionBank 同实现，仅参数顺序不同，
+// 收敛为委托调用消除重复。
 func (s *EvaluationService) GetQuestionBankInTenant(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
-	return s.st.QuestionBanks().GetScoped(ctx, id, tenantID)
+	return s.GetQuestionBank(ctx, tenantID, id)
 }
 
 // CreateQuestionBank 创建题库。

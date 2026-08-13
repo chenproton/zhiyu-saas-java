@@ -303,7 +303,11 @@ func (s *EvaluationService) syncExamResultScoreTx(ctx context.Context, txStore *
 		return nil
 	}
 	examResultID, err := txStore.EvaluationResults().FindExamResultForGrading(ctx, txStore.Q(), sceneResultID, taskID, methodKey, evaluateeID)
-	if err != nil || examResultID == "" {
+	if err != nil {
+		// 真实 DB 错误直接上抛（此前返回 nil 会随事务提交静默吞掉，且失败被误归因为后续步骤）
+		return fmt.Errorf("定位考试结果失败: %w", err)
+	}
+	if examResultID == "" {
 		return nil
 	}
 	if err := txStore.EvaluationResults().UpdateExamResultScore(ctx, txStore.Q(), examResultID, score); err != nil {
