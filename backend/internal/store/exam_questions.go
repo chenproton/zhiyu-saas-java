@@ -10,11 +10,17 @@ import (
 // SyncExamQuestions 同步考试题目并重算总分（场景任务/课程节点共用）。
 // 以当前 questionIDs 为准：移除已不选用的旧题，更新/插入当前题目；
 // questionScores 非空时以其中单个题目分值覆盖题库原分（可为 nil）。
-func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, questionIDs []string, questionScores map[string]float64) error {
+// 返回 changed 表示题目集合（题目/内容/分值/排序）实际发生变化，供调用方决定是否
+// bump 临时考试版本并重写快照（文档 5.1 末条 temp exam 兜底）。
+func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, questionIDs []string, questionScores map[string]float64) (bool, error) {
+	before, err := examQuestionsChecksum(ctx, q, examID)
+	if err != nil {
+		return false, err
+	}
 	if _, err := q.Exec(ctx, `
 		DELETE FROM exam_questions WHERE exam_id = $1 AND NOT (question_id = ANY($2))
 	`, examID, questionIDs); err != nil {
-		return fmt.Errorf("prune exam questions: %w", err)
+		return false, fmt.Errorf("prune exam questions: %w", err)
 	}
 
 	rows, err := q.Query(ctx, `
@@ -24,7 +30,7 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 		ORDER BY array_position($1, id)
 	`, questionIDs, tenantID)
 	if err != nil {
-		return fmt.Errorf("fetch questions: %w", err)
+		return false, fmt.Errorf("fetch questions: %w", err)
 	}
 	defer rows.Close()
 
@@ -42,7 +48,7 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 		var qq question
 		var optionsStr, answerStr *string
 		if err := rows.Scan(&qq.id, &qq.qType, &qq.content, &optionsStr, &answerStr, &qq.analysis, &qq.score); err != nil {
-			return err
+			return false, err
 		}
 		if optionsStr != nil {
 			qq.options = []byte(*optionsStr)
@@ -57,7 +63,7 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 		questions = append(questions, qq)
 	}
 	if err := rows.Err(); err != nil {
-		return err
+		return false, err
 	}
 
 	for i, qq := range questions {
@@ -74,7 +80,7 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 				answer = EXCLUDED.answer, analysis = EXCLUDED.analysis, score = EXCLUDED.score,
 				sort_order = EXCLUDED.sort_order
 		`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1); err != nil {
-			return fmt.Errorf("upsert exam question %s: %w", qq.id, err)
+			return false, fmt.Errorf("upsert exam question %s: %w", qq.id, err)
 		}
 	}
 
@@ -82,7 +88,26 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
 		WHERE id = $1
 	`, examID); err != nil {
-		return fmt.Errorf("recalc exam total: %w", err)
+		return false, fmt.Errorf("recalc exam total: %w", err)
 	}
-	return nil
+	after, err := examQuestionsChecksum(ctx, q, examID)
+	if err != nil {
+		return false, err
+	}
+	return before != after, nil
+}
+
+// examQuestionsChecksum 考试题目集合摘要：题目 id/类型/内容/选项/答案/解析/分值按排序聚合取 md5，
+// 供 SyncExamQuestions 比对同步前后是否实际变化（ON CONFLICT 盲目重写不产生假变更）。
+func examQuestionsChecksum(ctx context.Context, q Queryer, examID string) (string, error) {
+	var sum string
+	err := q.QueryRow(ctx, `
+		SELECT COALESCE(md5(string_agg(
+			concat_ws('|', question_id::text, type, md5(content), md5(COALESCE(options::text, '')),
+				md5(answer), md5(COALESCE(analysis, '')), score::text),
+			',' ORDER BY sort_order, id
+		)), '')
+		FROM exam_questions WHERE exam_id = $1
+	`, examID).Scan(&sum)
+	return sum, err
 }

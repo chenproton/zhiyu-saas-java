@@ -83,3 +83,79 @@ func (s *SnapshotStore) LatestVersion(ctx context.Context, tenantID, resourceTyp
 	}
 	return version, err
 }
+
+// ResolveResourceVersion 绑定盖章统一口径（文档 5.3）：以快照表最新版本为准，快照缺档回退 live 当前版本；
+// 资源本身不存在时返回空串（调用方落 NULL，不视为错误）。
+// 与 bundle 读取的回退不同：盖章只取版本号，不要求 live status='published'。
+func (s *SnapshotStore) ResolveResourceVersion(ctx context.Context, tenantID, resourceType, resourceID string) (string, error) {
+	latest, err := s.LatestVersion(ctx, tenantID, resourceType, resourceID)
+	if err != nil {
+		return "", err
+	}
+	if latest != "" {
+		return latest, nil
+	}
+	version, _, err := s.LiveState(ctx, tenantID, resourceType, resourceID)
+	if err == ErrNotFound {
+		return "", nil
+	}
+	return version, err
+}
+
+// ExpectedOrLatestVersion 并发窗口降级语义（文档 13.B2）：提交方提示的 expected 版本快照存在则采纳，
+// 否则回退最新（快照缺档再回退 live）。这是"版本无效回退最新"的降级，不是乐观锁拒绝。
+func (s *SnapshotStore) ExpectedOrLatestVersion(ctx context.Context, tenantID, resourceType, resourceID, expected string) (string, error) {
+	if expected != "" {
+		if _, err := s.GetSnapshot(ctx, tenantID, resourceType, resourceID, expected); err == nil {
+			return expected, nil
+		} else if err != ErrNotFound {
+			return "", err
+		}
+	}
+	return s.ResolveResourceVersion(ctx, tenantID, resourceType, resourceID)
+}
+
+// SyncTempExamSnapshot 临时考试兜底（文档 5.1 末条）：temp exam 不走 Transition，在题目同步点维护版本与快照。
+// changed 表示 SyncExamQuestions 实际改写了题目集合：
+//   - 当前版本尚无快照（首次同步/历史缺档）→ 直接按当前版本补写快照，不 bump；
+//   - 当前版本已有快照且题目集合变化 → bump exams.version（NextVersion 同款 +0.1）后写新版快照；
+//   - 题目集合未变 → 不动版本。
+//
+// 最后把引用该试卷的全部 exam_usages.exam_version 刷新为最终版本（temp exam 与安排一一对应），
+// 防课程再版 SyncExamQuestions 覆盖旧安排题目内容后安排仍指向旧版（文档 7.2）。
+// 返回最终版本号。SaveSnapshot 为 upsert，重复调用幂等。
+func (s *SnapshotStore) SyncTempExamSnapshot(ctx context.Context, tenantID, examID string, changed bool) (string, error) {
+	version, _, err := s.LiveState(ctx, tenantID, SnapshotResourceExam, examID)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.GetSnapshot(ctx, tenantID, SnapshotResourceExam, examID, version); err == ErrNotFound {
+		// 当前版本无快照：首次同步或历史缺档，按当前版本补写（不 bump，避免新建卷从 V1.1 起跳）
+		data, err := s.BuildExamSnapshot(ctx, tenantID, examID)
+		if err != nil {
+			return "", err
+		}
+		if err := s.SaveSnapshot(ctx, tenantID, SnapshotResourceExam, examID, version, data); err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	} else if changed {
+		// 当前版本快照已存在而题目集合再次变化：bump 后写新版快照，旧版永久保留可回溯
+		version = NextVersion(version)
+		if _, err := s.q.Exec(ctx, `UPDATE exams SET version = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`, version, examID, tenantID); err != nil {
+			return "", err
+		}
+		data, err := s.BuildExamSnapshot(ctx, tenantID, examID)
+		if err != nil {
+			return "", err
+		}
+		if err := s.SaveSnapshot(ctx, tenantID, SnapshotResourceExam, examID, version, data); err != nil {
+			return "", err
+		}
+	}
+	if _, err := s.q.Exec(ctx, `UPDATE exam_usages SET exam_version = $1, updated_at = NOW() WHERE exam_id = $2 AND tenant_id = $3`, version, examID, tenantID); err != nil {
+		return "", err
+	}
+	return version, nil
+}

@@ -179,6 +179,8 @@ type StudentScheduleRow struct {
 	TeacherName string
 	ScenarioID  string
 	CourseID    string
+	// ResourceVersion 排课发布时 stamp 的资源版本（文档 5.3），前端拼 ?v= 用。
+	ResourceVersion *string
 }
 
 // ListStudentSchedules 学生班级排课事件。
@@ -186,7 +188,8 @@ func (s *PortalStore) ListStudentSchedules(ctx context.Context, classNodeID stri
 	query := `
 		SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
 			COALESCE(v.name, '') AS venue_name,
-			COALESCE(u.name, ''), COALESCE(se.scenario_id::text, ''), COALESCE(se.course_id::text, '')
+			COALESCE(u.name, ''), COALESCE(se.scenario_id::text, ''), COALESCE(se.course_id::text, ''),
+			se.resource_version
 		FROM schedule_entries se
 		LEFT JOIN venues v ON v.id = se.venue_id
 		LEFT JOIN users u ON u.id = se.teacher_id
@@ -206,7 +209,7 @@ func (s *PortalStore) ListStudentSchedules(ctx context.Context, classNodeID stri
 	var items []StudentScheduleRow
 	for rows.Next() {
 		var r StudentScheduleRow
-		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.TeacherName, &r.ScenarioID, &r.CourseID); err != nil {
+		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.TeacherName, &r.ScenarioID, &r.CourseID, &r.ResourceVersion); err != nil {
 			continue
 		}
 		items = append(items, r)
@@ -220,6 +223,8 @@ type ExamEventRow struct {
 	Name   string
 	Start  *time.Time
 	Status string
+	// ExamVersion 考试安排绑定的试卷版本（exam_usages.exam_version，文档 5.3 下发）。
+	ExamVersion *string
 }
 
 // ListExamEvents 全局考试事件。classNodeID 非空时（学生），班级类考试仅返回本人班级命中的安排。
@@ -230,7 +235,7 @@ func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string, clas
 	}
 	SyncScheduledExamUsageStatus(ctx, s.q, tenant, time.Now())
 	query := `
-		SELECT eu.id, eu.name, eu.start_time, eu.status
+		SELECT eu.id, eu.name, eu.start_time, eu.status, eu.exam_version
 		FROM exam_usages eu
 		JOIN users u ON u.id = eu.creator_id
 		WHERE eu.status IN ('published')
@@ -255,7 +260,7 @@ func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string, clas
 	var items []ExamEventRow
 	for rows.Next() {
 		var r ExamEventRow
-		if err := rows.Scan(&r.ID, &r.Name, &r.Start, &r.Status); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Start, &r.Status, &r.ExamVersion); err != nil {
 			continue
 		}
 		items = append(items, r)
@@ -403,6 +408,9 @@ type StudentCourseRow struct {
 	CoverColor   string
 	CoverImage   string
 	Teacher      string
+	// ResourceVersion 课程版本下发口径（文档 5.3）：学生班级已发布排课（version 最大）的 resource_version；
+	// 无排课版本（历史数据/未 stamp）回退课程最新快照版本，再回退 live version。
+	ResourceVersion *string
 }
 
 // ScenePositionRow 场景关联岗位行。
@@ -467,7 +475,16 @@ func (s *PortalStore) ListStudentCourses(ctx context.Context, userID string, ten
 	query := `
 		SELECT c.id, c.code, c.name, c.type, COALESCE(c.category, ''), c.online_hours, c.offline_hours,
 			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
-			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, ''), COALESCE(t.name, '')
+			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, ''), COALESCE(t.name, ''),
+			COALESCE(
+				(SELECT se.resource_version FROM schedule_entries se
+					WHERE se.course_id = c.id AND se.status = 'published'
+						AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+					ORDER BY se.version DESC LIMIT 1),
+				(SELECT rs.version FROM resource_snapshots rs
+					WHERE rs.tenant_id = c.tenant_id AND rs.resource_type = 'courses' AND rs.resource_id = c.id
+					ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+				c.version)
 		FROM courses c
 		JOIN users st ON st.id = $1
 		LEFT JOIN users t ON t.id = c.teacher_id
@@ -492,7 +509,7 @@ func (s *PortalStore) ListStudentCourses(ctx context.Context, userID string, ten
 	for rows.Next() {
 		var r StudentCourseRow
 		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Type, &r.Category, &r.OnlineHours, &r.OfflineHours,
-			&r.Semester, &r.ClassName, &r.Status, &r.CoverColor, &r.CoverImage, &r.Teacher); err != nil {
+			&r.Semester, &r.ClassName, &r.Status, &r.CoverColor, &r.CoverImage, &r.Teacher, &r.ResourceVersion); err != nil {
 			continue
 		}
 		items = append(items, r)
@@ -507,12 +524,23 @@ type SceneTaskRow struct {
 	SceneName  string
 	TaskName   string
 	Difficulty int
+	// ResourceVersion 场景版本下发口径同 StudentCourseRow：已发布排课 resource_version → 最新快照 → live。
+	ResourceVersion *string
 }
 
 // ListSceneTasks 场景任务（仅返回排课表中已发布且属于学生班级的场景）。
 func (s *PortalStore) ListSceneTasks(ctx context.Context, userID string, tenantID *string) ([]SceneTaskRow, error) {
 	query := `
-		SELECT t.id, t.scenario_id, s.name, t.name, t.difficulty
+		SELECT t.id, t.scenario_id, s.name, t.name, t.difficulty,
+			COALESCE(
+				(SELECT se.resource_version FROM schedule_entries se
+					WHERE se.scenario_id = s.id AND se.status = 'published' AND se.type = 'scene'
+						AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids))
+					ORDER BY se.version DESC LIMIT 1),
+				(SELECT rs.version FROM resource_snapshots rs
+					WHERE rs.tenant_id = s.tenant_id AND rs.resource_type = 'scenarios' AND rs.resource_id = s.id
+					ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+				s.version)
 		FROM scenario_tasks t
 		JOIN scenarios s ON s.id = t.scenario_id
 		JOIN users st ON st.id = $1
@@ -536,7 +564,7 @@ func (s *PortalStore) ListSceneTasks(ctx context.Context, userID string, tenantI
 	var items []SceneTaskRow
 	for rows.Next() {
 		var r SceneTaskRow
-		if err := rows.Scan(&r.ID, &r.ScenarioID, &r.SceneName, &r.TaskName, &r.Difficulty); err != nil {
+		if err := rows.Scan(&r.ID, &r.ScenarioID, &r.SceneName, &r.TaskName, &r.Difficulty, &r.ResourceVersion); err != nil {
 			continue
 		}
 		items = append(items, r)

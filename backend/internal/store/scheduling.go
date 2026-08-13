@@ -700,14 +700,28 @@ func (s *SchedulingStore) PublishScheduleEntries(ctx context.Context, tx Queryer
 	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = 'published'`, tenantID, termID); err != nil {
 		return 0, 0, err
 	}
+	// 绑定固化（文档 5.3）：published 行打 resource_version——场景行取场景、其余行取课程；
+	// 版本以快照表最新版本为准，快照缺档回退 live 当前版本（ResolveResourceVersion 同款口径，此处内联为相关子查询保持单语句）。
 	tag, err := tx.Exec(ctx, `
 		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-			venue_id, scenario_id, source, status, version)
+			venue_id, scenario_id, source, status, version, resource_version)
 		SELECT gen_random_uuid(), tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-			venue_id, scenario_id, source, 'published', $3
-		FROM schedule_entries
+			venue_id, scenario_id, source, 'published', $3,
+			CASE
+				WHEN se.scenario_id IS NOT NULL THEN COALESCE(
+					(SELECT rs.version FROM resource_snapshots rs
+						WHERE rs.tenant_id = $1 AND rs.resource_type = 'scenarios' AND rs.resource_id = se.scenario_id
+						ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+					(SELECT sc.version FROM scenarios sc WHERE sc.id = se.scenario_id))
+				WHEN se.course_id IS NOT NULL THEN COALESCE(
+					(SELECT rs.version FROM resource_snapshots rs
+						WHERE rs.tenant_id = $1 AND rs.resource_type = 'courses' AND rs.resource_id = se.course_id
+						ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+					(SELECT c.version FROM courses c WHERE c.id = se.course_id))
+			END
+		FROM schedule_entries se
 		WHERE tenant_id = $1 AND term_id = $2 AND status = 'draft'
 	`, tenantID, termID, newVersion)
 	if err != nil {

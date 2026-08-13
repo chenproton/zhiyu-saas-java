@@ -92,6 +92,7 @@ func (s *CourseAssessmentStore) FindNodeUsage(ctx context.Context, q Queryer, ex
 
 // CreateNodeUsage 创建节点考试安排，startTime/endTime/duration 为空时表示不限时。
 // activationMode 决定初始状态：always → published，manual/scheduled → draft。
+// 创建即 stamp exam_version（快照最新为准，缺档回退 live version，文档 5.3）。
 func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, tenantID, examID, nodeID, name, creatorID string, startTime, endTime *string, duration *int, activationMode string) (string, error) {
 	usageID := uuid.NewString()
 	var creator any
@@ -102,10 +103,18 @@ func (s *CourseAssessmentStore) CreateNodeUsage(ctx context.Context, q Queryer, 
 	if activationMode == "always" {
 		status = "published"
 	}
-	_, err := q.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'node', $8, $9, $10, $11)
-	`, usageID, tenantID, examID, name, startTime, endTime, duration, []string{nodeID}, status, activationMode, creator)
+	examVersion, err := NewSnapshotStore(q).ResolveResourceVersion(ctx, tenantID, SnapshotResourceExam, examID)
+	if err != nil {
+		return "", err
+	}
+	var versionArg any
+	if examVersion != "" {
+		versionArg = examVersion
+	}
+	_, err = q.Exec(ctx, `
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, exam_version)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'node', $8, $9, $10, $11, $12)
+	`, usageID, tenantID, examID, name, startTime, endTime, duration, []string{nodeID}, status, activationMode, creator, versionArg)
 	if err != nil {
 		return "", err
 	}
@@ -141,6 +150,7 @@ func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, t
 
 // CreateExamUsage 创建通用考试安排，startTime/endTime/duration 为空时表示不限时。
 // activationMode 决定初始状态：always → published，manual/scheduled → draft。
+// 创建即 stamp exam_version（快照最新为准，缺档回退 live version，文档 5.3）。
 func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, tenantID, examID, targetType, targetID, name, creatorID string, startTime, endTime *string, duration *int, activationMode string) (string, error) {
 	id := uuid.NewString()
 	var creator any
@@ -151,10 +161,18 @@ func (s *CourseAssessmentStore) CreateExamUsage(ctx context.Context, q Queryer, 
 	if activationMode == "always" {
 		status = "published"
 	}
-	_, err := q.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, $10, $11, $12)
-	`, id, tenantID, examID, name, startTime, endTime, duration, targetType, []string{targetID}, status, activationMode, creator)
+	examVersion, err := NewSnapshotStore(q).ResolveResourceVersion(ctx, tenantID, SnapshotResourceExam, examID)
+	if err != nil {
+		return "", fmt.Errorf("解析试卷版本失败: %w", err)
+	}
+	var versionArg any
+	if examVersion != "" {
+		versionArg = examVersion
+	}
+	_, err = q.Exec(ctx, `
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, exam_version)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`, id, tenantID, examID, name, startTime, endTime, duration, targetType, []string{targetID}, status, activationMode, creator, versionArg)
 	if err != nil {
 		return "", fmt.Errorf("创建考试安排失败: %w", err)
 	}

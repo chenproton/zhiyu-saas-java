@@ -401,7 +401,12 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 			examID = id
 			resourceConfig["examId"] = examID
 		}
-		if err := SyncExamQuestions(ctx, tx, tenantID, examID, questionIDs, getFloatMapFromJSONMap(resourceConfig, "questionScores")); err != nil {
+		changed, err := SyncExamQuestions(ctx, tx, tenantID, examID, questionIDs, getFloatMapFromJSONMap(resourceConfig, "questionScores"))
+		if err != nil {
+			return resourceConfig, err
+		}
+		// temp exam 兜底（文档 5.1 末条）：不走 Transition，同步点维护版本+快照并刷新引用安排的 exam_version
+		if _, err := NewSnapshotStore(tx).SyncTempExamSnapshot(ctx, tenantID, examID, changed); err != nil {
 			return resourceConfig, err
 		}
 	}
@@ -516,10 +521,21 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 	if err != nil {
 		return "", fmt.Errorf("生成考试安排名称失败: %w", err)
 	}
+	// 绑定固化（文档 5.3）：创建即打 exam_version（快照最新为准，缺档回退 live version）；
+	// 复用已有安排的分支不重新 stamp——题库/随堂测 temp exam 已由 SyncTempExamSnapshot 刷新，
+	// 正式试卷再发布不回溯刷新既有安排（文档 8.10 固化语义）。
+	examVersion, err := NewSnapshotStore(tx).ResolveResourceVersion(ctx, tenantID, SnapshotResourceExam, examID)
+	if err != nil {
+		return "", fmt.Errorf("resolve exam version: %w", err)
+	}
+	var versionArg any
+	if examVersion != "" {
+		versionArg = examVersion
+	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, $9, $10, $11)
-	`, id, tenantID, examID, name, startTime, endTime, duration, []string{taskID}, status, activationMode, creator)
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, exam_version)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, $9, $10, $11, $12)
+	`, id, tenantID, examID, name, startTime, endTime, duration, []string{taskID}, status, activationMode, creator, versionArg)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}

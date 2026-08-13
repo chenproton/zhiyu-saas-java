@@ -534,7 +534,13 @@ func (s *LessonContentService) ensureNodeQuestionExam(ctx context.Context, q sto
 		rc["examId"] = examID
 	}
 
-	if err := store.SyncExamQuestions(ctx, q, info.TenantID, examID, questionIDs, nil); err != nil {
+	changed, err := store.SyncExamQuestions(ctx, q, info.TenantID, examID, questionIDs, nil)
+	if err != nil {
+		return rc, err
+	}
+	// temp exam 兜底（文档 5.1 末条）：不走 Transition，同步点维护版本+快照；
+	// 内部会把引用该试卷的全部 exam_usages.exam_version 刷新为最终版本（覆盖复用分支）。
+	if _, err := store.NewSnapshotStore(q).SyncTempExamSnapshot(ctx, info.TenantID, examID, changed); err != nil {
 		return rc, err
 	}
 

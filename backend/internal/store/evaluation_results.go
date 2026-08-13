@@ -32,7 +32,7 @@ func (s *EvaluationResultStore) List(ctx context.Context, p ListParams, cfg List
 func (s *EvaluationResultStore) ListConfig() ListQueryConfig[domain.SceneEvaluationResult] {
 	return ListQueryConfig[domain.SceneEvaluationResult]{
 		Table:         "scene_evaluation_results",
-		SelectColumns: "id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
+		SelectColumns: "id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by, version",
 		TenantScoped:  true,
 		OrderBy:       "id DESC",
 		ScanRows:      ScanSceneEvaluationResultRows,
@@ -79,12 +79,36 @@ func (s *EvaluationResultStore) Get(ctx context.Context, id string) (*domain.Sce
 }
 
 // Submit 提交评价结果（幂等 upsert）。
+// 提交固化（文档 5.3/13.A6）：scene_id 与 version 均以服务端解析为准——
+// scene_id 由 task_id → scenario_tasks.scenario_id 反查（客户端传值不可信，直接覆盖）；
+// version 取场景最新快照版本（expectedVersion 快照存在则采纳，否则回退最新，13.B2 降级语义）。
+// 任务不存在（孤儿提交）时 scene_id/version 落 NULL，保持现状宽松行为。
 func (s *EvaluationResultStore) Submit(ctx context.Context, p *EvaluationResultSubmitParams) (*domain.SceneEvaluationResult, error) {
+	snap := NewSnapshotStore(s.q)
+	var sceneID *string
+	var sid string
+	if err := s.q.QueryRow(ctx, `SELECT scenario_id FROM scenario_tasks WHERE id = $1`, p.TaskID).Scan(&sid); err == nil {
+		sceneID = &sid
+	} else if err != pgx.ErrNoRows {
+		return nil, err
+	}
+	version := ""
+	if sceneID != nil {
+		v, err := snap.ExpectedOrLatestVersion(ctx, p.TenantID, SnapshotResourceScenario, *sceneID, p.ExpectedVersion)
+		if err != nil {
+			return nil, err
+		}
+		version = v
+	}
+	var versionArg any
+	if version != "" {
+		versionArg = version
+	}
 	var id string
 	now := time.Now()
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14)
+		INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, version, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key) DO UPDATE SET
 			scene_id = EXCLUDED.scene_id,
 			evaluator_id = EXCLUDED.evaluator_id,
@@ -94,14 +118,15 @@ func (s *EvaluationResultStore) Submit(ctx context.Context, p *EvaluationResultS
 			subjective_content = EXCLUDED.subjective_content,
 			drawn_questions = EXCLUDED.drawn_questions,
 			eval_point_scores = EXCLUDED.eval_point_scores,
+			version = EXCLUDED.version,
 			status = 'pending',
 			graded_at = NULL,
 			updated_at = EXCLUDED.updated_at
 		WHERE scene_evaluation_results.graded_at IS NULL
 		RETURNING id
-	`, p.TenantID, p.TaskID, p.SceneID, p.MethodKey, p.EvaluateeID,
+	`, p.TenantID, p.TaskID, sceneID, p.MethodKey, p.EvaluateeID,
 		p.EvaluatorID, p.EvaluatorType, p.MaxScore,
-		p.EvalPointScores, p.ObjectiveAnswers, p.SubjectiveContent, p.DrawnQuestions, now, now).Scan(&id)
+		p.EvalPointScores, p.ObjectiveAnswers, p.SubjectiveContent, p.DrawnQuestions, versionArg, now, now).Scan(&id)
 	if err == pgx.ErrNoRows {
 		// 已被教师评分的结果禁止重交覆盖
 		return nil, ErrAlreadyGraded
@@ -244,9 +269,12 @@ func (s *EvaluationResultStore) BatchGetGradeTargets(ctx context.Context, tx Que
 
 // EvaluationResultSubmitParams 提交参数。
 type EvaluationResultSubmitParams struct {
-	TenantID          string
-	TaskID            string
-	SceneID           *string
+	TenantID string
+	TaskID   string
+	// SceneID 客户端传值不可信（文档 13.A6）：Submit 内以 task_id 反查 scenario_id 覆盖，此字段仅为兼容保留。
+	SceneID *string
+	// ExpectedVersion 提交方页面加载时的版本提示（文档 13.B2）：快照存在则采纳，否则回退最新。
+	ExpectedVersion   string
 	MethodKey         string
 	EvaluateeID       string
 	EvaluatorID       *string
@@ -277,19 +305,19 @@ type EvaluationResultGradeItem struct {
 
 func (s *EvaluationResultStore) fetchResult(ctx context.Context, id string) (*domain.SceneEvaluationResult, error) {
 	var res domain.SceneEvaluationResult
-	var sceneID, comment, gradedBy, evaluatorID, evaluatorType, tenantID pgtype.Text
+	var sceneID, comment, gradedBy, evaluatorID, evaluatorType, tenantID, version pgtype.Text
 	var totalScore *float64
 	var gradedAt *time.Time
 	var evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions domain.JSONMap
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
 			total_score, max_score, eval_point_scores, objective_answers, subjective_content,
-			drawn_questions, comment, graded_at, graded_by
+			drawn_questions, comment, graded_at, graded_by, version
 		FROM scene_evaluation_results WHERE id = $1
 	`, id).Scan(
 		&res.ID, &tenantID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &evaluatorID, &evaluatorType, &res.Status,
 		&totalScore, &res.MaxScore, &evalPointScores, &objectiveAnswers, &subjectiveContent,
-		&drawnQuestions, &comment, &gradedAt, &gradedBy,
+		&drawnQuestions, &comment, &gradedAt, &gradedBy, &version,
 	)
 	if err != nil {
 		return nil, err
@@ -299,6 +327,9 @@ func (s *EvaluationResultStore) fetchResult(ctx context.Context, id string) (*do
 	}
 	if sceneID.Valid {
 		res.SceneID = &sceneID.String
+	}
+	if version.Valid {
+		res.Version = &version.String
 	}
 	res.EvaluatorID = evaluatorID.String
 	res.EvaluatorType = evaluatorType.String
@@ -322,19 +353,22 @@ func ScanSceneEvaluationResultRows(rows pgx.Rows) ([]domain.SceneEvaluationResul
 	items := make([]domain.SceneEvaluationResult, 0)
 	for rows.Next() {
 		var res domain.SceneEvaluationResult
-		var sceneID, comment, gradedBy, evaluatorID, evaluatorType pgtype.Text
+		var sceneID, comment, gradedBy, evaluatorID, evaluatorType, version pgtype.Text
 		var totalScore *float64
 		var gradedAt *time.Time
 		var evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions domain.JSONMap
 		if err := rows.Scan(
 			&res.ID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &evaluatorID, &evaluatorType, &res.Status,
 			&totalScore, &res.MaxScore, &evalPointScores, &objectiveAnswers, &subjectiveContent,
-			&drawnQuestions, &comment, &gradedAt, &gradedBy,
+			&drawnQuestions, &comment, &gradedAt, &gradedBy, &version,
 		); err != nil {
 			return nil, err
 		}
 		if sceneID.Valid {
 			res.SceneID = &sceneID.String
+		}
+		if version.Valid {
+			res.Version = &version.String
 		}
 		res.EvaluatorID = evaluatorID.String
 		res.EvaluatorType = evaluatorType.String

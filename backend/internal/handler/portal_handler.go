@@ -197,7 +197,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 				events = append(events, domain.WorkspaceScheduleEvent{
 					ID: se.ID, Title: se.CourseName, Type: eventType, DayOfWeek: se.DayOfWeek,
 					Period: period, Location: se.VenueName, Teacher: se.TeacherName, Status: "进行中",
-					ScenarioID: se.ScenarioID, CourseID: se.CourseID,
+					ScenarioID: se.ScenarioID, CourseID: se.CourseID, ResourceVersion: se.ResourceVersion,
 				})
 			}
 		}
@@ -213,6 +213,7 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 		}
 		events = append(events, domain.WorkspaceScheduleEvent{
 			ID: e.ID, Title: e.Name, Type: "exam", DayOfWeek: dayOfWeek, Period: "上午 1", Status: e.Status,
+			ResourceVersion: e.ExamVersion,
 		})
 	}
 	return events
@@ -307,6 +308,7 @@ func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, t
 			ID: c2.ID, Code: c2.Code, Name: c2.Name, Type: c2.Type,
 			Teacher: c2.Teacher, Status: publishedStatusLabel(c2.Status),
 			Hours: totalHours(c2.OnlineHours, c2.OfflineHours), Cover: coverText(c2.Name),
+			ResourceVersion: c2.ResourceVersion,
 		}
 		item.Credit = int(float64(item.Hours) / ratio)
 		items = append(items, item)
@@ -331,7 +333,7 @@ func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string
 		items = append(items, domain.WorkspaceSceneTask{
 			ID: t.ID, ScenarioID: t.ScenarioID, SceneName: t.SceneName, TaskName: t.TaskName,
 			Position: t.SceneName, AbilityTags: []string{}, Difficulty: difficultyLabel(t.Difficulty),
-			Deadline: "", TotalScore: 100,
+			Deadline: "", TotalScore: 100, ResourceVersion: t.ResourceVersion,
 		})
 		taskIDs = append(taskIDs, t.ID)
 	}
