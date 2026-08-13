@@ -183,6 +183,11 @@ func (s *CourseNodeStore) Delete(ctx context.Context, id, tenantID string) error
 	var inUse bool
 	if err := s.q.QueryRow(ctx, `
 		SELECT EXISTS(SELECT 1 FROM node_evaluation_results WHERE node_id = $1)
+			OR EXISTS(
+				SELECT 1 FROM exam_results er
+				JOIN exam_usages eu ON eu.id = er.exam_usage_id
+				WHERE eu.target_type = 'node' AND $1::uuid = ANY(eu.target_ids)
+			)
 	`, id).Scan(&inUse); err != nil {
 		return err
 	}

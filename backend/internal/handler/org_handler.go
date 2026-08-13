@@ -200,6 +200,10 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.Delete(r.Context(), id, org.TenantID); err != nil {
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusConflict, "该组织已被教学计划或排课引用，请先解除关联")
+			return
+		}
 		respondServerError(w, r, err, "删除组织失败")
 		return
 	}

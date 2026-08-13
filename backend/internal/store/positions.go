@@ -218,6 +218,13 @@ func (s *PositionStore) Delete(ctx context.Context, id string) error {
 		if err := NewAllianceGrantStore(tx).RemoveResourceID(ctx, "position", id); err != nil {
 			return fmt.Errorf("cleanup alliance grants: %w", err)
 		}
+		// 通用计数表无外键，需显式清理（浏览/收藏计数孤儿行）
+		if _, err := tx.Exec(ctx, `DELETE FROM view_counters WHERE target_type = 'career_position' AND target_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup view counters: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM favorite_counters WHERE target_type = 'career_position' AND target_id = $1`, id); err != nil {
+			return fmt.Errorf("cleanup favorite counters: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("delete position: %w", err)
 		}

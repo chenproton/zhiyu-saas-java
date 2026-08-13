@@ -226,6 +226,16 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "草稿库不允许删除")
 		return
 	}
+	// 引用检查：题库下题目已被试卷组卷时禁止删除（级联会损坏试卷快照）
+	refs, err := h.Service.Store().QuestionBanks().CountBankQuestionRefs(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "检查题库引用失败")
+		return
+	}
+	if refs > 0 {
+		respondError(w, http.StatusConflict, "题库内题目已被试卷引用，无法删除")
+		return
+	}
 	if err := h.Service.DeleteQuestionBank(r.Context(), id, tenantID); err != nil {
 		respondServerError(w, r, err, "删除题库失败")
 		return

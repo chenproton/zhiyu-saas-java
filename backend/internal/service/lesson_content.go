@@ -208,9 +208,14 @@ func (s *LessonContentService) UpdateNode(ctx context.Context, id, tenantID stri
 	return node, err
 }
 
-// DeleteNode 删除节点。
+// DeleteNode 删除节点：事务内先行清理节点级考试安排（无 FK，防幽灵考试残留）。
 func (s *LessonContentService) DeleteNode(ctx context.Context, id, tenantID string) error {
-	return s.st.CourseNodes().Delete(ctx, id, tenantID)
+	return s.st.WithTx(ctx, func(txStore *store.Store) error {
+		if err := store.CleanupNodeExamUsages(ctx, txStore.Q(), id); err != nil {
+			return err
+		}
+		return txStore.CourseNodes().Delete(ctx, id, tenantID)
+	})
 }
 
 // ReorderNodes 批量重排节点（事务内）。

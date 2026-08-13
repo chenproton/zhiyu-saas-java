@@ -145,7 +145,8 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.Service.GetQuestion(r.Context(), id, tenantID); err != nil {
+	existing, err := h.Service.GetQuestion(r.Context(), id, tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
@@ -154,12 +155,40 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	// 部分更新兜底：未携带字段回退已有值（防全列覆盖清空）
+	if req.BankID == "" {
+		req.BankID = existing.BankID
+	}
+	if req.Type == "" {
+		req.Type = string(existing.Type)
+	}
+	if req.Content == "" {
+		req.Content = existing.Content
+	}
+	if req.Analysis == nil {
+		req.Analysis = existing.Analysis
+	}
+	if req.Score == 0 {
+		req.Score = existing.Score
+	}
+	if req.Difficulty == nil {
+		req.Difficulty = existing.Difficulty
+	}
+	if req.Source == nil {
+		req.Source = existing.Source
+	}
+	if req.Options == nil {
+		req.Options = existing.Options
+	}
+	if req.KnowledgePoints == nil {
+		req.KnowledgePoints = existing.KnowledgePoints
+	}
+	if req.Answer == nil {
+		req.Answer = existing.Answer
+	}
 	if req.Content == "" || req.Type == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
-	}
-	if req.Answer == nil {
-		req.Answer = domain.JSONSlice{}
 	}
 	// 校验目标题库属于当前租户
 	if !h.checkBankTenant(w, r, tenantID, req.BankID) {
@@ -213,6 +242,16 @@ func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := h.Service.GetQuestion(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
+		return
+	}
+	// 引用检查：题目已被试卷组卷时禁止删除（级联会损坏试卷快照）
+	refs, err := h.Service.Store().QuestionBanks().CountQuestionRefs(r.Context(), id)
+	if err != nil {
+		respondServerError(w, r, err, "检查题目引用失败")
+		return
+	}
+	if refs > 0 {
+		respondError(w, http.StatusConflict, "该题目已被试卷引用，无法删除")
 		return
 	}
 	if err := h.Service.DeleteQuestion(r.Context(), id, tenantID); err != nil {

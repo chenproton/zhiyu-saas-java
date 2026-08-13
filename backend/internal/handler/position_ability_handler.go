@@ -137,6 +137,22 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 			return
 		}
 	}
+	// 部分更新兜底：非必填字段未携带回退已有值（防全列覆盖清空 source/domain/weight 等）
+	if req.Source == "" {
+		req.Source = string(binding.Source)
+	}
+	if req.Domain == nil {
+		req.Domain = binding.Domain
+	}
+	if req.RubricDescription == nil {
+		req.RubricDescription = binding.RubricDescription
+	}
+	if req.Attributes == nil {
+		req.Attributes = binding.Attributes
+	}
+	if req.Weight == 0 {
+		req.Weight = binding.Weight
+	}
 
 	binding, err = h.Service.UpdateAbilityBinding(r.Context(), id, &store.PositionAbilityParams{
 		CareerPositionID:  req.CareerPositionID,

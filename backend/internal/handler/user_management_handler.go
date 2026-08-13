@@ -358,6 +358,10 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.Delete(r.Context(), tenantID, id); err != nil {
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusConflict, "该用户已被教学计划或排课引用，请先解除关联")
+			return
+		}
 		respondServerError(w, r, err, "删除用户失败")
 		return
 	}
@@ -585,6 +589,10 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 
 	count, err := h.Service.BatchDelete(r.Context(), callerTenantID, req.UserIDs)
 	if err != nil {
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusConflict, "部分用户已被教学计划或排课引用，请先解除关联")
+			return
+		}
 		respondServerError(w, r, err, "批量删除用户失败")
 		return
 	}

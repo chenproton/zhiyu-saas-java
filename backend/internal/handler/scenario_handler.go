@@ -105,9 +105,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 学生列表仅见已发布场景（越权加固 A3）；教师/管理员列表语义不变
-	if middleware.HasRole(middleware.CurrentUser(r), domain.RoleStudent) {
-		params.Values["status"] = string(domain.StatusPublished)
-	}
+	forcePublishedForStudent(r, &params)
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询场景方案失败")

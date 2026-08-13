@@ -88,6 +88,22 @@ func (h *PositionResponsibilityHandler) crud() crudConfig[PositionResponsibility
 			}
 			return item.ID, nil
 		},
+		ValidateUpdateExisting: func(t *PositionResponsibilityRequest, existing *domain.PositionResponsibility) string {
+			// 部分更新兜底：未携带字段回退已有值（防全列覆盖清空 description/sortOrder）
+			if t.CareerPositionID == "" {
+				t.CareerPositionID = existing.CareerPositionID
+			}
+			if t.Name == "" {
+				t.Name = existing.Name
+			}
+			if t.Description == nil {
+				t.Description = existing.Description
+			}
+			if t.SortOrder == 0 {
+				t.SortOrder = existing.SortOrder
+			}
+			return ""
+		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *PositionResponsibilityRequest) error {
 			// 校验目标岗位属于当前租户（职责移动路径），防止跨租户写
 			if t.CareerPositionID != "" {

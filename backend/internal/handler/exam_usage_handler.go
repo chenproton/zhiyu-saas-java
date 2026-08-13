@@ -75,6 +75,13 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 			}
 			return ""
 		},
+		ValidateUpdateExisting: func(t *ExamUsageRequest, existing *domain.ExamUsage) string {
+			// 部分更新兜底：activationMode 未携带时回退已有值（防覆盖为空串导致启停失效）
+			if t.ActivationMode == "" {
+				t.ActivationMode = existing.ActivationMode
+			}
+			return ""
+		},
 		CreateFn: func(ctx context.Context, t *ExamUsageRequest, tenantID, userID string) (string, error) {
 			// 初始状态按启用条件：随时作答 → 已发布；定时/手动启停 → 草稿
 			status := "draft"
