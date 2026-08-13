@@ -14,14 +14,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { MultiSelect } from '@/components/ui/multi-select'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
-import { useToast, LoadingView } from '@zhiyu/ui'
+import { useToast, LoadingView, EmptyState, ComboboxSelect } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { FormPageShell } from '@/components/shared/form-page-shell'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
 import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceProject } from '@/lib/types'
@@ -70,7 +70,7 @@ export default function AllianceProjectEditPage() {
   }
 
   if (loading) return <LoadingView />
-  if (!item) return <div className="text-center py-12 text-muted-foreground">{t('项目不存在')}</div>
+  if (!item) return <EmptyState title={t('项目不存在')} />
 
   const setField = (field: string, value: any) =>
     setItem({ ...item, [field]: value } as AllianceProject)
@@ -78,17 +78,52 @@ export default function AllianceProjectEditPage() {
   const secondaryColleges: string[] = (item as any).secondaryColleges || []
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          {t('返回')}
-        </Button>
-        <h1 className="text-xl font-semibold text-foreground">{t('编辑合作项目')}</h1>
-      </div>
+    <FormPageShell title={t('编辑合作项目')} sidebar={<div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('合作企业')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ComboboxSelect
+                multiple
+                className="w-full"
+                options={enterprises}
+                value={enterpriseIds}
+                onChange={(v) => setField('enterpriseIds', v)}
+                placeholder={t('选择合作企业')}
+              />
+            </CardContent>
+          </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('二级学院')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ComboboxSelect
+                multiple
+                className="w-full"
+                options={secondaryCollegeOptions.map((name) => ({ label: name, value: name }))}
+                value={secondaryColleges}
+                onChange={(v) => setField('secondaryColleges', v)}
+                placeholder={t('选择归属学院')}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <Button className="w-full" onClick={handleSave} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {t('保存')}
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+                {t('取消')}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      }>
           <Card>
             <CardHeader>
               <CardTitle>{t('基本信息')}</CardTitle>
@@ -177,51 +212,6 @@ export default function AllianceProjectEditPage() {
                 allowUrlInput={false}
               />
             </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('合作企业')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MultiSelect
-                options={enterprises}
-                value={enterpriseIds}
-                onChange={(v) => setField('enterpriseIds', v)}
-                placeholder={t('选择合作企业')}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('二级学院')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MultiSelect
-                options={secondaryCollegeOptions}
-                value={secondaryColleges}
-                onChange={(v) => setField('secondaryColleges', v)}
-                placeholder={t('选择归属学院')}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                {t('保存')}
-              </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                {t('取消')}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+          </Card>    </FormPageShell>
   )
 }

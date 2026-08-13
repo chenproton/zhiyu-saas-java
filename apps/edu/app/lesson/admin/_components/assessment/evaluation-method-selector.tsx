@@ -8,6 +8,7 @@ import {
   EVALUATION_METHOD_OPTIONS,
   type EvaluationMethodOption,
 } from '@/components/shared/eval-method-selector'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export type EvalMethodOption = EvaluationMethodOption
@@ -144,16 +145,20 @@ export function EvaluationMethodSelector({
       </div>
 
       {filteredMethods.length === 0 && (
-        <div className="p-12 text-center text-gray-400 border border-dashed rounded-xl">
-          <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">{t('该分类下暂无可用测评方式')}</p>
-        </div>
+        <EmptyState
+          icon={<CheckCircle2 className="h-12 w-12 opacity-50" />}
+          title={t('该分类下暂无可用测评方式')}
+          titleClassName="text-gray-400"
+          className="p-12 border border-dashed rounded-xl"
+        />
       )}
 
       {selectedKeys.length === 0 && filteredMethods.length > 0 && (
-        <div className="p-4 text-center text-gray-400 border border-dashed rounded-xl text-sm">
-          {t('请选择至少一种评价方式')}
-        </div>
+        <EmptyState
+          title={t('请选择至少一种评价方式')}
+          titleClassName="text-gray-400"
+          className="p-4 border border-dashed rounded-xl"
+        />
       )}
     </div>
   )

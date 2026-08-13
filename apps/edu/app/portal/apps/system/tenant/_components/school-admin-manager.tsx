@@ -15,13 +15,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Trash2, Loader2, KeyRound } from 'lucide-react'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Label } from '@/components/ui/label'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -373,14 +372,9 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                   </TableRow>
                 ))}
                 {admins.length === 0 && !loading && !inline && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="text-center text-sm text-muted-foreground py-8"
-                    >
-                      {t('暂无学校管理员')}
-                    </TableCell>
-                  </TableRow>
+                  <TableEmptyRow colSpan={4} className="py-8">
+                    {t('暂无学校管理员')}
+                  </TableEmptyRow>
                 )}
               </>
             )}
@@ -406,45 +400,44 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="set-password">{t('新密码')}</Label>
-              <Input
-                id="set-password"
-                type="password"
-                placeholder={t('至少 8 位，包含字母和数字')}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              submitPassword()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="set-password">{t('新密码')}</Label>
+                <Input
+                  id="set-password"
+                  type="password"
+                  placeholder={t('至少 8 位，包含字母和数字')}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="set-confirm-password">{t('确认新密码')}</Label>
+                <Input
+                  id="set-confirm-password"
+                  type="password"
+                  placeholder={t('再次输入新密码')}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="set-confirm-password">{t('确认新密码')}</Label>
-              <Input
-                id="set-confirm-password"
-                type="password"
-                placeholder={t('再次输入新密码')}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-            {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPasswordAdmin(null)}
-              disabled={passwordSubmitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={submitPassword}
-              disabled={passwordSubmitting || !newPassword || !confirmPassword}
-            >
-              {passwordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => setPasswordAdmin(null)}
+              confirmText={t('保存')}
+              cancelText={t('取消')}
+              confirmDisabled={!newPassword || !confirmPassword}
+              loading={passwordSubmitting}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 

@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react'
 import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Command,
@@ -12,6 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 interface ComboboxSelectOption {
@@ -28,6 +31,9 @@ interface BaseComboboxSelectProps {
   className?: string
   disabled?: boolean
   loading?: boolean
+  showSelectAll?: boolean
+  showSelectedBadges?: boolean
+  selectAllLabel?: string
   renderOption?: (option: ComboboxSelectOption, selected: boolean) => React.ReactNode
 }
 
@@ -48,7 +54,7 @@ type ComboboxSelectProps = SingleComboboxSelectProps | MultipleComboboxSelectPro
 /**
  * ComboboxSelect
  *
- * 统一的可搜索下拉选择组件，支持单选/多选。
+ * 统一的可搜索下拉选择组件，支持单选/多选、全选（showSelectAll）与已选徽章（showSelectedBadges）。
  * 用于替换散落在各页面中的 inline 搜索 + Select/Popover 实现。
  */
 export function ComboboxSelect(props: ComboboxSelectProps) {
@@ -60,15 +66,25 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
     className,
     disabled,
     loading,
+    showSelectAll,
+    showSelectedBadges,
+    selectAllLabel = '全选',
     renderOption,
   } = props
   const isMultiple = props.multiple === true
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
 
   const selectedSet = useMemo(() => {
     if (isMultiple) return new Set(props.value)
     return props.value ? new Set([props.value]) : new Set<string>()
   }, [isMultiple, props.value])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return options
+    return options.filter((o) => o.label.toLowerCase().includes(q))
+  }, [options, search])
 
   const displayLabel = useMemo(() => {
     if (isMultiple) {
@@ -80,6 +96,13 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
     if (!props.value) return placeholder
     return options.find((o) => o.value === props.value)?.label || props.value
   }, [isMultiple, props.value, options, placeholder])
+
+  const selectedLabels = useMemo(() => {
+    if (!isMultiple) return []
+    return props.value
+      .map((v) => options.find((o) => o.value === v)?.label)
+      .filter(Boolean) as string[]
+  }, [isMultiple, props.value, options])
 
   const toggleValue = (v: string) => {
     if (isMultiple) {
@@ -98,6 +121,23 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
     if (isMultiple) props.onChange([])
     else props.onChange('')
   }
+
+  const toggleAllVisible = () => {
+    if (!isMultiple) return
+    const visible = filtered.filter((o) => !o.disabled).map((o) => o.value)
+    if (visible.length === 0) return
+    const allSelected = visible.every((v) => selectedSet.has(v))
+    if (allSelected) {
+      props.onChange(props.value.filter((v) => !visible.includes(v)))
+    } else {
+      props.onChange(Array.from(new Set([...props.value, ...visible])))
+    }
+  }
+
+  const allVisibleSelected =
+    isMultiple &&
+    filtered.filter((o) => !o.disabled).length > 0 &&
+    filtered.filter((o) => !o.disabled).every((o) => selectedSet.has(o.value))
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -135,12 +175,23 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[200px]">
-        <Command>
-          <CommandInput autoComplete="off" placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
+          <CommandInput
+            autoComplete="off"
+            placeholder={searchPlaceholder}
+            value={search}
+            onValueChange={setSearch}
+          />
+          {showSelectAll && isMultiple && filtered.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} />
+              <span className="text-xs text-muted-foreground">{selectAllLabel}</span>
+            </div>
+          )}
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {options.map((o) => {
+              {filtered.map((o) => {
                 const selected = selectedSet.has(o.value)
                 return (
                   <CommandItem
@@ -164,6 +215,29 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
               })}
             </CommandGroup>
           </CommandList>
+          {showSelectedBadges && isMultiple && props.value.length > 0 && (
+            <>
+              <Separator />
+              <div className="p-2 flex flex-wrap gap-1 max-h-[80px] overflow-y-auto">
+                {selectedLabels.map((label) => (
+                  <Badge key={label} variant="secondary" className="text-xs gap-1">
+                    {label}
+                    <button
+                      type="button"
+                      aria-label={`移除${label}`}
+                      onClick={() => {
+                        const val = options.find((o) => o.label === label)?.value
+                        if (val) toggleValue(val)
+                      }}
+                      className="ml-0.5 rounded-full hover:bg-muted-foreground/20"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

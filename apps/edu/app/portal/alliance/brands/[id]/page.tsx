@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import {
   AllianceDetailShell,
-  DetailEmpty,
   DetailInfoBlock,
   DetailSectionCard,
   type DetailStat,
@@ -25,7 +24,7 @@ import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { LoadingView, EmptyState } from '@zhiyu/ui'
 
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -162,7 +161,12 @@ export default function AlliancePublicBrandDetailPage() {
           <Card className="border-0 shadow-sm rounded-3xl">
             <CardContent className="p-6">
               {majorData.directions.length === 0 ? (
-                <DetailEmpty icon={Briefcase} title={t('暂未配置就业方向')} />
+                <EmptyState
+                  icon={<Briefcase className="h-10 w-10 opacity-50" />}
+                  title={t('暂未配置就业方向')}
+                  titleClassName="text-slate-500"
+                  className="py-16"
+                />
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {majorData.directions.map((d) => (
@@ -184,7 +188,12 @@ export default function AlliancePublicBrandDetailPage() {
           <Card className="border-0 shadow-sm rounded-3xl">
             <CardContent className="p-6">
               {majorData.enterprises.length === 0 ? (
-                <DetailEmpty icon={Building2} title={t('暂未关联合作企业')} />
+                <EmptyState
+                  icon={<Building2 className="h-10 w-10 opacity-50" />}
+                  title={t('暂未关联合作企业')}
+                  titleClassName="text-slate-500"
+                  className="py-16"
+                />
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {majorData.enterprises.map((e) => (
@@ -206,7 +215,12 @@ export default function AlliancePublicBrandDetailPage() {
           <Card className="border-0 shadow-sm rounded-3xl">
             <CardContent className="p-6">
               {majorData.achievements.length === 0 ? (
-                <DetailEmpty icon={Trophy} title={t('暂未关联合作成果')} />
+                <EmptyState
+                  icon={<Trophy className="h-10 w-10 opacity-50" />}
+                  title={t('暂未关联合作成果')}
+                  titleClassName="text-slate-500"
+                  className="py-16"
+                />
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {majorData.achievements.map((a) => (
@@ -228,7 +242,12 @@ export default function AlliancePublicBrandDetailPage() {
           <Card className="border-0 shadow-sm rounded-3xl">
             <CardContent className="p-6">
               {majorData.courses.length === 0 ? (
-                <DetailEmpty icon={BookOpen} title={t('暂未关联特色课程')} />
+                <EmptyState
+                  icon={<BookOpen className="h-10 w-10 opacity-50" />}
+                  title={t('暂未关联特色课程')}
+                  titleClassName="text-slate-500"
+                  className="py-16"
+                />
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {majorData.courses.map((c) => (
@@ -246,8 +265,7 @@ export default function AlliancePublicBrandDetailPage() {
   }, [isMajor, majorData, t])
 
   if (loading) return <LoadingView />
-  if (!brand)
-    return <div className="text-center py-12 text-muted-foreground">{t('品牌不存在')}</div>
+  if (!brand) return <EmptyState title={t('品牌不存在')} />
 
   const positions: PositionSnapshot[] = isEmployer ? (brand.data?.positions ?? []) : []
   const hiredStudents: HiredStudent[] = isEmployer ? (brand.data?.hiredStudents ?? []) : []
@@ -307,7 +325,12 @@ export default function AlliancePublicBrandDetailPage() {
         {brand.description ? (
           <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{brand.description}</p>
         ) : (
-          <DetailEmpty icon={FileText} title={t('暂无品牌介绍')} />
+          <EmptyState
+            icon={<FileText className="h-10 w-10 opacity-50" />}
+            title={t('暂无品牌介绍')}
+            titleClassName="text-slate-500"
+            className="py-16"
+          />
         )}
       </DetailSectionCard>
     </div>
@@ -420,7 +443,12 @@ export default function AlliancePublicBrandDetailPage() {
         {brand.description ? (
           <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{brand.description}</p>
         ) : (
-          <DetailEmpty icon={FileText} title={t('暂无品牌介绍')} />
+          <EmptyState
+            icon={<FileText className="h-10 w-10 opacity-50" />}
+            title={t('暂无品牌介绍')}
+            titleClassName="text-slate-500"
+            className="py-16"
+          />
         )}
       </DetailSectionCard>
     </div>
@@ -466,7 +494,12 @@ export default function AlliancePublicBrandDetailPage() {
                   <Card className="border-0 shadow-sm rounded-3xl">
                     <CardContent className="p-6">
                       {positions.length === 0 ? (
-                        <DetailEmpty icon={Briefcase} title={t('暂未关联岗位')} />
+                        <EmptyState
+                          icon={<Briefcase className="h-10 w-10 opacity-50" />}
+                          title={t('暂未关联岗位')}
+                          titleClassName="text-slate-500"
+                          className="py-16"
+                        />
                       ) : (
                         <Table>
                           <TableHeader>
@@ -509,7 +542,12 @@ export default function AlliancePublicBrandDetailPage() {
                   <Card className="border-0 shadow-sm rounded-3xl">
                     <CardContent className="p-6">
                       {hiredStudents.length === 0 ? (
-                        <DetailEmpty icon={Users} title={t('暂未关联学生')} />
+                        <EmptyState
+                          icon={<Users className="h-10 w-10 opacity-50" />}
+                          title={t('暂未关联学生')}
+                          titleClassName="text-slate-500"
+                          className="py-16"
+                        />
                       ) : (
                         <div className="space-y-4">
                           {[...studentsByJob.entries()].map(([jobId, students]) => {

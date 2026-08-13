@@ -9,7 +9,6 @@ import {
   X,
   Eye,
   HelpCircle,
-  Loader2,
   Upload,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -70,6 +68,7 @@ import { ResourceBatchImportDialog } from './resource-batch-import-dialog'
 import { CitationStatsPanel } from '@/components/shared/citation-stats-panel'
 import { PaginationBar } from '@/components/shared/pagination-bar'
 import { resourceLibraryApi } from '@/lib/api'
+import { FormDialogFooter } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const TYPE_LABEL_MAP: Record<string, string> = RESOURCE_TYPE_LABELS
@@ -492,7 +491,14 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                 : t('补充本地资源，上传后将加入资源公共库')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmit(submitType)
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
             {isTypeView && (
               <div>
                 <Label>{t('资源类型')}</Label>
@@ -579,15 +585,12 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={() => handleSubmit(submitType)} disabled={uploading}>
-              {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {editingItem ? t('保存') : t('上传到资源库')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsDialogOpen(false)}
+            confirmText={editingItem ? t('保存') : t('上传到资源库')}
+            loading={uploading}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 

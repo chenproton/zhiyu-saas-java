@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { Shuffle, AlertCircle, X, RefreshCw } from 'lucide-react'
+import { Shuffle, AlertCircle, X, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,11 +15,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
-import { MultiSelectSearch } from '@/components/ui/multi-select-search'
+import { ComboboxSelect } from '@zhiyu/ui'
 import { useData } from '@/components/providers/data-provider'
 import { knowledgeApi, questionApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { reportError } from '@/lib/error-handling'
+import { cn } from '@/lib/utils'
 import type { Question, QuestionType, Difficulty, EvalKnowledgePoint } from '@/lib/types'
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -479,13 +480,17 @@ export function RandomQuestionDialog({
             {publishedBanks.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('暂无已发布的题库')}</p>
             ) : (
-              <MultiSelectSearch
+              <ComboboxSelect
+                multiple
+                showSelectAll
+                showSelectedBadges
+                className="w-full"
                 options={publishedBanks.map((b) => ({
                   label: b.name,
                   value: b.id,
                   subtitle: t('{n}题', { n: b.questionCount }),
                 }))}
-                selected={selectedBankIds}
+                value={selectedBankIds}
                 onChange={(ids) => {
                   setSelectedBankIds(ids)
                   setWeightDimension('')
@@ -493,6 +498,23 @@ export function RandomQuestionDialog({
                 }}
                 placeholder={t('不选则从全部题库抽取')}
                 searchPlaceholder={t('搜索题库名称...')}
+                emptyText={t('暂无选项')}
+                renderOption={(o, selected) => {
+                  const subtitle = (o as { subtitle?: string }).subtitle
+                  return (
+                    <>
+                      <Check
+                        className={cn('mr-2 h-4 w-4', selected ? 'opacity-100' : 'opacity-0')}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm">{o.label}</span>
+                        {subtitle && (
+                          <span className="text-xs text-muted-foreground ml-1">{subtitle}</span>
+                        )}
+                      </div>
+                    </>
+                  )
+                }}
               />
             )}
           </div>
@@ -545,9 +567,13 @@ export function RandomQuestionDialog({
             {loadingKnowledgePoints ? (
               <p className="text-sm text-muted-foreground py-1">{t('加载中...')}</p>
             ) : (
-              <MultiSelectSearch
+              <ComboboxSelect
+                multiple
+                showSelectAll
+                showSelectedBadges
+                className="w-full"
                 options={knowledgePoints.map((kp) => ({ label: kp.name, value: kp.id }))}
-                selected={selectedKnowledgePoints}
+                value={selectedKnowledgePoints}
                 onChange={(ids) => {
                   setSelectedKnowledgePoints(ids)
                   setWeightDimension('')
@@ -555,6 +581,7 @@ export function RandomQuestionDialog({
                 }}
                 placeholder={t('不选则包含全部知识点')}
                 searchPlaceholder={t('搜索知识点...')}
+                emptyText={t('暂无选项')}
               />
             )}
           </div>

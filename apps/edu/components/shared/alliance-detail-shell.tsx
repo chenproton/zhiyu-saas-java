@@ -3,8 +3,9 @@
 import { type ReactNode, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { LoadingView, UnderlineTabs } from '@zhiyu/ui'
+import { ArrowLeft } from 'lucide-react'
+import { DetailPageHeader } from '@/components/shared/detail-page-header'
+import { LoadingView, UnderlineTabs, EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface AllianceDetailShellTab<T extends string = string> {
@@ -61,15 +62,18 @@ export function AllianceDetailShell<T extends string = string>({
 
   if (notFound) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground mb-4">{notFoundMessage ?? t('数据不存在')}</p>
-        {backHref && (
-          <Button variant="outline" size="sm" onClick={() => router.push(backHref)}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            {t('返回列表')}
-          </Button>
-        )}
-      </div>
+      <EmptyState
+        title={notFoundMessage ?? t('数据不存在')}
+        className="py-12"
+        action={
+          backHref && (
+            <Button variant="outline" size="sm" onClick={() => router.push(backHref)}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              {t('返回列表')}
+            </Button>
+          )
+        }
+      />
     )
   }
 
@@ -78,32 +82,14 @@ export function AllianceDetailShell<T extends string = string>({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 flex-wrap">
-        {backHref ? (
-          <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            {t('返回')}
-          </Button>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            {t('返回')}
-          </Button>
-        )}
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
-        </div>
-        {statusBadge}
-        <div className="flex-1" />
-        {editHref && (
-          <Button variant="outline" size="sm" onClick={() => router.push(editHref)}>
-            <Pencil className="h-4 w-4 mr-1" />
-            {t('编辑')}
-          </Button>
-        )}
-        {actions}
-      </div>
+      <DetailPageHeader
+        title={title}
+        subtitle={subtitle}
+        backHref={backHref}
+        statusBadge={statusBadge}
+        actions={actions}
+        editHref={editHref}
+      />
 
       {/* Tabs */}
       <UnderlineTabs

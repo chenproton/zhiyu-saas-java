@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { courseApi, courseNodeApi, courseResourceApi, knowledgeApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { Course, NodeResource, KnowledgePoint, TaskResource } from '@/lib/types'
 import {
   SCENE_DIFFICULTY,

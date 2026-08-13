@@ -17,13 +17,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Loader2, Settings2, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { BrandMajorRankConfig, TalentRankStudent } from '@/lib/types'
@@ -377,7 +376,14 @@ function RankConfigDialog({ tenantId, open, onOpenChange, onSaved }: RankConfigD
         <DialogHeader>
           <DialogTitle>{t('专业排名启用管理')}</DialogTitle>
         </DialogHeader>
-        <div className="max-h-[60vh] space-y-2 overflow-y-auto py-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            save()
+          }}
+          className="grid gap-4"
+        >
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto py-2">
           {majorsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -428,15 +434,13 @@ function RankConfigDialog({ tenantId, open, onOpenChange, onSaved }: RankConfigD
             })
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {t('取消')}
-          </Button>
-          <Button size="sm" onClick={save} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            {t('保存')}
-          </Button>
-        </DialogFooter>
+        <FormDialogFooter
+          onCancel={() => onOpenChange(false)}
+          confirmText={t('保存')}
+          cancelText={t('取消')}
+          loading={saving}
+        />
+        </form>
       </DialogContent>
     </Dialog>
   )

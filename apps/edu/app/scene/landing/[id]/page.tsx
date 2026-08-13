@@ -59,7 +59,7 @@ import { coverGradientFor } from '@/lib/cover-gradients'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import { useT } from '@/lib/i18n/locale-provider'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },

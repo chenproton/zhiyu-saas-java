@@ -16,14 +16,13 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import { importExportApi } from '@/lib/api'
@@ -489,16 +488,23 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
                   : t('添加新{entityLabel}', { entityLabel })}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">{formItem && renderForm(formItem, setFormItem)}</div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                {t('保存')}
-              </Button>
-            </DialogFooter>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSave()
+              }}
+              className="grid gap-4"
+            >
+              <div className="grid gap-4 py-4">
+                {formItem && renderForm(formItem, setFormItem)}
+              </div>
+              <FormDialogFooter
+                onCancel={() => setIsDialogOpen(false)}
+                confirmText={t('保存')}
+                cancelText={t('取消')}
+                loading={saving}
+              />
+            </form>
           </DialogContent>
         </Dialog>
       )}

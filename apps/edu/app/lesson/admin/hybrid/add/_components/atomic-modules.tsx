@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { toast } from '@zhiyu/ui'
+import { toast, EmptyState } from '@zhiyu/ui'
 import { fileApi, resourceLibraryApi } from '@/lib/api'
 import { ResourceSelector } from '@/components/shared/resource-selector'
 import { EvaluationMethodSelector } from '../../../_components/assessment/evaluation-method-selector'
@@ -669,11 +669,12 @@ function PreQuizzesModule({ data, onChange }: AtomicModuleProps) {
           {t('配置课程评价规则')}
         </p>
         {methods.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-gray-400 py-12">
-            <Database className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">{t('尚未配置评价方式')}</p>
-            <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
-          </div>
+          <EmptyState
+            icon={<Database className="h-12 w-12 opacity-50" />}
+            title={t('尚未配置评价方式')}
+            titleClassName="text-gray-400"
+            description={t('请先在「配置课程测评方式」中选择评价类型')}
+          />
         ) : (
           <CourseEvaluationRulesDialog
             inline
@@ -701,9 +702,11 @@ function LectureModule({ data, onChange }: AtomicModuleProps) {
   return (
     <CardContent className="space-y-4">
       {sections.length === 0 && (
-        <div className="text-center text-sm text-gray-400 py-4 border border-dashed rounded-lg">
-          {t('暂无讲授环节，点击下方按钮新增')}
-        </div>
+        <EmptyState
+          title={t('暂无讲授环节，点击下方按钮新增')}
+          titleClassName="text-gray-400"
+          className="py-4 border border-dashed rounded-lg"
+        />
       )}
       {sections.map((section, idx) => (
         <div key={section.id} className="border rounded-lg p-3 space-y-3">
@@ -789,11 +792,12 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
           {t('配置课程评价规则')}
         </p>
         {methods.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-gray-400 py-12">
-            <Database className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">{t('尚未配置评价方式')}</p>
-            <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
-          </div>
+          <EmptyState
+            icon={<Database className="h-12 w-12 opacity-50" />}
+            title={t('尚未配置评价方式')}
+            titleClassName="text-gray-400"
+            description={t('请先在「配置课程测评方式」中选择评价类型')}
+          />
         ) : (
           <CourseEvaluationRulesDialog
             inline
@@ -982,11 +986,12 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
           {t('配置课程评价规则')}
         </p>
         {methods.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-gray-400 py-12">
-            <Database className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">{t('尚未配置评价方式')}</p>
-            <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
-          </div>
+          <EmptyState
+            icon={<Database className="h-12 w-12 opacity-50" />}
+            title={t('尚未配置评价方式')}
+            titleClassName="text-gray-400"
+            description={t('请先在「配置课程测评方式」中选择评价类型')}
+          />
         ) : (
           <CourseEvaluationRulesDialog
             inline

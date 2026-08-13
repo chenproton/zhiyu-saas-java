@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow } from '@zhiyu/ui'
 import { programApi, scenarioApi, courseApi, positionApi } from '@/lib/api'
 import type { Scenario, CareerPosition } from '@/lib/types'
 import type { Course } from '@/lib/types/lesson'
@@ -326,11 +326,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  {t('暂无，点击「添加岗位/课程」开始设置')}
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={6}>{t('暂无，点击「添加岗位/课程」开始设置')}</TableEmptyRow>
             ) : (
               rows.map((r) => {
                 const posScenarios = r.positionId ? positionScenariosMap[r.positionId] || [] : []

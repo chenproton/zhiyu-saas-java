@@ -7,6 +7,7 @@ import { StatusActionBar } from '@/components/shared/status-action-bar'
 import { programApi, affairsBatchApi, approvalApi, importExportApi } from '@/lib/api'
 import type { TrainingProgram, AffairsBatch } from '@/lib/types'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
+import { TableEmptyRow } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 function mapProgram(backend: any) {
@@ -104,11 +105,7 @@ export default function ProgramsPage() {
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
-                        {t('暂无人培方案')}
-                      </td>
-                    </tr>
+                    <TableEmptyRow colSpan={8}>{t('暂无人培方案')}</TableEmptyRow>
                   ) : (
                     items.map((item: any) => (
                       <tr key={item.id} className="border-t hover:bg-muted/30 group">

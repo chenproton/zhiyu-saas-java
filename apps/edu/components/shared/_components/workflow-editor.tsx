@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MultiSelectSearch } from '@/components/ui/multi-select-search'
+import { ComboboxSelect } from '@zhiyu/ui'
 import { UserSelector } from '@/components/shared/user-selector'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -100,9 +100,13 @@ export function WorkflowEditor({
       </FormFieldRow>
       {majors.length > 0 && (
         <FormFieldRow label={t('适用专业')}>
-          <MultiSelectSearch
+          <ComboboxSelect
+            multiple
+            showSelectAll
+            showSelectedBadges
+            className="w-full"
             options={majors.map((m) => ({ label: m.name, value: m.id }))}
-            selected={majorIds}
+            value={majorIds}
             onChange={onMajorIdsChange}
             placeholder={t('选择适用专业')}
             searchPlaceholder={t('搜索专业名称...')}

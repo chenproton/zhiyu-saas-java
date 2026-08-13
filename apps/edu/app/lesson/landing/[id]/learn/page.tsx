@@ -28,7 +28,7 @@ import {
   nodeEvaluationResultApi,
   knowledgeApi,
 } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { Course, KnowledgePoint } from '@/lib/types'
 import type {
   SystemCourseNode,

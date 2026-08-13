@@ -4,7 +4,6 @@ import { useMemo, useState, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -18,6 +17,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { SearchInput } from '@/components/shared/search-input'
 import { useOrgTree } from '@/hooks/use-org-tree'
 import type { Organization, OrgType } from '@/lib/types/backend'
+import { FormDialogFooter } from '@zhiyu/ui'
 import { typeMetaFor } from '@/lib/org-type-icons'
 
 interface MultiOrgNodePickerProps {
@@ -317,7 +317,14 @@ export function MultiOrgNodePicker({
           <DialogHeader>
             <DialogTitle>{title ?? t('选择班级')}</DialogTitle>
           </DialogHeader>
-          <SearchInput
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirm()
+            }}
+            className="grid gap-4"
+          >
+            <SearchInput
             wrapperClassName="mb-2"
             iconClassName="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
             placeholder={t('搜索...')}
@@ -354,14 +361,12 @@ export function MultiOrgNodePicker({
               ))
             )}
           </ScrollArea>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleConfirm}>
-              {t('确认 ({count})', { count: pendingIds?.length ?? value.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => handleOpenChange(false)}
+            confirmText={t('确认 ({count})', { count: pendingIds?.length ?? value.length })}
+            cancelText={t('取消')}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </>

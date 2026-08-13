@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import type { LearnRoad } from '@/lib/types'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface LearningPathProps {
@@ -153,10 +154,12 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
 
   if (orderedScenarios.length === 0) {
     return (
-      <div className="text-center py-12 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
-        <Layers className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>{t('暂无关联实践场景')}</div>
-      </div>
+      <EmptyState
+        icon={<Layers className="w-12 h-12 opacity-40" />}
+        title={t('暂无关联实践场景')}
+        className="py-12 bg-white rounded-2xl border border-[#e7e5e4]"
+        titleClassName="text-[#94a3b8]"
+      />
     )
   }
 

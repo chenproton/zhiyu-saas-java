@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   AllianceDetailShell,
-  DetailEmpty,
   DetailInfoBlock,
   DetailSectionCard,
 } from '@/components/alliance/alliance-detail-shell'
@@ -22,7 +21,7 @@ import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -44,8 +43,7 @@ export default function AlliancePublicExpertDetailPage() {
   }, [id, tenantId])
 
   if (loading) return <LoadingView />
-  if (!expert)
-    return <div className="text-center py-12 text-muted-foreground">{t('专家不存在')}</div>
+  if (!expert) return <EmptyState title={t('专家不存在')} />
 
   const enterpriseName = expert.enterpriseName || expert.organization
   const professionalFields = expert.professionalFields ?? []
@@ -164,7 +162,12 @@ export default function AlliancePublicExpertDetailPage() {
                   {expert.introduction}
                 </p>
               ) : (
-                <DetailEmpty icon={UserCircle} title={t('暂无简介')} />
+                <EmptyState
+                  icon={<UserCircle className="h-10 w-10 opacity-50" />}
+                  title={t('暂无简介')}
+                  titleClassName="text-slate-500"
+                  className="py-16"
+                />
               )}
               {expert.workExperience && (
                 <div className="border-t pt-6 mt-6">
@@ -198,7 +201,12 @@ export default function AlliancePublicExpertDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={Award} title={t('暂无资质荣誉')} />
+                  <EmptyState
+                    icon={<Award className="h-10 w-10 opacity-50" />}
+                    title={t('暂无资质荣誉')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>

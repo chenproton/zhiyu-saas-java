@@ -8,11 +8,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { FormDialogFooter } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface WeightConfigItem {
@@ -114,7 +114,13 @@ function WeightConfigForm({
   }
 
   return (
-    <>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSave()
+      }}
+      className="grid gap-4"
+    >
       <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">{t('暂无可配置项')}</p>
@@ -168,14 +174,10 @@ function WeightConfigForm({
           </>
         )}
       </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>
-          {t('取消')}
-        </Button>
-        <Button onClick={handleSave} disabled={!isValid || items.length === 0}>
-          {t('保存')}
-        </Button>
-      </DialogFooter>
-    </>
+      <FormDialogFooter
+        onCancel={onCancel}
+        confirmDisabled={!isValid || items.length === 0}
+      />
+    </form>
   )
 }

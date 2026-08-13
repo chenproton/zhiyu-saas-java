@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -17,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { UserSelector } from '@/components/shared/user-selector'
 import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
@@ -127,77 +126,83 @@ export function ScheduleEditDialog({
             <DialogTitle>{t('编辑排课 · {name}', { name: entry?.courseName || '' })}</DialogTitle>
             <DialogDescription>{t('仅可修改班级、教师、场地')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('授课班级')}</label>
-              <MultiOrgNodePicker
-                tenantId={tenantId}
-                value={classNodeIds}
-                onChange={setClassNodeIds}
-                selectableTypes={['班级']}
-                title={t('选择授课班级')}
-                maxVisible={3}
-              />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t('授课班级')}</label>
+                <MultiOrgNodePicker
+                  tenantId={tenantId}
+                  value={classNodeIds}
+                  onChange={setClassNodeIds}
+                  selectableTypes={['班级']}
+                  title={t('选择授课班级')}
+                  maxVisible={3}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t('授课教师')}</label>
+                <UserSelector
+                  value={teacherId ? [teacherId] : []}
+                  onChange={(ids) => setTeacherId(ids[0] || '')}
+                  multiple={false}
+                  placeholder={entry?.teacherName || t('选择教师')}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t('场地')}</label>
+                <Select
+                  value={venueId || 'none'}
+                  onValueChange={(v) => setVenueId(v === 'none' ? '' : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('选择场地')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('不指定')}</SelectItem>
+                    {venues.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}（{v.type}）
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('授课教师')}</label>
-              <UserSelector
-                value={teacherId ? [teacherId] : []}
-                onChange={(ids) => setTeacherId(ids[0] || '')}
-                multiple={false}
-                placeholder={entry?.teacherName || t('选择教师')}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('场地')}</label>
-              <Select
-                value={venueId || 'none'}
-                onValueChange={(v) => setVenueId(v === 'none' ? '' : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('选择场地')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('不指定')}</SelectItem>
-                  {venues.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}（{v.type}）
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              className="mr-auto text-destructive"
-              onClick={() => setConfirmDeleteOpen(true)}
-              disabled={saving || deleting}
-            >
-              {t('取消排课')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false)
-                if (entry) onReschedule?.(entry)
-              }}
-              disabled={saving || deleting}
-            >
-              {t('重新排课')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={saving || deleting}
-            >
-              {t('关闭')}
-            </Button>
-            <Button onClick={handleSave} disabled={saving || deleting || classNodeIds.length === 0}>
-              {saving ? t('保存中...') : t('保存')}
-            </Button>
-          </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => onOpenChange(false)}
+              cancelText={t('关闭')}
+              loading={saving}
+              confirmDisabled={deleting || classNodeIds.length === 0}
+              extra={
+                <>
+                  <Button
+                    variant="ghost"
+                    className="mr-auto text-destructive"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                    disabled={saving || deleting}
+                  >
+                    {t('取消排课')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      onOpenChange(false)
+                      if (entry) onReschedule?.(entry)
+                    }}
+                    disabled={saving || deleting}
+                  >
+                    {t('重新排课')}
+                  </Button>
+                </>
+              }
+            />
+          </form>
         </DialogContent>
       </Dialog>
 

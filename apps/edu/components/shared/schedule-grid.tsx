@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { MapPin, User, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { PeriodSlot, ScheduleEntry } from '@/lib/types'
 
@@ -202,7 +203,7 @@ export function ScheduleGrid({
 
   const hasData = rows.length > 0
   if (!hasData && !alwaysShow) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">{t(emptyText)}</div>
+    return <EmptyState title={t(emptyText)} className="py-16" />
   }
 
   // 始终渲染时用节次数据兜底，fallback 为空数组

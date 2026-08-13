@@ -29,7 +29,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import {
   orgApi,

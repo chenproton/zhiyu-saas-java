@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -26,9 +25,9 @@ import { useOrgTree, findOrgAncestor } from '@/hooks/use-org-tree'
 import { OrgNodePicker } from '@/components/shared/org-node-picker'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { portalUserManagementApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
-import { Download, Loader2, Pencil, RotateCcw } from 'lucide-react'
+import { Download, Pencil, RotateCcw } from 'lucide-react'
 import type { Organization } from '@/lib/types/backend'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -282,55 +281,58 @@ export default function GraduatesPage() {
             <DialogTitle>{t('编辑学生')}</DialogTitle>
             <DialogDescription>{t('修改学生基本信息与班级归属')}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('姓名')} <span className="text-destructive">*</span>
-              </label>
-              <Input
-                placeholder={t('请输入姓名')}
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleUpdate()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {t('姓名')} <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder={t('请输入姓名')}
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {t('登录账号（学号）')} <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder={t('如：S2024001')}
+                  value={formUsername}
+                  onChange={(e) => setFormUsername(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {t('班级')} <span className="text-destructive">*</span>
+                </label>
+                <OrgNodePicker
+                  tenantId={tenantId}
+                  value={formClassNodeId}
+                  onChange={(value) => {
+                    setFormClassNodeId(value || '')
+                  }}
+                  selectableTypes={[CLASS_TYPE]}
+                  placeholder={t('选择班级')}
+                  title={t('选择班级')}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('登录账号（学号）')} <span className="text-destructive">*</span>
-              </label>
-              <Input
-                placeholder={t('如：S2024001')}
-                value={formUsername}
-                onChange={(e) => setFormUsername(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('班级')} <span className="text-destructive">*</span>
-              </label>
-              <OrgNodePicker
-                tenantId={tenantId}
-                value={formClassNodeId}
-                onChange={(value) => {
-                  setFormClassNodeId(value || '')
-                }}
-                selectableTypes={[CLASS_TYPE]}
-                placeholder={t('选择班级')}
-                title={t('选择班级')}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={saving || !formName.trim() || !formUsername.trim() || !formClassNodeId}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => setIsDialogOpen(false)}
+              confirmText={t('保存')}
+              cancelText={t('取消')}
+              confirmDisabled={!formName.trim() || !formUsername.trim() || !formClassNodeId}
+              loading={saving}
+            />
+          </form>
         </DialogContent>
       </Dialog>
     </PortalCrudPage>

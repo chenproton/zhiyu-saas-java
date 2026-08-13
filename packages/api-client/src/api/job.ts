@@ -83,21 +83,11 @@ export const positionApi = {
 }
 
 export const abilityApi = {
-  list: (params?: {
-    category?: string
-    isPublic?: boolean
-    search?: string
-    creatorId?: string
-    tagIds?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<AbilityPoint>>(`/job/abilities${buildQuery(params || {})}`),
-  get: (id: string) => request<AbilityPoint>(`/job/abilities/${id}`),
-  create: (req: Omit<AbilityPoint, 'id' | 'createdAt'>) =>
-    request<AbilityPoint>('/job/abilities', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<Omit<AbilityPoint, 'id' | 'createdAt'>>) =>
-    request<AbilityPoint>(`/job/abilities/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/job/abilities/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<
+    AbilityPoint,
+    Omit<AbilityPoint, 'id' | 'createdAt'>,
+    Partial<Omit<AbilityPoint, 'id' | 'createdAt'>>
+  >('/job/abilities'),
   citationStats: () => request<CitationStats>('/job/abilities/citation-stats'),
   uncited: (params?: { startDate?: string; endDate?: string; limit?: number; offset?: number }) =>
     request<ListResponse<UncitedItem>>(`/job/abilities/uncited${buildQuery(params || {})}`),
@@ -132,73 +122,24 @@ export const abilityApi = {
     request<{ id: string }>(`/job/ability-domains/${id}`, { method: 'DELETE' }),
 }
 
-export const positionResponsibilityApi = {
-  list: (params?: { careerPositionId?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<PositionResponsibility>>(
-      `/job/position-responsibilities${buildQuery(params || {})}`,
-    ),
-  get: (id: string) => request<PositionResponsibility>(`/job/position-responsibilities/${id}`),
-  create: (req: Omit<PositionResponsibility, 'id'>) =>
-    request<PositionResponsibility>('/job/position-responsibilities', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (id: string, req: Partial<Omit<PositionResponsibility, 'id'>>) =>
-    request<PositionResponsibility>(`/job/position-responsibilities/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/job/position-responsibilities/${id}`, { method: 'DELETE' }),
-}
+export const positionResponsibilityApi = createCrudApi<
+  PositionResponsibility,
+  Omit<PositionResponsibility, 'id'>,
+  Partial<Omit<PositionResponsibility, 'id'>>
+>('/job/position-responsibilities')
 
-export const positionCertificateApi = {
-  list: (params?: { careerPositionId?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<PositionCertificate>>(
-      `/job/position-certificates${buildQuery(params || {})}`,
-    ),
-  get: (id: string) => request<PositionCertificate>(`/job/position-certificates/${id}`),
-  create: (req: Omit<PositionCertificate, 'id'>) =>
-    request<PositionCertificate>('/job/position-certificates', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (id: string, req: Partial<Omit<PositionCertificate, 'id'>>) =>
-    request<PositionCertificate>(`/job/position-certificates/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/job/position-certificates/${id}`, { method: 'DELETE' }),
-}
+export const positionCertificateApi = createCrudApi<
+  PositionCertificate,
+  Omit<PositionCertificate, 'id'>,
+  Partial<Omit<PositionCertificate, 'id'>>
+>('/job/position-certificates')
 
 export const certificateLibraryApi = {
-  list: (params?: {
-    search?: string
-    creatorId?: string
-    tagIds?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<ListResponse<CertificateLibraryItem>>(
-      `/job/certificate-library${buildQuery(params || {})}`,
-    ),
-  get: (id: string) => request<CertificateLibraryItem>(`/job/certificate-library/${id}`),
-  create: (req: Omit<CertificateLibraryItem, 'id' | 'tenantId' | 'createdAt'>) =>
-    request<CertificateLibraryItem>('/job/certificate-library', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (
-    id: string,
-    req: Partial<Omit<CertificateLibraryItem, 'id' | 'tenantId' | 'createdAt'>>,
-  ) =>
-    request<CertificateLibraryItem>(`/job/certificate-library/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/job/certificate-library/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<
+    CertificateLibraryItem,
+    Omit<CertificateLibraryItem, 'id' | 'tenantId' | 'createdAt'>,
+    Partial<Omit<CertificateLibraryItem, 'id' | 'tenantId' | 'createdAt'>>
+  >('/job/certificate-library'),
   citationStats: () => request<CitationStats>('/job/certificate-library/citation-stats'),
   uncited: (params?: { startDate?: string; endDate?: string; limit?: number; offset?: number }) =>
     request<ListResponse<UncitedItem>>(

@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ArrowLeft,
   GraduationCap,
   User,
   Award,
@@ -29,7 +28,9 @@ import { useMajorMap } from '@/lib/use-resource-maps'
 import type { ExamUsage } from '@/lib/types'
 import { formatDateTime } from '@/lib/format-utils'
 import { SearchInput } from '@/components/shared/search-input'
+import { EmptyState, TableEmptyRow } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { DetailPageHeader } from '@/components/shared/detail-page-header'
 
 interface ExamStudentResult {
   id: string
@@ -125,41 +126,39 @@ function ExamResultsContent() {
 
   if (!usage) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">{t('考试记录不存在')}</h2>
-          <p className="mb-4 text-muted-foreground">{t('该考试记录可能已被删除')}</p>
+      <EmptyState
+        className="h-[50vh]"
+        title={t('考试记录不存在')}
+        titleClassName="text-lg font-semibold text-foreground"
+        description={t('该考试记录可能已被删除')}
+        action={
           <Button asChild>
             <Link href="/evaluation/exam-usage">{t('返回考试管理')}</Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
     )
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link href="/evaluation/exam-usage">
-            <ArrowLeft className="mr-1 size-4" />
-            {t('返回考试管理')}
-          </Link>
-        </Button>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-foreground tracking-tight">{usage.name}</h1>
-            <Badge variant="outline" className="gap-1">
-              <GraduationCap className="size-4" />
-              {t('在线考试')}
-            </Badge>
-          </div>
+      <DetailPageHeader
+        title={usage.name}
+        backHref="/evaluation/exam-usage"
+        backLabel={t('返回考试管理')}
+        statusBadge={
+          <Badge variant="outline" className="gap-1">
+            <GraduationCap className="size-4" />
+            {t('在线考试')}
+          </Badge>
+        }
+        actions={
           <Button variant="outline" disabled>
             <Download className="mr-2 size-4" />
             {t('导出数据')}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
@@ -278,11 +277,9 @@ function ExamResultsContent() {
             </TableHeader>
             <TableBody>
               {filteredResults.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
-                    {results.length === 0 ? t('暂无考试结果') : t('没有找到匹配的结果')}
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow colSpan={10}>
+                  {results.length === 0 ? t('暂无考试结果') : t('没有找到匹配的结果')}
+                </TableEmptyRow>
               ) : (
                 filteredResults.map((result) => (
                   <TableRow key={result.id}>

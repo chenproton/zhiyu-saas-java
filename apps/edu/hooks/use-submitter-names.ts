@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { userManagementApi } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { User } from '@/lib/api'
 
 export function useSubmitterNames() {

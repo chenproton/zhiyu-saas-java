@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Flag, Heart, Layers, ListChecks, Factory, Building2, Briefcase, GraduationCap } from 'lucide-react'
 import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi, targetPositionApi } from '@/lib/api'
+import { EmptyState } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import type { CareerPosition, Scenario } from '@/lib/types'
@@ -85,10 +86,12 @@ function PositionSideLists({
       </div>
 
       {positions.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center py-4">
-          <EmptyIcon className="w-9 h-9 mb-3 opacity-40" />
-          <div className="text-sm font-semibold text-[#475569]">{emptyText}</div>
-        </div>
+        <EmptyState
+          className="flex-1 py-4"
+          icon={<EmptyIcon className="w-9 h-9 opacity-40" />}
+          title={emptyText}
+          titleClassName="text-sm font-semibold text-[#475569]"
+        />
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-thin flex flex-col gap-1">
           {positions.map((pos) => (

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -17,12 +16,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from '@zhiyu/ui'
+import { toast, EmptyState } from '@zhiyu/ui'
 import { courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel } from '@/lib/hybrid-eval'
 import { useT } from '@/lib/i18n/locale-provider'
+import { DetailPageHeader } from '@/components/shared/detail-page-header'
 import { formatDateTime } from '@/lib/format-utils'
 
 const methodLabel = (key: string, label: (k: string) => string) =>
@@ -113,13 +113,17 @@ export default function LessonResultDetailPage() {
 
   if (!result) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center text-gray-400">
-        <FileText className="h-12 w-12 mb-3 opacity-50" />
-        <p className="text-sm">{t('测评结果不存在')}</p>
-        <Link href="/evaluation/lesson-results" className="text-primary text-sm mt-2">
-          {t('返回评分列表')}
-        </Link>
-      </div>
+      <EmptyState
+        className="h-screen"
+        icon={<FileText className="h-12 w-12 opacity-50" />}
+        title={t('测评结果不存在')}
+        titleClassName="text-gray-400"
+        action={
+          <Link href="/evaluation/lesson-results" className="text-primary text-sm">
+            {t('返回评分列表')}
+          </Link>
+        }
+      />
     )
   }
 
@@ -130,29 +134,23 @@ export default function LessonResultDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 shrink-0 sticky top-0 z-10">
         <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-              <Link
-                href={`/evaluation/lesson-results${courseId ? `?courseId=${courseId}` : ''}`}
-                aria-label={t('返回')}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">{t('节点测评评分')}</h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {nodeName} · {methodLabel(result.methodKey, (k) => t(EVAL_METHOD_LABELS_GRADING[k] || k))}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isPending ? (
-              <Badge className="bg-amber-50 text-amber-600 border-amber-200">{t('待评分')}</Badge>
-            ) : (
-              <Badge className="bg-green-50 text-green-600 border-green-200">{t('已评分')}</Badge>
-            )}
-          </div>
+          <DetailPageHeader
+            title={t('节点测评评分')}
+            subtitle={
+              <>
+                {nodeName} ·{' '}
+                {methodLabel(result.methodKey, (k) => t(EVAL_METHOD_LABELS_GRADING[k] || k))}
+              </>
+            }
+            backHref={`/evaluation/lesson-results${courseId ? `?courseId=${courseId}` : ''}`}
+            statusBadge={
+              isPending ? (
+                <Badge className="bg-amber-50 text-amber-600 border-amber-200">{t('待评分')}</Badge>
+              ) : (
+                <Badge className="bg-green-50 text-green-600 border-green-200">{t('已评分')}</Badge>
+              )
+            }
+          />
         </div>
       </div>
 

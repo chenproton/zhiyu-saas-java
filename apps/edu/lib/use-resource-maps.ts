@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { industryApi, majorApi } from '@/lib/api'
-import { fetchAllPages } from './fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { reportError } from './error-handling'
 
 // 模块级缓存：多个页面共享行业/专业字典，避免重复全量拉取

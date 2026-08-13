@@ -24,7 +24,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -32,6 +31,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useData } from '@/components/providers/data-provider'
+import { TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -363,11 +363,7 @@ export default function ExamUsagePage() {
                   </TableCell>
                 </TableRow>
               ) : filteredUsages.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    {t('暂无使用记录')}
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow colSpan={6}>{t('暂无使用记录')}</TableEmptyRow>
               ) : (
                 filteredUsages.map((usage) => {
                   const exam = examMap.get(usage.examId)
@@ -478,7 +474,14 @@ export default function ExamUsagePage() {
               {editingUsage ? t('修改考试信息，保存后立即生效') : t('选择试卷并配置考试使用信息')}
             </DialogDescription>
           </DialogHeader>
-          <FieldGroup className="py-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleCreate()
+            }}
+            className="grid gap-4"
+          >
+            <FieldGroup className="py-4">
             {!editingUsage && (
               <Field>
                 <FieldLabel>{t('选择试卷 *')}</FieldLabel>
@@ -565,18 +568,13 @@ export default function ExamUsagePage() {
               </p>
             </Field>
           </FieldGroup>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateDialogOpen(false)}
-              disabled={createSubmitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button onClick={handleCreate} disabled={!isFormValid || createSubmitting}>
-              {createSubmitting ? t('提交中...') : editingUsage ? t('保存') : t('创建')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setCreateDialogOpen(false)}
+            confirmText={editingUsage ? t('保存') : t('创建')}
+            loading={createSubmitting}
+            confirmDisabled={!isFormValid}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 

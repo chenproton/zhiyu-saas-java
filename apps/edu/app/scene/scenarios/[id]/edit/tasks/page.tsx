@@ -67,7 +67,7 @@ import {
 } from '@/lib/api'
 import type { ScenarioTask as ApiScenarioTask } from '@/lib/types/scene'
 import { EvaluationRulesEditor } from '@/components/evaluation-rules'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EvalMethodSelector } from '@/components/shared/eval-method-selector'
@@ -1305,14 +1305,18 @@ export default function TasksEditPage() {
           ))}
 
           {tasks.length === 0 && (
-            <div className="py-16 text-center">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-4">{t('暂无任务，点击添加第一个任务')}</p>
-              <Button onClick={() => setIsAddTaskOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('添加任务')}
-              </Button>
-            </div>
+            <EmptyState
+              className="py-16"
+              icon={<FileText className="h-12 w-12 text-gray-300" />}
+              title={t('暂无任务，点击添加第一个任务')}
+              titleClassName="text-gray-500"
+              action={
+                <Button onClick={() => setIsAddTaskOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('添加任务')}
+                </Button>
+              }
+            />
           )}
         </div>
       </div>
@@ -1323,16 +1327,23 @@ export default function TasksEditPage() {
           <DialogHeader>
             <DialogTitle>{t('添加任务')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>{t('任务名称')}</Label>
-              <Input
-                value={newTask.name}
-                onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                placeholder={t('输入任务名称')}
-                className="mt-1.5"
-              />
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleAddTask()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>{t('任务名称')}</Label>
+                <Input
+                  value={newTask.name}
+                  onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+                  placeholder={t('输入任务名称')}
+                  className="mt-1.5"
+                />
+              </div>
             <div>
               <Label>{t('任务类型')}</Label>
               <Select
@@ -1388,14 +1399,13 @@ export default function TasksEditPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleAddTask} disabled={!newTask.name}>
-              {t('添加')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsAddTaskOpen(false)}
+            confirmText={t('添加')}
+            cancelText={t('取消')}
+            confirmDisabled={!newTask.name}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1406,7 +1416,14 @@ export default function TasksEditPage() {
             <DialogTitle>{t('克隆/引用任务')}</DialogTitle>
             <DialogDescription>{t('从其他场景选择任务进行克隆或引用')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleClone()
+            }}
+            className="flex flex-col flex-1 min-h-0 gap-4"
+          >
+            <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
                 <Button
@@ -1510,14 +1527,14 @@ export default function TasksEditPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCloneOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleClone} disabled={selectedClone.length === 0 || isCloning}>
-              {isCloning ? t('克隆中...') : t('确定 ({n})', { n: selectedClone.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsCloneOpen(false)}
+            confirmText={t('确定 ({n})', { n: selectedClone.length })}
+            cancelText={t('取消')}
+            confirmDisabled={selectedClone.length === 0}
+            loading={isCloning}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1885,12 +1902,13 @@ function EditCardDialog({
         // If no position is associated, show warning instead of ability list
         if (!positionId) {
           return (
-            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
-              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-gray-600">
-                {t('请先关联岗位后，再选择考察能力点')}
-              </p>
-            </div>
+            <EmptyState
+              className="h-full py-16 text-gray-400"
+              icon={<AlertCircle className="h-12 w-12 opacity-50" />}
+              iconClassName="text-gray-400"
+              title={t('请先关联岗位后，再选择考察能力点')}
+              titleClassName="text-gray-600"
+            />
           )
         }
 
@@ -1924,25 +1942,26 @@ function EditCardDialog({
 
         if (relatedAbilities.length === 0) {
           return (
-            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
-              <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-gray-600 mb-1">
-                {t('目标岗位暂无关联能力点')}
-              </p>
-              <p className="text-xs text-gray-400 mb-4">
-                {t('请先去岗位配置页关联能力点后，再回到本页面选择')}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  positionId && window.open(`/job/positions/${positionId}/edit`, '_blank')
-                }
-              >
-                {t('去岗位配置页关联')}
-                <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            </div>
+            <EmptyState
+              className="h-full py-16 text-gray-400"
+              icon={<Award className="h-12 w-12 opacity-50" />}
+              iconClassName="text-gray-400"
+              title={t('目标岗位暂无关联能力点')}
+              titleClassName="text-gray-600"
+              description={t('请先去岗位配置页关联能力点后，再回到本页面选择')}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    positionId && window.open(`/job/positions/${positionId}/edit`, '_blank')
+                  }
+                >
+                  {t('去岗位配置页关联')}
+                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                </Button>
+              }
+            />
           )
         }
 
@@ -2156,10 +2175,13 @@ function EditCardDialog({
                       (a.code || '').includes(abilitySearch),
                   ),
                 ).length === 0 && (
-                  <div className="col-span-full text-center text-gray-400 py-16">
-                    <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">{t('未找到匹配的能力点')}</p>
-                  </div>
+                  <EmptyState
+                    className="col-span-full py-16"
+                    icon={<Award className="h-12 w-12 opacity-50" />}
+                    iconClassName="text-gray-400"
+                    title={t('未找到匹配的能力点')}
+                    titleClassName="text-gray-400"
+                  />
                 )}
               </div>
             </div>
@@ -2327,15 +2349,21 @@ function EditCardDialog({
           </DialogTitle>
           <DialogDescription>{t('任务：{name}', { name: task.name })}</DialogDescription>
         </DialogHeader>
-        <div className={cn('flex-1 py-4 overflow-y-auto')}>{renderContent()}</div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            {t('取消')}
-          </Button>
-          <Button onClick={handleSave} disabled={isSavingCard}>
-            {isSavingCard ? t('保存中...') : t('保存')}
-          </Button>
-        </DialogFooter>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSave()
+          }}
+          className="flex flex-col flex-1 min-h-0 gap-4"
+        >
+          <div className={cn('flex-1 py-4 overflow-y-auto')}>{renderContent()}</div>
+          <FormDialogFooter
+            onCancel={onClose}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            loading={isSavingCard}
+          />
+        </form>
       </DialogContent>
     </Dialog>
   )

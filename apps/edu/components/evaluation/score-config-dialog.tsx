@@ -5,16 +5,15 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { QUESTION_TYPE_LABELS } from '@/lib/types'
 import type { ExamQuestion, QuestionType } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
+import { FormDialogFooter } from '@zhiyu/ui'
 
 interface ScoreConfigDialogProps {
   open: boolean
@@ -87,7 +86,14 @@ export function ScoreConfigDialog({
             {t('如有余数，从该题型的第一道题开始额外增加 1 分。')}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleApply()
+          }}
+          className="grid gap-4"
+        >
+          <div className="space-y-4 py-4">
           {types.map((qt) => (
             <Field key={qt}>
               <FieldLabel>
@@ -119,14 +125,13 @@ export function ScoreConfigDialog({
             )}
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('取消')}
-          </Button>
-          <Button onClick={handleApply} disabled={!isValid}>
-            {t('应用配置')}
-          </Button>
-        </DialogFooter>
+        <FormDialogFooter
+          onCancel={() => onOpenChange(false)}
+          confirmText={t('应用配置')}
+          cancelText={t('取消')}
+          confirmDisabled={!isValid}
+        />
+        </form>
       </DialogContent>
     </Dialog>
   )

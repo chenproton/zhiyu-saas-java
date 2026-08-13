@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -21,6 +20,7 @@ import {
   type GranularLessonOption,
 } from './granular-lesson-select-dialog'
 import { TagPicker } from '@/components/shared/tag-picker'
+import { FormDialogFooter } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface KnowledgePointFormValues {
@@ -104,7 +104,14 @@ export function KnowledgePointFormDialog({
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{desc}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-4">
             <div>
               <Label>{t('知识点名称')}</Label>
               <Input
@@ -192,18 +199,18 @@ export function KnowledgePointFormDialog({
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleSave} disabled={!name.trim()}>
-              {mode === 'add'
+          <FormDialogFooter
+            onCancel={() => onOpenChange(false)}
+            confirmText={
+              mode === 'add'
                 ? t('新增并选中')
                 : mode === 'clone'
                   ? t('克隆并选中')
-                  : t('保存修改')}
-            </Button>
-          </DialogFooter>
+                  : t('保存修改')
+            }
+            confirmDisabled={!name.trim()}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 

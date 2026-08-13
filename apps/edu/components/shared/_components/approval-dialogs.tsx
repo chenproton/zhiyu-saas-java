@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -16,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { useT } from '@/lib/i18n/locale-provider'
 import { formatDateTime } from '@/lib/format-utils'
+import { FormDialogFooter } from '@zhiyu/ui'
 
 interface ApprovalHistoryItem {
   action?: string
@@ -193,23 +193,29 @@ export function useApprovalDialogs({
               )}
             </DialogDescription>
           </DialogHeader>
-          {!isBatch && <ApprovalHistoryWaterfall stepInfo={stepInfo} history={history} />}
-          <div className="py-4">
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder={t('请输入审批备注...')}
-              rows={4}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirmApprove()
+            }}
+            className="grid gap-4"
+          >
+            {!isBatch && <ApprovalHistoryWaterfall stepInfo={stepInfo} history={history} />}
+            <div className="py-4">
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={t('请输入审批备注...')}
+                rows={4}
+              />
+            </div>
+            <FormDialogFooter
+              onCancel={() => !submitting && setApproveOpen(false)}
+              confirmText={t('确认通过')}
+              cancelText={t('取消')}
+              loading={submitting}
             />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => !submitting && setApproveOpen(false)} disabled={submitting}>
-              {t('取消')}
-            </Button>
-            <Button onClick={confirmApprove} disabled={submitting}>
-              {submitting ? t('提交中...') : t('确认通过')}
-            </Button>
-          </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -236,31 +242,31 @@ export function useApprovalDialogs({
               )}
             </DialogDescription>
           </DialogHeader>
-          {!isBatch && <ApprovalHistoryWaterfall stepInfo={stepInfo} history={history} />}
-          <div className="py-4">
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder={t('请详细说明需要修改的内容...')}
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => !submitting && setRejectOpen(false)}
-              disabled={submitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirmReject()
+            }}
+            className="grid gap-4"
+          >
+            {!isBatch && <ApprovalHistoryWaterfall stepInfo={stepInfo} history={history} />}
+            <div className="py-4">
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={t('请详细说明需要修改的内容...')}
+                rows={4}
+              />
+            </div>
+            <FormDialogFooter
+              onCancel={() => !submitting && setRejectOpen(false)}
+              confirmText={t('确认驳回')}
+              cancelText={t('取消')}
               variant="destructive"
-              onClick={confirmReject}
-              disabled={submitting || !comment.trim()}
-            >
-              {submitting ? t('提交中...') : t('确认驳回')}
-            </Button>
-          </DialogFooter>
+              confirmDisabled={!comment.trim()}
+              loading={submitting}
+            />
+          </form>
         </DialogContent>
       </Dialog>
     </>

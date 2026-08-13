@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { approvalApi, workflowApi } from '@/lib/api'
 import type { ApprovalRecord, Workflow, WorkflowStep } from '@/lib/types/backend'
 import { toast } from '@zhiyu/ui'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface ApprovalStepInfo {

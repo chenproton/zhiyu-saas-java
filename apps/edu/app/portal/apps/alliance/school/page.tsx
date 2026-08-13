@@ -6,7 +6,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -21,7 +20,6 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import {
-  Loader2,
   Pencil,
   Building,
   Phone,
@@ -35,12 +33,11 @@ import {
   Monitor,
   User,
 } from 'lucide-react'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter, ComboboxSelect } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { Spinner } from '@/components/ui/spinner'
-import { MultiSelect } from '@/components/ui/multi-select'
 import {
   FormFieldRow,
   FormFieldGrid,
@@ -332,7 +329,14 @@ export default function AllianceSchoolPage() {
             <DialogTitle>{t('编辑学校信息')}</DialogTitle>
             <DialogDescription>{t('修改学校基本信息，保存后与租户信息同步更新')}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleUpdate()
+            }}
+            className="flex flex-col gap-4 flex-1 min-h-0"
+          >
+            <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
             <Separator />
             <div>
               <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
@@ -490,8 +494,10 @@ export default function AllianceSchoolPage() {
                 {t('二级学院')}
               </Label>
               <div className="space-y-4">
-                <MultiSelect
-                  options={secondaryCollegeOptions}
+                <ComboboxSelect
+                  multiple
+                  className="w-full"
+                  options={secondaryCollegeOptions.map((name) => ({ label: name, value: name }))}
                   value={(formData as any).secondaryColleges || []}
                   onChange={(v) => setF('secondaryColleges' as any, v as any)}
                   placeholder={t('选择或维护二级学院（多选）')}
@@ -541,19 +547,11 @@ export default function AllianceSchoolPage() {
               {error}
             </div>
           )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-              disabled={submitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button onClick={handleUpdate} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsEditDialogOpen(false)}
+            loading={submitting}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </div>

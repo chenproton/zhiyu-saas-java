@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { fileApi } from '@/lib/api'
 import { Footer } from '@/components/portal/footer'
@@ -607,18 +608,22 @@ export function LearnPage({
                             })}
                           </div>
                         ) : (
-                          <Card className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 sm:p-8 flex flex-col items-center justify-center text-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400">
-                              <ClipboardList className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-700">
-                                {labels.noEvalMethodsText}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {t('教师配置后，测评入口将显示在此处')}
-                              </p>
-                            </div>
+                          <Card className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 sm:p-8">
+                            <EmptyState
+                              className="py-0"
+                              icon={
+                                <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400">
+                                  <ClipboardList className="h-6 w-6" />
+                                </div>
+                              }
+                              title={labels.noEvalMethodsText}
+                              titleClassName="text-gray-700"
+                              description={
+                                <span className="text-gray-500">
+                                  {t('教师配置后，测评入口将显示在此处')}
+                                </span>
+                              }
+                            />
                           </Card>
                         )}
                       </div>
@@ -688,7 +693,12 @@ export function LearnPage({
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无知识点')}</p>
+                      <EmptyState
+                        compact
+                        title={t('暂无知识点')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     )}
                   </TabsContent>
                   {activeUnit.abilityPoints !== undefined && (
@@ -720,7 +730,12 @@ export function LearnPage({
                           )
                         })
                       ) : (
-                        <p className="text-xs text-gray-400 text-center py-8">{t('暂无能力点')}</p>
+                        <EmptyState
+                          compact
+                          title={t('暂无能力点')}
+                          titleClassName="text-gray-400"
+                          className="py-8"
+                        />
                       )}
                     </TabsContent>
                   )}
@@ -747,7 +762,12 @@ export function LearnPage({
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 text-center py-8">{t('暂无资源')}</p>
+                      <EmptyState
+                        compact
+                        title={t('暂无资源')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     )}
                   </TabsContent>
                 </CardContent>
@@ -805,9 +825,12 @@ export function LearnPage({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 rounded-xl">
-                    {t('暂无关联颗粒课')}
-                  </p>
+                  <EmptyState
+                    compact
+                    title={t('暂无关联颗粒课')}
+                    titleClassName="text-gray-400"
+                    className="py-6 bg-gray-50 rounded-xl"
+                  />
                 )}
               </div>
             </div>

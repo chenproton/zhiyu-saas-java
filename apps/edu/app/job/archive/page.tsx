@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 
 import { positionApi, batchApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { Position } from '@/lib/types/job-source'
 import {
   convertCareerPositionToPosition,

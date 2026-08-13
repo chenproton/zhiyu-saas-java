@@ -27,7 +27,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { MultiSelect } from '@/components/ui/multi-select'
 import {
   Sparkles,
   Plus,
@@ -40,7 +39,7 @@ import {
   AlertCircle,
   Settings,
 } from 'lucide-react'
-import { toast } from '@zhiyu/ui'
+import { toast, EmptyState, FormDialogFooter, ComboboxSelect } from '@zhiyu/ui'
 import { industryApi, majorApi, certificateLibraryApi, fileApi, positionAiAssist } from '@/lib/api'
 import type { AIPositionAssistField } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -902,7 +901,9 @@ export function StepBasicInfo({
             {showIndustryMajor && (
               <>
                 <FormFieldRow label={t('面向行业')} htmlFor="industry">
-                  <MultiSelect
+                  <ComboboxSelect
+                    multiple
+                    className="w-full"
                     options={industries.map((i) => ({ label: i.name, value: i.id }))}
                     value={position.industry ? [position.industry] : []}
                     onChange={(values) => onUpdate({ industry: values[values.length - 1] || '' })}
@@ -910,7 +911,9 @@ export function StepBasicInfo({
                   />
                 </FormFieldRow>
                 <FormFieldRow label={t('适用专业')} htmlFor="major">
-                  <MultiSelect
+                  <ComboboxSelect
+                    multiple
+                    className="w-full"
                     options={majors.map((m) => ({ label: m.name, value: m.id }))}
                     value={position.majors}
                     onChange={(values) => onUpdate({ majors: values })}
@@ -1163,10 +1166,11 @@ export function StepBasicInfo({
         </CardHeader>
         <CardContent>
           {!position.certificates || position.certificates.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Award className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p>{t('暂无相关证书')}</p>
-            </div>
+            <EmptyState
+              icon={<Award className="h-10 w-10 opacity-50" />}
+              title={t('暂无相关证书')}
+              className="py-8"
+            />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-stretch">
               {position.certificates.map((cert) => (
@@ -1233,7 +1237,14 @@ export function StepBasicInfo({
             <DialogTitle>{t('从证书库选择证书')}</DialogTitle>
             <DialogDescription>{t('选择与该岗位相关的职业资格证书')}</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 flex flex-col min-h-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmCertificates()
+            }}
+            className="flex flex-col flex-1 min-h-0 gap-4"
+          >
+            <div className="flex-1 flex flex-col min-h-0">
             <SearchInput
               placeholder={t('搜索证书名称或描述...')}
               value={certSearchQuery}
@@ -1242,7 +1253,7 @@ export function StepBasicInfo({
             />
             <div className="flex-1 overflow-y-auto">
               {filteredCertificates.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">{t('未找到匹配证书')}</p>
+                <EmptyState title={t('未找到匹配证书')} className="py-12" />
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pr-1">
                   {filteredCertificates.map((cert) => {
@@ -1324,12 +1335,12 @@ export function StepBasicInfo({
               )}
             </div>
           </div>
-          <DialogFooter className="pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsCertDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleConfirmCertificates}>{t('确认选择')}</Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsCertDialogOpen(false)}
+            confirmText={t('确认选择')}
+            cancelText={t('取消')}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1340,7 +1351,14 @@ export function StepBasicInfo({
             <DialogTitle>{t('新增证书')}</DialogTitle>
             <DialogDescription>{t('添加一个新的职业资格证书')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleAddNewCertificate()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-4">
             <FormFieldRow label={t('证书名称')}>
               <Input
                 value={newCert.name}
@@ -1397,14 +1415,13 @@ export function StepBasicInfo({
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewCertDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleAddNewCertificate} disabled={!newCert.name}>
-              {t('添加')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsNewCertDialogOpen(false)}
+            confirmText={t('添加')}
+            cancelText={t('取消')}
+            confirmDisabled={!newCert.name}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1448,7 +1465,9 @@ export function StepBasicInfo({
             {!position.industry.trim() && (
               <div className="space-y-1.5">
                 <Label>{t('所属行业')} <span className="text-red-500">*</span></Label>
-                <MultiSelect
+                <ComboboxSelect
+                  multiple
+                  className="w-full"
                   options={industries.map((i) => ({ label: i.name, value: i.id }))}
                   value={quickFill.industry ? [quickFill.industry] : []}
                   onChange={(values) => setQuickFill({ ...quickFill, industry: values[values.length - 1] || '' })}

@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Loader2, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
 import { isHexColor } from '@/lib/theme-brand'
 
@@ -97,8 +97,7 @@ export function ThemeColorPicker({
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <Button size="sm" onClick={() => onSubmit(color)} disabled={submitting || !valid}>
-          {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+        <Button size="sm" onClick={() => onSubmit(color)} loading={submitting} disabled={!valid}>
           {submitLabel ?? t('保存并应用')}
         </Button>
         {secondary.map((item) => (

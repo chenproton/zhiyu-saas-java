@@ -37,7 +37,7 @@ import {
 import { roleApi, portalUserManagementApi, type User } from '@/lib/api'
 import type { Role } from '@/lib/types/backend'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -724,9 +724,7 @@ export default function RolesPage() {
                     </div>
                   ))}
                   {visibleActionModules.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-8">
-                      {t('暂无可配置的操作权限')}
-                    </div>
+                    <EmptyState title={t('暂无可配置的操作权限')} className="py-8" />
                   )}
                 </div>
               </ScrollArea>

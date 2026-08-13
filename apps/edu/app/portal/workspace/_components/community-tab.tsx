@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
 import { StatCard } from './stat-card'
 import { portalCommunityApi } from '@/lib/api'
@@ -325,9 +325,7 @@ export function CommunityTab() {
                   </h3>
                   <div className="space-y-4 mb-5">
                     {replies.length === 0 && (
-                      <div className="py-6 text-center text-xs text-gray-400">
-                        {t('暂无回复，快来抢沙发～')}
-                      </div>
+                      <EmptyState compact title={t('暂无回复，快来抢沙发～')} titleClassName="text-gray-400" />
                     )}
                     {replies.map((reply) => (
                       <div key={reply.id} className="flex items-start gap-3">
@@ -435,22 +433,28 @@ export function CommunityTab() {
                     {t('加载中...')}
                   </div>
                 ) : topics.length === 0 ? (
-                  <div className="p-8 rounded-xl border border-gray-100 bg-white text-center text-gray-400">
-                    {sort === 'mine' ? (
-                      <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                    ) : (
-                      <Flame className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                    )}
-                    <p>{t(sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧')}</p>
-                    <Button
-                      className="mt-4 bg-primary hover:bg-primary/90"
-                      size="sm"
-                      onClick={() => setPostOpen(true)}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      {t(sort === 'mine' ? '去提问' : '发起提问')}
-                    </Button>
-                  </div>
+                  <EmptyState
+                    className="p-8 rounded-xl border border-gray-100 bg-white text-gray-400"
+                    icon={
+                      sort === 'mine' ? (
+                        <MessageSquare className="w-12 h-12 opacity-40" />
+                      ) : (
+                        <Flame className="w-12 h-12 opacity-40" />
+                      )
+                    }
+                    title={t(sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧')}
+                    titleClassName="text-gray-400"
+                    action={
+                      <Button
+                        className="bg-primary hover:bg-primary/90"
+                        size="sm"
+                        onClick={() => setPostOpen(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        {t(sort === 'mine' ? '去提问' : '发起提问')}
+                      </Button>
+                    }
+                  />
                 ) : (
                   <div className="space-y-3">
                     {topics.map((topic) => (

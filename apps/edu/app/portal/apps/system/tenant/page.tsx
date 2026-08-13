@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -23,7 +22,6 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import {
-  Loader2,
   Pencil,
   Building,
   Phone,
@@ -54,7 +52,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, getAIConfig, saveAIConfig, deleteAIConfig, getAIUsage } from '@/lib/api'
 import type { AIConfigView, AIUsageStats } from '@/lib/api'
@@ -552,7 +550,14 @@ export default function TenantPage() {
             <DialogTitle>{t('编辑信息')}</DialogTitle>
             <DialogDescription>{t('修改租户与学校信息')}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleUpdate()
+            }}
+            className="flex flex-col flex-1 min-h-0 gap-4"
+          >
+            <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
             <FormFieldGrid cols={2}>
               <FormFieldRow label={t('租户标识')}>
                 <Input disabled className="bg-muted font-mono" value={tenant?.code || ''} />
@@ -741,19 +746,13 @@ export default function TenantPage() {
               {error}
             </div>
           )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-              disabled={submitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button onClick={handleUpdate} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsEditDialogOpen(false)}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            loading={submitting}
+          />
+          </form>
         </DialogContent>
       </Dialog>
       <Dialog open={isAIDialogOpen} onOpenChange={setIsAIDialogOpen}>
@@ -764,7 +763,14 @@ export default function TenantPage() {
               {t('填写 OpenAI 兼容服务的接入信息，API Key 将加密存储')}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-5 py-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleAISave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-5 py-4">
             <FormFieldRow label={t('Base URL')} required>
               <Input
                 value={aiForm.baseUrl}
@@ -788,25 +794,25 @@ export default function TenantPage() {
               />
             </FormFieldRow>
           </div>
-          <DialogFooter>
-            {aiConfig?.configured && (
-              <Button
-                variant="destructive"
-                className="mr-auto"
-                onClick={() => setAIDeleteConfirm(true)}
-                disabled={aiSubmitting}
-              >
-                {t('清除配置')}
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setIsAIDialogOpen(false)} disabled={aiSubmitting}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleAISave} disabled={aiSubmitting}>
-              {aiSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsAIDialogOpen(false)}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            loading={aiSubmitting}
+            extra={
+              aiConfig?.configured && (
+                <Button
+                  variant="destructive"
+                  className="mr-auto"
+                  onClick={() => setAIDeleteConfirm(true)}
+                  disabled={aiSubmitting}
+                >
+                  {t('清除配置')}
+                </Button>
+              )
+            }
+          />
+          </form>
         </DialogContent>
       </Dialog>
       <ConfirmDialog

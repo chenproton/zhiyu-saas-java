@@ -40,7 +40,7 @@ import type {
   CompetencyLevel,
   Ability,
 } from '@/lib/types/job-source'
-import { toast } from '@zhiyu/ui'
+import { toast, EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AiAssistProgressDialog } from './ai-assist-progress-dialog'
 
@@ -563,10 +563,13 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
           {position.responsibilities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <AlertCircle className="h-6 w-6 mb-2 opacity-30" />
-              <p className="text-xs">{t('暂无工作职责')}</p>
-            </div>
+            <EmptyState
+              compact
+              className="py-12"
+              icon={<AlertCircle className="h-6 w-6 opacity-30" />}
+              title={t('暂无工作职责')}
+              titleClassName="text-gray-400"
+            />
           ) : (
             position.responsibilities.map((resp) => {
               const bindingCount = position.abilityBindings.filter(
@@ -690,11 +693,13 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
           )}
 
           {position.responsibilities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-              <Brain className="h-10 w-10 mb-3 opacity-20" />
-              <p className="text-sm">{t('暂无工作职责和能力点')}</p>
-              <p className="text-xs mt-1">{t('请先在左侧添加工作职责')}</p>
-            </div>
+            <EmptyState
+              className="py-20"
+              icon={<Brain className="h-10 w-10 opacity-20" />}
+              title={t('暂无工作职责和能力点')}
+              description={t('请先在左侧添加工作职责')}
+              titleClassName="text-gray-300"
+            />
           ) : (
             <div className="py-5 space-y-6 px-5">
               {position.responsibilities.map((resp) => {
@@ -756,10 +761,13 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                       )}
                     </div>
                     {respBindings.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 py-8 flex flex-col items-center justify-center">
-                        <p className="text-xs text-gray-400">{t('暂无能力点')}</p>
-                        <p className="text-[10px] text-gray-300 mt-1">{t('点击上方按钮添加')}</p>
-                      </div>
+                      <EmptyState
+                        compact
+                        className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 py-8"
+                        title={t('暂无能力点')}
+                        titleClassName="text-gray-400"
+                        description={t('点击上方按钮添加')}
+                      />
                     ) : (
                       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
                         {respBindings.map((binding) => {
@@ -1145,23 +1153,27 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
 
           <div className="flex-1 overflow-y-auto mt-3 rounded-lg border bg-white">
             {abilityPoolResults.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-                <Search className="h-8 w-8 mb-2 opacity-25" />
-                <p className="text-sm">{t('暂无匹配的能力点')}</p>
-                {abilityPoolSearch.trim() && (
-                  <button
-                    className="mt-3 text-xs text-primary hover:text-primary font-medium"
-                    onClick={() => {
-                      setNewAbilityName(abilityPoolSearch.trim())
-                      setNewAbilityAttributes([])
-                      setDuplicateName(null)
-                      setShowCreateDialog(true)
-                    }}
-                  >
-                    {t('+ 库中不存在，点击新建「{name}」', { name: abilityPoolSearch.trim() })}
-                  </button>
-                )}
-              </div>
+              <EmptyState
+                className="py-16"
+                icon={<Search className="h-8 w-8 opacity-25" />}
+                title={t('暂无匹配的能力点')}
+                titleClassName="text-gray-300"
+                action={
+                  abilityPoolSearch.trim() && (
+                    <button
+                      className="text-xs text-primary hover:text-primary font-medium"
+                      onClick={() => {
+                        setNewAbilityName(abilityPoolSearch.trim())
+                        setNewAbilityAttributes([])
+                        setDuplicateName(null)
+                        setShowCreateDialog(true)
+                      }}
+                    >
+                      {t('+ 库中不存在，点击新建「{name}」', { name: abilityPoolSearch.trim() })}
+                    </button>
+                  )
+                }
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px]">

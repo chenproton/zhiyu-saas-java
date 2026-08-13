@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { CheckSquare, ChevronDown, Eye } from 'lucide-react'
 import { useApprovalDialogs } from '@/components/shared/_components/approval-dialogs'
+import { EmptyState, TableEmptyRow } from '@zhiyu/ui'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { useT } from '@/lib/i18n/locale-provider'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -198,11 +199,9 @@ export function ApprovalListPage<
                 </TableCell>
               </TableRow>
             ) : data.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">
-                  {t('暂无数据')}
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={colSpan} className="py-12 text-gray-500">
+                {t('暂无数据')}
+              </TableEmptyRow>
             ) : (
               data.map((item) => (
                 <TableRow key={item.id} className="group">
@@ -330,11 +329,12 @@ export function ApprovalListPage<
               renderPendingGroups()
             ) : (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-700">{t('暂无待审批项')}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{t(emptyPendingText)}</p>
-                </CardContent>
+                <EmptyState
+                  icon={<CheckSquare className="h-12 w-12 text-gray-300" />}
+                  title={t('暂无待审批项')}
+                  titleClassName="text-lg font-medium text-gray-700"
+                  description={<span className="text-sm text-gray-500">{t(emptyPendingText)}</span>}
+                />
               </Card>
             )}
           </TabsContent>
@@ -343,10 +343,11 @@ export function ApprovalListPage<
               renderTable(processedItems)
             ) : (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-700">{t(emptyProcessedText)}</h3>
-                </CardContent>
+                <EmptyState
+                  icon={<CheckSquare className="h-12 w-12 text-gray-300" />}
+                  title={t(emptyProcessedText)}
+                  titleClassName="text-lg font-medium text-gray-700"
+                />
               </Card>
             )}
           </TabsContent>

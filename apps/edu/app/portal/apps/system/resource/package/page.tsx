@@ -9,6 +9,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, buildQuery } from '@/lib/api'
 import { platformModuleDefs } from '@/lib/navigation-config'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { SubscriptionPackage } from '@/lib/types/backend'
 
@@ -160,9 +161,7 @@ export default function PackagePage() {
               </CardHeader>
               <CardContent>
                 {packageModules.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    {t('暂无模块配置')}
-                  </div>
+                  <EmptyState title={t('暂无模块配置')} className="py-8" />
                 ) : (
                   <div className="space-y-2">
                     {packageModules.map((module) => {

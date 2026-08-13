@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
-import { UnderlineTabs, useToast } from '@zhiyu/ui'
+import { UnderlineTabs, useToast, TableEmptyRow } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
@@ -129,11 +129,9 @@ function DictionaryTab({ dictType }: { dictType: string }) {
                 </td>
               </tr>
             ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                  {t('暂无')}
-                </td>
-              </tr>
+              <TableEmptyRow colSpan={4} className="py-8">
+                {t('暂无')}
+              </TableEmptyRow>
             ) : (
               items.map((d) => (
                 <tr key={d.id} className="border-b hover:bg-muted/30">

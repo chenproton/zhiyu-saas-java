@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import { courseApi, courseNodeApi, userManagementApi, nodeEvaluationResultApi } from '@/lib/api'
@@ -26,6 +26,7 @@ import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel, hybridMethodCompare } from '@/lib/hybrid-eval'
 import { SearchInput } from '@/components/shared/search-input'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface NodeStudent {
@@ -268,7 +269,12 @@ function LessonResultsPageContent() {
               </button>
             ))}
             {filteredCourses.length === 0 && (
-              <p className="text-center text-xs text-gray-400 py-8">{t('暂无已发布课程')}</p>
+              <EmptyState
+                compact
+                title={t('暂无已发布课程')}
+                className="py-8"
+                titleClassName="text-gray-400"
+              />
             )}
           </div>
         </div>
@@ -311,10 +317,11 @@ function LessonResultsPageContent() {
 
               {nodeGroups.length === 0 ? (
                 <Card className="border-dashed border-gray-200">
-                  <CardContent className="py-12 text-center text-gray-400">
-                    <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">{t('该课程下暂无学生测评提交记录')}</p>
-                  </CardContent>
+                  <EmptyState
+                    icon={<FileText className="h-10 w-10 opacity-50" />}
+                    title={t('该课程下暂无学生测评提交记录')}
+                    titleClassName="text-gray-400"
+                  />
                 </Card>
               ) : (
                 <div className="space-y-3">
@@ -537,10 +544,12 @@ function LessonResultsPageContent() {
               )}
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-              <BookOpen className="h-12 w-12 mb-3 opacity-50" />
-              <p className="text-sm">{t('请在左侧选择一个课程')}</p>
-            </div>
+            <EmptyState
+              className="h-full"
+              icon={<BookOpen className="h-12 w-12 opacity-50" />}
+              title={t('请在左侧选择一个课程')}
+              titleClassName="text-gray-400"
+            />
           )}
         </div>
       </div>

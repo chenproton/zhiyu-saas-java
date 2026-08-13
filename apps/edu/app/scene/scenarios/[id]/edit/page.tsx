@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { cn } from '@/lib/utils'
 import {
@@ -29,7 +28,7 @@ import {
 import type { CareerPosition } from '@/lib/types/job'
 import type { Industry, Major } from '@/lib/types/backend'
 import type { SceneBatch } from '@/lib/types/scene'
-import { toast } from '@zhiyu/ui'
+import { toast, ComboboxSelect } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { UserSelector } from '@/components/shared/user-selector'
 import { EditorShell } from '@/components/shared/editor-shell'
@@ -227,7 +226,9 @@ export default function ScenarioEditPage() {
 
                 <FormFieldGrid cols={2}>
                   <FormFieldRow label={t('面向行业')}>
-                    <MultiSelect
+                    <ComboboxSelect
+                      multiple
+                      className="w-full"
                       options={industries.map((i) => ({ label: i.name, value: i.id }))}
                       value={industryIds}
                       onChange={setIndustryIds}
@@ -235,7 +236,9 @@ export default function ScenarioEditPage() {
                     />
                   </FormFieldRow>
                   <FormFieldRow label={t('适用专业')}>
-                    <MultiSelect
+                    <ComboboxSelect
+                      multiple
+                      className="w-full"
                       options={majors.map((m) => ({
                         label: `${m.name}${m.code ? ` (${m.code})` : ''}`,
                         value: m.id,

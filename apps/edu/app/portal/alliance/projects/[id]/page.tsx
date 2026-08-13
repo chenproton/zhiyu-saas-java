@@ -8,7 +8,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import {
   AllianceDetailShell,
-  DetailEmpty,
   DetailInfoBlock,
   DetailSectionCard,
   type DetailStat,
@@ -34,7 +33,7 @@ import type {
   AlliancePublicAgreement,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { AchievementCard } from '@/components/alliance/public-cards'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -89,8 +88,7 @@ export default function AlliancePublicProjectDetailPage() {
   }, [milestones])
 
   if (loading) return <LoadingView />
-  if (!project)
-    return <div className="text-center py-12 text-muted-foreground">{t('项目不存在')}</div>
+  if (!project) return <EmptyState title={t('项目不存在')} />
 
   const stats: DetailStat[] = [
     {
@@ -321,7 +319,12 @@ export default function AlliancePublicProjectDetailPage() {
                     </div>
                   </>
                 ) : (
-                  <DetailEmpty icon={Target} title={t('暂无里程碑数据')} />
+                  <EmptyState
+                    icon={<Target className="h-10 w-10 opacity-50" />}
+                    title={t('暂无里程碑数据')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -363,7 +366,12 @@ export default function AlliancePublicProjectDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={FileText} title={t('暂无项目协议')} />
+                  <EmptyState
+                    icon={<FileText className="h-10 w-10 opacity-50" />}
+                    title={t('暂无项目协议')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -383,7 +391,12 @@ export default function AlliancePublicProjectDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={Award} title={t('暂无关联成果')} />
+                  <EmptyState
+                    icon={<Award className="h-10 w-10 opacity-50" />}
+                    title={t('暂无关联成果')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>

@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -26,10 +25,10 @@ import {
   allianceProjectApi,
 } from '@/lib/api'
 import { syncAgreementProjectLinks } from '@/lib/alliance-links'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import { Plus, Pencil, Trash2, Loader2, Link2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Link2 } from 'lucide-react'
 import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
 import type {
@@ -353,11 +352,9 @@ export default function AllianceProjectDetailPage() {
               </thead>
               <tbody>
                 {milestones.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {t('暂无里程碑')}
-                    </td>
-                  </tr>
+                  <TableEmptyRow colSpan={6} className="py-8">
+                    {t('暂无里程碑')}
+                  </TableEmptyRow>
                 ) : (
                   milestones.map((m) => (
                     <tr key={m.id} className="border-b">
@@ -447,11 +444,9 @@ export default function AllianceProjectDetailPage() {
               </thead>
               <tbody>
                 {linkedAgreements.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                      {t('暂无项目协议')}
-                    </td>
-                  </tr>
+                  <TableEmptyRow colSpan={5} className="py-8">
+                    {t('暂无项目协议')}
+                  </TableEmptyRow>
                 ) : (
                   linkedAgreements.map((agreement) => (
                     <tr key={agreement.id} className="border-b">
@@ -517,11 +512,9 @@ export default function AllianceProjectDetailPage() {
               </thead>
               <tbody>
                 {linkedAchievements.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                      {t('暂无关联成果')}
-                    </td>
-                  </tr>
+                  <TableEmptyRow colSpan={4} className="py-8">
+                    {t('暂无关联成果')}
+                  </TableEmptyRow>
                 ) : (
                   linkedAchievements.map((a) => (
                     <tr key={a.id} className="border-b">
@@ -592,7 +585,14 @@ export default function AllianceProjectDetailPage() {
               {t('{action}里程碑', { action: milestoneDialog.edit ? t('编辑') : t('新增') })}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveMilestone()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4">
             <div className="grid gap-2">
               <Label>{t('名称 *')}</Label>
               <Input
@@ -617,15 +617,11 @@ export default function AllianceProjectDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMilestoneDialog({ open: false })}>
-              {t('取消')}
-            </Button>
-            <Button onClick={saveMilestone} disabled={savingM}>
-              {savingM ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setMilestoneDialog({ open: false })}
+            loading={savingM}
+          />
+          </form>
         </DialogContent>
       </Dialog>
       {/* 关联已有协议 */}
@@ -634,7 +630,14 @@ export default function AllianceProjectDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('关联已有协议')}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveLinkAgr()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[50vh] overflow-y-auto space-y-2">
             {allAgreements.map((a) => (
               <label
                 key={a.id}
@@ -657,20 +660,16 @@ export default function AllianceProjectDetailPage() {
               </label>
             ))}
             {allAgreements.length === 0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                {t('暂无可关联的协议')}
-              </p>
+              <EmptyState title={t('暂无可关联的协议')} className="py-6" />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkDialog(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={saveLinkAgr} disabled={savingA || linkSelected.length === 0}>
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('关联 ({count})', { count: linkSelected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setLinkDialog(false)}
+            confirmText={t('关联 ({count})', { count: linkSelected.length })}
+            loading={savingA}
+            confirmDisabled={linkSelected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
       {/* 关联已有成果 */}
@@ -679,7 +678,14 @@ export default function AllianceProjectDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('关联已有成果')}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveLinkAch()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[50vh] overflow-y-auto space-y-2">
             {achievements
               .filter((a) => !(a.projectIds ?? []).includes(id))
               .map((a) => (
@@ -705,23 +711,16 @@ export default function AllianceProjectDetailPage() {
                 </label>
               ))}
             {achievements.filter((a) => !(a.projectIds ?? []).includes(id)).length === 0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                {t('暂无可关联的成果')}
-              </p>
+              <EmptyState title={t('暂无可关联的成果')} className="py-6" />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAchLinkDialog(false)}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={saveLinkAch}
-              disabled={savingA || achLinkSelected.length === 0}
-            >
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('关联 ({count})', { count: achLinkSelected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setAchLinkDialog(false)}
+            confirmText={t('关联 ({count})', { count: achLinkSelected.length })}
+            loading={savingA}
+            confirmDisabled={achLinkSelected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </>

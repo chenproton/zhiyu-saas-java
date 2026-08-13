@@ -35,14 +35,9 @@ export const scenarioWeightApi = {
 }
 
 export const taskApi = {
-  list: (params?: { scenarioId?: string; search?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<ScenarioTask>>(`/scene/tasks${buildQuery(params || {})}`),
-  get: (id: string) => request<ScenarioTask>(`/scene/tasks/${id}`),
-  create: (req: Omit<ScenarioTask, 'id'>) =>
-    request<ScenarioTask>('/scene/tasks', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<Omit<ScenarioTask, 'id'>>) =>
-    request<ScenarioTask>(`/scene/tasks/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/scene/tasks/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<ScenarioTask, Omit<ScenarioTask, 'id'>, Partial<Omit<ScenarioTask, 'id'>>>(
+    '/scene/tasks',
+  ),
   reorder: (scenarioId: string, taskIds: string[]) =>
     request<{ ok: boolean }>('/scene/tasks/reorder', {
       method: 'POST',

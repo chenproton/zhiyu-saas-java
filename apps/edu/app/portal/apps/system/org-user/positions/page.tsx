@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { portalStaffTitleApi, portalUserManagementApi, type User } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, EmptyState } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { Pencil, Power, Trash2, Upload, Download, Loader2, Users } from 'lucide-react'
@@ -245,7 +245,7 @@ export default function PositionsPage() {
                 <p className="mt-2 text-sm text-muted-foreground">{t('加载中...')}</p>
               </div>
             ) : titleUsers.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-4">{t('暂无关联用户')}</p>
+              <EmptyState title={t('暂无关联用户')} className="py-4" />
             ) : (
               <div className="space-y-2">
                 {titleUsers.slice(0, 5).map((user) => (

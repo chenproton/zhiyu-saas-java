@@ -5,17 +5,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormFieldRow } from '@/components/shared/form-field-row'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { portalUserManagementApi } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
+import { FormDialogFooter } from '@zhiyu/ui'
 
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
 
@@ -93,7 +92,14 @@ export function ResetPasswordDialog({
             {t('设置新密码')}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSubmit()
+          }}
+          className="grid gap-4"
+        >
+          <div className="grid gap-4 py-4">
           <FormFieldRow label={t('新密码')} htmlFor="reset-password">
             <Input
               id="reset-password"
@@ -119,15 +125,14 @@ export function ResetPasswordDialog({
             </Alert>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            {t('取消')}
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !password || !confirmPassword}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('确认重置')}
-          </Button>
-        </DialogFooter>
+        <FormDialogFooter
+          onCancel={() => onOpenChange(false)}
+          confirmText={t('确认重置')}
+          cancelText={t('取消')}
+          confirmDisabled={!password || !confirmPassword}
+          loading={submitting}
+        />
+        </form>
       </DialogContent>
     </Dialog>
   )

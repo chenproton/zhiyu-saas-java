@@ -32,12 +32,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DateRangePicker } from '@/components/shared/date-range-picker'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { termApi, venueApi, periodSlotApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { DateRange } from 'react-day-picker'
 import type { AffairsTerm, Venue, PeriodSlot } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -253,42 +253,44 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
             <DialogTitle>{editing ? t('编辑学期') : t('新建学期')}</DialogTitle>
             <DialogDescription>{t('设为当前学期后，其他学期将自动取消当前标记')}</DialogDescription>
           </DialogHeader>
-          <FieldGroup className="py-4">
-            <Field>
-              <FieldLabel>{t('学期名称 *')}</FieldLabel>
-              <Input
-                placeholder={t('如 2025-2026-1')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>{t('起止日期 *')}</FieldLabel>
-              <DateRangePicker value={dateRange} onChange={setDateRange} />
-            </Field>
-            <Field>
-              <FieldLabel>{t('周数')}</FieldLabel>
-              <Input value={weeksCount ? String(weeksCount) : ''} disabled placeholder={t('选择起止日期后自动计算')} />
-              <p className="text-xs text-muted-foreground">{t('根据起止日期自动计算，不可修改')}</p>
-            </Field>
-            <Field>
-              <div className="flex items-center justify-between">
-                <FieldLabel>{t('设为当前学期')}</FieldLabel>
-                <Switch checked={isCurrent} onCheckedChange={setIsCurrent} />
-              </div>
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!name || !dateRange?.from || !dateRange?.to || saving}
-            >
-              {saving ? t('保存中...') : t('保存')}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSave()
+            }}
+            className="grid gap-4"
+          >
+            <FieldGroup className="py-4">
+              <Field>
+                <FieldLabel>{t('学期名称 *')}</FieldLabel>
+                <Input
+                  placeholder={t('如 2025-2026-1')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>{t('起止日期 *')}</FieldLabel>
+                <DateRangePicker value={dateRange} onChange={setDateRange} />
+              </Field>
+              <Field>
+                <FieldLabel>{t('周数')}</FieldLabel>
+                <Input value={weeksCount ? String(weeksCount) : ''} disabled placeholder={t('选择起止日期后自动计算')} />
+                <p className="text-xs text-muted-foreground">{t('根据起止日期自动计算，不可修改')}</p>
+              </Field>
+              <Field>
+                <div className="flex items-center justify-between">
+                  <FieldLabel>{t('设为当前学期')}</FieldLabel>
+                  <Switch checked={isCurrent} onCheckedChange={setIsCurrent} />
+                </div>
+              </Field>
+            </FieldGroup>
+            <FormDialogFooter
+              onCancel={() => setDialogOpen(false)}
+              loading={saving}
+              confirmDisabled={!name || !dateRange?.from || !dateRange?.to}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -480,49 +482,54 @@ function VenuesSection() {
             <DialogTitle>{editing ? t('编辑场地') : t('新建场地')}</DialogTitle>
             <DialogDescription>{t('场地类型用于教学计划条目的场地类型匹配')}</DialogDescription>
           </DialogHeader>
-          <FieldGroup className="py-4">
-            <Field>
-              <FieldLabel>{t('场地名称 *')}</FieldLabel>
-              <Input
-                placeholder={t('如 A栋-301')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>{t('场地类型 *')}</FieldLabel>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('请选择场地类型')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {VENUE_TYPES.map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {t(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>{t('容量（人）')}</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                placeholder={t('选填')}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleSave} disabled={!name || !type || saving}>
-              {saving ? t('保存中...') : t('保存')}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSave()
+            }}
+            className="grid gap-4"
+          >
+            <FieldGroup className="py-4">
+              <Field>
+                <FieldLabel>{t('场地名称 *')}</FieldLabel>
+                <Input
+                  placeholder={t('如 A栋-301')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>{t('场地类型 *')}</FieldLabel>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('请选择场地类型')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VENUE_TYPES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {t(v)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>{t('容量（人）')}</FieldLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder={t('选填')}
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                />
+              </Field>
+            </FieldGroup>
+            <FormDialogFooter
+              onCancel={() => setDialogOpen(false)}
+              loading={saving}
+              confirmDisabled={!name || !type}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 

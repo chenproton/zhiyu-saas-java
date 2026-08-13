@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SearchInput } from '@/components/shared/search-input'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
   ABILITY_PLATFORM_URL,
@@ -440,9 +441,7 @@ function ResourceItem({
               ))}
             </div>
           ) : (
-            <div className="text-center py-3 text-xs text-muted-foreground">
-              {t('暂无模块配置')}
-            </div>
+            <EmptyState compact className="py-3" title={t('暂无模块配置')} />
           )}
         </div>
       )}
@@ -677,7 +676,7 @@ export function YiKnowAssistant() {
         />
       ))}
       {filteredResources.length === 0 && (
-        <div className="text-center py-8 text-sm text-muted-foreground">{t('未找到相关资源')}</div>
+        <EmptyState title={t('未找到相关资源')} className="py-8" />
       )}
     </div>
   )
@@ -713,9 +712,7 @@ export function YiKnowAssistant() {
         )
       })}
       {filteredResources.length === 0 && (
-        <div className="text-center py-8 text-sm text-muted-foreground">
-          {t('未找到相关资源，换个关键词试试')}
-        </div>
+        <EmptyState title={t('未找到相关资源，换个关键词试试')} className="py-8" />
       )}
     </div>
   )

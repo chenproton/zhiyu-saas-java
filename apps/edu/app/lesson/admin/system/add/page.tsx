@@ -15,9 +15,8 @@ import {
   CheckCircle2,
   Sparkles,
 } from 'lucide-react'
-import { toast } from '@zhiyu/ui'
+import { toast, FormDialogFooter } from '@zhiyu/ui'
 
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,7 +27,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -1332,7 +1330,14 @@ function AddSystemPageInner() {
                 : t('选择要引用的颗粒课')}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleGrainConfirm()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-3 py-2">
             <SearchInput
               iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
               value={grainSearch}
@@ -1383,14 +1388,12 @@ function AddSystemPageInner() {
               )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGrainSelector(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleGrainConfirm} disabled={!grainSelectedId}>
-              {t('确认选择')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setShowGrainSelector(false)}
+            confirmText={t('确认选择')}
+            confirmDisabled={!grainSelectedId}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </EditorShell>

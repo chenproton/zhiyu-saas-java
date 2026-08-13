@@ -8,7 +8,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -20,12 +19,12 @@ import {
   allianceProjectApi,
   allianceAchievementApi,
 } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
-import { useToast } from '@zhiyu/ui'
+import { fetchAllPages } from '@zhiyu/api-client'
+import { useToast, EmptyState, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import { Link2, Plus, Loader2 } from 'lucide-react'
+import { Link2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import type {
   AllianceEnterprise,
@@ -404,11 +403,9 @@ export default function AllianceEnterpriseDetailPage() {
               </thead>
               <tbody>
                 {agreements.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                      {t('暂无合作协议，可点击右上角关联或新增')}
-                    </td>
-                  </tr>
+                  <TableEmptyRow colSpan={5} className="py-8">
+                    {t('暂无合作协议，可点击右上角关联或新增')}
+                  </TableEmptyRow>
                 ) : (
                   agreements.map((a) => {
                     // 直接关联（enterprise_ids）可取消；经项目二次关联仅展示
@@ -488,11 +485,9 @@ export default function AllianceEnterpriseDetailPage() {
               </thead>
               <tbody>
                 {projects.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                      {t('暂无合作项目')}
-                    </td>
-                  </tr>
+                  <TableEmptyRow colSpan={4} className="py-8">
+                    {t('暂无合作项目')}
+                  </TableEmptyRow>
                 ) : (
                   projects.map((p) => (
                     <tr key={p.id} className="border-b">
@@ -558,11 +553,9 @@ export default function AllianceEnterpriseDetailPage() {
               </thead>
               <tbody>
                 {achievements.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                      {t('暂无合作成果')}
-                    </td>
-                  </tr>
+                  <TableEmptyRow colSpan={4} className="py-8">
+                    {t('暂无合作成果')}
+                  </TableEmptyRow>
                 ) : (
                   achievements.map((a) => {
                     const direct = (a.enterpriseIds || []).includes(id)
@@ -625,8 +618,15 @@ export default function AllianceEnterpriseDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('关联已有协议')}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-2">
-            {availableForLink.map((a) => (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveLink()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[50vh] overflow-y-auto space-y-2">
+              {availableForLink.map((a) => (
               <label
                 key={a.id}
                 className="flex items-center gap-2 p-2 rounded border hover:bg-muted/40 cursor-pointer"
@@ -648,20 +648,16 @@ export default function AllianceEnterpriseDetailPage() {
               </label>
             ))}
             {availableForLink.length === 0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                {t('暂无可关联的协议')}
-              </p>
+              <EmptyState title={t('暂无可关联的协议')} className="py-6" />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkDialog(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={saveLink} disabled={savingA || linkSelected.length === 0}>
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('关联 ({count})', { count: linkSelected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setLinkDialog(false)}
+            confirmText={t('关联 ({count})', { count: linkSelected.length })}
+            loading={savingA}
+            confirmDisabled={linkSelected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -671,7 +667,14 @@ export default function AllianceEnterpriseDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('关联已有项目')}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveLinkProjects()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[50vh] overflow-y-auto space-y-2">
             {allProjects
               .filter((p) => !(p.enterpriseIds || []).includes?.(id))
               .map((p) => (
@@ -696,20 +699,16 @@ export default function AllianceEnterpriseDetailPage() {
                 </label>
               ))}
             {allProjects.filter((p) => !(p.enterpriseIds || []).includes?.(id)).length === 0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                {t('暂无可关联的项目')}
-              </p>
+              <EmptyState title={t('暂无可关联的项目')} className="py-6" />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setProjLinkDialog(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={saveLinkProjects} disabled={savingA || projLinkSelected.length === 0}>
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('关联 ({count})', { count: projLinkSelected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setProjLinkDialog(false)}
+            confirmText={t('关联 ({count})', { count: projLinkSelected.length })}
+            loading={savingA}
+            confirmDisabled={projLinkSelected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -719,7 +718,14 @@ export default function AllianceEnterpriseDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('关联已有成果')}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveLinkAchievements()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[50vh] overflow-y-auto space-y-2">
             {allAchievements
               .filter((a) => !(a.enterpriseIds || []).includes?.(id))
               .map((a) => (
@@ -746,23 +752,16 @@ export default function AllianceEnterpriseDetailPage() {
               ))}
             {allAchievements.filter((a) => !(a.enterpriseIds || []).includes?.(id)).length ===
               0 && (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                {t('暂无可关联的成果')}
-              </p>
+              <EmptyState title={t('暂无可关联的成果')} className="py-6" />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAchLinkDialog(false)}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={saveLinkAchievements}
-              disabled={savingA || achLinkSelected.length === 0}
-            >
-              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('关联 ({count})', { count: achLinkSelected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setAchLinkDialog(false)}
+            confirmText={t('关联 ({count})', { count: achLinkSelected.length })}
+            loading={savingA}
+            confirmDisabled={achLinkSelected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </>

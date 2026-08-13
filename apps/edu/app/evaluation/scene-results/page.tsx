@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import {
@@ -30,8 +30,9 @@ import {
 import type { SceneEvaluationResult } from '@/lib/types'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { SearchInput } from '@/components/shared/search-input'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 interface TaskStudent {
   studentId: string
@@ -326,9 +327,11 @@ function GradingPageContent() {
           </div>
         )}
         {activeMethodData && activeMethodData.students.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-lg border border-dashed border-gray-200 mt-3">
-            {t('暂无学生提交记录')}
-          </div>
+          <EmptyState
+            title={t('暂无学生提交记录')}
+            titleClassName="text-gray-400"
+            className="py-8 bg-white rounded-lg border border-dashed border-gray-200 mt-3"
+          />
         ) : (
           <div className="space-y-3 mt-3">
             {yearGroups.map((yearGroup) => (
@@ -552,10 +555,11 @@ function GradingPageContent() {
 
               {taskGroups.length === 0 ? (
                 <Card className="border-dashed border-gray-200">
-                  <CardContent className="py-12 text-center text-gray-400">
-                    <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">{t('该场景下暂无学生提交记录')}</p>
-                  </CardContent>
+                  <EmptyState
+                    icon={<FileText className="h-10 w-10 opacity-50" />}
+                    title={t('该场景下暂无学生提交记录')}
+                    titleClassName="text-gray-400"
+                  />
                 </Card>
               ) : (
                 <div className="space-y-3">
@@ -662,10 +666,12 @@ function GradingPageContent() {
               )}
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-              <BookOpen className="h-12 w-12 mb-3 opacity-50" />
-              <p className="text-sm">{t('请在左侧选择一个场景')}</p>
-            </div>
+            <EmptyState
+              className="h-full"
+              icon={<BookOpen className="h-12 w-12 opacity-50" />}
+              title={t('请在左侧选择一个场景')}
+              titleClassName="text-gray-400"
+            />
           )}
         </div>
       </div>

@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -27,7 +26,7 @@ import { workflowApi, majorApi } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { formatDate } from '@/lib/format-utils'
 import type { Workflow } from '@/lib/types/backend'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import {
   WorkflowEditor,
@@ -193,32 +192,36 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
           {isEdit ? t('修改审批流程配置') : t('创建新的审批流程模板')}
         </DialogDescription>
       </DialogHeader>
-      <WorkflowEditor
-        error={error}
-        name={name}
-        onNameChange={setName}
-        description={description}
-        onDescriptionChange={setDescription}
-        steps={steps}
-        onStepsChange={setSteps}
-        majorIds={majorIds}
-        onMajorIdsChange={setMajorIds}
-        majors={majors}
-        tenantId={tenantId}
-      />
-      <DialogFooter>
-        <Button
-          variant="outline"
-          onClick={() => {
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleSave()
+        }}
+        className="grid gap-4"
+      >
+        <WorkflowEditor
+          error={error}
+          name={name}
+          onNameChange={setName}
+          description={description}
+          onDescriptionChange={setDescription}
+          steps={steps}
+          onStepsChange={setSteps}
+          majorIds={majorIds}
+          onMajorIdsChange={setMajorIds}
+          majors={majors}
+          tenantId={tenantId}
+        />
+        <FormDialogFooter
+          onCancel={() => {
             setIsCreateOpen(false)
             setIsEditOpen(false)
             reset()
           }}
-        >
-          {t('取消')}
-        </Button>
-        <Button onClick={handleSave}>{isEdit ? t('保存修改') : t('创建流程')}</Button>
-      </DialogFooter>
+          confirmText={isEdit ? t('保存修改') : t('创建流程')}
+          cancelText={t('取消')}
+        />
+      </form>
     </DialogContent>
   )
 
@@ -291,11 +294,9 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
                     </TableCell>
                   </TableRow>
                 ) : filteredWorkflows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      {t('暂无审批流程')}
-                    </TableCell>
-                  </TableRow>
+                  <TableEmptyRow colSpan={6} className="py-8">
+                    {t('暂无审批流程')}
+                  </TableEmptyRow>
                 ) : (
                   filteredWorkflows.map((wf) => (
                     <TableRow key={wf.id} className="group">

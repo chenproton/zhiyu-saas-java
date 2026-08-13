@@ -12,7 +12,7 @@ import type {
   StatusAction,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useT } from '@/lib/i18n/locale-provider'
 import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
 
