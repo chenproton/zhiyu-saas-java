@@ -457,7 +457,11 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 		if len(periodNames) == 0 {
 			continue
 		}
-		periodName := strings.Join(periodNames, "，")
+		// 与 listSchedule 一致按单节次名查标签（此前按 join 整串查 PeriodLabelMap 永远不命中）
+		periodName := periodNames[0]
+		if label, ok := periodLabel[periodName]; ok {
+			periodName = label
+		}
 		for w := startWeek; w <= endWeek; w++ {
 			if weekPattern == "odd" && w%2 == 0 {
 				continue

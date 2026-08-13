@@ -198,6 +198,7 @@ func ClearPositionImportRelations(ctx context.Context, q Queryer, positionID str
 		`DELETE FROM position_certificates WHERE career_position_id=$1`,
 		`DELETE FROM position_responsibilities WHERE career_position_id=$1`,
 		`DELETE FROM position_ability_bindings WHERE career_position_id=$1`,
+		`DELETE FROM ability_domains WHERE career_position_id=$1`,
 	} {
 		if _, err := q.Exec(ctx, delSQL, positionID); err != nil && firstErr == nil {
 			firstErr = err

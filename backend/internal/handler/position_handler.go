@@ -207,7 +207,8 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.PositionType == "" {
 		req.PositionType = string(existing.PositionType)
 	}
-	if req.ShortName == nil || *req.ShortName == "" {
+	// 仅 nil 视为未携带；显式空串可清空（与 Description/CoverImage 等字段语义一致）
+	if req.ShortName == nil {
 		req.ShortName = existing.ShortName
 	}
 	majorIDs := req.MajorIDs
@@ -528,6 +529,10 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cnt, err := h.Service.FavoriteCount(r.Context(), id)
+	if err != nil {
+		slog.Warn("查询收藏数失败", "positionId", id, "error", err)
+		cnt = 0
+	}
 	if err != nil {
 		slog.Warn("favorite count failed", "positionID", id, "error", err)
 		cnt = 0

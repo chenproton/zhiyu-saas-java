@@ -77,14 +77,14 @@ func TestPortalWorkspace_LearningScheduleFilter(t *testing.T) {
 	insertScene := func(name string) (string, string) {
 		sceneID := uuid.NewString()
 		execOrFail(t, env, ctx, `
-			INSERT INTO scenarios (id, name, code, version, status, creator_id, difficulty)
-			VALUES ($1, $2, $3, '1.0', 'published', $4, 2)
-		`, sceneID, name, name, testhelper.TestOperatorID)
+			INSERT INTO scenarios (id, tenant_id, name, code, version, status, creator_id, difficulty)
+			VALUES ($1, $2, $3, $4, '1.0', 'published', $5, 2)
+		`, sceneID, testhelper.TestTenantID, name, name, testhelper.TestOperatorID)
 		taskID := uuid.NewString()
 		execOrFail(t, env, ctx, `
-			INSERT INTO scenario_tasks (id, scenario_id, name, code, task_type, difficulty)
-			VALUES ($1, $2, $3, $4, 'practice', 2)
-		`, taskID, sceneID, name+"-任务", name+"-task")
+			INSERT INTO scenario_tasks (id, tenant_id, scenario_id, name, code, task_type, difficulty)
+			VALUES ($1, $2, $3, $4, $5, 'practice', 2)
+		`, taskID, testhelper.TestTenantID, sceneID, name+"-任务", name+"-task")
 		return sceneID, taskID
 	}
 	scene1, task1 := insertScene("s1-排给班1")

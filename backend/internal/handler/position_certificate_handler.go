@@ -36,10 +36,14 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 		respondJSON(w, http.StatusOK, ListResponse[domain.PositionCertificate]{Items: []domain.PositionCertificate{}, Total: 0})
 		return
 	}
-	// 校验岗位归属当前租户，防止枚举他租户岗位证书
+	// 校验岗位归属当前租户，防止枚举他租户岗位证书；
+	// 先查后验分开处理，避免 verifyTenantOwnership 写 403 后再写 404 造成重复 WriteHeader
 	posTenant, err := h.Service.PositionTenantID(r.Context(), careerPositionID)
-	if err != nil || !verifyTenantOwnership(w, r, posTenant) {
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, posTenant) {
 		return
 	}
 	claims := middleware.CurrentUser(r)

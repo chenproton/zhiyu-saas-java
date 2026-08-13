@@ -153,6 +153,13 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 				options = append(options, opt)
 			}
 		}
+		// 扩展选项列：M-P（列索引 12-15，对应导出端第 5-8 个选项）
+		for idx := 12; idx <= 15 && idx < len(row); idx++ {
+			opt := strings.TrimSpace(row[idx])
+			if opt != "" {
+				options = append(options, opt)
+			}
+		}
 		answerRaw := col(row, 6)
 		analysis := nullableStr(col(row, 7))
 		difficulty := mapDifficulty(col(row, 8))

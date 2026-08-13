@@ -65,7 +65,11 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			batchName, _ = store.GetEvaluationBatchNameByID(ctx, h.Store.Q(), *batchID)
+			var err error
+			batchName, err = store.GetEvaluationBatchNameByID(ctx, h.Store.Q(), *batchID)
+			if err != nil {
+				slog.Warn("导出题库批次名查询失败", "batchId", *batchID, "error", err)
+			}
 		}
 
 		r := 3 + ri
