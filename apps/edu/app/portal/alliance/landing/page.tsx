@@ -43,7 +43,7 @@ import {
   ExpertCard,
   TalentBrandCard,
   EmployerBrandRow,
-  JobBrandCard,
+  JobBrandRow,
   MajorBrandCard,
   TeacherBrandCard,
   CultureBrandCard,
@@ -211,7 +211,10 @@ function HeroSchoolCard({ schoolInfo }: { schoolInfo: HeroSchool | null }) {
   const scale = schoolInfo.scaleData || {}
   const collegeCount = schoolInfo.secondaryColleges?.length ?? 0
   const hasScaleData =
-    scale.studentCount != null || scale.teacherCount != null || scale.majorCount != null || collegeCount > 0
+    scale.studentCount != null ||
+    scale.teacherCount != null ||
+    scale.majorCount != null ||
+    collegeCount > 0
 
   // 徽章：办学层次 / 办学性质 / 省市
   const badges = [
@@ -430,16 +433,14 @@ export default function AllianceLandingPage() {
     const limit: Record<string, number> = {
       talent: 2,
       employer: 3,
-      job: 3,
+      job: 4,
       major: 3,
-      teacher: 4,
+      teacher: 3,
       culture: 3,
     }
     const byType: Record<string, AllianceBrand[]> = {}
     BRAND_CATEGORIES.forEach((cat) => {
-      byType[cat.id] = featured
-        .filter((b) => b.brandType === cat.id)
-        .slice(0, limit[cat.id] ?? 3)
+      byType[cat.id] = featured.filter((b) => b.brandType === cat.id).slice(0, limit[cat.id] ?? 3)
     })
     return byType
   }, [data.brands])
@@ -463,7 +464,7 @@ export default function AllianceLandingPage() {
 
     const sections: React.ReactNode[] = []
 
-    // 人才品牌：横版旗舰卡 + 人才画像排名
+    // 人才品牌：横版旗舰卡 + 人才画像排行榜
     if (talentBrands.length > 0 || data.talentRanking.length > 0) {
       sections.push(
         <div key="talent">
@@ -473,37 +474,56 @@ export default function AllianceLandingPage() {
           />
           {data.talentRanking.length > 0 && (
             <div className={talentBrands.length > 0 ? 'mb-8' : ''}>
-              <div className="mb-4 flex items-center gap-2">
-                <Medal className="h-4 w-4 text-primary" />
-                <h4 className="text-sm font-semibold text-slate-800">{t('人才画像排名')}</h4>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {data.talentRanking.map((g) => (
                   <div
                     key={g.majorId}
-                    className="rounded-xl border border-slate-200 bg-white shadow-sm"
+                    className="rounded-2xl border border-[#e7e5e4] bg-white shadow-sm overflow-hidden"
                   >
-                    <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
-                      {g.majorName}
+                    <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3.5">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 shadow-sm">
+                        <Medal className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-slate-800 truncate">
+                        {g.majorName}
+                      </span>
+                      <span className="ml-auto shrink-0 text-[11px] font-medium tracking-wide text-slate-400">
+                        TOP {Math.min(g.students.length, 5)}
+                      </span>
                     </div>
                     <div className="divide-y divide-slate-50">
                       {g.students.slice(0, 5).map((s, idx) => (
-                        <div key={s.studentId} className="flex items-center gap-3 px-4 py-2">
+                        <div
+                          key={s.studentId}
+                          className={`flex items-center gap-3 px-5 py-3 ${idx === 0 ? 'bg-amber-50/50' : ''}`}
+                        >
                           <span
-                            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                              idx < 3
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-muted text-muted-foreground'
+                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                              idx === 0
+                                ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm'
+                                : idx === 1
+                                  ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-white'
+                                  : idx === 2
+                                    ? 'bg-gradient-to-br from-orange-300 to-orange-400 text-white'
+                                    : 'bg-slate-100 text-slate-500'
                             }`}
                           >
                             {idx + 1}
                           </span>
-                          <span className="truncate text-sm font-medium">{s.name}</span>
-                          <span className="ml-auto shrink-0 text-sm font-semibold text-primary">
-                            {s.avgAchievementRate == null
-                              ? '-'
-                              : `${s.avgAchievementRate.toFixed(1)}%`}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-800">{s.name}</p>
+                            <p className="truncate text-[11px] text-slate-400 mt-0.5">
+                              {s.className || '-'}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-sm font-bold text-primary">
+                              {s.avgAchievementRate == null
+                                ? '-'
+                                : `${s.avgAchievementRate.toFixed(1)}%`}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{t('达成率')}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -523,7 +543,7 @@ export default function AllianceLandingPage() {
       )
     }
 
-    // 雇主品牌（行式列表）+ 岗位品牌（紧凑文本卡）：双栏并置
+    // 雇主品牌（企业目录行）+ 岗位品牌（单行记录）：双栏并置，行置于容器卡内以分隔线隔开
     if (employerBrands.length > 0 || jobBrands.length > 0) {
       sections.push(
         <div
@@ -536,7 +556,7 @@ export default function AllianceLandingPage() {
                 title={t('雇主品牌')}
                 action={<ViewAllLink href="/portal/alliance/brands?type=employer" />}
               />
-              <div className="space-y-4">
+              <div className="rounded-2xl border border-[#e7e5e4] bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
                 {employerBrands.map((brand) => (
                   <EmployerBrandRow key={brand.id} brand={brand} />
                 ))}
@@ -549,9 +569,9 @@ export default function AllianceLandingPage() {
                 title={t('岗位品牌')}
                 action={<ViewAllLink href="/portal/alliance/brands?type=job" />}
               />
-              <div className="space-y-4">
+              <div className="rounded-2xl border border-[#e7e5e4] bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
                 {jobBrands.map((brand) => (
-                  <JobBrandCard key={brand.id} brand={brand} />
+                  <JobBrandRow key={brand.id} brand={brand} />
                 ))}
               </div>
             </div>
@@ -560,7 +580,7 @@ export default function AllianceLandingPage() {
       )
     }
 
-    // 专业品牌：高图覆盖卡
+    // 专业品牌：封面覆盖卡
     if (majorBrands.length > 0) {
       sections.push(
         <div key="major">
@@ -577,7 +597,7 @@ export default function AllianceLandingPage() {
       )
     }
 
-    // 师资品牌：头像交叠卡
+    // 师资品牌：头像交叠卡（三列宽卡）
     if (teacherBrands.length > 0) {
       sections.push(
         <div key="teacher">
@@ -585,7 +605,7 @@ export default function AllianceLandingPage() {
             title={t('师资品牌')}
             action={<ViewAllLink href="/portal/alliance/brands?type=teacher" />}
           />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {teacherBrands.map((brand) => (
               <TeacherBrandCard key={brand.id} brand={brand} />
             ))}

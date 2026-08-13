@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Briefcase, Calendar, Eye } from 'lucide-react'
+import { ArrowUpRight, Briefcase, Calendar, Eye } from 'lucide-react'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type {
   AllianceEnterprise,
@@ -420,106 +420,93 @@ export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
   )
 }
 
-/** 雇主品牌：横向列表行（左侧小图 + 名称/简介，行式堆叠） */
+/** 雇主品牌：企业目录行（缩略图 + 名称/简介，置于 landing 的容器卡内逐行排列） */
 export function EmployerBrandRow({ brand }: { brand: AllianceBrand }) {
   const t = useT()
   const tags = brandTags(brand)
   return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
-      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30 rounded-2xl overflow-hidden bg-white p-0 gap-0">
-        <div className="flex h-28">
-          <div className="w-28 relative overflow-hidden shrink-0">
-            {brand.coverImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={brand.coverImage}
-                alt={brand.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-            ) : (
-              <GradientPlaceholder
-                seed={brand.name}
-                label={brand.name}
-                className="w-full h-full text-2xl"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
-          </div>
-          <CardContent className="flex-1 p-4 flex flex-col justify-center min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <h4 className="font-semibold text-slate-900 text-sm truncate group-hover:text-primary transition-colors">
-                {brand.name}
-              </h4>
-              <BrandViewCount count={brand.viewCount} />
-            </div>
-            <p className="text-xs text-slate-500 line-clamp-2 mt-1.5 leading-relaxed">
-              {brand.description || t('暂无品牌描述')}
-            </p>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {tags.slice(0, 2).map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </div>
-      </Card>
-    </Link>
-  )
-}
-
-/** 岗位品牌：紧凑无图文本卡（图标 + 标题 + 标签，强调信息密度） */
-export function JobBrandCard({ brand }: { brand: AllianceBrand }) {
-  const t = useT()
-  const tags = brandTags(brand)
-  return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
-      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30 rounded-2xl bg-white h-full p-0 gap-0">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
-              <Briefcase className="h-4 w-4 text-primary" />
-            </div>
-            <BrandViewCount count={brand.viewCount} />
-          </div>
-          <h4 className="font-semibold text-slate-900 text-sm truncate group-hover:text-primary transition-colors">
+    <Link
+      href={`/portal/alliance/brands/${brand.id}`}
+      className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/[0.03]"
+    >
+      <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 shadow-sm">
+        {brand.coverImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={brand.coverImage} alt={brand.name} className="w-full h-full object-cover" />
+        ) : (
+          <GradientPlaceholder
+            seed={brand.name}
+            label={brand.name}
+            className="w-full h-full text-lg"
+          />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <h4 className="font-semibold text-sm text-slate-900 truncate group-hover:text-primary transition-colors">
             {brand.name}
           </h4>
-          <p className="text-xs text-slate-500 line-clamp-1 mt-1">
-            {brand.description || t('暂无品牌描述')}
-          </p>
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2.5">
-              {tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          {tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium shrink-0"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500 truncate mt-0.5">
+          {brand.description || t('暂无品牌描述')}
+        </p>
+      </div>
+      <div className="hidden sm:block">
+        <BrandViewCount count={brand.viewCount} />
+      </div>
+      <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
     </Link>
   )
 }
 
-/** 专业品牌：高图覆盖卡（名称/标签叠在封面渐变遮罩上） */
+/** 岗位品牌：单行记录（图标 + 名称 + 标签一行排开，置于 landing 的容器卡内） */
+export function JobBrandRow({ brand }: { brand: AllianceBrand }) {
+  const tags = brandTags(brand)
+  return (
+    <Link
+      href={`/portal/alliance/brands/${brand.id}`}
+      className="group flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-primary/[0.03]"
+    >
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
+        <Briefcase className="h-4 w-4 text-primary" />
+      </div>
+      <h4 className="font-medium text-sm text-slate-900 truncate group-hover:text-primary transition-colors">
+        {brand.name}
+      </h4>
+      <div className="hidden md:flex items-center gap-1 min-w-0">
+        {tags.slice(0, 2).map((tag) => (
+          <span
+            key={tag}
+            className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium whitespace-nowrap"
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+      <div className="ml-auto flex items-center gap-3 shrink-0">
+        <BrandViewCount count={brand.viewCount} />
+        <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+      </div>
+    </Link>
+  )
+}
+
+/** 专业品牌：封面覆盖卡（16/9 扁图，名称/标签叠在渐变遮罩上，高度与其他卡协调） */
 export function MajorBrandCard({ brand }: { brand: AllianceBrand }) {
   const t = useT()
   const tags = brandTags(brand)
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative aspect-[16/9] overflow-hidden">
           {brand.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -572,7 +559,7 @@ export function TeacherBrandCard({ brand }: { brand: AllianceBrand }) {
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="h-14 relative shrink-0">
+        <div className="h-16 relative shrink-0">
           {brand.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={brand.coverImage} alt={brand.name} className="w-full h-full object-cover" />
@@ -580,15 +567,15 @@ export function TeacherBrandCard({ brand }: { brand: AllianceBrand }) {
             <GradientPlaceholder seed={brand.name} className="w-full h-full" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2">
-            <Avatar className="h-12 w-12 ring-[3px] ring-white shadow-md">
-              <AvatarFallback className="text-base font-semibold bg-white text-slate-800">
+          <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
+            <Avatar className="h-14 w-14 ring-[3px] ring-white shadow-md">
+              <AvatarFallback className="text-lg font-semibold bg-white text-slate-800">
                 {getInitials(brand.name)}
               </AvatarFallback>
             </Avatar>
           </div>
         </div>
-        <CardContent className="pt-8 pb-4 px-3.5 flex-1 flex flex-col">
+        <CardContent className="pt-9 pb-5 px-4 flex-1 flex flex-col">
           <h4 className="font-semibold text-slate-900 text-center text-sm truncate group-hover:text-primary transition-colors">
             {brand.name}
           </h4>
