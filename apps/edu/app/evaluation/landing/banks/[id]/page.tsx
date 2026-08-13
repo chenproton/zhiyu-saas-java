@@ -8,7 +8,6 @@ import {
   FileText,
   Clock,
   Layers,
-  Search,
   HelpCircle,
   ListChecks,
   PenTool,
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { questionBankApi, questionApi, knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { fetchAllPages } from '@/lib/fetch-all'
@@ -27,6 +25,7 @@ import type { QuestionBank, Question, KnowledgePoint } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
 import { Footer } from '@/components/portal/footer'
 import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
+import { SearchInput } from '@/components/shared/search-input'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { formatDate } from '@/lib/format-utils'
@@ -412,17 +411,14 @@ export default function BankDetailPage() {
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    type="search"
-                    autoComplete="off"
-                    placeholder={t('搜索题目内容或知识点')}
-                    className="h-9 rounded-lg border-slate-200 bg-slate-50 pl-9 text-sm"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
+                <SearchInput
+                  wrapperClassName="w-full sm:w-64"
+                  iconClassName="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  placeholder={t('搜索题目内容或知识点')}
+                  inputClassName="h-9 rounded-lg border-slate-200 bg-slate-50 pl-9 text-sm"
+                  value={search}
+                  onChange={setSearch}
+                />
                 {questionTypes.length > 1 && (
                   <select
                     value={typeFilter}

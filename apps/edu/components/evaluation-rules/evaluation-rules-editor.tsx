@@ -56,6 +56,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
 import { fetchAllPages } from '@/lib/fetch-all'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SearchInput } from '@/components/shared/search-input'
 import { ExamActivationConfig } from '@/components/evaluation-rules/exam-activation-config'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig } from '@/lib/types/evaluation'
@@ -1112,17 +1113,13 @@ export function EvaluationRulesEditor({
           return (
             <div className="flex flex-col">
               <div className="flex items-center gap-3 mb-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="search"
-                    autoComplete="off"
-                    value={rdqSearch}
-                    onChange={(e) => setRdqSearch(e.target.value)}
-                    placeholder={t('搜索现场问答题名称、描述或适用专业...')}
-                    className="pl-9"
-                  />
-                </div>
+                <SearchInput
+                  wrapperClassName="flex-1"
+                  iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                  value={rdqSearch}
+                  onChange={setRdqSearch}
+                  placeholder={t('搜索现场问答题名称、描述或适用专业...')}
+                />
                 {!readOnly && (
                   <Button onClick={handleAddRdqLocal}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -1966,17 +1963,13 @@ export function EvaluationRulesEditor({
               <div className="border rounded-xl p-4">
                 <p className="text-sm font-medium mb-3">{t('选择已有试卷')}</p>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="search"
-                      autoComplete="off"
-                      value={paperSearch}
-                      onChange={(e) => setPaperSearch(e.target.value)}
-                      placeholder={t('搜索试卷...')}
-                      className="pl-9"
-                    />
-                  </div>
+                  <SearchInput
+                    wrapperClassName="flex-1"
+                    iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                    value={paperSearch}
+                    onChange={setPaperSearch}
+                    placeholder={t('搜索试卷...')}
+                  />
                 {!readOnly && (
                   <Button
                     variant="outline"
@@ -4634,17 +4627,13 @@ export function EvaluationRulesEditor({
             return (
               <div className="flex gap-4 flex-1 min-h-0 py-2 max-lg:flex-col">
                 <div className="w-full lg:w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                  <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="search"
-                      autoComplete="off"
-                      value={rubricKpSearch}
-                      onChange={(e) => setRubricKpSearch(e.target.value)}
-                      placeholder={t('搜索知识点名称、描述或编码...')}
-                      className="pl-9"
-                    />
-                  </div>
+                  <SearchInput
+                    wrapperClassName="mb-3"
+                    iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                    value={rubricKpSearch}
+                    onChange={setRubricKpSearch}
+                    placeholder={t('搜索知识点名称、描述或编码...')}
+                  />
                   <div className="flex-1 overflow-y-auto">
                     {isKpSearching && rubricKpSearchLoading && (
                       <div className="text-center text-gray-400 py-8">
@@ -4832,17 +4821,13 @@ export function EvaluationRulesEditor({
             return (
               <div className="flex gap-4 flex-1 min-h-0 py-2 max-lg:flex-col">
                 <div className="w-full lg:w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                  <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="search"
-                      autoComplete="off"
-                      value={rubricAbSearch}
-                      onChange={(e) => setRubricAbSearch(e.target.value)}
-                      placeholder={t('搜索能力点名称、描述或编码...')}
-                      className="pl-9"
-                    />
-                  </div>
+                  <SearchInput
+                    wrapperClassName="mb-3"
+                    iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                    value={rubricAbSearch}
+                    onChange={setRubricAbSearch}
+                    placeholder={t('搜索能力点名称、描述或编码...')}
+                  />
                   <div className="flex-1 overflow-y-auto">
                     {isAbSearching && rubricAbSearchLoading && (
                       <div className="text-center text-gray-400 py-8">

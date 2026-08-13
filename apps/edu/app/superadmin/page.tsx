@@ -36,7 +36,6 @@ import {
   Pencil,
   Power,
   Trash2,
-  Search,
   Loader2,
   Users,
   KeyRound,
@@ -66,6 +65,7 @@ import { DateInput } from '@/components/shared/date-input'
 import { LogTableShell } from '@/components/shared/log-table-shell'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
+import { SearchInput } from '@/components/shared/search-input'
 import {
   getToken,
   setToken,
@@ -1182,17 +1182,12 @@ export default function SuperAdminPage() {
       </div>
 
       <div className="mb-4 flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            autoComplete="off"
-            placeholder={t('搜索企业名称或标识...')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="flex-1 max-w-md"
+          placeholder={t('搜索企业名称或标识...')}
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
       </div>
 
       {/* 平台主题配置 */}

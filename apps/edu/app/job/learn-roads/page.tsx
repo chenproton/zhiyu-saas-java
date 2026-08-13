@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   Select,
@@ -25,7 +24,6 @@ import {
   ArrowUp,
   ArrowDown,
   Save,
-  Search,
   ArrowLeft,
   Pencil,
   FolderOpen,
@@ -54,6 +52,7 @@ import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { SearchInput } from '@/components/shared/search-input'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -718,17 +717,12 @@ export default function LearnRoadsPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                autoComplete="off"
-                placeholder={t('搜索岗位名称、简称...')}
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="flex-1"
+              placeholder={t('搜索岗位名称、简称...')}
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
             <Select
               value={filterStatus}
               onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}

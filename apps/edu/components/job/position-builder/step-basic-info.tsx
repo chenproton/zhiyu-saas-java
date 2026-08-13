@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { SearchInput } from '@/components/shared/search-input'
 import {
   Select,
   SelectContent,
@@ -1233,13 +1234,11 @@ export function StepBasicInfo({
             <DialogDescription>{t('选择与该岗位相关的职业资格证书')}</DialogDescription>
           </DialogHeader>
           <div className="flex-1 flex flex-col min-h-0">
-            <Input
-              type="search"
-              autoComplete="off"
+            <SearchInput
               placeholder={t('搜索证书名称或描述...')}
               value={certSearchQuery}
-              onChange={(e) => setCertSearchQuery(e.target.value)}
-              className="mb-4"
+              onChange={setCertSearchQuery}
+              inputClassName="mb-4"
             />
             <div className="flex-1 overflow-y-auto">
               {filteredCertificates.length === 0 ? (

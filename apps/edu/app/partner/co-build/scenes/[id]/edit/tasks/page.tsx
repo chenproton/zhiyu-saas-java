@@ -20,7 +20,6 @@ import {
   Copy,
   Scale,
   CheckCircle2,
-  Search,
   PieChart as PieChartIcon,
   Check,
   Award,
@@ -70,6 +69,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EvalMethodSelector } from '@/components/shared/eval-method-selector'
+import { SearchInput } from '@/components/shared/search-input'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { Task } from '@/lib/types/scene-mock'
@@ -1352,17 +1352,13 @@ export default function PartnerTasksEditPage() {
                   {t('引用（只读）')}
                 </Button>
               </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  value={cloneSearch}
-                  onChange={(e) => setCloneSearch(e.target.value)}
-                  placeholder={t('搜索任务名称、编码...')}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="w-64"
+                iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                value={cloneSearch}
+                onChange={setCloneSearch}
+                placeholder={t('搜索任务名称、编码...')}
+              />
             </div>
             <Tabs value={cloneTab} onValueChange={(v) => setCloneTab(v as 'my' | 'collab' | 'public')}>
               <TabsList className="grid w-full grid-cols-3">
@@ -1827,17 +1823,13 @@ function EditCardDialog({
         return (
           <div className="h-full flex flex-col">
             <div className="flex items-center gap-4 mb-4 shrink-0">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  value={abilitySearch}
-                  onChange={(e) => setAbilitySearch(e.target.value)}
-                  placeholder={t('搜索能力点名称、编码或描述...')}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="flex-1"
+                iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                value={abilitySearch}
+                onChange={setAbilitySearch}
+                placeholder={t('搜索能力点名称、编码或描述...')}
+              />
               <div className="text-sm text-gray-500 shrink-0">
                 {t('共 {n} 个关联能力点，已选 {m} 个', {
                   n: relatedAbilities.length,

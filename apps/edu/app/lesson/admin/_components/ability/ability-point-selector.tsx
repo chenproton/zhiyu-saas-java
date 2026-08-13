@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, Plus, X, Award } from 'lucide-react'
+import { Plus, X, Award } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface AbilityPointItem {
@@ -98,17 +99,14 @@ export function AbilityPointSelector({
           <DialogHeader>
             <DialogTitle>{t('关联能力点')}</DialogTitle>
           </DialogHeader>
-          <div className="relative my-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="search"
-              autoComplete="off"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t('搜索能力点名称、编码、描述')}
-              className="pl-9 text-sm h-9"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="my-2"
+            iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+            value={search}
+            onChange={setSearch}
+            placeholder={t('搜索能力点名称、编码、描述')}
+            inputClassName="pl-9 text-sm h-9"
+          />
           <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
             {filtered.length === 0 && !adding && (
               <p className="text-sm text-gray-400 text-center py-4">{t('未找到匹配的能力点')}</p>

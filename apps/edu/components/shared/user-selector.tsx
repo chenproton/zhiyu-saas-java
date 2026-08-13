@@ -5,14 +5,13 @@ import {
   Users as UsersIcon,
   Building,
   Briefcase,
-  Search,
   X,
   Check,
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OrgTreeNodeToggle } from './multi-org-node-picker'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -507,17 +506,13 @@ export function UserSelector({
             {/* Right: User List */}
             <div className="flex-1 flex flex-col min-w-0">
               <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    autoComplete="off"
-                    placeholder={expertView ? t('搜索企业专家...') : t('搜索用户...')}
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    className="pl-8 h-9"
-                  />
-                </div>
+                <SearchInput
+                  iconClassName="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                  placeholder={expertView ? t('搜索企业专家...') : t('搜索用户...')}
+                  value={userSearch}
+                  onChange={setUserSearch}
+                  inputClassName="pl-8 h-9"
+                />
               </div>
 
               <div className="flex-1 overflow-y-auto min-h-0">

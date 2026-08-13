@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  Check,
+import {Check,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -14,7 +13,6 @@ import {
   List,
   Plus,
   RotateCcw,
-  Search,
   Send,
   SlidersHorizontal,
   Trash2,
@@ -24,6 +22,7 @@ import {
   ArrowDownFromLine,
   ArrowUpFromLine,
   Archive,
+  Search,
 } from 'lucide-react'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +37,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -53,6 +51,8 @@ import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { UserSelector } from '@/components/shared/user-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import { useImportFlow } from '@/hooks/use-import-flow'
@@ -1439,17 +1439,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
         <CardContent className="flex flex-col gap-4 p-5">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex-1 min-w-[200px]">
-              <div className="flex items-center gap-2 w-full">
-                <Search className="h-4 w-4 text-slate-400" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  placeholder={t('搜索{entityLabel}名称', { entityLabel })}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 text-sm flex-1"
-                />
-              </div>
+              <SearchInput
+                placeholder={t('搜索{entityLabel}名称', { entityLabel })}
+                value={searchQuery}
+                onChange={setSearchQuery}
+                inputClassName="h-9 text-sm"
+              />
             </div>
             <div className="flex items-center gap-2">
               <Select

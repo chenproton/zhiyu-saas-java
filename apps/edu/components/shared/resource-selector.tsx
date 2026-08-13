@@ -4,7 +4,6 @@ import {
   FileText,
   Link2,
   Package,
-  Search,
   Upload,
   Video,
   Image as ImageIcon,
@@ -46,6 +45,7 @@ import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
+import { SearchInput } from '@/components/shared/search-input'
 import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types/library'
 import {
   resourceTypeAccept,
@@ -433,28 +433,23 @@ export function ResourceSelector({
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="search"
-              autoComplete="off"
-              value={resSearchName}
-              onChange={(e) => setResSearchName(e.target.value)}
-              placeholder={t('搜索资源名称...')}
-              className="pl-9 text-sm"
-            />
-          </div>
-          <div className="relative flex-1">
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="search"
-              autoComplete="off"
-              value={resSearchProvider}
-              onChange={(e) => setResSearchProvider(e.target.value)}
-              placeholder={t('搜索资源提供者...')}
-              className="pl-9 text-sm"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="flex-1"
+            iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+            value={resSearchName}
+            onChange={setResSearchName}
+            placeholder={t('搜索资源名称...')}
+            inputClassName="pl-9 text-sm"
+          />
+          <SearchInput
+            wrapperClassName="flex-1"
+            icon={<Users className="h-4 w-4" />}
+            iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+            value={resSearchProvider}
+            onChange={setResSearchProvider}
+            placeholder={t('搜索资源提供者...')}
+            inputClassName="pl-9 text-sm"
+          />
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
             <RotateCcw className="h-3.5 w-3.5 mr-1" />
             {t('重置')}

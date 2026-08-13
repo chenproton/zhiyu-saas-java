@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Pencil, Plus, Trash2, Search, Loader2, Briefcase, UserRound } from 'lucide-react'
+import { Pencil, Plus, Trash2, Loader2, Briefcase, UserRound } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
@@ -38,6 +38,9 @@ import {
   normalizeEnterpriseInfo,
   type EnterpriseInfo,
 } from '@/components/alliance/independent-enterprise-form'
+import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand, CareerPosition } from '@/lib/types'
@@ -581,17 +584,11 @@ function PositionPickerDialog({
             <DialogTitle>{t('引用职业岗位库')}</DialogTitle>
             <DialogDescription>{t('从已有岗位库中选择岗位关联到雇主品牌')}</DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              autoComplete="off"
-              placeholder={t('搜索岗位名称...')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            placeholder={t('搜索岗位名称...')}
+            value={search}
+            onChange={setSearch}
+          />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -754,17 +751,11 @@ function StudentPickerDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                autoComplete="off"
-                placeholder={t('搜索学生姓名或学号...')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput
+              placeholder={t('搜索学生姓名或学号...')}
+              value={search}
+              onChange={setSearch}
+            />
           </div>
           <div className="max-h-80 space-y-1 overflow-y-auto py-2">
             {loading ? (

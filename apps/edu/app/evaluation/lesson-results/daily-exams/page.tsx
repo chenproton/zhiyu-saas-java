@@ -8,11 +8,9 @@ import {
   ClipboardList,
   Eye,
   PenLine,
-  Search,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { examUsageApi, examResultApi } from '@/lib/api'
 import type { ExamResult, ExamUsage } from '@/lib/types'
@@ -25,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface UsageStats {
@@ -121,17 +120,14 @@ export default function DailyExamsPage() {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-[1600px] mx-auto w-full">
         <div className="w-full md:w-80 shrink-0 bg-white border-r border-gray-200 flex flex-col max-h-[50vh] md:max-h-none">
           <div className="p-4 border-b border-gray-100">
-            <div className="relative w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                type="search"
-                autoComplete="off"
-                placeholder={t('搜索考试名称...')}
-                className="pl-9 text-sm"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="w-full"
+              iconClassName="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
+              placeholder={t('搜索考试名称...')}
+              inputClassName="pl-9 text-sm"
+              value={search}
+              onChange={setSearch}
+            />
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {filteredUsages.map((u) => {

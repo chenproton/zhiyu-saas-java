@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft,
-  Search,
   GraduationCap,
   User,
   Award,
@@ -15,7 +14,6 @@ import {
   Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -30,6 +28,7 @@ import { examUsageApi, examResultApi } from '@/lib/api'
 import { useMajorMap } from '@/lib/use-resource-maps'
 import type { ExamUsage } from '@/lib/types'
 import { formatDateTime } from '@/lib/format-utils'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface ExamStudentResult {
@@ -216,17 +215,12 @@ function ExamResultsContent() {
 
       {/* 筛选栏 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            autoComplete="off"
-            placeholder={t('搜索学生姓名...')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="flex-1 sm:max-w-xs"
+          placeholder={t('搜索学生姓名...')}
+          value={search}
+          onChange={setSearch}
+        />
         <div className="flex gap-2">
           <Button
             variant={passFilter === 'all' ? 'default' : 'outline'}

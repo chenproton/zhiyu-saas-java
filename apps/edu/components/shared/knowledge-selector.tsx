@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Lightbulb, Plus, Search, X, Check, Loader2 } from 'lucide-react'
+import { Lightbulb, Plus, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { SearchInput } from '@/components/shared/search-input'
 import {
   Select,
   SelectContent,
@@ -480,17 +481,13 @@ export function KnowledgeSelector({
       {/* Left: Search Results */}
       <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
         <div className="flex items-center gap-3 mb-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="search"
-              autoComplete="off"
-              value={kpSearch}
-              onChange={(e) => setKpSearch(e.target.value)}
-              placeholder={t('搜索知识点名称、描述或编码...')}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="flex-1"
+            iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+            value={kpSearch}
+            onChange={setKpSearch}
+            placeholder={t('搜索知识点名称、描述或编码...')}
+          />
           {!dataSource?.readOnly && (
             <Button onClick={openAddKp}>
               <Plus className="h-4 w-4 mr-1" />
@@ -941,17 +938,13 @@ export function KnowledgeSelector({
           </DialogHeader>
           <div className="flex gap-4 flex-1 min-h-0 py-4">
             <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  value={glSearch}
-                  onChange={(e) => setGlSearch(e.target.value)}
-                  placeholder={t('搜索颗粒课名称或编码...')}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="mb-3"
+                iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                value={glSearch}
+                onChange={setGlSearch}
+                placeholder={t('搜索颗粒课名称或编码...')}
+              />
               <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                 {glFiltered.map((gl) => {
                   const isSelected = glSelectedIds.includes(gl.id)

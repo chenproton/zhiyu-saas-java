@@ -12,14 +12,12 @@ import {
   FileText,
   GraduationCap,
   PenLine,
-  Search,
   Users,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { courseApi, courseNodeApi, userManagementApi, nodeEvaluationResultApi } from '@/lib/api'
 import type { Course } from '@/lib/types'
@@ -27,6 +25,7 @@ import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel, hybridMethodCompare } from '@/lib/hybrid-eval'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface NodeStudent {
@@ -231,17 +230,14 @@ function LessonResultsPageContent() {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-[1600px] mx-auto w-full">
         <div className="w-full md:w-80 shrink-0 bg-white border-r border-gray-200 flex flex-col max-h-[50vh] md:max-h-none">
           <div className="p-4 border-b border-gray-100">
-            <div className="relative w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                type="search"
-                autoComplete="off"
-                placeholder={t('搜索课程...')}
-                className="pl-9 text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="w-full"
+              iconClassName="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
+              placeholder={t('搜索课程...')}
+              inputClassName="pl-9 text-sm"
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {filteredCourses.map((c) => (

@@ -4,7 +4,7 @@ import { useRef } from 'react'
 import { ChevronRight, Filter, Search, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Footer } from '@/components/portal/footer'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -219,26 +219,23 @@ export function LandingShell({
                 </div>
               )}
               {keyword !== undefined && (
-                <div className="relative w-full sm:w-[340px]">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
-                  <Input
-                    type="search"
-                    autoComplete="off"
-                    value={keyword}
-                    onChange={(e) => onKeywordChange?.(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') onSearch?.()
-                    }}
-                    placeholder={searchPlaceholder}
-                    className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 focus:bg-white transition-all"
-                  />
-                  <Button
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
-                    onClick={onSearch}
-                  >
-                    {t('搜索')}
-                  </Button>
-                </div>
+                <SearchInput
+                  wrapperClassName="w-full sm:w-[340px]"
+                  iconClassName="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]"
+                  value={keyword}
+                  onChange={(v) => onKeywordChange?.(v)}
+                  onSearch={onSearch}
+                  placeholder={searchPlaceholder}
+                  inputClassName="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 focus:bg-white transition-all"
+                  searchButton={
+                    <Button
+                      className="rounded-[10px] px-5 h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
+                      onClick={onSearch}
+                    >
+                      {t('搜索')}
+                    </Button>
+                  }
+                />
               )}
             </div>
           )}

@@ -8,7 +8,6 @@ import {
   LayoutGrid,
   MessageCircle,
   Plus,
-  Search,
   Send,
   Sparkles,
   X,
@@ -16,9 +15,9 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SearchInput } from '@/components/shared/search-input'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
@@ -1174,23 +1173,20 @@ export function YiKnowAssistant() {
               </div>
             )}
             <div className="p-2 pt-3 bg-background/60 border-t flex items-center gap-2">
-              <div className="relative flex-1 group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 group-focus-within:text-primary transition-colors duration-200" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  placeholder={t('搜索资源或提问...')}
-                  className="pl-9 h-9 text-sm bg-muted/40 border-muted-foreground/20 focus-visible:bg-background transition-all duration-200"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSend()
-                    }
-                  }}
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="flex-1 group"
+                iconClassName="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 group-focus-within:text-primary transition-colors duration-200"
+                placeholder={t('搜索资源或提问...')}
+                inputClassName="pl-9 h-9 text-sm bg-muted/40 border-muted-foreground/20 focus-visible:bg-background transition-all duration-200"
+                value={inputValue}
+                onChange={setInputValue}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+              />
               <Button
                 size="icon"
                 className="h-9 w-9 shrink-0 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-sm transition-all duration-200 active:scale-95"

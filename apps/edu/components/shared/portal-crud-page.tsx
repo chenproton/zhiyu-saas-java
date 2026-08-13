@@ -20,11 +20,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Search, Plus, Loader2, Upload } from 'lucide-react'
+import { Plus, Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
 import { useToast } from '@zhiyu/ui'
+import { SearchInput } from '@/components/shared/search-input'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import { importExportApi } from '@/lib/api'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
@@ -342,17 +342,12 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
 
       {search && searchPlaceholder && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              autoComplete="off"
-              placeholder={searchPlaceholder}
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="w-full sm:max-w-md"
+            placeholder={searchPlaceholder}
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
           {searchRight}
         </div>
       )}

@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Search,
   Briefcase,
   CheckCircle2,
   FileEdit,
@@ -14,7 +13,6 @@ import {
   Undo2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -24,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@zhiyu/ui'
+import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -164,17 +163,12 @@ export default function JobAbilityPage() {
 
       {/* 搜索栏 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            autoComplete="off"
-            placeholder={t('搜索岗位名称或编码...')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="flex-1 sm:max-w-xs"
+          placeholder={t('搜索岗位名称或编码...')}
+          value={search}
+          onChange={setSearch}
+        />
       </div>
 
       {/* 岗位认证列表 */}

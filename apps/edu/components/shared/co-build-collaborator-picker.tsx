@@ -3,9 +3,8 @@
 // 共建岗位编辑页共建人选择器（partner 端）：数据源为合作学校共建人候选接口
 // （学校教师 + 企业专家），保存值为可写回 collaborators 的 users.id 数组。
 import { useMemo, useState } from 'react'
-import { Briefcase, GraduationCap, Search, X, Check, Loader2 } from 'lucide-react'
+import { Briefcase, GraduationCap, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -18,6 +17,7 @@ import {
 import { partnerCobuildSchoolApi } from '@/lib/api'
 import type { CoBuildUserOption } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
+import { SearchInput } from '@/components/shared/search-input'
 
 interface CoBuildCollaboratorPickerProps {
   schoolTenantId: string
@@ -133,17 +133,13 @@ export function CoBuildCollaboratorPicker({
               {t('可从合作学校的教师与企业专家中选择，共同维护该岗位。')}
             </DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              autoComplete="off"
-              className="pl-8"
-              placeholder={t('搜索姓名...')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchInput
+            iconClassName="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+            inputClassName="pl-8"
+            placeholder={t('搜索姓名...')}
+            value={search}
+            onChange={setSearch}
+          />
           <div className="max-h-72 space-y-4 overflow-y-auto pr-1">
             {loading && (
               <div className="flex items-center justify-center py-6 text-muted-foreground">

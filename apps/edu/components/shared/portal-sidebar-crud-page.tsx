@@ -18,7 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -45,8 +44,9 @@ import { useToast } from '@zhiyu/ui'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import type { Organization, OrgType } from '@/lib/types/backend'
-import { Search, Upload, Download, FolderTree, Loader2, ChevronDown } from 'lucide-react'
+import { Upload, Download, FolderTree, Loader2, ChevronDown } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
+import { SearchInput } from '@/components/shared/search-input'
 
 export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?: string }> {
   title: string
@@ -397,17 +397,12 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         <div className="flex-1 space-y-4 min-w-0">
           <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="relative w-full sm:flex-1 sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  placeholder={searchPlaceholder}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="w-full sm:flex-1 sm:max-w-sm"
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={setSearchTerm}
+              />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-32">
                   <SelectValue />

@@ -10,11 +10,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ChevronDown, ChevronRight, ChevronsUpDown, Search, Loader2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { SearchInput } from '@/components/shared/search-input'
 import { useOrgTree } from '@/hooks/use-org-tree'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { typeMetaFor } from '@/lib/org-type-icons'
@@ -231,25 +231,22 @@ export function OrgNodePicker({
                 : t('在组织架构树中选择节点，支持按名称搜索')}
             </DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              autoComplete="off"
-              placeholder={t('搜索节点名称...')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-8"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            placeholder={t('搜索节点名称...')}
+            value={search}
+            onChange={setSearch}
+            inputClassName="pl-9 pr-8"
+            searchButton={
+              search ? (
+                <button
+                  onClick={() => setSearch('')}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : undefined
+            }
+          />
           <ScrollArea className="h-[400px] rounded-md border p-2">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">

@@ -11,7 +11,6 @@ import {
   FileText,
   GraduationCap,
   PenLine,
-  Search,
   Users,
   Loader2,
 } from 'lucide-react'
@@ -26,7 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { cn } from '@/lib/utils'
 import { portalApi, courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
@@ -223,17 +222,14 @@ export function HybridGradingDialog({
           {/* Left sidebar — Course list */}
           <div className="w-64 shrink-0 bg-white border-r border-gray-200 flex flex-col">
             <div className="p-3 border-b border-gray-100">
-              <div className="relative w-full">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  placeholder={t('搜索课程...')}
-                  className="pl-9 text-sm"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="w-full"
+                iconClassName="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
+                placeholder={t('搜索课程...')}
+                inputClassName="pl-9 text-sm"
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
               {filteredPlans.map((plan) => {

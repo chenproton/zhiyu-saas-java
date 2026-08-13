@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -16,7 +15,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import {
-  Search,
   GraduationCap,
   Eye,
   RotateCcw,
@@ -27,6 +25,7 @@ import {
 import { StatusBadge } from '@/components/shared/status-badge'
 import { useT } from '@/lib/i18n/locale-provider'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { SearchInput } from '@/components/shared/search-input'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 export interface ArchiveColumn<T> {
@@ -201,17 +200,12 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
 
         <div className="flex-1 min-w-0 space-y-4">
           <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                autoComplete="off"
-                placeholder={t(searchPlaceholder)}
-                className="pl-9"
-                value={searchValue}
-                onChange={(e) => onSearchChange(e.target.value)}
-              />
-            </div>
+            <SearchInput
+              iconClassName="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+              placeholder={t(searchPlaceholder)}
+              value={searchValue}
+              onChange={onSearchChange}
+            />
           </div>
 
           {hasBatchOps && selectedIds.length > 0 && (

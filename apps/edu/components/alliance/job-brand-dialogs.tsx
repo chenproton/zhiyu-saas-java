@@ -11,10 +11,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Loader2, Search } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
+import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
   convertCareerPositionToPosition,
@@ -124,17 +126,11 @@ export function JobBrandRefDialog({
             {t('从岗位库中选择教学岗位，关联为岗位品牌（仅关联，岗位内容不可修改）')}
           </DialogDescription>
         </DialogHeader>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            autoComplete="off"
-            placeholder={t('搜索岗位名称...')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          placeholder={t('搜索岗位名称...')}
+          value={search}
+          onChange={setSearch}
+        />
         <div className="max-h-80 space-y-2 overflow-y-auto py-2">
           {loading ? (
             <div className="flex items-center justify-center py-8">
