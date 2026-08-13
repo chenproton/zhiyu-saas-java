@@ -852,6 +852,12 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
           href: '/affairs/scheduling',
           matchers: ['/affairs/scheduling'],
         },
+        {
+          id: 'student-portraits',
+          label: '学生画像',
+          href: '/affairs/student-portraits',
+          matchers: ['/affairs/student-portraits'],
+        },
       ],
     },
     {
