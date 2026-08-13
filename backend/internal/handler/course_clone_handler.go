@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -33,8 +32,7 @@ func (h *CourseCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var req CloneCourseRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 

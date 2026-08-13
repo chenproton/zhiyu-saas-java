@@ -351,14 +351,17 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims.JTI != "" {
-		if v, loaded := h.usedNonces.Load(claims.JTI); loaded {
+		now := time.Now()
+		// LoadOrStore 原子占位：并发重放同一 JTI 时只有一个能拿到 loaded=false，
+		// 其余在 2 分钟窗口内被拒，消除 Load→Store 之间的双签发竞态
+		if v, loaded := h.usedNonces.LoadOrStore(claims.JTI, now); loaded {
 			if t, ok := v.(time.Time); ok && time.Since(t) < 2*time.Minute {
 				respondError(w, http.StatusUnauthorized, "预授权令牌已被使用")
 				return
 			}
-			h.usedNonces.Delete(claims.JTI)
+			// 窗口过期：刷新时间戳后放行
+			h.usedNonces.Store(claims.JTI, now)
 		}
-		h.usedNonces.Store(claims.JTI, time.Now())
 	}
 
 	var targetUserID string
