@@ -99,7 +99,6 @@ func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	overwrite := importOverwriteParam(r)
 	termID := strings.TrimSpace(r.URL.Query().Get("termId"))
 
 	xlsx, sheets, err := parseUploadedExcel(r)
@@ -115,7 +114,7 @@ func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	result := h.importFromCourseList(r.Context(), xlsx, tenantID, termID, overwrite)
+	result := h.importFromCourseList(r.Context(), xlsx, tenantID, termID)
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created": result.Created, "failed": result.Failed, "skipped": result.Skipped,
 		"entity": "排课", "errors": result.Errors, "sheets": sheets,
@@ -187,7 +186,8 @@ func normalizePeriods(periods []string) []string {
 // 模板列：课程名称 | 类型 | 起始周 | 结束周 | 周次模式 | 节次(整周矩阵) | 教师 | 场地 | 班级。
 // termID 为目标学期（可为空）：为空时从第一个有效课程匹配教学计划推断；
 // 非空时校验租户拥有该学期，并按该学期匹配教学计划条目。
-func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *excelize.File, tenantID, termID string, overwrite bool) *scheduleImportResult {
+// 导入语义固定为「清空草稿后重排」：不再接收 overwrite 参数（此前参数读取后从未使用）。
+func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *excelize.File, tenantID, termID string) *scheduleImportResult {
 	result := &scheduleImportResult{}
 	rows, err := xlsx.GetRows("课程列表")
 	if err != nil {
@@ -222,8 +222,15 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		case "课程", "":
 			entryType = "traditional"
 		}
-		startWeek, _ := strconv.Atoi(strings.TrimSpace(col(row, 2)))
-		endWeek, _ := strconv.Atoi(strings.TrimSpace(col(row, 3)))
+		startWeek, errS := strconv.Atoi(strings.TrimSpace(col(row, 2)))
+		endWeek, errE := strconv.Atoi(strings.TrimSpace(col(row, 3)))
+		if errS != nil || errE != nil || startWeek <= 0 || endWeek < startWeek {
+			msg := fmt.Sprintf("第%d行: 周次区间无效（%q - %q）", i+1, strings.TrimSpace(col(row, 2)), strings.TrimSpace(col(row, 3)))
+			result.Errors = append(result.Errors, msg)
+			result.Failed++
+			slog.Info("[import/schedule] " + msg)
+			continue
+		}
 		weekPattern := strings.TrimSpace(col(row, 4))
 		if weekPattern == "" {
 			weekPattern = "all"

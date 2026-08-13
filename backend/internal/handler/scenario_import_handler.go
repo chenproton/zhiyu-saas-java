@@ -149,8 +149,13 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 					result.Errors = append(result.Errors, fmt.Sprintf("场景[%s]更新失败: %v", name, err))
 					continue
 				}
-				// 覆盖时清空原有任务及任务相关数据，随后根据新文件内容重新写入
-				_ = store.ClearScenarioImportTasks(ctx, h.Store.Q(), existingID)
+				// 覆盖时清空原有任务及任务相关数据，随后根据新文件内容重新写入；
+				// 清空失败计入失败行，避免旧任务残留与后续 INSERT 产生重复 task code
+				if err := store.ClearScenarioImportTasks(ctx, h.Store.Q(), existingID); err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("场景[%s]清空旧任务失败: %v", name, err))
+					continue
+				}
 				scenarioMap[name] = existingID
 				continue
 			}

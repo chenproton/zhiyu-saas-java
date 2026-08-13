@@ -147,7 +147,6 @@ func TestRole_Update(t *testing.T) {
 func TestRole_Delete(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
-	ctx := context.Background()
 	schoolAdminToken := env.NewTokenWithIdentity("school-admin-001", testhelper.TestTenantID, domain.UserRoleSchool, nil, "school_admin")
 	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
 		return env.DoWithToken(method, path, body, schoolAdminToken)
@@ -169,7 +168,6 @@ func TestRole_Delete(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	_ = ctx
 	wg := do("GET", "/api/v1/roles/"+created.ID, nil)
 	if wg.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 after delete, got %d", wg.Code)
