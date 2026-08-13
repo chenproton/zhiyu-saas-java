@@ -284,7 +284,7 @@ export default function StudentPortraitsPage() {
           if (!open) setPreviewStudent(null)
         }}
       >
-        <DialogContent size="xl" className="p-0 overflow-hidden">
+        <DialogContent size="full" className="p-0">
           <DialogHeader className="px-6 pt-5 pb-3">
             <DialogTitle>
               {previewStudent ? `${previewStudent.name}（${previewStudent.loginAccount}）` : ''}
