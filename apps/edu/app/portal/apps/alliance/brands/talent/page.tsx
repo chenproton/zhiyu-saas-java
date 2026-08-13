@@ -80,8 +80,9 @@ export default function AllianceTalentBrandPage() {
             }
             importConfig={{
               importType: 'alliance-brands',
-              entityLabel: t('品牌内容'),
-              templateFileName: t('品牌内容批量导入模板.xlsx'),
+              entityLabel: t('就业案例'),
+              templateFileName: t('人才品牌批量导入模板.xlsx'),
+              extraQuery: { brandType: 'talent' },
             }}
             colSpan={5}
             renderTableHeader={() => (

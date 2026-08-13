@@ -63,8 +63,9 @@ export default function AllianceCultureBrandPage() {
       }
       importConfig={{
         importType: 'alliance-brands',
-        entityLabel: t('品牌内容'),
-        templateFileName: t('品牌内容批量导入模板.xlsx'),
+        entityLabel: brandLabel,
+        templateFileName: t('文化思政品牌批量导入模板.xlsx'),
+        extraQuery: { brandType: 'culture' },
       }}
       colSpan={5}
       renderTableHeader={() => (

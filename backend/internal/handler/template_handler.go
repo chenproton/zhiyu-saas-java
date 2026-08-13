@@ -1335,7 +1335,8 @@ func (h *TemplateHandler) ServeBrandTemplate(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	ctx := r.Context()
-	f := h.generateBrandTemplate(ctx, tenantID)
+	brandType := r.URL.Query().Get("brandType")
+	f := h.generateBrandTemplate(ctx, tenantID, brandType)
 	writeExcel(w, r, f, "品牌内容批量导入模板.xlsx")
 }
 
@@ -1493,7 +1494,109 @@ func (h *TemplateHandler) generatePermissionTemplate(ctx context.Context, tenant
 	return f
 }
 
-func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID string) *excelize.File {
+// generateBrandTemplate 品牌导入模板：brandType 为空时输出通用模板（含品牌类型列，向后兼容），
+// 传入 brandType 时输出按页面类型化模板（major 类型预填系统全部专业）。
+func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID, brandType string) *excelize.File {
+	switch brandType {
+	case "talent", "employer", "job", "major", "teacher", "culture":
+		return h.generateBrandTypeTemplate(ctx, tenantID, brandType)
+	default:
+		return h.generateGenericBrandTemplate(ctx, tenantID)
+	}
+}
+
+// brandTemplateConfig 单类型品牌模板配置（表头/列宽/填写说明）。
+type brandTemplateConfig struct {
+	headers []string
+	widths  []float64
+	note    string
+}
+
+var brandTypeTemplates = map[string]brandTemplateConfig{
+	"talent": {
+		headers: []string{"案例名称 *", "描述", "状态", "是否公开", "是否推荐", "封面图URL", "关联学生名称", "关联专业名称"},
+		widths:  []float64{28, 48, 18, 14, 14, 36, 24, 24},
+		note:    "填写说明：\n* 必填列。\n案例名称：就业案例名称\n描述：文本，选填\n状态：草稿 / 已发布 / 已归档（或 draft / published / archived），默认为 草稿\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否\n封面图URL：图片地址，选填\n关联学生名称：学生姓名，选填，需与系统中学生姓名一致（按名称自动关联，填写但未命中该行报错）\n关联专业名称：专业名称，选填，需与系统专业库名称一致（按名称自动关联）",
+	},
+	"employer": {
+		headers: []string{"企业类型 *", "企业名称 *", "是否公开", "是否推荐", "统一社会信用代码", "所属行业", "所在地区", "成立年份", "企业规模（人数）", "关联二级学院", "企业简介", "联系人", "联系电话", "联系邮箱", "详细地址", "企业Logo URL", "企业主页封面 URL", "企业风采照片URL", "企业营业执照URL", "企业知识产权URL", "企业荣誉资质URL"},
+		widths:  []float64{18, 30, 14, 14, 26, 20, 16, 14, 16, 28, 48, 16, 18, 24, 28, 32, 32, 32, 32, 32, 32},
+		note:    "填写说明：\n* 必填列。\n企业类型：合作企业 / 独立雇主企业（或 enterprise / independent）\n合作企业：只需填写企业名称，需与「合作企业库」中企业名称一致（按名称自动关联，未命中该行报错），其余资料列无需填写\n独立雇主企业：企业名称 + 资料列按需填写，自动创建独立雇主品牌\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否\n成立年份 / 企业规模：数字\n关联二级学院 / 企业风采 / 证照 / 资质照片URL：多值用中文分号「；」分隔",
+	},
+	"job": {
+		headers: []string{"岗位类型 *", "岗位名称 *", "是否公开", "是否推荐", "薪资下限(K)", "薪资上限(K)", "面向专业", "所属行业", "岗位简介", "任职要求", "职业发展路径", "岗位职责"},
+		widths:  []float64{18, 30, 14, 14, 16, 16, 30, 20, 48, 36, 36, 48},
+		note:    "填写说明：\n* 必填列。\n岗位类型：教学岗位 / 企业岗位（或 teaching / enterprise）\n教学岗位：只需填写岗位名称，需与「职业岗位库」中教学岗位名称一致（按名称自动关联，未命中该行报错）\n企业岗位：填写岗位名称 + 资料列（薪资/面向专业/简介等），自动创建品牌私有企业岗位\n薪资下限 / 上限：数字（单位 K）\n面向专业 / 任职要求：多值用中文分号「；」分隔，面向专业按名称匹配系统专业库（未命中的名称忽略并提示）\n岗位职责：每行一条「职责名|职责描述」，多条用换行分隔\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否",
+	},
+	"major": {
+		headers: []string{"专业名称", "专业代码", "是否公开", "是否推荐", "品牌介绍", "封面图URL", "关联岗位品牌名称", "关联合作企业名称", "关联合作成果名称", "关联特色课程名称"},
+		widths:  []float64{28, 18, 14, 14, 48, 36, 32, 36, 36, 32},
+		note:    "填写说明：\n专业名称 / 专业代码：已预填系统全部专业，请勿修改或新增（以系统专业为基础，不会新增专业）\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否\n品牌介绍 / 封面图URL：选填\n关联列：多值用中文分号「；」分隔，按名称自动关联，未命中的名称忽略并提示\n关联岗位品牌名称：岗位品牌中的品牌名称\n关联合作企业名称：合作企业库企业名称或独立雇主品牌名称\n关联合作成果名称：合作成果标题\n关联特色课程名称：课程名称\n未填写任何内容的行将跳过，不创建品牌",
+	},
+	"teacher": {
+		headers: []string{"师资类型 *", "关联教师名称", "关联专家名称", "是否公开", "是否推荐", "性别", "年龄", "所在城市", "职称", "职务", "从业年限", "学历", "所属行业", "擅长领域", "个人简介", "工作经历", "头像URL"},
+		widths:  []float64{18, 24, 24, 14, 14, 12, 12, 16, 20, 20, 14, 18, 20, 32, 48, 48, 32},
+		note:    "填写说明：\n* 必填列。\n师资类型：校本师资 / 企业专家（或 school / expert）\n校本师资：填写「关联教师名称」（系统教师姓名，按名称自动关联，未命中该行报错）+ 资料补充列（性别/职称/简介等），自动创建师资展示资料\n企业专家：只需填写「关联专家名称」（企业专家库姓名，按名称自动关联，未命中该行报错）\n性别：男 / 女\n年龄 / 从业年限：数字\n擅长领域：多值用中文分号「；」分隔\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否",
+	},
+	"culture": {
+		headers: []string{"名称 *", "描述", "状态", "是否公开", "是否推荐", "封面图URL", "关联专业名称"},
+		widths:  []float64{28, 48, 18, 14, 14, 36, 24},
+		note:    "填写说明：\n* 必填列。\n名称：品牌名称\n描述：文本，选填\n状态：草稿 / 已发布 / 已归档（或 draft / published / archived），默认为 草稿\n是否公开 / 是否推荐：是 / 否（或 true / false），默认 否\n封面图URL：图片地址，选填\n关联专业名称：专业名称，选填，需与系统专业库名称一致（按名称自动关联）",
+	},
+}
+
+// generateBrandTypeTemplate 按类型生成品牌模板（major 类型预填系统专业列表）。
+func (h *TemplateHandler) generateBrandTypeTemplate(ctx context.Context, tenantID, brandType string) *excelize.File {
+	cfg, ok := brandTypeTemplates[brandType]
+	if !ok {
+		return h.generateGenericBrandTemplate(ctx, tenantID)
+	}
+	f := excelize.NewFile()
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	s1, _ := f.NewSheet("品牌内容")
+	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+	setA1("品牌内容", len(cfg.headers), cfg.note)
+	for ci, hdr := range cfg.headers {
+		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
+		f.SetCellValue("品牌内容", cell, hdr)
+		f.SetCellStyle("品牌内容", cell, cell, hdrStyle)
+		f.SetColWidth("品牌内容", colName(ci+1), colName(ci+1), cfg.widths[ci])
+	}
+	f.SetRowHeight("品牌内容", 2, 28)
+	f.SetPanes("品牌内容", &excelize.Panes{Freeze: true, YSplit: 2})
+	lastCol, _ := excelize.CoordinatesToCellName(len(cfg.headers), 2)
+	f.AutoFilter("品牌内容", "A2:"+lastCol, []excelize.AutoFilterOptions{})
+
+	// 专业品牌：预填系统全部专业（名称+代码），导入不新增专业
+	if brandType == "major" && h.Store != nil {
+		majors, err := h.Store.ListAllMajors(ctx, tenantID)
+		if err == nil {
+			for i, m := range majors {
+				row := i + 3
+				nameCell, _ := excelize.CoordinatesToCellName(1, row)
+				codeCell, _ := excelize.CoordinatesToCellName(2, row)
+				f.SetCellValue("品牌内容", nameCell, m.Name)
+				f.SetCellValue("品牌内容", codeCell, m.Code)
+			}
+		}
+	}
+	return f
+}
+
+func (h *TemplateHandler) generateGenericBrandTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)

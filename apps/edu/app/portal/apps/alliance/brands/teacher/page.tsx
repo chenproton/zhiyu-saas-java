@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
@@ -12,13 +12,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Trash2, Loader2, UserRound, Pencil } from 'lucide-react'
+import { Trash2, Loader2, UserRound, Pencil, Upload } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceExpertApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useImportFlow } from '@/hooks/use-import-flow'
+import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
+import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { PartnerExpertForm, emptyPartnerExpertForm, type PartnerExpertFormState } from '@/app/partner/experts/_components/expert-form'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand, AllianceExpert } from '@/lib/types'
@@ -73,8 +76,58 @@ export default function AllianceTeacherBrandPage() {
     }
   }
 
+  // ── 批量导入（页面级：校本师资/企业专家统一模板，品牌类型固定 teacher） ──────
+  const [importOpen, setImportOpen] = useState(false)
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false)
+  const {
+    importFiles,
+    setImportFiles,
+    isImporting,
+    isDownloading,
+    importPreview,
+    handleAddFiles,
+    handleRemoveFile,
+    handleImport,
+    executeImport,
+    handleDownloadTemplate,
+  } = useImportFlow({
+    importType: 'alliance-brands',
+    entityLabel: t('师资品牌'),
+    templateFileName: t('师资品牌批量导入模板.xlsx'),
+    extraQuery: { brandType: 'teacher' },
+    onSuccess: refresh,
+  })
+
+  useEffect(() => {
+    if (importPreview) {
+      queueMicrotask(() => setImportConfirmOpen(true))
+    }
+  }, [importPreview])
+
+  const doImport = async (mode: 'skip' | 'overwrite' | 'new' = 'skip') => {
+    const ok = await executeImport(mode)
+    if (ok) {
+      setImportOpen(false)
+      setImportConfirmOpen(false)
+      setImportFiles([])
+    }
+  }
+
   return (
     <div className="min-h-full">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">{t('师资品牌管理')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t('校本师资关联系统教师并补充展示资料，企业专家关联专家库')}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4 mr-1" />
+          {t('批量导入')}
+        </Button>
+      </div>
+
       <Tabs defaultValue="school" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="school" className="rounded-lg">
@@ -141,6 +194,45 @@ export default function AllianceTeacherBrandPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <ImportWizardDialog
+        open={importOpen}
+        onOpenChange={(open) => {
+          setImportOpen(open)
+          if (!open) setImportFiles([])
+        }}
+        title={t('导入师资品牌')}
+        guideItems={[
+          <>{t('点击下方按钮下载最新的导入模板')}</>,
+          <>{t('参照模板填写说明，填入师资品牌数据（校本师资可补充介绍资料）')}</>,
+          <>{t('完成后点击"下一步"上传文件')}</>,
+        ]}
+        downloadLabel={t('下载师资品牌批量导入模板')}
+        onDownload={handleDownloadTemplate}
+        uploadHint={t('点击选择已填写的 Excel (.xlsx) 文件')}
+        importLabel={() => t('开始导入')}
+        onImport={handleImport}
+        files={importFiles}
+        onAddFiles={handleAddFiles}
+        onRemoveFile={handleRemoveFile}
+        importing={isImporting}
+        downloading={isDownloading}
+      />
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={importConfirmOpen}
+          onOpenChange={setImportConfirmOpen}
+          entityLabel={t('师资品牌')}
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => doImport('overwrite')}
+          onConfirmSkip={() => doImport('skip')}
+          onConfirmNew={() => doImport('new')}
+        />
+      )}
     </div>
   )
 }

@@ -105,7 +105,12 @@ export default function AllianceMajorBrandPage() {
         )
       }
       hideCreate
-      hideImport
+      importConfig={{
+        importType: 'alliance-brands',
+        entityLabel: brandLabel,
+        templateFileName: t('专业品牌批量导入模板.xlsx'),
+        extraQuery: { brandType: 'major' },
+      }}
       colSpan={5}
       renderTableHeader={() => (
         <>

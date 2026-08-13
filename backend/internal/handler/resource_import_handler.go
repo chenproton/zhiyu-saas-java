@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -985,11 +987,17 @@ func (h *ResourceImportHandler) ImportPermissions(w http.ResponseWriter, r *http
 }
 
 func (h *ResourceImportHandler) PreviewBrands(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-brands", h.doImportBrands, true)
+	brandType := r.URL.Query().Get("brandType")
+	h.importExcel(w, r, "alliance-brands", func(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
+		return h.doImportBrands(ctx, xlsx, tenantID, userID, brandType, preview, overwrite, rename)
+	}, true)
 }
 
 func (h *ResourceImportHandler) ImportBrands(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-brands", h.doImportBrands, false)
+	brandType := r.URL.Query().Get("brandType")
+	h.importExcel(w, r, "alliance-brands", func(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
+		return h.doImportBrands(ctx, xlsx, tenantID, userID, brandType, preview, overwrite, rename)
+	}, false)
 }
 
 // ===== Alliance doImport functions =====
@@ -1362,11 +1370,20 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 	return previewRes, result
 }
 
-// Sheet: 品牌内容
+// doImportBrands 品牌导入入口：brandType 为空时走通用模板（含品牌类型列，向后兼容），
+// 传入 brandType 时按页面类型化解析（模板与 generateBrandTypeTemplate 对齐）。
+func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID, brandType string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
+	if brandType != "" {
+		return h.doImportBrandsTyped(ctx, xlsx, tenantID, userID, brandType, preview, overwrite, rename)
+	}
+	return h.doImportBrandsGeneric(ctx, xlsx, tenantID, userID, preview, overwrite, rename)
+}
+
+// Sheet: 品牌内容（通用模板）
 // Columns: 品牌类型*, 名称*, 描述, 状态, 是否公开, 是否推荐, 封面图URL,
 //
 //	关联学生名称, 关联企业名称, 关联岗位名称, 关联专业名称, 关联教师名称, 关联专家名称
-func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
+func (h *ResourceImportHandler) doImportBrandsGeneric(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
 	previewRes := &ImportPreviewResult{}
 	result := &resourceImportResult{}
 
@@ -1471,4 +1488,673 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 	}
 
 	return previewRes, result
+}
+
+// ===== 品牌导入（按页面类型化模板） =====
+
+// brandImportRow 类型化导入单行解析结果。
+type brandImportRow struct {
+	name           string
+	description    *string
+	status         string
+	isPublic       bool
+	isFeatured     bool
+	coverImage     *string
+	studentID      *string
+	enterpriseID   *string
+	positionID     *string
+	majorID        *string
+	teacherID      *string
+	expertID       *string
+	data           json.RawMessage
+	enterprisePos  *store.ImportEnterprisePositionParams // job 企业岗位
+	teacherProfile *importTeacherProfile                 // teacher 校本师资资料补充
+}
+
+// importTeacherProfile 校本师资资料补充字段（对齐「编辑资料」弹窗）。
+type importTeacherProfile struct {
+	gender          *string
+	age             *int
+	city            *string
+	title           *string
+	position        *string
+	experienceYears *int
+	education       *string
+	industry        *string
+	specialties     []string
+	introduction    *string
+	workExperience  *string
+	avatarURL       *string
+}
+
+// headerIndex 从模板第 2 行（表头行）构建 列名→列号 映射。
+func headerIndex(rows [][]string) map[string]int {
+	idx := make(map[string]int)
+	if len(rows) < 2 {
+		return idx
+	}
+	for i, h := range rows[1] {
+		h = strings.TrimSpace(h)
+		if h == "" {
+			continue
+		}
+		idx[strings.TrimSpace(strings.TrimSuffix(h, "*"))] = i
+	}
+	return idx
+}
+
+// cell 按表头名读取单元格值。
+func cell(row []string, idx map[string]int, key string) string {
+	if i, ok := idx[key]; ok {
+		return col(row, i)
+	}
+	return ""
+}
+
+// splitMulti 按中文/英文分号、逗号拆分多值列，空项忽略。
+func splitMulti(s string) []string {
+	var out []string
+	for _, p := range strings.FieldsFunc(s, func(r rune) bool {
+		return r == ';' || r == '；' || r == ',' || r == '，'
+	}) {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// brandRefItem 品牌 data 内引用项（与前端 RefItem 结构一致）。
+type brandRefItem struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// doImportBrandsTyped 按页面类型解析导入（模板列集与 generateBrandTypeTemplate 一一对应）。
+func (h *ResourceImportHandler) doImportBrandsTyped(ctx context.Context, xlsx *excelize.File, tenantID, userID, brandType string, preview, overwrite, rename bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("品牌内容")
+	if err != nil {
+		msg := fmt.Sprintf("读取「品牌内容」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+	idx := headerIndex(rows)
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		rw, err := h.parseBrandRow(ctx, tenantID, row, idx, brandType)
+		if err != nil {
+			result.Failed++
+			previewRes.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("第%d行%s", rowNum, err.Error()))
+			continue
+		}
+		if rw == nil {
+			// major 空白行（未开启展示且未填任何内容）跳过，不创建品牌
+			continue
+		}
+
+		existingID, err := h.Store.Alliance().GetBrandByName(ctx, tenantID, brandType, rw.name)
+		if err != nil {
+			result.Failed++
+			previewRes.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("第%d行查询品牌失败: %v", rowNum, err))
+			continue
+		}
+		if existingID != "" {
+			if !overwrite && !(rename && !preview) {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, brandType+"|"+rw.name, rw.name)
+				continue
+			}
+			if overwrite {
+				existing, err := h.Store.Alliance().GetBrandByID(ctx, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					previewRes.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("第%d行品牌[%s]读取失败: %v", rowNum, rw.name, err))
+					continue
+				}
+				if !preview {
+					// 企业岗位覆盖：已有岗位则更新其内容，无则新建
+					if rw.enterprisePos != nil {
+						pid, err := h.Store.ImportSaveEnterprisePosition(ctx, tenantID, userID, strPtrValue(existing.PositionID), rw.enterprisePos)
+						if err != nil {
+							result.Failed++
+							previewRes.Failed++
+							result.Errors = append(result.Errors, fmt.Sprintf("第%d行企业岗位保存失败: %v", rowNum, err))
+							continue
+						}
+						rw.positionID = &pid
+					}
+					if rw.teacherProfile != nil {
+						eid, err := h.upsertTeacherProfile(ctx, tenantID, rw)
+						if err != nil {
+							result.Failed++
+							previewRes.Failed++
+							result.Errors = append(result.Errors, fmt.Sprintf("第%d行师资资料保存失败: %v", rowNum, err))
+							continue
+						}
+						rw.data = teacherData(eid)
+					}
+					if err := h.updateBrandFromImport(ctx, tenantID, existing, rw); err != nil {
+						result.Failed++
+						previewRes.Failed++
+						result.Errors = append(result.Errors, fmt.Sprintf("第%d行品牌[%s]更新失败: %v", rowNum, rw.name, err))
+						continue
+					}
+				}
+				result.Created++
+				previewRes.Created++
+				continue
+			}
+			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+			rw.name = uniqueSuffixed(rw.name, func(c string) bool {
+				eid, _ := h.Store.Alliance().GetBrandByName(ctx, tenantID, brandType, c)
+				return eid != ""
+			})
+		}
+
+		if !preview {
+			// 企业岗位 / 校本师资档案：仅执行阶段落库
+			if rw.enterprisePos != nil {
+				pid, err := h.Store.ImportSaveEnterprisePosition(ctx, tenantID, userID, "", rw.enterprisePos)
+				if err != nil {
+					result.Failed++
+					previewRes.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("第%d行企业岗位创建失败: %v", rowNum, err))
+					continue
+				}
+				rw.positionID = &pid
+			}
+			if rw.teacherProfile != nil {
+				eid, err := h.upsertTeacherProfile(ctx, tenantID, rw)
+				if err != nil {
+					result.Failed++
+					previewRes.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("第%d行师资资料创建失败: %v", rowNum, err))
+					continue
+				}
+				rw.data = teacherData(eid)
+			}
+			if err := h.createBrandFromImport(ctx, tenantID, brandType, rw); err != nil {
+				result.Failed++
+				previewRes.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("第%d行品牌[%s]创建失败: %v", rowNum, rw.name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// parseBrandRow 按品牌类型解析一行。
+func (h *ResourceImportHandler) parseBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int, brandType string) (*brandImportRow, error) {
+	switch brandType {
+	case "talent":
+		return h.parseTalentBrandRow(ctx, tenantID, row, idx)
+	case "employer":
+		return h.parseEmployerBrandRow(ctx, tenantID, row, idx)
+	case "job":
+		return h.parseJobBrandRow(ctx, tenantID, row, idx)
+	case "major":
+		return h.parseMajorBrandRow(ctx, tenantID, row, idx)
+	case "teacher":
+		return h.parseTeacherBrandRow(ctx, tenantID, row, idx)
+	case "culture":
+		return h.parseCultureBrandRow(ctx, tenantID, row, idx)
+	}
+	return nil, fmt.Errorf("品牌类型无法识别: %s", brandType)
+}
+
+func (h *ResourceImportHandler) parseTalentBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int) (*brandImportRow, error) {
+	name := cell(row, idx, "案例名称")
+	if name == "" {
+		return nil, fmt.Errorf("案例名称不能为空")
+	}
+	rw := &brandImportRow{name: name, status: "draft"}
+	rw.description = nullableStr(cell(row, idx, "描述"))
+	if s := mapPublishStatus(cell(row, idx, "状态")); s != "" {
+		rw.status = s
+	}
+	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.coverImage = nullableStr(cell(row, idx, "封面图URL"))
+	if s := cell(row, idx, "关联学生名称"); s != "" {
+		id, err := store.LookupUserIDByNameWithRole(ctx, h.Store.Q(), tenantID, s, domain.RoleStudent)
+		if err != nil {
+			return nil, fmt.Errorf("关联学生匹配失败: %v", err)
+		}
+		if id == "" {
+			return nil, fmt.Errorf("学生「%s」未找到", s)
+		}
+		rw.studentID = &id
+	}
+	if s := cell(row, idx, "关联专业名称"); s != "" {
+		id := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, s)
+		if id == nil || *id == "" {
+			return nil, fmt.Errorf("专业「%s」未找到", s)
+		}
+		rw.majorID = id
+	}
+	return rw, nil
+}
+
+func (h *ResourceImportHandler) parseEmployerBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int) (*brandImportRow, error) {
+	entType := mapDictValue(cell(row, idx, "企业类型"),
+		"合作企业", "enterprise", "合作", "enterprise", "企业", "enterprise", "enterprise", "enterprise",
+		"独立雇主企业", "independent", "独立雇主", "independent", "独立", "independent", "independent", "independent")
+	name := cell(row, idx, "企业名称")
+	if name == "" {
+		return nil, fmt.Errorf("企业名称不能为空")
+	}
+	rw := &brandImportRow{name: name, status: "draft"}
+	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	switch entType {
+	case "enterprise":
+		id := lookupSingleIDByName(ctx, h.Store.Q(), "partner_enterprises", tenantID, name)
+		if id == nil || *id == "" {
+			return nil, fmt.Errorf("合作企业「%s」未找到（需与「合作企业库」名称一致）", name)
+		}
+		rw.enterpriseID = id
+	case "independent":
+		raw, err := json.Marshal(map[string]any{"enterpriseInfo": buildEnterpriseInfo(row, idx, name)})
+		if err != nil {
+			return nil, fmt.Errorf("独立雇主资料组装失败: %v", err)
+		}
+		rw.data = raw
+	default:
+		return nil, fmt.Errorf("企业类型无法识别: %s", cell(row, idx, "企业类型"))
+	}
+	return rw, nil
+}
+
+// buildEnterpriseInfo 组装独立雇主企业资料（字段与前端 EnterpriseInfo 一致）。
+func buildEnterpriseInfo(row []string, idx map[string]int, name string) map[string]any {
+	info := map[string]any{"name": name, "enterpriseType": "third-party"}
+	setStr := func(k, colName string) {
+		if v := cell(row, idx, colName); v != "" {
+			info[k] = v
+		}
+	}
+	setInt := func(k, colName string) {
+		if v := strings.TrimRight(cell(row, idx, colName), "Kk"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				info[k] = n
+			}
+		}
+	}
+	setMulti := func(k, colName string) {
+		if v := splitMulti(cell(row, idx, colName)); len(v) > 0 {
+			info[k] = v
+		}
+	}
+	setStr("unifiedSocialCreditCode", "统一社会信用代码")
+	setStr("industry", "所属行业")
+	setStr("region", "所在地区")
+	setInt("establishedYear", "成立年份")
+	setInt("employeeCount", "企业规模（人数）")
+	setMulti("secondaryColleges", "关联二级学院")
+	setStr("description", "企业简介")
+	setStr("contactPerson", "联系人")
+	setStr("contactPhone", "联系电话")
+	setStr("contactEmail", "联系邮箱")
+	setStr("address", "详细地址")
+	setStr("logoUrl", "企业Logo URL")
+	setStr("coverImage", "企业主页封面 URL")
+	setMulti("coverPhotos", "企业风采照片URL")
+	setMulti("businessLicensePhotos", "企业营业执照URL")
+	setMulti("intellectualPropertyPhotos", "企业知识产权URL")
+	setMulti("qualificationPhotos", "企业荣誉资质URL")
+	return info
+}
+
+func (h *ResourceImportHandler) parseJobBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int) (*brandImportRow, error) {
+	posType := mapDictValue(cell(row, idx, "岗位类型"),
+		"教学岗位", "teaching", "教学", "teaching", "teaching", "teaching",
+		"企业岗位", "enterprise", "企业", "enterprise", "enterprise", "enterprise")
+	name := cell(row, idx, "岗位名称")
+	if name == "" {
+		return nil, fmt.Errorf("岗位名称不能为空")
+	}
+	rw := &brandImportRow{name: name, status: "draft"}
+	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	switch posType {
+	case "teaching":
+		id, err := store.LookupTeachingPositionIDByName(ctx, h.Store.Q(), tenantID, name)
+		if err != nil {
+			return nil, fmt.Errorf("关联岗位匹配失败: %v", err)
+		}
+		if id == "" {
+			return nil, fmt.Errorf("教学岗位「%s」未找到（需与「职业岗位库」名称一致）", name)
+		}
+		rw.positionID = &id
+	case "enterprise":
+		pos := &store.ImportEnterprisePositionParams{}
+		if v := strings.TrimRight(cell(row, idx, "薪资下限(K)"), "Kk"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				pos.SalaryMin = &n
+			}
+		}
+		if v := strings.TrimRight(cell(row, idx, "薪资上限(K)"), "Kk"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				pos.SalaryMax = &n
+			}
+		}
+		if v := cell(row, idx, "所属行业"); v != "" {
+			if id := lookupSingleIDByName(ctx, h.Store.Q(), "industries", tenantID, v); id != nil {
+				pos.IndustryID = id
+			}
+		}
+		pos.Description = nullableStr(cell(row, idx, "岗位简介"))
+		pos.Requirements = splitMulti(cell(row, idx, "任职要求"))
+		pos.CareerPath = nullableStr(cell(row, idx, "职业发展路径"))
+		for _, n := range splitMulti(cell(row, idx, "面向专业")) {
+			if id := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, n); id != nil && *id != "" {
+				pos.MajorIDs = append(pos.MajorIDs, *id)
+			}
+		}
+		// 岗位职责：每行一条「职责名|职责描述」，多条用换行分隔
+		for _, line := range strings.Split(cell(row, idx, "岗位职责"), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "|", 2)
+			if len(parts) == 1 {
+				parts = strings.SplitN(line, "｜", 2)
+			}
+			resp := store.ImportPositionResponsibility{Name: strings.TrimSpace(parts[0])}
+			if len(parts) == 2 {
+				resp.Description = nullableStr(parts[1])
+			}
+			if resp.Name != "" {
+				pos.Responsibilities = append(pos.Responsibilities, resp)
+			}
+		}
+		rw.enterprisePos = pos
+	default:
+		return nil, fmt.Errorf("岗位类型无法识别: %s", cell(row, idx, "岗位类型"))
+	}
+	return rw, nil
+}
+
+func (h *ResourceImportHandler) parseMajorBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int) (*brandImportRow, error) {
+	name := cell(row, idx, "专业名称")
+	if name == "" {
+		return nil, fmt.Errorf("专业名称不能为空")
+	}
+	id := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, name)
+	if id == nil || *id == "" {
+		return nil, fmt.Errorf("专业「%s」未找到（以系统专业为基础，不会新增专业）", name)
+	}
+	rw := &brandImportRow{name: name, status: "draft", majorID: id}
+	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.description = nullableStr(cell(row, idx, "品牌介绍"))
+	rw.coverImage = nullableStr(cell(row, idx, "封面图URL"))
+
+	refCols := map[string]string{
+		"employmentDirections":    "关联岗位品牌名称",
+		"cooperationEnterprises":  "关联合作企业名称",
+		"cooperationAchievements": "关联合作成果名称",
+		"featuredCourses":         "关联特色课程名称",
+	}
+	data := map[string]any{}
+	anyContent := rw.isPublic || rw.isFeatured || rw.description != nil || rw.coverImage != nil
+	for key, colName := range refCols {
+		var items []brandRefItem
+		for _, n := range splitMulti(cell(row, idx, colName)) {
+			if rid := h.lookupMajorRefID(ctx, tenantID, key, n); rid != "" {
+				items = append(items, brandRefItem{ID: rid, Name: n})
+			}
+		}
+		if len(items) > 0 {
+			data[key] = items
+			anyContent = true
+		}
+	}
+	if !anyContent {
+		return nil, nil
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("关联数据组装失败: %v", err)
+	}
+	rw.data = raw
+	return rw, nil
+}
+
+// lookupMajorRefID 专业品牌关联列按名称匹配 ID（未命中返回空串，由调用方忽略并提示）。
+func (h *ResourceImportHandler) lookupMajorRefID(ctx context.Context, tenantID, key, name string) string {
+	switch key {
+	case "employmentDirections":
+		if id, err := store.LookupJobBrandIDByName(ctx, h.Store.Q(), tenantID, name); err == nil {
+			return id
+		}
+	case "cooperationEnterprises":
+		if id := lookupSingleIDByName(ctx, h.Store.Q(), "partner_enterprises", tenantID, name); id != nil {
+			return *id
+		}
+		// 独立雇主品牌兜底匹配
+		if id, err := store.LookupIndependentEmployerBrandIDByName(ctx, h.Store.Q(), tenantID, name); err == nil {
+			return id
+		}
+	case "cooperationAchievements":
+		if id, err := store.LookupAchievementIDByTitle(ctx, h.Store.Q(), tenantID, name); err == nil {
+			return id
+		}
+	case "featuredCourses":
+		if id, err := store.LookupCourseIDByName(ctx, h.Store.Q(), tenantID, name); err == nil {
+			return id
+		}
+	}
+	return ""
+}
+
+func (h *ResourceImportHandler) parseTeacherBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int) (*brandImportRow, error) {
+	teacherType := mapDictValue(cell(row, idx, "师资类型"),
+		"校本师资", "school", "校本", "school", "school", "school",
+		"企业专家", "expert", "专家", "expert", "expert", "expert")
+	rw := &brandImportRow{status: "draft"}
+	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	switch teacherType {
+	case "school":
+		teacherName := cell(row, idx, "关联教师名称")
+		if teacherName == "" {
+			return nil, fmt.Errorf("校本师资需填写「关联教师名称」")
+		}
+		id, err := store.LookupUserIDByNameWithRole(ctx, h.Store.Q(), tenantID, teacherName, domain.RoleTeacher)
+		if err != nil {
+			return nil, fmt.Errorf("关联教师匹配失败: %v", err)
+		}
+		if id == "" {
+			return nil, fmt.Errorf("教师「%s」未找到", teacherName)
+		}
+		rw.name = teacherName
+		rw.teacherID = &id
+		profile := &importTeacherProfile{}
+		switch cell(row, idx, "性别") {
+		case "男":
+			profile.gender = stringPtr("male")
+		case "女":
+			profile.gender = stringPtr("female")
+		}
+		profile.age = parseNullableInt(cell(row, idx, "年龄"))
+		profile.city = nullableStr(cell(row, idx, "所在城市"))
+		profile.title = nullableStr(cell(row, idx, "职称"))
+		profile.position = nullableStr(cell(row, idx, "职务"))
+		profile.experienceYears = parseNullableInt(cell(row, idx, "从业年限"))
+		profile.education = nullableStr(cell(row, idx, "学历"))
+		profile.industry = nullableStr(cell(row, idx, "所属行业"))
+		profile.specialties = splitMulti(cell(row, idx, "擅长领域"))
+		profile.introduction = nullableStr(cell(row, idx, "个人简介"))
+		profile.workExperience = nullableStr(cell(row, idx, "工作经历"))
+		profile.avatarURL = nullableStr(cell(row, idx, "头像URL"))
+		rw.teacherProfile = profile
+	case "expert":
+		expertName := cell(row, idx, "关联专家名称")
+		if expertName == "" {
+			return nil, fmt.Errorf("企业专家需填写「关联专家名称」")
+		}
+		id := lookupSingleIDByName(ctx, h.Store.Q(), "alliance_experts", tenantID, expertName)
+		if id == nil || *id == "" {
+			return nil, fmt.Errorf("专家「%s」未找到", expertName)
+		}
+		rw.name = expertName
+		rw.expertID = id
+	default:
+		return nil, fmt.Errorf("师资类型无法识别: %s", cell(row, idx, "师资类型"))
+	}
+	return rw, nil
+}
+
+func (h *ResourceImportHandler) parseCultureBrandRow(ctx context.Context, tenantID string, row []string, idx map[string]int) (*brandImportRow, error) {
+	name := cell(row, idx, "名称")
+	if name == "" {
+		return nil, fmt.Errorf("名称不能为空")
+	}
+	rw := &brandImportRow{name: name, status: "draft"}
+	rw.description = nullableStr(cell(row, idx, "描述"))
+	if s := mapPublishStatus(cell(row, idx, "状态")); s != "" {
+		rw.status = s
+	}
+	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.coverImage = nullableStr(cell(row, idx, "封面图URL"))
+	if s := cell(row, idx, "关联专业名称"); s != "" {
+		id := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, s)
+		if id == nil || *id == "" {
+			return nil, fmt.Errorf("专业「%s」未找到", s)
+		}
+		rw.majorID = id
+	}
+	return rw, nil
+}
+
+// upsertTeacherProfile 校本师资档案创建/更新（与页面「编辑资料」一致：alliance_experts + teacherExpertId 回写）。
+func (h *ResourceImportHandler) upsertTeacherProfile(ctx context.Context, tenantID string, rw *brandImportRow) (string, error) {
+	p := rw.teacherProfile
+	if p == nil || rw.teacherID == nil {
+		return "", nil
+	}
+	var specialtiesRaw json.RawMessage
+	if len(p.specialties) > 0 {
+		specialtiesRaw, _ = json.Marshal(p.specialties)
+	}
+	exp := &domain.AllianceExpert{
+		TenantID:        tenantID,
+		Name:            rw.name,
+		Gender:          p.gender,
+		Age:             p.age,
+		Title:           p.title,
+		Position:        p.position,
+		Industry:        p.industry,
+		Specialties:     specialtiesRaw,
+		ExperienceYears: p.experienceYears,
+		Education:       p.education,
+		Introduction:    p.introduction,
+		WorkExperience:  p.workExperience,
+		City:            p.city,
+		AvatarURL:       p.avatarURL,
+		Status:          "active",
+		UserID:          rw.teacherID,
+	}
+	return h.Store.Alliance().UpsertTeacherExpertProfile(ctx, tenantID, exp)
+}
+
+// teacherData 师资品牌 data：回写专家档案 ID（与页面 openProfileEdit/saveProfile 一致）。
+func teacherData(expertID string) json.RawMessage {
+	raw, _ := json.Marshal(map[string]any{"teacherExpertId": expertID})
+	return raw
+}
+
+// updateBrandFromImport 覆盖更新品牌：未提供的字段保留原值（data 仅在导入提供时替换）。
+func (h *ResourceImportHandler) updateBrandFromImport(ctx context.Context, tenantID string, existing *domain.AllianceBrand, rw *brandImportRow) error {
+	upd := *existing
+	upd.Name = rw.name
+	if rw.description != nil {
+		upd.Description = rw.description
+	}
+	if rw.coverImage != nil {
+		upd.CoverImage = rw.coverImage
+	}
+	if rw.status != "" {
+		upd.Status = rw.status
+	}
+	upd.IsPublic = boolPtr(rw.isPublic)
+	upd.IsFeatured = boolPtr(rw.isFeatured)
+	upd.StudentID = rw.studentID
+	upd.EnterpriseID = rw.enterpriseID
+	upd.PositionID = rw.positionID
+	upd.MajorID = rw.majorID
+	upd.TeacherID = rw.teacherID
+	upd.ExpertID = rw.expertID
+	if rw.data != nil {
+		upd.Data = rw.data
+	}
+	return h.Store.Alliance().UpdateBrand(ctx, existing.ID, tenantID, &upd)
+}
+
+// createBrandFromImport 导入创建品牌（雇主合作企业行补建学校侧企业合作关联）。
+func (h *ResourceImportHandler) createBrandFromImport(ctx context.Context, tenantID, brandType string, rw *brandImportRow) error {
+	status := rw.status
+	if status == "" {
+		status = "draft"
+	}
+	data := rw.data
+	if data == nil {
+		data = json.RawMessage("{}")
+	}
+	_, err := h.Store.Alliance().CreateBrand(ctx, &domain.AllianceBrand{
+		TenantID:     tenantID,
+		BrandType:    brandType,
+		Name:         rw.name,
+		Status:       status,
+		IsPublic:     boolPtr(rw.isPublic),
+		IsFeatured:   boolPtr(rw.isFeatured),
+		CoverImage:   rw.coverImage,
+		Description:  rw.description,
+		Data:         data,
+		StudentID:    rw.studentID,
+		EnterpriseID: rw.enterpriseID,
+		PositionID:   rw.positionID,
+		MajorID:      rw.majorID,
+		TeacherID:    rw.teacherID,
+		ExpertID:     rw.expertID,
+	})
+	if err != nil {
+		return err
+	}
+	if brandType == "employer" && rw.enterpriseID != nil {
+		if err := h.Store.AllianceEnterpriseLinks().EnsureLinksByEnterpriseIDs(ctx, tenantID, []string{*rw.enterpriseID}, nil); err != nil {
+			slog.Warn("导入品牌补建企业合作关联失败", "brand", rw.name, "error", err)
+		}
+	}
+	return nil
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+func stringPtr(s string) *string { return &s }
+
+func strPtrValue(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

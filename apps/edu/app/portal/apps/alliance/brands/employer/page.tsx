@@ -209,6 +209,12 @@ export default function AllianceEmployerBrandPage() {
             </Button>
           </div>
         }
+        importConfig={{
+          importType: 'alliance-brands',
+          entityLabel: brandLabel,
+          templateFileName: t('雇主品牌批量导入模板.xlsx'),
+          extraQuery: { brandType: 'employer' },
+        }}
         hideCreate
         colSpan={8}
         renderTableHeader={() => (
