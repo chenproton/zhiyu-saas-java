@@ -409,10 +409,12 @@ func ExecuteListQuery[T any](ctx context.Context, db ListQueryDB, p ListParams, 
 
 	search := p.Search
 	if search != "" && len(cfg.SearchColumns) > 0 {
-		ph := qb.NextArg("%" + search + "%")
+		// 转义 ILIKE 通配符（%/_），防止用户输入被当作模式匹配（搜索 50% 匹配所有含 50 的串）
+		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(search)
+		ph := qb.NextArg("%" + escaped + "%")
 		conds := make([]string, len(cfg.SearchColumns))
 		for i, col := range cfg.SearchColumns {
-			conds[i] = col + " ILIKE " + ph
+			conds[i] = col + " ILIKE " + ph + ` ESCAPE '\'`
 		}
 		qb.AddCondition("(" + strings.Join(conds, " OR ") + ")")
 	}
