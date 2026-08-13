@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { GraphNodeDetail, GraphDetailStack } from './graph-node-detail'
 import { cn } from '@/lib/utils'
-import type { GraphNode, GraphEdge } from './types'
+import { GRAPH_NODE_TYPE_LABELS, type GraphNode, type GraphEdge } from './types'
 import { useT } from '@/lib/i18n/locale-provider'
 
 type GraphViewProps = {
@@ -33,7 +33,6 @@ type GraphViewProps = {
   toolbarSlot?: React.ReactNode
   highlightNodeIds?: Set<string>
   nodeLabels?: Partial<Record<GraphNode['type'], string>>
-  role?: string
 }
 
 const TYPE_META: Record<
@@ -41,31 +40,31 @@ const TYPE_META: Record<
   { label: string; color: string; bg: string; icon: React.ReactNode }
 > = {
   position: {
-    label: '岗位',
+    label: GRAPH_NODE_TYPE_LABELS.position,
     color: 'var(--primary)',
     bg: 'color-mix(in srgb, var(--primary) 10%, white)',
     icon: <Briefcase className="size-5" />,
   },
   domain: {
-    label: '能力领域',
+    label: GRAPH_NODE_TYPE_LABELS.domain,
     color: '#b91c1c',
     bg: '#fee2e2',
     icon: <FileWarning className="size-5" />,
   },
   unit: {
-    label: '能力点',
+    label: GRAPH_NODE_TYPE_LABELS.unit,
     color: '#0e7490',
     bg: '#cffafe',
     icon: <Target className="size-5" />,
   },
   knowledge: {
-    label: '知识点',
+    label: GRAPH_NODE_TYPE_LABELS.knowledge,
     color: '#15803d',
     bg: '#dcfce7',
     icon: <Lightbulb className="size-5" />,
   },
   course: {
-    label: '颗粒课',
+    label: GRAPH_NODE_TYPE_LABELS.course,
     color: '#b45309',
     bg: '#fef3c7',
     icon: <BookOpen className="size-5" />,
