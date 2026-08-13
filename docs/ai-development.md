@@ -70,6 +70,22 @@
    - `useAiNotConfigured` + `AiNotConfiguredDialog` 处理 412。
 3. **测试**：提示词/解析为纯函数必须单测（参考 `ai_position_test.go`）；mock 上游用 `httptest`（参考 `TestPositionAssistRepairRetry`：首次返回非 JSON → 验证修复重试 + 两次用量落库）。
 
+### 交互模式硬约束（所有 AI 辅助编写统一）
+
+- **字段内容**（表单已有字段的润色/生成）→ 一律「直接写入 + 恢复上版」：`useAiFieldWriter` 快照/高亮/逐字段恢复/全部撤销、`useAiPipeline` 进度弹窗（关闭即取消）、一键前"快速补全/确认覆盖"弹窗、412 引导。**禁止另立交互方式**（如预览-确认、inline 建议卡+采纳）。
+- **新实体清单**（AI 生成后需创建实体的内容，如任务链）→ 「建议面板 + 勾选采纳 + 限时撤销」：采纳后创建实体并给 10 秒撤销 toast（参考 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/ai-task-chain-suggestion.tsx`）；视觉语言（紫色 Sparkles/面板）与错误体系（`useAiPipeline`/`useAiNotConfigured`/取消/护栏）必须与字段级一致。
+- **实体推荐引用优先**：AI 推荐实体类内容（知识点/能力点/资源/行业/专业）时，由服务端按名精确匹配现有对象（store `FindByNames`，租户域 `name = ANY($N)`），命中回填 `matchedId` 直接引用；未命中由前端引导走既有新建流程（预填名称），**AI 结果不得直接创建实体**。
+
+### 消费方清单
+
+| 页面 | 字段（后端 field） |
+|---|---|
+| 岗位编辑（`/job/positions/[id]/edit`） | polish / responsibilities / requirements / careerPath / certificates / abilities / competency（`POST /ai/position-assist`） |
+| 场景基础信息（`/scene/scenarios/[id]/edit`） | polish（名称/介绍/难度 + 行业/专业建议，服务端匹配字典） |
+| 任务编辑（`/scene/scenarios/[id]/edit/tasks`） | taskPolish / taskDescription / taskKnowledge / taskAbility / taskResource（卡片对话框内区块级 AI 控件）+ taskChain（任务链建议面板） |
+
+场景/任务统一走 `POST /ai/scenario-assist`（`service.ScenarioAssist`，`ai_scenario.go`）；任务链采纳后的创建/权重分配/撤销在页面层实现（`handleAdoptTaskChain`）。
+
 ### 建议与踩坑记录
 
 - **写保护优先于"预览-确认"**：AI 直接写入 + 逐字段恢复上版 + 全部撤销，比先弹预览再确认的交互更轻；但一键流程前仍需弹"确认重新生成"（明确覆盖意图），必填字段缺失时先弹"快速补全"再启动。

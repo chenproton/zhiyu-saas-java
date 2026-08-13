@@ -26,6 +26,23 @@ func (s *KnowledgePointStore) List(ctx context.Context, p ListParams, cfg ListQu
 	return ExecuteListQuery(ctx, s.q, p, cfg, scanKnowledgePointRows)
 }
 
+// FindByNames 按名称精确匹配查询已有知识点（AI 推荐引用优先用）。
+func (s *KnowledgePointStore) FindByNames(ctx context.Context, tenantID string, names []string) ([]domain.KnowledgePoint, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids,
+		       creator_id, source_type, source_id, created_at, updated_at
+		FROM knowledge_points WHERE tenant_id = $1 AND name = ANY($2)
+	`, tenantID, names)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanKnowledgePointRows(rows)
+}
+
 // CitationStats 知识点引用次数分布（引用源：课程/颗粒课、节点、题库、试题）。
 func (s *KnowledgePointStore) CitationStats(ctx context.Context, tenantID string) (CitationStats, error) {
 	rows, err := s.q.Query(ctx, `

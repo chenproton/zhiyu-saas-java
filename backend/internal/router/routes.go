@@ -93,6 +93,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Post("/ai/chat", h.aiHandler.Chat)
 			// 岗位 AI 辅助编写（仅生成建议不写库，权限同 /ai/chat）
 			r.Post("/ai/position-assist", h.aiHandler.PositionAssist)
+			r.Post("/ai/scenario-assist", h.aiHandler.ScenarioAssist)
 
 			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
 			r.Group(func(r chi.Router) {
