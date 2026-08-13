@@ -462,8 +462,12 @@ func TestPosition_SaveFull(t *testing.T) {
 		}
 		defer before.Close()
 		var countBefore int
-		before.Next()
-		before.Scan(&countBefore)
+		if !before.Next() {
+			t.Fatalf("count ability points: no rows")
+		}
+		if err := before.Scan(&countBefore); err != nil {
+			t.Fatalf("count ability points scan: %v", err)
+		}
 
 		body := map[string]interface{}{
 			"batchId":       "",
@@ -509,7 +513,9 @@ func TestPosition_SaveFull(t *testing.T) {
 		}
 
 		var countAfter int
-		env.DB.QueryRow(context.Background(), `SELECT COUNT(*) FROM ability_points WHERE tenant_id = $1`, testhelper.TestTenantID).Scan(&countAfter)
+		if err := env.DB.QueryRow(context.Background(), `SELECT COUNT(*) FROM ability_points WHERE tenant_id = $1`, testhelper.TestTenantID).Scan(&countAfter); err != nil {
+			t.Fatalf("count ability points: %v", err)
+		}
 		if countAfter != countBefore {
 			t.Errorf("ability_points count = %d, want %d (no empty-name point created)", countAfter, countBefore)
 		}
