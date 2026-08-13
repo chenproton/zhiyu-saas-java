@@ -483,6 +483,8 @@ export function KnowledgeSelector({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
+              type="search"
+              autoComplete="off"
               value={kpSearch}
               onChange={(e) => setKpSearch(e.target.value)}
               placeholder={t('搜索知识点名称、描述或编码...')}
@@ -942,6 +944,8 @@ export function KnowledgeSelector({
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   value={glSearch}
                   onChange={(e) => setGlSearch(e.target.value)}
                   placeholder={t('搜索颗粒课名称或编码...')}

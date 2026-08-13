@@ -1185,6 +1185,8 @@ export default function SuperAdminPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            type="search"
+            autoComplete="off"
             placeholder={t('搜索企业名称或标识...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

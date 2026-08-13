@@ -1085,6 +1085,8 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
+                type="search"
+                autoComplete="off"
                 placeholder={t('输入名称搜索能力点...')}
                 className="pl-9 h-9 text-sm bg-white border-gray-200"
                 value={abilityPoolSearch}

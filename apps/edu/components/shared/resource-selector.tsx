@@ -436,6 +436,8 @@ export function ResourceSelector({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
+              type="search"
+              autoComplete="off"
               value={resSearchName}
               onChange={(e) => setResSearchName(e.target.value)}
               placeholder={t('搜索资源名称...')}
@@ -445,6 +447,8 @@ export function ResourceSelector({
           <div className="relative flex-1">
             <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
+              type="search"
+              autoComplete="off"
               value={resSearchProvider}
               onChange={(e) => setResSearchProvider(e.target.value)}
               placeholder={t('搜索资源提供者...')}

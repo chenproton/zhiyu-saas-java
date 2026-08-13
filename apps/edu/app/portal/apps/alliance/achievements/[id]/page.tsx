@@ -377,6 +377,8 @@ export default function AllianceAchievementDetailPage() {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              type="search"
+              autoComplete="off"
               className="pl-8"
               placeholder={t('搜索{pickLabel}名称或编码', { pickLabel })}
               value={keyword}

@@ -158,6 +158,8 @@ export default function OperationLogsPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            type="search"
+            autoComplete="off"
             placeholder={t('搜索用户、模块或操作...')}
             value={searchTerm}
             onChange={(e) => {

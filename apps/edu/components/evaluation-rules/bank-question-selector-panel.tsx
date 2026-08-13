@@ -286,6 +286,8 @@ export function BankQuestionSelectorPanel({
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   value={questionSearch}
                   onChange={(e) => setQuestionSearch(e.target.value)}
                   placeholder={t('搜索题目内容...')}
@@ -416,6 +418,8 @@ export function BankQuestionSelectorPanel({
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   value={bankSearch}
                   onChange={(e) => setBankSearch(e.target.value)}
                   placeholder={t('搜索题库名称...')}

@@ -253,6 +253,8 @@ export function TeacherPortraitsTab() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
                   <Input
+                    type="search"
+                    autoComplete="off"
                     placeholder={t('搜索姓名或学号...')}
                     value={navSearch}
                     onChange={(e) => setNavSearch(e.target.value)}
@@ -324,6 +326,8 @@ export function TeacherPortraitsTab() {
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
+                type="search"
+                autoComplete="off"
                 placeholder={t('搜索姓名或学号...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

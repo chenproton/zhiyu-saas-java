@@ -510,6 +510,8 @@ export function UserSelector({
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
+                    type="search"
+                    autoComplete="off"
                     placeholder={expertView ? t('搜索企业专家...') : t('搜索用户...')}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}

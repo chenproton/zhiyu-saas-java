@@ -398,6 +398,8 @@ export default function AlliancePermissionsPage() {
               <div className="flex items-center gap-2 flex-1 min-w-[220px]">
                 <Search className="h-4 w-4 text-slate-400 shrink-0" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   placeholder={t('搜索{type}名称', { type: activeType === 'position' ? t('岗位') : t('场景') })}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}

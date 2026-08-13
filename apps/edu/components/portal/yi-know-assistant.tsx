@@ -1177,6 +1177,8 @@ export function YiKnowAssistant() {
               <div className="relative flex-1 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 group-focus-within:text-primary transition-colors duration-200" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   placeholder={t('搜索资源或提问...')}
                   className="pl-9 h-9 text-sm bg-muted/40 border-muted-foreground/20 focus-visible:bg-background transition-all duration-200"
                   value={inputValue}

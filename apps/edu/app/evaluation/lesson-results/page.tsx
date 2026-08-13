@@ -234,6 +234,8 @@ function LessonResultsPageContent() {
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
               <Input
+                type="search"
+                autoComplete="off"
                 placeholder={t('搜索课程...')}
                 className="pl-9 text-sm"
                 value={searchQuery}

@@ -122,6 +122,8 @@ export function TalentRankingPanel({ tenantId }: TalentRankingPanelProps) {
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              type="search"
+              autoComplete="off"
               placeholder={t('搜索学生姓名或学号...')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}

@@ -1220,6 +1220,8 @@ export function StepBasicInfo({
           </DialogHeader>
           <div className="flex-1 flex flex-col min-h-0">
             <Input
+              type="search"
+              autoComplete="off"
               placeholder={t('搜索证书名称或描述...')}
               value={certSearchQuery}
               onChange={(e) => setCertSearchQuery(e.target.value)}
