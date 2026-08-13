@@ -10,6 +10,7 @@ import type {
   PositionRecommendation,
   LearnRoad,
 } from '../types/job'
+import type { PositionSnapshot } from '../types/snapshot'
 import type { CitationStats, UncitedItem } from '../types/citation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi, createContentApi } from '../api-factory'
@@ -80,6 +81,9 @@ export const positionApi = {
       method: 'POST',
     }),
   listFavorites: () => request<ListResponse<CareerPosition>>('/job/positions/favorites'),
+  /** 岗位快照 bundle（职责/能力绑定/证书/认定规则链；version 缺省 = 最新已发布快照） */
+  getSnapshot: (id: string, params?: { version?: string }) =>
+    request<PositionSnapshot>(`/job/positions/${id}/snapshot${buildQuery(params || {})}`),
 }
 
 export const abilityApi = {

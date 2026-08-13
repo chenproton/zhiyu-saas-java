@@ -8,6 +8,7 @@ import type {
   TaskEvaluationMethod,
   ScenarioWeightConfig,
 } from '../types/scene'
+import type { ScenarioSnapshot } from '../types/snapshot'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi, createContentApi } from '../api-factory'
 
@@ -22,6 +23,9 @@ export const scenarioApi = {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
     }),
+  /** 场景快照 bundle（整树含测评配置/绑定/连带引用；version 缺省 = 最新已发布快照，学生侧已剥离答案） */
+  getSnapshot: (id: string, params?: { version?: string }) =>
+    request<ScenarioSnapshot>(`/scene/scenarios/${id}/snapshot${buildQuery(params || {})}`),
 }
 
 export const scenarioWeightApi = {

@@ -46,6 +46,8 @@ export interface SceneEvaluationResult {
   comment?: string
   gradedAt?: Date
   gradedBy?: string
+  /** 提交时服务端盖章的场景资源版本（对应快照版本，如 V1.0） */
+  version?: string
   createdAt?: Date
   updatedAt?: Date
 }

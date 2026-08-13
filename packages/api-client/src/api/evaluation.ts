@@ -22,14 +22,22 @@ import type {
   EvaluationBatch,
   RandomDrawQuestion,
 } from '../types/evaluation'
+import type { ExamSnapshot, QuestionBankSnapshot } from '../types/snapshot'
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi, createContentApi } from '../api-factory'
 
-export const questionBankApi = createContentApi<
-  QuestionBank,
-  Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>,
-  Partial<Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>>
->('/evaluation/question-banks')
+export const questionBankApi = {
+  ...createContentApi<
+    QuestionBank,
+    Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<QuestionBank, 'id' | 'questionCount' | 'createdAt' | 'updatedAt'>>
+  >('/evaluation/question-banks'),
+  /** 题库快照 bundle（含已发布题目；version 缺省 = 最新已发布快照，学生侧已剥离答案） */
+  getSnapshot: (id: string, params?: { version?: string }) =>
+    request<QuestionBankSnapshot>(
+      `/evaluation/question-banks/${id}/snapshot${buildQuery(params || {})}`,
+    ),
+}
 
 export const questionApi = {
   ...createCrudApi<
@@ -74,6 +82,9 @@ export const examApi = {
       body: JSON.stringify(scores),
     }),
   publish: (id: string) => request<Exam>(`/evaluation/exams/${id}/publish`, { method: 'POST' }),
+  /** 试卷快照 bundle（含题目内容副本；version 缺省 = 最新已发布快照，学生侧已剥离答案） */
+  getSnapshot: (id: string, params?: { version?: string }) =>
+    request<ExamSnapshot>(`/evaluation/exams/${id}/snapshot${buildQuery(params || {})}`),
 }
 
 export const examUsageApi = {
@@ -121,6 +132,8 @@ export const evaluationResultApi = {
   submit: (req: {
     taskId: string
     sceneId?: string
+    /** 页面加载时的场景版本提示：快照存在则服务端采纳，否则回退最新（降级语义，不拒绝） */
+    expectedVersion?: string
     methodKey: string
     evaluateeId: string
     maxScore?: number

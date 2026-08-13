@@ -238,6 +238,8 @@ export interface ExamUsage {
   status: 'draft' | 'pending' | 'published' | 'scheduled' | 'in_progress' | 'finished'
   activationMode?: 'manual' | 'scheduled' | 'always'
   creatorId?: string
+  /** 安排创建/发布时固化的试卷版本（决定学生答哪版快照） */
+  examVersion?: string
   createdAt: string
   updatedAt: string
 }
@@ -260,6 +262,8 @@ export interface ExamResult {
   gradingComment?: string
   graderId?: string
   gradedAt?: string
+  /** 交卷时服务端盖章的试卷版本（对应快照版本） */
+  version?: string
   submitTime: string
   createdAt: string
 }
