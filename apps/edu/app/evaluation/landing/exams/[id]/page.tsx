@@ -51,6 +51,9 @@ const typeLabelMap: Record<string, string> = {
 
 const pieColors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe']
 
+// 离开答题页面警告阈值
+const MAX_WARN_COUNT = 3
+
 function getTargetAudience(t: (key: string) => string): { type: string; detail: string } {
   // 考试对象名单由考试安排接口决定，当前不展示模拟学生
   return { type: t('学生'), detail: t('由考试安排指定') }
@@ -182,11 +185,74 @@ export default function ExamDetailPage() {
 
   const submittedRef = useRef(false)
 
+  // 防作弊：离开页面计数（仅存内存，刷新清零；防君子不防小人）
+  const leavePageCountRef = useRef(0)
+  const toastRef = useRef(toast)
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
+
   const handleStart = () => {
     setStarted(true)
     // 时长为 0/未配置视为不限时（-1 表示不限时，不触发自动交卷）
     setTimeLeft(examDuration > 0 ? examDuration * 60 : -1)
+    // 进入全屏（须由用户点击触发；移动端不支持则静默忽略）
+    document.documentElement.requestFullscreen?.().catch(() => {})
   }
+
+  // 防作弊监控：仅在答题期间生效，答题结束自动解绑，不影响其他页面
+  useEffect(() => {
+    if (!started || submitted) return
+
+    const warnLeave = () => {
+      leavePageCountRef.current += 1
+      const n = leavePageCountRef.current
+      if (n === MAX_WARN_COUNT) {
+        toastRef.current({
+          variant: 'destructive',
+          title: t('警告：已第 {n} 次离开答题页面，请勿切屏搜索答案！', { n }),
+        })
+      } else if (n > MAX_WARN_COUNT) {
+        toastRef.current({ variant: 'destructive', title: t('多次离开答题页面，请专注答题！') })
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.hidden) warnLeave()
+    }
+    // 切标签页时 blur 与 visibilitychange 都会触发，仅当页面仍可见时计入（如打开控制台/其他窗口）
+    const onWindowBlur = () => {
+      if (!document.hidden) warnLeave()
+    }
+    const onCopy = (e: ClipboardEvent) => e.preventDefault()
+    const onContextMenu = (e: Event) => e.preventDefault()
+    const onFullScreenChange = () => {
+      if (!document.fullscreenElement && leavePageCountRef.current > 0) {
+        toastRef.current({ variant: 'destructive', title: t('警告：已退出全屏，请回到答题页面') })
+      }
+    }
+    // 刷新/关闭页面会清空已填答案，答题期间给原生确认提示
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('blur', onWindowBlur)
+    document.addEventListener('copy', onCopy)
+    document.addEventListener('contextmenu', onContextMenu)
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    window.addEventListener('beforeunload', onBeforeUnload)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('blur', onWindowBlur)
+      document.removeEventListener('copy', onCopy)
+      document.removeEventListener('contextmenu', onContextMenu)
+      document.removeEventListener('fullscreenchange', onFullScreenChange)
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+  }, [started, submitted, t])
 
   useEffect(() => {
     if (started && exam && !submitted) {
@@ -870,6 +936,7 @@ export default function ExamDetailPage() {
             <p>{t('3. 答题过程中请勿刷新页面或关闭浏览器。')}</p>
             <p>{t('4. 提交后无法修改答案，请确认后再提交。')}</p>
             <p>{t('5. 考试期间系统将自动保存答题进度。')}</p>
+            <p>{t('6. 考试期间请勿切屏、退出全屏或复制试题，系统将记录并提醒。')}</p>
             {(currentUsage?.startTime || currentUsage?.endTime) && (
               <p>
                 {t('开放时间：{start} ~ {end}', {
