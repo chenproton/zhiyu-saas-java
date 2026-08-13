@@ -19,14 +19,6 @@ import { CertCards } from '@/components/job/student/cert-cards'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
   Building2,
   Briefcase,
   Users,
@@ -65,6 +57,7 @@ interface HiredStudent {
   studentNo?: string
   jobId: string
   jobName?: string
+  majorName?: string
 }
 
 function salaryText(p: { salaryMin?: number; salaryMax?: number }) {
@@ -79,11 +72,31 @@ export default function AlliancePublicBrandDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [brand, setBrand] = useState<AlliancePublicBrand | null>(null)
   const [loading, setLoading] = useState(true)
+  // 岗位品牌列表：雇主品牌「关联岗位」卡片跳转对应的岗位品牌详情页
+  const [jobBrands, setJobBrands] = useState<AlliancePublicBrand[]>([])
+  // 专业品牌「专业合作企业」：独立雇主企业跳品牌详情，合作企业跳企业详情
+  const [employerBrands, setEmployerBrands] = useState<AlliancePublicBrand[]>([])
 
   useEffect(() => {
     if (!id) return
     portalRequest<AlliancePublicBrand>(`/alliance/public/brands/${id}`)
-      .then(setBrand)
+      .then((b) => {
+        setBrand(b)
+        if (b.brandType === 'employer') {
+          return portalRequest<{ items: AlliancePublicBrand[] }>(
+            '/alliance/public/brands?brandType=job',
+          )
+            .then((res) => setJobBrands(res.items || []))
+            .catch(() => setJobBrands([]))
+        }
+        if (b.brandType === 'major') {
+          return portalRequest<{ items: AlliancePublicBrand[] }>(
+            '/alliance/public/brands?brandType=employer',
+          )
+            .then((res) => setEmployerBrands(res.items || []))
+            .catch(() => setEmployerBrands([]))
+        }
+      })
       .catch((err) => {
         reportError(err, { source: '加载品牌详情' })
       })
@@ -148,6 +161,13 @@ export default function AlliancePublicBrandDetailPage() {
     }
   })()
 
+  /** 独立雇主企业品牌 id 集合（专业合作企业关联对象命中时跳品牌详情页） */
+  const employerBrandIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const eb of employerBrands) if (!eb.enterpriseId) ids.add(eb.id)
+    return ids
+  }, [employerBrands])
+
   const majorTabs = useMemo(() => {
     if (!isMajor || !majorData) return []
     return [
@@ -193,7 +213,11 @@ export default function AlliancePublicBrandDetailPage() {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {majorData.enterprises.map((e) => (
-                    <RelatedObjectCard key={e.id} item={e} kind="enterprises" />
+                    <RelatedObjectCard
+                      key={e.id}
+                      item={e}
+                      kind={employerBrandIds.has(e.id) ? 'brands' : 'enterprises'}
+                    />
                   ))}
                 </div>
               )}
@@ -252,7 +276,14 @@ export default function AlliancePublicBrandDetailPage() {
         ),
       },
     ]
-  }, [isMajor, majorData, t])
+  }, [isMajor, majorData, employerBrandIds, t])
+
+  /** 岗位 positionId → 岗位品牌（关联岗位卡片跳转岗位品牌详情页） */
+  const jobBrandByPosition = useMemo(() => {
+    const map = new Map<string, AlliancePublicBrand>()
+    for (const jb of jobBrands) if (jb.positionId) map.set(jb.positionId, jb)
+    return map
+  }, [jobBrands])
 
   if (loading) return <LoadingView />
   if (!brand) return <EmptyState title={t('品牌不存在')} />
@@ -873,34 +904,51 @@ export default function AlliancePublicBrandDetailPage() {
                           className="py-16"
                         />
                       ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>{t('岗位名称')}</TableHead>
-                              <TableHead>{t('分类')}</TableHead>
-                              <TableHead>{t('薪资范围')}</TableHead>
-                              <TableHead>{t('面向专业')}</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {positions.map((p) => (
-                              <TableRow key={p.id}>
-                                <TableCell className="font-medium">{p.name}</TableCell>
-                                <TableCell>
-                                  {p.positionType === 'teaching'
-                                    ? t('教学岗位')
-                                    : p.positionType === 'enterprise'
-                                      ? t('企业岗位')
-                                      : '-'}
-                                </TableCell>
-                                <TableCell>{salaryText(p)}</TableCell>
-                                <TableCell className="max-w-56 truncate">
-                                  {p.majorNames?.join('、') || '-'}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {positions.map((p) => {
+                            const jobBrand = jobBrandByPosition.get(p.id)
+                            return (
+                              <RelatedObjectCard
+                                key={p.id}
+                                item={{
+                                  id: jobBrand?.id || p.id,
+                                  name: p.name,
+                                }}
+                                kind={jobBrand ? 'brands' : 'positions'}
+                              >
+                                <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-t border-slate-50">
+                                  <span className="text-sm font-bold text-primary">
+                                    {salaryText(p)}
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium truncate max-w-[45%]">
+                                    {p.positionType === 'teaching'
+                                      ? t('教学岗位')
+                                      : p.positionType === 'enterprise'
+                                        ? t('企业岗位')
+                                        : '-'}
+                                  </span>
+                                </div>
+                                {(p.majorNames ?? []).length > 0 && (
+                                  <div className="flex flex-wrap gap-1 px-3.5 pb-3">
+                                    {(p.majorNames ?? []).slice(0, 3).map((m) => (
+                                      <span
+                                        key={m}
+                                        className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium"
+                                      >
+                                        {m}
+                                      </span>
+                                    ))}
+                                    {(p.majorNames ?? []).length > 3 && (
+                                      <span className="text-[10px] text-slate-400">
+                                        +{(p.majorNames ?? []).length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </RelatedObjectCard>
+                            )
+                          })}
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -938,7 +986,7 @@ export default function AlliancePublicBrandDetailPage() {
                                     >
                                       <span className="font-medium">{s.name}</span>
                                       <span className="text-xs text-muted-foreground">
-                                        {s.studentNo || '-'}
+                                        {s.majorName || t('未设置专业')}
                                       </span>
                                     </span>
                                   ))}

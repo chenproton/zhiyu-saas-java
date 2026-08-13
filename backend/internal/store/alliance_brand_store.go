@@ -267,11 +267,80 @@ func (s *AllianceStore) ScanPublicBrandRows(rows pgx.Rows) ([]domain.PublicBrand
 
 // GetPublicBrandByID 前台品牌详情（含关联对象资料）。
 func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.PublicBrandItem, error) {
-	return queryOne(ctx, s.q, s.ScanPublicBrandRows, `
+	item, err := queryOne(ctx, s.q, s.ScanPublicBrandRows, `
 		SELECT `+publicBrandSelect+`
 		FROM `+publicBrandFrom+`
 		WHERE b.id = $1 AND b.is_public = true AND b.status <> 'archived'
 	`, id)
+	if err != nil {
+		return nil, err
+	}
+	// 雇主品牌已招聘学生补充专业名称（读时按 users.major_id 关联 majors）
+	s.enrichHiredStudentMajors(ctx, item)
+	return item, nil
+}
+
+// hiredStudentRef 雇主品牌 data.hiredStudents 快照（读时补充专业名称）。
+type hiredStudentRef struct {
+	StudentID string `json:"studentId"`
+	Name      string `json:"name"`
+	StudentNo string `json:"studentNo,omitempty"`
+	JobID     string `json:"jobId"`
+	JobName   string `json:"jobName,omitempty"`
+	MajorName string `json:"majorName,omitempty"`
+}
+
+// enrichHiredStudentMajors 为雇主品牌已招聘学生补充专业名称（用户主专业）。
+func (s *AllianceStore) enrichHiredStudentMajors(ctx context.Context, item *domain.PublicBrandItem) {
+	if item == nil || item.BrandType != "employer" || len(item.Data) == 0 {
+		return
+	}
+	var payload struct {
+		HiredStudents []hiredStudentRef `json:"hiredStudents"`
+	}
+	if err := json.Unmarshal(item.Data, &payload); err != nil || len(payload.HiredStudents) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(payload.HiredStudents))
+	for _, hs := range payload.HiredStudents {
+		if hs.StudentID != "" {
+			ids = append(ids, hs.StudentID)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT u.id::text, m.name
+		FROM users u LEFT JOIN majors m ON m.id = u.major_id
+		WHERE u.id = ANY($1)
+	`, ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	majorByUser := map[string]string{}
+	for rows.Next() {
+		var userID, majorName string
+		if err := rows.Scan(&userID, &majorName); err == nil {
+			majorByUser[userID] = majorName
+		}
+	}
+	for i := range payload.HiredStudents {
+		payload.HiredStudents[i].MajorName = majorByUser[payload.HiredStudents[i].StudentID]
+	}
+	var dataMap map[string]json.RawMessage
+	if err := json.Unmarshal(item.Data, &dataMap); err != nil {
+		return
+	}
+	updated, err := json.Marshal(payload.HiredStudents)
+	if err != nil {
+		return
+	}
+	dataMap["hiredStudents"] = updated
+	if merged, err := json.Marshal(dataMap); err == nil {
+		item.Data = merged
+	}
 }
 
 // ===== 雇主品牌（brandType=employer，LEFT JOIN partner_enterprises 附带引用企业资料） =====

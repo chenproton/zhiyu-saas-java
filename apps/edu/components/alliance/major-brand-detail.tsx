@@ -187,8 +187,19 @@ export function MajorBrandDetail({ id }: { id: string }) {
           items={data.cooperationEnterprises ?? []}
           onAdd={(items) => setSection('cooperationEnterprises', items)}
           fetchOptions={async () => {
-            const res = await allianceEnterpriseApi.list({ limit: 200 })
-            return (res.items ?? []).map((e) => ({ id: e.id, name: e.name }))
+            // 合作企业 + 独立雇主企业品牌（独立雇主企业前台跳品牌详情页）
+            const [entsRes, brandsRes] = await Promise.all([
+              allianceEnterpriseApi.list({ limit: 200 }),
+              allianceBrandApi.list({ brandType: 'employer', limit: 200 }),
+            ])
+            const enterpriseItems = (entsRes.items ?? []).map((e) => ({
+              id: e.id,
+              name: e.name,
+            }))
+            const brandItems = (brandsRes.items ?? [])
+              .filter((b) => !b.enterpriseId)
+              .map((b) => ({ id: b.id, name: b.name }))
+            return [...enterpriseItems, ...brandItems]
           }}
           placeholder={t('搜索企业名称...')}
           pickerTitle={t('选择合作企业')}

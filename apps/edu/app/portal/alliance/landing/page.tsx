@@ -46,7 +46,6 @@ import {
   JobBrandRow,
   MajorBrandCard,
   TeacherBrandCard,
-  CultureBrandCard,
 } from '@/components/alliance/public-cards'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -436,7 +435,7 @@ export default function AllianceLandingPage() {
       job: 4,
       major: 3,
       teacher: 6,
-      culture: 3,
+      culture: 6,
     }
     const byType: Record<string, AlliancePublicBrand[]> = {}
     BRAND_CATEGORIES.forEach((cat) => {
@@ -630,7 +629,7 @@ export default function AllianceLandingPage() {
       )
     }
 
-    // 文化品牌：杂志卡
+    // 文化品牌：与「就业案例」同款横版小卡（一行 3 个，最多 2 行）
     if (cultureBrands.length > 0) {
       sections.push(
         <div key="culture">
@@ -638,9 +637,9 @@ export default function AllianceLandingPage() {
             title={t('文化品牌')}
             action={<ViewAllLink href="/portal/alliance/brands?type=culture" />}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {cultureBrands.map((brand) => (
-              <CultureBrandCard key={brand.id} brand={brand} />
+              <TalentBrandCard key={brand.id} brand={brand} />
             ))}
           </div>
         </div>,
@@ -666,7 +665,7 @@ export default function AllianceLandingPage() {
         description: t(
           '坚持以产业需求为牵引，面向职业岗位能力要求，依托真实实践场景，推动企业用人标准、教学培养目标与人才测评体系协同贯通。',
         ),
-        ctaLabel: t('探索合作企业'),
+        ctaLabel: t('查看产教融合成果'),
         right: <HeroSchoolCard schoolInfo={data.schoolInfo} />,
       }}
       stats={statsList.map((stat, idx) => ({
@@ -822,7 +821,7 @@ export default function AllianceLandingPage() {
             asChild
             className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/15 hover:-translate-y-0.5 w-full sm:w-auto"
           >
-            <Link href="/portal/alliance/brands">{t('探索更多品牌')}</Link>
+            <Link href="/partner">{t('企业/专家服务台')}</Link>
           </Button>
         </div>
       </section>
