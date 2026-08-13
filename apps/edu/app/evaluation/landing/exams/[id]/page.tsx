@@ -17,6 +17,7 @@ import {
   Users,
   Info,
   Share2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -50,9 +51,6 @@ const typeLabelMap: Record<string, string> = {
 }
 
 const pieColors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe']
-
-// 离开答题页面警告阈值
-const MAX_WARN_COUNT = 3
 
 function getTargetAudience(t: (key: string) => string): { type: string; detail: string } {
   // 考试对象名单由考试安排接口决定，当前不展示模拟学生
@@ -164,9 +162,14 @@ export default function ExamDetailPage() {
       })
   }, [examId, currentUsage, usageIdFromQuery, toast, t])
 
+  // 正常交卷/遮罩内结束考试时置位，避免交卷触发的退出全屏事件再次弹出遮罩
+  const endingExamRef = useRef(false)
+
   const handleSubmit = useCallback(async () => {
     if (!currentUsage) return
+    endingExamRef.current = true
     setSubmitting(true)
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
     try {
       await examResultApi.submit({ examUsageId: currentUsage.id, answers, methodKey })
       setSubmitted(true)
@@ -200,21 +203,40 @@ export default function ExamDetailPage() {
     document.documentElement.requestFullscreen?.().catch(() => {})
   }
 
+  // 防作弊遮罩：leave=切屏/失焦，fullscreen=退出全屏；仅答题期间可能出现
+  const [warnMask, setWarnMask] = useState<{ reason: 'leave' | 'fullscreen'; count: number } | null>(null)
+  const warnMaskRef = useRef(false)
+
+  const showWarnMask = useCallback((reason: 'leave' | 'fullscreen') => {
+    if (warnMaskRef.current) return
+    warnMaskRef.current = true
+    setWarnMask({ reason, count: leavePageCountRef.current })
+  }, [])
+
+  const dismissWarnMask = useCallback(() => {
+    warnMaskRef.current = false
+    setWarnMask(null)
+  }, [])
+
+  // 继续考试：关闭遮罩并自动回到全屏（按钮点击属用户手势，允许请求全屏）
+  const handleResume = useCallback(() => {
+    dismissWarnMask()
+    document.documentElement.requestFullscreen?.().catch(() => {})
+  }, [dismissWarnMask])
+
+  // 结束考试：直接交卷（handleSubmit 内已处理退出全屏与重复遮罩）
+  const handleEndExam = useCallback(() => {
+    dismissWarnMask()
+    handleSubmitRef.current()
+  }, [dismissWarnMask])
+
   // 防作弊监控：仅在答题期间生效，答题结束自动解绑，不影响其他页面
   useEffect(() => {
     if (!started || submitted) return
 
     const warnLeave = () => {
       leavePageCountRef.current += 1
-      const n = leavePageCountRef.current
-      if (n === MAX_WARN_COUNT) {
-        toastRef.current({
-          variant: 'destructive',
-          title: t('警告：已第 {n} 次离开答题页面，请勿切屏搜索答案！', { n }),
-        })
-      } else if (n > MAX_WARN_COUNT) {
-        toastRef.current({ variant: 'destructive', title: t('多次离开答题页面，请专注答题！') })
-      }
+      showWarnMask('leave')
     }
 
     const onVisibilityChange = () => {
@@ -224,11 +246,18 @@ export default function ExamDetailPage() {
     const onWindowBlur = () => {
       if (!document.hidden) warnLeave()
     }
-    const onCopy = (e: ClipboardEvent) => e.preventDefault()
+    const onCopy = (e: ClipboardEvent) => {
+      e.preventDefault()
+      // 有实际选中内容才提示，避免无选中内容 Ctrl+C 误报
+      const sel = window.getSelection()?.toString() || ''
+      if (sel.trim()) {
+        toastRef.current({ variant: 'destructive', title: t('请勿复制题目！') })
+      }
+    }
     const onContextMenu = (e: Event) => e.preventDefault()
     const onFullScreenChange = () => {
-      if (!document.fullscreenElement && leavePageCountRef.current > 0) {
-        toastRef.current({ variant: 'destructive', title: t('警告：已退出全屏，请回到答题页面') })
+      if (!document.fullscreenElement && !endingExamRef.current) {
+        showWarnMask('fullscreen')
       }
     }
     // 刷新/关闭页面会清空已填答案，答题期间给原生确认提示
@@ -252,7 +281,7 @@ export default function ExamDetailPage() {
       document.removeEventListener('fullscreenchange', onFullScreenChange)
       window.removeEventListener('beforeunload', onBeforeUnload)
     }
-  }, [started, submitted, t])
+  }, [started, submitted, t, showWarnMask])
 
   useEffect(() => {
     if (started && exam && !submitted) {
@@ -661,6 +690,56 @@ export default function ExamDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* 防作弊遮罩：切屏/失焦/退出全屏时强制提示 */}
+        {warnMask && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              background: 'rgba(0, 0, 0, 0.9)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: 16,
+                maxWidth: 440,
+                width: '100%',
+                padding: '36px 32px',
+                textAlign: 'center',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+              }}
+            >
+              <AlertTriangle
+                style={{ width: 56, height: 56, color: '#f59e0b', margin: '0 auto 16px' }}
+              />
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1f2329', marginBottom: 8 }}>
+                {warnMask.reason === 'fullscreen' ? t('请勿退出全屏') : t('请勿切换屏幕')}
+              </h3>
+              <p style={{ fontSize: 14, color: '#646a73', lineHeight: 1.7, marginBottom: 24 }}>
+                {warnMask.reason === 'fullscreen'
+                  ? t('考试期间请保持全屏答题，退出全屏可能影响考试纪律。')
+                  : t('已第 {n} 次离开答题页面，请勿切屏搜索答案，专注答题！', {
+                      n: warnMask.count,
+                    })}
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <Button onClick={handleResume} style={{ gap: 8 }}>
+                  <PlayCircle style={{ width: 18, height: 18 }} /> {t('继续考试')}
+                </Button>
+                <Button variant="destructive" onClick={handleEndExam} style={{ gap: 8 }}>
+                  <Send style={{ width: 18, height: 18 }} /> {t('结束考试')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -936,7 +1015,7 @@ export default function ExamDetailPage() {
             <p>{t('3. 答题过程中请勿刷新页面或关闭浏览器。')}</p>
             <p>{t('4. 提交后无法修改答案，请确认后再提交。')}</p>
             <p>{t('5. 考试期间系统将自动保存答题进度。')}</p>
-            <p>{t('6. 考试期间请勿切屏、退出全屏或复制试题，系统将记录并提醒。')}</p>
+            <p>{t('6. 考试期间请勿切屏、退出全屏或复制试题，系统将强制提醒并记录次数。')}</p>
             {(currentUsage?.startTime || currentUsage?.endTime) && (
               <p>
                 {t('开放时间：{start} ~ {end}', {
