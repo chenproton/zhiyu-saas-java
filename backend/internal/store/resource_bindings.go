@@ -75,15 +75,7 @@ func (s *ResourceBindingStore) List(ctx context.Context, tenantID, search string
 		return nil, 0, err
 	}
 
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > maxPageSize {
-		limit = maxPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	limit, offset = ClampLimitOffset(limit, offset, 50)
 	args = append(args, limit, offset)
 	query := `
 		SELECT rl.id, rl.name, rl.resource_type, rl.url, rl.description, rl.thumbnail,
