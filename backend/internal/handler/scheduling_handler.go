@@ -911,7 +911,8 @@ func (h *SchedulingHandler) Timetable(w http.ResponseWriter, r *http.Request) {
 	classNodeID := r.URL.Query().Get("classNodeId")
 	teacherID := r.URL.Query().Get("teacherId")
 	status := r.URL.Query().Get("status")
-	if status == "" {
+	// 仅学校管理员/教师可查看草稿课表，其余角色（含学生）强制已发布
+	if status == "" || !schoolAdminOnly(claims) {
 		status = "published"
 	}
 	if classNodeID == "" && teacherID == "" {

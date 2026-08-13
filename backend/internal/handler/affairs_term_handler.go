@@ -19,7 +19,7 @@ type TermRequest struct {
 	StartDate  string `json:"startDate"`
 	EndDate    string `json:"endDate"`
 	WeeksCount int    `json:"weeksCount"`
-	IsCurrent  bool   `json:"isCurrent"`
+	IsCurrent  *bool  `json:"isCurrent"`
 }
 
 func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -73,15 +73,27 @@ func (h *AffairsTermHandler) crud() crudConfig[TermRequest, domain.Term] {
 			return ""
 		},
 		CreateFn: func(ctx context.Context, t *TermRequest, tenantID, userID string) (string, error) {
+			isCurrent := false
+			if t.IsCurrent != nil {
+				isCurrent = *t.IsCurrent
+			}
 			return h.Service.CreateTerm(ctx, tenantID, &store.TermParams{
 				Name: t.Name, StartDate: t.StartDate, EndDate: t.EndDate,
-				WeeksCount: t.WeeksCount, IsCurrent: t.IsCurrent,
+				WeeksCount: t.WeeksCount, IsCurrent: isCurrent,
 			})
+		},
+		ValidateUpdateExisting: func(t *TermRequest, existing *domain.Term) string {
+			// 部分更新兜底：isCurrent 未携带时保留已有状态（防更新其他字段误清"当前学期"标记）
+			if t.IsCurrent == nil {
+				v := existing.IsCurrent
+				t.IsCurrent = &v
+			}
+			return ""
 		},
 		UpdateFn: func(ctx context.Context, id, tenantID string, t *TermRequest) error {
 			return h.Service.UpdateTerm(ctx, tenantID, id, &store.TermParams{
 				Name: t.Name, StartDate: t.StartDate, EndDate: t.EndDate,
-				WeeksCount: t.WeeksCount, IsCurrent: t.IsCurrent,
+				WeeksCount: t.WeeksCount, IsCurrent: *t.IsCurrent,
 			})
 		},
 		DeleteFn: func(ctx context.Context, id, tenantID string) error {

@@ -1494,21 +1494,25 @@ func (h *ResourceImportHandler) doImportBrandsGeneric(ctx context.Context, xlsx 
 
 // brandImportRow 类型化导入单行解析结果。
 type brandImportRow struct {
-	name           string
-	description    *string
-	status         string
-	isPublic       bool
-	isFeatured     bool
-	coverImage     *string
-	studentID      *string
-	enterpriseID   *string
-	positionID     *string
-	majorID        *string
-	teacherID      *string
-	expertID       *string
-	data           json.RawMessage
-	enterprisePos  *store.ImportEnterprisePositionParams // job 企业岗位
-	teacherProfile *importTeacherProfile                 // teacher 校本师资资料补充
+	name        string
+	description *string
+	status      string
+	isPublic    bool
+	isFeatured  bool
+	// 单元格是否填写（覆盖导入时空单元格保留原值，防把已公开/已推荐品牌静默下架）
+	isPublicFilled   bool
+	isFeaturedFilled bool
+	statusFilled     bool
+	coverImage       *string
+	studentID        *string
+	enterpriseID     *string
+	positionID       *string
+	majorID          *string
+	teacherID        *string
+	expertID         *string
+	data             json.RawMessage
+	enterprisePos    *store.ImportEnterprisePositionParams // job 企业岗位
+	teacherProfile   *importTeacherProfile                 // teacher 校本师资资料补充
 }
 
 // importTeacherProfile 校本师资资料补充字段（对齐「编辑资料」弹窗）。
@@ -1727,9 +1731,12 @@ func (h *ResourceImportHandler) parseTalentBrandRow(ctx context.Context, tenantI
 	rw.description = nullableStr(cell(row, idx, "描述"))
 	if s := mapPublishStatus(cell(row, idx, "状态")); s != "" {
 		rw.status = s
+		rw.statusFilled = true
 	}
 	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isPublicFilled = cell(row, idx, "是否公开") != ""
 	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.isFeaturedFilled = cell(row, idx, "是否推荐") != ""
 	rw.coverImage = nullableStr(cell(row, idx, "封面图URL"))
 	if s := cell(row, idx, "关联学生名称"); s != "" {
 		id, err := store.LookupUserIDByNameWithRole(ctx, h.Store.Q(), tenantID, s, domain.RoleStudent)
@@ -1761,7 +1768,9 @@ func (h *ResourceImportHandler) parseEmployerBrandRow(ctx context.Context, tenan
 	}
 	rw := &brandImportRow{name: name, status: "draft"}
 	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isPublicFilled = cell(row, idx, "是否公开") != ""
 	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.isFeaturedFilled = cell(row, idx, "是否推荐") != ""
 	switch entType {
 	case "enterprise":
 		id := lookupSingleIDByName(ctx, h.Store.Q(), "partner_enterprises", tenantID, name)
@@ -1831,7 +1840,9 @@ func (h *ResourceImportHandler) parseJobBrandRow(ctx context.Context, tenantID s
 	}
 	rw := &brandImportRow{name: name, status: "draft"}
 	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isPublicFilled = cell(row, idx, "是否公开") != ""
 	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.isFeaturedFilled = cell(row, idx, "是否推荐") != ""
 	switch posType {
 	case "teaching":
 		id, err := store.LookupTeachingPositionIDByName(ctx, h.Store.Q(), tenantID, name)
@@ -1903,7 +1914,9 @@ func (h *ResourceImportHandler) parseMajorBrandRow(ctx context.Context, tenantID
 	}
 	rw := &brandImportRow{name: name, status: "draft", majorID: id}
 	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isPublicFilled = cell(row, idx, "是否公开") != ""
 	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.isFeaturedFilled = cell(row, idx, "是否推荐") != ""
 	rw.description = nullableStr(cell(row, idx, "品牌介绍"))
 	rw.coverImage = nullableStr(cell(row, idx, "封面图URL"))
 
@@ -1971,7 +1984,9 @@ func (h *ResourceImportHandler) parseTeacherBrandRow(ctx context.Context, tenant
 		"企业专家", "expert", "专家", "expert", "expert", "expert")
 	rw := &brandImportRow{status: "draft"}
 	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isPublicFilled = cell(row, idx, "是否公开") != ""
 	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.isFeaturedFilled = cell(row, idx, "是否推荐") != ""
 	switch teacherType {
 	case "school":
 		teacherName := cell(row, idx, "关联教师名称")
@@ -2032,9 +2047,12 @@ func (h *ResourceImportHandler) parseCultureBrandRow(ctx context.Context, tenant
 	rw.description = nullableStr(cell(row, idx, "描述"))
 	if s := mapPublishStatus(cell(row, idx, "状态")); s != "" {
 		rw.status = s
+		rw.statusFilled = true
 	}
 	rw.isPublic = parseBoolDefault(cell(row, idx, "是否公开"), false)
+	rw.isPublicFilled = cell(row, idx, "是否公开") != ""
 	rw.isFeatured = parseBoolDefault(cell(row, idx, "是否推荐"), false)
+	rw.isFeaturedFilled = cell(row, idx, "是否推荐") != ""
 	rw.coverImage = nullableStr(cell(row, idx, "封面图URL"))
 	if s := cell(row, idx, "关联专业名称"); s != "" {
 		id := lookupSingleIDByName(ctx, h.Store.Q(), "majors", tenantID, s)
@@ -2096,8 +2114,16 @@ func (h *ResourceImportHandler) updateBrandFromImport(ctx context.Context, tenan
 	if rw.status != "" {
 		upd.Status = rw.status
 	}
-	upd.IsPublic = boolPtr(rw.isPublic)
-	upd.IsFeatured = boolPtr(rw.isFeatured)
+	// 单元格填写才覆盖开关/状态（空单元格保留原值，防覆盖导入静默下架已公开内容）
+	if rw.isPublicFilled {
+		upd.IsPublic = boolPtr(rw.isPublic)
+	}
+	if rw.isFeaturedFilled {
+		upd.IsFeatured = boolPtr(rw.isFeatured)
+	}
+	if rw.statusFilled {
+		upd.Status = rw.status
+	}
 	upd.StudentID = rw.studentID
 	upd.EnterpriseID = rw.enterpriseID
 	upd.PositionID = rw.positionID
