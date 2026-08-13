@@ -266,23 +266,36 @@ func scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, error) {
 }
 
 // ListBySourceEnterprise 企业共建场景列表（来源企业视角，join tenants 出校名）。
-// schoolTenantID 非空时按学校过滤；按 updated_at 倒序，上限 200 条。
-// 含学校授权资源：本企业共建的 + 学校授权（grant）给本企业的场景。
-func (s *ScenarioStore) ListBySourceEnterprise(ctx context.Context, enterpriseID string, schoolTenantID *string) ([]domain.PartnerCoBuildScenario, error) {
-	query := `SELECT ` + scenarioListSelectColumns + `, t.name AS school_name
-		FROM ` + scenarioListFrom + scenarioListJoins + ` JOIN tenants t ON t.id = s.tenant_id
-		WHERE (s.source_enterprise_id = $1
-			OR EXISTS (SELECT 1 FROM alliance_resource_grants g
-				WHERE g.enterprise_id = $1 AND g.resource_type = 'scene' AND s.id = ANY(g.resource_ids)))`
+// schoolTenantID 非空时按学校过滤；支持搜索/分页（limit<=0 时默认 200）。
+// 含学校授权资源：本企业共建的 + 学校授权（grant）给本企业的场景。返回列表与总数。
+func (s *ScenarioStore) ListBySourceEnterprise(ctx context.Context, enterpriseID string, schoolTenantID *string, search string, limit, offset int) ([]domain.PartnerCoBuildScenario, int, error) {
+	where := `(s.source_enterprise_id = $1
+		OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+			WHERE g.enterprise_id = $1 AND g.resource_type = 'scene' AND s.id = ANY(g.resource_ids)))`
 	args := []any{enterpriseID}
 	if schoolTenantID != nil && *schoolTenantID != "" {
-		query += ` AND s.tenant_id = $2`
 		args = append(args, *schoolTenantID)
+		where += fmt.Sprintf(` AND s.tenant_id = $%d`, len(args))
 	}
-	query += ` ORDER BY s.updated_at DESC LIMIT 200`
+	if search != "" {
+		args = append(args, "%"+search+"%")
+		where += fmt.Sprintf(` AND s.name ILIKE $%d`, len(args))
+	}
+	if limit <= 0 {
+		limit = 200
+	}
+	var total int
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM `+scenarioListFrom+` WHERE `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	query := `SELECT ` + scenarioListSelectColumns + `, t.name AS school_name
+		FROM ` + scenarioListFrom + scenarioListJoins + ` JOIN tenants t ON t.id = s.tenant_id
+		WHERE ` + where
+	args = append(args, limit, offset)
+	query += fmt.Sprintf(` ORDER BY s.updated_at DESC LIMIT $%d OFFSET $%d`, len(args)-1, len(args))
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	items := make([]domain.PartnerCoBuildScenario, 0)
@@ -290,11 +303,11 @@ func (s *ScenarioStore) ListBySourceEnterprise(ctx context.Context, enterpriseID
 		var schoolName string
 		sc, err := scanScenarioRow(rows, &schoolName)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, domain.PartnerCoBuildScenario{Scenario: sc, SchoolName: schoolName})
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 // RecordView 记录浏览日志并累加计数（多个内容实体共用）。

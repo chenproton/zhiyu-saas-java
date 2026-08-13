@@ -200,7 +200,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
 
   const openEditDialog = (item: T) => {
     if (!createDefault) return
-    setFormItem(item)
+    // 拷贝一份，编辑中的输入不会实时污染表格行数据（取消编辑可回滚）
+    setFormItem({ ...item })
     setIsDialogOpen(true)
   }
 
@@ -232,13 +233,19 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     if (!onToggleEnabled) return
     try {
       await onToggleEnabled(item)
-      await onRetry()
     } catch (err) {
       toast({
         variant: 'destructive',
         title: t('操作失败'),
         description: err instanceof Error ? err.message : t('未知错误'),
       })
+      return
+    }
+    // 操作已成功：列表刷新失败不应误报"操作失败"
+    try {
+      await onRetry()
+    } catch (err) {
+      reportError(err, '开关切换后刷新列表')
     }
   }
 
@@ -249,15 +256,21 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       await onDelete(deleteTarget)
       toast({ title: t('删除成功') })
       setDeleteTarget(null)
-      await onRetry()
     } catch (err) {
       toast({
         variant: 'destructive',
         title: t('删除失败'),
         description: err instanceof Error ? err.message : t('未知错误'),
       })
-    } finally {
       setDeleting(false)
+      return
+    }
+    setDeleting(false)
+    // 删除已成功：列表刷新失败不应误报"删除失败"
+    try {
+      await onRetry()
+    } catch (err) {
+      reportError(err, '删除后刷新列表')
     }
   }
 

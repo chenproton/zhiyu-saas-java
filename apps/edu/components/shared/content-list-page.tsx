@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { listAll } from '@zhiyu/api-client'
 import {Check,
   ChevronDown,
   ChevronRight,
@@ -395,11 +396,14 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     setIsLoading(true)
     setLoadError(null)
     try {
-      const [itemsResp, batchesResp] = await Promise.all([
-        itemApi.list({ limit: 1000, ...(listParamsRef.current || {}) }),
-        batchApi.list({ limit: 1000 }),
+      // 分页全量拉取（后端 maxPageSize=200，单次请求会静默截断超量数据）
+      const [items, batches] = await Promise.all([
+        listAll((page, pageSize) =>
+          itemApi.list({ limit: pageSize, offset: page * pageSize, ...(listParamsRef.current || {}) }),
+        ),
+        listAll((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
       ])
-      const mappedBatches = batchesResp.items.map(mapBatchRef.current)
+      const mappedBatches = batches.map(mapBatchRef.current)
 
       if (tenantId) {
         try {
@@ -420,7 +424,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           reportError(err, '加载专业与审批流配置')
         }
       }
-      let front = itemsResp.items.map((i) => mapItemRef.current(i, currentUserId))
+      let front = items.map((i) => mapItemRef.current(i, currentUserId))
       if (afterLoadRef.current) front = await afterLoadRef.current(front, mappedBatches)
 
       const rejectedItems = front.filter((item) => item.status === 'rejected')
@@ -809,6 +813,11 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   const handleBatchExport = async () => {
     try {
       const res = await importExportApi.export(exportEntityName)
+      // 非 2xx 时后端返回错误 JSON，直接下载会得到内容为错误信息的 CSV（错误被吞没）
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `导出失败（HTTP ${res.status}）`)
+      }
       const blob = await res.blob()
       const disposition = res.headers.get('content-disposition')
       downloadBlob(

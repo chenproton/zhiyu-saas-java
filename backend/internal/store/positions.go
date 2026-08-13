@@ -668,23 +668,36 @@ func ScanPositionRows(rows pgx.Rows) ([]domain.CareerPosition, error) {
 }
 
 // ListBySourceEnterprise 企业共建岗位列表（来源企业视角，join tenants 出校名）。
-// schoolTenantID 非空时按学校过滤；按 updated_at 倒序，上限 200 条。
-// 含学校授权资源：本企业共建的 + 学校授权（grant）给本企业的岗位。
-func (s *PositionStore) ListBySourceEnterprise(ctx context.Context, enterpriseID string, schoolTenantID *string) ([]domain.PartnerCoBuildPosition, error) {
-	query := `SELECT ` + positionSelectColumns + `, t.name AS school_name
-		FROM ` + positionListFrom + ` JOIN tenants t ON t.id = cp.tenant_id
-		WHERE (cp.source_enterprise_id = $1
-			OR EXISTS (SELECT 1 FROM alliance_resource_grants g
-				WHERE g.enterprise_id = $1 AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))`
+// schoolTenantID 非空时按学校过滤；支持搜索/分页（limit<=0 时默认 200）。
+// 含学校授权资源：本企业共建的 + 学校授权（grant）给本企业的岗位。返回列表与总数。
+func (s *PositionStore) ListBySourceEnterprise(ctx context.Context, enterpriseID string, schoolTenantID *string, search string, limit, offset int) ([]domain.PartnerCoBuildPosition, int, error) {
+	where := `(cp.source_enterprise_id = $1
+		OR EXISTS (SELECT 1 FROM alliance_resource_grants g
+			WHERE g.enterprise_id = $1 AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))`
 	args := []any{enterpriseID}
 	if schoolTenantID != nil && *schoolTenantID != "" {
-		query += ` AND cp.tenant_id = $2`
 		args = append(args, *schoolTenantID)
+		where += fmt.Sprintf(` AND cp.tenant_id = $%d`, len(args))
 	}
-	query += ` ORDER BY cp.updated_at DESC LIMIT 200`
+	if search != "" {
+		args = append(args, "%"+search+"%")
+		where += fmt.Sprintf(` AND cp.name ILIKE $%d`, len(args))
+	}
+	if limit <= 0 {
+		limit = 200
+	}
+	var total int
+	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM `+positionListFrom+` WHERE `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	query := `SELECT ` + positionSelectColumns + `, t.name AS school_name
+		FROM ` + positionListFrom + ` JOIN tenants t ON t.id = cp.tenant_id
+		WHERE ` + where
+	args = append(args, limit, offset)
+	query += fmt.Sprintf(` ORDER BY cp.updated_at DESC LIMIT $%d OFFSET $%d`, len(args)-1, len(args))
 	rows, err := s.q.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	items := make([]domain.PartnerCoBuildPosition, 0)
@@ -692,11 +705,11 @@ func (s *PositionStore) ListBySourceEnterprise(ctx context.Context, enterpriseID
 		var schoolName string
 		pos, err := scanPositionRow(rows, &schoolName)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, domain.PartnerCoBuildPosition{CareerPosition: pos, SchoolName: schoolName})
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 // FindDraftBySource 查询本企业对某源资源尚未完结的编辑 draft（draft/pending/rejected）。

@@ -269,19 +269,29 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     }
   }
 
+  const [deleting, setDeleting] = useState(false)
+
   const confirmDelete = async () => {
-    if (!deleteTarget) return
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
     try {
       await onDelete(deleteTarget)
+      setDeleteTarget(null)
     } catch (err) {
       toast({
         variant: 'destructive',
         title: t('删除失败'),
         description: err instanceof Error ? err.message : t('未知错误'),
       })
-    } finally {
-      setDeleteTarget(null)
+      setDeleting(false)
+      return
+    }
+    setDeleting(false)
+    // 删除已成功：刷新失败不应误报删除失败
+    try {
       await refetch()
+    } catch {
+      // 静默
     }
   }
 
@@ -607,8 +617,9 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         }}
         title={t('确认删除')}
         description={t('确定要删除该{entityLabel}吗？此操作不可恢复。', { entityLabel })}
-        confirmText={t('删除')}
+        confirmText={deleting ? t('删除中...') : t('删除')}
         variant="destructive"
+        pending={deleting}
         onConfirm={confirmDelete}
       />
 

@@ -71,7 +71,12 @@ export function useImportFlow({
       })
       setImportFiles([])
       setImportPreview(null)
-      await onSuccess()
+      // 导入已成功：onSuccess（列表刷新）失败不应误报"导入失败"或卡住弹窗
+      try {
+        await onSuccess()
+      } catch {
+        // 刷新失败静默：数据已入库，弹窗正常关闭
+      }
       return true
     } catch (err: unknown) {
       toast({

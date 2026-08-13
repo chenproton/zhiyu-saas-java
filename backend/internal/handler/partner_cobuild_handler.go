@@ -120,12 +120,13 @@ func (h *PartnerCoBuildHandler) ListPositions(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	items, err := h.Service.ListPositions(r.Context(), partnerTenantID, optionalSchoolFilter(r))
+	limit, offset := parseLimitOffset(r, 50)
+	items, total, err := h.Service.ListPositions(r.Context(), partnerTenantID, optionalSchoolFilter(r), r.URL.Query().Get("search"), limit, offset)
 	if err != nil {
 		respondCoBuildError(w, r, err, "岗位不存在", "查询共建岗位失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.PartnerCoBuildPosition]{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PartnerCoBuildPosition]{Items: items, Total: total})
 }
 
 func (h *PartnerCoBuildHandler) GetPosition(w http.ResponseWriter, r *http.Request) {
@@ -419,12 +420,13 @@ func (h *PartnerCoBuildHandler) ListScenarios(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	items, err := h.Service.ListScenarios(r.Context(), partnerTenantID, optionalSchoolFilter(r))
+	limit, offset := parseLimitOffset(r, 50)
+	items, total, err := h.Service.ListScenarios(r.Context(), partnerTenantID, optionalSchoolFilter(r), r.URL.Query().Get("search"), limit, offset)
 	if err != nil {
 		respondCoBuildError(w, r, err, "场景不存在", "查询共建场景失败")
 		return
 	}
-	respondJSON(w, http.StatusOK, ListResponse[domain.PartnerCoBuildScenario]{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ListResponse[domain.PartnerCoBuildScenario]{Items: items, Total: total})
 }
 
 func (h *PartnerCoBuildHandler) GetScenario(w http.ResponseWriter, r *http.Request) {
