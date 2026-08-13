@@ -51,6 +51,7 @@ interface EnterpriseInfo {
   name?: string
   creditCode?: string
   unifiedSocialCreditCode?: string
+  enterpriseType?: string
   industry?: string
   region?: string
   establishedYear?: number
@@ -64,8 +65,10 @@ interface EnterpriseInfo {
   logoUrl?: string
   coverImage?: string
   coverPhotos?: string[]
+  businessLicensePhotos?: string[]
   qualificationPhotos?: string[]
   intellectualPropertyPhotos?: string[]
+  secondaryColleges?: string[]
 }
 
 function salaryText(p: PositionSnapshot) {
@@ -116,6 +119,7 @@ export default function AlliancePublicBrandDetailPage() {
       name: info.name ?? brand.name,
       logoUrl: info.logoUrl ?? info.logo,
       coverImage: info.coverImage,
+      enterpriseType: info.enterpriseType,
       industry: info.industry,
       region: info.region,
       establishedYear: info.establishedYear,
@@ -127,8 +131,10 @@ export default function AlliancePublicBrandDetailPage() {
       address: info.address,
       description: info.description,
       coverPhotos: info.coverPhotos ?? [],
+      businessLicensePhotos: info.businessLicensePhotos ?? [],
       qualificationPhotos: info.qualificationPhotos ?? [],
       intellectualPropertyPhotos: info.intellectualPropertyPhotos ?? [],
+      secondaryColleges: info.secondaryColleges ?? [],
     }
   }, [brand, isEmployer, isIndependent])
 
@@ -247,6 +253,8 @@ export default function AlliancePublicBrandDetailPage() {
   const hiredStudents: HiredStudent[] = isEmployer ? (brand.data?.hiredStudents ?? []) : []
 
   const badges: string[] = []
+  if (isIndependent && enterprise?.enterpriseType)
+    badges.push(allianceLabel('enterpriseType', enterprise.enterpriseType))
   if (enterprise?.industry) badges.push(enterprise.industry)
   if (enterprise?.region) badges.push(enterprise.region)
   if (enterprise?.establishedYear)
@@ -329,6 +337,12 @@ export default function AlliancePublicBrandDetailPage() {
               label={t('统一社会信用代码')}
               value={enterprise?.unifiedSocialCreditCode}
             />
+            {isIndependent && (
+              <DetailInfoBlock
+                label={t('企业类型')}
+                value={allianceLabel('enterpriseType', enterprise?.enterpriseType)}
+              />
+            )}
             <DetailInfoBlock label={t('成立年份')} value={enterprise?.establishedYear} />
             <DetailInfoBlock
               label={t('企业规模（人数）')}
@@ -340,6 +354,13 @@ export default function AlliancePublicBrandDetailPage() {
             />
             <DetailInfoBlock label={t('所在地区')} value={enterprise?.region} />
             <DetailInfoBlock label={t('详细地址')} value={enterprise?.address} />
+            {isIndependent && enterprise?.secondaryColleges &&
+              enterprise.secondaryColleges.length > 0 && (
+                <DetailInfoBlock
+                  label={t('关联二级学院')}
+                  value={enterprise.secondaryColleges.join('、')}
+                />
+              )}
           </div>
         </div>
       </DetailSectionCard>
@@ -370,6 +391,12 @@ export default function AlliancePublicBrandDetailPage() {
           className="lg:col-span-3"
         >
           <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{brand.description}</p>
+        </DetailSectionCard>
+      )}
+
+      {enterprise?.businessLicensePhotos && enterprise.businessLicensePhotos.length > 0 && (
+        <DetailSectionCard icon={ImageIcon} title={t('营业执照')} className="lg:col-span-3">
+          <PhotoGrid photos={enterprise.businessLicensePhotos} alt={brand.name} />
         </DetailSectionCard>
       )}
 

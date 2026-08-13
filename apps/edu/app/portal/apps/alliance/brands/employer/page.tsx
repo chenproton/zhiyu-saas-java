@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
@@ -21,36 +20,18 @@ import { allianceBrandApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
-import { FormFieldRow } from '@/components/shared/form-field-row'
-import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
+import {
+  IndependentEnterpriseForm,
+  normalizeEnterpriseInfo,
+  type EnterpriseInfo,
+} from '@/components/alliance/independent-enterprise-form'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { EmployerBrand, AllianceEnterprise } from '@/lib/types'
 
 const brandType = 'employer'
 
-interface EnterpriseInfo {
-  name?: string
-  creditCode?: string
-  unifiedSocialCreditCode?: string
-  industry?: string
-  region?: string
-  establishedYear?: number
-  employeeCount?: number
-  contactPerson?: string
-  contactPhone?: string
-  contactEmail?: string
-  address?: string
-  description?: string
-  logo?: string
-  logoUrl?: string
-  coverImage?: string
-  coverPhotos?: string[]
-  qualificationPhotos?: string[]
-  intellectualPropertyPhotos?: string[]
-}
-
 function enterpriseInfoOf(item?: EmployerBrand | null): EnterpriseInfo {
-  return (item?.data?.enterpriseInfo as EnterpriseInfo) ?? {}
+  return normalizeEnterpriseInfo(item?.data?.enterpriseInfo)
 }
 
 function positionsOf(item?: EmployerBrand | null): any[] {
@@ -163,6 +144,7 @@ export default function AllianceEmployerBrandPage() {
       if (editTarget) {
         await allianceBrandApi.update(editTarget.id, {
           ...payload,
+          name: editInfo.name,
           data: { ...(editTarget.data || {}), enterpriseInfo: editInfo },
         })
       } else {
@@ -371,131 +353,8 @@ export default function AllianceEmployerBrandPage() {
               {t('由学校登记的企业资料，仅在本模块展示，不会加入合作企业库')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <FormFieldRow label={t('企业名称')} required>
-              <Input
-                value={editInfo.name || ''}
-                onChange={(e) => setEditInfo({ ...editInfo, name: e.target.value })}
-              />
-            </FormFieldRow>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormFieldRow label={t('统一社会信用代码')}>
-                <Input
-                  value={editInfo.creditCode || editInfo.unifiedSocialCreditCode || ''}
-                  onChange={(e) =>
-                    setEditInfo({ ...editInfo, unifiedSocialCreditCode: e.target.value })
-                  }
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('所属行业')}>
-                <Input
-                  value={editInfo.industry || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, industry: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('所在地区')}>
-                <Input
-                  value={editInfo.region || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, region: e.target.value })}
-                  placeholder={t('如：江苏省苏州市')}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('成立年份')}>
-                <Input
-                  type="number"
-                  min={1900}
-                  max={2100}
-                  value={editInfo.establishedYear ?? ''}
-                  onChange={(e) =>
-                    setEditInfo({ ...editInfo, establishedYear: Number(e.target.value) || undefined })
-                  }
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('企业规模（人数）')}>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editInfo.employeeCount ?? ''}
-                  onChange={(e) =>
-                    setEditInfo({ ...editInfo, employeeCount: Number(e.target.value) || undefined })
-                  }
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系人')}>
-                <Input
-                  value={editInfo.contactPerson || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, contactPerson: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系电话')}>
-                <Input
-                  value={editInfo.contactPhone || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, contactPhone: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系邮箱')}>
-                <Input
-                  value={editInfo.contactEmail || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, contactEmail: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('详细地址')}>
-                <Input
-                  value={editInfo.address || ''}
-                  onChange={(e) => setEditInfo({ ...editInfo, address: e.target.value })}
-                />
-              </FormFieldRow>
-            </div>
-            <FormFieldRow label={t('Logo')}>
-              <SingleImageUpload
-                label={t('Logo')}
-                value={editInfo.logoUrl || editInfo.logo || ''}
-                onChange={(v) => setEditInfo({ ...editInfo, logoUrl: v })}
-                allowUrlInput={false}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('封面图')}>
-              <SingleImageUpload
-                label={t('封面图')}
-                value={editInfo.coverImage || ''}
-                onChange={(v) => setEditInfo({ ...editInfo, coverImage: v })}
-                allowUrlInput={false}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('企业展示封面图')}>
-              <ImageListUpload
-                label={t('企业展示封面图')}
-                value={editInfo.coverPhotos || []}
-                onChange={(v) => setEditInfo({ ...editInfo, coverPhotos: v })}
-                multiple
-                allowUrlInput={false}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('企业荣誉资质图')}>
-              <ImageListUpload
-                label={t('企业荣誉资质图')}
-                value={editInfo.qualificationPhotos || []}
-                onChange={(v) => setEditInfo({ ...editInfo, qualificationPhotos: v })}
-                multiple
-                allowUrlInput={false}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('知识产权图')}>
-              <ImageListUpload
-                label={t('知识产权图')}
-                value={editInfo.intellectualPropertyPhotos || []}
-                onChange={(v) => setEditInfo({ ...editInfo, intellectualPropertyPhotos: v })}
-                multiple
-                allowUrlInput={false}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('企业简介')}>
-              <Textarea
-                value={editInfo.description || ''}
-                onChange={(e) => setEditInfo({ ...editInfo, description: e.target.value })}
-                rows={3}
-              />
-            </FormFieldRow>
+          <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
+            <IndependentEnterpriseForm value={editInfo} onChange={setEditInfo} />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(false)}>

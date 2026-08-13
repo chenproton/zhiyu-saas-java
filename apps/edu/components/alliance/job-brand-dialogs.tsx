@@ -3,15 +3,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { MultiSelect } from '@/components/ui/multi-select'
 import {
   Dialog,
   DialogContent,
@@ -23,10 +14,16 @@ import {
 import { Loader2, Search } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
-import { FormFieldRow } from '@/components/shared/form-field-row'
+import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
 import { useT } from '@/lib/i18n/locale-provider'
+import {
+  convertCareerPositionToPosition,
+  convertApiResponsibilityToLocal,
+  convertApiCertificateToLocal,
+} from '@/lib/converters/job-converters'
 import type { JobBrand } from '@/lib/types'
-import type { CareerPosition } from '@/lib/types/job'
+import type { CareerPosition, PositionResponsibility, PositionCertificate } from '@/lib/types/job'
+import type { Position } from '@/lib/types/job-source'
 
 const brandType = 'job'
 
@@ -188,6 +185,41 @@ export function JobBrandRefDialog({
 }
 
 // ── 新增独立岗位 / 编辑企业岗位（企业岗位仅在本模块可见，可编辑） ──
+// 复用 /job/positions 编辑页步骤 1「岗位基础信息」表单（StepBasicInfo），
+// 不含步骤 2/3 能力建模配置；岗位类型锁定为"企业岗位"。
+
+/** 新建独立岗位的初始 Position（对齐 /job/positions 新建草稿，岗位类型固定企业岗位） */
+function createInitialPosition(): Position {
+  return {
+    id: '',
+    code: '',
+    batchId: '',
+    version: 'V1.0',
+    status: 'draft',
+    name: '',
+    shortName: '',
+    industry: '',
+    majors: [],
+    positionType: 'enterprise',
+    salaryRange: [0, 0],
+    coverImage: undefined,
+    certificates: [],
+    description: '',
+    responsibilities: [{ id: `resp-${Date.now()}`, name: '', description: '' }],
+    requirements: [''],
+    careerPath: '',
+    abilityModel: { nodes: [], edges: [] },
+    abilityBindings: [],
+    abilityDomains: [],
+    competencyConfig: [],
+    createdBy: '',
+    collaborators: [],
+    createdAt: '',
+    updatedAt: '',
+    sourceType: 'school',
+    favoriteCount: 0,
+  }
+}
 
 export function JobBrandEditDialog({
   target,
@@ -200,55 +232,53 @@ export function JobBrandEditDialog({
 }) {
   const { toast } = useToast()
   const t = useT()
-  const [form, setForm] = useState<{
-    name: string
-    industryId: string
-    salaryMin?: number
-    salaryMax?: number
-    majorIds: string[]
-    description: string
-  }>({ name: '', industryId: '', salaryMin: undefined, salaryMax: undefined, majorIds: [], description: '' })
+  const [position, setPosition] = useState<Position | null>(null)
+  const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const isEdit = !!target?.id
   const open = !!target
 
-  const { data: industryOptions } = useAsync(
-    async () => {
-      if (!open) return []
-      const res = await portalRequest<{ items: { id: string; name: string }[] }>('/industries?limit=200')
-      return res.items || []
-    },
-    { deps: [open], onError: () => true },
-  )
-
-  const { data: majorOptions } = useAsync(
-    async () => {
-      if (!open) return []
-      const res = await portalRequest<{ items: { id: string; name: string }[] }>('/majors?limit=200')
-      return res.items || []
-    },
-    { deps: [open], onError: () => true },
-  )
-
-  // target 变化时初始化表单（编辑企业岗位 / 新建）
+  // target 变化时初始化表单：编辑加载岗位步骤 1 数据（含职责/证书），新建给初始草稿
   useAsync(
     async () => {
       if (!open) return true
-      if (isEdit && target.positionId) {
-        const pos = await portalRequest<CareerPosition>(`/job/positions/${target.positionId}`).catch(
-          () => null,
-        )
-        setForm({
-          name: target.name || pos?.name || '',
-          industryId: pos?.industryId || '',
-          salaryMin: pos?.salaryMin ?? undefined,
-          salaryMax: pos?.salaryMax ?? undefined,
-          majorIds: pos?.majorIds ?? [],
-          description: pos?.description || target.description || '',
-        })
-      } else {
-        setForm({ name: '', industryId: '', salaryMin: undefined, salaryMax: undefined, majorIds: [], description: '' })
+      setLoading(true)
+      try {
+        if (isEdit && target.positionId) {
+          const cp = await portalRequest<CareerPosition>(`/job/positions/${target.positionId}`).catch(
+            () => null,
+          )
+          if (!cp) {
+            setPosition(null)
+            return true
+          }
+          const base = convertCareerPositionToPosition(cp)
+          const [respRes, certRes] = await Promise.all([
+            portalRequest<{ items: PositionResponsibility[] }>(
+              `/job/position-responsibilities?careerPositionId=${cp.id}&limit=1000`,
+            ).catch(() => ({ items: [] as PositionResponsibility[] })),
+            portalRequest<{ items: PositionCertificate[] }>(
+              `/job/position-certificates?careerPositionId=${cp.id}&limit=1000`,
+            ).catch(() => ({ items: [] as PositionCertificate[] })),
+          ])
+          const responsibilities = respRes.items.map(convertApiResponsibilityToLocal)
+          const certificates = certRes.items.map(convertApiCertificateToLocal)
+          setPosition({
+            ...base,
+            positionType: 'enterprise',
+            responsibilities:
+              responsibilities.length > 0
+                ? responsibilities
+                : [{ id: `resp-${Date.now()}`, name: '', description: '' }],
+            certificates,
+            requirements: base.requirements.length > 0 ? base.requirements : [''],
+          })
+        } else {
+          setPosition(createInitialPosition())
+        }
+      } finally {
+        setLoading(false)
       }
       return true
     },
@@ -256,38 +286,56 @@ export function JobBrandEditDialog({
   )
 
   const save = async () => {
-    if (!form.name.trim()) {
+    if (!position) return
+    const name = position.name.trim()
+    if (!name) {
       toast({ title: t('岗位名称不能为空'), variant: 'destructive' })
       return
     }
     setSubmitting(true)
     try {
-      const positionPayload = {
-        name: form.name.trim(),
+      const saveFullPayload = {
+        batchId: position.batchId,
+        name,
+        shortName: position.shortName,
+        industry: position.industry,
+        majors: position.majors,
         positionType: 'enterprise',
-        industryId: form.industryId || undefined,
-        salaryMin: form.salaryMin,
-        salaryMax: form.salaryMax,
-        majorIds: form.majorIds,
-        description: form.description || undefined,
-        version: 'V1.0',
+        salaryRange: position.salaryRange,
+        coverImage: position.coverImage,
+        description: position.description,
+        requirements: position.requirements.map((r) => r.trim()).filter(Boolean),
+        careerPath: position.careerPath,
+        version: position.version || 'V1.0',
+        collaborators: position.collaborators,
+        responsibilities: position.responsibilities
+          .filter((r) => r.name.trim())
+          .map((r) => ({ id: r.id, name: r.name, description: r.description })),
+        certificates: position.certificates,
+        abilityBindings: [] as any[],
+        abilityDomains: [] as any[],
       }
       if (isEdit && target.positionId) {
-        await portalRequest(`/job/positions/${target.positionId}`, {
+        await portalRequest(`/job/positions/${target.positionId}/save-full`, {
           method: 'PUT',
-          body: JSON.stringify(positionPayload),
+          body: JSON.stringify(saveFullPayload),
         })
-        await allianceBrandApi.update(target.id, { name: form.name.trim() } as any)
+        await allianceBrandApi.update(target.id, { name } as any)
         toast({ title: t('岗位品牌已更新') })
       } else {
-        const pos = await portalRequest<CareerPosition>('/job/positions', {
+        // 与 /job/positions 新建流程一致：先建草稿（名称+类型），再 save-full 保存步骤 1 全量数据
+        const created = await portalRequest<CareerPosition>('/job/positions', {
           method: 'POST',
-          body: JSON.stringify(positionPayload),
+          body: JSON.stringify({ name, positionType: 'enterprise' }),
+        })
+        await portalRequest(`/job/positions/${created.id}/save-full`, {
+          method: 'PUT',
+          body: JSON.stringify(saveFullPayload),
         })
         await allianceBrandApi.create({
           brandType,
-          name: pos.name,
-          positionId: pos.id,
+          name,
+          positionId: created.id,
           isPublic: false,
         } as any)
         toast({ title: t('独立岗位已创建') })
@@ -307,76 +355,33 @@ export function JobBrandEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? t('编辑企业岗位') : t('新增独立岗位')}</DialogTitle>
           <DialogDescription>
             {t('企业岗位仅在岗位品牌模块中可见和管理，不进入职业岗位库')}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <FormFieldRow label={t('岗位名称')} required>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+        <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : position ? (
+            <StepBasicInfo
+              position={position}
+              onUpdate={(data) => setPosition((prev) => (prev ? { ...prev, ...data } : prev))}
+              lockedPositionType
             />
-          </FormFieldRow>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormFieldRow label={t('所属行业')}>
-              <Select value={form.industryId} onValueChange={(v) => setForm({ ...form, industryId: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('选择行业...')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(industryOptions ?? []).map((ind) => (
-                    <SelectItem key={ind.id} value={ind.id}>
-                      {ind.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormFieldRow>
-            <FormFieldRow label={t('薪资范围（K）')}>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder={t('最低')}
-                  value={form.salaryMin ?? ''}
-                  onChange={(e) => setForm({ ...form, salaryMin: Number(e.target.value) || undefined })}
-                />
-                <span className="text-muted-foreground">-</span>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder={t('最高')}
-                  value={form.salaryMax ?? ''}
-                  onChange={(e) => setForm({ ...form, salaryMax: Number(e.target.value) || undefined })}
-                />
-              </div>
-            </FormFieldRow>
-          </div>
-          <FormFieldRow label={t('面向专业')}>
-            <MultiSelect
-              options={(majorOptions ?? []).map((m) => ({ label: m.name, value: m.id }))}
-              value={form.majorIds}
-              onChange={(values) => setForm({ ...form, majorIds: values })}
-              placeholder={t('选择专业...')}
-            />
-          </FormFieldRow>
-          <FormFieldRow label={t('岗位介绍')}>
-            <Textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={3}
-            />
-          </FormFieldRow>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('岗位不存在')}</p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose}>
             {t('取消')}
           </Button>
-          <Button size="sm" onClick={save} disabled={submitting}>
+          <Button size="sm" onClick={save} disabled={submitting || !position}>
             {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
             {t('保存')}
           </Button>

@@ -91,6 +91,8 @@ interface StepBasicInfoProps {
   showIndustryMajor?: boolean
   /** 是否启用证书库选择/新增（缺省 true；企业共建端无证书库数据源时传 false，仅展示/移除已关联证书） */
   certificateLibraryEnabled?: boolean
+  /** 锁定岗位类型不可改（缺省 false；品牌模块独立岗位固定为"企业岗位"） */
+  lockedPositionType?: boolean
 }
 
 interface Certificate {
@@ -112,6 +114,7 @@ export function StepBasicInfo({
   variant = 'default',
   showIndustryMajor = true,
   certificateLibraryEnabled = true,
+  lockedPositionType = false,
 }: StepBasicInfoProps) {
   const t = useT()
   const isCreate = variant === 'create'
@@ -915,6 +918,7 @@ export function StepBasicInfo({
             <FormFieldRow label={t('岗位类型')} htmlFor="positionType">
               <Select
                 value={position.positionType}
+                disabled={lockedPositionType}
                 onValueChange={(v) => onUpdate({ positionType: v as Position['positionType'] })}
               >
                 <SelectTrigger id="positionType">
@@ -925,6 +929,11 @@ export function StepBasicInfo({
                   <SelectItem value="teaching">{t('教学岗位')}</SelectItem>
                 </SelectContent>
               </Select>
+              {lockedPositionType && (
+                <p className="text-xs text-muted-foreground">
+                  {t('独立岗位固定为企业岗位，仅在本模块展示，不进入职业岗位库')}
+                </p>
+              )}
             </FormFieldRow>
           </FormFieldGrid>
 

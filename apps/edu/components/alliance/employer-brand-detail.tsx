@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -34,8 +33,11 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
-import { FormFieldRow } from '@/components/shared/form-field-row'
-import { SingleImageUpload } from '@/components/shared/image-list-upload'
+import {
+  IndependentEnterpriseForm,
+  normalizeEnterpriseInfo,
+  type EnterpriseInfo,
+} from '@/components/alliance/independent-enterprise-form'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand, CareerPosition } from '@/lib/types'
@@ -93,7 +95,7 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
   const hiredStudents = useMemo<HiredStudent[]>(() => brand?.data?.hiredStudents ?? [], [brand])
 
   const isIndependent = !!brand && !brand.enterpriseId
-  const info = (brand?.data?.enterpriseInfo ?? {}) as Record<string, any>
+  const info = normalizeEnterpriseInfo(brand?.data?.enterpriseInfo) as Record<string, any>
 
   const saveData = async (nextPositions: PositionSnapshot[], nextStudents: HiredStudent[]) => {
     if (!brand) return
@@ -154,28 +156,37 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
     return <AllianceDetailShell title="" tabs={[]} notFound backHref="/portal/apps/alliance/brands" />
   }
 
-  const enterpriseRows: { label: string; value?: string }[] = isIndependent
-    ? [
-        { label: t('企业名称'), value: brand?.name },
-        { label: t('统一社会信用代码'), value: info.creditCode },
-        { label: t('所属行业'), value: info.industry },
-        { label: t('联系人'), value: info.contactPerson },
-        { label: t('联系电话'), value: info.contactPhone },
-        { label: t('联系邮箱'), value: info.contactEmail },
-        { label: t('企业地址'), value: info.address },
-      ]
-    : [
-        { label: t('企业名称'), value: brand?.enterpriseName },
-        { label: t('统一社会信用代码'), value: brand?.enterpriseCreditCode },
-        { label: t('所属行业'), value: brand?.enterpriseIndustry },
-        { label: t('所在地区'), value: brand?.enterpriseRegion },
-        { label: t('联系人'), value: brand?.enterpriseContactPerson },
-        { label: t('联系电话'), value: brand?.enterpriseContactPhone },
-        { label: t('联系邮箱'), value: brand?.enterpriseContactEmail },
-        { label: t('企业地址'), value: brand?.enterpriseAddress },
-      ].filter((x) => x.value)
+  const enterpriseRows: { label: string; value?: string | number }[] = (
+    isIndependent
+      ? [
+          { label: t('企业名称'), value: brand?.name },
+          { label: t('企业类型'), value: allianceLabel('enterpriseType', info.enterpriseType) },
+          { label: t('统一社会信用代码'), value: info.unifiedSocialCreditCode ?? info.creditCode },
+          { label: t('所属行业'), value: info.industry },
+          { label: t('所在地区'), value: info.region },
+          { label: t('成立年份'), value: info.establishedYear },
+          { label: t('企业规模（人数）'), value: info.employeeCount },
+          { label: t('联系人'), value: info.contactPerson },
+          { label: t('联系电话'), value: info.contactPhone },
+          { label: t('联系邮箱'), value: info.contactEmail },
+          { label: t('企业地址'), value: info.address },
+          ...(info.secondaryColleges?.length
+            ? [{ label: t('关联二级学院'), value: info.secondaryColleges.join('、') }]
+            : []),
+        ]
+      : [
+          { label: t('企业名称'), value: brand?.enterpriseName },
+          { label: t('统一社会信用代码'), value: brand?.enterpriseCreditCode },
+          { label: t('所属行业'), value: brand?.enterpriseIndustry },
+          { label: t('所在地区'), value: brand?.enterpriseRegion },
+          { label: t('联系人'), value: brand?.enterpriseContactPerson },
+          { label: t('联系电话'), value: brand?.enterpriseContactPhone },
+          { label: t('联系邮箱'), value: brand?.enterpriseContactEmail },
+          { label: t('企业地址'), value: brand?.enterpriseAddress },
+        ]
+  ).filter((x) => x.value != null && x.value !== '' && x.value !== '-')
   const enterpriseDesc = isIndependent ? info.description : brand?.enterpriseDescription
-  const enterpriseLogo = isIndependent ? info.logo : brand?.enterpriseLogo
+  const enterpriseLogo = isIndependent ? info.logoUrl ?? info.logo : brand?.enterpriseLogo
 
   const tabs = [
     {
@@ -244,6 +255,9 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
                   </p>
                 )}
               </div>
+              {isIndependent && (
+                <IndependentEnterprisePhotos info={info} />
+              )}
             </div>
           </div>
           {brand?.description && (
@@ -406,11 +420,11 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
   const { toast } = useToast()
   const t = useT()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState<Record<string, any>>({})
+  const [form, setForm] = useState<EnterpriseInfo>({})
   const [submitting, setSubmitting] = useState(false)
 
   const openEdit = () => {
-    setForm(brand.data?.enterpriseInfo ?? {})
+    setForm(normalizeEnterpriseInfo(brand.data?.enterpriseInfo))
     setOpen(true)
   }
 
@@ -447,63 +461,8 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
             <DialogTitle>{t('编辑独立雇主企业')}</DialogTitle>
             <DialogDescription>{t('仅在本模块展示，不会加入合作企业库')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <FormFieldRow label={t('企业名称')} required>
-              <Input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </FormFieldRow>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormFieldRow label={t('统一社会信用代码')}>
-                <Input
-                  value={form.creditCode || ''}
-                  onChange={(e) => setForm({ ...form, creditCode: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('所属行业')}>
-                <Input
-                  value={form.industry || ''}
-                  onChange={(e) => setForm({ ...form, industry: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系人')}>
-                <Input
-                  value={form.contactPerson || ''}
-                  onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系电话')}>
-                <Input
-                  value={form.contactPhone || ''}
-                  onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('联系邮箱')}>
-                <Input
-                  value={form.contactEmail || ''}
-                  onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('企业地址')}>
-                <Input
-                  value={form.address || ''}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                />
-              </FormFieldRow>
-            </div>
-            <FormFieldRow label={t('Logo')}>
-              <SingleImageUpload
-                label={t('Logo')}
-                value={form.logo || ''}
-                onChange={(v) => setForm({ ...form, logo: v })}
-                allowUrlInput={false}
-              />
-            </FormFieldRow>
-            <FormFieldRow label={t('企业简介')}>
-              <Textarea
-                value={form.description || ''}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={3}
-              />
-            </FormFieldRow>
+          <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
+            <IndependentEnterpriseForm value={form} onChange={setForm} />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
@@ -517,6 +476,41 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// ── 独立企业图片资料展示（与引用企业前台展示对齐） ────────────────
+
+function IndependentEnterprisePhotos({ info }: { info: Record<string, any> }) {
+  const t = useT()
+  const groups: { label: string; photos: string[] }[] = [
+    { label: t('营业执照'), photos: info.businessLicensePhotos ?? [] },
+    { label: t('企业展示封面'), photos: info.coverPhotos ?? [] },
+    { label: t('企业荣誉资质'), photos: info.qualificationPhotos ?? [] },
+    { label: t('知识产权'), photos: info.intellectualPropertyPhotos ?? [] },
+  ].filter((g) => g.photos.length > 0)
+
+  if (groups.length === 0) return null
+
+  return (
+    <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+      {groups.map((g) => (
+        <div key={g.label}>
+          <p className="mb-2 text-sm font-medium text-foreground">{g.label}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {g.photos.map((url, idx) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={idx}
+                src={url}
+                alt={g.label}
+                className="h-24 w-full rounded-lg border object-cover"
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 
