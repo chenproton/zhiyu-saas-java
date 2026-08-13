@@ -21,9 +21,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Search, Loader2, Settings2, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react'
+import { Loader2, Settings2, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { BrandMajorRankConfig, TalentRankStudent } from '@/lib/types'
 
@@ -119,18 +120,13 @@ export function TalentRankingPanel({ tenantId }: TalentRankingPanelProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t('搜索学生姓名或学号...')}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setSearch(searchInput.trim())
-              }}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="w-full sm:w-64"
+            placeholder={t('搜索学生姓名或学号...')}
+            value={searchInput}
+            onChange={setSearchInput}
+            onSearch={() => setSearch(searchInput.trim())}
+          />
           <Button variant="outline" size="sm" onClick={() => setSearch(searchInput.trim())}>
             {t('搜索')}
           </Button>

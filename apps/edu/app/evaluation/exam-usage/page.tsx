@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send, PencilLine } from 'lucide-react'
+import { Plus, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send, PencilLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -32,6 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useData } from '@/components/providers/data-provider'
+import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -321,15 +322,12 @@ export default function ExamUsagePage() {
 
       {/* 筛选栏 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t('搜索考试名称或关联试卷...')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="flex-1 sm:max-w-xs"
+          placeholder={t('搜索考试名称或关联试卷...')}
+          value={search}
+          onChange={setSearch}
+        />
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as FilterStatus)}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder={t('全部状态')} />

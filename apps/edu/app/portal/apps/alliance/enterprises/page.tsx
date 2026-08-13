@@ -26,7 +26,6 @@ import {
   Pencil,
   ExternalLink,
   Link2,
-  Search,
   Loader2,
   Unlink,
   Building2,
@@ -43,6 +42,7 @@ import {
 import { useToast, useAsync } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { SearchInput } from '@/components/shared/search-input'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
@@ -429,16 +429,13 @@ export default function AllianceEnterprisesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('输入企业名称关键词...')}
-                className="pl-9"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), doSearch())}
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="flex-1"
+              placeholder={t('输入企业名称关键词...')}
+              value={searchKeyword}
+              onChange={setSearchKeyword}
+              onSearch={doSearch}
+            />
             <Button variant="outline" onClick={doSearch} disabled={searching}>
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : t('搜索')}
             </Button>

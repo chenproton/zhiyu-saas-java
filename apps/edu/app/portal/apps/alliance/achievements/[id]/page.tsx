@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -18,11 +17,12 @@ import { allianceAchievementApi, courseApi, portalRequest, scenarioApi } from '@
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel, type AllianceRelatedRef } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { SearchInput } from '@/components/shared/search-input'
 import {
   RelatedObjectCard,
   normalizeRelatedRefs,
 } from '@/components/alliance/related-object-card'
-import { Loader2, Plus, Search, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceAchievement, CareerPosition } from '@/lib/types'
 
@@ -370,16 +370,14 @@ export default function AllianceAchievementDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('添加关联{pickLabel}', { pickLabel })}</DialogTitle>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-8"
-              placeholder={t('搜索{pickLabel}名称或编码', { pickLabel })}
-              value={keyword}
-              onChange={(e) => onKeywordChange(e.target.value)}
-              autoFocus
-            />
-          </div>
+          <SearchInput
+            iconClassName="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            inputClassName="pl-8"
+            placeholder={t('搜索{pickLabel}名称或编码', { pickLabel })}
+            value={keyword}
+            onChange={onKeywordChange}
+            autoFocus
+          />
           <div className="max-h-[45vh] overflow-y-auto space-y-1">
             {searching ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground">

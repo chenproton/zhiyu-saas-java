@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, FolderKanban, Pencil, Plus, Power, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { Check, FolderKanban, Pencil, Plus, Power, RotateCcw, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -388,15 +389,12 @@ export function BatchGroupPage({
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('搜索批次名称、编号...')}
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="flex-1"
+              placeholder={t('搜索批次名称、编号...')}
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
             <Select
               value={filterStatus}
               onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}

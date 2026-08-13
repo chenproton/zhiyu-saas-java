@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
@@ -13,7 +12,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Pencil, Trash2, ExternalLink, Link2, Building2, Loader2, Search } from 'lucide-react'
+import { Pencil, Trash2, ExternalLink, Link2, Building2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi } from '@/lib/api'
@@ -25,6 +24,7 @@ import {
   normalizeEnterpriseInfo,
   type EnterpriseInfo,
 } from '@/components/alliance/independent-enterprise-form'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { EmployerBrand, AllianceEnterprise } from '@/lib/types'
 
@@ -291,15 +291,11 @@ export default function AllianceEmployerBrandPage() {
             <DialogTitle>{t('从合作企业库引用')}</DialogTitle>
             <DialogDescription>{t('选择合作企业库中的企业，引用为雇主品牌')}</DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t('搜索企业名称或行业...')}
-              value={refSearch}
-              onChange={(e) => setRefSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            placeholder={t('搜索企业名称或行业...')}
+            value={refSearch}
+            onChange={setRefSearch}
+          />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {referable.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">

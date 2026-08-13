@@ -54,6 +54,7 @@
 | `TableRowActions` | `packages/ui` re-export | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
 | `HoverActionBar` | `packages/ui` re-export | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
 | `ComboboxSelect` | `packages/ui` re-export | 可搜索下拉选择（单选/多选），替换 inline 搜索+Select 实现 | `options`, `value`, `onChange`, `multiple`, `loading`, `renderOption` |
+| `SearchInput` | `packages/ui` re-export | 统一搜索框（放大镜图标 + 输入框，内置 `type="search"`/`autoComplete="off"` 防浏览器自动填充），替换各页面手写的 Search 图标 + Input 样板 | `value`, `onChange`, `placeholder`, `onSearch?`, `searchButton?`, `icon?`, `wrapperClassName?`, `iconClassName?`, `inputClassName?` |
 | `MixedTagEditor` | `packages/ui` re-export | contentEditable 输入框，纯文本与知识点/能力点标签混排（评价维度名/量规指标） | `text`, `knowledgePointIds`, `abilityPointIds`, `onChange`, `compact` |
 | `ImportWizardDialog` | `packages/ui` re-export | Excel 导入两步向导（下载模板→上传→导入），支持受控模式与 `useImportFlow` 组合 | `title`, `guideItems`, `onDownload`, `onImport`, `files?` 等 |
 | `ImportConfirmDialog` | `packages/ui` re-export | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
@@ -219,4 +220,5 @@
 6. **新增测评方式**：在 `EVALUATION_METHOD_OPTIONS` 数组加一行 + 创建对应的面板组件即可
 7. **错误处理**：关键路径异步失败用 `reportError(err, source)`（`lib/error-handling.ts`）记录，不再静默吞掉
 8. **可搜索下拉**：优先 `ComboboxSelect`（已内置 Command 搜索/多选/清空），不要手写 inline 搜索 + Select/Popover
+9. **页面搜索框**：一律使用 `SearchInput`（`apps/edu/components/shared/search-input`），禁止手写「Search 图标 + Input」样板；特殊图标形态用 `iconClassName`/`icon` 覆盖
 9. **useToast 模块级单例**：`packages/ui/src/hooks/use-toast.ts` 采用 shadcn 标准模块级单例模式（`memoryState`/`listeners`/`count`），为刻意保留；若日后需要多实例独立 toast 状态再评估改 React Context

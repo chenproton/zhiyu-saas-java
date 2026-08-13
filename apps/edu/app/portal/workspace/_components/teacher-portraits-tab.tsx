@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SectionCard } from './section-card'
 import { PortraitTab } from './portrait-tab'
@@ -250,15 +250,13 @@ export function TeacherPortraitsTab() {
           <div className="lg:col-span-3">
             <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
               <div className="border-b bg-gradient-to-r from-gray-50 to-white p-3">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder={t('搜索姓名或学号...')}
-                    value={navSearch}
-                    onChange={(e) => setNavSearch(e.target.value)}
-                    className="h-9 pl-8 text-xs border-gray-200 bg-white focus:border-primary/30"
-                  />
-                </div>
+                <SearchInput
+                  iconClassName="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400"
+                  placeholder={t('搜索姓名或学号...')}
+                  value={navSearch}
+                  onChange={setNavSearch}
+                  inputClassName="h-9 pl-8 text-xs border-gray-200 bg-white focus:border-primary/30"
+                />
               </div>
               <div className="max-h-[calc(100vh-520px)] overflow-y-auto p-2">
                 <button
@@ -321,15 +319,14 @@ export function TeacherPortraitsTab() {
           </div>
 
           <div className="lg:col-span-9">
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder={t('搜索姓名或学号...')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-10 text-sm border-gray-200 bg-white focus:border-primary/30 rounded-xl"
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="mb-4"
+              iconClassName="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+              placeholder={t('搜索姓名或学号...')}
+              value={searchTerm}
+              onChange={setSearchTerm}
+              inputClassName="pl-9 h-10 text-sm border-gray-200 bg-white focus:border-primary/30 rounded-xl"
+            />
 
             {filteredStudents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">

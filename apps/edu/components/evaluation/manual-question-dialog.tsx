@@ -3,7 +3,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Search, Plus, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +29,7 @@ import { reportError } from '@/lib/error-handling'
 import { fetchAllPages } from '@/lib/fetch-all'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { SearchInput } from '@/components/shared/search-input'
 
 const TYPE_COLORS = QUESTION_TYPE_BADGE_CLASSES
 
@@ -189,15 +189,12 @@ export function ManualQuestionDialog({
 
             {selectedBankId && (
               <>
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={t('搜索题目内容...')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
+                <SearchInput
+                  wrapperClassName="flex-1"
+                  placeholder={t('搜索题目内容...')}
+                  value={search}
+                  onChange={setSearch}
+                />
                 <Select
                   value={typeFilter}
                   onValueChange={(v) => setTypeFilter(v as QuestionType | 'all')}

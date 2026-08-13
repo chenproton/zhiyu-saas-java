@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   ChevronLeft,
-  Search,
   FileQuestion,
   Loader2,
   Check,
@@ -24,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { SearchInput } from '@/components/shared/search-input'
 import { ScoreConfigDialog } from '@/components/evaluation/score-config-dialog'
 import { questionBankApi, questionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
@@ -283,15 +283,13 @@ export function BankQuestionSelectorPanel({
                 </Button>
                 <span className="text-sm font-medium text-gray-700">{selectedBankName}</span>
               </div>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={questionSearch}
-                  onChange={(e) => setQuestionSearch(e.target.value)}
-                  placeholder={t('搜索题目内容...')}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="mb-3"
+                iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                value={questionSearch}
+                onChange={setQuestionSearch}
+                placeholder={t('搜索题目内容...')}
+              />
               <div className="flex-1 overflow-y-auto">
                 {loadingQuestions ? (
                   <div className="text-center text-gray-400 py-8">
@@ -413,15 +411,13 @@ export function BankQuestionSelectorPanel({
                   <TabsTrigger value="public">{t('公共题库')}</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={bankSearch}
-                  onChange={(e) => setBankSearch(e.target.value)}
-                  placeholder={t('搜索题库名称...')}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                wrapperClassName="mb-3"
+                iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                value={bankSearch}
+                onChange={setBankSearch}
+                placeholder={t('搜索题库名称...')}
+              />
               <div className="flex-1 overflow-y-auto">
                 {loadingBanks ? (
                   <div className="text-center text-gray-400 py-8">

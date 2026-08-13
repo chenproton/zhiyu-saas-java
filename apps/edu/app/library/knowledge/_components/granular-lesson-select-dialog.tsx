@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, X, Check } from 'lucide-react'
+import { X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,9 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface GranularLessonOption {
@@ -70,15 +70,13 @@ export function GranularLessonSelectDialog({
         </DialogHeader>
         <div className="flex gap-4 flex-1 min-h-0 py-4">
           <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('搜索颗粒课名称或编码...')}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="mb-3"
+              iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+              value={search}
+              onChange={setSearch}
+              placeholder={t('搜索颗粒课名称或编码...')}
+            />
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {filtered.map((gl) => {
                 const isSelected = selectedIds.includes(gl.id)

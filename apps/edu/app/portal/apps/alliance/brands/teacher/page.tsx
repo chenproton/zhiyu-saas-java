@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
@@ -13,11 +12,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Trash2, Loader2, Search, UserRound } from 'lucide-react'
+import { Trash2, Loader2, UserRound } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceExpertApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
+import { SearchInput } from '@/components/shared/search-input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand, AllianceExpert } from '@/lib/types'
@@ -316,15 +316,11 @@ function TeacherBrandSection({
             <DialogTitle>{pickerTitle}</DialogTitle>
             <DialogDescription>{t('选择后关联到师资品牌（只读展示）')}</DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={searchPlaceholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            placeholder={searchPlaceholder}
+            value={search}
+            onChange={setSearch}
+          />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {optionsLoading ? (
               <div className="flex items-center justify-center py-8">

@@ -12,7 +12,6 @@ import {
   Upload,
   Copy,
   Link2,
-  Search,
   CheckCircle2,
   Sparkles,
 } from 'lucide-react'
@@ -23,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SearchInput } from '@/components/shared/search-input'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -1333,15 +1333,13 @@ function AddSystemPageInner() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={grainSearch}
-                onChange={(e) => setGrainSearch(e.target.value)}
-                placeholder={t('搜索颗粒课名称、来源...')}
-                className="pl-9 text-sm h-9"
-              />
-            </div>
+            <SearchInput
+              iconClassName="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+              value={grainSearch}
+              onChange={setGrainSearch}
+              placeholder={t('搜索颗粒课名称、来源...')}
+              inputClassName="pl-9 text-sm h-9"
+            />
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
               {filteredGrainCourses.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">{t('未找到匹配的颗粒课')}</p>

@@ -1,10 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { PaginationBar } from '@/components/shared/pagination-bar'
@@ -96,15 +96,13 @@ export function LibraryPageShell<T>({
         </CardHeader>
         <CardContent>
           <div className="flex gap-3 mb-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="flex-1 max-w-sm"
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChange={onSearchChange}
+              inputClassName="pl-10"
+            />
             {searchQuery && (
               <Button variant="ghost" size="sm" onClick={() => onSearchChange('')}>
                 {t('清除')}

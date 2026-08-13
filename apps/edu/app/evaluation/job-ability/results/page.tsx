@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Eye, RefreshCw, Search } from 'lucide-react'
+import { Eye, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -22,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@zhiyu/ui'
+import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PaginationBar } from '@/components/shared/pagination-bar'
@@ -322,15 +322,12 @@ function JobAbilityResultsContent() {
 
         {/* 筛选栏 */}
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t('搜索姓名或学号...')}
-              value={search}
-              onChange={(e) => applyFilters({ search: e.target.value })}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="flex-1 sm:max-w-xs"
+            placeholder={t('搜索姓名或学号...')}
+            value={search}
+            onChange={(v) => applyFilters({ search: v })}
+          />
         </div>
 
         {/* 结果表格 */}

@@ -5,9 +5,8 @@ import Link from 'next/link'
 import {
   ArrowLeft,
   ClipboardList,
-  Search,
 } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { examUsageApi, examApi } from '@/lib/api'
 import type { ExamCenterItem, Exam } from '@/lib/types'
@@ -102,15 +101,14 @@ export default function ExamCenterPage() {
               )}
             </TabsList>
           </Tabs>
-          <div className="relative w-full sm:w-[320px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
-            <Input
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder={t('搜索考试名称...')}
-              className="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="w-full sm:w-[320px]"
+            iconClassName="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]"
+            value={keyword}
+            onChange={setKeyword}
+            placeholder={t('搜索考试名称...')}
+            inputClassName="pl-10 h-11 bg-white border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
+          />
         </div>
 
         {loading ? (

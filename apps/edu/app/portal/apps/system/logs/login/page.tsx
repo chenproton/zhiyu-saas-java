@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Search, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { Download, RefreshCw, AlertCircle } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalLogApi } from '@/lib/api'
 import type { LoginLog } from '@/lib/types/backend'
@@ -148,18 +148,15 @@ export default function LoginLogsPage() {
       </div>
 
       <div className="mb-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t('搜索用户名或IP...')}
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              setPage(1)
-            }}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="max-w-md"
+          placeholder={t('搜索用户名或IP...')}
+          value={searchTerm}
+          onChange={(v) => {
+            setSearchTerm(v)
+            setPage(1)
+          }}
+        />
       </div>
 
       {error && (

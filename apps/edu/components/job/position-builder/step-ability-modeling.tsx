@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
+import { SearchInput } from '@/components/shared/search-input'
 import {
   Plus,
   Search,
@@ -1082,16 +1083,14 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
           </DialogHeader>
 
           <div className="shrink-0 rounded-xl border bg-gray-50/50 p-3 space-y-2.5">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder={t('输入名称搜索能力点...')}
-                className="pl-9 h-9 text-sm bg-white border-gray-200"
-                value={abilityPoolSearch}
-                onChange={(e) => setAbilityPoolSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
+            <SearchInput
+              iconClassName="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              placeholder={t('输入名称搜索能力点...')}
+              inputClassName="pl-9 h-9 text-sm bg-white border-gray-200"
+              value={abilityPoolSearch}
+              onChange={setAbilityPoolSearch}
+              autoFocus
+            />
 
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-medium text-gray-500 mr-1">{t('能力属性')}</span>

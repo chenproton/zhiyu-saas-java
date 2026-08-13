@@ -12,13 +12,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Plus, Trash2, Search, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi, allianceAchievementApi, portalRequest } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
+import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceBrand } from '@/lib/types'
@@ -375,15 +376,7 @@ function RefSection({
             <DialogTitle>{pickerTitle}</DialogTitle>
             <DialogDescription>{t('选择后确认关联')}</DialogDescription>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={placeholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput placeholder={placeholder} value={search} onChange={setSearch} />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {loading ? (
               <div className="flex items-center justify-center py-8">

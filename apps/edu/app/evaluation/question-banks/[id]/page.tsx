@@ -7,7 +7,6 @@ import Image from 'next/image'
 import {
   ArrowLeft,
   Plus,
-  Search,
   Edit,
   Trash2,
   Eye,
@@ -22,7 +21,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
@@ -43,6 +41,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { SearchInput } from '@/components/shared/search-input'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
 import type { ImportPreviewResult } from '@/lib/api'
@@ -580,15 +579,12 @@ export default function QuestionBankDetailPage() {
       {/* 搜索 + 创建人筛选 + 批量操作 */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t('搜索题目内容...')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="flex-1 sm:max-w-xs"
+            placeholder={t('搜索题目内容...')}
+            value={search}
+            onChange={setSearch}
+          />
           {creators.length > 0 && (
             <Select value={creatorFilter} onValueChange={setCreatorFilter}>
               <SelectTrigger className="h-9 w-[140px]">
@@ -858,15 +854,14 @@ export default function QuestionBankDetailPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {t('选择目标题库，将选中的 {n} 道题目移动过去', { n: selectedQuestions.size })}
             </p>
-            <div className="relative mt-4">
-              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('搜索题库名称...')}
-                value={moveSearch}
-                onChange={(e) => setMoveSearch(e.target.value)}
-                className="h-9 pl-9 text-sm"
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="mt-4"
+              iconClassName="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              placeholder={t('搜索题库名称...')}
+              value={moveSearch}
+              onChange={setMoveSearch}
+              inputClassName="h-9 pl-9 text-sm"
+            />
             <div className="mt-3 max-h-60 overflow-auto">
               {questionBanks
                 .filter(

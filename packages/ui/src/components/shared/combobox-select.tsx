@@ -136,7 +136,7 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
       </PopoverTrigger>
       <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[200px]">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput autoComplete="off" placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>

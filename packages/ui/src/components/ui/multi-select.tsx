@@ -111,7 +111,8 @@ export function MultiSelect({
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
           <div className="px-2 pb-1">
             <input
-              type="text"
+              type="search"
+              autoComplete="off"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索..."

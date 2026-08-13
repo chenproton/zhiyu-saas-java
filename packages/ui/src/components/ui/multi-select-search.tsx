@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Check, ChevronDown, Search, X } from 'lucide-react'
+import { Check, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { SearchInput } from '@/components/shared/search-input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -105,15 +105,13 @@ export function MultiSelectSearch({
       </PopoverTrigger>
       <PopoverContent className={cn('w-[320px] p-0', className)} align="start">
         <div className="p-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={searchPlaceholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-7 h-8 text-sm"
-            />
-          </div>
+          <SearchInput
+            iconClassName="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            placeholder={searchPlaceholder}
+            value={search}
+            onChange={setSearch}
+            inputClassName="pl-7 h-8 text-sm"
+          />
         </div>
         <Separator />
         {filtered.length > 0 && (

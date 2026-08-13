@@ -9,13 +9,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, ChevronRight, Search, Loader2, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { SearchInput } from '@/components/shared/search-input'
 import { useOrgTree } from '@/hooks/use-org-tree'
 import type { Organization, OrgType } from '@/lib/types/backend'
 import { typeMetaFor } from '@/lib/org-type-icons'
@@ -317,15 +317,14 @@ export function MultiOrgNodePicker({
           <DialogHeader>
             <DialogTitle>{title ?? t('选择班级')}</DialogTitle>
           </DialogHeader>
-          <div className="relative mb-2">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('搜索...')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
-          </div>
+          <SearchInput
+            wrapperClassName="mb-2"
+            iconClassName="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            placeholder={t('搜索...')}
+            value={search}
+            onChange={setSearch}
+            inputClassName="pl-8"
+          />
           <ScrollArea className="h-[360px] border rounded-md p-2">
             {orgLoading || !tenantId ? (
               <div className="flex items-center justify-center py-12">

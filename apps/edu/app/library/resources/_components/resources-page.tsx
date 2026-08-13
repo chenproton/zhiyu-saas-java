@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import {
   Pencil,
   Plus,
-  Search,
   Trash2,
   ExternalLink,
   X,
@@ -24,7 +23,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -53,6 +51,8 @@ import {
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/shared/search-input'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagFilterBar } from '@/components/shared/tag-filter-bar'
 import { TagPicker } from '@/components/shared/tag-picker'
@@ -294,17 +294,15 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
             className="mb-4"
           />
           <div className="mb-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder={
-                  isTypeView ? t('搜索{label}...', { label: typeLabel }) : t('搜索资源名称...')
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchInput
+              wrapperClassName="max-w-sm"
+              placeholder={
+                isTypeView ? t('搜索{label}...', { label: typeLabel }) : t('搜索资源名称...')
+              }
+              value={searchQuery}
+              onChange={setSearchQuery}
+              inputClassName="pl-10"
+            />
           </div>
 
           <div className="rounded-lg border">
