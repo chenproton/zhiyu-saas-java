@@ -43,19 +43,20 @@ export default function PartnerCoBuildScenesPage() {
   )
   const activeSchools = schoolsData ?? []
 
-  const { data, loading, error, refresh } = useAsync(
-    async () => {
-      if (authLoading || !user) return []
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (authLoading || !user) return { items: [], total: 0 }
       const res = await partnerCobuildScenarioApi.list({
         schoolTenantId: schoolFilter || undefined,
-        limit: 200,
+        search,
+        limit,
+        offset: (page - 1) * limit,
       })
-      return res.items || []
+      return { items: res.items || [], total: res.total ?? 0 }
     },
-    { deps: [authLoading, user?.id, schoolFilter], onError: () => true },
+    [authLoading, user?.id, schoolFilter],
   )
-
-  const scenes = data ?? []
+  const scenes = list.items
 
   // 编辑一律直接进入编辑页：保存后状态回写草稿，发布由学校端进行（含学校授权资源）
   const schoolSelector = (value: string, onChange: (v: string) => void, includeAll: boolean) => (
@@ -82,15 +83,18 @@ export default function PartnerCoBuildScenesPage() {
       searchPlaceholder={t('搜索场景名称...')}
       createButtonLabel={t('新建场景')}
       items={scenes}
-      loading={loading || authLoading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(items, search) =>
-        items.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
-      }
+      loading={list.loading || authLoading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       searchRight={schoolSelector(
         schoolFilter || 'all',
-        (v) => setSchoolFilter(v === 'all' ? '' : v),
+        (v) => { setSchoolFilter(v === 'all' ? '' : v); list.setPage(1) },
         true,
       )}
       colSpan={5}
