@@ -29,9 +29,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool)
 			VALUES ($1, $2, $3, $4, 'draft', 0, $5, 'V1.0', 'tenant', FALSE)
 		`,
-		updateSQL:      `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
-		ownerCheckSQL:  `SELECT creator_id, '{}'::uuid[] FROM question_banks WHERE id=$1`,
-		defaultCols:    []string{"id", "name", "description", "status", "created_at"},
+		updateSQL:     `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
+		ownerCheckSQL: `SELECT creator_id, '{}'::uuid[] FROM question_banks WHERE id=$1`,
+		defaultCols:   []string{"id", "name", "description", "status", "created_at"},
 	},
 	"exams": {
 		displayName: "试卷",
@@ -40,9 +40,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type)
 			VALUES ($1, $2, $3, $4, 'draft', 0, 60, $5, 'V1.0', 'tenant')
 		`,
-		updateSQL:      `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
-		ownerCheckSQL:  `SELECT creator_id, '{}'::uuid[] FROM exams WHERE id=$1`,
-		defaultCols:    []string{"id", "name", "description", "status", "created_at"},
+		updateSQL:     `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
+		ownerCheckSQL: `SELECT creator_id, '{}'::uuid[] FROM exams WHERE id=$1`,
+		defaultCols:   []string{"id", "name", "description", "status", "created_at"},
 	},
 	"courses": {
 		displayName: "课程",
@@ -51,9 +51,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id, co_creator_ids, node_count, resource_count, study_count)
 			VALUES ($1, $2, $3, $4, 'system', '导入', 'draft', $5, '{}', 0, 0, 0)
 		`,
-		updateSQL:      `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
-		ownerCheckSQL:  `SELECT creator_id, co_creator_ids FROM courses WHERE id=$1`,
-		defaultCols:    []string{"id", "code", "name", "status", "created_at"},
+		updateSQL:     `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
+		ownerCheckSQL: `SELECT creator_id, co_creator_ids FROM courses WHERE id=$1`,
+		defaultCols:   []string{"id", "code", "name", "status", "created_at"},
 	},
 	"career_positions": {
 		displayName: "岗位",
@@ -62,9 +62,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO career_positions (id, tenant_id, name, short_name, position_type, status, created_by)
 			VALUES ($1, $2, $3, $4, 'other', 'draft', $5)
 		`,
-		updateSQL:      `UPDATE career_positions SET name=$1, updated_at=NOW() WHERE id=$2`,
-		ownerCheckSQL:  `SELECT created_by, collaborators FROM career_positions WHERE id=$1`,
-		defaultCols:    []string{"id", "name", "short_name", "status", "created_at"},
+		updateSQL:     `UPDATE career_positions SET name=$1, updated_at=NOW() WHERE id=$2`,
+		ownerCheckSQL: `SELECT created_by, collaborators FROM career_positions WHERE id=$1`,
+		defaultCols:   []string{"id", "name", "short_name", "status", "created_at"},
 	},
 	"scenarios": {
 		displayName: "场景",
@@ -73,9 +73,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO scenarios (id, tenant_id, name, code, status, created_by, collaborators, version)
 			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'V1.0')
 		`,
-		updateSQL:      `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
-		ownerCheckSQL:  `SELECT created_by, collaborators FROM scenarios WHERE id=$1`,
-		defaultCols:    []string{"id", "name", "code", "status", "created_at"},
+		updateSQL:     `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
+		ownerCheckSQL: `SELECT created_by, collaborators FROM scenarios WHERE id=$1`,
+		defaultCols:   []string{"id", "name", "code", "status", "created_at"},
 	},
 }
 
