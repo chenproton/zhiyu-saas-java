@@ -57,6 +57,8 @@ interface UserSelectorProps {
   usePortalApi?: boolean
   /** 开启后选择器增加"企业专家"分组（数据源：本校已引入企业的专家/共建导师） */
   showEnterpriseExperts?: boolean
+  /** 仅展示指定角色编码的用户（如 'student'），后端按角色过滤 */
+  onlyRoleCode?: string
 }
 
 function OrgTreeRow({
@@ -133,6 +135,7 @@ export function UserSelector({
   tenantId,
   usePortalApi = true,
   showEnterpriseExperts = false,
+  onlyRoleCode,
 }: UserSelectorProps) {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -217,6 +220,7 @@ export function UserSelector({
         params.orgNodeId = selectedOrgId
       }
       if (tenantId) params.tenantId = tenantId
+      if (onlyRoleCode) params.roleCode = onlyRoleCode
       const api = usePortalApi ? portalUserManagementApi : userManagementApi
       // 分页合并全量拉取，避免超过后端 maxPageSize(200) 静默截断
       const res = await fetchAllPages((page, pageSize) =>
@@ -245,6 +249,7 @@ export function UserSelector({
     tenantId,
     usePortalApi,
     excludeStudent,
+    onlyRoleCode,
     mergeUserCache,
     t,
   ])

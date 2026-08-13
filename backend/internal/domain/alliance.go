@@ -449,16 +449,23 @@ type AllianceBrand struct {
 // EmployerBrand 雇主品牌视图（brandType=employer 时附带引用企业资料，只读）。
 type EmployerBrand struct {
 	AllianceBrand
-	EnterpriseName          *string `json:"enterpriseName,omitempty"`
-	EnterpriseLogo          *string `json:"enterpriseLogo,omitempty"`
-	EnterpriseIndustry      *string `json:"enterpriseIndustry,omitempty"`
-	EnterpriseRegion        *string `json:"enterpriseRegion,omitempty"`
-	EnterpriseDescription   *string `json:"enterpriseDescription,omitempty"`
-	EnterpriseCreditCode    *string `json:"enterpriseCreditCode,omitempty"`
-	EnterpriseContactPerson *string `json:"enterpriseContactPerson,omitempty"`
-	EnterpriseContactPhone  *string `json:"enterpriseContactPhone,omitempty"`
-	EnterpriseContactEmail  *string `json:"enterpriseContactEmail,omitempty"`
-	EnterpriseAddress       *string `json:"enterpriseAddress,omitempty"`
+	EnterpriseName            *string         `json:"enterpriseName,omitempty"`
+	EnterpriseLogo            *string         `json:"enterpriseLogo,omitempty"`
+	EnterpriseIndustry        *string         `json:"enterpriseIndustry,omitempty"`
+	EnterpriseRegion          *string         `json:"enterpriseRegion,omitempty"`
+	EnterpriseDescription     *string         `json:"enterpriseDescription,omitempty"`
+	EnterpriseCreditCode      *string         `json:"enterpriseCreditCode,omitempty"`
+	EnterpriseContactPerson   *string         `json:"enterpriseContactPerson,omitempty"`
+	EnterpriseContactPhone    *string         `json:"enterpriseContactPhone,omitempty"`
+	EnterpriseContactEmail    *string         `json:"enterpriseContactEmail,omitempty"`
+	EnterpriseAddress         *string         `json:"enterpriseAddress,omitempty"`
+	EnterpriseEstablishedYear *int            `json:"enterpriseEstablishedYear,omitempty"`
+	EnterpriseEmployeeCount   *int            `json:"enterpriseEmployeeCount,omitempty"`
+	EnterpriseCoverImage      *string         `json:"enterpriseCoverImage,omitempty"`
+	EnterpriseCoverPhotos     json.RawMessage `json:"enterpriseCoverPhotos,omitempty"`
+	EnterpriseLicensePhotos   json.RawMessage `json:"enterpriseBusinessLicensePhotos,omitempty"`
+	EnterpriseIPPhotos        json.RawMessage `json:"enterpriseIntellectualPropertyPhotos,omitempty"`
+	EnterpriseQualPhotos      json.RawMessage `json:"enterpriseQualificationPhotos,omitempty"`
 }
 
 // JobBrand 岗位品牌视图（brandType=job 时附带关联岗位资料，教学岗位只读关联，企业岗位可在品牌模块编辑）。
@@ -470,6 +477,66 @@ type JobBrand struct {
 	SalaryMax      *int     `json:"salaryMax,omitempty"`
 	MajorNames     []string `json:"majorNames,omitempty"`
 	PositionStatus string   `json:"positionStatus"`
+}
+
+// PublicBrandItem 前台公开品牌视图：按品牌类型附带关联对象资料
+// （雇主→引用企业/独立企业资料，岗位→关联岗位资料，师资→教师/企业专家资料），
+// 前台 landing/列表/详情共用同一形状，各品牌类型仅填充相关字段。
+type PublicBrandItem struct {
+	AllianceBrand
+	// 雇主品牌：引用合作企业资料（LEFT JOIN partner_enterprises，独立雇主企业为空）
+	EnterpriseName            *string         `json:"enterpriseName,omitempty"`
+	EnterpriseLogo            *string         `json:"enterpriseLogo,omitempty"`
+	EnterpriseIndustry        *string         `json:"enterpriseIndustry,omitempty"`
+	EnterpriseRegion          *string         `json:"enterpriseRegion,omitempty"`
+	EnterpriseDescription     *string         `json:"enterpriseDescription,omitempty"`
+	EnterpriseCreditCode      *string         `json:"enterpriseCreditCode,omitempty"`
+	EnterpriseContactPerson   *string         `json:"enterpriseContactPerson,omitempty"`
+	EnterpriseContactPhone    *string         `json:"enterpriseContactPhone,omitempty"`
+	EnterpriseContactEmail    *string         `json:"enterpriseContactEmail,omitempty"`
+	EnterpriseAddress         *string         `json:"enterpriseAddress,omitempty"`
+	EnterpriseEstablishedYear *int            `json:"enterpriseEstablishedYear,omitempty"`
+	EnterpriseEmployeeCount   *int            `json:"enterpriseEmployeeCount,omitempty"`
+	EnterpriseCoverImage      *string         `json:"enterpriseCoverImage,omitempty"`
+	EnterpriseCoverPhotos     json.RawMessage `json:"enterpriseCoverPhotos,omitempty"`
+	EnterpriseLicensePhotos   json.RawMessage `json:"enterpriseBusinessLicensePhotos,omitempty"`
+	EnterpriseIPPhotos        json.RawMessage `json:"enterpriseIntellectualPropertyPhotos,omitempty"`
+	EnterpriseQualPhotos      json.RawMessage `json:"enterpriseQualificationPhotos,omitempty"`
+	// 岗位品牌：关联岗位资料（LEFT JOIN career_positions）
+	PositionName         string                   `json:"positionName"`
+	PositionType         string                   `json:"positionType"`
+	SalaryMin            *int                     `json:"salaryMin,omitempty"`
+	SalaryMax            *int                     `json:"salaryMax,omitempty"`
+	MajorNames           []string                 `json:"majorNames,omitempty"`
+	IndustryName         *string                  `json:"industryName,omitempty"`
+	PositionStatus       string                   `json:"positionStatus"`
+	PositionDescription  *string                  `json:"positionDescription,omitempty"`
+	PositionRequirements []string                 `json:"positionRequirements,omitempty"`
+	PositionCareerPath   *string                  `json:"positionCareerPath,omitempty"`
+	PositionCoverImage   *string                  `json:"positionCoverImage,omitempty"`
+	PositionCoverColor   *string                  `json:"positionCoverColor,omitempty"`
+	Responsibilities     []PositionResponsibility `json:"responsibilities,omitempty"`
+	Certificates         []PositionCertificate    `json:"certificates,omitempty"`
+	// 师资品牌：教师/企业专家资料（LEFT JOIN users / alliance_experts，专家档案优先）
+	PersonName               *string         `json:"personName,omitempty"`
+	PersonAvatar             *string         `json:"personAvatar,omitempty"`
+	PersonTitle              *string         `json:"personTitle,omitempty"`
+	PersonPosition           *string         `json:"personPosition,omitempty"`
+	PersonOrganization       *string         `json:"personOrganization,omitempty"`
+	PersonIndustry           *string         `json:"personIndustry,omitempty"`
+	PersonExperienceYears    *int            `json:"personExperienceYears,omitempty"`
+	PersonEducation          *string         `json:"personEducation,omitempty"`
+	PersonIntroduction       *string         `json:"personIntroduction,omitempty"`
+	PersonWorkExperience     *string         `json:"personWorkExperience,omitempty"`
+	PersonCity               *string         `json:"personCity,omitempty"`
+	PersonExpertType         *string         `json:"personExpertType,omitempty"`
+	PersonRating             *string         `json:"personRating,omitempty"`
+	PersonStatus             *string         `json:"personStatus,omitempty"`
+	PersonGender             *string         `json:"personGender,omitempty"`
+	PersonAge                *int            `json:"personAge,omitempty"`
+	PersonSpecialties        json.RawMessage `json:"personSpecialties,omitempty"`
+	PersonProfessionalFields json.RawMessage `json:"personProfessionalFields,omitempty"`
+	PersonAttachments        json.RawMessage `json:"personAttachments,omitempty"`
 }
 
 // BrandMajorRankConfig 人才画像排名-专业启用配置（每专业是否展示 + 前 N 名上限）。

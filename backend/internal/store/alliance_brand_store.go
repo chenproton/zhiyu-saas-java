@@ -138,45 +138,103 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 
 // ListPublicBrands 门户前台公开品牌列表：is_public 为展示开关，status 仅排除已归档。
 // 不要求 published：品牌页创建即 draft 且雇主品牌无发布入口，开关语义与项目/成果（is_public 唯一门槛）对齐。
-func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) ([]domain.AllianceBrand, error) {
-	query := `SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-		cover_image, cover_video, description, data,
-		student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
-		sort_order, view_count, created_at, updated_at
-		FROM alliance_brands WHERE is_public = true AND status <> 'archived'`
+func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) ([]domain.PublicBrandItem, error) {
+	query := `SELECT ` + publicBrandSelect + `
+		FROM ` + publicBrandFrom + `
+		WHERE b.is_public = true AND b.status <> 'archived'`
 	args := []interface{}{}
 	if brandType != "" {
-		query += " AND brand_type = $1"
+		query += " AND b.brand_type = $1"
 		args = append(args, brandType)
 	}
-	query += " ORDER BY sort_order ASC, created_at DESC LIMIT 100"
-	return queryList(ctx, s.q, s.ScanBrandRows, query, args...)
+	query += " ORDER BY b.sort_order ASC, b.created_at DESC LIMIT 100"
+	return queryList(ctx, s.q, s.ScanPublicBrandRows, query, args...)
 }
 
-// ===== 雇主品牌（brandType=employer，LEFT JOIN partner_enterprises 附带引用企业资料） =====
+// ===== 前台公开品牌视图（按品牌类型附带关联对象资料） =====
 
-// employerBrandSelect 雇主品牌查询列（扫描顺序与 ScanEmployerBrandRows 一致）。
-const employerBrandSelect = `b.id, b.tenant_id, b.brand_type, b.name, b.status, b.is_public, b.is_featured,
+// publicBrandSelect 前台品牌查询列（扫描顺序与 ScanPublicBrandRows 一致）：
+// 品牌基础列 + 引用企业资料 + 关联岗位资料（含职责/证书） + 教师/企业专家资料。
+const publicBrandSelect = `b.id, b.tenant_id, b.brand_type, b.name, b.status, b.is_public, b.is_featured,
 	b.cover_image, b.cover_video, b.description, b.data,
 	b.student_id, b.enterprise_id, b.position_id, b.major_id, b.teacher_id, b.expert_id,
 	b.sort_order, b.view_count, b.created_at, b.updated_at,
 	pe.name, pe.logo_url, pe.industry, pe.region, pe.description,
-	pe.unified_social_credit_code, pe.contact_person, pe.contact_phone, pe.contact_email, pe.address`
+	pe.unified_social_credit_code, pe.contact_person, pe.contact_phone, pe.contact_email, pe.address,
+	pe.established_year, pe.employee_count, pe.cover_image,
+	COALESCE(pe.cover_photos, '[]'), COALESCE(pe.business_license_photos, '[]'),
+	COALESCE(pe.intellectual_property_photos, '[]'), COALESCE(pe.qualification_photos, '[]'),
+	COALESCE(cp.name, ''), COALESCE(cp.position_type, ''), cp.salary_min, cp.salary_max,
+	COALESCE(maj.major_names, '{}'), ind.name, COALESCE(cp.status, ''),
+	cp.description, COALESCE(cp.requirements, '{}'), cp.career_path, cp.cover_image,
+	COALESCE((
+		SELECT jsonb_agg(jsonb_build_object(
+			'id', r.id, 'careerPositionId', r.career_position_id,
+			'name', r.name, 'description', r.description, 'sortOrder', r.sort_order
+		) ORDER BY r.sort_order)
+		FROM position_responsibilities r WHERE r.career_position_id = cp.id
+	), '[]'),
+	COALESCE((
+		SELECT jsonb_agg(jsonb_build_object(
+			'id', pc.id, 'careerPositionId', pc.career_position_id,
+			'certificateLibraryId', pc.certificate_library_id,
+			'name', cl.name, 'url', cl.url, 'description', cl.description, 'imageUrl', cl.image_url
+		) ORDER BY cl.name)
+		FROM position_certificates pc JOIN certificate_library cl ON cl.id = pc.certificate_library_id
+		WHERE pc.career_position_id = cp.id
+	), '[]'),
+	COALESCE(ae.name, u.name, ''), COALESCE(ae.avatar_url, u.avatar_url, ''),
+	ae.title, ae.position, COALESCE(ae.organization, org.name, ''), ae.industry,
+	ae.experience_years, ae.education, ae.introduction, ae.work_experience, ae.city,
+	ae.expert_type, ae.rating, ae.status, ae.gender, ae.age,
+	COALESCE(ae.specialties, '[]'), COALESCE(ae.professional_fields, '[]'), COALESCE(ae.attachments, '[]')`
 
-func (s *AllianceStore) ScanEmployerBrandRows(rows pgx.Rows) ([]domain.EmployerBrand, error) {
-	items := make([]domain.EmployerBrand, 0)
+// publicBrandFrom 前台品牌查询 FROM 片段：
+// 引用企业（partner_enterprises）/ 关联岗位（career_positions + 专业/行业）/ 教师（users + 组织）/
+// 企业专家（alliance_experts：expertId 直连，或 teacherId 关联的校本教师专家档案副本）。
+const publicBrandFrom = `alliance_brands b
+	LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id
+	LEFT JOIN career_positions cp ON cp.id = b.position_id
+	LEFT JOIN LATERAL (
+		SELECT COALESCE(array_agg(m.name ORDER BY cpm.major_id), '{}') AS major_names
+		FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id
+		WHERE cpm.career_position_id = cp.id
+	) maj ON true
+	LEFT JOIN industries ind ON ind.id = cp.industry_id
+	LEFT JOIN users u ON u.id = b.teacher_id
+	LEFT JOIN organizations org ON org.id = u.org_node_id
+	LEFT JOIN alliance_experts ae ON
+		(b.teacher_id IS NOT NULL AND ae.user_id = b.teacher_id AND ae.tenant_id = b.tenant_id AND ae.enterprise_id IS NULL)
+		OR (b.expert_id IS NOT NULL AND ae.id = b.expert_id)`
+
+// ScanPublicBrandRows 扫描前台品牌行（含关联对象资料）。
+func (s *AllianceStore) ScanPublicBrandRows(rows pgx.Rows) ([]domain.PublicBrandItem, error) {
+	items := make([]domain.PublicBrandItem, 0)
 	for rows.Next() {
-		var b domain.EmployerBrand
+		var b domain.PublicBrandItem
 		var coverImage, coverVideo, description *string
 		var studentID, enterpriseID, positionID, majorID, teacherID, expertID *string
 		var data json.RawMessage
+		var entCoverPhotos, entLicensePhotos, entIPPhotos, entQualPhotos json.RawMessage
+		var personSpecialties, personProfessionalFields, personAttachments json.RawMessage
 		if err := rows.Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
 			&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
 			&data, &studentID, &enterpriseID, &positionID, &majorID, &teacherID, &expertID,
 			&b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt,
 			&b.EnterpriseName, &b.EnterpriseLogo, &b.EnterpriseIndustry, &b.EnterpriseRegion,
 			&b.EnterpriseDescription, &b.EnterpriseCreditCode, &b.EnterpriseContactPerson,
-			&b.EnterpriseContactPhone, &b.EnterpriseContactEmail, &b.EnterpriseAddress); err != nil {
+			&b.EnterpriseContactPhone, &b.EnterpriseContactEmail, &b.EnterpriseAddress,
+			&b.EnterpriseEstablishedYear, &b.EnterpriseEmployeeCount, &b.EnterpriseCoverImage,
+			&entCoverPhotos, &entLicensePhotos, &entIPPhotos, &entQualPhotos,
+			&b.PositionName, &b.PositionType, &b.SalaryMin, &b.SalaryMax,
+			&b.MajorNames, &b.IndustryName, &b.PositionStatus,
+			&b.PositionDescription, &b.PositionRequirements, &b.PositionCareerPath, &b.PositionCoverImage,
+			&b.Responsibilities, &b.Certificates,
+			&b.PersonName, &b.PersonAvatar, &b.PersonTitle, &b.PersonPosition,
+			&b.PersonOrganization, &b.PersonIndustry, &b.PersonExperienceYears, &b.PersonEducation,
+			&b.PersonIntroduction, &b.PersonWorkExperience, &b.PersonCity,
+			&b.PersonExpertType, &b.PersonRating, &b.PersonStatus, &b.PersonGender, &b.PersonAge,
+			&personSpecialties, &personProfessionalFields, &personAttachments); err != nil {
 			return nil, err
 		}
 		b.CoverImage = coverImage
@@ -189,6 +247,79 @@ func (s *AllianceStore) ScanEmployerBrandRows(rows pgx.Rows) ([]domain.EmployerB
 		b.MajorID = majorID
 		b.TeacherID = teacherID
 		b.ExpertID = expertID
+		b.EnterpriseCoverPhotos = entCoverPhotos
+		b.EnterpriseLicensePhotos = entLicensePhotos
+		b.EnterpriseIPPhotos = entIPPhotos
+		b.EnterpriseQualPhotos = entQualPhotos
+		b.PersonSpecialties = personSpecialties
+		b.PersonProfessionalFields = personProfessionalFields
+		b.PersonAttachments = personAttachments
+		if b.Responsibilities == nil {
+			b.Responsibilities = []domain.PositionResponsibility{}
+		}
+		if b.Certificates == nil {
+			b.Certificates = []domain.PositionCertificate{}
+		}
+		items = append(items, b)
+	}
+	return items, rows.Err()
+}
+
+// GetPublicBrandByID 前台品牌详情（含关联对象资料）。
+func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.PublicBrandItem, error) {
+	return queryOne(ctx, s.q, s.ScanPublicBrandRows, `
+		SELECT `+publicBrandSelect+`
+		FROM `+publicBrandFrom+`
+		WHERE b.id = $1 AND b.is_public = true AND b.status <> 'archived'
+	`, id)
+}
+
+// ===== 雇主品牌（brandType=employer，LEFT JOIN partner_enterprises 附带引用企业资料） =====
+
+// employerBrandSelect 雇主品牌查询列（扫描顺序与 ScanEmployerBrandRows 一致）。
+const employerBrandSelect = `b.id, b.tenant_id, b.brand_type, b.name, b.status, b.is_public, b.is_featured,
+	b.cover_image, b.cover_video, b.description, b.data,
+	b.student_id, b.enterprise_id, b.position_id, b.major_id, b.teacher_id, b.expert_id,
+	b.sort_order, b.view_count, b.created_at, b.updated_at,
+	pe.name, pe.logo_url, pe.industry, pe.region, pe.description,
+	pe.unified_social_credit_code, pe.contact_person, pe.contact_phone, pe.contact_email, pe.address,
+	pe.established_year, pe.employee_count, pe.cover_image,
+	COALESCE(pe.cover_photos, '[]'), COALESCE(pe.business_license_photos, '[]'),
+	COALESCE(pe.intellectual_property_photos, '[]'), COALESCE(pe.qualification_photos, '[]')`
+
+func (s *AllianceStore) ScanEmployerBrandRows(rows pgx.Rows) ([]domain.EmployerBrand, error) {
+	items := make([]domain.EmployerBrand, 0)
+	for rows.Next() {
+		var b domain.EmployerBrand
+		var coverImage, coverVideo, description *string
+		var studentID, enterpriseID, positionID, majorID, teacherID, expertID *string
+		var data json.RawMessage
+		var entCoverPhotos, entLicensePhotos, entIPPhotos, entQualPhotos json.RawMessage
+		if err := rows.Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
+			&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
+			&data, &studentID, &enterpriseID, &positionID, &majorID, &teacherID, &expertID,
+			&b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt,
+			&b.EnterpriseName, &b.EnterpriseLogo, &b.EnterpriseIndustry, &b.EnterpriseRegion,
+			&b.EnterpriseDescription, &b.EnterpriseCreditCode, &b.EnterpriseContactPerson,
+			&b.EnterpriseContactPhone, &b.EnterpriseContactEmail, &b.EnterpriseAddress,
+			&b.EnterpriseEstablishedYear, &b.EnterpriseEmployeeCount, &b.EnterpriseCoverImage,
+			&entCoverPhotos, &entLicensePhotos, &entIPPhotos, &entQualPhotos); err != nil {
+			return nil, err
+		}
+		b.CoverImage = coverImage
+		b.CoverVideo = coverVideo
+		b.Description = description
+		b.Data = data
+		b.StudentID = studentID
+		b.EnterpriseID = enterpriseID
+		b.PositionID = positionID
+		b.MajorID = majorID
+		b.TeacherID = teacherID
+		b.ExpertID = expertID
+		b.EnterpriseCoverPhotos = entCoverPhotos
+		b.EnterpriseLicensePhotos = entLicensePhotos
+		b.EnterpriseIPPhotos = entIPPhotos
+		b.EnterpriseQualPhotos = entQualPhotos
 		items = append(items, b)
 	}
 	return items, rows.Err()

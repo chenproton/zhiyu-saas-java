@@ -23,7 +23,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { portalRequest } from '@/lib/api'
 import type {
   AlliancePublicStats,
-  AllianceBrand,
+  AlliancePublicBrand,
   AllianceEnterprise,
   AllianceProject,
   AllianceExpert,
@@ -57,7 +57,7 @@ interface LandingData {
   projects: AllianceProject[]
   experts: AllianceExpert[]
   achievements: AllianceAchievement[]
-  brands: AllianceBrand[]
+  brands: AlliancePublicBrand[]
   talentRanking: TalentRankMajorGroup[]
 }
 
@@ -352,7 +352,7 @@ export default function AllianceLandingPage() {
       Promise<{ items: AllianceProject[] } | null>,
       Promise<{ items: AllianceExpert[] } | null>,
       Promise<{ items: AllianceAchievement[] } | null>,
-      Promise<{ items: AllianceBrand[] } | null>,
+      Promise<{ items: AlliancePublicBrand[] } | null>,
       Promise<{ items: TalentRankMajorGroup[] } | null>,
     ] = [
       portalRequest<AlliancePublicStats>(`/alliance/public/stats${q}`).catch(() => null),
@@ -370,7 +370,7 @@ export default function AllianceLandingPage() {
       ).catch(() => ({
         items: [],
       })),
-      portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands').catch(() => ({
+      portalRequest<{ items: AlliancePublicBrand[] }>('/alliance/public/brands').catch(() => ({
         items: [],
       })),
       portalRequest<{ items: TalentRankMajorGroup[] }>(
@@ -431,14 +431,14 @@ export default function AllianceLandingPage() {
   const featuredBrandsByType = useMemo(() => {
     const featured = data.brands.filter((b) => b.isFeatured || b.isPublic)
     const limit: Record<string, number> = {
-      talent: 2,
+      talent: 5,
       employer: 3,
       job: 4,
       major: 3,
-      teacher: 3,
+      teacher: 6,
       culture: 3,
     }
-    const byType: Record<string, AllianceBrand[]> = {}
+    const byType: Record<string, AlliancePublicBrand[]> = {}
     BRAND_CATEGORIES.forEach((cat) => {
       byType[cat.id] = featured.filter((b) => b.brandType === cat.id).slice(0, limit[cat.id] ?? 3)
     })
@@ -518,11 +518,13 @@ export default function AllianceLandingPage() {
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="text-sm font-bold text-primary">
-                              {s.avgAchievementRate == null
+                              {s.avgAbilityCognitionScore == null
                                 ? '-'
-                                : `${s.avgAchievementRate.toFixed(1)}%`}
+                                : `${s.avgAbilityCognitionScore.toFixed(1)}`}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{t('达成率')}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {t('能力认证得分')}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -533,10 +535,24 @@ export default function AllianceLandingPage() {
             </div>
           )}
           {talentBrands.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {talentBrands.map((brand) => (
-                <TalentBrandCard key={brand.id} brand={brand} />
-              ))}
+            <div>
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="h-4 w-1 rounded-full bg-gradient-to-b from-primary/80 to-primary/60" />
+                <h4 className="text-sm font-semibold text-slate-700">{t('就业案例')}</h4>
+                <span className="text-xs text-slate-400">
+                  {t('左右滑动查看更多')}
+                </span>
+              </div>
+              <div className="flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth [-ms-overflow-style:none] [scrollbar-width:thin]">
+                {talentBrands.map((brand) => (
+                  <div
+                    key={brand.id}
+                    className="min-w-[300px] sm:min-w-[380px] lg:min-w-[440px] max-w-[440px] snap-start"
+                  >
+                    <TalentBrandCard brand={brand} />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>,
@@ -597,7 +613,7 @@ export default function AllianceLandingPage() {
       )
     }
 
-    // 师资品牌：头像交叠卡（三列宽卡）
+    // 师资品牌：与「专家资源」同款紧凑卡片（多列小卡，可展示更多人员）
     if (teacherBrands.length > 0) {
       sections.push(
         <div key="teacher">
@@ -605,7 +621,7 @@ export default function AllianceLandingPage() {
             title={t('师资品牌')}
             action={<ViewAllLink href="/portal/alliance/brands?type=teacher" />}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             {teacherBrands.map((brand) => (
               <TeacherBrandCard key={brand.id} brand={brand} />
             ))}

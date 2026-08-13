@@ -31,8 +31,8 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { EnterpriseProfileForm } from '@/components/alliance/enterprise-profile-form'
 import {
-  IndependentEnterpriseForm,
   normalizeEnterpriseInfo,
   type EnterpriseInfo,
 } from '@/components/alliance/independent-enterprise-form'
@@ -96,6 +96,41 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
   const isIndependent = !!brand && !brand.enterpriseId
   const info = normalizeEnterpriseInfo(brand?.data?.enterpriseInfo) as Record<string, any>
 
+  /** 企业资料统一归一化：独立雇主企业取 data.enterpriseInfo，引用企业取 enterprise* 字段 */
+  const enterprise = useMemo(() => {
+    if (!brand) return null
+    const first = <T,>(a?: T | null, b?: T | null): T | undefined =>
+      a != null && a !== '' ? a : (b ?? undefined)
+    return {
+      name: first(brand.name, info.name),
+      logoUrl: first(brand.enterpriseLogo, info.logoUrl ?? info.logo),
+      industry: first(brand.enterpriseIndustry, info.industry),
+      region: first(brand.enterpriseRegion, info.region),
+      description: first(brand.enterpriseDescription, info.description),
+      creditCode: first(brand.enterpriseCreditCode, info.unifiedSocialCreditCode ?? info.creditCode),
+      contactPerson: first(brand.enterpriseContactPerson, info.contactPerson),
+      contactPhone: first(brand.enterpriseContactPhone, info.contactPhone),
+      contactEmail: first(brand.enterpriseContactEmail, info.contactEmail),
+      address: first(brand.enterpriseAddress, info.address),
+      establishedYear: first(brand.enterpriseEstablishedYear, info.establishedYear),
+      employeeCount: first(brand.enterpriseEmployeeCount, info.employeeCount),
+      coverImage: first(brand.enterpriseCoverImage, info.coverImage),
+      coverPhotos: ((brand.enterpriseCoverPhotos?.length
+        ? brand.enterpriseCoverPhotos
+        : info.coverPhotos) ?? []) as string[],
+      businessLicensePhotos: ((brand.enterpriseBusinessLicensePhotos?.length
+        ? brand.enterpriseBusinessLicensePhotos
+        : info.businessLicensePhotos) ?? []) as string[],
+      intellectualPropertyPhotos: ((brand.enterpriseIntellectualPropertyPhotos?.length
+        ? brand.enterpriseIntellectualPropertyPhotos
+        : info.intellectualPropertyPhotos) ?? []) as string[],
+      qualificationPhotos: ((brand.enterpriseQualificationPhotos?.length
+        ? brand.enterpriseQualificationPhotos
+        : info.qualificationPhotos) ?? []) as string[],
+      secondaryColleges: (info.secondaryColleges ?? []) as string[],
+    }
+  }, [brand, info])
+
   const saveData = async (nextPositions: PositionSnapshot[], nextStudents: HiredStudent[]) => {
     if (!brand) return
     setSaving(true)
@@ -155,112 +190,140 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
     return <AllianceDetailShell title="" tabs={[]} notFound backHref="/portal/apps/alliance/brands" />
   }
 
-  const enterpriseRows: { label: string; value?: string | number }[] = (
-    isIndependent
-      ? [
-          { label: t('企业名称'), value: brand?.name },
-          { label: t('企业类型'), value: allianceLabel('enterpriseType', info.enterpriseType) },
-          { label: t('统一社会信用代码'), value: info.unifiedSocialCreditCode ?? info.creditCode },
-          { label: t('所属行业'), value: info.industry },
-          { label: t('所在地区'), value: info.region },
-          { label: t('成立年份'), value: info.establishedYear },
-          { label: t('企业规模（人数）'), value: info.employeeCount },
-          { label: t('联系人'), value: info.contactPerson },
-          { label: t('联系电话'), value: info.contactPhone },
-          { label: t('联系邮箱'), value: info.contactEmail },
-          { label: t('企业地址'), value: info.address },
-          ...(info.secondaryColleges?.length
-            ? [{ label: t('关联二级学院'), value: info.secondaryColleges.join('、') }]
-            : []),
-        ]
-      : [
-          { label: t('企业名称'), value: brand?.enterpriseName },
-          { label: t('统一社会信用代码'), value: brand?.enterpriseCreditCode },
-          { label: t('所属行业'), value: brand?.enterpriseIndustry },
-          { label: t('所在地区'), value: brand?.enterpriseRegion },
-          { label: t('联系人'), value: brand?.enterpriseContactPerson },
-          { label: t('联系电话'), value: brand?.enterpriseContactPhone },
-          { label: t('联系邮箱'), value: brand?.enterpriseContactEmail },
-          { label: t('企业地址'), value: brand?.enterpriseAddress },
-        ]
-  ).filter((x) => x.value != null && x.value !== '' && x.value !== '-')
-  const enterpriseDesc = isIndependent ? info.description : brand?.enterpriseDescription
-  const enterpriseLogo = isIndependent ? info.logoUrl ?? info.logo : brand?.enterpriseLogo
+  const enterpriseRows: { label: string; value?: string | number }[] = [
+    { label: t('企业名称'), value: enterprise?.name },
+    ...(isIndependent
+      ? [{ label: t('企业类型'), value: allianceLabel('enterpriseType', info.enterpriseType) }]
+      : []),
+    { label: t('统一社会信用代码'), value: enterprise?.creditCode },
+    { label: t('所属行业'), value: enterprise?.industry },
+    { label: t('所在地区'), value: enterprise?.region },
+    { label: t('成立年份'), value: enterprise?.establishedYear },
+    { label: t('企业规模（人数）'), value: enterprise?.employeeCount },
+    { label: t('联系人'), value: enterprise?.contactPerson },
+    { label: t('联系电话'), value: enterprise?.contactPhone },
+    { label: t('联系邮箱'), value: enterprise?.contactEmail },
+    { label: t('企业地址'), value: enterprise?.address },
+    ...(isIndependent && enterprise?.secondaryColleges?.length
+      ? [{ label: t('关联二级学院'), value: enterprise.secondaryColleges.join('、') }]
+      : []),
+  ].filter((x) => x.value != null && x.value !== '' && x.value !== '-')
 
   const tabs = [
     {
       key: 'info',
       label: t('基本信息'),
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">{t('品牌信息')}</h3>
+        <div className="space-y-6">
+          <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">{t('品牌信息')}</h3>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  {t('推荐：')}
+                  {brand?.isFeatured ? t('是') : t('否')}
+                </span>
+                <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  {t('前台展示：')}
+                  {brand?.isPublic ? t('是') : t('否')}
+                </span>
                 {isIndependent && (
                   <EditInfoButton brand={brand} onSaved={() => setReloadKey((k) => k + 1)} />
                 )}
               </div>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="text-muted-foreground">{t('品牌类型：')}</span>
-                  {allianceLabel('brandType', brand?.brandType)}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">{t('推荐：')}</span>
-                  {brand?.isFeatured ? t('是') : t('否')}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">{t('前台展示：')}</span>
-                  {brand?.isPublic ? t('是') : t('否')}
-                </p>
-              </div>
             </div>
-            <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center gap-2">
-                <h3 className="text-sm font-semibold">{t('企业资料')}</h3>
-                {!isIndependent && (
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
-                    {t('来自合作企业库，只读')}
-                  </span>
-                )}
-              </div>
-              {enterpriseLogo && (
-                <div className="mb-3 flex items-center gap-3">
-                  <Image
-                    src={enterpriseLogo}
-                    alt={brand?.name || ''}
-                    width={64}
-                    height={64}
-                    className="h-16 w-16 rounded-lg border object-cover"
-                  />
-                  <span className="text-base font-semibold">{brand?.name}</span>
-                </div>
+            <div className="flex items-center gap-3">
+              {enterprise?.logoUrl && (
+                <Image
+                  src={enterprise.logoUrl}
+                  alt={brand?.name || ''}
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 rounded-lg border object-cover"
+                />
               )}
-              <div className="space-y-2 text-sm">
-                {enterpriseRows.map((r) => (
-                  <p key={r.label}>
-                    <span className="text-muted-foreground">{r.label}：</span>
-                    {r.value || t('暂无')}
-                  </p>
-                ))}
-                {enterpriseDesc && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {enterpriseDesc}
-                  </p>
-                )}
+              <div className="min-w-0">
+                <p className="text-base font-semibold">{enterprise?.name || brand?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {[enterprise?.industry, enterprise?.region].filter(Boolean).join(' · ') || '-'}
+                </p>
               </div>
-              {isIndependent && (
-                <IndependentEnterprisePhotos info={info} />
-              )}
             </div>
           </div>
-          {brand?.description && (
-            <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold">{t('品牌描述')}</h3>
-              <p className="text-sm whitespace-pre-wrap">{brand.description}</p>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold">{t('企业简介')}</h3>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-600">
+                  {enterprise?.description || t('暂无企业简介')}
+                </p>
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4 border-t border-gray-100 pt-5">
+                  {enterpriseRows.map((r) => (
+                    <div key={r.label}>
+                      <p className="text-xs text-muted-foreground">{r.label}</p>
+                      <p className="mt-1 text-sm font-medium break-all">
+                        {r.value != null && r.value !== '' ? r.value : t('暂无')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {brand?.description && (
+                <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-sm font-semibold">{t('品牌描述')}</h3>
+                  <p className="text-sm whitespace-pre-wrap text-slate-600">{brand.description}</p>
+                </div>
+              )}
             </div>
-          )}
+            <div className="space-y-6">
+              <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold">{t('联系信息')}</h3>
+                <div className="space-y-2.5 text-sm">
+                  {enterprise?.contactPerson && (
+                    <p>
+                      <span className="text-muted-foreground">{t('联系人：')}</span>
+                      {enterprise.contactPerson}
+                    </p>
+                  )}
+                  {enterprise?.contactPhone && (
+                    <p>
+                      <span className="text-muted-foreground">{t('联系电话：')}</span>
+                      {enterprise.contactPhone}
+                    </p>
+                  )}
+                  {enterprise?.contactEmail && (
+                    <p>
+                      <span className="text-muted-foreground">{t('联系邮箱：')}</span>
+                      {enterprise.contactEmail}
+                    </p>
+                  )}
+                  {enterprise?.address && (
+                    <p>
+                      <span className="text-muted-foreground">{t('详细地址：')}</span>
+                      {enterprise.address}
+                    </p>
+                  )}
+                  {!enterprise?.contactPerson &&
+                    !enterprise?.contactPhone &&
+                    !enterprise?.contactEmail &&
+                    !enterprise?.address && (
+                      <p className="text-sm text-muted-foreground">{t('暂无联系信息')}</p>
+                    )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 企业证照/形象图片：与企业详情展示页一致 */}
+          <EnterprisePhotoSections
+            enterprise={{
+              businessLicensePhotos: enterprise?.businessLicensePhotos ?? [],
+              intellectualPropertyPhotos: enterprise?.intellectualPropertyPhotos ?? [],
+              qualificationPhotos: enterprise?.qualificationPhotos ?? [],
+              coverPhotos: enterprise?.coverPhotos ?? [],
+            }}
+          />
         </div>
       ),
     },
@@ -451,7 +514,7 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
         {t('编辑资料')}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{t('编辑独立雇主企业')}</DialogTitle>
             <DialogDescription>{t('仅在本模块展示，不会加入合作企业库')}</DialogDescription>
@@ -463,8 +526,8 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
             }}
             className="grid gap-4"
           >
-            <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
-              <IndependentEnterpriseForm value={form} onChange={setForm} />
+            <div className="overflow-y-auto flex-1 min-h-0 py-2 px-1">
+              <EnterpriseProfileForm value={form} onChange={setForm} />
             </div>
             <FormDialogFooter
               onCancel={() => setOpen(false)}
@@ -479,32 +542,41 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
   )
 }
 
-// ── 独立企业图片资料展示（与引用企业前台展示对齐） ────────────────
+// ── 企业证照/形象图片展示（与企业详情展示页一致，独立/引用企业统一） ────────────
 
-function IndependentEnterprisePhotos({ info }: { info: Record<string, any> }) {
+function EnterprisePhotoSections({
+  enterprise,
+}: {
+  enterprise: {
+    businessLicensePhotos: string[]
+    intellectualPropertyPhotos: string[]
+    qualificationPhotos: string[]
+    coverPhotos: string[]
+  }
+}) {
   const t = useT()
   const groups: { label: string; photos: string[] }[] = [
-    { label: t('营业执照'), photos: info.businessLicensePhotos ?? [] },
-    { label: t('企业展示封面'), photos: info.coverPhotos ?? [] },
-    { label: t('企业荣誉资质'), photos: info.qualificationPhotos ?? [] },
-    { label: t('知识产权'), photos: info.intellectualPropertyPhotos ?? [] },
+    { label: t('营业执照'), photos: enterprise.businessLicensePhotos },
+    { label: t('知识产权'), photos: enterprise.intellectualPropertyPhotos },
+    { label: t('企业荣誉资质'), photos: enterprise.qualificationPhotos },
+    { label: t('企业展示封面'), photos: enterprise.coverPhotos },
   ].filter((g) => g.photos.length > 0)
 
   if (groups.length === 0) return null
 
   return (
-    <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+    <div className="space-y-6">
       {groups.map((g) => (
-        <div key={g.label}>
-          <p className="mb-2 text-sm font-medium text-foreground">{g.label}</p>
-          <div className="grid grid-cols-3 gap-2">
+        <div key={g.label} className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-sm font-semibold">{g.label}</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {g.photos.map((url, idx) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={idx}
                 src={url}
-                alt={g.label}
-                className="h-24 w-full rounded-lg border object-cover"
+                alt={`${g.label} ${idx + 1}`}
+                className="aspect-[4/3] w-full rounded-lg border border-gray-100 object-cover"
               />
             ))}
           </div>

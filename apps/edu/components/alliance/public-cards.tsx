@@ -13,6 +13,7 @@ import type {
   AllianceAchievement,
   AllianceExpert,
   AllianceBrand,
+  AlliancePublicBrand,
 } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -410,19 +411,55 @@ export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
   )
 }
 
-/** 雇主品牌：企业目录行（缩略图 + 名称/简介，置于 landing 的容器卡内逐行排列） */
-export function EmployerBrandRow({ brand }: { brand: AllianceBrand }) {
+/** 品牌关联企业资料归一化：引用企业取 enterprise* 字段，独立雇主企业取 data.enterpriseInfo */
+export function employerBrandOf(brand: AlliancePublicBrand) {
+  const info = (brand.data?.enterpriseInfo ?? {}) as Record<string, any>
+  const first = <T,>(a?: T, b?: T): T | undefined => (a != null && a !== '' ? a : b ?? undefined)
+  return {
+    name: first(brand.enterpriseName, info.name ?? brand.name),
+    logoUrl: first(brand.enterpriseLogo, info.logoUrl ?? info.logo),
+    industry: first(brand.enterpriseIndustry, info.industry),
+    region: first(brand.enterpriseRegion, info.region),
+    description: first(brand.enterpriseDescription, info.description),
+    creditCode: first(brand.enterpriseCreditCode, info.unifiedSocialCreditCode ?? info.creditCode),
+    contactPerson: first(brand.enterpriseContactPerson, info.contactPerson),
+    contactPhone: first(brand.enterpriseContactPhone, info.contactPhone),
+    contactEmail: first(brand.enterpriseContactEmail, info.contactEmail),
+    address: first(brand.enterpriseAddress, info.address),
+    establishedYear: first(brand.enterpriseEstablishedYear, info.establishedYear),
+    employeeCount: first(brand.enterpriseEmployeeCount, info.employeeCount),
+    coverImage: first(brand.enterpriseCoverImage, info.coverImage),
+    coverPhotos: (brand.enterpriseCoverPhotos?.length ? brand.enterpriseCoverPhotos : info.coverPhotos ?? []) as string[],
+    businessLicensePhotos: (brand.enterpriseBusinessLicensePhotos?.length
+      ? brand.enterpriseBusinessLicensePhotos
+      : info.businessLicensePhotos ?? []) as string[],
+    intellectualPropertyPhotos: (brand.enterpriseIntellectualPropertyPhotos?.length
+      ? brand.enterpriseIntellectualPropertyPhotos
+      : info.intellectualPropertyPhotos ?? []) as string[],
+    qualificationPhotos: (brand.enterpriseQualificationPhotos?.length
+      ? brand.enterpriseQualificationPhotos
+      : info.qualificationPhotos ?? []) as string[],
+  }
+}
+
+/** 雇主品牌：企业目录行（logo + 名称/简介/标签，置于 landing 的容器卡内逐行排列） */
+export function EmployerBrandRow({ brand }: { brand: AlliancePublicBrand }) {
   const t = useT()
+  const enterprise = employerBrandOf(brand)
   const tags = brandTags(brand)
   return (
     <Link
       href={`/portal/alliance/brands/${brand.id}`}
       className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/[0.03]"
     >
-      <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 shadow-sm">
-        {brand.coverImage ? (
+      <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 shadow-sm border border-slate-100 bg-slate-50">
+        {enterprise.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={brand.coverImage} alt={brand.name} className="w-full h-full object-cover" />
+          <img
+            src={enterprise.logoUrl}
+            alt={brand.name}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <GradientPlaceholder
             seed={brand.name}
@@ -436,51 +473,87 @@ export function EmployerBrandRow({ brand }: { brand: AllianceBrand }) {
           <h4 className="font-semibold text-sm text-slate-900 truncate group-hover:text-primary transition-colors">
             {brand.name}
           </h4>
-          {tags.slice(0, 2).map((tag) => (
-            <span
-              key={tag}
-              className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium shrink-0"
-            >
-              {tag}
+          {[enterprise.industry, enterprise.region].filter(Boolean).length > 0 && (
+            <span className="hidden sm:inline-block text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium shrink-0 truncate max-w-[180px]">
+              {[enterprise.industry, enterprise.region].filter(Boolean).join(' · ')}
             </span>
-          ))}
+          )}
         </div>
         <p className="text-xs text-slate-500 truncate mt-0.5">
-          {brand.description || t('暂无品牌描述')}
+          {enterprise.description || t('暂无企业简介')}
         </p>
+        {tags.length > 0 && (
+          <div className="hidden md:flex items-center gap-1 mt-1.5 min-w-0">
+            {tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary border border-primary/10 font-medium whitespace-nowrap"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
     </Link>
   )
 }
 
-/** 岗位品牌：单行记录（图标 + 名称 + 标签一行排开，置于 landing 的容器卡内） */
-export function JobBrandRow({ brand }: { brand: AllianceBrand }) {
-  const tags = brandTags(brand)
+function salaryText(b: AlliancePublicBrand) {
+  const min = b.salaryMin
+  const max = b.salaryMax
+  if (min == null && max == null) return null
+  if (min == null) return `${max}K`
+  if (max == null) return `${min}K`
+  return `${min}-${max}K`
+}
+
+/** 岗位品牌：记录行（图标 + 名称 + 行业/专业标签 + 加粗薪资，置于 landing 的容器卡内） */
+export function JobBrandRow({ brand }: { brand: AlliancePublicBrand }) {
+  const t = useT()
+  const majors = brand.majorNames ?? []
+  const salary = salaryText(brand)
   return (
     <Link
       href={`/portal/alliance/brands/${brand.id}`}
-      className="group flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-primary/[0.03]"
+      className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/[0.03]"
     >
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
-        <Briefcase className="h-4 w-4 text-primary" />
+      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
+        <Briefcase className="h-5 w-5 text-primary" />
       </div>
-      <h4 className="font-medium text-sm text-slate-900 truncate group-hover:text-primary transition-colors">
-        {brand.name}
-      </h4>
-      <div className="hidden md:flex items-center gap-1 min-w-0">
-        {tags.slice(0, 2).map((tag) => (
-          <span
-            key={tag}
-            className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium whitespace-nowrap"
-          >
-            {tag}
-          </span>
-        ))}
+      <div className="flex-1 min-w-0">
+        <h4 className="font-medium text-sm text-slate-900 truncate group-hover:text-primary transition-colors">
+          {brand.positionName || brand.name}
+        </h4>
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap min-w-0">
+          {brand.industryName && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium whitespace-nowrap">
+              {brand.industryName}
+            </span>
+          )}
+          {majors.slice(0, 3).map((m) => (
+            <span
+              key={m}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium whitespace-nowrap"
+            >
+              {m}
+            </span>
+          ))}
+          {majors.length > 3 && (
+            <span className="text-[10px] text-slate-400 whitespace-nowrap">
+              +{majors.length - 3}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="ml-auto flex items-center gap-3 shrink-0">
-        <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-      </div>
+      {salary && (
+        <div className="shrink-0 text-right hidden sm:block">
+          <p className="text-base font-bold text-primary leading-tight">{salary}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{t('薪资范围')}</p>
+        </div>
+      )}
+      <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
     </Link>
   )
 }
@@ -536,35 +609,72 @@ export function MajorBrandCard({ brand }: { brand: AllianceBrand }) {
   )
 }
 
-/** 师资品牌：头像交叠卡（顶部色带 + 圆形首字头像半叠 + 居中排版） */
-export function TeacherBrandCard({ brand }: { brand: AllianceBrand }) {
+/** 师资品牌：与「专家资源」同款紧凑卡片（顶部色带 + 圆形头像半叠 + 居中排版），可多列铺开 */
+export function TeacherBrandCard({ brand }: { brand: AlliancePublicBrand }) {
   const t = useT()
+  const name = brand.personName || brand.name
+  const subtitle = [brand.personTitle, brand.personPosition].filter(Boolean).join(' · ')
+  const specialties = Array.isArray(brand.personSpecialties) ? brand.personSpecialties : []
+  const organization = brand.personOrganization
+  const industry = brand.personIndustry
   return (
     <Link href={`/portal/alliance/brands/${brand.id}`}>
-      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="h-16 relative shrink-0">
-          {brand.coverImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={brand.coverImage} alt={brand.name} className="w-full h-full object-cover" />
-          ) : (
-            <GradientPlaceholder seed={brand.name} className="w-full h-full" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
+        <div className="h-16 relative">
+          <GradientPlaceholder seed={brand.personIndustry || brand.name} className="w-full h-full" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
             <Avatar className="h-14 w-14 ring-[3px] ring-white shadow-md">
-              <AvatarFallback className="text-lg font-semibold bg-white text-slate-800">
-                {getInitials(brand.name)}
+              {brand.personAvatar && <AvatarImage src={brand.personAvatar} />}
+              <AvatarFallback className="text-base font-semibold bg-slate-100 text-slate-800">
+                {getInitials(name)}
               </AvatarFallback>
             </Avatar>
           </div>
         </div>
-        <CardContent className="pt-9 pb-5 px-4 flex-1 flex flex-col">
+        <CardContent className="pt-9 pb-4 px-3.5 flex-1 flex flex-col text-left">
           <h4 className="font-semibold text-slate-900 text-center text-sm truncate group-hover:text-primary transition-colors">
-            {brand.name}
+            {name}
           </h4>
-          <p className="text-xs text-slate-500 text-center line-clamp-2 mt-1.5 leading-relaxed">
-            {brand.description || t('暂无品牌描述')}
+          <p className="text-xs text-slate-500 text-center truncate mt-0.5">
+            {subtitle || t('校本教师')}
           </p>
+          <div className="mt-3 space-y-1.5 text-xs text-slate-600">
+            {organization && (
+              <div className="flex justify-between gap-2 min-w-0">
+                <span className="text-slate-400 shrink-0">{t('单位')}</span>
+                <span className="text-right truncate min-w-0">{organization}</span>
+              </div>
+            )}
+            {industry && (
+              <div className="flex justify-between gap-2 min-w-0">
+                <span className="text-slate-400 shrink-0">{t('行业')}</span>
+                <span className="text-right truncate min-w-0">{industry}</span>
+              </div>
+            )}
+            {brand.personExperienceYears != null && (
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400 shrink-0">{t('经验')}</span>
+                <span className="text-right">
+                  {t('{years} 年', { years: brand.personExperienceYears })}
+                </span>
+              </div>
+            )}
+          </div>
+          {specialties.length > 0 && (
+            <div className="mt-3">
+              <div className="flex flex-wrap gap-1 justify-center">
+                {specialties.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>

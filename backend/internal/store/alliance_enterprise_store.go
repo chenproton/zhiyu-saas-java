@@ -384,15 +384,6 @@ func (s *AllianceStore) CountMonthlyContentByEnterprise(ctx context.Context, ent
 	return out, rows.Err()
 }
 
-func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.EmployerBrand, error) {
-	return queryOne(ctx, s.q, s.ScanEmployerBrandRows, `
-		SELECT `+employerBrandSelect+`
-		FROM alliance_brands b
-		LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id
-		WHERE b.id = $1 AND b.is_public = true AND b.status <> 'archived'
-	`, id)
-}
-
 // AlliancePublicStats 门户前台公开统计数据。
 type AlliancePublicStats struct {
 	EnterpriseCount  int

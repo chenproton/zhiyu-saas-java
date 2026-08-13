@@ -16,6 +16,7 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi, allianceAchievementApi, portalRequest } from '@/lib/api'
 import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
+import { RelatedObjectCard } from '@/components/alliance/related-object-card'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { SearchInput } from '@/components/shared/search-input'
@@ -103,27 +104,6 @@ export function MajorBrandDetail({ id }: { id: string }) {
       content: (
         <div className="space-y-6">
           <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold">{t('专业基本信息')}</h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="text-muted-foreground">{t('专业名称：')}</span>
-                {brand?.name}
-              </p>
-              <p>
-                <span className="text-muted-foreground">{t('专业 ID：')}</span>
-                {brand?.majorId}
-              </p>
-              <p>
-                <span className="text-muted-foreground">{t('前台展示：')}</span>
-                {brand?.isPublic ? t('是') : t('否')}
-              </p>
-              <p>
-                <span className="text-muted-foreground">{t('推荐：')}</span>
-                {brand?.isFeatured ? t('是') : t('否')}
-              </p>
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold">{t('品牌展示信息')}</h3>
             <div className="space-y-4">
               <FormFieldRow label={t('品牌名称')}>
@@ -175,6 +155,7 @@ export function MajorBrandDetail({ id }: { id: string }) {
       content: (
         <RefSection
           key="directions"
+          kind="brands"
           title={t('关联岗位品牌作为专业就业方向')}
           empty={t('暂未关联就业方向')}
           items={data.employmentDirections ?? []}
@@ -200,6 +181,7 @@ export function MajorBrandDetail({ id }: { id: string }) {
       content: (
         <RefSection
           key="enterprises"
+          kind="enterprises"
           title={t('关联合作企业')}
           empty={t('暂未关联合作企业')}
           items={data.cooperationEnterprises ?? []}
@@ -220,6 +202,7 @@ export function MajorBrandDetail({ id }: { id: string }) {
       content: (
         <RefSection
           key="achievements"
+          kind="achievements"
           title={t('关联合作成果')}
           empty={t('暂未关联合作成果')}
           items={data.cooperationAchievements ?? []}
@@ -240,6 +223,7 @@ export function MajorBrandDetail({ id }: { id: string }) {
       content: (
         <RefSection
           key="courses"
+          kind="courses"
           title={t('关联特色课程')}
           empty={t('暂未关联特色课程')}
           items={data.featuredCourses ?? []}
@@ -269,9 +253,10 @@ export function MajorBrandDetail({ id }: { id: string }) {
   )
 }
 
-// ── 通用关联管理区块（选择/移除关联对象） ─────────────────────────
+// ── 通用关联管理区块（卡片展示 + 选择/移除关联对象，卡片可跳转对应详情页） ─────────
 
 function RefSection({
+  kind,
   title,
   empty,
   items,
@@ -280,6 +265,7 @@ function RefSection({
   placeholder,
   pickerTitle,
 }: {
+  kind: 'brands' | 'enterprises' | 'achievements' | 'courses'
   title: string
   empty: string
   items: RefItem[]
@@ -350,21 +336,17 @@ function RefSection({
           {empty}
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {items.map((item) => (
-            <span
-              key={item.id}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-slate-50 px-3 py-1.5 text-sm"
-            >
-              <span className="font-medium">{item.name}</span>
+            <RelatedObjectCard key={item.id} item={item} kind={kind}>
               <button
-                type="button"
-                className="text-muted-foreground hover:text-red-600 transition-colors"
+                className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                title={t('取消关联')}
                 onClick={() => remove(item.id)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
-            </span>
+            </RelatedObjectCard>
           ))}
         </div>
       )}

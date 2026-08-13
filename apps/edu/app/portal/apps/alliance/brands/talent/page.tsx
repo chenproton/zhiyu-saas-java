@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -15,7 +14,8 @@ import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
-import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
+import { UserSelector } from '@/components/shared/user-selector'
+import { MajorSelect } from '@/components/shared/major-select'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { TalentRankingPanel } from '@/components/alliance/talent-ranking-panel'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -150,7 +150,7 @@ export default function AllianceTalentBrandPage() {
                   <Textarea
                     value={item.description || ''}
                     onChange={(e: any) => setItem({ ...item, description: e.target.value })}
-                    rows={3}
+                    rows={8}
                   />
                 </FormFieldRow>
                 <FormFieldRow label={t('封面图')}>
@@ -161,40 +161,27 @@ export default function AllianceTalentBrandPage() {
                     allowUrlInput={false}
                   />
                 </FormFieldRow>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={item.isPublic || false}
-                      onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
-                    />
-                    <Label>{t('前台展示')}</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={item.isFeatured || false}
-                      onCheckedChange={(v: any) => setItem({ ...item, isFeatured: v })}
-                    />
-                    <Label>{t('推荐')}</Label>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('学生 ID')}</Label>
-                  <BrandRelationSelect
-                    label={t('关联学生')}
-                    value={item.studentId || ''}
-                    onChange={(v: any) => setItem({ ...item, studentId: v })}
-                    fetchUrl="/users?role=student&limit=200"
+                <FormFieldRow label={t('关联学生')}>
+                  <UserSelector
+                    multiple={false}
+                    excludeStudent={false}
+                    onlyRoleCode="student"
+                    tenantId={tenantId}
+                    placeholder={t('选择学生')}
+                    value={item.studentId ? [item.studentId] : []}
+                    onChange={(ids: string[]) =>
+                      setItem({ ...item, studentId: ids[0] || '' })
+                    }
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('专业 ID')}</Label>
-                  <BrandRelationSelect
-                    label={t('关联专业')}
+                </FormFieldRow>
+                <FormFieldRow label={t('关联专业')}>
+                  <MajorSelect
+                    tenantId={tenantId}
                     value={item.majorId || ''}
-                    onChange={(v: any) => setItem({ ...item, majorId: v })}
-                    fetchUrl="/majors?limit=200"
+                    onChange={(v) => setItem({ ...item, majorId: v || '' })}
+                    placeholder={t('选择专业')}
                   />
-                </div>
+                </FormFieldRow>
               </div>
             )}
             getDeleteDescription={(item: any) => (

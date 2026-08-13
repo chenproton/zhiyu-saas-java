@@ -1,17 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { Briefcase, Layers, BookOpen } from 'lucide-react'
+import { Briefcase, Layers, BookOpen, Building2, Trophy, Sparkles } from 'lucide-react'
 import type { AllianceRelatedRef } from '@zhiyu/shared-types'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { useT } from '@/lib/i18n/locale-provider'
 
-export type RelatedKind = 'positions' | 'scenes' | 'courses'
+export type RelatedKind = 'positions' | 'scenes' | 'courses' | 'brands' | 'enterprises' | 'achievements'
 
 const kindMeta: Record<RelatedKind, { href: (id: string) => string; icon: React.ElementType }> = {
   positions: { href: (id) => `/job/landing/${id}`, icon: Briefcase },
   scenes: { href: (id) => `/scene/landing/${id}`, icon: Layers },
   courses: { href: (id) => `/lesson/landing/${id}`, icon: BookOpen },
+  brands: { href: (id) => `/portal/alliance/brands/${id}`, icon: Sparkles },
+  enterprises: { href: (id) => `/portal/alliance/enterprises/${id}`, icon: Building2 },
+  achievements: { href: (id) => `/portal/alliance/achievements/${id}`, icon: Trophy },
 }
 
 /** 兼容历史数据（纯字符串 id/名称），统一为快照对象 */
@@ -40,7 +43,13 @@ export function RelatedObjectCard({
     ? { backgroundImage: `url('${item.coverImage}')` }
     : { background: coverGradientFor(item.id) }
   const codeLabel =
-    kind === 'positions' ? t('岗位编码') : kind === 'scenes' ? t('场景编码') : t('课程编码')
+    kind === 'positions'
+      ? t('岗位编码')
+      : kind === 'scenes'
+        ? t('场景编码')
+        : kind === 'courses'
+          ? t('课程编码')
+          : undefined
 
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)] hover:border-primary/30 flex flex-col">

@@ -1,3 +1,5 @@
+import type { PositionResponsibility, PositionCertificate } from './job'
+
 export interface AllianceSchoolInfo {
   id: string
   tenantId: string
@@ -306,6 +308,13 @@ export interface EmployerBrand extends AllianceBrand {
   enterpriseContactPhone?: string
   enterpriseContactEmail?: string
   enterpriseAddress?: string
+  enterpriseEstablishedYear?: number
+  enterpriseEmployeeCount?: number
+  enterpriseCoverImage?: string
+  enterpriseCoverPhotos?: string[]
+  enterpriseBusinessLicensePhotos?: string[]
+  enterpriseIntellectualPropertyPhotos?: string[]
+  enterpriseQualificationPhotos?: string[]
 }
 
 // JobBrand 岗位品牌视图（关联岗位资料；教学岗位只读，企业岗位可在品牌模块编辑）
@@ -316,6 +325,64 @@ export interface JobBrand extends AllianceBrand {
   salaryMax?: number
   majorNames?: string[]
   positionStatus?: string
+}
+
+// AlliancePublicBrand 前台公开品牌视图：按品牌类型附带关联对象资料
+// （雇主→引用企业资料，岗位→关联岗位资料，师资→教师/企业专家资料），
+// landing / 品牌列表 / 品牌详情共用同一形状，各类型仅填充相关字段。
+export interface AlliancePublicBrand extends AllianceBrand {
+  // 雇主品牌：引用合作企业资料（独立雇主企业时为空，取 data.enterpriseInfo）
+  enterpriseName?: string
+  enterpriseLogo?: string
+  enterpriseIndustry?: string
+  enterpriseRegion?: string
+  enterpriseDescription?: string
+  enterpriseCreditCode?: string
+  enterpriseContactPerson?: string
+  enterpriseContactPhone?: string
+  enterpriseContactEmail?: string
+  enterpriseAddress?: string
+  enterpriseEstablishedYear?: number
+  enterpriseEmployeeCount?: number
+  enterpriseCoverImage?: string
+  enterpriseCoverPhotos?: string[]
+  enterpriseBusinessLicensePhotos?: string[]
+  enterpriseIntellectualPropertyPhotos?: string[]
+  enterpriseQualificationPhotos?: string[]
+  // 岗位品牌：关联岗位资料
+  positionName?: string
+  positionType?: string
+  salaryMin?: number
+  salaryMax?: number
+  majorNames?: string[]
+  industryName?: string
+  positionStatus?: string
+  positionDescription?: string
+  positionRequirements?: string[]
+  positionCareerPath?: string
+  positionCoverImage?: string
+  responsibilities?: PositionResponsibility[]
+  certificates?: PositionCertificate[]
+  // 师资品牌：教师/企业专家资料（专家档案优先，教师基础信息兜底）
+  personName?: string
+  personAvatar?: string
+  personTitle?: string
+  personPosition?: string
+  personOrganization?: string
+  personIndustry?: string
+  personExperienceYears?: number
+  personEducation?: string
+  personIntroduction?: string
+  personWorkExperience?: string
+  personCity?: string
+  personExpertType?: string
+  personRating?: string
+  personStatus?: string
+  personGender?: string
+  personAge?: number
+  personSpecialties?: string[]
+  personProfessionalFields?: string[]
+  personAttachments?: string[]
 }
 
 // BrandMajorRankConfig 人才画像排名-专业启用配置

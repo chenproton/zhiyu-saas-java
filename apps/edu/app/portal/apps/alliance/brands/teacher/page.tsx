@@ -11,13 +11,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Trash2, Loader2, UserRound } from 'lucide-react'
+import { Trash2, Loader2, UserRound, Pencil } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceExpertApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { PartnerExpertForm, emptyPartnerExpertForm, type PartnerExpertFormState } from '@/app/partner/experts/_components/expert-form'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand, AllianceExpert } from '@/lib/types'
 
@@ -86,13 +87,14 @@ export default function AllianceTeacherBrandPage() {
         <TabsContent value="school">
           <TeacherBrandSection
             title={t('校本师资管理')}
-            description={t('从系统教师库关联教师（只读展示，不可编辑教师信息）')}
+            description={t('从系统教师库关联教师，可补充师资展示资料（资料不足时编辑补充）')}
             items={schoolBrands}
             loading={loading}
             onToggle={toggleBrandField}
             onDelete={onDelete}
             onSaved={refresh}
             linkField="teacherId"
+            allowEditProfile
             fetchOptions={async () => {
               const res = await portalRequest<{ items: TeacherOption[] }>(
                 '/users?role=teacher&limit=200',
@@ -157,6 +159,7 @@ function TeacherBrandSection({
   pickerTitle,
   searchPlaceholder,
   displayInfo,
+  allowEditProfile,
 }: {
   title: string
   description: string
@@ -170,6 +173,7 @@ function TeacherBrandSection({
   pickerTitle: string
   searchPlaceholder: string
   displayInfo: (brand: AllianceBrand) => React.ReactNode
+  allowEditProfile?: boolean
 }) {
   const { toast } = useToast()
   const t = useT()
@@ -179,6 +183,10 @@ function TeacherBrandSection({
   const [submitting, setSubmitting] = useState(false)
   const [options, setOptions] = useState<TeacherOption[]>([])
   const [optionsLoading, setOptionsLoading] = useState(false)
+  // 校本师资资料补充：复制为无企业关联的专家档案（与 /partner/experts 同表维护）
+  const [profileTarget, setProfileTarget] = useState<AllianceBrand | null>(null)
+  const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   const openPicker = async () => {
     setOpen(true)
@@ -241,6 +249,70 @@ function TeacherBrandSection({
     }
   }
 
+  // ── 校本师资展示资料补充（复制为无企业关联的专家档案，与 /partner/experts 同表） ──
+  const openProfileEdit = async (brand: AllianceBrand) => {
+    setProfileTarget(brand)
+    setProfileForm(null)
+    setProfileLoading(true)
+    try {
+      const expertId = (brand.data as any)?.teacherExpertId
+      if (expertId) {
+        const expert = await allianceExpertApi.get(expertId).catch(() => null)
+        if (expert) {
+          setProfileForm(expertToForm(expert))
+          return
+        }
+      }
+      const teacherId = brand.teacherId
+      const teacher = teacherId
+        ? await portalRequest<Record<string, any>>(`/users/${teacherId}`).catch(() => null)
+        : null
+      const base = emptyProfileForm()
+      setProfileForm({
+        ...base,
+        name: brand.name || teacher?.name || '',
+        avatarUrl: teacher?.avatarUrl || '',
+      })
+    } catch {
+      setProfileForm(emptyProfileForm())
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const saveProfile = async () => {
+    if (!profileTarget || !profileForm) return
+    if (!profileForm.name.trim()) {
+      toast({ title: t('姓名不能为空'), variant: 'destructive' })
+      return
+    }
+    setSubmitting(true)
+    try {
+      const payload: any = formToExpert(profileForm)
+      payload.userId = profileTarget.teacherId
+      const existingId = (profileTarget.data as any)?.teacherExpertId
+      let expertId: string
+      if (existingId) {
+        const expert = await allianceExpertApi.update(existingId, payload)
+        expertId = expert.id
+      } else {
+        const expert = await allianceExpertApi.create(payload)
+        expertId = expert.id
+        await allianceBrandApi.update(profileTarget.id, {
+          data: { ...(profileTarget.data || {}), teacherExpertId: expertId },
+        } as any)
+      }
+      toast({ title: existingId ? t('师资资料已更新') : t('师资资料已创建') })
+      setProfileTarget(null)
+      setProfileForm(null)
+      onSaved()
+    } catch (e: any) {
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -292,6 +364,16 @@ function TeacherBrandSection({
                   </TableCell>
                   <TableCell>{displayInfo(b)}</TableCell>
                   <TableRowActions>
+                    {allowEditProfile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openProfileEdit(b)}
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1" />
+                        {t('编辑资料')}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -371,6 +453,76 @@ function TeacherBrandSection({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* 校本师资展示资料补充（字段与 /partner/experts 编辑一致） */}
+      <Dialog open={!!profileTarget} onOpenChange={(o) => !o && setProfileTarget(null)}>
+        <DialogContent size="xl" className="max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{t('编辑师资资料')}</DialogTitle>
+            <DialogDescription>
+              {t('补充教师展示资料（职称/专长/简介等），前台师资品牌与详情页展示')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 min-h-0 py-2">
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : profileForm ? (
+              <PartnerExpertForm
+                item={profileForm}
+                onChange={setProfileForm}
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">{t('加载失败')}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setProfileTarget(null)}>
+              {t('取消')}
+            </Button>
+            <Button size="sm" onClick={saveProfile} disabled={!profileForm || submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {t('保存')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
+}
+
+// ── 校本师资资料补充：与 /partner/experts 编辑表单字段一致的本地表单模型 ────────
+
+type ProfileFormState = PartnerExpertFormState
+
+function emptyProfileForm(): ProfileFormState {
+  return { ...emptyPartnerExpertForm }
+}
+
+function expertToForm(e: any): ProfileFormState {
+  return {
+    ...emptyPartnerExpertForm,
+    name: e.name || '',
+    gender: e.gender || 'male',
+    age: e.age,
+    city: e.city || '',
+    title: e.title || '',
+    position: e.position || '',
+    experienceYears: e.experienceYears,
+    education: e.education || '',
+    industry: e.industry || '',
+    specialties: Array.isArray(e.specialties) ? e.specialties : [],
+    introduction: e.introduction || '',
+    workExperience: e.workExperience || '',
+    avatarUrl: e.avatarUrl || '',
+    coverImage: e.coverImage || '',
+    attachments: Array.isArray(e.attachments) ? e.attachments : [],
+    status: e.status || 'active',
+    isPublic: !!e.isPublic,
+  }
+}
+
+function formToExpert(f: ProfileFormState): Record<string, any> {
+  return { ...f }
 }

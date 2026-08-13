@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -680,16 +681,115 @@ func (h *AllianceHandler) GetExpert(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
 	}
-	// 越权防线：专家所属企业必须在本校 links 内
+	// 校本教师专家档案副本（enterprise_id 为空且属于本校租户）：允许本校直接读取/编辑
 	if expert.EnterpriseID == nil {
-		respondError(w, http.StatusNotFound, "专家不存在")
+		if expert.TenantID != tenantID {
+			respondError(w, http.StatusNotFound, "专家不存在")
+			return
+		}
+		respondJSON(w, http.StatusOK, expert)
 		return
 	}
+	// 越权防线：专家所属企业必须在本校 links 内
 	if _, err := h.Links.GetLinkByEnterprise(r.Context(), *expert.EnterpriseID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, expert)
+}
+
+// CreateSchoolExpert 学校侧创建专家档案（用于校本师资品牌资料补充：复制教师为无企业关联的专家档案，
+// 与 /partner/experts 共用 alliance_experts 表，不单独建表）。
+func (h *AllianceHandler) CreateSchoolExpert(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	var req domain.AllianceExpert
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "无效的请求体")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		respondError(w, http.StatusBadRequest, "姓名不能为空")
+		return
+	}
+	if req.UserID != nil && *req.UserID != "" {
+		// 同一教师仅保留一份专家档案副本
+		existing, err := h.Store.GetExpertByUserID(r.Context(), tenantID, *req.UserID)
+		if err == nil && existing != nil {
+			respondJSON(w, http.StatusOK, existing)
+			return
+		}
+	}
+	req.ID = ""
+	req.TenantID = tenantID
+	req.EnterpriseID = nil
+	req.IsPublic = false
+	if req.Status == "" {
+		req.Status = "active"
+	}
+	if req.ExpertType == nil || *req.ExpertType == "" {
+		expertType := "teacher"
+		req.ExpertType = &expertType
+	}
+	id, err := h.Store.CreateExpert(r.Context(), &req)
+	if err != nil {
+		respondServerError(w, r, err, "创建专家档案失败")
+		return
+	}
+	req.ID = id
+	respondJSON(w, http.StatusOK, req)
+}
+
+// UpdateSchoolExpert 学校侧更新专家档案（仅限本校创建的无企业关联档案，即校本教师资料副本）。
+func (h *AllianceHandler) UpdateSchoolExpert(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	expert, err := h.Store.GetExpertByIDGlobal(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	if expert.EnterpriseID != nil || expert.TenantID != tenantID {
+		respondError(w, http.StatusForbidden, "仅可编辑本校创建的师资档案")
+		return
+	}
+	var req domain.AllianceExpert
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "无效的请求体")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		respondError(w, http.StatusBadRequest, "姓名不能为空")
+		return
+	}
+	req.ID = id
+	req.TenantID = tenantID
+	req.EnterpriseID = nil
+	req.UserID = expert.UserID
+	req.CreatedAt = expert.CreatedAt
+	if req.Status == "" {
+		req.Status = expert.Status
+	}
+	if err := h.Store.UpdateExpert(r.Context(), id, tenantID, &req); err != nil {
+		respondServerError(w, r, err, "更新专家档案失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, req)
 }
 
 // ===== 合作协议（独立） =====
@@ -1317,7 +1417,7 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
-	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceBrand, error) {
+	alliancePublicList(w, r, func(ctx context.Context) ([]domain.PublicBrandItem, error) {
 		return h.Store.ListPublicBrands(ctx, r.URL.Query().Get("brandType"))
 	})
 }

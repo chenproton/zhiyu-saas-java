@@ -5,27 +5,55 @@ import { useSearchParams } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
-import type { AllianceBrand } from '@/lib/types'
+import type { AlliancePublicBrand } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { BrandCard } from '@/components/alliance/public-cards'
+import {
+  BrandCard,
+  TalentBrandCard,
+  EmployerBrandRow,
+  JobBrandRow,
+  MajorBrandCard,
+  TeacherBrandCard,
+  CultureBrandCard,
+} from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const BRAND_TYPES = ['talent', 'employer', 'job', 'major', 'teacher', 'culture']
 
+/** 每个分类 tab 下的预览卡片与 landing 页保持一致 */
+function BrandPreviewCard({ item }: { item: AlliancePublicBrand }) {
+  switch (item.brandType) {
+    case 'talent':
+      return <TalentBrandCard brand={item} />
+    case 'employer':
+      return <EmployerBrandRow brand={item} />
+    case 'job':
+      return <JobBrandRow brand={item} />
+    case 'major':
+      return <MajorBrandCard brand={item} />
+    case 'teacher':
+      return <TeacherBrandCard brand={item} />
+    case 'culture':
+      return <CultureBrandCard brand={item} />
+    default:
+      return <BrandCard brand={item} />
+  }
+}
+
 function AlliancePublicBrandsList() {
   const t = useT()
   const searchParams = useSearchParams()
-  const [items, setItems] = useState<AllianceBrand[]>([])
+  const [items, setItems] = useState<AlliancePublicBrand[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<string>(() => {
     const type = searchParams.get('type')
-    return type && BRAND_TYPES.includes(type) ? type : 'all'
+    return type && BRAND_TYPES.includes(type) ? type : 'talent'
   })
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    portalRequest<{ items: AllianceBrand[] }>('/alliance/public/brands')
+    portalRequest<{ items: AlliancePublicBrand[] }>('/alliance/public/brands')
       .then((data) => setItems(data.items || []))
       .catch((err) => {
         reportError(err, { source: '加载品牌列表' })
@@ -34,26 +62,25 @@ function AlliancePublicBrandsList() {
   }, [])
 
   const tabs = useMemo(
-    () => [
-      { value: 'all', label: t('全部品牌'), count: items.length },
-      ...BRAND_TYPES.map((type) => ({
+    () =>
+      BRAND_TYPES.map((type) => ({
         value: type,
         label: allianceLabel('brandType', type),
         count: items.filter((i) => i.brandType === type).length,
       })),
-    ],
-    [items, t],
+    [items],
   )
 
   const filtered = useMemo(() => {
-    let list = items
-    if (tab !== 'all') list = list.filter((i) => i.brandType === tab)
+    let list = items.filter((i) => i.brandType === tab)
     if (keyword.trim()) {
       const q = keyword.trim().toLowerCase()
       list = list.filter(
         (i) =>
           i.name.toLowerCase().includes(q) ||
           (i.description ?? '').toLowerCase().includes(q) ||
+          (i.positionName ?? '').toLowerCase().includes(q) ||
+          (i.enterpriseName ?? '').toLowerCase().includes(q) ||
           (Array.isArray(i.data?.tags)
             ? (i.data.tags as string[]).some((t) => t.toLowerCase().includes(q))
             : false),
@@ -61,6 +88,23 @@ function AlliancePublicBrandsList() {
     }
     return list
   }, [items, tab, keyword])
+
+  // 与 landing 页一致的布局：雇主/岗位为行卡容器，师资为紧凑多列，其余网格
+  const gridClassName = useMemo(() => {
+    switch (tab) {
+      case 'talent':
+        return 'grid grid-cols-1 lg:grid-cols-2 gap-5'
+      case 'employer':
+      case 'job':
+        return 'rounded-2xl border border-[#e7e5e4] bg-white shadow-sm overflow-hidden divide-y divide-slate-100'
+      case 'teacher':
+        return 'grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4'
+      default:
+        return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5'
+    }
+  }, [tab])
+
+  const isRowLayout = tab === 'employer' || tab === 'job'
 
   return (
     <PublicListShell
@@ -81,10 +125,16 @@ function AlliancePublicBrandsList() {
           <div className="text-[15px] font-medium text-[#475569]">{t('暂无品牌')}</div>
           <div className="text-[13px] mt-1">{t('发布后的品牌成果会展示在这里')}</div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      ) : isRowLayout ? (
+        <div className={gridClassName}>
           {filtered.map((item) => (
-            <BrandCard key={item.id} brand={item} />
+            <BrandPreviewCard key={item.id} item={item} />
+          ))}
+        </div>
+      ) : (
+        <div className={gridClassName}>
+          {filtered.map((item) => (
+            <BrandPreviewCard key={item.id} item={item} />
           ))}
         </div>
       )}

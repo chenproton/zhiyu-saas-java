@@ -172,6 +172,18 @@ export const allianceExpertApi = {
   // 共建导师选项：本校已引入企业的专家 + 绑定账号（无账号专家 userId 为 null，不可勾选）
   mentorOptions: () =>
     portalRequest<AllianceListResponse<AllianceMentorOption>>('/alliance/experts/mentor-options'),
+  // 学校侧创建专家档案（校本师资资料副本：不关联企业，tenant_id = 本校租户）
+  create: (req: Partial<AllianceExpert>) =>
+    portalRequest<AllianceExpert>('/alliance/experts', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  // 学校侧更新专家档案（仅限本校创建的无企业关联档案）
+  update: (id: string, req: Partial<AllianceExpert>) =>
+    portalRequest<AllianceExpert>(`/alliance/experts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(req),
+    }),
 }
 
 export const allianceBrandApi = {

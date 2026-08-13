@@ -19,7 +19,9 @@ import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import {
-  IndependentEnterpriseForm,
+  EnterpriseProfileForm,
+} from '@/components/alliance/enterprise-profile-form'
+import {
   normalizeEnterpriseInfo,
   type EnterpriseInfo,
 } from '@/components/alliance/independent-enterprise-form'
@@ -342,9 +344,9 @@ export default function AllianceEmployerBrandPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 新增独立雇主企业 / 编辑独立企业资料 */}
+      {/* 新增独立雇主企业 / 编辑独立企业资料（样式对齐 /partner/enterprise 编辑弹窗） */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {editTarget ? t('编辑独立雇主企业') : t('新增独立雇主企业')}
@@ -360,8 +362,8 @@ export default function AllianceEmployerBrandPage() {
             }}
             className="grid gap-4"
           >
-            <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
-              <IndependentEnterpriseForm value={editInfo} onChange={setEditInfo} />
+            <div className="overflow-y-auto flex-1 min-h-0 py-2 px-1">
+              <EnterpriseProfileForm value={editInfo} onChange={setEditInfo} />
             </div>
             <FormDialogFooter
               onCancel={() => setEditOpen(false)}

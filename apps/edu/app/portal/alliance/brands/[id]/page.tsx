@@ -9,6 +9,12 @@ import {
   type DetailStat,
 } from '@/components/alliance/alliance-detail-shell'
 import { ContactRow, PhotoGrid } from '@/components/alliance/enterprise-detail-view'
+import {
+  RelatedObjectCard,
+  normalizeRelatedRefs,
+} from '@/components/alliance/related-object-card'
+import { employerBrandOf } from '@/components/alliance/public-cards'
+import { CertCards } from '@/components/job/student/cert-cards'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -19,10 +25,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Building2, Briefcase, Users, Calendar, Image as ImageIcon, FileText, Trophy, BookOpen } from 'lucide-react'
+import {
+  Building2,
+  Briefcase,
+  Users,
+  Calendar,
+  Image as ImageIcon,
+  FileText,
+  Trophy,
+  BookOpen,
+  Award,
+  Target,
+  ListChecks,
+  TrendingUp,
+  UserCircle,
+  Star,
+} from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
-import type { EmployerBrand } from '@/lib/types'
+import type { AlliancePublicBrand } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView, EmptyState } from '@zhiyu/ui'
 
@@ -45,32 +66,7 @@ interface HiredStudent {
   jobName?: string
 }
 
-/** 独立雇主企业资料（data.enterpriseInfo），字段与企业详情展示对齐 */
-interface EnterpriseInfo {
-  name?: string
-  creditCode?: string
-  unifiedSocialCreditCode?: string
-  enterpriseType?: string
-  industry?: string
-  region?: string
-  establishedYear?: number
-  employeeCount?: number
-  contactPerson?: string
-  contactPhone?: string
-  contactEmail?: string
-  address?: string
-  description?: string
-  logo?: string
-  logoUrl?: string
-  coverImage?: string
-  coverPhotos?: string[]
-  businessLicensePhotos?: string[]
-  qualificationPhotos?: string[]
-  intellectualPropertyPhotos?: string[]
-  secondaryColleges?: string[]
-}
-
-function salaryText(p: PositionSnapshot) {
+function salaryText(p: { salaryMin?: number; salaryMax?: number }) {
   if (p.salaryMin == null && p.salaryMax == null) return '-'
   if (p.salaryMin == null) return `${p.salaryMax}K`
   if (p.salaryMax == null) return `${p.salaryMin}K`
@@ -80,12 +76,12 @@ function salaryText(p: PositionSnapshot) {
 export default function AlliancePublicBrandDetailPage() {
   const t = useT()
   const { id } = useParams<{ id: string }>()
-  const [brand, setBrand] = useState<EmployerBrand | null>(null)
+  const [brand, setBrand] = useState<AlliancePublicBrand | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
-    portalRequest<EmployerBrand>(`/alliance/public/brands/${id}`)
+    portalRequest<AlliancePublicBrand>(`/alliance/public/brands/${id}`)
       .then(setBrand)
       .catch((err) => {
         reportError(err, { source: '加载品牌详情' })
@@ -95,60 +91,61 @@ export default function AlliancePublicBrandDetailPage() {
 
   const isEmployer = brand?.brandType === 'employer'
   const isIndependent = isEmployer && !brand?.enterpriseId
+  const isJob = brand?.brandType === 'job'
+  const isMajor = brand?.brandType === 'major'
+  const isTeacher = brand?.brandType === 'teacher'
 
-  /** 企业资料归一化（与企业详情展示字段一致） */
+  /** 企业资料归一化（引用企业与独立雇主企业统一：与企业详情展示字段一致） */
   const enterprise = useMemo(() => {
     if (!brand || !isEmployer) return null
-    if (!isIndependent) {
-      return {
-        name: brand.enterpriseName ?? brand.name,
-        logoUrl: brand.enterpriseLogo,
-        industry: brand.enterpriseIndustry,
-        region: brand.enterpriseRegion,
-        unifiedSocialCreditCode: brand.enterpriseCreditCode,
-        contactPerson: brand.enterpriseContactPerson,
-        contactPhone: brand.enterpriseContactPhone,
-        contactEmail: brand.enterpriseContactEmail,
-        address: brand.enterpriseAddress,
-        description: brand.enterpriseDescription,
-      }
-    }
-    const info = (brand.data?.enterpriseInfo ?? {}) as EnterpriseInfo
+    return employerBrandOf(brand)
+  }, [brand, isEmployer])
+
+  // ── 岗位品牌：岗位资料 ────────────────────────────────────────
+  const responsibilities = isJob ? (brand?.responsibilities ?? []) : []
+  const certificates = isJob ? (brand?.certificates ?? []) : []
+  const jobRequirements = isJob ? (brand?.positionRequirements ?? []) : []
+  const jobMajors = isJob ? (brand?.majorNames ?? []) : []
+
+  // ── 师资品牌：教师/企业专家资料 ────────────────────────────────
+  const person = useMemo(() => {
+    if (!brand || !isTeacher) return null
     return {
-      name: info.name ?? brand.name,
-      logoUrl: info.logoUrl ?? info.logo,
-      coverImage: info.coverImage,
-      enterpriseType: info.enterpriseType,
-      industry: info.industry,
-      region: info.region,
-      establishedYear: info.establishedYear,
-      employeeCount: info.employeeCount,
-      unifiedSocialCreditCode: info.unifiedSocialCreditCode ?? info.creditCode,
-      contactPerson: info.contactPerson,
-      contactPhone: info.contactPhone,
-      contactEmail: info.contactEmail,
-      address: info.address,
-      description: info.description,
-      coverPhotos: info.coverPhotos ?? [],
-      businessLicensePhotos: info.businessLicensePhotos ?? [],
-      qualificationPhotos: info.qualificationPhotos ?? [],
-      intellectualPropertyPhotos: info.intellectualPropertyPhotos ?? [],
-      secondaryColleges: info.secondaryColleges ?? [],
+      name: brand.personName || brand.name,
+      avatarUrl: brand.personAvatar,
+      title: brand.personTitle,
+      position: brand.personPosition,
+      organization: brand.personOrganization,
+      industry: brand.personIndustry,
+      experienceYears: brand.personExperienceYears,
+      education: brand.personEducation,
+      introduction: brand.personIntroduction,
+      workExperience: brand.personWorkExperience,
+      city: brand.personCity,
+      expertType: brand.personExpertType,
+      rating: brand.personRating,
+      status: brand.personStatus,
+      gender: brand.personGender,
+      age: brand.personAge,
+      specialties: Array.isArray(brand.personSpecialties) ? brand.personSpecialties : [],
+      professionalFields: Array.isArray(brand.personProfessionalFields)
+        ? brand.personProfessionalFields
+        : [],
+      attachments: Array.isArray(brand.personAttachments) ? brand.personAttachments : [],
     }
-  }, [brand, isEmployer, isIndependent])
+  }, [brand, isTeacher])
 
   // 专业品牌：关联内容（专业就业方向/合作企业/合作成果/特色课程）存于 data
-  const isMajor = brand?.brandType === 'major'
-  const majorData = useMemo(() => {
+  const majorData = (() => {
     if (!isMajor || !brand?.data) return null
-    const d = brand.data as Record<string, any>
+    const d = brand.data
     return {
-      directions: (d.employmentDirections ?? []) as { id: string; name: string }[],
-      enterprises: (d.cooperationEnterprises ?? []) as { id: string; name: string }[],
-      achievements: (d.cooperationAchievements ?? []) as { id: string; name: string }[],
-      courses: (d.featuredCourses ?? []) as { id: string; name: string }[],
+      directions: normalizeRelatedRefs(d?.employmentDirections),
+      enterprises: normalizeRelatedRefs(d?.cooperationEnterprises),
+      achievements: normalizeRelatedRefs(d?.cooperationAchievements),
+      courses: normalizeRelatedRefs(d?.featuredCourses),
     }
-  }, [isMajor, brand?.data])
+  })()
 
   const majorTabs = useMemo(() => {
     if (!isMajor || !majorData) return []
@@ -168,11 +165,9 @@ export default function AlliancePublicBrandDetailPage() {
                   className="py-16"
                 />
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {majorData.directions.map((d) => (
-                    <Badge key={d.id} variant="secondary" className="px-3 py-1.5 text-sm">
-                      {d.name}
-                    </Badge>
+                    <RelatedObjectCard key={d.id} item={d} kind="brands" />
                   ))}
                 </div>
               )}
@@ -195,11 +190,9 @@ export default function AlliancePublicBrandDetailPage() {
                   className="py-16"
                 />
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {majorData.enterprises.map((e) => (
-                    <Badge key={e.id} variant="secondary" className="px-3 py-1.5 text-sm">
-                      {e.name}
-                    </Badge>
+                    <RelatedObjectCard key={e.id} item={e} kind="enterprises" />
                   ))}
                 </div>
               )}
@@ -222,11 +215,9 @@ export default function AlliancePublicBrandDetailPage() {
                   className="py-16"
                 />
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {majorData.achievements.map((a) => (
-                    <Badge key={a.id} variant="secondary" className="px-3 py-1.5 text-sm">
-                      {a.name}
-                    </Badge>
+                    <RelatedObjectCard key={a.id} item={a} kind="achievements" />
                   ))}
                 </div>
               )}
@@ -249,11 +240,9 @@ export default function AlliancePublicBrandDetailPage() {
                   className="py-16"
                 />
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {majorData.courses.map((c) => (
-                    <Badge key={c.id} variant="secondary" className="px-3 py-1.5 text-sm">
-                      {c.name}
-                    </Badge>
+                    <RelatedObjectCard key={c.id} item={c} kind="courses" />
                   ))}
                 </div>
               )}
@@ -270,9 +259,403 @@ export default function AlliancePublicBrandDetailPage() {
   const positions: PositionSnapshot[] = isEmployer ? (brand.data?.positions ?? []) : []
   const hiredStudents: HiredStudent[] = isEmployer ? (brand.data?.hiredStudents ?? []) : []
 
+  const studentsByJob = new Map<string, HiredStudent[]>()
+  for (const s of hiredStudents) {
+    const key = s.jobId
+    if (!studentsByJob.has(key)) studentsByJob.set(key, [])
+    studentsByJob.get(key)!.push(s)
+  }
+
+  /* ------------------------------ 岗位品牌 ------------------------------ */
+  if (isJob) {
+    const jobName = brand.positionName || brand.name
+    const jobTypeLabel =
+      brand.positionType === 'teaching'
+        ? t('教学岗位')
+        : brand.positionType === 'enterprise'
+          ? t('企业岗位')
+          : undefined
+    const stats: DetailStat[] = [
+      {
+        label: t('薪资范围'),
+        value: salaryText(brand),
+        icon: TrendingUp,
+        gradient: 'from-amber-500 to-orange-500',
+      },
+      {
+        label: t('适用专业'),
+        value: jobMajors.length,
+        icon: BookOpen,
+        gradient: 'from-blue-500 to-indigo-500',
+      },
+      {
+        label: t('工作职责'),
+        value: responsibilities.length,
+        icon: ListChecks,
+        gradient: 'from-emerald-500 to-teal-500',
+      },
+      {
+        label: t('相关证书'),
+        value: certificates.length,
+        icon: Award,
+        gradient: 'from-violet-500 to-purple-500',
+      },
+    ]
+    return (
+      <AllianceDetailShell
+        breadcrumbs={[
+          { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+          { label: t('品牌列表'), href: '/portal/alliance/brands?type=job' },
+          { label: jobName },
+        ]}
+        backHref="/portal/alliance/brands?type=job"
+        icon={Briefcase}
+        iconImage={
+          brand.positionCoverImage
+            ? { src: brand.positionCoverImage, alt: jobName }
+            : undefined
+        }
+        iconGradient="from-emerald-500 to-teal-600"
+        pageGradient="from-slate-50 via-white to-emerald-50/40"
+        title={jobName}
+        subtitle={t('岗位品牌')}
+        badges={[
+          jobTypeLabel && (
+            <Badge
+              key="type"
+              variant="outline"
+              className="bg-white/70 border-slate-200 text-slate-600"
+            >
+              {jobTypeLabel}
+            </Badge>
+          ),
+          brand.industryName && (
+            <Badge
+              key="industry"
+              variant="outline"
+              className="bg-white/70 border-slate-200 text-slate-600"
+            >
+              {brand.industryName}
+            </Badge>
+          ),
+        ].filter(Boolean)}
+        stats={stats}
+        tabs={[
+          {
+            value: 'info',
+            label: t('基本信息'),
+            content: (
+              <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                  <DetailSectionCard icon={FileText} title={t('岗位简介')}>
+                    {brand.positionCoverImage && (
+                      <div className="aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-100 mb-5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={brand.positionCoverImage}
+                          alt={jobName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    {brand.positionDescription || brand.description ? (
+                      <p className="text-slate-700 leading-7 text-[15px] whitespace-pre-wrap">
+                        {brand.positionDescription || brand.description}
+                      </p>
+                    ) : (
+                      <DetailEmpty icon={FileText} title={t('暂无岗位简介')} />
+                    )}
+                  </DetailSectionCard>
+                </div>
+                <div className="space-y-6">
+                  <DetailSectionCard icon={Briefcase} title={t('岗位信息')}>
+                    <div className="space-y-3">
+                      <DetailInfoBlock label={t('岗位类型')} value={jobTypeLabel} />
+                      <DetailInfoBlock
+                        label={t('薪资范围')}
+                        value={
+                          brand.salaryMin == null && brand.salaryMax == null
+                            ? undefined
+                            : salaryText(brand)
+                        }
+                      />
+                      <DetailInfoBlock label={t('面向行业')} value={brand.industryName} />
+                      <div>
+                        <p className="text-xs text-slate-400 mb-2">{t('适用专业')}</p>
+                        {jobMajors.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {jobMajors.map((m) => (
+                              <Badge key={m} variant="secondary" className="font-normal">
+                                {m}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-400">-</p>
+                        )}
+                      </div>
+                    </div>
+                  </DetailSectionCard>
+                </div>
+              </div>
+            ),
+          },
+          {
+            value: 'duties',
+            label: t('工作职责'),
+            count: responsibilities.length,
+            content: (
+              <DetailSectionCard icon={ListChecks} title={t('工作职责')}>
+                {responsibilities.length === 0 ? (
+                  <DetailEmpty icon={ListChecks} title={t('暂无工作职责')} />
+                ) : (
+                  <div className="space-y-4">
+                    {responsibilities.map((r, idx) => (
+                      <div
+                        key={r.id}
+                        className="flex gap-4 rounded-2xl bg-slate-50 p-5"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-white text-sm font-bold">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{r.name}</p>
+                          {r.description && (
+                            <p className="text-slate-600 text-sm leading-6 mt-1.5 whitespace-pre-wrap">
+                              {r.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DetailSectionCard>
+            ),
+          },
+          {
+            value: 'requirements',
+            label: t('任职要求'),
+            count: jobRequirements.length,
+            content: (
+              <DetailSectionCard icon={Target} title={t('任职要求')}>
+                {jobRequirements.length === 0 ? (
+                  <DetailEmpty icon={Target} title={t('暂无任职要求')} />
+                ) : (
+                  <div className="space-y-3">
+                    {jobRequirements.map((req, idx) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-primary/60" />
+                        <p className="text-slate-700 leading-7 text-[15px]">{req}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DetailSectionCard>
+            ),
+          },
+          {
+            value: 'careerPath',
+            label: t('发展路径'),
+            content: (
+              <DetailSectionCard icon={TrendingUp} title={t('发展路径')}>
+                {brand.positionCareerPath ? (
+                  <p className="text-slate-700 leading-7 text-[15px] whitespace-pre-wrap">
+                    {brand.positionCareerPath}
+                  </p>
+                ) : (
+                  <DetailEmpty icon={TrendingUp} title={t('暂无发展路径')} />
+                )}
+              </DetailSectionCard>
+            ),
+          },
+          {
+            value: 'certs',
+            label: t('相关证书'),
+            count: certificates.length,
+            content: (
+              <Card className="border-0 shadow-sm rounded-3xl">
+                <CardContent className="p-6">
+                  <CertCards certificates={certificates} />
+                </CardContent>
+              </Card>
+            ),
+          },
+        ]}
+      />
+    )
+  }
+
+  /* ------------------------------ 师资品牌 ------------------------------ */
+  if (isTeacher && person) {
+    const subtitle = [person.title, person.position].filter(Boolean).join(' · ') || undefined
+    const honors = person.attachments
+    const personTypeLabel = brand.expertId ? t('企业专家') : t('校本教师')
+    return (
+      <AllianceDetailShell
+        breadcrumbs={[
+          { label: t('校企合作联盟首页'), href: '/portal/alliance/landing' },
+          { label: t('品牌列表'), href: '/portal/alliance/brands?type=teacher' },
+          { label: person.name },
+        ]}
+        backHref="/portal/alliance/brands?type=teacher"
+        icon={UserCircle}
+        iconImage={
+          person.avatarUrl ? { src: person.avatarUrl, alt: person.name } : undefined
+        }
+        iconGradient="from-blue-500 to-violet-600"
+        pageGradient="from-slate-50 via-white to-blue-50/40"
+        title={person.name}
+        subtitle={subtitle}
+        badges={[
+          person.rating && (
+            <Badge
+              key="rating"
+              variant="outline"
+              className="bg-white/70 border-slate-200 text-slate-600"
+            >
+              <Star className="h-3 w-3 mr-1 text-amber-500" />
+              {allianceLabel('expertRating', person.rating)}
+            </Badge>
+          ),
+          <Badge
+            key="type"
+            variant="outline"
+            className="bg-white/70 border-slate-200 text-slate-600"
+          >
+            {personTypeLabel}
+          </Badge>,
+        ].filter(Boolean)}
+        tabs={[
+          {
+            value: 'info',
+            label: t('基本信息'),
+            content: (
+              <div className="grid lg:grid-cols-3 gap-6">
+                <DetailSectionCard title={t('基本信息')} className="lg:col-span-2">
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+                    <DetailInfoBlock label={t('行业')} value={person.industry} />
+                    <DetailInfoBlock label={t('城市')} value={person.city} />
+                    <DetailInfoBlock
+                      label={t('从业年限')}
+                      value={
+                        person.experienceYears
+                          ? t('{years}年', { years: person.experienceYears })
+                          : undefined
+                      }
+                    />
+                    <DetailInfoBlock label={t('学历')} value={person.education} />
+                    <DetailInfoBlock label={t('性别')} value={person.gender ? (person.gender === 'male' ? t('男') : t('女')) : undefined} />
+                    <DetailInfoBlock label={t('类型')} value={personTypeLabel} />
+                  </div>
+                  {person.organization && (
+                    <div className="mt-5">
+                      <p className="text-sm text-slate-500 mb-2.5">
+                        {brand.expertId ? t('归属机构') : t('归属院系')}
+                      </p>
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-900">
+                        <Building2 className="h-4 w-4" />
+                        {person.organization}
+                      </span>
+                    </div>
+                  )}
+                </DetailSectionCard>
+
+                {(person.professionalFields.length > 0 || person.specialties.length > 0) && (
+                  <DetailSectionCard title={t('专业领域与专长')} className="h-fit self-start">
+                    <div className="space-y-4">
+                      {person.professionalFields.length > 0 && (
+                        <div>
+                          <p className="text-sm text-slate-500 mb-2">{t('专业领域')}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {person.professionalFields.map((field) => (
+                              <Badge key={field} variant="secondary" className="font-normal">
+                                {field}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {person.specialties.length > 0 && (
+                        <div>
+                          <p className="text-sm text-slate-500 mb-2">{t('专长')}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {person.specialties.map((s) => (
+                              <Badge key={s} variant="secondary" className="font-normal">
+                                {s}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </DetailSectionCard>
+                )}
+              </div>
+            ),
+          },
+          {
+            value: 'introduction',
+            label: t('个人简介'),
+            content: (
+              <DetailSectionCard icon={Award} title={t('个人简介')}>
+                {person.introduction ? (
+                  <p className="text-slate-700 leading-7 text-[15px] whitespace-pre-wrap">
+                    {person.introduction}
+                  </p>
+                ) : (
+                  <DetailEmpty icon={UserCircle} title={t('暂无简介')} />
+                )}
+                {person.workExperience && (
+                  <div className="border-t pt-6 mt-6">
+                    <h4 className="text-sm font-semibold text-slate-900 mb-3">{t('工作经历')}</h4>
+                    <p className="text-slate-700 leading-7 text-[15px] whitespace-pre-wrap">
+                      {person.workExperience}
+                    </p>
+                  </div>
+                )}
+              </DetailSectionCard>
+            ),
+          },
+          {
+            value: 'honors',
+            label: t('资质荣誉'),
+            count: honors.length,
+            content: (
+              <Card className="border-0 shadow-sm rounded-3xl">
+                <CardContent className="p-6">
+                  {honors.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {honors.map((honor, idx) => (
+                        <a key={idx} href={honor} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={honor}
+                            alt={t('资质荣誉 {idx}', { idx: idx + 1 })}
+                            className="w-full aspect-[4/3] object-cover rounded-2xl border border-slate-100 shadow-sm hover:opacity-80 transition-opacity"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <DetailEmpty icon={Award} title={t('暂无资质荣誉')} />
+                  )}
+                </CardContent>
+              </Card>
+            ),
+          },
+        ]}
+      />
+    )
+  }
+
+  /* ------------------------------ 雇主品牌 / 其他 ------------------------------ */
+
   const badges: string[] = []
-  if (isIndependent && enterprise?.enterpriseType)
-    badges.push(allianceLabel('enterpriseType', enterprise.enterpriseType))
+  if (isIndependent) {
+    const entType = (brand.data?.enterpriseInfo as any)?.enterpriseType
+    if (entType) badges.push(allianceLabel('enterpriseType', entType))
+  }
   if (enterprise?.industry) badges.push(enterprise.industry)
   if (enterprise?.region) badges.push(enterprise.region)
   if (enterprise?.establishedYear)
@@ -302,14 +685,6 @@ export default function AlliancePublicBrandDetailPage() {
         },
       ]
     : []
-
-  const studentsByJob = new Map<string, HiredStudent[]>()
-  for (const s of hiredStudents) {
-    const key = s.jobId
-    if (!studentsByJob.has(key)) studentsByJob.set(key, [])
-    studentsByJob.get(key)!.push(s)
-  }
-
 
   const infoTab = isMajor ? (
     <div className="grid lg:grid-cols-3 gap-6">
@@ -345,12 +720,15 @@ export default function AlliancePublicBrandDetailPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
             <DetailInfoBlock
               label={t('统一社会信用代码')}
-              value={enterprise?.unifiedSocialCreditCode}
+              value={enterprise?.creditCode}
             />
             {isIndependent && (
               <DetailInfoBlock
                 label={t('企业类型')}
-                value={allianceLabel('enterpriseType', enterprise?.enterpriseType)}
+                value={allianceLabel(
+                  'enterpriseType',
+                  (brand.data?.enterpriseInfo as any)?.enterpriseType,
+                )}
               />
             )}
             <DetailInfoBlock label={t('成立年份')} value={enterprise?.establishedYear} />
@@ -364,13 +742,6 @@ export default function AlliancePublicBrandDetailPage() {
             />
             <DetailInfoBlock label={t('所在地区')} value={enterprise?.region} />
             <DetailInfoBlock label={t('详细地址')} value={enterprise?.address} />
-            {isIndependent && enterprise?.secondaryColleges &&
-              enterprise.secondaryColleges.length > 0 && (
-                <DetailInfoBlock
-                  label={t('关联二级学院')}
-                  value={enterprise.secondaryColleges.join('、')}
-                />
-              )}
           </div>
         </div>
       </DetailSectionCard>
