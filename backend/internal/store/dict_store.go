@@ -53,6 +53,27 @@ func (s *DictStore[T]) Q() Queryer {
 	return s.q
 }
 
+// FindByNames 按名称精确匹配查询已有字典条目（AI 推荐引用优先用；仅限租户域字典）。
+func (s *DictStore[T]) FindByNames(ctx context.Context, tenantID string, names []string) ([]T, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	rows, err := s.q.Query(ctx,
+		`SELECT `+s.cfg.SelectColumns+` FROM `+s.cfg.Table+` WHERE tenant_id = $1 AND name = ANY($2)`,
+		tenantID, names)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	scanRows := s.cfg.ScanRows
+	if scanRows == nil {
+		scanRows = func(rows pgx.Rows) ([]T, error) {
+			return pgx.CollectRows(rows, pgx.RowToStructByPos[T])
+		}
+	}
+	return scanRows(rows)
+}
+
 func (s *DictStore[T]) GetByID(ctx context.Context, id string) (T, error) {
 	rows, err := s.q.Query(ctx, s.cfg.GetByIDSQL, id)
 	if err != nil {

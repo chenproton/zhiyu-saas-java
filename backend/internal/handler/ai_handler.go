@@ -22,6 +22,14 @@ const (
 	aiPositionMaxTextSize = 8000
 )
 
+// 场景 AI 辅助护栏：文本长度、建议条目数、任务链规模上限。
+const (
+	aiScenarioMaxTextSize      = 8000
+	aiScenarioMaxSuggestionLen = 50
+	aiScenarioMaxChainTasks    = 20
+	aiScenarioMaxIntentionLen  = 500
+)
+
 // AIHandler 租户 AI 配置管理与对话入口（无 SQL，仅做 HTTP 适配）。
 type AIHandler struct {
 	Service *service.AIService
@@ -294,6 +302,62 @@ func (h *AIHandler) PositionAssist(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		respondServerError(w, r, err, "AI 岗位编写失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, result)
+}
+
+type aiScenarioAssistRequest struct {
+	Field    service.ScenarioAssistField `json:"field"`
+	Scenario service.ScenarioAssistInput `json:"scenario"`
+}
+
+// ScenarioAssist POST /ai/scenario-assist：场景/任务 AI 辅助编写（润色/说明生成/实体推荐/任务链建议）。
+// 实体建议由服务端按名匹配现有对象（引用优先）；错误映射与 /ai/position-assist 一致。
+func (h *AIHandler) ScenarioAssist(w http.ResponseWriter, r *http.Request) {
+	tenantID := tenantIDRequired(w, r)
+	if tenantID == "" {
+		return
+	}
+	var req aiScenarioAssistRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	in := req.Scenario
+	if len(in.Name) > aiScenarioMaxTextSize || len(in.Background) > aiScenarioMaxTextSize ||
+		len(in.TaskName) > aiScenarioMaxTextSize || len(in.TaskBackground) > aiScenarioMaxTextSize ||
+		len(in.TaskDescription) > aiScenarioMaxTextSize || len(in.PositionName) > aiScenarioMaxTextSize {
+		respondError(w, http.StatusBadRequest, "场景/任务信息过长")
+		return
+	}
+	if len(in.IndustryNames)+len(in.ProfessionNames) > aiScenarioMaxSuggestionLen {
+		respondError(w, http.StatusBadRequest, "行业/专业条目数超限")
+		return
+	}
+	if len(in.ExistingTasks) > aiScenarioMaxChainTasks {
+		respondError(w, http.StatusBadRequest, "现有任务清单过长")
+		return
+	}
+	if len(in.Intention) > aiScenarioMaxIntentionLen {
+		respondError(w, http.StatusBadRequest, "任务链意图描述过长")
+		return
+	}
+	result, err := h.Service.ScenarioAssist(r.Context(), tenantID, middleware.CurrentUser(r).UserID, req.Field, in)
+	if errors.Is(err, service.ErrAINotConfigured) {
+		respondError(w, http.StatusPreconditionFailed, "ai_not_configured")
+		return
+	}
+	if errors.Is(err, service.ErrScenarioAssistNoPosition) {
+		respondError(w, http.StatusBadRequest, "scenario_no_position")
+		return
+	}
+	var upErr *ai.UpstreamError
+	if errors.As(err, &upErr) {
+		respondError(w, http.StatusBadGateway, upErr.Message)
+		return
+	}
+	if err != nil {
+		respondServerError(w, r, err, "AI 场景编写失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, result)

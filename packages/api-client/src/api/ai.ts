@@ -6,6 +6,8 @@ import type {
   AIConfigView,
   AIPositionAssistBody,
   AIPositionAssistResponse,
+  AIScenarioAssistBody,
+  AIScenarioAssistResponse,
   AIUsageStats,
 } from '../types/ai'
 
@@ -40,6 +42,15 @@ export function sendAIChat(body: AIChatBody) {
 /** 岗位 AI 辅助编写（润色/拆解/推荐，仅生成建议不写库）；signal 用于取消（AbortController） */
 export function positionAiAssist(body: AIPositionAssistBody, signal?: AbortSignal) {
   return portalRequest<AIPositionAssistResponse>('/ai/position-assist', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    ...(signal ? { signal } : {}),
+  })
+}
+
+/** 场景/任务 AI 辅助编写（润色/说明生成/实体推荐/任务链建议）；signal 用于取消 */
+export function scenarioAiAssist(body: AIScenarioAssistBody, signal?: AbortSignal) {
+  return portalRequest<AIScenarioAssistResponse>('/ai/scenario-assist', {
     method: 'POST',
     body: JSON.stringify(body),
     ...(signal ? { signal } : {}),

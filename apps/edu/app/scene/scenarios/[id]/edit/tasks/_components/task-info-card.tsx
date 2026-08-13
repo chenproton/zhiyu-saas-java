@@ -29,6 +29,10 @@ interface TaskInfoCardProps {
   showBackground?: boolean
   showName?: boolean
   showType?: boolean
+  /** AI 辅助控件注入（岗位样板交互）：label 旁按钮组，可选 */
+  nameAiControl?: React.ReactNode
+  backgroundAiControl?: React.ReactNode
+  difficultyAiControl?: React.ReactNode
 }
 
 export function TaskInfoCard({
@@ -46,6 +50,9 @@ export function TaskInfoCard({
   showBackground = true,
   showName = true,
   showType = true,
+  nameAiControl,
+  backgroundAiControl,
+  difficultyAiControl,
 }: TaskInfoCardProps) {
   const t = useT()
   const effectiveHoursLabel = hoursLabel || t('学生完成任务的预估时长')
@@ -53,7 +60,10 @@ export function TaskInfoCard({
     <div className="space-y-4">
       {showName && (
         <div>
-          <Label>{t('任务名称')}</Label>
+          <Label className="flex items-center gap-2">
+            {t('任务名称')}
+            {nameAiControl}
+          </Label>
           <Input value={name} onChange={(e) => onNameChange(e.target.value)} className="mt-1.5" />
         </div>
       )}
@@ -84,7 +94,10 @@ export function TaskInfoCard({
         />
       </div>
       <div>
-        <Label>{t('难度')}</Label>
+        <Label className="flex items-center gap-2">
+          {t('难度')}
+          {difficultyAiControl}
+        </Label>
         <div className="flex gap-1 mt-1.5">
           {([1, 2, 3, 4, 5] as const).map((n) => (
             <button key={n} onClick={() => onDifficultyChange(n)}>
@@ -100,7 +113,10 @@ export function TaskInfoCard({
       </div>
       {showBackground && (
         <div>
-          <Label>{t('背景介绍')}</Label>
+          <Label className="flex items-center gap-2">
+            {t('背景介绍')}
+            {backgroundAiControl}
+          </Label>
           <Textarea
             value={background || ''}
             onChange={(e) => onBackgroundChange?.(e.target.value)}

@@ -225,34 +225,42 @@ func (s *AIService) PositionAssist(ctx context.Context, tenantID, userID string,
 		{Role: "system", Content: positionAssistSystemPrompt},
 		{Role: "user", Content: prompt},
 	}
-	text, usage, err := s.chatWithJSONModeFallback(ctx, ai.Config{BaseURL: cfg.BaseURL, APIKey: apiKey, Model: cfg.Model}, messages)
-	if err != nil {
-		return nil, err
-	}
-	s.recordUsage(ctx, tenantID, userID, cfg.Model, usage)
-
 	result := &PositionAssistResult{Field: field}
-	if err := parsePositionAssistOutput(field, text, result); err != nil {
-		// 生成成功但输出不是合法 JSON：追加修复指令重试一次（仅一次，避免连环调用消耗额度）。
-		// 这属于"解析失败修复"，不是对上游失败的无脑重试（见 docs/ai-development.md）。
-		repair := append(messages,
-			ai.Message{Role: "assistant", Content: text},
-			ai.Message{Role: "user", Content: repairPrompt},
-		)
-		text2, usage2, retryErr := s.chatWithJSONModeFallback(ctx, ai.Config{BaseURL: cfg.BaseURL, APIKey: apiKey, Model: cfg.Model}, repair)
-		if retryErr != nil {
-			return nil, retryErr
-		}
-		s.recordUsage(ctx, tenantID, userID, cfg.Model, usage2)
-		if parseErr := parsePositionAssistOutput(field, text2, result); parseErr != nil {
-			return nil, parseErr
-		}
+	if err := s.chatJSONWithRepair(ctx, tenantID, userID, ai.Config{BaseURL: cfg.BaseURL, APIKey: apiKey, Model: cfg.Model}, messages, func(text string) error {
+		return parsePositionAssistOutput(field, text, result)
+	}); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
 
 // repairPrompt 解析失败后的修复指令：要求重新只输出 JSON。
 const repairPrompt = "上面的输出不是合法 JSON，请重新输出：只输出一个 JSON 对象（字段名与之前要求完全一致），不要 Markdown 代码块、注释或任何额外文字。"
+
+// chatJSONWithRepair 以 JSON 模式调用上游；parse 负责校验并填充业务结果。
+// parse 失败（输出非合法 JSON 或业务校验不过）时追加修复指令重试一次（仅一次，避免连环调用消耗额度）；
+// 这属于"解析失败修复"，不是对上游失败的无脑重试（见 docs/ai-development.md）。
+// 两次成功上游调用的 token 用量均落库；上游错误直接返回（由 handler 按 502 映射）。
+func (s *AIService) chatJSONWithRepair(ctx context.Context, tenantID, userID string, cfg ai.Config, messages []ai.Message, parse func(text string) error) error {
+	text, usage, err := s.chatWithJSONModeFallback(ctx, cfg, messages)
+	if err != nil {
+		return err
+	}
+	s.recordUsage(ctx, tenantID, userID, cfg.Model, usage)
+	if err := parse(text); err == nil {
+		return nil
+	}
+	repair := append(messages,
+		ai.Message{Role: "assistant", Content: text},
+		ai.Message{Role: "user", Content: repairPrompt},
+	)
+	text2, usage2, retryErr := s.chatWithJSONModeFallback(ctx, cfg, repair)
+	if retryErr != nil {
+		return retryErr
+	}
+	s.recordUsage(ctx, tenantID, userID, cfg.Model, usage2)
+	return parse(text2)
+}
 
 // chatWithJSONModeFallback 优先以 response_format json_object 请求；
 // 部分 OpenAI 兼容服务不支持该参数（400/422），去掉后重试一次。

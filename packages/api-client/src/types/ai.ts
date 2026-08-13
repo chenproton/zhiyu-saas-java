@@ -131,3 +131,85 @@ export interface AIPositionAssistResponse {
   abilities?: AISuggestedAbility[]
   competencies?: AICompetencyFill[]
 }
+
+// ===== 场景 AI 辅助编写（POST /ai/scenario-assist）=====
+
+export type AIScenarioAssistField =
+  | 'polish'
+  | 'taskPolish'
+  | 'taskDescription'
+  | 'taskKnowledge'
+  | 'taskAbility'
+  | 'taskResource'
+  | 'taskChain'
+
+/** 场景/任务 AI 辅助请求上下文（行业/专业/岗位由前端解析为名称传入） */
+export interface AIScenarioAssistBody {
+  field: AIScenarioAssistField
+  scenario: {
+    name: string
+    background: string
+    difficulty: number
+    industryNames: string[]
+    professionNames: string[]
+    /** taskAbility 前置条件：场景关联的岗位 ID */
+    positionId: string
+    positionName: string
+    /** task* 字段使用：当前任务上下文 */
+    taskName: string
+    taskBackground: string
+    taskDescription: string
+    taskDifficulty: number
+    /** taskChain 使用：现有任务清单与用户意图 */
+    existingTasks: { name: string; type: 'training' | 'assessment'; difficulty: number }[]
+    intention: string
+  }
+}
+
+/** 实体推荐条目：matchedId 非空表示命中现有对象（引用优先），否则需新建/引导添加 */
+export interface AIScenarioSuggestion {
+  name: string
+  description?: string
+  /** taskResource：资源类型枚举（document/video/software/...） */
+  type?: string
+  matchedId?: string
+  matchedName?: string
+}
+
+export interface AIScenarioPolish {
+  name: string
+  background: string
+  difficulty: number
+}
+
+export interface AIScenarioTaskPolish {
+  name: string
+  background: string
+  difficulty: number
+}
+
+export interface AIScenarioTaskChainTask {
+  name: string
+  type: 'training' | 'assessment'
+  difficulty: number
+  estimatedHours: number
+  description: string
+}
+
+export interface AIScenarioTaskChain {
+  taskCount: number
+  assessmentCount: number
+  trainingCount: number
+  tasks: AIScenarioTaskChainTask[]
+}
+
+export interface AIScenarioAssistResponse {
+  field: AIScenarioAssistField
+  polish?: AIScenarioPolish
+  industrySuggestions?: AIScenarioSuggestion[]
+  professionSuggestions?: AIScenarioSuggestion[]
+  task?: AIScenarioTaskPolish
+  taskDescription?: string
+  suggestions?: AIScenarioSuggestion[]
+  chain?: AIScenarioTaskChain
+}

@@ -1,12 +1,22 @@
 'use client'
 
-import { Star, X } from 'lucide-react'
+import { Star, X, Sparkles, Undo2, Loader2 } from 'lucide-react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -24,7 +34,9 @@ import {
   scenarioApi,
   fileApi,
   majorApi,
+  scenarioAiAssist,
 } from '@/lib/api'
+import type { AIScenarioAssistResponse } from '@/lib/api'
 import type { CareerPosition } from '@/lib/types/job'
 import type { Industry, Major } from '@/lib/types/backend'
 import type { SceneBatch } from '@/lib/types/scene'
@@ -35,6 +47,33 @@ import { EditorShell } from '@/components/shared/editor-shell'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
+import { AiAssistProgressDialog } from '@/components/job/position-builder/ai-assist-progress-dialog'
+import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
+import {
+  useAiNotConfigured,
+  useAiFieldWriter,
+  useAiPipeline,
+} from '@/lib/ai/use-ai-assist'
+
+/** AI 辅助编写一键流程的步骤（与字段顺序一一对应） */
+const AI_ASSIST_STEPS = ['阅读场景基础信息', '生成场景基础信息']
+
+/** AI 可直接写入的字段键（3 个文本/枚举字段 + 2 个字典建议字段），各含 1 级撤销历史 */
+type AiWriteKey = 'name' | 'background' | 'difficulty' | 'industry' | 'profession'
+
+const AI_WRITE_KEYS: AiWriteKey[] = ['name', 'background', 'difficulty', 'industry', 'profession']
+
+/** 基础信息中可由 AI 单独填充的字段（polish 一次返回 3 个，按目标字段单独应用） */
+type PolishFieldKey = 'name' | 'background' | 'difficulty'
+
+/** AI 写入分发的草稿快照（与页面分散 useState 对应的聚合视图） */
+interface ScenarioDraft {
+  name: string
+  background: string
+  difficulty: number
+  industryIds: string[]
+  professionIds: string[]
+}
 
 export default function ScenarioEditPage() {
   const t = useT()
@@ -69,6 +108,93 @@ export default function ScenarioEditPage() {
   const [scenarioStatus, setScenarioStatus] = useState<string>('draft')
 
   const [isPreviewConfirmOpen, setIsPreviewConfirmOpen] = useState(false)
+
+  // ===== AI 辅助编写状态（公共 hook：未配置引导 / 字段级写入保护 / 串行流水线） =====
+  // 最新草稿快照：AI 回调时读取，避免闭包内拿到过期值
+  const formRef = useRef<ScenarioDraft>({
+    name: '',
+    background: '',
+    difficulty: 3,
+    industryIds: [],
+    professionIds: [],
+  })
+  useEffect(() => {
+    formRef.current = { name: scenarioName, background, difficulty, industryIds, professionIds }
+  }, [scenarioName, background, difficulty, industryIds, professionIds])
+
+  /** 某字段被 AI 覆盖前的快照（1 级历史用） */
+  const snapshotField = (key: AiWriteKey): Partial<ScenarioDraft> => {
+    const cur = formRef.current
+    switch (key) {
+      case 'name':
+        return { name: cur.name }
+      case 'background':
+        return { background: cur.background }
+      case 'difficulty':
+        return { difficulty: cur.difficulty }
+      case 'industry':
+        return { industryIds: cur.industryIds }
+      case 'profession':
+        return { professionIds: cur.professionIds }
+    }
+  }
+
+  /** AI 写入分发：Partial<ScenarioDraft> → 页面分散 setter */
+  const applyAiUpdate = (data: Partial<ScenarioDraft>) => {
+    if (data.name !== undefined) setScenarioName(data.name)
+    if (data.background !== undefined) setBackground(data.background)
+    if (data.difficulty !== undefined) setDifficulty(data.difficulty)
+    if (data.industryIds !== undefined) setIndustryIds(data.industryIds)
+    if (data.professionIds !== undefined) setProfessionIds(data.professionIds)
+  }
+
+  const ai = useAiNotConfigured()
+  const writer = useAiFieldWriter<AiWriteKey, Partial<ScenarioDraft>>(
+    AI_WRITE_KEYS,
+    applyAiUpdate,
+    snapshotField,
+  )
+  const pipeline = useAiPipeline<unknown, AIScenarioAssistResponse>({
+    steps: AI_ASSIST_STEPS,
+    request: (_task, signal) =>
+      scenarioAiAssist(
+        {
+          field: 'polish',
+          scenario: {
+            name: formRef.current.name,
+            background: formRef.current.background,
+            difficulty: formRef.current.difficulty,
+            industryNames: resolveIndustryNames(formRef.current.industryIds),
+            professionNames: resolveMajorNames(formRef.current.professionIds),
+            positionId,
+            positionName: positionId
+              ? allPositions.find((p) => p.id === positionId)?.name || ''
+              : '',
+            taskName: '',
+            taskBackground: '',
+            taskDescription: '',
+            taskDifficulty: 0,
+            existingTasks: [],
+            intention: '',
+          },
+        },
+        signal,
+      ),
+    onError: (err) => {
+      if (ai.markNotConfigured(err)) return true
+      toast({
+        title: t('AI 生成失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+      return true
+    },
+  })
+  const { aiHistories, flashKey, writeField, restoreField, restoreAll, updatedCount } = writer
+
+  const [quickFillOpen, setQuickFillOpen] = useState(false)
+  const [quickFill, setQuickFill] = useState({ name: '', background: '' })
+  const [confirmRegenOpen, setConfirmRegenOpen] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -180,6 +306,175 @@ export default function ScenarioEditPage() {
     }
   }
 
+  // ===== AI 辅助编写逻辑 =====
+
+  const resolveIndustryNames = (ids: string[]) =>
+    ids.map((id) => industries.find((i) => i.id === id)?.name || '').filter(Boolean)
+
+  const resolveMajorNames = (ids: string[]) =>
+    ids.map((id) => majors.find((m) => m.id === id)?.name || '').filter(Boolean)
+
+  const polishFieldLabel = (key: PolishFieldKey) =>
+    ({ name: t('场景名称'), background: t('场景介绍'), difficulty: t('难度等级') })[key]
+
+  /** 追加去重写入字典建议（引用优先：仅 matchedId 命中项写入） */
+  const applyDictSuggestions = (
+    key: 'industry' | 'profession',
+    suggestions: AIScenarioAssistResponse['industrySuggestions'],
+    currentIds: string[],
+  ) => {
+    if (!suggestions || suggestions.length === 0) return
+    const matched = suggestions.filter((s) => s.matchedId)
+    const unmatched = suggestions.filter((s) => !s.matchedId)
+    if (matched.length > 0) {
+      const next = [...currentIds]
+      for (const s of matched) {
+        if (!next.includes(s.matchedId!)) next.push(s.matchedId!)
+      }
+      writeField(key, key === 'industry' ? { industryIds: next } : { professionIds: next })
+    }
+    if (unmatched.length > 0) {
+      toast({
+        title: t('以下{what}未在字典中找到，请手动选择', {
+          what: key === 'industry' ? t('行业') : t('专业'),
+        }),
+        description: unmatched.map((s) => s.name).join('、'),
+      })
+    }
+  }
+
+  /** 应用 polish 结果：3 个字段逐项写入（各自独立历史/高亮）；未生成项提示保留原值 */
+  const applyPolish = (res: AIScenarioAssistResponse) => {
+    const p = res.polish
+    if (!p) return
+    const skipped: string[] = []
+    if (p.name.trim()) writeField('name', { name: p.name.trim() })
+    else skipped.push(polishFieldLabel('name'))
+    if (p.background.trim()) writeField('background', { background: p.background.trim() })
+    else skipped.push(polishFieldLabel('background'))
+    if (p.difficulty >= 1 && p.difficulty <= 5) writeField('difficulty', { difficulty: p.difficulty })
+    else skipped.push(polishFieldLabel('difficulty'))
+    if (skipped.length > 0) {
+      toast({ title: t('AI 未生成：{fields}，已保留原内容', { fields: skipped.join('、') }) })
+    }
+    applyDictSuggestions('industry', res.industrySuggestions, formRef.current.industryIds)
+    applyDictSuggestions('profession', res.professionSuggestions, formRef.current.professionIds)
+  }
+
+  /** 基础信息单字段生成：调 polish 一次，仅应用目标字段 */
+  const handlePolishField = (target: PolishFieldKey) => {
+    pipeline.run(
+      [
+        {
+          id: 'polish',
+          meta: undefined,
+          apply: (res) => {
+            const p = res.polish
+            if (!p) return
+            if (target === 'name' && p.name.trim()) {
+              writeField('name', { name: p.name.trim() })
+              return
+            }
+            if (target === 'background' && p.background.trim()) {
+              writeField('background', { background: p.background.trim() })
+              return
+            }
+            if (target === 'difficulty' && p.difficulty >= 1 && p.difficulty <= 5) {
+              writeField('difficulty', { difficulty: p.difficulty })
+              return
+            }
+            toast({ title: t('AI 未生成{field}，已保留原内容', { field: polishFieldLabel(target) }) })
+          },
+        },
+      ],
+      { showDialog: false },
+    )
+  }
+
+  const getMissingFields = () => {
+    const missing: string[] = []
+    if (!scenarioName.trim()) missing.push(t('场景名称'))
+    if (!background.trim()) missing.push(t('场景介绍'))
+    return missing
+  }
+
+  const openQuickFill = () => {
+    setQuickFill({ name: scenarioName, background })
+    setQuickFillOpen(true)
+  }
+
+  const confirmQuickFillAndStartAi = () => {
+    if (quickFill.name.trim()) setScenarioName(quickFill.name.trim())
+    if (quickFill.background.trim()) setBackground(quickFill.background.trim())
+    setQuickFillOpen(false)
+    runAiAssist()
+  }
+
+  /** 一键流程：polish 一次生成全部可写字段（3 文本字段 + 行业/专业建议），进度弹窗展示 */
+  const runAiAssist = () => {
+    ai.resetNotConfigured()
+    pipeline.run([{ id: 'polish', meta: undefined, apply: applyPolish }])
+  }
+
+  const startAiAssist = () => {
+    if (getMissingFields().length > 0) {
+      openQuickFill()
+      return
+    }
+    // 每次点击均先弹确认，明确"将重新生成全部内容"的意图
+    setConfirmRegenOpen(true)
+  }
+
+  const confirmRegenAndRun = () => {
+    setConfirmRegenOpen(false)
+    runAiAssist()
+  }
+
+  const handleRestoreAll = () => {
+    restoreAll(() => toast({ title: t('已全部恢复 AI 覆盖前的内容') }))
+  }
+
+  /** 基础信息单字段 AI 控件：生成按钮 + 已更新标记/恢复上版 */
+  const renderFieldAiControls = (key: PolishFieldKey) => (
+    <span className="flex items-center gap-1.5">
+      {aiHistories[key] !== undefined && (
+        <>
+          <Badge
+            variant="outline"
+            className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-purple-50/50 shrink-0"
+          >
+            {t('已更新')}
+          </Badge>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-1.5 text-[11px] text-purple-700 hover:bg-purple-50"
+            onClick={() => restoreField(key)}
+          >
+            <Undo2 className="h-3 w-3 mr-0.5" />
+            {t('恢复上版')}
+          </Button>
+        </>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-purple-600 hover:bg-purple-50 hover:text-purple-800"
+        onClick={() => handlePolishField(key)}
+        disabled={pipeline.isRunning}
+        title={t('AI 生成')}
+      >
+        {pipeline.isRunning && pipeline.runningId === 'polish' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Sparkles className="h-3.5 w-3.5" />
+        )}
+      </Button>
+    </span>
+  )
+
   return (
     <EditorShell
       mode="fullscreen"
@@ -213,9 +508,60 @@ export default function ScenarioEditPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-6 lg:col-span-2">
-            <Card>
+            {/* AI 辅助编写入口 */}
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-gray-500">
+                {t('填写基础信息后，点击「AI 辅助编写」让大模型帮您润色与补齐')}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
+                onClick={startAiAssist}
+                disabled={pipeline.isRunning}
+              >
+                <Sparkles className="h-4 w-4" />
+                {t('AI 辅助编写')}
+              </Button>
+            </div>
+
+            {/* AI 覆盖内容常驻撤销横幅 */}
+            {updatedCount > 0 && (
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-purple-200 bg-purple-50/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-sm text-purple-900 min-w-0">
+                  <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+                  <span className="truncate">
+                    {t('AI 已更新 {count} 项内容，可逐项恢复上版或全部撤销', { count: updatedCount })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                    onClick={handleRestoreAll}
+                  >
+                    <Undo2 className="h-3 w-3 mr-1" />
+                    {t('全部撤销')}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <Card className={flashKey && ['name', 'background', 'difficulty'].includes(flashKey) ? 'ai-write-flash' : undefined}>
               <CardContent className="pt-6 space-y-5">
-                <FormFieldRow label={t('场景名称')} required htmlFor="name">
+                <FormFieldRow
+                  label={
+                    <span className="flex items-center gap-2">
+                      {t('场景名称')}
+                      {renderFieldAiControls('name')}
+                    </span>
+                  }
+                  required
+                  htmlFor="name"
+                  className={flashKey === 'name' ? 'ai-write-flash' : undefined}
+                >
                   <Input
                     id="name"
                     value={scenarioName}
@@ -225,7 +571,22 @@ export default function ScenarioEditPage() {
                 </FormFieldRow>
 
                 <FormFieldGrid cols={2}>
-                  <FormFieldRow label={t('面向行业')}>
+                  <FormFieldRow
+                    label={
+                      <span className="flex items-center gap-2">
+                        {t('面向行业')}
+                        {aiHistories.industry !== undefined && (
+                          <Badge
+                            variant="outline"
+                            className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-purple-50/50 shrink-0"
+                          >
+                            {t('已更新')}
+                          </Badge>
+                        )}
+                      </span>
+                    }
+                    className={flashKey === 'industry' ? 'ai-write-flash' : undefined}
+                  >
                     <ComboboxSelect
                       multiple
                       className="w-full"
@@ -235,7 +596,22 @@ export default function ScenarioEditPage() {
                       placeholder={t('选择行业')}
                     />
                   </FormFieldRow>
-                  <FormFieldRow label={t('适用专业')}>
+                  <FormFieldRow
+                    label={
+                      <span className="flex items-center gap-2">
+                        {t('适用专业')}
+                        {aiHistories.profession !== undefined && (
+                          <Badge
+                            variant="outline"
+                            className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-purple-50/50 shrink-0"
+                          >
+                            {t('已更新')}
+                          </Badge>
+                        )}
+                      </span>
+                    }
+                    className={flashKey === 'profession' ? 'ai-write-flash' : undefined}
+                  >
                     <ComboboxSelect
                       multiple
                       className="w-full"
@@ -250,8 +626,11 @@ export default function ScenarioEditPage() {
                   </FormFieldRow>
                 </FormFieldGrid>
 
-                <div className="grid gap-2">
-                  <Label>{t('难度等级')}</Label>
+                <div className={`grid gap-2 ${flashKey === 'difficulty' ? 'ai-write-flash' : ''}`}>
+                  <Label className="flex items-center gap-2">
+                    {t('难度等级')}
+                    {renderFieldAiControls('difficulty')}
+                  </Label>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((level) => (
                       <button
@@ -280,9 +659,10 @@ export default function ScenarioEditPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="background" className="block">
+                <div className={`grid gap-2 ${flashKey === 'background' ? 'ai-write-flash' : ''}`}>
+                  <Label htmlFor="background" className="flex items-center gap-2">
                     {t('场景介绍')}
+                    {renderFieldAiControls('background')}
                   </Label>
                   <div className="border rounded-lg">
                     <Textarea
@@ -405,6 +785,107 @@ export default function ScenarioEditPage() {
           </div>
         </div>
       )}
+
+      {/* AI 辅助编写进度弹窗；运行中关闭弹窗视为取消流水线 */}
+      <AiAssistProgressDialog
+        open={pipeline.open}
+        onOpenChange={pipeline.handleOpenChange}
+        title={t('AI 辅助编写')}
+        description={t('大模型正在阅读场景信息并生成润色与补齐结果')}
+        steps={AI_ASSIST_STEPS}
+        currentStep={pipeline.phase}
+        progress={pipeline.progress}
+      />
+
+      {/* 快速补全必填信息弹窗 */}
+      <Dialog open={quickFillOpen} onOpenChange={setQuickFillOpen}>
+        <DialogContent className="sm:max-w-lg rounded-xl border-gray-200 max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gray-800">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              {t('快速补全必填信息')}
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              {t('以下必填字段尚未填写，请补充后继续使用 AI 辅助编写。')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {!scenarioName.trim() && (
+              <div className="space-y-1.5">
+                <Label>
+                  {t('场景名称')} <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={quickFill.name}
+                  onChange={(e) => setQuickFill({ ...quickFill, name: e.target.value })}
+                  placeholder={t('例如：电商平台全栈开发实战')}
+                  className="h-9"
+                />
+              </div>
+            )}
+
+            {!background.trim() && (
+              <div className="space-y-1.5">
+                <Label>
+                  {t('场景介绍')} <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  value={quickFill.background}
+                  onChange={(e) => setQuickFill({ ...quickFill, background: e.target.value })}
+                  placeholder={t('一句话描述该场景的背景与目标...')}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setQuickFillOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button
+              className="bg-purple-600 hover:bg-purple-700 gap-1"
+              disabled={
+                (!scenarioName.trim() && !quickFill.name.trim()) ||
+                (!background.trim() && !quickFill.background.trim())
+              }
+              onClick={confirmQuickFillAndStartAi}
+            >
+              <Sparkles className="h-4 w-4" />
+              {t('开始 AI 辅助编写')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 未配置引导弹窗 */}
+      <AiNotConfiguredDialog open={ai.notConfiguredOpen} onOpenChange={ai.setNotConfiguredOpen} />
+
+      {/* 每次 AI 辅助编写前的意图确认弹窗 */}
+      <Dialog open={confirmRegenOpen} onOpenChange={setConfirmRegenOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              {t('确认重新生成全部内容？')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('AI 将基于当前填写的场景信息重新生成并直接覆盖：场景名称、场景介绍、难度等级，并建议面向行业与适用专业（命中的字典项直接选中）。每个字段均可单独「恢复上版」，也可全部撤销。')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmRegenOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 gap-1" onClick={confirmRegenAndRun}>
+              <Sparkles className="h-4 w-4" />
+              {t('确认生成')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={isPreviewConfirmOpen}

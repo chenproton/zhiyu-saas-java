@@ -23,6 +23,22 @@ func (s *AbilityStore) List(ctx context.Context, p ListParams, cfg ListQueryConf
 	return ExecuteListQuery(ctx, s.q, p, cfg, ScanAbilityPointRows)
 }
 
+// FindByNames 按名称精确匹配查询已有能力点（AI 推荐引用优先用）。
+func (s *AbilityStore) FindByNames(ctx context.Context, tenantID string, names []string) ([]domain.AbilityPoint, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT id, name, code, description, attributes, is_public, creator_id, created_at
+		FROM ability_points WHERE tenant_id = $1 AND name = ANY($2)
+	`, tenantID, names)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return ScanAbilityPointRows(rows)
+}
+
 // Get 查询单个能力点。
 func (s *AbilityStore) Get(ctx context.Context, id, tenantID string) (*domain.AbilityPoint, error) {
 	var a domain.AbilityPoint
