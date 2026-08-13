@@ -33,6 +33,8 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
   const { toast } = useToast()
   const t = useT()
   const { tenantId } = usePortalAuth()
+  // 已知限制：usePortalUsers 单页取 pageSize: 100，教师超过 100 人时教师视图下拉缺人；
+  // 完整修复需支持搜索或分页加载（可复用 UserSelector 的搜索能力），暂保持现状不改行为
   const { users: teachers, loading: teachersLoading } = usePortalUsers({
     roleCode: 'teacher',
     pageSize: 100,

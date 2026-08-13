@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { programApi, teachingPlanApi, batchApi, affairsBatchApi, approvalApi } from '@/lib/api'
 import { fetchAllPages } from '@zhiyu/api-client'
-import type { TrainingProgram, TeachingPlan } from '@/lib/types/affairs'
+import type { TrainingProgram, TeachingPlan, AffairsBatch } from '@/lib/types/affairs'
+import type { JobBatch } from '@/lib/types/job'
 import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
 import { useSubmitterNames } from '@/hooks/use-submitter-names'
@@ -57,21 +58,21 @@ export default function AffairsApprovalsPage() {
   const { toast } = useToast()
   const [programMap, setProgramMap] = useState<Map<string, TrainingProgram>>(new Map())
   const [planMap, setPlanMap] = useState<Map<string, TeachingPlan>>(new Map())
-  const [batchMap, setBatchMap] = useState<Map<string, any>>(new Map())
-  const [affairsBatchMap, setAffairsBatchMap] = useState<Map<string, any>>(new Map())
+  const [batchMap, setBatchMap] = useState<Map<string, JobBatch>>(new Map())
+  const [affairsBatchMap, setAffairsBatchMap] = useState<Map<string, AffairsBatch>>(new Map())
 
   useEffect(() => {
     Promise.all([
-      programApi.list({ limit: 1000 }),
-      teachingPlanApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) => programApi.list({ limit: pageSize, offset: page * pageSize })),
+      fetchAllPages((page, pageSize) => teachingPlanApi.list({ limit: pageSize, offset: page * pageSize })),
       fetchAllPages((page, pageSize) => batchApi.list({ limit: pageSize, offset: page * pageSize })),
-      affairsBatchApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) => affairsBatchApi.list({ limit: pageSize, offset: page * pageSize })),
     ])
       .then(([pres, plres, bres, abres]) => {
-        setProgramMap(new Map(pres.items.map((p) => [p.id, p])))
-        setPlanMap(new Map(plres.items.map((p) => [p.id, p])))
+        setProgramMap(new Map(pres.map((p) => [p.id, p])))
+        setPlanMap(new Map(plres.map((p) => [p.id, p])))
         setBatchMap(new Map(bres.map((b) => [b.id, b])))
-        setAffairsBatchMap(new Map(abres.items.map((b) => [b.id, b])))
+        setAffairsBatchMap(new Map(abres.map((b) => [b.id, b])))
       })
       .catch((err) => {
         handleLoadError(err, toast, t, '加载培养方案/教学计划/批次列表失败', '加载培养方案/教学计划/批次列表')
@@ -85,12 +86,15 @@ export default function AffairsApprovalsPage() {
     [programRecords, planRecords],
   )
 
+  // 记录归属用 Set 按 id 判断：避免 mapRecord 逐条 includes 线性扫描的 O(n²)
+  const programRecordIds = useMemo(() => new Set(programRecords.map((r) => r.id)), [programRecords])
+
   const getStepInfoFn = useCallback(
     (a: any) => {
-      if (programRecords.includes(a)) return getProgramStepInfo(a)
+      if (programRecordIds.has(a.id)) return getProgramStepInfo(a)
       return getPlanStepInfo(a)
     },
-    [programRecords, getProgramStepInfo, getPlanStepInfo],
+    [programRecordIds, getProgramStepInfo, getPlanStepInfo],
   )
 
   const columns: ApprovalColumn<ApprovalView>[] = [
@@ -135,7 +139,7 @@ export default function AffairsApprovalsPage() {
 
   const mapRecord = useCallback(
     (a: ApprovalRecord): ApprovalView => {
-      const isProgram = programRecords.includes(a)
+      const isProgram = programRecordIds.has(a.id)
       const targetType = isProgram ? ('training_program' as const) : ('teaching_plan' as const)
       const target = (isProgram ? programMap : planMap).get(a.targetId)
       const batchId = target?.batchId
@@ -158,7 +162,7 @@ export default function AffairsApprovalsPage() {
         history: a.history,
       }
     },
-    [programRecords, programMap, planMap, batchMap, affairsBatchMap, getStepInfoFn],
+    [programRecordIds, programMap, planMap, batchMap, affairsBatchMap, getStepInfoFn],
   )
 
   const handleApprove = async (id: string, comment: string) => {

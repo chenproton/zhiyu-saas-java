@@ -51,7 +51,13 @@ export default function ProgramEditPage() {
   const [description, setDescription] = useState('')
 
   const loadProgram = useCallback(async () => {
-    if (isNew) return
+    // id 变化（含新建保存后 router.replace 到真实 id）时重置加载态，
+    // 否则 isNew 翻转后 loading 仍停留在旧值，跳转后短暂渲染空表单
+    setLoading(true)
+    if (isNew) {
+      setLoading(false)
+      return
+    }
     setLoadError(false)
     try {
       const p = await programApi.get(id)

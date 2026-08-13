@@ -29,8 +29,25 @@ export function ProgramCourseImportDialog({
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   const handleDownload = async () => {
-    const res = await importExportApi.downloadTemplate('program-courses')
-    downloadBlob(await res.blob(), '方案课程批量导入模板.xlsx')
+    try {
+      const res = await importExportApi.downloadTemplate('program-courses')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast({
+          variant: 'destructive',
+          title: t('模板下载失败'),
+          description: data.error || t('下载失败（{status}）', { status: res.status }),
+        })
+        return
+      }
+      downloadBlob(await res.blob(), '方案课程批量导入模板.xlsx')
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: t('模板下载失败'),
+        description: err.message || t('下载失败（{status}）', { status: '?' }),
+      })
+    }
   }
 
   const doImport = async (files: File[], overwrite = false) => {
@@ -69,6 +86,16 @@ export function ProgramCourseImportDialog({
         `/import/program-courses/preview?programId=${encodeURIComponent(programId)}`,
         { method: 'POST', body: form },
       )
+      if (!previewRes.ok) {
+        // 预览失败时提示真实的服务端错误，不静默降级到直接导入
+        const data = await previewRes.json().catch(() => ({}))
+        toast({
+          variant: 'destructive',
+          title: t('预览失败'),
+          description: data.error || t('请检查文件格式'),
+        })
+        return false
+      }
       const preview = await previewRes.json()
       if (preview.duplicates > 0) {
         setPendingFiles(files)
@@ -83,8 +110,13 @@ export function ProgramCourseImportDialog({
         return false
       }
       return await doImport(files, false)
-    } catch {
-      return await doImport(files, false)
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: t('预览失败'),
+        description: err.message || t('请检查文件格式'),
+      })
+      return false
     }
   }
 
