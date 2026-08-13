@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -54,6 +56,8 @@ func (s *AuthStore) FindUsersByUsername(ctx context.Context, username string, pl
 			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &u.User.Status,
 			&u.User.CreatedAt, &u.User.UpdatedAt, &u.Tenant.Name, &u.Tenant.Status, &tenantValidFrom, &tenantValidUntil,
 		); err != nil {
+			// 行扫描失败不静默跳过：同用户名多租户时该用户将无法登录且无从排查
+			slog.Warn("auth user row scan failed, skipped", "username", username, "platform", platform, "error", err)
 			continue
 		}
 		u.User.TenantID = tenantID
@@ -179,6 +183,9 @@ func (s *AuthStore) GetTenantByID(ctx context.Context, id string) *domain.Tenant
 		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Error("GetTenantByID query failed", "id", id, "error", err)
+		}
 		return nil
 	}
 	t.LogoURL = logo
@@ -202,6 +209,9 @@ func (s *AuthStore) GetOrganizationByID(ctx context.Context, id string) *domain.
 		&o.ID, &o.TenantID, &o.Name, &o.TypeID, &parentID, &o.SortOrder, &o.MemberCount, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Error("GetOrganizationByID query failed", "id", id, "error", err)
+		}
 		return nil
 	}
 	o.ParentID = parentID
@@ -217,6 +227,9 @@ func (s *AuthStore) GetMajorByID(ctx context.Context, id string) *domain.Major {
 		FROM majors WHERE id = $1
 	`, id).Scan(&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Error("GetMajorByID query failed", "id", id, "error", err)
+		}
 		return nil
 	}
 	m.Alias = alias

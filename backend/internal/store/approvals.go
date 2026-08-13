@@ -106,6 +106,10 @@ func (s *ApprovalStore) Create(ctx context.Context, tenantID *string, p *Approva
 		RETURNING id
 	`, tenantID, p.TargetType, p.TargetID, p.WorkflowID, p.Status, p.SubmitterID, p.History).Scan(&id)
 	if err != nil {
+		// 并发双提交下唯一索引兜底：把唯一冲突映射为 ErrApprovalExists，保持错误类型一致
+		if IsUniqueViolation(err) {
+			return nil, ErrApprovalExists
+		}
 		return nil, err
 	}
 	// 回查仅按 id：tenantID 可为 nil（全局流程），对 *tenantID 解引用会 panic，

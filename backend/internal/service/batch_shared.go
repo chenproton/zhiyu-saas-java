@@ -25,16 +25,16 @@ func (b sharedBatchOps) create(ctx context.Context, table string, fields store.B
 	return b.st.Batches().CreateFields(ctx, table, fields, id, tenantID, tenantScoped, extraCols, extraVals)
 }
 
-func (b sharedBatchOps) update(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error {
-	return b.st.Batches().UpdateFields(ctx, table, fields, id)
+func (b sharedBatchOps) update(ctx context.Context, table, tenantID string, fields store.BatchUpdateFields, id string) error {
+	return b.st.Batches().UpdateFields(ctx, table, tenantID, fields, id)
 }
 
-func (b sharedBatchOps) delete(ctx context.Context, table, id string) error {
-	return b.st.Batches().Delete(ctx, table, id)
+func (b sharedBatchOps) delete(ctx context.Context, table, id, tenantID string) error {
+	return b.st.Batches().Delete(ctx, table, id, tenantID)
 }
 
-func (b sharedBatchOps) updateStatus(ctx context.Context, table, id, status string) error {
-	return b.st.Batches().UpdateStatus(ctx, table, id, status)
+func (b sharedBatchOps) updateStatus(ctx context.Context, table, id, tenantID, status string) error {
+	return b.st.Batches().UpdateStatus(ctx, table, id, tenantID, status)
 }
 
 func (b sharedBatchOps) getByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error) {

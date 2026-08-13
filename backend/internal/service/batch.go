@@ -19,16 +19,16 @@ func (s *PositionService) BatchCreate(ctx context.Context, table string, fields 
 	return sharedBatchOps{st: s.st}.create(ctx, table, fields, id, tenantID, tenantScoped, extraCols, extraVals)
 }
 
-func (s *PositionService) BatchUpdate(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error {
-	return sharedBatchOps{st: s.st}.update(ctx, table, fields, id)
+func (s *PositionService) BatchUpdate(ctx context.Context, table, tenantID string, fields store.BatchUpdateFields, id string) error {
+	return sharedBatchOps{st: s.st}.update(ctx, table, tenantID, fields, id)
 }
 
-func (s *PositionService) BatchDelete(ctx context.Context, table, id string) error {
-	return sharedBatchOps{st: s.st}.delete(ctx, table, id)
+func (s *PositionService) BatchDelete(ctx context.Context, table, id, tenantID string) error {
+	return sharedBatchOps{st: s.st}.delete(ctx, table, id, tenantID)
 }
 
-func (s *PositionService) BatchUpdateStatus(ctx context.Context, table, id, status string) error {
-	return sharedBatchOps{st: s.st}.updateStatus(ctx, table, id, status)
+func (s *PositionService) BatchUpdateStatus(ctx context.Context, table, id, tenantID, status string) error {
+	return sharedBatchOps{st: s.st}.updateStatus(ctx, table, id, tenantID, status)
 }
 
 func (s *PositionService) BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error) {

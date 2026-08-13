@@ -116,5 +116,3 @@ func ScanBannerRows(rows pgx.Rows) ([]domain.JobBannerConfig, error) {
 	}
 	return items, rows.Err()
 }
-
-// ===== 学期 =====

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -71,7 +72,7 @@ func (s *PositionStore) MergePositionDraftToSource(ctx context.Context, tx Query
 		return err
 	}
 	// 主表字段覆盖（code/batch_id/created_by 等归属字段保留原资源值）
-	if _, err := tx.Exec(ctx, `
+	posTag, err := tx.Exec(ctx, `
 		UPDATE career_positions cp SET
 			name = $3,
 			short_name = d.short_name, industry_id = d.industry_id,
@@ -81,8 +82,14 @@ func (s *PositionStore) MergePositionDraftToSource(ctx context.Context, tx Query
 			status = 'published', updated_at = NOW()
 		FROM career_positions d
 		WHERE cp.id = d.source_resource_id AND d.id = $1 AND d.tenant_id = $2
-	`, draftID, tenantID, finalName); err != nil {
+	`, draftID, tenantID, finalName)
+	if err != nil {
 		return err
+	}
+	// 覆盖未生效（原资源已删除或 source_resource_id 异常）时报错中止，
+	// 防止随后删除 draft 导致企业编辑成果静默丢失
+	if posTag.RowsAffected() == 0 {
+		return fmt.Errorf("覆盖原资源失败：目标资源不存在（draft=%s）", draftID)
 	}
 	for _, child := range []string{
 		"career_position_majors", "position_ability_bindings", "position_certificates", "position_responsibilities",
@@ -105,7 +112,7 @@ func (s *PositionStore) MergePositionDraftToSource(ctx context.Context, tx Query
 			return err
 		}
 	}
-	_, err := tx.Exec(ctx, `DELETE FROM career_positions WHERE id = $1 AND tenant_id = $2`, draftID, tenantID)
+	_, err = tx.Exec(ctx, `DELETE FROM career_positions WHERE id = $1 AND tenant_id = $2`, draftID, tenantID)
 	return err
 }
 
@@ -169,7 +176,7 @@ func (s *ScenarioStore) MergeScenarioDraftToSource(ctx context.Context, tx Query
 		return err
 	}
 	// 主表字段覆盖（code/batch_id/creator 等归属字段保留原资源值）
-	if _, err := tx.Exec(ctx, `
+	scTag, err := tx.Exec(ctx, `
 		UPDATE scenarios sc SET
 			name = $3,
 			cover_image = d.cover_image, career_position_id = d.career_position_id,
@@ -179,8 +186,13 @@ func (s *ScenarioStore) MergeScenarioDraftToSource(ctx context.Context, tx Query
 			status = 'published', publish_time = NOW(), updated_at = NOW()
 		FROM scenarios d
 		WHERE sc.id = d.source_resource_id AND d.id = $1 AND d.tenant_id = $2
-	`, draftID, tenantID, finalName); err != nil {
+	`, draftID, tenantID, finalName)
+	if err != nil {
 		return err
+	}
+	// 覆盖未生效（原场景已删除或 source_resource_id 异常）时报错中止，防止 draft 被误删
+	if scTag.RowsAffected() == 0 {
+		return fmt.Errorf("覆盖原场景失败：目标场景不存在（draft=%s）", draftID)
 	}
 	// draft 任务改挂原场景（保留 task id，子表引用不断裂）
 	if _, err := tx.Exec(ctx, `
@@ -195,6 +207,6 @@ func (s *ScenarioStore) MergeScenarioDraftToSource(ctx context.Context, tx Query
 			return err
 		}
 	}
-	_, err := tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1 AND tenant_id = $2`, draftID, tenantID)
+	_, err = tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1 AND tenant_id = $2`, draftID, tenantID)
 	return err
 }

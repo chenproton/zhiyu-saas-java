@@ -201,8 +201,8 @@ func (s *BatchStore) CreateFields(ctx context.Context, table string, fields Batc
 	return err
 }
 
-// UpdateFields 更新批次（列名由 store 内置白名单拼接）。
-func (s *BatchStore) UpdateFields(ctx context.Context, table string, fields BatchUpdateFields, id string) error {
+// UpdateFields 更新批次（列名由 store 内置白名单拼接；写操作一律带租户条件）。
+func (s *BatchStore) UpdateFields(ctx context.Context, table, tenantID string, fields BatchUpdateFields, id string) error {
 	if _, err := SanitizeIdentifier(table, allowedBatchWriteTables); err != nil {
 		return err
 	}
@@ -214,27 +214,27 @@ func (s *BatchStore) UpdateFields(ctx context.Context, table string, fields Batc
 		args = append(args, *fields.Status)
 		argIdx++
 	}
-	args = append(args, id)
-	query := "UPDATE " + table + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + Itoa(argIdx)
+	args = append(args, id, tenantID)
+	query := "UPDATE " + table + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + Itoa(argIdx) + " AND tenant_id = $" + Itoa(argIdx+1)
 	_, err := s.q.Exec(ctx, query, args...)
 	return err
 }
 
 // Delete 删除批次。
-func (s *BatchStore) Delete(ctx context.Context, table, id string) error {
+func (s *BatchStore) Delete(ctx context.Context, table, id, tenantID string) error {
 	if _, err := SanitizeIdentifier(table, allowedBatchWriteTables); err != nil {
 		return err
 	}
-	_, err := s.q.Exec(ctx, "DELETE FROM "+table+" WHERE id = $1", id)
+	_, err := s.q.Exec(ctx, "DELETE FROM "+table+" WHERE id = $1 AND tenant_id = $2", id, tenantID)
 	return err
 }
 
 // UpdateStatus 更新批次状态。
-func (s *BatchStore) UpdateStatus(ctx context.Context, table, id, status string) error {
+func (s *BatchStore) UpdateStatus(ctx context.Context, table, id, tenantID, status string) error {
 	if _, err := SanitizeIdentifier(table, allowedBatchWriteTables); err != nil {
 		return err
 	}
-	_, err := s.q.Exec(ctx, "UPDATE "+table+" SET status = $1, updated_at = NOW() WHERE id = $2", status, id)
+	_, err := s.q.Exec(ctx, "UPDATE "+table+" SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", status, id, tenantID)
 	return err
 }
 

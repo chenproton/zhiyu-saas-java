@@ -689,7 +689,7 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 		Status: r.URL.Query().Get("status"),
 	}
 	filter.Limit, filter.Offset = parseLimitOffset(r, 200)
-	items, total, err := h.Store.ListByEnterpriseIDs(r.Context(), enterpriseIDs, filter)
+	items, total, err := h.Store.ListByEnterpriseIDs(r.Context(), tenantID, enterpriseIDs, filter)
 	if err != nil {
 		respondServerError(w, r, err, "查询专家列表失败")
 		return
@@ -1507,7 +1507,7 @@ func (h *AllianceHandler) ToggleExpertDisplay(w http.ResponseWriter, r *http.Req
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
 	}
-	if err := h.Store.UpdateExpertIsPublic(r.Context(), expertID, req.IsPublic); err != nil {
+	if err := h.Store.UpdateExpertIsPublic(r.Context(), expertID, tenantID, req.IsPublic); err != nil {
 		respondServerError(w, r, err, "更新前台展示失败")
 		return
 	}

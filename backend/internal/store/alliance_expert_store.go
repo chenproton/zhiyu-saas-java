@@ -172,8 +172,8 @@ type AllianceExpertListFilter struct {
 
 // ListByEnterpriseIDs 跨租户只读：按企业 ID 集合查询专家（学校侧按已引入企业加载）。
 // 支持按姓名/职称/行业关键字、状态筛选以及 limit/offset 分页，返回结果与总条数。
-// 越权防线：入参 enterpriseIDs 必须由调用方（store/service）限定为本校 links 内的企业。
-func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, enterpriseIDs []string, filter AllianceExpertListFilter) ([]domain.AllianceExpert, int, error) {
+// 越权防线下沉到 SQL：企业必须已引入本校（links 存在且未终止），不再依赖调用方自觉。
+func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, tenantID string, enterpriseIDs []string, filter AllianceExpertListFilter) ([]domain.AllianceExpert, int, error) {
 	if len(enterpriseIDs) == 0 {
 		return []domain.AllianceExpert{}, 0, nil
 	}
@@ -184,17 +184,20 @@ func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, enterpriseIDs [
 		filter.Offset = 0
 	}
 
-	where := []string{"enterprise_id = ANY($1::uuid[])"}
-	args := []any{enterpriseIDs}
-	idx := 2
+	where := []string{
+		"x.enterprise_id = ANY($1::uuid[])",
+		"EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id AND l.tenant_id = $2 AND l.status <> 'terminated')",
+	}
+	args := []any{enterpriseIDs, tenantID}
+	idx := 3
 
 	if filter.Search != "" {
-		where = append(where, fmt.Sprintf("(name ILIKE $%d OR title ILIKE $%d OR industry ILIKE $%d)", idx, idx, idx))
+		where = append(where, fmt.Sprintf("(x.name ILIKE $%d OR x.title ILIKE $%d OR x.industry ILIKE $%d)", idx, idx, idx))
 		args = append(args, "%"+filter.Search+"%")
 		idx++
 	}
 	if filter.Status != "" {
-		where = append(where, fmt.Sprintf("status = $%d", idx))
+		where = append(where, fmt.Sprintf("x.status = $%d", idx))
 		args = append(args, filter.Status)
 		idx++
 	}
@@ -202,17 +205,17 @@ func (s *AllianceStore) ListByEnterpriseIDs(ctx context.Context, enterpriseIDs [
 	whereClause := strings.Join(where, " AND ")
 
 	var total int
-	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM alliance_experts WHERE "+whereClause, args...).Scan(&total); err != nil {
+	if err := s.q.QueryRow(ctx, "SELECT COUNT(*) FROM alliance_experts x WHERE "+whereClause, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	dataArgs := append([]any{}, args...)
 	dataArgs = append(dataArgs, filter.Limit, filter.Offset)
 	items, err := queryList(ctx, s.q, s.ScanExpertRows, `
-		SELECT `+expertColumns+`
-		FROM alliance_experts
+		SELECT `+expertColumnsQualified+`
+		FROM alliance_experts x
 		WHERE `+whereClause+`
-		ORDER BY created_at DESC
+		ORDER BY x.created_at DESC
 		LIMIT $`+strconv.Itoa(idx)+` OFFSET $`+strconv.Itoa(idx+1)+`
 	`, dataArgs...)
 	if err != nil {
@@ -338,12 +341,16 @@ func (s *AllianceStore) GetPublicExpertByID(ctx context.Context, id, tenantID st
 }
 
 // UpdateExpertIsPublic 学校侧维护专家"前台展示"开关（跨租户更新专家 is_public；
-// 调用方须先校验专家所属企业已引入本校）。仅影响联盟首页（landing）等 is_public 双控展示，
-// 企业详情页"专家团队"不受此开关控制。
-func (s *AllianceStore) UpdateExpertIsPublic(ctx context.Context, id string, isPublic bool) error {
+// SQL 内强制企业已引入本校（links 存在且未终止），不再依赖调用方先校验）。
+func (s *AllianceStore) UpdateExpertIsPublic(ctx context.Context, id, tenantID string, isPublic bool) error {
 	_, err := s.q.Exec(ctx, `
-		UPDATE alliance_experts SET is_public = $2, updated_at = NOW() WHERE id = $1
-	`, id, isPublic)
+		UPDATE alliance_experts SET is_public = $2, updated_at = NOW()
+		WHERE id = $1 AND EXISTS (
+			SELECT 1 FROM alliance_enterprise_links l
+			WHERE l.enterprise_id = alliance_experts.enterprise_id
+			  AND l.tenant_id = $3 AND l.status <> 'terminated'
+		)
+	`, id, isPublic, tenantID)
 	return err
 }
 

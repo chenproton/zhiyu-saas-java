@@ -62,26 +62,25 @@ func (s *AllianceStore) UpsertSchoolInfo(ctx context.Context, info *domain.Allia
 			name = $3, short_name = $4, school_type = $5, province = $6, city = $7,
 			address = $8, website = $9, contact_phone = $10, description = $11, logo_url = $12,
 			scale_data = $13, secondary_colleges = $14, updated_at = NOW()
-	`, nilToEmpty(info.ID), info.TenantID, info.Name, info.ShortName, info.SchoolType, info.Province, info.City,
+	`, info.ID, info.TenantID, info.Name, info.ShortName, info.SchoolType, info.Province, info.City,
 		info.Address, info.Website, info.ContactPhone, info.Description, info.LogoURL,
 		info.ScaleData, info.SecondaryColleges)
 	return err
 }
 
-func nilToEmpty(s string) string {
-	return s
-}
-
 // ===== handler 直写 DB 收编 =====
 
-// queryList 执行查询并用 scan 扫描全部行；扫描错误被忽略（与公开列表原行为一致）。
+// queryList 执行查询并用 scan 扫描全部行；扫描错误上抛（与 queryOne 行为一致）。
 func queryList[T any](ctx context.Context, db Queryer, scan func(pgx.Rows) ([]T, error), query string, args ...any) ([]T, error) {
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items, _ := scan(rows)
+	items, err := scan(rows)
+	if err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 

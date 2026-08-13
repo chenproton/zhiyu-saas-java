@@ -18,9 +18,9 @@ type batchService interface {
 	BatchList(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[any]) ([]any, int, error)
 	BatchTenantOf(ctx context.Context, table, id string) (string, error)
 	BatchCreate(ctx context.Context, table string, fields store.BatchCreateFields, id string, tenantID *string, tenantScoped bool, extraCols []string, extraVals []any) error
-	BatchUpdate(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error
-	BatchDelete(ctx context.Context, table, id string) error
-	BatchUpdateStatus(ctx context.Context, table, id, status string) error
+	BatchUpdate(ctx context.Context, table, tenantID string, fields store.BatchUpdateFields, id string) error
+	BatchDelete(ctx context.Context, table, id, tenantID string) error
+	BatchUpdateStatus(ctx context.Context, table, id, tenantID, status string) error
 	BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error)
 }
 
@@ -105,16 +105,19 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
 }
 
-func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) bool {
+func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) (string, bool) {
 	if !h.Config.TenantScoped {
-		return true
+		return "", true
 	}
 	entityTenantID, err := h.Service.BatchTenantOf(r.Context(), h.Config.WriteTableName, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
-		return false
+		return "", false
 	}
-	return verifyTenantOwnership(w, r, entityTenantID)
+	if !verifyTenantOwnership(w, r, entityTenantID) {
+		return "", false
+	}
+	return entityTenantID, true
 }
 
 func (h *BatchHandler) scanRow(ctx context.Context, id string) (any, error) {
@@ -131,7 +134,7 @@ func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if !h.checkTenantAccess(w, r, id) {
+	if _, ok := h.checkTenantAccess(w, r, id); !ok {
 		return
 	}
 	batch, err := h.scanRow(r.Context(), id)
@@ -201,7 +204,8 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if !h.checkTenantAccess(w, r, id) {
+	entityTenantID, ok := h.checkTenantAccess(w, r, id)
+	if !ok {
 		return
 	}
 	if _, err := h.scanRow(r.Context(), id); err != nil {
@@ -236,7 +240,7 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		fields.Status = &status
 	}
 
-	if err := h.Service.BatchUpdate(r.Context(), h.Config.WriteTableName, fields, id); err != nil {
+	if err := h.Service.BatchUpdate(r.Context(), h.Config.WriteTableName, entityTenantID, fields, id); err != nil {
 		respondServerError(w, r, err, "更新"+h.Config.EntityName+"失败")
 		return
 	}
@@ -254,14 +258,15 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if !h.checkTenantAccess(w, r, id) {
+	entityTenantID, ok := h.checkTenantAccess(w, r, id)
+	if !ok {
 		return
 	}
 	if _, err := h.scanRow(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
-	if err := h.Service.BatchDelete(r.Context(), h.Config.WriteTableName, id); err != nil {
+	if err := h.Service.BatchDelete(r.Context(), h.Config.WriteTableName, id, entityTenantID); err != nil {
 		respondServerError(w, r, err, "删除"+h.Config.EntityName+"失败")
 		return
 	}
@@ -274,7 +279,8 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if !h.checkTenantAccess(w, r, id) {
+	entityTenantID, ok := h.checkTenantAccess(w, r, id)
+	if !ok {
 		return
 	}
 	if _, err := h.scanRow(r.Context(), id); err != nil {
@@ -289,7 +295,7 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
-	if err := h.Service.BatchUpdateStatus(r.Context(), h.Config.WriteTableName, id, req.Status); err != nil {
+	if err := h.Service.BatchUpdateStatus(r.Context(), h.Config.WriteTableName, id, entityTenantID, req.Status); err != nil {
 		respondServerError(w, r, err, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}

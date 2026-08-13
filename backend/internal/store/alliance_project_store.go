@@ -50,11 +50,14 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 	return items, rows.Err()
 }
 
+// projectSelectColumns 合作项目查询列（列表/详情/公开共用，扫描顺序与 ScanProjectRows 一致）。
+const projectSelectColumns = "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at"
+
 // ListConfig 返回合作项目列表查询配置，SQL 片段沉淀在 store 层。
 func (s *AllianceStore) ListProjectsConfig() ListQueryConfig[domain.AllianceProject] {
 	return ListQueryConfig[domain.AllianceProject]{
 		Table:         "alliance_projects",
-		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
+		SelectColumns: projectSelectColumns,
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
@@ -67,36 +70,12 @@ func (s *AllianceStore) ListProjectsConfig() ListQueryConfig[domain.AllianceProj
 	}
 }
 
+// GetProjectByID 查询单个合作项目（复用 ScanProjectRows，消除与列表扫描的重复实现）。
 func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string) (*domain.AllianceProject, error) {
-	var p domain.AllianceProject
-	var typ, description, budget, coverImage *string
-	var startDate, endDate *time.Time
-	var enterpriseIDs, agreementIDs, colleges json.RawMessage
-	var createdBy *string
-	var isPublic bool
-	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
-			is_public, created_by, created_at, updated_at
+	return queryOne(ctx, s.q, s.ScanProjectRows, `
+		SELECT `+projectSelectColumns+`
 		FROM alliance_projects WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
-		&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-		&enterpriseIDs, &agreementIDs, &colleges, &isPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	p.Type = typ
-	p.Description = description
-	p.StartDate = formatDate(startDate)
-	p.EndDate = formatDate(endDate)
-	p.Budget = budget
-	p.CoverImage = coverImage
-	p.EnterpriseIDs = enterpriseIDs
-	p.AgreementIDs = agreementIDs
-	p.SecondaryColleges = colleges
-	p.IsPublic = &isPublic
-	p.CreatedBy = createdBy
-	return &p, nil
+	`, id, tenantID)
 }
 
 func (s *AllianceStore) CreateProject(ctx context.Context, p *domain.AllianceProject) (string, error) {

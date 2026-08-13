@@ -138,37 +138,31 @@ func (s *ScenarioService) ReorderTasks(ctx context.Context, scenarioID string, t
 	})
 }
 
-// BatchList 分页查询批次（通用批次处理器使用）。
+// 批次表通用操作的 ScenarioService 公开方法（实现收敛于 sharedBatchOps）。
 func (s *ScenarioService) BatchList(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[any]) ([]any, int, error) {
-	return store.ExecuteListQuery(ctx, s.st.Q(), p, cfg)
+	return sharedBatchOps{st: s.st}.list(ctx, p, cfg)
 }
 
-// BatchTenantOf 查询批次租户。
 func (s *ScenarioService) BatchTenantOf(ctx context.Context, table, id string) (string, error) {
-	return s.st.Batches().TenantOf(ctx, table, id)
+	return sharedBatchOps{st: s.st}.tenantOf(ctx, table, id)
 }
 
-// BatchCreate 创建批次。
 func (s *ScenarioService) BatchCreate(ctx context.Context, table string, fields store.BatchCreateFields, id string, tenantID *string, tenantScoped bool, extraCols []string, extraVals []any) error {
-	return s.st.Batches().CreateFields(ctx, table, fields, id, tenantID, tenantScoped, extraCols, extraVals)
+	return sharedBatchOps{st: s.st}.create(ctx, table, fields, id, tenantID, tenantScoped, extraCols, extraVals)
 }
 
-// BatchUpdate 更新批次。
-func (s *ScenarioService) BatchUpdate(ctx context.Context, table string, fields store.BatchUpdateFields, id string) error {
-	return s.st.Batches().UpdateFields(ctx, table, fields, id)
+func (s *ScenarioService) BatchUpdate(ctx context.Context, table, tenantID string, fields store.BatchUpdateFields, id string) error {
+	return sharedBatchOps{st: s.st}.update(ctx, table, tenantID, fields, id)
 }
 
-// BatchDelete 删除批次。
-func (s *ScenarioService) BatchDelete(ctx context.Context, table, id string) error {
-	return s.st.Batches().Delete(ctx, table, id)
+func (s *ScenarioService) BatchDelete(ctx context.Context, table, id, tenantID string) error {
+	return sharedBatchOps{st: s.st}.delete(ctx, table, id, tenantID)
 }
 
-// BatchUpdateStatus 更新批次状态。
-func (s *ScenarioService) BatchUpdateStatus(ctx context.Context, table, id, status string) error {
-	return s.st.Batches().UpdateStatus(ctx, table, id, status)
+func (s *ScenarioService) BatchUpdateStatus(ctx context.Context, table, id, tenantID, status string) error {
+	return sharedBatchOps{st: s.st}.updateStatus(ctx, table, id, tenantID, status)
 }
 
-// BatchGetByTable 按表查询批次单行。
 func (s *ScenarioService) BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error) {
-	return s.st.Batches().GetByTable(ctx, s.st.Q(), table, selectColumns, id)
+	return sharedBatchOps{st: s.st}.getByTable(ctx, table, selectColumns, id)
 }
