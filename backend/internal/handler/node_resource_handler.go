@@ -39,14 +39,7 @@ func (h *NodeResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	limit := 200
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
-		limit = v
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 200)
 	nodeID := r.URL.Query().Get("nodeId")
 	search := r.URL.Query().Get("search")
 

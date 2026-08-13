@@ -367,14 +367,7 @@ func (h *PartnerCoBuildHandler) ListPositionCertificates(w http.ResponseWriter, 
 	if !ok {
 		return
 	}
-	limit := 50
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
-		limit = v
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 50)
 	items, total, err := h.Service.ListPositionCertificates(r.Context(), partnerTenantID, chi.URLParam(r, "id"), limit, offset)
 	if err != nil {
 		respondCoBuildError(w, r, err, "岗位不存在", "查询证书失败")
@@ -822,14 +815,7 @@ func (h *PartnerCoBuildHandler) ListSchoolResources(w http.ResponseWriter, r *ht
 		return
 	}
 	schoolTenantID := chi.URLParam(r, "tenantId")
-	limit := 50
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
-		limit = v
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 50)
 	items, total, err := h.Service.ListSchoolResources(r.Context(), partnerTenantID, schoolTenantID,
 		r.URL.Query().Get("search"), r.URL.Query().Get("resourceType"), limit, offset)
 	respondSchoolScopedList(w, r, items, total, err, "查询学校资源失败")

@@ -325,8 +325,7 @@ func (s *SchedulingStore) UpdateSchedule(ctx context.Context, tx Queryer, id, te
 // LockScheduleTerm 以租户+学期粒度的 advisory 锁串行化排课变更，避免冲突校验与插入间的并发竞态。
 // 须在事务内调用，锁随事务提交/回滚自动释放。
 func (s *SchedulingStore) LockScheduleTerm(ctx context.Context, q Queryer, tenantID, termID string) error {
-	_, err := q.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`, tenantID+"|"+termID)
-	return err
+	return LockByKey(ctx, q, tenantID, termID)
 }
 
 // DeleteScheduleWithRestore 删除排课并恢复计划条目为待排（事务内）。

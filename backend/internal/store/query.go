@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -600,6 +602,13 @@ func LookupSingleIDByName(ctx context.Context, q Queryer, table, tenantID, names
 	return nil
 }
 
+// LockByKey 以拼接键粒度的 advisory 事务锁串行化互斥操作，锁随事务提交/回滚自动释放。
+// keyParts 按 "|" 拼接（如租户+资源粒度）。须在事务内调用。
+func LockByKey(ctx context.Context, q Queryer, keyParts ...string) error {
+	_, err := q.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`, strings.Join(keyParts, "|"))
+	return err
+}
+
 // splitCommaNames 按中文/英文分号拆分为列表，空项忽略。
 func splitCommaNames(s string) []string {
 	if s == "" {
@@ -613,4 +622,19 @@ func splitCommaNames(s string) []string {
 		}
 	}
 	return out
+}
+
+// MarshalJSONBytes 将任意值序列化为 JSON 字节，序列化失败返回 fallback。
+func MarshalJSONBytes(v any, fallback string) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return []byte(fallback)
+	}
+	return b
+}
+
+// IsUniqueViolation 判断是否为唯一键冲突（pg error code 23505）。
+func IsUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

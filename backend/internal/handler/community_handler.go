@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -48,13 +47,9 @@ func (h *CommunityHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 	default:
 		sort = store.TopicSortLatest
 	}
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 || limit > 100 {
-		limit = 50
-	}
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	if offset < 0 {
-		offset = 0
+	limit, offset := parseLimitOffset(r, 50)
+	if limit > 100 {
+		limit = 100
 	}
 
 	items, total, err := h.Service.ListTopics(r.Context(), tenantID, claims.UserID, sort, limit, offset)

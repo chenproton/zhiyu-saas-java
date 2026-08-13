@@ -146,14 +146,7 @@ func (h *CertificateLibraryHandler) UncitedList(w http.ResponseWriter, r *http.R
 	if !ok {
 		return
 	}
-	limit, err := parsePageLimit(r.URL.Query().Get("limit"), 20)
-	if err != nil {
-		limit = 20
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 20)
 	items, total, err := h.Store.ListUncited(r.Context(), tenantID, from, to, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询零引用证书失败")

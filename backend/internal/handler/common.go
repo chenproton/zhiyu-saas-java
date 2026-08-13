@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -69,8 +71,7 @@ func validatePassword(password string) error {
 }
 
 func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+	return store.IsUniqueViolation(err)
 }
 
 // isForeignKeyViolation 判断是否为外键约束冲突（用于区分"被引用不可删"与内部错误）。
@@ -163,6 +164,19 @@ func parsePageLimit(s string, defaultVal int) (int, error) {
 	return store.ParsePageLimit(s, defaultVal)
 }
 
+// parseLimitOffset 解析 limit/offset 查询参数并钳制到合法范围。
+// 非法/越界参数回落到默认值（与全站 list 接口的容忍语义一致）。
+func parseLimitOffset(r *http.Request, defaultLimit int) (limit, offset int) {
+	limit = defaultLimit
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), defaultLimit); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		offset = v
+	}
+	return limit, offset
+}
+
 // parseDateRange 解析 startDate/endDate（YYYY-MM-DD）查询参数为时间范围。
 // 两个参数均可省略；endDate 按"含当天"处理（内部转换为次日零点开区间）。
 // 放在 handler 层是因为它只做 HTTP 查询参数的解析校验，无 SQL 语义。
@@ -192,6 +206,18 @@ func parseDateRange(w http.ResponseWriter, r *http.Request) (from, to *time.Time
 		to = &t
 	}
 	return from, to, true
+}
+
+// safeHandler 以 panic-recover 兜底执行 handler 主体，避免 panic 直接击穿 HTTP 栈。
+// label 用于日志定位（如 "[CloneCourse]"）。
+func safeHandler(w http.ResponseWriter, r *http.Request, label string, fn func()) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error(label+" panic recovered", "panic", rec, "stack", string(debug.Stack()))
+			respondServerError(w, r, fmt.Errorf("panic: %v", rec), "服务器内部错误")
+		}
+	}()
+	fn()
 }
 
 // itoa 委托 store.Itoa（唯一实现）。
@@ -367,11 +393,7 @@ func jsonMapBytes(m domain.JSONMap) []byte {
 	if m == nil {
 		return []byte("{}")
 	}
-	b, err := json.Marshal(m)
-	if err != nil {
-		return []byte("{}")
-	}
-	return b
+	return store.MarshalJSONBytes(m, "{}")
 }
 
 func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {

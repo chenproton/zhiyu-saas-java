@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
@@ -37,11 +36,7 @@ func lookupSingleIDByName(ctx context.Context, db store.Queryer, table, tenantID
 
 // jsonBytes 将任意值序列化为 JSON 字节，序列化失败时返回 "[]"。
 func jsonBytes(v any) []byte {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return []byte("[]")
-	}
-	return b
+	return store.MarshalJSONBytes(v, "[]")
 }
 
 // ImportPreviewItem 单条重复记录预览信息。

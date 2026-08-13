@@ -204,8 +204,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 
 // LockTaskEval 以租户+任务粒度的 advisory 锁串行化测评方式保存（须在事务内调用）。
 func (s *TaskEvaluationStore) LockTaskEval(ctx context.Context, q Queryer, tenantID, taskID string) error {
-	_, err := q.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`, tenantID+"|"+taskID)
-	return err
+	return LockByKey(ctx, q, tenantID, taskID)
 }
 
 // MaxMethodVersion 查询任务当前最大版本（乐观锁）。

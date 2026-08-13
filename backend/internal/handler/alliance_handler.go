@@ -94,12 +94,7 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 		Search: r.URL.Query().Get("search"),
 		Status: r.URL.Query().Get("status"),
 	}
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
-		filter.Limit = v
-	}
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		filter.Offset = v
-	}
+	filter.Limit, filter.Offset = parseLimitOffset(r, 200)
 	items, total, err := h.Links.ListBySchoolTenant(r.Context(), tenantID, filter)
 	if err != nil {
 		respondServerError(w, r, err, "查询企业列表失败")
@@ -660,12 +655,7 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 		Search: r.URL.Query().Get("search"),
 		Status: r.URL.Query().Get("status"),
 	}
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
-		filter.Limit = v
-	}
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		filter.Offset = v
-	}
+	filter.Limit, filter.Offset = parseLimitOffset(r, 200)
 	items, total, err := h.Store.ListByEnterpriseIDs(r.Context(), enterpriseIDs, filter)
 	if err != nil {
 		respondServerError(w, r, err, "查询专家列表失败")
@@ -1001,17 +991,7 @@ func (h *AllianceHandler) listJobBrands(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	search := r.URL.Query().Get("search")
-	limit, offset := 20, 0
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := parseInt(v, 0); err == nil && n > 0 {
-			limit = n
-		}
-	}
-	if v := r.URL.Query().Get("offset"); v != "" {
-		if n, err := parseInt(v, 0); err == nil && n >= 0 {
-			offset = n
-		}
-	}
+	limit, offset := parseLimitOffset(r, 20)
 	items, total, err := h.Store.ListJobBrands(r.Context(), tenantID, search, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询品牌列表失败")
@@ -1033,17 +1013,7 @@ func (h *AllianceHandler) listEmployerBrands(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	search := r.URL.Query().Get("search")
-	limit, offset := 20, 0
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := parseInt(v, 0); err == nil && n > 0 {
-			limit = n
-		}
-	}
-	if v := r.URL.Query().Get("offset"); v != "" {
-		if n, err := parseInt(v, 0); err == nil && n >= 0 {
-			offset = n
-		}
-	}
+	limit, offset := parseLimitOffset(r, 20)
 	items, total, err := h.Store.ListEmployerBrands(r.Context(), tenantID, search, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询品牌列表失败")

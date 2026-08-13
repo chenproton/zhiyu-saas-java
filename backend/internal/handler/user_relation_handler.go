@@ -31,14 +31,7 @@ func (h *UserRelationHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := 50
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
-		limit = v
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 50)
 
 	items, total, err := h.Service.List(r.Context(), effectiveTenantID, r.URL.Query().Get("search"), limit, offset)
 	if err != nil {

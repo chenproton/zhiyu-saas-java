@@ -42,14 +42,7 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	limit := 200
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
-		limit = v
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 200)
 
 	items, total, err := h.Service.ListCourseResources(r.Context(), tenantID, r.URL.Query().Get("courseId"), r.URL.Query().Get("search"), limit, offset)
 	if err != nil {

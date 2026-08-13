@@ -69,14 +69,7 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := 50
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
-		limit = v
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 50)
 
 	filter := store.ResourceFilter{
 		Search:       r.URL.Query().Get("search"),
@@ -135,14 +128,7 @@ func (h *ResourceLibraryHandler) UncitedList(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	limit, err := parsePageLimit(r.URL.Query().Get("limit"), 20)
-	if err != nil {
-		limit = 20
-	}
-	offset := 0
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
+	limit, offset := parseLimitOffset(r, 20)
 	items, total, err := h.Service.ListUncitedResources(r.Context(), tenantID, r.URL.Query().Get("resourceType"), from, to, limit, offset)
 	if err != nil {
 		respondServerError(w, r, err, "查询零引用资源失败")

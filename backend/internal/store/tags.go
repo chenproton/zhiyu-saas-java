@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -16,8 +15,7 @@ var ErrDuplicateTagName = errors.New("duplicate tag name")
 
 // isUniqueViolation 判断是否为唯一键冲突（store 层独立实现，不依赖 handler 包）。
 func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+	return IsUniqueViolation(err)
 }
 
 // TagStore 标签持久化：标签 CRUD、资源绑定关系维护、绑定批量查询。
