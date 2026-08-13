@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
@@ -25,8 +24,6 @@ import {
   normalizeEnterpriseInfo,
   type EnterpriseInfo,
 } from '@/components/alliance/independent-enterprise-form'
-import { FormFieldRow } from '@/components/shared/form-field-row'
-import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { EmployerBrand, AllianceEnterprise } from '@/lib/types'

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +14,6 @@ import { Loader2 } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
-import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import {

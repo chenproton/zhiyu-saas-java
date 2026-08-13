@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -38,8 +37,6 @@ import {
   normalizeEnterpriseInfo,
   type EnterpriseInfo,
 } from '@/components/alliance/independent-enterprise-form'
-import { FormFieldRow } from '@/components/shared/form-field-row'
-import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
