@@ -145,8 +145,10 @@ export const importExportApi = {
       | 'alliance-agreements'
       | 'alliance-permissions'
       | 'alliance-brands',
+    extraQuery?: Record<string, string>,
   ) => {
-    return authedFetch(`/templates/${entity}`)
+    const suffix = extraQuery ? `?${new URLSearchParams(extraQuery).toString()}` : ''
+    return authedFetch(`/templates/${entity}${suffix}`)
   },
   downloadQuestionTemplate: (bankId: string) => {
     return authedFetch(`/templates/question-banks/${bankId}/questions`)

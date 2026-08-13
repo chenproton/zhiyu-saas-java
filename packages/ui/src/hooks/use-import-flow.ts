@@ -110,7 +110,7 @@ export function useImportFlow({
   const handleDownloadTemplate = async () => {
     setIsDownloading(true)
     try {
-      const res = await importExportApi.downloadTemplate(importType)
+      const res = await importExportApi.downloadTemplate(importType, extraQuery)
       downloadBlob(await res.blob(), templateFileName)
     } catch (err: unknown) {
       toast({
