@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Trash2, Loader2, UserRound, Pencil } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'

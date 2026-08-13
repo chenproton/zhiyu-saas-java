@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import {
   AllianceDetailShell,
+  DetailEmpty,
   DetailInfoBlock,
   DetailSectionCard,
   type DetailStat,

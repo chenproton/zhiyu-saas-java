@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MultiSelect } from '@/components/ui/multi-select'
+import { ComboboxSelect } from '@zhiyu/ui'
 import { FormFieldRow, FormFieldGrid, IconInput } from '@/components/shared/form-field-row'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import {
@@ -138,7 +138,9 @@ export function EnterpriseProfileForm({
             </FormFieldRow>
           </FormFieldGrid>
           <FormFieldRow label={t('关联二级学院')}>
-            <MultiSelect
+            <ComboboxSelect
+              multiple
+              className="w-full"
               options={colleges.map((name) => ({ label: name, value: name }))}
               value={value.secondaryColleges || []}
               onChange={(v: string[]) => set({ secondaryColleges: v })}
