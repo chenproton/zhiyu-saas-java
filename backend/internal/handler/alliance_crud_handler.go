@@ -402,9 +402,6 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 		if t.ExpertID == nil {
 			t.ExpertID = existing.ExpertID
 		}
-		if len(t.Data) == 0 {
-			t.Data = existing.Data
-		}
 		return ""
 	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceBrand) error {

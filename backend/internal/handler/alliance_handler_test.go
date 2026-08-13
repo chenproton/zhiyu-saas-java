@@ -282,7 +282,56 @@ func TestAllianceProject_PartialUpdatePreservesFields(t *testing.T) {
 	}
 }
 
-// TestAllianceProject_PartialUpdatePreservesPublicFlag 项目部分更新不携带 isPublic 时保留已有状态。
+// TestAllianceProject_PartialUpdatePreservesPublicFlag 项目部分更新不携带 isPublic 时保留已有状态，
+// 禁止 PUT 全列覆盖把前台展示开关重置为 false。
+func TestAllianceProject_PartialUpdatePreservesPublicFlag(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	h := newAllianceTestHandler(env)
+	r := chi.NewRouter()
+	r.Post("/alliance/projects", h.CreateProject)
+	r.Put("/alliance/projects/{id}", h.UpdateProject)
+	r.Get("/alliance/projects/{id}", h.GetProject)
+
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa22", domain.RoleTeacher)
+	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
+		return doWithClaims(r, method, path, body, claims)
+	}
+
+	create := do(http.MethodPost, "/alliance/projects", map[string]interface{}{
+		"name":     "部分更新测试合作项目",
+		"isPublic": true,
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create: expected 201, got %d: %s", create.Code, create.Body.String())
+	}
+	var project domain.AllianceProject
+	if err := json.Unmarshal(create.Body.Bytes(), &project); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+	defer env.DB.Exec(context.Background(), "DELETE FROM alliance_projects WHERE id = $1", project.ID)
+
+	// 模拟局部保存：仅携带 description
+	upd := do(http.MethodPut, "/alliance/projects/"+project.ID, map[string]interface{}{
+		"description": "仅更新描述",
+	})
+	if upd.Code != http.StatusOK {
+		t.Fatalf("update: expected 200, got %d: %s", upd.Code, upd.Body.String())
+	}
+
+	got := do(http.MethodGet, "/alliance/projects/"+project.ID, nil)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get: expected 200, got %d", got.Code)
+	}
+	var after domain.AllianceProject
+	if err := json.Unmarshal(got.Body.Bytes(), &after); err != nil {
+		t.Fatalf("unmarshal get: %v", err)
+	}
+	if after.IsPublic == nil || !*after.IsPublic {
+		t.Fatalf("isPublic 未保留: %+v", after.IsPublic)
+	}
+}
 
 // TestAllianceBrand_PartialUpdatePreservesPublicFlag 品牌详情页保存局部内容（如专业特色课程 data）
 // 不携带 isPublic/isFeatured/sortOrder 时，必须保留既有“前台展示/推荐/排序”状态，

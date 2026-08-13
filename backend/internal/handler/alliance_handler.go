@@ -567,27 +567,44 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusNotFound, "里程碑不存在")
 		return
 	}
-	var m domain.AllianceProjectMilestone
+	// 指针包装区分「未携带」与「默认值」：isCompleted/sortOrder 未携带时回退已有值，
+	// 防止局部编辑把已完成里程碑重置为未完成、排序重置为 0
+	var m struct {
+		ProjectID     string  `json:"projectId"`
+		Name          string  `json:"name"`
+		Description   *string `json:"description"`
+		DueDate       *string `json:"dueDate"`
+		CompletedDate *string `json:"completedDate"`
+		IsCompleted   *bool   `json:"isCompleted"`
+		SortOrder     *int    `json:"sortOrder"`
+	}
 	if !decodeBody(w, r, &m) {
 		return
 	}
 	// 部分更新兜底：缺失字段回退已有值，防止全列覆盖清空数据
-	if m.ProjectID == "" {
-		m.ProjectID = existing.ProjectID
+	milestone := *existing
+	if m.ProjectID != "" {
+		milestone.ProjectID = m.ProjectID
 	}
-	if m.Name == "" {
-		m.Name = existing.Name
+	if m.Name != "" {
+		milestone.Name = m.Name
 	}
-	if m.Description == nil {
-		m.Description = existing.Description
+	if m.Description != nil {
+		milestone.Description = m.Description
 	}
-	if m.DueDate == nil {
-		m.DueDate = existing.DueDate
+	if m.DueDate != nil {
+		milestone.DueDate = m.DueDate
 	}
-	if m.CompletedDate == nil {
-		m.CompletedDate = existing.CompletedDate
+	if m.CompletedDate != nil {
+		milestone.CompletedDate = m.CompletedDate
 	}
-	if err := h.Store.UpdateMilestone(r.Context(), id, tenantID, &m); err != nil {
+	if m.IsCompleted != nil {
+		milestone.IsCompleted = *m.IsCompleted
+	}
+	if m.SortOrder != nil {
+		milestone.SortOrder = *m.SortOrder
+	}
+	if err := h.Store.UpdateMilestone(r.Context(), id, tenantID, &milestone); err != nil {
 		respondServerError(w, r, err, "更新失败")
 		return
 	}
@@ -943,28 +960,42 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusNotFound, "权限不存在")
 		return
 	}
-	var p domain.AlliancePermission
-	if !decodeBody(w, r, &p) {
+	// 指针包装区分「未携带」与「默认值」：isEnabled 未携带时回退已有状态，
+	// 防止局部更新把已启用权限重置为停用
+	var req struct {
+		AccountName         string          `json:"accountName"`
+		AccountType         string          `json:"accountType"`
+		EnterpriseID        *string         `json:"enterpriseId"`
+		ExpertID            *string         `json:"expertId"`
+		IsEnabled           *bool           `json:"isEnabled"`
+		ResourcePermissions json.RawMessage `json:"resourcePermissions"`
+		PlatformPermissions json.RawMessage `json:"platformPermissions"`
+	}
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	// 部分更新兜底：请求未携带的字段回退到已存在记录，避免 PUT 全列覆盖清空数据。
-	if p.AccountName == "" {
-		p.AccountName = existing.AccountName
+	p := *existing
+	if req.AccountName != "" {
+		p.AccountName = req.AccountName
 	}
-	if p.AccountType == "" {
-		p.AccountType = existing.AccountType
+	if req.AccountType != "" {
+		p.AccountType = req.AccountType
 	}
-	if p.EnterpriseID == nil {
-		p.EnterpriseID = existing.EnterpriseID
+	if req.EnterpriseID != nil {
+		p.EnterpriseID = req.EnterpriseID
 	}
-	if p.ExpertID == nil {
-		p.ExpertID = existing.ExpertID
+	if req.ExpertID != nil {
+		p.ExpertID = req.ExpertID
 	}
-	if len(p.ResourcePermissions) == 0 {
-		p.ResourcePermissions = existing.ResourcePermissions
+	if req.IsEnabled != nil {
+		p.IsEnabled = *req.IsEnabled
 	}
-	if len(p.PlatformPermissions) == 0 {
-		p.PlatformPermissions = existing.PlatformPermissions
+	if len(req.ResourcePermissions) > 0 {
+		p.ResourcePermissions = req.ResourcePermissions
+	}
+	if len(req.PlatformPermissions) > 0 {
+		p.PlatformPermissions = req.PlatformPermissions
 	}
 	if err := h.Store.UpdatePermission(r.Context(), id, tenantID, &p); err != nil {
 		respondServerError(w, r, err, "更新失败")
@@ -1068,20 +1099,26 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// SortOrder 指针区分「未携带」与 0：局部更新（如仅改名）不重置排序
 	var req struct {
 		Name      string `json:"name"`
-		SortOrder int    `json:"sortOrder"`
+		SortOrder *int   `json:"sortOrder"`
 	}
 	if !decodeBody(w, r, &req) {
 		return
 	}
 	// 部分更新兜底：未携带 name 时回退现有值，防止全列覆盖清空字典项名
-	if req.Name == "" {
-		req.Name = existing.Name
+	name := existing.Name
+	if req.Name != "" {
+		name = req.Name
+	}
+	sortOrder := existing.SortOrder
+	if req.SortOrder != nil {
+		sortOrder = *req.SortOrder
 	}
 	if err := h.Store.UpdateDictionary(r.Context(), id, tenantID, &domain.AllianceDictionary{
-		Name:      req.Name,
-		SortOrder: req.SortOrder,
+		Name:      name,
+		SortOrder: sortOrder,
 	}); err != nil {
 		respondServerError(w, r, err, "更新失败")
 		return
@@ -1250,6 +1287,11 @@ func (h *AllianceHandler) ListBrandMajorRankConfigs(w http.ResponseWriter, r *ht
 
 // SaveBrandMajorRankConfigs 批量保存专业排名启用配置（路由挂 RequireAllianceManager）。
 func (h *AllianceHandler) SaveBrandMajorRankConfigs(w http.ResponseWriter, r *http.Request) {
+	// 与同文件其余写接口一致：handler 内补权限校验（纵深防御，不依赖路由中间件）
+	if !canManageAlliance(middleware.CurrentUser(r)) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
 	var body struct {
 		Configs []domain.BrandMajorRankConfig `json:"configs"`
 	}
@@ -1435,6 +1477,11 @@ func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Reque
 // 仅控制专家在联盟首页等 is_public 双控场景的展示，企业详情页"专家团队"不受影响。
 // 越权防线与 GetExpert 一致：专家所属企业必须已引入本校。
 func (h *AllianceHandler) ToggleExpertDisplay(w http.ResponseWriter, r *http.Request) {
+	// 与同文件其余写接口一致：handler 内补权限校验（纵深防御，不依赖路由中间件）
+	if !canManageAlliance(middleware.CurrentUser(r)) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return

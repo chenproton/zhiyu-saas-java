@@ -178,6 +178,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			workflow = wf
 		}
 	}
+	// 有工作流但加载失败：直接报错而非静默只记历史（此前会返回 200 让操作者误以为审批已生效）
+	if record.WorkflowID != nil && workflow == nil {
+		respondServerError(w, r, fmt.Errorf("workflow %s not found", *record.WorkflowID), "审批流程加载失败")
+		return
+	}
 
 	// 决策回调在事务锁内基于最新历史执行，保证并发评审下：
 	// 历史互相不覆盖、最后一名审批人必然触发推进、重复提交不重复追加。

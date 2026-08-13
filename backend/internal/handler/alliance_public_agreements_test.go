@@ -165,16 +165,19 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		if strings.Contains(body, secretContent) || strings.Contains(body, secretAttachment) {
 			t.Fatalf("协议正文/附件不应出现在公开响应: %s", body)
 		}
-		// 结构层面确认 DTO 不含 content/attachments 键
-		var raw []map[string]json.RawMessage
-		if err := json.Unmarshal([]byte(body[strings.Index(body, "["):strings.LastIndex(body, "]")+1]), &raw); err == nil {
-			for _, m := range raw {
-				if _, ok := m["content"]; ok {
-					t.Fatalf("公开 DTO 不应含 content 键: %s", body)
-				}
-				if _, ok := m["attachments"]; ok {
-					t.Fatalf("公开 DTO 不应含 attachments 键: %s", body)
-				}
+		// 结构层面确认 DTO 不含 content/attachments 键（完整解析，失败即断言，避免字符串切片越界掩盖错误）
+		var resp struct {
+			Items []map[string]json.RawMessage `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(body), &resp); err != nil {
+			t.Fatalf("解析公开响应失败: %v（原始: %s）", err, body)
+		}
+		for _, m := range resp.Items {
+			if _, ok := m["content"]; ok {
+				t.Fatalf("公开 DTO 不应含 content 键: %s", body)
+			}
+			if _, ok := m["attachments"]; ok {
+				t.Fatalf("公开 DTO 不应含 attachments 键: %s", body)
 			}
 		}
 	})
