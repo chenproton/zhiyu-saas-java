@@ -32,7 +32,7 @@ import {
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import { Footer } from '@/components/portal/footer'
 import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
-import { formatDate } from '@/lib/format-utils'
+import { formatDate, formatSize } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-graph'
 import { FavoriteButton } from '@/components/shared/favorite-button'
@@ -458,15 +458,7 @@ export default function CourseDetailPage() {
                                       >
                                         {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                                       </span>
-                                      {r.size && (
-                                        <span>
-                                          {r.size < 1024
-                                            ? `${r.size}B`
-                                            : r.size < 1048576
-                                              ? `${(r.size / 1024).toFixed(1)}KB`
-                                              : `${(r.size / 1048576).toFixed(1)}MB`}
-                                        </span>
-                                      )}
+                                      {r.size && <span>{formatSize(r.size)}</span>}
                                     </div>
                                   </div>
                                   {r.url && (

@@ -59,7 +59,7 @@ import {
   Check,
 } from 'lucide-react'
 import { platformModuleDefs } from '@/lib/navigation-config'
-import { useToast } from '@zhiyu/ui'
+import { useDebouncedValue, useToast } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DateInput } from '@/components/shared/date-input'
 import { LogTableShell } from '@/components/shared/log-table-shell'
@@ -186,10 +186,10 @@ export default function SuperAdminPage() {
   const [tenants, setTenants] = useState<AdminTenant[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 300)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTenant, setEditingTenant] = useState<AdminTenant | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -525,20 +525,14 @@ export default function SuperAdminPage() {
 
   // 仅搜索输入防抖：停止输入 300ms 后回到第 1 页并刷新；翻页立即请求，不再经过防抖
   useEffect(() => {
-    if (!authenticated) return
-    const timer = setTimeout(() => {
-      setPage(1)
-      setDebouncedSearch(searchTerm)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchTerm, authenticated])
+    queueMicrotask(() => setPage(1))
+  }, [debouncedSearch])
 
   // Tab 切换：回到第 1 页并立即刷新（不经过搜索防抖）
   const switchTab = (tab: 'school' | 'enterprise') => {
     if (tab === tenantTab) return
     setTenantTab(tab)
     setSearchTerm('')
-    setDebouncedSearch('')
     setPage(1)
   }
 

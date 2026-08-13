@@ -13,10 +13,10 @@ import { useT } from '@/lib/i18n/locale-provider'
 import type { EvalMethodSubmitPayload, EvalMethodViewModel } from '@/components/shared/eval-method-card'
 import {
   LearnPage,
-  SCENE_RESOURCE_TYPE_ICONS,
   type LearnPageLabels,
   type LearnUnit,
 } from '@/components/shared/learn-page'
+import { SCENE_RESOURCE_TYPE_ICONS } from '@/lib/resource-type-constants'
 
 import {
   scenarioApi,

@@ -61,9 +61,9 @@ import {
   TYPE_ICONS,
   TYPE_COLORS,
   TYPE_BG,
-  formatSize,
   fileTypesWithUpload,
 } from '@/lib/resource-type-constants'
+import { formatSize } from '@/lib/format-utils'
 import { useResourceCrud } from './use-resource-crud'
 import { ResourceUploadZone } from './resource-upload-zone'
 import { ResourceBatchImportDialog } from './resource-batch-import-dialog'

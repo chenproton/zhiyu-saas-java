@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useDebouncedValue } from '@zhiyu/ui'
 import {
   Users as UsersIcon,
   Building,
@@ -144,7 +145,7 @@ export function UserSelector({
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
-  const [debouncedUserSearch, setDebouncedUserSearch] = useState('')
+  const debouncedUserSearch = useDebouncedValue(userSearch, 300)
   const [selectedIds, setSelectedIds] = useState<string[]>(value)
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
@@ -203,12 +204,6 @@ export function UserSelector({
       setOrgLoading(false)
     }
   }, [tenantId])
-
-  // 搜索输入 300ms 防抖，避免每次击键触发一次用户列表请求
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedUserSearch(userSearch), 300)
-    return () => clearTimeout(timer)
-  }, [userSearch])
 
   const loadUsers = useCallback(async () => {
     // 专家视图下右侧列表来自 mentorOptions，本地过滤，无需请求用户接口

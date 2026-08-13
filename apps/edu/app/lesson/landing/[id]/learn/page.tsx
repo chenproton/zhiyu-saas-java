@@ -15,10 +15,10 @@ import {
 } from '@/components/shared/eval-method-card'
 import {
   LearnPage,
-  LESSON_RESOURCE_TYPE_ICONS,
   type LearnPageLabels,
   type LearnUnit,
 } from '@/components/shared/learn-page'
+import { LESSON_RESOURCE_TYPE_ICONS } from '@/lib/resource-type-constants'
 import { HybridModulesView } from '@/components/lesson/student/hybrid-modules-view'
 
 import {

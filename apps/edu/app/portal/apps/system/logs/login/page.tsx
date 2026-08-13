@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useDebouncedValue } from '@zhiyu/ui'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { SearchInput } from '@/components/shared/search-input'
@@ -24,14 +25,8 @@ export default function LoginLogsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 300)
   const [page, setPage] = useState(1)
-
-  // 搜索输入 300ms 防抖，避免每次击键触发万级记录全量拉取
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
-    return () => clearTimeout(timer)
-  }, [searchTerm])
 
   const loadLogs = useCallback(
     async (targetPage = page) => {

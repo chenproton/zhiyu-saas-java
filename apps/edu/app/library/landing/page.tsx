@@ -1,24 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import {
-  Eye,
-  Building2,
-  GraduationCap,
-  Clock,
-  Video,
-  FileText,
-  Table,
-  Image as ImageIcon,
-  Link2,
-  Music,
-  Archive,
-  MapPin,
-  Wrench,
-  Cpu,
-  Package,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Eye, Building2, GraduationCap, Clock, Package } from 'lucide-react'
 import {
   ResourcePreviewModal,
   usePreviewResources,
@@ -29,8 +12,11 @@ import {
 import { fetchAllPages } from '@/lib/fetch-all'
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
-import { formatSize } from '@/lib/resource-type-constants'
-import { formatDateTime } from '@/lib/format-utils'
+import {
+  LIBRARY_LANDING_TYPE_COLORS,
+  LIBRARY_LANDING_TYPE_ICONS,
+} from '@/lib/resource-type-constants'
+import { formatDateTime, formatSize } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import { LandingFilterRow } from '@/components/shared/landing-filter-row'
 import { LandingPagination } from '@/components/shared/landing-pagination'
@@ -54,34 +40,6 @@ const TYPE_EMOJI: Record<string, string> = {
   other: '📦',
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  video: '#3b82f6',
-  document: '#f97316',
-  spreadsheet: '#22c55e',
-  image: '#a855f7',
-  link: '#06b6d4',
-  audio: '#ec4899',
-  venue: '#ef4444',
-  facility: '#64748b',
-  software: '#6366f1',
-  archive: '#14b8a6',
-  other: '#78716c',
-}
-
-const TYPE_ICONS: Record<string, LucideIcon> = {
-  video: Video,
-  document: FileText,
-  spreadsheet: Table,
-  image: ImageIcon,
-  link: Link2,
-  audio: Music,
-  archive: Archive,
-  venue: MapPin,
-  facility: Wrench,
-  software: Cpu,
-  other: Package,
-}
-
 const STAT_GRADIENTS = [
   'from-primary to-primary/80',
   'from-primary/90 to-primary/70',
@@ -99,9 +57,9 @@ function ResourceCard({
   onPreview: (resource: ResourceLibraryItem) => void
 }) {
   const t = useT()
-  const color = TYPE_COLORS[resource.resourceType] || TYPE_COLORS.other
+  const color = LIBRARY_LANDING_TYPE_COLORS[resource.resourceType] || LIBRARY_LANDING_TYPE_COLORS.other
   const hasPreview = !!resource.url
-  const TypeIcon = TYPE_ICONS[resource.resourceType] || Package
+  const TypeIcon = LIBRARY_LANDING_TYPE_ICONS[resource.resourceType] || Package
   const coverStyle = resource.thumbnail
     ? {
         backgroundImage: `url('${resource.thumbnail}')`,
@@ -372,7 +330,7 @@ export default function LibraryLandingPage() {
           ctaLabel: t('浏览资源'),
         }}
         stats={topTypes.map((s, i) => ({
-          icon: TYPE_ICONS[s.type] || Package,
+          icon: LIBRARY_LANDING_TYPE_ICONS[s.type] || Package,
           value: s.count,
           label: RESOURCE_TYPE_LABELS[s.type] || s.type,
           gradient: STAT_GRADIENTS[i % STAT_GRADIENTS.length],

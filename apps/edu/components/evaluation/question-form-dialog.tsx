@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useClickOutside } from '@zhiyu/ui'
 import {
   Dialog,
   DialogContent,
@@ -165,15 +166,7 @@ export function QuestionFormDialog({
     })
   }, [question, open, defaultType, answerToIndexes])
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (knowledgeRef.current && !knowledgeRef.current.contains(e.target as Node)) {
-        setKnowledgeOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useClickOutside(knowledgeRef, () => setKnowledgeOpen(false))
 
   const blankCount = useMemo(() => {
     const matches = content.match(/\{(\d+)\}/g)

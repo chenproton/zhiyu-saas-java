@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { UnderlineTabs, useToast } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { FormFieldRow } from '@/components/shared/form-field-row'
@@ -287,17 +287,12 @@ export default function AllianceDictionariesPage() {
           {t('维护联盟业务字典，供各模块下拉使用')}
         </p>
       </div>
-      <div className="flex gap-1 border-b overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.dictType}
-            onClick={() => setActive(tab.dictType)}
-            className={`px-4 py-2 text-sm border-b-2 whitespace-nowrap transition-colors ${active === tab.dictType ? 'border-primary text-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        items={tabs.map((tab) => ({ key: tab.dictType, label: tab.label }))}
+        activeKey={active}
+        onSelect={setActive}
+        className="gap-1"
+      />
       {tabs
         .filter((tab) => tab.dictType === active)
         .map((tab) => (
