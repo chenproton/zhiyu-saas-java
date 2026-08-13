@@ -303,7 +303,7 @@ ALTER TABLE exam_questions ADD CONSTRAINT exam_questions_question_id_fkey
 13. **【明确化】C 组**：正式试卷再发布不回溯刷新既有 usage.exam_version、"绑定版本"解析主体=前端工作台拼 `?v=`、temp exam 两路径状态统一、快照表无 FK 系刻意设计、bundle 契约=教学内容+测评配置、versionedContentTables 白名单仅 5 表 → 8.10-8.15。
 14. **【优化】D 组**：`?v=` 链接共 9 处且版本字段需后端配套下发（建议 `lib/learn-links.ts` 统一拼链接）、data-provider 缓存升级为必修前置、BuildCourseSnapshot 显式含 eval_data、scene 学习页全表拉取由 bundle 顺带修复、random_draw 优先 result 内快照 bundle 兜底 → 6、10。
 
-顺带发现的两个既有 bug，仅记录在案、不在本方案范围：
+顺带发现的两个既有 bug（已在阶段 2b 顺带修复）：
 
-- `store/exam_usages.go:156-159` Delete SQL 缺 tenant_id 条件（handler 层已校验租户，SQL 级防护缺失）。
-- `store/alliance_source_edit_store.go:153/169` scenario merge 中 draft 临时改名执行两次（冗余）。
+- ~~`store/exam_usages.go:156-159` Delete SQL 缺 tenant_id 条件~~（已补 tenant_id 条件）。
+- ~~`store/alliance_source_edit_store.go:153/169` scenario merge 中 draft 临时改名执行两次（冗余）~~（已去重；同函数「（编辑稿）」后缀字节比较永假导致的未剥离问题一并修复为 `strings.TrimSuffix`）。

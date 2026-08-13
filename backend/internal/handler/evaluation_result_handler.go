@@ -30,6 +30,8 @@ type SubmitResultRequest struct {
 	SubjectiveContent json.RawMessage `json:"subjectiveContent,omitempty"`
 	DrawnQuestions    json.RawMessage `json:"drawnQuestions,omitempty"`
 	EvalPointScores   json.RawMessage `json:"evalPointScores,omitempty"`
+	// ExpectedVersion 页面加载时的资源版本提示（文档 13.B2）：服务端校验快照存在则采纳，否则回退最新。
+	ExpectedVersion string `json:"expectedVersion,omitempty"`
 }
 
 type GradeResultRequest struct {
@@ -141,7 +143,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 	if req.EvaluatorID != nil && *req.EvaluatorID != "" {
 		evaluatorID = req.EvaluatorID
 	}
-	// sceneId 为空串时同样存 NULL
+	// sceneId 为空串时同样存 NULL；落库值最终以 store 层 task_id 反查为准（文档 13.A6，客户端传值仅作兼容透传）
 	var sceneID *string
 	if req.SceneID != nil && *req.SceneID != "" {
 		sceneID = req.SceneID
@@ -164,6 +166,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		TenantID:          tenantID,
 		TaskID:            req.TaskID,
 		SceneID:           sceneID,
+		ExpectedVersion:   req.ExpectedVersion,
 		MethodKey:         req.MethodKey,
 		EvaluateeID:       req.EvaluateeID,
 		EvaluatorID:       evaluatorID,

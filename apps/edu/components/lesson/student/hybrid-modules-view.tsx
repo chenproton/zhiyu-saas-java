@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EVAL_METHOD_LABELS } from '@/lib/types'
 import { evalRuleConfigToMethods, type EvalRuleConfig } from '@/lib/types/evaluation'
+import { examHref } from '@/lib/learn-links'
 import type { HybridNodeModule } from '@zhiyu/api-client'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
@@ -262,7 +263,13 @@ function EvalModuleCards({
     const examId = m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
-    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${moduleKey}:${m.methodKey}&usage=${usageId || ''}&course=${courseId}`
+    // 考试作答页只消费 node/method/usage/course；试卷版本由对端按 usage.examVersion 解析
+    return examHref(examId, {
+      node: nodeId,
+      method: `${moduleKey}:${m.methodKey}`,
+      usage: usageId,
+      course: courseId,
+    })
   }
 
   return (

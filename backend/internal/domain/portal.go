@@ -54,6 +54,8 @@ type WorkspaceScheduleEvent struct {
 	ClassName  string `json:"className,omitempty"`
 	ScenarioID string `json:"scenarioId,omitempty"`
 	CourseID   string `json:"courseId,omitempty"`
+	// ResourceVersion 排课 stamp 的资源版本；考试事件为 exam_version（文档 5.3 下发）。
+	ResourceVersion *string `json:"resourceVersion,omitempty"`
 }
 
 type WorkspaceStats struct {
@@ -98,6 +100,8 @@ type WorkspaceCourse struct {
 	Status       string `json:"status"`
 	NextTask     string `json:"nextTask,omitempty"`
 	NextDeadline string `json:"nextDeadline,omitempty"`
+	// ResourceVersion 学生班级已发布排课的资源版本（文档 5.3 下发）。
+	ResourceVersion *string `json:"resourceVersion,omitempty"`
 }
 
 type WorkspaceSceneTask struct {
@@ -112,6 +116,8 @@ type WorkspaceSceneTask struct {
 	Score       *int     `json:"score,omitempty"`
 	TotalScore  int      `json:"totalScore"`
 	Difficulty  string   `json:"difficulty"`
+	// ResourceVersion 学生班级已发布排课的场景版本（文档 5.3 下发）。
+	ResourceVersion *string `json:"resourceVersion,omitempty"`
 }
 
 type WorkspaceExam struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -29,7 +30,7 @@ func (s *ExamResultStore) List(ctx context.Context, p ListParams, cfg ListQueryC
 func (s *ExamResultStore) ListConfig() ListQueryConfig[domain.ExamResult] {
 	return ListQueryConfig[domain.ExamResult]{
 		Table:         "exam_results er LEFT JOIN majors m ON m.id = er.major_id",
-		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.grading_status, er.grading_scores, er.grading_comment, er.grader_id, er.graded_at, er.submit_time, er.created_at",
+		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.grading_status, er.grading_scores, er.grading_comment, er.grader_id, er.graded_at, er.submit_time, er.created_at, er.version",
 		TenantScoped:  true,
 		TenantColumn:  "er.tenant_id",
 		OrderBy:       "er.score DESC, er.submit_time ASC",
@@ -49,7 +50,7 @@ func (s *ExamResultStore) Get(ctx context.Context, id string) (*domain.ExamResul
 		SELECT er.id, er.tenant_id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id,
 			COALESCE(m.name, ''), er.score, er.total_score, er.is_pass, er.answers,
 			er.grading_status, er.grading_scores, er.grading_comment, er.grader_id, er.graded_at,
-			er.submit_time, er.created_at
+			er.submit_time, er.created_at, er.version
 		FROM exam_results er
 		LEFT JOIN majors m ON m.id = er.major_id
 		WHERE er.id = $1
@@ -63,7 +64,7 @@ func (s *ExamResultStore) Get(ctx context.Context, id string) (*domain.ExamResul
 	}
 	var r domain.ExamResult
 	var tenantID *string
-	if err := rows.Scan(&r.ID, &tenantID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &r.Answers, &r.GradingStatus, &r.GradingScores, &r.GradingComment, &r.GraderID, &r.GradedAt, &r.SubmitTime, &r.CreatedAt); err != nil {
+	if err := rows.Scan(&r.ID, &tenantID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &r.Answers, &r.GradingStatus, &r.GradingScores, &r.GradingComment, &r.GraderID, &r.GradedAt, &r.SubmitTime, &r.CreatedAt, &r.Version); err != nil {
 		return nil, err
 	}
 	r.TenantID = tenantID
@@ -122,19 +123,102 @@ func (s *ExamResultStore) UsageTarget(ctx context.Context, usageID string) (*Exa
 	return &t, nil
 }
 
-// UsageExamInfo 查询考试安排的 exam_id 与总分。
-func (s *ExamResultStore) UsageExamInfo(ctx context.Context, usageID string) (string, float64, error) {
-	var examID string
-	var totalScore float64
+// UsageExamRef 查询考试安排绑定的试卷与固化版本（判分快照化的版本来源，文档 5.4）。
+func (s *ExamResultStore) UsageExamRef(ctx context.Context, usageID string) (examID, examVersion string, err error) {
+	err = s.q.QueryRow(ctx, `
+		SELECT exam_id, COALESCE(exam_version, '') FROM exam_usages WHERE id = $1 AND status <> 'draft'
+	`, usageID).Scan(&examID, &examVersion)
+	return examID, examVersion, err
+}
+
+// FetchExamGradingData 判分数据（题目+总分）读取（文档 5.4/13.A5）：
+// examVersion 对应快照存在 → 题目与总分取自快照（exam.total_score 缺省回退快照内题目分值求和）；
+// 快照缺档（历史数据兼容，temp exam 已由兜底写快照）→ 回退 live exam_questions / exams.total_score。
+func (s *ExamResultStore) FetchExamGradingData(ctx context.Context, tenantID, examID, examVersion string) ([]ExamQuestionAnswer, float64, error) {
+	if tenantID != "" && examVersion != "" {
+		data, err := NewSnapshotStore(s.q).GetSnapshot(ctx, tenantID, SnapshotResourceExam, examID, examVersion)
+		if err == nil {
+			return parseExamSnapshotGradingData(data)
+		}
+		if err != ErrNotFound {
+			return nil, 0, err
+		}
+	}
+	questions, err := s.FetchExamQuestions(ctx, examID)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.liveExamTotalScore(ctx, examID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return questions, total, nil
+}
+
+// liveExamTotalScore live 总分：exams.total_score 缺省回退 SUM(exam_questions.score)。
+func (s *ExamResultStore) liveExamTotalScore(ctx context.Context, examID string) (float64, error) {
+	var total float64
 	err := s.q.QueryRow(ctx, `
-		SELECT exam_id,
-			COALESCE(
-				NULLIF((SELECT total_score FROM exams WHERE id = exam_usages.exam_id), 0),
-				(SELECT COALESCE(SUM(score), 0) FROM exam_questions WHERE exam_id = exam_usages.exam_id)
-			)
-		FROM exam_usages WHERE id = $1 AND status <> 'draft'
-	`, usageID).Scan(&examID, &totalScore)
-	return examID, totalScore, err
+		SELECT COALESCE(
+			NULLIF((SELECT total_score FROM exams WHERE id = $1), 0),
+			(SELECT COALESCE(SUM(score), 0) FROM exam_questions WHERE exam_id = $1)
+		)
+	`, examID).Scan(&total)
+	return total, err
+}
+
+// examSnapshotGradingDoc 试卷快照判分字段（jsonb schema 见 snapshot_builders.go 头注释）。
+type examSnapshotGradingDoc struct {
+	Exam struct {
+		TotalScore float64 `json:"total_score"`
+	} `json:"exam"`
+	ExamQuestions []struct {
+		ID     string          `json:"id"`
+		Type   string          `json:"type"`
+		Answer json.RawMessage `json:"answer"`
+		Score  float64         `json:"score"`
+	} `json:"exam_questions"`
+}
+
+// parseExamSnapshotGradingData 从试卷快照 jsonb 解析判分题目与总分。
+func parseExamSnapshotGradingData(data json.RawMessage) ([]ExamQuestionAnswer, float64, error) {
+	var doc examSnapshotGradingDoc
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, 0, fmt.Errorf("parse exam snapshot: %w", err)
+	}
+	questions := make([]ExamQuestionAnswer, 0, len(doc.ExamQuestions))
+	for _, q := range doc.ExamQuestions {
+		questions = append(questions, ExamQuestionAnswer{
+			ID:     q.ID,
+			Type:   q.Type,
+			Answer: parseSnapshotAnswer(q.Answer),
+			Score:  q.Score,
+		})
+	}
+	total := doc.Exam.TotalScore
+	if total == 0 {
+		for _, q := range questions {
+			total += q.Score
+		}
+	}
+	return questions, total, nil
+}
+
+// parseSnapshotAnswer 解析快照内题目答案：answer 列是 text 存 JSON 字符串，
+// to_jsonb 后为 JSON 字符串字面量；兼容直接是 JSON 数组的情况。
+func parseSnapshotAnswer(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		var out []string
+		_ = json.Unmarshal([]byte(s), &out)
+		return out
+	}
+	var out []string
+	_ = json.Unmarshal(raw, &out)
+	return out
 }
 
 // ExamQuestionAnswer 考试题目答案行。
@@ -278,17 +362,18 @@ func (s *ExamResultStore) FetchUserProfile(ctx context.Context, userID string) (
 }
 
 // SaveResult 写入考试结果（幂等 upsert）。gradingStatus 由服务层按是否有主观题决定。
+// 提交固化（文档 5.3）：version 盖章取 exam_usages.exam_version（安排绑定的试卷版本）。
 func (s *ExamResultStore) SaveResult(ctx context.Context, tenantID, usageID, userID string, p *SaveExamResultParams) (*domain.ExamResult, error) {
 	var result domain.ExamResult
 	var submitTime, createdAt time.Time
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO exam_results (tenant_id, exam_usage_id, user_id, student_name, class_name, grade, major_id, score, total_score, is_pass, answers, grading_status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO exam_results (tenant_id, exam_usage_id, user_id, student_name, class_name, grade, major_id, score, total_score, is_pass, answers, grading_status, version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, (SELECT exam_version FROM exam_usages WHERE id = $2))
 		ON CONFLICT (exam_usage_id, user_id)
-		DO UPDATE SET score = EXCLUDED.score, total_score = EXCLUDED.total_score, is_pass = EXCLUDED.is_pass, answers = EXCLUDED.answers, grading_status = EXCLUDED.grading_status, submit_time = NOW()
+		DO UPDATE SET score = EXCLUDED.score, total_score = EXCLUDED.total_score, is_pass = EXCLUDED.is_pass, answers = EXCLUDED.answers, grading_status = EXCLUDED.grading_status, version = EXCLUDED.version, submit_time = NOW()
 		WHERE exam_results.graded_at IS NULL
-		RETURNING id, submit_time, created_at
-	`, tenantID, usageID, userID, p.StudentName, p.ClassName, p.Grade, p.MajorID, p.Score, p.TotalScore, p.IsPass, p.Answers, p.GradingStatus).Scan(&result.ID, &submitTime, &createdAt)
+		RETURNING id, submit_time, created_at, version
+	`, tenantID, usageID, userID, p.StudentName, p.ClassName, p.Grade, p.MajorID, p.Score, p.TotalScore, p.IsPass, p.Answers, p.GradingStatus).Scan(&result.ID, &submitTime, &createdAt, &result.Version)
 	if err == pgx.ErrNoRows {
 		// 已被教师评分的结果禁止重交覆盖（重交保护的第二道防线）
 		return nil, ErrAlreadyGraded
@@ -326,6 +411,8 @@ type SaveExamResultParams struct {
 }
 
 // SyncCourseEvaluation 同步课程统一评价（考试目标为课程时）。
+// version 盖章（文档 5.3/13.A7）：INSERT 取 exam_usages.exam_version；
+// 已评分行 version 不动，未评分行随 EXCLUDED 更新。
 func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) error {
 	if methodKey == "" {
 		methodKey = "paper"
@@ -347,25 +434,27 @@ func (s *ExamResultStore) SyncCourseEvaluation(ctx context.Context, tenantID, us
 		status = "pending"
 	}
 	_, err = s.q.Exec(ctx, `
-		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers, version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (SELECT exam_version FROM exam_usages WHERE id = $9))
 		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
 		DO UPDATE SET
 			total_score = CASE WHEN course_evaluation_results.status = 'evaluated' THEN course_evaluation_results.total_score ELSE EXCLUDED.total_score END,
 			max_score = EXCLUDED.max_score,
 			status = CASE WHEN course_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
 			objective_answers = EXCLUDED.objective_answers,
+			version = CASE WHEN course_evaluation_results.status = 'evaluated' THEN course_evaluation_results.version ELSE EXCLUDED.version END,
 			graded_at = CASE
 				WHEN course_evaluation_results.status = 'evaluated' THEN course_evaluation_results.graded_at
 				WHEN EXCLUDED.status = 'evaluated' THEN NOW()
 				ELSE NULL
 			END,
 			updated_at = NOW()
-	`, tenantID, courseID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+	`, tenantID, courseID, methodKey, userID, status, score, maxScore, objectiveAnswers, usageID)
 	return err
 }
 
 // SyncNodeEvaluation 同步节点统一评价（考试目标为节点时）。
+// version 盖章语义同 SyncCourseEvaluation（文档 5.3/13.A7）。
 func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) error {
 	if methodKey == "" {
 		methodKey = "paper"
@@ -387,25 +476,27 @@ func (s *ExamResultStore) SyncNodeEvaluation(ctx context.Context, tenantID, usag
 		status = "pending"
 	}
 	_, err = s.q.Exec(ctx, `
-		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers, version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (SELECT exam_version FROM exam_usages WHERE id = $9))
 		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key)
 		DO UPDATE SET
 			total_score = CASE WHEN node_evaluation_results.status = 'evaluated' THEN node_evaluation_results.total_score ELSE EXCLUDED.total_score END,
 			max_score = EXCLUDED.max_score,
 			status = CASE WHEN node_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
 			objective_answers = EXCLUDED.objective_answers,
+			version = CASE WHEN node_evaluation_results.status = 'evaluated' THEN node_evaluation_results.version ELSE EXCLUDED.version END,
 			graded_at = CASE
 				WHEN node_evaluation_results.status = 'evaluated' THEN node_evaluation_results.graded_at
 				WHEN EXCLUDED.status = 'evaluated' THEN NOW()
 				ELSE NULL
 			END,
 			updated_at = NOW()
-	`, tenantID, nodeID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+	`, tenantID, nodeID, methodKey, userID, status, score, maxScore, objectiveAnswers, usageID)
 	return err
 }
 
 // SyncSceneEvaluation 同步场景统一评价（考试目标为任务时）。
+// version 盖章语义同 SyncCourseEvaluation（文档 5.3/13.A7：已评分行 version 不动，未评分行随 EXCLUDED 更新）。
 func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) error {
 	if methodKey == "" {
 		methodKey = "paper"
@@ -449,21 +540,22 @@ func (s *ExamResultStore) SyncSceneEvaluation(ctx context.Context, tenantID, usa
 			continue
 		}
 		if _, err := s.q.Exec(ctx, `
-			INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers, version)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, (SELECT exam_version FROM exam_usages WHERE id = $10))
 			ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key)
 			DO UPDATE SET
 				total_score = CASE WHEN scene_evaluation_results.status = 'evaluated' THEN scene_evaluation_results.total_score ELSE EXCLUDED.total_score END,
 				max_score = EXCLUDED.max_score,
 				status = CASE WHEN scene_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
 				objective_answers = EXCLUDED.objective_answers,
+				version = CASE WHEN scene_evaluation_results.status = 'evaluated' THEN scene_evaluation_results.version ELSE EXCLUDED.version END,
 				graded_at = CASE
 					WHEN scene_evaluation_results.status = 'evaluated' THEN scene_evaluation_results.graded_at
 					WHEN EXCLUDED.status = 'evaluated' THEN NOW()
 					ELSE NULL
 				END,
 				updated_at = NOW()
-		`, tenantID, t.taskID, t.scenarioID, methodKey, userID, status, score, maxScore, objectiveAnswers); err != nil {
+		`, tenantID, t.taskID, t.scenarioID, methodKey, userID, status, score, maxScore, objectiveAnswers, usageID); err != nil {
 			return err
 		}
 	}
@@ -487,7 +579,7 @@ func ScanExamResultRows(rows pgx.Rows) ([]domain.ExamResult, error) {
 func scanExamResultRow(rows pgx.Rows, r *domain.ExamResult) error {
 	var answers, gradingScores domain.JSONMap
 	var gradedAt *time.Time
-	if err := rows.Scan(&r.ID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &answers, &r.GradingStatus, &gradingScores, &r.GradingComment, &r.GraderID, &gradedAt, &r.SubmitTime, &r.CreatedAt); err != nil {
+	if err := rows.Scan(&r.ID, &r.ExamUsageID, &r.UserID, &r.StudentName, &r.ClassName, &r.Grade, &r.MajorID, &r.MajorName, &r.Score, &r.TotalScore, &r.IsPass, &answers, &r.GradingStatus, &gradingScores, &r.GradingComment, &r.GraderID, &gradedAt, &r.SubmitTime, &r.CreatedAt, &r.Version); err != nil {
 		return err
 	}
 	r.Answers = answers

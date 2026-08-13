@@ -26,7 +26,7 @@ func (s *NodeEvaluationResultStore) ListConfig() ListQueryConfig[domain.NodeEval
 		Table: "node_evaluation_results",
 		SelectColumns: "id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, " +
 			"total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, " +
-			"comment, graded_at, graded_by",
+			"comment, graded_at, graded_by, version",
 		TenantScoped: true,
 		OrderBy:      "created_at DESC",
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
@@ -52,16 +52,16 @@ func (s *NodeEvaluationResultStore) Get(ctx context.Context, id string) (*domain
 	var comment *string
 	var gradedAt *time.Time
 	var gradedBy *string
-	var evaluatorID, evaluatorType pgtype.Text
+	var evaluatorID, evaluatorType, version pgtype.Text
 	err := s.q.QueryRow(ctx, `
 		SELECT id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
 			total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions,
-			comment, graded_at, graded_by
+			comment, graded_at, graded_by, version
 		FROM node_evaluation_results WHERE id = $1
 	`, id).Scan(
 		&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
 		&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
-		&comment, &gradedAt, &gradedBy,
+		&comment, &gradedAt, &gradedBy, &version,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -71,6 +71,9 @@ func (s *NodeEvaluationResultStore) Get(ctx context.Context, id string) (*domain
 	}
 	r.EvaluatorID = evaluatorID.String
 	r.EvaluatorType = evaluatorType.String
+	if version.Valid {
+		r.Version = &version.String
+	}
 	if totalScore != nil {
 		r.TotalScore = totalScore
 	}
@@ -87,12 +90,30 @@ func (s *NodeEvaluationResultStore) Get(ctx context.Context, id string) (*domain
 }
 
 // Submit 提交节点测评结果（幂等 upsert）。
+// 提交固化（文档 5.3）：version 服务端盖章——node_id → system_course_nodes.course_id → courses
+// 最新快照版本（expectedVersion 快照存在则采纳，否则回退最新，13.B2 降级语义；快照缺档回退 live version）。
+// 节点不存在时 version 落 NULL，保持现状宽松行为。
 func (s *NodeEvaluationResultStore) Submit(ctx context.Context, p *NodeEvaluationResultSubmitParams) (*domain.NodeEvaluationResult, error) {
+	version := ""
+	var courseID string
+	if err := s.q.QueryRow(ctx, `SELECT course_id FROM system_course_nodes WHERE id = $1`, p.NodeID).Scan(&courseID); err == nil {
+		v, verr := NewSnapshotStore(s.q).ExpectedOrLatestVersion(ctx, p.TenantID, SnapshotResourceCourse, courseID, p.ExpectedVersion)
+		if verr != nil {
+			return nil, verr
+		}
+		version = v
+	} else if err != pgx.ErrNoRows {
+		return nil, err
+	}
+	var versionArg any
+	if version != "" {
+		versionArg = version
+	}
 	var id string
 	now := time.Now()
 	err := s.q.QueryRow(ctx, `
-		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, version, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key) DO UPDATE SET
 			evaluator_id = EXCLUDED.evaluator_id,
 			evaluator_type = EXCLUDED.evaluator_type,
@@ -101,6 +122,7 @@ func (s *NodeEvaluationResultStore) Submit(ctx context.Context, p *NodeEvaluatio
 			subjective_content = EXCLUDED.subjective_content,
 			drawn_questions = EXCLUDED.drawn_questions,
 			eval_point_scores = EXCLUDED.eval_point_scores,
+			version = EXCLUDED.version,
 			status = 'pending',
 			graded_at = NULL,
 			updated_at = EXCLUDED.updated_at
@@ -108,7 +130,7 @@ func (s *NodeEvaluationResultStore) Submit(ctx context.Context, p *NodeEvaluatio
 		RETURNING id
 	`, p.TenantID, p.NodeID, p.MethodKey, p.EvaluateeID,
 		p.EvaluatorID, p.EvaluatorType, p.MaxScore,
-		p.EvalPointScores, p.ObjectiveAnswers, p.SubjectiveContent, p.DrawnQuestions, now, now).Scan(&id)
+		p.EvalPointScores, p.ObjectiveAnswers, p.SubjectiveContent, p.DrawnQuestions, versionArg, now, now).Scan(&id)
 	if err == pgx.ErrNoRows {
 		// 已被教师评分的结果禁止重交覆盖
 		return nil, ErrAlreadyGraded
@@ -126,16 +148,16 @@ func (s *NodeEvaluationResultStore) GetByID(ctx context.Context, tenantID, id st
 	var comment *string
 	var gradedAt *time.Time
 	var gradedBy *string
-	var evaluatorID, evaluatorType pgtype.Text
+	var evaluatorID, evaluatorType, version pgtype.Text
 	err := s.q.QueryRow(ctx, `
 		SELECT id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
 			total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions,
-			comment, graded_at, graded_by
+			comment, graded_at, graded_by, version
 		FROM node_evaluation_results WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(
 		&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
 		&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
-		&comment, &gradedAt, &gradedBy,
+		&comment, &gradedAt, &gradedBy, &version,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -145,6 +167,9 @@ func (s *NodeEvaluationResultStore) GetByID(ctx context.Context, tenantID, id st
 	}
 	r.EvaluatorID = evaluatorID.String
 	r.EvaluatorType = evaluatorType.String
+	if version.Valid {
+		r.Version = &version.String
+	}
 	if totalScore != nil {
 		r.TotalScore = totalScore
 	}
@@ -182,7 +207,7 @@ func (s *NodeEvaluationResultStore) ListByCourse(ctx context.Context, tenantID, 
 	rows, err := s.q.Query(ctx, `
 		SELECT ner.id, ner.node_id, ner.method_key, ner.evaluatee_id, ner.evaluator_id, ner.evaluator_type, ner.status,
 			ner.total_score, ner.max_score, ner.eval_point_scores, ner.objective_answers, ner.subjective_content, ner.drawn_questions,
-			ner.comment, ner.graded_at, ner.graded_by
+			ner.comment, ner.graded_at, ner.graded_by, ner.version
 		FROM node_evaluation_results ner
 		JOIN system_course_nodes n ON n.id = ner.node_id
 		WHERE ner.tenant_id = $1 AND n.course_id = $2
@@ -204,8 +229,10 @@ type NodeEvaluationResultGradeParams struct {
 
 // NodeEvaluationResultSubmitParams 提交参数。
 type NodeEvaluationResultSubmitParams struct {
-	TenantID          string
-	NodeID            string
+	TenantID string
+	NodeID   string
+	// ExpectedVersion 提交方页面加载时的版本提示（文档 13.B2）：快照存在则采纳，否则回退最新。
+	ExpectedVersion   string
 	MethodKey         string
 	EvaluateeID       string
 	EvaluatorID       *string
@@ -226,16 +253,19 @@ func ScanNodeEvaluationResultRows(rows pgx.Rows) ([]domain.NodeEvaluationResult,
 		var comment *string
 		var gradedAt *time.Time
 		var gradedBy *string
-		var evaluatorID, evaluatorType pgtype.Text
+		var evaluatorID, evaluatorType, version pgtype.Text
 		if err := rows.Scan(
 			&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
 			&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
-			&comment, &gradedAt, &gradedBy,
+			&comment, &gradedAt, &gradedBy, &version,
 		); err != nil {
 			return nil, err
 		}
 		r.EvaluatorID = evaluatorID.String
 		r.EvaluatorType = evaluatorType.String
+		if version.Valid {
+			r.Version = &version.String
+		}
 		if totalScore != nil {
 			r.TotalScore = totalScore
 		}

@@ -6,6 +6,7 @@ import type {
   LessonBatch,
   HybridNodeModule,
 } from '../types/lesson'
+import type { CourseSnapshot } from '../types/snapshot'
 import type { SystemCourseNode } from '../types/lesson-source'
 import type { CitationStats, UncitedItem } from '../types/citation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
@@ -19,6 +20,9 @@ export const courseApi = {
   >('/lesson/courses'),
   clone: (id: string, body: { name: string }) =>
     request<Course>(`/lesson/courses/${id}/clone`, { method: 'POST', body: JSON.stringify(body) }),
+  /** 课程快照 bundle（节点/测验/混合模块/颗粒课一层；version 缺省 = 最新已发布快照，学生侧已剥离答案） */
+  getSnapshot: (id: string, params?: { version?: string }) =>
+    request<CourseSnapshot>(`/lesson/courses/${id}/snapshot${buildQuery(params || {})}`),
 }
 
 export const knowledgeApi = {
@@ -132,6 +136,8 @@ export interface NodeEvaluationResult {
   comment?: string
   gradedAt?: string
   gradedBy?: string
+  /** 提交时服务端盖章的课程资源版本（对应快照版本） */
+  version?: string
 }
 
 export const nodeEvaluationResultApi = {
@@ -151,6 +157,8 @@ export const nodeEvaluationResultApi = {
     }),
   submit: (req: {
     nodeId: string
+    /** 页面加载时的课程版本提示：快照存在则服务端采纳，否则回退最新（降级语义，不拒绝） */
+    expectedVersion?: string
     methodKey: string
     evaluateeId: string
     evaluatorId?: string

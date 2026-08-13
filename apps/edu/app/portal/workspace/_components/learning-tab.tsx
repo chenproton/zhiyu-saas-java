@@ -12,6 +12,7 @@ import { StatCard } from './stat-card'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceCourse, WorkspaceSceneTask } from '@/lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types'
+import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export function LearningTab() {
@@ -223,7 +224,7 @@ export function LearningTab() {
                   <Button
                     size="sm"
                     className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
-                    onClick={() => router.push(`/scene/landing/${task.scenarioId}`)}
+                    onClick={() => router.push(sceneLandingHref(task.scenarioId, task.resourceVersion))}
                   >
                     <Play className="w-3.5 h-3.5 mr-1" />
                     {task.status === '已完成' ? t('查看') : t('继续')}
@@ -321,7 +322,7 @@ export function LearningTab() {
                   <Button
                     size="sm"
                     className="shrink-0 bg-primary hover:bg-primary/90"
-                    onClick={() => router.push(`/lesson/landing/${course.id}`)}
+                    onClick={() => router.push(lessonLandingHref(course.id, course.resourceVersion))}
                   >
                     <Play className="w-3.5 h-3.5 mr-1" />
                     {course.status === '已完成' ? t('复习') : t('学习')}

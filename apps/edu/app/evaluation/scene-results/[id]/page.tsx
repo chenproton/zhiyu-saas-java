@@ -38,7 +38,9 @@ import {
   examUsageApi,
   examResultApi,
   randomDrawQuestionApi,
+  scenarioApi,
 } from '@/lib/api'
+import type { ScenarioSnapshot, ExamSnapshot } from '@/lib/api'
 import type { SceneEvaluationResult, TaskEvaluationMethod, TaskEvalPoint } from '@/lib/types'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import {
@@ -63,6 +65,89 @@ const evalMethodColors: Record<string, string> = {
 function getInitials(name: string): string {
   if (!name || name === '未知') return '?'
   return name.slice(0, 2).toUpperCase()
+}
+
+// 场景快照行字段为 snake_case，映射为页面使用的 TaskEvaluationMethod 形状
+function methodConfigFromSnapshot(
+  snap: ScenarioSnapshot,
+  taskId: string,
+  methodKey: string,
+): TaskEvaluationMethod | null {
+  const m = (snap.task_evaluation_methods || []).find(
+    (x) => x.task_id === taskId && x.method_key === methodKey,
+  )
+  if (!m) return null
+  return {
+    id: m.id,
+    taskId: m.task_id,
+    methodKey: m.method_key,
+    weight: m.weight ?? 0,
+    evalObject: m.eval_object ?? '',
+    evalSubjects: Array.isArray(m.eval_subjects) ? m.eval_subjects : [],
+    standardName: m.standard_name,
+    standardMode: m.standard_mode as TaskEvaluationMethod['standardMode'],
+    resourceConfig: (m.resource_config || {}) as Record<string, any>,
+    version: m.version ?? 0,
+    isEnabled: m.is_enabled ?? true,
+    evalPoints: (snap.task_eval_points || [])
+      .filter((p) => p.config_id === m.id)
+      .map((p) => ({
+        id: p.id,
+        configId: p.config_id,
+        name: p.name,
+        description: p.description,
+        subType: p.sub_type,
+        types: p.types,
+        weight: p.weight ?? 0,
+        scoringMethod: p.scoring_method ?? '',
+        gradeMapping: p.grade_mapping as any,
+        knowledgePointIds: p.knowledge_point_ids,
+        abilityPointIds: p.ability_point_ids,
+        sortOrder: p.sort_order ?? 0,
+      })),
+    scoreRules: (snap.task_eval_score_rules || [])
+      .filter((r) => r.config_id === m.id)
+      .map((r) => ({
+        id: r.id,
+        configId: r.config_id,
+        name: r.name,
+        description: r.description,
+        rule: typeof r.rule === 'string' ? r.rule : r.rule ? JSON.stringify(r.rule) : undefined,
+        weight: r.weight ?? 0,
+        sortOrder: r.sort_order ?? 0,
+      })),
+    reviewSteps: (snap.task_review_steps || [])
+      .filter((s) => s.config_id === m.id)
+      .map((s) => ({
+        id: s.id,
+        configId: s.config_id,
+        label: s.label,
+        description: s.description,
+        enabled: s.enabled ?? true,
+        subjectType: s.subject_type,
+        weight: s.weight ?? 0,
+        sortOrder: s.sort_order ?? 0,
+      })),
+  }
+}
+
+// 试卷快照行字段为 snake_case，映射为页面使用的题目形状
+function examFromSnapshot(snap: ExamSnapshot): any {
+  return {
+    id: snap.exam.id,
+    name: snap.exam.name,
+    totalScore: snap.exam.total_score ?? 0,
+    questions: (snap.exam_questions || []).map((q) => ({
+      id: q.id,
+      questionId: q.question_id || q.id,
+      type: q.type,
+      content: q.content,
+      options: q.options,
+      answer: q.answer,
+      analysis: q.analysis,
+      score: q.score ?? 0,
+    })),
+  }
 }
 
 // ============================================================================
@@ -574,13 +659,37 @@ export default function GradingDetailPage() {
 
         if (res.status === 'evaluated') setSaved(true)
 
-        const [taskData, mRes] = await Promise.all([
-          taskApi.get(res.taskId).catch(() => null),
-          taskEvaluationApi.listMethods(res.taskId).catch(() => ({ methods: [] })),
-        ])
+        // 测评方法/评分点/任务信息按 result.version 从场景快照取；version 为空（历史数据）缺省最新快照。
+        // 快照缺档/请求失败回退 live 读，兼容改造前数据（文档 8.2）。
+        let taskData: any = null
+        let cfg: TaskEvaluationMethod | null = null
+        let snapRdPool: any[] = []
+        let snapLoaded = false
+        if (res.sceneId) {
+          try {
+            const snap = await scenarioApi.getSnapshot(
+              res.sceneId,
+              res.version ? { version: res.version } : undefined,
+            )
+            snapLoaded = true
+            const snapTask = (snap.scenario_tasks || []).find((x) => x.id === res.taskId)
+            taskData = snapTask ? { id: snapTask.id, name: snapTask.name } : null
+            cfg = methodConfigFromSnapshot(snap, res.taskId, res.methodKey)
+            snapRdPool = snap.random_draw_questions || []
+          } catch {
+            snapLoaded = false
+          }
+        }
+        if (!snapLoaded) {
+          const [liveTask, mRes] = await Promise.all([
+            taskApi.get(res.taskId).catch(() => null),
+            taskEvaluationApi.listMethods(res.taskId).catch(() => ({ methods: [] })),
+          ])
+          taskData = liveTask
+          cfg =
+            mRes.methods.find((m: TaskEvaluationMethod) => m.methodKey === res.methodKey) || null
+        }
         setTask(taskData)
-        const cfg =
-          mRes.methods.find((m: TaskEvaluationMethod) => m.methodKey === res.methodKey) || null
         setMethodConfig(cfg)
 
         if (cfg && ['paper', 'question_bank', 'quiz'].includes(res.methodKey)) {
@@ -588,10 +697,16 @@ export default function GradingDetailPage() {
           const usageId = cfg.resourceConfig?.usageId
           if (examId) {
             try {
-              const [examData, usageRes] = await Promise.all([
-                examApi.get(examId),
-                examUsageApi.list({ examId, limit: 50, scope: 'all' }),
-              ])
+              const usageRes = await examUsageApi.list({ examId, limit: 50, scope: 'all' })
+              const usage = usageRes.items.find((u: any) => u.id === usageId) || usageRes.items[0]
+              // 版本口径：学生作答的题目以考试安排固化的 examVersion 为准；
+              // usage 缺档（历史数据）回退成绩行 version，再空缺省最新快照。
+              const examVersion = usage?.examVersion || res.version || undefined
+              const snap = await examApi.getSnapshot(
+                examId,
+                examVersion ? { version: examVersion } : undefined,
+              )
+              const examData = examFromSnapshot(snap)
               if (cfg.resourceConfig?.questionScores) {
                 const scores = cfg.resourceConfig.questionScores as Record<string, number>
                 examData.questions = (examData.questions || []).map((q: any) => ({
@@ -600,7 +715,6 @@ export default function GradingDetailPage() {
                 }))
               }
               setExam(examData)
-              const usage = usageRes.items.find((u: any) => u.id === usageId) || usageRes.items[0]
               if (usage) {
                 const erRes = await examResultApi.list({ usageId: usage.id, limit: 500 })
                 const found = (erRes.items || []).find((r: any) => r.userId === res.evaluateeId)
@@ -614,9 +728,17 @@ export default function GradingDetailPage() {
 
         if (res.methodKey === 'random_draw') {
           try {
-            const rdRes = await fetchAllPages((page, pageSize) => randomDrawQuestionApi.list({ limit: pageSize, offset: page * pageSize }))
-            const all = rdRes || []
-            setRdQuestionPool(all)
+            // 抽题内容：优先 result.drawnQuestions 内已存抽题结果（含内容字段时直接用），
+            // 否则从场景 bundle 的 random_draw_questions 按 id 取（文档 8.2/13.D5）；
+            // 仅快照缺档（历史数据）才回退 live 全表拉取。
+            let pool = snapRdPool
+            if (pool.length === 0 && !snapLoaded) {
+              pool =
+                (await fetchAllPages((page, pageSize) =>
+                  randomDrawQuestionApi.list({ limit: pageSize, offset: page * pageSize }),
+                )) || []
+            }
+            setRdQuestionPool(pool)
             const drawnMap = (res.drawnQuestions || {}) as Record<string, any>
             const drawnIds = Object.keys(drawnMap).filter(
               (k) => drawnMap[k] && typeof drawnMap[k] === 'object',
@@ -625,8 +747,12 @@ export default function GradingDetailPage() {
               drawnIds.length > 0 ? drawnIds : cfg?.resourceConfig?.selectedQuestionIds || []
             const selected = (
               selectedIds.length > 0
-                ? selectedIds.map((sid: string) => all.find((q: any) => q.id === sid))
-                : all
+                ? selectedIds.map((sid: string) => {
+                    const stored = drawnMap[sid]
+                    if (stored && (stored.name || stored.content)) return { id: sid, ...stored }
+                    return pool.find((q: any) => q.id === sid)
+                  })
+                : pool
             ).filter(Boolean) as any[]
             setRdQuestions(selected)
           } catch {

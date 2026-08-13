@@ -254,6 +254,10 @@ func crudDelete[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 		}
 	}
 	if err := cfg.DeleteFn(r.Context(), id, tenantID); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该记录已存在关联成绩或活跃绑定，无法删除")
+			return
+		}
 		respondServerError(w, r, err, cfg.DeleteErrMsg)
 		return
 	}

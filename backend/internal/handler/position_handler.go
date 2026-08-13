@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -297,6 +298,10 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该岗位已存在能力测评数据或被已发布场景引用，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除岗位失败")
 		return
 	}

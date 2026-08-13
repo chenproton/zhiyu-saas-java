@@ -78,7 +78,21 @@ func (s *ExamStore) Update(ctx context.Context, tenantID, id string, p *ExamUpda
 }
 
 // Delete 删除试卷（题目与试卷在同一事务内，防止半删状态）。
+// 删除保护（文档 5.5）：存在成绩记录（经考试安排关联）时拒绝物理删除——
+// exam_usages/exam_results 均为 FK CASCADE，直接删卷会连带毁成绩。
 func (s *ExamStore) Delete(ctx context.Context, q Queryer, tenantID, id string) error {
+	var inUse bool
+	if err := q.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM exam_usages eu JOIN exam_results er ON er.exam_usage_id = eu.id
+			WHERE eu.exam_id = $1
+		)
+	`, id).Scan(&inUse); err != nil {
+		return err
+	}
+	if inUse {
+		return ErrResourceInUse
+	}
 	if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id); err != nil {
 		return fmt.Errorf("delete exam questions: %w", err)
 	}

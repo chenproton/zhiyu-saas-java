@@ -26,7 +26,11 @@ import { cn } from '@/lib/utils'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from '../_data/workspace-student-types'
 import { formatDate , formatYMD } from '@/lib/format-utils'
+import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
+
+/** 工作台 dashboard 事件已下发 resourceVersion（排课 stamp）；本地 mock 类型尚无该字段，此处扩展 */
+type ScheduleEventWithVersion = ScheduleEvent & { resourceVersion?: string }
 
 interface ScheduleGridProps {
   events: ScheduleEvent[]
@@ -71,15 +75,17 @@ const typeStyles: Record<
 function getStudentActionUrls(
   event: ScheduleEvent,
 ): { learnUrl: string; isActionable: true } | { isActionable: false } {
+  const version = (event as ScheduleEventWithVersion).resourceVersion
   if (event.type === 'scene' && event.scenarioId) {
     return {
-      learnUrl: `/scene/landing/${event.scenarioId}`,
+      // 学生入口带排课 stamp 的 resourceVersion（?v=），按班级绑定版本读快照
+      learnUrl: sceneLandingHref(event.scenarioId, version),
       isActionable: true,
     }
   }
   if (event.type === 'course' && event.courseId) {
     return {
-      learnUrl: `/lesson/landing/${event.courseId}`,
+      learnUrl: lessonLandingHref(event.courseId, version),
       isActionable: true,
     }
   }

@@ -700,14 +700,28 @@ func (s *SchedulingStore) PublishScheduleEntries(ctx context.Context, tx Queryer
 	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2 AND status = 'published'`, tenantID, termID); err != nil {
 		return 0, 0, err
 	}
+	// 绑定固化（文档 5.3）：published 行打 resource_version——场景行取场景、其余行取课程；
+	// 版本以快照表最新版本为准，快照缺档回退 live 当前版本（ResolveResourceVersion 同款口径，此处内联为相关子查询保持单语句）。
 	tag, err := tx.Exec(ctx, `
 		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-			venue_id, scenario_id, source, status, version)
+			venue_id, scenario_id, source, status, version, resource_version)
 		SELECT gen_random_uuid(), tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
-			venue_id, scenario_id, source, 'published', $3
-		FROM schedule_entries
+			venue_id, scenario_id, source, 'published', $3,
+			CASE
+				WHEN se.scenario_id IS NOT NULL THEN COALESCE(
+					(SELECT rs.version FROM resource_snapshots rs
+						WHERE rs.tenant_id = $1 AND rs.resource_type = 'scenarios' AND rs.resource_id = se.scenario_id
+						ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+					(SELECT sc.version FROM scenarios sc WHERE sc.id = se.scenario_id))
+				WHEN se.course_id IS NOT NULL THEN COALESCE(
+					(SELECT rs.version FROM resource_snapshots rs
+						WHERE rs.tenant_id = $1 AND rs.resource_type = 'courses' AND rs.resource_id = se.course_id
+						ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+					(SELECT c.version FROM courses c WHERE c.id = se.course_id))
+			END
+		FROM schedule_entries se
 		WHERE tenant_id = $1 AND term_id = $2 AND status = 'draft'
 	`, tenantID, termID, newVersion)
 	if err != nil {
@@ -721,7 +735,7 @@ func (s *SchedulingStore) ListTimetableEntries(ctx context.Context, tenantID, te
 	query := `
 		SELECT se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type,
 			se.class_node_id, se.class_node_ids, se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week,
-			se.week_pattern, se.venue_id, se.scenario_id, se.source, se.status, se.version,
+			se.week_pattern, se.venue_id, se.scenario_id, se.source, se.status, se.version, se.resource_version,
 			COALESCE(t.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
 			COALESCE(o.name, '') AS class_name, COALESCE(sce.name, '') AS scenario_name
 		FROM schedule_entries se
@@ -756,7 +770,7 @@ func (s *SchedulingStore) ListTimetableEntries(ctx context.Context, tenantID, te
 		var teacherName, venueName, className, scenarioName string
 		if err := rows.Scan(&e.ID, &e.TermID, &planEntryID, &e.CourseName, &courseCode, &e.CourseID, &e.Type,
 			&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
-			&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version,
+			&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version, &e.ResourceVersion,
 			&teacherName, &venueName, &className, &scenarioName); err != nil {
 			continue
 		}
@@ -781,7 +795,7 @@ func (s *SchedulingStore) fetchScheduleEntry(ctx context.Context, id, tenantID s
 	err := s.q.QueryRow(ctx, `
 		SELECT se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type,
 			se.class_node_id, se.class_node_ids, se.teacher_id, se.day_of_week, se.periods, se.start_week, se.end_week,
-			se.week_pattern, se.venue_id, se.scenario_id, se.source, se.status, se.version,
+			se.week_pattern, se.venue_id, se.scenario_id, se.source, se.status, se.version, se.resource_version,
 			COALESCE(t.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
 			COALESCE(o.name, '') AS class_name, COALESCE(sce.name, '') AS scenario_name
 		FROM schedule_entries se
@@ -793,7 +807,7 @@ func (s *SchedulingStore) fetchScheduleEntry(ctx context.Context, id, tenantID s
 	`, id, tenantID).Scan(
 		&e.ID, &e.TermID, &planEntryID, &e.CourseName, &courseCode, &e.CourseID, &e.Type,
 		&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
-		&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version,
+		&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version, &e.ResourceVersion,
 		&teacherName, &venueName, &className, &scenarioName)
 	if err != nil {
 		return nil, err
@@ -818,7 +832,7 @@ func ScanScheduleEntryListRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 		if err := rows.Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
 			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
 			&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
-			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt,
+			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.ResourceVersion, &e.CreatedAt, &e.UpdatedAt,
 			&e.ClassNodeIDs, &e.ClassNames); err != nil {
 			return nil, err
 		}
@@ -827,7 +841,7 @@ func ScanScheduleEntryListRows(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 	return items, nil
 }
 
-const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
+const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.resource_version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
 
 const scheduleEntryListFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
 

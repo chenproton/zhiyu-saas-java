@@ -203,6 +203,8 @@ export interface ScheduleEntry {
   source: string
   status: string
   version: number
+  /** 课表发布时固化的资源版本（决定该班学哪版快照） */
+  resourceVersion?: string
   createdAt: string
   updatedAt: string
 }

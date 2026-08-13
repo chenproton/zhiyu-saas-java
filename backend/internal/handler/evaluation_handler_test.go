@@ -814,13 +814,29 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 	defer env.DB.Exec(ctx, "DELETE FROM scene_evaluation_results WHERE evaluatee_id = $1", userID)
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
 
-	taskID := "d8c7bccb-2509-4281-8c86-46224df98732"
+	// sceneId 以服务端 task_id → scenario_tasks.scenario_id 反查为准（文档 13.A6），
+	// 客户端传值仅作兼容透传；这里预置真实场景/任务，验证反查纠正客户端传值。
 	sceneID := "5e9a300c-48fd-45b6-8d8f-74009957349e"
+	taskID := "d8c7bccb-2509-4281-8c86-46224df98732"
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO scenarios (id, tenant_id, name, code, version, status, creator_id)
+		VALUES ($1, $2, 'Eval Scene', 'EVAL-SC-1', 'V1.0', 'published', $3)
+	`, sceneID, testhelper.TestTenantID, userID); err != nil {
+		t.Fatalf("insert scenario: %v", err)
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", sceneID)
+	if _, err := env.DB.Exec(ctx, `
+		INSERT INTO scenario_tasks (id, scenario_id, tenant_id, name, code, task_type)
+		VALUES ($1, $2, $3, 'Eval Task', 'EVAL-T-1', 'practice')
+	`, taskID, sceneID, testhelper.TestTenantID); err != nil {
+		t.Fatalf("insert task: %v", err)
+	}
 
-	// 不传 evaluatorId：uuid 列必须落 NULL，不能因空串报 22P02
+	// 不传 evaluatorId：uuid 列必须落 NULL，不能因空串报 22P02；
+	// 客户端传错误 sceneId → 落库为服务端反查的场景 id
 	w := env.Do("POST", "/api/v1/evaluation/results", map[string]interface{}{
 		"taskId":      taskID,
-		"sceneId":     sceneID,
+		"sceneId":     "00000000-0000-0000-0000-000000000000",
 		"methodKey":   "review",
 		"evaluateeId": userID,
 		"maxScore":    100,
@@ -839,10 +855,11 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 		t.Fatalf("expected evaluator_id NULL, got %v", *evaluatorID)
 	}
 	if gotSceneID == nil || *gotSceneID != sceneID {
-		t.Fatalf("expected scene_id %s, got %v", sceneID, gotSceneID)
+		t.Fatalf("expected scene_id %s（服务端反查纠正）, got %v", sceneID, gotSceneID)
 	}
 
-	// 显式传空串 evaluatorId/sceneId 同样应归一化为 NULL，而不是 500
+	// 显式传空串 evaluatorId/sceneId：evaluatorId 归一化为 NULL 不 500；
+	// sceneId 空串同样以服务端反查为准（仍可落场景 id）
 	w = env.Do("POST", "/api/v1/evaluation/results", map[string]interface{}{
 		"taskId":      taskID,
 		"sceneId":     "",
@@ -859,8 +876,8 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 	`, userID).Scan(&evaluatorID, &gotSceneID); err != nil {
 		t.Fatalf("query result: %v", err)
 	}
-	if evaluatorID != nil || gotSceneID != nil {
-		t.Fatalf("expected evaluator_id NULL and scene_id NULL, got %v / %v", evaluatorID, gotSceneID)
+	if evaluatorID != nil || gotSceneID == nil || *gotSceneID != sceneID {
+		t.Fatalf("expected evaluator_id NULL 且 scene_id 反查为 %s, got %v / %v", sceneID, evaluatorID, gotSceneID)
 	}
 }
 

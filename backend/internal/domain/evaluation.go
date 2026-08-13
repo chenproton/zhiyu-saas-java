@@ -100,21 +100,23 @@ type Exam struct {
 
 // ExamUsage represents a usage record of an exam.
 type ExamUsage struct {
-	ID             string    `json:"id"`
-	TenantID       string    `json:"-"`
-	ExamID         string    `json:"examId"`
-	Name           string    `json:"name"`
-	Description    *string   `json:"description,omitempty"`
-	StartTime      *string   `json:"startTime,omitempty"`
-	EndTime        *string   `json:"endTime,omitempty"`
-	Duration       *int      `json:"duration,omitempty"`
-	TargetType     *string   `json:"targetType,omitempty"`
-	TargetIDs      []string  `json:"targetIds"`
-	Status         string    `json:"status"`
-	ActivationMode string    `json:"activationMode"`
-	CreatorID      *string   `json:"creatorId,omitempty"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID             string   `json:"id"`
+	TenantID       string   `json:"-"`
+	ExamID         string   `json:"examId"`
+	Name           string   `json:"name"`
+	Description    *string  `json:"description,omitempty"`
+	StartTime      *string  `json:"startTime,omitempty"`
+	EndTime        *string  `json:"endTime,omitempty"`
+	Duration       *int     `json:"duration,omitempty"`
+	TargetType     *string  `json:"targetType,omitempty"`
+	TargetIDs      []string `json:"targetIds"`
+	Status         string   `json:"status"`
+	ActivationMode string   `json:"activationMode"`
+	// ExamVersion 绑定固化的试卷版本（快照最新版本，缺档回退 live version；文档 5.3）。
+	ExamVersion *string   `json:"examVersion,omitempty"`
+	CreatorID   *string   `json:"creatorId,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 // ExamResult represents a student's submission result for an exam usage.
@@ -139,6 +141,8 @@ type ExamResult struct {
 	GradedAt       *time.Time `json:"gradedAt,omitempty"`
 	SubmitTime     time.Time  `json:"submitTime"`
 	CreatedAt      time.Time  `json:"createdAt"`
+	// Version 交卷时盖章的试卷版本（= exam_usages.exam_version，文档 5.3）。
+	Version *string `json:"version,omitempty"`
 }
 
 // ExamCenterItem represents an exam usage entry shown in the landing exam center.
@@ -158,6 +162,8 @@ type ExamCenterItem struct {
 	Submitted      bool     `json:"submitted"`
 	Score          *float64 `json:"score,omitempty"`
 	StudentView    bool     `json:"studentView"`
+	// ExamVersion 安排绑定的试卷版本（exam_usages.exam_version，文档 5.3 下发）。
+	ExamVersion *string `json:"examVersion,omitempty"`
 }
 
 // SceneEvaluationResult represents the result of a scene task evaluation.
@@ -180,6 +186,8 @@ type SceneEvaluationResult struct {
 	Comment           *string    `json:"comment,omitempty"`
 	GradedAt          *time.Time `json:"gradedAt,omitempty"`
 	GradedBy          *string    `json:"gradedBy,omitempty"`
+	// Version 提交时服务端盖章的场景快照版本（文档 5.3）。
+	Version *string `json:"version,omitempty"`
 }
 
 // NodeEvaluationResult represents the result of a system-course-node evaluation.
@@ -200,6 +208,8 @@ type NodeEvaluationResult struct {
 	Comment           *string    `json:"comment,omitempty"`
 	GradedAt          *time.Time `json:"gradedAt,omitempty"`
 	GradedBy          *string    `json:"gradedBy,omitempty"`
+	// Version 提交时服务端盖章的课程快照版本（文档 5.3）。
+	Version *string `json:"version,omitempty"`
 }
 
 // JobAbilityResult represents a job ability evaluation result.

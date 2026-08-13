@@ -179,8 +179,31 @@ func (s *ContentActionStore) Transition(ctx context.Context, table, id string, t
 				return err
 			}
 		}
+
+		// 发布即快照（文档 5.1）：五类资源（versionedContentTables 白名单）流转到 published 时，
+		// 在同一事务内把整树内容写入 resource_snapshots；构建/写入失败即回滚整个发布事务，
+		// 不留"已发布但无快照"状态。teaching_plans/training_programs 不生成快照（文档 8.15）。
+		if to == domain.StatusPublished && versionedContentTables[tbl] {
+			if err := savePublishSnapshot(ctx, tx, tbl, id); err != nil {
+				return fmt.Errorf("save publish snapshot: %w", err)
+			}
+		}
 		return nil
 	})
+}
+
+// savePublishSnapshot 在发布事务内构建并写入资源快照，快照版本 = bump 后的新版本。
+func savePublishSnapshot(ctx context.Context, tx pgx.Tx, tbl, id string) error {
+	var tenantID, version string
+	if err := tx.QueryRow(ctx, `SELECT tenant_id, version FROM `+tbl+` WHERE id = $1`, id).Scan(&tenantID, &version); err != nil {
+		return fmt.Errorf("read tenant/version: %w", err)
+	}
+	snap := NewSnapshotStore(tx)
+	data, err := snap.BuildSnapshot(ctx, tbl, tenantID, id)
+	if err != nil {
+		return err
+	}
+	return snap.SaveSnapshot(ctx, tenantID, tbl, id, version, data)
 }
 
 // Review 审核内容实体（仅允许 pending -> approved/rejected）。

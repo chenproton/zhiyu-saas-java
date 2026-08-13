@@ -118,9 +118,23 @@ func (s *ScenarioStore) Update(ctx context.Context, id string, p *ScenarioUpdate
 }
 
 // Delete 删除场景（先解绑引用，再清理任务关联的考试安排与临时考试）。
+// 删除保护（文档 5.5）：存在场景测评成绩（经 scene_id 或任务 task_id）时拒绝物理删除。
 func (s *ScenarioStore) Delete(ctx context.Context, id string) error {
 	// training_program_courses.scenario_id 已于 102 迁移删除，方案-场景关联改经 position_id 链路，无需解绑
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		var inUse bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(
+				SELECT 1 FROM scene_evaluation_results ser
+				WHERE ser.scene_id = $1
+					OR ser.task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id = $1)
+			)
+		`, id).Scan(&inUse); err != nil {
+			return err
+		}
+		if inUse {
+			return ErrResourceInUse
+		}
 		if _, err := tx.Exec(ctx, `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id); err != nil {
 			return fmt.Errorf("unbind scenario from teaching plans: %w", err)
 		}

@@ -38,7 +38,7 @@ func (s *ExamUsageStore) List(ctx context.Context, p ListParams, cfg ListQueryCo
 func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 	return ListQueryConfig[domain.ExamUsage]{
 		Table:         "exam_usages",
-		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, created_at, updated_at",
+		SelectColumns: "id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, exam_version, creator_id, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		ScanRows:      ScanExamUsageRows,
@@ -119,14 +119,23 @@ func SyncScheduledExamUsageStatus(ctx context.Context, q Queryer, tenantID strin
 	}
 }
 
-// Create 创建考试安排。
+// Create 创建考试安排。绑定固化（文档 5.3）：创建即打 exam_version
+// （快照表最新版本为准，快照缺档回退 live version，见 SnapshotStore.ResolveResourceVersion）。
 func (s *ExamUsageStore) Create(ctx context.Context, p *ExamUsageCreateParams) (*domain.ExamUsage, error) {
+	examVersion, err := NewSnapshotStore(s.q).ResolveResourceVersion(ctx, p.TenantID, SnapshotResourceExam, p.ExamID)
+	if err != nil {
+		return nil, err
+	}
+	var versionArg any
+	if examVersion != "" {
+		versionArg = examVersion
+	}
 	var id string
-	err := s.q.QueryRow(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	err = s.q.QueryRow(ctx, `
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, exam_version)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id
-	`, p.TenantID, p.ExamID, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.Status, p.ActivationMode, p.CreatorID).Scan(&id)
+	`, p.TenantID, p.ExamID, p.Name, p.Description, p.StartTime, p.EndTime, p.Duration, p.TargetType, p.TargetIDs, p.Status, p.ActivationMode, p.CreatorID, versionArg).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
@@ -153,14 +162,36 @@ func (s *ExamUsageStore) Update(ctx context.Context, tenantID, id string, p *Exa
 }
 
 // Delete 删除考试安排。
+// 删除保护（文档 5.5）：存在成绩记录时拒绝删除（exam_results 经 FK CASCADE 会随安排删除）。
+// 顺带修复（文档 13 附录既有 bug）：DELETE 补 tenant_id 条件。
 func (s *ExamUsageStore) Delete(ctx context.Context, tenantID, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM exam_usages WHERE id = $1`, id)
+	var inUse bool
+	if err := s.q.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM exam_results WHERE exam_usage_id = $1)
+	`, id).Scan(&inUse); err != nil {
+		return err
+	}
+	if inUse {
+		return ErrResourceInUse
+	}
+	_, err := s.q.Exec(ctx, `DELETE FROM exam_usages WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 
-// SetStatus 更新考试安排状态。
+// SetStatus 更新考试安排状态。发布时重新 stamp exam_version（快照最新版本为准、缺档回退 live version），
+// 保证"建安排后试卷再发布"的场景下安排绑定的是发布时刻的最新快照版本；其余状态流转不动版本。
 func (s *ExamUsageStore) SetStatus(ctx context.Context, id, status string) error {
-	_, err := s.q.Exec(ctx, `UPDATE exam_usages SET status = $1, updated_at = NOW() WHERE id = $2`, status, id)
+	_, err := s.q.Exec(ctx, `
+		UPDATE exam_usages SET status = $1,
+			exam_version = CASE WHEN $1::varchar = 'published' THEN COALESCE(
+				(SELECT rs.version FROM resource_snapshots rs
+					WHERE rs.tenant_id = exam_usages.tenant_id AND rs.resource_type = 'exams' AND rs.resource_id = exam_usages.exam_id
+					ORDER BY rs.created_at DESC, rs.id DESC LIMIT 1),
+				(SELECT e.version FROM exams e WHERE e.id = exam_usages.exam_id))
+				ELSE exam_version END,
+			updated_at = NOW()
+		WHERE id = $2
+	`, status, id)
 	return err
 }
 
@@ -198,6 +229,7 @@ type ExamCenterItemRow struct {
 	ClassMatch    bool
 	Submitted     bool
 	Score         *float64
+	ExamVersion   *string
 }
 
 // ListExamCenter 考试中心列表：租户内所有手动考试安排（published/in_progress/finished），
@@ -210,7 +242,7 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 			(SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = eu.exam_id),
 			COALESCE(e.total_score, 0),
 			COALESCE(eu.target_type <> 'class' OR $2::uuid = ANY(eu.target_ids), false),
-			(er.id IS NOT NULL), er.score
+			(er.id IS NOT NULL), er.score, eu.exam_version
 		FROM exam_usages eu
 		JOIN exams e ON e.id = eu.exam_id
 		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
@@ -234,7 +266,7 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 		var startTime, endTime *time.Time
 		if err := rows.Scan(&r.ID, &r.ExamID, &r.UsageName, &r.ExamName, &r.Description,
 			&startTime, &endTime, &r.Duration, &r.Status, &r.QuestionCount, &r.TotalScore,
-			&r.ClassMatch, &r.Submitted, &r.Score); err != nil {
+			&r.ClassMatch, &r.Submitted, &r.Score, &r.ExamVersion); err != nil {
 			continue
 		}
 		if startTime != nil {
@@ -273,10 +305,10 @@ func (s *ExamUsageStore) fetchExamUsage(ctx context.Context, tenantID, id string
 	var duration *int
 	var creatorID *string
 	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, created_at, updated_at
+		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, exam_version, creator_id, created_at, updated_at
 		FROM exam_usages WHERE id = $1
 	`, id).Scan(
-		&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &creatorID, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &u.ExamVersion, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -306,7 +338,7 @@ func ScanExamUsageRows(rows pgx.Rows) ([]domain.ExamUsage, error) {
 		var duration *int
 		var creatorID *string
 		if err := rows.Scan(
-			&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &creatorID, &u.CreatedAt, &u.UpdatedAt,
+			&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &u.ExamVersion, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

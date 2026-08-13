@@ -30,9 +30,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { useData } from '@/components/providers/data-provider'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import type { Exam, ExamUsage } from '@/lib/types'
+import type { Exam, ExamQuestion, ExamUsage } from '@/lib/types'
+import type { ExamSnapshot } from '@/lib/api'
 import { examApi, examUsageApi, examResultApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import { formatDateTime } from '@/lib/format-utils'
@@ -52,6 +52,34 @@ const typeLabelMap: Record<string, string> = {
 
 const pieColors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe']
 
+// 试卷快照行字段为 snake_case，映射为本页使用的 Exam 形状
+function examFromSnapshot(snap: ExamSnapshot): Exam {
+  return {
+    id: snap.exam.id,
+    name: snap.exam.name,
+    description: snap.exam.description,
+    status: (snap.exam.status as Exam['status']) || 'published',
+    totalScore: snap.exam.total_score ?? 0,
+    duration: snap.exam.duration ?? 0,
+    ownerType: 'mine',
+    questions: (snap.exam_questions || []).map(
+      (q): ExamQuestion => ({
+        id: q.id,
+        questionId: q.question_id || q.id,
+        type: (q.type || 'single') as ExamQuestion['type'],
+        content: q.content,
+        options: q.options,
+        answer: q.answer ?? '',
+        analysis: q.analysis,
+        score: q.score ?? 0,
+        order: q.sort_order ?? 0,
+      }),
+    ),
+    createdAt: '',
+    updatedAt: '',
+  }
+}
+
 function getTargetAudience(t: (key: string) => string): { type: string; detail: string } {
   // 考试对象名单由考试安排接口决定，当前不展示模拟学生
   return { type: t('学生'), detail: t('由考试安排指定') }
@@ -68,14 +96,11 @@ export default function ExamDetailPage() {
   const nodeId = searchParams.get('node') || ''
   const methodKey = searchParams.get('method') || ''
   const usageIdFromQuery = searchParams.get('usage') || ''
-  const { exams, getExam } = useData()
   const { toast } = useToast()
 
-  const cachedExam = getExam ? getExam(examId) : (exams || []).find((e) => e.id === examId)
-  const [fetchedExam, setFetchedExam] = useState<Exam | null>(null)
-  const exam = cachedExam || fetchedExam
+  const [exam, setExam] = useState<Exam | null>(null)
   const questions = exam?.questions || []
-  const [examLoading, setExamLoading] = useState(!cachedExam)
+  const [examLoading, setExamLoading] = useState(true)
 
   const [started, setStarted] = useState(false)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
@@ -128,39 +153,38 @@ export default function ExamDetailPage() {
   )
 
   useEffect(() => {
-    if (!examId || cachedExam) return
-    const fetchExam = async () => {
+    if (!examId) return
+    const load = async () => {
       setExamLoading(true)
+      // scope=all：场景任务/课程节点随时作答（always）的自动考试安排不在管理列表默认范围，
+      // 学生作答入口需按 examId 查到对应安排，否则无法开始考试。
+      let usage: ExamUsage | null = null
       try {
-        const data = await examApi.get(examId)
-        setFetchedExam(data)
+        const res = await examUsageApi.list({ examId, scope: 'all' })
+        const items = res.items || []
+        usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
+        setCurrentUsage(usage)
+      } catch (err) {
+        reportError(err, '加载考试记录')
+        toast({ title: t('考试记录加载失败'), variant: 'destructive' })
+      }
+      try {
+        // 题目按考试安排固化的 examVersion 取快照；必须绕开 data-provider 缓存，
+        // 否则命中缓存即不请求、版本切换不生效（文档 13.D2）。
+        // examVersion 为空（历史数据）缺省最新快照。
+        const snap = await examApi.getSnapshot(
+          examId,
+          usage?.examVersion ? { version: usage.examVersion } : undefined,
+        )
+        setExam(examFromSnapshot(snap))
       } catch {
-        setFetchedExam(null)
+        setExam(null)
       } finally {
         setExamLoading(false)
       }
     }
-    fetchExam()
-  }, [examId, cachedExam])
-
-  useEffect(() => {
-    if (!examId) return
-    // scope=all：场景任务/课程节点随时作答（always）的自动考试安排不在管理列表默认范围，
-    // 学生作答入口需按 examId 查到对应安排，否则无法开始考试。
-    examUsageApi
-      .list({ examId, scope: 'all' })
-      .then((res) => {
-        const items = res.items || []
-        const usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
-        if (usage && !currentUsage) {
-          setCurrentUsage(usage)
-        }
-      })
-      .catch((err) => {
-        reportError(err, '加载考试记录')
-        toast({ title: t('考试记录加载失败'), variant: 'destructive' })
-      })
-  }, [examId, currentUsage, usageIdFromQuery, toast, t])
+    load()
+  }, [examId, usageIdFromQuery, toast, t])
 
   // 正常交卷/遮罩内结束考试时置位，避免交卷触发的退出全屏事件再次弹出遮罩
   const endingExamRef = useRef(false)

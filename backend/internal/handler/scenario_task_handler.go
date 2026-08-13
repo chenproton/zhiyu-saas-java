@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -217,6 +218,10 @@ func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteTask(r.Context(), id, *task.TenantID); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该任务已存在测评成绩，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除任务失败")
 		return
 	}

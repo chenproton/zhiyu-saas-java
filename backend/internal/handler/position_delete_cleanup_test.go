@@ -8,8 +8,9 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 )
 
-// TestPositionDeleteCleansAbilityData 验证删除岗位时同步清理无外键约束的
-// 岗位能力结果/学生画像/汇聚日志，防止孤儿数据残留在评价中心与工作台学生画像中。
+// TestPositionDeleteCleansAbilityData 删除保护（文档 5.5 决策 6）+ 清理逻辑：
+// 存在岗位能力结果/学生画像时删除被拒绝（409，数据保留）；
+// 清除成绩类数据后删除岗位，仍同步清理无外键约束的汇聚日志/认证规则链，防止孤儿数据残留。
 func TestPositionDeleteCleansAbilityData(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
@@ -69,20 +70,30 @@ func TestPositionDeleteCleansAbilityData(t *testing.T) {
 		VALUES ($1, $2, 100, $3)
 	`, ruleID, abilityPointID, testhelper.TestTenantID)
 
+	// 阶段 1：存在能力结果/学生画像 → 删除保护 409，岗位与成绩数据保留
 	w := env.Do("DELETE", "/api/v1/job/positions/"+positionID, nil)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("删除保护: expected 409, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	var remain int
+	env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM career_positions WHERE id = $1`, positionID).Scan(&remain)
+	if remain != 1 {
+		t.Fatalf("删除保护后岗位应保留, 剩 %d 行", remain)
+	}
+	env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM job_ability_results WHERE career_position_id = $1`, positionID).Scan(&remain)
+	if remain != 1 {
+		t.Fatalf("删除保护后能力结果应保留, 剩 %d 行", remain)
+	}
+
+	// 阶段 2：清除成绩类数据（结果/画像）→ 允许删除，汇聚日志/认证链仍被同步清理
+	env.DB.Exec(ctx, "DELETE FROM job_ability_results WHERE career_position_id = $1", positionID)
+	env.DB.Exec(ctx, "DELETE FROM student_ability_portraits WHERE career_position_id = $1", positionID)
+
+	w = env.Do("DELETE", "/api/v1/job/positions/"+positionID, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("delete position: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	var remain int
-	env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM job_ability_results WHERE career_position_id = $1`, positionID).Scan(&remain)
-	if remain != 0 {
-		t.Errorf("job_ability_results 残留 %d 行", remain)
-	}
-	env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM student_ability_portraits WHERE career_position_id = $1`, positionID).Scan(&remain)
-	if remain != 0 {
-		t.Errorf("student_ability_portraits 残留 %d 行", remain)
-	}
 	env.DB.QueryRow(ctx, `SELECT COUNT(*) FROM job_ability_aggregate_logs WHERE career_position_id = $1`, positionID).Scan(&remain)
 	if remain != 0 {
 		t.Errorf("job_ability_aggregate_logs 残留 %d 行", remain)

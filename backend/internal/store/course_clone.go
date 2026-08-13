@@ -38,6 +38,18 @@ type SourceCourseFields struct {
 	TenantID          *string
 }
 
+// CourseInsertColumns 课程插入列（克隆与快照 builder 共用，防字段漂移）。
+const CourseInsertColumns = `id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
+	online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
+	status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
+	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, node_count, resource_count, study_count`
+
+// SystemCourseNodeInsertColumns 体系课节点插入列（克隆与快照 builder 共用，防字段漂移；
+// 必须含 eval_data：lesson 系测评配置内联在节点 JSON，漏掉则测评标准随编辑漂移）。
+const SystemCourseNodeInsertColumns = `id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type,
+	source_id, source_name, teaching_goals, detailed_description, description_pdf, background,
+	estimated_hours, duration, difficulty, knowledge_point_ids, resource_ids, ability_point_ids, eval_data, status`
+
 // CourseCloneStore 课程克隆持久化（事务内多表复制）。
 type CourseCloneStore struct {
 	q Queryer
@@ -82,10 +94,7 @@ func (s *CourseCloneStore) FetchSource(ctx context.Context, id string) (*SourceC
 func (s *CourseCloneStore) CloneCourse(ctx context.Context, tx Queryer, tenantID, oldCourseID, newName string, src *SourceCourseFields, createdBy, code string) (string, error) {
 	newID := uuid.NewString()
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
-			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
-			status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-			knowledge_point_ids, ability_point_ids, resource_ids, eval_data, node_count, resource_count, study_count)
+		INSERT INTO courses (`+CourseInsertColumns+`)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
 			'draft', $17, $18, $19, $20, $21, $22, $23::uuid[], $24, $25::uuid[], $26::uuid[], $27::uuid[], $28, 0, 0, 0)
 	`, newID, tenantID, code, newName, src.Type, src.Category, src.MajorID, src.TeacherID, src.IndustryID, src.Version,
@@ -247,9 +256,7 @@ func (s *CourseCloneStore) cloneCourseNodes(ctx context.Context, tx Queryer, old
 			}
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type,
-				source_id, source_name, teaching_goals, detailed_description, description_pdf, background,
-				estimated_hours, duration, difficulty, knowledge_point_ids, resource_ids, ability_point_ids, eval_data, status)
+			INSERT INTO system_course_nodes (`+SystemCourseNodeInsertColumns+`)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		`, newNodeID, tenantID, newCourseID, newParentID, n.Name, n.Code, n.SortOrder, n.RefType,
 			n.SourceID, n.SourceName, n.TeachingGoals, n.DetailedDescription, n.DescriptionPdf, n.Background,

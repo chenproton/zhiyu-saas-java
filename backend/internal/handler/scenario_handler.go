@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -103,6 +104,10 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	// 学生列表仅见已发布场景（越权加固 A3）；教师/管理员列表语义不变
+	if middleware.HasRole(middleware.CurrentUser(r), domain.RoleStudent) {
+		params.Values["status"] = string(domain.StatusPublished)
+	}
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询场景方案失败")
@@ -134,6 +139,11 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if scenario.TenantID != nil && !verifyTenantOwnership(w, r, *scenario.TenantID) {
+		return
+	}
+	// 学生仅可读已发布场景（决策 7：draft 对学生不可见）
+	if middleware.HasRole(claims, domain.RoleStudent) && scenario.Status != domain.StatusPublished {
+		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, scenario)
@@ -301,6 +311,10 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该场景已存在测评成绩，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除场景方案失败")
 		return
 	}

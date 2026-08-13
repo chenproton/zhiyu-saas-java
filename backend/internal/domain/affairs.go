@@ -154,8 +154,10 @@ type ScheduleEntry struct {
 	Source       string    `json:"source"`
 	Status       string    `json:"status"`
 	Version      int       `json:"version"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	// ResourceVersion 发布时 stamp 的资源版本（场景行取场景、其余行取课程；文档 5.3 下发）。
+	ResourceVersion *string   `json:"resourceVersion,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 // ScheduleConflict 排课冲突详情（409 响应体）。

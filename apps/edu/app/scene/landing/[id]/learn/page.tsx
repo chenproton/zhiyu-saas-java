@@ -31,6 +31,7 @@ import {
 import type {
   Scenario,
   ScenarioTask,
+  ScenarioSnapshot,
   TaskResource,
   KnowledgePoint,
   AbilityPoint,
@@ -38,6 +39,18 @@ import type {
   SceneEvaluationResult,
   Course,
 } from '@/lib/types'
+import { examHref, sceneLandingHref } from '@/lib/learn-links'
+import {
+  mergeScenarioSnapshot,
+  scenarioSnapshotEvalMethods,
+  scenarioSnapshotTask,
+  snapshotAbilityMap,
+  snapshotKnowledgeMap,
+  snapshotResourceMap,
+} from '@/lib/snapshot-converters'
+
+/** 教师/管理员预览 draft 走 live 多接口（文档 8.5）；学生等角色走单次快照 bundle */
+const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 /* ---------- page ---------- */
 
@@ -46,11 +59,15 @@ export default function SceneLearnPage() {
   const searchParams = useSearchParams()
   const id = params.id as string
   const targetTaskId = searchParams.get('task')
+  const versionParam = searchParams.get('v') || undefined
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, activeRoleCode, loading: authLoading } = useAuth()
   const t = useT()
+  // 教师/管理员预览 draft 走 live（原路径）；学生等角色走单次快照 bundle
+  const isEditorPreview = !!activeRoleCode && EDITOR_PREVIEW_ROLES.includes(activeRoleCode)
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
+  const [snapshot, setSnapshot] = useState<ScenarioSnapshot | null>(null)
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
@@ -59,12 +76,44 @@ export default function SceneLearnPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [granularCourseMap, setGranularCourseMap] = useState<Map<string, Course>>(new Map())
-  const [evalMethods, setEvalMethods] = useState<TaskEvaluationMethod[]>([])
+  const [liveEvalMethods, setEvalMethods] = useState<TaskEvaluationMethod[]>([])
   const [myResults, setMyResults] = useState<SceneEvaluationResult[]>([])
 
+  // 快照 bundle 路径（学生等）：单次 getSnapshot，任务/知识点/能力点/资源映射全部从 bundle 组装
+  useEffect(() => {
+    if (!id || authLoading || isEditorPreview) return
+    ;(async () => {
+      setLoading(true)
+      try {
+        const snap = await scenarioApi.getSnapshot(id, { version: versionParam })
+        setSnapshot(snap)
+        setScenario(mergeScenarioSnapshot(null, snap.scenario))
+        const tList = snap.scenario_tasks.map(scenarioSnapshotTask)
+        setTasks(tList)
+        setResourceMap(snapshotResourceMap(snap.resource_library))
+        setKnowledgeMap(snapshotKnowledgeMap(snap.knowledge_points))
+        setAbilityMap(snapshotAbilityMap(snap.ability_points))
+        setActiveTaskId((prev) => {
+          if (targetTaskId && tList.find((t) => t.id === targetTaskId)) {
+            return targetTaskId
+          }
+          if (tList.length > 0 && !prev) {
+            return tList[0].id
+          }
+          return prev
+        })
+      } catch {
+        setScenario(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [id, authLoading, isEditorPreview, versionParam, targetTaskId])
+
+  // live 路径（教师/管理员预览）：保持原多接口组装
   useEffect(() => {
     ;(async () => {
-      if (!id) return
+      if (!id || authLoading || !isEditorPreview) return
       setLoading(true)
       try {
         const s = await scenarioApi.get(id)
@@ -75,10 +124,10 @@ export default function SceneLearnPage() {
         setLoading(false)
       }
     })()
-  }, [id])
+  }, [id, authLoading, isEditorPreview])
 
   useEffect(() => {
-    if (!id || !scenario) return
+    if (!id || !scenario || !isEditorPreview) return
     taskApi
       .list({ scenarioId: id, limit: 1000 })
       .then((res) => {
@@ -95,10 +144,10 @@ export default function SceneLearnPage() {
         })
       })
       .catch(() => setTasks([]))
-  }, [id, scenario, targetTaskId])
+  }, [id, scenario, isEditorPreview, targetTaskId])
 
   useEffect(() => {
-    if (!id || !scenario) return
+    if (!id || !scenario || !isEditorPreview) return
     fetchAllPages((page, pageSize) => resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }))
       .then((items) => {
         const rMap = new Map<string, TaskResource>()
@@ -135,11 +184,12 @@ export default function SceneLearnPage() {
         reportError(err, '加载知识点/能力点数据')
         toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, scenario, toast, t])
+  }, [id, scenario, isEditorPreview, toast, t])
 
+  // live 路径：切任务时按任务懒加载测评方法
   useEffect(() => {
     ;(async () => {
-      if (!activeTaskId) return
+      if (!activeTaskId || !isEditorPreview) return
       setEvalMethods([])
       try {
         const res = await taskEvaluationApi.listMethods(activeTaskId)
@@ -150,7 +200,17 @@ export default function SceneLearnPage() {
         setEvalMethods([])
       }
     })()
-  }, [activeTaskId])
+  }, [activeTaskId, isEditorPreview])
+
+  // bundle 路径：测评方法从快照按 config_id 组装（替代 listMethods 活读）
+  const bundleEvalMethods = useMemo(
+    () =>
+      !isEditorPreview && snapshot && activeTaskId
+        ? scenarioSnapshotEvalMethods(snapshot, activeTaskId)
+        : [],
+    [snapshot, activeTaskId, isEditorPreview],
+  )
+  const evalMethods = isEditorPreview ? liveEvalMethods : bundleEvalMethods
 
   useEffect(() => {
     if (!activeTaskId) return
@@ -224,8 +284,12 @@ export default function SceneLearnPage() {
     const examId = m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
-    return `/evaluation/landing/exams/${examId}?task=${activeTaskId}&scene=${id}&method=${m.methodKey}&usage=${usageId || ''}`
+    // 考试作答页只消费 task/scene/method/usage；试卷版本由对端按 usage.examVersion 解析
+    return examHref(examId, { task: activeTaskId, scene: id, method: m.methodKey, usage: usageId })
   }
+
+  // 页面加载使用的场景版本（URL ?v= 优先，缺省取 bundle/live 主表版本）；提交时作 expectedVersion 提示
+  const pageVersion = versionParam || snapshot?.scenario.version || scenario?.version || undefined
 
   const handleSubmitMethod = async (payload: EvalMethodSubmitPayload) => {
     if (!user?.id || !activeTaskId) return
@@ -233,6 +297,7 @@ export default function SceneLearnPage() {
       await evaluationResultApi.submit({
         taskId: activeTaskId,
         sceneId: id,
+        expectedVersion: pageVersion,
         methodKey: payload.methodKey,
         evaluateeId: user.id,
         maxScore: payload.maxScore,
@@ -253,7 +318,7 @@ export default function SceneLearnPage() {
       loading={loading}
       notFound={!scenario}
       entityName={scenario?.name}
-      detailHref={`/scene/landing/${id}`}
+      detailHref={sceneLandingHref(id, pageVersion)}
       backHref="/scene/landing"
       units={units}
       activeUnitId={activeTaskId}

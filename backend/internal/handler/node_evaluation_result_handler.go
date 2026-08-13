@@ -205,6 +205,7 @@ func (h *NodeEvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Requ
 	res, err := h.Service.SubmitNodeEvaluationResult(r.Context(), &store.NodeEvaluationResultSubmitParams{
 		TenantID:          tenantID,
 		NodeID:            req.NodeID,
+		ExpectedVersion:   req.ExpectedVersion,
 		MethodKey:         req.MethodKey,
 		EvaluateeID:       req.EvaluateeID,
 		EvaluatorID:       evaluatorID,

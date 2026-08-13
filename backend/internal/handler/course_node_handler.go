@@ -349,6 +349,10 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteNode(r.Context(), id, tenantID); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该节点已存在测评成绩，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除课程节点失败")
 		return
 	}

@@ -401,7 +401,12 @@ func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Q
 			examID = id
 			resourceConfig["examId"] = examID
 		}
-		if err := SyncExamQuestions(ctx, tx, tenantID, examID, questionIDs, getFloatMapFromJSONMap(resourceConfig, "questionScores")); err != nil {
+		changed, err := SyncExamQuestions(ctx, tx, tenantID, examID, questionIDs, getFloatMapFromJSONMap(resourceConfig, "questionScores"))
+		if err != nil {
+			return resourceConfig, err
+		}
+		// temp exam 兜底（文档 5.1 末条）：不走 Transition，同步点维护版本+快照并刷新引用安排的 exam_version
+		if _, err := NewSnapshotStore(tx).SyncTempExamSnapshot(ctx, tenantID, examID, changed); err != nil {
 			return resourceConfig, err
 		}
 	}
@@ -467,10 +472,12 @@ func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, te
 	if err != nil {
 		return "", fmt.Errorf("generate exam code: %w", err)
 	}
+	// 临时考试统一为 published（文档 8.12：学生作答走 GET /evaluation/exams/{id}，
+	// 与课程侧 CreateTempExam 一致；历史 draft 临时卷由迁移 159 回填）。
 	_, err = tx.Exec(ctx, `
 		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
+		VALUES ($1, $2, $3, $4, '', 'published', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
 	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam: %w", err)
@@ -514,10 +521,21 @@ func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Querye
 	if err != nil {
 		return "", fmt.Errorf("生成考试安排名称失败: %w", err)
 	}
+	// 绑定固化（文档 5.3）：创建即打 exam_version（快照最新为准，缺档回退 live version）；
+	// 复用已有安排的分支不重新 stamp——题库/随堂测 temp exam 已由 SyncTempExamSnapshot 刷新，
+	// 正式试卷再发布不回溯刷新既有安排（文档 8.10 固化语义）。
+	examVersion, err := NewSnapshotStore(tx).ResolveResourceVersion(ctx, tenantID, SnapshotResourceExam, examID)
+	if err != nil {
+		return "", fmt.Errorf("resolve exam version: %w", err)
+	}
+	var versionArg any
+	if examVersion != "" {
+		versionArg = examVersion
+	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, $9, $10, $11)
-	`, id, tenantID, examID, name, startTime, endTime, duration, []string{taskID}, status, activationMode, creator)
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, creator_id, exam_version)
+		VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, 'task', $8, $9, $10, $11, $12)
+	`, id, tenantID, examID, name, startTime, endTime, duration, []string{taskID}, status, activationMode, creator, versionArg)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}
@@ -582,9 +600,13 @@ func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
 // 须在事务内调用（场景/任务删除共用）。
 // 注意：不能合并为单条数据修改 CTE——CTE 的删除效果对同一语句的主查询不可见（快照语义），
 // 会导致 NOT EXISTS 判定不到已删安排、临时考试永远残留。故拆为两条语句（同事务内后一条可见前一条效果）。
+// 删除保护兜底（文档 5.5）：已有成绩的安排保留——exam_results 对 exam_usages 是 FK CASCADE，
+// 删安排会连带毁成绩（temp exam 的成绩即任务/节点测评成绩）；保留的安排使其 temp exam 也不删。
 func CleanupTaskExamUsages(ctx context.Context, tx Queryer, taskID string) error {
 	rows, err := tx.Query(ctx, `
-		DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids) RETURNING exam_id
+		DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids)
+			AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)
+		RETURNING exam_id
 	`, taskID)
 	if err != nil {
 		return fmt.Errorf("cleanup task exam usages: %w", err)

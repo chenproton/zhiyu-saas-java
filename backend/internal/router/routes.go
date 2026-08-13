@@ -114,6 +114,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 				// 场景列表为重查询（3 个 LATERAL 聚合），挂租户级 2min 缓存（键含查询参数）
 				r.With(cachedPublicScenarios).Get("/scene/scenarios", h.scenarioHandler.List)
 				r.Get("/scene/scenarios/{id}", h.scenarioHandler.Get)
+				// 快照 bundle 只读（学生角色在 handler 内剥离答案字段，文档 5.2）
+				r.Get("/scene/scenarios/{id}/snapshot", h.snapshotHandler.GetScenarioSnapshot)
 				r.Get("/scene/tasks", h.scenarioTaskHandler.List)
 				r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
 				r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
@@ -146,6 +148,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 				// 学生场景任务中查看/作答试卷（仅读）；写操作仍在 businessUser
 				registerContentReadRoutes(r, "/evaluation/exams", h.examHandler)
+				r.Get("/evaluation/exams/{id}/snapshot", h.snapshotHandler.GetExamSnapshot)
+				r.Get("/evaluation/question-banks/{id}/snapshot", h.snapshotHandler.GetQuestionBankSnapshot)
 				// 考试安排：学生查询
 				r.Get("/evaluation/exam-usages", h.examUsageHandler.List)
 				r.Get("/evaluation/exam-usages/{id}", h.examUsageHandler.Get)
@@ -240,6 +244,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 				// 课程前台落地页只读接口
 				registerContentReadRoutes(r, "/lesson/courses", h.courseHandler)
+				r.Get("/lesson/courses/{id}/snapshot", h.snapshotHandler.GetCourseSnapshot)
+				r.Get("/job/positions/{id}/snapshot", h.snapshotHandler.GetPositionSnapshot)
 
 				// 资源库前台落地页只读接口
 				r.Get("/library/resources", h.resourceLibraryHandler.List)
