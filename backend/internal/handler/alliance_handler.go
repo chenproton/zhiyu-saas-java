@@ -334,6 +334,14 @@ func (h *AllianceHandler) SaveGrants(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "企业未引入或不存在")
 		return
 	}
+	// 资源归属校验：只能授权本校的岗位/场景（防跨租户授权）
+	if ok, err := h.Grants.VerifyGrantsOwnership(r.Context(), tenantID, req.ResourceType, req.ResourceIDs); err != nil {
+		respondServerError(w, r, err, "校验授权资源失败")
+		return
+	} else if !ok {
+		respondError(w, http.StatusBadRequest, "包含非本校资源，无法授权")
+		return
+	}
 	// 保存时自动并入该企业共建资源（新建共建资源已自动授权，此处防止整组保存误删）
 	if err := h.Grants.UpsertMergingCoBuilt(r.Context(), tenantID, req.EnterpriseID, req.ResourceType, req.ResourceIDs, claims.UserID); err != nil {
 		respondServerError(w, r, err, "保存授权失败")
@@ -426,6 +434,13 @@ func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Reques
 	// 部分更新兜底：未携带字段回退已有值
 	if req.Status == "" {
 		req.Status = existing.Status
+	}
+	// 状态白名单（与字典 enterprise_status / 企业侧流转表一致），防写入任意字符串
+	switch req.Status {
+	case "negotiating", "active", "paused", "terminated":
+	default:
+		respondError(w, http.StatusBadRequest, "无效的合作状态")
+		return
 	}
 	if req.Rating == nil {
 		req.Rating = existing.Rating
@@ -730,7 +745,6 @@ func (h *AllianceHandler) CreateSchoolExpert(w http.ResponseWriter, r *http.Requ
 	req.ID = ""
 	req.TenantID = tenantID
 	req.EnterpriseID = nil
-	req.IsPublic = false
 	if req.Status == "" {
 		req.Status = "active"
 	}
@@ -785,11 +799,43 @@ func (h *AllianceHandler) UpdateSchoolExpert(w http.ResponseWriter, r *http.Requ
 	if req.Status == "" {
 		req.Status = expert.Status
 	}
+	// 展示开关：请求未携带时保留已有状态，防止编辑资料静默关闭前台展示
+	if req.IsPublic == nil {
+		req.IsPublic = expert.IsPublic
+	}
 	if err := h.Store.UpdateExpert(r.Context(), id, tenantID, &req); err != nil {
 		respondServerError(w, r, err, "更新专家档案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, req)
+}
+
+// DeleteSchoolExpert 学校侧删除专家档案（仅限本校创建的无企业关联档案，即校本教师资料副本）。
+func (h *AllianceHandler) DeleteSchoolExpert(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	expert, err := h.Store.GetExpertByIDGlobal(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	if expert.EnterpriseID != nil || expert.TenantID != tenantID {
+		respondError(w, http.StatusForbidden, "仅可删除本校创建的师资档案")
+		return
+	}
+	if err := h.Store.DeleteExpert(r.Context(), id, tenantID); err != nil {
+		respondServerError(w, r, err, "删除专家档案失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
 // ===== 合作协议（独立） =====
@@ -1179,7 +1225,7 @@ func (h *AllianceHandler) ListTalentRanking(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"))
+	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"), false)
 	if err != nil {
 		respondServerError(w, r, err, "查询人才画像排名失败")
 		return
@@ -1237,7 +1283,7 @@ func (h *AllianceHandler) ListPublicTalentRanking(w http.ResponseWriter, r *http
 		respondJSON(w, http.StatusOK, map[string]any{"items": []any{}})
 		return
 	}
-	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"))
+	groups, err := h.Store.ListTalentRanking(r.Context(), tenantID, r.URL.Query().Get("search"), true)
 	if err != nil {
 		respondServerError(w, r, err, "查询人才画像排名失败")
 		return
@@ -1319,9 +1365,14 @@ func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Requ
 
 func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceProject, error) {
-		return h.Store.GetPublicProjectByID(ctx, id, tenantID)
-	}, "项目不存在")
+	id := chi.URLParam(r, "id")
+	item, err := h.Store.GetPublicProjectByID(r.Context(), id, tenantID)
+	if err != nil {
+		alliancePublicGetErr(w, r, err, "项目不存在")
+		return
+	}
+	h.Store.IncrementAllianceView(r.Context(), "alliance_projects", id)
+	respondJSON(w, http.StatusOK, item)
 }
 
 // ListPublicMilestones 前台公开里程碑（含本校链接双控，规则同 GetPublicProject）。
@@ -1350,9 +1401,14 @@ func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.
 
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	alliancePublicGet(w, r, func(ctx context.Context, id string) (*domain.AllianceAchievement, error) {
-		return h.Store.GetPublicAchievementByID(ctx, id, tenantID)
-	}, "成果不存在")
+	id := chi.URLParam(r, "id")
+	item, err := h.Store.GetPublicAchievementByID(r.Context(), id, tenantID)
+	if err != nil {
+		alliancePublicGetErr(w, r, err, "成果不存在")
+		return
+	}
+	h.Store.IncrementAllianceView(r.Context(), "alliance_achievements", id)
+	respondJSON(w, http.StatusOK, item)
 }
 
 func (h *AllianceHandler) ListPublicAgreements(w http.ResponseWriter, r *http.Request) {
@@ -1363,11 +1419,16 @@ func (h *AllianceHandler) ListPublicAgreements(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// ListPublicExperts 前台公开专家列表；includeNonPublic=true 时忽略专家 is_public（企业详情页"专家团队"用）。
+// ListPublicExperts 前台公开专家列表；includeNonPublic=true 时忽略专家 is_public
+// （企业详情页"专家团队"用）。仅已登录用户可用，匿名访客强制 is_public 过滤，
+// 防止隐私开关被查询参数绕过。
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	limit, offset := publicListParams(r)
-	includeNonPublic := r.URL.Query().Get("includeNonPublic") == "true"
+	includeNonPublic := false
+	if middleware.CurrentUser(r) != nil {
+		includeNonPublic = r.URL.Query().Get("includeNonPublic") == "true"
+	}
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
 		return h.Store.ListPublicExperts(ctx, tenantID, limit, offset, includeNonPublic)
 	})
@@ -1417,13 +1478,22 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.URL.Query().Get("tenantId")
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.PublicBrandItem, error) {
-		return h.Store.ListPublicBrands(ctx, r.URL.Query().Get("brandType"))
+		return h.Store.ListPublicBrands(ctx, tenantID, r.URL.Query().Get("brandType"))
 	})
 }
 
 func (h *AllianceHandler) GetPublicBrand(w http.ResponseWriter, r *http.Request) {
-	alliancePublicGet(w, r, h.Store.GetPublicBrandByID, "品牌不存在")
+	tenantID := r.URL.Query().Get("tenantId")
+	id := chi.URLParam(r, "id")
+	item, err := h.Store.GetPublicBrandByID(r.Context(), id, tenantID)
+	if err != nil {
+		alliancePublicGetErr(w, r, err, "品牌不存在")
+		return
+	}
+	h.Store.IncrementAllianceView(r.Context(), "alliance_brands", id)
+	respondJSON(w, http.StatusOK, item)
 }
 
 func (h *AllianceHandler) GetPublicStats(w http.ResponseWriter, r *http.Request) {

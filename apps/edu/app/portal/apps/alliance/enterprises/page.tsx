@@ -38,6 +38,7 @@ import {
   allianceAgreementApi,
 } from '@/lib/api'
 import { useToast, useAsync, FormDialogFooter, ComboboxSelect } from '@zhiyu/ui'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
@@ -57,17 +58,16 @@ export default function AllianceEnterprisesPage() {
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const { items: statusItems } = useAllianceDictionary('enterprise_status', tenantId)
   const { items: ratingItems } = useAllianceDictionary('cooperation_rating', tenantId)
-  const { data, loading, error, refresh } = useAsync(
+  // 引用数据全量（协议/项目/成果计数用），不随列表分页
+  const { data: refsData } = useAsync(
     async () => {
-      if (!tenantId) return { enterprises: [], projects: [], achievements: [], agreements: [] }
-      const [ent, proj, ach, agr] = await Promise.all([
-        allianceEnterpriseApi.list(),
+      if (!tenantId) return { projects: [], achievements: [], agreements: [] }
+      const [proj, ach, agr] = await Promise.all([
         allianceProjectApi.list({ limit: 200 }),
         allianceAchievementApi.list({ limit: 200 }),
         allianceAgreementApi.list({ limit: 200 }),
       ])
       return {
-        enterprises: ent.items || [],
         projects: proj.items || [],
         achievements: ach.items || [],
         agreements: agr.items || [],
@@ -75,8 +75,18 @@ export default function AllianceEnterprisesPage() {
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
+  const { projects, achievements, agreements } = refsData ?? { projects: [], achievements: [], agreements: [] }
 
-  const { enterprises, projects, achievements, agreements } = data ?? {}
+  // 服务端分页列表
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (!tenantId) return { items: [], total: 0 }
+      const data = await allianceEnterpriseApi.list({ page, limit, search })
+      return { items: data.items || [], total: data.total }
+    },
+    [tenantId, authLoading],
+  )
+  const enterprises = list.items
 
   // ── 引入企业（全局企业池搜索 → link） ─────────────────────
   const [linkDialog, setLinkDialog] = useState(false)
@@ -105,7 +115,7 @@ export default function AllianceEnterprisesPage() {
       setLinkDialog(false)
       setSearchResults(null)
       setSearchKeyword('')
-      await refresh()
+      await list.refresh()
     } catch (e: any) {
       toast({ title: t('引入失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -164,7 +174,7 @@ export default function AllianceEnterprisesPage() {
         password: '',
         confirmPassword: '',
       })
-      await refresh()
+      await list.refresh()
     } catch (err: any) {
       toast({
         title: t('代注册失败'),
@@ -187,7 +197,7 @@ export default function AllianceEnterprisesPage() {
       await allianceEnterpriseApi.unlink(unlinkTarget.id)
       toast({ title: t('已解除引入') })
       setUnlinkTarget(null)
-      await refresh()
+      await list.refresh()
     } catch (e: any) {
       toast({ title: t('操作失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -198,7 +208,16 @@ export default function AllianceEnterprisesPage() {
   const countBy = (arr: any[], field: string, id: string) =>
     arr.filter((x) => (x[field] || []).includes?.(id)).length
 
-  const linkedIds = new Set((enterprises ?? []).map((e) => e.id))
+  // 已引入企业全集（分页外的引入去重标记）：企业列表仅当前页时需全量标记
+  const { data: linkedAllData } = useAsync(
+    async () => {
+      if (!tenantId) return []
+      const res = await allianceEnterpriseApi.list({ limit: 200 })
+      return res.items || []
+    },
+    { deps: [tenantId, authLoading], onError: () => true },
+  )
+  const linkedIds = new Set((linkedAllData ?? []).map((e) => e.id))
 
   return (
     <>
@@ -207,18 +226,16 @@ export default function AllianceEnterprisesPage() {
         description={t('从全局企业池引入合作企业，维护本校合作关系（评级/状态/前台展示）。')}
         entityLabel={t('合作企业')}
         searchPlaceholder={t('搜索企业名称或行业...')}
-        items={enterprises ?? []}
-        loading={loading}
-        error={error?.message ?? null}
-        onRetry={refresh}
-        filterItems={(items, search) =>
-          items.filter(
-            (e) =>
-              !search ||
-              e.name.toLowerCase().includes(search.toLowerCase()) ||
-              (e.industry || '').toLowerCase().includes(search.toLowerCase()),
-          )
-        }
+        items={enterprises}
+        loading={list.loading}
+        error={list.error?.message ?? null}
+        onRetry={list.refresh}
+        searchValue={list.search}
+        onSearchChange={(v: string) => {
+          list.setSearch(v)
+          list.setPage(1)
+        }}
+        pagination={list.pagination}
         headerActions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setRegisterDialog(true)}>
@@ -402,11 +419,11 @@ export default function AllianceEnterprisesPage() {
             secondaryColleges: item.secondaryColleges,
           })
           toast({ title: t('合作关系已更新') })
-          await refresh()
+          await list.refresh()
         }}
         onToggleEnabled={async (item: any) => {
           await allianceEnterpriseApi.update(item.id, { isPublic: !item.isPublic })
-          await refresh()
+          await list.refresh()
         }}
       />
 

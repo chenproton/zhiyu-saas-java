@@ -10,7 +10,8 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast } from '@zhiyu/ui'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
@@ -26,22 +27,21 @@ export default function AllianceCultureBrandPage() {
   const t = useT()
   const brandLabel = t('文化思政品牌')
   const brandDesc = t('管理典型案例、思政资源与文化活动')
-  const { data, loading, error, refresh } = useAsync(
-    async () => {
-      if (!tenantId) return []
-      const data = await allianceBrandApi.list({ brandType })
-      return data.items || []
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (!tenantId) return { items: [], total: 0 }
+      const data = await allianceBrandApi.list({ brandType, page, limit, search })
+      return { items: data.items || [], total: data.total }
     },
-    { deps: [tenantId, authLoading], onError: () => true },
+    [tenantId, authLoading],
   )
-
-  const items = data ?? []
+  const items = list.items
 
   const toggleBrandField = async (item: any, field: 'isPublic' | 'isFeatured', value: boolean) => {
     try {
       await allianceBrandApi.update(item.id, { [field]: value } as any)
       toast({ title: t('已更新') })
-      await refresh()
+      await list.refresh()
     } catch (e: any) {
       toast({ title: t('更新失败'), description: e.message, variant: 'destructive' })
     }
@@ -55,12 +55,15 @@ export default function AllianceCultureBrandPage() {
       searchPlaceholder={t('搜索品牌名称...')}
       createButtonLabel={t('新建品牌')}
       items={items}
-      loading={loading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(filtered, search) =>
-        filtered.filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()))
-      }
+      loading={list.loading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       importConfig={{
         importType: 'alliance-brands',
         entityLabel: brandLabel,
@@ -174,14 +177,13 @@ export default function AllianceCultureBrandPage() {
           await allianceBrandApi.create(item)
         }
         toast({ title: t('品牌已{action}', { action: isEdit ? t('更新') : t('创建') }) })
-        await refresh()
+        await list.refresh()
       }}
       onDelete={async (item: any) => {
         await allianceBrandApi.delete(item.id)
         toast({ title: t('品牌已删除') })
-        await refresh()
+        await list.refresh()
       }}
-      onToggleEnabled={async () => {}}
     />
   )
 }

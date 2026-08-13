@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -22,6 +23,7 @@ import { useToast, useAsync } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -31,31 +33,51 @@ export default function AllianceProjectsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
-  const { data, loading, error, refresh } = useAsync(
+
+  // 企业全量映射（名称解析用，不随分页）
+  const { data: entsData } = useAsync(
     async () => {
-      if (!tenantId) return { projects: [], enterprises: [], milestones: {} }
-      const [data, ents] = await Promise.all([
-        allianceProjectApi.list(),
-        allianceEnterpriseApi.list({ limit: 200 }),
-      ])
-      // 里程碑并行拉取，避免逐项目串行 N+1 请求
-      const ms: Record<string, AllianceProjectMilestone[]> = {}
-      const milestoneResults = await Promise.all(
-        (data.items || []).map((p) =>
-          allianceProjectApi.listMilestones(p.id).catch(() => ({ items: [] })),
-        ),
-      )
-      ;(data.items || []).forEach((p, i) => {
-        ms[p.id] = milestoneResults[i]?.items || []
-      })
-      return { projects: data.items || [], enterprises: ents.items || [], milestones: ms }
+      if (!tenantId) return []
+      const ents = await allianceEnterpriseApi.list({ limit: 200 })
+      return ents.items || []
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
+  const enterprises = entsData ?? []
 
-  const { projects, enterprises, milestones } = data ?? {}
+  // 服务端分页列表
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (!tenantId) return { items: [], total: 0 }
+      const data = await allianceProjectApi.list({ page, limit, search })
+      return { items: data.items || [], total: data.total }
+    },
+    [tenantId, authLoading],
+  )
 
-  const entName = (id: string) => (enterprises ?? []).find((e) => e.id === id)?.name || id
+  // 里程碑只拉当前页项目（分页/搜索变化时自动重拉）
+  const { data: msData, refresh: refreshMilestones } = useAsync(
+    async () => {
+      const ms: Record<string, AllianceProjectMilestone[]> = {}
+      const milestoneResults = await Promise.all(
+        (list.items || []).map((p) =>
+          allianceProjectApi.listMilestones(p.id).catch(() => ({ items: [] })),
+        ),
+      )
+      ;(list.items || []).forEach((p, i) => {
+        ms[p.id] = milestoneResults[i]?.items || []
+      })
+      return ms
+    },
+    { deps: [list.items, tenantId], onError: () => true },
+  )
+  useEffect(() => {
+    refreshMilestones()
+  }, [list.items, refreshMilestones])
+
+  const milestones = msData ?? {}
+
+  const entName = (id: string) => enterprises.find((e) => e.id === id)?.name || id
 
   return (
     <PortalCrudPage
@@ -64,13 +86,16 @@ export default function AllianceProjectsPage() {
       entityLabel={t('合作项目')}
       searchPlaceholder={t('搜索项目名称...')}
       createButtonLabel={t('新建项目')}
-      items={projects ?? []}
-      loading={loading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(items, search) =>
-        items.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()))
-      }
+      items={list.items}
+      loading={list.loading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       importConfig={{
         importType: 'alliance-projects',
         entityLabel: t('合作项目'),
@@ -213,17 +238,17 @@ export default function AllianceProjectsPage() {
         if (isEdit) await allianceProjectApi.update(item.id, item)
         else await allianceProjectApi.create(item)
         toast({ title: t('项目已{action}', { action: isEdit ? t('更新') : t('创建') }) })
-        await refresh()
+        await list.refresh()
       }}
       onDelete={async (item: any) => {
         await allianceProjectApi.delete(item.id)
         toast({ title: t('已删除') })
-        await refresh()
+        await list.refresh()
       }}
       onToggleEnabled={async (item: any) => {
         await allianceProjectApi.update(item.id, { isPublic: !item.isPublic })
         toast({ title: t('已{action}前台展示', { action: item.isPublic ? t('取消') : t('设为') }) })
-        await refresh()
+        await list.refresh()
       }}
     />
   )

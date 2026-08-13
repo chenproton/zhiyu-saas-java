@@ -78,6 +78,10 @@ export default function AllianceAchievementNewPage() {
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
   const handleSave = async () => {
+    if (!item.title.trim()) {
+      toast({ title: t('成果标题不能为空'), variant: 'destructive' })
+      return
+    }
     setSaving(true)
     try {
       const data = await allianceAchievementApi.create(item)

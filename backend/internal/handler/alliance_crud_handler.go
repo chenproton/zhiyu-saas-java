@@ -32,6 +32,15 @@ func allianceList[T any](w http.ResponseWriter, r *http.Request, db store.ListQu
 	respondJSON(w, http.StatusOK, ListResponse[T]{Items: items, Total: total})
 }
 
+// alliancePublicGetErr 公开详情统一错误映射（404 = 不存在/无权限，其余 500）。
+func alliancePublicGetErr(w http.ResponseWriter, r *http.Request, err error, notFoundMsg string) {
+	if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
+		respondError(w, http.StatusNotFound, notFoundMsg)
+		return
+	}
+	respondServerError(w, r, err, "查询失败")
+}
+
 // alliancePublicList 统一匿名公开列表：store 查询 → {items,total}。
 func alliancePublicList[T any](w http.ResponseWriter, r *http.Request, listFn func(ctx context.Context) ([]T, error)) {
 	items, err := listFn(r.Context())
@@ -133,6 +142,10 @@ func (h *AllianceHandler) projectCRUD() crudConfig[domain.AllianceProject, domai
 		if t.SecondaryColleges == nil {
 			t.SecondaryColleges = existing.SecondaryColleges
 		}
+		// 展示开关：请求未携带时保留已有状态，防止局部更新把已公开内容静默下架
+		if t.IsPublic == nil {
+			t.IsPublic = existing.IsPublic
+		}
 		return ""
 	}
 	cfg.DeleteFn = func(ctx context.Context, id, tenantID string) error {
@@ -191,36 +204,42 @@ func (h *AllianceHandler) achievementCRUD() crudConfig[domain.AllianceAchievemen
 		if t.Status == "" {
 			t.Status = existing.Status
 		}
-		if len(t.Attachments) == 0 {
+		// 数组字段：仅"未携带"（nil）时回退；显式传空数组表示清空关联
+		if t.Attachments == nil {
 			t.Attachments = existing.Attachments
 		}
-		if len(t.Images) == 0 {
+		if t.Images == nil {
 			t.Images = existing.Images
 		}
-		if len(t.OwnerPersons) == 0 {
+		if t.OwnerPersons == nil {
 			t.OwnerPersons = existing.OwnerPersons
 		}
-		if len(t.CoBuilders) == 0 {
+		if t.CoBuilders == nil {
 			t.CoBuilders = existing.CoBuilders
 		}
-		if len(t.EnterpriseIDs) == 0 {
+		if t.EnterpriseIDs == nil {
 			t.EnterpriseIDs = existing.EnterpriseIDs
 		}
-		if len(t.ProjectIDs) == 0 {
+		if t.ProjectIDs == nil {
 			t.ProjectIDs = existing.ProjectIDs
 		}
-		if len(t.RelatedPositions) == 0 {
+		if t.RelatedPositions == nil {
 			t.RelatedPositions = existing.RelatedPositions
 		}
-		if len(t.RelatedScenes) == 0 {
+		if t.RelatedScenes == nil {
 			t.RelatedScenes = existing.RelatedScenes
 		}
-		if len(t.RelatedCourses) == 0 {
+		if t.RelatedCourses == nil {
 			t.RelatedCourses = existing.RelatedCourses
 		}
-		if len(t.SecondaryColleges) == 0 {
+		if t.SecondaryColleges == nil {
 			t.SecondaryColleges = existing.SecondaryColleges
 		}
+		// 展示开关：请求未携带时保留已有状态；浏览量不受编辑影响（由阅读自增）
+		if t.IsPublic == nil {
+			t.IsPublic = existing.IsPublic
+		}
+		t.ViewCount = existing.ViewCount
 		return ""
 	}
 	cfg.UpdateFn = func(ctx context.Context, id, tenantID string, t *domain.AllianceAchievement) error {
@@ -279,14 +298,19 @@ func (h *AllianceHandler) agreementCRUD() crudConfig[domain.AllianceAgreement, d
 		if t.Status == "" {
 			t.Status = existing.Status
 		}
-		if len(t.EnterpriseIDs) == 0 {
+		// 数组字段：仅"未携带"（nil）时回退；显式传空数组表示清空关联
+		if t.EnterpriseIDs == nil {
 			t.EnterpriseIDs = existing.EnterpriseIDs
 		}
-		if len(t.ProjectIDs) == 0 {
+		if t.ProjectIDs == nil {
 			t.ProjectIDs = existing.ProjectIDs
 		}
-		if len(t.Attachments) == 0 {
+		if t.Attachments == nil {
 			t.Attachments = existing.Attachments
+		}
+		// 展示开关：请求未携带时保留已有状态，防止局部更新把已公开内容静默下架
+		if t.IsPublic == nil {
+			t.IsPublic = existing.IsPublic
 		}
 		return ""
 	}

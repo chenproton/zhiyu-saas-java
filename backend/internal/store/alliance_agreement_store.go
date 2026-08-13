@@ -20,9 +20,10 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 		var startDate, endDate *time.Time
 		var enterpriseIDs, projectIDs, attachments json.RawMessage
 		var createdBy *string
+		var isPublic bool
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Name, &typ, &content, &startDate,
 			&endDate, &a.Status, &enterpriseIDs, &projectIDs, &attachments,
-			&a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			&isPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.Type = typ
@@ -32,6 +33,7 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 		a.EnterpriseIDs = enterpriseIDs
 		a.ProjectIDs = projectIDs
 		a.Attachments = attachments
+		a.IsPublic = &isPublic
 		a.CreatedBy = createdBy
 		items = append(items, a)
 	}
@@ -71,10 +73,9 @@ func (s *AllianceStore) ScanPublicAgreementRows(rows pgx.Rows) ([]domain.Allianc
 	return items, rows.Err()
 }
 
-// ListPublicAgreements 门户前台公开协议列表：无独立展示开关，跟随关联资源展示——
-// 至少关联一家"双控通过的企业"（enterprise_ids 直接关联）
-// 或关联"双控通过的项目"（project_ids 二次关联，经项目关联企业）即展示（业务 status 不参与过滤）；
-// 带 tenantID 时限定该校协议并叠加 link.is_public 双控、排除已终止合作。仅返回公开字段，content/attachments 不下发。
+// ListPublicAgreements 门户前台公开协议列表：is_public 为公开展示唯一门槛
+// （迁移 144 语义），并叠加关联企业/项目双控过滤。
+// 带 tenantID 时限定该校协议并排除已终止合作。仅返回公开字段，content/attachments 不下发。
 func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID string, limit, offset int) ([]domain.AlliancePublicAgreement, error) {
 	const cols = `id, name, type, status, start_date, end_date, enterprise_ids, project_ids`
 	if limit <= 0 {
@@ -84,7 +85,7 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 		return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 			SELECT `+cols+`
 			FROM alliance_agreements a
-			WHERE a.tenant_id = $1
+			WHERE a.tenant_id = $1 AND a.is_public = true
 			  AND (
 				EXISTS (
 					SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
@@ -105,7 +106,8 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 	return queryList(ctx, s.q, s.ScanPublicAgreementRows, `
 		SELECT `+cols+`
 		FROM alliance_agreements a
-		WHERE (
+		WHERE a.is_public = true
+		  AND (
 			EXISTS (
 				SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
@@ -117,8 +119,8 @@ func (s *AllianceStore) ListPublicAgreements(ctx context.Context, tenantID strin
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
 			)
 		  )
-		ORDER BY a.created_at DESC LIMIT 100
-	`)
+		ORDER BY a.created_at DESC LIMIT $1 OFFSET $2
+	`, limit, offset)
 }
 
 func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceAgreement) (string, error) {
@@ -128,7 +130,7 @@ func (s *AllianceStore) CreateAgreement(ctx context.Context, a *domain.AllianceA
 			end_date, status, enterprise_ids, project_ids, attachments, is_public, created_by, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
 	`, id, a.TenantID, a.Name, a.Type, a.Content, a.StartDate, a.EndDate,
-		a.Status, emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), a.IsPublic, a.CreatedBy)
+		a.Status, emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), BoolVal(a.IsPublic), a.CreatedBy)
 	if err != nil {
 		return "", err
 	}
@@ -142,19 +144,19 @@ func (s *AllianceStore) UpdateAgreement(ctx context.Context, id, tenantID string
 			status = $6, enterprise_ids = $7, project_ids = $8, attachments = $9, is_public = $10, updated_at = NOW()
 		WHERE id = $11 AND tenant_id = $12
 	`, a.Name, a.Type, a.Content, a.StartDate, a.EndDate, a.Status,
-		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), a.IsPublic, id, tenantID)
+		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs), emptyJSON(a.Attachments), BoolVal(a.IsPublic), id, tenantID)
 	return err
 }
 
-// DeleteAgreement 删除协议并清理项目侧 agreement_ids 反指（避免残留死 id）。
+// DeleteAgreement 删除协议并清理项目侧 agreement_ids 反指（避免残留死 id，限本租户）。
 func (s *AllianceStore) DeleteAgreement(ctx context.Context, id, tenantID string) error {
 	if _, err := s.q.Exec(ctx, `
 		UPDATE alliance_projects
 		SET agreement_ids = COALESCE((
 			SELECT jsonb_agg(x) FROM jsonb_array_elements_text(agreement_ids) x WHERE x <> $1
 		), '[]'::jsonb), updated_at = NOW()
-		WHERE agreement_ids ? $1
-	`, id); err != nil {
+		WHERE agreement_ids ? $1 AND tenant_id = $2
+	`, id, tenantID); err != nil {
 		return err
 	}
 	_, err := s.q.Exec(ctx, `DELETE FROM alliance_agreements WHERE id = $1 AND tenant_id = $2`, id, tenantID)
@@ -167,12 +169,13 @@ func (s *AllianceStore) GetAgreementByID(ctx context.Context, id, tenantID strin
 	var startDate, endDate *time.Time
 	var enterpriseIDs, projectIDs, attachments json.RawMessage
 	var createdBy *string
+	var isPublic bool
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, content, start_date, end_date, status,
 			enterprise_ids, project_ids, attachments, is_public, created_by, created_at, updated_at
 		FROM alliance_agreements WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&a.ID, &a.TenantID, &a.Name, &typ, &content, &startDate,
-		&endDate, &a.Status, &enterpriseIDs, &projectIDs, &attachments, &a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
+		&endDate, &a.Status, &enterpriseIDs, &projectIDs, &attachments, &isPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

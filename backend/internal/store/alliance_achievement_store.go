@@ -20,11 +20,12 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 		var achievementDate *time.Time
 		var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 		var createdBy *string
+		var isPublic bool
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
 			&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
 			&enterpriseIDs, &projectIDs, &relatedPositions,
 			&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
-			&a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			&isPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.Description = description
@@ -79,7 +80,7 @@ func (s *AllianceStore) CreateAchievement(ctx context.Context, a *domain.Allianc
 		emptyJSON(a.Attachments), a.CitationReason, emptyJSON(a.Images), emptyJSON(a.OwnerPersons), emptyJSON(a.CoBuilders),
 		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
 		emptyJSON(a.RelatedPositions), emptyJSON(a.RelatedScenes), emptyJSON(a.RelatedCourses),
-		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), a.IsPublic, a.CreatedBy)
+		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), BoolVal(a.IsPublic), a.CreatedBy)
 	if err != nil {
 		return "", err
 	}
@@ -92,14 +93,14 @@ func (s *AllianceStore) UpdateAchievement(ctx context.Context, id, tenantID stri
 			title = $1, type = $2, description = $3, achievement_date = $4, cover_image = $5,
 			attachments = $6, citation_reason = $7, images = $8, owner_persons = $9, co_builders = $10,
 			enterprise_ids = $11, project_ids = $12, related_positions = $13,
-			related_scenes = $14, related_courses = $15, status = $16, view_count = $17,
-			secondary_colleges = $18, is_public = $19, updated_at = NOW()
-		WHERE id = $20 AND tenant_id = $21
+			related_scenes = $14, related_courses = $15, status = $16,
+			secondary_colleges = $17, is_public = $18, updated_at = NOW()
+		WHERE id = $19 AND tenant_id = $20
 	`, a.Title, a.Type, a.Description, a.AchievementDate, a.CoverImage,
 		emptyJSON(a.Attachments), a.CitationReason, emptyJSON(a.Images), emptyJSON(a.OwnerPersons), emptyJSON(a.CoBuilders),
 		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
 		emptyJSON(a.RelatedPositions), emptyJSON(a.RelatedScenes), emptyJSON(a.RelatedCourses),
-		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), a.IsPublic, id, tenantID)
+		a.Status, emptyJSON(a.SecondaryColleges), BoolVal(a.IsPublic), id, tenantID)
 	return err
 }
 
@@ -114,6 +115,7 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 	var achievementDate *time.Time
 	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 	var createdBy *string
+	var isPublic bool
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
 			attachments, citation_reason, images, owner_persons, co_builders,
@@ -124,7 +126,7 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 		&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
 		&enterpriseIDs, &projectIDs, &relatedPositions,
 		&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
-		&a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
+		&isPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +197,8 @@ func (s *AllianceStore) ListPublicAchievements(ctx context.Context, tenantID str
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
 			)
 		  )
-		ORDER BY a.created_at DESC LIMIT 100
-	`)
+		ORDER BY a.created_at DESC LIMIT $1 OFFSET $2
+	`, limit, offset)
 }
 
 func (s *AllianceStore) GetPublicAchievementByID(ctx context.Context, id, tenantID string) (*domain.AllianceAchievement, error) {

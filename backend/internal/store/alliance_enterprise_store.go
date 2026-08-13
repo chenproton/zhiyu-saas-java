@@ -453,7 +453,11 @@ func (s *AllianceStore) GetPublicStats(ctx context.Context, tenantID string) All
 				JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true
 			  )`)
 	}
-	// 品牌为学校侧内容（§3.2 逻辑保持），不参与企业双控
-	st.BrandCount = count(`SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status <> 'archived'`)
+	// 品牌为学校侧内容（§3.2 逻辑保持），不参与企业双控；带 tenantID 时限定本校品牌
+	if tenantID != "" {
+		st.BrandCount = count(`SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status <> 'archived' AND tenant_id = $1`, tenantID)
+	} else {
+		st.BrandCount = count(`SELECT COUNT(*) FROM alliance_brands WHERE is_public = true AND status <> 'archived'`)
+	}
 	return st
 }

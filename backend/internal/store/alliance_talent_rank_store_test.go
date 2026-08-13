@@ -130,7 +130,7 @@ func TestListTalentRanking(t *testing.T) {
 	}}
 	s := NewAllianceStore(q)
 
-	groups, err := s.ListTalentRanking(context.Background(), "tenant-1", "张三")
+	groups, err := s.ListTalentRanking(context.Background(), "tenant-1", "张三", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestListTalentRankingOrgTreeMajorFallback(t *testing.T) {
 	}}
 	s := NewAllianceStore(q)
 
-	groups, err := s.ListTalentRanking(context.Background(), "tenant-1", "")
+	groups, err := s.ListTalentRanking(context.Background(), "tenant-1", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}

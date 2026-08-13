@@ -65,8 +65,8 @@ func TestAlliancePublicAgreements(t *testing.T) {
 	}
 	defer env.DB.Exec(ctx, `DELETE FROM alliance_projects WHERE id = $1`, projectID)
 
-	// a1 应可见（关联公开企业，status=draft 不参与展示过滤）；a2 is_public=false 但关联公开企业——
-	// 前台展示跟随合作企业，仍应可见；a3 仅关联非公开企业排除；a4 关联已终止合作企业（tenant 分支排除）；
+	// a1 应可见（is_public=true 且关联公开企业）；a2 is_public=false 不展示（is_public 为唯一门槛，
+	// 迁移 144 语义：即使关联公开企业也不公开）；a3 仅关联非公开企业排除；a4 关联已终止合作企业（tenant 分支排除）；
 	// a5 仅关联项目（project_ids，未直接关联企业）——经项目二次关联应可见
 	a1, a2, a3, a4, a5 := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
 	seed := []struct {
@@ -120,13 +120,13 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		// 应返回：直接关联的 a1 + a2（is_public 不参与）+ 仅项目关联的 a5
+		// 应返回：a1（is_public + 关联公开企业）+ a5（项目二次关联）；a2 is_public=false 不展示
 		ids := map[string]bool{}
 		for _, it := range items {
 			ids[it.ID] = true
 		}
-		if len(items) != 3 || !ids[a1] || !ids[a2] || !ids[a5] {
-			t.Fatalf("应返回 a1/a2/a5（a2 跟随合作企业展示，a5 项目二次关联）: %s", w.Body.String())
+		if len(items) != 2 || !ids[a1] || !ids[a5] || ids[a2] {
+			t.Fatalf("应返回 a1/a5（a2 关闭展示不公开）: %s", w.Body.String())
 		}
 	})
 
@@ -139,23 +139,23 @@ func TestAlliancePublicAgreements(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		var foundA1, foundA2, foundA5 bool
+		var foundA1, foundA5 bool
 		for _, it := range items {
 			if it.ID == a3 {
 				t.Fatalf("非公开企业协议不应公开: %s", w.Body.String())
 			}
+			if it.ID == a2 {
+				t.Fatalf("a2 is_public=false 不应公开: %s", w.Body.String())
+			}
 			if it.ID == a1 {
 				foundA1 = true
-			}
-			if it.ID == a2 {
-				foundA2 = true
 			}
 			if it.ID == a5 {
 				foundA5 = true
 			}
 		}
-		if !foundA1 || !foundA2 || !foundA5 {
-			t.Fatalf("公开协议 a1/a2/a5 未返回: %s", w.Body.String())
+		if !foundA1 || !foundA5 {
+			t.Fatalf("公开协议 a1/a5 未返回: %s", w.Body.String())
 		}
 	})
 

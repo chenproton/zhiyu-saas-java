@@ -142,7 +142,7 @@ func (s *AllianceStore) listRankStudents(ctx context.Context, tenantID, search s
 // ListTalentRanking 返回租户全部学生按专业分组的画像排名。
 // 分组内按平均岗位能力达成率降序（无评估学生排后）；未配置专业的默认 enabled=true、rankLimit=10。
 // 学生专业取 listRankStudents 推导结果（users.major_id → 组织树「专业」节点 → 节点名兜底）。
-func (s *AllianceStore) ListTalentRanking(ctx context.Context, tenantID, search string) ([]domain.TalentRankMajorGroup, error) {
+func (s *AllianceStore) ListTalentRanking(ctx context.Context, tenantID, search string, excludeUnevaluated bool) ([]domain.TalentRankMajorGroup, error) {
 	students, err := s.listRankStudents(ctx, tenantID, search)
 	if err != nil {
 		return nil, err
@@ -169,6 +169,12 @@ func (s *AllianceStore) ListTalentRanking(ctx context.Context, tenantID, search 
 	groupIdx := make(map[string]int)
 	for i := range students {
 		st := &students[i]
+		// 公开榜单剔除无任何评估记录的学生（管理端面板保留全量）
+		if excludeUnevaluated && st.PositionCount == 0 && st.AvgAchievementRate == nil &&
+			st.AvgPositionCompetency == nil && st.AvgPositionCompetencyV2 == nil &&
+			st.AvgAbilityCognitionScore == nil {
+			continue
+		}
 		majorID := ""
 		if st.MajorID != nil {
 			majorID = *st.MajorID

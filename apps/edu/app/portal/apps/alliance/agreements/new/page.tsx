@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
@@ -41,11 +43,12 @@ export default function AllianceAgreementNewPage() {
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
     name: '',
-    type: '战略合作协议',
+    type: 'strategic',
     status: 'draft',
     startDate: '',
     endDate: '',
     content: '',
+    isPublic: false,
     enterpriseIds: linkEnterpriseId ? [linkEnterpriseId] : [] as string[],
     projectIds: linkProjectId ? [linkProjectId] : [] as string[],
     attachments: [] as string[],
@@ -78,6 +81,18 @@ export default function AllianceAgreementNewPage() {
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
   const handleSave = async () => {
+    if (!item.name.trim()) {
+      toast({ title: t('协议名称不能为空'), variant: 'destructive' })
+      return
+    }
+    if (!item.startDate || !item.endDate) {
+      toast({ title: t('生效日期与到期日期必填'), variant: 'destructive' })
+      return
+    }
+    if (item.endDate < item.startDate) {
+      toast({ title: t('到期日期不能早于生效日期'), variant: 'destructive' })
+      return
+    }
     if (!item.name) {
       toast({ title: t('请填写协议名称'), variant: 'destructive' })
       return
@@ -212,6 +227,13 @@ export default function AllianceAgreementNewPage() {
                 onChange={(e) => setField('content', e.target.value)}
                 rows={4}
               />
+              <div className="mt-4 flex items-center gap-2">
+                <Switch
+                  checked={!!item.isPublic}
+                  onCheckedChange={(v) => setField('isPublic', v)}
+                />
+                <Label>{t('前台展示')}</Label>
+              </div>
             </CardContent>
           </Card>
 

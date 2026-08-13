@@ -36,7 +36,7 @@ import {
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
-import type { AlliancePublicBrand, AllianceEnterprise } from '@/lib/types'
+import type { AlliancePublicBrand, AllianceEnterprise, AllianceAchievement } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -79,15 +79,19 @@ export default function AlliancePublicBrandDetailPage() {
   // 专业品牌「专业合作企业」：独立雇主企业跳品牌详情，合作企业跳企业详情
   const [employerBrands, setEmployerBrands] = useState<AlliancePublicBrand[]>([])
   const [publicEnterprises, setPublicEnterprises] = useState<AllianceEnterprise[]>([])
+  // 专业品牌关联对象公开性校验（就业方向=岗位品牌 / 合作成果）
+  const [publicJobBrands, setPublicJobBrands] = useState<AlliancePublicBrand[]>([])
+  const [publicAchievements, setPublicAchievements] = useState<AllianceAchievement[]>([])
 
   useEffect(() => {
     if (!id) return
-    portalRequest<AlliancePublicBrand>(`/alliance/public/brands/${id}`)
+    const brandQuery = tenantId ? `?tenantId=${tenantId}` : ''
+    portalRequest<AlliancePublicBrand>(`/alliance/public/brands/${id}${brandQuery}`)
       .then((b) => {
         setBrand(b)
         if (b.brandType === 'employer') {
           return portalRequest<{ items: AlliancePublicBrand[] }>(
-            '/alliance/public/brands?brandType=job',
+            `/alliance/public/brands?brandType=job${brandQuery}`,
           )
             .then((res) => setJobBrands(res.items || []))
             .catch(() => setJobBrands([]))
@@ -95,7 +99,13 @@ export default function AlliancePublicBrandDetailPage() {
         if (b.brandType === 'major') {
           return Promise.all([
             portalRequest<{ items: AlliancePublicBrand[] }>(
-              '/alliance/public/brands?brandType=employer',
+              `/alliance/public/brands?brandType=employer${brandQuery}`,
+            ),
+            portalRequest<{ items: AlliancePublicBrand[] }>(
+              `/alliance/public/brands?brandType=job${brandQuery}`,
+            ),
+            portalRequest<{ items: AllianceAchievement[] }>(
+              `/alliance/public/achievements${brandQuery}`,
             ),
             tenantId
               ? portalRequest<{ items: AllianceEnterprise[] }>(
@@ -103,12 +113,16 @@ export default function AlliancePublicBrandDetailPage() {
                 )
               : Promise.resolve({ items: [] as AllianceEnterprise[] }),
           ])
-            .then(([brandsRes, entsRes]) => {
+            .then(([brandsRes, jobRes, achRes, entsRes]) => {
               setEmployerBrands(brandsRes.items || [])
+              setPublicJobBrands(jobRes.items || [])
+              setPublicAchievements(achRes.items || [])
               setPublicEnterprises(entsRes.items || [])
             })
             .catch(() => {
               setEmployerBrands([])
+              setPublicJobBrands([])
+              setPublicAchievements([])
               setPublicEnterprises([])
             })
         }
@@ -191,6 +205,20 @@ export default function AlliancePublicBrandDetailPage() {
     return ids
   }, [publicEnterprises])
 
+  /** 公开岗位品牌 id 集合（就业方向关联对象未公开时置灰） */
+  const publicJobBrandIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const jb of publicJobBrands) ids.add(jb.id)
+    return ids
+  }, [publicJobBrands])
+
+  /** 公开合作成果 id 集合（合作成果关联对象未公开时置灰） */
+  const publicAchievementIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const a of publicAchievements) ids.add(a.id)
+    return ids
+  }, [publicAchievements])
+
   const majorTabs = useMemo(() => {
     if (!isMajor || !majorData) return []
     return [
@@ -210,9 +238,28 @@ export default function AlliancePublicBrandDetailPage() {
                 />
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {majorData.directions.map((d) => (
-                    <RelatedObjectCard key={d.id} item={d} kind="brands" />
-                  ))}
+                  {majorData.directions.map((d) =>
+                    publicJobBrandIds.has(d.id) ? (
+                      <RelatedObjectCard key={d.id} item={d} kind="brands" />
+                    ) : (
+                      <div
+                        key={d.id}
+                        className="group relative bg-slate-50 rounded-2xl overflow-hidden border border-dashed border-slate-200 flex flex-col"
+                      >
+                        <div className="h-28 relative flex items-center justify-center">
+                          <Briefcase className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
+                        </div>
+                        <div className="px-3.5 pb-3.5">
+                          <div className="text-sm font-bold leading-snug line-clamp-2 text-slate-400">
+                            {d.name}
+                          </div>
+                          <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 font-medium">
+                            {t('岗位品牌暂未对外展示')}
+                          </div>
+                        </div>
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
             </CardContent>
@@ -286,9 +333,28 @@ export default function AlliancePublicBrandDetailPage() {
                 />
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {majorData.achievements.map((a) => (
-                    <RelatedObjectCard key={a.id} item={a} kind="achievements" />
-                  ))}
+                  {majorData.achievements.map((a) =>
+                    publicAchievementIds.has(a.id) ? (
+                      <RelatedObjectCard key={a.id} item={a} kind="achievements" />
+                    ) : (
+                      <div
+                        key={a.id}
+                        className="group relative bg-slate-50 rounded-2xl overflow-hidden border border-dashed border-slate-200 flex flex-col"
+                      >
+                        <div className="h-28 relative flex items-center justify-center">
+                          <Trophy className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
+                        </div>
+                        <div className="px-3.5 pb-3.5">
+                          <div className="text-sm font-bold leading-snug line-clamp-2 text-slate-400">
+                            {a.name}
+                          </div>
+                          <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 font-medium">
+                            {t('成果暂未对外展示')}
+                          </div>
+                        </div>
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
             </CardContent>
@@ -321,7 +387,7 @@ export default function AlliancePublicBrandDetailPage() {
         ),
       },
     ]
-  }, [isMajor, majorData, employerBrandIds, publicEnterpriseIds, t])
+  }, [isMajor, majorData, employerBrandIds, publicEnterpriseIds, publicJobBrandIds, publicAchievementIds, t])
 
   /** 岗位 positionId → 岗位品牌（关联岗位卡片跳转岗位品牌详情页） */
   const jobBrandByPosition = useMemo(() => {

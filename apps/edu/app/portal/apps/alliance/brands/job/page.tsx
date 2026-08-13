@@ -54,19 +54,13 @@ export default function AllianceJobBrandPage() {
   }
 
   const onDeleteBrand = async (item: JobBrand) => {
-    try {
-      // 企业岗位为品牌模块私有岗位（/job/positions 不可见），删除品牌时一并删除岗位，避免孤儿数据
-      if (item.positionType === 'enterprise' && item.positionId) {
-        await portalRequest(`/job/positions/${item.positionId}`, { method: 'DELETE' }).catch(
-          () => null,
-        )
-      }
-      await allianceBrandApi.delete(item.id)
-      toast({ title: t('品牌已删除') })
-      await refresh()
-    } catch (e: any) {
-      toast({ title: t('删除失败'), description: e.message, variant: 'destructive' })
+    // 企业岗位为品牌模块私有岗位（/job/positions 不可见），删除品牌时一并删除岗位；
+    // 岗位删除失败则中止品牌删除，避免留下孤儿岗位
+    if (item.positionType === 'enterprise' && item.positionId) {
+      await portalRequest(`/job/positions/${item.positionId}`, { method: 'DELETE' })
     }
+    await allianceBrandApi.delete(item.id)
+    toast({ title: t('品牌已删除') })
   }
 
   return (
@@ -118,7 +112,7 @@ export default function AllianceJobBrandPage() {
             <TableHead>{t('操作')}</TableHead>
           </>
         )}
-        renderTableRow={(item: JobBrand) => {
+        renderTableRow={(item: JobBrand, actions: any) => {
           const isTeaching = item.positionType === 'teaching'
           return (
             <>
@@ -167,7 +161,7 @@ export default function AllianceJobBrandPage() {
                   variant="ghost"
                   size="sm"
                   className="text-red-600"
-                  onClick={() => onDeleteBrand(item)}
+                  onClick={actions.delete}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1" />
                   {t('删除')}
@@ -182,7 +176,6 @@ export default function AllianceJobBrandPage() {
         onDelete={async (item: any) => {
           await onDeleteBrand(item)
         }}
-        onToggleEnabled={async () => {}}
       />
 
       <JobBrandRefDialog

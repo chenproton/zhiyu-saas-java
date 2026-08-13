@@ -39,7 +39,7 @@ export default function AllianceProjectNewPage() {
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
     name: '',
-    type: '人才培养项目',
+    type: 'talent_training',
     phase: 'initiation',
     startDate: '',
     endDate: '',
@@ -75,6 +75,10 @@ export default function AllianceProjectNewPage() {
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
   const handleSave = async () => {
+    if (!item.name.trim()) {
+      toast({ title: t('项目名称不能为空'), variant: 'destructive' })
+      return
+    }
     setSaving(true)
     try {
       const data = await allianceProjectApi.create(item)
@@ -171,6 +175,8 @@ export default function AllianceProjectNewPage() {
                       <SelectItem value="execution">{t('执行中')}</SelectItem>
                       <SelectItem value="acceptance">{t('验收')}</SelectItem>
                       <SelectItem value="closure">{t('关闭')}</SelectItem>
+                      <SelectItem value="archived">{t('已归档')}</SelectItem>
+                      <SelectItem value="terminated">{t('已终止')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>

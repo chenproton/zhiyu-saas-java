@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
@@ -39,11 +41,12 @@ export default function AllianceAgreementEditPage() {
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
     name: '',
-    type: '战略合作协议',
+    type: 'strategic',
     status: 'draft',
     startDate: '',
     endDate: '',
     content: '',
+    isPublic: false,
     enterpriseIds: [] as string[],
     projectIds: [] as string[],
     attachments: [] as string[],
@@ -59,11 +62,12 @@ export default function AllianceAgreementEditPage() {
       .then(([a, ents, projs]) => {
         setItem({
           name: a.name || '',
-          type: a.type || '战略合作协议',
+          type: a.type || 'strategic',
           status: a.status || 'draft',
           startDate: a.startDate || '',
           endDate: a.endDate || '',
           content: a.content || '',
+          isPublic: !!a.isPublic,
           enterpriseIds: a.enterpriseIds || [],
           projectIds: a.projectIds || [],
           attachments: a.attachments || [],
@@ -219,6 +223,13 @@ export default function AllianceAgreementEditPage() {
                 onChange={(e) => setField('content', e.target.value)}
                 rows={4}
               />
+              <div className="mt-4 flex items-center gap-2">
+                <Switch
+                  checked={!!item.isPublic}
+                  onCheckedChange={(v) => setField('isPublic', v)}
+                />
+                <Label>{t('前台展示')}</Label>
+              </div>
             </CardContent>
           </Card>
 

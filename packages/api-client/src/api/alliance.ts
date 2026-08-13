@@ -184,6 +184,9 @@ export const allianceExpertApi = {
       method: 'PUT',
       body: JSON.stringify(req),
     }),
+  // 学校侧删除专家档案（仅限本校创建的无企业关联档案，解除师资品牌关联时清理用）
+  delete: (id: string) =>
+    portalRequest<{ id: string }>(`/alliance/experts/${id}`, { method: 'DELETE' }),
 }
 
 export const allianceBrandApi = {

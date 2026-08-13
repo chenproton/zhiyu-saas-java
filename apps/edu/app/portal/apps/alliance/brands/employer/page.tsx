@@ -288,7 +288,6 @@ export default function AllianceEmployerBrandPage() {
           toast({ title: t('品牌已删除') })
           await refresh()
         }}
-        onToggleEnabled={async () => {}}
       />
 
       {/* 从合作企业库引用 */}

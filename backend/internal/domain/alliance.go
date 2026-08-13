@@ -275,7 +275,7 @@ type AllianceProject struct {
 	EnterpriseIDs     json.RawMessage `json:"enterpriseIds,omitempty"`
 	AgreementIDs      json.RawMessage `json:"agreementIds,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
-	IsPublic          bool            `json:"isPublic"`
+	IsPublic          *bool           `json:"isPublic"`
 	CreatedBy         *string         `json:"createdBy,omitempty"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
@@ -320,7 +320,7 @@ type AllianceAchievement struct {
 	Status            string          `json:"status"`
 	ViewCount         int             `json:"viewCount"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
-	IsPublic          bool            `json:"isPublic"`
+	IsPublic          *bool           `json:"isPublic"`
 	CreatedBy         *string         `json:"createdBy,omitempty"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
@@ -356,7 +356,7 @@ type AllianceExpert struct {
 	PartnerSource      *string         `json:"partnerSource,omitempty"`
 	PositionDirection  *string         `json:"positionDirection,omitempty"`
 	SecondaryColleges  json.RawMessage `json:"secondaryColleges,omitempty"`
-	IsPublic           bool            `json:"isPublic"`
+	IsPublic           *bool           `json:"isPublic"`
 	// UserID 专家档案绑定的企业成员账号（users.id，可空）
 	UserID    *string   `json:"userId,omitempty"`
 	CreatedBy *string   `json:"createdBy,omitempty"`
@@ -377,7 +377,7 @@ type AllianceAgreement struct {
 	EnterpriseIDs json.RawMessage `json:"enterpriseIds,omitempty"`
 	ProjectIDs    json.RawMessage `json:"projectIds,omitempty"`
 	Attachments   json.RawMessage `json:"attachments,omitempty"`
-	IsPublic      bool            `json:"isPublic"`
+	IsPublic      *bool           `json:"isPublic"`
 	CreatedBy     *string         `json:"createdBy,omitempty"`
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`

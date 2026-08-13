@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
+import { usePortalAuth } from '@/contexts/portal-auth-context'
 import type { AlliancePublicBrand } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import {
@@ -43,6 +44,7 @@ function BrandPreviewCard({ item }: { item: AlliancePublicBrand }) {
 
 function AlliancePublicBrandsList() {
   const t = useT()
+  const { tenantId } = usePortalAuth()
   const searchParams = useSearchParams()
   const [items, setItems] = useState<AlliancePublicBrand[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,13 +55,14 @@ function AlliancePublicBrandsList() {
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    portalRequest<{ items: AlliancePublicBrand[] }>('/alliance/public/brands')
+    if (!tenantId) return
+    portalRequest<{ items: AlliancePublicBrand[] }>(`/alliance/public/brands?tenantId=${tenantId}`)
       .then((data) => setItems(data.items || []))
       .catch((err) => {
         reportError(err, { source: '加载品牌列表' })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [tenantId])
 
   const tabs = useMemo(
     () =>

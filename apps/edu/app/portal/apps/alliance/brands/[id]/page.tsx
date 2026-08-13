@@ -111,12 +111,39 @@ export default function AllianceBrandDetailPage() {
           {brand?.data && JSON.stringify(brand.data) !== '{}' && (
             <Card className="col-span-2">
               <CardHeader>
-                <CardTitle>{t('数据详情')}</CardTitle>
+                <CardTitle>{t('品牌数据')}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                  {JSON.stringify(brand.data, null, 2)}
-                </pre>
+              <CardContent className="space-y-2 text-sm">
+                {brand.brandType === 'teacher' && (brand.data as any)?.teacherExpertId && (
+                  <p>
+                    <span className="text-muted-foreground">{t('展示资料档案：')}</span>
+                    <Badge variant="secondary">{(brand.data as any).teacherExpertId}</Badge>
+                  </p>
+                )}
+                {brand.brandType === 'employer' && (brand.data as any)?.enterpriseInfo && (
+                  <p>
+                    <span className="text-muted-foreground">{t('独立企业资料：')}</span>
+                    {t('已填写，可在编辑弹窗中维护')}
+                  </p>
+                )}
+                {(brand.brandType === 'job' || brand.brandType === 'major') &&
+                  (brand.data as any)?.positions && (
+                    <p>
+                      <span className="text-muted-foreground">{t('岗位/关联数据：')}</span>
+                      <Badge variant="secondary">
+                        {Array.isArray((brand.data as any).positions)
+                          ? (brand.data as any).positions.length
+                          : 0}
+                        {' '}
+                        {t('项')}
+                      </Badge>
+                    </p>
+                  )}
+                {brand.brandType === 'major' && (
+                  <p className="text-muted-foreground text-xs">
+                    {t('就业方向/合作企业/合作成果/特色课程等关联数据，请在专业品牌详情中维护')}
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

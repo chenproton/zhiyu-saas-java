@@ -12,11 +12,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
@@ -31,24 +34,29 @@ export default function AllianceAgreementsPage() {
   const t = useT()
   const { items: typeItems } = useAllianceDictionary('agreement_type', tenantId)
   const { items: statusItems } = useAllianceDictionary('agreement_status', tenantId)
-  const { data, loading, error, refresh } = useAsync(
+  const { data: refsData } = useAsync(
     async () => {
-      if (!tenantId) return { items: [], enterprises: [], projects: [] }
-      const [data, ents, projs] = await Promise.all([
-        allianceAgreementApi.list(),
+      if (!tenantId) return { enterprises: [], projects: [] }
+      const [ents, projs] = await Promise.all([
         allianceEnterpriseApi.list({ limit: 200 }),
         allianceProjectApi.list({ limit: 200 }),
       ])
-      return {
-        items: data.items || [],
-        enterprises: ents.items || [],
-        projects: projs.items || [],
-      }
+      return { enterprises: ents.items || [], projects: projs.items || [] }
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
+  const { enterprises, projects } = refsData ?? { enterprises: [], projects: [] }
 
-  const { items, enterprises, projects } = data ?? {}
+  // 服务端分页列表
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (!tenantId) return { items: [], total: 0 }
+      const data = await allianceAgreementApi.list({ page, limit, search })
+      return { items: data.items || [], total: data.total }
+    },
+    [tenantId, authLoading],
+  )
+  const items = list.items
 
   return (
     <PortalCrudPage
@@ -57,13 +65,16 @@ export default function AllianceAgreementsPage() {
       entityLabel={t('合作协议')}
       searchPlaceholder={t('搜索协议名称...')}
       createButtonLabel={t('新建协议')}
-      items={items ?? []}
-      loading={loading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(filtered, search) =>
-        filtered.filter((a) => !search || a.name.toLowerCase().includes(search.toLowerCase()))
-      }
+      items={items}
+      loading={list.loading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       importConfig={{
         importType: 'alliance-agreements',
         entityLabel: t('合作协议'),
@@ -218,6 +229,13 @@ export default function AllianceAgreementsPage() {
               rows={4}
             />
           </FormFieldRow>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={!!item.isPublic}
+              onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
+            />
+            <Label>{t('前台展示')}</Label>
+          </div>
         </div>
       )}
       getDeleteDescription={(item: any) => (
@@ -230,12 +248,12 @@ export default function AllianceAgreementsPage() {
           await allianceAgreementApi.create(item)
         }
         toast({ title: t('协议已{action}', { action: isEdit ? t('更新') : t('创建') }) })
-        await refresh()
+        await list.refresh()
       }}
       onDelete={async (item: any) => {
         await allianceAgreementApi.delete(item.id)
         toast({ title: t('协议已删除') })
-        await refresh()
+        await list.refresh()
       }}
     />
   )

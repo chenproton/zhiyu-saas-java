@@ -369,7 +369,7 @@ export default function AllianceLandingPage() {
       ).catch(() => ({
         items: [],
       })),
-      portalRequest<{ items: AlliancePublicBrand[] }>('/alliance/public/brands').catch(() => ({
+      portalRequest<{ items: AlliancePublicBrand[] }>(`/alliance/public/brands${q}`).catch(() => ({
         items: [],
       })),
       portalRequest<{ items: TalentRankMajorGroup[] }>(
@@ -486,9 +486,11 @@ export default function AllianceLandingPage() {
                       <span className="text-sm font-semibold text-slate-800 truncate">
                         {g.majorName}
                       </span>
-                      <span className="ml-auto shrink-0 text-[11px] font-medium tracking-wide text-slate-400">
-                        TOP {Math.min(g.students.length, 5)}
-                      </span>
+                      {g.students.length > 0 && (
+                        <span className="ml-auto shrink-0 text-[11px] font-medium tracking-wide text-slate-400">
+                          TOP {Math.min(g.students.length, 5)}
+                        </span>
+                      )}
                     </div>
                     <div className="divide-y divide-slate-50">
                       {g.students.slice(0, 5).map((s, idx) => (
@@ -670,7 +672,7 @@ export default function AllianceLandingPage() {
       }}
       stats={statsList.map((stat, idx) => ({
         icon: stat.icon,
-        value: `${stat.value}+`,
+        value: stat.value > 0 ? `${stat.value}+` : '0',
         label: stat.label,
         gradient: STAT_GRADIENTS[idx % STAT_GRADIENTS.length],
       }))}
@@ -788,14 +790,21 @@ export default function AllianceLandingPage() {
         </div>
 
         {/* 六类品牌同时铺开：每类一种展示样式，体现系统多样性 */}
-        {brandSections.map((node, i) => (
-          <Fragment key={i}>
-            {i > 0 && (
-              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent my-12 sm:my-16" />
-            )}
-            {node}
-          </Fragment>
-        ))}
+        {brandSections.length === 0 ? (
+          <LandingEmpty
+            title={t('暂无品牌内容')}
+            hint={t('学校尚未公开任何品牌，可前往品牌管理页开启前台展示')}
+          />
+        ) : (
+          brandSections.map((node, i) => (
+            <Fragment key={i}>
+              {i > 0 && (
+                <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent my-12 sm:my-16" />
+              )}
+              {node}
+            </Fragment>
+          ))
+        )}
       </section>
 
       {/* CTA */}

@@ -466,6 +466,7 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 			r.Put("/experts/{id}/display", h.allianceHandler.ToggleExpertDisplay)
 			r.Post("/experts", h.allianceHandler.CreateSchoolExpert)
 			r.Put("/experts/{id}", h.allianceHandler.UpdateSchoolExpert)
+			r.Delete("/experts/{id}", h.allianceHandler.DeleteSchoolExpert)
 			r.Post("/agreements", h.allianceHandler.CreateAgreement)
 			r.Put("/agreements/{id}", h.allianceHandler.UpdateAgreement)
 			r.Delete("/agreements/{id}", h.allianceHandler.DeleteAgreement)

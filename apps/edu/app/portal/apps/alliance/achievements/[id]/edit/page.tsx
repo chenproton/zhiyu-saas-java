@@ -64,6 +64,10 @@ export default function AllianceAchievementEditPage() {
 
   const handleSave = async () => {
     if (!item) return
+    if (!item.title.trim()) {
+      toast({ title: t('成果标题不能为空'), variant: 'destructive' })
+      return
+    }
     setSaving(true)
     try {
       await allianceAchievementApi.update(id, item)

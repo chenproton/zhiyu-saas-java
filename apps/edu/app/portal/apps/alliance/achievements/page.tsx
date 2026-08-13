@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -31,24 +32,29 @@ export default function AllianceAchievementsPage() {
   const { toast } = useToast()
   const t = useT()
   const { items: typeItems } = useAllianceDictionary('achievement_type', tenantId)
-  const { data, loading, error, refresh } = useAsync(
+  const { data: refsData } = useAsync(
     async () => {
-      if (!tenantId) return { items: [], enterprises: [], projects: [] }
-      const [data, ents, projs] = await Promise.all([
-        allianceAchievementApi.list(),
+      if (!tenantId) return { enterprises: [], projects: [] }
+      const [ents, projs] = await Promise.all([
         allianceEnterpriseApi.list({ limit: 200 }),
         allianceProjectApi.list({ limit: 200 }),
       ])
-      return {
-        items: data.items || [],
-        enterprises: ents.items || [],
-        projects: projs.items || [],
-      }
+      return { enterprises: ents.items || [], projects: projs.items || [] }
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
+  const { enterprises, projects } = refsData ?? { enterprises: [], projects: [] }
 
-  const { items, enterprises, projects } = data ?? {}
+  // 服务端分页列表
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (!tenantId) return { items: [], total: 0 }
+      const data = await allianceAchievementApi.list({ page, limit, search })
+      return { items: data.items || [], total: data.total }
+    },
+    [tenantId, authLoading],
+  )
+  const items = list.items
 
   return (
     <PortalCrudPage
@@ -57,13 +63,16 @@ export default function AllianceAchievementsPage() {
       entityLabel={t('合作成果')}
       searchPlaceholder={t('搜索成果名称...')}
       createButtonLabel={t('新建成果')}
-      items={items ?? []}
-      loading={loading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(filtered, search) =>
-        filtered.filter((a) => !search || a.title.toLowerCase().includes(search.toLowerCase()))
-      }
+      items={items}
+      loading={list.loading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       importConfig={{
         importType: 'alliance-achievements',
         entityLabel: t('合作成果'),
@@ -196,12 +205,12 @@ export default function AllianceAchievementsPage() {
           await allianceAchievementApi.create(item)
         }
         toast({ title: t('成果已{action}', { action: isEdit ? t('更新') : t('创建') }) })
-        await refresh()
+        await list.refresh()
       }}
       onDelete={async (item: any) => {
         await allianceAchievementApi.delete(item.id)
         toast({ title: t('成果已删除') })
-        await refresh()
+        await list.refresh()
       }}
       onToggleEnabled={async (item: any) => {
         // 全量回传：后端 PUT 为全列覆盖，避免部分字段被清空

@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -112,6 +114,21 @@ func (s *AllianceStore) DeleteBrand(ctx context.Context, id, tenantID string) er
 	return err
 }
 
+// IncrementAllianceView 联盟公开详情阅读自增（品牌/成果/项目表独立 view_count 列，
+// 仅允许固定表名枚举；失败忽略，不影响详情返回）。
+func (s *AllianceStore) IncrementAllianceView(ctx context.Context, table, id string) {
+	switch table {
+	case "alliance_brands", "alliance_achievements", "alliance_projects":
+	default:
+		return
+	}
+	if _, err := s.q.Exec(ctx, `
+		UPDATE `+table+` SET view_count = view_count + 1, updated_at = NOW() WHERE id = $1
+	`, id); err != nil {
+		slog.Warn("increment alliance view failed", "table", table, "id", id, "error", err)
+	}
+}
+
 func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (*domain.AllianceBrand, error) {
 	var b domain.AllianceBrand
 	var coverImage, coverVideo, description *string
@@ -138,16 +155,21 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 
 // ListPublicBrands 门户前台公开品牌列表：is_public 为展示开关，status 仅排除已归档。
 // 不要求 published：品牌页创建即 draft 且雇主品牌无发布入口，开关语义与项目/成果（is_public 唯一门槛）对齐。
-func (s *AllianceStore) ListPublicBrands(ctx context.Context, brandType string) ([]domain.PublicBrandItem, error) {
+// tenantID 非空时限定本校品牌（与其余公开接口按本校链接过滤一致）。
+func (s *AllianceStore) ListPublicBrands(ctx context.Context, tenantID, brandType string) ([]domain.PublicBrandItem, error) {
 	query := `SELECT ` + publicBrandSelect + `
 		FROM ` + publicBrandFrom + `
 		WHERE b.is_public = true AND b.status <> 'archived'`
 	args := []interface{}{}
-	if brandType != "" {
-		query += " AND b.brand_type = $1"
-		args = append(args, brandType)
+	if tenantID != "" {
+		args = append(args, tenantID)
+		query += fmt.Sprintf(" AND b.tenant_id = $%d", len(args))
 	}
-	query += " ORDER BY b.sort_order ASC, b.created_at DESC LIMIT 100"
+	if brandType != "" {
+		args = append(args, brandType)
+		query += fmt.Sprintf(" AND b.brand_type = $%d", len(args))
+	}
+	query += " ORDER BY b.is_featured DESC, b.sort_order ASC, b.created_at DESC LIMIT 100"
 	return queryList(ctx, s.q, s.ScanPublicBrandRows, query, args...)
 }
 
@@ -265,13 +287,17 @@ func (s *AllianceStore) ScanPublicBrandRows(rows pgx.Rows) ([]domain.PublicBrand
 	return items, rows.Err()
 }
 
-// GetPublicBrandByID 前台品牌详情（含关联对象资料）。
-func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id string) (*domain.PublicBrandItem, error) {
-	item, err := queryOne(ctx, s.q, s.ScanPublicBrandRows, `
-		SELECT `+publicBrandSelect+`
-		FROM `+publicBrandFrom+`
-		WHERE b.id = $1 AND b.is_public = true AND b.status <> 'archived'
-	`, id)
+// GetPublicBrandByID 前台品牌详情（含关联对象资料）。tenantID 非空时限定本校品牌。
+func (s *AllianceStore) GetPublicBrandByID(ctx context.Context, id, tenantID string) (*domain.PublicBrandItem, error) {
+	query := `SELECT ` + publicBrandSelect + `
+		FROM ` + publicBrandFrom + `
+		WHERE b.id = $1 AND b.is_public = true AND b.status <> 'archived'`
+	args := []interface{}{id}
+	if tenantID != "" {
+		args = append(args, tenantID)
+		query += fmt.Sprintf(" AND b.tenant_id = $%d", len(args))
+	}
+	item, err := queryOne(ctx, s.q, s.ScanPublicBrandRows, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -57,6 +57,10 @@ export default function AllianceProjectEditPage() {
 
   const handleSave = async () => {
     if (!item) return
+    if (!item.name.trim()) {
+      toast({ title: t('项目名称不能为空'), variant: 'destructive' })
+      return
+    }
     setSaving(true)
     try {
       await allianceProjectApi.update(id, item)
@@ -160,6 +164,8 @@ export default function AllianceProjectEditPage() {
                       <SelectItem value="execution">{t('执行中')}</SelectItem>
                       <SelectItem value="acceptance">{t('验收')}</SelectItem>
                       <SelectItem value="closure">{t('关闭')}</SelectItem>
+                      <SelectItem value="archived">{t('已归档')}</SelectItem>
+                      <SelectItem value="terminated">{t('已终止')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormFieldRow>

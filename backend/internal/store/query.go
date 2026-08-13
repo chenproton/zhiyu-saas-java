@@ -538,6 +538,14 @@ func StrPtrIfNonEmpty(s string) *string {
 	return &s
 }
 
+// BoolVal 解引用 *bool，nil 时返回 false（联盟展示开关统一 nil 兜底）。
+func BoolVal(p *bool) bool {
+	if p == nil {
+		return false
+	}
+	return *p
+}
+
 // JSONSliceToStrings 将 JSONSlice 转为字符串数组（过滤空串）。
 func JSONSliceToStrings(s domain.JSONSlice) []string {
 	out := make([]string, 0, len(s))

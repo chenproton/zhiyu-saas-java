@@ -168,16 +168,43 @@ func (s *AllianceGrantStore) GrantedResourceIDsByType(ctx context.Context, enter
 	return ids, rows.Err()
 }
 
-// IsGranted 企业视角：某资源是否被授权（跨学校，资源需归属授权学校的租户）。
-func (s *AllianceGrantStore) IsGranted(ctx context.Context, enterpriseID, resourceType, resourceID string) (bool, error) {
-	var exists bool
-	err := s.q.QueryRow(ctx, `
-		SELECT EXISTS(
+// IsGranted 企业视角：某资源是否被授权（跨学校）。返回授权记录所属租户，
+// 供消费端比对资源归属租户，防止授权记录被污染时跨租户越权。
+func (s *AllianceGrantStore) IsGranted(ctx context.Context, enterpriseID, resourceType, resourceID string) (tenantID string, granted bool, err error) {
+	err = s.q.QueryRow(ctx, `
+		SELECT tenant_id::text, EXISTS(
 			SELECT 1 FROM alliance_resource_grants
 			WHERE enterprise_id = $1 AND resource_type = $2 AND $3 = ANY(resource_ids)
 		)
-	`, enterpriseID, resourceType, resourceID).Scan(&exists)
-	return exists, err
+		FROM alliance_resource_grants
+		WHERE enterprise_id = $1 AND resource_type = $2 AND $3 = ANY(resource_ids)
+		LIMIT 1
+	`, enterpriseID, resourceType, resourceID).Scan(&tenantID, &granted)
+	if err != nil {
+		return "", false, err
+	}
+	return tenantID, granted, nil
+}
+
+// VerifyGrantsOwnership 校验资源是否全部属于指定租户（SaveGrants 源头防线：
+// 学校只能授权本校的岗位/场景，杜绝跨租户授权他人资源）。空数组（清空授权）直接通过。
+func (s *AllianceGrantStore) VerifyGrantsOwnership(ctx context.Context, tenantID, resourceType string, resourceIDs []string) (bool, error) {
+	table := coBuiltTable(resourceType)
+	if len(resourceIDs) == 0 {
+		return true, nil
+	}
+	if table == "" {
+		return false, nil
+	}
+	var count int
+	err := s.q.QueryRow(ctx, fmt.Sprintf(`
+		SELECT COUNT(*) FROM %s
+		WHERE id = ANY($1::uuid[]) AND tenant_id = $2
+	`, table), resourceIDs, tenantID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count == len(resourceIDs), nil
 }
 
 // ResourceOptions 学校可授权资源候选：本校全部岗位/场景（所有状态，含企业来源共建与自建），

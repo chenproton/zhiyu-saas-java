@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useAsync, useToast } from '@zhiyu/ui'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -29,28 +30,32 @@ export default function AllianceExpertsPage() {
   const [enterpriseFilter, setEnterpriseFilter] = useState<string>('all')
 
   // 专家档案由企业侧维护，学校端只读；企业筛选数据源 = 本校已引入企业
-  const { data, loading, error, refresh } = useAsync(
+  const { data: entData } = useAsync(
     async () => {
-      if (!tenantId) return { experts: [] as AllianceExpert[], enterprises: [] as { id: string; name: string }[] }
-      const [exp, ent] = await Promise.all([
-        allianceExpertApi.list({ limit: 500 }),
-        allianceEnterpriseApi.list({ limit: 200 }),
-      ])
-      return {
-        experts: exp.items || [],
-        enterprises: (ent.items || []).map((e) => ({ id: e.id, name: e.name })),
-      }
+      if (!tenantId) return [] as { id: string; name: string }[]
+      const ent = await allianceEnterpriseApi.list({ limit: 200 })
+      return (ent.items || []).map((e) => ({ id: e.id, name: e.name }))
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
-
-  const { experts = [], enterprises = [] } = data ?? {}
+  const enterprises = entData ?? []
   const enterpriseName = (id?: string) => enterprises.find((e) => e.id === id)?.name
 
-  const filtered =
-    enterpriseFilter === 'all'
-      ? experts
-      : experts.filter((e) => e.enterpriseId === enterpriseFilter)
+  // 服务端分页 + 企业筛选 + 服务端搜索
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (!tenantId) return { items: [], total: 0 }
+      const data = await allianceExpertApi.list({
+        page,
+        limit,
+        search,
+        enterpriseId: enterpriseFilter === 'all' ? undefined : enterpriseFilter,
+      })
+      return { items: data.items || [], total: data.total }
+    },
+    [tenantId, authLoading, enterpriseFilter],
+  )
+  const experts = list.items
 
   return (
     <PortalCrudPage
@@ -58,22 +63,19 @@ export default function AllianceExpertsPage() {
       description={t('已引入企业维护的专家档案，学校端只读。')}
       entityLabel={t('专家')}
       searchPlaceholder={t('搜索姓名、头衔或行业...')}
-      items={filtered}
-      loading={loading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(items, search) =>
-        items.filter(
-          (e) =>
-            !search ||
-            e.name.toLowerCase().includes(search.toLowerCase()) ||
-            (e.title || '').toLowerCase().includes(search.toLowerCase()) ||
-            (e.industry || '').toLowerCase().includes(search.toLowerCase()),
-        )
-      }
+      items={experts}
+      loading={list.loading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       hideCreate
       searchRight={
-        <Select value={enterpriseFilter} onValueChange={setEnterpriseFilter}>
+        <Select value={enterpriseFilter} onValueChange={(v) => { setEnterpriseFilter(v); list.setPage(1) }}>
           <SelectTrigger className="w-full sm:w-56">
             <SelectValue placeholder={t('按所属企业筛选')} />
           </SelectTrigger>

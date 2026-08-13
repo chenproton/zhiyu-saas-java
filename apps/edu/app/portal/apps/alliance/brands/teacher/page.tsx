@@ -66,8 +66,14 @@ export default function AllianceTeacherBrandPage() {
     }
   }
 
+  // ── 解除关联：确认后删除品牌，并同步清理校本师资展示资料档案（teacherExpertId） ──
   const onDelete = async (item: AllianceBrand) => {
     try {
+      // 校本师资：删除品牌时同步清理其展示资料档案，避免孤儿数据
+      const expertId = (item.data as any)?.teacherExpertId
+      if (expertId) {
+        await allianceExpertApi.delete(expertId).catch(() => null)
+      }
       await allianceBrandApi.delete(item.id)
       toast({ title: t('已解除关联') })
       await refresh()
@@ -159,7 +165,7 @@ export default function AllianceTeacherBrandPage() {
             searchPlaceholder={t('搜索教师姓名或工号...')}
             displayInfo={(b) => (
               <span className="text-xs text-muted-foreground">
-                {t('关联教师：{id}', { id: b.teacherId ?? '' })}
+                {t('关联教师：{name}', { name: b.name })}
               </span>
             )}
           />
@@ -188,7 +194,7 @@ export default function AllianceTeacherBrandPage() {
             searchPlaceholder={t('搜索专家姓名或机构...')}
             displayInfo={(b) => (
               <span className="text-xs text-muted-foreground">
-                {t('关联专家：{id}', { id: b.expertId ?? '' })}
+                {t('关联专家：{name}', { name: b.name })}
               </span>
             )}
           />
@@ -278,6 +284,19 @@ function TeacherBrandSection({
   const [optionsLoading, setOptionsLoading] = useState(false)
   // 校本师资资料补充：复制为无企业关联的专家档案（与 /partner/experts 同表维护）
   const [profileTarget, setProfileTarget] = useState<AllianceBrand | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AllianceBrand | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await onDelete(deleteTarget)
+      setDeleteTarget(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
   const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
 
@@ -471,7 +490,7 @@ function TeacherBrandSection({
                       variant="ghost"
                       size="sm"
                       className="text-red-600"
-                      onClick={() => onDelete(b)}
+                      onClick={() => setDeleteTarget(b)}
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1" />
                       {t('解除关联')}
@@ -483,6 +502,33 @@ function TeacherBrandSection({
           </table>
         </div>
       )}
+
+      {/* 解除关联确认：同时清理校本师资展示资料档案 */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('确认解除关联')}</DialogTitle>
+            <DialogDescription>
+              {t('确定要解除「{name}」的师资品牌关联吗？', { name: deleteTarget?.name ?? '' })}
+              {deleteTarget?.teacherId ? t('（校本师资的展示资料档案将一并删除）') : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>
+              {t('取消')}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={deleting}
+              onClick={confirmDelete}
+            >
+              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {t('解除关联')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">

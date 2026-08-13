@@ -27,10 +27,11 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization *string
 		var colleges json.RawMessage
 		var userID, createdBy *string
+		var isPublic bool
 		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 			&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
 			&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
-			&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &userID, &createdBy, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			&e.Status, &partnerSource, &positionDirection, &colleges, &isPublic, &userID, &createdBy, &e.CreatedAt, &e.UpdatedAt); err != nil {
 			return nil, err
 		}
 		e.Gender = gender
@@ -58,6 +59,7 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		e.SecondaryColleges = colleges
 		e.UserID = userID
 		e.CreatedBy = createdBy
+		e.IsPublic = &isPublic
 		items = append(items, e)
 	}
 	return items, rows.Err()
@@ -74,6 +76,9 @@ func (s *AllianceStore) ListExpertsConfig() ListQueryConfig[domain.AllianceExper
 		ExtraFilter: func(p ListParams, qb *ListQueryBuilder) {
 			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+			if enterpriseID := p.Values["enterpriseId"]; enterpriseID != "" {
+				qb.AddCondition("enterprise_id = " + qb.NextArg(enterpriseID))
 			}
 		},
 		ScanRows: s.ScanExpertRows,
@@ -92,7 +97,7 @@ func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpe
 		e.Industry, emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
 		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Organization, e.Rating,
-		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, e.UserID, e.CreatedBy)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), BoolVal(e.IsPublic), e.UserID, e.CreatedBy)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +118,7 @@ func (s *AllianceStore) UpdateExpert(ctx context.Context, id, tenantID string, e
 		emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
 		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Organization, e.Rating,
-		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, e.UserID, id, tenantID)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), BoolVal(e.IsPublic), e.UserID, id, tenantID)
 	return err
 }
 
@@ -223,10 +228,11 @@ func (s *AllianceStore) ScanPublicExpertRows(rows pgx.Rows) ([]domain.AllianceEx
 		var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization, enterpriseName *string
 		var colleges json.RawMessage
 		var userID, createdBy *string
+		var isPublic bool
 		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 			&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
 			&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
-			&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &userID, &createdBy, &e.CreatedAt, &e.UpdatedAt,
+			&e.Status, &partnerSource, &positionDirection, &colleges, &isPublic, &userID, &createdBy, &e.CreatedAt, &e.UpdatedAt,
 			&enterpriseName); err != nil {
 			return nil, err
 		}
@@ -256,6 +262,7 @@ func (s *AllianceStore) ScanPublicExpertRows(rows pgx.Rows) ([]domain.AllianceEx
 		e.SecondaryColleges = colleges
 		e.UserID = userID
 		e.CreatedBy = createdBy
+		e.IsPublic = &isPublic
 		items = append(items, e)
 	}
 	return items, rows.Err()

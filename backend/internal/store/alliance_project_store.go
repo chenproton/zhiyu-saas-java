@@ -28,9 +28,10 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 		var startDate, endDate *time.Time
 		var enterpriseIDs, agreementIDs, colleges json.RawMessage
 		var createdBy *string
+		var isPublic bool
 		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 			&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-			&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&enterpriseIDs, &agreementIDs, &colleges, &isPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		p.Type = typ
@@ -42,6 +43,7 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 		p.EnterpriseIDs = enterpriseIDs
 		p.AgreementIDs = agreementIDs
 		p.SecondaryColleges = colleges
+		p.IsPublic = &isPublic
 		p.CreatedBy = createdBy
 		items = append(items, p)
 	}
@@ -71,6 +73,7 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 	var startDate, endDate *time.Time
 	var enterpriseIDs, agreementIDs, colleges json.RawMessage
 	var createdBy *string
+	var isPublic bool
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
@@ -78,7 +81,7 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 		FROM alliance_projects WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 		&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-		&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt)
+		&enterpriseIDs, &agreementIDs, &colleges, &isPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +94,7 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 	p.EnterpriseIDs = enterpriseIDs
 	p.AgreementIDs = agreementIDs
 	p.SecondaryColleges = colleges
+	p.IsPublic = &isPublic
 	p.CreatedBy = createdBy
 	return &p, nil
 }
@@ -104,7 +108,7 @@ func (s *AllianceStore) CreateProject(ctx context.Context, p *domain.AlliancePro
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW(),NOW())
 	`, id, p.TenantID, p.Name, p.Type, p.Description, p.Phase, p.PublishStatus,
 		p.StartDate, p.EndDate, p.Budget, p.CoverImage,
-		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), p.IsPublic, p.CreatedBy)
+		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), BoolVal(p.IsPublic), p.CreatedBy)
 	if err != nil {
 		return "", err
 	}
@@ -120,11 +124,31 @@ func (s *AllianceStore) UpdateProject(ctx context.Context, id, tenantID string, 
 		WHERE id = $14 AND tenant_id = $15
 	`, p.Name, p.Type, p.Description, p.Phase, p.PublishStatus,
 		p.StartDate, p.EndDate, p.Budget, p.CoverImage,
-		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), p.IsPublic, id, tenantID)
+		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), BoolVal(p.IsPublic), id, tenantID)
 	return err
 }
 
 func (s *AllianceStore) DeleteProject(ctx context.Context, id, tenantID string) error {
+	// 清理成果/协议侧 project_ids 反指（JSONB 数组引用，无 FK；限本租户），
+	// 避免删除项目后前台公开成果/协议按项目二次关联静默消失
+	if _, err := s.q.Exec(ctx, `
+		UPDATE alliance_achievements
+		SET project_ids = COALESCE((
+			SELECT jsonb_agg(x) FROM jsonb_array_elements_text(project_ids) x WHERE x <> $1
+		), '[]'::jsonb), updated_at = NOW()
+		WHERE project_ids ? $1 AND tenant_id = $2
+	`, id, tenantID); err != nil {
+		return err
+	}
+	if _, err := s.q.Exec(ctx, `
+		UPDATE alliance_agreements
+		SET project_ids = COALESCE((
+			SELECT jsonb_agg(x) FROM jsonb_array_elements_text(project_ids) x WHERE x <> $1
+		), '[]'::jsonb), updated_at = NOW()
+		WHERE project_ids ? $1 AND tenant_id = $2
+	`, id, tenantID); err != nil {
+		return err
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM alliance_projects WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
@@ -209,9 +233,10 @@ func (s *AllianceStore) ScanPublicProjectRows(rows pgx.Rows) ([]domain.AllianceP
 		var startDate, endDate *time.Time
 		var enterpriseIDs, agreementIDs, colleges json.RawMessage
 		var createdBy *string
+		var isPublic bool
 		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 			&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-			&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt,
+			&enterpriseIDs, &agreementIDs, &colleges, &isPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt,
 			&p.Progress); err != nil {
 			return nil, err
 		}
@@ -224,6 +249,7 @@ func (s *AllianceStore) ScanPublicProjectRows(rows pgx.Rows) ([]domain.AllianceP
 		p.EnterpriseIDs = enterpriseIDs
 		p.AgreementIDs = agreementIDs
 		p.SecondaryColleges = colleges
+		p.IsPublic = &isPublic
 		p.CreatedBy = createdBy
 		items = append(items, p)
 	}

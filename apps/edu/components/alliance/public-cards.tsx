@@ -234,25 +234,25 @@ export function AchievementCard({ achievement }: { achievement: AllianceAchievem
 
 export function ExpertCard({ expert }: { expert: AllianceExpert }) {
   const t = useT()
-  return (
-    <Link href={`/portal/alliance/experts/${expert.id}`}>
-      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
-        <div className="h-16 relative">
-          <GradientPlaceholder seed={expert.industry} className="w-full h-full" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
-            <Avatar className="h-14 w-14 ring-[3px] ring-white shadow-md">
-              {expert.avatarUrl && <AvatarImage src={expert.avatarUrl} />}
-              <AvatarFallback className="text-base font-semibold bg-slate-100 text-slate-800">
-                {getInitials(expert.name)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+  // 未开启前台展示的专家（is_public=false）：仅企业详情页"专家团队"展示，无详情页可跳转，置灰提示
+  const content = (
+    <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
+      <div className="h-16 relative">
+        <GradientPlaceholder seed={expert.industry} className="w-full h-full" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
+          <Avatar className="h-14 w-14 ring-[3px] ring-white shadow-md">
+            {expert.avatarUrl && <AvatarImage src={expert.avatarUrl} />}
+            <AvatarFallback className="text-base font-semibold bg-slate-100 text-slate-800">
+              {getInitials(expert.name)}
+            </AvatarFallback>
+          </Avatar>
         </div>
-        <CardContent className="pt-9 pb-4 px-3.5 flex-1 flex flex-col text-left">
-          <h4 className="font-semibold text-slate-900 text-center text-sm truncate">
-            {expert.name}
-          </h4>
+      </div>
+      <CardContent className="pt-9 pb-4 px-3.5 flex-1 flex flex-col text-left">
+        <h4 className="font-semibold text-slate-900 text-center text-sm truncate">
+          {expert.name}
+        </h4>
           <p className="text-xs text-slate-500 text-center truncate mt-0.5">
             {[expert.title, expert.position].filter(Boolean).join(' · ') || t('企业专家')}
           </p>
@@ -290,8 +290,18 @@ export function ExpertCard({ expert }: { expert: AllianceExpert }) {
           )}
         </CardContent>
       </Card>
-    </Link>
   )
+  if (expert.isPublic === false) {
+    return (
+      <div className="relative opacity-80" title={t('该专家未开启前台展示，暂无详情页')}>
+        {content}
+        <span className="absolute top-2 right-2 z-10 rounded-full bg-slate-900/60 text-white text-[10px] px-2 py-0.5">
+          {t('未公开')}
+        </span>
+      </div>
+    )
+  }
+  return <Link href={`/portal/alliance/experts/${expert.id}`}>{content}</Link>
 }
 
 export function BrandCard({ brand }: { brand: AllianceBrand }) {

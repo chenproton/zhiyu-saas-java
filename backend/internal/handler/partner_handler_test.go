@@ -553,7 +553,7 @@ func TestPartner_UpdateExpertPreservesIsPublic(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	created := createdResp.Expert
-	if !created.IsPublic {
+	if created.IsPublic == nil || !*created.IsPublic {
 		t.Fatalf("创建时 isPublic 应为 true: %s", w.Body.String())
 	}
 
@@ -568,7 +568,7 @@ func TestPartner_UpdateExpertPreservesIsPublic(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &updated); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if !updated.IsPublic {
+		if updated.IsPublic == nil || !*updated.IsPublic {
 			t.Fatalf("isPublic 未携带时应保留 true: %s", w.Body.String())
 		}
 		if updated.Name != "专家甲改" {
@@ -587,7 +587,7 @@ func TestPartner_UpdateExpertPreservesIsPublic(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &updated); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if updated.IsPublic {
+		if updated.IsPublic == nil || *updated.IsPublic {
 			t.Fatalf("显式传 false 应生效: %s", w.Body.String())
 		}
 	})

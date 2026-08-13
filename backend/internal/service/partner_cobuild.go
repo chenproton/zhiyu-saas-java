@@ -88,11 +88,15 @@ func (s *PartnerCoBuildService) accessiblePosition(ctx context.Context, enterpri
 	if pos.SourceEnterpriseID != nil && *pos.SourceEnterpriseID == enterpriseID {
 		return pos, nil
 	}
-	granted, err := s.st.AllianceGrants().IsGranted(ctx, enterpriseID, "position", id)
+	grantTenantID, granted, err := s.st.AllianceGrants().IsGranted(ctx, enterpriseID, "position", id)
 	if err != nil {
 		return nil, err
 	}
 	if !granted {
+		return nil, store.ErrNotFound
+	}
+	// 授权记录须与资源归属租户一致（防跨租户授权污染）
+	if pos.TenantID == "" || pos.TenantID != grantTenantID {
 		return nil, store.ErrNotFound
 	}
 	return pos, nil
@@ -120,11 +124,15 @@ func (s *PartnerCoBuildService) accessibleScenario(ctx context.Context, enterpri
 	if sc.TenantID != nil && sc.SourceEnterpriseID != nil && *sc.SourceEnterpriseID == enterpriseID {
 		return sc, nil
 	}
-	granted, err := s.st.AllianceGrants().IsGranted(ctx, enterpriseID, "scene", id)
+	grantTenantID, granted, err := s.st.AllianceGrants().IsGranted(ctx, enterpriseID, "scene", id)
 	if err != nil {
 		return nil, err
 	}
 	if !granted {
+		return nil, store.ErrNotFound
+	}
+	// 授权记录须与资源归属租户一致（防跨租户授权污染）
+	if sc.TenantID == nil || *sc.TenantID != grantTenantID {
 		return nil, store.ErrNotFound
 	}
 	return sc, nil
@@ -170,11 +178,15 @@ func (s *PartnerCoBuildService) EditSourcePosition(ctx context.Context, partnerT
 	if src.SourceEnterpriseID != nil && *src.SourceEnterpriseID == ent.ID {
 		return nil, ErrCoBuildNotEditable
 	}
-	granted, err := s.st.AllianceGrants().IsGranted(ctx, ent.ID, "position", id)
+	grantTenantID, granted, err := s.st.AllianceGrants().IsGranted(ctx, ent.ID, "position", id)
 	if err != nil {
 		return nil, err
 	}
 	if !granted {
+		return nil, store.ErrNotFound
+	}
+	// 授权记录须与资源归属租户一致（防跨租户授权污染）
+	if src.TenantID == "" || src.TenantID != grantTenantID {
 		return nil, store.ErrNotFound
 	}
 	if err := s.requireActiveLink(ctx, ent.ID, src.TenantID); err != nil {
@@ -459,11 +471,15 @@ func (s *PartnerCoBuildService) EditSourceScenario(ctx context.Context, partnerT
 	if src.SourceEnterpriseID != nil && *src.SourceEnterpriseID == ent.ID {
 		return nil, ErrCoBuildNotEditable
 	}
-	granted, err := s.st.AllianceGrants().IsGranted(ctx, ent.ID, "scene", id)
+	grantTenantID, granted, err := s.st.AllianceGrants().IsGranted(ctx, ent.ID, "scene", id)
 	if err != nil {
 		return nil, err
 	}
 	if !granted {
+		return nil, store.ErrNotFound
+	}
+	// 授权记录须与资源归属租户一致（防跨租户授权污染）
+	if src.TenantID == nil || *src.TenantID != grantTenantID {
 		return nil, store.ErrNotFound
 	}
 	if err := s.requireActiveLink(ctx, ent.ID, *src.TenantID); err != nil {

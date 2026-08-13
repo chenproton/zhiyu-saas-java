@@ -25,7 +25,7 @@ export default function AllianceMajorBrandPage() {
 
   const [togglingId, setTogglingId] = useState('')
 
-  const { data: majors, loading: majorsLoading } = useAsync(
+  const { data: majors, loading: majorsLoading, error: majorsError } = useAsync(
     async () => {
       if (!tenantId) return []
       const res = await portalRequest<{ items: Major[] }>('/majors?limit=500')
@@ -34,7 +34,7 @@ export default function AllianceMajorBrandPage() {
     { deps: [tenantId, authLoading], onError: () => true },
   )
 
-  const { data: brands, loading: brandsLoading, refresh } = useAsync(
+  const { data: brands, loading: brandsLoading, refresh, error: brandsError } = useAsync(
     async () => {
       if (!tenantId) return []
       const data = await allianceBrandApi.list({ brandType, limit: 200 })
@@ -97,7 +97,7 @@ export default function AllianceMajorBrandPage() {
       searchPlaceholder={t('搜索专业名称...')}
       items={rows}
       loading={loading}
-      error={null}
+      error={majorsError?.message ?? brandsError?.message ?? null}
       onRetry={refresh}
       filterItems={(filtered, search) =>
         filtered.filter(
@@ -161,8 +161,6 @@ export default function AllianceMajorBrandPage() {
         </>
       )}
       getDeleteDescription={() => <></>}
-      onDelete={async () => {}}
-      onToggleEnabled={async () => {}}
     />
   )
 }

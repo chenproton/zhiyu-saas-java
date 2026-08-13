@@ -277,10 +277,12 @@ func TestAllianceProject_PartialUpdatePreservesFields(t *testing.T) {
 	if len(after.EnterpriseIDs) == 0 || string(after.EnterpriseIDs) != `["`+entID+`"]` {
 		t.Fatalf("enterpriseIds 被清空: %s", string(after.EnterpriseIDs))
 	}
-	if !after.IsPublic {
+	if after.IsPublic == nil || !*after.IsPublic {
 		t.Fatalf("isPublic 未生效: %+v", after.IsPublic)
 	}
 }
+
+// TestAllianceProject_PartialUpdatePreservesPublicFlag 项目部分更新不携带 isPublic 时保留已有状态。
 
 // TestAllianceBrand_PartialUpdatePreservesPublicFlag 品牌详情页保存局部内容（如专业特色课程 data）
 // 不携带 isPublic/isFeatured/sortOrder 时，必须保留既有“前台展示/推荐/排序”状态，

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
-import type { AllianceExpert } from '@/lib/types'
+import type { AllianceEnterprise, AllianceExpert } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
 import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -31,11 +31,22 @@ export default function AlliancePublicExpertDetailPage() {
   const { tenantId } = usePortalAuth()
   const [expert, setExpert] = useState<AllianceExpert | null>(null)
   const [loading, setLoading] = useState(true)
+  // 归属企业公开性校验（企业未对外展示时"归属企业"不渲染链接，避免死链）
+  const [enterpriseVisible, setEnterpriseVisible] = useState(true)
 
   useEffect(() => {
     if (!id || !tenantId) return
     portalRequest<AllianceExpert>(`/alliance/public/experts/${id}?tenantId=${tenantId}`)
-      .then(setExpert)
+      .then((e) => {
+        setExpert(e)
+        if (e.enterpriseId) {
+          portalRequest<AllianceEnterprise>(
+            `/alliance/public/enterprises/${e.enterpriseId}?tenantId=${tenantId}`,
+          )
+            .then(() => setEnterpriseVisible(true))
+            .catch(() => setEnterpriseVisible(false))
+        }
+      })
       .catch((err) => {
         reportError(err, { source: '加载企业专家详情' })
       })
@@ -101,7 +112,7 @@ export default function AlliancePublicExpertDetailPage() {
                 {enterpriseName && (
                   <div className="mt-5">
                     <p className="text-sm text-slate-500 mb-2.5">{t('归属企业')}</p>
-                    {expert.enterpriseId ? (
+                    {expert.enterpriseId && enterpriseVisible ? (
                       <Link
                         href={`/portal/alliance/enterprises/${expert.enterpriseId}`}
                         className="inline-flex items-center gap-1 font-medium text-slate-900 hover:text-blue-600 transition-colors"
@@ -109,6 +120,11 @@ export default function AlliancePublicExpertDetailPage() {
                         <Building2 className="h-4 w-4" />
                         {enterpriseName} <ArrowUpRight className="h-3.5 w-3.5" />
                       </Link>
+                    ) : expert.enterpriseId ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-400">
+                        <Building2 className="h-4 w-4" />
+                        {enterpriseName}
+                      </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 font-medium text-slate-900">
                         <Building2 className="h-4 w-4" />

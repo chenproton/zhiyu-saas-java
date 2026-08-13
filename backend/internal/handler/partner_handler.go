@@ -286,7 +286,7 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	}
 	e := req.AllianceExpert
 	if req.IsPublic != nil {
-		e.IsPublic = *req.IsPublic
+		e.IsPublic = req.IsPublic
 	} else {
 		e.IsPublic = existing.IsPublic
 	}
