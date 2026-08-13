@@ -181,6 +181,7 @@ export default function AllianceAchievementsPage() {
               label={t('成果封面')}
               value={item.coverImage || ''}
               onChange={(v: any) => setItem({ ...item, coverImage: v })}
+              allowUrlInput={false}
             />
           </FormFieldRow>
         </div>

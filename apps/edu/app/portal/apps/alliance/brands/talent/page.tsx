@@ -16,6 +16,7 @@ import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { TalentRankingPanel } from '@/components/alliance/talent-ranking-panel'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand } from '@/lib/types'
@@ -134,11 +135,12 @@ export default function AllianceTalentBrandPage() {
                     rows={3}
                   />
                 </FormFieldRow>
-                <FormFieldRow label={t('封面图 URL')}>
-                  <Input
+                <FormFieldRow label={t('封面图')}>
+                  <SingleImageUpload
+                    label={t('封面图')}
                     value={item.coverImage || ''}
-                    onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
-                    placeholder="https://..."
+                    onChange={(v: any) => setItem({ ...item, coverImage: v })}
+                    allowUrlInput={false}
                   />
                 </FormFieldRow>
                 <div className="flex items-center gap-4">

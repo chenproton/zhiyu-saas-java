@@ -186,6 +186,7 @@ export default function AllianceProjectNewPage() {
                 label={t('项目封面')}
                 value={item.coverImage}
                 onChange={(v) => setField('coverImage', v)}
+                allowUrlInput={false}
               />
             </CardContent>
           </Card>

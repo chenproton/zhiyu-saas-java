@@ -162,6 +162,7 @@ export default function AllianceAchievementNewPage() {
                 label={t('成果封面')}
                 value={item.coverImage}
                 onChange={(v) => setField('coverImage', v)}
+                allowUrlInput={false}
               />
             </CardContent>
           </Card>

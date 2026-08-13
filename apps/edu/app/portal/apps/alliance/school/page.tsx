@@ -343,6 +343,7 @@ export default function AllianceSchoolPage() {
                   label={t('学校 Logo')}
                   value={formData.logoUrl || ''}
                   onChange={(v) => setF('logoUrl', v)}
+                  allowUrlInput={false}
                 />
                 <FormFieldRow label={t('学校名称')} required>
                   <IconInput

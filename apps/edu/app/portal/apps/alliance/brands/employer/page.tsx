@@ -22,6 +22,7 @@ import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { EmployerBrand, AllianceEnterprise } from '@/lib/types'
 
@@ -46,19 +47,6 @@ interface EnterpriseInfo {
   coverPhotos?: string[]
   qualificationPhotos?: string[]
   intellectualPropertyPhotos?: string[]
-}
-
-/** 图片 URL 列表 → 每行一个的文本（表单展示） */
-function photosToText(photos?: string[]): string {
-  return (photos ?? []).join('\n')
-}
-
-/** 每行一个的文本 → 图片 URL 列表（保存时去空） */
-function textToPhotos(text: string): string[] {
-  return text
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
 }
 
 function enterpriseInfoOf(item?: EmployerBrand | null): EnterpriseInfo {
@@ -458,49 +446,47 @@ export default function AllianceEmployerBrandPage() {
                 />
               </FormFieldRow>
             </div>
-            <FormFieldRow label={t('Logo URL')}>
-              <Input
+            <FormFieldRow label={t('Logo')}>
+              <SingleImageUpload
+                label={t('Logo')}
                 value={editInfo.logoUrl || editInfo.logo || ''}
-                onChange={(e) => setEditInfo({ ...editInfo, logoUrl: e.target.value })}
-                placeholder="https://..."
+                onChange={(v) => setEditInfo({ ...editInfo, logoUrl: v })}
+                allowUrlInput={false}
               />
             </FormFieldRow>
-            <FormFieldRow label={t('封面图 URL')}>
-              <Input
+            <FormFieldRow label={t('封面图')}>
+              <SingleImageUpload
+                label={t('封面图')}
                 value={editInfo.coverImage || ''}
-                onChange={(e) => setEditInfo({ ...editInfo, coverImage: e.target.value })}
-                placeholder="https://..."
+                onChange={(v) => setEditInfo({ ...editInfo, coverImage: v })}
+                allowUrlInput={false}
               />
             </FormFieldRow>
-            <FormFieldRow label={t('企业展示封面图 URL')}>
-              <Textarea
-                value={photosToText(editInfo.coverPhotos)}
-                onChange={(e) => setEditInfo({ ...editInfo, coverPhotos: textToPhotos(e.target.value) })}
-                rows={3}
-                placeholder={t('每行一个 URL')}
+            <FormFieldRow label={t('企业展示封面图')}>
+              <ImageListUpload
+                label={t('企业展示封面图')}
+                value={editInfo.coverPhotos || []}
+                onChange={(v) => setEditInfo({ ...editInfo, coverPhotos: v })}
+                multiple
+                allowUrlInput={false}
               />
             </FormFieldRow>
-            <FormFieldRow label={t('企业荣誉资质图 URL')}>
-              <Textarea
-                value={photosToText(editInfo.qualificationPhotos)}
-                onChange={(e) =>
-                  setEditInfo({ ...editInfo, qualificationPhotos: textToPhotos(e.target.value) })
-                }
-                rows={3}
-                placeholder={t('每行一个 URL')}
+            <FormFieldRow label={t('企业荣誉资质图')}>
+              <ImageListUpload
+                label={t('企业荣誉资质图')}
+                value={editInfo.qualificationPhotos || []}
+                onChange={(v) => setEditInfo({ ...editInfo, qualificationPhotos: v })}
+                multiple
+                allowUrlInput={false}
               />
             </FormFieldRow>
-            <FormFieldRow label={t('知识产权图 URL')}>
-              <Textarea
-                value={photosToText(editInfo.intellectualPropertyPhotos)}
-                onChange={(e) =>
-                  setEditInfo({
-                    ...editInfo,
-                    intellectualPropertyPhotos: textToPhotos(e.target.value),
-                  })
-                }
-                rows={3}
-                placeholder={t('每行一个 URL')}
+            <FormFieldRow label={t('知识产权图')}>
+              <ImageListUpload
+                label={t('知识产权图')}
+                value={editInfo.intellectualPropertyPhotos || []}
+                onChange={(v) => setEditInfo({ ...editInfo, intellectualPropertyPhotos: v })}
+                multiple
+                allowUrlInput={false}
               />
             </FormFieldRow>
             <FormFieldRow label={t('企业简介')}>

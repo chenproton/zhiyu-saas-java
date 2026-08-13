@@ -197,7 +197,8 @@ export default function AllianceAgreementEditPage() {
                 value={item.attachments}
                 onChange={(v) => setField('attachments', v)}
                 multiple
-                placeholder={t('上传附件或输入 URL')}
+                allowUrlInput={false}
+                placeholder={t('上传附件图片（可多选）')}
               />
             </CardContent>
           </Card>

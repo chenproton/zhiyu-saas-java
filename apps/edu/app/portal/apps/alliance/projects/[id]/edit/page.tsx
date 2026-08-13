@@ -174,6 +174,7 @@ export default function AllianceProjectEditPage() {
                 label={t('项目封面')}
                 value={(item as any).coverImage || ''}
                 onChange={(v) => setField('coverImage', v)}
+                allowUrlInput={false}
               />
             </CardContent>
           </Card>
