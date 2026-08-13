@@ -57,7 +57,7 @@ import { QuestionFormDialog } from '@/components/evaluation/question-form-dialog
 import { QuestionPreview } from '@/components/evaluation/question-preview'
 import { useData } from '@/components/providers/data-provider'
 import { importExportApi, downloadBlob } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, TableEmptyRow } from '@zhiyu/ui'
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from '@/lib/types'
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, QUESTION_TYPE_BADGE_CLASSES, DIFFICULTY_LABELS } from '@/lib/types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -162,15 +162,17 @@ export default function QuestionBankDetailPage() {
       )
     }
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">{t('题库不存在')}</h2>
-          <p className="mb-4 text-muted-foreground">{t('该题库可能已被删除')}</p>
+      <EmptyState
+        className="h-[50vh]"
+        title={t('题库不存在')}
+        titleClassName="text-lg font-semibold text-foreground"
+        description={t('该题库可能已被删除')}
+        action={
           <Button asChild>
             <Link href="/evaluation/question-banks">{t('返回题库列表')}</Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
     )
   }
 
@@ -670,16 +672,11 @@ export default function QuestionBankDetailPage() {
           </TableHeader>
           <TableBody>
             {filteredQuestions.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={canEdit ? 7 : 6}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  {questions.length === 0
-                    ? t('暂无题目，点击上方按钮添加')
-                    : t('没有找到匹配的题目')}
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={canEdit ? 7 : 6}>
+                {questions.length === 0
+                  ? t('暂无题目，点击上方按钮添加')
+                  : t('没有找到匹配的题目')}
+              </TableEmptyRow>
             ) : (
               filteredQuestions.map((question) => (
                 <TableRow key={question.id} className="group">

@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { majorApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { Major } from '@/lib/types/backend'
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { programApi, teachingPlanApi, batchApi, affairsBatchApi, approvalApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { TrainingProgram, TeachingPlan } from '@/lib/types/affairs'
 import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'

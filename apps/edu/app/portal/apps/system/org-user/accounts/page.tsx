@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -17,7 +16,7 @@ import { usePortalUsers } from '@/hooks/use-portal-users'
 import { useOrgTree } from '@/hooks/use-org-tree'
 import { portalUserManagementApi } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
-import { useToast, StatusBadge } from '@zhiyu/ui'
+import { useToast, StatusBadge, FormDialogFooter } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
@@ -306,58 +305,64 @@ export default function AccountsPage() {
               {t('为用户绑定 1 个或多个角色，用户登录后可在顶栏切换当前角色')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <ComboboxSelect
-              multiple
-              value={bindRoleIds}
-              onChange={setBindRoleIds}
-              options={roles.map((r) => ({ value: r.id, label: r.name }))}
-              placeholder={t('搜索并选择角色...')}
-              searchPlaceholder={t('搜索角色名称或编码...')}
-              emptyText={t('未找到角色')}
-              className="w-full"
-              renderOption={(o, selected) => (
-                <>
-                  <span className="flex-1">{o.label}</span>
-                  <span className="mr-2 font-mono text-xs text-muted-foreground">
-                    {roles.find((r) => r.id === o.value)?.code}
-                  </span>
-                  {selected && <Check className="h-4 w-4 text-primary" />}
-                </>
-              )}
-            />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleBindRoles()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-3 py-2">
+              <ComboboxSelect
+                multiple
+                value={bindRoleIds}
+                onChange={setBindRoleIds}
+                options={roles.map((r) => ({ value: r.id, label: r.name }))}
+                placeholder={t('搜索并选择角色...')}
+                searchPlaceholder={t('搜索角色名称或编码...')}
+                emptyText={t('未找到角色')}
+                className="w-full"
+                renderOption={(o, selected) => (
+                  <>
+                    <span className="flex-1">{o.label}</span>
+                    <span className="mr-2 font-mono text-xs text-muted-foreground">
+                      {roles.find((r) => r.id === o.value)?.code}
+                    </span>
+                    {selected && <Check className="h-4 w-4 text-primary" />}
+                  </>
+                )}
+              />
 
-            <div className="flex min-h-8 flex-wrap gap-1.5">
-              {bindRoleIds.map((id) => {
-                const r = roles.find((x) => x.id === id)
-                if (!r) return null
-                return (
-                  <Badge key={id} variant="secondary" className="gap-1">
-                    {r.name}
-                    <button
-                      type="button"
-                      onClick={() => setBindRoleIds((prev) => prev.filter((i) => i !== id))}
-                      className="ml-0.5 rounded-full hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )
-              })}
-              {bindRoleIds.length === 0 && (
-                <span className="text-sm text-muted-foreground">{t('至少需要绑定一个角色')}</span>
-              )}
+              <div className="flex min-h-8 flex-wrap gap-1.5">
+                {bindRoleIds.map((id) => {
+                  const r = roles.find((x) => x.id === id)
+                  if (!r) return null
+                  return (
+                    <Badge key={id} variant="secondary" className="gap-1">
+                      {r.name}
+                      <button
+                        type="button"
+                        onClick={() => setBindRoleIds((prev) => prev.filter((i) => i !== id))}
+                        className="ml-0.5 rounded-full hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )
+                })}
+                {bindRoleIds.length === 0 && (
+                  <span className="text-sm text-muted-foreground">{t('至少需要绑定一个角色')}</span>
+                )}
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBindTarget(null)} disabled={bindSaving}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleBindRoles} disabled={bindSaving || bindRoleIds.length === 0}>
-              {bindSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => setBindTarget(null)}
+              confirmText={t('保存')}
+              cancelText={t('取消')}
+              confirmDisabled={bindRoleIds.length === 0}
+              loading={bindSaving}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 

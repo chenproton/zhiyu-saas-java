@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@zhiyu/ui'
+import { StatusBadge, FormDialogFooter } from '@zhiyu/ui'
 import {
   Table,
   TableBody,
@@ -59,7 +59,7 @@ import {
   Check,
 } from 'lucide-react'
 import { platformModuleDefs } from '@/lib/navigation-config'
-import { useDebouncedValue, useToast } from '@zhiyu/ui'
+import { useDebouncedValue, useToast, TableEmptyRow } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DateInput } from '@/components/shared/date-input'
 import { LogTableShell } from '@/components/shared/log-table-shell'
@@ -1106,19 +1106,11 @@ export default function SuperAdminPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loginLoading || !loginUsername || !loginPassword}
+                loading={loginLoading}
+                disabled={!loginUsername || !loginPassword}
               >
-                {loginLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('登录中...')}
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    {t('登录')}
-                  </>
-                )}
+                <LogIn className="mr-2 h-4 w-4" />
+                {t('登录')}
               </Button>
             </form>
           </div>
@@ -1360,13 +1352,20 @@ export default function SuperAdminPage() {
                 : t(editingTenant ? '修改租户信息，租户标识创建后不可修改' : '创建新的平台租户')}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {tenantTab === 'school' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>
-                    {t('租户标识')} <span className="text-destructive">*</span>
-                  </Label>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmit()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-4">
+              {tenantTab === 'school' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>
+                      {t('租户标识')} <span className="text-destructive">*</span>
+                    </Label>
                   <Input
                     placeholder={t('唯一标识，创建后不可修改')}
                     value={formData.code}
@@ -1594,18 +1593,14 @@ export default function SuperAdminPage() {
               {error}
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || Boolean(editingTenant && viewLoadError)}
-            >
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t(editingTenant ? '保存' : '创建')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setDialogOpen(false)}
+            confirmText={t(editingTenant ? '保存' : '创建')}
+            cancelText={t('取消')}
+            confirmDisabled={Boolean(editingTenant && viewLoadError)}
+            loading={submitting}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1707,7 +1702,14 @@ export default function SuperAdminPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {subscriptionLoading ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubscriptionSubmit()
+            }}
+            className="grid gap-4"
+          >
+            {subscriptionLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -1826,22 +1828,14 @@ export default function SuperAdminPage() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSubscriptionDialogOpen(false)}
-              disabled={subscriptionSubmitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handleSubscriptionSubmit}
-              disabled={subscriptionLoading || subscriptionSubmitting}
-            >
-              {subscriptionSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setSubscriptionDialogOpen(false)}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            confirmDisabled={subscriptionLoading}
+            loading={subscriptionSubmitting}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1858,17 +1852,24 @@ export default function SuperAdminPage() {
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-5 py-4">
-            <div className="grid gap-2">
-              <Label>
-                {t('Base URL')} <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={aiForm.baseUrl}
-                onChange={(e) => setAiForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
-                placeholder="https://api.openai.com/v1"
-              />
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleAISave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-5 py-4">
+              <div className="grid gap-2">
+                <Label>
+                  {t('Base URL')} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={aiForm.baseUrl}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
+                  placeholder="https://api.openai.com/v1"
+                />
+              </div>
             <div className="grid gap-2">
               <Label>
                 {t('API Key')} {!aiConfig?.configured && <span className="text-destructive">*</span>}
@@ -1891,25 +1892,25 @@ export default function SuperAdminPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            {aiConfig?.configured && (
-              <Button
-                variant="destructive"
-                className="mr-auto"
-                onClick={() => setAIDeleteConfirm(true)}
-                disabled={aiSubmitting}
-              >
-                {t('清除配置')}
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setAiDialogOpen(false)} disabled={aiSubmitting}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleAISave} disabled={aiSubmitting}>
-              {aiSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setAiDialogOpen(false)}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            loading={aiSubmitting}
+            extra={
+              aiConfig?.configured && (
+                <Button
+                  variant="destructive"
+                  className="mr-auto"
+                  onClick={() => setAIDeleteConfirm(true)}
+                  disabled={aiSubmitting}
+                >
+                  {t('清除配置')}
+                </Button>
+              )
+            }
+          />
+          </form>
         </DialogContent>
       </Dialog>
       <ConfirmDialog
@@ -2005,33 +2006,36 @@ export default function SuperAdminPage() {
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 py-2">
-            <Input
-              placeholder={
-                deleteTarget ? t('请输入租户名称「{name}」', { name: deleteTarget.name }) : ''
-              }
-              value={deleteConfirmName}
-              onChange={(e) => setDeleteConfirmName(e.target.value)}
-              autoFocus
-            />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirmDelete()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-2 py-2">
+              <Input
+                placeholder={
+                  deleteTarget ? t('请输入租户名称「{name}」', { name: deleteTarget.name }) : ''
+                }
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                autoFocus
+              />
             {deleteConfirmName.trim() !== '' &&
               deleteTarget &&
               deleteConfirmName.trim() !== deleteTarget.name && (
                 <p className="text-sm text-destructive">{t('租户名称不匹配')}</p>
               )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-              {t('取消')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!deleteTarget || deleteConfirmName.trim() !== deleteTarget.name}
-              onClick={confirmDelete}
-            >
-              {t('删除')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setDeleteTarget(null)}
+            confirmText={t('删除')}
+            cancelText={t('取消')}
+            variant="destructive"
+            confirmDisabled={!deleteTarget || deleteConfirmName.trim() !== deleteTarget.name}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -2108,13 +2112,9 @@ export default function SuperAdminPage() {
                             size="sm"
                             className="h-7 px-2 text-xs"
                             onClick={submitInlineAdmin}
-                            disabled={adminInlineSubmitting}
+                            loading={adminInlineSubmitting}
                           >
-                            {adminInlineSubmitting ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              t('保存')
-                            )}
+                            {t('保存')}
                           </Button>
                           <Button
                             variant="outline"
@@ -2171,13 +2171,9 @@ export default function SuperAdminPage() {
                                     size="sm"
                                     className="h-7 px-2 text-xs"
                                     onClick={submitInlineAdmin}
-                                    disabled={adminInlineSubmitting}
+                                    loading={adminInlineSubmitting}
                                   >
-                                    {adminInlineSubmitting ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      t('保存')
-                                    )}
+                                    {t('保存')}
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -2234,14 +2230,9 @@ export default function SuperAdminPage() {
                         </TableRow>
                       ))}
                       {admins.length === 0 && !adminLoading && !adminInline && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={4}
-                            className="text-center text-sm text-muted-foreground py-8"
-                          >
-                            {t(adminKind === 'enterprise' ? '暂无企业管理员' : '暂无学校管理员')}
-                          </TableCell>
-                        </TableRow>
+                        <TableEmptyRow colSpan={4} className="py-8">
+                          {t(adminKind === 'enterprise' ? '暂无企业管理员' : '暂无学校管理员')}
+                        </TableEmptyRow>
                       )}
                     </>
                   )}
@@ -2270,9 +2261,16 @@ export default function SuperAdminPage() {
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="set-password">{t('新密码')}</Label>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              submitPassword()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="set-password">{t('新密码')}</Label>
               <Input
                 id="set-password"
                 type="password"
@@ -2293,22 +2291,14 @@ export default function SuperAdminPage() {
             </div>
             {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPasswordAdmin(null)}
-              disabled={passwordSubmitting}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={submitPassword}
-              disabled={passwordSubmitting || !newPassword || !confirmPassword}
-            >
-              {passwordSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setPasswordAdmin(null)}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            confirmDisabled={!newPassword || !confirmPassword}
+            loading={passwordSubmitting}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 

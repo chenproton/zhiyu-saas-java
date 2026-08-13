@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -37,14 +36,14 @@ import {
 import { cn } from '@/lib/utils'
 import { POSITION_TYPE_LABELS } from '@/lib/types/job-source'
 import { positionApi, recommendApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import {
   convertCareerPositionToPosition,
   convertApiRecommendationToLocal,
 } from '@/lib/converters/job-converters'
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, EmptyState, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { ConfirmDialog } from '@zhiyu/ui'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -214,7 +213,14 @@ export default function PostRecommendPage() {
                   <DialogTitle>{t('添加岗位目标推荐')}</DialogTitle>
                   <DialogDescription>{t('选择一个岗位加入前台推荐列表')}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleAdd()
+                  }}
+                  className="grid gap-4"
+                >
+                  <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('推荐岗位')}</label>
                     <ComboboxSelect
@@ -270,14 +276,12 @@ export default function PostRecommendPage() {
                     </div>
                   )}
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-                    {t('取消')}
-                  </Button>
-                  <Button onClick={handleAdd} disabled={!selectedPositionId}>
-                    {t('确认添加')}
-                  </Button>
-                </DialogFooter>
+                <FormDialogFooter
+                  onCancel={() => setIsAddOpen(false)}
+                  confirmText={t('确认添加')}
+                  confirmDisabled={!selectedPositionId}
+                />
+                </form>
               </DialogContent>
             </Dialog>
           </CardHeader>
@@ -294,15 +298,14 @@ export default function PostRecommendPage() {
               </TableHeader>
               <TableBody>
                 {allRecommendations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <Sparkles className="h-10 w-10 mb-2" />
-                        <p>{t('暂无配置的推荐岗位')}</p>
-                        <p className="text-xs mt-1">{t('添加后将在前台"为你推荐"按顺序展示')}</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <TableEmptyRow colSpan={5} className="h-32">
+                    <EmptyState
+                      icon={<Sparkles className="h-10 w-10" />}
+                      title={t('暂无配置的推荐岗位')}
+                      description={t('添加后将在前台"为你推荐"按顺序展示')}
+                      className="py-0"
+                    />
+                  </TableEmptyRow>
                 ) : (
                   allRecommendations.map((rec, index) => {
                     const position = (positions ?? []).find((p) => p.id === rec.positionId)

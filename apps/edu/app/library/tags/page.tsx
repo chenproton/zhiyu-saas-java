@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -16,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { tagApi } from '@/lib/api'
 import type { TagItem } from '@/lib/types/library'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { LibraryPageShell } from '../_components/library-page-shell'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { useTags } from '@/components/shared/use-tags'
@@ -154,7 +153,14 @@ export default function TagsPage() {
                   {t('标签可用于公共资源库各列表页的筛选，以及资源新增/编辑时的绑定')}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSubmit()
+                }}
+                className="grid gap-4"
+              >
+                <div className="space-y-4 py-2">
                 <div>
                   <Label>{t('标签名称')}</Label>
                   <Input
@@ -181,12 +187,11 @@ export default function TagsPage() {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  {t('取消')}
-                </Button>
-                <Button onClick={handleSubmit}>{editingItem ? t('保存') : t('创建')}</Button>
-              </DialogFooter>
+              <FormDialogFooter
+                onCancel={() => setIsDialogOpen(false)}
+                confirmText={editingItem ? t('保存') : t('创建')}
+              />
+              </form>
             </DialogContent>
           </Dialog>
         }

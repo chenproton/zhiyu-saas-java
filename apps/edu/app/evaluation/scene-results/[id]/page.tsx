@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { StatusBadge } from '@zhiyu/ui'
+import { StatusBadge, EmptyState } from '@zhiyu/ui'
 import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils'
 import { computeTotalScore, formatDateTime } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import {
   evaluationResultApi,
   taskEvaluationApi,
@@ -486,10 +486,11 @@ function AttachmentPreview({
               className="max-w-full max-h-[70vh] rounded-lg shadow-sm border"
             />
           ) : (
-            <div className="text-center py-12 text-gray-400">
-              <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">{t('该类型文件暂不支持在线预览')}</p>
-            </div>
+            <EmptyState
+              icon={<Package className="h-12 w-12 opacity-50" />}
+              title={t('该类型文件暂不支持在线预览')}
+              titleClassName="text-gray-400"
+            />
           )}
         </div>
       </DialogContent>
@@ -862,10 +863,12 @@ export default function GradingDetailPage() {
           </div>
           <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
             {rdQuestions.length === 0 && (
-              <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
-                <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                {t('点击右上角「现场抽题」按钮，从题库中抽取本次问答题目')}
-              </div>
+              <EmptyState
+                icon={<FileText className="h-8 w-8 opacity-40" />}
+                title={t('点击右上角「现场抽题」按钮，从题库中抽取本次问答题目')}
+                titleClassName="text-gray-400"
+                className="bg-gray-50/50 rounded-lg border border-dashed"
+              />
             )}
             {rdQuestions.map((q, idx) => (
               <DrawnQuestionCard
@@ -1059,10 +1062,12 @@ export default function GradingDetailPage() {
               )}
             {!subjectiveContent.text &&
               (!subjectiveContent.files || subjectiveContent.files.length === 0) && (
-                <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
-                  <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  {t('学生未提交在线材料')}
-                </div>
+                <EmptyState
+                  icon={<Package className="h-8 w-8 opacity-40" />}
+                  title={t('学生未提交在线材料')}
+                  titleClassName="text-gray-400"
+                  className="bg-gray-50/50 rounded-lg border border-dashed"
+                />
               )}
           </div>
         </div>
@@ -1103,10 +1108,12 @@ export default function GradingDetailPage() {
                 />
               ))
             ) : (
-              <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-dashed">
-                <Star className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">{t('该任务未配置评分项')}</p>
-              </div>
+              <EmptyState
+                icon={<Star className="h-8 w-8 opacity-40" />}
+                title={t('该任务未配置评分项')}
+                titleClassName="text-gray-400"
+                className="bg-white rounded-lg border border-dashed"
+              />
             )
           ) : evalPoints.length > 0 ? (
             evalPoints.map((ep) => (
@@ -1120,10 +1127,12 @@ export default function GradingDetailPage() {
               />
             ))
           ) : (
-            <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-dashed">
-              <Star className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t('该任务未配置评价点')}</p>
-            </div>
+            <EmptyState
+              icon={<Star className="h-8 w-8 opacity-40" />}
+              title={t('该任务未配置评价点')}
+              titleClassName="text-gray-400"
+              className="bg-white rounded-lg border border-dashed"
+            />
           )}
         </div>
       </div>

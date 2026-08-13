@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { Target } from 'lucide-react'
 
 import { reportError } from '@/lib/error-handling'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useToast } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'

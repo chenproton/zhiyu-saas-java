@@ -11,7 +11,7 @@ import { teachingPlanApi, affairsBatchApi, approvalApi, importExportApi } from '
 import type { TeachingPlan, AffairsBatch } from '@/lib/types'
 import { STATUS_FILTER_OPTIONS } from '@zhiyu/shared-types'
 import { GeneratePlanDialog } from './_components/generate-plan-dialog'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 // ContentListItem 需要 name/creatorId/coCreatorIds：教学计划无独立名称，以 方案+学期+专业 拼装（同时作为搜索串）
@@ -136,11 +136,7 @@ export default function TeachingPlansPage() {
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="h-24 text-center text-sm text-muted-foreground">
-                        {t('暂无教学计划')}
-                      </td>
-                    </tr>
+                    <TableEmptyRow colSpan={9}>{t('暂无教学计划')}</TableEmptyRow>
                   ) : (
                     items.map((item: any) => (
                       <tr key={item.id} className="border-t hover:bg-muted/30 group">

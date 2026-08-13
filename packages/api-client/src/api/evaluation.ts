@@ -77,25 +77,11 @@ export const examApi = {
 }
 
 export const examUsageApi = {
-  list: (params?: {
-    examId?: string
-    status?: string
-    search?: string
-    limit?: number
-    offset?: number
-    /** scope=all 时不做范围过滤（学生作答/结果回看需查随时作答的自动考试安排） */
-    scope?: string
-  }) => request<ListResponse<ExamUsage>>(`/evaluation/exam-usages${buildQuery(params || {})}`),
-  get: (id: string) => request<ExamUsage>(`/evaluation/exam-usages/${id}`),
-  create: (req: Omit<ExamUsage, 'id' | 'createdAt' | 'updatedAt'>) =>
-    request<ExamUsage>('/evaluation/exam-usages', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<Omit<ExamUsage, 'id' | 'createdAt' | 'updatedAt'>>) =>
-    request<ExamUsage>(`/evaluation/exam-usages/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/evaluation/exam-usages/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<
+    ExamUsage,
+    Omit<ExamUsage, 'id' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<ExamUsage, 'id' | 'createdAt' | 'updatedAt'>>
+  >('/evaluation/exam-usages'),
   publish: (id: string) =>
     request<ExamUsage>(`/evaluation/exam-usages/${id}/publish`, { method: 'POST' }),
   finish: (id: string) =>

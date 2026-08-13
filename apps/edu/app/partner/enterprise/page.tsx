@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -26,7 +25,6 @@ import {
   FieldValue,
 } from '@/components/shared/form-field-row'
 import {
-  Loader2,
   Pencil,
   Eye,
   Building,
@@ -47,7 +45,7 @@ import {
   type PartnerEnterprise,
   type PartnerExpert,
 } from '@/lib/api'
-import { useToast, LoadingView, ErrorState } from '@zhiyu/ui'
+import { useToast, LoadingView, ErrorState, FormDialogFooter } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import { getEnterpriseMissingFields } from '@/lib/partner-enterprise-completeness'
@@ -388,7 +386,14 @@ export default function PartnerEnterprisePage() {
             </DialogDescription>
           </DialogHeader>
           {form && (
-            <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSave()
+              }}
+              className="flex flex-col gap-4 flex-1 min-h-0"
+            >
+              <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
               <Separator />
               <div>
                 <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">
@@ -559,16 +564,9 @@ export default function PartnerEnterprisePage() {
                 </div>
               </div>
             </div>
+            <FormDialogFooter onCancel={() => setEditOpen(false)} loading={saving} />
+            </form>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

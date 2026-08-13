@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -20,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { FormDialogFooter } from '@zhiyu/ui'
 import type { CertificationModelPoint, LevelMapping } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -184,7 +184,13 @@ function CombinedConfigForm({
   }
 
   return (
-    <>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSave()
+      }}
+      className="grid gap-4"
+    >
       <div className="grid gap-6 md:grid-cols-2">
         {/* 左栏：分数来源权重 */}
         <div className="flex min-h-0 flex-col">
@@ -317,14 +323,11 @@ function CombinedConfigForm({
         </div>
       </div>
 
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel} disabled={saving}>
-          {t('取消')}
-        </Button>
-        <Button onClick={handleSave} disabled={!taskTotalValid || !!levelError || saving}>
-          {saving ? t('保存中...') : t('保存')}
-        </Button>
-      </DialogFooter>
-    </>
+      <FormDialogFooter
+        onCancel={onCancel}
+        loading={saving}
+        confirmDisabled={!taskTotalValid || !!levelError}
+      />
+    </form>
   )
 }

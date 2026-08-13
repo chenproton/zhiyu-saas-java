@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -194,11 +194,7 @@ export default function JobAbilityPage() {
                   </TableCell>
                 </TableRow>
               ) : filteredPositions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    {t('暂无岗位数据')}
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow colSpan={7}>{t('暂无岗位数据')}</TableEmptyRow>
               ) : (
                 filteredPositions.map((position) => {
                   const rule = ruleMap.get(position.id)

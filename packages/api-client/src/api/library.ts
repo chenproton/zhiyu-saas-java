@@ -7,16 +7,14 @@ import type {
 } from '../types/library'
 import type { CitationStats, UncitedItem } from '../types/citation'
 import { request, buildQuery, ListResponse } from '../api-helpers'
+import { createCrudApi } from '../api-factory'
 
 export const resourceLibraryApi = {
-  list: (params?: {
-    search?: string
-    resourceType?: string
-    uploadedBy?: string
-    tagIds?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<ResourceLibraryItem>>(`/library/resources${buildQuery(params || {})}`),
+  ...createCrudApi<
+    ResourceLibraryItem,
+    Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>>
+  >('/library/resources'),
   stats: (params?: { search?: string }) =>
     request<{ items: { resourceType: string; count: number }[] }>(
       `/library/resources/stats${buildQuery(params || {})}`,
@@ -31,57 +29,18 @@ export const resourceLibraryApi = {
     offset?: number
   }) =>
     request<ListResponse<UncitedItem>>(`/library/resources/uncited${buildQuery(params || {})}`),
-  get: (id: string) => request<ResourceLibraryItem>(`/library/resources/${id}`),
-  create: (req: Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>) =>
-    request<ResourceLibraryItem>('/library/resources', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
   previewImport: (names: string[], resourceType: string) =>
     request<ListResponse<ResourceLibraryItem>>('/library/resources/import/preview', {
       method: 'POST',
       body: JSON.stringify({ names, resourceType }),
     }),
-  update: (
-    id: string,
-    req: Partial<Omit<ResourceLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>>,
-  ) =>
-    request<ResourceLibraryItem>(`/library/resources/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) => request<{ id: string }>(`/library/resources/${id}`, { method: 'DELETE' }),
 }
 
-export const onSiteQuestionLibraryApi = {
-  list: (params?: {
-    search?: string
-    questionType?: string
-    difficulty?: string
-    creatorId?: string
-    limit?: number
-    offset?: number
-  }) =>
-    request<ListResponse<OnSiteQuestionLibraryItem>>(
-      `/library/on-site-questions${buildQuery(params || {})}`,
-    ),
-  get: (id: string) => request<OnSiteQuestionLibraryItem>(`/library/on-site-questions/${id}`),
-  create: (req: Omit<OnSiteQuestionLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>) =>
-    request<OnSiteQuestionLibraryItem>('/library/on-site-questions', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  update: (
-    id: string,
-    req: Partial<Omit<OnSiteQuestionLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>>,
-  ) =>
-    request<OnSiteQuestionLibraryItem>(`/library/on-site-questions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/library/on-site-questions/${id}`, { method: 'DELETE' }),
-}
+export const onSiteQuestionLibraryApi = createCrudApi<
+  OnSiteQuestionLibraryItem,
+  Omit<OnSiteQuestionLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>,
+  Partial<Omit<OnSiteQuestionLibraryItem, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>>
+>('/library/on-site-questions')
 
 // 标签管理（标签 CRUD + 资源绑定维护）
 export const tagApi = {

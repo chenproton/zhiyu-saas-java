@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { ListChecks, ChevronLeft, ChevronRight, X, Star } from 'lucide-react'
+import { EmptyState } from '@zhiyu/ui'
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
 import { Button } from '@/components/ui/button'
 import { AbilityPointCard } from './ability-point-card'
@@ -118,7 +119,7 @@ export function DutyTable({
             </table>
           </div>
         ) : (
-          <div className="text-sm text-[#94a3b8] py-4">{t('暂无岗位职责数据')}</div>
+          <EmptyState title={t('暂无岗位职责数据')} className="py-4" titleClassName="text-[#94a3b8]" />
         )}
       </div>
 
@@ -174,22 +175,27 @@ export function DutyTable({
 
             <div className="p-6 overflow-y-auto flex-1 bg-[#f8fafc]">
               {modalAbilities.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-[#64748b]">
-                  <svg
-                    className="w-12 h-12 mb-3 opacity-50"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12"
-                    />
-                  </svg>
-                  {t('该职责暂无关联能力点')}
-                </div>
+                <EmptyState
+                  className="h-64 py-0"
+                  iconClassName="text-[#64748b]"
+                  icon={
+                    <svg
+                      className="w-12 h-12 opacity-50"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12"
+                      />
+                    </svg>
+                  }
+                  title={t('该职责暂无关联能力点')}
+                  titleClassName="text-[#64748b]"
+                />
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

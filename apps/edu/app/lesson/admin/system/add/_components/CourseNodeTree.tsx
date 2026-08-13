@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { FormDialogFooter } from '@zhiyu/ui'
 import { Plus, MoreHorizontal, GripVertical, BookOpen } from 'lucide-react'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
 import { NODE_REF_TYPE_LABELS, NODE_REF_TYPE_COLORS } from '@/lib/types/lesson-source'
@@ -308,30 +308,35 @@ export default function CourseNodeTree({
             )}
           </DialogHeader>
 
-          <div className="py-2 space-y-4">
-            <div>
-              <Label className="text-sm">
-                {t('节点名称')} <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                value={newNodeName}
-                onChange={(e) => setNewNodeName(e.target.value)}
-                placeholder={t('请输入节点名称')}
-                maxLength={50}
-                className="mt-1.5"
-              />
-              <p className="text-xs text-gray-400 text-right mt-1">{newNodeName.length} / 50</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmAdd()
+            }}
+            className="grid gap-4"
+          >
+            <div className="py-2 space-y-4">
+              <div>
+                <Label className="text-sm">
+                  {t('节点名称')} <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={newNodeName}
+                  onChange={(e) => setNewNodeName(e.target.value)}
+                  placeholder={t('请输入节点名称')}
+                  maxLength={50}
+                  className="mt-1.5"
+                />
+                <p className="text-xs text-gray-400 text-right mt-1">{newNodeName.length} / 50</p>
+              </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={handleConfirmAdd} disabled={!newNodeName.trim()}>
-              {t('确认添加')}
-            </Button>
-          </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => setAddDialogOpen(false)}
+              confirmText={t('确认添加')}
+              confirmDisabled={!newNodeName.trim()}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -341,23 +346,26 @@ export default function CourseNodeTree({
           <DialogHeader>
             <DialogTitle>{t('编辑节点名称')}</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
-            <FormFieldRow label={t('节点名称')}>
-              <Input
-                value={editNodeName}
-                onChange={(e) => setEditNodeName(e.target.value)}
-                placeholder={t('请输入节点名称')}
-                maxLength={50}
-                className="mt-1"
-              />
-            </FormFieldRow>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleConfirmEdit}>{t('保存')}</Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmEdit()
+            }}
+            className="grid gap-4"
+          >
+            <div className="py-2">
+              <FormFieldRow label={t('节点名称')}>
+                <Input
+                  value={editNodeName}
+                  onChange={(e) => setEditNodeName(e.target.value)}
+                  placeholder={t('请输入节点名称')}
+                  maxLength={50}
+                  className="mt-1"
+                />
+              </FormFieldRow>
+            </div>
+            <FormDialogFooter onCancel={() => setEditDialogOpen(false)} />
+          </form>
         </DialogContent>
       </Dialog>
 

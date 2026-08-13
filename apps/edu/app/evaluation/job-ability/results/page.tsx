@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useDebouncedValue, useToast } from '@zhiyu/ui'
+import { useDebouncedValue, useToast, EmptyState, TableEmptyRow } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -263,7 +263,7 @@ function JobAbilityResultsContent() {
           {summaryLoading ? (
             <div className="py-8 text-center text-xs text-muted-foreground">{t('加载中...')}</div>
           ) : summary.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">{t('暂无认定结果')}</div>
+            <EmptyState compact title={t('暂无认定结果')} className="py-8" />
           ) : (
             summary.map((item) => (
               <button
@@ -351,11 +351,9 @@ function JobAbilityResultsContent() {
                     </TableCell>
                   </TableRow>
                 ) : results.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                      {selectedPositionId ? t('暂无符合条件的认定结果') : t('请在左侧选择岗位')}
-                    </TableCell>
-                  </TableRow>
+                  <TableEmptyRow colSpan={9}>
+                    {selectedPositionId ? t('暂无符合条件的认定结果') : t('请在左侧选择岗位')}
+                  </TableEmptyRow>
                 ) : (
                   results.map((result) => (
                     <TableRow key={result.id} className="group">
@@ -535,15 +533,11 @@ function JobAbilityResultsContent() {
                   </Table>
                 </div>
               ) : (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  {t('暂无能力点明细')}
-                </div>
+                <EmptyState title={t('暂无能力点明细')} className="py-8" />
               )}
             </div>
           ) : (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              {t('未找到结果明细')}
-            </div>
+            <EmptyState title={t('未找到结果明细')} className="py-10" />
           )}
         </DialogContent>
       </Dialog>

@@ -5,11 +5,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
@@ -26,7 +24,7 @@ import { evaluationBatchApi, fileApi } from '@/lib/api'
 import { UserSelector } from '@/components/shared/user-selector'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { useAuth } from '@/components/auth-provider'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 interface BankFormDialogProps {
   open: boolean
@@ -218,14 +216,12 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
               </Field>
             )}
           </FieldGroup>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('取消')}
-            </Button>
-            <Button type="submit" disabled={!name.trim()}>
-              {bank ? t('保存') : t('创建')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => onOpenChange(false)}
+            confirmText={bank ? t('保存') : t('创建')}
+            cancelText={t('取消')}
+            confirmDisabled={!name.trim()}
+          />
         </form>
       </DialogContent>
     </Dialog>

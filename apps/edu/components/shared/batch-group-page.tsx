@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -38,7 +37,7 @@ import { useAuth } from '@/components/auth-provider'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { workflowApi, majorApi } from '@/lib/api'
 import type { Workflow, Major } from '@/lib/types/backend'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -301,7 +300,11 @@ export function BatchGroupPage({
         )}
         <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
           {filteredWorkflows.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-500 text-center">{t('暂无审批流程')}</div>
+            <EmptyState
+              title={t('暂无审批流程')}
+              titleClassName="text-gray-500"
+              className="px-4 py-6"
+            />
           ) : (
             filteredWorkflows.map((wf) => {
               const selected = newBatchWorkflow === wf.id
@@ -355,15 +358,21 @@ export function BatchGroupPage({
               <DialogTitle>{t('新增批次')}</DialogTitle>
               <DialogDescription>{t('创建新的批次分组，并关联审批流程。')}</DialogDescription>
             </DialogHeader>
-            {renderForm()}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleAddBatch} disabled={!newBatchName || !newBatchWorkflow}>
-                {t('创建批次')}
-              </Button>
-            </DialogFooter>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleAddBatch()
+              }}
+              className="grid gap-4"
+            >
+              {renderForm()}
+              <FormDialogFooter
+                onCancel={() => setIsCreateDialogOpen(false)}
+                confirmText={t('创建批次')}
+                cancelText={t('取消')}
+                confirmDisabled={!newBatchName || !newBatchWorkflow}
+              />
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -374,15 +383,21 @@ export function BatchGroupPage({
             <DialogTitle>{t('编辑批次')}</DialogTitle>
             <DialogDescription>{t('修改批次名称与关联审批流程。')}</DialogDescription>
           </DialogHeader>
-          {renderForm()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleUpdateBatch} disabled={!newBatchName || !newBatchWorkflow}>
-              {t('保存修改')}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleUpdateBatch()
+            }}
+            className="grid gap-4"
+          >
+            {renderForm()}
+            <FormDialogFooter
+              onCancel={() => setIsEditDialogOpen(false)}
+              confirmText={t('保存修改')}
+              cancelText={t('取消')}
+              confirmDisabled={!newBatchName || !newBatchWorkflow}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -459,11 +474,9 @@ export function BatchGroupPage({
                     </TableCell>
                   </TableRow>
                 ) : filteredBatches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      {t('暂无批次数据')}
-                    </TableCell>
-                  </TableRow>
+                  <TableEmptyRow colSpan={5} className="py-8 text-gray-500">
+                    {t('暂无批次数据')}
+                  </TableEmptyRow>
                 ) : (
                   filteredBatches.map((batch) => (
                     <TableRow key={batch.id} className="group">

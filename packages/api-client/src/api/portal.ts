@@ -14,26 +14,10 @@ import {
   UserRelationItem,
 } from '../api-helpers'
 import type { User } from '../api-helpers'
+import { createCrudApi } from '../api-factory'
 
 export const userManagementApi = {
-  list: (params?: {
-    tenantId?: string
-    roleId?: string
-    roleCode?: string
-    orgNodeId?: string
-    majorId?: string
-    titleId?: string
-    search?: string
-    status?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<User>>(`/users${buildQuery(params || {})}`),
-  get: (id: string) => request<User>(`/users/${id}`),
-  create: (req: CreateUserRequest) =>
-    request<User>('/users', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<CreateUserRequest>) =>
-    request<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/users/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<User, CreateUserRequest, Partial<CreateUserRequest>>('/users'),
   updateStatus: (id: string, status: string) =>
     request<User>(`/users/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   batchCreate: (reqs: CreateUserRequest[]) =>

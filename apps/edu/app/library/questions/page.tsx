@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -23,7 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { randomDrawQuestionApi, majorApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagFilterBar } from '@/components/shared/tag-filter-bar'
 import { TagPicker } from '@/components/shared/tag-picker'
@@ -246,7 +245,14 @@ export default function QuestionsPage() {
             <DialogHeader>
               <DialogTitle>{editing ? t('编辑现场问答题') : t('新增现场问答题')}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSubmit()
+              }}
+              className="grid gap-4"
+            >
+              <div className="space-y-4">
               <FormFieldRow label={t('题目名称')} required>
                 <Input
                   value={name}
@@ -287,15 +293,12 @@ export default function QuestionsPage() {
               <FormFieldRow label={t('标签')}>
                 <TagPicker value={tagIds} onChange={setTagIds} />
               </FormFieldRow>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleSubmit} disabled={!name.trim()}>
-                {t('保存')}
-              </Button>
-            </DialogFooter>
+              </div>
+              <FormDialogFooter
+                onCancel={() => setDialogOpen(false)}
+                confirmDisabled={!name.trim()}
+              />
+            </form>
           </DialogContent>
         </Dialog>
       }

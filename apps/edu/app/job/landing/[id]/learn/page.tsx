@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 import { publicPositionApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
 import { reportError } from '@/lib/error-handling'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState } from '@zhiyu/ui'
 import type { CareerPosition, LearnRoad, Scenario, ScenarioTask } from '@/lib/types'
 import { LearningPath } from '@/components/job/student/learning-path'
 import { Footer } from '@/components/portal/footer'
@@ -115,13 +115,18 @@ export default function JobStudentLearnPage() {
   if (!position) {
     return (
       <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
-        <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
-          <Briefcase className="w-16 h-16 mb-4 opacity-40" />
-          <div className="text-lg font-semibold text-[#475569]">{t('岗位不存在或暂未公开')}</div>
-          <Link href="/job/landing" className="text-primary hover:underline mt-2">
-            {t('返回岗位列表')}
-          </Link>
-        </div>
+        <EmptyState
+          className="flex-1"
+          icon={<Briefcase className="w-16 h-16 opacity-40" />}
+          iconClassName="mb-4"
+          title={t('岗位不存在或暂未公开')}
+          titleClassName="text-lg font-semibold text-[#475569]"
+          action={
+            <Link href="/job/landing" className="text-primary hover:underline">
+              {t('返回岗位列表')}
+            </Link>
+          }
+        />
         <Footer className="mt-auto" />
       </div>
     )
@@ -154,22 +159,27 @@ export default function JobStudentLearnPage() {
 
 function LoginPrompt({ text, desc }: { text: string; desc: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#e7e5e4] p-12 text-center text-[#94a3b8]">
-      <svg
-        className="w-12 h-12 mx-auto mb-3 opacity-40"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-        />
-      </svg>
-      <div className="text-base font-semibold text-[#475569]">{text}</div>
-      <p className="text-sm mt-1">{desc}</p>
-    </div>
+    <EmptyState
+      className="bg-white rounded-2xl border border-[#e7e5e4] p-12"
+      iconClassName="text-[#94a3b8]"
+      icon={
+        <svg
+          className="w-12 h-12 opacity-40"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+          />
+        </svg>
+      }
+      title={text}
+      titleClassName="text-base font-semibold text-[#475569]"
+      description={desc}
+    />
   )
 }

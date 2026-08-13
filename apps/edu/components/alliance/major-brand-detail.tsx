@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -15,7 +14,7 @@ import {
 import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi, allianceAchievementApi, portalRequest } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SingleImageUpload } from '@/components/shared/image-list-upload'
@@ -376,7 +375,14 @@ function RefSection({
             <DialogTitle>{pickerTitle}</DialogTitle>
             <DialogDescription>{t('选择后确认关联')}</DialogDescription>
           </DialogHeader>
-          <SearchInput placeholder={placeholder} value={search} onChange={setSearch} />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirm()
+            }}
+            className="grid gap-4"
+          >
+            <SearchInput placeholder={placeholder} value={search} onChange={setSearch} />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -407,14 +413,13 @@ function RefSection({
               })
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={confirm} disabled={selected.length === 0}>
-              {t('确认关联 ({count})', { count: selected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setOpen(false)}
+            confirmText={t('确认关联 ({count})', { count: selected.length })}
+            cancelText={t('取消')}
+            confirmDisabled={selected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </div>

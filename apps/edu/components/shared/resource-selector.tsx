@@ -16,7 +16,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from '@/lib/api'
-import { toast } from '@zhiyu/ui'
+import { toast, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -438,11 +438,13 @@ export function ResourceSelector({
           </div>
           <div className="flex-1 overflow-y-auto pr-1 min-w-0">
             {filteredRes.length === 0 ? (
-              <div className="text-center text-gray-400 py-12">
-                <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">{t('未找到匹配的资源')}</p>
-                <p className="text-xs mt-1">{t('尝试调整筛选条件或上传新资源')}</p>
-              </div>
+              <EmptyState
+                icon={<Package className="h-12 w-12 opacity-50" />}
+                title={t('未找到匹配的资源')}
+                description={t('尝试调整筛选条件或上传新资源')}
+                titleClassName="text-gray-400"
+                className="py-12"
+              />
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {filteredRes.map((r) => {
@@ -548,10 +550,13 @@ export function ResourceSelector({
           </div>
           <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
             {selectedIds.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">{t('请从左侧选择资源')}</p>
-              </div>
+              <EmptyState
+                compact
+                icon={<Package className="h-8 w-8 opacity-50" />}
+                title={t('请从左侧选择资源')}
+                titleClassName="text-gray-400"
+                className="py-8"
+              />
             ) : (
               selectedIds.map((rid) => {
                 const r = mergedPool.find((res) => res.id === rid)
@@ -635,7 +640,14 @@ export function ResourceSelector({
             <DialogTitle>{t('上传资源')}</DialogTitle>
             <DialogDescription>{t('补充本地资源，上传后将自动选中')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleUpload()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
             <div>
               <Label>{t('资源名称')}</Label>
               <Input
@@ -836,29 +848,21 @@ export function ResourceSelector({
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowUpload(false)
-                resetUploadForm()
-              }}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={
-                !newResName.trim() ||
-                newResUploading ||
-                (newResType === 'link' && !newResUrl.trim()) ||
-                (fileTypesWithUpload.includes(newResType) && !newResFile && !newResUrl.trim())
-              }
-            >
-              {newResUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              {t('上传并选中')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => {
+              setShowUpload(false)
+              resetUploadForm()
+            }}
+            confirmText={t('上传并选中')}
+            cancelText={t('取消')}
+            confirmDisabled={
+              !newResName.trim() ||
+              (newResType === 'link' && !newResUrl.trim()) ||
+              (fileTypesWithUpload.includes(newResType) && !newResFile && !newResUrl.trim())
+            }
+            loading={newResUploading}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 

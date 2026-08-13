@@ -8,13 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, courseApi, portalRequest, scenarioApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { allianceLabel, type AllianceRelatedRef } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { SearchInput } from '@/components/shared/search-input'
@@ -177,9 +176,7 @@ export default function AllianceAchievementDetailPage() {
           </Button>
         </div>
         {items.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">
-            {t('暂无关联{label}', { label })}
-          </p>
+          <EmptyState title={t('暂无关联{label}', { label })} className="py-8" />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((ref) => (
@@ -298,7 +295,7 @@ export default function AllianceAchievementDetailPage() {
       content: (
         <div className="space-y-2">
           {(achievement?.attachments || []).length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">{t('暂无佐证材料')}</p>
+            <EmptyState title={t('暂无佐证材料')} className="py-8" />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {(achievement?.attachments || []).map((f, i) => {
@@ -370,14 +367,21 @@ export default function AllianceAchievementDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('添加关联{pickLabel}', { pickLabel })}</DialogTitle>
           </DialogHeader>
-          <SearchInput
-            iconClassName="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-            inputClassName="pl-8"
-            placeholder={t('搜索{pickLabel}名称或编码', { pickLabel })}
-            value={keyword}
-            onChange={onKeywordChange}
-            autoFocus
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              addItem()
+            }}
+            className="grid gap-4"
+          >
+            <SearchInput
+              iconClassName="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              inputClassName="pl-8"
+              placeholder={t('搜索{pickLabel}名称或编码', { pickLabel })}
+              value={keyword}
+              onChange={onKeywordChange}
+              autoFocus
+            />
           <div className="max-h-[45vh] overflow-y-auto space-y-1">
             {searching ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -385,9 +389,10 @@ export default function AllianceAchievementDetailPage() {
                 {t('搜索中...')}
               </div>
             ) : results.length === 0 ? (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                {t('暂无可选{pickLabel}', { pickLabel })}
-              </p>
+              <EmptyState
+                title={t('暂无可选{pickLabel}', { pickLabel })}
+                className="py-6"
+              />
             ) : (
               results.map((opt) => (
                 <button
@@ -404,17 +409,13 @@ export default function AllianceAchievementDetailPage() {
               ))
             )}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPickDialog({ open: false, kind: pickDialog.kind })}
-            >
-              {t('取消')}
-            </Button>
-            <Button onClick={addItem} disabled={saving || !selected}>
-              {saving ? t('保存中...') : t('添加')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setPickDialog({ open: false, kind: pickDialog.kind })}
+            confirmText={t('添加')}
+            loading={saving}
+            confirmDisabled={!selected}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </>

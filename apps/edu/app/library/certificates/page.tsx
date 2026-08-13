@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -16,7 +15,7 @@ import { FormFieldRow } from '@/components/shared/form-field-row'
 import { certificateLibraryApi, fileApi } from '@/lib/api'
 import { formatDate } from '@/lib/format-utils'
 import type { CertificateLibraryItem } from '@/lib/types/job'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagFilterBar } from '@/components/shared/tag-filter-bar'
 import { TagPicker } from '@/components/shared/tag-picker'
@@ -264,7 +263,14 @@ export default function CertificatesPage() {
             <DialogHeader>
               <DialogTitle>{editingItem ? t('编辑证书') : t('新增证书')}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSubmit()
+              }}
+              className="grid gap-4"
+            >
+              <div className="space-y-4">
               <FormFieldRow label={t('名称')} required>
                 <Input
                   value={name}
@@ -299,13 +305,9 @@ export default function CertificatesPage() {
               <FormFieldRow label={t('标签')}>
                 <TagPicker value={tagIds} onChange={setTagIds} />
               </FormFieldRow>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleSubmit}>{t('保存')}</Button>
-            </DialogFooter>
+              </div>
+              <FormDialogFooter onCancel={() => setIsDialogOpen(false)} />
+            </form>
           </DialogContent>
         </Dialog>
       }

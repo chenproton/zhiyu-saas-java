@@ -51,10 +51,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { useToast, MixedTagEditor } from '@zhiyu/ui'
+import { useToast, MixedTagEditor, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SearchInput } from '@/components/shared/search-input'
 import { ExamActivationConfig } from '@/components/evaluation-rules/exam-activation-config'
@@ -1158,14 +1158,16 @@ export function EvaluationRulesEditor({
                         <p className="text-sm">{t('加载中...')}</p>
                       </div>
                     ) : filteredRdq.length === 0 ? (
-                      <div className="text-center text-gray-400 py-8">
-                        <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">
-                          {rdqSearch
+                      <EmptyState
+                        icon={<FileQuestion className="h-8 w-8 opacity-50" />}
+                        title={
+                          rdqSearch
                             ? t('未找到匹配的现场问答题')
-                            : t('暂无现场问答题，请点击上方按钮新增')}
-                        </p>
-                      </div>
+                            : t('暂无现场问答题，请点击上方按钮新增')
+                        }
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm min-w-[560px]">
@@ -1282,10 +1284,13 @@ export function EvaluationRulesEditor({
                   </p>
                   <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
                     {selectedRdqList.length === 0 ? (
-                      <div className="text-center text-gray-400 py-8">
-                        <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">{t('请从左侧选择现场问答题')}</p>
-                      </div>
+                      <EmptyState
+                        compact
+                        icon={<FileQuestion className="h-8 w-8 opacity-50" />}
+                        title={t('请从左侧选择现场问答题')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     ) : (
                       <div className="space-y-2">
                         {selectedRdqList.map((q) => (
@@ -1392,8 +1397,15 @@ export function EvaluationRulesEditor({
                       {rdqActionMode === 'add' ? t('创建一个新的现场问答题') : t('修改现场问答题信息')}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <FormFieldRow label={t('题目名称')}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      handleCreateRdq()
+                    }}
+                    className="grid gap-4"
+                  >
+                    <div className="space-y-4 py-4">
+                      <FormFieldRow label={t('题目名称')}>
                       <Input
                         value={newRdqForm.name}
                         onChange={(e) => setNewRdqForm({ ...newRdqForm, name: e.target.value })}
@@ -1436,14 +1448,13 @@ export function EvaluationRulesEditor({
                       />
                     </FormFieldRow>
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setRdqActionOpen(false)}>
-                      {t('取消')}
-                    </Button>
-                    <Button onClick={handleCreateRdq} disabled={!newRdqForm.name.trim()}>
-                      {rdqActionMode === 'add' ? t('新增') : t('保存修改')}
-                    </Button>
-                  </DialogFooter>
+                  <FormDialogFooter
+                    onCancel={() => setRdqActionOpen(false)}
+                    confirmText={rdqActionMode === 'add' ? t('新增') : t('保存修改')}
+                    cancelText={t('取消')}
+                    confirmDisabled={!newRdqForm.name.trim()}
+                  />
+                  </form>
                 </DialogContent>
               </Dialog>
               <Dialog open={rdqDetailOpen} onOpenChange={setRdqDetailOpen}>
@@ -2038,19 +2049,23 @@ export function EvaluationRulesEditor({
                     {papers.filter((p) => !paperSearch || p.name.includes(paperSearch))
                       .length === 0 &&
                       !paperSearch && (
-                        <div className="text-center py-8 text-gray-400">
-                          <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">{t('暂无可选试卷')}</p>
-                          <p className="text-xs mt-1">{t('请点击「新建试卷」创建试卷')}</p>
-                        </div>
+                        <EmptyState
+                          icon={<Info className="h-8 w-8 opacity-50" />}
+                          title={t('暂无可选试卷')}
+                          description={t('请点击「新建试卷」创建试卷')}
+                          titleClassName="text-gray-400"
+                          className="py-8"
+                        />
                       )}
                     {papers.length > 0 &&
                       papers.filter((p) => !paperSearch || p.name.includes(paperSearch))
                         .length === 0 && (
-                        <div className="text-center py-8 text-gray-400">
-                          <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">{t('未找到匹配的试卷')}</p>
-                        </div>
+                        <EmptyState
+                          icon={<Search className="h-8 w-8 opacity-50" />}
+                          title={t('未找到匹配的试卷')}
+                          titleClassName="text-gray-400"
+                          className="py-8"
+                        />
                       )}
                   </div>
                 )}
@@ -3013,11 +3028,13 @@ export function EvaluationRulesEditor({
                     )}
                   </div>
                   {info.points.length === 0 && (
-                    <div className="text-center text-gray-400 py-8">
-                      <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('尚未添加评价点')}</p>
-                      <p className="text-xs mt-1">{t('点击上方按钮添加第一个评价点')}</p>
-                    </div>
+                    <EmptyState
+                      icon={<Target className="h-8 w-8 opacity-50" />}
+                      title={t('尚未添加评价点')}
+                      description={t('点击上方按钮添加第一个评价点')}
+                      titleClassName="text-gray-400"
+                      className="py-8"
+                    />
                   )}
                 </div>
               ) : (
@@ -3194,11 +3211,13 @@ export function EvaluationRulesEditor({
                     )}
                   </div>
                   {taskScoreRules.length === 0 && (
-                    <div className="text-center text-gray-400 py-8">
-                      <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('尚未添加评价项')}</p>
-                      <p className="text-xs mt-1">{t('点击上方按钮添加第一个评价项')}</p>
-                    </div>
+                    <EmptyState
+                      icon={<Target className="h-8 w-8 opacity-50" />}
+                      title={t('尚未添加评价项')}
+                      description={t('点击上方按钮添加第一个评价项')}
+                      titleClassName="text-gray-400"
+                      className="py-8"
+                    />
                   )}
                 </div>
               )}
@@ -4292,11 +4311,12 @@ export function EvaluationRulesEditor({
   const bodyContent = (
     <>
       {config.evaluationMethods.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-gray-400 py-12">
-          <Target className="h-12 w-12 mb-3 opacity-50" />
-          <p className="text-sm">{t('尚未配置评价方式')}</p>
-          <p className="text-xs mt-1">{t('请先在「配置课程测评方式」中选择评价类型')}</p>
-        </div>
+        <EmptyState
+          icon={<Target className="h-12 w-12 opacity-50" />}
+          title={t('尚未配置评价方式')}
+          description={t('请先在「配置课程测评方式」中选择评价类型')}
+          titleClassName="text-gray-400"
+        />
       ) : (
         <div className="space-y-5 p-1">
           <div className="flex items-center gap-3">
@@ -4642,10 +4662,12 @@ export function EvaluationRulesEditor({
                       </div>
                     )}
                     {isKpSearching && !rubricKpSearchLoading && filteredKp.length === 0 && (
-                      <div className="text-center text-gray-400 py-8">
-                        <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">{t('未找到相关知识点')}</p>
-                      </div>
+                      <EmptyState
+                        icon={<Lightbulb className="h-8 w-8 opacity-50" />}
+                        title={t('未找到相关知识点')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     )}
                     {filteredKp.length > 0 && (
                       <div className="overflow-x-auto">
@@ -4750,10 +4772,13 @@ export function EvaluationRulesEditor({
                   </p>
                   <div className="flex-1 overflow-y-auto space-y-2">
                     {selectedIds.length === 0 && (
-                      <div className="text-center text-gray-400 py-8">
-                        <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">{t('从左侧选择知识点')}</p>
-                      </div>
+                      <EmptyState
+                        compact
+                        icon={<Lightbulb className="h-8 w-8 opacity-50" />}
+                        title={t('从左侧选择知识点')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     )}
                     {selectedIds.map((kpId) => {
                       const kp =
@@ -4836,10 +4861,12 @@ export function EvaluationRulesEditor({
                       </div>
                     )}
                     {isAbSearching && !rubricAbSearchLoading && filteredAb.length === 0 && (
-                      <div className="text-center text-gray-400 py-8">
-                        <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">{t('未找到相关能力点')}</p>
-                      </div>
+                      <EmptyState
+                        icon={<Lightbulb className="h-8 w-8 opacity-50" />}
+                        title={t('未找到相关能力点')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     )}
                     {filteredAb.length > 0 && (
                       <div className="overflow-x-auto">
@@ -4944,10 +4971,13 @@ export function EvaluationRulesEditor({
                   </p>
                   <div className="flex-1 overflow-y-auto space-y-2">
                     {selectedIds.length === 0 && (
-                      <div className="text-center text-gray-400 py-8">
-                        <Award className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs">{t('从左侧选择能力点')}</p>
-                      </div>
+                      <EmptyState
+                        compact
+                        icon={<Award className="h-8 w-8 opacity-50" />}
+                        title={t('从左侧选择能力点')}
+                        titleClassName="text-gray-400"
+                        className="py-8"
+                      />
                     )}
                     {selectedIds.map((abId) => {
                       const ab =

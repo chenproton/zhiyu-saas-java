@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Loader2, KeyRound } from 'lucide-react'
+import { Loader2, KeyRound } from 'lucide-react'
 import { partnerExpertApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
+import { FormPageShell } from '@/components/shared/form-page-shell'
 import {
   PartnerExpertForm,
   emptyPartnerExpertForm,
@@ -64,21 +65,7 @@ export default function PartnerExpertNewPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          {t('返回')}
-        </Button>
-        <h1 className="text-xl font-semibold text-foreground">{t('新建专家')}</h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
-          <PartnerExpertForm item={item} onChange={setItem} />
-        </div>
-
-        <div className="space-y-6">
+    <FormPageShell title={t('新建专家')} sidebar={<div className="space-y-6">
           <Card>
             <CardContent className="pt-6 space-y-3">
               <div className="flex items-center gap-2">
@@ -123,7 +110,7 @@ export default function PartnerExpertNewPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+      }>
+          <PartnerExpertForm item={item} onChange={setItem} />    </FormPageShell>
   )
 }

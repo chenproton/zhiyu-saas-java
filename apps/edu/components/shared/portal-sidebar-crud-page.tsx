@@ -14,7 +14,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -40,7 +39,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { ResetPasswordDialog } from '@/components/shared/reset-password-dialog'
 import { ImportConfirmDialog } from '@/components/shared/import-confirm-dialog'
 import { ImportWizardDialog } from '@/components/shared/import-wizard-dialog'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { useImportFlow, type UseImportFlowOptions } from '@/hooks/use-import-flow'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import type { Organization, OrgType } from '@/lib/types/backend'
@@ -462,16 +461,11 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                       </TableRow>
                     ))}
                     {filteredItems.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={colSpan + 1}
-                          className="text-center text-muted-foreground py-8"
-                        >
-                          {searchTerm
-                            ? t('未找到匹配的{entityLabel}', { entityLabel })
-                            : t('暂无{entityLabel}数据', { entityLabel })}
-                        </TableCell>
-                      </TableRow>
+                      <TableEmptyRow colSpan={colSpan + 1} className="py-8">
+                        {searchTerm
+                          ? t('未找到匹配的{entityLabel}', { entityLabel })
+                          : t('暂无{entityLabel}数据', { entityLabel })}
+                      </TableEmptyRow>
                     )}
                   </>
                 )}
@@ -498,16 +492,22 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             <DialogTitle>{editDialogTitle}</DialogTitle>
             <DialogDescription>{editDialogDescription}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">{renderForm()}</div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={saving}>
-              {t('取消')}
-            </Button>
-            <Button onClick={() => onFormSave()} disabled={saving || !formValid}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              onFormSave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-4">{renderForm()}</div>
+            <FormDialogFooter
+              onCancel={() => setIsEditDialogOpen(false)}
+              confirmText={t('保存')}
+              cancelText={t('取消')}
+              confirmDisabled={!formValid}
+              loading={saving}
+            />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -564,12 +564,19 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>
-                {t('目标{joinEntityLabel}', { joinEntityLabel })}{' '}
-                <span className="text-destructive">*</span>
-              </Label>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleBatchJoin()
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>
+                  {t('目标{joinEntityLabel}', { joinEntityLabel })}{' '}
+                  <span className="text-destructive">*</span>
+                </Label>
               <OrgNodePicker
                 value={joinTargetNodeId}
                 onChange={(value) => setJoinTargetNodeId(value || '')}
@@ -582,19 +589,14 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsJoinDialogOpen(false)}
-              disabled={joinLoading}
-            >
-              {t('取消')}
-            </Button>
-            <Button onClick={handleBatchJoin} disabled={joinLoading || !joinTargetNodeId}>
-              {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {t('确认加入')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsJoinDialogOpen(false)}
+            confirmText={t('确认加入')}
+            cancelText={t('取消')}
+            confirmDisabled={!joinTargetNodeId}
+            loading={joinLoading}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 

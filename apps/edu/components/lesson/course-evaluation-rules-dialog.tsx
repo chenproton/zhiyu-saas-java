@@ -2,16 +2,14 @@
 
 import { Award } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import { makeDefaultEvalRuleConfig } from '@/lib/types/evaluation'
@@ -102,7 +100,24 @@ export function CourseEvaluationRulesDialog({
             {t('配置各评价方式的测评对象、评价主体、测评资源与评价标准')}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden py-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (methodWeightTotal !== 100) {
+              toast({
+                variant: 'destructive',
+                title: t('权重校验失败'),
+                description: t('评价方式权重合计需等于 100%，当前为 {n}%', {
+                  n: methodWeightTotal,
+                }),
+              })
+              return
+            }
+            onOpenChange?.(false)
+          }}
+          className="flex flex-col flex-1 min-h-0 gap-4"
+        >
+          <div className="flex-1 overflow-hidden py-4">
           <EvaluationRulesEditor
             evaluationMethods={evaluationMethods}
             config={config}
@@ -112,28 +127,12 @@ export function CourseEvaluationRulesDialog({
             abilityPoints={abilityPoints}
           />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange?.(false)}>
-            {t('取消')}
-          </Button>
-          <Button
-            onClick={() => {
-              if (methodWeightTotal !== 100) {
-                toast({
-                  variant: 'destructive',
-                  title: t('权重校验失败'),
-                  description: t('评价方式权重合计需等于 100%，当前为 {n}%', {
-                    n: methodWeightTotal,
-                  }),
-                })
-                return
-              }
-              onOpenChange?.(false)
-            }}
-          >
-            {t('保存')}
-          </Button>
-        </DialogFooter>
+        <FormDialogFooter
+          onCancel={() => onOpenChange?.(false)}
+          confirmText={t('保存')}
+          cancelText={t('取消')}
+        />
+        </form>
       </DialogContent>
     </Dialog>
   )

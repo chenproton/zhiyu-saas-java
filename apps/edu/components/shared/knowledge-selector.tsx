@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useDebouncedValue } from '@zhiyu/ui'
+import { useDebouncedValue, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { Lightbulb, Plus, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -590,10 +590,12 @@ export function KnowledgeSelector({
         )}
         <div className="flex-1 overflow-y-auto pr-1">
           {!isSearching && !filterActive && filtered.length === 0 && (
-            <div className="text-center text-gray-400 py-8">
-              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">{t('请输入关键词搜索知识点')}</p>
-            </div>
+            <EmptyState
+              icon={<Lightbulb className="h-8 w-8 opacity-50" />}
+              title={t('请输入关键词搜索知识点')}
+              titleClassName="text-gray-400"
+              className="py-8"
+            />
           )}
           {!isSearching && filterActive && filterLoading && (
             <div className="text-center text-gray-400 py-8">
@@ -602,10 +604,12 @@ export function KnowledgeSelector({
             </div>
           )}
           {!isSearching && filterActive && !filterLoading && filtered.length === 0 && (
-            <div className="text-center text-gray-400 py-8">
-              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">{t('该筛选条件下暂无知识点')}</p>
-            </div>
+            <EmptyState
+              icon={<Lightbulb className="h-8 w-8 opacity-50" />}
+              title={t('该筛选条件下暂无知识点')}
+              titleClassName="text-gray-400"
+              className="py-8"
+            />
           )}
           {isSearching && searchLoading && (
             <div className="text-center text-gray-400 py-8">
@@ -614,15 +618,19 @@ export function KnowledgeSelector({
             </div>
           )}
           {isSearching && !searchLoading && !hasResults && (
-            <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
-              <p className="mb-2">{t('未找到 "{kpSearch}" 相关的知识点')}</p>
-              {!dataSource?.readOnly && (
-                <Button variant="outline" size="sm" onClick={openAddKp}>
-                  <Plus className="h-3 w-3 mr-1" />
-                  {t('新增此知识点')}
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              title={t('未找到 "{kpSearch}" 相关的知识点')}
+              titleClassName="text-gray-500"
+              className="p-6 border border-dashed rounded-lg"
+              action={
+                !dataSource?.readOnly && (
+                  <Button variant="outline" size="sm" onClick={openAddKp}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    {t('新增此知识点')}
+                  </Button>
+                )
+              }
+            />
           )}
           {filtered.length > 0 && (
             <div className="overflow-x-auto">
@@ -733,10 +741,13 @@ export function KnowledgeSelector({
         </p>
         <div className="flex-1 overflow-y-auto">
           {selected.length === 0 ? (
-            <div className="text-center text-gray-400 py-8">
-              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">{t('从左侧搜索并选择知识点')}</p>
-            </div>
+            <EmptyState
+              compact
+              icon={<Lightbulb className="h-8 w-8 opacity-50" />}
+              title={t('从左侧搜索并选择知识点')}
+              titleClassName="text-gray-400"
+              className="py-8"
+            />
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {selected.map((kp) => {
@@ -832,15 +843,22 @@ export function KnowledgeSelector({
                   : t('修改知识点信息')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>{t('知识点名称')}</Label>
-              <Input
-                value={newKpForm.name}
-                onChange={(e) => {
-                  setNewKpForm({ ...newKpForm, name: e.target.value })
-                  if (kpNameError) setKpNameError('')
-                }}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSaveKp()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>{t('知识点名称')}</Label>
+                <Input
+                  value={newKpForm.name}
+                  onChange={(e) => {
+                    setNewKpForm({ ...newKpForm, name: e.target.value })
+                    if (kpNameError) setKpNameError('')
+                  }}
                 placeholder={t('输入知识点名称')}
                 className="mt-1.5"
               />
@@ -910,18 +928,19 @@ export function KnowledgeSelector({
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setKpActionOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleSaveKp} disabled={!newKpForm.name.trim() || !!kpNameError}>
-              {kpActionMode === 'add'
+          <FormDialogFooter
+            onCancel={() => setKpActionOpen(false)}
+            confirmText={
+              kpActionMode === 'add'
                 ? t('新增并选中')
                 : kpActionMode === 'clone'
                   ? t('克隆并选中')
-                  : t('保存修改')}
-            </Button>
-          </DialogFooter>
+                  : t('保存修改')
+            }
+            cancelText={t('取消')}
+            confirmDisabled={!newKpForm.name.trim() || !!kpNameError}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -991,9 +1010,11 @@ export function KnowledgeSelector({
                   )
                 })}
                 {glFiltered.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    <p className="text-sm">{t('未找到匹配的颗粒课')}</p>
-                  </div>
+                  <EmptyState
+                    title={t('未找到匹配的颗粒课')}
+                    titleClassName="text-gray-400"
+                    className="py-8"
+                  />
                 )}
               </div>
             </div>
@@ -1003,9 +1024,12 @@ export function KnowledgeSelector({
               </p>
               <div className="flex-1 overflow-y-auto space-y-2">
                 {glSelectedIds.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    <p className="text-xs">{t('从左侧选择颗粒课')}</p>
-                  </div>
+                  <EmptyState
+                    compact
+                    title={t('从左侧选择颗粒课')}
+                    titleClassName="text-gray-400"
+                    className="py-8"
+                  />
                 ) : (
                   glSelectedIds.map((gid) => {
                     const gl = granularCourses.find((g) => g.id === gid)

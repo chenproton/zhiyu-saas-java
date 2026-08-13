@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Play, Expand, Shrink, Layers, Clock, Target, BookOpen } from 'lucide-react'
+import { EmptyState } from '@zhiyu/ui'
 import type { Scenario, ScenarioTask } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -50,10 +51,12 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
 
   if (scenarios.length === 0) {
     return (
-      <div className="text-center py-12 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
-        <Layers className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>{t('暂无关联实践场景')}</div>
-      </div>
+      <EmptyState
+        icon={<Layers className="w-12 h-12 opacity-40" />}
+        title={t('暂无关联实践场景')}
+        className="py-12 bg-white rounded-2xl border border-[#e7e5e4]"
+        titleClassName="text-[#94a3b8]"
+      />
     )
   }
 

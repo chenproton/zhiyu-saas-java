@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { PenTool } from 'lucide-react'
 import { EvalMethodSelector } from './eval-method-selector'
 import { CourseEvaluationRulesDialog } from '@/components/lesson/course-evaluation-rules-dialog'
+import { EmptyState } from '@zhiyu/ui'
 import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import { mergeEvalRuleMethods, DEFAULT_EVAL_RULE_SUBJECTS } from '@/lib/types/evaluation'
 import type { KnowledgePointItem } from '@/lib/types/lesson'
@@ -98,10 +99,12 @@ export function EvalMethodConfigModule({
             title={rulesTitleText}
           />
         ) : (
-          <div className="text-center text-gray-400 py-8 bg-gray-50 rounded-lg border">
-            <PenTool className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">{t('请先在上方选择至少一种测评方式，再配置评价规则')}</p>
-          </div>
+          <EmptyState
+            icon={<PenTool className="h-8 w-8 opacity-40" />}
+            title={t('请先在上方选择至少一种测评方式，再配置评价规则')}
+            titleClassName="text-gray-400"
+            className="py-8 bg-gray-50 rounded-lg border"
+          />
         )}
       </div>
     </div>

@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { SearchInput } from '@/components/shared/search-input'
 import { ScoreConfigDialog } from '@/components/evaluation/score-config-dialog'
@@ -297,12 +298,14 @@ export function BankQuestionSelectorPanel({
                     <p className="text-sm mt-2">{t('加载中...')}</p>
                   </div>
                 ) : filteredQuestions.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">
-                      {bankQuestions.length === 0 ? t('该题库暂无题目') : t('没有找到匹配的题目')}
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={<FileQuestion className="h-8 w-8 opacity-50" />}
+                    title={
+                      bankQuestions.length === 0 ? t('该题库暂无题目') : t('没有找到匹配的题目')
+                    }
+                    titleClassName="text-gray-400"
+                    className="py-8"
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm table-fixed">
@@ -425,10 +428,12 @@ export function BankQuestionSelectorPanel({
                     <p className="text-sm mt-2">{t('加载中...')}</p>
                   </div>
                 ) : filteredBanks.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">{t('暂无题库')}</p>
-                  </div>
+                  <EmptyState
+                    icon={<Database className="h-8 w-8 opacity-50" />}
+                    title={t('暂无题库')}
+                    titleClassName="text-gray-400"
+                    className="py-8"
+                  />
                 ) : (
                   <div className="space-y-2">
                     {filteredBanks.map((bank: any) => (
@@ -489,10 +494,13 @@ export function BankQuestionSelectorPanel({
           </div>
           <div className="flex-1 overflow-y-auto">
             {selectedIds.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">{t('从左侧搜索并选择题目')}</p>
-              </div>
+              <EmptyState
+                compact
+                icon={<FileQuestion className="h-8 w-8 opacity-50" />}
+                title={t('从左侧搜索并选择题目')}
+                titleClassName="text-gray-400"
+                className="py-8"
+              />
             ) : (
               <div className="space-y-2">
                 {selectedIds.map((qid) => {

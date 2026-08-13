@@ -20,7 +20,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -33,7 +32,7 @@ import { AccountInfoForm } from './account-info-form'
 import { ChangePasswordForm } from './change-password-form'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { studentHonorApi, fileApi } from '@/lib/api'
-import { toast } from '@zhiyu/ui'
+import { toast, FormDialogFooter } from '@zhiyu/ui'
 import type { StudentHonor } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -498,9 +497,16 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
               {t('荣誉名称与颁发机构为必填项，可上传证书附件。')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">{t('荣誉名称 *')}</Label>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t('荣誉名称 *')}</Label>
               <Input
                 value={form.name}
                 placeholder={t('如：国家励志奖学金')}
@@ -541,14 +547,14 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
               )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setHonorDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving || !form.name.trim()}>
-              {saving ? t('保存中...') : t('保存')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setHonorDialogOpen(false)}
+            confirmText={t('保存')}
+            cancelText={t('取消')}
+            confirmDisabled={!form.name.trim()}
+            loading={saving}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </div>

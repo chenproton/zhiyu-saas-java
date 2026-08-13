@@ -8,11 +8,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { certApi } from '@/lib/api'
 import type { LevelMapping } from '@zhiyu/shared-types'
 import { cn } from '@/lib/utils'
@@ -144,7 +143,13 @@ function LevelConfigForm({
   }
 
   return (
-    <>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSave()
+      }}
+      className="grid gap-4"
+    >
       <div className="py-2 space-y-2.5">
         <div className="flex items-center gap-3 p-3 rounded-md bg-muted/40 border border-border">
           <span className="w-20 text-sm font-medium">{t('未达标')}</span>
@@ -184,14 +189,11 @@ function LevelConfigForm({
         </div>
       </div>
 
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>
-          {t('取消')}
-        </Button>
-        <Button onClick={handleSave} disabled={!!error || saving}>
-          {saving ? t('保存中...') : t('保存')}
-        </Button>
-      </DialogFooter>
-    </>
+      <FormDialogFooter
+        onCancel={onCancel}
+        loading={saving}
+        confirmDisabled={!!error}
+      />
+    </form>
   )
 }

@@ -8,7 +8,7 @@ import { reportError } from '@/lib/error-handling'
 import { ExpertCard } from '@/components/alliance/public-cards'
 import { PublicListShell } from '@/components/alliance/public-list-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 import { useT } from '@/lib/i18n/locale-provider'
 const RATING_TABS = [

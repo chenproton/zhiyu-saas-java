@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -18,7 +17,7 @@ import { Switch } from '@/components/ui/switch'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { abilityApi } from '@/lib/api'
 import type { AbilityPoint } from '@/lib/types/job'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagFilterBar } from '@/components/shared/tag-filter-bar'
 import { TagPicker } from '@/components/shared/tag-picker'
@@ -259,7 +258,14 @@ export default function AbilityPointsPage() {
             <DialogHeader>
               <DialogTitle>{editingItem ? t('编辑能力点') : t('新增能力点')}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSubmit()
+              }}
+              className="grid gap-4"
+            >
+              <div className="space-y-4">
               {editingItem && (
                 <FormFieldRow label={t('编码')}>
                   <Input value={editingItem.code || '-'} readOnly />
@@ -293,13 +299,9 @@ export default function AbilityPointsPage() {
                 <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                 <Label>{t('公开')}</Label>
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleSubmit}>{t('保存')}</Button>
-            </DialogFooter>
+              </div>
+              <FormDialogFooter onCancel={() => setIsDialogOpen(false)} />
+            </form>
           </DialogContent>
         </Dialog>
       }

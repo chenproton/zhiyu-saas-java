@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState } from '@zhiyu/ui'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { teachingPlanApi, termApi } from '@/lib/api'
 import type { TeachingPlan, TeachingPlanDetail, AffairsTerm } from '@/lib/types'
@@ -178,9 +178,10 @@ function SchedulingPageInner() {
       </div>
 
       {step === 'grid' && !selectedPlan && (
-        <div className="rounded-lg border bg-white py-16 text-center text-sm text-muted-foreground">
-          {t('请先在顶部选择已确认的教学计划')}
-        </div>
+        <EmptyState
+          title={t('请先在顶部选择已确认的教学计划')}
+          className="rounded-lg border bg-white py-16"
+        />
       )}
       {step === 'grid' && selectedPlan && planDetail && (
         <ScheduleGridTab

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
@@ -34,6 +34,7 @@ import type { SystemCourseNode } from '@/lib/types/lesson-source'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel } from '@/lib/hybrid-eval'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface HybridGradingDialogProps {
@@ -281,9 +282,12 @@ export function HybridGradingDialog({
                 )
               })}
               {filteredPlans.length === 0 && (
-                <p className="text-center text-xs text-gray-400 py-8">
-                  {t('暂无混合课程计划')}
-                </p>
+                <EmptyState
+                  compact
+                  className="py-8"
+                  titleClassName="text-gray-400"
+                  title={t('暂无混合课程计划')}
+                />
               )}
             </div>
           </div>
@@ -315,20 +319,23 @@ export function HybridGradingDialog({
 
                 {nodeGroups.length === 0 ? (
                   <Card>
-                    <CardContent className="py-12 text-center text-gray-400">
-                      <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">{t('该课程暂无学生测评提交记录')}</p>
-                      <Link
-                        href={
-                          courseId
-                            ? `/evaluation/lesson-results?courseId=${courseId}`
-                            : '/evaluation/lesson-results'
-                        }
-                        className="inline-block mt-4 text-xs text-primary hover:text-primary/80 transition-colors"
-                      >
-                        {t('前往课程节点评价页面 →')}
-                      </Link>
-                    </CardContent>
+                    <EmptyState
+                      icon={<FileText className="h-10 w-10 opacity-50" />}
+                      title={t('该课程暂无学生测评提交记录')}
+                      titleClassName="text-gray-400"
+                      action={
+                        <Link
+                          href={
+                            courseId
+                              ? `/evaluation/lesson-results?courseId=${courseId}`
+                              : '/evaluation/lesson-results'
+                          }
+                          className="inline-block text-xs text-primary hover:text-primary/80 transition-colors"
+                        >
+                          {t('前往课程节点评价页面 →')}
+                        </Link>
+                      }
+                    />
                   </Card>
                 ) : (
                   <div className="space-y-3">

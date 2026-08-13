@@ -19,7 +19,7 @@ import {
   positionCertificateApi,
   fileApi,
 } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import {
   convertCareerPositionToPosition,
   convertApiResponsibilityToLocal,

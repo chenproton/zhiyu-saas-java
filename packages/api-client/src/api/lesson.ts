@@ -36,17 +36,11 @@ export const knowledgeApi = {
 }
 
 export const courseNodeApi = {
-  list: (params?: Record<string, string | number | boolean | undefined>) =>
-    request<ListResponse<SystemCourseNode>>(`/lesson/nodes${buildQuery(params || {})}`),
-  get: (id: string) => request<SystemCourseNode>(`/lesson/nodes/${id}`),
-  create: (req: Omit<BackendSystemCourseNode, 'id' | 'createdAt' | 'updatedAt'>) =>
-    request<SystemCourseNode>('/lesson/nodes', { method: 'POST', body: JSON.stringify(req) }),
-  update: (
-    id: string,
-    req: Partial<Omit<BackendSystemCourseNode, 'id' | 'createdAt' | 'updatedAt'>>,
-  ) =>
-    request<SystemCourseNode>(`/lesson/nodes/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/lesson/nodes/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<
+    SystemCourseNode,
+    Omit<BackendSystemCourseNode, 'id' | 'createdAt' | 'updatedAt'>,
+    Partial<Omit<BackendSystemCourseNode, 'id' | 'createdAt' | 'updatedAt'>>
+  >('/lesson/nodes'),
   reorder: (courseId: string, nodeIds: string[]) =>
     request<{ ok: boolean }>('/lesson/nodes/reorder', {
       method: 'POST',

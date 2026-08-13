@@ -11,7 +11,7 @@ import type {
   AlliancePublicAgreement,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
   EnterpriseDetailView,
@@ -99,8 +99,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
   }, [id, tenantId])
 
   if (loading) return <LoadingView />
-  if (!enterprise)
-    return <div className="text-center py-12 text-muted-foreground">{t('企业不存在')}</div>
+  if (!enterprise) return <EmptyState title={t('企业不存在')} />
 
   return (
     <EnterpriseDetailView

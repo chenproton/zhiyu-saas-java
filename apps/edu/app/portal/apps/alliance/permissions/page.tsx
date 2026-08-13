@@ -460,8 +460,8 @@ export default function AlliancePermissionsPage() {
                 </Button>
               )}
               <div className="flex-1" />
-              <Button size="sm" disabled={saving} onClick={saveCurrentType}>
-                {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+              <Button size="sm" loading={saving} onClick={saveCurrentType}>
+                <Save className="h-4 w-4 mr-1" />
                 {t('保存{type}授权', { type: activeType === 'position' ? t('岗位') : t('场景') })}
               </Button>
             </div>

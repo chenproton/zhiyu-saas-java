@@ -5,11 +5,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -18,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { programApi, termApi, teachingPlanApi } from '@/lib/api'
 import type { AffairsTerm, TeachingPlanDetail, TrainingProgram } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -105,59 +103,65 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
             {t('选择已发布的人培方案与目标学期，系统将按方案课程自动生成教学条目')}
           </DialogDescription>
         </DialogHeader>
-        <FieldGroup className="py-4">
-          <Field>
-            <FieldLabel>{t('人培方案（已发布）*')}</FieldLabel>
-            <Select value={programId} onValueChange={setProgramId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('请选择人培方案')} />
-              </SelectTrigger>
-              <SelectContent>
-                {programs.length === 0 ? (
-                  <SelectItem value="__empty" disabled>
-                    {t('暂无已发布的人培方案')}
-                  </SelectItem>
-                ) : (
-                  programs.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {t('{name}（{n} 级）', { name: p.name, n: p.entryYear })}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleGenerate()
+          }}
+          className="grid gap-4"
+        >
+          <FieldGroup className="py-4">
+            <Field>
+              <FieldLabel>{t('人培方案（已发布）*')}</FieldLabel>
+              <Select value={programId} onValueChange={setProgramId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('请选择人培方案')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {programs.length === 0 ? (
+                    <SelectItem value="__empty" disabled>
+                      {t('暂无已发布的人培方案')}
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>{t('目标学期 *')}</FieldLabel>
-            <Select value={termId} onValueChange={setTermId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('请选择学期')} />
-              </SelectTrigger>
-              <SelectContent>
-                {terms.length === 0 ? (
-                  <SelectItem value="__empty" disabled>
-                    {t('暂无学期数据')}
-                  </SelectItem>
-                ) : (
-                  terms.map((tm) => (
-                    <SelectItem key={tm.id} value={tm.id}>
-                      {tm.name}
-                      {tm.isCurrent ? t('（当前学期）') : ''}
+                  ) : (
+                    programs.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {t('{name}（{n} 级）', { name: p.name, n: p.entryYear })}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel>{t('目标学期 *')}</FieldLabel>
+              <Select value={termId} onValueChange={setTermId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('请选择学期')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.length === 0 ? (
+                    <SelectItem value="__empty" disabled>
+                      {t('暂无学期数据')}
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </Field>
-        </FieldGroup>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            {t('取消')}
-          </Button>
-          <Button onClick={handleGenerate} disabled={!programId || !termId || submitting}>
-            {submitting ? t('生成中...') : t('生成教学计划')}
-          </Button>
-        </DialogFooter>
+                  ) : (
+                    terms.map((tm) => (
+                      <SelectItem key={tm.id} value={tm.id}>
+                        {tm.name}
+                        {tm.isCurrent ? t('（当前学期）') : ''}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
+          <FormDialogFooter
+            onCancel={() => onOpenChange(false)}
+            confirmText={t('生成教学计划')}
+            loading={submitting}
+            confirmDisabled={!programId || !termId}
+          />
+        </form>
       </DialogContent>
     </Dialog>
   )

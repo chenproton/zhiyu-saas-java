@@ -21,39 +21,20 @@ import type {
   MyScheduleResponse,
 } from '../types/affairs'
 import { request, authedFetch, buildQuery, downloadBlob, ListResponse } from '../api-helpers'
+import { createCrudApi, createContentApi } from '../api-factory'
 
 // ==================== 学期 ====================
 
-export const termApi = {
-  list: (params?: { search?: string; isCurrent?: boolean; limit?: number; offset?: number }) =>
-    request<ListResponse<AffairsTerm>>(`/affairs/terms${buildQuery(params || {})}`),
-  create: (req: AffairsTermPayload) =>
-    request<AffairsTerm>('/affairs/terms', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: AffairsTermPayload) =>
-    request<AffairsTerm>(`/affairs/terms/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/affairs/terms/${id}`, { method: 'DELETE' }),
-}
+export const termApi = createCrudApi<AffairsTerm, AffairsTermPayload, AffairsTermPayload>(
+  '/affairs/terms',
+)
 
 // ==================== 人才培养方案 ====================
 
 export const programApi = {
-  list: (params?: {
-    search?: string
-    status?: string
-    majorId?: string
-    entryYear?: number
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<TrainingProgram>>(`/affairs/programs${buildQuery(params || {})}`),
-  get: (id: string) => request<TrainingProgram>(`/affairs/programs/${id}`),
-  create: (req: TrainingProgramPayload) =>
-    request<TrainingProgram>('/affairs/programs', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: TrainingProgramPayload) =>
-    request<TrainingProgram>(`/affairs/programs/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) => request<{ id: string }>(`/affairs/programs/${id}`, { method: 'DELETE' }),
+  ...createContentApi<TrainingProgram, TrainingProgramPayload, TrainingProgramPayload>(
+    '/affairs/programs',
+  ),
   /** draft/published 状态切换（默认切换为 published） */
   publish: (id: string, status: 'draft' | 'published' = 'published') =>
     request<TrainingProgram>(`/affairs/programs/${id}/publish`, {
@@ -73,72 +54,21 @@ export const programApi = {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
     }),
-  submit: (id: string) =>
-    request<TrainingProgram>(`/affairs/programs/${id}/submit`, { method: 'POST' }),
-  review: (id: string, req: { status: string; comment?: string }) =>
-    request<TrainingProgram>(`/affairs/programs/${id}/review`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  archive: (id: string) =>
-    request<TrainingProgram>(`/affairs/programs/${id}/archive`, { method: 'POST' }),
-  unpublish: (id: string) =>
-    request<TrainingProgram>(`/affairs/programs/${id}/unpublish`, { method: 'POST' }),
-  withdraw: (id: string) =>
-    request<TrainingProgram>(`/affairs/programs/${id}/withdraw`, { method: 'POST' }),
-  invite: (id: string, userId: string) =>
-    request<TrainingProgram>(`/affairs/programs/${id}/invite`, {
-      method: 'POST',
-      body: JSON.stringify({ userId }),
-    }),
 }
 
 // ==================== 教学计划 ====================
 
 export const teachingPlanApi = {
-  list: (params?: {
-    termId?: string
-    programId?: string
-    status?: string
-    majorId?: string
-    limit?: number
-    offset?: number
-  }) => request<ListResponse<TeachingPlan>>(`/affairs/teaching-plans${buildQuery(params || {})}`),
-  get: (id: string) => request<TeachingPlanDetail>(`/affairs/teaching-plans/${id}`),
+  ...createContentApi<
+    TeachingPlanDetail,
+    { programId: string; termId: string },
+    { batchId?: string; collaborators?: string[] }
+  >('/affairs/teaching-plans'),
   /** 从人培方案生成教学计划；同一方案同一学期已存在时后端返回 409 */
   generate: (req: { programId: string; termId: string }) =>
     request<TeachingPlanDetail>('/affairs/teaching-plans', {
       method: 'POST',
       body: JSON.stringify(req),
-    }),
-  /** 内容管理通用入口：generate 的别名，供 ContentListPage create 使用 */
-  create: (req: { programId: string; termId: string }) =>
-    request<TeachingPlanDetail>('/affairs/teaching-plans', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  /** 更新计划元数据（批次绑定 / 共建人） */
-  update: (id: string, req: { batchId?: string; collaborators?: string[] }) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/affairs/teaching-plans/${id}`, { method: 'DELETE' }),
-  submit: (id: string) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}/submit`, { method: 'POST' }),
-  withdraw: (id: string) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}/withdraw`, { method: 'POST' }),
-  publish: (id: string) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}/publish`, { method: 'POST' }),
-  unpublish: (id: string) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}/unpublish`, { method: 'POST' }),
-  archive: (id: string) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}/archive`, { method: 'POST' }),
-  invite: (id: string, userId: string) =>
-    request<TeachingPlan>(`/affairs/teaching-plans/${id}/invite`, {
-      method: 'POST',
-      body: JSON.stringify({ userId }),
     }),
   confirm: (id: string) =>
     request<TeachingPlan>(`/affairs/teaching-plans/${id}/confirm`, { method: 'POST' }),
@@ -162,30 +92,12 @@ export const teachingPlanApi = {
 
 // ==================== 场地 ====================
 
-export const venueApi = {
-  list: (params?: { search?: string; type?: string; limit?: number; offset?: number }) =>
-    request<ListResponse<Venue>>(`/affairs/venues${buildQuery(params || {})}`),
-  create: (req: VenuePayload) =>
-    request<Venue>('/affairs/venues', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: VenuePayload) =>
-    request<Venue>(`/affairs/venues/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/affairs/venues/${id}`, { method: 'DELETE' }),
-}
+export const venueApi = createCrudApi<Venue, VenuePayload, VenuePayload>('/affairs/venues')
 
 // ==================== 节次 ====================
 
 export const periodSlotApi = {
-  list: (params?: { limit?: number; offset?: number }) =>
-    request<ListResponse<PeriodSlot>>(`/affairs/period-slots${buildQuery(params || {})}`),
-  create: (req: PeriodSlotPayload) =>
-    request<PeriodSlot>('/affairs/period-slots', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: PeriodSlotPayload) =>
-    request<PeriodSlot>(`/affairs/period-slots/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(req),
-    }),
-  delete: (id: string) =>
-    request<{ id: string }>(`/affairs/period-slots/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<PeriodSlot, PeriodSlotPayload, PeriodSlotPayload>('/affairs/period-slots'),
   /** 按名称整体替换节次（事务内原子落库），返回替换后的完整列表 */
   replace: (items: PeriodSlotPayload[]) =>
     request<ListResponse<PeriodSlot>>('/affairs/period-slots/replace', {
@@ -284,14 +196,9 @@ export const myScheduleApi = {
 // ==================== 批次管理 ====================
 
 export const affairsBatchApi = {
-  list: (params?: Record<string, string | number | boolean | undefined>) =>
-    request<ListResponse<AffairsBatch>>(`/affairs/batches${buildQuery(params || {})}`),
-  get: (id: string) => request<AffairsBatch>(`/affairs/batches/${id}`),
-  create: (req: Omit<AffairsBatch, 'id'>) =>
-    request<AffairsBatch>('/affairs/batches', { method: 'POST', body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<Omit<AffairsBatch, 'id'>>) =>
-    request<AffairsBatch>(`/affairs/batches/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/affairs/batches/${id}`, { method: 'DELETE' }),
+  ...createCrudApi<AffairsBatch, Omit<AffairsBatch, 'id'>, Partial<Omit<AffairsBatch, 'id'>>>(
+    '/affairs/batches',
+  ),
   updateStatus: (id: string, status: string) =>
     request<AffairsBatch>(`/affairs/batches/${id}/status`, {
       method: 'POST',

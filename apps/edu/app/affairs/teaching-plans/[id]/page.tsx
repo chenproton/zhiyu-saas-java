@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useToast } from '@zhiyu/ui'
+import { useToast, TableEmptyRow } from '@zhiyu/ui'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserSelector } from '@/components/shared/user-selector'
@@ -310,11 +310,7 @@ export default function TeachingPlanDetailPage() {
                   </TableCell>
                 </TableRow>
               ) : groups.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    {t('暂无教学条目')}
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow colSpan={9}>{t('暂无教学条目')}</TableEmptyRow>
               ) : (
                 groups.map(([startWeek, groupEntries]) => (
                   <Fragment key={`group-${startWeek}`}>

@@ -21,8 +21,7 @@ import {
 } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { StaffTitle } from '@/lib/types/backend'
-import { MultiSelectSearch } from '@/components/ui/multi-select-search'
-import { useToast } from '@zhiyu/ui'
+import { useToast, ComboboxSelect } from '@zhiyu/ui'
 import { PortalSidebarCrudPage } from '@/components/shared/portal-sidebar-crud-page'
 import { Pencil, Trash2, Key, UserCheck, Ban, Users, Loader2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -389,9 +388,13 @@ export default function TeachersPage() {
               />
             </FormFieldRow>
             <FormFieldRow label={t('职位')}>
-              <MultiSelectSearch
+              <ComboboxSelect
+                multiple
+                showSelectAll
+                showSelectedBadges
+                className="w-full"
                 options={staffTitles.map((title) => ({ label: title.name, value: title.id }))}
-                selected={formTitleIds}
+                value={formTitleIds}
                 onChange={setFormTitleIds}
                 placeholder={t('选择职位')}
                 searchPlaceholder={t('搜索职位...')}

@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Loader2 } from 'lucide-react'
+import { TableEmptyRow } from '@zhiyu/ui'
 import { PaginationBar } from '@/components/shared/pagination-bar'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -66,14 +67,9 @@ export function LogTableShell<T extends { id: string }>({
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-32 text-center text-muted-foreground"
-                >
-                  {emptyText}
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={columns.length} className="h-32">
+                {emptyText}
+              </TableEmptyRow>
             ) : (
               items.map((item) => (
                 <TableRow key={item.id} className="border-border">

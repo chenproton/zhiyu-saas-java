@@ -9,7 +9,7 @@ import {
 import {
   resourceLibraryApi,
 } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/library'
 import type { ResourceLibraryItem } from '@/lib/types/library'
 import {

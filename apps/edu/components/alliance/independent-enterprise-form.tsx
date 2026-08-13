@@ -9,12 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MultiSelect } from '@/components/ui/multi-select'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useSecondaryColleges } from '@/hooks/use-secondary-colleges'
 import { useT } from '@/lib/i18n/locale-provider'
+import { ComboboxSelect } from '@zhiyu/ui'
 
 /**
  * 独立雇主企业资料（学校登记，仅品牌模块可见）。
@@ -212,7 +212,9 @@ export function IndependentEnterpriseForm({
         />
       </FormFieldRow>
       <FormFieldRow label={t('关联二级学院')}>
-        <MultiSelect
+        <ComboboxSelect
+          multiple
+          className="w-full"
           options={colleges.map((name) => ({ label: name, value: name }))}
           value={value.secondaryColleges || []}
           onChange={(v: string[]) => set({ secondaryColleges: v })}

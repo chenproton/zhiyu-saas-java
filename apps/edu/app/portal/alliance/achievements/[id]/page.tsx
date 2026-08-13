@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   AllianceDetailShell,
-  DetailEmpty,
   DetailInfoBlock,
   DetailSectionCard,
 } from '@/components/alliance/alliance-detail-shell'
@@ -37,7 +36,7 @@ import type {
   AllianceProject,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView } from '@zhiyu/ui'
+import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -122,8 +121,7 @@ export default function AlliancePublicAchievementDetailPage() {
   }, [id, tenantId])
 
   if (loading) return <LoadingView />
-  if (!achievement)
-    return <div className="text-center py-12 text-muted-foreground">{t('成果不存在')}</div>
+  if (!achievement) return <EmptyState title={t('成果不存在')} />
 
   const attachments = achievement.attachments ?? []
   const scenes = normalizeRelatedRefs(achievement.relatedScenes)
@@ -286,7 +284,12 @@ export default function AlliancePublicAchievementDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={FileText} title={t('暂无佐证材料')} />
+                  <EmptyState
+                    icon={<FileText className="h-10 w-10 opacity-50" />}
+                    title={t('暂无佐证材料')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -306,7 +309,12 @@ export default function AlliancePublicAchievementDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={Layers} title={t('暂无关联场景')} />
+                  <EmptyState
+                    icon={<Layers className="h-10 w-10 opacity-50" />}
+                    title={t('暂无关联场景')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -326,7 +334,12 @@ export default function AlliancePublicAchievementDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={BookOpen} title={t('暂无关联课程')} />
+                  <EmptyState
+                    icon={<BookOpen className="h-10 w-10 opacity-50" />}
+                    title={t('暂无关联课程')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -346,7 +359,12 @@ export default function AlliancePublicAchievementDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <DetailEmpty icon={Briefcase} title={t('暂无关联岗位')} />
+                  <EmptyState
+                    icon={<Briefcase className="h-10 w-10 opacity-50" />}
+                    title={t('暂无关联岗位')}
+                    titleClassName="text-slate-500"
+                    className="py-16"
+                  />
                 )}
               </CardContent>
             </Card>

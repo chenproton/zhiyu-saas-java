@@ -9,7 +9,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -20,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { ScheduleGrid } from '@/components/shared/schedule-grid'
 import { MultiOrgNodePicker } from '@/components/shared/multi-org-node-picker'
 import { UserSelector } from '@/components/shared/user-selector'
@@ -338,10 +337,11 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           <ScrollArea className="h-[500px]">
             <div className="space-y-1.5 p-2">
               {pendingEntries.length === 0 ? (
-                <div className="py-16 text-center text-sm text-muted-foreground">
-                  <CheckCircle2 className="mx-auto h-8 w-8 mb-2 text-green-400" />
-                  {t('全部排完')}
-                </div>
+                <EmptyState
+                  icon={<CheckCircle2 className="h-8 w-8 text-green-400" />}
+                  title={t('全部排完')}
+                  className="py-16"
+                />
               ) : (
                 pendingEntries.map((e) => {
                   const isSel = e.id === selectedPendingId
@@ -439,62 +439,61 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('授课班级 *')}</label>
-              <MultiOrgNodePicker
-                tenantId={tenantId}
-                value={preClassIds}
-                onChange={setPreClassIds}
-                selectableTypes={['班级']}
-                title={t('选择授课班级')}
-                maxVisible={3}
-              />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handlePreConfigSave()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-4 py-2">
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t('授课班级 *')}</label>
+                <MultiOrgNodePicker
+                  tenantId={tenantId}
+                  value={preClassIds}
+                  onChange={setPreClassIds}
+                  selectableTypes={['班级']}
+                  title={t('选择授课班级')}
+                  maxVisible={3}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t('授课教师 *')}</label>
+                <UserSelector
+                  value={preTeacherId ? [preTeacherId] : []}
+                  onChange={(ids) => setPreTeacherId(ids[0] || '')}
+                  multiple={false}
+                  placeholder={t('选择教师')}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t('场地 *')}</label>
+                <Select
+                  value={preVenueId || 'none'}
+                  onValueChange={(v) => setPreVenueId(v === 'none' ? '' : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('选择场地')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('请选择')}</SelectItem>
+                    {venues.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}（{v.type}）
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('授课教师 *')}</label>
-              <UserSelector
-                value={preTeacherId ? [preTeacherId] : []}
-                onChange={(ids) => setPreTeacherId(ids[0] || '')}
-                multiple={false}
-                placeholder={t('选择教师')}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('场地 *')}</label>
-              <Select
-                value={preVenueId || 'none'}
-                onValueChange={(v) => setPreVenueId(v === 'none' ? '' : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('选择场地')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('请选择')}</SelectItem>
-                  {venues.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}（{v.type}）
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPreConfigEntry(null)}
-              disabled={preConfigSaving}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handlePreConfigSave}
-              disabled={preClassIds.length === 0 || !preTeacherId || !preVenueId || preConfigSaving}
-            >
-              {preConfigSaving ? t('保存中...') : t('保存并排课')}
-            </Button>
-          </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => setPreConfigEntry(null)}
+              confirmText={t('保存并排课')}
+              loading={preConfigSaving}
+              confirmDisabled={preClassIds.length === 0 || !preTeacherId || !preVenueId}
+            />
+          </form>
         </DialogContent>
       </Dialog>
     </div>

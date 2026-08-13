@@ -48,7 +48,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/components/auth-provider'
-import { useToast } from '@zhiyu/ui'
+import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { UserSelector } from '@/components/shared/user-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Input } from '@/components/ui/input'
@@ -1819,7 +1819,14 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 {t('上传 CSV 文件批量导入{entityLabel}数据', { entityLabel })}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleCsvImportClick()
+              }}
+              className="grid gap-4"
+            >
+              <div className="py-4 space-y-4">
               <div
                 className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}
@@ -1837,23 +1844,17 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsImportDialogOpen(false)
-                  setImportFiles([])
-                }}
-              >
-                {t('取消')}
-              </Button>
-              <Button
-                onClick={handleCsvImportClick}
-                disabled={importFiles.length === 0 || csvImporting}
-              >
-                {csvImporting ? t('导入中...') : t('开始导入')}
-              </Button>
-            </DialogFooter>
+            <FormDialogFooter
+              onCancel={() => {
+                setIsImportDialogOpen(false)
+                setImportFiles([])
+              }}
+              confirmText={t('开始导入')}
+              cancelText={t('取消')}
+              confirmDisabled={importFiles.length === 0}
+              loading={csvImporting}
+            />
+            </form>
           </DialogContent>
         </Dialog>
       )}
@@ -1923,8 +1924,15 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   })}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            {batchMoveMode === 'bindThenSubmit'
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmMove()
+            }}
+            className="grid gap-4"
+          >
+            <div className="py-4">
+              {batchMoveMode === 'bindThenSubmit'
               ? renderSubmitModeTabs(
                   batchSubmitTab,
                   setBatchSubmitTab,
@@ -1945,23 +1953,21 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   moveFilteredBatches,
                 )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={handleConfirmMove}
-              disabled={
-                batchMoveMode === 'bindThenSubmit'
-                  ? batchSubmitTab === 'batch'
-                    ? !moveTargetBatchId
-                    : !batchSubmitWorkflowId
-                  : !moveTargetBatchId
-              }
-            >
-              {batchMoveMode === 'bindThenSubmit' ? t('确认并提交审批') : t('确认移动')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsBatchMoveDialogOpen(false)}
+            confirmText={
+              batchMoveMode === 'bindThenSubmit' ? t('确认并提交审批') : t('确认移动')
+            }
+            cancelText={t('取消')}
+            confirmDisabled={
+              batchMoveMode === 'bindThenSubmit'
+                ? batchSubmitTab === 'batch'
+                  ? !moveTargetBatchId
+                  : !batchSubmitWorkflowId
+                : !moveTargetBatchId
+            }
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -1977,8 +1983,19 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            {renderSubmitModeTabs(
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (submitTab === 'batch') {
+                handleConfirmSubmitBatch()
+              } else {
+                handleConfirmSubmitWorkflow()
+              }
+            }}
+            className="grid gap-4"
+          >
+            <div className="py-4">
+              {renderSubmitModeTabs(
               submitTab,
               setSubmitTab,
               renderBatchSelector(
@@ -1991,19 +2008,13 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               renderWorkflowSelector(submitWorkflowId, setSubmitWorkflowId),
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSubmitBatchDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button
-              onClick={
-                submitTab === 'batch' ? handleConfirmSubmitBatch : handleConfirmSubmitWorkflow
-              }
-              disabled={submitTab === 'batch' ? !submitSelectedBatchId : !submitWorkflowId}
-            >
-              {t('确认并提交审批')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setIsSubmitBatchDialogOpen(false)}
+            confirmText={t('确认并提交审批')}
+            cancelText={t('取消')}
+            confirmDisabled={submitTab === 'batch' ? !submitSelectedBatchId : !submitWorkflowId}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -2014,22 +2025,29 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
             <DialogTitle>{t('克隆{entityLabel}', { entityLabel })}</DialogTitle>
             <DialogDescription>{t('为克隆的{entityLabel}命名', { entityLabel })}</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={cloneRenameValue}
-              onChange={(e) => {
-                setCloneRenameValue(e.target.value)
-                cloneRenameValueRef.current = e.target.value
-              }}
-              placeholder={t('输入新名称')}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmClone()
+            }}
+            className="grid gap-4"
+          >
+            <div className="py-4">
+              <Input
+                value={cloneRenameValue}
+                onChange={(e) => {
+                  setCloneRenameValue(e.target.value)
+                  cloneRenameValueRef.current = e.target.value
+                }}
+                placeholder={t('输入新名称')}
+              />
+            </div>
+            <FormDialogFooter
+              onCancel={() => setIsCloneRenameDialogOpen(false)}
+              confirmText={t('确认克隆')}
+              cancelText={t('取消')}
             />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleConfirmClone}>{t('确认克隆')}</Button>
-          </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -2070,23 +2088,30 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               {t('选择参与共建「{name}」的用户', { name: inviteTarget?.name ?? '' })}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <UserSelector
-              value={inviteSelectedIds}
-              onChange={setInviteSelectedIds}
-              multiple
-              placeholder={t('点击选择共建人')}
-              tenantId={tenantId}
-              excludeUserIds={inviteTarget?.creatorId ? [inviteTarget.creatorId] : undefined}
-              showEnterpriseExperts
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleInviteConfirm()
+            }}
+            className="grid gap-4"
+          >
+            <div className="py-4">
+              <UserSelector
+                value={inviteSelectedIds}
+                onChange={setInviteSelectedIds}
+                multiple
+                placeholder={t('点击选择共建人')}
+                tenantId={tenantId}
+                excludeUserIds={inviteTarget?.creatorId ? [inviteTarget.creatorId] : undefined}
+                showEnterpriseExperts
+              />
+            </div>
+            <FormDialogFooter
+              onCancel={() => setIsInviteDialogOpen(false)}
+              confirmText={t('保存')}
+              cancelText={t('取消')}
             />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleInviteConfirm}>{t('保存')}</Button>
-          </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

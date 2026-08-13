@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface DetailStat {
@@ -67,10 +68,12 @@ export function DetailInfoBlock({
 /** 空态：原型统一样式（居中图标 + 文案） */
 export function DetailEmpty({ icon: Icon, title }: { icon?: LucideIcon; title: string }) {
   return (
-    <div className="text-center py-16 text-slate-500">
-      {Icon && <Icon className="h-10 w-10 mx-auto mb-3 opacity-50" />}
-      <p>{title}</p>
-    </div>
+    <EmptyState
+      icon={Icon ? <Icon className="h-10 w-10 opacity-50" /> : undefined}
+      title={title}
+      titleClassName="text-slate-500"
+      className="py-16"
+    />
   )
 }
 

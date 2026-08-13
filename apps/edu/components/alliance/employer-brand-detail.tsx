@@ -22,7 +22,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -30,7 +29,7 @@ import {
 import { Pencil, Plus, Trash2, Loader2, Briefcase, UserRound } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import {
   IndependentEnterpriseForm,
@@ -457,18 +456,23 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
             <DialogTitle>{t('编辑独立雇主企业')}</DialogTitle>
             <DialogDescription>{t('仅在本模块展示，不会加入合作企业库')}</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
-            <IndependentEnterpriseForm value={form} onChange={setForm} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={save} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              save()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
+              <IndependentEnterpriseForm value={form} onChange={setForm} />
+            </div>
+            <FormDialogFooter
+              onCancel={() => setOpen(false)}
+              confirmText={t('保存')}
+              cancelText={t('取消')}
+              loading={submitting}
+            />
+          </form>
         </DialogContent>
       </Dialog>
     </>
@@ -581,11 +585,18 @@ function PositionPickerDialog({
             <DialogTitle>{t('引用职业岗位库')}</DialogTitle>
             <DialogDescription>{t('从已有岗位库中选择岗位关联到雇主品牌')}</DialogDescription>
           </DialogHeader>
-          <SearchInput
-            placeholder={t('搜索岗位名称...')}
-            value={search}
-            onChange={setSearch}
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirm()
+            }}
+            className="grid gap-4"
+          >
+            <SearchInput
+              placeholder={t('搜索岗位名称...')}
+              value={search}
+              onChange={setSearch}
+            />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -623,14 +634,13 @@ function PositionPickerDialog({
               ))
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={confirm} disabled={selected.length === 0}>
-              {t('确认关联 ({count})', { count: selected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setOpen(false)}
+            confirmText={t('确认关联 ({count})', { count: selected.length })}
+            cancelText={t('取消')}
+            confirmDisabled={selected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </>
@@ -726,7 +736,14 @@ function StudentPickerDialog({
             <DialogTitle>{t('关联学生')}</DialogTitle>
             <DialogDescription>{t('选择已招聘学生及其雇佣岗位')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirm()
+            }}
+            className="grid gap-4"
+          >
+            <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground">{t('雇佣岗位')}</Label>
               <Select value={jobId} onValueChange={setJobId}>
@@ -787,14 +804,13 @@ function StudentPickerDialog({
               })
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={confirm} disabled={selected.size === 0 || !jobId}>
-              {t('确认关联 ({count})', { count: selected.size })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setOpen(false)}
+            confirmText={t('确认关联 ({count})', { count: selected.size })}
+            cancelText={t('取消')}
+            confirmDisabled={selected.size === 0 || !jobId}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </>

@@ -1,18 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Loader2 } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
 import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -124,11 +122,18 @@ export function JobBrandRefDialog({
             {t('从岗位库中选择教学岗位，关联为岗位品牌（仅关联，岗位内容不可修改）')}
           </DialogDescription>
         </DialogHeader>
-        <SearchInput
-          placeholder={t('搜索岗位名称...')}
-          value={search}
-          onChange={setSearch}
-        />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            confirm()
+          }}
+          className="grid gap-4"
+        >
+          <SearchInput
+            placeholder={t('搜索岗位名称...')}
+            value={search}
+            onChange={setSearch}
+          />
         <div className="max-h-80 space-y-2 overflow-y-auto py-2">
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -166,15 +171,14 @@ export function JobBrandRefDialog({
             })
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {t('取消')}
-          </Button>
-          <Button size="sm" onClick={confirm} disabled={selected.length === 0 || submitting}>
-            {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            {t('确认引用 ({count})', { count: selected.length })}
-          </Button>
-        </DialogFooter>
+        <FormDialogFooter
+          onCancel={() => onOpenChange(false)}
+          confirmText={t('确认引用 ({count})', { count: selected.length })}
+          cancelText={t('取消')}
+          confirmDisabled={selected.length === 0}
+          loading={submitting}
+        />
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -358,7 +362,14 @@ export function JobBrandEditDialog({
             {t('企业岗位仅在岗位品牌模块中可见和管理，不进入职业岗位库')}
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            save()
+          }}
+          className="grid gap-4"
+        >
+          <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -373,15 +384,14 @@ export function JobBrandEditDialog({
             <p className="py-8 text-center text-sm text-muted-foreground">{t('岗位不存在')}</p>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose}>
-            {t('取消')}
-          </Button>
-          <Button size="sm" onClick={save} disabled={submitting || !position}>
-            {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            {t('保存')}
-          </Button>
-        </DialogFooter>
+        <FormDialogFooter
+          onCancel={onClose}
+          confirmText={t('保存')}
+          cancelText={t('取消')}
+          confirmDisabled={!position}
+          loading={submitting}
+        />
+        </form>
       </DialogContent>
     </Dialog>
   )

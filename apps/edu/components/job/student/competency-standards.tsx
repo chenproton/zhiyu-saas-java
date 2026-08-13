@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { Target } from 'lucide-react'
+import { EmptyState } from '@zhiyu/ui'
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -95,10 +96,12 @@ export function CompetencyStandards({
 
   if (groups.length === 0) {
     return (
-      <div className="text-center py-12 text-[#94a3b8]">
-        <Target className="w-12 h-12 mx-auto mb-3 opacity-40" />
-        <div>{t('暂无胜任标准数据')}</div>
-      </div>
+      <EmptyState
+        icon={<Target className="w-12 h-12 opacity-40" />}
+        title={t('暂无胜任标准数据')}
+        className="py-12"
+        titleClassName="text-[#94a3b8]"
+      />
     )
   }
 

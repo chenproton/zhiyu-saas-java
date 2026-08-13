@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { OrgNodePicker } from '@/components/shared/org-node-picker'
 import { ScheduleGrid } from '@/components/shared/schedule-grid'
@@ -151,9 +151,10 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
 
   if (!term) {
     return (
-      <div className="rounded-lg border bg-white py-16 text-center text-sm text-muted-foreground">
-        {t('请先在顶部选择学期（无学期时请先在「教务基础配置」中创建）')}
-      </div>
+      <EmptyState
+        title={t('请先在顶部选择学期（无学期时请先在「教务基础配置」中创建）')}
+        className="rounded-lg border bg-white py-16"
+      />
     )
   }
 

@@ -32,7 +32,7 @@ import { CheckCircle2, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
 import { positionAiAssist } from '@/lib/api'
 import { ToastAction } from '@/components/ui/toast'
-import { toast } from '@zhiyu/ui'
+import { toast, EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AiAssistProgressDialog } from '../ai-assist-progress-dialog'
 
@@ -212,11 +212,13 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
         </CardHeader>
         <CardContent className="p-0">
           {bindings.length === 0 ? (
-            <div className="py-12 text-center text-gray-500">
-              <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p>{t('暂无能力点数据')}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('请返回步骤二进行拆解')}</p>
-            </div>
+            <EmptyState
+              icon={<CheckCircle2 className="h-8 w-8 opacity-40" />}
+              title={t('暂无能力点数据')}
+              description={t('请返回步骤二进行拆解')}
+              className="py-12 text-gray-500"
+              titleClassName="text-gray-500"
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

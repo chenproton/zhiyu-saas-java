@@ -32,7 +32,7 @@ import {
   courseResourceApi,
   resourceLibraryApi,
 } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 import { KnowledgeSelector } from '../../_components/knowledge/knowledge-selector'
 import { ResourceSelector, type ResourceItem } from '../../_components/resources/resource-selector'

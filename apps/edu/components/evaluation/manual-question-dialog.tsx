@@ -26,8 +26,9 @@ import type { Question, QuestionType, EvalKnowledgePoint } from '@/lib/types'
 import { QUESTION_TYPES, QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
 import { knowledgeApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { SearchInput } from '@/components/shared/search-input'
 
@@ -244,21 +245,18 @@ export function ManualQuestionDialog({
             <ScrollArea className="flex-1">
               <div ref={scrollRef} className="p-4 space-y-2">
                 {filteredQuestions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    {loadingQuestions ? (
-                      <>
-                        <div className="size-8 mb-3 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
-                        <p className="text-sm text-muted-foreground">{t('加载题目中...')}</p>
-                      </>
-                    ) : (
-                      <>
-                        <Search className="size-10 text-muted-foreground/30 mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          {questions.length === 0 ? t('该题库暂无题目') : t('没有找到匹配的题目')}
-                        </p>
-                      </>
-                    )}
-                  </div>
+                  loadingQuestions ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="size-8 mb-3 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
+                      <p className="text-sm text-muted-foreground">{t('加载题目中...')}</p>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={<Search className="size-10 text-muted-foreground/30" />}
+                      title={questions.length === 0 ? t('该题库暂无题目') : t('没有找到匹配的题目')}
+                      className="py-16"
+                    />
+                  )
                 ) : (
                   filteredQuestions.map((question) => {
                     const kpNames = (question.knowledgePoints || [])
@@ -314,9 +312,7 @@ export function ManualQuestionDialog({
             </ScrollArea>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            {t('请先选择一个题库')}
-          </div>
+          <EmptyState className="flex-1 py-0" title={t('请先选择一个题库')} />
         )}
       </DialogContent>
     </Dialog>

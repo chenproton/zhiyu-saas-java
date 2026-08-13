@@ -7,16 +7,15 @@ import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Pencil, Trash2, ExternalLink, Link2, Building2, Loader2 } from 'lucide-react'
+import { Pencil, Trash2, ExternalLink, Link2, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import {
@@ -291,11 +290,18 @@ export default function AllianceEmployerBrandPage() {
             <DialogTitle>{t('从合作企业库引用')}</DialogTitle>
             <DialogDescription>{t('选择合作企业库中的企业，引用为雇主品牌')}</DialogDescription>
           </DialogHeader>
-          <SearchInput
-            placeholder={t('搜索企业名称或行业...')}
-            value={refSearch}
-            onChange={setRefSearch}
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirmRefer()
+            }}
+            className="grid gap-4"
+          >
+            <SearchInput
+              placeholder={t('搜索企业名称或行业...')}
+              value={refSearch}
+              onChange={setRefSearch}
+            />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {referable.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -326,15 +332,13 @@ export default function AllianceEmployerBrandPage() {
               ))
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setRefDialogOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={confirmRefer} disabled={!refSelected || refSubmitting}>
-              {refSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              {t('确认引用')}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setRefDialogOpen(false)}
+            confirmText={t('确认引用')}
+            loading={refSubmitting}
+            confirmDisabled={!refSelected}
+          />
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -349,18 +353,21 @@ export default function AllianceEmployerBrandPage() {
               {t('由学校登记的企业资料，仅在本模块展示，不会加入合作企业库')}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
-            <IndependentEnterpriseForm value={editInfo} onChange={setEditInfo} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={confirmSaveIndependent} disabled={editSubmitting}>
-              {editSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              {t('保存')}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirmSaveIndependent()
+            }}
+            className="grid gap-4"
+          >
+            <div className="max-h-[70vh] overflow-y-auto px-1 py-2">
+              <IndependentEnterpriseForm value={editInfo} onChange={setEditInfo} />
+            </div>
+            <FormDialogFooter
+              onCancel={() => setEditOpen(false)}
+              loading={editSubmitting}
+            />
+          </form>
         </DialogContent>
       </Dialog>
     </>

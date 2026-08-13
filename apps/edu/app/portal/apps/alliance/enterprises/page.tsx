@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { MultiSelect } from '@/components/ui/multi-select'
 import {
   Dialog,
   DialogContent,
@@ -26,7 +25,6 @@ import {
   Pencil,
   ExternalLink,
   Link2,
-  Loader2,
   Unlink,
   Building2,
   PlusCircle,
@@ -39,7 +37,7 @@ import {
   allianceAchievementApi,
   allianceAgreementApi,
 } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter, ComboboxSelect } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
@@ -377,8 +375,10 @@ export default function AllianceEnterprisesPage() {
               </Select>
             </FormFieldRow>
             <FormFieldRow label={t('关联二级学院')}>
-              <MultiSelect
-                options={secondaryCollegeOptions}
+              <ComboboxSelect
+                multiple
+                className="w-full"
+                options={secondaryCollegeOptions.map((name) => ({ label: name, value: name }))}
                 value={item.secondaryColleges || []}
                 onChange={(v: string[]) => setItem({ ...item, secondaryColleges: v })}
                 placeholder={t('选择归属学院')}
@@ -436,8 +436,8 @@ export default function AllianceEnterprisesPage() {
               onChange={setSearchKeyword}
               onSearch={doSearch}
             />
-            <Button variant="outline" onClick={doSearch} disabled={searching}>
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : t('搜索')}
+            <Button variant="outline" onClick={doSearch} loading={searching}>
+              {t('搜索')}
             </Button>
           </div>
           <div className="max-h-[50vh] overflow-y-auto space-y-2">
@@ -461,12 +461,13 @@ export default function AllianceEnterprisesPage() {
                   {linkedIds.has(e.id) ? (
                     <span className="text-xs text-muted-foreground shrink-0">{t('已引入')}</span>
                   ) : (
-                    <Button size="sm" onClick={() => doLink(e.id)} disabled={linkingId !== null}>
-                      {linkingId === e.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        t('引入')
-                      )}
+                    <Button
+                      size="sm"
+                      onClick={() => doLink(e.id)}
+                      disabled={linkingId !== null && linkingId !== e.id}
+                      loading={linkingId === e.id}
+                    >
+                      {t('引入')}
                     </Button>
                   )}
                 </div>
@@ -593,24 +594,16 @@ export default function AllianceEnterprisesPage() {
                 />
               </div>
             </div>
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setRegisterDialog(false)}
-                disabled={registering}
-              >
-                {t('取消')}
-              </Button>
-              <Button type="submit" disabled={registering}>
-                {registering ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
+            <FormDialogFooter
+              onCancel={() => setRegisterDialog(false)}
+              confirmText={
+                <>
                   <PlusCircle className="h-4 w-4 mr-1" />
-                )}
-                {t('代注册并关联')}
-              </Button>
-            </DialogFooter>
+                  {t('代注册并关联')}
+                </>
+              }
+              loading={registering}
+            />
           </form>
         </DialogContent>
       </Dialog>

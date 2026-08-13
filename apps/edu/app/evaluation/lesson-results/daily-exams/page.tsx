@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { SearchInput } from '@/components/shared/search-input'
+import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface UsageStats {
@@ -166,7 +167,12 @@ export default function DailyExamsPage() {
               )
             })}
             {filteredUsages.length === 0 && (
-              <p className="text-center text-xs text-gray-400 py-8">{t('暂无考试安排')}</p>
+              <EmptyState
+                compact
+                title={t('暂无考试安排')}
+                className="py-8"
+                titleClassName="text-gray-400"
+              />
             )}
           </div>
         </div>
@@ -270,18 +276,21 @@ export default function DailyExamsPage() {
                   </TableBody>
                 </Table>
                 {results.length === 0 && (
-                  <div className="py-12 text-center text-gray-400">
-                    <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                    <p className="text-sm">{t('暂无学生提交记录')}</p>
-                  </div>
+                  <EmptyState
+                    icon={<ClipboardList className="h-10 w-10 opacity-40" />}
+                    title={t('暂无学生提交记录')}
+                    titleClassName="text-gray-400"
+                  />
                 )}
               </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-              <BookOpen className="h-12 w-12 mb-3 opacity-50" />
-              <p className="text-sm">{t('请在左侧选择一个考试安排')}</p>
-            </div>
+            <EmptyState
+              icon={<BookOpen className="h-12 w-12 opacity-50" />}
+              title={t('请在左侧选择一个考试安排')}
+              titleClassName="text-gray-400"
+              className="h-full"
+            />
           )}
         </div>
       </div>

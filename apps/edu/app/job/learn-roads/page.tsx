@@ -41,13 +41,13 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
-import { fetchAllPages } from '@/lib/fetch-all'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
 } from '@/lib/converters/job-converters'
-import { useToast } from '@zhiyu/ui'
+import { useToast, EmptyState, TableEmptyRow } from '@zhiyu/ui'
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
@@ -358,10 +358,12 @@ function EditView({
             </div>
           </div>
           {scenes.length === 0 && !editLoading && (
-            <div className="text-center py-10 text-slate-500">
-              <Layers className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p>{t('该岗位下暂无已发布场景，请先创建并发布场景')}</p>
-            </div>
+            <EmptyState
+              icon={<Layers className="h-10 w-10 opacity-40" />}
+              title={t('该岗位下暂无已发布场景，请先创建并发布场景')}
+              titleClassName="text-slate-500"
+              className="py-10"
+            />
           )}
         </div>
 
@@ -466,10 +468,12 @@ function EditView({
               )
             })}
             {scenes.length === 0 && !editLoading && (
-              <div className="text-center py-8 text-slate-500">
-                <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p>{t('暂无可排序的场景')}</p>
-              </div>
+              <EmptyState
+                icon={<FolderOpen className="h-8 w-8 opacity-40" />}
+                title={t('暂无可排序的场景')}
+                titleClassName="text-slate-500"
+                className="py-8"
+              />
             )}
           </CardContent>
         </Card>
@@ -765,14 +769,13 @@ export default function LearnRoadsPage() {
             </TableHeader>
             <TableBody>
               {filteredPositions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <FolderOpen className="h-10 w-10 mb-2" />
-                      <p>{t('暂无岗位数据')}</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow colSpan={4} className="h-32">
+                  <EmptyState
+                    icon={<FolderOpen className="h-10 w-10" />}
+                    title={t('暂无岗位数据')}
+                    className="py-0"
+                  />
+                </TableEmptyRow>
               ) : (
                 filteredPositions.map((position) => {
                   const { sceneCount, taskCount } = countScenesAndTasks(

@@ -7,7 +7,6 @@ import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -15,7 +14,7 @@ import {
 import { Trash2, Loader2, UserRound } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceExpertApi, portalRequest } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -316,11 +315,18 @@ function TeacherBrandSection({
             <DialogTitle>{pickerTitle}</DialogTitle>
             <DialogDescription>{t('选择后关联到师资品牌（只读展示）')}</DialogDescription>
           </DialogHeader>
-          <SearchInput
-            placeholder={searchPlaceholder}
-            value={search}
-            onChange={setSearch}
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              confirm()
+            }}
+            className="grid gap-4"
+          >
+            <SearchInput
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={setSearch}
+            />
           <div className="max-h-80 space-y-2 overflow-y-auto py-2">
             {optionsLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -356,15 +362,13 @@ function TeacherBrandSection({
               })
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button size="sm" onClick={confirm} disabled={selected.length === 0 || submitting}>
-              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              {t('确认关联 ({count})', { count: selected.length })}
-            </Button>
-          </DialogFooter>
+          <FormDialogFooter
+            onCancel={() => setOpen(false)}
+            confirmText={t('确认关联 ({count})', { count: selected.length })}
+            loading={submitting}
+            confirmDisabled={selected.length === 0}
+          />
+          </form>
         </DialogContent>
       </Dialog>
     </div>
