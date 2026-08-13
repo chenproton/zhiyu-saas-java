@@ -335,6 +335,13 @@ func (s *PartnerService) DeleteExpertWithAccount(ctx context.Context, tenantID, 
 			return err
 		}
 		if expert.UserID != nil {
+			// 从评审步骤的评审人数组中移除该账号（数组列无 FK，防悬空引用）
+			if _, err := txStore.Q().Exec(ctx, `
+				UPDATE task_review_steps SET assigned_user_ids = array_remove(assigned_user_ids, $1)
+				WHERE $1::uuid = ANY(assigned_user_ids)
+			`, *expert.UserID); err != nil {
+				return err
+			}
 			if _, err := txStore.Q().Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, *expert.UserID); err != nil {
 				return err
 			}

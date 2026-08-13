@@ -49,6 +49,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	forcePublishedForStudent(r, &params)
 	items, total, err := h.Service.ListExams(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询考试失败")
@@ -82,8 +83,12 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
-	// 学生作答由服务端判分，不返回答案与解析
+	// 学生作答由服务端判分，不返回答案与解析；且仅可读已发布试卷
 	if middleware.HasRole(claims, domain.RoleStudent) {
+		if exam.Status != string(domain.StatusPublished) {
+			respondError(w, http.StatusNotFound, "考试不存在")
+			return
+		}
 		for i := range exam.Questions {
 			exam.Questions[i].Answer = nil
 			exam.Questions[i].Analysis = nil

@@ -254,6 +254,20 @@ func canManageUsers(r *http.Request) bool {
 	return canManagePortal(middleware.CurrentUser(r))
 }
 
+// forcePublishedForStudent 学生角色强制 status=published（防枚举未发布资源：
+// 场景/试卷等仅展示已发布内容）。非学生角色不改动参数，返回 false。
+func forcePublishedForStudent(r *http.Request, params *store.ListParams) bool {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || !middleware.HasRole(claims, domain.RoleStudent) {
+		return false
+	}
+	if params.Values == nil {
+		params.Values = map[string]string{}
+	}
+	params.Values["status"] = string(domain.StatusPublished)
+	return true
+}
+
 // canManageAlliance reports whether the caller may manage the alliance
 // (产教融合) module. 产教融合平台面向教师/学校管理员/平台管理员开放；
 // 企业导师（enterprise_mentor）仅保留岗位/场景共建与测评打分，不再有联盟管理权限（B13 角色收窄）。

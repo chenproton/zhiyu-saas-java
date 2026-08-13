@@ -160,6 +160,30 @@ func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 		`, id); err != nil {
 			return fmt.Errorf("delete course exam usages: %w", err)
 		}
+		// 课程节点级考试安排：节点随课程级联删除（无 FK 的 usage 需先行清理），
+		// 并删除不再被引用的临时考试
+		nodeRows, err := tx.Query(ctx, `SELECT id FROM system_course_nodes WHERE course_id = $1`, id)
+		if err != nil {
+			return fmt.Errorf("collect course nodes: %w", err)
+		}
+		var nodeIDs []string
+		for nodeRows.Next() {
+			var nid string
+			if err := nodeRows.Scan(&nid); err != nil {
+				nodeRows.Close()
+				return fmt.Errorf("scan course node: %w", err)
+			}
+			nodeIDs = append(nodeIDs, nid)
+		}
+		nodeRows.Close()
+		if err := nodeRows.Err(); err != nil {
+			return fmt.Errorf("collect course nodes: %w", err)
+		}
+		for _, nid := range nodeIDs {
+			if err := CleanupNodeExamUsages(ctx, tx, nid); err != nil {
+				return err
+			}
+		}
 		// 从知识点/资源反向引用中移除该课程（granular_lesson_ids）
 		if _, err := tx.Exec(ctx, `
 			UPDATE knowledge_points SET granular_lesson_ids = array_remove(granular_lesson_ids, $1) WHERE $1::uuid = ANY(granular_lesson_ids)

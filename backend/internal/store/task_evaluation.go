@@ -577,6 +577,42 @@ func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
 	return nil
 }
 
+// CleanupNodeExamUsages 清理课程节点关联的考试安排（target_type='node'）及其独占的临时考试。
+// 删除课程/节点时调用（system_course_nodes 级联删除后 node 级 usage 无 FK 会残留为幽灵考试）。
+func CleanupNodeExamUsages(ctx context.Context, tx Queryer, nodeID string) error {
+	rows, err := tx.Query(ctx, `
+		DELETE FROM exam_usages WHERE target_type = 'node' AND $1::uuid = ANY(target_ids) RETURNING exam_id
+	`, nodeID)
+	if err != nil {
+		return fmt.Errorf("cleanup node exam usages: %w", err)
+	}
+	var examIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan deleted usage exam id: %w", err)
+		}
+		examIDs = append(examIDs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("cleanup node exam usages: %w", err)
+	}
+	if len(examIDs) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM exams e
+		WHERE e.is_temp = TRUE
+			AND e.id = ANY($1::uuid[])
+			AND NOT EXISTS (SELECT 1 FROM exam_usages eu WHERE eu.exam_id = e.id)
+	`, examIDs); err != nil {
+		return fmt.Errorf("cleanup node temp exams: %w", err)
+	}
+	return nil
+}
+
 // CleanupTaskExamUsages 清理任务关联的考试安排（target_type='task'）及其独占的临时考试。
 // 临时考试仅在其不再被任何安排引用时删除；正式试卷（is_temp=false）不受影响。
 // 须在事务内调用（场景/任务删除共用）。

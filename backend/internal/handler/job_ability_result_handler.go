@@ -395,6 +395,12 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
+	// 岗位归属校验：仅允许对本租户岗位触发汇聚（与绑定创建一致）
+	posTenantID, err := h.Service.PositionTenantID(r.Context(), req.CareerPositionID)
+	if err != nil || posTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
 
 	h.aggMu.Lock()
 	if _, running := h.aggInFlight[req.CareerPositionID]; running {

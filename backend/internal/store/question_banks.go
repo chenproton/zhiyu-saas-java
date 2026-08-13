@@ -142,6 +142,25 @@ func (s *QuestionBankStore) Update(ctx context.Context, id, tenantID string, p *
 	return s.GetScoped(ctx, id, tenantID)
 }
 
+// CountQuestionRefs 题目被试卷引用数（exam_questions 快照行，删除题目会级联删除
+// 已组卷试卷的题目快照，删除前须检查）。
+func (s *QuestionBankStore) CountQuestionRefs(ctx context.Context, questionID string) (int, error) {
+	var count int
+	err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM exam_questions WHERE question_id = $1`, questionID).Scan(&count)
+	return count, err
+}
+
+// CountBankQuestionRefs 题库下全部题目被试卷引用数（删除题库前检查）。
+func (s *QuestionBankStore) CountBankQuestionRefs(ctx context.Context, bankID string) (int, error) {
+	var count int
+	err := s.q.QueryRow(ctx, `
+		SELECT COUNT(*) FROM exam_questions eq
+		JOIN questions q ON q.id = eq.question_id
+		WHERE q.bank_id = $1
+	`, bankID).Scan(&count)
+	return count, err
+}
+
 // Delete 删除题库（连带题目与知识点绑定，限定租户；事务内执行防孤儿数据）。
 func (s *QuestionBankStore) Delete(ctx context.Context, id, tenantID string) error {
 	if _, err := s.fetchBankScoped(ctx, id, tenantID); err != nil {

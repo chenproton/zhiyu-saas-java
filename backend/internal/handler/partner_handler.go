@@ -269,6 +269,14 @@ type expertUpdateRequest struct {
 	Password string `json:"password"`
 }
 
+// applyExpertPartialUpdate 专家档案部分更新兜底：未携带字段回退已有值
+// （学校侧评级/就业方向/二级学院/照片等字段由学校维护，本人/管理员更新不得清空）。
+func applyExpertPartialUpdate(e, existing *domain.AllianceExpert) {
+	if e.Name == "" {
+		e.Name = existing.Name
+	}
+}
+
 func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
@@ -291,9 +299,7 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 		e.IsPublic = existing.IsPublic
 	}
 	// 部分更新兜底：未携带字段回退已有值；企业归属强制本企业，不可改绑
-	if e.Name == "" {
-		e.Name = existing.Name
-	}
+	applyExpertPartialUpdate(&e, existing)
 	if e.Status == "" {
 		e.Status = existing.Status
 	}
@@ -446,16 +452,16 @@ func (h *PartnerHandler) UpdateMyExpert(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	e := req.AllianceExpert
-	// 本人维护仅允许更新档案展示字段，账号/归属字段不可改
-	if e.UserID == nil {
-		e.UserID = existing.UserID
-	}
-	e.TenantID = tenantID
-	e.EnterpriseID = existing.EnterpriseID
-	e.CreatedBy = existing.CreatedBy
-	if req.IsPublic == nil {
+	// 本人维护仅允许更新档案展示字段，账号/归属字段不可改；
+	// 学校侧维护字段（评级/就业方向/二级学院/照片等）未携带时回退已有值，不得清空
+	if req.IsPublic != nil {
+		e.IsPublic = req.IsPublic
+	} else {
 		e.IsPublic = existing.IsPublic
 	}
+	applyExpertPartialUpdate(&e, existing)
+	e.TenantID = tenantID
+	e.CreatedBy = existing.CreatedBy
 	if err := h.Service.Store().Alliance().UpdateExpert(r.Context(), existing.ID, tenantID, &e); err != nil {
 		respondServerError(w, r, err, "更新专家档案失败")
 		return

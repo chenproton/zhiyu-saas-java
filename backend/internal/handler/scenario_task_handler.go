@@ -51,6 +51,16 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	// 学生仅可查已发布场景的任务（防枚举未发布场景任务）
+	if middleware.HasRole(middleware.CurrentUser(r), domain.RoleStudent) {
+		if scenarioID := params.Values["scenarioId"]; scenarioID != "" {
+			sc, err := h.Service.Get(r.Context(), scenarioID)
+			if err != nil || sc.Status != domain.StatusPublished {
+				respondJSON(w, http.StatusOK, ListResponse[domain.ScenarioTask]{Items: []domain.ScenarioTask{}, Total: 0})
+				return
+			}
+		}
+	}
 	items, total, err := h.Service.ListTasks(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询任务失败")
@@ -154,9 +164,62 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 部分更新兜底：未携带 scenarioId 时回退现有任务归属场景，避免 404「场景不存在」
+	// 部分更新兜底：未携带字段回退已有值（防全列覆盖清空）
 	if req.ScenarioID == "" && task.ScenarioID != "" {
 		req.ScenarioID = task.ScenarioID
+	}
+	if req.Name == "" {
+		req.Name = task.Name
+	}
+	if req.Code == "" {
+		req.Code = task.Code
+	}
+	if req.TaskType == "" {
+		req.TaskType = task.TaskType
+	}
+	if req.Difficulty == nil {
+		d := task.Difficulty
+		req.Difficulty = &d
+	}
+	if req.Description == nil {
+		req.Description = task.Description
+	}
+	if req.DetailedDescription == nil {
+		req.DetailedDescription = task.DetailedDescription
+	}
+	if req.DescriptionPdf == nil {
+		req.DescriptionPdf = task.DescriptionPdf
+	}
+	if req.Background == nil {
+		req.Background = task.Background
+	}
+	if req.SourceScenarioID == nil {
+		req.SourceScenarioID = task.SourceScenarioID
+	}
+	if req.SortOrder == 0 {
+		req.SortOrder = task.SortOrder
+	}
+	if req.EstimatedHours == 0 {
+		req.EstimatedHours = task.EstimatedHours
+	}
+	if !req.IsReferenced {
+		req.IsReferenced = task.IsReferenced
+	}
+	if req.DependencyIDs == nil {
+		req.DependencyIDs = task.DependencyIDs
+	}
+	if req.KnowledgePointIDs == nil {
+		req.KnowledgePointIDs = task.KnowledgePointIDs
+	}
+	if req.AbilityPointIDs == nil {
+		req.AbilityPointIDs = task.AbilityPointIDs
+	}
+	if req.ResourceIDs == nil {
+		req.ResourceIDs = task.ResourceIDs
+	}
+	// EvalData 未携带时回退现有值（前端任务保存不提交 evalData，防止被清空为 {}）
+	if req.EvalData == nil {
+		req.EvalData = task.EvalData
 	}
 
 	newScenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), req.ScenarioID)

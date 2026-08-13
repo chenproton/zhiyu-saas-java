@@ -103,6 +103,7 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
+	forcePublishedForStudent(r, &params)
 	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondServerError(w, r, err, "查询场景方案失败")
@@ -134,6 +135,11 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if scenario.TenantID != nil && !verifyTenantOwnership(w, r, *scenario.TenantID) {
+		return
+	}
+	// 学生仅可读已发布场景
+	if middleware.HasRole(middleware.CurrentUser(r), domain.RoleStudent) && scenario.Status != domain.StatusPublished {
+		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, scenario)
