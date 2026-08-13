@@ -79,8 +79,11 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
 
   const loadItems = useCallback(async () => {
     try {
-      const res = await termApi.list({ limit: 100 })
-      setItems(res.items)
+      // 与场地列表一致：fetchAllPages 全量分页拉取，避免学期超过 100 个时列表被截断
+      const res = await fetchAllPages((page, pageSize) =>
+        termApi.list({ limit: pageSize, offset: page * pageSize }),
+      )
+      setItems(res)
     } catch (err: any) {
       toast({
         variant: 'destructive',

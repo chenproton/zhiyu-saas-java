@@ -92,6 +92,8 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
 
   const loadCourses = useCallback(async () => {
     const seq = ++loadSeqRef.current
+    // 开头置 loading：切换 programId 重载时表格立即进入加载态，避免短暂显示上一个方案的旧数据
+    setLoading(true)
     try {
       const res = await programApi.listCourses(programId)
       const loadedRows: CourseRow[] = res.items.map((c) => ({
@@ -106,18 +108,23 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
         positionId: c.positionId || '',
       }))
       const posIds = [...new Set(loadedRows.filter((r) => r.positionId).map((r) => r.positionId))]
-      for (const pid of posIds) {
-        try {
-          const s = await scenarioApi.list({
-            careerPositionId: pid,
-            status: 'published',
-            limit: 200,
-          })
-          setPositionScenariosMap((prev) => ({ ...prev, [pid]: s.items }))
-        } catch (err) {
-          reportError(err, '加载岗位场景')
-        }
-      }
+      // 并行拉取各岗位场景（原串行逐条请求，岗位多时拉长加载时间）；结果统一在 seq 校验后写入，
+      // 避免快速切换 programId 时旧岗位的场景数据覆盖新数据
+      const scenResults = await Promise.all(
+        posIds.map(async (pid) => {
+          try {
+            const s = await scenarioApi.list({
+              careerPositionId: pid,
+              status: 'published',
+              limit: 200,
+            })
+            return { pid, items: s.items } as const
+          } catch (err) {
+            reportError(err, '加载岗位场景')
+            return { pid, items: null } as const
+          }
+        }),
+      )
       const grouped = new Map<string, CourseRow[]>()
       const regular: CourseRow[] = []
       loadedRows.forEach((r) => {
@@ -135,13 +142,18 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
       grouped.forEach((v, pid) => {
         displayRows.push({
           ...v[0],
-          key: `pos-${pid}-${Date.now()}`,
+          key: `pos-${pid}`, // 稳定 key：避免每次加载生成新 key 导致整行 remount
           linkType: 'position',
           positionId: pid,
         })
         if (v.length > 1) mergedCounts[pid] = v.length
       })
       if (seq !== loadSeqRef.current) return
+      const scenMap: Record<string, Scenario[]> = {}
+      scenResults.forEach((r) => {
+        if (r.items) scenMap[r.pid] = r.items
+      })
+      setPositionScenariosMap((prev) => ({ ...prev, ...scenMap }))
       displayRows.push(...regular)
       setRows(displayRows)
       setPositionMergedCounts(mergedCounts)

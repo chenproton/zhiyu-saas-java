@@ -78,6 +78,14 @@ function SchedulingPageInner() {
       await loadPlans()
     })()
   }, [loadPlans])
+  // planId 参数变化时同步切换选中计划：SPA 内后续跳转携带不同 ?planId= 也能跟随，
+  // 而不是仅在首次加载时 setPlanId(prev => prev || targetId)
+  useEffect(() => {
+    if (planIdParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- URL 参数驱动的受控同步
+      setPlanId(planIdParam)
+    }
+  }, [planIdParam])
   useEffect(() => {
     ;(async () => {
       await loadPlanDetail(planId)
