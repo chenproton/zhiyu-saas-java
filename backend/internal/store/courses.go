@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -407,9 +408,11 @@ func (s *CourseStore) ListCourseKnowledgePointNames(ctx context.Context, q Query
 	var names []string
 	for rows.Next() {
 		var n string
-		if err := rows.Scan(&n); err == nil {
-			names = append(names, n)
+		if err := rows.Scan(&n); err != nil {
+			slog.Warn("扫描名称列表失败，已跳过该行", "error", err)
+			continue
 		}
+		names = append(names, n)
 	}
 	return names
 }
@@ -488,9 +491,11 @@ func (s *CourseStore) ListCourseResourceNames(ctx context.Context, q Queryer, te
 	var names []string
 	for rows.Next() {
 		var n string
-		if err := rows.Scan(&n); err == nil {
-			names = append(names, n)
+		if err := rows.Scan(&n); err != nil {
+			slog.Warn("扫描名称列表失败，已跳过该行", "error", err)
+			continue
 		}
+		names = append(names, n)
 	}
 	return names
 }

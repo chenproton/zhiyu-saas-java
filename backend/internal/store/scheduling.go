@@ -555,6 +555,7 @@ func (s *SchedulingStore) PeriodSlotNames(ctx context.Context, tenantID string) 
 	for rows.Next() {
 		var n string
 		if err := rows.Scan(&n); err != nil {
+			slog.Warn("列表扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		names = append(names, n)
@@ -582,6 +583,7 @@ func (s *SchedulingStore) ListVenueBriefs(ctx context.Context, tenantID string) 
 	for rows.Next() {
 		var v VenueBrief
 		if err := rows.Scan(&v.ID, &v.Name, &v.Type); err != nil {
+			slog.Warn("列表扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, v)
@@ -631,6 +633,7 @@ func (s *SchedulingStore) ListPendingPlanEntries(ctx context.Context, tenantID, 
 		var e PendingPlanEntry
 		if err := rows.Scan(&e.ID, &e.CourseName, &e.CourseCode, &e.EntryType, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 			&e.ClassNodeID, &e.TeacherID, &e.VenueType, &e.ScenarioID, &e.CourseID); err != nil {
+			slog.Warn("列表扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		if e.ClassNodeID == "" {
@@ -772,6 +775,7 @@ func (s *SchedulingStore) ListTimetableEntries(ctx context.Context, tenantID, te
 			&e.ClassNodeID, &e.ClassNodeIDs, &teacherID2, &e.DayOfWeek, &e.Periods, &e.StartWeek, &e.EndWeek,
 			&e.WeekPattern, &venueID, &scenarioID, &e.Source, &e.Status, &e.Version, &e.ResourceVersion,
 			&teacherName, &venueName, &className, &scenarioName); err != nil {
+			slog.Warn("列表扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		e.PlanEntryID = planEntryID
@@ -1008,6 +1012,7 @@ func (s *SchedulingStore) ListPlanEntryBriefs(ctx context.Context, tenantID, ter
 	for rows.Next() {
 		var e PlanEntryBrief
 		if err := rows.Scan(&e.ID, &e.CourseName, &e.EntryType, &e.StartWeek, &e.EndWeek, &e.WeekPattern); err != nil {
+			slog.Warn("列表扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, e)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -412,7 +413,11 @@ func (s *CourseNodeStore) ListNodeKnowledgePointNames(ctx context.Context, q Que
 	var names []string
 	for rows.Next() {
 		var n string
-		if err := rows.Scan(&n); err == nil && n != "" {
+		if err := rows.Scan(&n); err != nil {
+			slog.Warn("扫描名称列表失败，已跳过该行", "error", err)
+			continue
+		}
+		if n != "" {
 			names = append(names, n)
 		}
 	}
@@ -434,7 +439,11 @@ func (s *CourseNodeStore) ListNodeResourceNames(ctx context.Context, q Queryer, 
 	var names []string
 	for rows.Next() {
 		var n string
-		if err := rows.Scan(&n); err == nil && n != "" {
+		if err := rows.Scan(&n); err != nil {
+			slog.Warn("扫描名称列表失败，已跳过该行", "error", err)
+			continue
+		}
+		if n != "" {
 			names = append(names, n)
 		}
 	}

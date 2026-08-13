@@ -255,7 +255,10 @@ func (s *ExamStore) fetchExam(ctx context.Context, tenantID, id string) (*domain
 	e.BatchID = batchID
 	e.TenantID = tenantID2
 	questions, err := s.fetchExamQuestions(ctx, id)
-	if err == nil {
+	if err != nil {
+		// 题目查询失败时记录告警，避免返回"无题目"的试卷掩盖故障
+		slog.Warn("fetchExam 题目查询失败", "examID", e.ID, "error", err)
+	} else {
 		e.Questions = questions
 	}
 	return &e, nil
