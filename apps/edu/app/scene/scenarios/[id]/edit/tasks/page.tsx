@@ -1427,6 +1427,8 @@ export default function TasksEditPage() {
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   value={cloneSearch}
                   onChange={(e) => setCloneSearch(e.target.value)}
                   placeholder={t('搜索任务名称、编码...')}
@@ -2009,6 +2011,8 @@ function EditCardDialog({
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   value={abilitySearch}
                   onChange={(e) => setAbilitySearch(e.target.value)}
                   placeholder={t('搜索能力点名称、编码或描述...')}

@@ -204,6 +204,8 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
+                type="search"
+                autoComplete="off"
                 placeholder={t(searchPlaceholder)}
                 className="pl-9"
                 value={searchValue}

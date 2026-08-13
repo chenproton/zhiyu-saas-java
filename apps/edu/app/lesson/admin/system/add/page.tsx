@@ -1336,6 +1336,8 @@ function AddSystemPageInner() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
+                type="search"
+                autoComplete="off"
                 value={grainSearch}
                 onChange={(e) => setGrainSearch(e.target.value)}
                 placeholder={t('搜索颗粒课名称、来源...')}

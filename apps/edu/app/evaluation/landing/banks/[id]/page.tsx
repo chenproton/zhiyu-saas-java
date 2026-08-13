@@ -415,6 +415,8 @@ export default function BankDetailPage() {
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
+                    type="search"
+                    autoComplete="off"
                     placeholder={t('搜索题目内容或知识点')}
                     className="h-9 rounded-lg border-slate-200 bg-slate-50 pl-9 text-sm"
                     value={search}

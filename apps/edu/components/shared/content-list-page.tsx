@@ -1442,6 +1442,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
               <div className="flex items-center gap-2 w-full">
                 <Search className="h-4 w-4 text-slate-400" />
                 <Input
+                  type="search"
+                  autoComplete="off"
                   placeholder={t('搜索{entityLabel}名称', { entityLabel })}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

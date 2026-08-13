@@ -583,6 +583,8 @@ export default function QuestionBankDetailPage() {
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              type="search"
+              autoComplete="off"
               placeholder={t('搜索题目内容...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -861,6 +863,8 @@ export default function QuestionBankDetailPage() {
             <div className="relative mt-4">
               <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                type="search"
+                autoComplete="off"
                 placeholder={t('搜索题库名称...')}
                 value={moveSearch}
                 onChange={(e) => setMoveSearch(e.target.value)}

@@ -101,6 +101,8 @@ export function AbilityPointSelector({
           <div className="relative my-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
+              type="search"
+              autoComplete="off"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('搜索能力点名称、编码、描述')}

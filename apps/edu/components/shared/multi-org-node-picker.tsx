@@ -320,6 +320,8 @@ export function MultiOrgNodePicker({
           <div className="relative mb-2">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              type="search"
+              autoComplete="off"
               placeholder={t('搜索...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}

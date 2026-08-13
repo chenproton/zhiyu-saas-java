@@ -297,6 +297,8 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
+                type="search"
+                autoComplete="off"
                 placeholder={
                   isTypeView ? t('搜索{label}...', { label: typeLabel }) : t('搜索资源名称...')
                 }
