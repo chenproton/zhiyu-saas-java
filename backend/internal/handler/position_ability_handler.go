@@ -79,6 +79,15 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 	if !verifyTenantOwnership(w, r, posTenant) {
 		return
 	}
+	// 职责必须属于当前岗位（岗位租户已校验），能力点必须属于当前租户（防跨租户引用）
+	if resp, err := h.Service.GetResponsibility(r.Context(), req.ResponsibilityID); err != nil || resp.CareerPositionID != req.CareerPositionID {
+		respondError(w, http.StatusNotFound, "职责不存在")
+		return
+	}
+	if _, err := h.Service.Store().Abilities().Get(r.Context(), req.AbilityPointID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "能力点不存在")
+		return
+	}
 
 	binding, err := h.Service.CreateAbilityBinding(r.Context(), tenantID, &store.PositionAbilityParams{
 		CareerPositionID:  req.CareerPositionID,

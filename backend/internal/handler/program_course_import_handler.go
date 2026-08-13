@@ -161,8 +161,16 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：关联岗位和关联体系课至少填写一项")
 			continue
 		}
-		credits, _ := strconv.ParseFloat(creditsStr, 64)
-		hours, _ := strconv.Atoi(hoursStr)
+		credits, errC := strconv.ParseFloat(creditsStr, 64)
+		hours, errH := strconv.Atoi(hoursStr)
+		if creditsStr != "" && errC != nil {
+			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：学分格式无效")
+			continue
+		}
+		if hoursStr != "" && errH != nil {
+			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：学时格式无效")
+			continue
+		}
 		if nature == "" {
 			nature = "必修"
 		}
@@ -183,6 +191,11 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 				}
 				c.CourseID = &id
 			}
+		}
+		// 岗位与课程均未解析成功时计入错误跳过，避免写入空名称关联
+		if c.PositionID == nil && c.CourseID == nil {
+			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：岗位/课程名称均未匹配到现有数据")
+			continue
 		}
 
 		courses = append(courses, c)

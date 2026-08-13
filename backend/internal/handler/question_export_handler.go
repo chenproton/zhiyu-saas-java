@@ -110,6 +110,10 @@ func (h *QuestionExportHandler) fillQuestionsData(ctx context.Context, f *exceli
 			}
 			setCell("题目明细", fmt.Sprintf("%c%d", 'C'+i, r), opt)
 		}
+		// 第 5-8 个选项（UI 上限 8）写入 M 列之后，避免覆盖答案/解析等固定列导致选项丢失
+		for i := 4; i < len(options); i++ {
+			setCell("题目明细", fmt.Sprintf("%c%d", 'M'+(i-4), r), options[i])
+		}
 		setCell("题目明细", fmt.Sprintf("G%d", r), formatAnswerForExport(qType, answers, options))
 		setCell("题目明细", fmt.Sprintf("H%d", r), analysis)
 		setCell("题目明细", fmt.Sprintf("I%d", r), mapDifficultyToChinese(difficulty))

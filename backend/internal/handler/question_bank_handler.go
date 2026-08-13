@@ -160,7 +160,8 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Name == "" {
 		req.Name = existing.Name
 	}
-	if req.Description == nil || *req.Description == "" {
+	// 仅 nil 视为未携带；显式空串可清空（与 CoverImage 语义一致）
+	if req.Description == nil {
 		req.Description = existing.Description
 	}
 	if req.CoverImage == nil {
