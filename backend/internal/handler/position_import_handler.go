@@ -87,7 +87,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		}
 		name := strings.TrimSpace(row[0])
 		shortName := col(row, 1)
-		positionType := mapPositionType(col(row, 2))
+		positionType := "teaching"
 		industryName := col(row, 3)
 		majorNames := splitTrim(col(row, 4), ",")
 		salaryMin := parseNullableInt(col(row, 5))
@@ -446,24 +446,6 @@ func parseRequirements(s string) []string {
 		return []string{}
 	}
 	return result
-}
-
-func mapPositionType(t string) string {
-	t = strings.TrimSpace(t)
-	switch t {
-	case "企业岗位":
-		return "enterprise"
-	case "教学岗位":
-		return "teaching"
-	case "其他":
-		return "other"
-	default:
-		if t == "enterprise" || t == "teaching" || t == "other" {
-			return t
-		}
-		// 未填写/未知类型默认教学岗位（/job/positions 岗位库仅展示教学岗位）
-		return "teaching"
-	}
 }
 
 func mapRequiredLevel(l string) string {
