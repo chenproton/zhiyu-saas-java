@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -136,7 +137,7 @@ func (s *UserStore) Update(ctx context.Context, p *UserUpdateParams) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE users SET institution_id = COALESCE($1, institution_id), org_node_id = COALESCE($2, org_node_id), major_id = COALESCE($3, major_id),
 			role = $4, login_name = $5, username = $6, name = $7, email = COALESCE($8, email), phone = COALESCE($9, phone), avatar_url = COALESCE($10, avatar_url),
-			student_no = COALESCE($11, student_no), work_id = COALESCE($12, work_id), id_card = COALESCE($13, id_card), title_ids = COALESCE($14::uuid[], '{}'::uuid[]), updated_at = NOW()
+			student_no = COALESCE($11, student_no), work_id = COALESCE($12, work_id), id_card = COALESCE($13, id_card), title_ids = COALESCE($14::uuid[], title_ids), updated_at = NOW()
 		WHERE id = $15 AND tenant_id = $16
 	`, p.InstitutionID, p.OrgNodeID, p.MajorID,
 		p.Role, p.GlobalLoginName, p.Username, p.Name, p.Email, p.Phone, p.AvatarURL,
@@ -287,30 +288,33 @@ func (s *UserStore) BindRoles(ctx context.Context, tx Queryer, userID string, ro
 }
 
 // RebindUserRole 替换为单个角色（用于 Update 时的 roleId 变更）。
+// 计数递减/删除/插入/递增整体包进事务，避免中途失败造成 user_count 漂移（与 BindRoles 一致）。
 func (s *UserStore) RebindUserRole(ctx context.Context, userID, roleID string, tenantID string) error {
-	var validRole bool
-	_ = s.q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1 AND tenant_id = $2)`, roleID, tenantID).Scan(&validRole)
-	if !validRole {
-		return fmt.Errorf("角色 ID 无效：该角色不属于当前租户")
-	}
-	if _, err := s.q.Exec(ctx, `
-		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
-		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
-	`, userID); err != nil {
+	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		var validRole bool
+		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1 AND tenant_id = $2)`, roleID, tenantID).Scan(&validRole)
+		if !validRole {
+			return fmt.Errorf("角色 ID 无效：该角色不属于当前租户")
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
+			WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
+		`, userID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO user_roles (id, user_id, role_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, role_id) DO NOTHING
+		`, uuid.NewString(), userID, roleID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, roleID)
 		return err
-	}
-	if _, err := s.q.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
-		return err
-	}
-	if _, err := s.q.Exec(ctx, `
-		INSERT INTO user_roles (id, user_id, role_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, role_id) DO NOTHING
-	`, uuid.NewString(), userID, roleID); err != nil {
-		return err
-	}
-	_, err := s.q.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, roleID)
-	return err
+	})
 }
 
 // AttachUserRoles 为批量用户填充角色信息。
@@ -332,12 +336,14 @@ func (s *UserStore) AttachUserRoles(ctx context.Context, items []domain.User) {
 		ORDER BY r.created_at
 	`, ids)
 	if err != nil {
+		slog.Warn("AttachUserRoles 查询失败，角色信息缺失", "error", err)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var userID, roleID, code, name string
 		if err := rows.Scan(&userID, &roleID, &code, &name); err != nil {
+			slog.Warn("AttachUserRoles 扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		if i, ok := index[userID]; ok {

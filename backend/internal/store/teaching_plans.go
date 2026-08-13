@@ -485,5 +485,5 @@ func ScanTeachingPlanRows(rows pgx.Rows) ([]domain.TeachingPlan, error) {
 		}
 		items = append(items, p)
 	}
-	return items, nil
+	return items, rows.Err()
 }

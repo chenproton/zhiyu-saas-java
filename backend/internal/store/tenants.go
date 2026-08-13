@@ -234,11 +234,15 @@ func (s *TenantStore) Get(ctx context.Context, id string) (*domain.Tenant, error
 // Update 更新租户基础信息与教育字段。
 func (s *TenantStore) Update(ctx context.Context, id string, p *TenantUpdateParams) error {
 	_, err := s.q.Exec(ctx, `
-		UPDATE tenants SET name = $1, logo_url = $2, domain = $3, enterprise_code = $4, contact = $5,
-			phone = $6, address = $7, description = $8,
-			short_name = $9, school_type = $10, province = COALESCE(NULLIF($11,''), province), city = COALESCE(NULLIF($12,''), city),
-			website = $13, contact_phone = $14, scale_data = $15, secondary_colleges = $16,
-			education_level = $17, education_nature = $18, valid_from = $19, valid_until = $20,
+		UPDATE tenants SET name = $1,
+			logo_url = COALESCE($2, logo_url), domain = COALESCE($3, domain), enterprise_code = COALESCE($4, enterprise_code),
+			contact = COALESCE($5, contact), phone = COALESCE($6, phone), address = COALESCE($7, address), description = COALESCE($8, description),
+			short_name = COALESCE($9, short_name), school_type = COALESCE($10, school_type),
+			province = COALESCE(NULLIF($11,''), province), city = COALESCE(NULLIF($12,''), city),
+			website = COALESCE($13, website), contact_phone = COALESCE($14, contact_phone),
+			scale_data = COALESCE($15, scale_data), secondary_colleges = COALESCE($16, secondary_colleges),
+			education_level = COALESCE($17, education_level), education_nature = COALESCE($18, education_nature),
+			valid_from = COALESCE($19, valid_from), valid_until = COALESCE($20, valid_until),
 			updated_at = NOW()
 		WHERE id = $21
 	`, p.Name, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description,

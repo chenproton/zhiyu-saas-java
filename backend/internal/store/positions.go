@@ -413,8 +413,9 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 		if !exists {
 			continue
 		}
-		bindingID := uuid.NewString()
-		if _, err := tx.Exec(ctx, `
+		// 冲突命中时回读实际行 id（RETURNING），避免把未入库的新 uuid 写入 bindingIDMap
+		var actualID string
+		if err := tx.QueryRow(ctx, `
 			INSERT INTO position_ability_bindings (
 				id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
 				domain, required_level, rubric_description, attributes, weight
@@ -425,11 +426,12 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 				rubric_description = EXCLUDED.rubric_description,
 				attributes = EXCLUDED.attributes,
 				weight = EXCLUDED.weight
-		`, bindingID, tenantID, positionID, respBackendID, abilityPointID, binding.Source,
-			binding.Domain, binding.RequiredLevel, binding.RubricDescription, binding.Attributes, binding.Weight); err != nil {
+			RETURNING id
+		`, uuid.NewString(), tenantID, positionID, respBackendID, abilityPointID, binding.Source,
+			binding.Domain, binding.RequiredLevel, binding.RubricDescription, binding.Attributes, binding.Weight).Scan(&actualID); err != nil {
 			return err
 		}
-		bindingIDMap[binding.ID] = bindingID
+		bindingIDMap[binding.ID] = actualID
 	}
 
 	for _, ad := range p.AbilityDomains {

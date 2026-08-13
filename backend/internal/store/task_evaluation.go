@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -150,7 +151,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	for epRows.Next() {
 		var p domain.TaskEvalPoint
 		if err := epRows.Scan(&p.ID, &p.ConfigID, &p.Name, &p.Description, &p.SubType, &p.Types, &p.Weight, &p.ScoringMethod, &p.GradeMapping, &p.KnowledgePointIDs, &p.AbilityPointIDs, &p.SortOrder); err != nil {
-			continue
+			return nil, err
 		}
 		evalPointsByConfig[p.ConfigID] = append(evalPointsByConfig[p.ConfigID], p)
 	}
@@ -168,7 +169,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	for srRows.Next() {
 		var sr domain.TaskScoreRule
 		if err := srRows.Scan(&sr.ID, &sr.ConfigID, &sr.Name, &sr.Description, &sr.Rule, &sr.Weight, &sr.SortOrder); err != nil {
-			continue
+			return nil, err
 		}
 		scoreRulesByConfig[sr.ConfigID] = append(scoreRulesByConfig[sr.ConfigID], sr)
 	}
@@ -186,7 +187,7 @@ func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tena
 	for rsRows.Next() {
 		var st domain.TaskReviewStep
 		if err := rsRows.Scan(&st.ID, &st.ConfigID, &st.Label, &st.Description, &st.Enabled, &st.SubjectType, &st.Weight, &st.SortOrder, &st.AssignedUserIDs); err != nil {
-			continue
+			return nil, err
 		}
 		if st.AssignedUserIDs == nil {
 			st.AssignedUserIDs = []string{}
@@ -692,9 +693,12 @@ func (s *TaskEvaluationStore) ListEnabledMethodKeys(ctx context.Context, q Query
 	var out []string
 	for rows.Next() {
 		var k string
-		if err := rows.Scan(&k); err == nil {
-			out = append(out, k)
+		if err := rows.Scan(&k); err != nil {
+			// 导出路径容错：扫描失败记录告警并跳过，避免整个导出中断
+			slog.Warn("ListEnabledMethodKeys 扫描失败，已跳过该行", "error", err)
+			continue
 		}
+		out = append(out, k)
 	}
 	return out
 }

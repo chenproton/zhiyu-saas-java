@@ -142,8 +142,8 @@ func (s *UserExtensionFieldStore) fetchField(ctx context.Context, tenantID, id s
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, field_key, field_name, field_type, is_enabled, is_required,
 			applicable_role_codes, slot_number, created_at
-		FROM user_extension_fields WHERE id = $1
-	`, id).Scan(
+		FROM user_extension_fields WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(
 		&field.ID, &field.TenantID, &field.FieldKey, &field.FieldName, &field.FieldType,
 		&field.IsEnabled, &field.IsRequired, &applicableCodes, &field.SlotNumber, &field.CreatedAt,
 	)

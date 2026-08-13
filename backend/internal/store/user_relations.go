@@ -102,6 +102,15 @@ func (s *UserRelationStore) Get(ctx context.Context, id, tenantID string) (initi
 
 // UsersExist 校验两个用户是否都属于租户。
 func (s *UserRelationStore) UsersExist(ctx context.Context, tenantID string, userIDs []string) (bool, error) {
+	// 去重后再比对数量：重复 id 会使 COUNT 去重后小于 len 导致误判
+	unique := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		unique[id] = struct{}{}
+	}
+	userIDs = userIDs[:0]
+	for id := range unique {
+		userIDs = append(userIDs, id)
+	}
 	var validUsers int
 	err := s.q.QueryRow(ctx, `
 		SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND id = ANY($2::uuid[])

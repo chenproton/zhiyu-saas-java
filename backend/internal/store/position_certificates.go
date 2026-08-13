@@ -157,7 +157,14 @@ func (s *PositionCertificateStore) findOrCreateLibrary(ctx context.Context, tena
 	if _, err := s.q.Exec(ctx, `
 		INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
 		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (tenant_id, name) DO NOTHING
 	`, libraryID, tenantID, name, url, description, imageURL); err != nil {
+		return "", err
+	}
+	// 并发首次创建时回读实际入库行，避免返回未落库的新 uuid
+	if err := s.q.QueryRow(ctx, `
+		SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
+	`, tenantID, name).Scan(&libraryID); err != nil {
 		return "", err
 	}
 	return libraryID, nil

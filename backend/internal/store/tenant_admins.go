@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,11 +77,16 @@ func (s *TenantAdminStore) Create(ctx context.Context, tx Queryer, tenantID, rol
 	`, adminID, tenantID, role, platform, loginName, username, string(hash), name); err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `
+	roleTag, err := tx.Exec(ctx, `
 		INSERT INTO user_roles (id, user_id, role_id)
 		SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = $4 LIMIT 1
-	`, uuid.NewString(), adminID, tenantID, roleCode); err != nil {
+	`, uuid.NewString(), adminID, tenantID, roleCode)
+	if err != nil {
 		return nil, err
+	}
+	// 租户内不存在该角色时明确报错，避免管理员创建成功但无角色绑定的静默降级
+	if roleTag.RowsAffected() == 0 {
+		return nil, fmt.Errorf("租户内不存在角色: %s", roleCode)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE roles SET user_count = user_count + 1
