@@ -54,13 +54,17 @@ func (h *OrgTypeHandler) crud() crudConfig[OrgTypeRequest, domain.OrgType] {
 			if t.TenantID == "" || t.Name == "" {
 				return "缺少必填字段"
 			}
+			// 与更新侧一致：非法分类拒绝，仅空值回落默认 internal
+			if t.Category != "" && t.Category != domain.OrgTypeCategoryInternal && t.Category != domain.OrgTypeCategoryBusiness && t.Category != domain.OrgTypeCategoryExternal {
+				return "无效分类"
+			}
 			return ""
 		},
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *OrgTypeRequest) (string, bool) {
 			return t.TenantID, verifyRequestTenant(w, r, t.TenantID)
 		},
 		PrepareCreate: func(t *OrgTypeRequest, tenantID, userID string) {
-			if t.Category != domain.OrgTypeCategoryInternal && t.Category != domain.OrgTypeCategoryBusiness && t.Category != domain.OrgTypeCategoryExternal {
+			if t.Category == "" {
 				t.Category = domain.OrgTypeCategoryInternal
 			}
 		},

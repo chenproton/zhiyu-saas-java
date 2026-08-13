@@ -222,7 +222,8 @@ func (h *PartnerCoBuildHandler) UpdatePosition(w http.ResponseWriter, r *http.Re
 	if req.PositionType == "" {
 		req.PositionType = string(existing.PositionType)
 	}
-	if req.ShortName == nil || *req.ShortName == "" {
+	// 仅 nil 视为未携带；显式空串可清空 shortName（与 CoverImage/Description 等字段语义一致）
+	if req.ShortName == nil {
 		req.ShortName = existing.ShortName
 	}
 	if req.MajorIDs == nil {
@@ -608,7 +609,9 @@ func (h *PartnerCoBuildHandler) WithdrawScenario(w http.ResponseWriter, r *http.
 
 // ===== 场景任务 =====
 
-func scenarioTaskParams(scenarioID string, tenantID *string, req *CreateScenarioTaskRequest) *store.ScenarioTaskParams {
+// scenarioTaskParams 组装任务参数；租户由 service（CreateTask/UpdateTask）按场景归属强制写入，
+// 此处不再接收 tenantID（此前两个调用点均传 nil，属死参数）。
+func scenarioTaskParams(scenarioID string, req *CreateScenarioTaskRequest) *store.ScenarioTaskParams {
 	return &store.ScenarioTaskParams{
 		ScenarioID:          scenarioID,
 		Name:                req.Name,
@@ -628,7 +631,6 @@ func scenarioTaskParams(scenarioID string, tenantID *string, req *CreateScenario
 		AbilityPointIDs:     coalesceStringSlice(req.AbilityPointIDs),
 		ResourceIDs:         coalesceStringSlice(req.ResourceIDs),
 		EvalData:            jsonMapBytes(req.EvalData),
-		TenantID:            tenantID,
 	}
 }
 
@@ -659,7 +661,7 @@ func (h *PartnerCoBuildHandler) CreateTask(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-	task, err := h.Service.CreateTask(r.Context(), partnerTenantID, scenarioID, scenarioTaskParams(scenarioID, nil, &req))
+	task, err := h.Service.CreateTask(r.Context(), partnerTenantID, scenarioID, scenarioTaskParams(scenarioID, &req))
 	if err != nil {
 		respondCoBuildError(w, r, err, "场景方案不存在", "创建任务失败")
 		return
@@ -685,7 +687,7 @@ func (h *PartnerCoBuildHandler) UpdateTask(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	applyTaskPartialUpdate(&req, existing)
-	task, err := h.Service.UpdateTask(r.Context(), partnerTenantID, taskID, scenarioTaskParams(req.ScenarioID, nil, &req))
+	task, err := h.Service.UpdateTask(r.Context(), partnerTenantID, taskID, scenarioTaskParams(req.ScenarioID, &req))
 	if err != nil {
 		respondCoBuildError(w, r, err, "场景任务不存在", "更新任务失败")
 		return

@@ -379,16 +379,28 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	// 部分更新兜底：未携带字段回退已有值；企业归属强制本企业，不可改绑
 	applyExpertPartialUpdate(&e, existing)
 
+	// 密码校验前置：无效密码在落库前返回 400，避免「档案已更新但请求报错」的误导
+	if req.Password != "" {
+		if err := validatePassword(req.Password); err != nil {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+	// 绑定账号校验：提交的 user_id 必须属于本租户，防止跨租户悬空绑定/改绑他人账号
+	if e.UserID != nil {
+		u, err := h.Service.Store().Users().Get(r.Context(), tenantID, *e.UserID)
+		if err != nil || u.TenantID == nil || *u.TenantID != tenantID {
+			respondError(w, http.StatusBadRequest, "绑定账号不属于本租户")
+			return
+		}
+	}
+
 	if err := h.Service.Store().Alliance().UpdateExpert(r.Context(), id, tenantID, &e); err != nil {
 		respondServerError(w, r, err, "更新专家失败")
 		return
 	}
 	// 选填：重置专家账号登录密码
 	if req.Password != "" {
-		if err := validatePassword(req.Password); err != nil {
-			respondError(w, http.StatusBadRequest, err.Error())
-			return
-		}
 		if existing.UserID != nil {
 			if err := h.Service.ResetExpertPassword(r.Context(), *existing.UserID, req.Password); err != nil {
 				respondServerError(w, r, err, "重置专家密码失败")
