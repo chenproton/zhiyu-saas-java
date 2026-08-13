@@ -183,7 +183,7 @@ export default function PartnerCoBuildPositionsPage() {
       onDelete={async (item) => {
         await partnerCobuildPositionApi.delete(item.id)
         toast({ title: t('已删除') })
-        await refresh()
+        await list.refresh()
       }}
     />
   )
