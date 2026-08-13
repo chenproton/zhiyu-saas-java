@@ -100,7 +100,7 @@ export function TaskInfoCard({
         </Label>
         <div className="flex gap-1 mt-1.5">
           {([1, 2, 3, 4, 5] as const).map((n) => (
-            <button key={n} onClick={() => onDifficultyChange(n)}>
+            <button key={n} type="button" onClick={() => onDifficultyChange(n)}>
               <Star
                 className={cn(
                   'h-6 w-6',

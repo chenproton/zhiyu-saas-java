@@ -21,94 +21,6 @@ type ImportExportHandler struct {
 	Store *store.Store
 }
 
-var importExportEntities = map[string]importExportEntity{
-	"question_banks": {
-		displayName: "题库",
-		keyCol:      "name",
-		insertSQL: `
-			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool)
-			VALUES ($1, $2, $3, $4, 'draft', 0, $5, 'V1.0', 'tenant', FALSE)
-		`,
-		updateSQL:     `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
-		ownerCheckSQL: `SELECT creator_id, '{}'::uuid[] FROM question_banks WHERE id=$1`,
-		defaultCols:   []string{"id", "name", "description", "status", "created_at"},
-	},
-	"exams": {
-		displayName: "试卷",
-		keyCol:      "name",
-		insertSQL: `
-			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type)
-			VALUES ($1, $2, $3, $4, 'draft', 0, 60, $5, 'V1.0', 'tenant')
-		`,
-		updateSQL:     `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
-		ownerCheckSQL: `SELECT creator_id, '{}'::uuid[] FROM exams WHERE id=$1`,
-		defaultCols:   []string{"id", "name", "description", "status", "created_at"},
-	},
-	"courses": {
-		displayName: "课程",
-		keyCol:      "code",
-		insertSQL: `
-			INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id, co_creator_ids, node_count, resource_count, study_count)
-			VALUES ($1, $2, $3, $4, 'system', '导入', 'draft', $5, '{}', 0, 0, 0)
-		`,
-		updateSQL:     `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
-		ownerCheckSQL: `SELECT creator_id, co_creator_ids FROM courses WHERE id=$1`,
-		defaultCols:   []string{"id", "code", "name", "status", "created_at"},
-	},
-	"career_positions": {
-		displayName: "岗位",
-		keyCol:      "name",
-		insertSQL: `
-			INSERT INTO career_positions (id, tenant_id, name, short_name, position_type, status, created_by)
-			VALUES ($1, $2, $3, $4, 'other', 'draft', $5)
-		`,
-		updateSQL:     `UPDATE career_positions SET name=$1, updated_at=NOW() WHERE id=$2`,
-		ownerCheckSQL: `SELECT created_by, collaborators FROM career_positions WHERE id=$1`,
-		defaultCols:   []string{"id", "name", "short_name", "status", "created_at"},
-	},
-	"scenarios": {
-		displayName: "场景",
-		keyCol:      "name",
-		insertSQL: `
-			INSERT INTO scenarios (id, tenant_id, name, code, status, created_by, collaborators, version)
-			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'V1.0')
-		`,
-		updateSQL:     `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
-		ownerCheckSQL: `SELECT created_by, collaborators FROM scenarios WHERE id=$1`,
-		defaultCols:   []string{"id", "name", "code", "status", "created_at"},
-	},
-}
-
-type importExportEntity struct {
-	displayName string
-	keyCol      string
-	insertSQL   string
-	updateSQL   string
-	// ownerCheckSQL 覆盖时归属检查（返回 creator_id/created_by + 共建人数组列）
-	ownerCheckSQL string
-	defaultCols   []string
-}
-
-func importExportEntityNames() []string {
-	names := make([]string, 0, len(importExportEntities))
-	for k := range importExportEntities {
-		names = append(names, k)
-	}
-	return names
-}
-
-func importExportKeyColumns() []string {
-	cols := make([]string, 0, len(importExportEntities))
-	seen := make(map[string]bool)
-	for _, meta := range importExportEntities {
-		if !seen[meta.keyCol] {
-			seen[meta.keyCol] = true
-			cols = append(cols, meta.keyCol)
-		}
-	}
-	return cols
-}
-
 func (h *ImportExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -117,42 +29,35 @@ func (h *ImportExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entity := chi.URLParam(r, "entity")
-	entity, err := store.SanitizeIdentifier(entity, importExportEntityNames())
+	entity, err := store.SanitizeIdentifier(entity, store.GranularImportImportExportEntityNames())
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
 	}
-	meta := importExportEntities[entity]
+	meta, ok := store.GranularImportImportExportEntity(entity)
+	if !ok {
+		respondError(w, http.StatusBadRequest, "不支持的实体")
+		return
+	}
 
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	cols := strings.Join(meta.defaultCols, ", ")
-	rows, err := h.Store.Q().Query(r.Context(), fmt.Sprintf(`SELECT %s FROM %s WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1000`, cols, entity), tenantID)
+	rows, err := store.GranularImportExportImportExportRows(r.Context(), h.Store.Q(), entity, tenantID)
 	if err != nil {
 		respondServerError(w, r, err, "导出失败")
 		return
 	}
-	defer rows.Close()
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s-export-%s.csv", entity, time.Now().Format("20060102")))
 	cw := csv.NewWriter(w)
 	defer cw.Flush()
 
-	_ = cw.Write(meta.defaultCols)
-	fieldDescs := rows.FieldDescriptions()
-	values := make([]interface{}, len(fieldDescs))
-	scanArgs := make([]interface{}, len(fieldDescs))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-	for rows.Next() {
-		if err := rows.Scan(scanArgs...); err != nil {
-			continue
-		}
+	_ = cw.Write(meta.DefaultCols)
+	for _, values := range rows {
 		record := make([]string, len(values))
 		for i, v := range values {
 			record[i] = fmt.Sprintf("%v", v)
@@ -239,7 +144,7 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entity := chi.URLParam(r, "entity")
-	meta, ok := importExportEntities[entity]
+	meta, ok := store.GranularImportImportExportEntity(entity)
 	if !ok {
 		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
@@ -273,10 +178,10 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, row := range rows {
 		key := row.name
-		if meta.keyCol == "code" {
+		if meta.KeyCol == "code" {
 			key = row.code
 		}
-		_, exists := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, key)
+		_, exists := h.findExistingByKey(r.Context(), entity, tenantID, meta.KeyCol, key)
 		if exists {
 			result.Duplicates++
 			if len(result.DuplicateItems) < 100 {
@@ -302,7 +207,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entity := chi.URLParam(r, "entity")
-	meta, ok := importExportEntities[entity]
+	meta, ok := store.GranularImportImportExportEntity(entity)
 	if !ok {
 		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
@@ -345,35 +250,20 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	permissionSkipped := 0
 	for _, row := range rows {
 		key := row.name
-		if meta.keyCol == "code" {
+		if meta.KeyCol == "code" {
 			key = row.code
 		}
-		existingID, exists := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, key)
+		existingID, exists := h.findExistingByKey(r.Context(), entity, tenantID, meta.KeyCol, key)
 		if exists {
 			if overwrite {
 				// 归属检查：非本人创建且未参与共建的资源跳过覆盖（与 Excel 导入路径一致）
-				if meta.ownerCheckSQL != "" {
-					var creatorID *string
-					var coCreatorIDs []string
-					if err := h.Store.Q().QueryRow(r.Context(), meta.ownerCheckSQL, existingID).Scan(&creatorID, &coCreatorIDs); err == nil {
-						creator := ""
-						if creatorID != nil {
-							creator = *creatorID
-						}
-						if !canOverwriteContent(creator, coCreatorIDs, claims.UserID) {
-							permissionSkipped++
-							continue
-						}
+				if creator, coCreatorIDs, found := store.GranularImportImportExportOwnerCheck(r.Context(), h.Store.Q(), entity, existingID); found {
+					if !canOverwriteContent(creator, coCreatorIDs, claims.UserID) {
+						permissionSkipped++
+						continue
 					}
 				}
-				// 按 updateSQL 占位符数传参：2 参（仅 name）/ 3 参（name, code）
-				updateArgs := []any{row.name}
-				if strings.Count(meta.updateSQL, "$") == 3 {
-					updateArgs = append(updateArgs, row.code)
-				}
-				updateArgs = append(updateArgs, existingID)
-				_, execErr := h.Store.Q().Exec(r.Context(), meta.updateSQL, updateArgs...)
-				if execErr != nil {
+				if err := store.GranularImportImportExportUpdate(r.Context(), h.Store.Q(), entity, row.name, row.code, existingID); err != nil {
 					failed++
 					continue
 				}
@@ -384,21 +274,20 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 				// 追加 4 位随机后缀生成新的唯一键，按新对象导入
 				name, code := row.name, row.code
 				for i := 0; i < 20; i++ {
-					if meta.keyCol == "code" {
+					if meta.KeyCol == "code" {
 						code = suffixedName(row.code)
-						if _, again := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, code); !again {
+						if _, again := h.findExistingByKey(r.Context(), entity, tenantID, meta.KeyCol, code); !again {
 							break
 						}
 					} else {
 						name = suffixedName(row.name)
-						if _, again := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, name); !again {
+						if _, again := h.findExistingByKey(r.Context(), entity, tenantID, meta.KeyCol, name); !again {
 							break
 						}
 					}
 				}
 				id := uuid.NewString()
-				_, execErr := h.Store.Q().Exec(r.Context(), meta.insertSQL, id, tenantID, name, code, claims.UserID)
-				if execErr != nil {
+				if err := store.GranularImportImportExportInsert(r.Context(), h.Store.Q(), entity, id, tenantID, name, code, claims.UserID); err != nil {
 					failed++
 					continue
 				}
@@ -410,8 +299,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := uuid.NewString()
-		_, execErr := h.Store.Q().Exec(r.Context(), meta.insertSQL, id, tenantID, row.name, row.code, claims.UserID)
-		if execErr != nil {
+		if err := store.GranularImportImportExportInsert(r.Context(), h.Store.Q(), entity, id, tenantID, row.name, row.code, claims.UserID); err != nil {
 			failed++
 			continue
 		}
@@ -423,24 +311,13 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		Failed:            failed,
 		Skipped:           skipped,
 		PermissionSkipped: permissionSkipped,
-		Entity:            meta.displayName,
+		Entity:            meta.DisplayName,
 		Errors:            parseErrors,
 	})
 }
 
 func (h *ImportExportHandler) findExistingByKey(ctx context.Context, entity, tenantID, keyCol, key string) (string, bool) {
-	entity, err := store.SanitizeIdentifier(entity, importExportEntityNames())
-	if err != nil {
-		return "", false
-	}
-	keyCol, err = store.SanitizeIdentifier(keyCol, importExportKeyColumns())
-	if err != nil {
-		return "", false
-	}
-	var id string
-	query := fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND %s=$2 LIMIT 1", entity, keyCol)
-	err = h.Store.Q().QueryRow(ctx, query, tenantID, key).Scan(&id)
-	return id, err == nil && id != ""
+	return store.GranularImportFindImportExportByKey(ctx, h.Store.Q(), entity, tenantID, keyCol, key)
 }
 
 func getCol(record []string, idx map[string]int, col string) string {

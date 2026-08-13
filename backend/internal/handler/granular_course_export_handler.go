@@ -111,51 +111,17 @@ func (h *GranularCourseExportHandler) fillCoursesData(ctx context.Context, f *ex
 }
 
 func (h *GranularCourseExportHandler) lookupCourseKnowledgePointNames(ctx context.Context, tenantID, courseID string) []string {
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT kp.name FROM knowledge_points kp
-		JOIN course_knowledge_bindings cb ON cb.knowledge_point_id = kp.id
-		WHERE cb.course_id=$1 AND cb.bind_type='course' AND cb.tenant_id=$2
-		ORDER BY kp.name
-	`, courseID, tenantID)
+	names, err := store.GranularImportListCourseKnowledgePointNamesForExport(ctx, h.Store.Q(), courseID, tenantID)
 	if err != nil {
 		return nil
-	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
-			slog.Warn("导出颗粒课知识点行扫描失败", "error", err)
-			continue
-		}
-		if n != "" {
-			names = append(names, n)
-		}
 	}
 	return names
 }
 
 func (h *GranularCourseExportHandler) lookupCourseResourceNames(ctx context.Context, tenantID, courseID string) []string {
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT r.name FROM resource_library r
-		JOIN course_resource_bindings cb ON cb.resource_id = r.id
-		WHERE cb.course_id=$1 AND cb.tenant_id=$2
-		ORDER BY r.name
-	`, courseID, tenantID)
+	names, err := store.GranularImportListCourseResourceNamesForExport(ctx, h.Store.Q(), courseID, tenantID)
 	if err != nil {
 		return nil
-	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
-			slog.Warn("导出颗粒课资源行扫描失败", "error", err)
-			continue
-		}
-		if n != "" {
-			names = append(names, n)
-		}
 	}
 	return names
 }

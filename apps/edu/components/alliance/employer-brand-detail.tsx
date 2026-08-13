@@ -40,6 +40,7 @@ import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand, CareerPosition } from '@/lib/types'
+import { formatSalaryRange } from '@/lib/format-salary'
 
 interface HiredStudent {
   studentId: string
@@ -59,10 +60,7 @@ interface PositionSnapshot {
 }
 
 function salaryText(p: PositionSnapshot) {
-  if (p.salaryMin == null && p.salaryMax == null) return '-'
-  if (p.salaryMin == null) return `${p.salaryMax}K`
-  if (p.salaryMax == null) return `${p.salaryMin}K`
-  return `${p.salaryMin}-${p.salaryMax}K`
+  return formatSalaryRange(p) ?? '-'
 }
 
 interface EmployerBrandDetailProps {

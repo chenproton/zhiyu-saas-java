@@ -25,6 +25,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { allianceLabel } from '@zhiyu/shared-types'
 import {
   RelatedObjectCard,
@@ -102,17 +103,26 @@ export default function AlliancePublicAchievementDetailPage() {
   useEffect(() => {
     if (!id || !tenantId) return
     const q = `?tenantId=${tenantId}`
+    // 关联企业/项目分页全量拉取：public 接口默认 100 条截断，避免学校链接对象超量时关联信息静默缺失
     Promise.all([
       portalRequest<AllianceAchievement>(`/alliance/public/achievements/${id}${q}`),
-      portalRequest<{ items: AllianceEnterprise[] }>(`/alliance/public/enterprises${q}`),
-      portalRequest<{ items: AllianceProject[] }>(`/alliance/public/projects${q}`),
+      fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: AllianceEnterprise[] }>(
+          `/alliance/public/enterprises${q}&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
+      ),
+      fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: AllianceProject[] }>(
+          `/alliance/public/projects${q}&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
+      ),
     ])
-      .then(([a, entsRes, projsRes]) => {
+      .then(([a, ents, projs]) => {
         setAchievement(a)
         const entIds = a.enterpriseIds ?? []
-        setPartners((entsRes.items ?? []).filter((e) => entIds.includes(e.id)))
+        setPartners(ents.filter((e) => entIds.includes(e.id)))
         const pid = (a.projectIds ?? [])[0]
-        setRelatedProject((projsRes.items ?? []).find((p) => p.id === pid) ?? null)
+        setRelatedProject(projs.find((p) => p.id === pid) ?? null)
       })
       .catch((err) => {
         reportError(err, { source: '加载成果详情' })

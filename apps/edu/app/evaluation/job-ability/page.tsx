@@ -53,17 +53,28 @@ export default function JobAbilityPage() {
         setPositions(positionRes.items)
         setRules(ruleRes.items)
         // 统计每条规则对应岗位下已配置的能力点数（以岗位能力绑定为准）
-        const counts: Record<string, number> = {}
-        await Promise.all(
-          ruleRes.items.map(async (rule) => {
+        // 同一岗位可能关联多条规则：按岗位 id 去重后只拉一次模型，避免每规则一次 getPositionModel 的 N+1 请求
+        const positionIds = Array.from(
+          new Set(ruleRes.items.map((rule) => rule.careerPositionId)),
+        )
+        const modelResults = await Promise.all(
+          positionIds.map(async (positionId) => {
             try {
-              const model = await certApi.getPositionModel(rule.careerPositionId)
-              counts[rule.id] = model.domains.reduce((sum, d) => sum + d.points.length, 0)
+              const model = await certApi.getPositionModel(positionId)
+              return {
+                positionId,
+                count: model.domains.reduce((sum, d) => sum + d.points.length, 0),
+              }
             } catch {
-              counts[rule.id] = 0
+              return { positionId, count: 0 }
             }
           }),
         )
+        const counts: Record<string, number> = {}
+        const countByPosition = new Map(modelResults.map((m) => [m.positionId, m.count]))
+        ruleRes.items.forEach((rule) => {
+          counts[rule.id] = countByPosition.get(rule.careerPositionId) ?? 0
+        })
         if (!cancelled) setPointCounts(counts)
       })
       .catch((err) => {

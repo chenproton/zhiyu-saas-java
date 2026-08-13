@@ -144,7 +144,11 @@ func (s *ResourceBindingStore) Bind(ctx context.Context, tenantID, bindTable, bi
 		return "", err
 	}
 	if afterBind != nil {
-		_ = afterBind(ctx, s.q, bindID, resourceID)
+		// 与 Unbind 对称：回调失败必须上抛，否则绑定已插入而课程聚合字段
+		//（courses.resource_ids/resource_count）未同步，静默产生数据不一致
+		if err := afterBind(ctx, s.q, bindID, resourceID); err != nil {
+			return "", err
+		}
 	}
 	return id, nil
 }

@@ -134,19 +134,3 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	crudDelete(w, r, h.crud())
 }
-
-// derefInt 指针解引用，nil 回退默认值。
-func derefInt(p *int, fallback int) int {
-	if p == nil {
-		return fallback
-	}
-	return *p
-}
-
-// derefBool 指针解引用，nil 回退默认值。
-func derefBool(p *bool, fallback bool) bool {
-	if p == nil {
-		return fallback
-	}
-	return *p
-}

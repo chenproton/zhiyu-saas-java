@@ -82,31 +82,18 @@ func (h *ExamExportHandler) fillExamsData(ctx context.Context, f *excelize.File,
 			continue
 		}
 
-		rows, err := h.Store.Q().Query(ctx, `
-			SELECT content, score
-			FROM exam_questions
-			WHERE exam_id=$1 AND tenant_id=$2
-			ORDER BY sort_order
-		`, eid, tenantID)
+		questions, err := store.GranularImportListExamQuestionsForExport(ctx, h.Store.Q(), eid, tenantID)
 		if err != nil {
 			slog.Warn("导出试卷题目查询失败", "examId", eid, "error", err)
 			continue
 		}
-		for rows.Next() {
-			var content string
-			var score float64
-			if err := rows.Scan(&content, &score); err != nil {
-				slog.Warn("导出试卷题目行扫描失败", "examId", eid, "error", err)
-				continue
-			}
-
+		for _, q := range questions {
 			setCell("试卷题目", fmt.Sprintf("A%d", questionRow), examName)
-			setCell("试卷题目", fmt.Sprintf("B%d", questionRow), content)
-			setCell("试卷题目", fmt.Sprintf("C%d", questionRow), fmt.Sprintf("%.2f", score))
+			setCell("试卷题目", fmt.Sprintf("B%d", questionRow), q.Content)
+			setCell("试卷题目", fmt.Sprintf("C%d", questionRow), fmt.Sprintf("%.2f", q.Score))
 			f.SetRowHeight("试卷题目", questionRow, 24)
 			questionRow++
 		}
-		rows.Close()
 	}
 
 	return nil

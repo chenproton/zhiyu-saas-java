@@ -86,35 +86,10 @@ func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Reque
 func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *excelize.File, tenantID string, ids []string) error {
 	dataStyle := makeDataStyle(f)
 
-	var query string
-	var args []interface{}
-	if len(ids) > 0 {
-		placeholders := make([]string, len(ids))
-		for i := range ids {
-			placeholders[i] = fmt.Sprintf("$%d", i+2)
-			args = append(args, ids[i])
-		}
-		query = fmt.Sprintf(`
-			SELECT id, name, type_id, parent_id, sort_order
-			FROM organizations
-			WHERE tenant_id=$1 AND id IN (%s)
-			ORDER BY sort_order, name
-		`, strings.Join(placeholders, ","))
-	} else {
-		query = `
-			SELECT id, name, type_id, parent_id, sort_order
-			FROM organizations
-			WHERE tenant_id=$1
-			ORDER BY sort_order, name
-		`
-	}
-	args = append([]interface{}{tenantID}, args...)
-
-	rows, err := h.Store.Q().Query(ctx, query, args...)
+	storeOrgs, err := store.ListExportOrganizations(ctx, h.Store.Q(), tenantID, ids)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
 	type orgRow struct {
 		id       string
@@ -125,19 +100,16 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 		sort     int
 	}
 	var orgs []orgRow
-	for rows.Next() {
-		var r orgRow
-		if err := rows.Scan(&r.id, &r.name, &r.typeID, &r.parentID, &r.sort); err != nil {
-			slog.Warn("导出组织行扫描失败", "error", err)
-			continue
-		}
-		orgs = append(orgs, r)
+	for _, o := range storeOrgs {
+		orgs = append(orgs, orgRow{id: o.ID, name: o.Name, typeID: o.TypeID, parentID: o.ParentID, sort: o.Sort})
 	}
 
 	for i := range orgs {
 		var typeName string
-		if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM org_types WHERE id=$1`, orgs[i].typeID).Scan(&typeName); err != nil {
+		if name, err := store.GetOrgTypeName(ctx, h.Store.Q(), orgs[i].typeID); err != nil {
 			slog.Warn("导出组织类型名查询失败", "typeId", orgs[i].typeID, "error", err)
+		} else {
+			typeName = name
 		}
 		orgs[i].typeName = typeName
 	}
@@ -146,8 +118,10 @@ func (h *ResourceExportHandler) fillOrganizations(ctx context.Context, f *exceli
 	for _, o := range orgs {
 		if o.parentID != nil && *o.parentID != "" {
 			var name string
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM organizations WHERE id=$1`, *o.parentID).Scan(&name); err != nil {
+			if n, err := store.GetOrganizationName(ctx, h.Store.Q(), *o.parentID); err != nil {
 				slog.Warn("导出组织上级名称查询失败", "orgId", *o.parentID, "error", err)
+			} else {
+				name = n
 			}
 			if name != "" {
 				parentNames[*o.parentID] = name
@@ -187,32 +161,10 @@ func (h *ResourceExportHandler) fillTeachers(ctx context.Context, f *excelize.Fi
 func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File, tenantID, roleCode string, ids []string) error {
 	dataStyle := makeDataStyle(f)
 
-	var idFilter string
-	var args []interface{}
-	args = append(args, tenantID, roleCode)
-	if len(ids) > 0 {
-		placeholders := make([]string, len(ids))
-		for i := range ids {
-			placeholders[i] = fmt.Sprintf("$%d", i+3)
-			args = append(args, ids[i])
-		}
-		idFilter = fmt.Sprintf("AND u.id IN (%s)", strings.Join(placeholders, ","))
-	}
-
-	query := fmt.Sprintf(`
-		SELECT u.id, u.username, u.name, u.status, u.org_node_id, u.title_ids
-		FROM users u
-		JOIN user_roles ur ON ur.user_id = u.id
-		JOIN roles r ON r.id = ur.role_id
-		WHERE u.tenant_id=$1 AND r.code=$2 AND r.tenant_id=$1 %s
-		ORDER BY u.name, u.username
-	`, idFilter)
-
-	rows, err := h.Store.Q().Query(ctx, query, args...)
+	storeUsers, err := store.ListExportUsers(ctx, h.Store.Q(), tenantID, roleCode, ids)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
 	type userRow struct {
 		id        string
@@ -223,13 +175,8 @@ func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File,
 		titleIDs  []string
 	}
 	var users []userRow
-	for rows.Next() {
-		var u userRow
-		if err := rows.Scan(&u.id, &u.username, &u.name, &u.status, &u.orgNodeID, &u.titleIDs); err != nil {
-			slog.Warn("导出用户行扫描失败", "error", err)
-			continue
-		}
-		users = append(users, u)
+	for _, u := range storeUsers {
+		users = append(users, userRow{id: u.ID, username: u.Username, name: u.Name, status: u.Status, orgNodeID: u.OrgNodeID, titleIDs: u.TitleIDs})
 	}
 
 	sheetName := "学生列表"
@@ -282,11 +229,7 @@ func (h *ResourceExportHandler) buildAncestorChain(ctx context.Context, tenantID
 			break
 		}
 		seen[currentID] = true
-		var name string
-		var parentID *string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, parent_id FROM organizations WHERE tenant_id=$1 AND id=$2
-		`, tenantID, currentID).Scan(&name, &parentID)
+		name, parentID, err := store.GetOrgNodeNameAndParent(ctx, h.Store.Q(), tenantID, currentID)
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +249,9 @@ func (h *ResourceExportHandler) lookupTitleNames(ctx context.Context, tenantID s
 			continue
 		}
 		var name string
-		h.Store.Q().QueryRow(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 AND id=$2`, tenantID, id).Scan(&name)
+		if n, err := store.GetStaffTitleName(ctx, h.Store.Q(), tenantID, id); err == nil {
+			name = n
+		}
 		if name != "" {
 			names = append(names, name)
 		}

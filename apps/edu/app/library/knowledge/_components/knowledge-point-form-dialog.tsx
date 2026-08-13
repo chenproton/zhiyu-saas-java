@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -62,16 +62,23 @@ export function KnowledgePointFormDialog({
   const [tagIds, setTagIds] = useState<string[]>([])
   const [glSelectOpen, setGlSelectOpen] = useState(false)
 
+  // initialValues 由父组件每次渲染内联新建（引用不稳定），effect 若依赖该对象引用，
+  // 父组件任意重渲染都会重置表单（清空用户输入、撤销刚关联的颗粒课）。
+  // 改为仅在对话框「关闭 → 打开」时初始化一次，打开期间不再随 initialValues 变化重置。
+  const initializedForOpenRef = useRef(false)
+
   useEffect(() => {
-    ;(async () => {
-      if (open) {
-        setName(initialValues?.name ?? '')
-        setDescription(initialValues?.description ?? '')
-        setCode(initialValues?.code ?? (mode === 'edit' ? '' : generateKpCode()))
-        setGranularLessonIds(initialValues?.granularLessonIds ?? [])
-        setTagIds(initialValues?.tagIds ?? [])
-      }
-    })()
+    if (!open) {
+      initializedForOpenRef.current = false
+      return
+    }
+    if (initializedForOpenRef.current) return
+    initializedForOpenRef.current = true
+    setName(initialValues?.name ?? '')
+    setDescription(initialValues?.description ?? '')
+    setCode(initialValues?.code ?? (mode === 'edit' ? '' : generateKpCode()))
+    setGranularLessonIds(initialValues?.granularLessonIds ?? [])
+    setTagIds(initialValues?.tagIds ?? [])
   }, [open, initialValues, mode])
 
   const title =

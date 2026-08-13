@@ -164,14 +164,23 @@ func (s *ExamStore) UpdateQuestionScore(ctx context.Context, examID, questionID 
 }
 
 // BulkUpdateScores 事务内批量更新分数并重算总分。
+// 单条 UPDATE ... FROM unnest 批量写入，替代按题目循环逐条 UPDATE 的写放大。
 func (s *ExamStore) BulkUpdateScores(ctx context.Context, tx Queryer, examID string, scores map[string]float64) error {
+	ids := make([]string, 0, len(scores))
+	vals := make([]float64, 0, len(scores))
 	for questionID, score := range scores {
 		if score <= 0 {
 			continue
 		}
+		ids = append(ids, questionID)
+		vals = append(vals, score)
+	}
+	if len(ids) > 0 {
 		if _, err := tx.Exec(ctx, `
-			UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
-		`, score, examID, questionID); err != nil {
+			UPDATE exam_questions eq SET score = u.score
+			FROM unnest($1::uuid[], $2::float8[]) AS u(question_id, score)
+			WHERE eq.exam_id = $3 AND eq.question_id = u.question_id
+		`, ids, vals, examID); err != nil {
 			return err
 		}
 	}

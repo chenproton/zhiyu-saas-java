@@ -43,6 +43,7 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 		a.RelatedCourses = relatedCourses
 		a.SecondaryColleges = colleges
 		a.CreatedBy = createdBy
+		a.IsPublic = &isPublic
 		items = append(items, a)
 	}
 	return items, rows.Err()
@@ -144,6 +145,8 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 	a.RelatedScenes = relatedScenes
 	a.RelatedCourses = relatedCourses
 	a.SecondaryColleges = colleges
+	a.CreatedBy = createdBy
+	a.IsPublic = &isPublic
 	return &a, nil
 }
 

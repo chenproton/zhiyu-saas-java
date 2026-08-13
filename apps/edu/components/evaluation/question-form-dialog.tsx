@@ -151,6 +151,7 @@ export function QuestionFormDialog({
         setDifficulty(question.difficulty || 'medium')
         setScore(question.score ?? 0)
         setKnowledgePointIds(question.knowledgePoints || [])
+        setShuffleOptions(!!question.shuffleOptions)
       } else {
         setType(defaultType || 'single')
         setContent('')
@@ -160,6 +161,7 @@ export function QuestionFormDialog({
         setDifficulty('medium')
         setScore(0)
         setKnowledgePointIds([])
+        setShuffleOptions(false)
       }
       setKnowledgeOpen(false)
       setAdvancedOpen(false)
@@ -213,6 +215,7 @@ export function QuestionFormDialog({
       answer: finalAnswer,
       difficulty,
       knowledgePoints: knowledgePointIds.length > 0 ? knowledgePointIds : undefined,
+      shuffleOptions,
     }
 
     if (type === 'single' || type === 'multiple') {
@@ -220,13 +223,14 @@ export function QuestionFormDialog({
     }
 
     return data
-  }, [type, content, analysis, answer, difficulty, knowledgePointIds, options, score])
+  }, [type, content, analysis, answer, difficulty, knowledgePointIds, options, score, shuffleOptions])
 
   const resetForNext = useCallback(() => {
     setContent('')
     setOptions(['', '', '', ''])
     setAnswer(type === 'multiple' ? [] : '')
     setAnalysis('')
+    setShuffleOptions(false)
   }, [type])
 
   const handleSubmit = useCallback(() => {

@@ -65,8 +65,8 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	}
 
 	// 校验方案归属当前租户，防跨租户清空/替换他人方案课程
-	var tenantOf string
-	if err := h.Store.Q().QueryRow(r.Context(), `SELECT tenant_id FROM training_programs WHERE id=$1`, programID).Scan(&tenantOf); err != nil {
+	tenantOf, err := store.CourseImportTrainingProgramTenantID(r.Context(), h.Store.Q(), programID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "方案不存在")
 		return
 	}
@@ -170,15 +170,13 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 		c := pcCourse{ID: uuid.NewString(), Credits: credits, Hours: hours, Nature: nature}
 
 		if positionName != "" {
-			var pid string
-			if err := h.Store.Q().QueryRow(r.Context(), `SELECT id FROM career_positions WHERE name=$1 AND tenant_id=$2 LIMIT 1`, positionName, h.currentTenant(r)).Scan(&pid); err == nil {
+			if pid, err := store.CourseImportFindCareerPositionIDByName(r.Context(), h.Store.Q(), h.currentTenant(r), positionName); err == nil {
 				c.PositionID = &pid
 				c.Name = positionName
 			}
 		}
 		if c.PositionID == nil && courseName != "" {
-			var id, n string
-			if err := h.Store.Q().QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' AND tenant_id=$2 LIMIT 1`, courseName, h.currentTenant(r)).Scan(&id, &n); err == nil {
+			if id, n, err := store.CourseImportFindSystemCourseIDAndName(r.Context(), h.Store.Q(), h.currentTenant(r), courseName); err == nil {
 				c.Name = n
 				if c.Name == "" {
 					c.Name = courseName

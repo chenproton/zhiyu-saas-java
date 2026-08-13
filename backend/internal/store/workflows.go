@@ -25,14 +25,27 @@ func (s *WorkflowStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 
 // Get 查询单个审批流程。
 func (s *WorkflowStore) Get(ctx context.Context, id, tenantID string) (*domain.Workflow, error) {
+	return scanWorkflow(s.q.QueryRow(ctx, `
+		SELECT id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at
+		FROM workflows WHERE id = $1 AND tenant_id IS NOT DISTINCT FROM $2
+	`, id, tenantID).Scan)
+}
+
+// fetchWorkflowByID 仅按 id 回查（Create 使用：tenant_id 可为 NULL，
+// 空串参数无法命中 NULL 行，此前导致全局流程插入成功后回查失败）。
+func (s *WorkflowStore) fetchWorkflowByID(ctx context.Context, id string) (*domain.Workflow, error) {
+	return scanWorkflow(s.q.QueryRow(ctx, `
+		SELECT id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at
+		FROM workflows WHERE id = $1
+	`, id).Scan)
+}
+
+// scanWorkflow 单行审批流程扫描（Get/fetchWorkflowByID/ScanWorkflowRows 共用）。
+func scanWorkflow(scan func(dest ...any) error) (*domain.Workflow, error) {
 	var w domain.Workflow
 	var tenantIDPtr, description, scene *string
 	var majorIds domain.StringSlice
-	err := s.q.QueryRow(ctx, `
-		SELECT id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at
-		FROM workflows WHERE id = $1 AND tenant_id IS NOT DISTINCT FROM $2
-	`, id, tenantID).Scan(&w.ID, &tenantIDPtr, &w.Name, &scene, &description, &w.Steps, &majorIds, &w.UsageCount, &w.Status, &w.CreatedAt)
-	if err != nil {
+	if err := scan(&w.ID, &tenantIDPtr, &w.Name, &scene, &description, &w.Steps, &majorIds, &w.UsageCount, &w.Status, &w.CreatedAt); err != nil {
 		return nil, err
 	}
 	w.TenantID = tenantIDPtr
@@ -53,11 +66,8 @@ func (s *WorkflowStore) Create(ctx context.Context, tenantID *string, p *Workflo
 	if err != nil {
 		return nil, err
 	}
-	tenant := ""
-	if tenantID != nil {
-		tenant = *tenantID
-	}
-	return s.Get(ctx, id, tenant)
+	// tenant_id 可为 NULL（全局流程），按空串回查无法命中，仅按 id 回查
+	return s.fetchWorkflowByID(ctx, id)
 }
 
 // Update 更新审批流程。
@@ -122,17 +132,11 @@ func (s *WorkflowStore) ListConfig() ListQueryConfig[domain.Workflow] {
 func ScanWorkflowRows(rows pgx.Rows) ([]domain.Workflow, error) {
 	items := make([]domain.Workflow, 0)
 	for rows.Next() {
-		var w domain.Workflow
-		var tenantID, description, scene *string
-		var majorIds domain.StringSlice
-		if err := rows.Scan(&w.ID, &tenantID, &w.Name, &scene, &description, &w.Steps, &majorIds, &w.UsageCount, &w.Status, &w.CreatedAt); err != nil {
+		w, err := scanWorkflow(rows.Scan)
+		if err != nil {
 			return nil, err
 		}
-		w.TenantID = tenantID
-		w.Scene = scene
-		w.Description = description
-		w.MajorIds = majorIds
-		items = append(items, w)
+		items = append(items, *w)
 	}
 	return items, rows.Err()
 }

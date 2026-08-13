@@ -47,6 +47,13 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
 | 连接数据库 | `psql "$DATABASE_URL"` |
 | 回滚部署 | `git checkout <上一个tag>` 后 `./deploy.sh`，禁止手动登服务器改代码 |
 
+**打包/迁移工具**（deploy.sh 之外的独立脚本）：
+
+| 工具 | 命令 | 用途 |
+|------|------|------|
+| 离线实施包打包 | `./scripts/package-release.sh v1.0.0` | 生成 `release/zhiyu-saas-v1.0.0/` 交付目录与 tar.gz（无源码，客户机复制后执行 install.sh；需在可联网开发机执行，依赖本地 docker/go/pnpm 与 offline/ 资源） |
+| 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` | 把旧布局 `/uploads/<uuid>` 文件归置到租户子目录并回写 DB URL（幂等可重跑；deploy.sh 检测到旧布局文件时会提示执行） |
+
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
 
 ## 五、前端组件复用

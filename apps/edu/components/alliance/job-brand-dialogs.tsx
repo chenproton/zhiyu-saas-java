@@ -20,16 +20,15 @@ import {
   convertApiCertificateToLocal,
 } from '@/lib/converters/job-converters'
 import type { JobBrand } from '@/lib/types'
+import { formatSalaryRange } from '@/lib/format-salary'
 import type { CareerPosition, PositionResponsibility, PositionCertificate } from '@/lib/types/job'
 import type { Position } from '@/lib/types/job-source'
 
 const brandType = 'job'
 
+// 委托 lib/format-salary 单一实现；保持空态 '-' 的既有行为
 export function salaryText(p: { salaryMin?: number; salaryMax?: number }) {
-  if (p.salaryMin == null && p.salaryMax == null) return '-'
-  if (p.salaryMin == null) return `${p.salaryMax}K`
-  if (p.salaryMax == null) return `${p.salaryMin}K`
-  return `${p.salaryMin}-${p.salaryMax}K`
+  return formatSalaryRange(p) ?? '-'
 }
 
 export function positionTypeLabel(type?: string, t?: (k: string) => string) {

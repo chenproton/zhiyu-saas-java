@@ -137,7 +137,8 @@ func (h *ExamResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询考试结果失败")
 		return
 	}
-	if result.TenantID != nil && claims.TenantID != nil && *result.TenantID != *claims.TenantID {
+	// 租户校验不可在任一缺失时跳过：无租户 token 一律拒绝，防止越权读取他租户成绩
+	if claims.TenantID == nil || result.TenantID == nil || *result.TenantID != *claims.TenantID {
 		respondError(w, http.StatusNotFound, "考试结果不存在")
 		return
 	}

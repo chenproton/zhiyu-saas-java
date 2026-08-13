@@ -53,63 +53,47 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 	var posRows []posRow
 
 	for _, pid := range positionIDs {
-		var name, shortName, positionType, desc, careerPath string
-		var salaryMin, salaryMax *int
-		var industryID, batchID *string
-		var requirements []string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, COALESCE(short_name,''), position_type, COALESCE(description,''),
-				COALESCE(career_path,''), salary_min, salary_max, industry_id, requirements, batch_id
-			FROM career_positions WHERE id=$1 AND tenant_id=$2
-		`, pid, tenantID).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements, &batchID)
+		info, err := store.GetPositionExportInfo(ctx, h.Store.Q(), tenantID, pid)
 		if err != nil {
 			slog.Warn("导出岗位行跳过", "positionId", pid, "error", err)
 			continue
 		}
+		name := info.Name
+		shortName := info.ShortName
+		positionType := info.PositionType
+		desc := info.Description
+		careerPath := info.CareerPath
+		salaryMin := info.SalaryMin
+		salaryMax := info.SalaryMax
+		industryID := info.IndustryID
+		requirements := info.Requirements
+		batchID := info.BatchID
 
 		industryName := ""
 		if industryID != nil && *industryID != "" {
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM industries WHERE id=$1 AND tenant_id=$2`, *industryID, tenantID).Scan(&industryName); err != nil {
+			if n, err := store.FindIndustryNameByID(ctx, h.Store.Q(), tenantID, *industryID); err != nil {
 				slog.Warn("导出岗位行业名查询失败", "industryId", *industryID, "error", err)
+			} else {
+				industryName = n
 			}
 		}
 
-		var majorNames []string
-		majRows, err := h.Store.Q().Query(ctx, `SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id=m.id JOIN career_positions cp ON cp.id=cpm.career_position_id WHERE cpm.career_position_id=$1 AND cp.tenant_id=$2`, pid, tenantID)
+		majorNames, err := store.ListPositionMajorNames(ctx, h.Store.Q(), tenantID, pid)
 		if err != nil {
 			slog.Warn("导出岗位专业列表查询失败", "positionId", pid, "error", err)
-		} else {
-			for majRows.Next() {
-				var mn string
-				if err := majRows.Scan(&mn); err != nil {
-					slog.Warn("导出岗位专业行扫描失败", "positionId", pid, "error", err)
-					continue
-				}
-				majorNames = append(majorNames, mn)
-			}
-			majRows.Close()
 		}
 
-		var certNames []string
-		certRows, err := h.Store.Q().Query(ctx, `SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id=cl.id WHERE pc.career_position_id=$1 AND pc.tenant_id=$2`, pid, tenantID)
+		certNames, err := store.ListPositionCertNames(ctx, h.Store.Q(), tenantID, pid)
 		if err != nil {
 			slog.Warn("导出岗位证书列表查询失败", "positionId", pid, "error", err)
-		} else {
-			for certRows.Next() {
-				var cn string
-				if err := certRows.Scan(&cn); err != nil {
-					slog.Warn("导出岗位证书行扫描失败", "positionId", pid, "error", err)
-					continue
-				}
-				certNames = append(certNames, cn)
-			}
-			certRows.Close()
 		}
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM batches WHERE id=$1 AND tenant_id=$2`, *batchID, tenantID).Scan(&batchName); err != nil {
+			if n, err := store.FindBatchNameByID(ctx, h.Store.Q(), tenantID, *batchID); err != nil {
 				slog.Warn("导出岗位批次名查询失败", "batchId", *batchID, "error", err)
+			} else {
+				batchName = n
 			}
 		}
 
@@ -157,30 +141,26 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 
 	bindRow := 3
 	for _, pid := range positionIDs {
-		var positionName string
-		if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1 AND tenant_id=$2`, pid, tenantID).Scan(&positionName); err != nil {
+		positionName := ""
+		if n, err := store.FindPositionNameByID(ctx, h.Store.Q(), tenantID, pid); err != nil {
 			slog.Warn("导出岗位绑定名称查询失败", "positionId", pid, "error", err)
+		} else {
+			positionName = n
 		}
 
-		bindRows, err := h.Store.Q().Query(ctx, `
-			SELECT pr.name, ap.name, ap.attributes, pab.attributes, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
-			FROM position_ability_bindings pab
-			JOIN position_responsibilities pr ON pr.id = pab.responsibility_id
-			JOIN ability_points ap ON ap.id = pab.ability_point_id
-			WHERE pab.career_position_id=$1 AND pab.tenant_id=$2
-			ORDER BY pr.sort_order
-		`, pid, tenantID)
+		bindRows, err := store.ListPositionAbilityBindings(ctx, h.Store.Q(), tenantID, pid)
 		if err != nil {
 			slog.Warn("导出岗位能力绑定查询失败", "positionId", pid, "error", err)
 			continue
 		}
-		for bindRows.Next() {
-			var respName, abilityName, domain, level, rubricDesc string
-			var attributes, abilityAttrs []string
-			if err := bindRows.Scan(&respName, &abilityName, &abilityAttrs, &attributes, &domain, &level, &rubricDesc); err != nil {
-				slog.Warn("导出岗位能力绑定行扫描失败", "positionId", pid, "error", err)
-				continue
-			}
+		for _, b := range bindRows {
+			respName := b.ResponsibilityName
+			abilityName := b.AbilityName
+			attributes := b.BindingAttributes
+			abilityAttrs := b.AbilityAttributes
+			domain := b.Domain
+			level := b.RequiredLevel
+			rubricDesc := b.RubricDescription
 
 			attrStr := strings.Join(attributes, ",")
 			if attrStr == "" {
@@ -197,7 +177,6 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			f.SetRowHeight("工作职责与能力点", bindRow, 24)
 			bindRow++
 		}
-		bindRows.Close()
 	}
 
 	return nil

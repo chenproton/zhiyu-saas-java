@@ -39,6 +39,7 @@ import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
 import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
+import { getWeekStart, getWeekEnd, getWeeksInMonth, getWeekIndex, getWeekTargetDate } from '@/lib/schedule-utils'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { formatDate } from '@/lib/format-utils'
 import {
@@ -277,25 +278,6 @@ interface DashboardSelectedCourse {
   students: number
 }
 
-function getWeekStart(date: Date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(d.setDate(diff))
-}
-function getWeekEnd(weekStart: Date) {
-  const end = new Date(weekStart)
-  end.setDate(end.getDate() + 6)
-  return end
-}
-function getWeeksInMonth(year: number, month: number) {
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const startDay = firstDay.getDay() || 7
-  const totalDays = lastDay.getDate()
-  return Math.ceil((totalDays + startDay - 1) / 7)
-}
-
 function getCourseUrls(event: TeacherScheduleEvent & { resourceVersion?: string }) {
   const isHybrid = event.type !== 'scene'
   if (isHybrid) {
@@ -389,13 +371,12 @@ function CourseScheduleTable({
   const month = currentDate.getMonth() + 1
   const weekStart = useMemo(() => getWeekStart(currentDate), [currentDate])
   const weekEnd = useMemo(() => getWeekEnd(weekStart), [weekStart])
-  const weekIndex = useMemo(() => {
-    const firstDayOfMonth = new Date(year, month - 1, 1)
-    const startDay = firstDayOfMonth.getDay() || 7
-    const offset = weekStart.getDate() + startDay - 2
-    return Math.floor(offset / 7) + 1
-  }, [year, month, weekStart])
-  const weeksInMonth = getWeeksInMonth(year, month - 1)
+  // 基于绝对日期差计算周次（第 1 周为包含当月 1 号的那一周），避免跨月错算/周下拉重复值
+  const weekIndex = useMemo(
+    () => getWeekIndex(weekStart, year, month),
+    [year, month, weekStart],
+  )
+  const weeksInMonth = getWeeksInMonth(year, month)
 
   const goPrevWeek = () => {
     const d = new Date(currentDate)
@@ -419,11 +400,7 @@ function CourseScheduleTable({
     setCurrentDate(d)
   }
   const handleWeekChange = (v: string) => {
-    const targetWeek = Number(v)
-    const firstDay = new Date(year, month - 1, 1)
-    const startDay = firstDay.getDay() || 7
-    const targetDate = new Date(year, month - 1, 1 + (targetWeek - 1) * 7 - (startDay - 1))
-    setCurrentDate(targetDate)
+    setCurrentDate(getWeekTargetDate(year, month, Number(v)))
   }
 
   const openActionDialog = (event: TeacherScheduleEvent, tab: string) => {
@@ -708,13 +685,13 @@ function CourseScheduleTable({
                                 try {
                                   const c = await courseApi.get(event.courseId)
                                   if (c.type === 'hybrid') {
-                                  if (onGradeRequest)
-                                    onGradeRequest(
-                                      `${event.title} · ${event.period}`,
-                                      event.className || event.tag || '',
-                                      true,
-                                      event.courseId,
-                                    )
+                                    if (onGradeRequest)
+                                      onGradeRequest(
+                                        `${event.title} · ${event.period}`,
+                                        event.className || event.tag || '',
+                                        true,
+                                        event.courseId,
+                                      )
                                     return
                                   }
                                 } catch {

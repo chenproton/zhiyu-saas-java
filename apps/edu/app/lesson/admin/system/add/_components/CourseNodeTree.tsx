@@ -49,6 +49,36 @@ interface TreeItem {
   children: TreeItem[]
 }
 
+// 判断把 nodeId 移动到 targetId 的兄弟位置是否会把 nodeId 挂到自身/后代之下（形成 parentId 环）。
+// 拖拽节点到其自身或后代上时，node.parentId 会指向自身子树内节点，buildTree 产生自引用 → 无限递归。
+// hybrid / system 两个页面与组件本身共用此判定，保证校验逻辑一致。
+export function wouldCreateCycle(
+  nodes: SystemCourseNode[],
+  nodeId: string,
+  targetId: string,
+): boolean {
+  if (nodeId === targetId) return true
+  const childrenByParent = new Map<string | null, SystemCourseNode[]>()
+  for (const n of nodes) {
+    const key = n.parentId ?? null
+    const list = childrenByParent.get(key) || []
+    list.push(n)
+    childrenByParent.set(key, list)
+  }
+  const stack: string[] = [nodeId]
+  const visited = new Set<string>()
+  while (stack.length > 0) {
+    const id = stack.pop()!
+    if (visited.has(id)) continue
+    visited.add(id)
+    for (const child of childrenByParent.get(id) || []) {
+      if (child.id === targetId) return true
+      stack.push(child.id)
+    }
+  }
+  return false
+}
+
 function buildTree(nodes: SystemCourseNode[]): TreeItem[] {
   const map = new Map<string, TreeItem>()
   const roots: TreeItem[] = []
@@ -180,7 +210,13 @@ export default function CourseNodeTree({
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
     e.stopPropagation()
-    if (draggingId && draggingId !== targetId && dragOverState?.nodeId === targetId) {
+    // 拒绝把节点拖放到自身或自身后代上（否则 parentId 形成环，buildTree 自引用导致渲染崩溃）
+    if (
+      draggingId &&
+      draggingId !== targetId &&
+      !wouldCreateCycle(nodes, draggingId, targetId) &&
+      dragOverState?.nodeId === targetId
+    ) {
       onReorderNodes(draggingId, targetId, dragOverState.position)
     }
     setDraggingId(null)

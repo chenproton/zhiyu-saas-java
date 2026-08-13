@@ -110,7 +110,7 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, examMap map[string]string, result *examImportResult) {
+func (h *ExamImportHandler) importExams(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷基本信息")
 	if err != nil {
 		slog.Info(fmt.Sprintf("[import/exams] sheet '试卷基本信息' not found: %v", err))
@@ -145,10 +145,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 		}
 		seen[name] = true
 
-		var existingID, existingCreator string
-		var existingCollaborators []string
-		err := q.QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id, collaborator_ids FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
-		exists := err == nil && existingID != ""
+		existingID, existingCreator, existingCollaborators, exists := store.GranularImportFindExamByName(ctx, q, tenantID, name)
 
 		if preview {
 			if exists {
@@ -170,10 +167,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := q.Exec(ctx, `
-					UPDATE exams SET name=$1, description=$2, batch_id=$3, updated_at=NOW()
-					WHERE id=$4 AND tenant_id=$5
-				`, name, description, batchID, existingID, tenantID)
+				err := store.GranularImportUpdateExamByImport(ctx, q, name, description, batchID, existingID, tenantID)
 				if err != nil {
 					result.Failed++
 					msg := fmt.Sprintf("试卷[%s]更新失败: %v", name, err)
@@ -182,7 +176,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 					continue
 				}
 				// 覆盖时清空原有题目关联，随后根据新文件内容重新写入
-				if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id=$1`, existingID); err != nil {
+				if err := store.GranularImportDeleteExamQuestions(ctx, q, existingID); err != nil {
 					msg := fmt.Sprintf("试卷[%s]清空旧题目失败: %v", name, err)
 					result.Errors = append(result.Errors, msg)
 					slog.Error(fmt.Sprintf("[import/exams] %s", msg))
@@ -199,9 +193,8 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 				// rename 模式：追加随机后缀生成新名称，按新对象导入
 				origName = name
 				name = uniqueSuffixed(name, func(c string) bool {
-					var eid string
-					_ = q.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
-					return eid != ""
+					_, found := store.GranularImportFindExamIDByName(ctx, q, tenantID, c)
+					return found
 				})
 			} else {
 				result.Skipped++
@@ -211,11 +204,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 
 		examID := uuid.NewString()
 		code := generateEntityCode("SJ")
-		_, err = q.Exec(ctx, `
-			INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration,
-				batch_id, version, owner_type, creator_id, is_temp)
-			VALUES ($1,$2,$3,$4,$5,'draft',0,60,$6,'V1.0','mine',$7,false)
-		`, examID, tenantID, code, name, description, batchID, userID)
+		err = store.GranularImportInsertExamByImport(ctx, q, examID, tenantID, code, name, description, batchID, userID)
 		if err != nil {
 			result.Failed++
 			msg := fmt.Sprintf("试卷[%s]创建失败: %v", name, err)
@@ -235,7 +224,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q importDB, xlsx *e
 	}
 }
 
-func (h *ExamImportHandler) importExamQuestions(ctx context.Context, q importDB, xlsx *excelize.File, tenantID string, examMap map[string]string, result *examImportResult) {
+func (h *ExamImportHandler) importExamQuestions(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID string, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷题目")
 	if err != nil {
 		return
@@ -259,22 +248,14 @@ func (h *ExamImportHandler) importExamQuestions(ctx context.Context, q importDB,
 			continue
 		}
 
-		var qID, qType, qContent, qAnswer, qAnalysis string
-		var qOptions []byte
-		err := q.QueryRow(ctx, `
-			SELECT id, type, content, options, answer, analysis
-			FROM questions WHERE tenant_id=$1 AND content=$2 LIMIT 1
-		`, tenantID, questionContent).Scan(&qID, &qType, &qContent, &qOptions, &qAnswer, &qAnalysis)
+		question, err := store.GranularImportFindQuestionByContent(ctx, q, tenantID, questionContent)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("试卷[%s]题目[%s]未找到", examName, questionContent))
 			continue
 		}
 
 		sortCounter[examID]++
-		_, err = q.Exec(ctx, `
-			INSERT INTO exam_questions (id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		`, uuid.NewString(), examID, qID, qType, qContent, qOptions, qAnswer, qAnalysis, score, sortCounter[examID])
+		err = store.GranularImportInsertExamQuestionByImport(ctx, q, uuid.NewString(), examID, question.ID, question.Type, question.Content, question.Options, question.Answer, question.Analysis, score, sortCounter[examID])
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("试卷[%s]题目[%s]关联失败: %v", examName, questionContent, err))
 			continue

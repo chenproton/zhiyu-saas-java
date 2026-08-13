@@ -253,9 +253,8 @@ export default function ExamComposerPage() {
 
   const handleAddQuestions = async (questions: Question[]) => {
     try {
-      for (const question of questions) {
-        await addQuestionToExam(examId, question)
-      }
+      // 批量加题并行提交，全部完成后统一刷新一次列表（串行 await + 每题刷新是组卷性能热点）
+      await Promise.all(questions.map((question) => addQuestionToExam(examId, question)))
       await refreshExam()
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('添加题目失败'), description: err.message })

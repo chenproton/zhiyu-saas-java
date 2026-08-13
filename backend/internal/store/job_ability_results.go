@@ -26,11 +26,19 @@ type CourseScoreRow struct {
 // 排名基于同口径在该课程全部学生中按分数降序。
 func (s *JobAbilityResultStore) ListStudentCourseScores(ctx context.Context, tenantID, userID string) ([]CourseScoreRow, error) {
 	rows, err := s.q.Query(ctx, `
-		WITH course_avg AS (
+		WITH student_courses AS (
+			SELECT DISTINCT n.course_id
+			FROM node_evaluation_results ner
+			JOIN system_course_nodes n ON n.id = ner.node_id
+			WHERE ner.tenant_id = $1 AND ner.status = 'evaluated' AND ner.total_score IS NOT NULL
+				AND ner.evaluatee_id = $2
+		),
+		course_avg AS (
 			SELECT n.course_id, ner.evaluatee_id,
 				AVG(ner.total_score / NULLIF(ner.max_score, 0) * 100) AS score
 			FROM node_evaluation_results ner
 			JOIN system_course_nodes n ON n.id = ner.node_id
+			JOIN student_courses sc ON sc.course_id = n.course_id
 			WHERE ner.tenant_id = $1 AND ner.status = 'evaluated' AND ner.total_score IS NOT NULL
 			GROUP BY n.course_id, ner.evaluatee_id
 		)

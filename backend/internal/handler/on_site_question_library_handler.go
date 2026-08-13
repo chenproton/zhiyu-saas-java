@@ -19,13 +19,14 @@ type OnSiteQuestionLibraryHandler struct {
 // OnSiteQuestionLibraryRequest 现场题库题目创建/更新请求体。
 // 更新流程为部分更新：指针字段未传时回填现有值。
 type OnSiteQuestionLibraryRequest struct {
-	QuestionText      *string  `json:"questionText"`
-	Answer            *string  `json:"answer"`
-	QuestionType      *string  `json:"questionType"`
-	Score             *float64 `json:"score"`
-	Difficulty        *string  `json:"difficulty"`
-	KnowledgePointIDs []string `json:"knowledgePointIds"`
-	Tags              []string `json:"tags"`
+	QuestionText *string  `json:"questionText"`
+	Answer       *string  `json:"answer"`
+	QuestionType *string  `json:"questionType"`
+	Score        *float64 `json:"score"`
+	Difficulty   *string  `json:"difficulty"`
+	// 指针区分「未携带」(nil=保留) 与「显式清空」(*[]string{}＝清空)
+	KnowledgePointIDs *[]string `json:"knowledgePointIds"`
+	Tags              *[]string `json:"tags"`
 }
 
 func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -94,8 +95,8 @@ func (h *OnSiteQuestionLibraryHandler) crud() crudConfig[OnSiteQuestionLibraryRe
 				QuestionType:      qt,
 				Score:             score,
 				Difficulty:        t.Difficulty,
-				KnowledgePointIDs: coalesceStringSlice(t.KnowledgePointIDs),
-				Tags:              coalesceStringSlice(t.Tags),
+				KnowledgePointIDs: coalesceStringSlicePtr(t.KnowledgePointIDs),
+				Tags:              coalesceStringSlicePtr(t.Tags),
 				CreatorID:         userID,
 			})
 		},
@@ -125,13 +126,13 @@ func (h *OnSiteQuestionLibraryHandler) crud() crudConfig[OnSiteQuestionLibraryRe
 			if t.Difficulty != nil {
 				d = t.Difficulty
 			}
-			kps := coalesceStringSlice(t.KnowledgePointIDs)
-			if len(kps) == 0 {
-				kps = existing.KnowledgePointIDs
+			kps := existing.KnowledgePointIDs
+			if t.KnowledgePointIDs != nil {
+				kps = *t.KnowledgePointIDs
 			}
-			ts := coalesceStringSlice(t.Tags)
-			if len(ts) == 0 {
-				ts = existing.Tags
+			ts := existing.Tags
+			if t.Tags != nil {
+				ts = *t.Tags
 			}
 			return h.Store.Update(ctx, id, store.OnSiteQuestionLibraryUpdateParams{
 				QuestionText:      q,

@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const MAX_ZIP_SIZE = 50 * 1024 * 1024
+// 解压后内容累计大小上限：防 zip 炸弹（小压缩包解压出数 GB 数据导致浏览器卡死/崩溃）
+const MAX_UNZIPPED_TOTAL_SIZE = 200 * 1024 * 1024
 
 interface ZipEntry {
   name: string
@@ -103,7 +105,11 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
           return
         }
         const unzipped = unzipSync(buf)
-        const list = Object.entries(unzipped)
+        // 累计解压大小超过上限即中止预览，提示下载后本地解压，避免内存被超大内容撑爆
+        const list: ZipEntry[] = []
+        let unzippedTotal = 0
+        let tooLarge = false
+        Object.entries(unzipped)
           .map(([n, data]) => ({ name: fixName(n), size: data.length, data }))
           .filter(
             (e) =>
@@ -112,6 +118,18 @@ export default function ZipPreview({ url, name }: { url: string; name?: string }
               !e.name.endsWith('.DS_Store'),
           )
           .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
+          .forEach((e) => {
+            unzippedTotal += e.size
+            if (unzippedTotal > MAX_UNZIPPED_TOTAL_SIZE) {
+              tooLarge = true
+              return
+            }
+            list.push(e)
+          })
+        if (tooLarge) {
+          setError(t('解压后内容过大（超过 200MB），请下载后本地解压查看'))
+          return
+        }
         setEntries(list)
       } catch (e: any) {
         setError(

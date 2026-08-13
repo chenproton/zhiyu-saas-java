@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -48,10 +49,26 @@ func TestStudentCannotViewOthersExamResult(t *testing.T) {
 
 	studentToken := env.NewTokenWithIdentity("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2", testhelper.TestTenantID, domain.UserRoleOperator, nil, domain.RoleStudent)
 
-	// 学生传他人 usageId 拉成绩列表：即使路由可达，也应返回 400/403 而非他人数据
+	// 学生传他人 usageId 拉成绩列表：列表会强制 ownOnly（userId=本人），
+	// 返回 200 也必须逐条校验 userId 均为本人，防止混入他人成绩（此前断言允许 200 形同虚设）
 	w := env.DoWithToken(http.MethodGet, "/api/v1/evaluation/exam-results?usageId=cccccccc-cccc-cccc-cccc-ccccccccccc1", nil, studentToken)
 	if w.Code != http.StatusOK && w.Code != http.StatusBadRequest && w.Code != http.StatusForbidden {
 		t.Fatalf("学生查看成绩列表应被限制，实际 %d", w.Code)
+	}
+	if w.Code == http.StatusOK {
+		var resp struct {
+			Items []struct {
+				UserID string `json:"userId"`
+			} `json:"items"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("解析成绩列表响应失败: %v", err)
+		}
+		for _, it := range resp.Items {
+			if it.UserID != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2" {
+				t.Fatalf("学生列表混入他人成绩 userId=%s", it.UserID)
+			}
+		}
 	}
 }
 

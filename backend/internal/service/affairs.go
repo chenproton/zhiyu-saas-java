@@ -231,6 +231,22 @@ func (s *AffairsService) AutoSchedule(ctx context.Context, tenantID, termID, pla
 		if err != nil {
 			return err
 		}
+		// 快照在加锁前读取：期间完成的手动排课会把计划条目置为 scheduled，
+		// 而 hasScheduleConflict 对同计划条目是放行的，必须显式过滤已被排课的条目，
+		// 否则同一计划条目被重复排课
+		scheduledNow := make(map[string]bool, len(existing))
+		for _, ex := range existing {
+			if ex.PlanEntryID != nil {
+				scheduledNow[*ex.PlanEntryID] = true
+			}
+		}
+		stillPending := pending[:0]
+		for _, e := range pending {
+			if !scheduledNow[e.ID] {
+				stillPending = append(stillPending, e)
+			}
+		}
+		pending = stillPending
 		creates := make([]*store.ScheduleCreateParams, 0)
 		for _, e := range pending {
 			candidateVenues := venues

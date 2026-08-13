@@ -170,29 +170,6 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		"reviewerName": user.Username,
 		"createdAt":    time.Now().UTC(),
 	}
-	record.History = append(record.History, entry)
-
-	if req.Action == string(domain.ApprovalStatusRejected) {
-		record.Status = string(domain.ApprovalStatusRejected)
-		err := h.Service.ReviewApproval(r.Context(), id, req.Action, record.Status, record.CurrentStepIdx, record.CurrentStepIdx,
-			record.History, record.TargetType, record.TargetID, record.TenantID, true)
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) {
-				respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
-				return
-			}
-			respondServerError(w, r, err, "评审审批记录失败")
-			return
-		}
-		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
-		record, err = h.Service.GetApproval(r.Context(), tenantID, id)
-		if err != nil {
-			respondServerError(w, r, err, "查询审批记录失败")
-			return
-		}
-		respondJSON(w, http.StatusOK, record)
-		return
-	}
 
 	var workflow *domain.Workflow
 	if record.WorkflowID != nil {
@@ -202,32 +179,25 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	stepIdx := record.CurrentStepIdx
-	stepComplete := h.isStepComplete(workflow, record, stepIdx)
-	if !stepComplete {
-		ok, err := h.Service.UpdateApprovalHistory(r.Context(), id, entry)
-		if err != nil || !ok {
-			respondServerError(w, r, err, "更新审批记录失败")
-			return
+	// 决策回调在事务锁内基于最新历史执行，保证并发评审下：
+	// 历史互相不覆盖、最后一名审批人必然触发推进、重复提交不重复追加。
+	decide := func(history domain.JSONSlice, stepIdx int) (bool, string, int) {
+		if req.Action == string(domain.ApprovalStatusRejected) {
+			return true, string(domain.ApprovalStatusRejected), stepIdx
 		}
-		record, err = h.Service.GetApproval(r.Context(), tenantID, id)
-		if err != nil {
-			respondServerError(w, r, err, "查询审批记录失败")
-			return
+		tmp := *record
+		tmp.History = history
+		if !h.isStepComplete(workflow, &tmp, stepIdx) {
+			return false, "", 0
 		}
-		respondJSON(w, http.StatusOK, record)
-		return
+		newStatus := string(domain.ApprovalStatusPending)
+		if h.isLastStep(workflow, stepIdx) {
+			newStatus = string(domain.ApprovalStatusApproved)
+		}
+		return true, newStatus, stepIdx + 1
 	}
 
-	newStatus := record.Status
-	if h.isLastStep(workflow, stepIdx) {
-		newStatus = string(domain.ApprovalStatusApproved)
-	}
-	newStepIdx := stepIdx + 1
-	syncStatus := newStatus == string(domain.ApprovalStatusApproved)
-
-	err = h.Service.ReviewApproval(r.Context(), id, req.Action, newStatus, newStepIdx, record.CurrentStepIdx,
-		record.History, record.TargetType, record.TargetID, record.TenantID, syncStatus)
+	err = h.Service.ReviewStep(r.Context(), id, entry, record.TargetType, record.TargetID, record.TenantID, decide)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
@@ -236,9 +206,8 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "评审审批记录失败")
 		return
 	}
-	if syncStatus {
-		h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
-	}
+	// 通过/驳回都可能改变实体状态，成功后统一失效缓存
+	h.invalidateApprovalCache(r, record.TargetType, *record.TenantID)
 	record, err = h.Service.GetApproval(r.Context(), tenantID, id)
 	if err != nil {
 		respondServerError(w, r, err, "查询审批记录失败")

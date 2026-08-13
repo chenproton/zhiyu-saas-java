@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -253,19 +254,38 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	if len(req.Items) == 0 {
+		respondError(w, http.StatusBadRequest, "缺少评分项")
+		return
+	}
 
+	// 批量查一次（替代逐条 GetEvaluationResult 的 N+1），租户限定在查询内
+	ids := make([]string, 0, len(req.Items))
+	for _, item := range req.Items {
+		ids = append(ids, item.ID)
+	}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if params.Values == nil {
+		params.Values = map[string]string{}
+	}
+	params.Values["ids"] = strings.Join(ids, ",")
+	params.Limit = len(ids)
+	results, _, err := h.Service.ListEvaluationResults(r.Context(), params, h.Service.Store().EvaluationResults().ListConfig())
+	if err != nil {
+		respondServerError(w, r, err, "查询失败")
+		return
+	}
+	byID := make(map[string]domain.SceneEvaluationResult, len(results))
+	for _, res := range results {
+		byID[res.ID] = res
+	}
 	items := make([]store.EvaluationResultGradeItem, 0, len(req.Items))
 	for _, item := range req.Items {
-		res, err := h.Service.GetEvaluationResult(r.Context(), item.ID)
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) || errors.Is(err, pgx.ErrNoRows) {
-				respondError(w, http.StatusNotFound, "评价结果不存在")
-				return
-			}
-			respondServerError(w, r, err, "查询失败")
-			return
-		}
-		if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
+		if _, ok := byID[item.ID]; !ok {
 			respondError(w, http.StatusNotFound, "评价结果不存在")
 			return
 		}
@@ -277,7 +297,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 		})
 	}
 
-	err := h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
+	err = h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
 	if err != nil {
 		respondServerError(w, r, err, "批量评分失败")
 		return

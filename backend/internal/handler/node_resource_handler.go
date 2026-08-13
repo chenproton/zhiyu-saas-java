@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -137,12 +139,12 @@ func (h *NodeResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 	if !decodeBody(w, r, &req) {
 		return
 	}
-	// 校验目标节点租户归属
-	if !h.checkNodeTenant(w, r, req.NodeID) {
-		return
-	}
 	if req.NodeID == "" || req.ResourceID == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+	// 校验目标节点租户归属
+	if !h.checkNodeTenant(w, r, req.NodeID) {
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -182,7 +184,12 @@ func (h *NodeResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 	id := chi.URLParam(r, "id")
 	nodeID, err := h.Service.BindTargetID(r.Context(), "node_resource_bindings", id)
 	if err != nil {
-		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		// 仅绑定不存在时幂等成功；真实 DB 错误必须上抛，不能一律 200 吞掉
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondJSON(w, http.StatusOK, map[string]string{"id": id})
+			return
+		}
+		respondServerError(w, r, err, "解绑节点资源失败")
 		return
 	}
 	courseID, err := h.Service.NodeCourseID(r.Context(), nodeID)

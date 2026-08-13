@@ -15,6 +15,7 @@ import {
   normalizeRelatedRefs,
 } from '@/components/alliance/related-object-card'
 import { employerBrandOf } from '@/components/alliance/public-cards'
+import { salaryText } from '@/components/alliance/job-brand-dialogs'
 import { CertCards } from '@/components/job/student/cert-cards'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,6 +36,7 @@ import {
   Star,
 } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AlliancePublicBrand, AllianceEnterprise, AllianceAchievement } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
@@ -61,12 +63,6 @@ interface HiredStudent {
   majorName?: string
 }
 
-function salaryText(p: { salaryMin?: number; salaryMax?: number }) {
-  if (p.salaryMin == null && p.salaryMax == null) return '-'
-  if (p.salaryMin == null) return `${p.salaryMax}K`
-  if (p.salaryMax == null) return `${p.salaryMin}K`
-  return `${p.salaryMin}-${p.salaryMax}K`
-}
 
 export default function AlliancePublicBrandDetailPage() {
   const t = useT()
@@ -85,39 +81,55 @@ export default function AlliancePublicBrandDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    const brandQuery = tenantId ? `?tenantId=${tenantId}` : ''
-    portalRequest<AlliancePublicBrand>(`/alliance/public/brands/${id}${brandQuery}`)
+    // tenantId 可选：缺失（未登录/瞬态）时仅拉取全局公开数据
+    const tenantParam = tenantId ? `tenantId=${tenantId}` : ''
+    const brandUrl = (extra: string) =>
+      `/alliance/public/brands?${extra}${tenantParam ? `&${tenantParam}` : ''}`
+    portalRequest<AlliancePublicBrand>(
+      `/alliance/public/brands/${id}${tenantParam ? '?' + tenantParam : ''}`,
+    )
       .then((b) => {
         setBrand(b)
         if (b.brandType === 'employer') {
-          return portalRequest<{ items: AlliancePublicBrand[] }>(
-            `/alliance/public/brands?brandType=job${brandQuery}`,
+          // 分页全量拉取：public 接口默认 100 条截断，避免岗位品牌超量时跳转映射缺失
+          return fetchAllPages((page, pageSize) =>
+            portalRequest<{ items: AlliancePublicBrand[] }>(
+              `${brandUrl('brandType=job')}&limit=${pageSize}&offset=${page * pageSize}`,
+            ),
           )
-            .then((res) => setJobBrands(res.items || []))
+            .then((items) => setJobBrands(items))
             .catch(() => setJobBrands([]))
         }
         if (b.brandType === 'major') {
           return Promise.all([
-            portalRequest<{ items: AlliancePublicBrand[] }>(
-              `/alliance/public/brands?brandType=employer${brandQuery}`,
+            fetchAllPages((page, pageSize) =>
+              portalRequest<{ items: AlliancePublicBrand[] }>(
+                `${brandUrl('brandType=employer')}&limit=${pageSize}&offset=${page * pageSize}`,
+              ),
             ),
-            portalRequest<{ items: AlliancePublicBrand[] }>(
-              `/alliance/public/brands?brandType=job${brandQuery}`,
+            fetchAllPages((page, pageSize) =>
+              portalRequest<{ items: AlliancePublicBrand[] }>(
+                `${brandUrl('brandType=job')}&limit=${pageSize}&offset=${page * pageSize}`,
+              ),
             ),
-            portalRequest<{ items: AllianceAchievement[] }>(
-              `/alliance/public/achievements${brandQuery}`,
+            fetchAllPages((page, pageSize) =>
+              portalRequest<{ items: AllianceAchievement[] }>(
+                `/alliance/public/achievements?sort=latest${tenantParam ? `&${tenantParam}` : ''}&limit=${pageSize}&offset=${page * pageSize}`,
+              ),
             ),
             tenantId
-              ? portalRequest<{ items: AllianceEnterprise[] }>(
-                  `/alliance/public/enterprises?tenantId=${tenantId}`,
+              ? fetchAllPages((page, pageSize) =>
+                  portalRequest<{ items: AllianceEnterprise[] }>(
+                    `/alliance/public/enterprises?${tenantParam}&limit=${pageSize}&offset=${page * pageSize}`,
+                  ),
                 )
-              : Promise.resolve({ items: [] as AllianceEnterprise[] }),
+              : Promise.resolve([] as AllianceEnterprise[]),
           ])
-            .then(([brandsRes, jobRes, achRes, entsRes]) => {
-              setEmployerBrands(brandsRes.items || [])
-              setPublicJobBrands(jobRes.items || [])
-              setPublicAchievements(achRes.items || [])
-              setPublicEnterprises(entsRes.items || [])
+            .then(([employerBrands, jobBrands, achievements, enterprises]) => {
+              setEmployerBrands(employerBrands)
+              setPublicJobBrands(jobBrands)
+              setPublicAchievements(achievements)
+              setPublicEnterprises(enterprises)
             })
             .catch(() => {
               setEmployerBrands([])

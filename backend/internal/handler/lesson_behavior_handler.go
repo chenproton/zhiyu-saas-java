@@ -236,8 +236,8 @@ func (h *LessonBehaviorHandler) buildAggregate(records []domain.LessonBehaviorRe
 		acc.interaction += rec.InteractionCount
 		acc.praise += rec.PraiseCount
 		acc.rushCorrect += rec.RushCorrectCount
-		acc.rushTimeSum += intPtr(rec.RushAvgTimeSec)
-		acc.rushTimeCount += countIntPtr(rec.RushAvgTimeSec)
+		acc.rushTimeSum += derefInt(rec.RushAvgTimeSec, 0)
+		acc.rushTimeCount += countPtr(rec.RushAvgTimeSec)
 
 		rt := rateMap[dateLabel]
 		if rt == nil {
@@ -259,10 +259,7 @@ func (h *LessonBehaviorHandler) buildAggregate(records []domain.LessonBehaviorRe
 	}
 
 	if quizCount > 0 {
-		passRate := 0
-		if quizCount > 0 {
-			passRate = int(float64(quizPassed) / float64(quizCount) * 100)
-		}
+		passRate := int(float64(quizPassed) / float64(quizCount) * 100)
 		agg.QuizResults = append(agg.QuizResults, QuizResult{
 			ID:       "overall",
 			Name:     "随堂测验",
@@ -371,18 +368,4 @@ func formatMD(date string) string {
 		return date
 	}
 	return t.Format("01-02")
-}
-
-func intPtr(v *int) int {
-	if v == nil {
-		return 0
-	}
-	return *v
-}
-
-func countIntPtr(v *int) int {
-	if v == nil {
-		return 0
-	}
-	return 1
 }

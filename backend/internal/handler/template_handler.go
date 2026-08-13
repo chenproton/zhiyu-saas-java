@@ -28,7 +28,7 @@ func (h *TemplateHandler) ServePositionTemplate(w http.ResponseWriter, r *http.R
 		return
 	}
 	ctx := r.Context()
-	h.queryDicts(ctx, tenantID) // preload dicts
+	h.Store.DictQuery(ctx, tenantID) // preload dicts
 	f := h.generatePositionTemplate(ctx, tenantID)
 	writeExcel(w, r, f, "岗位批量导入模板.xlsx")
 }
@@ -83,90 +83,11 @@ func newSetCell(f *excelize.File) func(sheet, cell, val string) {
 	}
 }
 
-func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (industries [][2]string, majors [][2]string, certs [][3]string, positions [][2]string, knowledgePoints []string, abilityPoints [][2]string, resources [][2]string) {
-	rows, err := h.Store.Q().Query(ctx, `SELECT name, COALESCE(code,'') FROM industries WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n, c string
-		rows.Scan(&n, &c)
-		industries = append(industries, [2]string{n, c})
-	}
-	rows.Close()
-
-	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(code,'') FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n, c string
-		rows.Scan(&n, &c)
-		majors = append(majors, [2]string{n, c})
-	}
-	rows.Close()
-
-	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(url,''), COALESCE(description,'') FROM certificate_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n, u, d string
-		rows.Scan(&n, &u, &d)
-		certs = append(certs, [3]string{n, u, d})
-	}
-	rows.Close()
-
-	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(short_name,'') FROM career_positions WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n, s string
-		rows.Scan(&n, &s)
-		positions = append(positions, [2]string{n, s})
-	}
-	rows.Close()
-
-	rows, err = h.Store.Q().Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		knowledgePoints = append(knowledgePoints, n)
-	}
-	rows.Close()
-
-	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(array_to_string(attributes, ','), '') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n, a string
-		rows.Scan(&n, &a)
-		abilityPoints = append(abilityPoints, [2]string{n, a})
-	}
-	rows.Close()
-
-	rows, err = h.Store.Q().Query(ctx, `SELECT name, COALESCE(resource_type::text,'') FROM resource_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil {
-		return
-	}
-	for rows.Next() {
-		var n, t string
-		rows.Scan(&n, &t)
-		resources = append(resources, [2]string{n, t})
-	}
-	rows.Close()
-
-	return
-}
-
 func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	industries, majors, certs, _, _, abilityPoints, _ := h.queryDicts(ctx, tenantID)
+	d := h.Store.DictQuery(ctx, tenantID)
+	industries, majors, certs := d.Industries, d.Majors, d.Certs
+	abilityPoints := d.AbilityPoints
 
 	s1, _ := f.NewSheet("岗位基本信息")
 	f.DeleteSheet("Sheet1")
@@ -262,7 +183,9 @@ func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID
 
 func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	industries, majors, _, positions, knowledgePoints, abilityPoints, resources := h.queryDicts(ctx, tenantID)
+	d := h.Store.DictQuery(ctx, tenantID)
+	industries, majors, positions := d.Industries, d.Majors, d.Positions
+	knowledgePoints, abilityPoints, resources := d.KnowledgePoints, d.AbilityPoints, d.Resources
 
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
@@ -381,8 +304,9 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
 
-	_, majors, _, _, knowledgePoints, _, resources := h.queryDicts(ctx, tenantID)
-	lessonBatches := h.queryLessonBatches(ctx, tenantID)
+	d := h.Store.DictQuery(ctx, tenantID)
+	majors, knowledgePoints, resources := d.Majors, d.KnowledgePoints, d.Resources
+	lessonBatches, _, _ := h.Store.ListBatches(ctx, tenantID)
 
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
@@ -501,8 +425,9 @@ func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *ht
 func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
 
-	_, majors, _, _, knowledgePoints, abilityPoints, _ := h.queryDicts(ctx, tenantID)
-	lessonBatches := h.queryLessonBatches(ctx, tenantID)
+	d := h.Store.DictQuery(ctx, tenantID)
+	majors, knowledgePoints, abilityPoints := d.Majors, d.KnowledgePoints, d.AbilityPoints
+	lessonBatches, _, _ := h.Store.ListBatches(ctx, tenantID)
 
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
@@ -596,21 +521,6 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 		[][]string{{"题库"}, {"试卷"}, {"随堂测"}, {"作业"}})
 
 	return f
-}
-
-func (h *TemplateHandler) queryLessonBatches(ctx context.Context, tenantID string) []string {
-	var names []string
-	rows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM lesson_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if qErr != nil {
-		return nil
-	}
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		names = append(names, n)
-	}
-	rows.Close()
-	return names
 }
 
 func (h *TemplateHandler) addRefSheet(f *excelize.File, name string, headers []string, widths []float64, note string, data [][]string) {
@@ -785,17 +695,10 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 	f.AutoFilter("题库基本信息", "A2:C2", []excelize.AutoFilterOptions{})
 
 	// Reference sheets
-	var batches [][]string
-	bRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if qErr != nil {
+	_, batches, err := h.Store.ListBatches(ctx, tenantID)
+	if err != nil {
 		return nil
 	}
-	for bRows.Next() {
-		var n string
-		bRows.Scan(&n)
-		batches = append(batches, []string{n})
-	}
-	bRows.Close()
 	h.addRefSheet(f, "【参考】批次", []string{"批次名称"}, []float64{32}, "仅作参考，无需编辑修改。", batches)
 
 	return f
@@ -826,8 +729,7 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
 	}
 
-	bankName := ""
-	_ = h.Store.Q().QueryRow(ctx, `SELECT name FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&bankName)
+	bankName, _ := h.Store.GetQuestionBankName(ctx, tenantID, bankID)
 
 	// Sheet 1: 题目明细
 	s1, _ := f.NewSheet("题目明细")
@@ -841,16 +743,13 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 	f.AutoFilter("题目明细", "A2:L2", []excelize.AutoFilterOptions{})
 
 	var kps [][]string
-	kRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if qErr != nil {
+	kpNames, err := h.Store.ListKnowledgePointNames(ctx, tenantID)
+	if err != nil {
 		return nil
 	}
-	for kRows.Next() {
-		var n string
-		kRows.Scan(&n)
+	for _, n := range kpNames {
 		kps = append(kps, []string{n})
 	}
-	kRows.Close()
 	h.addRefSheet(f, "【参考】知识点", []string{"知识点名称"}, []float64{36}, "仅作参考，无需编辑修改。", kps)
 
 	return f
@@ -901,17 +800,10 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 	f.SetPanes("试卷题目", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("试卷题目", "A2:C2", []excelize.AutoFilterOptions{})
 
-	var batches [][]string
-	bRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if qErr != nil {
+	_, batches, err := h.Store.ListBatches(ctx, tenantID)
+	if err != nil {
 		return nil
 	}
-	for bRows.Next() {
-		var n string
-		bRows.Scan(&n)
-		batches = append(batches, []string{n})
-	}
-	bRows.Close()
 	h.addRefSheet(f, "【参考】批次", []string{"批次名称"}, []float64{32}, "仅作参考，无需编辑修改。", batches)
 
 	return f
@@ -1104,16 +996,13 @@ func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tena
 	f.AutoFilter("组织架构", "A2:D2", []excelize.AutoFilterOptions{})
 
 	var types [][]string
-	rows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM org_types WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if qErr != nil {
+	typeNames, err := h.Store.ListOrgTypeNames(ctx, tenantID)
+	if err != nil {
 		return nil
 	}
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
+	for _, n := range typeNames {
 		types = append(types, []string{n})
 	}
-	rows.Close()
 	h.addRefSheet(f, "【参考】组织类型", []string{"组织类型名称"}, []float64{36}, "仅作参考，无需编辑修改。组织架构 Sheet「组织类型」须与本表名称一致。", types)
 
 	return f
@@ -1154,7 +1043,7 @@ func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID 
 	f.SetPanes("学生列表", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("学生列表", "A2:E2", []excelize.AutoFilterOptions{})
 
-	paths := h.queryOrgPaths(ctx, tenantID)
+	paths := h.Store.OrgPaths(ctx, tenantID)
 	h.addRefSheet(f, "【参考】班级/组织节点路径", []string{"组织节点路径"}, []float64{48}, "仅作参考，无需编辑修改。学生列表 Sheet「班级(组织节点路径)」与本表路径一致则可精确定位。", paths)
 
 	return f
@@ -1195,71 +1084,20 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 	f.SetPanes("教师列表", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("教师列表", "A2:F2", []excelize.AutoFilterOptions{})
 
-	paths := h.queryOrgPaths(ctx, tenantID)
+	paths := h.Store.OrgPaths(ctx, tenantID)
 	h.addRefSheet(f, "【参考】组织节点路径", []string{"组织节点路径"}, []float64{48}, "仅作参考，无需编辑修改。教师列表 Sheet「所属组织节点(路径)」与本表路径一致则可精确定位。", paths)
 
 	var titles [][]string
-	tRows, qErr := h.Store.Q().Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if qErr != nil {
-		return nil
-	}
-	for tRows.Next() {
-		var n string
-		tRows.Scan(&n)
-		titles = append(titles, []string{n})
-	}
-	tRows.Close()
-	h.addRefSheet(f, "【参考】职位", []string{"职位名称"}, []float64{36}, "仅作参考，无需编辑修改。教师列表 Sheet「职位」与本表名称一致则关联。", titles)
-
-	return f
-}
-
-// queryOrgPaths returns full paths (root -> leaf) for all organization nodes.
-func (h *TemplateHandler) queryOrgPaths(ctx context.Context, tenantID string) [][]string {
-	type org struct {
-		id       string
-		name     string
-		parentID *string
-	}
-	rows, err := h.Store.Q().Query(ctx, `SELECT id, name, parent_id FROM organizations WHERE tenant_id=$1 ORDER BY sort_order, name`, tenantID)
+	titleNames, err := h.Store.ListStaffTitleNames(ctx, tenantID)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
-
-	nodeMap := make(map[string]*org)
-	var nodes []*org
-	for rows.Next() {
-		var o org
-		if err := rows.Scan(&o.id, &o.name, &o.parentID); err != nil {
-			continue
-		}
-		cp := o
-		nodeMap[o.id] = &cp
-		nodes = append(nodes, &cp)
+	for _, n := range titleNames {
+		titles = append(titles, []string{n})
 	}
+	h.addRefSheet(f, "【参考】职位", []string{"职位名称"}, []float64{36}, "仅作参考，无需编辑修改。教师列表 Sheet「职位」与本表名称一致则关联。", titles)
 
-	var buildPath func(id string) string
-	buildPath = func(id string) string {
-		node, ok := nodeMap[id]
-		if !ok {
-			return ""
-		}
-		if node.parentID == nil || *node.parentID == "" {
-			return node.name
-		}
-		parent := buildPath(*node.parentID)
-		if parent == "" {
-			return node.name
-		}
-		return parent + "-" + node.name
-	}
-
-	var paths [][]string
-	for _, n := range nodes {
-		paths = append(paths, []string{buildPath(n.id)})
-	}
-	return paths
+	return f
 }
 
 // ===== Alliance Template Handlers =====

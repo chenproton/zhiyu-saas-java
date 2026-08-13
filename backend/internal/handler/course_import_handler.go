@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/xuri/excelize/v2"
@@ -27,7 +26,7 @@ type CourseImportHandler struct {
 	Store *store.Store
 }
 
-type courseImportResult struct {
+type CourseImportResult struct {
 	Created           int
 	Failed            int
 	Skipped           int
@@ -76,7 +75,7 @@ func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		result := &courseImportResult{}
+		result := &CourseImportResult{}
 		courseMap := make(map[string]string)
 		h.importCourses(ctx, h.Store.Q(), xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
 		h.importNodes(ctx, h.Store.Q(), xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
@@ -113,7 +112,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	aggregated := &courseImportResult{}
+	aggregated := &CourseImportResult{}
 	// 覆盖导入整体包在事务内：overwrite 会清空旧课程节点再重建，
 	// 任一步失败整体回滚，防止"旧数据已清空、新数据未写入"的不可恢复中间态。
 	if err := h.Store.WithTx(ctx, func(txStore *store.Store) error {
@@ -151,7 +150,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
+func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *CourseImportResult) {
 	rows, err := xlsx.GetRows("课程基本信息")
 	if err != nil {
 		return
@@ -178,10 +177,8 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 			descPtr = &courseIntro
 		}
 
-		var existingID, existingCreator string
-		var existingCoCreators []string
-		err := q.QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
-		exists := err == nil && existingID != ""
+		ident, err := store.CourseImportFindSystemCourseIdentity(ctx, q, tenantID, name)
+		exists := err == nil && ident.ID != ""
 
 		origName := ""
 		if exists {
@@ -201,34 +198,27 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 				continue
 			}
 			if overwrite {
-				if !canOverwriteContent(existingCreator, existingCoCreators, userID) {
+				if !canOverwriteContent(ident.CreatorID, ident.CoCreatorIDs, userID) {
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := q.Exec(ctx, `
-					UPDATE courses
-					SET major_id=$3, batch_id=$4, description=$5, ability_point_ids=$6, updated_at=NOW()
-					WHERE id=$1 AND tenant_id=$2
-				`, existingID, tenantID, majorID, batchID, descPtr, abilityPointIDs)
-				if err != nil {
+				if err := store.CourseImportUpdateSystemCourseOverwrite(ctx, q, ident.ID, tenantID, majorID, batchID, descPtr, abilityPointIDs); err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
 					continue
 				}
-				if err := h.clearCourseNodes(ctx, q, existingID); err != nil {
+				if err := h.clearCourseNodes(ctx, q, ident.ID); err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]清理旧节点失败: %v", name, err))
 					continue
 				}
-				courseMap[name] = existingID
+				courseMap[name] = ident.ID
 				continue
 			}
 			// rename 模式：追加随机后缀生成新名称，按新对象导入
 			origName = name
 			name = uniqueSuffixed(name, func(c string) bool {
-				var eid string
-				_ = q.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, c).Scan(&eid)
-				return eid != ""
+				return store.CourseImportSystemCourseIDByName(ctx, q, tenantID, c) != ""
 			})
 		}
 
@@ -237,16 +227,15 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 			continue
 		}
 
-		courseID := uuid.NewString()
-		code := generateEntityCode("XT")
-		_, err = q.Exec(ctx, `
-			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
-				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
-				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-				ability_point_ids, node_count, resource_count, study_count)
-			VALUES ($1,$2,$3,$4,'system','system',$5,NULL,NULL,'V1.0',0,0,0,0,NULL,NULL,
-				'draft',NULL,NULL,NULL,NULL,$8,$6,'{}',$7,$9,0,0,0)
-		`, courseID, tenantID, code, name, majorID, userID, batchID, descPtr, abilityPointIDs)
+		courseID, err := store.CourseImportCreateImportedSystemCourse(ctx, q, store.CourseImportCourseParams{
+			TenantID:        tenantID,
+			Name:            name,
+			MajorID:         majorID,
+			BatchID:         batchID,
+			Description:     descPtr,
+			AbilityPointIDs: abilityPointIDs,
+			CreatorID:       userID,
+		})
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]创建失败: %v", name, err))
@@ -261,7 +250,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 	}
 }
 
-func (h *CourseImportHandler) importNodes(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *courseImportResult) {
+func (h *CourseImportHandler) importNodes(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *CourseImportResult) {
 	if preview {
 		return
 	}
@@ -342,7 +331,7 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, q store.Queryer, 
 	}
 }
 
-func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q store.Queryer, tenantID, userID string, nr nodeRow, parentID *string, nodeNameMap map[string]map[string]string, result *courseImportResult) error {
+func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q store.Queryer, tenantID, userID string, nr nodeRow, parentID *string, nodeNameMap map[string]map[string]string, result *CourseImportResult) error {
 	var sourceID, sourceName *string
 	var teachingGoals *string
 	var duration float64
@@ -384,12 +373,19 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 		difficulty = nr.manualDifficulty
 	}
 
-	nodeID := uuid.NewString()
-	_, err := q.Exec(ctx, `
-		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
-			teaching_goals, duration, difficulty, knowledge_point_ids, resource_ids, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-	`, nodeID, tenantID, nr.courseID, parentID, nr.nodeName, nr.sortOrder, nr.refType, sourceID, sourceName, teachingGoals, int(duration), difficulty, []string{}, []string{}, "draft")
+	nodeID, err := store.CourseImportCreateImportedCourseNode(ctx, q, store.CourseImportCourseNodeParams{
+		TenantID:      tenantID,
+		CourseID:      nr.courseID,
+		ParentID:      parentID,
+		Name:          nr.nodeName,
+		SortOrder:     nr.sortOrder,
+		RefType:       nr.refType,
+		SourceID:      sourceID,
+		SourceName:    sourceName,
+		TeachingGoals: teachingGoals,
+		Duration:      int(duration),
+		Difficulty:    difficulty,
+	})
 	if err != nil {
 		result.Failed++
 		result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]创建失败: %v", nr.courseName, nr.nodeName, err))
@@ -402,28 +398,16 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 	// 合并 Excel 中填写的知识点/资源与颗粒课自带的知识点/资源
 	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, nr.knowledgeNames), baseKnowledgeIDs)
 	for _, kpID := range knowledgePointIDs {
-		_, _ = q.Exec(ctx, `
-			INSERT INTO node_knowledge_point_bindings (id, node_id, knowledge_point_id, created_at)
-			VALUES ($1,$2,$3,NOW())
-			ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
-		`, uuid.NewString(), nodeID, kpID)
+		store.CourseImportInsertNodeKnowledgeBinding(ctx, q, nodeID, kpID)
 	}
 
 	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, h.Store.Q(), tenantID, nr.resourceNames, userID), baseResourceIDs)
 	for _, resID := range resourceIDs {
-		_, _ = q.Exec(ctx, `
-			INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
-			VALUES ($1,$2,$3,$4,NOW())
-			ON CONFLICT (node_id, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, nodeID, resID)
+		store.CourseImportInsertNodeResourceBinding(ctx, q, tenantID, nodeID, resID)
 	}
 
 	// 同时写入节点字段，与 scenario_tasks 保持一致
-	_, _ = q.Exec(ctx, `
-		UPDATE system_course_nodes
-		SET knowledge_point_ids = $2, resource_ids = $3
-		WHERE id = $1
-	`, nodeID, knowledgePointIDs, resourceIDs)
+	store.CourseImportUpdateNodeBindingArrays(ctx, q, nodeID, knowledgePointIDs, resourceIDs)
 
 	for _, evalName := range nr.evalMethodNames {
 		methodKey := mapCourseEvalMethod(evalName)
@@ -441,11 +425,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 			} else if methodKey == "quiz" {
 				title = "随堂测"
 			}
-			_, err := q.Exec(ctx, `
-				INSERT INTO node_quizzes (id, tenant_id, node_id, title, type)
-				VALUES ($1,$2,$3,$4,$5)
-			`, uuid.NewString(), tenantID, nodeID, title, methodKey)
-			if err != nil {
+			if err := store.CourseImportInsertNodeQuiz(ctx, q, tenantID, nodeID, title, methodKey); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]测评[%s]创建失败: %v", nr.courseName, nr.nodeName, evalName, err))
 			}
 		}
@@ -475,13 +455,7 @@ func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string 
 }
 
 func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, q store.Queryer, courseID string) error {
-	if _, err := q.Exec(ctx, `DELETE FROM node_quizzes WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id=$1)`, courseID); err != nil {
-		return err
-	}
-	if _, err := q.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID); err != nil {
-		return err
-	}
-	return nil
+	return store.CourseImportClearImportedCourseNodes(ctx, q, courseID)
 }
 
 func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, q store.Queryer, tenantID string, names []string) []string {
@@ -493,8 +467,7 @@ func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, q store.Q
 		if name == "" {
 			continue
 		}
-		var id string
-		err := q.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		id, err := store.CourseImportFindAbilityPointIDByName(ctx, q, tenantID, name)
 		if err != nil {
 			continue
 		}
@@ -507,55 +480,19 @@ func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, q store.
 	if name == "" {
 		return nil
 	}
-	var c domain.Course
-	err := q.QueryRow(ctx, `
-		SELECT id, name, online_hours, description, difficulty
-		FROM courses
-		WHERE tenant_id=$1 AND name=$2 AND type='granular'
-		LIMIT 1
-	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours, &c.Description, &c.Difficulty)
+	c, err := store.CourseImportFindGranularCourseByName(ctx, q, tenantID, name)
 	if err != nil {
 		return nil
 	}
-	return &c
+	return c
 }
 
 func (h *CourseImportHandler) lookupGranularCourseKnowledgePointIDs(ctx context.Context, q store.Queryer, courseID string) []string {
-	rows, err := q.Query(ctx, `
-		SELECT knowledge_point_id FROM course_knowledge_bindings
-		WHERE course_id=$1 AND bind_type='course'
-	`, courseID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err == nil && id != "" {
-			ids = append(ids, id)
-		}
-	}
-	return ids
+	return store.CourseImportCourseKnowledgePointIDs(ctx, q, courseID)
 }
 
 func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Context, q store.Queryer, courseID string) []string {
-	rows, err := q.Query(ctx, `
-		SELECT resource_id FROM course_resource_bindings
-		WHERE course_id=$1
-	`, courseID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err == nil && id != "" {
-			ids = append(ids, id)
-		}
-	}
-	return ids
+	return store.CourseImportCourseResourceIDs(ctx, q, courseID)
 }
 
 func mapCourseRefType(t string) string {

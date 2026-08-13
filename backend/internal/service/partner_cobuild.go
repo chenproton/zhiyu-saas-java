@@ -680,6 +680,22 @@ func (s *PartnerCoBuildService) ownedTaskScenario(ctx context.Context, enterpris
 	return task, sc, nil
 }
 
+// GetTask 查询共建场景任务（归属校验：企业自有且链接有效）。
+func (s *PartnerCoBuildService) GetTask(ctx context.Context, partnerTenantID, taskID string) (*domain.ScenarioTask, error) {
+	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
+	if err != nil {
+		return nil, err
+	}
+	task, sc, err := s.ownedTaskScenario(ctx, ent.ID, taskID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireActiveLink(ctx, ent.ID, scenarioSchoolTenant(sc)); err != nil {
+		return nil, err
+	}
+	return task, nil
+}
+
 // UpdateTask 更新共建场景任务（不允许跨场景迁移）。
 func (s *PartnerCoBuildService) UpdateTask(ctx context.Context, partnerTenantID, taskID string, p *store.ScenarioTaskParams) (*domain.ScenarioTask, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)

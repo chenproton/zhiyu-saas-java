@@ -60,6 +60,11 @@ export default function DailyExamsPage() {
     }
   }, [])
 
+  // 已统计过的考试安排（去重，避免重复请求）
+  const statsDoneRef = useRef<Set<string>>(new Set())
+  // 结果列表请求序号守卫：切换考试安排时丢弃过期响应，防止旧安排数据错位/乱序覆盖
+  const resultsSeqRef = useRef(0)
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -69,7 +74,11 @@ export default function DailyExamsPage() {
         setUsages(items)
         const firstId = items[0]?.id ?? null
         setSelectedUsageId((prev) => prev ?? firstId)
-        if (firstId) void loadStats(firstId)
+        if (firstId) {
+          // 登记 statsDoneRef，避免随后选中 effect 对首个安排重复发起统计请求
+          statsDoneRef.current.add(firstId)
+          void loadStats(firstId)
+        }
       } catch {
         /* ignore */
       }
@@ -80,14 +89,20 @@ export default function DailyExamsPage() {
 
   useEffect(() => {
     if (!selectedUsageId) return
+    const seq = ++resultsSeqRef.current
     examResultApi
       .list({ usageId: selectedUsageId, limit: 500 })
-      .then((res) => setResults(res.items || []))
-      .catch(() => setResults([]))
+      .then((res) => {
+        if (seq !== resultsSeqRef.current) return
+        setResults(res.items || [])
+      })
+      .catch(() => {
+        if (seq !== resultsSeqRef.current) return
+        setResults([])
+      })
   }, [selectedUsageId])
 
   // 切换选中项时统计其数据（已统计过的跳过，避免重复请求）
-  const statsDoneRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (selectedUsageId && !statsDoneRef.current.has(selectedUsageId)) {
       statsDoneRef.current.add(selectedUsageId)
@@ -137,7 +152,11 @@ export default function DailyExamsPage() {
               return (
                 <button
                   key={u.id}
-                  onClick={() => setSelectedUsageId(u.id)}
+                  onClick={() => {
+                    // 切换安排时先清空旧结果，避免新安排数据返回前表格仍展示上一安排的学生/得分记录
+                    setResults([])
+                    setSelectedUsageId(u.id)
+                  }}
                   className={cn(
                     'w-full text-left rounded-xl p-3 transition-all border',
                     selectedUsageId === u.id

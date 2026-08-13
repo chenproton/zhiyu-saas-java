@@ -162,20 +162,21 @@ export function TaskDescriptionCard({
               className="flex items-center gap-2 pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
+              <Button variant="outline" size="sm" type="button" onClick={() => setPdfPreviewOpen(true)}>
                 <Eye className="h-4 w-4 mr-1" />
                 {t('预览')}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                type="button"
                 disabled={pdfUploading}
                 onClick={() => pdfInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 mr-1" />
                 {t('重新上传')}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onDescriptionPdfChange(null)}>
+              <Button variant="outline" size="sm" type="button" onClick={() => onDescriptionPdfChange(null)}>
                 <Trash2 className="h-4 w-4 mr-1" />
                 {t('移除文件')}
               </Button>

@@ -321,7 +321,13 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 		}
 		abilityPointUUID, err := uuid.Parse(req.AbilityPointID)
 		if err != nil {
-			abilityPointUUID = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(req.AbilityPointID))
+			respondError(w, http.StatusBadRequest, "能力点ID无效")
+			return
+		}
+		// 能力点必须存在且属于本租户，防止悬挂/跨租户引用
+		if _, err := h.Service.Store().Abilities().Get(r.Context(), abilityPointUUID.String(), tenantID); err != nil {
+			respondError(w, http.StatusBadRequest, "能力点不存在或不属于本租户")
+			return
 		}
 		point, err := h.Service.CreateCertificationPoint(r.Context(), &store.CertificationPointParams{
 			TenantID:           tenantID,

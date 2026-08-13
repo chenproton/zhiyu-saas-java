@@ -191,7 +191,8 @@ func TestListTalentRankingOrgTreeMajorFallback(t *testing.T) {
 func TestListEmployerBrandsJoinEnterprise(t *testing.T) {
 	q := &fakeRankQueryer{queries: [][][]any{
 		{{"b-1", "tenant-1", "employer", "苏州智联", "published", true, false, nil, nil, nil, nil, nil, "ent-1", nil, nil, nil, nil, 0, 10, time.Now(), time.Now(),
-			"苏州智联", "logo.png", "软件", "苏州", "简介", "91320000", "王经理", "13800000000", "w@example.com", "苏州市"}},
+			"苏州智联", "logo.png", "软件", "苏州", "简介", "91320000", "王经理", "13800000000", "w@example.com", "苏州市",
+			nil, nil, nil, []byte("{}"), []byte("{}"), []byte("{}"), []byte("{}")}},
 	}}
 	s := NewAllianceStore(q)
 

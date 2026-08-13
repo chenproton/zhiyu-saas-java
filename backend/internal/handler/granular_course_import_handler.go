@@ -137,10 +137,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			durPtr = &duration
 		}
 
-		var existingID, existingCreator string
-		var existingCoCreators []string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
-		exists := err == nil && existingID != ""
+		existingID, existingCreator, existingCoCreators, exists := store.GranularImportFindGranularCourseIdentity(ctx, h.Store.Q(), tenantID, name)
 
 		if exists && preview {
 			if len(result.DuplicateItems) < 100 {
@@ -170,18 +167,13 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		resourceIDs := findOrCreateResources(ctx, h.Store.Q(), tenantID, resourceNames, userID)
 
 		if exists && overwrite {
-			_, err := h.Store.Q().Exec(ctx, `
-				UPDATE courses
-				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7,
-				    knowledge_point_ids=$8, resource_ids=$9, resource_count=COALESCE(array_length($9::uuid[], 1), 0), updated_at=NOW()
-				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, majorID, batchID, diffPtr, descPtr, durPtr, knowledgePointIDs, resourceIDs)
+			err := store.GranularImportUpdateGranularCourseByImport(ctx, h.Store.Q(), existingID, tenantID, majorID, batchID, diffPtr, descPtr, durPtr, knowledgePointIDs, resourceIDs)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]更新失败: %v", name, err))
 				continue
 			}
-			if err := h.replaceCourseBindings(ctx, existingID, tenantID, userID, knowledgePointIDs, resourceIDs); err != nil {
+			if err := h.replaceCourseBindings(ctx, existingID, tenantID, knowledgePointIDs, resourceIDs); err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]关联更新失败: %v", name, err))
 				continue
@@ -191,9 +183,8 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		if exists {
 			// rename 模式：追加随机后缀生成新名称，按新对象导入
 			name = uniqueSuffixed(name, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, c).Scan(&eid)
-				return eid != ""
+				_, found := store.GranularImportFindGranularCourseIDByName(ctx, h.Store.Q(), tenantID, c)
+				return found
 			})
 		}
 
@@ -204,20 +195,13 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 
 		courseID := uuid.NewString()
 		code := h.generateGranularCourseCode(ctx, tenantID)
-		_, err = h.Store.Q().Exec(ctx, `
-			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
-				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
-				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-				knowledge_point_ids, resource_ids, node_count, resource_count, study_count)
-			VALUES ($1,$2,$3,$4,'granular','granular',$5,NULL,NULL,'V1.0',$6,0,0,0,NULL,NULL,
-				'draft',NULL,NULL,NULL,$7,$8,$9,'{}',$10,$11,$12,0,COALESCE(array_length($12::uuid[], 1), 0),0)
-		`, courseID, tenantID, code, name, majorID, durPtr, diffPtr, descPtr, userID, batchID, knowledgePointIDs, resourceIDs)
+		err = store.GranularImportInsertGranularCourseByImport(ctx, h.Store.Q(), courseID, tenantID, code, name, majorID, durPtr, diffPtr, descPtr, userID, batchID, knowledgePointIDs, resourceIDs)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]创建失败: %v", name, err))
 			continue
 		}
-		if err := h.replaceCourseBindings(ctx, courseID, tenantID, userID, knowledgePointIDs, resourceIDs); err != nil {
+		if err := h.replaceCourseBindings(ctx, courseID, tenantID, knowledgePointIDs, resourceIDs); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]关联写入失败: %v", name, err))
 			continue
@@ -226,30 +210,22 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 	}
 }
 
-func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, knowledgePointIDs, resourceIDs []string) error {
-	if _, err := h.Store.Q().Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id=$1 AND bind_type='course'`, courseID); err != nil {
+func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID string, knowledgePointIDs, resourceIDs []string) error {
+	if err := store.GranularImportDeleteCourseKnowledgeBindings(ctx, h.Store.Q(), courseID); err != nil {
 		return fmt.Errorf("清空课程知识点绑定失败: %w", err)
 	}
-	if _, err := h.Store.Q().Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id=$1`, courseID); err != nil {
+	if err := store.GranularImportDeleteCourseResourceBindings(ctx, h.Store.Q(), courseID); err != nil {
 		return fmt.Errorf("清空课程资源绑定失败: %w", err)
 	}
 
 	for _, kpID := range knowledgePointIDs {
-		if _, err := h.Store.Q().Exec(ctx, `
-			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
-			VALUES ($1,$2,$3,$4,'course',NULL)
-			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, kpID); err != nil {
+		if err := store.GranularImportInsertCourseKnowledgeBinding(ctx, h.Store.Q(), uuid.NewString(), tenantID, courseID, kpID); err != nil {
 			return fmt.Errorf("写入课程知识点绑定失败: %w", err)
 		}
 	}
 
 	for _, resID := range resourceIDs {
-		if _, err := h.Store.Q().Exec(ctx, `
-			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
-			VALUES ($1,$2,$3,$4)
-			ON CONFLICT (course_id, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, resID); err != nil {
+		if err := store.GranularImportInsertCourseResourceBinding(ctx, h.Store.Q(), uuid.NewString(), tenantID, courseID, resID); err != nil {
 			return fmt.Errorf("写入课程资源绑定失败: %w", err)
 		}
 	}
@@ -258,10 +234,6 @@ func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context,
 
 func (h *GranularCourseImportHandler) generateGranularCourseCode(ctx context.Context, tenantID string) string {
 	year := time.Now().Format("2006")
-	var maxNum int
-	err := h.Store.Q().QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^GRA-[0-9]{4}-([0-9]+)')::int), 0) FROM courses WHERE tenant_id=$1 AND code LIKE 'GRA-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
-	if err != nil {
-		maxNum = 0
-	}
+	maxNum := store.GranularImportMaxGranularCourseCodeNum(ctx, h.Store.Q(), tenantID, year)
 	return fmt.Sprintf("GRA-%s-%04d", year, maxNum+1)
 }

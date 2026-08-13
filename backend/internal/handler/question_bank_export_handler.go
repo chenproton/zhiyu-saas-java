@@ -56,12 +56,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 
 	failed := 0
 	for ri, bid := range bankIDs {
-		var name, desc string
-		var batchID *string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, COALESCE(description,''), batch_id
-			FROM question_banks WHERE id=$1 AND tenant_id=$2
-		`, bid, tenantID).Scan(&name, &desc, &batchID)
+		name, desc, batchID, err := store.GetQuestionBankForExport(ctx, h.Store.Q(), bid, tenantID)
 		if err != nil {
 			failed++
 			slog.Warn("导出题库行跳过", "bankId", bid, "error", err)
@@ -70,7 +65,7 @@ func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *exceli
 
 		batchName := ""
 		if batchID != nil && *batchID != "" {
-			h.Store.Q().QueryRow(ctx, `SELECT name FROM evaluation_batches WHERE id=$1`, *batchID).Scan(&batchName)
+			batchName, _ = store.GetEvaluationBatchNameByID(ctx, h.Store.Q(), *batchID)
 		}
 
 		r := 3 + ri

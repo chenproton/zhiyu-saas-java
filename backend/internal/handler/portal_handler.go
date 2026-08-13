@@ -51,11 +51,17 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 	isTeacher := role == domain.RoleTeacher || role == "school" || role == domain.RoleSchoolAdmin
 	isSchoolAdmin := role == domain.RoleSchoolAdmin
 
+	// 学生角色一次取班级节点，复用给 todos/schedule/exams 三处，避免同请求重复查询
+	studentClassNodeID := ""
+	if role == domain.RoleStudent {
+		studentClassNodeID = h.Service.UserClassNodeID(r.Context(), claims.UserID, claims.TenantID)
+	}
+
 	dash := domain.WorkspaceDashboard{
 		Role:           role,
-		Announcements:  h.listAnnouncements(r.Context(), role, claims.TenantID),
-		Todos:          h.listTodos(r.Context(), claims.UserID, claims.TenantID, role),
-		Schedule:       h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role),
+		Announcements:  []domain.WorkspaceAnnouncement{},
+		Todos:          h.listTodos(r.Context(), claims.UserID, claims.TenantID, role, studentClassNodeID),
+		Schedule:       h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role, studentClassNodeID),
 		Courses:        []domain.WorkspaceCourse{},
 		SceneTasks:     []domain.WorkspaceSceneTask{},
 		Exams:          []domain.WorkspaceExam{},
@@ -82,8 +88,12 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 	var wg sync.WaitGroup
 	wg.Add(4)
 	goAsync(&wg, func() { dash.Announcements = h.listAnnouncements(r.Context(), role, claims.TenantID) })
-	goAsync(&wg, func() { dash.Todos = h.listTodos(r.Context(), claims.UserID, claims.TenantID, role) })
-	goAsync(&wg, func() { dash.Schedule = h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role) })
+	goAsync(&wg, func() {
+		dash.Todos = h.listTodos(r.Context(), claims.UserID, claims.TenantID, role, studentClassNodeID)
+	})
+	goAsync(&wg, func() {
+		dash.Schedule = h.listSchedule(r.Context(), claims.UserID, claims.TenantID, role, studentClassNodeID)
+	})
 	goAsync(&wg, func() { dash.Stats = h.stats(r.Context(), claims.UserID, claims.TenantID, isTeacher) })
 
 	if isTeacher {
@@ -96,7 +106,9 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		wg.Add(3)
 		goAsync(&wg, func() { dash.Courses = h.listStudentCourses(r.Context(), claims.UserID, claims.TenantID) })
 		goAsync(&wg, func() { dash.SceneTasks = h.listStudentSceneTasks(r.Context(), claims.UserID, claims.TenantID) })
-		goAsync(&wg, func() { dash.Exams = h.listStudentExams(r.Context(), claims.UserID, claims.TenantID) })
+		goAsync(&wg, func() {
+			dash.Exams = h.listStudentExams(r.Context(), claims.UserID, claims.TenantID, studentClassNodeID)
+		})
 	}
 	wg.Wait()
 	dash.LearningPath = []domain.WorkspaceLearningPath{}
@@ -119,7 +131,7 @@ func (h *PortalHandler) listAnnouncements(ctx context.Context, role string, tena
 	return items
 }
 
-func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *string, role string) []domain.WorkspaceTodo {
+func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *string, role, classNodeID string) []domain.WorkspaceTodo {
 	var todos []domain.WorkspaceTodo
 	if role == domain.RoleTeacher || role == domain.RoleSchoolAdmin || role == "school" {
 		if pendingApprovals := h.Service.PendingApprovalCount(ctx, tenantID); pendingApprovals > 0 {
@@ -133,7 +145,7 @@ func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *
 			})
 		}
 	} else {
-		if upcomingExams := h.Service.UpcomingExamCount(ctx, tenantID, time.Now(), h.Service.UserClassNodeID(ctx, userID, tenantID)); upcomingExams > 0 {
+		if upcomingExams := h.Service.UpcomingExamCount(ctx, tenantID, time.Now(), classNodeID); upcomingExams > 0 {
 			todos = append(todos, domain.WorkspaceTodo{
 				ID: "upcoming-exams", Title: "待参加考试", Type: "exam", Count: upcomingExams, Urgent: false,
 			})
@@ -142,12 +154,8 @@ func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *
 	return todos
 }
 
-func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantID *string, role string) []domain.WorkspaceScheduleEvent {
+func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantID *string, role, classNodeID string) []domain.WorkspaceScheduleEvent {
 	var events []domain.WorkspaceScheduleEvent
-	classNodeID := ""
-	if role == domain.RoleStudent {
-		classNodeID = h.Service.UserClassNodeID(ctx, userID, tenantID)
-	}
 	if role == domain.RoleTeacher || role == domain.RoleSchoolAdmin || role == "school" {
 		periodLabel := h.Service.PeriodLabelMap(ctx, tenantID)
 		rows, err := h.Service.ListTeacherSchedules(ctx, userID, tenantID)
@@ -202,7 +210,10 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 			}
 		}
 	}
-	examEvents, _ := h.Service.ListExamEvents(ctx, tenantID, classNodeID)
+	examEvents, err := h.Service.ListExamEvents(ctx, tenantID, classNodeID)
+	if err != nil {
+		slog.Error("portal dashboard query failed", "error", err)
+	}
 	for _, e := range examEvents {
 		dayOfWeek := 1
 		if e.Start != nil {
@@ -347,8 +358,8 @@ func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string
 	return items
 }
 
-func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceExam {
-	rows, err := h.Service.ListStudentExams(ctx, userID, tenantID, h.Service.UserClassNodeID(ctx, userID, tenantID))
+func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, tenantID *string, classNodeID string) []domain.WorkspaceExam {
+	rows, err := h.Service.ListStudentExams(ctx, userID, tenantID, classNodeID)
 	if err != nil {
 		slog.Error("portal dashboard query failed", "error", err)
 	}

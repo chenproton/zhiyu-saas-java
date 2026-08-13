@@ -212,6 +212,7 @@ func (s *NodeEvaluationResultStore) ListByCourse(ctx context.Context, tenantID, 
 		JOIN system_course_nodes n ON n.id = ner.node_id
 		WHERE ner.tenant_id = $1 AND n.course_id = $2
 		ORDER BY ner.created_at DESC
+		LIMIT 1000
 	`, tenantID, courseID)
 	if err != nil {
 		return nil, err

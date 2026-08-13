@@ -7,7 +7,7 @@ import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi, tar
 import { EmptyState } from '@zhiyu/ui'
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
-import type { CareerPosition, Scenario } from '@/lib/types'
+import type { CareerPosition, Scenario, ScenarioTask } from '@/lib/types'
 import { SCENE_DIFFICULTY } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 import { JobCard } from './job-card'
@@ -162,6 +162,37 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
   const [selectedProfession, setSelectedProfession] = useState<string>('全部')
 
   useEffect(() => {
+    // 场景任务/知识点统计：仅用于「最多任务」排序与卡片角标，属辅助数据。
+    // 逐场景并发 taskApi.list 请求较多，改为后台异步填充，
+    // 不阻塞整页 loading（场景/岗位主列表就绪即渲染首屏）。
+    async function loadSceneTaskStats(scens: Scenario[]) {
+      try {
+        const results = await Promise.all(
+          scens.map((s) =>
+            taskApi
+              .list({ scenarioId: s.id, limit: 1000 })
+              .catch(() => ({ items: [] as ScenarioTask[], total: 0 })),
+          ),
+        )
+        const map = new Map<string, number>()
+        const kpMap = new Map<string, number>()
+        scens.forEach((s, idx) => {
+          const taskList = results[idx]?.items || []
+          map.set(s.id, taskList.length)
+          const kpIds = new Set<string>()
+          taskList.forEach((t) =>
+            (t.knowledgePointIds || []).forEach((kid: string) => kpIds.add(kid)),
+          )
+          kpMap.set(s.id, kpIds.size)
+        })
+        setTaskCountMap(map)
+        setKnowledgePointCountMap(kpMap)
+      } catch {
+        setTaskCountMap(new Map())
+        setKnowledgePointCountMap(new Map())
+      }
+    }
+
     ;(async () => {
       setLoading(true)
       const fetches: Promise<void>[] = []
@@ -170,29 +201,10 @@ export function JobHome({ mode = 'job' }: JobHomeProps) {
         fetches.push(
           scenarioApi
             .list({ status: 'published', limit: 1000 })
-            .then(async (res) => {
+            .then((res) => {
               const scens = res.items || []
               setScenarios(scens)
-              const results = await Promise.all(
-                scens.map((s) =>
-                  taskApi
-                    .list({ scenarioId: s.id, limit: 1000 })
-                    .catch(() => ({ items: [], total: 0 })),
-                ),
-              )
-              const map = new Map<string, number>()
-              const kpMap = new Map<string, number>()
-              scens.forEach((s, idx) => {
-                const taskList = results[idx]?.items || []
-                map.set(s.id, taskList.length)
-                const kpIds = new Set<string>()
-                taskList.forEach((t: any) =>
-                  (t.knowledgePointIds || []).forEach((kid: string) => kpIds.add(kid)),
-                )
-                kpMap.set(s.id, kpIds.size)
-              })
-              setTaskCountMap(map)
-              setKnowledgePointCountMap(kpMap)
+              void loadSceneTaskStats(scens)
             })
             .catch(() => {
               setScenarios([])

@@ -217,6 +217,20 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
+	// 协作者必须属于本租户用户，防止跨租户协作者引用（被邀请人 ID 会获得内容访问权）
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	if _, err := c.st.Users().Get(r.Context(), *claims.TenantID, req.UserID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
+			respondError(w, http.StatusBadRequest, "用户不存在或不属于本租户")
+			return
+		}
+		respondServerError(w, r, err, "查询用户失败")
+		return
+	}
 	if err := c.st.ContentActions().Invite(r.Context(), table, id, inviteCol, req.UserID); err != nil {
 		respondServerError(w, r, err, "邀请协作者失败")
 		return

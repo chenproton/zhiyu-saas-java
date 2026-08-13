@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -230,6 +231,9 @@ type ScheduleEntryInsertParams struct {
 
 // InsertScheduleEntry 插入草稿排课条目。
 func InsertScheduleEntry(ctx context.Context, q Queryer, p ScheduleEntryInsertParams) error {
+	if len(p.ClassIDs) == 0 {
+		return fmt.Errorf("排课条目缺少班级信息")
+	}
 	_, err := q.Exec(ctx, `
 		INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 			class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,

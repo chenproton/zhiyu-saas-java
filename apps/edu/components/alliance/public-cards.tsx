@@ -16,6 +16,7 @@ import type {
   AlliancePublicBrand,
 } from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatSalaryRange } from '@/lib/format-salary'
 
 export function GradientPlaceholder({
   className,
@@ -511,12 +512,7 @@ export function EmployerBrandRow({ brand }: { brand: AlliancePublicBrand }) {
 }
 
 function salaryText(b: AlliancePublicBrand) {
-  const min = b.salaryMin
-  const max = b.salaryMax
-  if (min == null && max == null) return null
-  if (min == null) return `${max}K`
-  if (max == null) return `${min}K`
-  return `${min}-${max}K`
+  return formatSalaryRange(b)
 }
 
 /** 岗位品牌：记录行（图标 + 名称 + 行业/专业标签 + 加粗薪资，置于 landing 的容器卡内） */

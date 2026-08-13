@@ -406,6 +406,14 @@ export default function ScenarioEditPage() {
   const confirmQuickFillAndStartAi = () => {
     if (quickFill.name.trim()) setScenarioName(quickFill.name.trim())
     if (quickFill.background.trim()) setBackground(quickFill.background.trim())
+    // formRef 由 useEffect 在渲染提交后才同步，同一次点击内仍持有旧值；
+    // AI 请求（pipeline.request）同步读取 formRef.current，先写入补全值，
+    // 避免 runAiAssist 携带旧 name/background 发起请求、随后用旧上下文覆盖刚确认的补全内容
+    formRef.current = {
+      ...formRef.current,
+      name: quickFill.name.trim() || formRef.current.name,
+      background: quickFill.background.trim() || formRef.current.background,
+    }
     setQuickFillOpen(false)
     runAiAssist()
   }

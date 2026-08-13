@@ -328,6 +328,8 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     item: T
   } | null>(null)
   const [confirmPending, setConfirmPending] = useState(false)
+  // 批量删除确认弹窗（与单项删除一致，先确认再执行，避免误删）
+  const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false)
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
 
@@ -718,19 +720,33 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
   }
 
   const handleBatchDelete = async () => {
-    for (const id of selectedIds) {
-      try {
-        await itemApi.delete(id)
-      } catch (err: any) {
-        toast({
-          variant: 'destructive',
-          title: t('删除失败'),
-          description: err.message || t('请稍后重试'),
-        })
+    setBatchDeleteConfirmOpen(false)
+    setConfirmPending(true)
+    try {
+      for (const id of selectedIds) {
+        // 与批量归档一致：仅删除可删状态项（草稿/驳回/已归档），
+        // 避免勾选混含已发布/审批中资源时误删核心内容
+        const item = frontItems.find((i) => i.id === id)
+        if (
+          item &&
+          (item.status === 'draft' || item.status === 'rejected' || item.status === 'archived')
+        ) {
+          try {
+            await itemApi.delete(id)
+          } catch (err: any) {
+            toast({
+              variant: 'destructive',
+              title: t('删除失败'),
+              description: err.message || t('请稍后重试'),
+            })
+          }
+        }
       }
+      setSelectedIds([])
+      await refresh()
+    } finally {
+      setConfirmPending(false)
     }
-    setSelectedIds([])
-    await refresh()
   }
 
   const handleArchive = async (item: T) => {
@@ -1611,7 +1627,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   size="sm"
                   className="h-8 text-xs"
                   disabled={!hasSelected || !canBatchDelete}
-                  onClick={handleBatchDelete}
+                  onClick={() => setBatchDeleteConfirmOpen(true)}
                 >
                   <Trash2 className="mr-1 h-3 w-3" />
                   {t('删除')}
@@ -1665,6 +1681,12 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
                   if (exportFn) {
                     try {
                       const res = await exportFn(selectedIds)
+                      // 与 CSV 导出一致：非 2xx 时后端返回错误 JSON，先检查再下载，
+                      // 避免下载到内容为错误信息的 .xlsx 文件
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}))
+                        throw new Error(data.error || '导出失败（HTTP ' + res.status + '）')
+                      }
                       downloadBlob(await res.blob(), `${entityLabel}导出.xlsx`)
                     } catch (err: any) {
                       toast({
@@ -1906,6 +1928,20 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
           onConfirm={handleConfirmAction}
         />
       )}
+
+      {/* Batch Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={batchDeleteConfirmOpen}
+        onOpenChange={(open) => !open && setBatchDeleteConfirmOpen(false)}
+        title={t('确认批量删除')}
+        description={t('确定要删除选中的 {count} 项{entityLabel}吗？仅删除草稿、已驳回或已归档的内容，删除后不可恢复。', {
+          count: selectedIds.length,
+          entityLabel,
+        })}
+        variant="destructive"
+        pending={confirmPending}
+        onConfirm={handleBatchDelete}
+      />
 
       {/* Batch Move Dialog */}
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>

@@ -132,9 +132,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 		}
 		seen[name] = true
 
-		var existingID, existingCreator string
-		var existingCollaborators []string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id, collaborator_ids FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		existingID, existingCreator, existingCollaborators, err := store.FindQuestionBankByTenantName(ctx, h.Store.Q(), tenantID, name)
 		found := err == nil && existingID != ""
 
 		if preview {
@@ -159,9 +157,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 					execRes.PermissionSkipped++
 					continue
 				}
-				_, err := h.Store.Q().Exec(ctx, `
-					UPDATE question_banks SET name=$1, description=$2, batch_id=$3 WHERE id=$4
-				`, name, description, batchID, existingID)
+				err = store.UpdateQuestionBankImport(ctx, h.Store.Q(), name, description, batchID, existingID)
 				if err != nil {
 					execRes.Failed++
 					msg := fmt.Sprintf("题库[%s]更新失败: %v", name, err)
@@ -176,8 +172,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 			if rename {
 				// rename 模式：追加随机后缀生成新名称，按新对象导入
 				name = uniqueSuffixed(name, func(c string) bool {
-					var eid string
-					_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+					eid, _ := store.GetQuestionBankIDByTenantName(ctx, h.Store.Q(), tenantID, c)
 					return eid != ""
 				})
 			} else {
@@ -188,11 +183,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 		bankID := uuid.NewString()
 		code := generateEntityCode("TK")
-		_, err = h.Store.Q().Exec(ctx, `
-			INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
-				batch_id, version, owner_type, is_draft_pool)
-			VALUES ($1,$2,$3,$4,$5,'draft',0,$6,$7,'V1.0','mine',false)
-		`, bankID, tenantID, code, name, description, userID, batchID)
+		err = store.InsertQuestionBankImport(ctx, h.Store.Q(), bankID, tenantID, code, name, description, userID, batchID)
 		if err != nil {
 			execRes.Failed++
 			msg := fmt.Sprintf("题库[%s]创建失败: %v", name, err)

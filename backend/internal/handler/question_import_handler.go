@@ -36,9 +36,7 @@ func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var existingBank string
-	err := h.Store.Q().QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
-	if err != nil {
+	if _, err := store.GetQuestionBankIDScoped(r.Context(), h.Store.Q(), bankID, tenantID); err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
 	}
@@ -80,9 +78,7 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var existingBank string
-	err := h.Store.Q().QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
-	if err != nil {
+	if _, err := store.GetQuestionBankIDScoped(r.Context(), h.Store.Q(), bankID, tenantID); err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
 	}
@@ -189,8 +185,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		}
 		seen[key] = true
 
-		var existingID, existingCreator string
-		err = h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
+		existingID, existingCreator, err := store.FindQuestionByTenantBankContent(ctx, h.Store.Q(), tenantID, bankID, content)
 		found := err == nil && existingID != ""
 
 		if preview {
@@ -216,10 +211,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 					continue
 				}
 				knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, knowledgeNames)
-				_, err = h.Store.Q().Exec(ctx, `
-					UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
-					WHERE id=$8
-				`, qType, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, existingID)
+				err = store.UpdateQuestionImport(ctx, h.Store.Q(), qType, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, existingID)
 				if err != nil {
 					execRes.Failed++
 					msg := fmt.Sprintf("第%d行题目更新失败: %v", i+1, err)
@@ -233,8 +225,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 			if rename {
 				// rename 模式：追加随机后缀生成新题干，按新对象导入
 				content = uniqueSuffixed(content, func(c string) bool {
-					var eid string
-					_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, c).Scan(&eid)
+					eid, _ := store.GetQuestionIDByTenantBankContent(ctx, h.Store.Q(), tenantID, bankID, c)
 					return eid != ""
 				})
 			} else {
@@ -246,10 +237,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		knowledgeIDs := findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, knowledgeNames)
 		questionID := uuid.NewString()
 		code := generateEntityCode("TM")
-		_, err = h.Store.Q().Exec(ctx, `
-			INSERT INTO questions (id, tenant_id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'draft')
-		`, questionID, tenantID, code, bankID, qType, content, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, userID, source)
+		err = store.InsertQuestionImport(ctx, h.Store.Q(), questionID, tenantID, code, bankID, qType, content, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, userID, source)
 		if err != nil {
 			execRes.Failed++
 			msg := fmt.Sprintf("第%d行题目创建失败: %v", i+1, err)

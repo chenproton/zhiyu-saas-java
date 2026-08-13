@@ -156,6 +156,10 @@ func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
+	// 绑定与解绑校验对称：任务必须属于本租户（task→scenario→tenant）
+	if !h.checkTaskTenant(w, r, req.TaskID) {
+		return
+	}
 
 	id, err := h.Service.Bind(r.Context(), tenantID, "task_resource_bindings", "task_id", req.TaskID, req.ResourceID, nil)
 	if err != nil {
@@ -181,17 +185,7 @@ func (h *TaskResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 		respondServerError(w, r, err, "查询绑定失败")
 		return
 	}
-	scenarioID, err := h.Service.TaskScenarioID(r.Context(), taskID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "任务不存在")
-		return
-	}
-	scenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), scenarioID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "场景不存在")
-		return
-	}
-	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
+	if !h.checkTaskTenant(w, r, taskID) {
 		return
 	}
 	if err := h.Service.Unbind(r.Context(), "task_resource_bindings", id, nil); err != nil {
@@ -199,4 +193,23 @@ func (h *TaskResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// checkTaskTenant 校验任务所属场景的租户归属（task→scenario→tenant 链路）。
+// Bind/Unbind 共用，保证绑定与解绑的归属校验对称。
+func (h *TaskResourceHandler) checkTaskTenant(w http.ResponseWriter, r *http.Request, taskID string) bool {
+	scenarioID, err := h.Service.TaskScenarioID(r.Context(), taskID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "任务不存在")
+		return false
+	}
+	scenarioTenantID, err := h.Service.ScenarioTenantID(r.Context(), scenarioID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return false
+	}
+	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
+		return false
+	}
+	return true
 }

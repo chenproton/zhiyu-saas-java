@@ -162,33 +162,7 @@ func (h *CourseExportHandler) fillCoursesData(ctx context.Context, f *excelize.F
 }
 
 func (h *CourseExportHandler) lookupCourseAbilityPointNames(ctx context.Context, courseID string) string {
-	var abilityPointIDs []string
-	err := h.Store.Q().QueryRow(ctx, `
-		SELECT ARRAY(SELECT unnest(ability_point_ids)::text)
-		FROM courses WHERE id=$1
-	`, courseID).Scan(&abilityPointIDs)
-	if err != nil || len(abilityPointIDs) == 0 {
-		return ""
-	}
-	// 批量查询名称，避免逐 id 单条 QueryRow（N+1）
-	var names []string
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT name FROM ability_points WHERE id = ANY($1::uuid[]) ORDER BY name
-	`, abilityPointIDs)
-	if err != nil {
-		return ""
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
-			return strings.Join(names, ",")
-		}
-		if n != "" {
-			names = append(names, n)
-		}
-	}
-	return strings.Join(names, ",")
+	return store.CourseImportCourseAbilityPointNames(ctx, h.Store.Q(), courseID)
 }
 
 func (h *CourseExportHandler) lookupNodeKnowledgePointNames(ctx context.Context, nodeID string) []string {

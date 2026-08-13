@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -62,6 +63,17 @@ func (s *EvaluationResultStore) ListConfig() ListQueryConfig[domain.SceneEvaluat
 			}
 			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
+			}
+			if ids := p.Values["ids"]; ids != "" {
+				parts := make([]string, 0, 8)
+				for _, id := range strings.Split(ids, ",") {
+					if id = strings.TrimSpace(id); id != "" {
+						parts = append(parts, id)
+					}
+				}
+				if len(parts) > 0 {
+					qb.AddCondition("id = ANY(" + qb.NextArg(parts) + "::uuid[])")
+				}
 			}
 		},
 	}

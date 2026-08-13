@@ -187,8 +187,7 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 		sortOrder := parseIntDefault(col(row, 3), 0)
 		enabled := parseBoolDefault(col(row, 4), true)
 
-		var existingID string
-		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
+		existingID := store.GetIndustryIDByCode(ctx, h.Store.Q(), tenantID, code)
 
 		origCode := ""
 		if existingID != "" {
@@ -200,10 +199,7 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE industries SET name=$1, enabled=$2, sort_order=$3, updated_at=NOW()
-						WHERE id=$4 AND tenant_id=$5
-					`, name, enabled, sortOrder, existingID, tenantID)
+					err := store.UpdateIndustry(ctx, h.Store.Q(), existingID, tenantID, name, enabled, sortOrder)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]更新失败: %v", code, err))
@@ -218,18 +214,13 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 			// rename 模式（仅执行阶段）：追加随机后缀生成新代码，按新对象导入
 			origCode = code
 			code = uniqueSuffixed(code, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, c).Scan(&eid)
-				return eid != ""
+				return store.GetIndustryIDByCode(ctx, h.Store.Q(), tenantID, c) != ""
 			})
 		}
 
 		id := uuid.NewString()
 		if !preview {
-			_, err = h.Store.Q().Exec(ctx, `
-				INSERT INTO industries (id, tenant_id, code, name, enabled, sort_order)
-				VALUES ($1, $2, $3, $4, $5, $6)
-			`, id, tenantID, code, name, enabled, sortOrder)
+			err = store.InsertIndustry(ctx, h.Store.Q(), id, tenantID, code, name, enabled, sortOrder)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]创建失败: %v", code, err))
@@ -265,7 +256,7 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 		parentID, ok := codeToID[parentCode]
 		if !ok {
 			// Try database in case parent existed before import
-			_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, parentCode).Scan(&parentID)
+			parentID = store.GetIndustryIDByCode(ctx, h.Store.Q(), tenantID, parentCode)
 			if parentID == "" {
 				msg := fmt.Sprintf("行业[%s]的上级行业[%s]未找到", code, parentCode)
 				result.Errors = append(result.Errors, msg)
@@ -282,7 +273,7 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 			continue
 		}
 		if !preview {
-			if _, err := h.Store.Q().Exec(ctx, `UPDATE industries SET parent_id=$1, updated_at=NOW() WHERE id=$2 AND tenant_id=$3`, parentID, id, tenantID); err != nil {
+			if err := store.UpdateIndustryParent(ctx, h.Store.Q(), parentID, id, tenantID); err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]父级关联更新失败: %v", code, err))
 				continue
@@ -320,8 +311,7 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 		alias := nullableStr(col(row, 2))
 		enabled := parseBoolDefault(col(row, 3), true)
 
-		var existingID string
-		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
+		existingID := store.GetMajorIDByCode(ctx, h.Store.Q(), tenantID, code)
 
 		if existingID != "" {
 			if !overwrite && !(rename && !preview) {
@@ -332,10 +322,7 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE majors SET name=$1, alias=$2, enabled=$3, updated_at=NOW()
-						WHERE id=$4 AND tenant_id=$5
-					`, name, alias, enabled, existingID, tenantID)
+					err := store.UpdateMajor(ctx, h.Store.Q(), existingID, tenantID, name, alias, enabled)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]更新失败: %v", code, err))
@@ -348,18 +335,13 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 			}
 			// rename 模式（仅执行阶段）：追加随机后缀生成新代码，按新对象导入
 			code = uniqueSuffixed(code, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2`, tenantID, c).Scan(&eid)
-				return eid != ""
+				return store.GetMajorIDByCode(ctx, h.Store.Q(), tenantID, c) != ""
 			})
 		}
 
 		if !preview {
 			id := uuid.NewString()
-			_, err = h.Store.Q().Exec(ctx, `
-				INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
-				VALUES ($1, $2, $3, $4, $5, $6)
-			`, id, tenantID, code, name, alias, enabled)
+			err = store.InsertMajor(ctx, h.Store.Q(), id, tenantID, code, name, alias, enabled)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]创建失败: %v", code, err))
@@ -392,15 +374,7 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 	nameToID := make(map[string]string)
 
 	// Load org types
-	typeRows, typeErr := h.Store.Q().Query(ctx, `SELECT id, name FROM org_types WHERE tenant_id=$1`, tenantID)
-	if typeErr == nil {
-		for typeRows.Next() {
-			var id, name string
-			_ = typeRows.Scan(&id, &name)
-			typeNameToID[name] = id
-		}
-		typeRows.Close()
-	}
+	typeNameToID = store.LoadOrgTypeNameToID(ctx, h.Store.Q(), tenantID)
 
 	for i, row := range rows {
 		if i < 2 {
@@ -437,8 +411,7 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 			}
 		}
 
-		var existingID string
-		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 AND type_id=$3`, tenantID, name, typeID).Scan(&existingID)
+		existingID := store.GetOrganizationIDByNameAndType(ctx, h.Store.Q(), tenantID, name, typeID)
 		origName := ""
 		if existingID != "" {
 			if !overwrite && !(rename && !preview) {
@@ -449,10 +422,7 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE organizations SET name=$1, type_id=$2, parent_id=$3, sort_order=$4, updated_at=NOW()
-						WHERE id=$5 AND tenant_id=$6
-					`, name, typeID, parentID, sortOrder, existingID, tenantID)
+					err := store.UpdateOrganization(ctx, h.Store.Q(), existingID, tenantID, name, typeID, parentID, sortOrder)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]更新失败: %v", name, err))
@@ -467,18 +437,13 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
 			origName = name
 			name = uniqueSuffixed(name, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 AND type_id=$3`, tenantID, c, typeID).Scan(&eid)
-				return eid != ""
+				return store.GetOrganizationIDByNameAndType(ctx, h.Store.Q(), tenantID, c, typeID) != ""
 			})
 		}
 
 		id := uuid.NewString()
 		if !preview {
-			_, err = h.Store.Q().Exec(ctx, `
-				INSERT INTO organizations (id, tenant_id, name, type_id, parent_id, sort_order, member_count)
-				VALUES ($1, $2, $3, $4, $5, $6, 0)
-			`, id, tenantID, name, typeID, parentID, sortOrder)
+			err = store.InsertOrganization(ctx, h.Store.Q(), id, tenantID, name, typeID, parentID, sortOrder)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]创建失败: %v", name, err))
@@ -570,10 +535,7 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 						result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]密码加密失败: %v", username, err))
 						continue
 					}
-					_, err = h.Store.Q().Exec(ctx, `
-						UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, updated_at=NOW()
-						WHERE id=$5 AND tenant_id=$6
-					`, name, string(hash), status, orgNodeID, existingID, tenantID)
+					err = store.UpdateImportUser(ctx, h.Store.Q(), existingID, tenantID, name, string(hash), status, orgNodeID)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]更新失败: %v", username, err))
@@ -696,10 +658,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 						result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]密码加密失败: %v", username, err))
 						continue
 					}
-					_, err = h.Store.Q().Exec(ctx, `
-						UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, title_ids=$5, updated_at=NOW()
-						WHERE id=$6 AND tenant_id=$7
-					`, name, string(hash), status, orgNodeID, titleIDs, existingID, tenantID)
+					err = store.UpdateImportTeacher(ctx, h.Store.Q(), existingID, tenantID, name, string(hash), status, orgNodeID, titleIDs)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]更新失败: %v", username, err))
@@ -724,10 +683,9 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 				continue
 			}
 			if len(titleIDs) > 0 {
-				var uid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND username=$2 LIMIT 1`, tenantID, username).Scan(&uid)
+				uid := h.getUserID(ctx, tenantID, username)
 				if uid != "" {
-					if _, err := h.Store.Q().Exec(ctx, `UPDATE users SET title_ids=$1 WHERE id=$2`, titleIDs, uid); err != nil {
+					if err := store.UpdateUserTitleIDs(ctx, h.Store.Q(), uid, titleIDs); err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]职称绑定失败: %v", username, err))
 						continue
@@ -744,8 +702,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 }
 
 func (h *ResourceImportHandler) getInstitutionID(ctx context.Context, tenantID string) *string {
-	var id string
-	_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM institutions WHERE tenant_id=$1 LIMIT 1`, tenantID).Scan(&id)
+	id := store.GetInstitutionID(ctx, h.Store.Q(), tenantID)
 	if id == "" {
 		return nil
 	}
@@ -753,15 +710,11 @@ func (h *ResourceImportHandler) getInstitutionID(ctx context.Context, tenantID s
 }
 
 func (h *ResourceImportHandler) getRoleIDByCode(ctx context.Context, tenantID, code string) string {
-	var id string
-	_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM roles WHERE tenant_id=$1 AND code=$2 LIMIT 1`, tenantID, code).Scan(&id)
-	return id
+	return store.GetRoleIDByTenantAndCode(ctx, h.Store.Q(), tenantID, code)
 }
 
 func (h *ResourceImportHandler) getUserID(ctx context.Context, tenantID, username string) string {
-	var id string
-	_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND username=$2 LIMIT 1`, tenantID, username).Scan(&id)
-	return id
+	return store.GetUserIDByUsername(ctx, h.Store.Q(), tenantID, username)
 }
 
 func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string, institutionID *string, roleID string, orgNodeID, majorID *string, username, password, name, status string) error {
@@ -775,23 +728,34 @@ func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string,
 
 	// users.role 是平台分区枚举（school/enterprise/operator），不是角色代码。
 	// portal 下的学生和教师统一使用 school。
-	_, err = h.Store.Q().Exec(ctx, `
-		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-	`, id, tenantID, institutionID, orgNodeID, majorID,
-		domain.UserRoleSchool, "portal", globalLoginName, username, string(hash), name, "", nil, nil,
-		nil, nil, nil, []string{}, domain.JSONMap{}, status)
-	if err != nil {
+	if err := store.InsertImportUser(ctx, h.Store.Q(), store.ImportUserParams{
+		ID:            id,
+		TenantID:      tenantID,
+		InstitutionID: institutionID,
+		OrgNodeID:     orgNodeID,
+		MajorID:       majorID,
+		Role:          domain.UserRoleSchool,
+		Platform:      "portal",
+		LoginName:     globalLoginName,
+		Username:      username,
+		PasswordHash:  string(hash),
+		Name:          name,
+		Email:         "",
+		Phone:         nil,
+		AvatarURL:     nil,
+		StudentNo:     nil,
+		WorkID:        nil,
+		IDCard:        nil,
+		TitleIDs:      []string{},
+		OAuth:         domain.JSONMap{},
+		Status:        status,
+	}); err != nil {
 		return err
 	}
 
 	if roleID != "" {
-		_, _ = h.Store.Q().Exec(ctx, `
-			INSERT INTO user_roles (id, user_id, role_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, role_id) DO NOTHING
-		`, uuid.NewString(), id, roleID)
-		_, _ = h.Store.Q().Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id=$1`, roleID)
+		_ = store.InsertUserRole(ctx, h.Store.Q(), uuid.NewString(), id, roleID)
+		_ = store.IncrementRoleUserCount(ctx, h.Store.Q(), roleID)
 	}
 	return nil
 }
@@ -826,28 +790,8 @@ func (h *ResourceImportHandler) findOrgNodeByPath(ctx context.Context, tenantID,
 
 	className := segments[len(segments)-1]
 
-	// Query all candidate nodes with the target name
-	rows, err := h.Store.Q().Query(ctx, `
-		SELECT id, parent_id FROM organizations WHERE tenant_id=$1 AND name=$2
-	`, tenantID, className)
+	candidates, err := store.FindOrgNodeCandidates(ctx, h.Store.Q(), tenantID, className)
 	if err != nil {
-		return "", err
-	}
-	defer rows.Close()
-
-	type node struct {
-		id       string
-		parentID *string
-	}
-	var candidates []node
-	for rows.Next() {
-		var n node
-		if err := rows.Scan(&n.id, &n.parentID); err != nil {
-			continue
-		}
-		candidates = append(candidates, n)
-	}
-	if err := rows.Err(); err != nil {
 		return "", err
 	}
 
@@ -855,23 +799,23 @@ func (h *ResourceImportHandler) findOrgNodeByPath(ctx context.Context, tenantID,
 		return "", fmt.Errorf("未找到组织节点: %s", className)
 	}
 	if len(candidates) == 1 && len(segments) == 1 {
-		return candidates[0].id, nil
+		return candidates[0].ID, nil
 	}
 
 	// Build ancestor chain for each candidate and match against segments
 	for _, c := range candidates {
-		chain, err := h.buildAncestorChain(ctx, tenantID, c.id)
+		chain, err := h.buildAncestorChain(ctx, tenantID, c.ID)
 		if err != nil {
 			continue
 		}
 		if matchSegments(chain, segments) {
-			return c.id, nil
+			return c.ID, nil
 		}
 	}
 
 	// If no path match, fall back to the unique name match if only one candidate
 	if len(candidates) == 1 {
-		return candidates[0].id, nil
+		return candidates[0].ID, nil
 	}
 
 	return "", fmt.Errorf("找到多个名为[%s]的组织节点，请使用完整路径（如：学校-学院-班级）", className)
@@ -886,11 +830,7 @@ func (h *ResourceImportHandler) buildAncestorChain(ctx context.Context, tenantID
 			break
 		}
 		seen[currentID] = true
-		var name string
-		var parentID *string
-		err := h.Store.Q().QueryRow(ctx, `
-			SELECT name, parent_id FROM organizations WHERE tenant_id=$1 AND id=$2
-		`, tenantID, currentID).Scan(&name, &parentID)
+		name, parentID, err := store.GetOrgNodeNameAndParent(ctx, h.Store.Q(), tenantID, currentID)
 		if err != nil {
 			return nil, err
 		}
@@ -1053,11 +993,9 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_projects SET type=$1, phase=$2, start_date=$3, end_date=$4,
-							description=$5, budget=$6, enterprise_ids=$7, secondary_colleges=$8, is_public=$9, updated_at=NOW()
-						WHERE id=$10 AND tenant_id=$11
-					`, projType, phase, startDate, endDate, description, budget, jsonBytes(enterpriseIDs), jsonBytes(secondaryColleges), isPublic, existingID, tenantID)
+					err := store.UpdateAllianceProjectImport(ctx, h.Store.Q(), existingID, tenantID,
+						projType, phase, startDate, endDate, description, budget,
+						jsonBytes(enterpriseIDs), jsonBytes(secondaryColleges), isPublic)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]更新失败: %v", name, err))
@@ -1077,14 +1015,9 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 
 		if !preview {
 			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_projects (id, tenant_id, name, type, description, phase, publish_status,
-					start_date, end_date, budget, enterprise_ids, agreement_ids, secondary_colleges, is_public,
-					created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
-			`, id, tenantID, name, projType, description, phase, "draft",
-				startDate, endDate, budget, jsonBytes(enterpriseIDs),
-				[]byte("[]"), jsonBytes(secondaryColleges), isPublic)
+			err := store.InsertAllianceProjectImport(ctx, h.Store.Q(), id, tenantID,
+				name, projType, description, phase, startDate, endDate, budget,
+				jsonBytes(enterpriseIDs), []byte("[]"), jsonBytes(secondaryColleges), isPublic)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]创建失败: %v", name, err))
@@ -1136,8 +1069,7 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 		secondaryColleges := splitNames(col(row, 6))
 		isPublic := parseImportBool(col(row, 7))
 
-		var existingID string
-		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, title).Scan(&existingID)
+		existingID := store.GetAchievementIDByTitle(ctx, h.Store.Q(), tenantID, title)
 		if existingID != "" {
 			if !overwrite && !(rename && !preview) {
 				result.Skipped++
@@ -1147,11 +1079,9 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_achievements SET type=$1, description=$2, achievement_date=$3,
-							project_ids=$4, enterprise_ids=$5, secondary_colleges=$6, is_public=$7, updated_at=NOW()
-						WHERE id=$8 AND tenant_id=$9
-					`, achType, description, achievementDate, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), jsonBytes(secondaryColleges), isPublic, existingID, tenantID)
+					err := store.UpdateAllianceAchievementImport(ctx, h.Store.Q(), existingID, tenantID,
+						achType, description, achievementDate,
+						jsonBytes(projectIDs), jsonBytes(enterpriseIDs), jsonBytes(secondaryColleges), isPublic)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]更新失败: %v", title, err))
@@ -1164,25 +1094,15 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 			}
 			// rename 模式（仅执行阶段）：追加随机后缀生成新标题，按新对象导入
 			title = uniqueSuffixed(title, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, c).Scan(&eid)
-				return eid != ""
+				return store.GetAchievementIDByTitle(ctx, h.Store.Q(), tenantID, c) != ""
 			})
 		}
 
 		if !preview {
 			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_achievements (id, tenant_id, title, type, description, achievement_date,
-					attachments, images, owner_persons, co_builders, enterprise_ids, project_ids,
-					related_positions, related_scenes, related_courses, status, view_count,
-					secondary_colleges, is_public, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
-			`, id, tenantID, title, achType, description, achievementDate,
-				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"),
-				jsonBytes(enterpriseIDs), jsonBytes(projectIDs),
-				[]byte("[]"), []byte("[]"), []byte("[]"), "draft", 0,
-				jsonBytes(secondaryColleges), isPublic)
+			err := store.InsertAllianceAchievementImport(ctx, h.Store.Q(), id, tenantID,
+				title, achType, description, achievementDate,
+				jsonBytes(enterpriseIDs), jsonBytes(projectIDs), jsonBytes(secondaryColleges), isPublic)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]创建失败: %v", title, err))
@@ -1245,11 +1165,9 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_agreements SET type=$1, start_date=$2, end_date=$3,
-							status=$4, content=$5, project_ids=$6, enterprise_ids=$7, updated_at=NOW()
-						WHERE id=$8 AND tenant_id=$9
-					`, agmtType, startDate, endDate, status, content, jsonBytes(projectIDs), jsonBytes(enterpriseIDs), existingID, tenantID)
+					err := store.UpdateAllianceAgreementImport(ctx, h.Store.Q(), existingID, tenantID,
+						agmtType, startDate, endDate, status, content,
+						jsonBytes(projectIDs), jsonBytes(enterpriseIDs))
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]更新失败: %v", name, err))
@@ -1269,12 +1187,9 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 
 		if !preview {
 			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_agreements (id, tenant_id, name, type, content, start_date,
-					end_date, status, enterprise_ids, project_ids, attachments, is_public, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false,NOW(),NOW())
-			`, id, tenantID, name, agmtType, content, startDate, endDate,
-				status, jsonBytes(enterpriseIDs), jsonBytes(projectIDs), []byte("[]"))
+			err := store.InsertAllianceAgreementImport(ctx, h.Store.Q(), id, tenantID,
+				name, agmtType, content, startDate, endDate, status,
+				jsonBytes(enterpriseIDs), jsonBytes(projectIDs))
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]创建失败: %v", name, err))
@@ -1317,8 +1232,7 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 		}
 		isEnabled := parseBoolDefault(col(row, 2), true)
 
-		var existingID string
-		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_permissions WHERE tenant_id=$1 AND account_name=$2 LIMIT 1`, tenantID, accountName).Scan(&existingID)
+		existingID := store.GetPermissionIDByAccountName(ctx, h.Store.Q(), tenantID, accountName)
 		if existingID != "" {
 			if !overwrite && !(rename && !preview) {
 				result.Skipped++
@@ -1328,10 +1242,7 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_permissions SET account_type=$1, is_enabled=$2, updated_at=NOW()
-						WHERE id=$3 AND tenant_id=$4
-					`, accountType, isEnabled, existingID, tenantID)
+					err := store.UpdateAlliancePermissionImport(ctx, h.Store.Q(), existingID, tenantID, accountType, isEnabled)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("权限[%s]更新失败: %v", accountName, err))
@@ -1344,19 +1255,14 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 			}
 			// rename 模式（仅执行阶段）：追加随机后缀生成新账号名，按新对象导入
 			accountName = uniqueSuffixed(accountName, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_permissions WHERE tenant_id=$1 AND account_name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
-				return eid != ""
+				return store.GetPermissionIDByAccountName(ctx, h.Store.Q(), tenantID, c) != ""
 			})
 		}
 
 		if !preview {
 			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_permissions (id, tenant_id, account_name, account_type,
-					is_enabled, resource_permissions, platform_permissions, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW())
-			`, id, tenantID, accountName, accountType, isEnabled, []byte("[]"), []byte("[]"))
+			err := store.InsertAlliancePermissionImport(ctx, h.Store.Q(), id, tenantID,
+				accountName, accountType, isEnabled, []byte("[]"), []byte("[]"))
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("权限[%s]创建失败: %v", accountName, err))
@@ -1431,8 +1337,7 @@ func (h *ResourceImportHandler) doImportBrandsGeneric(ctx context.Context, xlsx 
 		teacherID := lookupSingleIDByName(ctx, h.Store.Q(), "users", tenantID, col(row, 11))
 		expertID := lookupSingleIDByName(ctx, h.Store.Q(), "alliance_experts", tenantID, col(row, 12))
 
-		var existingID string
-		_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_brands WHERE tenant_id=$1 AND brand_type=$2 AND name=$3 LIMIT 1`, tenantID, brandType, name).Scan(&existingID)
+		existingID := store.GetBrandIDByTypeAndName(ctx, h.Store.Q(), tenantID, brandType, name)
 		if existingID != "" {
 			if !overwrite && !(rename && !preview) {
 				result.Skipped++
@@ -1442,14 +1347,9 @@ func (h *ResourceImportHandler) doImportBrandsGeneric(ctx context.Context, xlsx 
 			}
 			if overwrite {
 				if !preview {
-					_, err := h.Store.Q().Exec(ctx, `
-						UPDATE alliance_brands SET description=$1, status=$2, is_public=$3, is_featured=$4,
-							cover_image=$5, student_id=$6, enterprise_id=$7, position_id=$8, major_id=$9,
-							teacher_id=$10, expert_id=$11, updated_at=NOW()
-						WHERE id=$12 AND tenant_id=$13
-					`, description, status, isPublic, isFeatured, coverImage,
-						studentID, enterpriseID, positionID, majorID, teacherID, expertID,
-						existingID, tenantID)
+					err := store.UpdateAllianceBrandImport(ctx, h.Store.Q(), existingID, tenantID,
+						description, status, isPublic, isFeatured, coverImage,
+						studentID, enterpriseID, positionID, majorID, teacherID, expertID)
 					if err != nil {
 						result.Failed++
 						result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]更新失败: %v", brandType, name, err))
@@ -1462,21 +1362,15 @@ func (h *ResourceImportHandler) doImportBrandsGeneric(ctx context.Context, xlsx 
 			}
 			// rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
 			name = uniqueSuffixed(name, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM alliance_brands WHERE tenant_id=$1 AND brand_type=$2 AND name=$3 LIMIT 1`, tenantID, brandType, c).Scan(&eid)
-				return eid != ""
+				return store.GetBrandIDByTypeAndName(ctx, h.Store.Q(), tenantID, brandType, c) != ""
 			})
 		}
 
 		if !preview {
 			id := uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `
-				INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public,
-					is_featured, cover_image, description, student_id, enterprise_id, position_id,
-					major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
-			`, id, tenantID, brandType, name, status, isPublic, isFeatured, coverImage, description,
-				studentID, enterpriseID, positionID, majorID, teacherID, expertID, 0, 0)
+			err := store.InsertAllianceBrandImport(ctx, h.Store.Q(), id, tenantID,
+				brandType, name, status, isPublic, isFeatured, coverImage, description,
+				studentID, enterpriseID, positionID, majorID, teacherID, expertID)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]创建失败: %v", brandType, name, err))
@@ -2173,8 +2067,6 @@ func (h *ResourceImportHandler) createBrandFromImport(ctx context.Context, tenan
 	}
 	return nil
 }
-
-func boolPtr(b bool) *bool { return &b }
 
 func stringPtr(s string) *string { return &s }
 

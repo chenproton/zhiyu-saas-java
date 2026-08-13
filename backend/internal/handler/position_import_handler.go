@@ -102,9 +102,8 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchID := lookupBatchID(ctx, h.Store.Q(), "batches", tenantID, batchName)
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
-		var existingID, existingCreator string
-		var existingCollaborators []string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id, created_by, collaborators FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		dup, err := store.FindPositionByTenantAndName(ctx, h.Store.Q(), tenantID, name)
+		existingID, existingCreator, existingCollaborators := dup.ID, dup.CreatedBy, dup.Collaborators
 		exists := err == nil && existingID != ""
 
 		origName := ""
@@ -129,14 +128,12 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 					result.PermissionSkipped++
 					continue
 				}
-				_, err := h.Store.Q().Exec(ctx, `
-					UPDATE career_positions
-					SET name=$3, short_name=$4, industry_id=$5, position_type=$6,
-					    salary_min=$7, salary_max=$8, description=$9, requirements=$10,
-					    career_path=$11, batch_id=$12
-					WHERE id=$1 AND tenant_id=$2
-				`, existingID, tenantID, name, shortName, industryID, positionType,
-					salaryMin, salaryMax, description, requirements, careerPath, batchID)
+				err := store.UpdatePositionImportFields(ctx, h.Store.Q(), store.PositionImportUpdateParams{
+					ID: existingID, TenantID: tenantID, Name: name, ShortName: shortName,
+					IndustryID: industryID, PositionType: positionType,
+					SalaryMin: salaryMin, SalaryMax: salaryMax, Description: description,
+					Requirements: requirements, CareerPath: careerPath, BatchID: batchID,
+				})
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]更新失败: %v", name, err))
@@ -144,20 +141,12 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				}
 				// 覆盖时清空原有关联数据，随后根据新文件内容重新写入（错误计入 Failed 而非静默）
 				clearFailed := false
-				for _, delSQL := range []string{
-					`DELETE FROM career_position_majors WHERE career_position_id=$1`,
-					`DELETE FROM position_certificates WHERE career_position_id=$1`,
-					`DELETE FROM position_responsibilities WHERE career_position_id=$1`,
-					`DELETE FROM position_ability_bindings WHERE career_position_id=$1`,
-				} {
-					if _, err := h.Store.Q().Exec(ctx, delSQL, existingID); err != nil {
-						slog.Warn("覆盖导入清理关联失败", "positionId", existingID, "error", err)
-						clearFailed = true
-					}
+				if err := store.ClearPositionImportRelations(ctx, h.Store.Q(), existingID); err != nil {
+					slog.Warn("覆盖导入清理关联失败", "positionId", existingID, "error", err)
+					clearFailed = true
 				}
 				for _, mid := range majorIDs {
-					if _, err := h.Store.Q().Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-						uuid.NewString(), existingID, mid); err != nil {
+					if err := store.InsertPositionMajor(ctx, h.Store.Q(), uuid.NewString(), existingID, mid); err != nil {
 						slog.Warn("覆盖导入写入专业失败", "positionId", existingID, "error", err)
 						clearFailed = true
 					}
@@ -167,8 +156,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 						continue
 					}
 					certID := h.findOrCreateCert(ctx, tenantID, certName)
-					if _, err := h.Store.Q().Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-						uuid.NewString(), tenantID, existingID, certID); err != nil {
+					if err := store.InsertPositionCertificate(ctx, h.Store.Q(), uuid.NewString(), tenantID, existingID, certID); err != nil {
 						slog.Warn("覆盖导入写入证书失败", "positionId", existingID, "error", err)
 						clearFailed = true
 					}
@@ -184,8 +172,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			// rename 模式：追加随机后缀生成新名称，按新对象导入
 			origName = name
 			name = uniqueSuffixed(name, func(c string) bool {
-				var eid string
-				_ = h.Store.Q().QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, c).Scan(&eid)
+				eid, _ := store.FindPositionIDByTenantAndName(ctx, h.Store.Q(), tenantID, c)
 				return eid != ""
 			})
 		}
@@ -197,12 +184,12 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 
 		positionID := uuid.NewString()
 		code := generateEntityCode("GW")
-		_, err = h.Store.Q().Exec(ctx, `
-			INSERT INTO career_positions (id, tenant_id, code, name, short_name, industry_id, position_type,
-				salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'V1.0','draft',$13,'{}')
-		`, positionID, tenantID, code, name, shortName, industryID, positionType,
-			salaryMin, salaryMax, description, requirements, careerPath, userID)
+		err = store.InsertImportPosition(ctx, h.Store.Q(), store.PositionImportInsertParams{
+			ID: positionID, TenantID: tenantID, Code: code, Name: name, ShortName: shortName,
+			IndustryID: industryID, PositionType: positionType,
+			SalaryMin: salaryMin, SalaryMax: salaryMax, Description: description,
+			Requirements: requirements, CareerPath: careerPath, CreatedBy: userID,
+		})
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
@@ -210,11 +197,10 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		}
 		slog.Info(fmt.Sprintf("[import/positions] created position %s (id=%s)", name, positionID))
 		if batchID != nil {
-			h.Store.Q().Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
+			_ = store.UpdatePositionBatchID(ctx, h.Store.Q(), *batchID, positionID)
 		}
 		for _, mid := range majorIDs {
-			h.Store.Q().Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-				uuid.NewString(), positionID, mid)
+			_ = store.InsertPositionMajor(ctx, h.Store.Q(), uuid.NewString(), positionID, mid)
 		}
 
 		for _, certName := range certNames {
@@ -222,8 +208,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				continue
 			}
 			certID := h.findOrCreateCert(ctx, tenantID, certName)
-			h.Store.Q().Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-				uuid.NewString(), tenantID, positionID, certID)
+			_ = store.InsertPositionCertificate(ctx, h.Store.Q(), uuid.NewString(), tenantID, positionID, certID)
 		}
 
 		positionMap[name] = positionID
@@ -281,12 +266,10 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		if !ok {
 			sortCounter[positionID]++
 			respID = uuid.NewString()
-			_, err := h.Store.Q().Exec(ctx, `INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-				respID, tenantID, positionID, respName, sortCounter[positionID])
-			if err != nil {
+			if err := store.InsertPositionResponsibility(ctx, h.Store.Q(), respID, tenantID, positionID, respName, sortCounter[positionID]); err != nil {
 				slog.Info(fmt.Sprintf("[import/positions] 职责[%s/%s]插入失败: %v", positionName, respName, err))
 				var existingID string
-				h.Store.Q().QueryRow(ctx, `SELECT id FROM position_responsibilities WHERE career_position_id=$1 AND name=$2`, positionID, respName).Scan(&existingID)
+				existingID, _ = store.FindResponsibilityIDByPositionAndName(ctx, h.Store.Q(), positionID, respName)
 				if existingID != "" {
 					respID = existingID
 				}
@@ -315,10 +298,12 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		}
 
 		bindingID := uuid.NewString()
-		_, err := h.Store.Q().Exec(ctx, `
-			INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, weight, attributes)
-			VALUES ($1,$2,$3,$4,$5,'custom',$6,$7,$8,0,$9)
-		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription, attributes)
+		err := store.InsertPositionAbilityBinding(ctx, h.Store.Q(), store.PositionAbilityBindingInsertParams{
+			ID: bindingID, TenantID: tenantID, PositionID: positionID,
+			ResponsibilityID: respID, AbilityPointID: abilityID,
+			Domain: nullableStr(domainName), RequiredLevel: requiredLevel,
+			RubricDescription: rubricDescription, Attributes: attributes,
+		})
 		if err != nil {
 			result.Failed++
 			msg := fmt.Sprintf("能力点绑定[%s/%s/%s]失败: %v", positionName, respName, abilityName, err)
@@ -339,8 +324,7 @@ func (h *PositionImportHandler) lookupIndustry(ctx context.Context, tenantID, na
 	if name == "" {
 		return nil
 	}
-	var id string
-	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	id, err := store.FindIndustryIDByTenantAndName(ctx, h.Store.Q(), tenantID, name)
 	if err != nil {
 		return nil
 	}
@@ -356,26 +340,21 @@ func (h *PositionImportHandler) lookupMajors(ctx context.Context, tenantID strin
 		if name == "" {
 			continue
 		}
-		var id string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
-		if err != nil {
-			continue
+		if id := store.FindMajorIDByNormalizedName(ctx, h.Store.Q(), tenantID, name); id != nil {
+			ids = append(ids, *id)
 		}
-		ids = append(ids, id)
 	}
 	return ids
 }
 
 func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, name string) string {
-	var id string
-	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	id, err := store.FindCertificateLibraryID(ctx, h.Store.Q(), tenantID, name)
 	if err == nil {
 		return id
 	}
 	id = uuid.NewString()
-	h.Store.Q().Exec(ctx, `INSERT INTO certificate_library (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
-	var existing string
-	h.Store.Q().QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+	_ = store.InsertCertificateLibrary(ctx, h.Store.Q(), id, tenantID, name)
+	existing, _ := store.FindCertificateLibraryID(ctx, h.Store.Q(), tenantID, name)
 	if existing != "" {
 		return existing
 	}
@@ -383,12 +362,11 @@ func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, 
 }
 
 func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, tenantID, name string, attributes []string) string {
-	var id string
-	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	id, err := store.FindAbilityPointID(ctx, h.Store.Q(), tenantID, name)
 	if err == nil {
 		// 能力点已存在时，若导入提供了属性则尝试更新
 		if len(attributes) > 0 {
-			h.Store.Q().Exec(ctx, `UPDATE ability_points SET attributes=$1 WHERE id=$2 AND (attributes IS NULL OR attributes = '{}')`, attributes, id)
+			_ = store.UpdateAbilityPointAttributesIfEmpty(ctx, h.Store.Q(), id, attributes)
 		}
 		return id
 	}
@@ -397,9 +375,8 @@ func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, te
 	if codeErr != nil {
 		code = store.GenerateEntityCode("NL")
 	}
-	h.Store.Q().Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, is_public, attributes, code) VALUES ($1,$2,$3,true,$4,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, attributes, code)
-	var existing string
-	h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+	_ = store.InsertAbilityPoint(ctx, h.Store.Q(), id, tenantID, name, attributes, code)
+	existing, _ := store.FindAbilityPointID(ctx, h.Store.Q(), tenantID, name)
 	if existing != "" {
 		return existing
 	}
@@ -407,15 +384,13 @@ func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, te
 }
 
 func (h *PositionImportHandler) ensureAbilityDomain(ctx context.Context, tenantID, positionID, domainName, bindingID string) {
-	var domainID string
-	err := h.Store.Q().QueryRow(ctx, `SELECT id FROM ability_domains WHERE tenant_id=$1 AND career_position_id=$2 AND name=$3 LIMIT 1`, tenantID, positionID, domainName).Scan(&domainID)
+	domainID, err := store.FindAbilityDomainID(ctx, h.Store.Q(), tenantID, positionID, domainName)
 	if err == nil {
-		h.Store.Q().Exec(ctx, `UPDATE ability_domains SET binding_ids = array_append(binding_ids, $1) WHERE id=$2 AND NOT ($1 = ANY(binding_ids))`, bindingID, domainID)
+		_ = store.AppendAbilityDomainBinding(ctx, h.Store.Q(), domainID, bindingID)
 		return
 	}
 	domainID = uuid.NewString()
-	h.Store.Q().Exec(ctx, `INSERT INTO ability_domains (id, tenant_id, career_position_id, name, binding_ids) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-		domainID, tenantID, positionID, domainName, []string{bindingID})
+	_ = store.InsertAbilityDomain(ctx, h.Store.Q(), domainID, tenantID, positionID, domainName, bindingID)
 }
 
 type importResult struct {

@@ -677,6 +677,14 @@ func (h *PartnerCoBuildHandler) UpdateTask(w http.ResponseWriter, r *http.Reques
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	// 部分更新兜底：与 portal 端一致，未携带字段回退已有值，
+	// 防止全列覆盖把 evalData/难度/依赖等清空
+	existing, err := h.Service.GetTask(r.Context(), partnerTenantID, taskID)
+	if err != nil {
+		respondCoBuildError(w, r, err, "场景任务不存在", "更新任务失败")
+		return
+	}
+	applyTaskPartialUpdate(&req, existing)
 	task, err := h.Service.UpdateTask(r.Context(), partnerTenantID, taskID, scenarioTaskParams(req.ScenarioID, nil, &req))
 	if err != nil {
 		respondCoBuildError(w, r, err, "场景任务不存在", "更新任务失败")

@@ -16,6 +16,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { toast, EmptyState, FormDialogFooter } from '@zhiyu/ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -137,9 +138,12 @@ export function ResourceSelector({
     if (!useApi) return
     setLoadingPool(true)
     try {
-      const res = await resourceLibraryApi.list({ limit: 1000 })
+      // 后端列表接口 limit 钳制到 maxPageSize=200，分页合并全量拉取避免资源库超 200 条被静默截断
+      const res = await fetchAllPages((page, pageSize) =>
+        resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }),
+      )
       setInternalPool(
-        (res.items || []).map((r: any) => ({
+        res.map((r: any) => ({
           id: r.id,
           name: r.name,
           type: r.resourceType || r.type,

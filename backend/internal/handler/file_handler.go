@@ -25,6 +25,9 @@ import (
 const MaxUploadSize = 100 << 20 // 100MB
 const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
 
+// previewSem 限制并发 LibreOffice 转换数（重 CPU/内存操作，防止用户并发预览拖垮服务）。
+var previewSem = make(chan struct{}, 2)
+
 // signURLTTL 签名 URL 有效期：kkFileView 大文件（Office 转 PDF）转换耗时较长，取 15 分钟。
 const signURLTTL = 15 * time.Minute
 
@@ -406,6 +409,16 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 并发转换上限：LibreOffice 转换重 CPU/内存，任意登录用户可触发，
+	// 无上限并发会耗尽容器资源拖垮服务；超限快速失败由用户稍后重试。
+	select {
+	case previewSem <- struct{}{}:
+		defer func() { <-previewSem }()
+	default:
+		respondError(w, http.StatusTooManyRequests, "预览转换繁忙，请稍后重试")
+		return
+	}
+
 	tmpDir, err := os.MkdirTemp("", "lo-preview-")
 	if err != nil {
 		respondServerError(w, r, err, "创建temp dir失败")
@@ -415,8 +428,10 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	base := strings.TrimSuffix(filename, ext)
 
+	// CommandContext 绑定请求上下文：超时/取消时终止子进程，避免 504 后
+	// libreoffice 成为孤儿进程持续占用资源
 	if format == "png" {
-		cmd := exec.Command("libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
+		cmd := exec.CommandContext(r.Context(), "libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
 		if _, err := cmd.CombinedOutput(); err != nil {
 			respondServerError(w, r, err, "文件转换失败")
 			return
@@ -449,7 +464,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		outExt = "pdf"
 	}
 
-	cmd := exec.Command("libreoffice", "--headless", "--convert-to", outExt, "--outdir", tmpDir, path)
+	cmd := exec.CommandContext(r.Context(), "libreoffice", "--headless", "--convert-to", outExt, "--outdir", tmpDir, path)
 	if _, err := cmd.CombinedOutput(); err != nil {
 		respondServerError(w, r, err, "文件转换失败")
 		return

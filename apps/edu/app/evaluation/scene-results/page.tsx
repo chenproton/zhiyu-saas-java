@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -70,6 +70,180 @@ interface ScenarioGroup {
   }[]
 }
 
+// 学生按入学年份/班级分组（纯函数，模块级定义）
+function groupStudents(students: TaskStudent[]) {
+  const yearMap = new Map<number, Map<string, TaskStudent[]>>()
+  for (const s of students) {
+    if (!yearMap.has(s.enrollmentYear)) yearMap.set(s.enrollmentYear, new Map())
+    const classMap = yearMap.get(s.enrollmentYear)!
+    if (!classMap.has(s.className)) classMap.set(s.className, [])
+    classMap.get(s.className)!.push(s)
+  }
+  const groups: { year: number; classes: { className: string; students: TaskStudent[] }[] }[] = []
+  for (const [year, classMap] of yearMap) {
+    const classes: { className: string; students: TaskStudent[] }[] = []
+    for (const [className, classStudents] of classMap) {
+      classes.push({ className, students: classStudents })
+    }
+    classes.sort((a, b) => a.className.localeCompare(b.className, 'zh-CN'))
+    groups.push({ year, classes })
+  }
+  groups.sort((a, b) => b.year - a.year)
+  return groups
+}
+
+// 测评方法 Tab（模块级定义：避免定义在父组件内部，每次父组件重渲染都会生成新函数引用，
+// 导致所有 Tab 卸载重挂载——已选中的测评方法被重置、内部状态丢失）
+function TaskMethodTabs({ task }: { task: TaskGroup }) {
+  const t = useT()
+  const [activeMethod, setActiveMethod] = useState(task.methods[0]?.methodKey || '')
+  const activeMethodData = task.methods.find((method) => method.methodKey === activeMethod)
+  const yearGroups = activeMethodData ? groupStudents(activeMethodData.students) : []
+
+  return (
+    <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50/30">
+      {task.methods.length > 1 && (
+        <div className="flex items-center gap-2 pt-3 mb-3 overflow-x-auto scrollbar-hide">
+          {task.methods.map((m) => (
+            <button
+              key={m.methodKey}
+              onClick={() => setActiveMethod(m.methodKey)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0',
+                activeMethod === m.methodKey
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50',
+              )}
+            >
+              {t(EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey)}
+              <span className="ml-1 flex items-center gap-1">
+                {m.pendingCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-700 font-medium">
+                    {m.pendingCount}
+                  </span>
+                )}
+                {m.gradedCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-400/20 text-green-700 font-medium">
+                    {m.gradedCount}
+                  </span>
+                )}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {activeMethodData && activeMethodData.students.length === 0 ? (
+        <EmptyState
+          title={t('暂无学生提交记录')}
+          titleClassName="text-gray-400"
+          className="py-8 bg-white rounded-lg border border-dashed border-gray-200 mt-3"
+        />
+      ) : (
+        <div className="space-y-3 mt-3">
+          {yearGroups.map((yearGroup) => (
+            <Card key={yearGroup.year} className="overflow-hidden border-gray-200">
+              <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                <GraduationCap className="h-3.5 w-3.5 text-gray-500" />
+                <span className="text-xs font-semibold text-gray-700">
+                  {t('{n} 届', { n: yearGroup.year })}
+                </span>
+                <span className="text-[10px] text-gray-400">
+                  {t('{n} 人', {
+                    n: yearGroup.classes.reduce((s, c) => s + c.students.length, 0),
+                  })}
+                </span>
+              </div>
+              <div className="p-3 space-y-3">
+                {yearGroup.classes.map((classGroup) => (
+                  <div key={classGroup.className}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Users className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs font-medium text-gray-600">
+                        {classGroup.className}
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        {t('{n} 人', { n: classGroup.students.length })}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                      {classGroup.students.map((item) => (
+                        <div
+                          key={item.studentId}
+                          className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-100 hover:border-primary/20 hover:shadow-sm transition-all"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-xs font-bold">
+                              {item.studentName.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-medium text-gray-800 text-sm truncate">
+                                  {item.studentName}
+                                </span>
+                                <span className="text-[10px] text-gray-400">
+                                  {item.studentNumber}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {item.result.status === 'pending' ? (
+                                  <span className="text-[10px] text-amber-600 font-medium">
+                                    {t('待评分')}
+                                  </span>
+                                ) : item.result.totalScore != null ? (
+                                  <span className="text-[10px] text-gray-500 font-medium">
+                                    {t('得分 {score}/{max}', {
+                                      score: item.result.totalScore,
+                                      max: item.result.maxScore,
+                                    })}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              asChild
+                            >
+                              <Link href={`/evaluation/scene-results/${item.result.id}`}>
+                                <Eye className="mr-1 h-3 w-3" />
+                                {t('查看')}
+                              </Link>
+                            </Button>
+                            {item.result.status === 'pending' ? (
+                              <Button size="sm" className="h-7 text-xs px-2" asChild>
+                                <Link href={`/evaluation/scene-results/${item.result.id}`}>
+                                  <PenLine className="mr-1 h-3 w-3" />
+                                  {t('评分')}
+                                </Link>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-green-600 px-2"
+                                disabled
+                              >
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                {t('已评分')}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 export default function GradingPage() {
   return (
     <Suspense fallback={null}>
@@ -92,15 +266,14 @@ function GradingPageContent() {
   const [taskNameMap, setTaskNameMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
-  // 场景列表、用户、岗位、任务等基础数据只加载一次，与选中场景无关
+  // 场景列表、用户、岗位等基础数据只加载一次，与选中场景无关；任务改为按当前场景按需加载
   useEffect(() => {
     const load = async () => {
       try {
-        const [scRes, userRes, posRes, taskRes] = await Promise.all([
+        const [scRes, userRes, posRes] = await Promise.all([
           scenarioApi.list({ limit: 200 }).catch(() => ({ items: [] as any[] })),
           userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
           positionApi.list({ limit: 500 }).catch(() => ({ items: [] as any[] })),
-          fetchAllPages((page, pageSize) => taskApi.list({ limit: pageSize, offset: page * pageSize })).catch(() => []),
         ])
 
         const pMap = new Map<string, string>()
@@ -124,10 +297,6 @@ function GradingPageContent() {
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
         setUserMap(uMap)
-
-        const tMap = new Map<string, any>()
-        taskRes.forEach((t: any) => tMap.set(t.id, t))
-        setTaskNameMap(tMap)
       } catch {
         /* ignore */
       }
@@ -136,12 +305,43 @@ function GradingPageContent() {
     load()
   }, [urlSceneId, t])
 
+  // 场景切换请求序号：快速连续切换场景时丢弃过期响应，避免旧场景数据覆盖当前场景
+  const resultsSeqRef = useRef(0)
+
   useEffect(() => {
     if (!selectedScenarioId) return
-    evaluationResultApi
-      .list({ sceneId: selectedScenarioId, limit: 500 })
-      .then((res) => setResults(res.items || []))
-      .catch(() => setResults([]))
+    const seq = ++resultsSeqRef.current
+    ;(async () => {
+      try {
+        // 提交记录分页全量拉取（单次 limit 500 会被后端钳制到 200，超 200 条统计/列表被静默截断）；
+        // 任务映射按当前场景按需获取，不再页面加载时全量拉取所有任务
+        const [allResults, tasks] = await Promise.all([
+          fetchAllPages((page, pageSize) =>
+            evaluationResultApi.list({
+              sceneId: selectedScenarioId,
+              limit: pageSize,
+              offset: page * pageSize,
+            }),
+          ),
+          fetchAllPages((page, pageSize) =>
+            taskApi.list({
+              scenarioId: selectedScenarioId,
+              limit: pageSize,
+              offset: page * pageSize,
+            }),
+          ),
+        ])
+        if (seq !== resultsSeqRef.current) return
+        setResults(allResults)
+        const tMap = new Map<string, any>()
+        tasks.forEach((task: any) => tMap.set(task.id, task))
+        setTaskNameMap(tMap)
+      } catch {
+        if (seq !== resultsSeqRef.current) return
+        setResults([])
+        setTaskNameMap(new Map())
+      }
+    })()
   }, [selectedScenarioId])
 
   const scenarioGroups = useMemo<ScenarioGroup[]>(() => {
@@ -265,179 +465,8 @@ function GradingPageContent() {
     })
   }
 
-  const groupStudents = (students: TaskStudent[]) => {
-    const yearMap = new Map<number, Map<string, TaskStudent[]>>()
-    for (const s of students) {
-      if (!yearMap.has(s.enrollmentYear)) yearMap.set(s.enrollmentYear, new Map())
-      const classMap = yearMap.get(s.enrollmentYear)!
-      if (!classMap.has(s.className)) classMap.set(s.className, [])
-      classMap.get(s.className)!.push(s)
-    }
-    const groups: { year: number; classes: { className: string; students: TaskStudent[] }[] }[] = []
-    for (const [year, classMap] of yearMap) {
-      const classes: { className: string; students: TaskStudent[] }[] = []
-      for (const [className, classStudents] of classMap) {
-        classes.push({ className, students: classStudents })
-      }
-      classes.sort((a, b) => a.className.localeCompare(b.className, 'zh-CN'))
-      groups.push({ year, classes })
-    }
-    groups.sort((a, b) => b.year - a.year)
-    return groups
-  }
-
   const expandAll = () => setExpandedTasks(new Set(taskGroups.map((t) => t.taskId)))
   const collapseAll = () => setExpandedTasks(new Set())
-
-  function TaskMethodTabs({ task }: { task: TaskGroup }) {
-    const [activeMethod, setActiveMethod] = useState(task.methods[0]?.methodKey || '')
-    const activeMethodData = task.methods.find((f) => f.methodKey === activeMethod)
-    const yearGroups = activeMethodData ? groupStudents(activeMethodData.students) : []
-
-    return (
-      <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50/30">
-        {task.methods.length > 1 && (
-          <div className="flex items-center gap-2 pt-3 mb-3 overflow-x-auto scrollbar-hide">
-            {task.methods.map((m) => (
-              <button
-                key={m.methodKey}
-                onClick={() => setActiveMethod(m.methodKey)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0',
-                  activeMethod === m.methodKey
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50',
-                )}
-              >
-                {t(EVAL_METHOD_LABELS_GRADING[m.methodKey] || m.methodKey)}
-                <span className="ml-1 flex items-center gap-1">
-                  {m.pendingCount > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-700 font-medium">
-                      {m.pendingCount}
-                    </span>
-                  )}
-                  {m.gradedCount > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-400/20 text-green-700 font-medium">
-                      {m.gradedCount}
-                    </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        {activeMethodData && activeMethodData.students.length === 0 ? (
-          <EmptyState
-            title={t('暂无学生提交记录')}
-            titleClassName="text-gray-400"
-            className="py-8 bg-white rounded-lg border border-dashed border-gray-200 mt-3"
-          />
-        ) : (
-          <div className="space-y-3 mt-3">
-            {yearGroups.map((yearGroup) => (
-              <Card key={yearGroup.year} className="overflow-hidden border-gray-200">
-                <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                  <GraduationCap className="h-3.5 w-3.5 text-gray-500" />
-                  <span className="text-xs font-semibold text-gray-700">
-                    {t('{n} 届', { n: yearGroup.year })}
-                  </span>
-                  <span className="text-[10px] text-gray-400">
-                    {t('{n} 人', {
-                      n: yearGroup.classes.reduce((s, c) => s + c.students.length, 0),
-                    })}
-                  </span>
-                </div>
-                <div className="p-3 space-y-3">
-                  {yearGroup.classes.map((classGroup) => (
-                    <div key={classGroup.className}>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        <span className="text-xs font-medium text-gray-600">
-                          {classGroup.className}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {t('{n} 人', { n: classGroup.students.length })}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-                        {classGroup.students.map((item) => (
-                          <div
-                            key={item.studentId}
-                            className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-100 hover:border-primary/20 hover:shadow-sm transition-all"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-xs font-bold">
-                                {item.studentName.charAt(0)}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-medium text-gray-800 text-sm truncate">
-                                    {item.studentName}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    {item.studentNumber}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {item.result.status === 'pending' ? (
-                                    <span className="text-[10px] text-amber-600 font-medium">
-                                      {t('待评分')}
-                                    </span>
-                                  ) : item.result.totalScore != null ? (
-                                    <span className="text-[10px] text-gray-500 font-medium">
-                                      {t('得分 {score}/{max}', {
-                                        score: item.result.totalScore,
-                                        max: item.result.maxScore,
-                                      })}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs px-2"
-                                asChild
-                              >
-                                <Link href={`/evaluation/scene-results/${item.result.id}`}>
-                                  <Eye className="mr-1 h-3 w-3" />
-                                  {t('查看')}
-                                </Link>
-                              </Button>
-                              {item.result.status === 'pending' ? (
-                                <Button size="sm" className="h-7 text-xs px-2" asChild>
-                                  <Link href={`/evaluation/scene-results/${item.result.id}`}>
-                                    <PenLine className="mr-1 h-3 w-3" />
-                                    {t('评分')}
-                                  </Link>
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 text-xs text-green-600 px-2"
-                                  disabled
-                                >
-                                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                                  {t('已评分')}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   if (loading)
     return (
@@ -478,7 +507,12 @@ function GradingPageContent() {
                   {group.scenarios.map((sc) => (
                     <button
                       key={sc.scenarioId}
-                      onClick={() => setSelectedScenarioId(sc.scenarioId)}
+                      onClick={() => {
+                        setSelectedScenarioId(sc.scenarioId)
+                        // 清空上一场景数据，避免加载期间把旧场景的学生列表展示在当前场景下（误导性展示）
+                        setResults([])
+                        setTaskNameMap(new Map())
+                      }}
                       className={cn(
                         'w-full text-left rounded-xl p-3 transition-all border',
                         selectedScenarioId === sc.scenarioId

@@ -37,10 +37,9 @@ import { AbilityPointSelector } from '../../_components/ability/ability-point-se
 import { RichTextEditor } from '../../_components/common/rich-text-editor'
 import type { Course } from '@/lib/types/lesson'
 import type { SystemCourseNode, NodeRefType } from '@/lib/types/lesson-source'
-import CourseNodeTree from '../../system/add/_components/CourseNodeTree'
+import CourseNodeTree, { wouldCreateCycle } from '../../system/add/_components/CourseNodeTree'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
-// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
@@ -229,7 +228,7 @@ function HybridCourseAddForm() {
           // 旧课程可能没有节点：生成内存根节点，保证课程基本信息可编辑，保存时自动落库
           if (loadedNodes.length === 0) {
             loadedNodes.push({
-              id: `node-${Date.now()}`,
+              id: uid('node'),
               courseId: editId,
               parentId: null,
               name: c.name || '混合课程',
@@ -356,7 +355,7 @@ function HybridCourseAddForm() {
       sourceName?: string,
     ) => {
       const newNode: SystemCourseNode = {
-        id: `node-${Date.now()}`,
+        id: uid('node'),
         courseId: editId || 'hybrid-new',
         parentId,
         name,
@@ -408,7 +407,7 @@ function HybridCourseAddForm() {
         deleteIds.forEach((id) => delete next[id])
         return next
       })
-      if (selectedNodeId === nodeId) {
+      if (selectedNodeId && deleteIds.has(selectedNodeId)) {
         setSelectedNodeId(null)
       }
     },
@@ -421,6 +420,8 @@ function HybridCourseAddForm() {
         const dragged = prev.find((n) => n.id === nodeId)
         const target = prev.find((n) => n.id === targetNodeId)
         if (!dragged || !target) return prev
+        // 拒绝把节点移动到自身或自身后代旁（否则 parentId 形成环，buildTree 自引用导致渲染崩溃）
+        if (wouldCreateCycle(prev, nodeId, targetNodeId)) return prev
         const orderOffset = position === 'before' ? -0.5 : 0.5
         const newNodes = prev.map((n) => {
           if (n.id === nodeId) {
@@ -703,7 +704,12 @@ function HybridCourseAddForm() {
       description: courseForm.detailedDescription || undefined,
       abilityPointIds: abilityPoints.map((a) => a.id),
       evalData: {
+        // 编辑加载时从 evalData 读取 learningGoal/background/estimatedHours 回填表单，
+        // 保存必须一并回写，否则后端整列覆盖时这三项会静默丢失
         descriptionPdf: courseDescriptionPdf || undefined,
+        learningGoal: courseForm.courseObjectives || undefined,
+        background: courseForm.background || undefined,
+        estimatedHours: courseForm.estimatedHours ? Number(courseForm.estimatedHours) : undefined,
       },
     }) as any
 
@@ -712,8 +718,11 @@ function HybridCourseAddForm() {
       // 删除在后端存在但本地已删除的节点（级联删除其混合模块）
       const currentBackendNodes = await courseNodeApi.list({ courseId: effectiveCourseId })
       const backendNodeIds = new Set((currentBackendNodes.items || []).map((n: any) => n.id))
+      // 临时 ID 判定与下方 isTempId 保持一致（node-* / hybrid-node-*），避免误删或漏删
+      const isTempNodeId = (id: string) =>
+        id.startsWith('node-') || id.startsWith('hybrid-node-')
       const localNodeIds = new Set(
-        nodesRef.current.map((n) => n.id).filter((id) => !id.startsWith('node-')),
+        nodesRef.current.map((n) => n.id).filter((id) => !isTempNodeId(id)),
       )
       for (const backendId of backendNodeIds) {
         if (!localNodeIds.has(backendId)) {
@@ -749,7 +758,7 @@ function HybridCourseAddForm() {
       for (const node of sortedNodes) {
         const d = nodeDataMapRef.current[node.id]
         if (!d) continue
-        const isTempId = node.id.startsWith('node-') || node.id.startsWith('hybrid-node-')
+        const isTempId = isTempNodeId(node.id)
         const realParentId = node.parentId
           ? idMapping.get(node.parentId) || node.parentId
           : undefined

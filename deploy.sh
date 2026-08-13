@@ -541,8 +541,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-true}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
-       echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
-       echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
+      echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
+      echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
       echo "GO_CACHE_LIMIT_MB=${GO_CACHE_LIMIT_MB:-8192}"
@@ -910,9 +910,11 @@ if $BUILD_FRONTEND; then
   fi
 
   if [[ "$GATES_FLAG" == "true" ]]; then
-    log "  质量门禁: pnpm typecheck / pnpm lint"
+    log "  质量门禁: pnpm typecheck / pnpm lint / pnpm test"
     (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
     (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
+    # vitest 单测与 AGENTS.md「二、交付要求」本地检查清单对齐（此前缺跑，仅 CI 覆盖）
+    (cd "$BUILD_ROOT" && pnpm test) || die "pnpm test 失败"
   else
     log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
   fi

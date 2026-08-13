@@ -384,13 +384,13 @@ type UpdateExamQuestionScoreRequest struct {
 
 func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	tenantID := ""
-	if claims.TenantID != nil {
-		tenantID = *claims.TenantID
-	}
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
+	}
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
 	}
 
 	examID := chi.URLParam(r, "id")
@@ -439,13 +439,13 @@ type BulkUpdateScoresRequest map[string]float64
 
 func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	tenantID := ""
-	if claims.TenantID != nil {
-		tenantID = *claims.TenantID
-	}
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
+	}
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
 	}
 
 	examID := chi.URLParam(r, "id")

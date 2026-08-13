@@ -306,8 +306,8 @@ func (s *ExamUsageStore) fetchExamUsage(ctx context.Context, tenantID, id string
 	var creatorID *string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, activation_mode, exam_version, creator_id, created_at, updated_at
-		FROM exam_usages WHERE id = $1
-	`, id).Scan(
+		FROM exam_usages WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID).Scan(
 		&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &u.ActivationMode, &u.ExamVersion, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {

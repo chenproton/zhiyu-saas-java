@@ -25,6 +25,7 @@ import type { Scenario, CareerPosition } from '@/lib/types'
 import type { Course } from '@/lib/types/lesson'
 import { ComboboxSelect } from '@/components/shared/combobox-select'
 import { ProgramCourseImportDialog } from './program-course-import-dialog'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
 
@@ -75,6 +76,12 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
   const [saving, setSaving] = useState(false)
   const [loadingPosScen, setLoadingPosScen] = useState<Record<string, boolean>>({})
   const [importOpen, setImportOpen] = useState(false)
+  // 加载时同岗位多条关联被合并为一行：记录各岗位合并前的条数，保存前提示折叠风险
+  const [positionMergedCounts, setPositionMergedCounts] = useState<Record<string, number>>({})
+  const [collapseConfirmOpen, setCollapseConfirmOpen] = useState(false)
+  const [collapseConfirmInfo, setCollapseConfirmInfo] = useState<
+    { pid: string; name: string; count: number }[]
+  >([])
 
   useEffect(() => {
     onBusyChange?.({ saving, loading })
@@ -123,6 +130,8 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
         }
       })
       const displayRows: CourseRow[] = []
+      // 记录各岗位合并前的原始条数（>1 表示保存会折叠多条关联，需在保存前提示）
+      const mergedCounts: Record<string, number> = {}
       grouped.forEach((v, pid) => {
         displayRows.push({
           ...v[0],
@@ -130,10 +139,12 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
           linkType: 'position',
           positionId: pid,
         })
+        if (v.length > 1) mergedCounts[pid] = v.length
       })
       if (seq !== loadSeqRef.current) return
       displayRows.push(...regular)
       setRows(displayRows)
+      setPositionMergedCounts(mergedCounts)
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -220,7 +231,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
     fetchPositionScenarios(newPositionId)
   }
 
-  const handleSave = useCallback(async () => {
+  const performSave = useCallback(async () => {
     setSaving(true)
     try {
       const payloads: any[] = []
@@ -263,6 +274,30 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
       setSaving(false)
     }
   }, [rows, programId, toast, loadCourses, t])
+
+  const handleSave = useCallback(async () => {
+    // 保存前区分原有分组行与新分组行：加载时同岗位多条关联被合并为一行，
+    // 直接保存会把多条折叠为一条，其余记录的学分/学时等配置丢失 —— 先提示确认
+    const affected = rows.filter(
+      (r) =>
+        r.linkType === 'position' &&
+        r.positionId &&
+        (positionMergedCounts[r.positionId] || 0) > 1,
+    )
+    const unique = [...new Map(affected.map((r) => [r.positionId as string, r])).values()]
+    if (unique.length > 0) {
+      setCollapseConfirmInfo(
+        unique.map((r) => ({
+          pid: r.positionId as string,
+          name: positions.find((p) => p.id === r.positionId)?.name || r.name,
+          count: positionMergedCounts[r.positionId as string] || 0,
+        })),
+      )
+      setCollapseConfirmOpen(true)
+      return
+    }
+    await performSave()
+  }, [rows, positionMergedCounts, positions, performSave])
 
   useImperativeHandle(
     ref,
@@ -503,6 +538,31 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
         onOpenChange={setImportOpen}
         programId={programId}
         onImported={loadCourses}
+      />
+
+      <ConfirmDialog
+        open={collapseConfirmOpen}
+        onOpenChange={setCollapseConfirmOpen}
+        title={t('保存将合并岗位课程关联')}
+        description={
+          <div className="space-y-1">
+            <p>{t('检测到以下岗位存在多条课程关联（可能由批量导入产生）：')}</p>
+            <ul className="list-disc pl-4">
+              {collapseConfirmInfo.map((c) => (
+                <li key={c.pid}>
+                  {c.name || c.pid}：{c.count} 条
+                </li>
+              ))}
+            </ul>
+            <p>{t('保存后每个岗位的多条关联将合并为一条，其余记录的学分/学时等配置将丢失。是否继续保存？')}</p>
+          </div>
+        }
+        confirmText={t('仍要保存')}
+        variant="destructive"
+        onConfirm={async () => {
+          setCollapseConfirmOpen(false)
+          await performSave()
+        }}
       />
     </div>
   )

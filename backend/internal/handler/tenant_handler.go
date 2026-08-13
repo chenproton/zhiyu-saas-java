@@ -283,7 +283,8 @@ func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tena
 }
 
 // Superadmin console handlers for /api/v1/admin/tenants.
-// 按产品决策：内部隐藏控制台，不做鉴权，跨租户管理。
+// 注意：路由层已挂 RequirePlatform(saas) + platformAdmin 门禁，这里不再重复鉴权；
+// 方法按超管语义跨租户管理。
 
 func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
 	cfg := h.Service.Store().Tenants().AdminListConfig()

@@ -21,11 +21,24 @@ import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { syncAgreementProjectLinks } from '@/lib/alliance-links'
-import { useToast, LoadingView, ComboboxSelect } from '@zhiyu/ui'
+import { useToast, LoadingView, EmptyState, ComboboxSelect } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { FormPageShell } from '@/components/shared/form-page-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
+
+interface AgreementFormState {
+  name: string
+  type: string
+  status: string
+  startDate: string
+  endDate: string
+  content: string
+  isPublic: boolean
+  enterpriseIds: string[]
+  projectIds: string[]
+  attachments: string[]
+}
 
 export default function AllianceAgreementEditPage() {
   const { toast } = useToast()
@@ -39,18 +52,9 @@ export default function AllianceAgreementEditPage() {
   const [saving, setSaving] = useState(false)
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
-  const [item, setItem] = useState({
-    name: '',
-    type: 'strategic',
-    status: 'draft',
-    startDate: '',
-    endDate: '',
-    content: '',
-    isPublic: false,
-    enterpriseIds: [] as string[],
-    projectIds: [] as string[],
-    attachments: [] as string[],
-  })
+  // 初始为 null：加载失败时保持 null 并渲染 EmptyState，禁止以默认值进入可保存状态
+  // （否则用户填写保存会用默认值整条覆盖真实协议，造成数据丢失）
+  const [item, setItem] = useState<AgreementFormState | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -84,9 +88,8 @@ export default function AllianceAgreementEditPage() {
       .finally(() => setLoading(false))
   }, [id, toast, t])
 
-  const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
-
   const handleSave = async () => {
+    if (!item) return
     if (!item.name) {
       toast({ title: t('请填写协议名称'), variant: 'destructive' })
       return
@@ -106,6 +109,10 @@ export default function AllianceAgreementEditPage() {
   }
 
   if (loading) return <LoadingView />
+  // 加载失败时禁止以默认值渲染可保存表单（参照 achievements/[id]/edit 的做法）
+  if (!item) return <EmptyState title={t('协议不存在')} />
+
+  const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
   return (
     <FormPageShell title={t('编辑合作协议')} sidebar={<div className="space-y-6">

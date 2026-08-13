@@ -359,8 +359,12 @@ export default function RolesPage() {
 
       // 保留已有的非 menus 结构权限（如 scene/job/lesson/evaluation），并根据 checkedActions 更新
       // 同时受租户套餐控制：未订阅平台的操作权限不保留
+      // subscriptionModules 为 null（订阅接口失败）时与展示层（visibleActionModules）一致按"全部已订阅"处理，
+      // 否则用户勾选/取消的操作权限改动会被静默丢弃
       for (const mod of permissionModuleConfig.filter(
-        (mod) => subscriptionModules?.[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true,
+        (mod) =>
+          subscriptionModules == null ||
+          subscriptionModules[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true,
       )) {
         const modPerms: Record<string, string[]> = {}
         for (const page of mod.pages) {
@@ -381,7 +385,15 @@ export default function RolesPage() {
         }
       }
 
-      await roleApi.update(selectedRole.id, { ...selectedRole, permissions })
+      // 仅提交可编辑字段（接口契约 Omit<Role, 'id' | 'userCount' | 'createdAt'>），避免携带展示字段
+      await roleApi.update(selectedRole.id, {
+        tenantId: selectedRole.tenantId,
+        code: selectedRole.code,
+        name: selectedRole.name,
+        description: selectedRole.description,
+        status: selectedRole.status,
+        permissions,
+      })
       await fetchData()
       setIsPermDialogOpen(false)
     } catch (err) {
@@ -405,7 +417,16 @@ export default function RolesPage() {
       return
     }
     if (isEdit) {
-      await roleApi.update(item.id, { ...(item as unknown as Role), name: item.name.trim() })
+      // 仅提交可编辑字段（接口契约 Omit<Role, 'id' | 'userCount' | 'createdAt'>），避免携带展示字段
+      const role = item as unknown as Role
+      await roleApi.update(item.id, {
+        tenantId: role.tenantId,
+        code: role.code,
+        name: item.name.trim(),
+        description: role.description,
+        status: role.status,
+        permissions: role.permissions,
+      })
       toast({ title: t('保存成功') })
     } else {
       await roleApi.create({
@@ -423,16 +444,19 @@ export default function RolesPage() {
   const [usersRole, setUsersRole] = useState<Role | null>(null)
   const [roleUsers, setRoleUsers] = useState<User[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
+  const [usersError, setUsersError] = useState<string | null>(null)
 
   const openUsersDialog = async (role: Role) => {
     setUsersRole(role)
     setRoleUsers([])
+    setUsersError(null)
     setUsersLoading(true)
     try {
       const res = await portalUserManagementApi.list({ tenantId, roleId: role.id, limit: 1000 })
       setRoleUsers(res.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('加载角色用户失败'))
+      // 弹窗内独立错误态，避免写入页面级 error 而显示在主列表错误横幅上
+      setUsersError(err instanceof Error ? err.message : t('加载角色用户失败'))
     } finally {
       setUsersLoading(false)
     }
@@ -582,7 +606,10 @@ export default function RolesPage() {
       <Dialog
         open={!!usersRole}
         onOpenChange={(open) => {
-          if (!open) setUsersRole(null)
+          if (!open) {
+            setUsersRole(null)
+            setUsersError(null)
+          }
         }}
       >
         <DialogContent className="!max-h-[80vh] overflow-y-auto sm:max-w-2xl">
@@ -597,6 +624,10 @@ export default function RolesPage() {
           {usersLoading ? (
             <div className="flex h-40 items-center justify-center gap-2 text-muted-foreground">
               <span>{t('加载中...')}</span>
+            </div>
+          ) : usersError ? (
+            <div className="flex h-40 items-center justify-center px-6 text-sm text-destructive">
+              {usersError}
             </div>
           ) : roleUsers.length === 0 ? (
             <Empty className="h-40">

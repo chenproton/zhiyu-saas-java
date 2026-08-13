@@ -793,16 +793,13 @@ func (h *AllianceHandler) UpdateSchoolExpert(w http.ResponseWriter, r *http.Requ
 	}
 	req.ID = id
 	req.TenantID = tenantID
-	req.EnterpriseID = nil
 	req.UserID = expert.UserID
 	req.CreatedAt = expert.CreatedAt
-	if req.Status == "" {
-		req.Status = expert.Status
-	}
-	// 展示开关：请求未携带时保留已有状态，防止编辑资料静默关闭前台展示
-	if req.IsPublic == nil {
-		req.IsPublic = expert.IsPublic
-	}
+	// 部分更新兜底：未携带字段回退已有值（评级/照片/二级学院/就业方向等
+	// 学校侧维护字段不得被清空；展示开关未携带时保留已有状态）
+	applyExpertPartialUpdate(&req, expert)
+	// 校本教师资料副本不得关联企业
+	req.EnterpriseID = nil
 	if err := h.Store.UpdateExpert(r.Context(), id, tenantID, &req); err != nil {
 		respondServerError(w, r, err, "更新专家档案失败")
 		return

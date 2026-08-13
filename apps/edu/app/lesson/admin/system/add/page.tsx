@@ -46,7 +46,7 @@ import { BatchSelector } from '@/components/shared/batch-selector'
 import { MajorSelect } from '@/components/shared/major-select'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 
-import CourseNodeTree from './_components/CourseNodeTree'
+import CourseNodeTree, { wouldCreateCycle } from './_components/CourseNodeTree'
 import PublishCheckPanel from './_components/PublishCheckPanel'
 
 import type { KnowledgePointItem } from '@/lib/types/lesson'
@@ -269,20 +269,19 @@ function AddSystemPageInner() {
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
-      setNodes((prev) => {
-        const deleteIds = new Set<string>()
-        const collect = (id: string) => {
-          deleteIds.add(id)
-          prev.filter((n) => n.parentId === id).forEach((n) => collect(n.id))
-        }
-        collect(nodeId)
-        return prev.filter((n) => !deleteIds.has(n.id))
-      })
-      if (selectedNodeId === nodeId) {
+      const deleteIds = new Set<string>()
+      const collect = (id: string) => {
+        deleteIds.add(id)
+        nodes.filter((n) => n.parentId === id).forEach((n) => collect(n.id))
+      }
+      collect(nodeId)
+      setNodes((prev) => prev.filter((n) => !deleteIds.has(n.id)))
+      // 删除父节点时若选中的是其后代，一并清空选中，避免 selectedNodeId 悬空
+      if (selectedNodeId && deleteIds.has(selectedNodeId)) {
         setSelectedNodeId(null)
       }
     },
-    [selectedNodeId],
+    [nodes, selectedNodeId],
   )
 
   const handleReorderNodes = useCallback(
@@ -291,6 +290,8 @@ function AddSystemPageInner() {
         const dragged = prev.find((n) => n.id === nodeId)
         const target = prev.find((n) => n.id === targetNodeId)
         if (!dragged || !target) return prev
+        // 拒绝把节点移动到自身或自身后代旁（否则 parentId 形成环，buildTree 自引用导致渲染崩溃）
+        if (wouldCreateCycle(prev, nodeId, targetNodeId)) return prev
         const orderOffset = position === 'before' ? -0.5 : 0.5
         const newNodes = prev.map((n) => {
           if (n.id === nodeId) {

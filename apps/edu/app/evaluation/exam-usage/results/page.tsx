@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -25,12 +25,14 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { examUsageApi, examResultApi } from '@/lib/api'
 import { useMajorMap } from '@/lib/use-resource-maps'
-import type { ExamUsage } from '@/lib/types'
+import type { ExamUsage, ExamResult } from '@/lib/types'
 import { formatDateTime } from '@/lib/format-utils'
 import { SearchInput } from '@/components/shared/search-input'
-import { EmptyState, TableEmptyRow } from '@zhiyu/ui'
+import { PaginationBar } from '@/components/shared/pagination-bar'
+import { EmptyState, TableEmptyRow, ErrorState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { DetailPageHeader } from '@/components/shared/detail-page-header'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 interface ExamStudentResult {
   id: string
@@ -47,6 +49,9 @@ interface ExamStudentResult {
   rank: number
 }
 
+// 列表分页大小：统计基于完整数据，列表展示分页
+const PAGE_SIZE = 20
+
 function ExamResultsContent() {
   const t = useT()
   const router = useRouter()
@@ -55,23 +60,41 @@ function ExamResultsContent() {
   const [usage, setUsage] = useState<ExamUsage | null>(null)
   const [results, setResults] = useState<ExamStudentResult[]>([])
   const [loading, setLoading] = useState(!!usageId)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [passFilter, setPassFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
   const majorMap = useMajorMap()
+  // 供错误态「重试」复用首载逻辑
+  const fetchResultsRef = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
     if (!usageId) return
+    let cancelled = false
     const fetchData = async () => {
       setLoading(true)
+      setLoadError(null)
+      // 切换考试安排时回到第一页（组件复用，避免停留在越界页）
+      setPage(1)
       try {
-        const [usageRes, resultRes] = await Promise.all([
-          examUsageApi.get(usageId).catch(() => null),
-          examResultApi.list({ usageId }).catch(() => ({ items: [], total: 0 })),
+        // 列表接口显式带 limit 分页全量拉取：后端默认仅返回 50 条（封顶 200），
+        // 不做分页合并会导致统计（参考人数/平均分等）与列表基于截断数据
+        const [usageRes, allItems] = await Promise.all([
+          examUsageApi.get(usageId).catch((err: any) => {
+            // 区分 404（确实不存在）与网络/其他错误（展示错误态与重试入口）
+            if (err?.status !== 404 && !cancelled) {
+              setLoadError(err instanceof Error ? err.message : t('加载失败'))
+            }
+            return null
+          }),
+          fetchAllPages((p, ps) =>
+            examResultApi.list({ usageId, limit: ps, offset: p * ps }),
+          ).catch(() => [] as ExamResult[]),
         ])
+        if (cancelled) return
         setUsage(usageRes)
-        const items = resultRes.items || []
         setResults(
-          items.map((r, idx) => ({
+          allItems.map((r, idx) => ({
             id: r.id,
             studentName: r.studentName || t('匿名'),
             studentId: r.userId,
@@ -87,10 +110,14 @@ function ExamResultsContent() {
           })),
         )
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
+    fetchResultsRef.current = fetchData
     fetchData()
+    return () => {
+      cancelled = true
+    }
   }, [usageId, t])
 
   const filteredResults = results.filter((r) => {
@@ -103,6 +130,9 @@ function ExamResultsContent() {
     }
     return true
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredResults.length / PAGE_SIZE))
+  const pagedResults = filteredResults.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const stats = {
     total: results.length,
@@ -125,6 +155,22 @@ function ExamResultsContent() {
   }
 
   if (!usage) {
+    if (loadError) {
+      return (
+        <div className="flex h-[50vh] items-center justify-center">
+          <ErrorState
+            title={t('加载失败')}
+            description={loadError}
+            onRetry={() => {
+              setLoadError(null)
+              setLoading(true)
+              // 复用首载逻辑重新拉取
+              fetchResultsRef.current?.()
+            }}
+          />
+        </div>
+      )
+    }
     return (
       <EmptyState
         className="h-[50vh]"
@@ -218,20 +264,29 @@ function ExamResultsContent() {
           wrapperClassName="flex-1 sm:max-w-xs"
           placeholder={t('搜索学生姓名...')}
           value={search}
-          onChange={setSearch}
+          onChange={(v) => {
+            setSearch(v)
+            setPage(1)
+          }}
         />
         <div className="flex gap-2">
           <Button
             variant={passFilter === 'all' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPassFilter('all')}
+            onClick={() => {
+              setPassFilter('all')
+              setPage(1)
+            }}
           >
             {t('全部')}
           </Button>
           <Button
             variant={passFilter === 'pass' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPassFilter('pass')}
+            onClick={() => {
+              setPassFilter('pass')
+              setPage(1)
+            }}
           >
             <CheckCircle2 className="mr-1 size-3.5 text-emerald-500" />
             {t('及格')}
@@ -239,7 +294,10 @@ function ExamResultsContent() {
           <Button
             variant={passFilter === 'fail' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPassFilter('fail')}
+            onClick={() => {
+              setPassFilter('fail')
+              setPage(1)
+            }}
           >
             <XCircle className="mr-1 size-3.5 text-red-500" />
             {t('不及格')}
@@ -281,7 +339,7 @@ function ExamResultsContent() {
                   {results.length === 0 ? t('暂无考试结果') : t('没有找到匹配的结果')}
                 </TableEmptyRow>
               ) : (
-                filteredResults.map((result) => (
+                pagedResults.map((result) => (
                   <TableRow key={result.id}>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
@@ -315,7 +373,9 @@ function ExamResultsContent() {
                           className={`h-full rounded-full ${
                             result.isPass ? 'bg-emerald-500' : 'bg-red-500'
                           }`}
-                          style={{ width: `${(result.score / result.totalScore) * 100}%` }}
+                          style={{
+                            width: `${result.totalScore > 0 ? (result.score / result.totalScore) * 100 : 0}%`,
+                          }}
                         />
                       </div>
                     </TableCell>
@@ -349,7 +409,9 @@ function ExamResultsContent() {
                         variant="ghost"
                         size="sm"
                         className="h-7 gap-1 text-xs"
-                        onClick={() => router.push(`/evaluation/lesson-results/${result.id}`)}
+                        onClick={() =>
+                          router.push(`/evaluation/lesson-results/daily-exams/${result.id}`)
+                        }
                       >
                         <Eye className="size-3.5" />
                         {t('查看详情')}
@@ -362,6 +424,17 @@ function ExamResultsContent() {
           </Table>
         </div>
       </div>
+
+      {/* 分页 */}
+      {filteredResults.length > PAGE_SIZE && (
+        <div className="flex justify-end">
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
     </div>
   )
 }

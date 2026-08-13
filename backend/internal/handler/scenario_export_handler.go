@@ -58,6 +58,11 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			slog.Warn("导出场景行跳过", "scenarioId", sid, "error", err)
 			continue
 		}
+		// 跨租户场景禁止导出（Get 仅按 id 查询，无租户条件）
+		if scn.TenantID == nil || *scn.TenantID != tenantID {
+			slog.Warn("导出场景行跳过（跨租户）", "scenarioId", sid, "tenantID", scn.TenantID)
+			continue
+		}
 		name := scn.Name
 		diff := fmt.Sprintf("%d", scn.Difficulty)
 		bg := ""
@@ -72,18 +77,22 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 
 		positionName := ""
 		if careerPositionID != nil && *careerPositionID != "" {
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *careerPositionID).Scan(&positionName); err != nil {
+			if pn, err := store.LookupCareerPositionNameByID(ctx, h.Store.Q(), *careerPositionID); err != nil {
 				slog.Warn("导出场景岗位名查询失败", "positionId", *careerPositionID, "error", err)
+			} else {
+				positionName = pn
 			}
 		}
 		if batchID != nil && *batchID != "" {
-			if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM scene_batches WHERE id=$1`, *batchID).Scan(&batchName); err != nil {
+			if bn, err := store.LookupSceneBatchNameByID(ctx, h.Store.Q(), *batchID); err != nil {
 				slog.Warn("导出场景批次名查询失败", "batchId", *batchID, "error", err)
+			} else {
+				batchName = bn
 			}
 		}
 
-		industryNames := h.lookupNames(ctx, "industries", industryIDs)
-		professionNames := h.lookupNames(ctx, "majors", professionIDs)
+		industryNames := store.LookupNamesByTable(ctx, h.Store.Q(), "industries", industryIDs)
+		professionNames := store.LookupNamesByTable(ctx, h.Store.Q(), "majors", professionIDs)
 
 		sRows = append(sRows, sRow{
 			name, positionName,
@@ -109,8 +118,8 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 	// Fill Sheet 2: 任务配置
 	taskRow := 3
 	for _, sid := range scenarioIDs {
-		var scenarioName string
-		if err := h.Store.Q().QueryRow(ctx, `SELECT name FROM scenarios WHERE id=$1`, sid).Scan(&scenarioName); err != nil {
+		scenarioName, err := store.LookupScenarioNameByID(ctx, h.Store.Q(), sid)
+		if err != nil {
 			slog.Warn("导出场景任务名称查询失败", "scenarioId", sid, "error", err)
 		}
 
@@ -120,9 +129,9 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			continue
 		}
 		for _, t := range taskRows {
-			kpNames := h.lookupKnowledgePointNames(ctx, t.KnowledgePointIDs)
-			apNames := h.lookupAbilityPointNames(ctx, t.AbilityPointIDs)
-			resNames := h.lookupResourceNames(ctx, t.ResourceIDs)
+			kpNames := store.LookupKnowledgePointNamesByIDs(ctx, h.Store.Q(), t.KnowledgePointIDs)
+			apNames := store.LookupAbilityPointNamesByIDs(ctx, h.Store.Q(), t.AbilityPointIDs)
+			resNames := store.LookupResourceNamesByIDs(ctx, h.Store.Q(), t.ResourceIDs)
 
 			evalMethods := h.lookupTaskEvalMethods(ctx, tenantID, t.ID)
 
@@ -144,66 +153,6 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 	}
 
 	return nil
-}
-
-func (h *ScenarioExportHandler) lookupNames(ctx context.Context, table string, ids []string) []string {
-	if len(ids) == 0 {
-		return nil
-	}
-	var names []string
-	for _, id := range ids {
-		var name string
-		err := h.Store.Q().QueryRow(ctx, fmt.Sprintf(`SELECT name FROM %s WHERE id=$1`, table), id).Scan(&name)
-		if err == nil {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-func (h *ScenarioExportHandler) lookupKnowledgePointNames(ctx context.Context, ids []string) []string {
-	if len(ids) == 0 {
-		return nil
-	}
-	var names []string
-	for _, id := range ids {
-		var name string
-		h.Store.Q().QueryRow(ctx, `SELECT name FROM knowledge_points WHERE id=$1`, id).Scan(&name)
-		if name != "" {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-func (h *ScenarioExportHandler) lookupAbilityPointNames(ctx context.Context, ids []string) []string {
-	if len(ids) == 0 {
-		return nil
-	}
-	var names []string
-	for _, id := range ids {
-		var name string
-		h.Store.Q().QueryRow(ctx, `SELECT name FROM ability_points WHERE id=$1`, id).Scan(&name)
-		if name != "" {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []string) []string {
-	if len(ids) == 0 {
-		return nil
-	}
-	var names []string
-	for _, id := range ids {
-		var name string
-		h.Store.Q().QueryRow(ctx, `SELECT name FROM resource_library WHERE id=$1`, id).Scan(&name)
-		if name != "" {
-			names = append(names, name)
-		}
-	}
-	return names
 }
 
 func (h *ScenarioExportHandler) lookupTaskEvalMethods(ctx context.Context, tenantID, taskID string) []string {

@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { usePortalUsers } from '@/hooks/use-portal-users'
 import { useOrgTree, findOrgAncestor } from '@/hooks/use-org-tree'
 import { OrgNodePicker } from '@/components/shared/org-node-picker'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { portalUserManagementApi, importExportApi, downloadBlob } from '@/lib/api'
-import type { Organization } from '@/lib/types/backend'
+import { roleApi, portalUserManagementApi, importExportApi, downloadBlob, type User } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
+import type { Organization, Role } from '@/lib/types/backend'
 import { useToast, StatusBadge } from '@zhiyu/ui'
 import { PortalSidebarCrudPage } from '@/components/shared/portal-sidebar-crud-page'
 import { Pencil, Power, Trash2, Key, Award, Users, Loader2 } from 'lucide-react'
@@ -65,19 +65,43 @@ export default function StudentsPage() {
   const t = useT()
   const { institution, institutionId, tenantId } = usePortalAuth()
   const { toast } = useToast()
-  const {
-    users,
-    roles: tenantRoles,
-    total,
-    page,
-    pageSize,
-    setPage,
-    loading,
-    error,
-    refetch,
-  } = usePortalUsers({
-    roleCode: 'student',
-  })
+
+  // 全量拉取学生与角色：搜索/状态/组织筛选在前端对全量数据生效，避免跨页匹配的学生搜不到
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [tenantRoles, setTenantRoles] = useState<Role[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>()
+  const [refetchKey, setRefetchKey] = useState(0)
+  const refetch = useCallback(() => setRefetchKey((k) => k + 1), [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!tenantId) return
+      setLoading(true)
+      setError(undefined)
+      try {
+        const [rolesRes, userList] = await Promise.all([
+          roleApi.list({ tenantId, limit: 1000 }),
+          listAll((p, ps) =>
+            portalUserManagementApi.list({ tenantId, roleCode: 'student', limit: ps, offset: p * ps }),
+          ),
+        ])
+        if (cancelled) return
+        setTenantRoles(rolesRes.items)
+        setAllUsers(userList)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : t('加载失败'))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tenantId, refetchKey, t])
+
   const { orgs, orgMap, orgTypeMap, loading: orgLoading } = useOrgTree(tenantId)
 
   const [students, setStudents] = useState<Student[]>([])
@@ -98,7 +122,7 @@ export default function StudentsPage() {
   useEffect(() => {
     ;(async () => {
       setStudents(
-        users.map((u) => {
+        allUsers.map((u) => {
           const classNode = u.orgNodeId ? orgMap.get(u.orgNodeId) : undefined
           const className = classNode?.name || '—'
           let departmentName = institution?.name || '—'
@@ -122,7 +146,7 @@ export default function StudentsPage() {
         }),
       )
     })()
-  }, [users, institution, orgMap, orgTypeMap])
+  }, [allUsers, institution, orgMap, orgTypeMap])
 
   const resetForm = () => {
     setFormName('')
@@ -161,7 +185,12 @@ export default function StudentsPage() {
       setBatchDeleting(false)
       setBatchDeleteTarget(null)
     }
-    await refetch()
+    // 删除已成功：刷新失败不应产生未处理 rejection（与共享 CRUD 页一致，静默处理）
+    try {
+      await refetch()
+    } catch {
+      /* ignore */
+    }
   }
 
   const formValid =
@@ -181,10 +210,11 @@ export default function StudentsPage() {
         items={students}
         loading={loading}
         error={error}
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        setPage={setPage}
+        // 全量列表一次渲染，分页条置为单页（总数仍展示真实学生数）
+        total={students.length}
+        page={1}
+        pageSize={Math.max(students.length, 1)}
+        setPage={() => {}}
         refetch={refetch}
         orgs={orgs}
         orgMap={orgMap}
@@ -392,7 +422,7 @@ export default function StudentsPage() {
             {!selectedStudent && (
               <FormFieldRow label={t('密码')} required>
                 <Input
-                  type="text"
+                  type="password"
                   placeholder={t('请输入密码')}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
@@ -417,7 +447,7 @@ export default function StudentsPage() {
           setSaving(true)
           try {
             if (selectedStudent) {
-              const original = users.find((u) => u.id === selectedStudent.id)
+              const original = allUsers.find((u) => u.id === selectedStudent.id)
               if (!original) {
                 toast({
                   variant: 'destructive',

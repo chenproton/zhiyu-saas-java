@@ -134,8 +134,7 @@ func (h *QuestionExportHandler) lookupKnowledgePointNames(ctx context.Context, t
 		if id == "" {
 			continue
 		}
-		var name string
-		err := h.Store.Q().QueryRow(ctx, `SELECT name FROM knowledge_points WHERE id=$1 AND tenant_id=$2`, id, tenantID).Scan(&name)
+		name, err := store.GetKnowledgePointNameByID(ctx, h.Store.Q(), id, tenantID)
 		if err == nil && name != "" {
 			names = append(names, name)
 		}

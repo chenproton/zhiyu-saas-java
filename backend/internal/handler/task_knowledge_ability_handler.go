@@ -43,6 +43,10 @@ func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *ht
 	if !ok {
 		return
 	}
+	// 绑定与解绑校验对称：任务必须属于本租户（task→scenario→tenant）
+	if !h.verifyTaskTenant(w, r, req.TaskID) {
+		return
+	}
 
 	binding, err := h.Service.BindKnowledge(r.Context(), tenantID, req.TaskID, req.KnowledgePointID)
 	if err != nil {
@@ -94,6 +98,10 @@ func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http
 	}
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
+		return
+	}
+	// 绑定与解绑校验对称：任务必须属于本租户（task→scenario→tenant）
+	if !h.verifyTaskTenant(w, r, req.TaskID) {
 		return
 	}
 

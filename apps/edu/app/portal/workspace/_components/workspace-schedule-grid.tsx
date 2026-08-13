@@ -25,9 +25,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { allPeriods, days, type ScheduleEvent } from '../_data/workspace-student-types'
-import { formatDate , formatYMD } from '@/lib/format-utils'
+import { formatDate, formatYMD } from '@/lib/format-utils'
 import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
+import { getWeekStart, getWeekEnd, getWeeksInMonth, getWeekIndex, getWeekTargetDate } from '@/lib/schedule-utils'
 
 /** 工作台 dashboard 事件已下发 resourceVersion（排课 stamp）；本地 mock 类型尚无该字段，此处扩展 */
 type ScheduleEventWithVersion = ScheduleEvent & { resourceVersion?: string }
@@ -92,19 +93,6 @@ function getStudentActionUrls(
   return { isActionable: false }
 }
 
-function getWeekStart(date: Date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(d.setDate(diff))
-}
-
-function getWeekEnd(weekStart: Date) {
-  const end = new Date(weekStart)
-  end.setDate(end.getDate() + 6)
-  return end
-}
-
 function dateKey(d: Date): string {
   return formatYMD(d)
 }
@@ -117,14 +105,6 @@ function isEventInWeek(event: ScheduleEvent, weekStart: Date, weekEnd: Date): bo
   return key >= dateKey(weekStart) && key <= dateKey(weekEnd)
 }
 
-function getWeeksInMonth(year: number, month: number) {
-  const firstDay = new Date(year, month - 1, 1)
-  const lastDay = new Date(year, month, 0)
-  const startDay = firstDay.getDay() || 7
-  const totalDays = lastDay.getDate()
-  return Math.ceil((totalDays + startDay - 1) / 7)
-}
-
 export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
   const t = useT()
   const [view, setView] = useState<ViewType>('week')
@@ -135,12 +115,11 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
 
   const weekStart = useMemo(() => getWeekStart(currentDate), [currentDate])
   const weekEnd = useMemo(() => getWeekEnd(weekStart), [weekStart])
-  const weekIndex = useMemo(() => {
-    const firstDay = new Date(year, month - 1, 1)
-    const startDay = firstDay.getDay() || 7
-    const offset = weekStart.getDate() + startDay - 2
-    return Math.floor(offset / 7) + 1
-  }, [year, month, weekStart])
+  // 基于绝对日期差计算周次（第 1 周为包含当月 1 号的那一周），避免跨月错算/周下拉重复值
+  const weekIndex = useMemo(
+    () => getWeekIndex(weekStart, year, month),
+    [year, month, weekStart],
+  )
 
   const handleYearChange = (val: string) => {
     const d = new Date(currentDate)
@@ -155,11 +134,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
   }
 
   const handleWeekChange = (val: string) => {
-    const targetWeek = Number(val)
-    const firstDay = new Date(year, month - 1, 1)
-    const startDay = firstDay.getDay() || 7
-    const targetDate = new Date(year, month - 1, 1 + (targetWeek - 1) * 7 - (startDay - 1))
-    setCurrentDate(targetDate)
+    setCurrentDate(getWeekTargetDate(year, month, Number(val)))
   }
 
   const prevPeriod = () => {

@@ -170,13 +170,21 @@ export default function ExamUsagePage() {
     setCreateDialogOpen(true)
   }
 
-  // RFC3339 → datetime-local 值（UTC，与创建时提交格式一致）
+  // RFC3339 → datetime-local 值（按本地时区展示；datetime-local 输入框本身无时区语义）
   const toDatetimeLocal = (iso?: string) => {
     if (!iso) return ''
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return ''
     const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  // datetime-local（本地时间，无时区）→ 完整 RFC3339（含秒与时区），后端 time.Parse(RFC3339) 严格解析
+  const toRfc3339 = (value?: string): string | undefined => {
+    if (!value) return undefined
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return undefined
+    return d.toISOString()
   }
 
   const openEditDialog = (usage: ExamUsage) => {
@@ -202,8 +210,9 @@ export default function ExamUsagePage() {
         name: formName,
         description: formDescription || undefined,
         duration: formDuration ? Number(formDuration) : undefined,
-        startTime: formActivationMode === 'scheduled' ? formStartTime || undefined : undefined,
-        endTime: formActivationMode === 'scheduled' ? formEndTime || undefined : undefined,
+        startTime:
+          formActivationMode === 'scheduled' ? toRfc3339(formStartTime) : undefined,
+        endTime: formActivationMode === 'scheduled' ? toRfc3339(formEndTime) : undefined,
         activationMode: formActivationMode,
       }
       if (editingUsage) {

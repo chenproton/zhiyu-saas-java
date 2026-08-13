@@ -465,3 +465,40 @@ func recordViewAsync(increment func(ctx context.Context, targetID string, userID
 		}
 	}()
 }
+
+// —— 指针小工具（统一收敛：原 job_banner/lesson_behavior/resource_import 各自定义）——
+
+// derefInt 指针解引用，nil 回退默认值。
+func derefInt(p *int, fallback int) int {
+	if p == nil {
+		return fallback
+	}
+	return *p
+}
+
+// derefBool 指针解引用，nil 回退默认值。
+func derefBool(p *bool, fallback bool) bool {
+	if p == nil {
+		return fallback
+	}
+	return *p
+}
+
+// coalesceStringSlicePtr 把可选字符串切片指针归一为切片（nil → 空切片）。
+func coalesceStringSlicePtr(s *[]string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return *s
+}
+
+// countPtr 指针非 nil 计 1，nil 计 0（计数语义）。
+func countPtr(v *int) int {
+	if v == nil {
+		return 0
+	}
+	return 1
+}
+
+// boolPtr 构造 bool 指针。
+func boolPtr(b bool) *bool { return &b }

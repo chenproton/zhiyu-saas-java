@@ -26,12 +26,20 @@ export function QuestionPreview({ open, onOpenChange, question }: QuestionPrevie
   const renderAnswer = () => {
     switch (question.type) {
       case 'single':
-      case 'essay':
-        return <span>{question.answer as string}</span>
+      case 'essay': {
+        // 答案统一按 string[] 处理（后端以 JSON 数组存储，单元素数组时也按数组取值）
+        const ans = Array.isArray(question.answer)
+          ? (question.answer as string[]).join(', ')
+          : String(question.answer ?? '')
+        return <span>{ans}</span>
+      }
       case 'multiple':
         return <span>{(question.answer as string[]).join(', ')}</span>
-      case 'judge':
-        return <span>{question.answer === 'true' ? t('正确') : t('错误')}</span>
+      case 'judge': {
+        // 判断题答案以 JSON 数组存储（如 ['true']），按数组取值否则恒判「错误」
+        const ans = Array.isArray(question.answer) ? question.answer[0] : question.answer
+        return <span>{ans === 'true' ? t('正确') : t('错误')}</span>
+      }
       case 'fill':
         return <span>{(question.answer as string[]).join(', ')}</span>
       default:

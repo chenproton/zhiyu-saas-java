@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,36 +54,87 @@ export default function AllianceEnterpriseDetailPage() {
   const [achLinkDialog, setAchLinkDialog] = useState(false)
   const [achLinkSelected, setAchLinkSelected] = useState<string[]>([])
 
+  // 全量候选列表是否已按需补全（关联弹窗候选需要完整集合；初始只取有界首页）
+  const fullAgreementsRef = useRef(false)
+  const fullProjectsRef = useRef(false)
+  const fullAchievementsRef = useRef(false)
+
+  /** 按需补全协议全量列表：仅关联弹窗打开时触发，避免每次加载全租户无界分页扫描 */
+  const ensureFullAgreements = async () => {
+    if (fullAgreementsRef.current) return
+    try {
+      const items = await fetchAllPages((page, pageSize) =>
+        allianceAgreementApi.list({ limit: pageSize, offset: page * pageSize }),
+      )
+      fullAgreementsRef.current = true
+      setAllAgreements(items)
+    } catch {
+      // 补全失败保持已有数据，弹窗仍可用
+    }
+  }
+
+  /** 按需补全项目全量列表（同 ensureFullAgreements） */
+  const ensureFullProjects = async () => {
+    if (fullProjectsRef.current) return
+    try {
+      const items = await fetchAllPages((page, pageSize) =>
+        allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+      )
+      fullProjectsRef.current = true
+      setAllProjects(items)
+    } catch {
+      // 补全失败保持已有数据，弹窗仍可用
+    }
+  }
+
+  /** 按需补全成果全量列表（同 ensureFullAgreements） */
+  const ensureFullAchievements = async () => {
+    if (fullAchievementsRef.current) return
+    try {
+      const items = await fetchAllPages((page, pageSize) =>
+        allianceAchievementApi.list({ limit: pageSize, offset: page * pageSize }),
+      )
+      fullAchievementsRef.current = true
+      setAllAchievements(items)
+    } catch {
+      // 补全失败保持已有数据，弹窗仍可用
+    }
+  }
+
   const loadData = () => {
     if (!tenantId || !id) return
-    // 分页合并全量拉取：关联过滤基于完整列表，超过后端 maxPageSize(200) 不再截断
+    // 初始加载取有界首页（limit 200，与 projects/[id] 页一致）：表格/徽标即时可用；
+    // 全量候选由关联弹窗打开时按需补全（ensureFull*），避免每次加载全租户无界分页扫描
+    fullAgreementsRef.current = false
+    fullProjectsRef.current = false
+    fullAchievementsRef.current = false
     Promise.all([
       allianceEnterpriseApi.get(id),
-      fetchAllPages((page, pageSize) => allianceAgreementApi.list({ limit: pageSize, offset: page * pageSize })),
-      fetchAllPages((page, pageSize) => allianceProjectApi.list({ limit: pageSize, offset: page * pageSize })),
-      fetchAllPages((page, pageSize) => allianceAchievementApi.list({ limit: pageSize, offset: page * pageSize })),
+      allianceAgreementApi.list({ limit: 200 }),
+      allianceProjectApi.list({ limit: 200 }),
+      allianceAchievementApi.list({ limit: 200 }),
     ])
       .then(([ent, agr, proj, ach]) => {
         setEnterprise(ent)
-        setAllAgreements(agr)
-        setAllProjects(proj)
-        setAllAchievements(ach)
+        setAllAgreements(agr.items || [])
+        setAllProjects(proj.items || [])
+        setAllAchievements(ach.items || [])
         // 本企业直接关联的项目（企业项目集，供协议/成果二次关联过滤）
-        const enterpriseProjects = proj.filter((p: AllianceProject) =>
+        const enterpriseProjects = (proj.items || []).filter((p: AllianceProject) =>
           (p.enterpriseIds as any)?.includes?.(id),
         )
         const projectIds = enterpriseProjects.map((p) => p.id)
         setProjects(enterpriseProjects)
         // 协议/成果：直接关联 + 经项目二次关联（去重）
         setAgreements(
-          agr.filter(
+          (agr.items || []).filter(
             (a) =>
               (a.enterpriseIds || []).includes?.(id) ||
               (a.projectIds || []).some((pid) => projectIds.includes(pid)),
           ),
         )
         setAchievements(
-          ach.filter(
+          (ach.items || []).filter(
             (a: AllianceAchievement) =>
               (a.enterpriseIds as any)?.includes?.(id) ||
               (a.projectIds || []).some((pid) => projectIds.includes(pid)),
@@ -377,6 +428,7 @@ export default function AllianceEnterpriseDetailPage() {
               onClick={() => {
                 setLinkSelected([])
                 setLinkDialog(true)
+                void ensureFullAgreements()
               }}
               disabled={availableForLink.length === 0}
             >
@@ -460,6 +512,7 @@ export default function AllianceEnterpriseDetailPage() {
               onClick={() => {
                 setProjLinkSelected([])
                 setProjLinkDialog(true)
+                void ensureFullProjects()
               }}
               disabled={allProjects.filter((p) => !(p.enterpriseIds || []).includes?.(id)).length === 0}
             >
@@ -526,6 +579,7 @@ export default function AllianceEnterpriseDetailPage() {
               onClick={() => {
                 setAchLinkSelected([])
                 setAchLinkDialog(true)
+                void ensureFullAchievements()
               }}
               disabled={
                 allAchievements.filter((a) => !(a.enterpriseIds || []).includes?.(id)).length === 0

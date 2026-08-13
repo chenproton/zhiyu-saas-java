@@ -271,37 +271,17 @@ type expertUpdateRequest struct {
 
 // applyExpertPartialUpdate 专家档案部分更新兜底：未携带字段回退已有值
 // （学校侧评级/就业方向/二级学院/照片等字段由学校维护，本人/管理员更新不得清空）。
+// 覆盖全部可更新列，避免全列 UPDATE 把未携带字段置 NULL/空串（历史缺陷：仅回退 name
+// 导致 UpdateMyExpert/UpdateSchoolExpert 清空 user_id/enterprise_id 及学校侧维护字段）。
 func applyExpertPartialUpdate(e, existing *domain.AllianceExpert) {
 	if e.Name == "" {
 		e.Name = existing.Name
 	}
-}
-
-func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
+	if e.Gender == nil {
+		e.Gender = existing.Gender
 	}
-	id := chi.URLParam(r, "id")
-	existing, err := h.Service.Store().Alliance().GetExpertByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "专家不存在")
-		return
-	}
-	var req expertUpdateRequest
-	if !decodeBody(w, r, &req) {
-		return
-	}
-	e := req.AllianceExpert
-	if req.IsPublic != nil {
-		e.IsPublic = req.IsPublic
-	} else {
-		e.IsPublic = existing.IsPublic
-	}
-	// 部分更新兜底：未携带字段回退已有值；企业归属强制本企业，不可改绑
-	applyExpertPartialUpdate(&e, existing)
-	if e.Status == "" {
-		e.Status = existing.Status
+	if e.Age == nil {
+		e.Age = existing.Age
 	}
 	if e.Title == nil {
 		e.Title = existing.Title
@@ -315,11 +295,11 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	if e.Industry == nil {
 		e.Industry = existing.Industry
 	}
-	if e.Gender == nil {
-		e.Gender = existing.Gender
+	if len(e.ProfessionalFields) == 0 {
+		e.ProfessionalFields = existing.ProfessionalFields
 	}
-	if e.Age == nil {
-		e.Age = existing.Age
+	if len(e.Specialties) == 0 {
+		e.Specialties = existing.Specialties
 	}
 	if e.ExperienceYears == nil {
 		e.ExperienceYears = existing.ExperienceYears
@@ -342,11 +322,20 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	if e.CoverImage == nil {
 		e.CoverImage = existing.CoverImage
 	}
+	if len(e.Photos) == 0 {
+		e.Photos = existing.Photos
+	}
+	if len(e.Attachments) == 0 {
+		e.Attachments = existing.Attachments
+	}
 	if e.Organization == nil {
 		e.Organization = existing.Organization
 	}
 	if e.Rating == nil {
 		e.Rating = existing.Rating
+	}
+	if e.Status == "" {
+		e.Status = existing.Status
 	}
 	if e.PartnerSource == nil {
 		e.PartnerSource = existing.PartnerSource
@@ -354,25 +343,41 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	if e.PositionDirection == nil {
 		e.PositionDirection = existing.PositionDirection
 	}
-	if len(e.ProfessionalFields) == 0 {
-		e.ProfessionalFields = existing.ProfessionalFields
-	}
-	if len(e.Specialties) == 0 {
-		e.Specialties = existing.Specialties
-	}
-	if len(e.Photos) == 0 {
-		e.Photos = existing.Photos
-	}
-	if len(e.Attachments) == 0 {
-		e.Attachments = existing.Attachments
-	}
 	if len(e.SecondaryColleges) == 0 {
 		e.SecondaryColleges = existing.SecondaryColleges
+	}
+	if e.IsPublic == nil {
+		e.IsPublic = existing.IsPublic
 	}
 	if e.UserID == nil {
 		e.UserID = existing.UserID
 	}
+	// 企业归属不可改绑，强制回退现有值
 	e.EnterpriseID = existing.EnterpriseID
+}
+
+func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	existing, err := h.Service.Store().Alliance().GetExpertByID(r.Context(), id, tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "专家不存在")
+		return
+	}
+	var req expertUpdateRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	e := req.AllianceExpert
+	// 外层同名字段优先于内嵌解码：显式携带的 isPublic 先合并进内嵌结构，再统一兜底
+	if req.IsPublic != nil {
+		e.IsPublic = req.IsPublic
+	}
+	// 部分更新兜底：未携带字段回退已有值；企业归属强制本企业，不可改绑
+	applyExpertPartialUpdate(&e, existing)
 
 	if err := h.Service.Store().Alliance().UpdateExpert(r.Context(), id, tenantID, &e); err != nil {
 		respondServerError(w, r, err, "更新专家失败")
@@ -456,8 +461,6 @@ func (h *PartnerHandler) UpdateMyExpert(w http.ResponseWriter, r *http.Request) 
 	// 学校侧维护字段（评级/就业方向/二级学院/照片等）未携带时回退已有值，不得清空
 	if req.IsPublic != nil {
 		e.IsPublic = req.IsPublic
-	} else {
-		e.IsPublic = existing.IsPublic
 	}
 	applyExpertPartialUpdate(&e, existing)
 	e.TenantID = tenantID

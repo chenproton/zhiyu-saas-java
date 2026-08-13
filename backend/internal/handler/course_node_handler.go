@@ -288,6 +288,14 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	// 未携带（nil）回退现有绑定，防止部分更新把节点知识点/资源绑定清空（数据丢失）；
+	// 显式空数组仍可清空
+	if req.KnowledgePointIds == nil {
+		kpIDs = existing.KnowledgePointIds
+	}
+	if req.ResourceIds == nil {
+		resIDs = existing.ResourceIds
+	}
 	if req.RefType == "original" {
 		kpIDs = []string{}
 		resIDs = []string{}

@@ -145,6 +145,8 @@ export interface Question {
   score: number
   difficulty?: Difficulty
   knowledgePoints?: string[]
+  /** 选项随机排序（单/多选） */
+  shuffleOptions?: boolean
   creatorId?: string
   source?: string
   status: Status
@@ -161,6 +163,8 @@ export interface QuestionFormData {
   score: number
   difficulty?: Difficulty
   knowledgePoints?: string[]
+  /** 选项随机排序（单/多选） */
+  shuffleOptions?: boolean
 }
 
 // 试卷中的题目（快照）

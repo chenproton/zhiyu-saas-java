@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -109,7 +108,33 @@ func (s *ApprovalStore) Create(ctx context.Context, tenantID *string, p *Approva
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, *tenantID, id)
+	// 回查仅按 id：tenantID 可为 nil（全局流程），对 *tenantID 解引用会 panic，
+	// 且 tenant_id = '' 无法命中 NULL 行。已插入的租户值以回查结果为准。
+	return s.fetchApprovalByID(ctx, id)
+}
+
+// fetchApprovalByID 仅按 id 回查审批记录（Create 使用：租户指针可为 nil）。
+func (s *ApprovalStore) fetchApprovalByID(ctx context.Context, id string) (*domain.ApprovalRecord, error) {
+	return scanApproval(s.q.QueryRow(ctx, `
+		SELECT id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status,
+			submitter_id, history, created_at, updated_at
+		FROM approval_records WHERE id = $1
+	`, id).Scan)
+}
+
+// scanApproval 单行审批记录扫描（fetchApproval/fetchApprovalByID/ScanApprovalRows 共用）。
+func scanApproval(scan func(dest ...any) error) (*domain.ApprovalRecord, error) {
+	var ar domain.ApprovalRecord
+	var tenantPtr, workflowID *string
+	var history domain.JSONSlice
+	if err := scan(&ar.ID, &tenantPtr, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
+		&ar.Status, &ar.SubmitterID, &history, &ar.CreatedAt, &ar.UpdatedAt); err != nil {
+		return nil, err
+	}
+	ar.TenantID = tenantPtr
+	ar.WorkflowID = workflowID
+	ar.History = history
+	return &ar, nil
 }
 
 // ExistsPending 判断目标是否已有待审批记录。
@@ -136,29 +161,22 @@ func (s *ApprovalStore) ExistsPendingByWorkflow(ctx context.Context, workflowID 
 	return exists, err
 }
 
-// UpdateHistory 追加审批历史（不改变状态）。
-// SQL 级原子追加：并发审批（"或"模式多人步骤）各自追加互不覆盖，防止后写整段覆盖先写。
-func (s *ApprovalStore) UpdateHistory(ctx context.Context, id string, entry domain.JSONMap) (bool, error) {
-	entryJSON, err := json.Marshal([]domain.JSONMap{entry})
-	if err != nil {
-		return false, err
-	}
-	tag, err := s.q.Exec(ctx, `
-		UPDATE approval_records SET history = COALESCE(history, '[]'::jsonb) || $1::jsonb, updated_at = NOW()
-		WHERE id = $2 AND status = $3
-	`, string(entryJSON), id, string(domain.ApprovalStatusPending))
-	if err != nil {
-		return false, err
-	}
-	return tag.RowsAffected() > 0, nil
+// LockApproval 事务内以行锁读取审批记录：并发评审串行化，
+// 防止后写历史互相覆盖与「最后一名审批人未触发推进」导致记录卡在 pending。
+func (s *ApprovalStore) LockApproval(ctx context.Context, tx Queryer, id string) (*domain.ApprovalRecord, error) {
+	return scanApproval(tx.QueryRow(ctx, `
+		SELECT id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status,
+			submitter_id, history, created_at, updated_at
+		FROM approval_records WHERE id = $1 FOR UPDATE
+	`, id).Scan)
 }
 
-// RejectRecord 拒绝审批（更新状态+历史）。
-func (s *ApprovalStore) RejectRecord(ctx context.Context, tx Queryer, id string, status string, history domain.JSONSlice) (bool, error) {
+// SetHistory 覆写审批历史（仅行锁保护下调用）。
+func (s *ApprovalStore) SetHistory(ctx context.Context, tx Queryer, id string, history domain.JSONSlice) (bool, error) {
 	tag, err := tx.Exec(ctx, `
-		UPDATE approval_records SET status = $1, history = $2, updated_at = NOW()
-		WHERE id = $3 AND status = $4
-	`, status, history, id, string(domain.ApprovalStatusPending))
+		UPDATE approval_records SET history = $1, updated_at = NOW()
+		WHERE id = $2 AND status = $3
+	`, history, id, string(domain.ApprovalStatusPending))
 	if err != nil {
 		return false, err
 	}
@@ -203,22 +221,11 @@ type ApprovalCreateParams struct {
 }
 
 func (s *ApprovalStore) fetchApproval(ctx context.Context, tenantID, id string) (*domain.ApprovalRecord, error) {
-	var ar domain.ApprovalRecord
-	var tenantPtr, workflowID *string
-	var history domain.JSONSlice
-	err := s.q.QueryRow(ctx, `
+	return scanApproval(s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status,
 			submitter_id, history, created_at, updated_at
 		FROM approval_records WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&ar.ID, &tenantPtr, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
-		&ar.Status, &ar.SubmitterID, &history, &ar.CreatedAt, &ar.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	ar.TenantID = tenantPtr
-	ar.WorkflowID = workflowID
-	ar.History = history
-	return &ar, nil
+	`, id, tenantID).Scan)
 }
 
 // ScanApprovalRows 扫描审批记录行。

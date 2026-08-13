@@ -21,7 +21,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { FolderTree, Loader2, ChevronDown, UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { usePortalUsers } from '@/hooks/use-portal-users'
+import { portalUserManagementApi, type User } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { useOrgTree, findOrgAncestor } from '@/hooks/use-org-tree'
 import {
   OrgFilterTree,
@@ -71,9 +72,38 @@ function getOrgTypeName(
 export default function StudentPortraitsPage() {
   const t = useT()
   const { institution, tenantId } = usePortalAuth()
-  const { users, total, page, pageSize, setPage, loading, error, refetch } = usePortalUsers({
-    roleCode: 'student',
-  })
+  // 全量拉取学生（分页合并），搜索/组织筛选作用在全量数据上，
+  // 避免分页接口下跨页学生永远搜不到、总数与列表不一致（P1 修复）
+  const [users, setUsers] = useState<User[]>([])
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>()
+  const [refetchKey, setRefetchKey] = useState(0)
+  const refetch = () => setRefetchKey((k) => k + 1)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!tenantId) return
+      setLoading(true)
+      setError(undefined)
+      try {
+        const all = await listAll((p, ps) =>
+          portalUserManagementApi.list({ tenantId, roleCode: 'student', limit: ps, offset: p * ps }),
+        )
+        if (cancelled) return
+        setUsers(all)
+      } catch (err) {
+        if (!cancelled) return
+        setError(err instanceof Error ? err.message : t('加载失败'))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tenantId, refetchKey, t])
   const { orgs, orgMap, orgTypeMap, loading: orgLoading } = useOrgTree(tenantId)
 
   const [students, setStudents] = useState<Student[]>([])
@@ -128,7 +158,12 @@ export default function StudentPortraitsPage() {
     return result
   }, [students, searchTerm, selectedOrgIds])
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  // 客户端分页：基于筛选后的全量结果；筛选条件变化时在事件处理器中回到第一页
+  const pagedStudents = useMemo(
+    () => filteredStudents.slice((page - 1) * pageSize, page * pageSize),
+    [filteredStudents, page, pageSize],
+  )
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize))
 
   return (
     <>
@@ -171,7 +206,10 @@ export default function StudentPortraitsPage() {
             <ScrollArea className="h-[300px] md:h-[500px]">
               <div className="space-y-1">
                 <button
-                  onClick={() => setSelectedOrgNodeId(null)}
+                  onClick={() => {
+                    setSelectedOrgNodeId(null)
+                    setPage(1)
+                  }}
                   className={cn(
                     'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors',
                     selectedOrgNodeId === null
@@ -190,7 +228,10 @@ export default function StudentPortraitsPage() {
                     nodes={orgs}
                     orgTypeMap={orgTypeMap}
                     selectedId={selectedOrgNodeId}
-                    onSelect={setSelectedOrgNodeId}
+                    onSelect={(id) => {
+                      setSelectedOrgNodeId(id)
+                      setPage(1)
+                    }}
                   />
                 )}
               </div>
@@ -203,7 +244,10 @@ export default function StudentPortraitsPage() {
                 wrapperClassName="w-full sm:max-w-sm"
                 placeholder={t('搜索姓名、登录账号...')}
                 value={searchTerm}
-                onChange={setSearchTerm}
+                onChange={(v) => {
+                  setSearchTerm(v)
+                  setPage(1)
+                }}
               />
             </div>
 
@@ -229,7 +273,7 @@ export default function StudentPortraitsPage() {
                     </TableRow>
                   ) : (
                     <>
-                      {filteredStudents.map((student) => (
+                      {pagedStudents.map((student) => (
                         <TableRow key={student.id} className="border-border group">
                           <TableCell className="font-mono text-sm">
                             {student.loginAccount}
@@ -271,7 +315,7 @@ export default function StudentPortraitsPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
-              <span>{t('共 {total} 条记录', { total })}</span>
+              <span>{t('共 {total} 条记录', { total: filteredStudents.length })}</span>
               <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           </div>
