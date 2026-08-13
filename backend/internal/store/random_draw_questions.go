@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -27,6 +28,10 @@ func (s *RandomDrawQuestionStore) List(ctx context.Context, p ListParams, cfg Li
 func (s *RandomDrawQuestionStore) Get(ctx context.Context, id, tenantID string) (*domain.RandomDrawQuestion, error) {
 	q, err := s.fetchQuestion(ctx, id, tenantID)
 	if err != nil {
+		// 与多数 store 约定一致：不存在映射 ErrNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return q, nil

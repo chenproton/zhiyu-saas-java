@@ -267,6 +267,7 @@ func (s *ExamUsageStore) ListExamCenter(ctx context.Context, tenantID, userID st
 		if err := rows.Scan(&r.ID, &r.ExamID, &r.UsageName, &r.ExamName, &r.Description,
 			&startTime, &endTime, &r.Duration, &r.Status, &r.QuestionCount, &r.TotalScore,
 			&r.ClassMatch, &r.Submitted, &r.Score, &r.ExamVersion); err != nil {
+			slog.Warn("考试中心列表扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		if startTime != nil {

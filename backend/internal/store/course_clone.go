@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -168,7 +169,8 @@ func (s *CourseCloneStore) cloneCourseBindings(ctx context.Context, tx Queryer, 
 	for resRows.Next() {
 		var resID string
 		if err := resRows.Scan(&resID); err != nil {
-			continue
+			// 与知识点绑定循环一致：扫描错误直接上抛，避免克隆课程静默缺资源绑定
+			return err
 		}
 		resIDs = append(resIDs, resID)
 	}
@@ -253,6 +255,9 @@ func (s *CourseCloneStore) cloneCourseNodes(ctx context.Context, tx Queryer, old
 		if n.ParentID != nil && *n.ParentID != "" {
 			if mapped, ok := nodeIDMap[*n.ParentID]; ok {
 				newParentID = &mapped
+			} else {
+				// 父节点缺失（历史脏数据）时记录告警，克隆结构异常可追溯
+				slog.Warn("克隆课程节点父级缺失，节点将变为根节点", "nodeID", n.ID, "parentID", *n.ParentID)
 			}
 		}
 		if _, err := tx.Exec(ctx, `

@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"errors"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
@@ -25,6 +27,9 @@ func (s *RecommendStore) List(ctx context.Context, p ListParams, cfg ListQueryCo
 func (s *RecommendStore) Get(ctx context.Context, id, tenantID string) (*domain.PositionRecommendation, error) {
 	rec, err := s.fetchRecommend(ctx, id, tenantID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return rec, nil

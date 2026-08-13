@@ -112,6 +112,10 @@ func (s *CertificationStore) CreateRule(ctx context.Context, tenantID, positionI
 // UpdateRuleStatus 更新规则状态。
 func (s *CertificationStore) UpdateRuleStatus(ctx context.Context, id, tenantID, status string) (*domain.CertificationRule, error) {
 	if _, err := s.fetchRule(ctx, id, tenantID); err != nil {
+		// 与 GetRule/GetRuleByTenant 一致：不存在映射 ErrNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
@@ -126,6 +130,9 @@ func (s *CertificationStore) UpdateRuleStatus(ctx context.Context, id, tenantID,
 // UpdateRule 更新规则（限定租户）。
 func (s *CertificationStore) UpdateRule(ctx context.Context, id, tenantID, positionID, ruleSource string) (*domain.CertificationRule, error) {
 	if _, err := s.fetchRule(ctx, id, tenantID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
@@ -431,9 +438,11 @@ func (s *CertificationStore) ListTasksByPointIDs(ctx context.Context, pointIDs [
 	var items []domain.CertificationRelatedTask
 	for rows.Next() {
 		var t domain.CertificationRelatedTask
-		if err := rows.Scan(&t.ID, &t.CertPointID, &t.TaskID, &t.MaxScore, &t.Weight); err == nil {
-			items = append(items, t)
+		if err := rows.Scan(&t.ID, &t.CertPointID, &t.TaskID, &t.MaxScore, &t.Weight); err != nil {
+			// 认证模型聚合视图属核心展示数据，扫描错误不可静默丢行
+			return nil, err
 		}
+		items = append(items, t)
 	}
 	return items, rows.Err()
 }

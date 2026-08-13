@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -473,9 +474,11 @@ func (s *PositionStore) PrepareAbilityPoint(ctx context.Context, q Queryer, tena
 	`, newID, tenantID, name, code, description, attributes, true); err != nil {
 		return "", err
 	}
-	_ = q.QueryRow(ctx, `
+	if err := q.QueryRow(ctx, `
 		SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
-	`, tenantID, name).Scan(&existingID)
+	`, tenantID, name).Scan(&existingID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		slog.Warn("PrepareAbilityPoint 回查失败", "name", name, "error", err)
+	}
 	if existingID != "" {
 		return existingID, nil
 	}
@@ -499,9 +502,11 @@ func (s *PositionStore) PrepareCertificate(ctx context.Context, q Queryer, tenan
 	`, libraryID, tenantID, name, url, description, image); err != nil {
 		return "", err
 	}
-	_ = q.QueryRow(ctx, `
+	if err := q.QueryRow(ctx, `
 		SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
-	`, tenantID, name).Scan(&libraryID)
+	`, tenantID, name).Scan(&libraryID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		slog.Warn("PrepareCertificate 回查失败", "name", name, "error", err)
+	}
 	return libraryID, nil
 }
 
@@ -680,7 +685,9 @@ func (s *PositionStore) ListBySourceEnterprise(ctx context.Context, enterpriseID
 		where += fmt.Sprintf(` AND cp.tenant_id = $%d`, len(args))
 	}
 	if search != "" {
-		args = append(args, "%"+search+"%")
+		// 与 ExecuteListQuery 一致：转义 %/_ 通配符，避免 "50%" 被当作通配模式
+		escaped := strings.NewReplacer(`\\`, `\\\\`, `%`, `\\%`, `_`, `\\_`).Replace(search)
+		args = append(args, "%"+escaped+"%")
 		where += fmt.Sprintf(` AND cp.name ILIKE $%d`, len(args))
 	}
 	if limit <= 0 {
