@@ -190,7 +190,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		seen[key] = true
 
 		var existingID, existingCreator string
-		err = h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id, '') AS creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
+		err = h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID, &existingCreator)
 		found := err == nil && existingID != ""
 
 		if preview {

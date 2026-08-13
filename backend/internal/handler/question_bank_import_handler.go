@@ -134,7 +134,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 		var existingID, existingCreator string
 		var existingCollaborators []string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id, '') AS creator_id, collaborator_ids FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id, collaborator_ids FROM question_banks WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCollaborators)
 		found := err == nil && existingID != ""
 
 		if preview {

@@ -139,7 +139,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 
 		var existingID, existingCreator string
 		var existingCoCreators []string
-		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id, '') AS creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
+		err := h.Store.Q().QueryRow(ctx, `SELECT id, COALESCE(creator_id::text, '') AS creator_id, co_creator_ids FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID, &existingCreator, &existingCoCreators)
 		exists := err == nil && existingID != ""
 
 		if exists && preview {

@@ -29,7 +29,7 @@ func (s *ScenarioStore) List(ctx context.Context, p ListParams, cfg ListQueryCon
 
 const scenarioListFrom = "scenarios s"
 const scenarioListJoins = " LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true LEFT JOIN users cr_u ON cr_u.id = s.creator_id"
-const scenarioListSelectColumns = "s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, COALESCE(s.creator_id, '') AS creator_id, COALESCE(cr_u.name, s.creator_id::text, '') AS creator_name, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count, s.source_type, s.source_enterprise_id, s.source_resource_id"
+const scenarioListSelectColumns = "s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, COALESCE(s.creator_id::text, '') AS creator_id, COALESCE(cr_u.name, s.creator_id::text, '') AS creator_name, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count, s.source_type, s.source_enterprise_id, s.source_resource_id"
 
 // ListConfig 返回场景列表查询配置，SQL 片段沉淀在 store 层。
 func (s *ScenarioStore) ListConfig() ListQueryConfig[domain.Scenario] {
@@ -207,7 +207,7 @@ func (s *ScenarioStore) fetchScenario(ctx context.Context, id string) (*domain.S
 			s.industry_ids, COALESCE((SELECT array_agg(i.name) FROM industries i WHERE i.id::text = ANY(s.industry_ids)), '{}') AS industry_names,
 			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
 			s.batch_id, s.difficulty, s.version, s.status, s.background,
-			s.delivery_goal, COALESCE(s.creator_id, '') AS creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
+			s.delivery_goal, COALESCE(s.creator_id::text, '') AS creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
 			COALESCE(vc.cnt, 0) AS view_count, s.source_type, s.source_enterprise_id, s.source_resource_id
 		FROM scenarios s
 		LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id
