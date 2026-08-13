@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -65,10 +66,7 @@ func (s *PositionStore) MergePositionDraftToSource(ctx context.Context, tx Query
 	`, draftID, tenantID).Scan(&draftName, &srcID); err != nil {
 		return err
 	}
-	finalName := draftName
-	if len(finalName) >= 5 && finalName[len(finalName)-5:] == "（编辑稿）" {
-		finalName = finalName[:len(finalName)-5]
-	}
+	finalName := strings.TrimSuffix(draftName, "（编辑稿）")
 	if _, err := tx.Exec(ctx, `UPDATE career_positions SET name = name || '-' || id WHERE id = $1`, draftID); err != nil {
 		return err
 	}
@@ -98,6 +96,12 @@ func (s *PositionStore) MergePositionDraftToSource(ctx context.Context, tx Query
 			UPDATE `+child+` SET career_position_id = (SELECT source_resource_id FROM career_positions WHERE id = $1)
 			WHERE career_position_id = $1
 		`, draftID); err != nil {
+			return err
+		}
+	}
+	// 审批合并不走 Transition（文档 13.A4/5.5）：覆盖事务内补版本 bump + 写快照
+	if srcID != nil && *srcID != "" {
+		if err := NewSnapshotStore(tx).BumpVersionAndSnapshot(ctx, SnapshotResourcePosition, tenantID, *srcID); err != nil {
 			return err
 		}
 	}
@@ -141,16 +145,15 @@ func (s *ScenarioStore) CopyScenarioAsDraft(ctx context.Context, tx Queryer, src
 // MergeScenarioDraftToSource 审批通过后：用 draft 内容覆盖原场景并删除 draft。
 // 任务行保留 id 改挂原场景（task 子表引用不断裂）；原任务及其子表先删除。
 func (s *ScenarioStore) MergeScenarioDraftToSource(ctx context.Context, tx Queryer, draftID, tenantID string) error {
-	// 读 draft 最终 name（剥离「（编辑稿）」后缀），draft 临时改名后用于覆盖
+	// 读 draft 最终 name（剥离「（编辑稿）」后缀）与源资源 id，draft 临时改名后用于覆盖
 	var draftName string
-	if err := tx.QueryRow(ctx, `SELECT name FROM scenarios WHERE id = $1 AND tenant_id = $2`, draftID, tenantID).Scan(&draftName); err != nil {
+	var srcIDVal *string
+	if err := tx.QueryRow(ctx, `SELECT name, source_resource_id FROM scenarios WHERE id = $1 AND tenant_id = $2`, draftID, tenantID).Scan(&draftName, &srcIDVal); err != nil {
 		return err
 	}
-	finalName := draftName
-	if len(finalName) >= 5 && finalName[len(finalName)-5:] == "（编辑稿）" {
-		finalName = finalName[:len(finalName)-5]
-	}
-	if _, err := tx.Exec(ctx, `UPDATE scenarios SET name = name || '-' || id WHERE id = $1`, draftID); err != nil {
+	finalName := strings.TrimSuffix(draftName, "（编辑稿）")
+	// draft 临时改名，避免覆盖时与原资源同名冲突
+	if _, err := tx.Exec(ctx, `UPDATE scenarios SET name = name || '-' || id WHERE id = $1 AND tenant_id = $2`, draftID, tenantID); err != nil {
 		return err
 	}
 	srcID := `(SELECT source_resource_id FROM scenarios WHERE id = $1)`
@@ -163,10 +166,6 @@ func (s *ScenarioStore) MergeScenarioDraftToSource(ctx context.Context, tx Query
 		}
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM scenario_tasks WHERE scenario_id = `+srcID, draftID); err != nil {
-		return err
-	}
-	// draft 临时改名，避免覆盖时与原资源同名冲突
-	if _, err := tx.Exec(ctx, `UPDATE scenarios SET name = name || '-' || id WHERE id = $1 AND tenant_id = $2`, draftID, tenantID); err != nil {
 		return err
 	}
 	// 主表字段覆盖（code/batch_id/creator 等归属字段保留原资源值）
@@ -189,6 +188,12 @@ func (s *ScenarioStore) MergeScenarioDraftToSource(ctx context.Context, tx Query
 		WHERE scenario_id = $1
 	`, draftID); err != nil {
 		return err
+	}
+	// 审批合并不走 Transition（文档 13.A4/5.5）：覆盖事务内补版本 bump + 写快照
+	if srcIDVal != nil && *srcIDVal != "" {
+		if err := NewSnapshotStore(tx).BumpVersionAndSnapshot(ctx, SnapshotResourceScenario, tenantID, *srcIDVal); err != nil {
+			return err
+		}
 	}
 	_, err := tx.Exec(ctx, `DELETE FROM scenarios WHERE id = $1 AND tenant_id = $2`, draftID, tenantID)
 	return err

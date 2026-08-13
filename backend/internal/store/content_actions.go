@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -200,24 +199,7 @@ func savePublishSnapshot(ctx context.Context, tx pgx.Tx, tbl, id string) error {
 		return fmt.Errorf("read tenant/version: %w", err)
 	}
 	snap := NewSnapshotStore(tx)
-	var (
-		data json.RawMessage
-		err  error
-	)
-	switch tbl {
-	case SnapshotResourceScenario:
-		data, err = snap.BuildScenarioSnapshot(ctx, tenantID, id)
-	case SnapshotResourceCourse:
-		data, err = snap.BuildCourseSnapshot(ctx, tenantID, id)
-	case SnapshotResourceExam:
-		data, err = snap.BuildExamSnapshot(ctx, tenantID, id)
-	case SnapshotResourceQuestionBank:
-		data, err = snap.BuildQuestionBankSnapshot(ctx, tenantID, id)
-	case SnapshotResourcePosition:
-		data, err = snap.BuildPositionSnapshot(ctx, tenantID, id)
-	default:
-		return fmt.Errorf("no snapshot builder for table %s", tbl)
-	}
+	data, err := snap.BuildSnapshot(ctx, tbl, tenantID, id)
 	if err != nil {
 		return err
 	}

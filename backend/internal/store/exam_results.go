@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -122,19 +123,102 @@ func (s *ExamResultStore) UsageTarget(ctx context.Context, usageID string) (*Exa
 	return &t, nil
 }
 
-// UsageExamInfo 查询考试安排的 exam_id 与总分。
-func (s *ExamResultStore) UsageExamInfo(ctx context.Context, usageID string) (string, float64, error) {
-	var examID string
-	var totalScore float64
+// UsageExamRef 查询考试安排绑定的试卷与固化版本（判分快照化的版本来源，文档 5.4）。
+func (s *ExamResultStore) UsageExamRef(ctx context.Context, usageID string) (examID, examVersion string, err error) {
+	err = s.q.QueryRow(ctx, `
+		SELECT exam_id, COALESCE(exam_version, '') FROM exam_usages WHERE id = $1 AND status <> 'draft'
+	`, usageID).Scan(&examID, &examVersion)
+	return examID, examVersion, err
+}
+
+// FetchExamGradingData 判分数据（题目+总分）读取（文档 5.4/13.A5）：
+// examVersion 对应快照存在 → 题目与总分取自快照（exam.total_score 缺省回退快照内题目分值求和）；
+// 快照缺档（历史数据兼容，temp exam 已由兜底写快照）→ 回退 live exam_questions / exams.total_score。
+func (s *ExamResultStore) FetchExamGradingData(ctx context.Context, tenantID, examID, examVersion string) ([]ExamQuestionAnswer, float64, error) {
+	if tenantID != "" && examVersion != "" {
+		data, err := NewSnapshotStore(s.q).GetSnapshot(ctx, tenantID, SnapshotResourceExam, examID, examVersion)
+		if err == nil {
+			return parseExamSnapshotGradingData(data)
+		}
+		if err != ErrNotFound {
+			return nil, 0, err
+		}
+	}
+	questions, err := s.FetchExamQuestions(ctx, examID)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.liveExamTotalScore(ctx, examID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return questions, total, nil
+}
+
+// liveExamTotalScore live 总分：exams.total_score 缺省回退 SUM(exam_questions.score)。
+func (s *ExamResultStore) liveExamTotalScore(ctx context.Context, examID string) (float64, error) {
+	var total float64
 	err := s.q.QueryRow(ctx, `
-		SELECT exam_id,
-			COALESCE(
-				NULLIF((SELECT total_score FROM exams WHERE id = exam_usages.exam_id), 0),
-				(SELECT COALESCE(SUM(score), 0) FROM exam_questions WHERE exam_id = exam_usages.exam_id)
-			)
-		FROM exam_usages WHERE id = $1 AND status <> 'draft'
-	`, usageID).Scan(&examID, &totalScore)
-	return examID, totalScore, err
+		SELECT COALESCE(
+			NULLIF((SELECT total_score FROM exams WHERE id = $1), 0),
+			(SELECT COALESCE(SUM(score), 0) FROM exam_questions WHERE exam_id = $1)
+		)
+	`, examID).Scan(&total)
+	return total, err
+}
+
+// examSnapshotGradingDoc 试卷快照判分字段（jsonb schema 见 snapshot_builders.go 头注释）。
+type examSnapshotGradingDoc struct {
+	Exam struct {
+		TotalScore float64 `json:"total_score"`
+	} `json:"exam"`
+	ExamQuestions []struct {
+		ID     string          `json:"id"`
+		Type   string          `json:"type"`
+		Answer json.RawMessage `json:"answer"`
+		Score  float64         `json:"score"`
+	} `json:"exam_questions"`
+}
+
+// parseExamSnapshotGradingData 从试卷快照 jsonb 解析判分题目与总分。
+func parseExamSnapshotGradingData(data json.RawMessage) ([]ExamQuestionAnswer, float64, error) {
+	var doc examSnapshotGradingDoc
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, 0, fmt.Errorf("parse exam snapshot: %w", err)
+	}
+	questions := make([]ExamQuestionAnswer, 0, len(doc.ExamQuestions))
+	for _, q := range doc.ExamQuestions {
+		questions = append(questions, ExamQuestionAnswer{
+			ID:     q.ID,
+			Type:   q.Type,
+			Answer: parseSnapshotAnswer(q.Answer),
+			Score:  q.Score,
+		})
+	}
+	total := doc.Exam.TotalScore
+	if total == 0 {
+		for _, q := range questions {
+			total += q.Score
+		}
+	}
+	return questions, total, nil
+}
+
+// parseSnapshotAnswer 解析快照内题目答案：answer 列是 text 存 JSON 字符串，
+// to_jsonb 后为 JSON 字符串字面量；兼容直接是 JSON 数组的情况。
+func parseSnapshotAnswer(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		var out []string
+		_ = json.Unmarshal([]byte(s), &out)
+		return out
+	}
+	var out []string
+	_ = json.Unmarshal(raw, &out)
+	return out
 }
 
 // ExamQuestionAnswer 考试题目答案行。

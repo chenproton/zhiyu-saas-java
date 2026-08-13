@@ -76,11 +76,12 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 			return nil, store.ErrForbidden
 		}
 	}
-	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, usageID)
+	examID, examVersion, err := s.st.ExamResults().UsageExamRef(ctx, usageID)
 	if err != nil {
 		return nil, err
 	}
-	questions, err := s.st.ExamResults().FetchExamQuestions(ctx, examID)
+	// 判分快照化（文档 5.4/13.A5）：题目与总分按安排固化的 exam_version 快照读取，缺档回退 live
+	questions, totalScore, err := s.st.ExamResults().FetchExamGradingData(ctx, tenantID, examID, examVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -167,11 +168,16 @@ func (s *EvaluationService) GradeExamResult(ctx context.Context, id, graderID st
 	if target.TargetType == nil || !isManualExamUsageTargetType(*target.TargetType) {
 		return nil, store.ErrForbidden
 	}
-	examID, totalScore, err := s.st.ExamResults().UsageExamInfo(ctx, result.ExamUsageID)
+	examID, examVersion, err := s.st.ExamResults().UsageExamRef(ctx, result.ExamUsageID)
 	if err != nil {
 		return nil, err
 	}
-	questions, err := s.st.ExamResults().FetchExamQuestions(ctx, examID)
+	// 判分快照化（文档 5.4/13.A5）：客观分按提交时快照题目重算，总分口径同取快照；缺档回退 live
+	gradingTenantID := ""
+	if result.TenantID != nil {
+		gradingTenantID = *result.TenantID
+	}
+	questions, totalScore, err := s.st.ExamResults().FetchExamGradingData(ctx, gradingTenantID, examID, examVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +263,7 @@ func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, id, grade
 		if err := txStore.EvaluationResults().Grade(ctx, txStore.Q(), id, graderID, p); err != nil {
 			return err
 		}
-		return s.syncExamResultScoreTx(ctx, txStore, taskID, methodKey, evaluateeID, p.Score)
+		return s.syncExamResultScoreTx(ctx, txStore, id, taskID, methodKey, evaluateeID, p.Score)
 	})
 }
 
@@ -281,7 +287,7 @@ func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, gra
 		}
 		// 回写与评分同一事务：任一失败整体回滚
 		for _, t := range targets {
-			if err := s.syncExamResultScoreTx(ctx, txStore, t.TaskID, t.MethodKey, t.EvaluateeID, scoreByID[t.ID]); err != nil {
+			if err := s.syncExamResultScoreTx(ctx, txStore, t.ID, t.TaskID, t.MethodKey, t.EvaluateeID, scoreByID[t.ID]); err != nil {
 				return err
 			}
 		}
@@ -291,11 +297,12 @@ func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, gra
 }
 
 // syncExamResultScore 同步考试结果分数（事务内版本）。
-func (s *EvaluationService) syncExamResultScoreTx(ctx context.Context, txStore *store.Store, taskID, methodKey, evaluateeID string, score float64) error {
+// 反向回写链（文档 13.A8）：按成绩行盖章版本对应快照定位考试结果，不再依赖 live resource_config。
+func (s *EvaluationService) syncExamResultScoreTx(ctx context.Context, txStore *store.Store, sceneResultID, taskID, methodKey, evaluateeID string, score float64) error {
 	if methodKey != "paper" && methodKey != "question_bank" && methodKey != "quiz" {
 		return nil
 	}
-	examResultID, err := txStore.EvaluationResults().FindLatestExamResult(ctx, txStore.Q(), taskID, methodKey, evaluateeID)
+	examResultID, err := txStore.EvaluationResults().FindExamResultForGrading(ctx, txStore.Q(), sceneResultID, taskID, methodKey, evaluateeID)
 	if err != nil || examResultID == "" {
 		return nil
 	}

@@ -600,9 +600,13 @@ func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
 // 须在事务内调用（场景/任务删除共用）。
 // 注意：不能合并为单条数据修改 CTE——CTE 的删除效果对同一语句的主查询不可见（快照语义），
 // 会导致 NOT EXISTS 判定不到已删安排、临时考试永远残留。故拆为两条语句（同事务内后一条可见前一条效果）。
+// 删除保护兜底（文档 5.5）：已有成绩的安排保留——exam_results 对 exam_usages 是 FK CASCADE，
+// 删安排会连带毁成绩（temp exam 的成绩即任务/节点测评成绩）；保留的安排使其 temp exam 也不删。
 func CleanupTaskExamUsages(ctx context.Context, tx Queryer, taskID string) error {
 	rows, err := tx.Query(ctx, `
-		DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids) RETURNING exam_id
+		DELETE FROM exam_usages WHERE target_type = 'task' AND $1::uuid = ANY(target_ids)
+			AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)
+		RETURNING exam_id
 	`, taskID)
 	if err != nil {
 		return fmt.Errorf("cleanup task exam usages: %w", err)

@@ -181,8 +181,20 @@ func (s *PositionStore) Update(ctx context.Context, tx Queryer, id string, p *Po
 
 // Delete 删除岗位（事务内同步清理无外键约束的岗位能力结果/学生画像/汇聚日志/
 // 认证规则链/认证等级数据，防止孤儿数据残留）。
+// 删除保护（文档 5.5）：存在岗位能力成绩/学生画像，或被已发布场景引用时拒绝物理删除。
 func (s *PositionStore) Delete(ctx context.Context, id string) error {
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		var inUse bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM job_ability_results WHERE career_position_id = $1)
+				OR EXISTS(SELECT 1 FROM student_ability_portraits WHERE career_position_id = $1)
+				OR EXISTS(SELECT 1 FROM scenarios WHERE career_position_id = $1 AND status = 'published')
+		`, id).Scan(&inUse); err != nil {
+			return err
+		}
+		if inUse {
+			return ErrResourceInUse
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM job_ability_results WHERE career_position_id = $1`, id); err != nil {
 			return fmt.Errorf("cleanup job ability results: %w", err)
 		}

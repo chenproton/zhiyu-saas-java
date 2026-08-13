@@ -379,6 +379,10 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteCourse(r.Context(), id, tenantID); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该课程已存在测评成绩，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除课程失败")
 		return
 	}

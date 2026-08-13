@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -173,6 +174,8 @@ func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, grad
 // FindLatestExamResult 查询任务下某测评方式对应的最新考试结果。
 // 通过 resource_config 中的 paperId/examId 将考试安排绑定到该方式自身的试卷，
 // 避免任务下多个试卷方式（paper/question_bank/quiz）之间互相串用考试结果。
+// 注意：live resource_config 在资源改版后可能已变（文档 13.A8），
+// 评分回写应优先走 FindExamResultForGrading（按成绩行盖章版本的快照定位）；本函数作为历史数据回退。
 func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, q Queryer, taskID, methodKey, evaluateeID string) (string, error) {
 	var examResultID string
 	err := q.QueryRow(ctx, `
@@ -192,6 +195,102 @@ func (s *EvaluationResultStore) FindLatestExamResult(ctx context.Context, q Quer
 		return "", err
 	}
 	return examResultID, nil
+}
+
+// FindExamResultForGrading 反向回写链定位考试结果（文档 13.A8）：
+// 优先按成绩行（scene_evaluation_results）盖章的 version 对应场景快照中该测评方法的
+// resource_config（usageId / paperId / examId）反查 exam_results——不再依赖 live
+// resource_config JSON 匹配（资源改版后 live 配置可能已变，找不到/找错对应考试记录）；
+// 成绩行未盖章或快照缺档（历史数据）回退原 live JOIN 逻辑；找不到返回空串（调用方容错跳过，不视为错误）。
+func (s *EvaluationResultStore) FindExamResultForGrading(ctx context.Context, q Queryer, sceneResultID, taskID, methodKey, evaluateeID string) (string, error) {
+	var tenantID, sceneID, version *string
+	err := q.QueryRow(ctx, `
+		SELECT tenant_id, scene_id, version FROM scene_evaluation_results WHERE id = $1
+	`, sceneResultID).Scan(&tenantID, &sceneID, &version)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	if tenantID != nil && sceneID != nil && version != nil && *version != "" {
+		data, err := NewSnapshotStore(q).GetSnapshot(ctx, *tenantID, SnapshotResourceScenario, *sceneID, *version)
+		if err == nil {
+			// 快照存在即以快照为准：定位不到说明学生未经该版本安排交卷，容错不回写
+			return s.findExamResultFromSnapshot(ctx, q, data, taskID, methodKey, evaluateeID)
+		}
+		if err != ErrNotFound {
+			return "", err
+		}
+	}
+	return s.FindLatestExamResult(ctx, q, taskID, methodKey, evaluateeID)
+}
+
+// scenarioSnapshotMethodDoc 场景快照中测评方法的回写定位字段（jsonb schema 见 snapshot_builders.go 头注释）。
+type scenarioSnapshotMethodDoc struct {
+	TaskEvaluationMethods []struct {
+		TaskID         string          `json:"task_id"`
+		MethodKey      string          `json:"method_key"`
+		ResourceConfig json.RawMessage `json:"resource_config"`
+	} `json:"task_evaluation_methods"`
+}
+
+// findExamResultFromSnapshot 按快照内测评方法配置定位考试结果：
+// resource_config.usageId 精确反查；缺 usageId 时按 paperId/examId + 任务目标反查；
+// 配置中两者皆无（非考试类方式）返回空串。
+func (s *EvaluationResultStore) findExamResultFromSnapshot(ctx context.Context, q Queryer, data json.RawMessage, taskID, methodKey, evaluateeID string) (string, error) {
+	var doc scenarioSnapshotMethodDoc
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return "", fmt.Errorf("parse scenario snapshot: %w", err)
+	}
+	var usageID, examID string
+	for _, m := range doc.TaskEvaluationMethods {
+		if m.TaskID != taskID || m.MethodKey != methodKey {
+			continue
+		}
+		var cfg struct {
+			UsageID string `json:"usageId"`
+			PaperID string `json:"paperId"`
+			ExamID  string `json:"examId"`
+		}
+		if err := json.Unmarshal(m.ResourceConfig, &cfg); err != nil {
+			continue
+		}
+		usageID = cfg.UsageID
+		examID = cfg.PaperID
+		if examID == "" {
+			examID = cfg.ExamID
+		}
+		break
+	}
+	var id string
+	if usageID != "" {
+		err := q.QueryRow(ctx, `
+			SELECT er.id FROM exam_results er
+			WHERE er.exam_usage_id = $1 AND er.user_id = $2
+			ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC
+			LIMIT 1
+		`, usageID, evaluateeID).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return id, err
+	}
+	if examID != "" {
+		err := q.QueryRow(ctx, `
+			SELECT er.id
+			FROM exam_results er
+			JOIN exam_usages eu ON er.exam_usage_id = eu.id
+			WHERE eu.target_type = 'task' AND $1 = ANY(eu.target_ids) AND eu.exam_id = $2 AND er.user_id = $3
+			ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC
+			LIMIT 1
+		`, taskID, examID, evaluateeID).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return id, err
+	}
+	return "", nil
 }
 
 // UpdateExamResultScore 更新考试结果分数，并同步及格判定（60% 及格线，与提交时一致），

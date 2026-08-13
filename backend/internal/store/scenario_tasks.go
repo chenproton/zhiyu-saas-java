@@ -115,7 +115,17 @@ func (s *ScenarioTaskStore) Update(ctx context.Context, id string, tenantID stri
 }
 
 // Delete 删除任务（限定租户）。
+// 删除保护（文档 5.5）：存在该任务的场景测评成绩时拒绝物理删除。
 func (s *ScenarioTaskStore) Delete(ctx context.Context, id string, tenantID string) error {
+	var inUse bool
+	if err := s.q.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM scene_evaluation_results WHERE task_id = $1)
+	`, id).Scan(&inUse); err != nil {
+		return err
+	}
+	if inUse {
+		return ErrResourceInUse
+	}
 	_, err := s.q.Exec(ctx, `DELETE FROM scenario_tasks WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }

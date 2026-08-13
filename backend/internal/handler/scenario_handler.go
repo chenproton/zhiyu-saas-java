@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -310,6 +311,10 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该场景已存在测评成绩，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除场景方案失败")
 		return
 	}

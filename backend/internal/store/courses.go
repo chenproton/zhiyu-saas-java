@@ -131,11 +131,25 @@ func (s *CourseStore) Update(ctx context.Context, id, tenantID string, p *Course
 }
 
 // Delete 删除课程（先解绑引用与清理子表，限定租户；事务内保证原子）。
+// 删除保护（文档 5.5）：存在课程/节点测评成绩时拒绝物理删除。
 func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 	if _, err := s.fetchCourseScoped(ctx, id, tenantID); err != nil {
 		return err
 	}
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
+		var inUse bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM course_evaluation_results WHERE course_id = $1)
+				OR EXISTS(
+					SELECT 1 FROM node_evaluation_results
+					WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id = $1)
+				)
+		`, id).Scan(&inUse); err != nil {
+			return err
+		}
+		if inUse {
+			return ErrResourceInUse
+		}
 		if _, err := tx.Exec(ctx, `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id); err != nil {
 			return fmt.Errorf("unbind course from programs: %w", err)
 		}
@@ -154,9 +168,11 @@ func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
 			return fmt.Errorf("delete course eval results: %w", err)
 		}
-		// 课程级考试安排/作业测评一并清理，防止孤儿 usage 残留
+		// 课程级考试安排/作业测评一并清理，防止孤儿 usage 残留；
+		// 已有成绩的安排保留（exam_results 经 FK CASCADE 会随安排删除，删除保护兜底）
 		if _, err := tx.Exec(ctx, `
 			DELETE FROM exam_usages WHERE target_type = 'course' AND $1::uuid = ANY(target_ids)
+				AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)
 		`, id); err != nil {
 			return fmt.Errorf("delete course exam usages: %w", err)
 		}

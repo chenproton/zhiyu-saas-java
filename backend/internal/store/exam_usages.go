@@ -162,8 +162,19 @@ func (s *ExamUsageStore) Update(ctx context.Context, tenantID, id string, p *Exa
 }
 
 // Delete 删除考试安排。
+// 删除保护（文档 5.5）：存在成绩记录时拒绝删除（exam_results 经 FK CASCADE 会随安排删除）。
+// 顺带修复（文档 13 附录既有 bug）：DELETE 补 tenant_id 条件。
 func (s *ExamUsageStore) Delete(ctx context.Context, tenantID, id string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM exam_usages WHERE id = $1`, id)
+	var inUse bool
+	if err := s.q.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM exam_results WHERE exam_usage_id = $1)
+	`, id).Scan(&inUse); err != nil {
+		return err
+	}
+	if inUse {
+		return ErrResourceInUse
+	}
+	_, err := s.q.Exec(ctx, `DELETE FROM exam_usages WHERE id = $1 AND tenant_id = $2`, id, tenantID)
 	return err
 }
 

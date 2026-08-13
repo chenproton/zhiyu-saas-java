@@ -44,6 +44,8 @@ func respondCoBuildError(w http.ResponseWriter, r *http.Request, err error, notF
 		respondError(w, http.StatusConflict, "该内容已有待审批记录")
 	case errors.Is(err, service.ErrMethodVersionConflict):
 		respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
+	case errors.Is(err, store.ErrResourceInUse):
+		respondError(w, http.StatusConflict, "该资源已存在成绩记录或活跃绑定，无法删除")
 	case err != nil && strings.HasPrefix(err.Error(), "invalid transition"):
 		respondError(w, http.StatusBadRequest, err.Error())
 	default:

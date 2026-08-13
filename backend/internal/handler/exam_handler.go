@@ -270,6 +270,10 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Service.DeleteExam(r.Context(), tenantID, id); err != nil {
+		if errors.Is(err, store.ErrResourceInUse) {
+			respondError(w, http.StatusConflict, "该试卷已存在考试结果，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除考试失败")
 		return
 	}

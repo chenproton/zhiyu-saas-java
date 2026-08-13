@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -113,6 +114,45 @@ func (s *SnapshotStore) ExpectedOrLatestVersion(ctx context.Context, tenantID, r
 		}
 	}
 	return s.ResolveResourceVersion(ctx, tenantID, resourceType, resourceID)
+}
+
+// BuildSnapshot 按资源类型分发到对应 builder（Transition 发布与联盟/审批合并共用）。
+func (s *SnapshotStore) BuildSnapshot(ctx context.Context, resourceType, tenantID, resourceID string) (json.RawMessage, error) {
+	switch resourceType {
+	case SnapshotResourceScenario:
+		return s.BuildScenarioSnapshot(ctx, tenantID, resourceID)
+	case SnapshotResourceCourse:
+		return s.BuildCourseSnapshot(ctx, tenantID, resourceID)
+	case SnapshotResourceExam:
+		return s.BuildExamSnapshot(ctx, tenantID, resourceID)
+	case SnapshotResourceQuestionBank:
+		return s.BuildQuestionBankSnapshot(ctx, tenantID, resourceID)
+	case SnapshotResourcePosition:
+		return s.BuildPositionSnapshot(ctx, tenantID, resourceID)
+	}
+	return nil, fmt.Errorf("no snapshot builder for resource type %s", resourceType)
+}
+
+// BumpVersionAndSnapshot 覆盖式合并（联盟共建/审批编辑稿路径，不走 Transition，文档 13.A4/5.5）：
+// 事务内对源资源做版本 bump（NextVersion 同款 +0.1）并写新版快照，与发布落快照语义对齐。
+func (s *SnapshotStore) BumpVersionAndSnapshot(ctx context.Context, resourceType, tenantID, resourceID string) error {
+	tbl, err := SanitizeIdentifier(resourceType, AllowedContentTables)
+	if err != nil {
+		return err
+	}
+	var version string
+	if err := s.q.QueryRow(ctx, `SELECT COALESCE(version, '') FROM `+tbl+` WHERE id = $1 AND tenant_id = $2`, resourceID, tenantID).Scan(&version); err != nil {
+		return err
+	}
+	version = NextVersion(version)
+	if _, err := s.q.Exec(ctx, `UPDATE `+tbl+` SET version = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`, version, resourceID, tenantID); err != nil {
+		return err
+	}
+	data, err := s.BuildSnapshot(ctx, resourceType, tenantID, resourceID)
+	if err != nil {
+		return err
+	}
+	return s.SaveSnapshot(ctx, tenantID, resourceType, resourceID, version, data)
 }
 
 // SyncTempExamSnapshot 临时考试兜底（文档 5.1 末条）：temp exam 不走 Transition，在题目同步点维护版本与快照。

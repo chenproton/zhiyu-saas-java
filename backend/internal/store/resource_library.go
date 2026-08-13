@@ -28,6 +28,9 @@ var ErrExamEnded = errors.New("exam ended")
 // ErrRetakeNotAllowed 考试不允许重复作答。
 var ErrRetakeNotAllowed = errors.New("retake not allowed")
 
+// ErrResourceInUse 资源存在成绩记录或活跃绑定，拒绝物理删除（删除保护，文档 5.5 决策 6）。
+var ErrResourceInUse = errors.New("resource in use")
+
 const resourceSelectColumns = `
 	rl.id, rl.tenant_id, rl.name, rl.resource_type, rl.url, rl.description,
 	rl.thumbnail, rl.file_size, rl.metadata, rl.uploaded_by,
