@@ -268,6 +268,12 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 	if !ok {
 		return
 	}
+	// 归档所属学生必须属于当前租户（与 Generate 的 userId 校验口径一致，防跨租户写他人档案）
+	user, err := h.Service.Store().Users().Get(r.Context(), tenantID, req.UserID)
+	if err != nil || user.TenantID == nil || *user.TenantID != tenantID {
+		respondError(w, http.StatusForbidden, "无权操作：学生不属于您的租户")
+		return
+	}
 	direction := req.Direction
 	if direction == nil || *direction == "" {
 		d := "positive"

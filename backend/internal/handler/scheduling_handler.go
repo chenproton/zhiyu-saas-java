@@ -290,6 +290,11 @@ func (h *SchedulingHandler) DeletePeriodSlot(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := h.Service.DeletePeriodSlot(r.Context(), id, tenantID); err != nil {
+		// 与 DeleteVenue 一致：被排课引用时给出明确 400 而非 500
+		if isForeignKeyViolation(err) {
+			respondError(w, http.StatusBadRequest, "该节次已被排课引用，无法删除")
+			return
+		}
 		respondServerError(w, r, err, "删除节次失败")
 		return
 	}
@@ -393,6 +398,63 @@ func (h *SchedulingHandler) ListSchedules(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, ListResponse[domain.ScheduleEntry]{Items: items, Total: total})
 }
 
+// buildScheduleParams 组装排课参数（创建/更新共用，消除两处重复）：
+// 类型/周模式兜底、课程 ID 解析（含教学计划条目租户校验与课程覆盖）、班级合并。
+// 校验失败时已写响应并返回 ok=false。
+func (h *SchedulingHandler) buildScheduleParams(w http.ResponseWriter, r *http.Request, ctx context.Context, tenantID string, req *ScheduleEntryRequest) (*store.ScheduleCreateParams, bool) {
+	entryType := req.Type
+	if entryType == "" {
+		entryType = "traditional"
+	}
+	weekPattern := req.WeekPattern
+	if weekPattern == "" {
+		weekPattern = "all"
+	}
+
+	courseID := req.CourseID
+	if courseID == nil || *courseID == "" {
+		courseID = h.Service.ResolveCourseIDByCode(ctx, tenantID, req.CourseCode)
+	}
+	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
+		// 校验教学计划条目属于当前租户，防止跨租户引用
+		if !h.checkPlanEntryTenant(w, r, ctx, *req.PlanEntryID, tenantID) {
+			return nil, false
+		}
+		if planCourseID := h.Service.PlanEntryCourseID(ctx, *req.PlanEntryID); planCourseID != nil && *planCourseID != "" {
+			courseID = planCourseID
+		}
+	}
+	// 合并班级：优先 classNodeIds 数组，缺省回退 classNodeId
+	classIDs := req.ClassNodeIDs
+	if len(classIDs) == 0 && req.ClassNodeID != "" {
+		classIDs = []string{req.ClassNodeID}
+	}
+	primaryClass := req.ClassNodeID
+	if primaryClass == "" && len(classIDs) > 0 {
+		primaryClass = classIDs[0]
+	}
+
+	return &store.ScheduleCreateParams{
+		TenantID:     tenantID,
+		TermID:       req.TermID,
+		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
+		CourseName:   req.CourseName,
+		CourseCode:   emptyStrToNil(req.CourseCode),
+		CourseID:     courseID,
+		Type:         entryType,
+		ClassNodeID:  primaryClass,
+		ClassNodeIDs: classIDs,
+		TeacherID:    emptyStrToNil(req.TeacherID),
+		DayOfWeek:    req.DayOfWeek,
+		Periods:      req.Periods,
+		StartWeek:    req.StartWeek,
+		EndWeek:      req.EndWeek,
+		WeekPattern:  weekPattern,
+		VenueID:      emptyStrToNil(req.VenueID),
+		ScenarioID:   emptyStrToNil(req.ScenarioID),
+	}, true
+}
+
 func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -411,13 +473,14 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 	ctx := r.Context()
 
-	// 班级兜底：请求未带班级且来源教学计划条目时，优先从 junction table 读取，
-	// 再 fallback 到 class_node_id 字段。
+	// 教学计划条目归属校验前置（避免先读其他租户条目的班级数据再拒绝）
 	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
 		if !h.checkPlanEntryTenant(w, r, ctx, *req.PlanEntryID, tenantID) {
 			return
 		}
 	}
+	// 班级兜底：请求未带班级且来源教学计划条目时，优先从 junction table 读取，
+	// 再 fallback 到 class_node_id 字段。
 	if req.ClassNodeID == "" && req.PlanEntryID != nil && *req.PlanEntryID != "" {
 		fallbackClassID := h.Service.FallbackClassID(ctx, *req.PlanEntryID)
 		if fallbackClassID != nil && *fallbackClassID != "" {
@@ -437,54 +500,13 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	entryType := req.Type
-	if entryType == "" {
-		entryType = "traditional"
+	params, ok := h.buildScheduleParams(w, r, ctx, tenantID, &req)
+	if !ok {
+		return
 	}
-	weekPattern := req.WeekPattern
-	if weekPattern == "" {
-		weekPattern = "all"
-	}
+	params.Source = "manual"
 
-	courseID := req.CourseID
-	if courseID == nil || *courseID == "" {
-		courseID = h.Service.ResolveCourseIDByCode(ctx, tenantID, req.CourseCode)
-	}
-	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
-		if planCourseID := h.Service.PlanEntryCourseID(ctx, *req.PlanEntryID); planCourseID != nil && *planCourseID != "" {
-			courseID = planCourseID
-		}
-	}
-	// 合并班级：优先 classNodeIds 数组，缺省回退 classNodeId
-	classIDs := req.ClassNodeIDs
-	if len(classIDs) == 0 && req.ClassNodeID != "" {
-		classIDs = []string{req.ClassNodeID}
-	}
-	primaryClass := req.ClassNodeID
-	if primaryClass == "" && len(classIDs) > 0 {
-		primaryClass = classIDs[0]
-	}
-
-	id, conflicts, err := h.Service.CreateScheduleChecked(ctx, tenantID, &store.ScheduleCreateParams{
-		TenantID:     tenantID,
-		TermID:       req.TermID,
-		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
-		CourseName:   req.CourseName,
-		CourseCode:   emptyStrToNil(req.CourseCode),
-		CourseID:     courseID,
-		Type:         entryType,
-		ClassNodeID:  primaryClass,
-		ClassNodeIDs: classIDs,
-		TeacherID:    emptyStrToNil(req.TeacherID),
-		DayOfWeek:    req.DayOfWeek,
-		Periods:      req.Periods,
-		StartWeek:    req.StartWeek,
-		EndWeek:      req.EndWeek,
-		WeekPattern:  weekPattern,
-		VenueID:      emptyStrToNil(req.VenueID),
-		ScenarioID:   emptyStrToNil(req.ScenarioID),
-		Source:       "manual",
-	})
+	id, conflicts, err := h.Service.CreateScheduleChecked(ctx, tenantID, params)
 	if err != nil {
 		respondServerError(w, r, err, "创建排课失败")
 		return
@@ -528,54 +550,11 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 	ctx := r.Context()
 
-	entryType := req.Type
-	if entryType == "" {
-		entryType = "traditional"
+	params, ok := h.buildScheduleParams(w, r, ctx, tenantID, &req)
+	if !ok {
+		return
 	}
-	weekPattern := req.WeekPattern
-	if weekPattern == "" {
-		weekPattern = "all"
-	}
-
-	courseID := req.CourseID
-	if courseID == nil || *courseID == "" {
-		courseID = h.Service.ResolveCourseIDByCode(ctx, tenantID, req.CourseCode)
-	}
-	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
-		// 校验教学计划条目属于当前租户，防止跨租户引用
-		if !h.checkPlanEntryTenant(w, r, ctx, *req.PlanEntryID, tenantID) {
-			return
-		}
-		if planCourseID := h.Service.PlanEntryCourseID(ctx, *req.PlanEntryID); planCourseID != nil && *planCourseID != "" {
-			courseID = planCourseID
-		}
-	}
-	classIDs := req.ClassNodeIDs
-	if len(classIDs) == 0 && req.ClassNodeID != "" {
-		classIDs = []string{req.ClassNodeID}
-	}
-	primaryClass := req.ClassNodeID
-	if primaryClass == "" && len(classIDs) > 0 {
-		primaryClass = classIDs[0]
-	}
-	conflicts, err := h.Service.UpdateScheduleChecked(ctx, id, tenantID, &store.ScheduleCreateParams{
-		TermID:       req.TermID,
-		PlanEntryID:  emptyStrToNil(req.PlanEntryID),
-		CourseName:   req.CourseName,
-		CourseCode:   emptyStrToNil(req.CourseCode),
-		CourseID:     courseID,
-		Type:         entryType,
-		ClassNodeID:  primaryClass,
-		ClassNodeIDs: classIDs,
-		TeacherID:    emptyStrToNil(req.TeacherID),
-		DayOfWeek:    req.DayOfWeek,
-		Periods:      req.Periods,
-		StartWeek:    req.StartWeek,
-		EndWeek:      req.EndWeek,
-		WeekPattern:  weekPattern,
-		VenueID:      emptyStrToNil(req.VenueID),
-		ScenarioID:   emptyStrToNil(req.ScenarioID),
-	})
+	conflicts, err := h.Service.UpdateScheduleChecked(ctx, id, tenantID, params)
 	if err != nil {
 		respondServerError(w, r, err, "更新排课失败")
 		return
