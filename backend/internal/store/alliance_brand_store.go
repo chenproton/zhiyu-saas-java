@@ -61,13 +61,20 @@ func (s *AllianceStore) ListBrandsConfig() ListQueryConfig[domain.AllianceBrand]
 
 func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand) (string, error) {
 	id := uuid.NewString()
+	isPublic, isFeatured := false, false
+	if b.IsPublic != nil {
+		isPublic = *b.IsPublic
+	}
+	if b.IsFeatured != nil {
+		isFeatured = *b.IsFeatured
+	}
 	_, err := s.q.Exec(ctx, `
 		INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public,
 			is_featured, cover_image, cover_video, description, data,
 			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
 			sort_order, view_count, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
-	`, id, b.TenantID, b.BrandType, b.Name, b.Status, b.IsPublic, b.IsFeatured,
+	`, id, b.TenantID, b.BrandType, b.Name, b.Status, isPublic, isFeatured,
 		b.CoverImage, b.CoverVideo, b.Description, b.Data,
 		b.StudentID, b.EnterpriseID, b.PositionID, b.MajorID, b.TeacherID, b.ExpertID,
 		b.SortOrder, b.ViewCount)
@@ -78,6 +85,14 @@ func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand
 }
 
 func (s *AllianceStore) UpdateBrand(ctx context.Context, id, tenantID string, b *domain.AllianceBrand) error {
+	// 部分更新兜底在 handler 层（ValidateUpdateExisting）保证 IsPublic/IsFeatured 非空
+	isPublic, isFeatured := false, false
+	if b.IsPublic != nil {
+		isPublic = *b.IsPublic
+	}
+	if b.IsFeatured != nil {
+		isFeatured = *b.IsFeatured
+	}
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_brands SET
 			name = $1, status = $2, is_public = $3, is_featured = $4, cover_image = $5,
@@ -85,7 +100,7 @@ func (s *AllianceStore) UpdateBrand(ctx context.Context, id, tenantID string, b 
 			student_id = $9, enterprise_id = $10, position_id = $11, major_id = $12,
 			teacher_id = $13, expert_id = $14, sort_order = $15, updated_at = NOW()
 		WHERE id = $16 AND tenant_id = $17
-	`, b.Name, b.Status, b.IsPublic, b.IsFeatured, b.CoverImage, b.CoverVideo,
+	`, b.Name, b.Status, isPublic, isFeatured, b.CoverImage, b.CoverVideo,
 		b.Description, b.Data,
 		b.StudentID, b.EnterpriseID, b.PositionID, b.MajorID, b.TeacherID, b.ExpertID,
 		b.SortOrder, id, tenantID)
