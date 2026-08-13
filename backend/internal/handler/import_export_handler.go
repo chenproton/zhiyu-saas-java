@@ -29,8 +29,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool)
 			VALUES ($1, $2, $3, $4, 'draft', 0, $5, 'V1.0', 'tenant', FALSE)
 		`,
-		updateSQL:   `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
-		defaultCols: []string{"id", "name", "description", "status", "created_at"},
+		updateSQL:      `UPDATE question_banks SET name=$1, updated_at=NOW() WHERE id=$2`,
+		ownerCheckSQL:  `SELECT creator_id, '{}'::uuid[] FROM question_banks WHERE id=$1`,
+		defaultCols:    []string{"id", "name", "description", "status", "created_at"},
 	},
 	"exams": {
 		displayName: "试卷",
@@ -39,8 +40,9 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type)
 			VALUES ($1, $2, $3, $4, 'draft', 0, 60, $5, 'V1.0', 'tenant')
 		`,
-		updateSQL:   `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
-		defaultCols: []string{"id", "name", "description", "status", "created_at"},
+		updateSQL:      `UPDATE exams SET name=$1, updated_at=NOW() WHERE id=$2`,
+		ownerCheckSQL:  `SELECT creator_id, '{}'::uuid[] FROM exams WHERE id=$1`,
+		defaultCols:    []string{"id", "name", "description", "status", "created_at"},
 	},
 	"courses": {
 		displayName: "课程",
@@ -49,28 +51,31 @@ var importExportEntities = map[string]importExportEntity{
 			INSERT INTO courses (id, tenant_id, code, name, type, category, status, creator_id, co_creator_ids, node_count, resource_count, study_count)
 			VALUES ($1, $2, $3, $4, 'system', '导入', 'draft', $5, '{}', 0, 0, 0)
 		`,
-		updateSQL:   `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
-		defaultCols: []string{"id", "code", "name", "status", "created_at"},
+		updateSQL:      `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
+		ownerCheckSQL:  `SELECT creator_id, co_creator_ids FROM courses WHERE id=$1`,
+		defaultCols:    []string{"id", "code", "name", "status", "created_at"},
 	},
 	"career_positions": {
 		displayName: "岗位",
 		keyCol:      "name",
 		insertSQL: `
-			INSERT INTO career_positions (id, tenant_id, name, short_name, position_type, status, creator_id)
+			INSERT INTO career_positions (id, tenant_id, name, short_name, position_type, status, created_by)
 			VALUES ($1, $2, $3, $4, 'other', 'draft', $5)
 		`,
-		updateSQL:   `UPDATE career_positions SET name=$1, updated_at=NOW() WHERE id=$2`,
-		defaultCols: []string{"id", "name", "short_name", "status", "created_at"},
+		updateSQL:      `UPDATE career_positions SET name=$1, updated_at=NOW() WHERE id=$2`,
+		ownerCheckSQL:  `SELECT created_by, collaborators FROM career_positions WHERE id=$1`,
+		defaultCols:    []string{"id", "name", "short_name", "status", "created_at"},
 	},
 	"scenarios": {
 		displayName: "场景",
 		keyCol:      "name",
 		insertSQL: `
-			INSERT INTO scenarios (id, tenant_id, name, code, status, creator_id, co_builder_ids, version)
+			INSERT INTO scenarios (id, tenant_id, name, code, status, created_by, collaborators, version)
 			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'V1.0')
 		`,
-		updateSQL:   `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
-		defaultCols: []string{"id", "name", "code", "status", "created_at"},
+		updateSQL:      `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
+		ownerCheckSQL:  `SELECT created_by, collaborators FROM scenarios WHERE id=$1`,
+		defaultCols:    []string{"id", "name", "code", "status", "created_at"},
 	},
 }
 
@@ -79,7 +84,9 @@ type importExportEntity struct {
 	keyCol      string
 	insertSQL   string
 	updateSQL   string
-	defaultCols []string
+	// ownerCheckSQL 覆盖时归属检查（返回 creator_id/created_by + 共建人数组列）
+	ownerCheckSQL string
+	defaultCols   []string
 }
 
 func importExportEntityNames() []string {
@@ -300,6 +307,11 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
 	}
+	// 与 Excel 导入路径一致的权限门槛：基础实体导入限学校管理员（企业导师无导入权）
+	if !canManagePortal(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
 
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
@@ -330,6 +342,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	created := 0
 	skipped := 0
 	failed := len(parseErrors)
+	permissionSkipped := 0
 	for _, row := range rows {
 		key := row.name
 		if meta.keyCol == "code" {
@@ -338,6 +351,21 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		existingID, exists := h.findExistingByKey(r.Context(), entity, tenantID, meta.keyCol, key)
 		if exists {
 			if overwrite {
+				// 归属检查：非本人创建且未参与共建的资源跳过覆盖（与 Excel 导入路径一致）
+				if meta.ownerCheckSQL != "" {
+					var creatorID *string
+					var coCreatorIDs []string
+					if err := h.Store.Q().QueryRow(r.Context(), meta.ownerCheckSQL, existingID).Scan(&creatorID, &coCreatorIDs); err == nil {
+						creator := ""
+						if creatorID != nil {
+							creator = *creatorID
+						}
+						if !canOverwriteContent(creator, coCreatorIDs, claims.UserID) {
+							permissionSkipped++
+							continue
+						}
+					}
+				}
 				// 按 updateSQL 占位符数传参：2 参（仅 name）/ 3 参（name, code）
 				updateArgs := []any{row.name}
 				if strings.Count(meta.updateSQL, "$") == 3 {
@@ -391,11 +419,12 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, ImportExecuteResult{
-		Created: created,
-		Failed:  failed,
-		Skipped: skipped,
-		Entity:  meta.displayName,
-		Errors:  parseErrors,
+		Created:           created,
+		Failed:            failed,
+		Skipped:           skipped,
+		PermissionSkipped: permissionSkipped,
+		Entity:            meta.displayName,
+		Errors:            parseErrors,
 	})
 }
 
