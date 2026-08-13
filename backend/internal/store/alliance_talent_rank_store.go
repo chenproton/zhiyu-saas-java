@@ -66,7 +66,7 @@ func (s *AllianceStore) listRankStudents(ctx context.Context, tenantID, search s
 	}
 	query := `
 		SELECT u.id, COALESCE(u.student_no, u.username, u.login_name), COALESCE(u.name, ''),
-			mr.eff_major_id, mr.eff_major_name,
+			mr.eff_major_id, COALESCE(mr.eff_major_name, ''),
 			COALESCE(o.name, '') AS class_name,
 			COALESCE(dept.dept_name, ''),
 			agg.avg_rate, agg.avg_comp, agg.avg_comp_v2, agg.avg_cog, agg.pos_count, agg.latest_at
