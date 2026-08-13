@@ -676,8 +676,31 @@ if [[ -z "$BRANCH_NAME" ]] && [[ "$ORIGINAL_ROOT" == "$PROJECT_ROOT" ]] && \
   log "处于 master 分支且无未推送提交，自动同步并部署 origin/master 最新代码"
 fi
 
+# ── 部署锁 ──
+LOCK_FILE="/tmp/zhiyu-deploy.lock"
+if command -v flock >/dev/null 2>&1; then
+  exec {LOCK_FD}>"$LOCK_FILE"
+  # 先非阻塞探测一次：锁空闲立即持有；被占用则打印提示后阻塞排队（串行部署）
+  flock -n "$LOCK_FD" || { log "等待部署锁（其他 Agent 部署进行中，自动排队）..."; flock "$LOCK_FD"; log "已获得部署锁"; }
+  cleanup() {
+    # 清理构建残留（docker build 中途失败时 TMPCTX 会残留）
+    [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
+    exec {LOCK_FD}>&- 2>/dev/null || true
+  }
+  trap cleanup EXIT
+else
+  warn "flock 不可用，跳过部署锁（建议安装 util-linux）"
+fi
+
+# 持锁后重新拉取 origin/master：锁等待期间可能有其他 Agent 已完成部署并合并推送，
+# 必须基于全量最新 master 构建（后部署者自动继承先部署者已合并的代码），
+# 否则基于旧 master 构建会覆盖先部署者已上线的代码。
+# 分支自身的 origin/$BRANCH_NAME 在加锁前已校验同步（自有分支，他人不会改动），无需重复拉取。
+git -C "$ORIGINAL_ROOT" fetch origin master 2>/dev/null || warn "重新拉取 origin/master 失败，将基于先前拉取的引用构建"
+
 # 镜像标签：分支部署时用分支提交（构建的正是这份代码），否则用当前 HEAD。
 # 标签即构建源码的 commit hash，部署后一眼可确认镜像内容，无需再进容器核对。
+# 必须在持锁并重新拉取之后计算，确保标签与本次实际构建基座一致。
 if [[ -n "$BRANCH_NAME" ]]; then
   IMAGE_TAG="$(git -C "$ORIGINAL_ROOT" rev-parse --short "origin/$BRANCH_NAME" 2>/dev/null || echo "latest")"
 elif [[ "$SYNC_MASTER" == "true" ]]; then
@@ -691,21 +714,6 @@ if grep -q "^IMAGE_TAG=" "$ENV_FILE" 2>/dev/null; then
   sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
 else
   echo "IMAGE_TAG=${IMAGE_TAG}" >> "$ENV_FILE"
-fi
-
-# ── 部署锁 ──
-LOCK_FILE="/tmp/zhiyu-deploy.lock"
-if command -v flock >/dev/null 2>&1; then
-  exec {LOCK_FD}>"$LOCK_FILE"
-  flock "$LOCK_FD" || { log "等待部署锁..."; flock "$LOCK_FD"; }
-  cleanup() {
-    # 清理构建残留（docker build 中途失败时 TMPCTX 会残留）
-    [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
-    exec {LOCK_FD}>&- 2>/dev/null || true
-  }
-  trap cleanup EXIT
-else
-  warn "flock 不可用，跳过部署锁（建议安装 util-linux）"
 fi
 
 # ════════════════════════════════════════════
@@ -1208,7 +1216,12 @@ if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
      git -C "$MERGE_ROOT" push origin master 2>&1; then
     log "✅ 已合并"
   else
-    warn "合并跳过（可手动执行：git checkout master && git merge origin/$BRANCH_NAME && git push origin master）"
+    # 合并失败（多为分支与 master 冲突，或本地 master 有未推送提交/脏文件）。
+    # 先中止可能残留的合并状态，避免主工作树卡在冲突中影响后续部署，再提示人工处理
+    git -C "$MERGE_ROOT" merge --abort 2>/dev/null || true
+    warn "自动合并失败，分支代码已部署但未合并。请先解决与 master 的冲突："
+    warn "  git fetch origin && git rebase origin/master   （修复冲突后重新 git push，再重跑部署）"
+    warn "  或手动合并：git checkout master && git pull origin master && git merge origin/$BRANCH_NAME && git push origin master"
   fi
 fi
 
