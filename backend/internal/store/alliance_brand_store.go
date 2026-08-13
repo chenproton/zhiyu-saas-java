@@ -290,7 +290,8 @@ type hiredStudentRef struct {
 	MajorName string `json:"majorName,omitempty"`
 }
 
-// enrichHiredStudentMajors 为雇主品牌已招聘学生补充专业名称（用户主专业）。
+// enrichHiredStudentMajors 为雇主品牌已招聘学生补充专业名称。
+// 专业判断与人才画像排名一致：优先 users.major_id，为空则沿组织树向上找「专业」类型节点，节点名兜底。
 func (s *AllianceStore) enrichHiredStudentMajors(ctx context.Context, item *domain.PublicBrandItem) {
 	if item == nil || item.BrandType != "employer" || len(item.Data) == 0 {
 		return
@@ -311,8 +312,34 @@ func (s *AllianceStore) enrichHiredStudentMajors(ctx context.Context, item *doma
 		return
 	}
 	rows, err := s.q.Query(ctx, `
-		SELECT u.id::text, m.name
-		FROM users u LEFT JOIN majors m ON m.id = u.major_id
+		SELECT u.id::text, mr.eff_major_name
+		FROM users u
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(mj.name, org_major.major_name, '') AS eff_major_name
+			FROM (
+				SELECT o.name AS major_name
+				FROM (
+					WITH RECURSIVE org_chain AS (
+						SELECT o.id, o.type_id, o.parent_id, 0 AS depth
+						FROM organizations o
+						WHERE o.id = u.org_node_id
+						UNION ALL
+						SELECT o.id, o.type_id, o.parent_id, c.depth + 1
+						FROM organizations o
+						JOIN org_chain c ON o.id = c.parent_id
+					)
+					SELECT c.id, c.depth
+					FROM org_chain c
+					JOIN organizations o ON o.id = c.id
+					JOIN org_types t ON t.id = o.type_id AND t.tenant_id = o.tenant_id
+					WHERE t.name = '专业'
+					ORDER BY c.depth
+					LIMIT 1
+				) n
+				JOIN organizations o ON o.id = n.id
+			) org_major
+			LEFT JOIN majors mj ON mj.id = u.major_id
+		) mr ON true
 		WHERE u.id = ANY($1)
 	`, ids)
 	if err != nil {
