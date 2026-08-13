@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -337,6 +338,11 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// 纵深防御：租户 ID 必须为 UUID，防止异常租户串经 filepath.Clean 逃逸上传目录
+	if _, err := uuid.Parse(tenantID); err != nil {
+		respondError(w, http.StatusBadRequest, "无效文件路径")
+		return
+	}
 	name := chi.URLParam(r, "filename")
 	if name == "" || strings.Contains(name, "..") || strings.Contains(name, "/") {
 		respondError(w, http.StatusBadRequest, "无效文件名")
@@ -452,7 +458,8 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if len(images) == 0 {
-			respondServerError(w, r, err, "未生成幻灯片")
+			// 用独立错误而非循环残留的陈旧 err，避免 500 响应携带 nil/过期错误信息
+			respondServerError(w, r, fmt.Errorf("libreoffice 未生成任何 PNG 页面"), "未生成幻灯片")
 			return
 		}
 		respondJSON(w, http.StatusOK, map[string]any{"images": images})

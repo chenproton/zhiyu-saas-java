@@ -272,6 +272,8 @@ type GranularImportImportExportEntityConfig struct {
 	keyCol      string
 	insertSQL   string
 	updateSQL   string
+	// hasCode updateSQL 是否含 code 参数（显式声明，替代按占位符数量推断的脆弱写法）
+	hasCode bool
 	// ownerCheckSQL 覆盖时归属检查（返回 creator_id/created_by + 共建人数组列）
 	ownerCheckSQL string
 	defaultCols   []string
@@ -308,6 +310,7 @@ var GranularImportImportExportEntities = map[string]GranularImportImportExportEn
 			VALUES ($1, $2, $3, $4, 'system', '导入', 'draft', $5, '{}', 0, 0, 0)
 		`,
 		updateSQL:     `UPDATE courses SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
+		hasCode:       true,
 		ownerCheckSQL: `SELECT creator_id, co_creator_ids FROM courses WHERE id=$1`,
 		defaultCols:   []string{"id", "code", "name", "status", "created_at"},
 	},
@@ -330,6 +333,7 @@ var GranularImportImportExportEntities = map[string]GranularImportImportExportEn
 			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'V1.0')
 		`,
 		updateSQL:     `UPDATE scenarios SET name=$1, code=$2, updated_at=NOW() WHERE id=$3`,
+		hasCode:       true,
 		ownerCheckSQL: `SELECT created_by, collaborators FROM scenarios WHERE id=$1`,
 		defaultCols:   []string{"id", "name", "code", "status", "created_at"},
 	},
@@ -438,14 +442,14 @@ func GranularImportImportExportOwnerCheck(ctx context.Context, q Queryer, entity
 	return creator, coCreatorIDs, true
 }
 
-// GranularImportImportExportUpdate 覆盖更新实体（占位符数由各实体 updateSQL 决定：2 参仅 name / 3 参 name+code）。
+// GranularImportImportExportUpdate 覆盖更新实体（hasCode 显式声明是否含 code 参数）。
 func GranularImportImportExportUpdate(ctx context.Context, q Queryer, entity, name, code, id string) error {
 	meta, ok := GranularImportImportExportEntities[entity]
 	if !ok {
 		return fmt.Errorf("不支持的实体: %s", entity)
 	}
 	args := []any{name}
-	if strings.Count(meta.updateSQL, "$") == 3 {
+	if meta.hasCode {
 		args = append(args, code)
 	}
 	args = append(args, id)
