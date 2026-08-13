@@ -115,7 +115,7 @@ export function AssessmentTab() {
                 <TableHead className="text-xs">{t('班级')}</TableHead>
                 <TableHead className="text-xs">{t('岗位能力达成率')}</TableHead>
                 <TableHead className="text-xs">{t('岗位胜任度')}</TableHead>
-                <TableHead className="text-xs">{t('能力认知得分')}</TableHead>
+                <TableHead className="text-xs">{t('能力认证得分')}</TableHead>
                 <TableHead className="text-xs text-right w-20">{t('操作')}</TableHead>
               </TableRow>
             </TableHeader>

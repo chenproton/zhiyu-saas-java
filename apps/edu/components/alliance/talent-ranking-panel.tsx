@@ -38,7 +38,7 @@ const SORTABLE_COLUMNS: { key: SortKey; labelKey: string; unit?: string }[] = [
   { key: 'avgAchievementRate', labelKey: '岗位能力达成率', unit: '%' },
   { key: 'avgPositionCompetency', labelKey: '岗位胜任度', unit: '%' },
   { key: 'avgPositionCompetencyV2', labelKey: '岗位胜任度（新）', unit: '%' },
-  { key: 'avgAbilityCognitionScore', labelKey: '能力认知得分' },
+  { key: 'avgAbilityCognitionScore', labelKey: '能力认证得分' },
   { key: 'positionCount', labelKey: '评估岗位数' },
 ]
 
@@ -302,7 +302,7 @@ function PositionDetailRows({ student }: { student: TalentRankStudent }) {
               <TableHead>{t('岗位能力达成率')}</TableHead>
               <TableHead>{t('岗位胜任度')}</TableHead>
               <TableHead>{t('岗位胜任度（新）')}</TableHead>
-              <TableHead>{t('能力认知得分')}</TableHead>
+              <TableHead>{t('能力认证得分')}</TableHead>
               <TableHead>{t('能力点达成')}</TableHead>
               <TableHead>{t('评级')}</TableHead>
               <TableHead>{t('评估时间')}</TableHead>

@@ -215,10 +215,6 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
                   <span className="text-muted-foreground">{t('前台展示：')}</span>
                   {brand?.isPublic ? t('是') : t('否')}
                 </p>
-                <p>
-                  <span className="text-muted-foreground">{t('浏览量：')}</span>
-                  {brand?.viewCount || 0}
-                </p>
               </div>
             </div>
             <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">

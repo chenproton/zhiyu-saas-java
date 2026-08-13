@@ -78,10 +78,6 @@ export default function AllianceBrandDetailPage() {
                 {brand?.isPublic ? t('是') : t('否')}
               </p>
               <p>
-                <span className="text-muted-foreground">{t('浏览量：')}</span>
-                {brand?.viewCount || 0}
-              </p>
-              <p>
                 <span className="text-muted-foreground">{t('排序：')}</span>
                 {brand?.sortOrder ?? 0}
               </p>

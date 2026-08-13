@@ -121,10 +121,6 @@ export function MajorBrandDetail({ id }: { id: string }) {
                 <span className="text-muted-foreground">{t('推荐：')}</span>
                 {brand?.isFeatured ? t('是') : t('否')}
               </p>
-              <p>
-                <span className="text-muted-foreground">{t('浏览量：')}</span>
-                {brand?.viewCount || 0}
-              </p>
             </div>
           </div>
           <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">

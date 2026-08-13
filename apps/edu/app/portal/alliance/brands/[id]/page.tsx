@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Building2, Briefcase, Users, Eye, Calendar, Image as ImageIcon, FileText, Trophy, BookOpen } from 'lucide-react'
+import { Building2, Briefcase, Users, Calendar, Image as ImageIcon, FileText, Trophy, BookOpen } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand } from '@/lib/types'
@@ -277,26 +277,13 @@ export default function AlliancePublicBrandDetailPage() {
           gradient: 'from-primary/90 to-primary/70',
         },
         {
-          label: t('浏览次数'),
-          value: brand.viewCount,
-          icon: Eye,
-          gradient: 'from-primary/80 to-primary/60',
-        },
-        {
           label: t('成立年份'),
           value: enterprise?.establishedYear || '-',
           icon: Calendar,
           gradient: 'from-primary/90 to-primary/70',
         },
       ]
-    : [
-        {
-          label: t('浏览次数'),
-          value: brand.viewCount,
-          icon: Eye,
-          gradient: 'from-primary to-primary/80',
-        },
-      ]
+    : []
 
   const studentsByJob = new Map<string, HiredStudent[]>()
   for (const s of hiredStudents) {

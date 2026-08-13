@@ -346,7 +346,7 @@ function JobAbilityResultsContent() {
                   <TableHead className="w-[120px]">{t('岗位能力达成率')}</TableHead>
                   <TableHead className="w-[100px]">{t('岗位胜任度')}</TableHead>
                   <TableHead className="w-[110px]">{t('岗位胜任度（新）')}</TableHead>
-                  <TableHead className="w-[110px]">{t('能力认知得分')}</TableHead>
+                  <TableHead className="w-[110px]">{t('能力认证得分')}</TableHead>
                   <TableHead className="sticky right-0 w-[110px] bg-white text-right">
                     {t('操作')}
                   </TableHead>

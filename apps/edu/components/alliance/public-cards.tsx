@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ArrowUpRight, Briefcase, Calendar, Eye } from 'lucide-react'
+import { ArrowUpRight, Briefcase, Calendar } from 'lucide-react'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type {
   AllianceEnterprise,
@@ -353,15 +353,6 @@ function brandTags(brand: AllianceBrand): string[] {
   return Array.isArray(brand.data?.tags) ? (brand.data.tags as string[]) : []
 }
 
-function BrandViewCount({ count }: { count?: number }) {
-  return (
-    <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
-      <Eye className="h-3.5 w-3.5" />
-      {count ?? 0}
-    </span>
-  )
-}
-
 /** 人才品牌：横版旗舰卡（左封面右文案，双列大图） */
 export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
   const t = useT()
@@ -396,7 +387,7 @@ export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
             <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mt-2">
               {brand.description || t('暂无品牌描述')}
             </p>
-            <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="mt-4">
               {tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 min-w-0">
                   {tags.slice(0, 3).map((tag) => (
@@ -411,7 +402,6 @@ export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
               ) : (
                 <span />
               )}
-              <BrandViewCount count={brand.viewCount} />
             </div>
           </CardContent>
         </div>
@@ -459,9 +449,6 @@ export function EmployerBrandRow({ brand }: { brand: AllianceBrand }) {
           {brand.description || t('暂无品牌描述')}
         </p>
       </div>
-      <div className="hidden sm:block">
-        <BrandViewCount count={brand.viewCount} />
-      </div>
       <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
     </Link>
   )
@@ -492,7 +479,6 @@ export function JobBrandRow({ brand }: { brand: AllianceBrand }) {
         ))}
       </div>
       <div className="ml-auto flex items-center gap-3 shrink-0">
-        <BrandViewCount count={brand.viewCount} />
         <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
       </div>
     </Link>
@@ -544,9 +530,6 @@ export function MajorBrandCard({ brand }: { brand: AllianceBrand }) {
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
             {brand.description || t('暂无品牌描述')}
           </p>
-          <div className="mt-auto pt-3">
-            <BrandViewCount count={brand.viewCount} />
-          </div>
         </CardContent>
       </Card>
     </Link>
@@ -582,9 +565,6 @@ export function TeacherBrandCard({ brand }: { brand: AllianceBrand }) {
           <p className="text-xs text-slate-500 text-center line-clamp-2 mt-1.5 leading-relaxed">
             {brand.description || t('暂无品牌描述')}
           </p>
-          <div className="mt-auto pt-3 flex justify-center">
-            <BrandViewCount count={brand.viewCount} />
-          </div>
         </CardContent>
       </Card>
     </Link>
@@ -642,7 +622,6 @@ export function CultureBrandCard({ brand }: { brand: AllianceBrand }) {
             ) : (
               <span />
             )}
-            <BrandViewCount count={brand.viewCount} />
           </div>
         </CardContent>
       </Card>

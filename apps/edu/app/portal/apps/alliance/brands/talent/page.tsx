@@ -83,13 +83,12 @@ export default function AllianceTalentBrandPage() {
               entityLabel: t('品牌内容'),
               templateFileName: t('品牌内容批量导入模板.xlsx'),
             }}
-            colSpan={6}
+            colSpan={5}
             renderTableHeader={() => (
               <>
                 <TableHead>{t('名称')}</TableHead>
                 <TableHead>{t('前台展示')}</TableHead>
                 <TableHead>{t('推荐')}</TableHead>
-                <TableHead>{t('浏览')}</TableHead>
                 <TableHead>{t('操作')}</TableHead>
               </>
             )}
@@ -108,7 +107,6 @@ export default function AllianceTalentBrandPage() {
                     onCheckedChange={(v: any) => toggleBrandField(item, 'isFeatured', v)}
                   />
                 </TableCell>
-                <TableCell>{item.viewCount}</TableCell>
                 <TableRowActions>
                   <Link href={`/portal/apps/alliance/brands/${item.id}`}>
                     <Button variant="ghost" size="sm">

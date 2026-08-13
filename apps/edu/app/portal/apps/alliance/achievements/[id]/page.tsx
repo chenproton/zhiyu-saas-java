@@ -227,10 +227,6 @@ export default function AllianceAchievementDetailPage() {
                 {achievement?.isPublic ? t('是') : t('否')}
               </p>
               <p>
-                <span className="text-muted-foreground">{t('浏览量：')}</span>
-                {achievement?.viewCount || 0}
-              </p>
-              <p>
                 <span className="text-muted-foreground">{t('创建人：')}</span>
                 {achievement?.createdBy || '-'}
               </p>
