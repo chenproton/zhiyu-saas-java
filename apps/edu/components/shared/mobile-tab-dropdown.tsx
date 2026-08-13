@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useClickOutside } from '@zhiyu/ui'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -35,14 +36,7 @@ export function MobileTabDropdown({
   const ref = useRef<HTMLDivElement>(null)
   const active = items.find((i) => i.value === value) ?? items[0]
 
-  useEffect(() => {
-    if (!open) return
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
-  }, [open])
+  useClickOutside(ref, () => setOpen(false))
 
   return (
     <div ref={ref} className={cn('relative', className)}>

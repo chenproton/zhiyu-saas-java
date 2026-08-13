@@ -1,16 +1,6 @@
 // 状态枚举：与后端 content_status 保持一致
 export type Status = 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
 
-// 状态中文映射
-export const STATUS_LABELS: Record<Status, string> = {
-  draft: '草稿',
-  pending: '审批中',
-  approved: '已通过',
-  rejected: '已驳回',
-  published: '已发布',
-  archived: '已归档',
-}
-
 // 状态流转操作
 export type StatusAction =
   | 'save_draft' // 保存草稿
@@ -38,9 +28,4 @@ export const STATUS_TRANSITIONS: Record<StatusAction, { from: Status[]; to: Stat
 export function canPerformAction(currentStatus: Status, action: StatusAction): boolean {
   const transition = STATUS_TRANSITIONS[action]
   return transition.from.includes(currentStatus)
-}
-
-// 获取下一个状态
-export function getNextStatus(action: StatusAction): Status {
-  return STATUS_TRANSITIONS[action].to
 }

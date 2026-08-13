@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { resourceTypeAccept } from '@/lib/resource-type-constants'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatSize } from '@/lib/format-utils'
 
 interface ResourceUploadZoneProps {
   resourceType: string
@@ -65,7 +66,7 @@ export function ResourceUploadZone({
             <File className="h-6 w-6 text-primary" />
           </div>
           <p className="text-sm font-medium text-gray-700">{uploadFile.name}</p>
-          <p className="text-xs text-gray-500">{(uploadFile.size / 1024 / 1024).toFixed(2)} MB</p>
+          <p className="text-xs text-gray-500">{formatSize(uploadFile.size)}</p>
         </div>
       ) : (
         <>

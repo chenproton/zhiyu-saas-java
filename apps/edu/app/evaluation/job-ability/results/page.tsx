@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useToast } from '@zhiyu/ui'
+import { useDebouncedValue, useToast } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -52,7 +52,7 @@ function JobAbilityResultsContent() {
   const [loading, setLoading] = useState(!!positionIdParam)
 
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
 
   const [aggregating, setAggregating] = useState(false)
   const aggregateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -69,12 +69,6 @@ function JobAbilityResultsContent() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detail, setDetail] = useState<JobAbilityResult | null>(null)
-
-  // 搜索输入防抖
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   // 筛选条件变化时重置分页并进入加载态（在事件回调中同步执行）
   const applyFilters = (updates: { positionId?: string; search?: string; page?: number }) => {

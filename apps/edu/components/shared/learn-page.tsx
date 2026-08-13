@@ -53,32 +53,6 @@ import type { AbilityPoint, Course, KnowledgePoint } from '@/lib/types'
 
 /* ---------- constants ---------- */
 
-/** 课程学习页（lesson）资源类型图标配色 */
-export const LESSON_RESOURCE_TYPE_ICONS: Record<string, string> = {
-  document: 'text-primary bg-primary/5',
-  video: 'text-[#f59e0b] bg-primary/5',
-  link: 'text-[#8b5cf6] bg-purple-50',
-  file: 'text-[#10b981] bg-emerald-50',
-  spreadsheet: 'text-[#16a34a] bg-green-50',
-  presentation: 'text-[#f97316] bg-orange-50',
-  image: 'text-[#ec4899] bg-pink-50',
-  audio: 'text-[#06b6d4] bg-cyan-50',
-  pdf: 'text-[#ef4444] bg-red-50',
-}
-
-/** 场景学习页（scene）资源类型图标配色 */
-export const SCENE_RESOURCE_TYPE_ICONS: Record<string, string> = {
-  document: 'text-primary bg-primary/5',
-  video: 'text-[#f59e0b] bg-amber-50',
-  link: 'text-[#8b5cf6] bg-purple-50',
-  file: 'text-[#10b981] bg-emerald-50',
-  spreadsheet: 'text-[#16a34a] bg-green-50',
-  presentation: 'text-[#f97316] bg-orange-50',
-  image: 'text-[#ec4899] bg-pink-50',
-  audio: 'text-[#06b6d4] bg-cyan-50',
-  pdf: 'text-[#ef4444] bg-red-50',
-}
-
 /* ---------- types ---------- */
 
 /** 学习单元（课程节点 / 场景任务）的归一化视图模型 */

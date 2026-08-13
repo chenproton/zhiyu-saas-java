@@ -278,29 +278,8 @@ export const COMPETENCY_LEVEL_LABELS: Record<CompetencyLevel, string> = {
 }
 
 // 岗位状态标签映射
-export const POSITION_STATUS_LABELS: Record<PositionStatus, string> = {
-  draft: '草稿',
-  pending: '审批中',
-  approved: '已通过',
-  rejected: '已驳回',
-  published: '已上架',
-  archived: '已归档',
-}
-
 // 批次状态标签映射
-export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
-  open: '开放中',
-  closed: '已截止',
-}
-
 // 角色标签映射
-export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: '管理员',
-  builder: '建设者',
-  reviewer: '审批者',
-  student: '学生',
-}
-
 // 岗位推荐配置（按专业配置前台推荐岗位及顺序）
 export interface PositionRecommendation {
   id: string

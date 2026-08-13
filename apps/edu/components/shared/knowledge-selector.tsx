@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useDebouncedValue } from '@zhiyu/ui'
 import { Lightbulb, Plus, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -200,40 +201,38 @@ export function KnowledgeSelector({
   }, [filterKpIds, allKps, dataSource])
 
   const kpSearchTerm = kpSearch.trim()
+  const debouncedKpSearchTerm = useDebouncedValue(kpSearchTerm, 300)
 
   // 搜索走后端接口（name/code 模糊匹配），可命中全部知识点，不受初始 pool 200 条限制
   useEffect(() => {
     const seq = ++searchSeqRef.current
-    if (!kpSearchTerm) return
-    const timer = setTimeout(() => {
-      setSearchLoading(true)
-      const apply = (items: unknown[]) => {
-        if (seq !== searchSeqRef.current) return
-        setSearchResults(items.map((k) => mapServerKp(k as any)))
-        setSearchLoading(false)
-      }
-      if (dataSource?.searchKnowledgePoints) {
-        dataSource
-          .searchKnowledgePoints(kpSearchTerm)
-          .then(apply)
-          .catch(() => {
-            if (seq !== searchSeqRef.current) return
-            setSearchResults([])
-            setSearchLoading(false)
-          })
-        return
-      }
-      knowledgeApi
-        .list({ search: kpSearchTerm, limit: 200 })
-        .then((res) => apply(res.items || []))
+    if (!debouncedKpSearchTerm) return
+    queueMicrotask(() => setSearchLoading(true))
+    const apply = (items: unknown[]) => {
+      if (seq !== searchSeqRef.current) return
+      setSearchResults(items.map((k) => mapServerKp(k as any)))
+      setSearchLoading(false)
+    }
+    if (dataSource?.searchKnowledgePoints) {
+      dataSource
+        .searchKnowledgePoints(debouncedKpSearchTerm)
+        .then(apply)
         .catch(() => {
           if (seq !== searchSeqRef.current) return
           setSearchResults([])
           setSearchLoading(false)
         })
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [kpSearchTerm, dataSource])
+      return
+    }
+    knowledgeApi
+      .list({ search: debouncedKpSearchTerm, limit: 200 })
+      .then((res) => apply(res.items || []))
+      .catch(() => {
+        if (seq !== searchSeqRef.current) return
+        setSearchResults([])
+        setSearchLoading(false)
+      })
+  }, [debouncedKpSearchTerm, dataSource])
 
   const isReferenceKp = (kp: KnowledgePointItem) => kp.linked
 

@@ -4,7 +4,7 @@ import { type ReactNode, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Pencil } from 'lucide-react'
-import { LoadingView } from '@zhiyu/ui'
+import { LoadingView, UnderlineTabs } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export interface AllianceDetailShellTab<T extends string = string> {
@@ -106,24 +106,11 @@ export function AllianceDetailShell<T extends string = string>({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b gap-0 overflow-x-auto">
-        {tabs.map((t) => (
-          <button
-            key={t.key as string}
-            onClick={() => setActiveTab(t.key as string)}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === t.key
-                ? 'border-primary text-primary font-medium'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {t.label}
-            {t.badge !== undefined && (
-              <span className="ml-1.5 text-xs bg-muted px-1.5 py-0.5 rounded-full">{t.badge}</span>
-            )}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        items={tabs.map((t) => ({ key: t.key as string, label: t.label, badge: t.badge }))}
+        activeKey={activeTab}
+        onSelect={(key) => setActiveTab(key)}
+      />
 
       {/* Content */}
       {activeContent}

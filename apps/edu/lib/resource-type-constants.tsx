@@ -55,6 +55,74 @@ export const TYPE_BG: Record<string, string> = {
   other: 'bg-stone-50',
 }
 
+export const TYPE_BADGE: Record<string, string> = {
+  document: 'bg-orange-50 text-orange-600 border-orange-200',
+  spreadsheet: 'bg-green-50 text-green-600 border-green-200',
+  image: 'bg-purple-50 text-purple-600 border-purple-200',
+  link: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+  audio: 'bg-pink-50 text-pink-600 border-pink-200',
+  video: 'bg-blue-50 text-blue-600 border-blue-200',
+  archive: 'bg-slate-50 text-slate-600 border-slate-200',
+  venue: 'bg-red-50 text-red-600 border-red-200',
+  facility: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+  software: 'bg-teal-50 text-teal-600 border-teal-200',
+  other: 'bg-stone-50 text-stone-600 border-stone-200',
+}
+
+export const LIBRARY_LANDING_TYPE_COLORS: Record<string, string> = {
+  video: '#3b82f6',
+  document: '#f97316',
+  spreadsheet: '#22c55e',
+  image: '#a855f7',
+  link: '#06b6d4',
+  audio: '#ec4899',
+  venue: '#ef4444',
+  facility: '#64748b',
+  software: '#6366f1',
+  archive: '#14b8a6',
+  other: '#78716c',
+}
+
+export const LIBRARY_LANDING_TYPE_ICONS: Record<string, typeof FileText> = {
+  video: Video,
+  document: FileText,
+  spreadsheet: Table,
+  image: Image,
+  link: Link,
+  audio: Music,
+  archive: Archive,
+  venue: Building,
+  facility: Wrench,
+  software: AppWindow,
+  other: HelpCircle,
+}
+
+/** 课程学习页（lesson）资源类型图标配色 */
+export const LESSON_RESOURCE_TYPE_ICONS: Record<string, string> = {
+  document: 'text-primary bg-primary/5',
+  video: 'text-[#f59e0b] bg-primary/5',
+  link: 'text-[#8b5cf6] bg-purple-50',
+  file: 'text-[#10b981] bg-emerald-50',
+  spreadsheet: 'text-[#16a34a] bg-green-50',
+  presentation: 'text-[#f97316] bg-orange-50',
+  image: 'text-[#ec4899] bg-pink-50',
+  audio: 'text-[#06b6d4] bg-cyan-50',
+  pdf: 'text-[#ef4444] bg-red-50',
+}
+
+/** 场景学习页（scene）资源类型图标配色 */
+export const SCENE_RESOURCE_TYPE_ICONS: Record<string, string> = {
+  document: 'text-primary bg-primary/5',
+  video: 'text-[#f59e0b] bg-amber-50',
+  link: 'text-[#8b5cf6] bg-purple-50',
+  file: 'text-[#10b981] bg-emerald-50',
+  spreadsheet: 'text-[#16a34a] bg-green-50',
+  presentation: 'text-[#f97316] bg-orange-50',
+  image: 'text-[#ec4899] bg-pink-50',
+  audio: 'text-[#06b6d4] bg-cyan-50',
+  pdf: 'text-[#ef4444] bg-red-50',
+}
+
 // 与 kkFileView 4.4.0 支持的全部格式对齐（后端 /uploads 直出白名单同源）
 // document 含文字/演示/文本代码/PDF/电子书及 CAD/3D 工程文件
 export const DOCUMENT_EXTS = [
@@ -261,11 +329,4 @@ export function validateResourceFile(file: File, type: string): string | null {
     return `不支持的文件格式，请上传 ${allowed.map((e) => `.${e}`).join('、')} 文件`
   }
   return null
-}
-
-export function formatSize(bytes?: number) {
-  if (!bytes) return '-'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

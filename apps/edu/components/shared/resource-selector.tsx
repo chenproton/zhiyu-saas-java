@@ -1,18 +1,8 @@
 'use client'
 
 import {
-  FileText,
-  Link2,
   Package,
   Upload,
-  Video,
-  Image as ImageIcon,
-  Table,
-  Headphones,
-  Archive,
-  MapPin,
-  Building2,
-  Globe,
   X,
   CheckCircle2,
   RotateCcw,
@@ -58,9 +48,12 @@ import {
   VIDEO_EXTS,
   ARCHIVE_EXTS,
   SOFTWARE_EXTS,
+  TYPE_ICONS,
+  TYPE_BADGE,
 } from '@/lib/resource-type-constants'
 import type { ResourceKind } from '@/lib/types/library'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatSize } from '@/lib/format-utils'
 
 export interface ResourceItem {
   id: string
@@ -89,34 +82,6 @@ interface ResourceSelectorProps {
 
 // 'all' 为"全部"选项，其余与共享 RESOURCE_TYPE_LABELS 对应
 const ALL_TYPES = ['all', ...Object.keys(RESOURCE_TYPE_LABELS)]
-
-const resourceTypeIcons: Record<string, React.ReactNode> = {
-  document: <FileText className="h-4 w-4 text-blue-500" />,
-  spreadsheet: <Table className="h-4 w-4 text-teal-500" />,
-  image: <ImageIcon className="h-4 w-4 text-green-500" />,
-  link: <Link2 className="h-4 w-4 text-cyan-500" />,
-  audio: <Headphones className="h-4 w-4 text-violet-500" />,
-  video: <Video className="h-4 w-4 text-red-500" />,
-  archive: <Archive className="h-4 w-4 text-amber-500" />,
-  venue: <MapPin className="h-4 w-4 text-orange-500" />,
-  facility: <Building2 className="h-4 w-4 text-rose-500" />,
-  software: <Globe className="h-4 w-4 text-purple-500" />,
-  other: <Package className="h-4 w-4 text-gray-500" />,
-}
-
-const resourceTypeColors: Record<string, string> = {
-  document: 'bg-blue-50 text-blue-600 border-blue-200',
-  spreadsheet: 'bg-teal-50 text-teal-600 border-teal-200',
-  image: 'bg-green-50 text-green-600 border-green-200',
-  link: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-  audio: 'bg-violet-50 text-violet-600 border-violet-200',
-  video: 'bg-red-50 text-red-600 border-red-200',
-  archive: 'bg-amber-50 text-amber-600 border-amber-200',
-  venue: 'bg-orange-50 text-orange-600 border-orange-200',
-  facility: 'bg-rose-50 text-rose-600 border-rose-200',
-  software: 'bg-purple-50 text-purple-600 border-purple-200',
-  other: 'bg-gray-50 text-gray-600 border-gray-200',
-}
 
 export function ResourceSelector({
   pool: externalPool,
@@ -427,7 +392,7 @@ export function ResourceSelector({
               className={cn('text-xs h-7', resType === t ? '' : 'bg-white')}
               onClick={() => setResType(t)}
             >
-              {resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
+              {TYPE_ICONS[t] && <span className="mr-1.5">{TYPE_ICONS[t]}</span>}
               {RESOURCE_TYPE_SHORT_LABELS[t] || t}
             </Button>
           ))}
@@ -509,10 +474,10 @@ export function ResourceSelector({
                             <div
                               className={cn(
                                 'p-2 rounded-lg border',
-                                resourceTypeColors[r.type] || 'bg-gray-50 border-gray-200',
+                                TYPE_BADGE[r.type] || 'bg-gray-50 border-gray-200',
                               )}
                             >
-                              {resourceTypeIcons[r.type] || (
+                              {TYPE_ICONS[r.type] || (
                                 <Package className="h-5 w-5 text-gray-400" />
                               )}
                             </div>
@@ -525,7 +490,7 @@ export function ResourceSelector({
                         )}
                         <div className="absolute bottom-1.5 left-1.5">
                           <Badge
-                            className={cn('text-[9px] border', resourceTypeColors[r.type] || '')}
+                            className={cn('text-[9px] border', TYPE_BADGE[r.type] || '')}
                           >
                             {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                           </Badge>
@@ -599,10 +564,10 @@ export function ResourceSelector({
                     <div
                       className={cn(
                         'w-9 h-9 rounded-lg border flex items-center justify-center shrink-0',
-                        resourceTypeColors[r.type] || 'bg-gray-50',
+                        TYPE_BADGE[r.type] || 'bg-gray-50',
                       )}
                     >
-                      {resourceTypeIcons[r.type] || <Package className="h-4 w-4 text-gray-400" />}
+                      {TYPE_ICONS[r.type] || <Package className="h-4 w-4 text-gray-400" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate text-gray-800" title={r.name}>
@@ -649,10 +614,10 @@ export function ResourceSelector({
                 <div
                   className={cn(
                     'p-2 rounded-lg border',
-                    resourceTypeColors[t] || 'bg-gray-50 border-gray-200',
+                    TYPE_BADGE[t] || 'bg-gray-50 border-gray-200',
                   )}
                 >
-                  {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
+                  {TYPE_ICONS[t] || <Package className="h-5 w-5 text-gray-400" />}
                 </div>
                 <span className="text-xs font-medium text-gray-700">
                   {RESOURCE_TYPE_SHORT_LABELS[t] || t}
@@ -846,7 +811,7 @@ export function ResourceSelector({
                     </div>
                     <p className="text-sm font-medium text-gray-700">{newResFile.name}</p>
                     <p className="text-xs text-gray-500">
-                      {(newResFile.size / 1024 / 1024).toFixed(2)} MB
+                      {formatSize(newResFile.size)}
                     </p>
                   </div>
                 ) : (
@@ -930,8 +895,8 @@ export function ResourceSelector({
               variant="secondary"
               className="px-2.5 py-1 text-xs font-normal bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
             >
-              {resourceTypeIcons[r.type] && (
-                <span className="mr-1">{resourceTypeIcons[r.type]}</span>
+              {TYPE_ICONS[r.type] && (
+                <span className="mr-1">{TYPE_ICONS[r.type]}</span>
               )}
               {r.name}
               <button

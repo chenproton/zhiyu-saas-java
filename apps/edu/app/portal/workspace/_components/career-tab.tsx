@@ -14,7 +14,7 @@ import {
   MapPin,
   ChevronRight,
 } from 'lucide-react'
-import { StatusBadge, useToast } from '@zhiyu/ui'
+import { StatusBadge, UnderlineTabs, useToast } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
 import { favoriteApi, positionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
@@ -347,32 +347,25 @@ export function CareerTab() {
     <div className="space-y-5">
       <SectionCard title={t('我的收藏')} icon={Heart} iconColor="rose">
         {/* 分类筛选 */}
-        <div className="flex items-center gap-5 mb-5 border-b border-gray-100">
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`text-sm pb-2 border-b-2 transition-colors ${
-              activeCategory === 'all'
-                ? 'text-rose-600 border-rose-600 font-medium'
-                : 'text-gray-500 border-transparent hover:text-gray-700'
-            }`}
-          >
-            {t('全部收藏（{count}）', { count: totalCount })}
-          </button>
-          {cats.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCategory(c.id)}
-              className={`text-sm pb-2 border-b-2 transition-colors flex items-center gap-1.5 ${
-                activeCategory === c.id
-                  ? 'text-rose-600 border-rose-600 font-medium'
-                  : 'text-gray-500 border-transparent hover:text-gray-700'
-              }`}
-            >
-              <c.icon className="w-3.5 h-3.5" />
-              {c.label}
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          items={[
+            { key: 'all', label: t('全部收藏（{count}）', { count: totalCount }) },
+            ...cats.map((c) => ({
+              key: c.id,
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <c.icon className="w-3.5 h-3.5" />
+                  {c.label}
+                </span>
+              ),
+            })),
+          ]}
+          activeKey={activeCategory}
+          onSelect={setActiveCategory}
+          accentClassName="text-rose-600 border-rose-600"
+          className="items-center gap-5 mb-5 border-gray-100"
+          buttonClassName="px-0 pt-0 pb-2"
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-16 text-gray-400">
