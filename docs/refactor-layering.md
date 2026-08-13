@@ -11,12 +11,14 @@
 | store             | 70+ 文件          | 独立类型模式成熟：`NewXxxStore(q)` 工厂；**列表查询配置全量下沉**（各域 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`ListXxxConfig()` 方法 + `BatchTableConfig` + 日志包级配置），存量 handler 的 SQL 正逐步下沉 store |
 | service           | 50 文件           | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读；`PositionService`/`EvaluationService` 方法已按域重组为独立文件（position/ability/batch/workflow/term/teaching_plan/training_program/workspace_stats 等） |
 | domain            | 12 文件 / 2.1k 行 | 类型中心，**保持不动，不新建 model/**                                                                                                                                                         |
-| handler/common.go | ~370 行           | 响应/租户/权限 helper + `executeListQuery` 适配；`parseInt`/`parsePageLimit`/`itoa` 委托 store 唯一实现；时间格式化统一 `store.FormatDateTime`                                                     |
+| handler/common.go | ~400 行 | 响应/租户/权限 helper + `executeListQuery` 适配 + `parseLimitOffset`/`safeHandler`；`parseInt`/`parsePageLimit`/`itoa` 委托 store 唯一实现；时间格式化统一 `store.FormatDateTime` |
 
 **现有可复用资产**：
 
-- `store.ExecuteListQuery` + `ListQueryBuilder` + 白名单防注入（原 common.go 下沉）
+- `store.ExecuteListQuery` + `ListQueryBuilder` + 白名单防注入（原 common.go 下沉）；`store.ClampLimitOffset`（limit/offset 钳制单一实现）
 - `decodeBody`、`requireTenant`/`tenantFilter`/`verifyTenantOwnership`
+- `parseLimitOffset`（handler/common.go，limit/offset 查询参数一站式解析，非法值回落默认）、`safeHandler`（panic-recover 兜底包装，clone 类接口必用）
+- `store.LockByKey`（advisory 事务锁通用实现，keyParts 按 "|" 拼接）、`store.MarshalJSONBytes`（JSON 序列化 fallback 统一）、`store.IsUniqueViolation`（23505 单一实现，handler 侧 isUniqueViolation 委托之）
 - `generateUniqueEntityCode`、`recordView`
 - **`store.ContentActionStore`**（`store/content_actions.go`）：内容通用动作（提交审批/撤回/发布/下架/删除/归档）的 store 层复用范例，新建内容域接口优先复用
 - **`respondServerError`**（`handler/common.go`）：新增 handler 的 500 错误处理约定，统一记录原始 error 后返回通用错误响应

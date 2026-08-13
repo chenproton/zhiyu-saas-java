@@ -64,19 +64,29 @@
 
 | 封装 | 使用文件数 | 所在系统 | 决策 |
 |------|-----------|---------|------|
-| `FormFieldRow` / `FormFieldGrid` | 48 / 22 | 全部系统 | **默认选择**，新表单一律用它 |
+| `FormFieldRow` / `FormFieldGrid` | 44 / 19 | 全部系统 | **默认选择**，新表单一律用它 |
 | `Field` 家族（FieldGroup/Field/FieldLabel…） | 7 | 教务排课/计划/方案、测评题库/试卷/评分 | 保留（container-query 响应式，服务复杂布局），不与 FormFieldRow 互相迁移 |
 | 手写裸字段 | 少量 | 复杂结构 | **合理例外**，不强求抽象 |
 | `form.tsx`（react-hook-form 封装） | 0 | — | **已删除**（2026-08）：零引用死代码，勿再引入 |
 
-## 四、复用评估结论（2026-08-02）
+## 四、复用评估结论（2026-08-13 全面复用改造后更新）
 
-**结论：保持现状，不再进行大规模抽象。** 理由：
+> 2026-08-13 完成一轮「重复样板收口」改造（4 个分支：前端快赢 / 后端快赢 / 前端中期 / 后端 store 钳制），以下为更新后的结论。
 
-1. `FormFieldRow` 已覆盖约 90% 场景（48 个文件引用），剩余手写均为"合理例外"（flex 开关行、多控件复合字段、双 Label 嵌套选择器），强行抽象收益低、风险高
-2. 两套字段封装（FormFieldRow 与 Field 家族）并存是**有意保留**：FormFieldRow 通用简单、Field 家族服务复杂响应式布局，可随时评估合并
-3. **不建议**引入更高层抽象（schema 驱动自动表单 / react-hook-form 重构）：当前 useState 受控 + FormFieldRow 已满足全部需求，引入新范式违背"简单优先"原则
+**已收口（不再重复）**：`SearchInput`、`EmptyState`/`TableEmptyRow`、`FormDialogFooter`、`UnderlineTabs`、`DetailPageHeader`、`FormPageShell`、Button `loading`、`ComboboxSelect`（多选统一）、`useDebouncedValue`/`useClickOutside`、api-client CRUD 工厂、`fetchAllPages` 入包、后端 `parseLimitOffset`/`safeHandler`/`store.LockByKey`/`store.MarshalJSONBytes`/`store.IsUniqueViolation`/`store.ClampLimitOffset`。
+
+**保持现状、不再大规模抽象的决定**：
+
+1. `FormFieldRow` 已覆盖约 90% 场景（44+ 文件引用），剩余手写均为"合理例外"（flex 开关行、多控件复合字段、双 Label 嵌套选择器），强行抽象收益低、风险高
+2. 两套字段封装（FormFieldRow 与 Field 家族）并存是**有意保留**：FormFieldRow 通用简单、Field 家族服务复杂响应式布局（排课/教学计划/培养方案/题库试卷评分），可随时评估合并；普通表单禁止混用两套
+3. **不建议**引入更高层抽象（schema 驱动自动表单 / react-hook-form 重构）：当前 useState 受控 + FormFieldRow 已满足全部需求，违背"简单优先"原则
 4. `form.tsx`（react-hook-form）已删除（2026-08 死代码清理），`@/components/ui/form` 不可用
+
+**只定规范、不安排重构**：
+
+5. **`useAsync` 采用缺口**（存量约 84 处手写 loading+try/catch 样板）：新页面一律 `useAsync`（或 `useLibraryCrud` 类业务 hook），存量按模块顺手迁移，不一次性追平
+6. **域类型分裂治理**（`job.ts` vs `job-source.ts`、`lesson.ts` vs `lesson-source.ts` 双份定义，约 29 个文件经 job-source/lesson-source 引用 + `lib/converters/job-converters.ts` 转换层）：以 `lib/types/*.ts`（与后端对齐）为唯一主源，新代码禁止引用 `*-source.ts`；存量引用按模块逐个收敛后删除遗留类型文件，**专项排期处理，不与其他任务混做**
+7. **后端 store 层复杂列表查询**（JOIN/子查询/条件过滤等约 20 文件手写 SQL）：`ExecuteListQuery` + `ListQueryConfig` 已吸收约 2/3 场景，剩余属"合理例外"（白名单模型不适用或需连带 service/handler 链路改造），保留现状、按需渐进迁移
 
 ## 五、表单开发规范（新增/修改表单时）
 
