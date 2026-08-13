@@ -102,6 +102,16 @@ func (h *UserRelationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	// 删除前校验归属：仅关系双方（发起者或目标）可删除，防止租户内任意用户删他人关系
+	initiatorID, targetID, err := h.Service.Get(r.Context(), id, effectiveTenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "用户关系不存在")
+		return
+	}
+	if claims.UserID != initiatorID && claims.UserID != targetID {
+		respondError(w, http.StatusForbidden, "仅关系双方可删除该关系")
+		return
+	}
 	deleted, err := h.Service.Delete(r.Context(), id, effectiveTenantID)
 	if err != nil {
 		respondServerError(w, r, err, "删除用户关系失败")

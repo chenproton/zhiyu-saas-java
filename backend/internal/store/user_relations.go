@@ -94,6 +94,12 @@ func (s *UserRelationStore) List(ctx context.Context, tenantID, search string, l
 	return items, total, rows.Err()
 }
 
+// Get 查询单条用户关系（删除前归属校验用），返回发起者/目标用户 ID。
+func (s *UserRelationStore) Get(ctx context.Context, id, tenantID string) (initiatorID, targetID string, err error) {
+	err = s.q.QueryRow(ctx, `SELECT initiator_id, target_id FROM user_relations WHERE id = $1 AND tenant_id = $2`, id, tenantID).Scan(&initiatorID, &targetID)
+	return
+}
+
 // UsersExist 校验两个用户是否都属于租户。
 func (s *UserRelationStore) UsersExist(ctx context.Context, tenantID string, userIDs []string) (bool, error) {
 	var validUsers int

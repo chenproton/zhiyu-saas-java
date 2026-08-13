@@ -28,7 +28,7 @@ func (h *TemplateHandler) ServePositionTemplate(w http.ResponseWriter, r *http.R
 		return
 	}
 	ctx := r.Context()
-	h.Store.DictQuery(ctx, tenantID) // preload dicts
+	// 字典数据由 generatePositionTemplate 内部按需查询（此处 preload 结果曾被丢弃造成重复查询）
 	f := h.generatePositionTemplate(ctx, tenantID)
 	writeExcel(w, r, f, "岗位批量导入模板.xlsx")
 }

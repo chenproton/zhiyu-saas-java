@@ -91,6 +91,18 @@ func (w *statusRecorder) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
+// Flush 透传底层 Flusher，保证流式响应（SSE/AI 流式/大文件流）经全局中间件包装后仍可用。
+func (w *statusRecorder) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap 暴露底层 ResponseWriter，供 http.ResponseController 访问 Flush/Hijack 等能力。
+func (w *statusRecorder) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 func init() {
 	prometheus.MustRegister(httpRequests, httpDuration, dbPoolTotal, dbPoolIdle)
 }

@@ -40,6 +40,11 @@ func (s *UserRelationService) Delete(ctx context.Context, id, tenantID string) (
 	return s.st.UserRelations().Delete(ctx, id, tenantID)
 }
 
+// Get 查询单条用户关系（删除前归属校验用）。
+func (s *UserRelationService) Get(ctx context.Context, id, tenantID string) (string, string, error) {
+	return s.st.UserRelations().Get(ctx, id, tenantID)
+}
+
 // ErrRelationUsersNotInTenant 发起者或目标不在租户中。
 var ErrRelationUsersNotInTenant = errors.New("users not in tenant")
 

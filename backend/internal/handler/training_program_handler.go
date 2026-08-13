@@ -111,7 +111,7 @@ func (h *TrainingProgramHandler) Create(w http.ResponseWriter, r *http.Request) 
 	program, err := h.Service.CreateTrainingProgram(r.Context(), tenantID, &store.TrainingProgramParams{
 		Name: req.Name, Code: code, MajorID: emptyStrToNil(req.MajorID), EntryYear: req.EntryYear,
 		Level: emptyStrToNil(req.Level), Duration: req.Duration, TotalCredits: req.TotalCredits,
-		Description: emptyStrToNil(req.Description), CreatedBy: claims.UserID,
+		Description: emptyStrToNil(req.Description), BatchID: emptyStrToNil(req.BatchID), CreatedBy: claims.UserID,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "创建人培方案失败")

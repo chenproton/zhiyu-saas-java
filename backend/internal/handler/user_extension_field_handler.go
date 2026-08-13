@@ -35,7 +35,7 @@ func (h *UserExtensionFieldHandler) List(w http.ResponseWriter, r *http.Request)
 
 	items, err := h.Service.List(r.Context(), tenantID)
 	if err != nil {
-		respondServerError(w, r, err, "确保default extension fields失败")
+		respondServerError(w, r, err, "查询扩展字段失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, UserExtensionFieldListResponse{Items: items})

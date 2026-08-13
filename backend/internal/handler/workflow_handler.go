@@ -118,6 +118,10 @@ func (h *WorkflowHandler) crud() crudConfig[WorkflowRequest, domain.Workflow] {
 			if t.Description == nil {
 				t.Description = existing.Description
 			}
+			// 与其余字段一致：scene 未携带时回退现有值，防止清空场景归属
+			if t.Scene == nil {
+				t.Scene = existing.Scene
+			}
 			_, err = h.Service.UpdateWorkflow(ctx, id, tenantID, &store.WorkflowParams{
 				Name: t.Name, Scene: t.Scene, Description: t.Description,
 				Steps: steps, MajorIds: majorIds, Status: domain.WorkflowStatus(t.Status),
