@@ -458,6 +458,8 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 			r.Put("/enterprises/{id}", h.allianceHandler.UpdateEnterprise)
 			r.Post("/enterprises/{id}/link", h.allianceHandler.LinkEnterprise)
 			r.Delete("/enterprises/{id}/link", h.allianceHandler.UnlinkEnterprise)
+			// DELETE /enterprises/{id} 语义为「解除引入（unlink）」：企业主体归 partner 端所有，
+			// 学校侧无删除企业主体的能力（与 /link 共用 UnlinkEnterprise）
 			r.Delete("/enterprises/{id}", h.allianceHandler.UnlinkEnterprise)
 			r.Put("/grants", h.allianceHandler.SaveGrants)
 			r.Post("/projects", h.allianceHandler.CreateProject)
