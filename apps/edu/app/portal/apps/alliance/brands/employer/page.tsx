@@ -20,7 +20,6 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -240,7 +239,7 @@ export default function AllianceEmployerBrandPage() {
           </div>
         }
         hideCreate
-        colSpan={9}
+        colSpan={8}
         renderTableHeader={() => (
           <>
             <TableHead>{t('企业名称')}</TableHead>
@@ -250,7 +249,6 @@ export default function AllianceEmployerBrandPage() {
             <TableHead>{t('已招聘学生')}</TableHead>
             <TableHead>{t('前台展示')}</TableHead>
             <TableHead>{t('推荐')}</TableHead>
-            <TableHead>{t('状态')}</TableHead>
             <TableHead>{t('操作')}</TableHead>
           </>
         )}
@@ -283,9 +281,6 @@ export default function AllianceEmployerBrandPage() {
                   checked={item.isFeatured}
                   onCheckedChange={(v) => toggleBrandField(item, 'isFeatured', v)}
                 />
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={item.status} />
               </TableCell>
               <TableRowActions>
                 <Link href={`/portal/apps/alliance/brands/${item.id}`}>

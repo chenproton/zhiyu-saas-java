@@ -64,7 +64,7 @@ export default function PositionsPage() {
           shortName: t('新岗位'),
           industry: '',
           majors: [] as string[],
-          positionType: 'enterprise',
+          positionType: 'teaching',
           salaryRange: [0, 0],
           description: '',
           requirements: [] as string[],
@@ -75,6 +75,7 @@ export default function PositionsPage() {
           collaborators: [] as string[],
         })
       }
+      listParams={{ positionType: 'teaching' }}
       listExtraProps={{ configureStepParam: '2', industryMap, majorMap }}
       renderList={(props) => (
         <PositionList

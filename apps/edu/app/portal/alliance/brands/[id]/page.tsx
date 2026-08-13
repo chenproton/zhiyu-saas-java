@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Building2, Briefcase, Users, Eye, Calendar, Image as ImageIcon, FileText } from 'lucide-react'
+import { Building2, Briefcase, Users, Eye, Calendar, Image as ImageIcon, FileText, Trophy, BookOpen } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand } from '@/lib/types'
@@ -132,6 +132,113 @@ export default function AlliancePublicBrandDetailPage() {
     }
   }, [brand, isEmployer, isIndependent])
 
+  // 专业品牌：关联内容（专业就业方向/合作企业/合作成果/特色课程）存于 data
+  const isMajor = brand?.brandType === 'major'
+  const majorData = useMemo(() => {
+    if (!isMajor || !brand?.data) return null
+    const d = brand.data as Record<string, any>
+    return {
+      directions: (d.employmentDirections ?? []) as { id: string; name: string }[],
+      enterprises: (d.cooperationEnterprises ?? []) as { id: string; name: string }[],
+      achievements: (d.cooperationAchievements ?? []) as { id: string; name: string }[],
+      courses: (d.featuredCourses ?? []) as { id: string; name: string }[],
+    }
+  }, [isMajor, brand?.data])
+
+  const majorTabs = useMemo(() => {
+    if (!isMajor || !majorData) return []
+    return [
+      {
+        value: 'directions',
+        label: t('专业就业方向'),
+        count: majorData.directions.length,
+        content: (
+          <Card className="border-0 shadow-sm rounded-3xl">
+            <CardContent className="p-6">
+              {majorData.directions.length === 0 ? (
+                <DetailEmpty icon={Briefcase} title={t('暂未配置就业方向')} />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {majorData.directions.map((d) => (
+                    <Badge key={d.id} variant="secondary" className="px-3 py-1.5 text-sm">
+                      {d.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ),
+      },
+      {
+        value: 'enterprises',
+        label: t('专业合作企业'),
+        count: majorData.enterprises.length,
+        content: (
+          <Card className="border-0 shadow-sm rounded-3xl">
+            <CardContent className="p-6">
+              {majorData.enterprises.length === 0 ? (
+                <DetailEmpty icon={Building2} title={t('暂未关联合作企业')} />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {majorData.enterprises.map((e) => (
+                    <Badge key={e.id} variant="secondary" className="px-3 py-1.5 text-sm">
+                      {e.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ),
+      },
+      {
+        value: 'achievements',
+        label: t('专业合作成果'),
+        count: majorData.achievements.length,
+        content: (
+          <Card className="border-0 shadow-sm rounded-3xl">
+            <CardContent className="p-6">
+              {majorData.achievements.length === 0 ? (
+                <DetailEmpty icon={Trophy} title={t('暂未关联合作成果')} />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {majorData.achievements.map((a) => (
+                    <Badge key={a.id} variant="secondary" className="px-3 py-1.5 text-sm">
+                      {a.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ),
+      },
+      {
+        value: 'courses',
+        label: t('专业特色课程'),
+        count: majorData.courses.length,
+        content: (
+          <Card className="border-0 shadow-sm rounded-3xl">
+            <CardContent className="p-6">
+              {majorData.courses.length === 0 ? (
+                <DetailEmpty icon={BookOpen} title={t('暂未关联特色课程')} />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {majorData.courses.map((c) => (
+                    <Badge key={c.id} variant="secondary" className="px-3 py-1.5 text-sm">
+                      {c.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ),
+      },
+    ]
+  }, [isMajor, majorData, t])
+
   if (loading) return <LoadingView />
   if (!brand)
     return <div className="text-center py-12 text-muted-foreground">{t('品牌不存在')}</div>
@@ -190,7 +297,26 @@ export default function AlliancePublicBrandDetailPage() {
     studentsByJob.get(key)!.push(s)
   }
 
-  const infoTab = isEmployer ? (
+
+  const infoTab = isMajor ? (
+    <div className="grid lg:grid-cols-3 gap-6">
+      <DetailSectionCard title={t('品牌介绍')} className="lg:col-span-3">
+        {brand.coverImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brand.coverImage}
+            alt={brand.name}
+            className="w-full max-h-64 object-cover rounded-2xl mb-6"
+          />
+        )}
+        {brand.description ? (
+          <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{brand.description}</p>
+        ) : (
+          <DetailEmpty icon={FileText} title={t('暂无品牌介绍')} />
+        )}
+      </DetailSectionCard>
+    </div>
+  ) : isEmployer ? (
     <div className="grid lg:grid-cols-3 gap-6">
       <DetailSectionCard title={t('企业简介')} className="lg:col-span-2">
         <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
@@ -345,7 +471,7 @@ export default function AlliancePublicBrandDetailPage() {
                                   {p.positionType === 'teaching'
                                     ? t('教学岗位')
                                     : p.positionType === 'enterprise'
-                                      ? t('非教学岗位')
+                                      ? t('企业岗位')
                                       : '-'}
                                 </TableCell>
                                 <TableCell>{salaryText(p)}</TableCell>
@@ -404,6 +530,7 @@ export default function AlliancePublicBrandDetailPage() {
               },
             ]
           : []),
+        ...majorTabs,
       ]}
     />
   )

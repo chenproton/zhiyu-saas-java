@@ -1,30 +1,24 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Pencil, Trash2, ExternalLink } from 'lucide-react'
+import { Pencil, Trash2, ExternalLink, Link2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
-import { allianceBrandApi } from '@/lib/api'
+import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
-import { FormFieldRow } from '@/components/shared/form-field-row'
-import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
 import { useT } from '@/lib/i18n/locale-provider'
-import type { AllianceBrand } from '@/lib/types'
+import {
+  JobBrandRefDialog,
+  JobBrandEditDialog,
+  salaryText,
+  positionTypeLabel,
+} from '@/components/alliance/job-brand-dialogs'
+import type { JobBrand } from '@/lib/types'
 
 const brandType = 'job'
 
@@ -33,181 +27,170 @@ export default function AllianceJobBrandPage() {
   const { toast } = useToast()
   const t = useT()
   const brandLabel = t('岗位品牌')
-  const brandDesc = t('管理优质岗位的品牌级运营')
+  const brandDesc = t('引用职业岗位库或新增独立岗位，维护岗位品牌展示')
+
+  const [refOpen, setRefOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<JobBrand | null>(null)
+
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return []
-      const data = await allianceBrandApi.list({ brandType })
+      const data = await allianceBrandApi.list({ brandType, limit: 200 })
       return data.items || []
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )
 
-  const items = data ?? []
+  const items = useMemo(() => (data ?? []) as JobBrand[], [data])
+
+  const toggleBrandField = async (item: JobBrand, field: 'isPublic' | 'isFeatured', value: boolean) => {
+    try {
+      await allianceBrandApi.update(item.id, { [field]: value } as any)
+      toast({ title: t('已更新') })
+      await refresh()
+    } catch (e: any) {
+      toast({ title: t('更新失败'), description: e.message, variant: 'destructive' })
+    }
+  }
+
+  const onDeleteBrand = async (item: JobBrand) => {
+    try {
+      // 企业岗位为品牌模块私有岗位（/job/positions 不可见），删除品牌时一并删除岗位，避免孤儿数据
+      if (item.positionType === 'enterprise' && item.positionId) {
+        await portalRequest(`/job/positions/${item.positionId}`, { method: 'DELETE' }).catch(
+          () => null,
+        )
+      }
+      await allianceBrandApi.delete(item.id)
+      toast({ title: t('品牌已删除') })
+      await refresh()
+    } catch (e: any) {
+      toast({ title: t('删除失败'), description: e.message, variant: 'destructive' })
+    }
+  }
 
   return (
-    <PortalCrudPage
-      title={t('{brandLabel}管理', { brandLabel })}
-      description={brandDesc}
-      entityLabel={brandLabel}
-      searchPlaceholder={t('搜索品牌名称...')}
-      createButtonLabel={t('新建品牌')}
-      items={items}
-      loading={loading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(filtered, search) =>
-        filtered.filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()))
-      }
-      importConfig={{
-        importType: 'alliance-brands',
-        entityLabel: t('品牌内容'),
-        templateFileName: t('品牌内容批量导入模板.xlsx'),
-      }}
-      colSpan={6}
-      renderTableHeader={() => (
-        <>
-          <TableHead>{t('名称')}</TableHead>
-          <TableHead>{t('状态')}</TableHead>
-          <TableHead>{t('推荐')}</TableHead>
-          <TableHead>{t('公开')}</TableHead>
-          <TableHead>{t('浏览')}</TableHead>
-          <TableHead>{t('操作')}</TableHead>
-        </>
-      )}
-      renderTableRow={(item: any, actions: any) => (
-        <>
-          <TableCell className="font-medium">{item.name}</TableCell>
-          <TableCell>
-            <StatusBadge status={item.status} />
-          </TableCell>
-          <TableCell>{item.isFeatured ? t('是') : t('否')}</TableCell>
-          <TableCell>{item.isPublic ? t('是') : t('否')}</TableCell>
-          <TableCell>{item.viewCount}</TableCell>
-          <TableRowActions>
-            <Link href={`/portal/apps/alliance/brands/${item.id}`}>
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                {t('查看')}
-              </Button>
-            </Link>
-            <Button variant="ghost" size="sm" onClick={actions.edit}>
-              <Pencil className="h-3.5 w-3.5 mr-1" />
-              {t('编辑')}
-            </Button>
-            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}>
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              {t('删除')}
-            </Button>
-          </TableRowActions>
-        </>
-      )}
-      createDefault={() =>
-        ({
-          id: '',
-          name: '',
-          brandType: brandType as any,
-          status: 'draft',
-          description: '',
-          coverImage: '',
-          isPublic: false as any,
-          isFeatured: false as any,
-          viewCount: 0,
-          enabled: true as any,
-        }) as AllianceBrand & { enabled?: boolean }
-      }
-      renderForm={(item: any, setItem: any) => (
-        <div className="space-y-4">
-          <FormFieldRow label={t('名称')} required>
-            <Input
-              value={item.name || ''}
-              onChange={(e: any) => setItem({ ...item, name: e.target.value })}
-            />
-          </FormFieldRow>
-          <FormFieldRow label={t('状态')}>
-            <Select
-              value={item.status || 'draft'}
-              onValueChange={(v: any) => setItem({ ...item, status: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">{t('草稿')}</SelectItem>
-                <SelectItem value="published">{t('已发布')}</SelectItem>
-                <SelectItem value="archived">{t('已归档')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormFieldRow>
-          <FormFieldRow label={t('描述')}>
-            <Textarea
-              value={item.description || ''}
-              onChange={(e: any) => setItem({ ...item, description: e.target.value })}
-              rows={3}
-            />
-          </FormFieldRow>
-          <FormFieldRow label={t('封面图 URL')}>
-            <Input
-              value={item.coverImage || ''}
-              onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })}
-              placeholder="https://..."
-            />
-          </FormFieldRow>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={item.isPublic || false}
-                onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
-              />
-              <Label>{t('公开显示')}</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={item.isFeatured || false}
-                onCheckedChange={(v: any) => setItem({ ...item, isFeatured: v })}
-              />
-              <Label>{t('推荐')}</Label>
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label>{t('岗位 ID')}</Label>
-            <BrandRelationSelect
-              label={t('关联岗位')}
-              value={item.positionId || ''}
-              onChange={(v: any) => setItem({ ...item, positionId: v })}
-              fetchUrl="/job/positions?limit=200"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>{t('专业 ID')}</Label>
-            <BrandRelationSelect
-              label={t('关联专业')}
-              value={item.majorId || ''}
-              onChange={(v: any) => setItem({ ...item, majorId: v })}
-              fetchUrl="/majors?limit=200"
-            />
-          </div>
-        </div>
-      )}
-      getDeleteDescription={(item: any) => (
-        <>{t('确定要删除品牌「{name}」吗？', { name: item.name })}</>
-      )}
-      onSave={async (item: any, isEdit: boolean) => {
-        item.brandType = brandType
-        if (isEdit) {
-          await allianceBrandApi.update(item.id, item)
-        } else {
-          await allianceBrandApi.create(item)
+    <>
+      <PortalCrudPage
+        title={t('{brandLabel}管理', { brandLabel })}
+        description={brandDesc}
+        entityLabel={brandLabel}
+        searchPlaceholder={t('搜索岗位名称...')}
+        items={items}
+        loading={loading}
+        error={error?.message ?? null}
+        onRetry={refresh}
+        filterItems={(filtered, search) =>
+          filtered.filter(
+            (b: JobBrand) =>
+              !search ||
+              (b.name || b.positionName || '').toLowerCase().includes(search.toLowerCase()),
+          )
         }
-        toast({ title: t('品牌已{action}', { action: isEdit ? t('更新') : t('创建') }) })
-        await refresh()
-      }}
-      onDelete={async (item: any) => {
-        await allianceBrandApi.delete(item.id)
-        toast({ title: t('品牌已删除') })
-        await refresh()
-      }}
-      onToggleEnabled={async () => {}}
-    />
+        headerActions={
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditTarget({} as JobBrand)}>
+              <Plus className="h-4 w-4 mr-1" />
+              {t('新增独立岗位')}
+            </Button>
+            <Button size="sm" onClick={() => setRefOpen(true)}>
+              <Link2 className="h-4 w-4 mr-1" />
+              {t('引用职业岗位库')}
+            </Button>
+          </div>
+        }
+        hideCreate
+        colSpan={7}
+        renderTableHeader={() => (
+          <>
+            <TableHead>{t('岗位名称')}</TableHead>
+            <TableHead>{t('类型')}</TableHead>
+            <TableHead>{t('薪资范围')}</TableHead>
+            <TableHead>{t('面向专业')}</TableHead>
+            <TableHead>{t('前台展示')}</TableHead>
+            <TableHead>{t('推荐')}</TableHead>
+            <TableHead>{t('操作')}</TableHead>
+          </>
+        )}
+        renderTableRow={(item: JobBrand) => {
+          const isTeaching = item.positionType === 'teaching'
+          return (
+            <>
+              <TableCell className="font-medium">
+                {item.name || item.positionName || '-'}
+              </TableCell>
+              <TableCell>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
+                    isTeaching ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'
+                  }`}
+                >
+                  {positionTypeLabel(item.positionType, t)}
+                </span>
+              </TableCell>
+              <TableCell>{salaryText(item)}</TableCell>
+              <TableCell className="max-w-56 truncate">
+                {item.majorNames?.join('、') || '-'}
+              </TableCell>
+              <TableCell>
+                <Switch
+                  checked={item.isPublic}
+                  onCheckedChange={(v) => toggleBrandField(item, 'isPublic', v)}
+                />
+              </TableCell>
+              <TableCell>
+                <Switch
+                  checked={item.isFeatured}
+                  onCheckedChange={(v) => toggleBrandField(item, 'isFeatured', v)}
+                />
+              </TableCell>
+              <TableRowActions>
+                <Link href={`/portal/apps/alliance/brands/${item.id}`}>
+                  <Button variant="ghost" size="sm">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    {t('查看')}
+                  </Button>
+                </Link>
+                {!isTeaching && item.positionId && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditTarget(item)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    {t('编辑')}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600"
+                  onClick={() => onDeleteBrand(item)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  {t('删除')}
+                </Button>
+              </TableRowActions>
+            </>
+          )
+        }}
+        getDeleteDescription={(item: any) => (
+          <>{t('确定要删除岗位品牌「{name}」吗？', { name: item.name })}</>
+        )}
+        onDelete={async (item: any) => {
+          await onDeleteBrand(item)
+        }}
+        onToggleEnabled={async () => {}}
+      />
+
+      <JobBrandRefDialog
+        tenantId={tenantId}
+        items={items}
+        onSaved={refresh}
+        open={refOpen}
+        onOpenChange={setRefOpen}
+      />
+      <JobBrandEditDialog
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={refresh}
+      />
+    </>
   )
 }

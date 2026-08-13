@@ -215,3 +215,89 @@ func (s *AllianceStore) GetEmployerBrandByID(ctx context.Context, id, tenantID s
 		LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id
 		WHERE b.id = $1 AND b.tenant_id = $2`, id, tenantID)
 }
+
+// ===== 岗位品牌（brandType=job，LEFT JOIN career_positions 附带关联岗位资料） =====
+
+// jobBrandSelect 岗位品牌查询列（扫描顺序与 ScanJobBrandRows 一致）。
+const jobBrandSelect = `b.id, b.tenant_id, b.brand_type, b.name, b.status, b.is_public, b.is_featured,
+	b.cover_image, b.cover_video, b.description, b.data,
+	b.student_id, b.enterprise_id, b.position_id, b.major_id, b.teacher_id, b.expert_id,
+	b.sort_order, b.view_count, b.created_at, b.updated_at,
+	COALESCE(cp.name, ''), COALESCE(cp.position_type, ''),
+	cp.salary_min, cp.salary_max, COALESCE(maj.major_names, '{}'),
+	COALESCE(cp.status, '')`
+
+// ScanJobBrandRows 扫描岗位品牌行（含关联岗位资料）。
+func (s *AllianceStore) ScanJobBrandRows(rows pgx.Rows) ([]domain.JobBrand, error) {
+	items := make([]domain.JobBrand, 0)
+	for rows.Next() {
+		var b domain.JobBrand
+		var coverImage, coverVideo, description *string
+		var studentID, enterpriseID, positionID, majorID, teacherID, expertID *string
+		var data json.RawMessage
+		if err := rows.Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
+			&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
+			&data, &studentID, &enterpriseID, &positionID, &majorID, &teacherID, &expertID,
+			&b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt,
+			&b.PositionName, &b.PositionType, &b.SalaryMin, &b.SalaryMax,
+			&b.MajorNames, &b.PositionStatus); err != nil {
+			return nil, err
+		}
+		b.CoverImage = coverImage
+		b.CoverVideo = coverVideo
+		b.Description = description
+		b.Data = data
+		b.StudentID = studentID
+		b.EnterpriseID = enterpriseID
+		b.PositionID = positionID
+		b.MajorID = majorID
+		b.TeacherID = teacherID
+		b.ExpertID = expertID
+		items = append(items, b)
+	}
+	return items, rows.Err()
+}
+
+// jobBrandFrom 岗位品牌查询 FROM 片段（品牌 LEFT JOIN 岗位 + 岗位专业名）。
+const jobBrandFrom = `alliance_brands b
+	LEFT JOIN career_positions cp ON cp.id = b.position_id
+	LEFT JOIN LATERAL (
+		SELECT COALESCE(array_agg(m.name ORDER BY cpm.major_id), '{}') AS major_names
+		FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id
+		WHERE cpm.career_position_id = cp.id
+	) maj ON true`
+
+// ListJobBrands 岗位品牌列表（含关联岗位资料，支持名称搜索与分页）。
+func (s *AllianceStore) ListJobBrands(ctx context.Context, tenantID, search string, limit, offset int) ([]domain.JobBrand, int, error) {
+	args := []any{tenantID}
+	where := "b.tenant_id = $1 AND b.brand_type = 'job'"
+	if search != "" {
+		args = append(args, "%"+search+"%")
+		where += " AND (b.name ILIKE $" + Itoa(len(args)) + " OR COALESCE(cp.name, '') ILIKE $" + Itoa(len(args)) + ")"
+	}
+	var total int
+	if err := s.q.QueryRow(ctx, `
+		SELECT COUNT(*) FROM alliance_brands b
+		LEFT JOIN career_positions cp ON cp.id = b.position_id
+		WHERE `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	items, err := queryList(ctx, s.q, s.ScanJobBrandRows, `
+		SELECT `+jobBrandSelect+`
+		FROM `+jobBrandFrom+`
+		WHERE `+where+`
+		ORDER BY b.sort_order ASC, b.created_at DESC
+		LIMIT `+Itoa(limit)+` OFFSET `+Itoa(offset), args...)
+	return items, total, err
+}
+
+// GetJobBrandByID 岗位品牌详情（含关联岗位资料）。
+func (s *AllianceStore) GetJobBrandByID(ctx context.Context, id, tenantID string) (*domain.JobBrand, error) {
+	return queryOne(ctx, s.q, s.ScanJobBrandRows, `
+		SELECT `+jobBrandSelect+`
+		FROM `+jobBrandFrom+`
+		WHERE b.id = $1 AND b.tenant_id = $2`, id, tenantID)
+}

@@ -4,13 +4,6 @@ import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -20,7 +13,6 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { BrandRelationSelect } from '@/components/shared/brand-relation-select'
@@ -84,9 +76,8 @@ export default function AllianceTalentBrandPage() {
             renderTableHeader={() => (
               <>
                 <TableHead>{t('名称')}</TableHead>
-                <TableHead>{t('状态')}</TableHead>
+                <TableHead>{t('前台展示')}</TableHead>
                 <TableHead>{t('推荐')}</TableHead>
-                <TableHead>{t('公开')}</TableHead>
                 <TableHead>{t('浏览')}</TableHead>
                 <TableHead>{t('操作')}</TableHead>
               </>
@@ -94,11 +85,8 @@ export default function AllianceTalentBrandPage() {
             renderTableRow={(item: any, actions: any) => (
               <>
                 <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>
-                  <StatusBadge status={item.status} />
-                </TableCell>
-                <TableCell>{item.isFeatured ? t('是') : t('否')}</TableCell>
                 <TableCell>{item.isPublic ? t('是') : t('否')}</TableCell>
+                <TableCell>{item.isFeatured ? t('是') : t('否')}</TableCell>
                 <TableCell>{item.viewCount}</TableCell>
                 <TableRowActions>
                   <Link href={`/portal/apps/alliance/brands/${item.id}`}>
@@ -123,7 +111,6 @@ export default function AllianceTalentBrandPage() {
                 id: '',
                 name: '',
                 brandType: brandType as any,
-                status: 'draft',
                 description: '',
                 coverImage: '',
                 isPublic: false as any,
@@ -134,26 +121,11 @@ export default function AllianceTalentBrandPage() {
             }
             renderForm={(item: any, setItem: any) => (
               <div className="space-y-4">
-                <FormFieldRow label={t('名称')} required>
+                <FormFieldRow label={t('案例名称')} required>
                   <Input
                     value={item.name || ''}
                     onChange={(e: any) => setItem({ ...item, name: e.target.value })}
                   />
-                </FormFieldRow>
-                <FormFieldRow label={t('状态')}>
-                  <Select
-                    value={item.status || 'draft'}
-                    onValueChange={(v: any) => setItem({ ...item, status: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">{t('草稿')}</SelectItem>
-                      <SelectItem value="published">{t('已发布')}</SelectItem>
-                      <SelectItem value="archived">{t('已归档')}</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </FormFieldRow>
                 <FormFieldRow label={t('描述')}>
                   <Textarea
@@ -175,7 +147,7 @@ export default function AllianceTalentBrandPage() {
                       checked={item.isPublic || false}
                       onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })}
                     />
-                    <Label>{t('公开显示')}</Label>
+                    <Label>{t('前台展示')}</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch

@@ -977,11 +977,47 @@ func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Re
 // ===== 品牌 =====
 
 func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("brandType") == "employer" {
+	switch r.URL.Query().Get("brandType") {
+	case "employer":
 		h.listEmployerBrands(w, r)
+		return
+	case "job":
+		h.listJobBrands(w, r)
 		return
 	}
 	allianceList(w, r, h.Store.Q(), h.Store.ListBrandsConfig(), "查询品牌列表失败")
+}
+
+// listJobBrands 岗位品牌列表（含关联岗位资料，支持名称搜索与分页）。
+func (h *AllianceHandler) listJobBrands(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManageAlliance(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	search := r.URL.Query().Get("search")
+	limit, offset := 20, 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := parseInt(v, 0); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := parseInt(v, 0); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	items, total, err := h.Store.ListJobBrands(r.Context(), tenantID, search, limit, offset)
+	if err != nil {
+		respondServerError(w, r, err, "查询品牌列表失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, ListResponse[domain.JobBrand]{Items: items, Total: total})
 }
 
 // listEmployerBrands 雇主品牌列表（含引用企业资料，支持名称搜索与分页）。
@@ -1037,6 +1073,12 @@ func (h *AllianceHandler) GetBrand(w http.ResponseWriter, r *http.Request) {
 	if item.BrandType == "employer" {
 		if eb, err := h.Store.GetEmployerBrandByID(r.Context(), id, tenantID); err == nil {
 			respondJSON(w, http.StatusOK, eb)
+			return
+		}
+	}
+	if item.BrandType == "job" {
+		if jb, err := h.Store.GetJobBrandByID(r.Context(), id, tenantID); err == nil {
+			respondJSON(w, http.StatusOK, jb)
 			return
 		}
 	}

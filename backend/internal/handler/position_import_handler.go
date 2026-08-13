@@ -461,7 +461,8 @@ func mapPositionType(t string) string {
 		if t == "enterprise" || t == "teaching" || t == "other" {
 			return t
 		}
-		return "other"
+		// 未填写/未知类型默认教学岗位（/job/positions 岗位库仅展示教学岗位）
+		return "teaching"
 	}
 }
 

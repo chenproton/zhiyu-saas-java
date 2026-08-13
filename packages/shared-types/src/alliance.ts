@@ -308,6 +308,16 @@ export interface EmployerBrand extends AllianceBrand {
   enterpriseAddress?: string
 }
 
+// JobBrand 岗位品牌视图（关联岗位资料；教学岗位只读，企业岗位可在品牌模块编辑）
+export interface JobBrand extends AllianceBrand {
+  positionName?: string
+  positionType?: string
+  salaryMin?: number
+  salaryMax?: number
+  majorNames?: string[]
+  positionStatus?: string
+}
+
 // BrandMajorRankConfig 人才画像排名-专业启用配置
 export interface BrandMajorRankConfig {
   majorId: string

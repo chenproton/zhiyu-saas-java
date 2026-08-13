@@ -196,10 +196,6 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
                   {allianceLabel('brandType', brand?.brandType)}
                 </p>
                 <p>
-                  <span className="text-muted-foreground">{t('状态：')}</span>
-                  {allianceLabel('brandStatus', brand?.status)}
-                </p>
-                <p>
                   <span className="text-muted-foreground">{t('推荐：')}</span>
                   {brand?.isFeatured ? t('是') : t('否')}
                 </p>
@@ -300,7 +296,7 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
                         {p.positionType === 'teaching'
                           ? t('教学岗位')
                           : p.positionType === 'enterprise'
-                            ? t('非教学岗位')
+                            ? t('企业岗位')
                             : '-'}
                       </TableCell>
                       <TableCell>{salaryText(p)}</TableCell>
@@ -395,13 +391,6 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
     <AllianceDetailShell
       title={brand?.name || ''}
       subtitle={allianceLabel('brandType', brand?.brandType)}
-      statusBadge={
-        brand ? (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
-            {allianceLabel('brandStatus', brand.status)}
-          </span>
-        ) : undefined
-      }
       backHref="/portal/apps/alliance/brands"
       tabs={tabs}
       defaultTab="info"
@@ -545,7 +534,9 @@ function PositionPickerDialog({
   const { data: positions, loading } = useAsync(
     async () => {
       if (!open || !tenantId) return []
-      const res = await portalRequest<{ items: CareerPosition[] }>('/job/positions?limit=200')
+      const res = await portalRequest<{ items: CareerPosition[] }>(
+        '/job/positions?positionType=teaching&limit=200',
+      )
       return res.items || []
     },
     { deps: [open, tenantId], onError: () => true },
@@ -625,7 +616,7 @@ function PositionPickerDialog({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{p.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {p.positionType === 'teaching' ? t('教学岗位') : t('非教学岗位')} ·{' '}
+                      {p.positionType === 'teaching' ? t('教学岗位') : t('企业岗位')} ·{' '}
                       {salaryText(p as PositionSnapshot)}
                     </p>
                   </div>

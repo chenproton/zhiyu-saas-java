@@ -461,6 +461,17 @@ type EmployerBrand struct {
 	EnterpriseAddress       *string `json:"enterpriseAddress,omitempty"`
 }
 
+// JobBrand 岗位品牌视图（brandType=job 时附带关联岗位资料，教学岗位只读关联，企业岗位可在品牌模块编辑）。
+type JobBrand struct {
+	AllianceBrand
+	PositionName   string   `json:"positionName"`
+	PositionType   string   `json:"positionType"`
+	SalaryMin      *int     `json:"salaryMin,omitempty"`
+	SalaryMax      *int     `json:"salaryMax,omitempty"`
+	MajorNames     []string `json:"majorNames,omitempty"`
+	PositionStatus string   `json:"positionStatus"`
+}
+
 // BrandMajorRankConfig 人才画像排名-专业启用配置（每专业是否展示 + 前 N 名上限）。
 type BrandMajorRankConfig struct {
 	MajorID   string `json:"majorId"`

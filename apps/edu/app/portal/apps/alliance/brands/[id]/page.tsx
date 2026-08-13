@@ -10,6 +10,7 @@ import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { EmployerBrandDetail } from '@/components/alliance/employer-brand-detail'
+import { MajorBrandDetail } from '@/components/alliance/major-brand-detail'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceBrand } from '@/lib/types'
 
@@ -32,6 +33,10 @@ export default function AllianceBrandDetailPage() {
 
   if (brand?.brandType === 'employer' && id) {
     return <EmployerBrandDetail id={id} />
+  }
+
+  if (brand?.brandType === 'major' && id) {
+    return <MajorBrandDetail id={id} />
   }
 
   if (!brand && !loading) {
@@ -63,10 +68,6 @@ export default function AllianceBrandDetailPage() {
               <p>
                 <span className="text-muted-foreground">{t('品牌类型：')}</span>
                 {allianceLabel('brandType', brand?.brandType)}
-              </p>
-              <p>
-                <span className="text-muted-foreground">{t('状态：')}</span>
-                {allianceLabel('brandStatus', brand?.status)}
               </p>
               <p>
                 <span className="text-muted-foreground">{t('推荐：')}</span>
@@ -132,13 +133,6 @@ export default function AllianceBrandDetailPage() {
     <AllianceDetailShell
       title={brand?.name || ''}
       subtitle={allianceLabel('brandType', brand?.brandType)}
-      statusBadge={
-        brand ? (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
-            {allianceLabel('brandStatus', brand.status)}
-          </span>
-        ) : undefined
-      }
       backHref="/portal/apps/alliance/brands"
       tabs={tabs}
       defaultTab="info"

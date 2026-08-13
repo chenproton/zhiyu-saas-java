@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -21,11 +21,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Search, Loader2, Settings2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Search, Loader2, Settings2, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
-import type { BrandMajorRankConfig } from '@/lib/types'
+import type { BrandMajorRankConfig, TalentRankStudent } from '@/lib/types'
 
 type SortKey =
   | 'avgAchievementRate'
@@ -69,6 +69,7 @@ export function TalentRankingPanel({ tenantId }: TalentRankingPanelProps) {
   const [sortKey, setSortKey] = useState<SortKey>('avgAchievementRate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [configOpen, setConfigOpen] = useState(false)
+  const [expandedId, setExpandedId] = useState('')
 
   const { data, loading, refresh } = useAsync(
     async () => {
@@ -204,27 +205,57 @@ export function TalentRankingPanel({ tenantId }: TalentRankingPanelProps) {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    rankedStudents.map((s) => (
-                      <TableRow key={s.studentId} className="border-border">
-                        <TableCell>
-                          <span
-                            className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${rankMedal(s.rank)}`}
-                          >
-                            {s.rank}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-medium">{s.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{s.studentNo}</TableCell>
-                        <TableCell>{s.majorName}</TableCell>
-                        <TableCell>{s.className}</TableCell>
-                        <TableCell>{s.departmentName}</TableCell>
-                        <TableCell>{fmtValue(s.avgAchievementRate, '%')}</TableCell>
-                        <TableCell>{fmtValue(s.avgPositionCompetency, '%')}</TableCell>
-                        <TableCell>{fmtValue(s.avgPositionCompetencyV2, '%')}</TableCell>
-                        <TableCell>{fmtValue(s.avgAbilityCognitionScore)}</TableCell>
-                        <TableCell>{s.positionCount || '-'}</TableCell>
-                      </TableRow>
-                    ))
+                    rankedStudents.map((s) => {
+                      const expanded = expandedId === s.studentId
+                      const hasPositions = (s.positions?.length ?? 0) > 0
+                      return (
+                        <Fragment key={s.studentId}>
+                          <TableRow className="border-border">
+                            <TableCell>
+                              <span
+                                className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${rankMedal(s.rank)}`}
+                              >
+                                {s.rank}
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                                onClick={() =>
+                                  hasPositions && setExpandedId(expanded ? '' : s.studentId)
+                                }
+                              >
+                                {hasPositions && (
+                                  expanded ? (
+                                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                  )
+                                )}
+                                {s.name}
+                              </button>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{s.studentNo}</TableCell>
+                            <TableCell>{s.majorName}</TableCell>
+                            <TableCell>{s.className}</TableCell>
+                            <TableCell>{s.departmentName}</TableCell>
+                            <TableCell>{fmtValue(s.avgAchievementRate, '%')}</TableCell>
+                            <TableCell>{fmtValue(s.avgPositionCompetency, '%')}</TableCell>
+                            <TableCell>{fmtValue(s.avgPositionCompetencyV2, '%')}</TableCell>
+                            <TableCell>{fmtValue(s.avgAbilityCognitionScore)}</TableCell>
+                            <TableCell>{s.positionCount || '-'}</TableCell>
+                          </TableRow>
+                          {expanded && (
+                            <TableRow className="border-border bg-muted/30">
+                              <TableCell colSpan={11} className="px-8 py-3">
+                                <PositionDetailRows student={s} />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      )
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -242,6 +273,63 @@ export function TalentRankingPanel({ tenantId }: TalentRankingPanelProps) {
           refresh()
         }}
       />
+    </div>
+  )
+}
+
+// ── 学生各岗位评估明细（展开行，含 /evaluation/job-ability/results 全部字段） ──
+
+function PositionDetailRows({ student }: { student: TalentRankStudent }) {
+  const t = useT()
+  const positions = student.positions ?? []
+  if (positions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t('暂无岗位评估明细，展开排名指标为空的学生无评估记录')}
+      </p>
+    )
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        {t('该学生 {count} 个岗位的评估明细（排名指标为各岗位平均）', { count: positions.length })}
+      </p>
+      <div className="rounded-lg border border-gray-100 bg-white">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border">
+              <TableHead>{t('岗位名称')}</TableHead>
+              <TableHead>{t('岗位能力达成率')}</TableHead>
+              <TableHead>{t('岗位胜任度')}</TableHead>
+              <TableHead>{t('岗位胜任度（新）')}</TableHead>
+              <TableHead>{t('能力认知得分')}</TableHead>
+              <TableHead>{t('能力点达成')}</TableHead>
+              <TableHead>{t('评级')}</TableHead>
+              <TableHead>{t('评估时间')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {positions.map((p) => (
+              <TableRow key={p.positionId} className="border-border">
+                <TableCell className="font-medium">{p.positionName || '-'}</TableCell>
+                <TableCell>{fmtValue(p.achievementRate, '%')}</TableCell>
+                <TableCell>{fmtValue(p.positionCompetency, '%')}</TableCell>
+                <TableCell>{fmtValue(p.positionCompetencyV2, '%')}</TableCell>
+                <TableCell>{fmtValue(p.abilityCognitionScore)}</TableCell>
+                <TableCell>
+                  {p.achievedAbilityPoints}/{p.totalAbilityPoints}
+                </TableCell>
+                <TableCell>{p.grade || '-'}</TableCell>
+                <TableCell>
+                  {p.evaluatedAt
+                    ? new Date(p.evaluatedAt).toLocaleDateString('zh-CN')
+                    : '-'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }
