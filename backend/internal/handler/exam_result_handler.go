@@ -111,7 +111,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "该考试不允许重复作答")
 			return
 		}
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return
 		}

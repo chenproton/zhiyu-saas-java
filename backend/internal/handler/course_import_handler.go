@@ -168,8 +168,9 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer
 		batchName := col(row, 3)
 		abilityPointNames := splitTrim(col(row, 4), ",")
 
-		majorID := lookupMajorID(ctx, h.Store.Q(), tenantID, majorName)
-		batchID := lookupBatchID(ctx, h.Store.Q(), "lesson_batches", tenantID, batchName)
+		// 统一走传入的 Queryer：未来若将导入包进事务，这些查询需在同一连接内参与回滚
+		majorID := lookupMajorID(ctx, q, tenantID, majorName)
+		batchID := lookupBatchID(ctx, q, "lesson_batches", tenantID, batchName)
 		abilityPointIDs := h.lookupAbilityPoints(ctx, q, tenantID, abilityPointNames)
 
 		var descPtr *string
@@ -396,12 +397,12 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q stor
 	result.Created++
 
 	// 合并 Excel 中填写的知识点/资源与颗粒课自带的知识点/资源
-	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, h.Store.Q(), tenantID, nr.knowledgeNames), baseKnowledgeIDs)
+	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, q, tenantID, nr.knowledgeNames), baseKnowledgeIDs)
 	for _, kpID := range knowledgePointIDs {
 		store.CourseImportInsertNodeKnowledgeBinding(ctx, q, nodeID, kpID)
 	}
 
-	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, h.Store.Q(), tenantID, nr.resourceNames, userID), baseResourceIDs)
+	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, q, tenantID, nr.resourceNames, userID), baseResourceIDs)
 	for _, resID := range resourceIDs {
 		store.CourseImportInsertNodeResourceBinding(ctx, q, tenantID, nodeID, resID)
 	}
