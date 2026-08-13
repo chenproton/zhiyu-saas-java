@@ -282,6 +282,97 @@ func TestAllianceProject_PartialUpdatePreservesFields(t *testing.T) {
 	}
 }
 
+// TestAllianceBrand_PartialUpdatePreservesPublicFlag 品牌详情页保存局部内容（如专业特色课程 data）
+// 不携带 isPublic/isFeatured/sortOrder 时，必须保留既有“前台展示/推荐/排序”状态，
+// 禁止 PUT 全列覆盖把展示开关重置为 false（回归 bug：修改专业内容后前台展示被关闭）。
+func TestAllianceBrand_PartialUpdatePreservesPublicFlag(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	h := newAllianceTestHandler(env)
+	r := chi.NewRouter()
+	r.Post("/alliance/brands", h.CreateBrand)
+	r.Put("/alliance/brands/{id}", h.UpdateBrand)
+	r.Get("/alliance/brands/{id}", h.GetBrand)
+
+	claims := claimsWithRoles("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa21", domain.RoleTeacher)
+	do := func(method, path string, body interface{}) *httptest.ResponseRecorder {
+		var reqBody *strings.Reader
+		if body != nil {
+			b, _ := json.Marshal(body)
+			reqBody = strings.NewReader(string(b))
+		} else {
+			reqBody = strings.NewReader("")
+		}
+		req := httptest.NewRequest(method, path, reqBody)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	create := do(http.MethodPost, "/alliance/brands", map[string]interface{}{
+		"name":       "部分更新测试专业品牌",
+		"brandType":  "major",
+		"isPublic":   true,
+		"isFeatured": true,
+		"sortOrder":  7,
+		"data":       map[string]interface{}{"featuredCourses": []string{"a", "b"}},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create: expected 201, got %d: %s", create.Code, create.Body.String())
+	}
+	var brand domain.AllianceBrand
+	if err := json.Unmarshal(create.Body.Bytes(), &brand); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+	defer env.DB.Exec(context.Background(), "DELETE FROM alliance_brands WHERE id = $1", brand.ID)
+
+	// 模拟专业详情页保存专业内容：仅携带 data
+	upd := do(http.MethodPut, "/alliance/brands/"+brand.ID, map[string]interface{}{
+		"data": map[string]interface{}{"featuredCourses": []string{"a", "b", "c"}},
+	})
+	if upd.Code != http.StatusOK {
+		t.Fatalf("update: expected 200, got %d: %s", upd.Code, upd.Body.String())
+	}
+
+	got := do(http.MethodGet, "/alliance/brands/"+brand.ID, nil)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get: expected 200, got %d: %s", got.Code, got.Body.String())
+	}
+	var after domain.AllianceBrand
+	if err := json.Unmarshal(got.Body.Bytes(), &after); err != nil {
+		t.Fatalf("unmarshal get: %v", err)
+	}
+	if after.IsPublic == nil || !*after.IsPublic {
+		t.Fatalf("isPublic 被部分更新重置: %+v", after.IsPublic)
+	}
+	if after.IsFeatured == nil || !*after.IsFeatured {
+		t.Fatalf("isFeatured 被部分更新重置: %+v", after.IsFeatured)
+	}
+	if after.SortOrder != 7 {
+		t.Fatalf("sortOrder 被部分更新重置: %d", after.SortOrder)
+	}
+	if string(after.Data) != `{"featuredCourses":["a","b","c"]}` {
+		t.Fatalf("data 更新未生效: %s", string(after.Data))
+	}
+
+	// 显式携带 isPublic=false 仍可关闭展示开关（开关语义不受影响）
+	off := do(http.MethodPut, "/alliance/brands/"+brand.ID, map[string]interface{}{"isPublic": false})
+	if off.Code != http.StatusOK {
+		t.Fatalf("update isPublic=false: expected 200, got %d: %s", off.Code, off.Body.String())
+	}
+	got2 := do(http.MethodGet, "/alliance/brands/"+brand.ID, nil)
+	var after2 domain.AllianceBrand
+	if err := json.Unmarshal(got2.Body.Bytes(), &after2); err != nil {
+		t.Fatalf("unmarshal get2: %v", err)
+	}
+	if after2.IsPublic == nil || *after2.IsPublic {
+		t.Fatalf("isPublic=false 未生效: %+v", after2.IsPublic)
+	}
+}
+
 // TestAllianceImport_TeacherPermission 教师可执行 alliance-* 导入（与 alliance 模块权限一致），
 // 学生仍被拒绝；组织架构等基础数据导入仍限系统管理员。
 // 企业/专家导入已随 Partner 平台改造移除，此处以项目导入验证 alliance-* 权限规则。

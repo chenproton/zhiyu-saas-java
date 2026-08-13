@@ -337,6 +337,17 @@ func (h *AllianceHandler) brandCRUD() crudConfig[domain.AllianceBrand, domain.Al
 		if t.Status == "" {
 			t.Status = existing.Status
 		}
+		// 展示开关（isPublic 前台展示 / isFeatured 推荐）：请求未携带时保留已有状态，
+		// 防止只改 data 等局部内容的更新把开关重置为 false
+		if t.IsPublic == nil {
+			t.IsPublic = existing.IsPublic
+		}
+		if t.IsFeatured == nil {
+			t.IsFeatured = existing.IsFeatured
+		}
+		if t.SortOrder == 0 {
+			t.SortOrder = existing.SortOrder
+		}
 		if len(t.Data) == 0 {
 			t.Data = existing.Data
 		}

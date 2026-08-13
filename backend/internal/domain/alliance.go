@@ -428,8 +428,8 @@ type AllianceBrand struct {
 	BrandType    string          `json:"brandType"`
 	Name         string          `json:"name"`
 	Status       string          `json:"status"`
-	IsPublic     bool            `json:"isPublic"`
-	IsFeatured   bool            `json:"isFeatured"`
+	IsPublic     *bool           `json:"isPublic"`
+	IsFeatured   *bool           `json:"isFeatured"`
 	CoverImage   *string         `json:"coverImage,omitempty"`
 	CoverVideo   *string         `json:"coverVideo,omitempty"`
 	Description  *string         `json:"description,omitempty"`

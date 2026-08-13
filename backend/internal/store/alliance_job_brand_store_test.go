@@ -53,6 +53,13 @@ func (r *jobBrandFakeRows) Scan(dest ...any) error {
 			}
 		case *bool:
 			*d = row[i].(bool)
+		case **bool:
+			if row[i] == nil {
+				*d = nil
+			} else {
+				v := row[i].(bool)
+				*d = &v
+			}
 		case *time.Time:
 			*d = row[i].(time.Time)
 		case *[]string:
@@ -133,7 +140,7 @@ func TestScanJobBrandRows(t *testing.T) {
 	if enterprise.PositionID == nil || *enterprise.PositionID != "pos2" {
 		t.Errorf("positionId link lost: %+v", enterprise.PositionID)
 	}
-	if !enterprise.IsFeatured || enterprise.IsPublic {
+	if enterprise.IsFeatured == nil || !*enterprise.IsFeatured || enterprise.IsPublic == nil || *enterprise.IsPublic {
 		t.Errorf("brand flags mismatch: featured=%v public=%v", enterprise.IsFeatured, enterprise.IsPublic)
 	}
 	if enterprise.StudentID != nil {
