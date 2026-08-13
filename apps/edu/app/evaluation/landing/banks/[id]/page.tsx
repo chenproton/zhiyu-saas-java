@@ -32,6 +32,11 @@ import { formatDate } from '@/lib/format-utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useAuth } from '@/components/auth-provider'
+import { bankSnapshotQuestions, mergeBankSnapshot } from '@/lib/snapshot-converters'
+
+/** 教师/管理员预览 draft 走 live 多接口（文档 8.5）；学生等角色走题库快照 bundle */
+const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 const questionTypeLabels = QUESTION_TYPE_LABELS
 
@@ -97,6 +102,9 @@ export default function BankDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const { activeRoleCode, loading: authLoading } = useAuth()
+  // 教师/管理员预览 draft 走 live（原路径）；学生等角色走题库快照 bundle
+  const isEditorPreview = !!activeRoleCode && EDITOR_PREVIEW_ROLES.includes(activeRoleCode)
 
   const [bank, setBank] = useState<QuestionBank | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
@@ -107,8 +115,46 @@ export default function BankDetailPage() {
   const [knowledgePointMap, setKnowledgePointMap] = useState<Record<string, string>>({})
   const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
+  // 快照 bundle 路径（学生等）：题库主表+题目来自 getSnapshot；live get 仅补 creatorName/updatedAt 元数据
   useEffect(() => {
-    if (!id) return
+    if (!id || authLoading || isEditorPreview) return
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([
+          Promise.all([
+            questionBankApi.getSnapshot(id),
+            questionBankApi.get(id).catch(() => null),
+          ])
+            .then(([snap, live]) => {
+              setBank(mergeBankSnapshot(live, snap.question_bank))
+              setQuestions(bankSnapshotQuestions(snap))
+            })
+            .catch(() => {
+              setBank(null)
+              setQuestions([])
+            }),
+          knowledgeApi
+            .list({ limit: 1000 })
+            .then((res: { items: KnowledgePoint[] }) => {
+              const map: Record<string, string> = {}
+              res.items.forEach((kp) => {
+                map[kp.id] = kp.name
+              })
+              setKnowledgePointMap(map)
+            })
+            .catch((err) => reportError(err, '加载知识点字典')),
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [id, authLoading, isEditorPreview])
+
+  // live 路径（教师/管理员预览）：保持原多接口组装
+  useEffect(() => {
+    if (!id || authLoading || !isEditorPreview) return
     const fetchData = async () => {
       setLoading(true)
       try {
@@ -136,7 +182,7 @@ export default function BankDetailPage() {
       }
     }
     fetchData()
-  }, [id])
+  }, [id, authLoading, isEditorPreview])
 
   const questionTypes = useMemo(() => {
     const types = new Set(questions.map((q) => q.type))

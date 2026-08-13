@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { computeTotalScore } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import { examApi, examResultApi, examUsageApi } from '@/lib/api'
+import type { ExamSnapshot } from '@/lib/api'
 import type { ExamResult } from '@/lib/types'
 import {
   QuestionGradingCard,
@@ -32,6 +33,25 @@ import { useT } from '@/lib/i18n/locale-provider'
 function getInitials(name: string): string {
   if (!name || name === '未知') return '?'
   return name.slice(0, 2).toUpperCase()
+}
+
+// 试卷快照行字段为 snake_case，映射为页面使用的题目形状
+function examFromSnapshot(snap: ExamSnapshot): any {
+  return {
+    id: snap.exam.id,
+    name: snap.exam.name,
+    totalScore: snap.exam.total_score ?? 0,
+    questions: (snap.exam_questions || []).map((q) => ({
+      id: q.id,
+      questionId: q.question_id || q.id,
+      type: q.type,
+      content: q.content,
+      options: q.options,
+      answer: q.answer,
+      analysis: q.analysis,
+      score: q.score ?? 0,
+    })),
+  }
 }
 
 export default function DailyExamGradingPage() {
@@ -73,8 +93,12 @@ export default function DailyExamGradingPage() {
         const usage = await examUsageApi.get(res.examUsageId).catch(() => null)
         setUsageName(usage?.name || '')
         if (usage) {
-          const examData = await examApi.get(usage.examId).catch(() => null)
-          setExam(examData)
+          // 版本口径：优先成绩行 version（交卷时服务端盖章），回退安排固化的 examVersion，再空缺省最新快照
+          const examVersion = res.version || usage.examVersion || undefined
+          const snap = await examApi
+            .getSnapshot(usage.examId, examVersion ? { version: examVersion } : undefined)
+            .catch(() => null)
+          setExam(snap ? examFromSnapshot(snap) : null)
         }
       } catch (e) {
         reportError(e, '加载评分详情')

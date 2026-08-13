@@ -29,6 +29,8 @@ export interface WorkspaceScheduleEvent {
   description?: string
   scenarioId?: string
   courseId?: string
+  /** 排课 stamp 的资源版本（考试事件为 examVersion），前端拼 ?v= 用 */
+  resourceVersion?: string
 }
 
 export interface WorkspaceStats {
@@ -73,6 +75,8 @@ export interface WorkspaceCourse {
   status: '进行中' | '未开始' | '已完成'
   nextTask?: string
   nextDeadline?: string
+  /** 学生班级已发布排课的课程资源版本（文档 5.3 下发），前端拼 ?v= 用 */
+  resourceVersion?: string
 }
 
 export interface WorkspaceSceneTask {
@@ -87,6 +91,8 @@ export interface WorkspaceSceneTask {
   score?: number
   totalScore: number
   difficulty: '简单' | '中等' | '困难'
+  /** 学生班级已发布排课的场景资源版本（文档 5.3 下发），前端拼 ?v= 用 */
+  resourceVersion?: string
 }
 
 export interface WorkspaceExam {

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { ExamCenterItem } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
+import { examHref } from '@/lib/learn-links'
 import { cn } from '@/lib/utils'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -39,7 +40,8 @@ export function ExamCenterCard({
   }
   const finished = item.status === 'finished'
   const canEnter = item.participatable && !item.submitted && !finished
-  const entryHref = `/evaluation/landing/exams/${item.examId}?usage=${item.id}`
+  // 试卷版本由作答页按 usage.examVersion 服务端解析（考试安排 stamp），链接只带 usage
+  const entryHref = examHref(item.examId, { usage: item.id })
 
   return (
     <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">

@@ -17,6 +17,7 @@ import { StatusBadge } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
 import { portalApi, jobAbilityResultApi } from '@/lib/api'
 import type { WorkspaceExam, JobAbilityResult } from '@/lib/types'
+import { examHref } from '@/lib/learn-links'
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/format-utils'
 import {
@@ -276,9 +277,8 @@ export function AssessmentTab() {
                         <Button size="sm" variant="ghost" className="text-[10px] h-7 px-2" asChild>
                           <Link
                             href={
-                              exam.examId
-                                ? `/evaluation/landing/exams/${exam.examId}?usage=${exam.id}`
-                                : '#'
+                              // 试卷版本由作答页按 usage.examVersion 服务端解析，链接只带 usage
+                              exam.examId ? examHref(exam.examId, { usage: exam.id }) : '#'
                             }
                           >
                             {exam.status === '已完成' ? t('查看') : t('进入')}

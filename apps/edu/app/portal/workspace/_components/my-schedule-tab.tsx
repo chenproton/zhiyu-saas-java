@@ -6,6 +6,7 @@ import { useAsync } from '@zhiyu/ui'
 import { ScheduleGrid } from '@/components/shared/schedule-grid'
 import { myScheduleApi, periodSlotApi } from '@/lib/api'
 import type { AffairsTerm, PeriodSlot, ScheduleEntry } from '@/lib/types'
+import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface MyScheduleTabProps {
@@ -39,11 +40,14 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
 
   const getEntryHref = (entry: ScheduleEntry) => {
     if (entry.type === 'scene' && entry.scenarioId) {
-      return role === 'student' ? `/scene/landing/${entry.scenarioId}` : '/evaluation/scene-results'
+      // 学生入口带排课 stamp 的 resourceVersion（?v=），按班级绑定版本读快照
+      return role === 'student'
+        ? sceneLandingHref(entry.scenarioId, entry.resourceVersion)
+        : '/evaluation/scene-results'
     }
     if (entry.type === 'traditional' && entry.courseId) {
       return role === 'student'
-        ? `/lesson/landing/${entry.courseId}`
+        ? lessonLandingHref(entry.courseId, entry.resourceVersion)
         : `/evaluation/lesson-results?courseId=${entry.courseId}`
     }
     return undefined

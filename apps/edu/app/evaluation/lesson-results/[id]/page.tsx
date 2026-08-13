@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast, EmptyState } from '@zhiyu/ui'
-import { courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
+import { courseApi, courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel } from '@/lib/hybrid-eval'
@@ -56,9 +56,24 @@ export default function LessonResultDetailPage() {
         const user = (userRes.items || []).find((u: any) => u.id === res.evaluateeId)
         if (user) setStudentName(user.name || t('未知'))
         try {
+          // courseId 沿用现有推导路径（结果行不含 courseId，需经节点反查）；
+          // 节点名按 result.version 从课程快照取，快照缺档回退 live 节点名（兼容历史数据）。
           const node = await courseNodeApi.get(res.nodeId)
+          const cid = node.courseId || ''
+          setCourseId(cid)
           setNodeName(node.name || res.nodeId)
-          setCourseId(node.courseId || '')
+          if (cid) {
+            try {
+              const snap = await courseApi.getSnapshot(
+                cid,
+                res.version ? { version: res.version } : undefined,
+              )
+              const snapNode = (snap.system_course_nodes || []).find((n) => n.id === res.nodeId)
+              if (snapNode?.name) setNodeName(snapNode.name)
+            } catch {
+              /* 快照缺档保留 live 节点名 */
+            }
+          }
         } catch {
           setNodeName(res.nodeId)
         }

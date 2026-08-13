@@ -29,13 +29,23 @@ import {
   knowledgeApi,
 } from '@/lib/api'
 import { fetchAllPages } from '@zhiyu/api-client'
-import type { Course, KnowledgePoint } from '@/lib/types'
+import type { Course, CourseSnapshot, KnowledgePoint } from '@/lib/types'
 import type {
   SystemCourseNode,
   KnowledgePoint as NodeKnowledgePoint,
   NodeResource,
 } from '@/lib/types/lesson-source'
 import type { NodeEvaluationResult, HybridNodeModule } from '@zhiyu/api-client'
+import { examHref, lessonLandingHref } from '@/lib/learn-links'
+import {
+  courseSnapshotHybridModules,
+  courseSnapshotNodes,
+  mergeCourseSnapshot,
+  snapshotKnowledgeMap,
+} from '@/lib/snapshot-converters'
+
+/** 教师/管理员预览 draft 走 live 多接口（文档 8.5）；学生等角色走单次快照 bundle */
+const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 /* ---------- page ---------- */
 
@@ -44,13 +54,17 @@ export default function LessonLearnPage() {
   const searchParams = useSearchParams()
   const id = params.id as string
   const targetNodeId = searchParams.get('node')
+  const versionParam = searchParams.get('v') || undefined
   const t = useT()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, activeRoleCode, loading: authLoading } = useAuth()
+  // 教师/管理员预览 draft 走 live（原路径）；学生等角色走单次快照 bundle
+  const isEditorPreview = !!activeRoleCode && EDITOR_PREVIEW_ROLES.includes(activeRoleCode)
 
   // 节点测评结果加载请求序号：快速切换节点时丢弃过期响应
   const nodeResultSeqRef = useRef(0)
   const [course, setCourse] = useState<Course | null>(null)
+  const [snapshot, setSnapshot] = useState<CourseSnapshot | null>(null)
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [loading, setLoading] = useState(true)
   const [activeNodeId, setActiveNodeId] = useState<string | null>(targetNodeId || null)
@@ -61,9 +75,42 @@ export default function LessonLearnPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [granularCourseMap, setGranularCourseMap] = useState<Map<string, Course>>(new Map())
 
+  // 快照 bundle 路径（学生等）：单次 getSnapshot，节点/混合模块/知识点映射全部从 bundle 组装
   useEffect(() => {
     ;(async () => {
-      if (!id) return
+      if (!id || authLoading || isEditorPreview) return
+      setLoading(true)
+      try {
+        const snap = await courseApi.getSnapshot(id, { version: versionParam })
+        setSnapshot(snap)
+        setCourse(mergeCourseSnapshot(null, snap.course))
+        const list = courseSnapshotNodes(snap).sort((a, b) => (a.order || 0) - (b.order || 0))
+        setNodes(list)
+        setKnowledgeMap(snapshotKnowledgeMap(snap.knowledge_points))
+        if (snap.course.type === 'hybrid') {
+          setHybridModules(courseSnapshotHybridModules(snap))
+        }
+        setActiveNodeId((prev) => {
+          if (targetNodeId && list.find((n) => n.id === targetNodeId)) {
+            return targetNodeId
+          }
+          if (list.length > 0 && !prev) {
+            return list[0].id
+          }
+          return prev
+        })
+      } catch {
+        setCourse(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [id, authLoading, isEditorPreview, versionParam, targetNodeId])
+
+  // live 路径（教师/管理员预览）：保持原多接口组装
+  useEffect(() => {
+    ;(async () => {
+      if (!id || authLoading || !isEditorPreview) return
       setLoading(true)
       try {
         const c = await courseApi.get(id)
@@ -74,10 +121,10 @@ export default function LessonLearnPage() {
         setLoading(false)
       }
     })()
-  }, [id])
+  }, [id, authLoading, isEditorPreview])
 
   useEffect(() => {
-    if (!id || !course) return
+    if (!id || !course || !isEditorPreview) return
     courseNodeApi
       .list({ courseId: id, limit: 1000 })
       .then((res) => {
@@ -100,7 +147,7 @@ export default function LessonLearnPage() {
         .then((res) => setHybridModules(res.items || []))
         .catch(() => setHybridModules([]))
     }
-  }, [id, course, targetNodeId])
+  }, [id, course, isEditorPreview, targetNodeId])
 
   const hybridModulesByNode = useMemo(() => {
     const map = new Map<string, HybridNodeModule[]>()
@@ -143,7 +190,7 @@ export default function LessonLearnPage() {
   }, [activeNodeId, user?.id, toast, t])
 
   useEffect(() => {
-    if (!id || !course || course.type === 'hybrid') return
+    if (!id || !course || !isEditorPreview || course.type === 'hybrid') return
     Promise.all([
       fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize })).catch(() => [] as KnowledgePoint[]),
       courseApi
@@ -162,7 +209,7 @@ export default function LessonLearnPage() {
         reportError(err, '加载知识点/颗粒课数据')
         toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, course, toast, t])
+  }, [id, course, isEditorPreview, toast, t])
 
   /* ---------- hybrid eval submit state ---------- */
   const [hybridSubmitOpen, setHybridSubmitOpen] = useState(false)
@@ -227,13 +274,18 @@ export default function LessonLearnPage() {
     const examId = m.methodKey === 'paper' ? m.resourceConfig?.paperId : m.resourceConfig?.examId
     const usageId = m.resourceConfig?.usageId
     if (!examId) return undefined
-    return `/evaluation/landing/exams/${examId}?node=${activeNodeId}&method=${m.methodKey}&usage=${usageId || ''}&course=${id}`
+    // 考试作答页只消费 node/method/usage/course；试卷版本由对端按 usage.examVersion 解析
+    return examHref(examId, { node: activeNodeId, method: m.methodKey, usage: usageId, course: id })
   }
+
+  // 页面加载使用的课程版本（URL ?v= 优先，缺省取 bundle/live 主表版本）；提交时作 expectedVersion 提示
+  const pageVersion = versionParam || snapshot?.course.version || course?.version || undefined
 
   const handleSubmitMethod = async (payload: EvalMethodSubmitPayload) => {
     if (!user?.id || !activeNodeId) return
     await nodeEvaluationResultApi.submit({
       nodeId: activeNodeId,
+      expectedVersion: pageVersion,
       methodKey: payload.methodKey,
       evaluateeId: user.id,
       maxScore: payload.maxScore,
@@ -252,6 +304,7 @@ export default function LessonLearnPage() {
     const compositeKey = `${hybridActiveModuleKey}:${payload.methodKey}`
     await nodeEvaluationResultApi.submit({
       nodeId: activeNodeId,
+      expectedVersion: pageVersion,
       methodKey: compositeKey,
       evaluateeId: user.id,
       maxScore: payload.maxScore,
@@ -267,7 +320,7 @@ export default function LessonLearnPage() {
       loading={loading}
       notFound={!course}
       entityName={course?.name}
-      detailHref={`/lesson/landing/${id}`}
+      detailHref={lessonLandingHref(id, pageVersion)}
       backHref="/lesson/landing"
       units={units}
       activeUnitId={activeNodeId}

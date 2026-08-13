@@ -38,10 +38,21 @@ import { LessonKnowledgeGraph } from '@/components/lesson/student/knowledge-grap
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import { useT } from '@/lib/i18n/locale-provider'
+import { useAuth } from '@/components/auth-provider'
+import { lessonLearnHref } from '@/lib/learn-links'
+import {
+  courseSnapshotCourseResources,
+  courseSnapshotNodes,
+  mergeCourseSnapshot,
+  snapshotKnowledgeMap,
+} from '@/lib/snapshot-converters'
 import {
   ResourcePreviewModal,
   usePreviewResources,
 } from '@/components/shared/resource-preview-modal'
+
+/** 教师/管理员读 landing 仍为 live（可预览 draft，文档 8.5）；学生等角色走快照 bundle */
+const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 const SYSTEM_TABS = [
   { value: 'nodes', label: '课程目录', icon: ListChecks },
@@ -98,6 +109,10 @@ export default function CourseDetailPage() {
   const searchParams = useSearchParams()
   const t = useT()
   const highlightNodeId = searchParams.get('node')
+  const versionParam = searchParams.get('v') || undefined
+  const { activeRoleCode, loading: authLoading } = useAuth()
+  // 教师/管理员预览 draft 走 live 多接口（原路径）；学生等角色走单次快照 bundle
+  const isEditorPreview = !!activeRoleCode && EDITOR_PREVIEW_ROLES.includes(activeRoleCode)
 
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
@@ -111,8 +126,36 @@ export default function CourseDetailPage() {
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
+  // 快照 bundle 路径（学生等）：单次 getSnapshot 取内容 + courseApi.get 补动态元数据（创建人/更新时间/专业名）
   useEffect(() => {
-    if (!id) return
+    if (!id || authLoading || isEditorPreview) return
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const [snap, live] = await Promise.all([
+          courseApi.getSnapshot(id, { version: versionParam }),
+          courseApi.get(id).catch(() => null),
+        ])
+        if (cancelled) return
+        setCourse(mergeCourseSnapshot(live, snap.course))
+        setNodes(courseSnapshotNodes(snap))
+        setResources(courseSnapshotCourseResources(snap))
+        setKnowledgeMap(snapshotKnowledgeMap(snap.knowledge_points))
+      } catch {
+        if (!cancelled) setCourse(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [id, authLoading, isEditorPreview, versionParam])
+
+  // live 路径（教师/管理员预览）：保持原多接口组装
+  useEffect(() => {
+    if (!id || authLoading || !isEditorPreview) return
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -128,10 +171,10 @@ export default function CourseDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, authLoading, isEditorPreview])
 
   useEffect(() => {
-    if (!id || !course) return
+    if (!id || !course || !isEditorPreview) return
 
     courseNodeApi
       .list({ courseId: id, limit: 1000 } as any)
@@ -150,7 +193,7 @@ export default function CourseDetailPage() {
         setKnowledgeMap(m)
       })
       .catch(() => setKnowledgeMap(new Map()))
-  }, [id, course])
+  }, [id, course, isEditorPreview])
 
   // 从考试页返回时高亮并定位到对应节点
   useEffect(() => {
@@ -193,6 +236,8 @@ export default function CourseDetailPage() {
   const tree = useMemo(() => buildTree(nodes), [nodes])
 
   const diff = SCENE_DIFFICULTY[course?.difficulty ?? 3] || SCENE_DIFFICULTY[3]
+  // 页面加载使用的资源版本：URL ?v= 优先，缺省取 bundle/live 主表版本；用于学习入口链接续传
+  const pageVersion = versionParam || course?.version || undefined
 
   function getNodeEvalMethods(node: SystemCourseNode) {
     const evalData = (node.evalData as any) || {}
@@ -682,7 +727,7 @@ export default function CourseDetailPage() {
 
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
                       {!isGranular && (
-                        <Link href={`/lesson/landing/${id}/learn`}>
+                        <Link href={lessonLearnHref(id, { version: pageVersion })}>
                           <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
                             <PlayCircle className="w-4 h-4 mr-1.5" /> {t('开始学习')}
                           </Button>

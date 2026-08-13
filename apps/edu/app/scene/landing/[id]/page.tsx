@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   PlayCircle,
   ListChecks,
@@ -60,6 +60,19 @@ import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
 import { useT } from '@/lib/i18n/locale-provider'
 import { fetchAllPages } from '@zhiyu/api-client'
+import { useAuth } from '@/components/auth-provider'
+import { sceneLearnHref } from '@/lib/learn-links'
+import {
+  mergeScenarioSnapshot,
+  scenarioSnapshotAbilityDomainMap,
+  scenarioSnapshotTask,
+  snapshotAbilityMap,
+  snapshotKnowledgeMap,
+  snapshotResourceMap,
+} from '@/lib/snapshot-converters'
+
+/** 教师/管理员读 landing 仍为 live（可预览 draft，文档 8.5）；学生等角色走快照 bundle */
+const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 const TABS = [
   { value: 'tasks', label: '任务概览', icon: ListChecks },
@@ -356,9 +369,14 @@ export default function SceneDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const versionParam = searchParams.get('v') || undefined
+  const { activeRoleCode, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const t = useT()
   const tabsRef = useRef<HTMLDivElement>(null)
+  // 教师/管理员预览 draft 走 live 多接口（原路径）；学生等角色走单次快照 bundle
+  const isEditorPreview = !!activeRoleCode && EDITOR_PREVIEW_ROLES.includes(activeRoleCode)
 
   const taskTypeLabels: Record<string, string> = {
     assessment: t('考核'),
@@ -378,8 +396,35 @@ export default function SceneDetailPage() {
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [mobileAccessOpen, setMobileAccessOpen] = useState(false)
 
+  // 快照 bundle 路径（学生等）：单次 getSnapshot 取内容 + scenarioApi.get 补动态元数据（创建人/更新时间/浏览数/行业名）
   useEffect(() => {
-    if (!id) return
+    if (!id || authLoading || isEditorPreview) return
+    ;(async () => {
+      setLoading(true)
+      try {
+        const [snap, live] = await Promise.all([
+          scenarioApi.getSnapshot(id, { version: versionParam }),
+          scenarioApi.get(id).catch(() => null),
+        ])
+        setScenario(mergeScenarioSnapshot(live, snap.scenario))
+        setTasks(snap.scenario_tasks.map(scenarioSnapshotTask))
+        setAllResourceMap(snapshotResourceMap(snap.resource_library))
+        setKnowledgeMap(snapshotKnowledgeMap(snap.knowledge_points))
+        setAbilityMap(snapshotAbilityMap(snap.ability_points))
+        setAbilityDomainMap(scenarioSnapshotAbilityDomainMap(snap))
+        // bundle 知识点不含 granularLessonIds（连带颗粒课链接仅 live 路径有），图谱 courseMap 置空
+        setCourseMap(new Map())
+      } catch {
+        setScenario(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [id, authLoading, isEditorPreview, versionParam])
+
+  // live 路径（教师/管理员预览）：保持原多接口组装
+  useEffect(() => {
+    if (!id || authLoading || !isEditorPreview) return
     ;(async () => {
       setLoading(true)
       try {
@@ -391,10 +436,10 @@ export default function SceneDetailPage() {
         setLoading(false)
       }
     })()
-  }, [id])
+  }, [id, authLoading, isEditorPreview])
 
   useEffect(() => {
-    if (!id || !scenario) return
+    if (!id || !scenario || !isEditorPreview) return
 
     // 全量分页拉取：避免列表接口 200 上限导致映射数据缺失
     fetchAllPages((page, pageSize) => taskApi.list({ scenarioId: id, limit: pageSize, offset: page * pageSize }))
@@ -437,10 +482,10 @@ export default function SceneDetailPage() {
         reportError(err, '加载知识点/能力点/颗粒课数据')
         toast({ title: t('部分数据加载失败'), variant: 'destructive' })
       })
-  }, [id, scenario, toast, t])
+  }, [id, scenario, isEditorPreview, toast, t])
 
   useEffect(() => {
-    if (!scenario?.careerPositionId) return
+    if (!scenario?.careerPositionId || !isEditorPreview) return
     abilityApi
       .listBindings({ careerPositionId: scenario.careerPositionId })
       .then((res) => {
@@ -451,7 +496,7 @@ export default function SceneDetailPage() {
         setAbilityDomainMap(map)
       })
       .catch(() => setAbilityDomainMap(new Map()))
-  }, [scenario?.careerPositionId])
+  }, [scenario?.careerPositionId, isEditorPreview])
 
   const assessmentHours = useMemo(
     () =>
@@ -497,6 +542,8 @@ export default function SceneDetailPage() {
   }
 
   const diff = SCENE_DIFFICULTY[scenario?.difficulty ?? 3] || SCENE_DIFFICULTY[3]
+  // 页面加载使用的资源版本：URL ?v= 优先，缺省时取 bundle/live 主表版本；用于学习入口链接续传
+  const pageVersion = versionParam || scenario?.version || undefined
 
   if (loading) {
     return (
@@ -632,7 +679,7 @@ export default function SceneDetailPage() {
                           )}
                         </div>
                         <Link
-                          href={`/scene/landing/${id}/learn?task=${task.id}`}
+                          href={sceneLearnHref(id, { taskId: task.id, version: pageVersion })}
                           className="shrink-0 sm:ml-auto"
                         >
                           <Button
@@ -864,7 +911,7 @@ export default function SceneDetailPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
-                      <Link href={`/scene/landing/${id}/learn`}>
+                      <Link href={sceneLearnHref(id, { version: pageVersion })}>
                         <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
                           <PlayCircle className="w-4 h-4 mr-1.5" /> {t('开始学习')}
                         </Button>

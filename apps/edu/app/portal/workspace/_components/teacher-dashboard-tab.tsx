@@ -37,6 +37,7 @@ import { portalApi, courseApi } from '@/lib/api'
 import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from '@/lib/types'
 import type { WorkspaceClassPlan, WorkspaceClassSession } from '@/lib/types'
+import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { formatDate } from '@/lib/format-utils'
@@ -295,19 +296,19 @@ function getWeeksInMonth(year: number, month: number) {
   return Math.ceil((totalDays + startDay - 1) / 7)
 }
 
-function getCourseUrls(event: TeacherScheduleEvent) {
+function getCourseUrls(event: TeacherScheduleEvent & { resourceVersion?: string }) {
   const isHybrid = event.type !== 'scene'
   if (isHybrid) {
     return {
       isHybrid: true,
       prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
-      learnUrl: event.courseId ? `/lesson/landing/${event.courseId}` : '',
+      learnUrl: event.courseId ? lessonLandingHref(event.courseId, event.resourceVersion) : '',
     }
   }
   return {
     isHybrid: false,
     prepUrl: `${SCENE_PLATFORM_URL}/student_teacher.html?task=task-1-1`,
-    learnUrl: event.scenarioId ? `/scene/landing/${event.scenarioId}` : '',
+    learnUrl: event.scenarioId ? sceneLandingHref(event.scenarioId, event.resourceVersion) : '',
   }
 }
 

@@ -40,6 +40,7 @@ import { HybridGradingDialog } from './hybrid-grading-dialog'
 import { portalApi, courseApi } from '@/lib/api'
 import { SCENE_PLATFORM_URL } from '@/lib/external-links'
 import type { WorkspaceDashboard, WorkspaceClassPlan } from '@/lib/types'
+import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { type PrepAssociationRecord } from '../_data/workspace-teacher-types'
 // 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
@@ -812,7 +813,8 @@ export function TeacherCoursesTab({
                         iconBg: 'bg-gradient-to-br from-primary to-primary/70',
                         badgeBg: 'bg-gradient-to-r from-primary to-primary/70',
                         prepUrl: '/lesson/admin/hybrid/add?id=hybrid-1',
-                        learnUrl: plan.courseId ? `/lesson/landing/${plan.courseId}` : '',
+                        // WorkspaceClassPlan 上游无资源版本字段，链接不带 v（最新快照语义）
+                        learnUrl: plan.courseId ? lessonLandingHref(plan.courseId) : '',
                       }
                     : {
                         bg: 'from-emerald-50 to-teal-50',
@@ -820,7 +822,7 @@ export function TeacherCoursesTab({
                         iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
                         badgeBg: 'bg-gradient-to-r from-emerald-500 to-teal-500',
                         prepUrl: `${SCENE_PLATFORM_URL}/student_teacher.html?task=task-1-1`,
-                        learnUrl: plan.scenarioId ? `/scene/landing/${plan.scenarioId}` : '',
+                        learnUrl: plan.scenarioId ? sceneLandingHref(plan.scenarioId) : '',
                       }
                   return (
                     <div
