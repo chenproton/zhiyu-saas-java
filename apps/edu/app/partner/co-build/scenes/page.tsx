@@ -94,7 +94,7 @@ export default function PartnerCoBuildScenesPage() {
       pagination={list.pagination}
       searchRight={schoolSelector(
         schoolFilter || 'all',
-        (v) => setSchoolFilter(v === 'all' ? '' : v),
+        (v) => { setSchoolFilter(v === 'all' ? '' : v); list.setPage(1) },
         true,
       )}
       colSpan={5}
