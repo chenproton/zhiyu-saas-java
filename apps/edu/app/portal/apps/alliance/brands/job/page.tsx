@@ -104,11 +104,11 @@ export default function AllianceJobBrandPage() {
         renderTableHeader={() => (
           <>
             <TableHead>{t('岗位名称')}</TableHead>
+            <TableHead>{t('前台展示')}</TableHead>
+            <TableHead>{t('推荐')}</TableHead>
             <TableHead>{t('类型')}</TableHead>
             <TableHead>{t('薪资范围')}</TableHead>
             <TableHead>{t('面向专业')}</TableHead>
-            <TableHead>{t('前台展示')}</TableHead>
-            <TableHead>{t('推荐')}</TableHead>
             <TableHead>{t('操作')}</TableHead>
           </>
         )}
@@ -118,6 +118,18 @@ export default function AllianceJobBrandPage() {
             <>
               <TableCell className="font-medium">
                 {item.name || item.positionName || '-'}
+              </TableCell>
+              <TableCell>
+                <Switch
+                  checked={item.isPublic}
+                  onCheckedChange={(v) => toggleBrandField(item, 'isPublic', v)}
+                />
+              </TableCell>
+              <TableCell>
+                <Switch
+                  checked={item.isFeatured}
+                  onCheckedChange={(v) => toggleBrandField(item, 'isFeatured', v)}
+                />
               </TableCell>
               <TableCell>
                 <span
@@ -131,18 +143,6 @@ export default function AllianceJobBrandPage() {
               <TableCell>{salaryText(item)}</TableCell>
               <TableCell className="max-w-56 truncate">
                 {item.majorNames?.join('、') || '-'}
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={item.isPublic}
-                  onCheckedChange={(v) => toggleBrandField(item, 'isPublic', v)}
-                />
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={item.isFeatured}
-                  onCheckedChange={(v) => toggleBrandField(item, 'isFeatured', v)}
-                />
               </TableCell>
               <TableRowActions>
                 <Link href={`/portal/apps/alliance/brands/${item.id}`}>

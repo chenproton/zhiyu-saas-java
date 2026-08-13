@@ -269,9 +269,9 @@ function TeacherBrandSection({
             <thead>
               <tr className="border-b border-gray-100">
                 <TableHead>{t('姓名')}</TableHead>
-                <TableHead>{t('来源')}</TableHead>
                 <TableHead>{t('前台展示')}</TableHead>
                 <TableHead>{t('推荐')}</TableHead>
+                <TableHead>{t('来源')}</TableHead>
                 <TableHead>{t('操作')}</TableHead>
               </tr>
             </thead>
@@ -279,7 +279,6 @@ function TeacherBrandSection({
               {items.map((b) => (
                 <tr key={b.id} className="border-b border-gray-50">
                   <TableCell className="font-medium">{b.name}</TableCell>
-                  <TableCell>{displayInfo(b)}</TableCell>
                   <TableCell>
                     <Switch
                       checked={b.isPublic}
@@ -292,6 +291,7 @@ function TeacherBrandSection({
                       onCheckedChange={(v) => onToggle(b, 'isFeatured', v)}
                     />
                   </TableCell>
+                  <TableCell>{displayInfo(b)}</TableCell>
                   <TableRowActions>
                     <Button
                       variant="ghost"

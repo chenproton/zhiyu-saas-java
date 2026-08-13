@@ -35,6 +35,7 @@ import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { EmployerBrand, CareerPosition } from '@/lib/types'
@@ -488,8 +489,13 @@ function EditInfoButton({ brand, onSaved }: { brand: EmployerBrand; onSaved: () 
                 />
               </FormFieldRow>
             </div>
-            <FormFieldRow label={t('Logo URL')}>
-              <Input value={form.logo || ''} onChange={(e) => setForm({ ...form, logo: e.target.value })} placeholder="https://..." />
+            <FormFieldRow label={t('Logo')}>
+              <SingleImageUpload
+                label={t('Logo')}
+                value={form.logo || ''}
+                onChange={(v) => setForm({ ...form, logo: v })}
+                allowUrlInput={false}
+              />
             </FormFieldRow>
             <FormFieldRow label={t('企业简介')}>
               <Textarea

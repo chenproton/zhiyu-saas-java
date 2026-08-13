@@ -91,12 +91,12 @@ export default function AllianceExpertsPage() {
       renderTableHeader={() => (
         <>
           <TableHead>{t('姓名')}</TableHead>
+          <TableHead>{t('前台展示')}</TableHead>
           <TableHead>{t('头衔')}</TableHead>
           <TableHead>{t('职位')}</TableHead>
           <TableHead>{t('所属企业')}</TableHead>
           <TableHead>{t('行业')}</TableHead>
           <TableHead>{t('状态')}</TableHead>
-          <TableHead>{t('前台展示')}</TableHead>
           <TableHead>{t('操作')}</TableHead>
         </>
       )}
@@ -106,6 +106,13 @@ export default function AllianceExpertsPage() {
             <Link href={`/portal/apps/alliance/experts/${e.id}`} className="hover:underline">
               {e.name}
             </Link>
+          </TableCell>
+          <TableCell>
+            <Switch
+              checked={e.isPublic || false}
+              onCheckedChange={actions.toggle}
+              aria-label={t('前台展示')}
+            />
           </TableCell>
           <TableCell>{e.title || '-'}</TableCell>
           <TableCell>{e.position || '-'}</TableCell>
@@ -117,13 +124,6 @@ export default function AllianceExpertsPage() {
           </TableCell>
           <TableCell>{e.industry || '-'}</TableCell>
           <TableCell>{allianceLabel('expertStatus', e.status)}</TableCell>
-          <TableCell>
-            <Switch
-              checked={e.isPublic || false}
-              onCheckedChange={actions.toggle}
-              aria-label={t('前台展示')}
-            />
-          </TableCell>
           <TableRowActions>
             <Link href={`/portal/apps/alliance/experts/${e.id}`}>
               <Button variant="ghost" size="sm">

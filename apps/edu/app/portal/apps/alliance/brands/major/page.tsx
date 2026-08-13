@@ -110,8 +110,8 @@ export default function AllianceMajorBrandPage() {
       renderTableHeader={() => (
         <>
           <TableHead>{t('专业名称')}</TableHead>
-          <TableHead>{t('专业代码')}</TableHead>
           <TableHead>{t('前台展示')}</TableHead>
+          <TableHead>{t('专业代码')}</TableHead>
           <TableHead>{t('品牌管理')}</TableHead>
           <TableHead>{t('操作')}</TableHead>
         </>
@@ -119,7 +119,6 @@ export default function AllianceMajorBrandPage() {
       renderTableRow={(row: any) => (
         <>
           <TableCell className="font-medium">{row.major.name}</TableCell>
-          <TableCell className="text-muted-foreground">{row.major.code || '-'}</TableCell>
           <TableCell>
             <div className="flex items-center gap-2">
               <Switch
@@ -132,6 +131,7 @@ export default function AllianceMajorBrandPage() {
               )}
             </div>
           </TableCell>
+          <TableCell className="text-muted-foreground">{row.major.code || '-'}</TableCell>
           <TableCell>
             {row.brand ? (
               <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">

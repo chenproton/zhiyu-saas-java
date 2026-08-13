@@ -18,6 +18,7 @@ import { allianceBrandApi, allianceEnterpriseApi, allianceAchievementApi, portal
 import { useToast } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { FormFieldRow } from '@/components/shared/form-field-row'
+import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { useT } from '@/lib/i18n/locale-provider'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type { AllianceBrand } from '@/lib/types'
@@ -60,6 +61,25 @@ export function MajorBrandDetail({ id }: { id: string }) {
     try {
       await allianceBrandApi.update(brand.id, { data: { ...(brand.data || {}), ...next } } as any)
       setBrand({ ...brand, data: { ...(brand.data || {}), ...next } })
+      toast({ title: t('已保存') })
+    } catch (e: any) {
+      toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveDisplayInfo = async () => {
+    if (!brand) return
+    setSaving(true)
+    try {
+      const next = {
+        name: brand.name,
+        coverImage: brand.coverImage,
+        description: brand.description,
+      }
+      await allianceBrandApi.update(brand.id, next as any)
+      setBrand({ ...brand, ...next })
       toast({ title: t('已保存') })
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
@@ -116,16 +136,17 @@ export function MajorBrandDetail({ id }: { id: string }) {
                   onChange={(e) => setBrand({ ...brand!, name: e.target.value })}
                 />
               </FormFieldRow>
-              <FormFieldRow label={t('封面图 URL')}>
-                <Input
+              <FormFieldRow label={t('封面图')}>
+                <SingleImageUpload
+                  label={t('封面图')}
                   value={brand?.coverImage || ''}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     setBrand({
                       ...brand!,
-                      coverImage: e.target.value ? e.target.value : undefined,
+                      coverImage: v || undefined,
                     })
                   }
-                  placeholder="https://..."
+                  allowUrlInput={false}
                 />
               </FormFieldRow>
               <FormFieldRow label={t('品牌介绍')}>
@@ -141,7 +162,7 @@ export function MajorBrandDetail({ id }: { id: string }) {
                 />
               </FormFieldRow>
               <div className="flex justify-end">
-                <Button size="sm" onClick={() => saveData(data)} disabled={saving}>
+                <Button size="sm" onClick={saveDisplayInfo} disabled={saving}>
                   {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                   {t('保存品牌信息')}
                 </Button>

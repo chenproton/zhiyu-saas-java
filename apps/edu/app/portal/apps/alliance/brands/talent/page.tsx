@@ -40,6 +40,16 @@ export default function AllianceTalentBrandPage() {
 
   const items = data ?? []
 
+  const toggleBrandField = async (item: any, field: 'isPublic' | 'isFeatured', value: boolean) => {
+    try {
+      await allianceBrandApi.update(item.id, { [field]: value } as any)
+      toast({ title: t('已更新') })
+      await refresh()
+    } catch (e: any) {
+      toast({ title: t('更新失败'), description: e.message, variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="min-h-full">
       <Tabs defaultValue="ranking" className="w-full">
@@ -86,8 +96,18 @@ export default function AllianceTalentBrandPage() {
             renderTableRow={(item: any, actions: any) => (
               <>
                 <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>{item.isPublic ? t('是') : t('否')}</TableCell>
-                <TableCell>{item.isFeatured ? t('是') : t('否')}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={item.isPublic || false}
+                    onCheckedChange={(v: any) => toggleBrandField(item, 'isPublic', v)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={item.isFeatured || false}
+                    onCheckedChange={(v: any) => toggleBrandField(item, 'isFeatured', v)}
+                  />
+                </TableCell>
                 <TableCell>{item.viewCount}</TableCell>
                 <TableRowActions>
                   <Link href={`/portal/apps/alliance/brands/${item.id}`}>

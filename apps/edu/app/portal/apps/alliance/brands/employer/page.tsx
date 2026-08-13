@@ -231,12 +231,12 @@ export default function AllianceEmployerBrandPage() {
         renderTableHeader={() => (
           <>
             <TableHead>{t('企业名称')}</TableHead>
+            <TableHead>{t('前台展示')}</TableHead>
+            <TableHead>{t('推荐')}</TableHead>
             <TableHead>{t('来源')}</TableHead>
             <TableHead>{t('行业')}</TableHead>
             <TableHead>{t('关联岗位')}</TableHead>
             <TableHead>{t('已招聘学生')}</TableHead>
-            <TableHead>{t('前台展示')}</TableHead>
-            <TableHead>{t('推荐')}</TableHead>
             <TableHead>{t('操作')}</TableHead>
           </>
         )}
@@ -246,18 +246,6 @@ export default function AllianceEmployerBrandPage() {
           return (
             <>
               <TableCell className="font-medium">{item.name}</TableCell>
-              <TableCell>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
-                    isIndependent ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
-                  }`}
-                >
-                  {isIndependent ? t('独立雇主') : t('合作企业')}
-                </span>
-              </TableCell>
-              <TableCell>{item.enterpriseIndustry || info.industry || '-'}</TableCell>
-              <TableCell>{positionsOf(item).length}</TableCell>
-              <TableCell>{hiredStudentsOf(item).length}</TableCell>
               <TableCell>
                 <Switch
                   checked={item.isPublic}
@@ -270,6 +258,18 @@ export default function AllianceEmployerBrandPage() {
                   onCheckedChange={(v) => toggleBrandField(item, 'isFeatured', v)}
                 />
               </TableCell>
+              <TableCell>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
+                    isIndependent ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
+                  }`}
+                >
+                  {isIndependent ? t('独立雇主') : t('合作企业')}
+                </span>
+              </TableCell>
+              <TableCell>{item.enterpriseIndustry || info.industry || '-'}</TableCell>
+              <TableCell>{positionsOf(item).length}</TableCell>
+              <TableCell>{hiredStudentsOf(item).length}</TableCell>
               <TableRowActions>
                 <Link href={`/portal/apps/alliance/brands/${item.id}`}>
                   <Button variant="ghost" size="sm">
