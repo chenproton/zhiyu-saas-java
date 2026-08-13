@@ -145,13 +145,13 @@ func scenarioSchoolTenant(sc *domain.Scenario) string {
 
 // ===== 岗位 =====
 
-// ListPositions 本企业共建岗位列表（可选按学校过滤）。
-func (s *PartnerCoBuildService) ListPositions(ctx context.Context, partnerTenantID string, schoolTenantID *string) ([]domain.PartnerCoBuildPosition, error) {
+// ListPositions 本企业共建岗位列表（可选按学校过滤，支持搜索/分页）。
+func (s *PartnerCoBuildService) ListPositions(ctx context.Context, partnerTenantID string, schoolTenantID *string, search string, limit, offset int) ([]domain.PartnerCoBuildPosition, int, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return s.st.Positions().ListBySourceEnterprise(ctx, ent.ID, schoolTenantID)
+	return s.st.Positions().ListBySourceEnterprise(ctx, ent.ID, schoolTenantID, search, limit, offset)
 }
 
 // GetPosition 共建岗位详情（本企业共建或学校授权资源可见）。
@@ -435,13 +435,13 @@ func (s *PartnerCoBuildService) ListPositionAbilityDomains(ctx context.Context, 
 
 // ===== 场景 =====
 
-// ListScenarios 本企业共建场景列表（可选按学校过滤）。
-func (s *PartnerCoBuildService) ListScenarios(ctx context.Context, partnerTenantID string, schoolTenantID *string) ([]domain.PartnerCoBuildScenario, error) {
+// ListScenarios 本企业共建场景列表（可选按学校过滤，支持搜索/分页）。
+func (s *PartnerCoBuildService) ListScenarios(ctx context.Context, partnerTenantID string, schoolTenantID *string, search string, limit, offset int) ([]domain.PartnerCoBuildScenario, int, error) {
 	ent, err := s.resolveEnterprise(ctx, partnerTenantID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return s.st.Scenarios().ListBySourceEnterprise(ctx, ent.ID, schoolTenantID)
+	return s.st.Scenarios().ListBySourceEnterprise(ctx, ent.ID, schoolTenantID, search, limit, offset)
 }
 
 // GetScenario 共建场景详情（本企业共建或学校授权资源可见）。

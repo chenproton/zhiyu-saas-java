@@ -157,8 +157,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuestion = useCallback(
     async (id: string, data: QuestionFormData) => {
-      await questionApi.update(id, data)
       const q = questions.find((item) => item.id === id)
+      // 补 bankId：后端更新接口按题库归属校验（编辑表单不含该字段，缺省会 400）
+      await questionApi.update(id, { ...data, bankId: q?.bankId } as QuestionFormData)
       if (q) await loadBankQuestions(q.bankId)
     },
     [questions, loadBankQuestions],

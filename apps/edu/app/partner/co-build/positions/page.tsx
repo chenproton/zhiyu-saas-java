@@ -17,6 +17,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { partnerCobuildPositionApi, partnerSchoolApi } from '@/lib/api'
 import type { CoBuildPosition } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
+import { usePagedList } from '@/hooks/use-paged-list'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -42,19 +43,20 @@ export default function PartnerCoBuildPositionsPage() {
   )
   const activeSchools = schoolsData ?? []
 
-  const { data, loading, error, refresh } = useAsync(
-    async () => {
-      if (authLoading || !user) return []
+  const list = usePagedList(
+    async ({ page, limit, search }) => {
+      if (authLoading || !user) return { items: [], total: 0 }
       const res = await partnerCobuildPositionApi.list({
         schoolTenantId: schoolFilter || undefined,
-        limit: 200,
+        search,
+        limit,
+        offset: (page - 1) * limit,
       })
-      return res.items || []
+      return { items: res.items || [], total: res.total ?? 0 }
     },
-    { deps: [authLoading, user?.id, schoolFilter], onError: () => true },
+    [authLoading, user?.id, schoolFilter],
   )
-
-  const positions = data ?? []
+  const positions = list.items
 
   // 编辑一律直接进入编辑页：保存后状态回写草稿，发布由学校端进行（含学校授权资源）
   const schoolSelector = (value: string, onChange: (v: string) => void, includeAll: boolean) => (
@@ -81,12 +83,15 @@ export default function PartnerCoBuildPositionsPage() {
       searchPlaceholder={t('搜索岗位名称...')}
       createButtonLabel={t('新建岗位')}
       items={positions}
-      loading={loading || authLoading}
-      error={error?.message ?? null}
-      onRetry={refresh}
-      filterItems={(items, search) =>
-        items.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()))
-      }
+      loading={list.loading || authLoading}
+      error={list.error?.message ?? null}
+      onRetry={list.refresh}
+      searchValue={list.search}
+      onSearchChange={(v: string) => {
+        list.setSearch(v)
+        list.setPage(1)
+      }}
+      pagination={list.pagination}
       searchRight={schoolSelector(
         schoolFilter || 'all',
         (v) => setSchoolFilter(v === 'all' ? '' : v),

@@ -131,7 +131,7 @@ func crudGet[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudConfi
 			respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
 			return
 		}
-		respondServerError(w, r, err, cfg.NotFoundMsg)
+		respondServerError(w, r, err, "服务器内部错误")
 		return
 	}
 	if cfg.GetOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&item)) {
@@ -169,7 +169,7 @@ func crudUpdate[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 			respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
 			return
 		}
-		respondServerError(w, r, err, cfg.NotFoundMsg)
+		respondServerError(w, r, err, "服务器内部错误")
 		return
 	}
 	if cfg.CheckOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&existing)) {
@@ -236,7 +236,7 @@ func crudDelete[T any, V any](w http.ResponseWriter, r *http.Request, cfg crudCo
 			respondError(w, http.StatusNotFound, cfg.NotFoundMsg)
 			return
 		}
-		respondServerError(w, r, err, cfg.NotFoundMsg)
+		respondServerError(w, r, err, "服务器内部错误")
 		return
 	}
 	if cfg.CheckOwnership && cfg.TenantIDFn != nil && !verifyTenantOwnership(w, r, cfg.TenantIDFn(&existing)) {
