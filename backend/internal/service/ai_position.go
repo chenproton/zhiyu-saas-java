@@ -233,10 +233,26 @@ func (s *AIService) PositionAssist(ctx context.Context, tenantID, userID string,
 
 	result := &PositionAssistResult{Field: field}
 	if err := parsePositionAssistOutput(field, text, result); err != nil {
-		return nil, err
+		// 生成成功但输出不是合法 JSON：追加修复指令重试一次（仅一次，避免连环调用消耗额度）。
+		// 这属于"解析失败修复"，不是对上游失败的无脑重试（见 docs/ai-development.md）。
+		repair := append(messages,
+			ai.Message{Role: "assistant", Content: text},
+			ai.Message{Role: "user", Content: repairPrompt},
+		)
+		text2, usage2, retryErr := s.chatWithJSONModeFallback(ctx, ai.Config{BaseURL: cfg.BaseURL, APIKey: apiKey, Model: cfg.Model}, repair)
+		if retryErr != nil {
+			return nil, retryErr
+		}
+		s.recordUsage(ctx, tenantID, userID, cfg.Model, usage2)
+		if parseErr := parsePositionAssistOutput(field, text2, result); parseErr != nil {
+			return nil, parseErr
+		}
 	}
 	return result, nil
 }
+
+// repairPrompt 解析失败后的修复指令：要求重新只输出 JSON。
+const repairPrompt = "上面的输出不是合法 JSON，请重新输出：只输出一个 JSON 对象（字段名与之前要求完全一致），不要 Markdown 代码块、注释或任何额外文字。"
 
 // chatWithJSONModeFallback 优先以 response_format json_object 请求；
 // 部分 OpenAI 兼容服务不支持该参数（400/422），去掉后重试一次。

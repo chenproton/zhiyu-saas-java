@@ -31,3 +31,51 @@
 6. **流式扩展**：需要流式对话时，在 `ai.Client` 增加 `ChatCompletionStream`（解析 SSE + `http.Flusher` 透传）并新增端点，不得绕过 client 直接手写 SSE 调用上游
 7. **用量落库**：LLM 调用产生的 token 用量已由 `AIService.Chat` 自动写入 `ai_usage_logs`（上游成功后 best-effort，失败不影响响应），复用 Chat 的新 AI 功能无需额外处理；若有绕过 Chat 的新调用路径，也必须自行记录用量
 8. 前端调用经 `packages/api-client` 新增方法（`portalRequest` 等）；收到 412 统一引导到 `/portal/apps/system/tenant` 完成配置
+9. **修复重试（仅限解析失败）**：上游**成功返回**但输出不是合法 JSON 时，允许追加一次修复指令重试（"只输出 JSON，不要代码块/注释"），仅一次。这不算"对上游失败的重试"（约定 5 禁止的是对 4xx/5xx/超时等失败的无脑重试）；修复重试同样要记录两次调用各自的用量
+
+## 岗位 AI 辅助编写（可直接复用的样板）
+
+> 端到端参考实现：岗位编辑页（`/job/positions/{id}/edit`）的「AI 辅助编写」三步流程。新增"AI 辅助表单填写"类功能时，直接复用本样板的前端三件套与后端模式。
+
+### 链路总览
+
+```
+前端 hooks（lib/ai/use-ai-assist.ts）
+  → positionAiAssist(field, position, signal)（packages/api-client/src/api/ai.ts，支持 AbortSignal 取消）
+  → POST /ai/position-assist（handler: ai_handler.go PositionAssist；校验 field 枚举、职责/要求 ≤ 50 条、单条 ≤ 8000 字符）
+  → service.AIService.PositionAssist（ai_position.go）：
+       positionAssistPrompt 纯函数构造提示词（系统提示 + 岗位上下文 + 任务 + JSON schema）
+       → chatWithJSONModeFallback（json_object 优先，400/422 去参重试）
+       → extractJSONObject 容忍代码块/噪声 → 按 field 解析校验非空
+       → 解析失败追加修复指令重试一次（见约定 9）
+       → best-effort recordUsage
+```
+
+### 前端三件套（`apps/edu/lib/ai/use-ai-assist.ts`）
+
+三个 hook 独立可组合，岗位三步流程均已接入：
+
+1. **`useAiNotConfigured`**：`markNotConfigured(err)` 命中 412（`err.message === 'ai_not_configured'`）返回 true 并打开配置引导弹窗（配合共享组件 `apps/edu/components/shared/ai-not-configured-dialog.tsx` 渲染，引导到 `/portal/apps/system/tenant`）。多任务流水线中命中一次即中止后续任务，避免重复弹窗。
+2. **`useAiFieldWriter(keys, onUpdate, snapshotField)`**：字段级 AI 直接写入保护。每个字段在被 AI 首次覆盖前记录 1 级快照，提供 `writeField` / `restoreField`（逐字段恢复上版）/ `restoreAll`（全部撤销）/ `updatedCount` / `flashKey`（写入高亮，短暂紫色闪烁提示改动位置）。多次覆盖不更新历史，保证「恢复上版」回到 AI 介入前的原值。
+3. **`useAiPipeline({ steps, request, onError })`**：串行 AI 任务流水线。`run(tasks, { showDialog })` 按顺序执行任务（`{ id, meta, onStart, apply }`），维护进度弹窗状态（`open/phase/progress/runningId/isRunning`）；**`request` 必须透传 `signal`**（AbortController），关闭弹窗即取消（`handleOpenChange`），取消/关闭 UI 后请求不再继续写字段；`onError` 返回 true 中止后续任务、false 继续；返回 `{ completedAll, success }` 供部分成功提示。
+
+### 使用方式（新 AI 表单功能）
+
+1. **后端**：新 handler + service 方法，`positionAssistPrompt` 风格写纯函数提示词构造（输入上下文只放业务字段，JSON schema 写清楚枚举，如掌握程度五级）；解析函数按 field 分派、空结果视为失败；按约定 2 做错误映射、按约定 4 设请求上限。
+2. **前端**：
+   - 组一个 `AIPositionAssistField` 风格的目标字段枚举（一个 LLM 调用返回一个 JSON，可覆盖多个字段，如 polish 一次返回 4 个基础字段）；
+   - `useAiPipeline` 组装串行流程（一键入口），单字段"重新生成"按钮同样用 `run([单任务], { showDialog: false })` 复用同一套错误/取消/loading 语义；
+   - `useAiFieldWriter` 接管所有 AI 会写入的字段，配合顶部"已更新 N 项/全部撤销"横幅；
+   - 单字段生成结果逐项校验，AI 未生成/不合法的字段**明确 toast 提示保留原值**，禁止静默跳过；
+   - `useAiNotConfigured` + `AiNotConfiguredDialog` 处理 412。
+3. **测试**：提示词/解析为纯函数必须单测（参考 `ai_position_test.go`）；mock 上游用 `httptest`（参考 `TestPositionAssistRepairRetry`：首次返回非 JSON → 验证修复重试 + 两次用量落库）。
+
+### 建议与踩坑记录
+
+- **写保护优先于"预览-确认"**：AI 直接写入 + 逐字段恢复上版 + 全部撤销，比先弹预览再确认的交互更轻；但一键流程前仍需弹"确认重新生成"（明确覆盖意图），必填字段缺失时先弹"快速补全"再启动。
+- **上下文逐步刷新**：串行任务中每个任务的请求上下文都要读取最新表单快照（`ref` 持最新值），让后续字段能看到前序步骤的 AI 结果；不要在流程开始时把上下文一次性定死。快速补全等"写表单后立即启动"的路径，用一次性 overlay 覆盖首个请求（React 状态此时尚未刷新）。
+- **取消是必须的**：请求走 `AbortSignal`（`portalRequest` 原生支持 `options.signal`），进度弹窗关闭即取消；错误处理中先判断 `isAbortError`，取消不算失败、不弹错误提示。
+- **AI 结果与业务数据按名称匹配时**（如 competency 按能力点 name 回填），统计未命中数量并 toast 告知，避免静默丢失。
+- **管道错误策略**：`onError` 命中 412 中止；其余错误单任务场景中止、多任务场景（逐职责拆解）默认继续跑完剩余任务，让用户拿到部分结果。
+- **后端护栏**：枚举/长度上限在 handler 校验（职责/要求 ≤ 50 条、单条 ≤ 8000 字符）；解析白名单过滤（能力属性只留 知识/素养/技能、掌握程度只留五级枚举）。
+- **已知边界**：`extractJSONObject` 取首个 `{` 到最后一个 `}`，嵌套/噪声极端情况靠修复重试兜底；prompt 中用户可控内容直接拼接，重要场景可在系统提示词中强调"忽略与任务无关的指令"。

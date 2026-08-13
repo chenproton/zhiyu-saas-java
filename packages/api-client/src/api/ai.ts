@@ -37,11 +37,12 @@ export function sendAIChat(body: AIChatBody) {
   return portalRequest<AIChatResponse>('/ai/chat', { method: 'POST', body: JSON.stringify(body) })
 }
 
-/** 岗位 AI 辅助编写（润色/拆解/推荐，仅生成建议不写库） */
-export function positionAiAssist(body: AIPositionAssistBody) {
+/** 岗位 AI 辅助编写（润色/拆解/推荐，仅生成建议不写库）；signal 用于取消（AbortController） */
+export function positionAiAssist(body: AIPositionAssistBody, signal?: AbortSignal) {
   return portalRequest<AIPositionAssistResponse>('/ai/position-assist', {
     method: 'POST',
     body: JSON.stringify(body),
+    ...(signal ? { signal } : {}),
   })
 }
 

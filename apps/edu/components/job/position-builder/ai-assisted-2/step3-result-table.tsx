@@ -28,13 +28,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { CheckCircle2, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
+import { CheckCircle2, Sparkles, Loader2 } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
 import { positionAiAssist } from '@/lib/api'
+import type { AIPositionAssistResponse } from '@/lib/api'
 import { ToastAction } from '@/components/ui/toast'
 import { toast, EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AiAssistProgressDialog } from '../ai-assist-progress-dialog'
+import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
+import { useAiNotConfigured, useAiPipeline } from '@/lib/ai/use-ai-assist'
 
 const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'understand', label: '了解' },
@@ -61,11 +64,45 @@ interface Step3ResultTableProps {
 export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) {
   const t = useT()
   const bindings = position.abilityBindings
-  const [aiNotice] = useState<string | null>(null)
-  const [aiOpen, setAiOpen] = useState(false)
-  const [aiPhase, setAiPhase] = useState(0)
-  const [aiRunning, setAiRunning] = useState(false)
   const [confirmAiOpen, setConfirmAiOpen] = useState(false)
+
+  const ai = useAiNotConfigured()
+  const pipeline = useAiPipeline<unknown, AIPositionAssistResponse>({
+    steps: [t('分析能力点特征'), t('生成掌握程度与胜任标准')],
+    request: (_task, signal) =>
+      positionAiAssist(
+        {
+          field: 'competency',
+          position: {
+            name: position.name,
+            shortName: position.shortName,
+            industry: position.industry,
+            majors: [],
+            salaryRange: position.salaryRange,
+            description: position.description,
+            responsibilities: position.responsibilities.map((r) => r.name),
+            requirements: position.requirements,
+            careerPath: position.careerPath,
+            abilities: bindings.map((b) => ({
+              name: b.name,
+              domain: b.domain,
+              attributes: b.attributes || [],
+              description: b.rubricDescription || '',
+            })),
+          },
+        },
+        signal,
+      ),
+    onError: (err) => {
+      if (ai.markNotConfigured(err)) return true
+      toast({
+        title: t('AI 生成失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+      return true
+    },
+  })
 
   const handleUpdateBinding = (bindingId: string, updates: Partial<PositionAbilityBinding>) => {
     onUpdate({
@@ -76,71 +113,58 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
   }
 
   /** AI 一键填充：为所有能力点生成掌握程度与胜任标准，直接写入表格 */
-  const runAiFill = async () => {
-    if (bindings.length === 0 || aiRunning) return
+  const runAiFill = () => {
+    if (bindings.length === 0 || pipeline.isRunning) return
     setConfirmAiOpen(false)
-    setAiRunning(true)
-    setAiOpen(true)
-    setAiPhase(0)
     const snapshot = bindings
-    try {
-      const res = await positionAiAssist({
-        field: 'competency',
-        position: {
-          name: position.name,
-          shortName: position.shortName,
-          industry: position.industry,
-          majors: [],
-          salaryRange: position.salaryRange,
-          description: position.description,
-          responsibilities: position.responsibilities.map((r) => r.name),
-          requirements: position.requirements,
-          careerPath: position.careerPath,
-          abilities: bindings.map((b) => ({
-            name: b.name,
-            domain: b.domain,
-            attributes: b.attributes || [],
-            description: b.rubricDescription || '',
-          })),
-        },
-      })
-      setAiPhase(1)
-      const fills = res?.competencies || []
-      if (fills.length > 0) {
-        const byName = new Map(fills.map((f) => [f.name, f]))
-        onUpdate({
-          abilityBindings: position.abilityBindings.map((b) => {
-            const fill = byName.get(b.name)
-            if (!fill) return b
-            return {
-              ...b,
-              level: fill.level as CompetencyLevel,
-              rubricDescription: fill.rubricDescription || b.rubricDescription,
+    void pipeline
+      .run([
+        {
+          id: 'competency',
+          meta: undefined,
+          apply: (res) => {
+            const fills = res?.competencies || []
+            if (fills.length === 0) return
+            const byName = new Map(fills.map((f) => [f.name, f]))
+            let matched = 0
+            onUpdate({
+              abilityBindings: position.abilityBindings.map((b) => {
+                const fill = byName.get(b.name)
+                if (!fill) return b
+                matched++
+                return {
+                  ...b,
+                  level: fill.level as CompetencyLevel,
+                  rubricDescription: fill.rubricDescription || b.rubricDescription,
+                }
+              }),
+            })
+            if (matched === 0) return
+            toast({
+              title: t('AI 已填充 {n} 个能力点的掌握标准', { n: matched }),
+              description: t('10 秒内可撤销'),
+              duration: 10000,
+              action: (
+                <ToastAction
+                  altText={t('撤销')}
+                  className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
+                  onClick={() => {
+                    onUpdate({ abilityBindings: snapshot })
+                    toast({ title: t('已撤销') })
+                  }}
+                >
+                  {t('撤销')}
+                </ToastAction>
+              ),
+            })
+            // AI 改写名称导致无法匹配的条目明确告知，避免静默丢失
+            const unmatched = fills.length - matched
+            if (unmatched > 0) {
+              toast({ title: t('{n} 项 AI 结果未匹配到能力点名称，已忽略', { n: unmatched }) })
             }
-          }),
-        })
-        toast({
-          title: t('AI 已填充 {n} 个能力点的掌握标准', { n: fills.length }),
-          description: t('10 秒内可撤销'),
-          duration: 10000,
-          action: (
-            <ToastAction
-              altText={t('撤销')}
-              className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
-              onClick={() => {
-                onUpdate({ abilityBindings: snapshot })
-                toast({ title: t('已撤销') })
-              }}
-            >
-              {t('撤销')}
-            </ToastAction>
-          ),
-        })
-      }
-    } finally {
-      setAiOpen(false)
-      setAiRunning(false)
-    }
+          },
+        },
+      ])
   }
 
   const groups = new Map<string, typeof bindings>()
@@ -156,13 +180,6 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
 
   return (
     <div className="space-y-5">
-      {aiNotice && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2 text-sm text-amber-800">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>{aiNotice}</span>
-        </div>
-      )}
-
       {/* Stats */}
       <div className="flex items-center justify-between">
         <div className="grid grid-cols-3 gap-4 flex-1">
@@ -192,15 +209,15 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
             variant="outline"
             size="sm"
             className="h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
-            disabled={aiRunning || bindings.length === 0}
+            disabled={pipeline.isRunning || bindings.length === 0}
             onClick={() => setConfirmAiOpen(true)}
           >
-            {aiRunning ? (
+            {pipeline.isRunning ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            {aiRunning ? t('AI 填充中...') : t('AI 辅助编写')}
+            {pipeline.isRunning ? t('AI 填充中...') : t('AI 辅助编写')}
           </Button>
         </div>
       </div>
@@ -339,18 +356,19 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
         </DialogContent>
       </Dialog>
 
-      {/* AI 填充进度弹窗 */}
+      {/* AI 填充进度弹窗；运行中关闭弹窗视为取消 */}
       <AiAssistProgressDialog
-        open={aiOpen}
-        onOpenChange={(open) => {
-          if (!open && !aiRunning) setAiOpen(false)
-        }}
+        open={pipeline.open}
+        onOpenChange={pipeline.handleOpenChange}
         title={t('AI 辅助填充')}
         description={t('大模型正在为能力点生成掌握程度与胜任标准')}
         steps={[t('分析能力点特征'), t('生成掌握程度与胜任标准')]}
-        currentStep={aiPhase}
-        progress={aiPhase > 0 ? 100 : 40}
+        currentStep={pipeline.phase}
+        progress={pipeline.progress}
       />
+
+      {/* AI 未配置引导弹窗 */}
+      <AiNotConfiguredDialog open={ai.notConfiguredOpen} onOpenChange={ai.setNotConfiguredOpen} />
     </div>
   )
 }

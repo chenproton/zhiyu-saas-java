@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/ai"
 )
 
@@ -273,5 +277,49 @@ func TestChatWithJSONModeFallbackSmoke(t *testing.T) {
 	}, []ai.Message{{Role: "user", Content: "hi"}})
 	if err == nil {
 		t.Fatal("不可达上游应报错")
+	}
+}
+
+// TestPositionAssistRepairRetry 上游首次输出非 JSON 时应追加修复指令重试一次并成功，
+// 且两次成功上游调用的 token 用量都应落库。
+func TestPositionAssistRepairRetry(t *testing.T) {
+	pool, svc, tenantID := setupAITest(t)
+	ctx := context.Background()
+
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if calls.Add(1) == 1 {
+			// 首次：模型不遵守 JSON 约束，输出说明文字
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"好的，我来润色如下（抱歉我不能输出JSON）"}}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"{\"name\":\"后端开发工程师\",\"shortName\":\"后端\",\"description\":\"负责业务系统后端设计与开发\",\"salaryMin\":15000,\"salaryMax\":30000}"}}],"usage":{"prompt_tokens":12,"completion_tokens":8,"total_tokens":20}}`))
+	}))
+	defer srv.Close()
+
+	if err := svc.SaveConfig(ctx, tenantID, srv.URL, "sk-test-key", "gpt-4o-mini"); err != nil {
+		t.Fatalf("SaveConfig: %v", err)
+	}
+	res, err := svc.PositionAssist(ctx, tenantID, uuid.NewString(), PositionAssistPolish, PositionAssistInput{
+		Name:        "Java 后端开发工程师",
+		Industry:    "互联网/IT",
+		Description: "负责后端服务开发",
+	})
+	if err != nil {
+		t.Fatalf("PositionAssist（修复重试后）应成功: %v", err)
+	}
+	if res.Polish == nil || res.Polish.Name != "后端开发工程师" {
+		t.Fatalf("polish 结果错误: %+v", res.Polish)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("上游调用次数 = %d, want 2（首次失败 + 一次修复重试）", calls.Load())
+	}
+	var count int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM ai_usage_logs WHERE tenant_id = $1`, tenantID).Scan(&count); err != nil {
+		t.Fatalf("query usage logs: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("usage logs 条数 = %d, want 2（两次成功上游调用均记录）", count)
 	}
 }

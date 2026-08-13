@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,15 +36,20 @@ import {
   ExternalLink,
   Image as ImageIcon,
   AlertCircle,
-  Settings,
 } from 'lucide-react'
 import { toast, EmptyState, FormDialogFooter, ComboboxSelect } from '@zhiyu/ui'
 import { industryApi, majorApi, certificateLibraryApi, fileApi, positionAiAssist } from '@/lib/api'
-import type { AIPositionAssistField } from '@/lib/api'
+import type { AIPositionAssistField, AIPositionAssistResponse } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { reportError } from '@/lib/error-handling'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
 import { AiAssistProgressDialog } from './ai-assist-progress-dialog'
+import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
+import {
+  useAiNotConfigured,
+  useAiFieldWriter,
+  useAiPipeline,
+} from '@/lib/ai/use-ai-assist'
 
 /** AI 辅助编写一键流程的步骤（与字段顺序一一对应） */
 const AI_ASSIST_STEPS = [
@@ -124,14 +128,66 @@ export function StepBasicInfo({
   const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
   const [majors, setMajors] = useState<{ id: string; name: string }[]>([])
   const [optionsLoading, setOptionsLoading] = useState(false)
-  const [isGenerating, setIsGenerating] = useState<AIPositionAssistField | null>(null)
   const [aiNotice, setAiNotice] = useState<string | null>(null)
 
-  // AI 辅助编写状态
-  const [aiOpen, setAiOpen] = useState(false)
-  const [aiPhase, setAiPhase] = useState(0)
-  const [aiProgress, setAiProgress] = useState(0)
-  const [notConfiguredOpen, setNotConfiguredOpen] = useState(false)
+  // 最新 position 快照：AI 回调时读取，避免闭包内拿到过期值
+  const positionRef = useRef(position)
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
+
+  /** 某字段被 AI 覆盖前的快照（1 级历史用） */
+  const snapshotField = (key: AiWriteKey): Partial<Position> => {
+    const cur = positionRef.current
+    switch (key) {
+      case 'name':
+        return { name: cur.name }
+      case 'shortName':
+        return { shortName: cur.shortName }
+      case 'description':
+        return { description: cur.description }
+      case 'salaryRange':
+        return { salaryRange: cur.salaryRange }
+      case 'responsibilities':
+        return { responsibilities: cur.responsibilities }
+      case 'requirements':
+        return { requirements: cur.requirements }
+      case 'careerPath':
+        return { careerPath: cur.careerPath }
+      case 'certificates':
+        return { certificates: cur.certificates }
+    }
+  }
+
+  // AI 辅助编写状态（公共 hook：未配置引导 / 字段级写入保护 / 串行流水线）
+  const ai = useAiNotConfigured()
+  const writer = useAiFieldWriter<AiWriteKey, Partial<Position>>(AI_WRITE_KEYS, onUpdate, snapshotField)
+  const pipeline = useAiPipeline<unknown, AIPositionAssistResponse>({
+    steps: AI_ASSIST_STEPS,
+    request: (task, signal) => {
+      // 每步实时构建上下文：后续字段的提示词可看到前序步骤的 AI 结果
+      let ctx = buildAiContext()
+      // 快速补全路径：首个任务发起时 position 状态可能尚未刷新，用补全值覆盖一次
+      if (quickFillOverlayRef.current) {
+        ctx = { ...ctx, ...quickFillOverlayRef.current }
+        quickFillOverlayRef.current = null
+      }
+      return positionAiAssist(
+        { field: task.id as AIPositionAssistField, position: ctx },
+        signal,
+      )
+    },
+    onError: (err) => {
+      if (ai.markNotConfigured(err)) return true
+      toast({
+        title: t('AI 生成失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+      return false
+    },
+  })
+  const { aiHistories, flashKey, writeField, restoreField, restoreAll, updatedCount } = writer
   const [quickFillOpen, setQuickFillOpen] = useState(false)
   const [quickFill, setQuickFill] = useState({
     name: '',
@@ -141,17 +197,8 @@ export function StepBasicInfo({
     requirements: '',
   })
   const [confirmRegenOpen, setConfirmRegenOpen] = useState(false)
-  // 字段级 AI 写入历史（1 级）：key 为字段，值为该字段被 AI 覆盖前的快照，用于「恢复上版」
-  const [aiHistories, setAiHistories] = useState<Partial<Record<AiWriteKey, Partial<Position>>>>({})
-  // 写入高亮字段（短暂紫色闪烁，提示"哪里被 AI 改了"）
-  const [flashKey, setFlashKey] = useState<AiWriteKey | null>(null)
-  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const notConfiguredRef = useRef(false)
-  // 最新 position 快照：AI 回调时读取，避免闭包内拿到过期值
-  const positionRef = useRef(position)
-  useEffect(() => {
-    positionRef.current = position
-  }, [position])
+  // 快速补全值的一次性覆盖（首个 AI 请求使用后即清空）
+  const quickFillOverlayRef = useRef<Partial<ReturnType<typeof buildAiContext>> | null>(null)
 
   // 证书库相关状态
   const [certificateLibrary, setCertificateLibrary] = useState<Certificate[]>([])
@@ -269,117 +316,67 @@ export function StepBasicInfo({
     }
   }
 
-  /** 单字段调用后端（返回建议；失败返回 null 并统一提示，412 打开配置引导） */
-  const callAssist = async (field: AIPositionAssistField) => {
-    setIsGenerating(field)
-    try {
-      return await positionAiAssist({ field, position: buildAiContext() })
-    } catch (err) {
-      if (err instanceof Error && err.message === 'ai_not_configured') {
-        notConfiguredRef.current = true
-        setNotConfiguredOpen(true)
-      } else {
-        toast({
-          title: t('AI 生成失败'),
-          description: err instanceof Error ? err.message : undefined,
-          variant: 'destructive',
-        })
-      }
-      return null
-    } finally {
-      setIsGenerating(null)
-    }
-  }
-
   // ===== AI 直接写入（逐字段）=====
-
-  /** 某字段被 AI 覆盖前的快照（1 级历史用） */
-  const snapshotField = (key: AiWriteKey): Partial<Position> => {
-    const cur = positionRef.current
-    switch (key) {
-      case 'name':
-        return { name: cur.name }
-      case 'shortName':
-        return { shortName: cur.shortName }
-      case 'description':
-        return { description: cur.description }
-      case 'salaryRange':
-        return { salaryRange: cur.salaryRange }
-      case 'responsibilities':
-        return { responsibilities: cur.responsibilities }
-      case 'requirements':
-        return { requirements: cur.requirements }
-      case 'careerPath':
-        return { careerPath: cur.careerPath }
-      case 'certificates':
-        return { certificates: cur.certificates }
-    }
-  }
-
-  /** 触发写入高亮闪烁 */
-  const flashField = (key: AiWriteKey) => {
-    setFlashKey(key)
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-    flashTimerRef.current = setTimeout(() => setFlashKey(null), 1400)
-  }
-
-  /**
-   * 直接写入某字段：记录首次覆盖前的快照（1 级历史）+ 应用新值 + 高亮。
-   * 多次覆盖同一字段不覆盖历史，保证「恢复上版」回到 AI 介入前的原值。
-   */
-  const writeField = (key: AiWriteKey, values: Partial<Position>) => {
-    setAiHistories((prev) => {
-      if (prev[key] !== undefined) return prev
-      return { ...prev, [key]: snapshotField(key) }
-    })
-    onUpdate(values)
-    flashField(key)
-  }
-
-  /** 恢复某字段到 AI 覆盖前的值（清除该字段历史） */
-  const restoreField = (key: AiWriteKey) => {
-    const snapshot = aiHistories[key]
-    if (snapshot) onUpdate(snapshot)
-    setAiHistories((prev) => {
-      const next = { ...prev }
-      delete next[key]
-      return next
-    })
-  }
 
   /** 全部撤销：恢复所有被 AI 覆盖的字段 */
   const handleRestoreAll = () => {
-    const snaps = AI_WRITE_KEYS.map((k) => aiHistories[k]).filter(
-      (s): s is Partial<Position> => s !== undefined,
-    )
-    if (snaps.length > 0) {
-      const merged: Partial<Position> = {}
-      for (const snap of snaps) Object.assign(merged, snap)
-      onUpdate(merged)
-    }
-    setAiHistories({})
-    toast({ title: t('已全部恢复 AI 覆盖前的内容') })
+    restoreAll(() => toast({ title: t('已全部恢复 AI 覆盖前的内容') }))
   }
 
-  /** 基础信息单字段生成：调 polish 一次，仅应用目标字段 */
-  const handlePolishField = async (target: PolishFieldKey) => {
-    const res = await callAssist('polish')
-    if (!res?.polish) return
+  /** polish 目标字段 → 中文名（用于"AI 未生成"提示） */
+  const polishFieldLabel = (key: PolishFieldKey) =>
+    ({
+      name: t('岗位名称'),
+      shortName: t('岗位简称'),
+      description: t('岗位简介'),
+      salaryRange: t('薪资范围'),
+    })[key]
+
+  /** 应用 polish 结果到指定字段；AI 未生成该字段时提示保留原值 */
+  const applyPolishTarget = (res: AIPositionAssistResponse, target: PolishFieldKey) => {
     const p = res.polish
-    if (target === 'name' && p.name.trim()) writeField('name', { name: p.name.trim() })
-    else if (target === 'shortName' && p.shortName.trim()) {
+    if (!p) return
+    if (target === 'name' && p.name.trim()) {
+      writeField('name', { name: p.name.trim() })
+      return
+    }
+    if (target === 'shortName' && p.shortName.trim()) {
       writeField('shortName', { shortName: p.shortName.trim() })
-    } else if (target === 'description' && p.description.trim()) {
+      return
+    }
+    if (target === 'description' && p.description.trim()) {
       writeField('description', { description: p.description.trim() })
-    } else if (target === 'salaryRange' && p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
+      return
+    }
+    if (target === 'salaryRange' && p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
       writeField('salaryRange', { salaryRange: [p.salaryMin, p.salaryMax] })
+      return
+    }
+    toast({ title: t('AI 未生成{field}，已保留原内容', { field: polishFieldLabel(target) }) })
+  }
+
+  /** polish 一次返回 4 个基础字段，逐个直接写入（各自独立历史/高亮）；未生成项提示保留原值 */
+  const applyPolishAll = (res: AIPositionAssistResponse) => {
+    const p = res.polish
+    if (!p) return
+    const skipped: string[] = []
+    if (p.name.trim()) writeField('name', { name: p.name.trim() })
+    else skipped.push(polishFieldLabel('name'))
+    if (p.shortName.trim()) writeField('shortName', { shortName: p.shortName.trim() })
+    else skipped.push(polishFieldLabel('shortName'))
+    if (p.description.trim()) writeField('description', { description: p.description.trim() })
+    else skipped.push(polishFieldLabel('description'))
+    if (p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
+      writeField('salaryRange', { salaryRange: [p.salaryMin, p.salaryMax] })
+    } else skipped.push(polishFieldLabel('salaryRange'))
+    if (skipped.length > 0) {
+      toast({ title: t('AI 未生成：{fields}，已保留原内容', { fields: skipped.join('、') }) })
     }
   }
 
-  /** 职责整节替换 */
-  const handleWriteResponsibilities = async () => {
-    const res = await callAssist('responsibilities')
-    if (!res?.responsibilities) return
+  /** 应用职责整节替换结果 */
+  const applyResponsibilities = (res: AIPositionAssistResponse) => {
+    if (!res.responsibilities) return
     writeField('responsibilities', {
       responsibilities: res.responsibilities.map((name) => ({
         id: `resp-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -389,22 +386,9 @@ export function StepBasicInfo({
     })
   }
 
-  /** 要求整节替换 */
-  const handleWriteRequirements = async () => {
-    const res = await callAssist('requirements')
-    if (res?.requirements) writeField('requirements', { requirements: res.requirements })
-  }
-
-  /** 晋升路径替换 */
-  const handleWriteCareerPath = async () => {
-    const res = await callAssist('careerPath')
-    if (res?.careerPath) writeField('careerPath', { careerPath: res.careerPath })
-  }
-
-  /** 证书追加 */
-  const handleWriteCertificates = async () => {
-    const res = await callAssist('certificates')
-    if (!res?.certificates) return
+  /** 应用证书追加结果（按名称去重） */
+  const applyCertificates = (res: AIPositionAssistResponse) => {
+    if (!res.certificates) return
     const existing = positionRef.current.certificates || []
     const existingNames = new Set(existing.map((c) => c.name))
     const toAdd = res.certificates
@@ -420,11 +404,58 @@ export function StepBasicInfo({
     }
   }
 
-  /** 当前被 AI 覆盖且未恢复的字段数 */
-  const updatedCount = useMemo(
-    () => AI_WRITE_KEYS.filter((k) => aiHistories[k] !== undefined).length,
-    [aiHistories],
-  )
+  /** 基础信息单字段生成：调 polish 一次，仅应用目标字段 */
+  const handlePolishField = (target: PolishFieldKey) => {
+    pipeline.run([{ id: 'polish', meta: undefined, apply: (res) => applyPolishTarget(res, target) }], {
+      showDialog: false,
+    })
+  }
+
+  /** 职责整节替换 */
+  const handleWriteResponsibilities = () => {
+    pipeline.run([{ id: 'responsibilities', meta: undefined, apply: applyResponsibilities }], {
+      showDialog: false,
+    })
+  }
+
+  /** 要求整节替换 */
+  const handleWriteRequirements = () => {
+    pipeline.run(
+      [
+        {
+          id: 'requirements',
+          meta: undefined,
+          apply: (res) => {
+            if (res.requirements) writeField('requirements', { requirements: res.requirements })
+          },
+        },
+      ],
+      { showDialog: false },
+    )
+  }
+
+  /** 晋升路径替换 */
+  const handleWriteCareerPath = () => {
+    pipeline.run(
+      [
+        {
+          id: 'careerPath',
+          meta: undefined,
+          apply: (res) => {
+            if (res.careerPath) writeField('careerPath', { careerPath: res.careerPath })
+          },
+        },
+      ],
+      { showDialog: false },
+    )
+  }
+
+  /** 证书追加 */
+  const handleWriteCertificates = () => {
+    pipeline.run([{ id: 'certificates', meta: undefined, apply: applyCertificates }], {
+      showDialog: false,
+    })
+  }
 
   const getMissingFields = () => {
     const missing: AIPositionAssistField[] = []
@@ -456,18 +487,6 @@ export function StepBasicInfo({
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean)
-    const cur = positionRef.current
-    const ctx = {
-      name: quickFill.name,
-      shortName: cur.shortName,
-      industry: resolveIndustryName(quickFill.industry),
-      majors: resolveMajorNames(cur.majors),
-      salaryRange: cur.salaryRange,
-      description: quickFill.description,
-      responsibilities: respItems,
-      requirements: reqItems,
-      careerPath: cur.careerPath,
-    }
     onUpdate({
       name: quickFill.name,
       industry: quickFill.industry,
@@ -479,91 +498,40 @@ export function StepBasicInfo({
       })),
       requirements: reqItems,
     })
+    // 快速补全值作为首个请求的上下文覆盖（position 状态此时尚未刷新）
+    quickFillOverlayRef.current = {
+      name: quickFill.name,
+      industry: resolveIndustryName(quickFill.industry),
+      description: quickFill.description,
+      responsibilities: respItems,
+      requirements: reqItems,
+    }
     setQuickFillOpen(false)
-    runAiAssist(ctx)
+    runAiAssist()
   }
 
   /** 一键流程：按字段顺序逐个生成，进度弹窗逐步展示；结束后顶部出现结果提示条 */
-  const runAiAssist = async (ctx?: ReturnType<typeof buildAiContext>) => {
-    notConfiguredRef.current = false
-    const context = ctx || buildAiContext()
-    setAiOpen(true)
-    setAiPhase(0)
-    setAiProgress(3)
-    // polish 一次返回 4 个基础字段，逐个直接写入（各自独立历史/高亮）
-    const applyPolish = (res: NonNullable<Awaited<ReturnType<typeof positionAiAssist>>>) => {
-      const p = res.polish
-      if (!p) return
-      if (p.name.trim()) writeField('name', { name: p.name.trim() })
-      if (p.shortName.trim()) writeField('shortName', { shortName: p.shortName.trim() })
-      if (p.description.trim()) writeField('description', { description: p.description.trim() })
-      if (p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
-        writeField('salaryRange', { salaryRange: [p.salaryMin, p.salaryMax] })
-      }
-    }
-    const tasks: { field: AIPositionAssistField; apply: (res: NonNullable<Awaited<ReturnType<typeof positionAiAssist>>>) => void }[] = [
-      { field: 'polish', apply: applyPolish },
-      { field: 'responsibilities', apply: (res) => {
-        if (res.responsibilities) {
-          writeField('responsibilities', {
-            responsibilities: res.responsibilities.map((name) => ({
-              id: `resp-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              name,
-              description: '',
-            })),
-          })
-        }
-      } },
-      { field: 'requirements', apply: (res) => {
-        if (res.requirements) writeField('requirements', { requirements: res.requirements })
-      } },
-      { field: 'careerPath', apply: (res) => {
-        if (res.careerPath) writeField('careerPath', { careerPath: res.careerPath })
-      } },
-      { field: 'certificates', apply: (res) => {
-        if (res.certificates) {
-          const existing = positionRef.current.certificates || []
-          const existingNames = new Set(existing.map((c) => c.name))
-          const toAdd = res.certificates
-            .filter((c) => !existingNames.has(c.name))
-            .map((c) => ({
-              id: `cert-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              name: c.name,
-              url: c.url || '',
-              description: c.description || '',
-            }))
-          if (toAdd.length > 0) {
-            writeField('certificates', { certificates: [...existing, ...toAdd] })
-          }
-        }
-      } },
-    ]
-    for (let i = 0; i < tasks.length; i++) {
-      if (notConfiguredRef.current) break
-      const { field, apply } = tasks[i]
-      setIsGenerating(field)
-      try {
-        const res = await positionAiAssist({ field, position: context })
-        if (res) apply(res)
-      } catch (err) {
-        if (err instanceof Error && err.message === 'ai_not_configured') {
-          notConfiguredRef.current = true
-          setNotConfiguredOpen(true)
-          break
-        }
-        toast({
-          title: t('AI 生成失败'),
-          description: err instanceof Error ? err.message : undefined,
-          variant: 'destructive',
-        })
-      } finally {
-        setIsGenerating(null)
-        const nextPhase = i + 1
-        setAiPhase(nextPhase)
-        setAiProgress(Math.round(((nextPhase + 1) / AI_ASSIST_STEPS.length) * 100))
-      }
-    }
-    setAiOpen(false)
+  const runAiAssist = () => {
+    ai.resetNotConfigured()
+    pipeline.run([
+      { id: 'polish', meta: undefined, apply: applyPolishAll },
+      { id: 'responsibilities', meta: undefined, apply: applyResponsibilities },
+      {
+        id: 'requirements',
+        meta: undefined,
+        apply: (res) => {
+          if (res.requirements) writeField('requirements', { requirements: res.requirements })
+        },
+      },
+      {
+        id: 'careerPath',
+        meta: undefined,
+        apply: (res) => {
+          if (res.careerPath) writeField('careerPath', { careerPath: res.careerPath })
+        },
+      },
+      { id: 'certificates', meta: undefined, apply: applyCertificates },
+    ])
   }
 
   const startAiAssist = () => {
@@ -754,9 +722,9 @@ export function StepBasicInfo({
           size="sm"
           className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800"
           onClick={regen}
-          disabled={isGenerating !== null}
+          disabled={pipeline.isRunning}
         >
-          {isGenerating === field ? (
+          {pipeline.isRunning && pipeline.runningId === field ? (
             <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
           ) : (
             <Sparkles className="mr-1 h-3.5 w-3.5" />
@@ -794,10 +762,10 @@ export function StepBasicInfo({
         size="icon"
         className="h-6 w-6 text-purple-600 hover:bg-purple-50 hover:text-purple-800"
         onClick={() => handlePolishField(key)}
-        disabled={isGenerating !== null}
+        disabled={pipeline.isRunning}
         title={t('AI 生成')}
       >
-        {isGenerating === 'polish' ? (
+        {pipeline.isRunning && pipeline.runningId === 'polish' ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
           <Sparkles className="h-3.5 w-3.5" />
@@ -821,7 +789,7 @@ export function StepBasicInfo({
             variant="outline"
             className="shrink-0 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
             onClick={startAiAssist}
-            disabled={isGenerating !== null}
+            disabled={pipeline.isRunning}
           >
             <Sparkles className="h-4 w-4" />
             {t('AI 辅助编写')}
@@ -1425,15 +1393,15 @@ export function StepBasicInfo({
         </DialogContent>
       </Dialog>
 
-      {/* AI 辅助编写进度弹窗 */}
+      {/* AI 辅助编写进度弹窗；运行中关闭弹窗视为取消流水线 */}
       <AiAssistProgressDialog
-        open={aiOpen}
-        onOpenChange={setAiOpen}
+        open={pipeline.open}
+        onOpenChange={pipeline.handleOpenChange}
         title={t('AI 辅助编写')}
         description={t('大模型正在阅读岗位信息并生成润色、拆解与补齐结果')}
         steps={AI_ASSIST_STEPS}
-        currentStep={aiPhase}
-        progress={aiProgress}
+        currentStep={pipeline.phase}
+        progress={pipeline.progress}
       />
 
       {/* 快速补全必填信息弹窗 */}
@@ -1540,27 +1508,7 @@ export function StepBasicInfo({
       </Dialog>
 
       {/* AI 未配置引导弹窗 */}
-      <Dialog open={notConfiguredOpen} onOpenChange={setNotConfiguredOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-primary" />
-              {t('尚未配置 AI 服务')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('请先在 系统管理 > 租户信息 中配置 AI 服务，再使用 AI 辅助编写')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setNotConfiguredOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button asChild onClick={() => setNotConfiguredOpen(false)}>
-              <Link href="/portal/apps/system/tenant">{t('前往配置')}</Link>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AiNotConfiguredDialog open={ai.notConfiguredOpen} onOpenChange={ai.setNotConfiguredOpen} />
 
       {/* 每次 AI 辅助编写前的意图确认弹窗 */}
       <Dialog open={confirmRegenOpen} onOpenChange={setConfirmRegenOpen}>

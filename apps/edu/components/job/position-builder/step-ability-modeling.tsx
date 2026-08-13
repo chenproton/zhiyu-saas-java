@@ -31,18 +31,22 @@ import {
   Loader2,
 } from 'lucide-react'
 import { abilityApi, positionApi, positionAiAssist, industryApi } from '@/lib/api'
+import type { AIPositionAssistResponse } from '@/lib/api'
 import { ToastAction } from '@/components/ui/toast'
 import { reportError } from '@/lib/error-handling'
 import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
 import type {
   Position,
   PositionAbilityBinding,
+  PositionResponsibility,
   CompetencyLevel,
   Ability,
 } from '@/lib/types/job-source'
 import { toast, EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AiAssistProgressDialog } from './ai-assist-progress-dialog'
+import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
+import { useAiNotConfigured, useAiPipeline } from '@/lib/ai/use-ai-assist'
 
 interface StepAbilityModelingProps {
   position: Position
@@ -122,10 +126,7 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
   const [showAddRespDialog, setShowAddRespDialog] = useState(false)
   const [newRespNames, setNewRespNames] = useState<string[]>([''])
 
-  // AI 辅助拆解状态
-  const [aiOpen, setAiOpen] = useState(false)
-  const [aiPhase, setAiPhase] = useState(0)
-  const [aiRunning, setAiRunning] = useState(false)
+  // AI 辅助拆解状态（公共 hook：未配置引导 / 串行流水线）
   const [confirmAiOpen, setConfirmAiOpen] = useState(false)
   const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
 
@@ -468,22 +469,12 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
     ...position.responsibilities.map((r) => `${t('拆解「{name}」能力点', { name: (r.name || t('未命名')).slice(0, 12) })}`),
   ]
 
-  const runAiAssist = async () => {
-    const resps = position.responsibilities
-    if (resps.length === 0 || aiRunning) return
-    setConfirmAiOpen(false)
-    setAiRunning(true)
-    const bindingsSnapshot = position.abilityBindings
-    setAiOpen(true)
-    setAiPhase(0)
-    try {
-      let allBindings = [...bindingsSnapshot]
-      for (let i = 0; i < resps.length; i++) {
-        const resp = resps[i]
-        setAiPhase(i + 1)
-        setSelectedRespId(resp.id)
-        scrollToResp(resp.id)
-        const res = await positionAiAssist({
+  const ai = useAiNotConfigured()
+  const pipeline = useAiPipeline<PositionResponsibility, AIPositionAssistResponse>({
+    steps: aiSteps,
+    request: (task, signal) =>
+      positionAiAssist(
+        {
           field: 'abilities',
           position: {
             name: position.name,
@@ -495,30 +486,59 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
             responsibilities: position.responsibilities.map((r) => r.name),
             requirements: position.requirements,
             careerPath: position.careerPath,
-            responsibilityName: resp.name,
+            responsibilityName: task.meta.name,
           },
-        })
-        const items = res?.abilities
-        if (items && items.length > 0) {
-          const newBindings: PositionAbilityBinding[] = items.map((a) => ({
-            id: `bind-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            responsibilityId: resp.id,
-            source: 'custom',
-            name: a.name,
-            level: 'understand',
-            rubricDescription: a.rubricDescription || '',
-            description: '',
-            attributes: a.attributes || [],
-            domain: a.domain || undefined,
-          }))
-          allBindings = [...allBindings.filter((b) => b.responsibilityId !== resp.id), ...newBindings]
-          onUpdate({ abilityBindings: allBindings })
-        }
-      }
-      setAiOpen(false)
-      // 生成完成后支持一键撤销到拆解前
+        },
+        signal,
+      ),
+    onError: (err) => {
+      if (ai.markNotConfigured(err)) return true
       toast({
-        title: t('AI 已为 {n} 项职责生成能力点', { n: resps.length }),
+        title: t('AI 生成失败'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
+      // 单条职责失败不影响其余职责继续拆解
+      return false
+    },
+  })
+
+  const runAiAssist = () => {
+    const resps = position.responsibilities
+    if (resps.length === 0 || pipeline.isRunning) return
+    setConfirmAiOpen(false)
+    const bindingsSnapshot = position.abilityBindings
+    let allBindings = [...bindingsSnapshot]
+    const tasks = resps.map((resp) => ({
+      id: 'abilities',
+      meta: resp,
+      onStart: () => {
+        setSelectedRespId(resp.id)
+        scrollToResp(resp.id)
+      },
+      apply: (res: AIPositionAssistResponse) => {
+        const items = res?.abilities
+        if (!items || items.length === 0) return
+        const newBindings: PositionAbilityBinding[] = items.map((a) => ({
+          id: `bind-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          responsibilityId: resp.id,
+          source: 'custom',
+          name: a.name,
+          level: 'understand',
+          rubricDescription: a.rubricDescription || '',
+          description: '',
+          attributes: a.attributes || [],
+          domain: a.domain || undefined,
+        }))
+        allBindings = [...allBindings.filter((b) => b.responsibilityId !== resp.id), ...newBindings]
+        onUpdate({ abilityBindings: allBindings })
+      },
+    }))
+    // 完成后支持一键撤销到拆解前
+    void pipeline.run(tasks).then((result) => {
+      if (result.success === 0) return
+      toast({
+        title: t('AI 已为 {n} 项职责生成能力点', { n: result.success }),
         description: t('10 秒内可撤销'),
         duration: 10000,
         action: (
@@ -534,9 +554,7 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
           </ToastAction>
         ),
       })
-    } finally {
-      setAiRunning(false)
-    }
+    })
   }
 
   return (
@@ -671,15 +689,15 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
               variant="outline"
               size="sm"
               className="h-7 text-xs rounded-full border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
-              disabled={aiRunning || position.responsibilities.length === 0}
+              disabled={pipeline.isRunning || position.responsibilities.length === 0}
               onClick={() => setConfirmAiOpen(true)}
             >
-              {aiRunning ? (
+              {pipeline.isRunning ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Sparkles className="h-3.5 w-3.5" />
               )}
-              {aiRunning ? t('AI 拆解中...') : t('AI 辅助编写')}
+              {pipeline.isRunning ? t('AI 拆解中...') : t('AI 辅助编写')}
             </Button>
           </div>
         </div>
@@ -1368,18 +1386,19 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
         </DialogContent>
       </Dialog>
 
-      {/* AI 拆解进度弹窗 */}
+      {/* AI 拆解进度弹窗；运行中关闭弹窗视为取消 */}
       <AiAssistProgressDialog
-        open={aiOpen}
-        onOpenChange={(open) => {
-          if (!open && !aiRunning) setAiOpen(false)
-        }}
+        open={pipeline.open}
+        onOpenChange={pipeline.handleOpenChange}
         title={t('AI 辅助拆解能力点')}
         description={t('大模型正在按工作职责逐个生成能力点并写入')}
         steps={aiSteps}
-        currentStep={aiPhase}
-        progress={Math.round((aiPhase / Math.max(aiSteps.length - 1, 1)) * 100)}
+        currentStep={pipeline.phase}
+        progress={pipeline.progress}
       />
+
+      {/* AI 未配置引导弹窗 */}
+      <AiNotConfiguredDialog open={ai.notConfiguredOpen} onOpenChange={ai.setNotConfiguredOpen} />
     </div>
   )
 }
