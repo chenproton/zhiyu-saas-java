@@ -6254,13 +6254,23 @@
 | 045-050 | 3660147b | evaluation 批次（工作台四 Tab、登录页、任务链建议、bank-form-dialog 等 36 文件） |
 | 051-062 | 7d6c3ffd | lesson-alliance 批次（39 文件：类型弱化/as any 去除、竞态序号守卫、下拉截断改用 fetchAllPages/listAll、死代码清理、NaN 兜底、错误态与 notFound 分离） |
 | 063-078 | e22f2f94 | portal-alliance-scene 批次（36 文件：类型强化、竞态防护、加载态、死代码、复用收敛） |
-| 079-103 | （待合并） | components-packages 批次 |
+| 079-103 | b4817454 | components-packages 批次（55 文件：evaluation 三弹窗、evaluation-rules、job/position-builder 6 文件、lesson/portal/providers/scene、shared 组件 14、hooks/lib 5、packages 11、vitest 配置——纯 updater/竞态防护/死代码清理/类型收紧/fetch-all 分页熔断） |
+| 047-048 遗留 | 5bb91020 | examFromSnapshot 三处收敛共享 lib/exam-snapshot.ts（去 any）、题型标签复用 QUESTION_TYPE_LABELS、用户反查与提交计数改 listAll 防截断（saveFailed 复位/0 分题排除已在 045-050 修好，复核未动） |
+| 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
 - 后端：sharedBatchOps（岗位/测评/场景三服务共用批量操作）、ReviewStep/LockApproval/SetHistory（审批并发评审）、scanApproval/scanWorkflow（扫描去重）
-- 前端：GRAPH_NODE_TYPE_LABELS（知识图谱节点标签单一来源）、formatSalaryRange、schedule-utils.ts、fetchAllPages/listAll（分页全量拉取统一入口）
+- 前端：GRAPH_NODE_TYPE_LABELS（知识图谱节点标签单一来源）、formatSalaryRange、schedule-utils.ts、fetchAllPages/listAll（分页全量拉取统一入口）、lib/exam-snapshot.ts（试卷快照转换三处收敛）
+
+### 评估后不改（033-034 补充，简单优先）
+- community.go COUNT/列表 where 条件双份维护（纯重构无行为缺陷，两处紧邻可同步改，收益低）
+- content_actions_test.go transitionMatrix 与实现常量双份定义（测试副本作为独立规格，防实现漂移被同源掩盖）
+- course_assessments.go CreateTempExam 与 course_nodes.go Delete 的 check-then-act（低频竞态、非核心，发布流程已有 CAS 兜底，符合「普通业务允许报错或重复插入」）
+- courses.go Delete 中不可达的 course_evaluation_results 防御性 DELETE（保留作为删除保护变更时的兜底）
+- exam_results.go FetchUserProfile 吞错（提交主链路稳定性优先：姓名查询失败不阻断交卷，宁缺名字不断流程）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
 - 前端：pnpm typecheck 4 包通过；pnpm lint 0 错误；pnpm test 97/97 通过
-- 后续：deploy.sh --branch 部署验证 + UI 冒烟测试循环（见会话最终报告）
+- 后续批次：每批均经 deploy.sh 质量门禁（后端 gofmt/go vet/go build/store 测试；前端 typecheck/lint/pnpm test）后合并 master；最后一轮 079-103 单测 104/104、ui 5/5、api-client 9/9、shared-types 2/2 全过
+- 收尾：全部批次修复完成后统一执行 UI 冒烟巡检（见会话最终报告）
