@@ -300,7 +300,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 ### 3.6 文件上传
 
-**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，≤10MB）→ `200 {"url": "/uploads/xxx.png"}`；`GET /api/v1/files/preview?url=...` 返回可预览地址（集成 kkfileview）。
+**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，≤10MB）→ `200 {"url": "/uploads/xxx.png"}`；`GET /api/v1/files/preview?url=...` 返回可预览地址。文档预览由前端 file-viewer（flyfish-dev，浏览器原生）渲染：office/pdf/文本 交 `FileViewerPreview`，zip 走自研 `ZipPreview`，图片/音视频走浏览器原生 iframe 预览。kkfileview 服务保留作回退。
 
 ### 3.7 工作台聚合
 

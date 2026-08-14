@@ -38,5 +38,6 @@
 | 0001 | 后端分层红线（handler/service/store 职责分离） | 已接受 | handler 不写 SQL，service 不拼 SQL，store 不读 HTTP/Claims |
 | 0002 | AI 功能统一走 AIService 底座 | 已接受 | 禁止自封装 LLM 调用，一律经 AIService |
 | 0003 | 租户隔离采用「handler 层校验 + SQL 层可选限定」 | 已接受 | handler 先 verifyTenantOwnership 兜底，store 层 SQL 限定属纵深防御而非必须 |
+| 0004 | 文件预览从 kkfileview 切换为 flyfish-dev/file-viewer | 已接受 | 前端切浏览器原生 file-viewer，kkfileview 保留作回退 |
 
 > 初建时仅登记已沉淀在 `AGENTS.md`/`docs/*.md` 的重要既有决策（0001~0003），不回溯补写全部历史；后续新决策再按模板新增。

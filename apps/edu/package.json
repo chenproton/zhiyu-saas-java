@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@file-viewer/preset-office": "^2.2.9",
+    "@file-viewer/react": "^2.2.9",
     "@unlayer/react-image-editor": "^1.0.1",
     "@xyflow/react": "^12.11.2",
     "@zhiyu/api-client": "workspace:*",

@@ -11,6 +11,7 @@ import type { TaskResource } from '@/lib/types'
 import { isSafeExternalUrl } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import ZipPreview, { isZipUrl } from '@/components/shared/zip-preview'
+import FileViewerPreview, { isFileViewerUrl } from '@/components/shared/file-viewer-preview'
 
 const MIN_WIDTH = 320
 const MIN_HEIGHT = 200
@@ -292,6 +293,9 @@ function ResourcePreviewModalInner({
           {resource?.url ? (
             isZipUrl(resource.url) ? (
               <ZipPreview key={resource.url} url={resource.url} name={resource.name} />
+            ) : isFileViewerUrl(resource.url) && previewSrc ? (
+              // office/pdf/文本 走浏览器原生 file-viewer（纯前端，无服务端转换）
+              <FileViewerPreview key={resource.url} url={previewSrc} name={resource.name} />
             ) : iframeSrc ? (
               <iframe
                 ref={iframeRef}
