@@ -930,7 +930,7 @@ if $BUILD_FRONTEND; then
   log "构建前端"
 
   if $NEED_INSTALL; then
-    # 离线依赖包：offline/node_modules.tar.gz（联网机按 offline/README.md 预生成，~268MB）。
+    # 离线依赖包：offline/node_modules.tar.gz（联网机按 offline/README.md 预生成，~370MB）。
     # 命中则直接解压到构建树，跳过 pnpm install——完全离线、无需 npm registry / pnpm store。
     OFFLINE_NODE_MODULES="$OFFLINE_DIR/node_modules.tar.gz"
     if [[ -f "$OFFLINE_NODE_MODULES" ]]; then
