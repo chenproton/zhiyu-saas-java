@@ -147,7 +147,11 @@ func (h *UserManagementHandler) ChangeMyPassword(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := h.Service.ResetPassword(r.Context(), claims.UserID, req.NewPassword); err != nil {
+	if claims.TenantID == nil {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if err := h.Service.ResetPassword(r.Context(), *claims.TenantID, claims.UserID, req.NewPassword); err != nil {
 		respondServerError(w, r, err, "修改密码失败")
 		return
 	}
@@ -397,7 +401,7 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := h.Service.UpdateStatus(r.Context(), id, req.Status); err != nil {
+	if err := h.Service.UpdateStatus(r.Context(), tenantID, id, req.Status); err != nil {
 		respondServerError(w, r, err, "更新状态失败")
 		return
 	}
@@ -444,7 +448,7 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.Service.ResetPassword(r.Context(), id, req.Password); err != nil {
+	if err := h.Service.ResetPassword(r.Context(), tenantID, id, req.Password); err != nil {
 		respondServerError(w, r, err, "重置密码失败")
 		return
 	}

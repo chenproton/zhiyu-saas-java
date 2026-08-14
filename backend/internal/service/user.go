@@ -106,8 +106,8 @@ func (s *UserService) Delete(ctx context.Context, tenantID, id string) error {
 }
 
 // UpdateStatus 更新用户状态。
-func (s *UserService) UpdateStatus(ctx context.Context, id, status string) error {
-	return s.st.Users().UpdateStatus(ctx, id, status)
+func (s *UserService) UpdateStatus(ctx context.Context, tenantID, id, status string) error {
+	return s.st.Users().UpdateStatus(ctx, tenantID, id, status)
 }
 
 // UpdateSelfName 用户自助修改本人姓名。
@@ -116,8 +116,8 @@ func (s *UserService) UpdateSelfName(ctx context.Context, id, name string) error
 }
 
 // ResetPassword 重置密码。
-func (s *UserService) ResetPassword(ctx context.Context, id, plainPassword string) error {
-	return s.st.Users().ResetPassword(ctx, id, plainPassword)
+func (s *UserService) ResetPassword(ctx context.Context, tenantID, id, plainPassword string) error {
+	return s.st.Users().ResetPassword(ctx, tenantID, id, plainPassword)
 }
 
 // BatchGraduate 批量毕业。

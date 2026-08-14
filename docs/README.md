@@ -62,7 +62,7 @@ docs/
 
 | 脚本 | 用途 |
 |---|---|
-| `scripts/deploy.sh`（根目录） | 分支部署 + 质量门禁 + 自动合并 |
+| `deploy.sh`（仓库根目录） | 分支部署 + 质量门禁 + 自动合并 |
 | `scripts/spec-check.sh` | spec 硬约束自动校验（分层/AI 底座/migration/spec 制品/ADR） |
 | `scripts/package-release.sh` | 离线实施包打包 |
 | `scripts/migrate_uploads.sh` | 上传文件迁移 |

@@ -69,18 +69,18 @@ func (s *TenantAdminService) Delete(ctx context.Context, tenantID, adminID strin
 }
 
 // ResetPassword 重置管理员密码，返回新明文密码。
-func (s *TenantAdminService) ResetPassword(ctx context.Context, adminID string) (string, error) {
+func (s *TenantAdminService) ResetPassword(ctx context.Context, tenantID, adminID string) (string, error) {
 	plain, err := store.GenerateSecurePassword(12)
 	if err != nil {
 		return "", err
 	}
-	if err := s.st.TenantAdmins().ResetPassword(ctx, adminID, plain); err != nil {
+	if err := s.st.TenantAdmins().ResetPassword(ctx, tenantID, adminID, plain); err != nil {
 		return "", err
 	}
 	return plain, nil
 }
 
 // SetPassword 将管理员密码设置为指定明文密码（由调用方校验强度后传入）。
-func (s *TenantAdminService) SetPassword(ctx context.Context, adminID, plainPassword string) error {
-	return s.st.TenantAdmins().ResetPassword(ctx, adminID, plainPassword)
+func (s *TenantAdminService) SetPassword(ctx context.Context, tenantID, adminID, plainPassword string) error {
+	return s.st.TenantAdmins().ResetPassword(ctx, tenantID, adminID, plainPassword)
 }

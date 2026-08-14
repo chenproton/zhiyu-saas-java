@@ -1,23 +1,25 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2, Send, Sparkles, Settings } from 'lucide-react'
+import { Loader2, Send, Sparkles } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { sendAIChat } from '@/lib/api'
 import type { AIChatMessage } from '@/lib/api'
+import { useAiNotConfigured } from '@/lib/ai/use-ai-assist'
+import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AIChatPage() {
   const [messages, setMessages] = useState<AIChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [notConfigured, setNotConfigured] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
   const t = useT()
+  // 412 ai_not_configured 统一走共享 hook + 引导弹窗（与 AI 辅助编写三件套一致）
+  const ai = useAiNotConfigured()
 
   const handleSend = async () => {
     const content = input.trim()
@@ -31,9 +33,9 @@ export default function AIChatPage() {
       setMessages([...next, { role: 'assistant', content: res.reply }])
       setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }), 0)
     } catch (err) {
-      // 后端 412 固定返回 ai_not_configured（见 handler.AIHandler.Chat）
-      if (err instanceof Error && err.message === 'ai_not_configured') {
-        setNotConfigured(true)
+      // 后端 412 固定返回 ai_not_configured（见 handler.AIHandler.Chat），命中即打开统一引导弹窗
+      if (ai.markNotConfigured(err)) {
+        // 未配置：不弹发送失败 toast
       } else {
         toast({
           title: t('发送失败'),
@@ -46,24 +48,6 @@ export default function AIChatPage() {
     }
   }
 
-  if (notConfigured) {
-    return (
-      <div className="max-w-2xl mx-auto mt-16">
-        <div className="rounded-lg border border-gray-100 bg-white shadow-sm px-8 py-10 text-center">
-          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto">
-            <Settings className="w-6 h-6 text-primary" />
-          </div>
-          <h2 className="text-lg font-semibold mt-4">{t('尚未配置 AI 服务')}</h2>
-          <p className="text-sm text-muted-foreground mt-2">
-            {t('请先在 系统管理 > 租户信息 中配置 AI 服务')}
-          </p>
-          <Button asChild className="mt-6">
-            <Link href="/portal/apps/system/tenant">{t('前往配置')}</Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
@@ -123,6 +107,7 @@ export default function AIChatPage() {
           </Button>
         </div>
       </div>
+      <AiNotConfiguredDialog open={ai.notConfiguredOpen} onOpenChange={ai.setNotConfiguredOpen} />
     </div>
   )
 }

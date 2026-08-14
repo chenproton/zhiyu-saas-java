@@ -1,7 +1,8 @@
 # 数据库 Schema 设计 — 知与 SaaS
 
-> 基于 `backend/migrations/`（001_baseline + 091~123 增量）回溯整理。
-> 当前共 **136 张表**（138 定义 − 迁移 110 删除 app_modules/platform_links）。
+> 基于 `backend/migrations/`（001_baseline + 091~159 增量）回溯整理。
+> 当前共 **152 张表**（155 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
+> 124~159 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
 > 约定：主键统一 `uuid DEFAULT gen_random_uuid()`；`created_at/updated_at timestamptz DEFAULT now()`；业务枚举用 `varchar + CHECK`，仅 7 个原生 PG ENUM。
 
 ---
@@ -281,6 +282,29 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 ---
 
+### 2.1 124~159 增量新增表（补充登记，列名自迁移文件提取）
+
+| 表 | 关键列 |
+|---|---|
+| certification_point_levels(124) | id, tenant_id, career_position_id, ability_point_id, level_mapping, created_at, updated_at |
+| community_topics(127) | id, tenant_id, author_id, title, content, tag, reply_count, created_at, updated_at |
+| community_replies(127) | id, topic_id, author_id, parent_id, content, created_at |
+| student_honors(129) | id, tenant_id, user_id, name, issuer, honor_date, file_name, file_url, created_at, updated_at |
+| user_favorites(129) | id, user_id, target_type, target_id, created_at |
+| platform_settings(135) | key, value, updated_at |
+| tenant_settings(136) | tenant_id, key, value, updated_at |
+| tags(137) | id, tag_type, tag_value, tenant_id, institution_id |
+| resource_tag_relations(137) | id, tenant_id, tag_id, resource_type, resource_id, created_at |
+| alliance_enterprise_links(142) | id, tenant_id, enterprise_id, relation_type, status, rating, enterprise_type, is_public, secondary_colleges, created_by, created_at, updated_at |
+| alliance_resource_grants(146) | id, tenant_id, enterprise_id, resource_type, resource_ids, created_by, created_at, updated_at |
+| brand_major_rank_configs(153) | id, tenant_id, major_id, enabled, rank_limit, created_at, updated_at |
+| resource_snapshots(158) | id, tenant_id, resource_type, resource_id, version, snapshot_data, created_at（无 FK，版本机制见 resource-snapshot-versioning.md） |
+| job_run_logs(147) | id, job_name, started_at, finished_at, status, rows_affected, error |
+| tenant_ai_configs(147) | tenant_id, base_url, api_key_encrypted, model, extra, created_at, updated_at |
+| ai_usage_logs(149) | id, tenant_id, user_id, model, prompt_tokens, completion_tokens, total_tokens, created_at |
+
+> 上述为 124~159 新增/结构性扩展的表；124~159 中仅加列/索引/回填的迁移见 §5 变更记录。新增表字段级完整定义随「数据模型变更流程」持续回写。
+
 ## 3. 租户隔离说明
 
 - **121 张表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）
@@ -382,5 +406,41 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | 121 | task_eval_exam_to_homework | exam→homework 评价归并 |
 | 122 | alliance_dict_english_codes | 联盟字典英文码 |
 | 123 | eval_standard_copy | 量规标准复制到任务侧 |
+| 124 | certification_point_levels | 能力点五档分数线配置（每能力点独立） |
+| 125 | job_ability_results 指标扩展 | 能力认知得分（0-100）+ 排名指标 |
+| 126 | job_ability_results 指标扩展 | 岗位胜任度等新指标 |
+| 127 | community_topics/community_replies | 学习社区帖子与回复 |
+| 128 | 知识点/能力点编码回填 | 存量无编码行生成 NL 编码 |
+| 129 | student_honors + user_favorites | 学生荣誉记录 + 通用收藏（场景/课程/题库/试卷） |
+| 130 | ability_points.category 并入 attributes | 能力点类别标签化 |
+| 131 | 行业字典种子 | GB/T 4754 行业分类种子 |
+| 132 | exam_results 评分字段扩展 | 日常考试教师评分字段 |
+| 133 | exam_usages 启用条件列 | 考试统一生命周期与状态归一 |
+| 134 | period_slots 时段类型 | 早自习/上午等时段类型 |
+| 135 | platform_settings | 平台级键值配置（主题色等） |
+| 136 | tenant_settings | 租户级键值配置（租户主题色等） |
+| 137 | tags + resource_tag_relations | 标签管理 + 资源标签多对多绑定 |
+| 138 | teaching_plans 通用内容架构 | 批次绑定等内容管理接入 |
+| 139 | 引用统计/零引用查询支撑 | CitationStats/ListUncited |
+| 140 | 增量迁移索引补齐 | 091~137 增量新表的索引补建 |
+| 141 | lesson_batches.status 默认值 | DB 默认 'active' 对齐 Go 侧 |
+| 142 | alliance_enterprise_links + 专家企业外键 | 企业平台阶段一底座 |
+| 143 | 任务级企业导入标记 | 企业平台阶段二 |
+| 144 | alliance_agreements 前台显示开关 | 公开展示列 |
+| 145 | 企业共建来源标记 | career_positions/scenarios 来源列 |
+| 146 | alliance_resource_grants | 学校-企业资源授权 + 专家账号 |
+| 147 | job_run_logs + tenant_ai_configs | 任务运行日志 + 租户 AI 配置（api_key 加密） |
+| 148 | tenant_validity | 租户有效期治理 |
+| 149 | ai_usage_logs + 版本号格式统一 | AI 用量记录 + 版本号归一 |
+| 150 | 企业注册默认公开开关 | 服务端默认值调整 |
+| 151 | 联盟字典补齐回填 | 108 之外的租户回填 |
+| 152 | 订阅 AI token 额度 | 套餐配置增加 AI 额度 |
+| 153 | brand_major_rank_configs + 菜单权限回填 | 人才品牌排名启用配置 |
+| 154 | 删除 alliance_expert_mentor_links | 移除共建导师影子账号体系 |
+| 155 | 清理影子账号遗留数据 | 旧导师账号数据清理（down 不可逆） |
+| 156 | 岗位类型语义调整 | /job/positions 岗位库口径 |
+| 157 | resource_creator_retain | 用户删除后保留其创建的资源 |
+| 158 | resource_snapshots | 资源快照与版本固化（快照无 FK，见 resource-snapshot-versioning.md） |
+| 159 | 临时考试状态统一 published | 统一临时考试状态 |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

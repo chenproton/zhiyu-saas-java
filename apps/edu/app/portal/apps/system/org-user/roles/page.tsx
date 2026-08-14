@@ -20,10 +20,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import {
   Pencil,
   Trash2,
@@ -504,26 +504,22 @@ export default function RolesPage() {
         createdAt: '',
       })}
       renderForm={(item, setItem) => (
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t('角色编码')}</label>
+        <>
+          <FormFieldRow label={t('角色编码')}>
             <Input
               value={item.code || generateRoleCode()}
               disabled
               className="bg-muted font-mono"
             />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('角色名称')} <span className="text-destructive">*</span>
-            </label>
+          </FormFieldRow>
+          <FormFieldRow label={t('角色名称')} required>
             <Input
               placeholder={t('如：学校管理员')}
               value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })}
             />
-          </div>
-        </div>
+          </FormFieldRow>
+        </>
       )}
       onSave={saveRole}
       renderTableHeader={() => (
@@ -592,14 +588,10 @@ export default function RolesPage() {
         await deleteRole(role as Role)
       }}
       emptyContent={
-        <Empty className="py-6">
-          <EmptyHeader>
-            <EmptyTitle>{t('暂无角色')}</EmptyTitle>
-            <EmptyDescription>
-              {searchTerm ? t('未找到匹配的角色') : t('当前租户下尚未创建角色')}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <EmptyState
+          title={t('暂无角色')}
+          description={searchTerm ? t('未找到匹配的角色') : t('当前租户下尚未创建角色')}
+        />
       }
     >
       {/* 角色绑定用户列表 */}
@@ -630,14 +622,10 @@ export default function RolesPage() {
               {usersError}
             </div>
           ) : roleUsers.length === 0 ? (
-            <Empty className="h-40">
-              <EmptyHeader>
-                <EmptyTitle>{t('暂无用户')}</EmptyTitle>
-                <EmptyDescription>
-                  {t('还没有用户绑定该角色，可在「账户列表」中为用户绑定角色')}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <EmptyState
+              title={t('暂无用户')}
+              description={t('还没有用户绑定该角色，可在「账户列表」中为用户绑定角色')}
+            />
           ) : (
             <div className="rounded-lg border border-gray-100 overflow-hidden">
               <Table>

@@ -129,7 +129,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 操作 | 命令 |
 |------|------|
 | 服务状态 | `docker compose ps` |
-| 后端日志 | `docker compose logs zhiyu-backend --tail 100` |
+| 后端日志 | `docker compose logs backend --tail 100` |
 | 健康检查 | `curl -sf http://127.0.0.1:8080/health` |
 | 连接数据库 | `psql "$DATABASE_URL"` |
 | 回滚部署 | `git checkout <上一tag>` 后 `./deploy.sh`（禁止手动登服务器改代码） |

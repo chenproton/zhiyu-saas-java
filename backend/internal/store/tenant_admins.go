@@ -130,16 +130,16 @@ func (s *TenantAdminStore) Delete(ctx context.Context, tx Queryer, tenantID, adm
 	return nil
 }
 
-// ResetPassword 重置管理员密码，返回新密码。
-func (s *TenantAdminStore) ResetPassword(ctx context.Context, adminID, plainPassword string) error {
+// ResetPassword 重置管理员密码（关键写：SQL 层限定租户，ADR-0003）。
+func (s *TenantAdminStore) ResetPassword(ctx context.Context, tenantID, adminID, plainPassword string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 	_, err = s.q.Exec(ctx, `
 		UPDATE users SET password_hash = $1, updated_at = NOW()
-		WHERE id = $2
-	`, string(hash), adminID)
+		WHERE id = $2 AND tenant_id = $3
+	`, string(hash), adminID, tenantID)
 	return err
 }
 

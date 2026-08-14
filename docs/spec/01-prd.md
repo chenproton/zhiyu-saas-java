@@ -267,7 +267,7 @@ rejected → draft / pending / archived
 
 - 架构分层：`docs/refactor-layering.md`
 - 前端组件：`docs/components.md`、`docs/forms-tables.md`
-- 审计文档：`docs/audits/`（26 份，含代码审查 2026-08-03 五轮修复）
+- 审查指引与历史：`docs/code-review-checklist.md`（审查清单）+ `docs/code-review-report.md`（全量审查问题清单与修复状态）
 - 接口契约：`docs/spec/02-api-contract.md`
 - 数据库设计：`docs/spec/04-database-schema.md`
 - 原型交互：`docs/spec/05-prototype-interaction.md`

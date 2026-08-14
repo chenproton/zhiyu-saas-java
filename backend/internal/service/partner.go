@@ -323,8 +323,8 @@ func (s *PartnerService) CreateExpertWithAccount(ctx context.Context, tenantID, 
 }
 
 // ResetExpertPassword 重置专家账号密码（admin 编辑专家时可选）。
-func (s *PartnerService) ResetExpertPassword(ctx context.Context, expertUserID, plainPassword string) error {
-	return s.st.Users().ResetPassword(ctx, expertUserID, plainPassword)
+func (s *PartnerService) ResetExpertPassword(ctx context.Context, tenantID, expertUserID, plainPassword string) error {
+	return s.st.Users().ResetPassword(ctx, tenantID, expertUserID, plainPassword)
 }
 
 // DeleteExpertWithAccount 删除专家档案及其绑定账号（事务）。
@@ -357,5 +357,5 @@ func (s *PartnerService) ChangeMyPassword(ctx context.Context, tenantID, userID,
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)) != nil {
 		return ErrInvalidOldPassword
 	}
-	return s.st.Users().ResetPassword(ctx, userID, newPassword)
+	return s.st.Users().ResetPassword(ctx, tenantID, userID, newPassword)
 }

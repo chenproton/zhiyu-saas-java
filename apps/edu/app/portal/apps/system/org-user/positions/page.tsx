@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { portalStaffTitleApi, portalUserManagementApi, type User } from '@/lib/api'
@@ -146,26 +147,22 @@ export default function PositionsPage() {
         createdAt: '',
       })}
       renderForm={(item, setItem) => (
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('职位名称')} <span className="text-destructive">*</span>
-            </label>
+        <>
+          <FormFieldRow label={t('职位名称')} required>
             <Input
               placeholder={t('如：教授')}
               value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })}
             />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t('描述')}</label>
+          </FormFieldRow>
+          <FormFieldRow label={t('描述')}>
             <Input
               placeholder={t('可选描述')}
               value={item.description || ''}
               onChange={(e) => setItem({ ...item, description: e.target.value })}
             />
-          </div>
-        </div>
+          </FormFieldRow>
+        </>
       )}
       onSave={handleSave}
       onToggleEnabled={toggleStatus}
