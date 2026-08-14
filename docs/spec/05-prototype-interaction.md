@@ -17,7 +17,7 @@
 | 应用中心 | `/portal/apps` | portal | P0 |
 | 系统管理 | `/portal/apps/system/*`（tenant/resource/org-user/logs 4 组 15+ 页） | portal | P0 |
 | 产教融合管理 | `/portal/apps/alliance/*`（school/enterprises/projects/achievements/experts/agreements/permissions/dictionaries/brands） | portal | P0 |
-| 联盟公开落地页 | `/portal/alliance`、`/portal/alliance/landing`、`/portal/alliance/brands` 等 | portal | P1 |
+| 联盟公开落地页 | `/portal/alliance/landing`（入口，`/portal/alliance` 无 page 仅子页路由）、`/portal/alliance/brands` 等 | portal | P1 |
 | AI 助手对话页 | `/portal/apps/ai/chat`（右下角 YiKnowAssistant 悬浮球入口） | portal | P1 |
 | AI 服务配置 | `/portal/apps/system/tenant` 租户信息页内 AI 配置区 | portal | P0 |
 | 超管控制台 | `/superadmin` | saas | P0 |
@@ -30,7 +30,7 @@
 | 实践场景学习平台 | `/scene` | 场景管理（列表 + 编辑 `scenarios/[id]/edit` + 任务编排 `edit/tasks`）、批次/工作流/审批/归档 | `/scene/landing` |
 | 数字课程服务平台 | `/lesson` | 体系课管理（`admin/system`、`admin/system/add`）、颗粒课、混合课、批次/工作流/审批/归档 | `/lesson/landing` |
 | 能力评价与测评资源管理 | `/evaluation` | 题库管理、试卷管理（组卷 `exams/[id]`）、岗位能力认定规则、考试使用/结果、场景任务评价、批次/工作流/审批 | `/evaluation/landing`、`/evaluation/exam-usage` |
-| 教学资源共享服务平台 | `/library` | 知识点库、能力点库、证书库、现场问答题库、资源库（12 类型）、我的资源 | `/library/landing` |
+| 教学资源共享服务平台 | `/library` | 知识点库、能力点库、证书库、现场问答题库、资源库（11 类型）、我的资源 | `/library/landing` |
 | 教务管理服务平台 | `/affairs` | 教务配置、人培方案（列表+详情）、教学计划、排课管理、批次/工作流/审批 | — |
 | 产教融合与就业服务 | `/portal/apps/alliance` | 见 1.1 | `/portal/alliance` |
 | 系统管理 | `/portal/apps/system` | 见 1.1 | — |

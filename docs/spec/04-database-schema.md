@@ -72,7 +72,7 @@ tenants(租户) ── 行级隔离一切业务数据
 | id | uuid | gen_random_uuid() | 否 | PK |
 | name | varchar(128) | — | 否 | 租户名称 |
 | code | varchar(64) | — | 否 | 唯一 code |
-| domain | varchar(128) | — | 可 | 域名 |
+| domain | varchar(256) | — | 可 | 域名 |
 | enterprise_code | varchar(64) | — | 可 | 企业编码 |
 | admin_ids | uuid[] | '{}' | 否 | 管理员 id 列表 |
 | type | varchar(16) | school | 否 | 租户类型 school/enterprise（142） |
@@ -87,15 +87,15 @@ tenants(租户) ── 行级隔离一切业务数据
 | 字段 | 类型 | 默认 | 空 | 说明 |
 |------|------|------|----|------|
 | id | uuid | — | 否 | PK |
-| tenant_id | uuid | — | 否 | FK → tenants CASCADE |
+| tenant_id | uuid | — | 可 | FK → tenants CASCADE |
 | org_node_id | uuid | — | 可 | 组织节点（教师→院系，学生→班级），SET NULL |
 | major_id | uuid | — | 可 | 专业，SET NULL |
 | role | user_role ENUM | — | 否 | school/enterprise/operator |
-| login_name | varchar(64) | — | 否 | 全局唯一（tenantID+"_"+原始名） |
+| login_name | varchar(255) | — | 可 | 全局唯一（tenantID+"_"+原始名） |
 | password_hash | varchar(255) | — | 否 | bcrypt |
 | student_no / work_id | varchar(64) | — | 可 | 学号/工号 |
 | title_ids | uuid[] | '{}' | 否 | 职称 |
-| status | varchar(16) | — | 否 | active/inactive |
+| status | varchar(20) | — | 否 | active/inactive |
 | password_changed_at | timestamptz | now() | 否 | 改密时间戳（160）；改密/重置时刷新，鉴权中间件据此判定旧 token 失效 |
 
 ### 2.3 `organizations` / `org_types` — 组织树
@@ -134,7 +134,7 @@ user_roles：`id, user_id(FK CASCADE), role_id(FK CASCADE)`（无 tenant_id，�
 ### 2.6 `ability_domains` / `ability_points` — 能力字典
 
 ability_domains：`id, tenant_id, name, description, sort_order`。
-ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 回填 'NL-xxxx'), category(knowledge/skill/quality), attributes jsonb[], is_public, description, created_by`。
+ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-xxxx'), attributes text[], is_public, description, created_by`（无 domain_id 列；category 列已于迁移 130 DROP）。
 
 ### 2.7 认证链（certification_*）
 
@@ -175,7 +175,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 ### 2.10 `scenarios` / `scenario_tasks` — 场景链
 
-**scenarios**：`id, tenant_id, code((tenant,code) 唯一), name, status(CHECK 六态), difficulty(1-5 CHECK), profession_name, industry_ids uuid[], position_id, batch_id, delivery_goal, description, cover_image, version, created_by`。
+**scenarios**：`id, tenant_id, code((tenant,code) 唯一), name, status(CHECK 六态), difficulty(1-5 CHECK), profession_name, industry_ids varchar(64)[], career_position_id, batch_id, delivery_goal, background, cover_image, version, created_by`。
 
 **scenario_tasks**：`id, scenario_id(CASCADE), name, task_type, difficulty(1-5), dependency_ids uuid[], is_referenced, knowledge_ids/ability_ids/resource_ids uuid[], eval_data jsonb, sort_order`。
 
@@ -186,7 +186,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 ### 2.11 考试链
 
 **question_banks**：`id, tenant_id, code((tenant,code) 唯一), name, description, status(CHECK 六态), is_draft_pool, owner_type, batch_id, created_by`。
-**questions**：`id, bank_id(CASCADE), tenant_id, type, title, options jsonb, answer text, difficulty, knowledge_point_ids uuid[], analysis, status`。
+**questions**：`id, bank_id(CASCADE), tenant_id, type, content, options jsonb, answer text, difficulty, knowledge_point_ids uuid[], analysis, status`。
 **exams**：`id, tenant_id, code((tenant,code) 唯一), name, description, total_score, duration, owner_type(mine), is_temp, collaborator_ids uuid[], status(CHECK 六态), batch_id, created_by`。
 **exam_questions**：`exam_id CASCADE + question_id SET NULL（158 删题保护，question_id 可空）`，**(exam,question) 唯一（113）**、score、sort_order。
 **exam_usages**：`id, tenant_id, exam_id, target_type(mine/course/node), target_ids uuid[], status(draft), start_time/end_time, duration, created_by`。
@@ -218,7 +218,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 | 表 | 关键字段 |
 |----|---------|
-| terms | name("2025-2026-1")、weeks_count、is_current、(tenant,name) 唯一 |
+| terms | name("2025-2026-1")、weeks_count、is_current（无 (tenant,name) 唯一约束，仅 tenant 索引） |
 | training_programs | code、entry_year、level(中专/大专/本科)、total_credits、status(draft/published)、collaborators[]、batch_id |
 | training_program_courses | program_id CASCADE、course_id SET NULL、credits、hours、semester、nature(必修/选修/实践/场景)、assessment、position_id(102)（无 tenant_id） |
 | teaching_plans | status(draft/confirmed)、(program_id,term_id) 唯一 |
@@ -265,7 +265,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 | 表 | 关键字段 |
 |----|---------|
-| resource_library | resource_type ENUM(11 类)、url、metadata jsonb、(tenant,name) 唯一 |
+| resource_library | resource_type ENUM(11 类)、url、metadata jsonb（无 (tenant,name) 唯一约束） |
 | on_site_question_library | question_type(short_answer)、difficulty、knowledge_point_ids[] |
 | resource_tags / resource_codes | tag_type/tag_value；code(tenant+code 唯一) |
 | knowledge_points | code、linked、granular_lesson_ids[]、source_type/source_id(097) |
@@ -287,27 +287,26 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 ### 2.18 124~160 增量新增表（补充登记，列名自迁移文件提取）
 
-| 表 | 关键列 |
+| 表 | 字段级定义（列名/类型/NOT NULL/默认/FK/唯一，自迁移文件提取） |
 |---|---|
-| certification_point_levels(124) | id, tenant_id, career_position_id, ability_point_id, level_mapping, created_at, updated_at |
-| community_topics(127) | id, tenant_id, author_id, title, content, tag, reply_count, created_at, updated_at |
-| community_replies(127) | id, topic_id, author_id, parent_id, content, created_at |
-| student_honors(129) | id, tenant_id, user_id, name, issuer, honor_date, file_name, file_url, created_at, updated_at |
-| user_favorites(129) | id, user_id, target_type, target_id, created_at |
-| platform_settings(135) | key, value, updated_at |
-| tenant_settings(136) | tenant_id, key, value, updated_at |
-| tags(137) | id, tenant_id, name, color, created_at, updated_at |
-| resource_tag_relations(137) | id, tenant_id, tag_id, resource_type, resource_id, created_at |
-| alliance_enterprise_links(142) | id, tenant_id, enterprise_id, relation_type, status, rating, enterprise_type, is_public, secondary_colleges, created_by, created_at, updated_at |
-| alliance_resource_grants(146) | id, tenant_id, enterprise_id, resource_type, resource_ids, created_by, created_at, updated_at |
-| brand_major_rank_configs(153) | id, tenant_id, major_id, enabled, rank_limit, created_at, updated_at |
-| resource_snapshots(158) | id, tenant_id, resource_type, resource_id, version, snapshot_data, created_at（无 FK，版本机制见 resource-snapshot-versioning.md） |
-| job_run_logs(147) | id, job_name, started_at, finished_at, status, rows_affected, error |
-| tenant_ai_configs(147) | tenant_id, base_url, api_key_encrypted, model, extra, created_at, updated_at |
-| ai_usage_logs(149) | id, tenant_id, user_id, model, prompt_tokens, completion_tokens, total_tokens, created_at |
+| certification_point_levels(124) | `id PK, tenant_id NOT NULL, career_position_id NOT NULL, ability_point_id NOT NULL, level_mapping jsonb NOT NULL DEFAULT '[]', created_at, updated_at`；(tenant_id, career_position_id, ability_point_id) 唯一索引 |
+| community_topics(127) | `id, tenant_id NOT NULL, author_id NOT NULL, title varchar(128) NOT NULL, content text NOT NULL, tag varchar(32), reply_count int DEFAULT 0, created_at, updated_at` |
+| community_replies(127) | `id, topic_id NOT NULL, author_id NOT NULL, parent_id, content text NOT NULL, created_at` |
+| student_honors(129) | `id PK, tenant_id NOT NULL, user_id NOT NULL FK→users CASCADE, name varchar(128) NOT NULL, issuer DEFAULT '', honor_date varchar(32) DEFAULT '', file_name varchar(256), file_url varchar(512), created_at, updated_at` |
+| user_favorites(129) | `id, user_id NOT NULL, target_type varchar(64) NOT NULL, target_id NOT NULL, created_at` |
+| platform_settings(135) | `key text PK, value text NOT NULL DEFAULT '', updated_at` |
+| tenant_settings(136) | `tenant_id NOT NULL, key NOT NULL, value text NOT NULL DEFAULT '', updated_at`；(tenant_id, key) 主键 |
+| tags(137) | `id PK, tenant_id NOT NULL, name varchar(64) NOT NULL, color varchar(16) DEFAULT '#6366f1', created_at, updated_at`（标签管理实体，与 baseline 遗留 resource_tags 是两张表） |
+| resource_tag_relations(137) | `id PK, tenant_id NOT NULL, tag_id NOT NULL FK→tags, resource_type varchar(32) NOT NULL, resource_id NOT NULL, created_at` |
+| alliance_enterprise_links(142) | `id PK, tenant_id NOT NULL, enterprise_id NOT NULL FK→partner_enterprises, relation_type DEFAULT 'alliance', status DEFAULT 'negotiating', rating DEFAULT 'general', enterprise_type DEFAULT 'cooperation', is_public boolean DEFAULT false, secondary_colleges jsonb DEFAULT '[]', created_by, created_at, updated_at`；(tenant_id, enterprise_id) 唯一 |
+| alliance_resource_grants(146) | `id PK, tenant_id NOT NULL, enterprise_id NOT NULL FK→partner_enterprises, resource_type(position|scene) NOT NULL, resource_ids uuid[] DEFAULT '{}', created_by, created_at, updated_at`；(tenant_id, enterprise_id, resource_type) 唯一 |
+| job_run_logs(147) | `id PK, job_name NOT NULL, started_at, finished_at, status DEFAULT 'running', rows_affected bigint DEFAULT 0, error` |
+| tenant_ai_configs(147) | `tenant_id PK FK→tenants, base_url NOT NULL, api_key_encrypted NOT NULL（AES-256-GCM）, model NOT NULL, extra jsonb DEFAULT '{}', created_at, updated_at` |
+| ai_usage_logs(149) | `id PK, tenant_id NOT NULL FK→tenants, user_id, model NOT NULL, prompt_tokens/completion_tokens/total_tokens int DEFAULT 0, created_at` |
+| brand_major_rank_configs(153) | `id PK, tenant_id NOT NULL, major_id NOT NULL, enabled DEFAULT true, rank_limit DEFAULT 10, created_at, updated_at` |
+| resource_snapshots(158) | `id PK, tenant_id NOT NULL, resource_type NOT NULL, resource_id NOT NULL, version varchar(32) NOT NULL, snapshot_data jsonb NOT NULL, created_at`（无 FK，版本机制见 resource-snapshot-versioning.md） |
 
-> 上述为 124~160 新增/结构性扩展的表；124~160 中仅加列/索引/回填的迁移见 §5 变更记录。新增表字段级完整定义随「数据模型变更流程」持续回写。
-> 注意：137 新建的 `tags` 表（`id, tenant_id, name, color, created_at, updated_at`）与 baseline 的旧 `resource_tags` 表（含 `tag_type/tag_value`）是两张表，前者是标签管理实体，后者为遗留的资源标签结构。
+> 上述为 124~160 新增/结构性扩展的表；124~160 中仅加列/索引/回填的迁移见 §5 变更记录。partner_enterprises（142，全局企业主体）见 partner-enterprise-platform.md §4.2；alliance_expert_mentor_links（142）已于 154 废弃删除，不登记。
 
 ## 3. 租户隔离说明
 
@@ -336,9 +335,11 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | resource_type | document / spreadsheet / image / link / audio / video / archive / venue / facility / software / other |
 | withdrawal_status | pending / approved / paid / rejected |
 
-### 4.2 内容统一状态机（CHECK，岗位/场景/课程/题库/试卷/题目）
+### 4.2 内容统一状态机（CHECK 六态，岗位/场景/课程/题库/试卷）
 
 `draft`（草稿）→ `pending`（待审批）→ `approved`（已批准）→ `rejected`（已驳回）→ `published`（已发布）→ `archived`（已归档）
+
+> 人培方案（training_programs）与教学计划（teaching_plans）**不适用六态**：前者 `draft/published`、后者 `draft/confirmed`（见 §2.14）；题目（exam_questions）随题库/试卷整体流转，不单独走状态机。三者与 5 类版本化实体同列 `AllowedContentTables` 白名单，共享提交/发布/归档等统一动作表名校验。
 
 ### 4.3 varchar 状态/枚举（代码层字典）
 

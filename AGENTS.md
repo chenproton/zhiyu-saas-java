@@ -89,7 +89,7 @@ deploy.sh 自动：源码 hash 比对只构建变更部分；构建前质量门�
 ```bash
 cd backend && go vet ./... && go build ./... && gofmt -l .
 pnpm typecheck && pnpm lint && pnpm test
-./scripts/spec-check.sh   # spec 硬约束（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向/spec 耦合）
+./scripts/spec-check.sh   # spec 校验：阻断级（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向）+ 提示级（spec 耦合/XSS/路由契约），详见 spec-standards.md §九
 ```
 
 migration 需配对 `.down.sql`；单次 commit 只含当次变更。
@@ -120,6 +120,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
 | 后端复用速查 | [`backend-reuse.md`](docs/backend-reuse.md) |
 | 安全非功能规范（密码/会话/密钥/限流/上传） | [`security-standards.md`](docs/security-standards.md) |
+| 非功能规范（性能/可观测/国际化/测试） | [`non-functional-standards.md`](docs/non-functional-standards.md) |
 | 架构决策为什么 | [`decisions/`](docs/decisions/README.md)（ADR） |
 | 审 PR 语义检查 | [`code-review-checklist.md`](docs/code-review-checklist.md) |
 | 写/审文档 | [`documentation-standards.md`](docs/documentation-standards.md) + [`prose-standards.md`](docs/prose-standards.md) |
