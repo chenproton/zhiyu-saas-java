@@ -29,7 +29,7 @@ export default function ExamCenterPage() {
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
     examApi
-      .list({ status: 'published', limit: 1000 } as any)
+      .list({ status: 'published', limit: 1000 })
       .then((res) => {
         const map: Record<string, string> = {}
         ;(res.items || []).forEach((e: Exam) => {

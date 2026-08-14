@@ -94,7 +94,8 @@ export default function QuestionBankDetailPage() {
   useEffect(() => {
     if (getQuestionBank(bankId) || triedReload.current) return
     triedReload.current = true
-    loadQuestionBanks?.().finally(() => setLoadingBank(false))
+    // 可选调用后再链式 finally：loadQuestionBanks 未提供时 `?.()` 返回 undefined，须再可选出链
+    loadQuestionBanks?.()?.finally(() => setLoadingBank(false))
   }, [bankId, getQuestionBank, loadQuestionBanks])
 
   useEffect(() => {
@@ -339,23 +340,33 @@ export default function QuestionBankDetailPage() {
   }
 
   const handleBatchDelete = async () => {
-    try {
-      for (const id of selectedQuestions) {
-        await deleteQuestion(id)
-      }
-      setSelectedQuestions(new Set())
-      setBatchDeleteConfirm(false)
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: t('批量删除失败'), description: err.message })
+    const ids = Array.from(selectedQuestions)
+    if (ids.length === 0) return
+    // 并发删除并汇总成败：任一失败不中断其余，避免部分成功被笼统报为全败
+    const results = await Promise.allSettled(ids.map((id) => deleteQuestion(id)))
+    const failed = results.filter((r) => r.status === 'rejected').length
+    setSelectedQuestions(new Set())
+    setBatchDeleteConfirm(false)
+    if (failed === 0) {
+      toast({ title: t('已批量删除 {n} 道题目', { n: ids.length }) })
+    } else {
+      toast({
+        variant: 'destructive',
+        title: t('批量删除部分失败'),
+        description: t('成功 {ok} 道，失败 {fail} 道', { ok: ids.length - failed, fail: failed }),
+      })
     }
   }
 
   const handleBatchCopy = async () => {
-    try {
-      for (const id of selectedQuestions) {
-        const question = questions.find((q) => q.id === id)
-        if (!question) continue
-        await createQuestion(bankId, {
+    const toCopy = Array.from(selectedQuestions)
+      .map((id) => questions.find((q) => q.id === id))
+      .filter((q): q is Question => !!q)
+    if (toCopy.length === 0) return
+    // 并发复制并汇总成败：任一失败不中断其余，避免部分成功被笼统报为全败
+    const results = await Promise.allSettled(
+      toCopy.map((question) =>
+        createQuestion(bankId, {
           type: question.type,
           content: question.content + t(' (复制)'),
           options: question.options,
@@ -364,11 +375,19 @@ export default function QuestionBankDetailPage() {
           score: question.score,
           difficulty: question.difficulty,
           knowledgePoints: question.knowledgePoints,
-        })
-      }
-      setSelectedQuestions(new Set())
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: t('批量复制失败'), description: err.message })
+        }),
+      ),
+    )
+    const failed = results.filter((r) => r.status === 'rejected').length
+    setSelectedQuestions(new Set())
+    if (failed === 0) {
+      toast({ title: t('已批量复制 {n} 道题目', { n: toCopy.length }) })
+    } else {
+      toast({
+        variant: 'destructive',
+        title: t('批量复制部分失败'),
+        description: t('成功 {ok} 道，失败 {fail} 道', { ok: toCopy.length - failed, fail: failed }),
+      })
     }
   }
 
@@ -485,7 +504,7 @@ export default function QuestionBankDetailPage() {
             </div>
             <div>
               <span className="text-muted-foreground">{t('题目数量:')}</span>{' '}
-              <strong>{bank.questionCount}</strong>
+              <strong>{questionCountByBank.get(bankId) ?? bank.questionCount}</strong>
             </div>
             <div>
               <span className="text-muted-foreground">{t('创建时间:')}</span>{' '}

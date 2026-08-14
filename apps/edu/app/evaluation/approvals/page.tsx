@@ -78,13 +78,16 @@ export default function EvaluationApprovalsPage() {
 
   const allRecords = useMemo(() => [...bankRecords, ...examRecords], [bankRecords, examRecords])
 
+  // 按 recordId 建 Set 判定记录归属，避免每条记录 O(n) 线性扫描
+  const bankRecordIds = useMemo(() => new Set(bankRecords.map((r) => r.id)), [bankRecords])
+
   const getStepInfoFn = useCallback(
-    (a: any) => {
+    (a: ApprovalRecord) => {
       // Determine which records array this belongs to
-      if (bankRecords.includes(a)) return getBankStepInfo(a)
+      if (bankRecordIds.has(a.id)) return getBankStepInfo(a)
       return getExamStepInfo(a)
     },
-    [bankRecords, getBankStepInfo, getExamStepInfo],
+    [bankRecordIds, getBankStepInfo, getExamStepInfo],
   )
 
   const columns: ApprovalColumn<ApprovalView>[] = [
@@ -137,7 +140,7 @@ export default function EvaluationApprovalsPage() {
 
   const mapRecord = useCallback(
     (a: ApprovalRecord): ApprovalView => {
-      const isBank = bankRecords.includes(a)
+      const isBank = bankRecordIds.has(a.id)
       const targetType = isBank ? ('question_bank' as const) : ('exam' as const)
       let targetName = a.targetId
       let version = '-'
@@ -172,20 +175,20 @@ export default function EvaluationApprovalsPage() {
         history: a.history,
       }
     },
-    [bankRecords, bankMap, examMap, batchMap, getStepInfoFn],
+    [bankRecordIds, bankMap, examMap, batchMap, getStepInfoFn],
   )
 
   const handleApprove = async (id: string, comment: string) => {
     const record = allRecords.find((r) => r.id === id)
     if (!record) return
-    if (bankRecords.includes(record)) await approveBank(id, comment)
+    if (bankRecordIds.has(record.id)) await approveBank(id, comment)
     else await approveExam(id, comment)
   }
 
   const handleReject = async (id: string, comment: string) => {
     const record = allRecords.find((r) => r.id === id)
     if (!record) return
-    if (bankRecords.includes(record)) await rejectBank(id, comment)
+    if (bankRecordIds.has(record.id)) await rejectBank(id, comment)
     else await rejectExam(id, comment)
   }
 

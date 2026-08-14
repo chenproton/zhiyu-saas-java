@@ -103,7 +103,10 @@ export default function ExamComposerPage() {
         if (!cancelled) setFetchedExam(data)
       })
       .catch((err) => {
-        if (!cancelled) reportError(err, '加载试卷题目')
+        if (cancelled) return
+        reportError(err, '加载试卷题目')
+        // 详情拉取失败时进入错误态（可重试），避免静默降级到无题目的列表数据误导用户
+        setLoadError(err instanceof Error ? err.message : '加载失败')
       })
     return () => {
       cancelled = true
@@ -201,31 +204,33 @@ export default function ExamComposerPage() {
     )
   }
 
-  if (!exam) {
-    // 区分「加载失败」（可重试）与「确实不存在」（引导返回）
-    if (loadError) {
-      return (
-        <div className="flex h-[50vh] items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-lg font-semibold">{t('加载失败')}</h2>
-            <p className="mb-4 text-muted-foreground">{loadError}</p>
-            <Button
-              onClick={() => {
-                triedReload.current = false
-                setLoadError(null)
-                setLoadingExam(true)
-                loadExams?.()
-                  .then(() => setLoadError(null))
-                  .catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'))
-                  .finally(() => setLoadingExam(false))
-              }}
-            >
-              {t('重试')}
-            </Button>
-          </div>
+  // 详情拉取失败时即使列表已返回该试卷也进入错误态（可重试），
+  // 避免静默降级到无题目的列表数据、页面误显示「暂无题目」
+  if (loadError && !fetchedExam) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">{t('加载失败')}</h2>
+          <p className="mb-4 text-muted-foreground">{loadError}</p>
+          <Button
+            onClick={() => {
+              triedReload.current = false
+              setLoadError(null)
+              setLoadingExam(true)
+              loadExams?.()
+                .then(() => setLoadError(null))
+                .catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'))
+                .finally(() => setLoadingExam(false))
+            }}
+          >
+            {t('重试')}
+          </Button>
         </div>
-      )
-    }
+      </div>
+    )
+  }
+
+  if (!exam) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
@@ -263,9 +268,13 @@ export default function ExamComposerPage() {
 
   const handleCreateQuestion = async (data: QuestionFormData) => {
     if (!draftPoolBank) return
-    const newQuestion = await createQuestion(draftPoolBank.id, data)
-    await addQuestionToExam(examId, newQuestion)
-    await refreshExam()
+    try {
+      const newQuestion = await createQuestion(draftPoolBank.id, data)
+      await addQuestionToExam(examId, newQuestion)
+      await refreshExam()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t('创建题目失败'), description: err.message })
+    }
   }
 
   const handleRemoveQuestion = async () => {
