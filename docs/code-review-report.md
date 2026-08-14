@@ -6256,6 +6256,7 @@
 | 063-078 | e22f2f94 | portal-alliance-scene 批次（36 文件：类型强化、竞态防护、加载态、死代码、复用收敛） |
 | 079-103 | b4817454 | components-packages 批次（55 文件：evaluation 三弹窗、evaluation-rules、job/position-builder 6 文件、lesson/portal/providers/scene、shared 组件 14、hooks/lib 5、packages 11、vitest 配置——纯 updater/竞态防护/死代码清理/类型收紧/fetch-all 分页熔断） |
 | 047-048 遗留 | 5bb91020 | examFromSnapshot 三处收敛共享 lib/exam-snapshot.ts（去 any）、题型标签复用 QUESTION_TYPE_LABELS、用户反查与提交计数改 listAll 防截断（saveFailed 复位/0 分题排除已在 045-050 修好，复核未动） |
+| 051-052 遗留 | 8eb944e6 | learn-roads 编辑竞态（场景/任务计数移到序号守卫后落状态）、保存提示定时器卸载清理、学习路径列表缓存复用（编辑不再重复全量拉取） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
