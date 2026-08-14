@@ -161,13 +161,17 @@ func (s *PortalStore) ListTeacherSchedules(ctx context.Context, userID string, t
 
 // UserClassNodeID 查询用户班级节点。
 func (s *PortalStore) UserClassNodeID(ctx context.Context, userID string, tenantID *string) string {
-	var classNodeID string
+	var classNodeID *string
 	if err := s.q.QueryRow(ctx, `
 		SELECT org_node_id FROM users WHERE id = $1 AND ($2::uuid IS NULL OR tenant_id = $2::uuid)
 	`, userID, tenantID).Scan(&classNodeID); err != nil {
 		slog.Warn("portal stat query failed", "error", err)
+		return ""
 	}
-	return classNodeID
+	if classNodeID == nil {
+		return ""
+	}
+	return *classNodeID
 }
 
 // StudentScheduleRow 学生排课行。

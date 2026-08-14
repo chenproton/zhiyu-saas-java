@@ -227,10 +227,11 @@ function attachListeners(page, sink, cfg, routeState) {
     const t = msg.type()
     if (t === 'error') {
       const text = msg.text().slice(0, 500)
-      // 把 401/403/429 的 console 报错也归为权限/限流信号，避免 /partner 等无权限页噪音
+      // 把 401/403/429 的 console 报错也归为权限/限流信号，避免 /partner 等无权限页噪音；
+      // "too many requests" 是前端 reportError 对 429 的透传文案（不含状态码），一并归为限流
       let subType = 'console'
       if (/\b401\b/.test(text) || /\b403\b/.test(text)) subType = 'auth'
-      else if (/\b429\b/.test(text)) subType = 'rate-limit'
+      else if (/\b429\b/.test(text) || /too many requests/i.test(text)) subType = 'rate-limit'
       push({ type: subType, message: text })
     } else if (t === 'warning' && cfg.verbose) {
       push({ type: 'console-warning', message: msg.text().slice(0, 500) })

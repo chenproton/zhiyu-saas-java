@@ -17,6 +17,9 @@ export function isTransientError(err) {
   const type = err.type || ''
   if (type === 'api' && /\b50[234]\b/.test(msg)) return true
   if (type === 'console' && /\b50[234]\b.*Bad Gateway|Gateway Timeout|Service Unavailable|Failed to load resource/i.test(msg)) return true
+  // 巡检跳转打断在途请求：页面已卸载，fetch 被浏览器中断（net::ERR_FAILED / Failed to fetch），
+  // 后端对应 context canceled 静默退出，属巡检自身噪音而非页面缺陷
+  if (type === 'console' && /Failed to load resource: net::ERR_FAILED|Failed to fetch/i.test(msg)) return true
   if (type === 'network' && /ERR_CONNECTION_REFUSED|ERR_CONNECTION_RESET|net::ERR_FAILED/i.test(msg)) return true
   if (type === 'page' && /net::ERR_CONNECTION_REFUSED|ERR_CONNECTION_RESET|502\s|503\s|504\s/i.test(msg)) return true
   return false

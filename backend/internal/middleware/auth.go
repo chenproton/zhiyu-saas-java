@@ -147,6 +147,11 @@ func RequireActiveUser(db *pgxpool.Pool) func(http.Handler) http.Handler {
 			}
 			st, err := store.New(db).Auth().GetSessionState(r.Context(), claims.UserID)
 			if err != nil {
+				// 客户端已取消（页面跳转/关闭导致的在途请求中断）时静默退出：
+				// 请求方已放弃，写 500 无意义（连接已断，浏览器侧表现为 net::ERR_FAILED 噪音）
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 				if errors.Is(err, pgx.ErrNoRows) {
 					http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 					return
@@ -162,13 +167,22 @@ func RequireActiveUser(db *pgxpool.Pool) func(http.Handler) http.Handler {
 				http.Error(w, `{"error":"租户已停用"}`, http.StatusUnauthorized)
 				return
 			}
-			if claims.IssuedAt != nil && st.PasswordChangedAt.After(claims.IssuedAt.Time) {
+			if claims.IssuedAt != nil && sessionInvalidatedByPasswordChange(st.PasswordChangedAt, claims.IssuedAt.Time) {
 				http.Error(w, `{"error":"密码已修改，请重新登录"}`, http.StatusUnauthorized)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// sessionInvalidatedByPasswordChange 判定改密是否使 token 失效。
+// JWT iat 为秒级精度（jwt.NumericDate 截断亚秒），而 DB password_changed_at 为微秒精度：
+// 注册/重置后同一秒内签发的 token（iat 截断后早于微秒级改密时间）会被误判为改密前旧 token。
+// 双方统一截断到秒再比较——改密时间早于/等于签发秒时 token 有效，晚于签发秒才失效。
+// 语义与 security-standards §2 一致：改密后旧 token 失效，同秒签发的新 token 不受影响。
+func sessionInvalidatedByPasswordChange(passwordChangedAt, issuedAt time.Time) bool {
+	return passwordChangedAt.Truncate(time.Second).After(issuedAt.Truncate(time.Second))
 }
 
 // UserCandidates 返回本次请求全部可解析的 claims（多 cookie 场景按序），
