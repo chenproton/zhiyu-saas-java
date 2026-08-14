@@ -6272,6 +6272,7 @@
 | 049-050 遗留 | （并入 fix-batch-2） | 评分详情用户反查改 listAll、岗位归档批量删除改 allSettled 汇总；其余已由大修复与 045-050 批次修复（scene-results 序号守卫/TaskMethodTabs 模块级外移、题库批量删/复制 allSettled、头部数量用实时统计、可选 finally 出链、DrawnQuestionCard key 收敛） |
 | 101-102 | 无需补修 | 19 项 P2 已由 079-103 批次修复（library metadata→unknown、status failed/failure 双键收敛、combobox label→value + 关闭清搜索、import-confirm busy 拦截关闭、import-wizard input 重置 + 取消禁用、mixed-tag 死代码与 JSON.stringify 比较移除）；scene-mock 已 deprecated 但仍被 3 个任务编辑页引用（迁移属中改）、status 中英键配色差异、scene/snapshot jsonb any 结构、PlatformSideNav effect 依赖等评估后不改 |
 | 053-054 遗留 | （并入 fix-batch-2） | hybrid 能力点池改 fetchAllPages；其余已由大修复与 051-062 批次修复（拖拽成环 wouldCreateCycle、hybrid evalData 全字段回写、save-utils 可清空+NaN 兜底、测试数据正式类型、临时 ID 统一判定、知识点克隆池外 knowledgePointNames 兜底、课程缓存击穿参数与死代码/死 prop 清理、保存后 idMapping 重映射）；模块序列化 any 类型、learn 页 limit 1000、hover 动态类属评估后不改 |
+| 037-038 遗留 | （并入 fix-batch-3） | scenario_clone 5 处行扫描吞错补 Warn、question_banks Create 补 beginner nil 校验、resource_codes Get 映射 ErrNotFound+删残留注释；其余已由大修复与 033-042/029-030 批次修复（Bind afterBind 上抛、SaveFull 冲突回读实际 id、LIKE 通配符转义、Prepare 回查 Warn、random_draw/recommends ErrNotFound、绑定表/列白名单、roles Assign 影响行校验） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6328,6 +6329,10 @@
 - lesson/landing/[id]/learn 节点/模块 limit 1000（超大课程边缘场景，容忍，见 053-054）
 - system/add hover 动态 Tailwind 类（纯样式，构建期无法提取，人工确认，见 053-054）
 - node-evaluation-results 前端 evaluateeId 可空（后端已强制学生按 claims.UserID 过滤，无泄露，见 053-054）
+- position_bindings/certificates 等 store 无租户限定方法（handler 层已核验归属校验，建议注释标注契约，评估后不改，见 037-038）
+- position_clone/scenario_clone 克隆骨架与 FetchPosition 重复、question_banks fetch 三份扫描体（事务内低频克隆与 20 列扫描重构，见 037-038）
+- questions BatchCreate GenerateEntityCode 无重试（低概率碰撞、批量导入低频，见 037-038）
+- random_draw/resource_library Delete 的 withTxStore 无 beginner nil 校验（生产恒为 Store，测试 fake 未触发，见 037-038）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
