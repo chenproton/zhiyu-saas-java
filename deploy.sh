@@ -1050,11 +1050,12 @@ if ! $OK; then
 fi
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）。
-# 首次启动需初始化 LibreOffice 与加载 javacv 转码库，低配机器可能超过 2 分钟，等待上限放宽到 3 分钟
+# 首次启动需初始化 LibreOffice 与加载 javacv 转码库，低配机器可能超过 2 分钟，等待上限放宽到 3 分钟。
+# 探测用 curl 而非 wget：宿主机 wget 可能被安全策略禁用（Permission denied），curl 为 deploy.sh 必装依赖
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
   KK_READY=false
   for i in $(seq 1 90); do
-    wget -qO- http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; KK_READY=true; break; }
+    curl -sf --max-time 10 "http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview" >/dev/null 2>&1 && { log "  kkfileview ready"; KK_READY=true; break; }
     sleep 2
   done
   if ! $KK_READY; then
