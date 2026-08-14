@@ -36,6 +36,7 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
 - 核心业务加锁防重复，普通业务允许报错或重复插入
 - 核心接口保证流畅，非核心允许等待
 - **组件复用优先**（规范见 [`docs/components.md`](docs/components.md)）：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽象公共组件时先向用户提出方案、经确认后实施，并同场景一并改造
+- **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图，再写代码；新增/变更行为必须同步更新 spec，禁止「只改代码不改 spec」。完整规范见 [`docs/spec-standards.md`](docs/spec-standards.md)
 
 ## 四、运维速查
 
@@ -93,3 +94,35 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
    - `backend/vendor/`：`go mod vendor` 产物；`deploy.sh` 以 `-mod=vendor` 构建，**不可移动位置**
    - `node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`：依赖目录与构建/运行产物
 7. **默认不做端到端验证**：除非用户**主动要求**，不执行 UI Smoke 全站巡检、`--route` 单页巡检、浏览器自动化等端到端验证（包括新功能/修复完成后的验证环节）；本地验证以编译、类型检查、lint、单测为准，部署后的功能表现由用户人工确认
+
+## 九、规格、文档与决策规范（spec-first 制度框架）
+
+> 本仓库由 AI 主导开发，以下规范是把「AI 协作者如何正确地写规格、文档、文字、做决策」固化为制度，防止意图漂移、过度设计、误改。
+
+### 9.1 规格（spec）规范
+
+- 功能开发**先读 `docs/spec/` 对齐意图，再写代码**；新增/变更行为必须同步更新 spec（spec-first 硬约束）。
+- spec 的分级、模板、DoD 验收标准、代码↔spec 一致性红线：见 [`docs/spec-standards.md`](docs/spec-standards.md)。
+
+### 9.2 文档规范（分层 · 砍废话）
+
+- 文档分「教程 vs 参考」两类；每个事实只有一个「权威家」，其余用链接。
+- 放置决策、教程/参考判定、砍「文档废话」清单：见 [`docs/documentation-standards.md`](docs/documentation-standards.md)。
+
+### 9.3 文字品控（Prose 规范）
+
+- 覆盖 Markdown / JSDoc / 代码注释 / 测试注释 / 提示词 / CLI·UI 文案：写够「保住契约」的文字，删掉「推理过程、重复、装饰」。
+- 判定与各类型「保什么、砍什么」：见 [`docs/prose-standards.md`](docs/prose-standards.md)。
+
+### 9.4 决策记录（ADR）
+
+- 重要的、有取舍的架构决策写进 [`docs/decisions/`](docs/decisions/README.md)，记录「为什么这么做」；已接受决策不改写，改变则写新 ADR 并标注「取代」。
+- 改动若与某 ADR 冲突 → 视为设计讨论，需明确报告，不得擅自推翻。
+
+### 9.5 代码审查（审 PR / 审改动）
+
+- 自动化门禁（gofmt/vet/typecheck/lint/test）只保证「编译/类型/格式正确」；「语义/契约/意图正确」需按 [`docs/code-review-checklist.md`](docs/code-review-checklist.md) 手动补查（分层红线、越权、生命周期、竞态、过度设计、AI 底座绕过）。
+
+### 9.6 简化审计（找可简化处）
+
+- 「找可简化之处」按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 执行：给证据（调用点/consumer）、区分「简化 vs 改行为」、想法记成 Agent Note（提议态），**未确认前不改代码**。
