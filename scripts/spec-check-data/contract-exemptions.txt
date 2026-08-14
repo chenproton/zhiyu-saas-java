@@ -1,0 +1,17 @@
+# contract-exemptions.txt — 路由↔契约双向覆盖检查（spec-check.sh 第 10 项）的豁免清单
+#
+# 格式：每行一个规范化路径（{xxx} 变量段 → {id}，不带 /api/v1 前缀）；以 # 开头为注释。
+# 差集计算时，命中本清单的路径不会进入「疑似未登记契约 / 疑似僵尸条目」提示。
+#
+# 说明：
+#  - /health、/health/ready、/metrics、/uploads/{id}/{filename}：已由 02-api-contract.md §1.1 登记，
+#    此处为防御性登记（文档表格格式调整时防误报）。
+#  - /import/*、/export/*、/templates/*：由 02-api-contract.md §1.10「Excel 三件套」按模式登记
+#    （每实体 /import/{entity}/excel + preview + /templates/{entity}，基础数据另含
+#    /export/{entity}/excel），非逐路径列示；提取器已按模式剔除（见 spec-check.sh 代码注释），
+#    无需逐条登记——新增导入/导出/模板实体时同步 §1.10 实体表即可。
+#  - 其余已知豁免（别名路由、文档注解内子路径、方法列简写等）按需追加，每行一个规范化路径。
+/health
+/health/ready
+/metrics
+/uploads/{id}/{filename}
