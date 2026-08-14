@@ -1,0 +1,7 @@
+# ADR-0003 关键写操作名单（纵深防御：SQL 层必须补租户条件）
+# 格式：每行 `<store文件名> <函数名...>`（空格分隔多个函数名）
+# 新增关键写操作（考试题目增删改分、密码/状态写）时，在本文件追加一行，
+# spec-check.sh 第 6 项会自动校验对应 store 函数体是否含 tenant_id 条件。
+users.go UpdateStatus ResetPassword
+tenant_admins.go ResetPassword
+exams.go AddQuestion FetchQuestion RemoveQuestion UpdateQuestionScore BulkUpdateScores RecalcExamTotal

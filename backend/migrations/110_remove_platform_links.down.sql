@@ -1,4 +1,5 @@
 -- 回滚：恢复 platform_links 与 app_modules 表（结构与 001_baseline 一致）
+-- 注意：up 中 DROP TABLE 删除的存量配置数据不可逆（仅恢复表结构，历史数据不回填）。
 CREATE TABLE public.app_modules (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     platform character varying(64) NOT NULL,

@@ -150,26 +150,30 @@
 ### 4.1 登录与认证
 
 - **输入**：用户名 + 密码（账号密码 Tab；短信/微信为占位）
-- **系统处理**：HS256 JWT 签发（7 天有效期）；Claims 携带 userId/tenantId/roleCodes/permissions；登录接口按 IP 限流 30 次/分钟（Redis 计数，未配置 Redis 自动降级）
-- **输出**：portal token / saas token 双轨制；多租户账号在登录时返回 `needsTenantSelection`，前端弹窗选租户后调用 `select-tenant` 换取最终 token
+- **系统处理**：HS256 JWT 签发（7 天有效期）；Claims 携带 userId/tenantId/roleCodes/permissions；登录接口按 IP 限流 30 次/分钟（Redis 计数，未配置 Redis 自动降级）；**验证码**：字符验证码，连续输错 3 次触发、新设备首次登录必须校验（`/auth/captcha`）
+- **输出**：portal / saas / partner 三端 token（平台隔离，token 携带 platform 声明，不可跨端互用）；多租户账号在登录时返回 `needsTenantSelection`，前端弹窗选租户后调用 `select-tenant` 换取最终 token
 - **业务规则**：`login_name` 全局唯一（`tenantID + "_" + 用户名` 拼接存储）；密码 bcrypt；平台隔离（portal token 不可访问 saas 接口，反之亦然）
 
 ### 4.2 内容统一状态机
 
-覆盖**岗位、场景、课程、题库、试卷** 5 类内容实体（`domain/status.go` + `store/content_actions.go`）：
+覆盖**7 类内容实体**：岗位、场景、课程、题库、试卷、人培方案、教学计划（`domain/status.go` + `store/content_actions.go` `AllowedContentTables`）；其中**5 类**（岗位/场景/课程/题库/试卷）含 `version` 列、发布即快照（ADR-0006，`versionedContentTables`），人培方案/教学计划不版本化。
 
-```
-draft ──提交审批──→ pending ──批准──→ approved ──发布──→ published ──归档──→ archived
-  ↑                    │   │             │  ↑                    │
-  │←──────撤回─────────┘   │             │  └──取消发布→draft─────┘
-  │←──────驳回─────────────┘             └──save-draft 回退→draft──→ (draft)
-  └──────────────恢复(archived→draft)─────┘
-rejected → draft / pending / archived
-```
+状态 6 个：`draft` / `pending` / `approved` / `rejected` / `published` / `archived`。
 
-- 可编辑态：draft / rejected / approved / published
-- 可删除态：draft / rejected / archived（物理删除，外键级联清理子表）
-- 每次动作经 `ContentActionStore` 校验合法转移，非法转移返回 409
+允许流转（`allowedStatusTransitions`，非法转移返回 409）：
+
+| 当前状态 | 可进入 |
+|---|---|
+| draft | pending、archived |
+| pending | draft（撤回）、approved、rejected |
+| rejected | draft、pending、archived |
+| approved | draft、published、archived |
+| published | draft（取消发布）、archived |
+| archived | draft（恢复） |
+
+- **可编辑态**：draft / rejected / approved / published（`published` 可继续编辑，编辑后重新发布生成新版本，历史学习/测评数据经快照保留，见 `docs/resource-snapshot-versioning.md`）
+- **可删除态**：draft / rejected / archived（物理删除，外键级联清理子表）
+- 每次动作经 `ContentActionStore.Transition` 校验合法转移，非法转移返回 409
 
 ### 4.3 审批流
 
@@ -267,7 +271,7 @@ rejected → draft / pending / archived
 
 - 架构分层：`docs/refactor-layering.md`
 - 前端组件：`docs/components.md`、`docs/forms-tables.md`
-- 审查指引与历史：`docs/code-review-checklist.md`（审查清单）+ `docs/code-review-report.md`（全量审查问题清单与修复状态）
+- 审查指引：`docs/code-review-checklist.md`（审查清单）
 - 接口契约：`docs/spec/02-api-contract.md`
 - 数据库设计：`docs/spec/04-database-schema.md`
 - 原型交互：`docs/spec/05-prototype-interaction.md`

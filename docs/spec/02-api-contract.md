@@ -7,7 +7,7 @@
 
 ## 1. 接口清单（按模块分组）
 
-所有接口前缀 `/api/v1`。权限列标记：`公开` = 无需 JWT；其余为 JWT 校验后的角色/菜单组。只读接口（List/Get）普遍同时在更宽角色组（jobViewer 含学生）注册。
+所有接口前缀 `/api/v1`。权限列标记三档：`公开` = 无需 JWT（匿名）；`登录公开` = 任意已登录用户可见（如 `/alliance/public/*`、`/job/public/*`，仍需 JWT）；其余为 JWT 校验后的角色/菜单组。只读接口（List/Get）普遍同时在更宽角色组（jobViewer 含学生）注册。
 
 ### 1.0 全局 / 文件 / 认证
 
@@ -149,7 +149,7 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/brands`（List+Get 共 12 个）+ `GET /stats` | portal + jobViewer | 公开只读 |
+| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/brands`（List+Get 共 12 个）+ `GET /stats` | 登录公开（任意已登录用户） | 登录公开只读 |
 | GET/PUT | `/alliance/school-info` | systemAdmin | 学校信息 |
 | GET/POST/PUT/DELETE | `/alliance/enterprises`（5 CRUD）+ `/enterprises/{eid}/agreements`（4） | systemAdmin | 合作企业 |
 | GET/POST/PUT/DELETE | `/alliance/projects`（5 CRUD）+ `/projects/{pid}/milestones`（4） | systemAdmin | 合作项目 |
@@ -233,6 +233,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 { "username": "teacher01", "password": "******" }
 ```
 - 校验规则：两字段必填；用户名密码错误 → `401 {"error":"用户名或密码错误"}`；停用用户/停用租户不可登录
+- 验证码：连续输错 3 次或新设备首次登录时，需先 `GET /auth/captcha` 获取验证码，登录请求体携带 `captchaId`/`captchaCode`
 - 成功响应（单一租户）：
 ```json
 { "token": "<jwt>", "user": { "id": "...", "loginName": "...", "tenantId": "...", "role": "teacher", "status": "active" } }
@@ -326,7 +327,19 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 |------|------|
 | 成功（对象） | 业务对象 JSON 直接返回；创建类返回 `{"id":"..."}` |
 | 成功（列表） | `{"items": [...], "total": <count>}` |
-| 错误 | `{"error": "<中文消息>"}` |
+| 错误 | `{"error": "<消息>", "code": "<机器码>?"}`——`error` 为面向用户的消息（中文），`code` 为可选机器码，仅在需前端按码分支时出现 |
+
+机器码词汇表（前端按 `code` 分支，不解析 `error` 文案）：
+
+| code | 状态码 | 场景 |
+|------|--------|------|
+| `ai_not_configured` | 412 | 租户未配置 AI |
+| `too_many_requests` | 429 | 限流 |
+| `invalid_transition` | 409 | 非法状态流转 |
+| `platform_mismatch` | 403 | 平台隔离越界 |
+| `tenant_mismatch` | 403 | 越权（资源不属于本租户） |
+
+历史接口中部分错误仅有 `error` 无 `code`（向后兼容，不强制回填）；新增接口统一按上表。
 
 ### 4.3 分页
 

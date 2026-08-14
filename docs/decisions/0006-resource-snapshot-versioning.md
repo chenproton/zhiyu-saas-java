@@ -12,7 +12,7 @@
 
 1. 发布即快照：内容发布（Transition 落 published）时写入 resource_snapshots（resource_type + resource_id + version 唯一，version 服务端盖章）。
 2. 快照表无 FK：resource_snapshots.snapshot_data 以 JSON 固化行数据，不建外键——删除题目/节点不影响已固化快照（删除保护另行校验引用）。
-3. 成绩行 version 服务端盖章：考试结果/场景测评提交时由服务端解析当前有效版本（三级回退：live → snapshot → latest）写入结果行，评分回写按成绩行盖章版本定位，不追 live。
+3. 成绩行 version 服务端盖章：考试结果/场景测评提交时由服务端解析当前有效版本（盖章口径：快照最新 → 回退 live 当前版本，见 `store/snapshots.go ResolveResourceVersion`）写入结果行；历史 bundle 读取的回退为「绑定版本 > ?v= > 最新快照 → live（仅当 live status='published'，否则 404）」，详见 `docs/resource-snapshot-versioning.md` §3/§5.2。
 4. 版本号格式统一（migration 149）：v1.0 / V1.0 / 1.0 / v1 / vV1.0 归一为 V1.0 口径。
 
 ## 备选方案

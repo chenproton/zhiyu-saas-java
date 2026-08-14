@@ -28,9 +28,9 @@
 
 | 壳组件 | 使用文件数 | 适用场景 | 代表页面 |
 |--------|-----------|---------|---------|
-| `PortalCrudPage<T>` | 26 | 简单 CRUD（搜索+表格+弹窗表单+导入） | `portal/apps/system/resource/{industries,majors,codes}`、`org-user/{org-types,accounts,roles,positions,fields,relations,graduates}`、`alliance/{dictionaries,brands/*}` |
+| `PortalCrudPage<T>` | 28 | 简单 CRUD（搜索+表格+弹窗表单+导入） | `portal/apps/system/resource/{industries,majors,codes}`、`org-user/{org-types,accounts,roles,positions,fields,relations,graduates}`、`alliance/brands/*` |
 | `PortalSidebarCrudPage<T>` | 3 | 带组织架构树侧栏的 CRUD（含批量加入部门、导入导出） | `org-user/{teachers,students}` |
-| `ContentListPage<T>` | 7 | 内容资源管理全功能（状态筛选、审批流、批次分组、导入导出、共建、批量） | `job/positions`、`scene`、`evaluation/{question-banks,exams}`、`lesson/admin/courses`、`library/certificates` |
+| `ContentListPage<T>` | 7 | 内容资源管理全功能（状态筛选、审批流、批次分组、导入导出、共建、批量） | `job/positions`、`scene`、`evaluation/{question-banks,exams}`、`lesson/admin/courses`、`affairs/{programs,teaching-plans}` |
 | `ArchiveListPage<T>` | 4 | 归档库（左侧树折叠 + 恢复/删除 + 批量） | `job/archive`、`scene/archive`、`lesson/admin/archive` |
 | `BatchGroupPage` | 6 | 批次分组管理 | `job/batches`、`scene/batches`、`evaluation/batches`、`lesson/admin/batches` |
 | `WorkflowConfigPage` | 6 | 审批流配置 | `job/workflows`、`scene/workflows`、`evaluation/workflows`、`lesson/admin/workflows` |

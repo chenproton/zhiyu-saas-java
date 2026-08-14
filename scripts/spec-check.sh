@@ -122,6 +122,19 @@ for down in backend/migrations/*.down.sql; do
 done
 [ "$found" -eq 0 ] && pass "migration up/down 全部配对"
 
+# down 不可逆标注（spec-standards.md 六.2）：up 若物理不可逆（TRUNCATE/DROP TABLE 清数据），
+# 其 down（或 up）须声明「不可逆/不可恢复」；仅提示，不阻断（DROP TABLE 回滚建表可部分恢复结构，数据仍需人工评估）。
+_dn_hits=$(for u in backend/migrations/*.up.sql; do
+  if grep -qE '\b(TRUNCATE|DROP TABLE)\b' "$u"; then
+    d="${u%.up.sql}.down.sql"
+    if ! { grep -qE '不可逆|不可恢复' "$u" 2>/dev/null || grep -qE '不可逆|不可恢复' "$d" 2>/dev/null; }; then basename "$u"; fi
+  fi
+done)
+if [ -n "$_dn_hits" ]; then
+  echo "  [提示] 以下 up 迁移含 TRUNCATE/DROP TABLE 清数据但未声明「不可逆/不可恢复」，请确认回滚预案："
+  for h in $_dn_hits; do echo "         $h"; done
+fi
+
 # ---------------------------------------------------------------
 # 4. spec 制品完整性（spec-standards.md 二）
 # ---------------------------------------------------------------
@@ -182,9 +195,18 @@ check_key_write_tenant() {
     fi
   done
 }
-check_key_write_tenant users.go UpdateStatus ResetPassword
-check_key_write_tenant tenant_admins.go ResetPassword
-check_key_write_tenant exams.go AddQuestion FetchQuestion RemoveQuestion UpdateQuestionScore BulkUpdateScores RecalcExamTotal
+# 关键写名单外置为机器可读文件（scripts/spec-check-data/adr0003-key-writes.txt），
+# 新增关键写操作（考试题目增删改分、密码/状态写）时在该文件追加一行即可纳入校验。
+ADR3_LIST="scripts/spec-check-data/adr0003-key-writes.txt"
+if [ -f "$ADR3_LIST" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|'#'*) continue ;; esac
+    # shellcheck disable=SC2086
+    check_key_write_tenant $line
+  done < "$ADR3_LIST"
+else
+  echo "  [提示] 缺 ADR-0003 关键写名单文件 $ADR3_LIST，跳过名单校验"
+fi
 [ "$found" -eq 0 ] && pass "ADR-0003 关键写 SQL 租户条件齐备"
 
 _xss_hits=$(grep -rl 'dangerouslySetInnerHTML' apps/edu --include='*.tsx' --include='*.ts' 2>/dev/null | grep -v node_modules | grep -v '.next')
@@ -208,7 +230,10 @@ if [ -f docs/spec/04-database-schema.md ]; then
   for n in $mig_nums; do
     case " $doc_nums " in *" $n "*) ;; *) violation "migration ${n} 未登记进 04-database-schema.md §5 变更记录"; found=1 ;; esac
   done
-  [ "$found" -eq 0 ] && pass "migrations 编号与 schema 变更记录一致"
+  for n in $doc_nums; do
+    case " $mig_nums " in *" $n "*) ;; *) violation "04-database-schema.md §5 登记 ${n} 但无对应 migration 文件"; found=1 ;; esac
+  done
+  [ "$found" -eq 0 ] && pass "migrations 编号与 schema 变更记录双向一致"
 else
   pass "（无 04-database-schema.md，跳过）"
 fi

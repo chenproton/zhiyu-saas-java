@@ -1,6 +1,6 @@
 -- 回滚 142_partner_enterprise：
 -- 删新表 → experts 删 user_id → 企业主体回改表名并还原删掉的列 → 删 tenants.type。
--- 注意：up 中 TRUNCATE 清空的联盟开发数据无法通过本回滚恢复。
+-- 注意：up 中 TRUNCATE 清空的联盟开发数据不可逆（无法通过本回滚恢复）。
 
 DROP TABLE IF EXISTS alliance_expert_mentor_links;
 DROP TABLE IF EXISTS alliance_enterprise_links;

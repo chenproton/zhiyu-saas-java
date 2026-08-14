@@ -9,7 +9,7 @@
 > **表格/表单架构盘点与开发规范见 [`docs/forms-tables.md`](forms-tables.md)**（系统模块划分、表格壳组件选型、表单字段封装规范、复用评估结论）。
 
 > **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`。
-> **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用，`apps/edu/components/shared/` 保留 re-export 薄封装）：`ComboboxSelect`/`MixedTagEditor`/`ImportWizardDialog`/`ImportConfirmDialog`/`ConfirmDialog`/`StatusBadge`/`TableRowActions`/`HoverActionBar`/`SearchInput`/`EmptyState`/`TableEmptyRow`/`FormDialogFooter`/`UnderlineTabs`。
+> **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。仅部分在 `apps/edu/components/shared/` 保留 re-export 薄封装（`ComboboxSelect`/`ConfirmDialog`/`ErrorState`/`HoverActionBar`/`ImportWizardDialog`/`ImportConfirmDialog`/`SearchInput`/`StatusBadge`/`TableRowActions`）；其余 `EmptyState`/`TableEmptyRow`/`FormDialogFooter`/`UnderlineTabs`/`MixedTagEditor`/`LoadingView` 无本地 re-export，消费方直接 `from '@zhiyu/ui'`。
 > **通用 Hooks**（`@zhiyu/ui`）：`useToast`/`useAsync`/`useDebouncedValue`/`useClickOutside`/`useImportFlow`。
 > **评测配置组件**位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`）与 `apps/edu/components/evaluation-rules/`（`evaluation-rules-editor.tsx`、`bank-question-selector-panel.tsx`），仅课程编辑器使用；任务编辑器经 `components/evaluation-rules/` 内的测评面板组件复用共享组件。
 > **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
@@ -75,7 +75,13 @@
 | `StatusActionBar` | `status-action-bar.tsx` | 详情页状态操作栏（当前状态标签 + 可用操作按钮组） | `status`, `actions` |
 | `PaginationBar` | `pagination-bar.tsx` | 表格分页条（总数 + 上一页/下一页 + 页码），供 `PortalCrudPage`/`LogTableShell` 等壳组件使用 | `page`, `totalPages`, `total`, `onPageChange` |
 | `ErrorState` | `packages/ui` re-export | 列表/详情加载失败重试态 | `message`, `onRetry` |
-| `LoadingView` | `packages/ui` re-export | 居中加载占位（spinner + 文案），22 个文件使用 | `label` |
+| `LoadingView` | `packages/ui`（无 re-export，直接 `@zhiyu/ui`） | 居中加载占位（spinner + 文案），16 个文件使用 | `label` |
+| `DateInput` | `shared/date-input.tsx` | 统一日期输入（13 个文件复用），替代手写日期控件 | `value`, `onChange`, `placeholder?` |
+| `TagBadge` | `shared/tag-badge.tsx` | 标签徽章 | `tag` |
+| `TagFilterBar` | `shared/tag-filter-bar.tsx` | 标签筛选栏（library 标签体系） | `tags`, `selected`, `onSelect` |
+| `TagPicker` | `shared/tag-picker.tsx` | 标签选择器（单选/多选） | `value`, `onChange` |
+| `CitationStatsPanel` | `shared/citation-stats-panel.tsx` | 引用统计面板（能力点/证书库被引用情况，5 个文件复用） | 目标实体参数 |
+| `FavoriteButton` | `shared/favorite-button.tsx` | 收藏按钮（岗位/场景收藏，5 个文件复用） | `targetType`, `targetId` |
 
 ## 选择器组件
 
@@ -91,6 +97,7 @@
 | `BrandRelationSelect` | `brand-relation-select.tsx` | 品牌关联选择（企业/专家/成果等多类型关联） | `value`, `onChange` |
 | `KnowledgeSelector` | `knowledge-selector.tsx` | 知识点选择器 | `value`, `onChange` |
 | `EvalMethodSelector` | `eval-method-selector.tsx` | 测评方式选择器 | `value`, `onChange` |
+| `ResourceSelector` | `resource-selector.tsx` | 资源选择器（7 个文件复用） | `value`, `onChange`, `multiple` |
 
 ## 布局组件
 
@@ -108,6 +115,7 @@
 | `PublicCard` 系列 | `alliance/public-cards.tsx` | 联盟前台卡片：`EnterpriseCard` / `ProjectCard` / `AchievementCard` / `ExpertCard` / `BrandCard`（landing 与查看全部页共用） | 各对象类型，如 `enterprise: AllianceEnterprise` |
 | `DetailPageHeader` | `shared/detail-page-header.tsx` | 详情页头部（返回按钮 + 标题/副标题 + 状态标签 + 编辑/操作区），`AllianceDetailShell` 内部已复用；非联盟域详情页新写页头一律用它 | `title`, `subtitle?`, `backHref?`, `backLabel?`, `statusBadge?`, `actions?`, `editHref?` |
 | `FormPageShell` | `shared/form-page-shell.tsx` | 表单页骨架（返回 + 标题 + 主表单 2 列 + 右侧栏 1 列 + 底部操作区），alliance/partner 表单页已统一 | `title`, `description?`, `backHref?`, `children`, `sidebar?`, `footer?` |
+| `PermissionGuard` | `shared/permission-guard.tsx` | 权限守卫（按权限码控制子元素渲染，4 个文件复用） | `permission`, `children` |
 
 ## Hooks
 
@@ -122,6 +130,10 @@
 | `usePortalUsers` | Portal 用户列表（users、roles、roleMap、total、loading、refetch），支持 `roleCode` 筛选 |
 | `useSubscriptionModules` | 租户订阅模块开关，返回 `Record<string, boolean>` |
 | `useLibraryCrud` | library 列表页统一数据加载（search+limit+loading+失败 toast+首载），见 `app/library/_components/use-library-crud.ts`；需要随页面 state 联动筛选时 `autoLoad: false` + 自行 `useEffect` 触发 `loadItems` |
+| `usePagedList` | 分页列表统一数据加载（9 个文件复用：partner/co-build、portal/alliance 列表页） |
+| `useSecondaryColleges` | 二级学院列表加载（8 个文件复用，alliance 表单域） |
+| `useTagBindings` | 标签绑定读取（`shared/use-tag-bindings.ts`，library 标签体系） |
+| `useTags` | 标签列表读取（`shared/use-tags.ts`，library 标签体系） |
 
 ### 通用 UI Hooks（`@zhiyu/ui`）
 

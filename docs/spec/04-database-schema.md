@@ -39,7 +39,7 @@ tenants(租户) ── 行级隔离一切业务数据
 ├─ 【教务链】terms ← teaching_plans ← training_programs → training_program_courses
 │   teaching_plans → teaching_plan_entries → schedule_entries(课表) → venues/period_slots
 │
-├─ 【联盟链】alliance_enterprises ↔ projects(→milestones) ↔ agreements ↔ experts
+├─ 【联盟链】partner_enterprises ↔ alliance_enterprise_links ↔ projects(→milestones) ↔ agreements ↔ experts
 │   → achievements / brands / permissions / dictionaries / school_info
 │
 └─ 【支撑】workflows → approval_records ; 五套同构 batches(岗位/课程/测评/场景/教务)
@@ -75,6 +75,7 @@ tenants(租户) ── 行级隔离一切业务数据
 | domain | varchar(128) | — | 可 | 域名 |
 | enterprise_code | varchar(64) | — | 可 | 企业编码 |
 | admin_ids | uuid[] | '{}' | 否 | 管理员 id 列表 |
+| type | varchar(16) | school | 否 | 租户类型 school/enterprise（142） |
 | status | varchar(16) | active | 否 | active/inactive |
 | school_type / province / city / scale_data / secondary_colleges / education_level / education_nature | — | — | 可 | 迁移 104/105 增补教育属性（jsonb 等） |
 | created_at / updated_at | timestamptz | now() | 否 | — |
@@ -186,7 +187,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 **question_banks**：`id, tenant_id, code((tenant,code) 唯一), name, description, status(CHECK 六态), is_draft_pool, owner_type, batch_id, created_by`。
 **questions**：`id, bank_id(CASCADE), tenant_id, type, title, options jsonb, answer text, difficulty, knowledge_point_ids uuid[], analysis, status`。
 **exams**：`id, tenant_id, code((tenant,code) 唯一), name, description, total_score, duration, owner_type(mine), is_temp, collaborator_ids uuid[], status(CHECK 六态), batch_id, created_by`。
-**exam_questions**：`exam_id CASCADE + question_id CASCADE`，**(exam,question) 唯一（113）**、score、sort_order。
+**exam_questions**：`exam_id CASCADE + question_id SET NULL（158 删题保护，question_id 可空）`，**(exam,question) 唯一（113）**、score、sort_order。
 **exam_usages**：`id, tenant_id, exam_id, target_type(mine/course/node), target_ids uuid[], status(draft), start_time/end_time, duration, created_by`。
 **exam_results**：`id, tenant_id, usage_id CASCADE, user_id, score/total_score, is_pass, answers jsonb`，**(usage,user) 唯一**。
 **random_draw_questions**：随机抽题（answer 字段，按专业范围）。
@@ -231,7 +232,8 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | 表 | 关键字段 |
 |----|---------|
 | alliance_school_info | (tenant_id) 唯一、name、school_type、scale_data jsonb、secondary_colleges jsonb |
-| alliance_enterprises | enterprise_type(platform)、status(negotiating/active/paused/terminated)、rating(general)、cooperation_types jsonb、证照照片 jsonb |
+| partner_enterprises | 企业主体（142 由 alliance_enterprises 重命名，全局唯一 name）、enable_public、cooperation_types jsonb、证照照片 jsonb |
+| alliance_enterprise_links | 学校-企业合作关联（142 新建）：tenant_id + enterprise_id CASCADE 唯一、relation_type、status(negotiating/active/paused/terminated)、rating(general)、enterprise_type(cooperation/third-party)、is_public、secondary_colleges jsonb |
 | alliance_enterprise_agreements | enterprise_id CASCADE、status(draft) |
 | alliance_projects | phase(initiation)、publish_status(draft)、enterprise_ids jsonb、industry_ids[] |
 | alliance_project_milestones | project_id CASCADE、is_completed |
@@ -282,7 +284,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 ---
 
-### 2.1 124~159 增量新增表（补充登记，列名自迁移文件提取）
+### 2.18 124~159 增量新增表（补充登记，列名自迁移文件提取）
 
 | 表 | 关键列 |
 |---|---|
@@ -307,8 +309,8 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 ## 3. 租户隔离说明
 
-- **121 张表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）
-- **17 张无 `tenant_id`**，分三类：
+- **绝大多数业务表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 152 张）为准。
+- **少数表无 `tenant_id`**，分三类：
   1. **平台级公共表**：`platform_configs`（全局 KV）、`tenants`（本身）
   2. **计数器**：`favorite_counters`、`view_counters`（按 target_type+target_id 聚合，跨租户无妨）
   3. **依赖父表隔离的纯关联/派生表**：`career_position_majors`、`position_favorites`、`user_roles`、`evaluation_method_targets`、`question_bank_knowledge_points`、`node_ability_point_bindings`、`node_knowledge_point_bindings`、`teaching_plan_entries`(+`teaching_plan_entry_classes`)、`training_program_courses`、`certification_grade_data`(+`competency_requirements`+`grade_leaderboard`)
@@ -355,7 +357,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | training_program_courses.nature | 必修 / 选修 / 实践 / 场景 |
 | teaching_plan_entries.type | theory / practice / scene |
 | schedule_entries.type / source | traditional / scene；manual / imported |
-| alliance_enterprises.status | negotiating / active / paused / terminated |
+| alliance_enterprise_links.status | negotiating / active / paused / terminated |
 | alliance_agreements.status | draft / active / expired / renewed / terminated |
 | alliance_experts.rating | copper / silver / gold |
 | alliance_achievements.type | job / scene / course / custom |
