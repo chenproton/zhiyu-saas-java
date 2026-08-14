@@ -213,13 +213,13 @@ export default function AllianceAchievementEditPage() {
             <CardContent className="space-y-4">
               <SingleImageUpload
                 label={t('成果封面')}
-                value={(item as any).coverImage || ''}
+                value={item?.coverImage || ''}
                 onChange={(v) => setField('coverImage', v)}
                 allowUrlInput={false}
               />
               <FormFieldRow label={t('引用原因 / 核心亮点')}>
                 <Textarea
-                  value={(item as any).citationReason || ''}
+                  value={item?.citationReason || ''}
                   onChange={(e) => setField('citationReason', e.target.value)}
                   rows={4}
                 />
