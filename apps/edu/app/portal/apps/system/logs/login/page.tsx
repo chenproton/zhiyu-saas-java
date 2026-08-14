@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Download, RefreshCw, AlertCircle } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalLogApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { LoginLog } from '@/lib/types/backend'
 import { LogTableShell, type LogColumn } from '@/components/shared/log-table-shell'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -37,16 +38,26 @@ export default function LoginLogsPage() {
       setLoading(true)
       setError(null)
       try {
-        // 后端登录日志接口不支持 free-text search，搜索时全量拉取后由前端过滤分页
+        // 后端登录日志接口不支持 free-text search，搜索时全量拉取后由前端过滤分页；
+        // 注意后端列表 limit 上限 200，单次 10000 会被静默钳制为 200 导致搜索截断，必须分页拉全量
         const searching = debouncedSearch.trim() !== ''
-        const res = await portalLogApi.loginLogs({
-          tenantId,
-          limit: searching ? 10000 : PAGE_SIZE,
-          offset: searching ? 0 : (targetPage - 1) * PAGE_SIZE,
-        })
-        if (seq !== seqRef.current) return
-        setLogs(res.items)
-        setTotal(res.total)
+        if (searching) {
+          const all = await fetchAllPages((pg, ps) =>
+            portalLogApi.loginLogs({ tenantId, limit: ps, offset: pg * ps }),
+          )
+          if (seq !== seqRef.current) return
+          setLogs(all)
+          setTotal(all.length)
+        } else {
+          const res = await portalLogApi.loginLogs({
+            tenantId,
+            limit: PAGE_SIZE,
+            offset: (targetPage - 1) * PAGE_SIZE,
+          })
+          if (seq !== seqRef.current) return
+          setLogs(res.items)
+          setTotal(res.total)
+        }
       } catch (err: any) {
         if (seq !== seqRef.current) return
         setError(err?.message || t('加载登录日志失败'))

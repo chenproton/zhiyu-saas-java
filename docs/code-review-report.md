@@ -6261,6 +6261,7 @@
 | 089-090 遗留 | （并入 fix-batch-1） | eval-method-card 提交满分改读 resourceConfig.maxScore（缺失兜底 100）；其余 13 项 P2 已由 079-103 批次修复（knowledge-selector 全量分页/编辑同步/readOnly 删除按钮守卫/kp code 随机后缀、grading-card 分数外部同步、image-editor loaded 关闭重置、image-list addUrl 走 valueRef） |
 | 075-076 遗留 | （并入 fix-batch-1） | 雇主品牌引用岗位/学生弹窗 limit=200 截断改 fetchAllPages、superadmin JWT 解码两处收敛 parseJwtPayload、双 alliance-detail-shell 补边界注释；其余已由 063-078 批次修复（AI 字段 trim 兜底、克隆权重剩余分配不超 100、reorder/persistWeights 失败提示、主题色请求 catch、enablePublic 保存失败回滚、空 cleanup effect 与死注释清理、salaryText 收敛 formatSalaryRange） |
 | 071-072 遗留 | （并入 fix-batch-1） | 教师画像列表 limit=200、场景归档/审批页 limit=1000 三处改 fetchAllPages 全量拉取；其余已由首轮大修复与 063-078 批次修复（周次计算抽 schedule-utils、批量删除失败不弹成功 toast、roleConfigs 死代码/张老师/12.5% 徽标清理、能力点详情双重断言修正、账号安全图标下标耦合移除） |
+| 065-066 遗留 | （并入 fix-batch-1） | 登录/操作日志搜索改 fetchAllPages 分页全量拉取（后端 limit 上限 200，原单次 10000 被静默钳制导致搜索截断）；其余已由 063-078 批次修复（里程碑双重拉取去重、学校页失败态+重试、accounts 搜索回第一页+翻页清选择、positions 关联用户数用 userCount+仅展示前 N 提示、relations 搜索防抖、org-structure 总人数递归） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6287,6 +6288,9 @@
 - 双 alliance-detail-shell 平行实现（合并为单一壳属视觉重构，已补注释说明边界，见 075-076）
 - workspace 教师课程/期末总评等演示 mock 空数据与硬编码跳转链接（数据接入真实 API 前保留演示占位，属产品排期，见 071-072）
 - workspace-schedule-grid YearView 事件归属占位伪逻辑（同演示占位，见 071-072）
+- 登录/操作日志两页约 370 行重复（抽共享 LogPage 属中度重构，两页仅 API/列不同，容忍，见 065-066）
+- graduates 毕业年份筛选仅当前页（需后端 user 列表支持 graduateYear 参数，客户端全量拉取成本高，容忍，见 065-066）
+- 批量导出/导入占位按钮 5 处重复（纯占位即将上线，不抽象，见 065-066）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
