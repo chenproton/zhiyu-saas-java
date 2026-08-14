@@ -63,7 +63,6 @@ import {
   positionApi,
   industryApi,
   majorApi,
-  taskResourceApi,
   taskEvaluationApi,
   scenarioWeightApi,
   resourceLibraryApi,
@@ -1158,6 +1157,8 @@ export default function TasksEditPage() {
     }
 
     // Persist custom resources added in this session and map their IDs
+    // 任务资源体系 = 资源库（resource_library，与 AI 建议匹配/资源池加载一致）；
+    // 已持久化的库资源 ID（AI 新建/上传已入库）直接复用，仅临时 ID（res- 前缀）需落库
     const resourceIdMapping: Record<string, string> = {}
     const failedResourceIds: string[] = []
     let nextLearningResources = [...datasets.learningResources]
@@ -1165,18 +1166,22 @@ export default function TasksEditPage() {
     for (const resId of Array.from(datasets.customResourceIds)) {
       const res = nextLearningResources.find((r) => r.id === resId)
       if (!res) continue
+      if (!resId.startsWith('res-')) {
+        // 已持久化的库资源 ID：直接映射自身，避免重复创建导致任务引用错位而"丢失"
+        resourceIdMapping[resId] = resId
+        nextCustomResourceIds.delete(resId)
+        continue
+      }
       let targetId = ''
       try {
-        const created = await taskResourceApi.create({
+        const created = await resourceLibraryApi.create({
           name: res.name,
-          type: res.type,
+          resourceType: (res.type as ResourceKind) || 'other',
           url: res.url,
           description: res.description,
           thumbnail: res.thumbnail,
-          size: res.size != null ? String(res.size) : undefined,
-          knowledgePointIds: res.knowledgePoints || res.knowledgePointIds || [],
-          extraData: res.extraData,
-          uploadedBy: res.uploadedBy,
+          fileSize: res.size != null ? Number(res.size) || undefined : undefined,
+          metadata: res.extraData,
         } as any)
         targetId = created.id
       } catch (err: any) {

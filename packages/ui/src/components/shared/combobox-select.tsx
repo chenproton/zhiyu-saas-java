@@ -89,9 +89,10 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
   const displayLabel = useMemo(() => {
     if (isMultiple) {
       if (props.value.length === 0) return placeholder
-      if (props.value.length === 1)
-        return options.find((o) => o.value === props.value[0])?.label || props.value[0]
-      return `已选 ${props.value.length} 项`
+      // 多选直接展示全部选中项名称（触发器已 truncate，超长省略），不再折叠为"已选 N 项"
+      return props.value
+        .map((v) => options.find((o) => o.value === v)?.label || v)
+        .join('、')
     }
     if (!props.value) return placeholder
     return options.find((o) => o.value === props.value)?.label || props.value

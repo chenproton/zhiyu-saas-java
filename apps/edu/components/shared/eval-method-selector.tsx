@@ -202,6 +202,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
         {primaryTabs.map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => {
               setPrimaryTab(tab.key)
               setSecondaryTab('全部')
@@ -221,6 +222,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
         {secondaryTabs.map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setSecondaryTab(tab)}
             className={cn(
               'px-3 py-1 rounded-md text-xs font-medium transition-colors border',
@@ -241,6 +243,7 @@ export function EvalMethodSelector({ value = [], onChange }: EvalMethodSelectorP
           return (
             <button
               key={method.key}
+              type="button"
               disabled={!method.available}
               onClick={() => toggleMethod(method.key)}
               className={cn(

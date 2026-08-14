@@ -391,6 +391,7 @@ export function ResourceSelector({
           {ALL_TYPES.map((t) => (
             <Button
               key={t}
+              type="button"
               variant={resType === t ? 'default' : 'outline'}
               size="sm"
               className={cn('text-xs h-7', resType === t ? '' : 'bg-white')}
@@ -419,11 +420,11 @@ export function ResourceSelector({
             placeholder={t('搜索资源提供者...')}
             inputClassName="pl-9 text-sm"
           />
-          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
+          <Button type="button" variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
             <RotateCcw className="h-3.5 w-3.5 mr-1" />
             {t('重置')}
           </Button>
-          <Button size="sm" className="h-9 text-xs" onClick={() => setShowUploadTypePicker(true)}>
+          <Button type="button" size="sm" className="h-9 text-xs" onClick={() => setShowUploadTypePicker(true)}>
             <Upload className="h-3.5 w-3.5 mr-1" />
             {t('上传资源')}
           </Button>
@@ -514,6 +515,7 @@ export function ResourceSelector({
                       <div className="px-2 pb-2 flex items-center gap-1">
                         <Button
                           variant="ghost"
+                          type="button"
                           size="sm"
                           className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
                           onClick={(e) => {
@@ -525,6 +527,7 @@ export function ResourceSelector({
                           {t('预览')}
                         </Button>
                         <Button
+                          type="button"
                           variant={selected ? 'outline' : 'default'}
                           size="sm"
                           className="h-6 text-[10px] px-2 flex-1"
@@ -584,7 +587,7 @@ export function ResourceSelector({
                       </p>
                       <p className="text-[10px] text-gray-400 truncate">{r.uploadedBy || '-'}</p>
                     </div>
-                    <button
+                    <button type="button"
                       className="text-gray-400 hover:text-red-500 shrink-0 p-0.5 rounded hover:bg-red-50 transition-colors"
                       onClick={() => toggleResource(rid)}
                     >
@@ -611,7 +614,7 @@ export function ResourceSelector({
           </DialogHeader>
           <div className="grid grid-cols-3 gap-3 py-4">
             {ALL_TYPES.filter((t) => t !== 'all').map((t) => (
-              <button
+              <button type="button"
                 key={t}
                 onClick={() => {
                   setNewResType(t)
@@ -907,7 +910,7 @@ export function ResourceSelector({
                 <span className="mr-1">{TYPE_ICONS[r.type]}</span>
               )}
               {r.name}
-              <button
+              <button type="button"
                 className="ml-1 text-blue-400 hover:text-blue-700"
                 onClick={() => toggleResource(r.id)}
               >
@@ -921,7 +924,7 @@ export function ResourceSelector({
       {/* Add button + dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full border-dashed">
+          <Button type="button" variant="outline" size="sm" className="w-full border-dashed">
             <Plus className="mr-2 h-4 w-4" />
             {t('添加课程资源')}
           </Button>
@@ -935,7 +938,7 @@ export function ResourceSelector({
           {selectionContent}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
               {t('关闭')}
             </Button>
           </DialogFooter>
