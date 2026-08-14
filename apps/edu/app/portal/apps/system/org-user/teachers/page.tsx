@@ -243,8 +243,8 @@ export default function TeachersPage() {
             <TableCell className="hidden md:table-cell">
               {teacher.positions.length > 0 ? (
                 <div className="flex gap-1 flex-wrap">
-                  {teacher.positions.map((pos, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs">
+                  {teacher.positions.map((pos) => (
+                    <Badge key={pos} variant="secondary" className="text-xs">
                       {titleNameMap.get(pos) || pos}
                     </Badge>
                   ))}
