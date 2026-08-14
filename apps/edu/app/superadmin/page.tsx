@@ -62,9 +62,10 @@ import { platformModuleDefs } from '@/lib/navigation-config'
 import { useDebouncedValue, useToast, TableEmptyRow } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DateInput } from '@/components/shared/date-input'
+import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { LogTableShell } from '@/components/shared/log-table-shell'
 import { TableRowActions } from '@/components/shared/table-row-actions'
-import { ThemeColorPicker } from '@/components/shared/theme-color-picker'
+import { ThemeColorPicker } from './_components/theme-color-picker'
 import { SearchInput } from '@/components/shared/search-input'
 import {
   getToken,
@@ -1379,55 +1380,45 @@ export default function SuperAdminPage() {
           >
             <div className="grid gap-4 py-4">
               {tenantTab === 'school' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>
-                      {t('租户标识')} <span className="text-destructive">*</span>
-                    </Label>
-                  <Input
-                    placeholder={t('唯一标识，创建后不可修改')}
-                    value={formData.code}
-                    onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value }))}
-                    disabled={!!editingTenant}
-                    className={editingTenant ? 'bg-muted font-mono' : 'font-mono'}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('状态')}</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(v) =>
-                      setFormData((p) => ({ ...p, status: v as 'active' | 'inactive' }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">{t('启用')}</SelectItem>
-                      <SelectItem value="inactive">{t('停用')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label={t('租户标识')} required>
+                    <Input
+                      placeholder={t('唯一标识，创建后不可修改')}
+                      value={formData.code}
+                      onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value }))}
+                      disabled={!!editingTenant}
+                      className={editingTenant ? 'bg-muted font-mono' : 'font-mono'}
+                    />
+                  </FormFieldRow>
+                  <FormFieldRow label={t('状态')}>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(v) =>
+                        setFormData((p) => ({ ...p, status: v as 'active' | 'inactive' }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">{t('启用')}</SelectItem>
+                        <SelectItem value="inactive">{t('停用')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormFieldRow>
+                </FormFieldGrid>
             )}
             {tenantTab === 'enterprise' && !editingTenant && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>
-                    {t('企业管理员用户名')} <span className="text-destructive">*</span>
-                  </Label>
+              <FormFieldGrid cols={2}>
+                <FormFieldRow label={t('企业管理员用户名')} required>
                   <Input
                     placeholder={t('企业登录用户名（同一账号可加入多个企业）')}
                     value={entUsername}
                     onChange={(e) => setEntUsername(e.target.value)}
                     autoComplete="off"
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label>
-                    {t('初始密码')} <span className="text-destructive">*</span>
-                  </Label>
+                </FormFieldRow>
+                <FormFieldRow label={t('初始密码')} required>
                   <Input
                     type="password"
                     placeholder={t('至少 8 位，包含字母和数字')}
@@ -1435,50 +1426,43 @@ export default function SuperAdminPage() {
                     onChange={(e) => setEntPassword(e.target.value)}
                     autoComplete="new-password"
                   />
-                </div>
-              </div>
+                </FormFieldRow>
+              </FormFieldGrid>
             )}
-            <div className="grid gap-2">
-              <Label>
-                {t('企业名称')} <span className="text-destructive">*</span>
-              </Label>
+            <FormFieldRow label={t('企业名称')} required>
               <Input
                 placeholder={t('如：清华大学')}
                 value={formData.name}
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               />
-            </div>
+            </FormFieldRow>
             {tenantTab === 'school' && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>{t('联系人')}</Label>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label={t('联系人')}>
                     <Input
                       placeholder={t('企业联系人姓名')}
                       value={formData.contact}
                       onChange={(e) => setFormData((p) => ({ ...p, contact: e.target.value }))}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>{t('联系电话')}</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label={t('联系电话')}>
                     <Input
                       placeholder={t('联系电话')}
                       value={formData.phone}
                       onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
                     />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>{t('绑定域名')}</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label={t('绑定域名')}>
                     <Input
                       placeholder={t('如：xxx.edu.cn')}
                       value={formData.domain}
                       onChange={(e) => setFormData((p) => ({ ...p, domain: e.target.value }))}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>{t('企业代码')}</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label={t('企业代码')}>
                     <Input
                       placeholder={t('统一社会信用代码')}
                       value={formData.enterpriseCode}
@@ -1486,72 +1470,65 @@ export default function SuperAdminPage() {
                         setFormData((p) => ({ ...p, enterpriseCode: e.target.value }))
                       }
                     />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('企业地址')}</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldRow label={t('企业地址')}>
                   <Input
                     placeholder={t('企业详细地址')}
                     value={formData.address}
                     onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('企业简介')}</Label>
+                </FormFieldRow>
+                <FormFieldRow label={t('企业简介')}>
                   <Textarea
                     placeholder={t('企业简介描述')}
                     value={formData.description}
                     onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
                     rows={3}
                   />
-                </div>
+                </FormFieldRow>
               </>
             )}
 
             {tenantTab === 'enterprise' && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>{t('统一社会信用代码')}</Label>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label={t('统一社会信用代码')}>
                     <Input
                       placeholder={t('如：91320594MA1P7XXXX1')}
                       value={entForm.creditCode}
                       onChange={(e) => setEntForm((p) => ({ ...p, creditCode: e.target.value }))}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>{t('联系人')}</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label={t('联系人')}>
                     <Input
                       placeholder={t('企业联系人姓名')}
                       value={entForm.contactPerson}
                       onChange={(e) => setEntForm((p) => ({ ...p, contactPerson: e.target.value }))}
                     />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>{t('手机号')}</Label>
+                  </FormFieldRow>
+                </FormFieldGrid>
+                <FormFieldGrid cols={2}>
+                  <FormFieldRow label={t('手机号')}>
                     <Input
                       placeholder={t('联系电话')}
                       value={entForm.contactPhone}
                       onChange={(e) => setEntForm((p) => ({ ...p, contactPhone: e.target.value }))}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>{t('联系邮箱（选填）')}</Label>
+                  </FormFieldRow>
+                  <FormFieldRow label={t('联系邮箱（选填）')}>
                     <Input
                       type="email"
                       placeholder={t('联系邮箱')}
                       value={entForm.contactEmail}
                       onChange={(e) => setEntForm((p) => ({ ...p, contactEmail: e.target.value }))}
                     />
-                  </div>
-                </div>
+                  </FormFieldRow>
+                </FormFieldGrid>
                 {editingTenant && (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>{t('状态')}</Label>
+                    <FormFieldGrid cols={2}>
+                      <FormFieldRow label={t('状态')}>
                         <Select
                           value={formData.status}
                           onValueChange={(v) =>
@@ -1566,8 +1543,8 @@ export default function SuperAdminPage() {
                             <SelectItem value="inactive">{t('停用')}</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                    </div>
+                      </FormFieldRow>
+                    </FormFieldGrid>
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={profileForm.enablePublic}
@@ -1579,22 +1556,20 @@ export default function SuperAdminPage() {
                 )}
               </>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t('有效期开始日期')}</Label>
+            <FormFieldGrid cols={2}>
+              <FormFieldRow label={t('有效期开始日期')}>
                 <DateInput
                   value={formData.validFrom}
                   onChange={(e) => setFormData((p) => ({ ...p, validFrom: e.target.value }))}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('有效期结束日期')}</Label>
+              </FormFieldRow>
+              <FormFieldRow label={t('有效期结束日期')}>
                 <DateInput
                   value={formData.validUntil}
                   onChange={(e) => setFormData((p) => ({ ...p, validUntil: e.target.value }))}
                 />
-              </div>
-            </div>
+              </FormFieldRow>
+            </FormFieldGrid>
             <p className="text-xs text-muted-foreground">
               {t('留空表示不限；有效期外租户内所有用户无法登录')}
             </p>
@@ -1883,37 +1858,28 @@ export default function SuperAdminPage() {
             className="grid gap-4"
           >
             <div className="grid gap-5 py-4">
-              <div className="grid gap-2">
-                <Label>
-                  {t('Base URL')} <span className="text-destructive">*</span>
-                </Label>
+              <FormFieldRow label={t('Base URL')} required>
                 <Input
                   value={aiForm.baseUrl}
                   onChange={(e) => setAiForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
                   placeholder="https://api.openai.com/v1"
                 />
-              </div>
-            <div className="grid gap-2">
-              <Label>
-                {t('API Key')} {!aiConfig?.configured && <span className="text-destructive">*</span>}
-              </Label>
+              </FormFieldRow>
+            <FormFieldRow label={t('API Key')} required={!aiConfig?.configured}>
               <Input
                 type="password"
                 value={aiForm.apiKey}
                 onChange={(e) => setAiForm((prev) => ({ ...prev, apiKey: e.target.value }))}
                 placeholder={aiConfig?.configured ? t('留空则不修改') : 'sk-...'}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                {t('模型')} <span className="text-destructive">*</span>
-              </Label>
+            </FormFieldRow>
+            <FormFieldRow label={t('模型')} required>
               <Input
                 value={aiForm.model}
                 onChange={(e) => setAiForm((prev) => ({ ...prev, model: e.target.value }))}
                 placeholder="gpt-4o-mini"
               />
-            </div>
+            </FormFieldRow>
           </div>
           <FormDialogFooter
             onCancel={() => setAiDialogOpen(false)}
@@ -2292,18 +2258,16 @@ export default function SuperAdminPage() {
             className="grid gap-4"
           >
             <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="set-password">{t('新密码')}</Label>
-              <Input
-                id="set-password"
-                type="password"
-                placeholder={t('至少 8 位，包含字母和数字')}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="set-confirm-password">{t('确认新密码')}</Label>
+              <FormFieldRow label={t('新密码')} htmlFor="set-password">
+                <Input
+                  id="set-password"
+                  type="password"
+                  placeholder={t('至少 8 位，包含字母和数字')}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </FormFieldRow>
+            <FormFieldRow label={t('确认新密码')} htmlFor="set-confirm-password">
               <Input
                 id="set-confirm-password"
                 type="password"
@@ -2311,7 +2275,7 @@ export default function SuperAdminPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
-            </div>
+            </FormFieldRow>
             {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
           </div>
           <FormDialogFooter

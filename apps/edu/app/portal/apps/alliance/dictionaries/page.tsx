@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { TableCell, TableHead } from '@/components/ui/table'
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Plus, Trash2, Pencil } from 'lucide-react'
@@ -112,30 +112,30 @@ function DictionaryTab({ dictType }: { dictType: string }) {
           {t('共 {count} 项', { count: items.length })}
         </span>
       </div>
-      <div className="rounded-md border overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
-          <thead className="bg-muted/50 border-b">
-            <tr>
+      <div className="rounded-md border">
+        <Table className="min-w-[560px]">
+          <TableHeader className="bg-muted/50">
+            <TableRow>
               <TableHead>{t('编码')}</TableHead>
               <TableHead>{t('名称')}</TableHead>
               <TableHead>{t('排序')}</TableHead>
               <TableHead>{t('操作')}</TableHead>
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {loading ? (
-              <tr>
-                <td colSpan={4} className="text-center py-8 text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                   {t('加载中...')}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : items.length === 0 ? (
               <TableEmptyRow colSpan={4} className="py-8">
                 {t('暂无')}
               </TableEmptyRow>
             ) : (
               items.map((d) => (
-                <tr key={d.id} className="border-b hover:bg-muted/30">
+                <TableRow key={d.id}>
                   <TableCell className="font-mono text-sm">{d.code}</TableCell>
                   <TableCell>{d.name}</TableCell>
                   <TableCell>{d.sortOrder}</TableCell>
@@ -164,11 +164,11 @@ function DictionaryTab({ dictType }: { dictType: string }) {
                       </Button>
                     </TableRowActions>
                   </TableCell>
-                </tr>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">

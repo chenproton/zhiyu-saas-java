@@ -16,7 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { SingleImageUpload, ImageListUpload } from '@/components/shared/image-list-upload'
-import { TagInput } from '@/components/shared/tag-input'
+import { TagInput } from './_components/tag-input'
 import { Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'

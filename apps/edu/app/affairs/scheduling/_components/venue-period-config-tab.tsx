@@ -34,7 +34,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { DateRangePicker } from '@/components/shared/date-range-picker'
+import { DateRangePicker } from './date-range-picker'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { termApi, venueApi, periodSlotApi } from '@/lib/api'
 import { fetchAllPages } from '@zhiyu/api-client'

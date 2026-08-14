@@ -78,6 +78,8 @@
 | `LoadingView` | `packages/ui`（无 re-export，直接 `@zhiyu/ui`） | 居中加载占位（spinner + 文案），16 个文件使用 | `label` |
 | `DateInput` | `shared/date-input.tsx` | 统一日期输入（13 个文件复用），替代手写日期控件 | `value`, `onChange`, `placeholder?` |
 | `TagBadge` | `shared/tag-badge.tsx` | 标签徽章 | `tag` |
+| `LearnPage` | `learn-page.tsx` | 三类资源学习落地页（岗位/课程/场景 landing 共用：内容浏览 + 进度 + 导航） | `resourceType`, `params`, `entries`, `onProgress` 等（以组件签名为准） |
+| `ImageEditorDialog` | `image-editor-dialog.tsx` | 图片编辑弹窗（封面/图片列表上传共用） | `open`, `onOpenChange`, `imageUrl`, `onSave`（以组件签名为准） |
 | `TagFilterBar` | `shared/tag-filter-bar.tsx` | 标签筛选栏（library 标签体系） | `tags`, `selected`, `onSelect` |
 | `TagPicker` | `shared/tag-picker.tsx` | 标签选择器（单选/多选） | `value`, `onChange` |
 | `CitationStatsPanel` | `shared/citation-stats-panel.tsx` | 引用统计面板（能力点/证书库被引用情况，5 个文件复用） | 目标实体参数 |
