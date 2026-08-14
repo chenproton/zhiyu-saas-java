@@ -12,6 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { listAll } from '@zhiyu/api-client'
 import { examUsageApi, examResultApi } from '@/lib/api'
 import type { ExamResult, ExamUsage } from '@/lib/types'
 import { formatDateTime } from '@/lib/format-utils'
@@ -45,8 +46,10 @@ export default function DailyExamsPage() {
   // 统计选中项：避免对全部 usage 并发请求（N+1 打爆后端）
   const loadStats = useCallback(async (usageId: string) => {
     try {
-      const r = await examResultApi.list({ usageId, limit: 500 })
-      const list = r.items || []
+      // 全量分页拉取该考试安排的提交记录，避免超过 500 条时提交人数被截断低估
+      const list = await listAll((p, ps) =>
+        examResultApi.list({ usageId, limit: ps, offset: p * ps }),
+      )
       setUsageStats((prev) => ({
         ...prev,
         [usageId]: {
@@ -69,8 +72,9 @@ export default function DailyExamsPage() {
     const load = async () => {
       try {
         // scope=all：课程节点随时作答（always）的自动考试安排不在管理列表默认范围，日常考试需全量
-        const res = await examUsageApi.list({ limit: 500, scope: 'all' })
-        const items = res.items || []
+        const items = await listAll((p, ps) =>
+          examUsageApi.list({ limit: ps, offset: p * ps, scope: 'all' }),
+        )
         setUsages(items)
         const firstId = items[0]?.id ?? null
         setSelectedUsageId((prev) => prev ?? firstId)
@@ -90,11 +94,10 @@ export default function DailyExamsPage() {
   useEffect(() => {
     if (!selectedUsageId) return
     const seq = ++resultsSeqRef.current
-    examResultApi
-      .list({ usageId: selectedUsageId, limit: 500 })
-      .then((res) => {
+    listAll((p, ps) => examResultApi.list({ usageId: selectedUsageId, limit: ps, offset: p * ps }))
+      .then((items) => {
         if (seq !== resultsSeqRef.current) return
-        setResults(res.items || [])
+        setResults(items)
       })
       .catch(() => {
         if (seq !== resultsSeqRef.current) return

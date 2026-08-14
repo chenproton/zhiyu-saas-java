@@ -31,54 +31,18 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import type { Exam, ExamQuestion, ExamUsage } from '@/lib/types'
-import type { ExamSnapshot } from '@/lib/api'
+import type { Exam, ExamUsage } from '@/lib/types'
 import { examApi, examUsageApi, examResultApi } from '@/lib/api'
+import { examFromSnapshot } from '@/lib/exam-snapshot'
+import { QUESTION_TYPE_LABELS } from '@zhiyu/shared-types'
 import { reportError } from '@/lib/error-handling'
 import { formatDateTime } from '@/lib/format-utils'
 import { useToast } from '@zhiyu/ui'
 import { FavoriteButton } from '@/components/shared/favorite-button'
 import { MobileAccessDialog } from '@/components/portal/mobile-access-dialog'
 import { useT } from '@/lib/i18n/locale-provider'
-/* ─── 题型标签映射 ─── */
-const typeLabelMap: Record<string, string> = {
-  single: '单选题',
-  multiple: '多选题',
-  judge: '判断题',
-  fill: '填空题',
-  essay: '问答题',
-  short_answer: '简答题',
-}
 
 const pieColors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe']
-
-// 试卷快照行字段为 snake_case，映射为本页使用的 Exam 形状
-function examFromSnapshot(snap: ExamSnapshot): Exam {
-  return {
-    id: snap.exam.id,
-    name: snap.exam.name,
-    description: snap.exam.description,
-    status: (snap.exam.status as Exam['status']) || 'published',
-    totalScore: snap.exam.total_score ?? 0,
-    duration: snap.exam.duration ?? 0,
-    ownerType: 'mine',
-    questions: (snap.exam_questions || []).map(
-      (q): ExamQuestion => ({
-        id: q.id,
-        questionId: q.question_id || q.id,
-        type: (q.type || 'single') as ExamQuestion['type'],
-        content: q.content,
-        options: q.options,
-        answer: q.answer ?? '',
-        analysis: q.analysis,
-        score: q.score ?? 0,
-        order: q.sort_order ?? 0,
-      }),
-    ),
-    createdAt: '',
-    updatedAt: '',
-  }
-}
 
 function getTargetAudience(t: (key: string) => string): { type: string; detail: string } {
   // 考试对象名单由考试安排接口决定，当前不展示模拟学生
@@ -116,7 +80,7 @@ export default function ExamDetailPage() {
     const examQuestions = exam.questions || []
     const stats: Record<string, { count: number; score: number }> = {}
     examQuestions.forEach((q) => {
-      const label = t(typeLabelMap[q.type] || q.type)
+      const label = t(QUESTION_TYPE_LABELS[q.type] || q.type)
       if (!stats[label]) stats[label] = { count: 0, score: 0 }
       stats[label].count += 1
       stats[label].score += q.score

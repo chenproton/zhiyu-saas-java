@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast, EmptyState } from '@zhiyu/ui'
 import { courseApi, courseNodeApi, nodeEvaluationResultApi, userManagementApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import type { NodeEvaluationResult } from '@zhiyu/api-client'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import { getHybridMethodLabel } from '@/lib/hybrid-eval'
@@ -46,14 +47,17 @@ export default function LessonResultDetailPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [res, userRes] = await Promise.all([
+        // 全量分页拉取用户反查姓名，避免超过 1000 用户时姓名缺失（原 limit:1000 截断）
+        const [res, users] = await Promise.all([
           nodeEvaluationResultApi.get(id),
-          userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
+          listAll((page, pageSize) =>
+            userManagementApi.list({ limit: pageSize, offset: page * pageSize }),
+          ).catch(() => []),
         ])
         setResult(res)
         if (res.totalScore != null) setScore(String(res.totalScore))
         if (res.comment) setComment(res.comment)
-        const user = (userRes.items || []).find((u: any) => u.id === res.evaluateeId)
+        const user = users.find((u) => u.id === res.evaluateeId)
         if (user) setStudentName(user.name || t('未知'))
         try {
           // courseId 沿用现有推导路径（结果行不含 courseId，需经节点反查）；

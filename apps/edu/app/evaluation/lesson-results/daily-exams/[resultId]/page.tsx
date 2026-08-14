@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 import { computeTotalScore } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
 import { examApi, examResultApi, examUsageApi } from '@/lib/api'
-import type { ExamSnapshot } from '@/lib/api'
+import { examFromSnapshot } from '@/lib/exam-snapshot'
 import type { ExamResult } from '@/lib/types'
 import {
   QuestionGradingCard,
@@ -33,25 +33,6 @@ import { useT } from '@/lib/i18n/locale-provider'
 function getInitials(name: string): string {
   if (!name || name === '未知') return '?'
   return name.slice(0, 2).toUpperCase()
-}
-
-// 试卷快照行字段为 snake_case，映射为页面使用的题目形状
-function examFromSnapshot(snap: ExamSnapshot): any {
-  return {
-    id: snap.exam.id,
-    name: snap.exam.name,
-    totalScore: snap.exam.total_score ?? 0,
-    questions: (snap.exam_questions || []).map((q) => ({
-      id: q.id,
-      questionId: q.question_id || q.id,
-      type: q.type,
-      content: q.content,
-      options: q.options,
-      answer: q.answer,
-      analysis: q.analysis,
-      score: q.score ?? 0,
-    })),
-  }
 }
 
 export default function DailyExamGradingPage() {

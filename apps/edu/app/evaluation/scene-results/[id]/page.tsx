@@ -40,7 +40,8 @@ import {
   randomDrawQuestionApi,
   scenarioApi,
 } from '@/lib/api'
-import type { ScenarioSnapshot, ExamSnapshot } from '@/lib/api'
+import { examFromSnapshot } from '@/lib/exam-snapshot'
+import type { ScenarioSnapshot } from '@/lib/api'
 import type { SceneEvaluationResult, TaskEvaluationMethod, TaskEvalPoint } from '@/lib/types'
 import { EVAL_METHOD_LABELS_GRADING } from '@/lib/types'
 import {
@@ -128,25 +129,6 @@ function methodConfigFromSnapshot(
         weight: s.weight ?? 0,
         sortOrder: s.sort_order ?? 0,
       })),
-  }
-}
-
-// 试卷快照行字段为 snake_case，映射为页面使用的题目形状
-function examFromSnapshot(snap: ExamSnapshot): any {
-  return {
-    id: snap.exam.id,
-    name: snap.exam.name,
-    totalScore: snap.exam.total_score ?? 0,
-    questions: (snap.exam_questions || []).map((q) => ({
-      id: q.id,
-      questionId: q.question_id || q.id,
-      type: q.type,
-      content: q.content,
-      options: q.options,
-      answer: q.answer,
-      analysis: q.analysis,
-      score: q.score ?? 0,
-    })),
   }
 }
 
