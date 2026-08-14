@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
@@ -8,7 +10,7 @@ import (
 
 // registerPartnerRoutes Partner 企业端路由（外层已强制 platform=partner）。
 // 读操作对 enterprise_admin/enterprise_member 开放；写操作仅 enterprise_admin。
-func registerPartnerRoutes(r chi.Router, h *Handlers) {
+func registerPartnerRoutes(r chi.Router, h *Handlers, passwordLimiter func(http.Handler) http.Handler) {
 	partnerUser := authmw.RequireRole(domain.RoleEnterpriseAdmin, domain.RoleEnterpriseMember)
 	adminOnly := authmw.RequireRole(domain.RoleEnterpriseAdmin)
 
@@ -29,7 +31,7 @@ func registerPartnerRoutes(r chi.Router, h *Handlers) {
 		r.Get("/partner/cooperation/achievements/{id}", h.partnerHandler.GetCooperationAchievement)
 		r.Get("/partner/cooperation/agreements/{id}", h.partnerHandler.GetCooperationAgreement)
 		r.Get("/partner/mentor-tasks", h.partnerHandler.ListMentorTasks)
-		r.Put("/partner/me/password", h.partnerHandler.ChangeMyPassword)
+		r.With(passwordLimiter).Put("/partner/me/password", h.partnerHandler.ChangeMyPassword)
 
 		// 资源共建（岗位/场景，admin+member 均可操作）
 		r.Get("/partner/co-build/positions", h.partnerCoBuildHandler.ListPositions)

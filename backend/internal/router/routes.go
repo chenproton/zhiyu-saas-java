@@ -39,6 +39,8 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	loginLimiter := cache.RateLimit(redisClient, 30, time.Minute)
 	// 验证码生成有图片合成开销，按 IP 收紧限流防刷爆 CPU
 	captchaLimiter := cache.RateLimit(redisClient, 10, time.Minute)
+	// 主题读取：公开端点返回租户主题色，按 IP 限流防扫描（纵深防御，成本极低）
+	themeLimiter := cache.RateLimit(redisClient, 120, time.Minute)
 	r.With(captchaLimiter).Get("/auth/captcha", h.captchaHandler.Get)
 	r.With(loginLimiter).Post("/auth/login", h.authHandler.Login)
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
@@ -47,7 +49,7 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.With(loginLimiter).Post("/auth/partner/register", h.authHandler.PartnerRegister)
 	// select-tenant 会签发正式 token，公开接口补限流防爆破
 	r.With(loginLimiter).Post("/auth/select-tenant", h.authHandler.SelectTenant)
-	r.Get("/settings/theme", h.settingsHandler.GetTheme)
+	r.With(themeLimiter).Get("/settings/theme", h.settingsHandler.GetTheme)
 }
 
 func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
@@ -65,6 +67,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 	// 导入/导出/上传涉及大文件与批量写入，按用户限流防资源耗尽
 	importExportLimiter := cache.RateLimitByUser(redisClient, 10, time.Minute)
 	uploadLimiter := cache.RateLimitByUser(redisClient, 20, time.Minute)
+	// AI 对话/生成按用户限流：LLM 调用按 token 计费，防单用户/单会话打爆租户额度
+	aiLimiter := cache.RateLimitByUser(redisClient, 20, time.Minute)
+	// 密码写操作（改密/重置）按用户限流，防暴力试旧密码/批量重置
+	passwordLimiter := cache.RateLimitByUser(redisClient, 10, time.Minute)
+	// 公开只读接口按 IP 限流防爬（登录公开的联盟前台等）
+	publicReadLimiter := cache.RateLimit(redisClient, 120, time.Minute)
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
@@ -91,10 +99,10 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 			registerLandingRoutes(r, h)
 
 			// AI 对话：租户内任意登录用户可用（handler 内校验 TenantID 与未配置 412）
-			r.Post("/ai/chat", h.aiHandler.Chat)
+			r.With(aiLimiter).Post("/ai/chat", h.aiHandler.Chat)
 			// 岗位 AI 辅助编写（仅生成建议不写库，权限同 /ai/chat）
-			r.Post("/ai/position-assist", h.aiHandler.PositionAssist)
-			r.Post("/ai/scenario-assist", h.aiHandler.ScenarioAssist)
+			r.With(aiLimiter).Post("/ai/position-assist", h.aiHandler.PositionAssist)
+			r.With(aiLimiter).Post("/ai/scenario-assist", h.aiHandler.ScenarioAssist)
 
 			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
 			r.Group(func(r chi.Router) {
@@ -105,7 +113,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 			r.Group(func(r chi.Router) {
 				r.Use(jobViewer)
 
-				registerAlliancePublicRoutes(r, h)
+				registerAlliancePublicRoutes(r.With(publicReadLimiter), h)
 
 				r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
 				r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
@@ -176,7 +184,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Delete("/portal/workspace/honors/{id}", h.studentHonorHandler.Delete)
 				// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
 				r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
-				r.Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
+				r.With(passwordLimiter).Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
 				// 学习社区：发帖/回复/阅读数（学生/教师/学校管理员）
 				r.Get("/portal/community/topics", h.communityHandler.ListTopics)
 				r.Post("/portal/community/topics", h.communityHandler.CreateTopic)
@@ -196,7 +204,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 
 			r.Group(func(r chi.Router) {
 				r.Use(systemAdmin)
-				registerPortalRoutes(r, h)
+				registerPortalRoutes(r, h, passwordLimiter)
 			})
 
 			registerWorkflowRoutes(r, h)
@@ -288,19 +296,19 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Use(platformAdmin)
 				// 运营端租户/订阅/主题等变更操作纳入操作审计
 				r.Use(authmw.OperationLog(db, oplogBuffer))
-				registerSuperAdminRoutes(r, h)
+				registerSuperAdminRoutes(r, h, passwordLimiter)
 			})
 		})
 
 		// ========== Partner 企业端（强制 partner 平台 token）==========
 		r.Group(func(r chi.Router) {
 			r.Use(authmw.RequirePlatform(domain.UserPlatformPartner))
-			registerPartnerRoutes(r, h)
+			registerPartnerRoutes(r, h, passwordLimiter)
 		})
 	})
 }
 
-func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
+func registerSuperAdminRoutes(r chi.Router, h *Handlers, passwordLimiter func(http.Handler) http.Handler) {
 	r.Get("/admin/tenants", h.tenantHandler.AdminList)
 	r.Post("/admin/tenants", h.tenantHandler.AdminCreate)
 	r.Put("/admin/tenants/{id}", h.tenantHandler.AdminUpdate)
@@ -313,12 +321,12 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 	r.Post("/admin/tenants/{tenantId}/admins", h.tenantHandler.AdminCreateAdmin)
 	r.Put("/admin/tenants/{tenantId}/admins/{id}", h.tenantHandler.AdminUpdateAdmin)
 	r.Delete("/admin/tenants/{tenantId}/admins/{id}", h.tenantHandler.AdminDeleteAdmin)
-	r.Post("/admin/tenants/{tenantId}/admins/{id}/reset-password", h.tenantHandler.AdminResetPassword)
+	r.With(passwordLimiter).Post("/admin/tenants/{tenantId}/admins/{id}/reset-password", h.tenantHandler.AdminResetPassword)
 	r.Get("/admin/tenants/{tenantId}/enterprise-admins", h.tenantHandler.AdminListEnterpriseAdmins)
 	r.Post("/admin/tenants/{tenantId}/enterprise-admins", h.tenantHandler.AdminCreateEnterpriseAdmin)
 	r.Put("/admin/tenants/{tenantId}/enterprise-admins/{id}", h.tenantHandler.AdminUpdateEnterpriseAdmin)
 	r.Delete("/admin/tenants/{tenantId}/enterprise-admins/{id}", h.tenantHandler.AdminDeleteEnterpriseAdmin)
-	r.Post("/admin/tenants/{tenantId}/enterprise-admins/{id}/reset-password", h.tenantHandler.AdminResetEnterpriseAdminPassword)
+	r.With(passwordLimiter).Post("/admin/tenants/{tenantId}/enterprise-admins/{id}/reset-password", h.tenantHandler.AdminResetEnterpriseAdminPassword)
 
 	r.Get("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminGet)
 	r.Put("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminUpdate)
@@ -512,7 +520,7 @@ func registerAlliancePublicRoutes(r chi.Router, h *Handlers) {
 	})
 }
 
-func registerPortalRoutes(r chi.Router, h *Handlers) {
+func registerPortalRoutes(r chi.Router, h *Handlers, passwordLimiter func(http.Handler) http.Handler) {
 	r.Get("/tenants", h.tenantHandler.List)
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
 	r.Put("/tenants/{id}", h.tenantHandler.Update)
@@ -527,7 +535,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Post("/admins", h.tenantHandler.CreateSchoolAdmin)
 	r.Put("/admins/{id}", h.tenantHandler.UpdateSchoolAdmin)
 	r.Delete("/admins/{id}", h.tenantHandler.DeleteSchoolAdmin)
-	r.Post("/admins/{id}/reset-password", h.tenantHandler.ResetSchoolAdminPassword)
+	r.With(passwordLimiter).Post("/admins/{id}/reset-password", h.tenantHandler.ResetSchoolAdminPassword)
 
 	r.Get("/organizations", h.orgHandler.List)
 	r.Get("/organizations/tree", h.orgHandler.Tree)
@@ -546,7 +554,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Put("/users/{id}", h.userManagementHandler.Update)
 	r.Delete("/users/{id}", h.userManagementHandler.Delete)
 	r.Post("/users/{id}/status", h.userManagementHandler.UpdateStatus)
-	r.Post("/users/{id}/reset-password", h.userManagementHandler.ResetPassword)
+	r.With(passwordLimiter).Post("/users/{id}/reset-password", h.userManagementHandler.ResetPassword)
 	r.Post("/users/{id}/roles", h.userManagementHandler.BindRoles)
 	r.Post("/users/batch", h.userManagementHandler.BatchCreate)
 	r.Post("/users/batch-graduate", h.userManagementHandler.BatchGraduate)

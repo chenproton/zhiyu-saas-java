@@ -119,3 +119,19 @@ func TestChatCompletionUpstreamErrorNonJSON(t *testing.T) {
 		t.Fatal("不应透传原始 body")
 	}
 }
+
+func TestSanitizeUpstreamMessage(t *testing.T) {
+	cases := []struct {
+		name, in, want string
+	}{
+		{"sk 密钥", "invalid api key sk-abc1234567890xyz", "invalid api key [redacted]"},
+		{"Bearer token", "unauthorized: Bearer eyJhbGciOiJIUzI1NiJ9.abc", "unauthorized: [redacted]"},
+		{"api_key 键值", `{"error":"bad api_key: abcdef1234567890"}`, `{"error":"bad [redacted]"}`},
+		{"普通消息不变", "insufficient balance", "insufficient balance"},
+	}
+	for _, c := range cases {
+		if got := SanitizeUpstreamMessage(c.in); got != c.want {
+			t.Errorf("%s: SanitizeUpstreamMessage(%q) = %q, want %q", c.name, c.in, got, c.want)
+		}
+	}
+}

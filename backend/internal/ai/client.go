@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -50,6 +51,25 @@ type UpstreamError struct {
 
 func (e *UpstreamError) Error() string {
 	return fmt.Sprintf("ai upstream error (status %d): %s", e.StatusCode, e.Message)
+}
+
+// sensitivePatterns 上游错误 message 中可能回显的敏感片段（API key / Bearer token / api_key= 键值），
+// 统一脱敏后再透传前端与落日志，防止第三方上游把密钥回显进错误信息导致泄露。
+var sensitivePatterns = []*regexp.Regexp{
+	// OpenAI/DeepSeek 风格 sk- 密钥（≥8 位）
+	regexp.MustCompile(`sk-[A-Za-z0-9_\-]{8,}`),
+	// Authorization: Bearer <token>
+	regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._\-]{8,}`),
+	// api_key= / apiKey: / api-key: 等键值对
+	regexp.MustCompile(`(?i)api[_-]?key["']?\s*[:=]\s*["']?[A-Za-z0-9_\-]{8,}`),
+}
+
+// SanitizeUpstreamMessage 对上游错误消息中的密钥类片段做脱敏（[redacted]）。
+func SanitizeUpstreamMessage(msg string) string {
+	for _, re := range sensitivePatterns {
+		msg = re.ReplaceAllString(msg, "[redacted]")
+	}
+	return msg
 }
 
 // Client OpenAI 兼容 API 客户端，共享连接池 Transport。
@@ -126,7 +146,7 @@ func (c *Client) ChatCompletion(ctx context.Context, cfg Config, req ChatRequest
 		if json.Unmarshal(body, &errBody) == nil && errBody.Error.Message != "" {
 			msg = errBody.Error.Message
 		}
-		return "", usage, &UpstreamError{StatusCode: resp.StatusCode, Message: msg}
+		return "", usage, &UpstreamError{StatusCode: resp.StatusCode, Message: SanitizeUpstreamMessage(msg)}
 	}
 
 	var cr chatCompletionResponse
