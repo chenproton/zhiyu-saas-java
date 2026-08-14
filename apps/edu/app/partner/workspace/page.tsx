@@ -383,9 +383,6 @@ export default function PartnerWorkspacePage() {
                     </Badge>
                   </div>
                 ))}
-                {resourceTotal === 0 && (
-                  <p className="text-sm text-gray-400 py-6 text-center">{t('暂无数据')}</p>
-                )}
               </div>
             </div>
           ) : (

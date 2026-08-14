@@ -135,7 +135,11 @@ export default function CertificatesPage() {
       if (editingItem) {
         await certificateLibraryApi.update(editingItem.id, payload as any)
         toast({ title: t('更新成功') })
-        await saveTags(editingItem.id, tagIds)
+        try {
+          await saveTags(editingItem.id, tagIds)
+        } catch {
+          toast({ variant: 'destructive', title: t('标签保存失败'), description: t('实体已保存，标签未关联，可再次保存重试') })
+        }
       } else {
         const created = await certificateLibraryApi.create(payload as any)
         toast({ title: t('创建成功') })

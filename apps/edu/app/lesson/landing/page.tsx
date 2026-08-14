@@ -108,6 +108,12 @@ export default function LessonLandingPage() {
   const t = useT()
   const allLabel = t('全部')
   const listRef = useRef<HTMLDivElement>(null)
+  const searchTimerRef = useRef<number | null>(null)
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current)
+    }
+  }, [])
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -187,9 +193,8 @@ export default function LessonLandingPage() {
   }, [systemCourses, currentPage])
 
   useEffect(() => {
-    ;(async () => {
-      setCurrentPage(1)
-    })()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 筛选条件变化时回到第一页
+    setCurrentPage(1)
   }, [selectedIndustry, selectedBatch, keyword, sort])
 
   const activeFilters = useMemo(() => {
@@ -204,7 +209,11 @@ export default function LessonLandingPage() {
 
   const executeSearch = () => {
     setCurrentPage(1)
-    setTimeout(() => listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = window.setTimeout(
+      () => listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      50,
+    )
   }
 
   const removeFilter = (type: string) => {

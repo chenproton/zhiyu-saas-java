@@ -37,7 +37,7 @@ import type {
   AllianceProject,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView, EmptyState } from '@zhiyu/ui'
+import { LoadingView, EmptyState, ErrorState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -99,6 +99,8 @@ export default function AlliancePublicAchievementDetailPage() {
   const [partners, setPartners] = useState<AllianceEnterprise[]>([])
   const [relatedProject, setRelatedProject] = useState<AllianceProject | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!id || !tenantId) return
@@ -126,11 +128,15 @@ export default function AlliancePublicAchievementDetailPage() {
       })
       .catch((err) => {
         reportError(err, { source: '加载成果详情' })
+        setLoadError(err instanceof Error ? err.message : t('加载失败'))
       })
       .finally(() => setLoading(false))
-  }, [id, tenantId])
+  }, [id, tenantId, reloadKey, t])
 
   if (loading) return <LoadingView />
+  if (loadError) {
+    return <ErrorState description={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
+  }
   if (!achievement) return <EmptyState title={t('成果不存在')} />
 
   const attachments = achievement.attachments ?? []

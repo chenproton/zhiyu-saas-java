@@ -113,13 +113,20 @@ function HybridCourseAddForm() {
     abilityApi
       .list({ limit: 1000 })
       .then((res) => {
-        setAbilityPool(
-          (res.items || []).map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            code: a.code,
-            description: a.description,
-          })),
+        const pool = (res.items || []).map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          code: a.code,
+          description: a.description,
+        }))
+        setAbilityPool(pool)
+        // 能力点池晚于课程加载时，回填课程能力点名称（此前退化为原始 id 显示）
+        setAbilityPoints((prev) =>
+          prev.map((ap) => {
+            if (ap.name !== ap.id) return ap
+            const found = pool.find((a) => a.id === ap.id)
+            return found || ap
+          }),
         )
       })
       .catch(() => setAbilityPool([]))
@@ -205,7 +212,7 @@ function HybridCourseAddForm() {
           setExisting(c)
           if (c.batchId) setBatchId(c.batchId)
           // 回填课程基本信息
-          const courseEvalData = (c.evalData as any) || {}
+          const courseEvalData = c.evalData || {}
           setCourseForm({
             name: c.name || '',
             code: c.code || '',
@@ -711,7 +718,7 @@ function HybridCourseAddForm() {
         background: courseForm.background || undefined,
         estimatedHours: courseForm.estimatedHours ? Number(courseForm.estimatedHours) : undefined,
       },
-    }) as any
+    })
 
   const saveNodes = useCallback(
     async (effectiveCourseId: string) => {
@@ -1087,7 +1094,6 @@ function HybridCourseAddForm() {
           onUpdateNode={handleUpdateNode}
           onDeleteNode={handleDeleteNode}
           onReorderNodes={handleReorderNodes}
-          disableCloneQuote
         />
 
         {/* Center: Content modules */}

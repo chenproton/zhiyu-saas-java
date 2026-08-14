@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { SystemCourseNode } from '@/lib/types/lesson-source'
-import type { EvalRuleConfig } from '@/lib/types/evaluation'
+import type { EvalRuleConfig, EvalRuleMethodKey } from '@/lib/types/evaluation'
 import {
   buildEvalDataForSave,
   buildNodeSavePayload,
@@ -9,9 +9,9 @@ import {
   resolveResourceIds,
 } from './lesson-save-utils'
 
-function makeEvalRuleConfig(methods: string[] = ['paper']): EvalRuleConfig {
+function makeEvalRuleConfig(methods: EvalRuleMethodKey[] = ['paper']): EvalRuleConfig {
   return {
-    evaluationMethods: methods as any,
+    evaluationMethods: methods,
     disabledEvaluationMethods: [],
     methodWeights: { paper: 100 },
     evalObject: 'individual',

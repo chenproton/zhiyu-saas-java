@@ -24,6 +24,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import { portalRequest, allianceProjectApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { allianceLabel } from '@zhiyu/shared-types'
 import type {
   AllianceProject,
@@ -54,25 +55,36 @@ export default function AlliancePublicProjectDetailPage() {
     const q = `?tenantId=${tenantId}`
     Promise.all([
       portalRequest<AllianceProject>(`/alliance/public/projects/${id}${q}`),
-      portalRequest<{ items: AllianceEnterprise[] }>(`/alliance/public/enterprises${q}`),
-      portalRequest<{ items: AlliancePublicAgreement[] }>(`/alliance/public/agreements${q}`),
-      portalRequest<{ items: AllianceAchievement[] }>(`/alliance/public/achievements${q}`),
+      // 关联列表分页全量拉取：public 接口默认 100 条截断，避免学校链接对象超量时关联数据静默缺失
+      fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: AllianceEnterprise[] }>(
+          `/alliance/public/enterprises${q}&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
+      ),
+      fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: AlliancePublicAgreement[] }>(
+          `/alliance/public/agreements${q}&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
+      ),
+      fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: AllianceAchievement[] }>(
+          `/alliance/public/achievements${q}&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
+      ),
       allianceProjectApi.listPublicMilestones(id, tenantId),
     ])
-      .then(([p, entsRes, agrRes, achRes, msRes]) => {
+      .then(([p, ents, agrs, achs, msRes]) => {
         setProject(p)
         const entIds = p.enterpriseIds ?? []
-        setPartners((entsRes.items ?? []).filter((e) => entIds.includes(e.id)))
+        setPartners(ents.filter((e) => entIds.includes(e.id)))
         setAgreements(
-          (agrRes.items ?? []).filter(
+          agrs.filter(
             (a) =>
               (a.projectIds ?? []).includes(id) ||
               (p.agreementIds ?? []).includes(a.id),
           ),
         )
-        setAchievements(
-          (achRes.items ?? []).filter((a) => (a.projectIds ?? []).includes(id)),
-        )
+        setAchievements(achs.filter((a) => (a.projectIds ?? []).includes(id)))
         setMilestones(msRes.items ?? [])
       })
       .catch((err) => {

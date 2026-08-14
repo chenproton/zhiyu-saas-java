@@ -134,17 +134,26 @@ export function buildNodeSavePayload(options: {
 
   if (!isQuoteNode) {
     Object.assign(payload, {
-      teachingGoals: draft?.learningGoal || node.teachingGoals,
-      descriptionPdf: draft?.learningGoalPdf || node.descriptionPdf || undefined,
-      detailedDescription: draft?.detailedDescription || node.detailedDescription,
-      background: draft?.background || node.background,
+      // 可清空字段：draft 存在时直接透出草稿值（空串即显式清空），后端整列覆盖时清空生效
+      teachingGoals: draft ? draft.learningGoal : node.teachingGoals,
+      descriptionPdf: draft ? (draft.learningGoalPdf ?? undefined) : node.descriptionPdf,
+      detailedDescription: draft ? draft.detailedDescription : node.detailedDescription,
+      background: draft ? draft.background : node.background,
       estimatedHours: (() => {
         const v = draft?.estimatedHours
-        // 显式清空（''）生效；未填写回退节点原值；parseFloat 需 NaN 兜底
-        if (v !== undefined && v !== '') return parseFloat(v)
-        return node.estimatedHours
+        // 显式清空（''）→ undefined；非数字输入 NaN 兜底为 undefined
+        if (v === undefined || v === '') return undefined
+        const n = parseFloat(v)
+        return Number.isNaN(n) ? undefined : n
       })(),
-      duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
+      duration: (() => {
+        const v = draft?.hours
+        // 未编辑（无 draft）回退节点原值；显式清空（''）与非法输入均兜底为 0，与表单展示一致
+        if (v === undefined) return node.duration
+        if (v === '') return 0
+        const n = parseFloat(v)
+        return Number.isNaN(n) ? 0 : n
+      })(),
       difficulty: draft?.difficulty ?? node.difficulty,
       knowledgePointIds: resolvedKnowledgePointIds,
       resourceIds: existingResourceIds,

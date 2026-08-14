@@ -486,9 +486,11 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
               {editingItem ? t('编辑资源') : isTypeView ? t('新增资源') : t('上传资源到公共库')}
             </DialogTitle>
             <DialogDescription>
-              {isTypeView
-                ? t('上传本地资源到{label}', { label: typeLabel })
-                : t('补充本地资源，上传后将加入资源公共库')}
+              {editingItem
+                ? t('编辑资源信息')
+                : isTypeView
+                  ? t('上传本地资源到{label}', { label: typeLabel })
+                  : t('补充本地资源，上传后将加入资源公共库')}
             </DialogDescription>
           </DialogHeader>
           <form

@@ -8,6 +8,7 @@ import { Pencil, Trash2, ExternalLink, Link2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { PortalCrudPage } from '@/components/shared/portal-crud-page'
@@ -35,8 +36,11 @@ export default function AllianceJobBrandPage() {
   const { data, loading, error, refresh } = useAsync(
     async () => {
       if (!tenantId) return []
-      const data = await allianceBrandApi.list({ brandType, limit: 200 })
-      return data.items || []
+      // 全量拉取，避免 limit 截断导致品牌列表静默缺失（与 culture 页服务端分页语义一致）
+      const data = await listAll((page, pageSize) =>
+        allianceBrandApi.list({ brandType, limit: pageSize, offset: page * pageSize }),
+      )
+      return data
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )

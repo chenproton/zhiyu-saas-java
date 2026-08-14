@@ -20,9 +20,11 @@ import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { syncAgreementProjectLinks } from '@/lib/alliance-links'
 import { useToast, LoadingView, EmptyState, ComboboxSelect } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { reportError } from '@/lib/error-handling'
 import { FormPageShell } from '@/components/shared/form-page-shell'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
@@ -60,8 +62,13 @@ export default function AllianceAgreementEditPage() {
     if (!id) return
     Promise.all([
       allianceAgreementApi.get(id),
-      allianceEnterpriseApi.list({ limit: 200 }),
-      allianceProjectApi.list({ limit: 200 }),
+      // 下拉选项全量拉取，避免 limit 截断导致超限企业/项目无法选中
+      listAll((page, pageSize) =>
+        allianceEnterpriseApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      listAll((page, pageSize) =>
+        allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
       .then(([a, ents, projs]) => {
         setItem({
@@ -78,11 +85,9 @@ export default function AllianceAgreementEditPage() {
         })
         // 已终止合作的企业不再出现在下拉选项中
         setEnterprises(
-          (ents.items || [])
-            .filter((e) => e.status !== 'terminated')
-            .map((e) => ({ label: e.name, value: e.id })),
+          ents.filter((e) => e.status !== 'terminated').map((e) => ({ label: e.name, value: e.id })),
         )
-        setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
+        setProjects(projs.map((p) => ({ label: p.name, value: p.id })))
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
@@ -97,8 +102,16 @@ export default function AllianceAgreementEditPage() {
     setSaving(true)
     try {
       await allianceAgreementApi.update(id, item)
-      // 双向同步：协议.project_ids ↔ 项目.agreement_ids
-      await syncAgreementProjectLinks(id, item.projectIds)
+      try {
+        // 双向同步：协议.project_ids ↔ 项目.agreement_ids
+        await syncAgreementProjectLinks(id, item.projectIds)
+      } catch (syncErr) {
+        // 协议已更新成功，仅关联同步失败：单独提示，避免误报"保存失败"诱导重复提交
+        reportError(syncErr, '同步协议-项目关联')
+        toast({ title: t('协议已保存，但项目关联同步失败'), variant: 'destructive' })
+        router.push(`/portal/apps/alliance/agreements/${id}`)
+        return
+      }
       toast({ title: t('协议已更新') })
       router.push(`/portal/apps/alliance/agreements/${id}`)
     } catch (e: any) {

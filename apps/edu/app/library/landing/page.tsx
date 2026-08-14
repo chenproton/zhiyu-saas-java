@@ -136,6 +136,12 @@ function ResourceCard({
 export default function LibraryLandingPage() {
   const t = useT()
   const listRef = useRef<HTMLDivElement>(null)
+  const searchTimerRef = useRef<number | null>(null)
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current)
+    }
+  }, [])
   const [resources, setResources] = useState<ResourceLibraryItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -235,7 +241,12 @@ export default function LibraryLandingPage() {
       .slice(0, 4)
   }, [typeStats])
 
-  const [now] = useState(() => Date.now())
+  // 周期刷新时间基准，避免页面长驻时"近一周/近一月"时间筛选窗口随挂载时刻漂移失真
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const filteredResources = useMemo(() => {
     let list = resources
@@ -272,9 +283,8 @@ export default function LibraryLandingPage() {
   }, [resources, typeFilter, search, timeFilter, orgFilter, majorFilter, sortBy, now])
 
   useEffect(() => {
-    ;(async () => {
-      setCurrentPage(1)
-    })()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 筛选条件变化时回到第一页
+    setCurrentPage(1)
   }, [typeFilter, search, timeFilter, orgFilter, majorFilter, sortBy])
 
   const totalPages = Math.max(1, Math.ceil(filteredResources.length / CARDS_PER_PAGE))
@@ -311,7 +321,11 @@ export default function LibraryLandingPage() {
 
   const executeSearch = () => {
     setCurrentPage(1)
-    setTimeout(() => listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = window.setTimeout(
+      () => listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      50,
+    )
   }
 
   return (

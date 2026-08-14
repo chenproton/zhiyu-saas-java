@@ -70,10 +70,15 @@ import {
   resourceLibraryApi,
   fileApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 /* ---------- node editing mode ---------- */
 
 type AddMode = 'upload' | 'clone' | 'quote'
+
+function uid(prefix = 'id') {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
 
 interface GrainCourseOption {
   id: string
@@ -110,6 +115,8 @@ function AddSystemPageInner() {
   const [batchId, setBatchId] = useState('')
   const [originalStatus, setOriginalStatus] = useState('draft')
   const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
+  // 编辑加载时保留课程级 evalData 原文，保存时合并回写，避免仅回写 descriptionPdf 清空其它字段
+  const existingCourseEvalDataRef = useRef<Record<string, any>>({})
 
   const hasSavedRef = useRef(false)
   
@@ -150,13 +157,20 @@ function AddSystemPageInner() {
     abilityApi
       .list({ limit: 1000 })
       .then((res) => {
-        setAbilityPool(
-          (res.items || []).map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            code: a.code,
-            description: a.description,
-          })),
+        const pool = (res.items || []).map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          code: a.code,
+          description: a.description,
+        }))
+        setAbilityPool(pool)
+        // 能力点池晚于课程加载时，回填课程能力点名称（此前退化为原始 id 显示）
+        setAbilityPoints((prev) =>
+          prev.map((ap) => {
+            if (ap.name !== ap.id) return ap
+            const found = pool.find((a) => a.id === ap.id)
+            return found || ap
+          }),
         )
       })
       .catch(() => setAbilityPool([]))
@@ -188,7 +202,8 @@ function AddSystemPageInner() {
         setCourseName(course.name || '')
         if (course.code) setContentCode(course.code)
         if (course.description) setCourseDescription(course.description)
-        setCourseDescriptionPdf((course as any).evalData?.descriptionPdf || null)
+        setCourseDescriptionPdf(course.evalData?.descriptionPdf || null)
+        existingCourseEvalDataRef.current = course.evalData || {}
         if (course.coverImage) setCoverImage(course.coverImage)
         if (course.majorId) setMajor(course.majorId)
         if (course.batchId) setBatchId(course.batchId)
@@ -230,8 +245,6 @@ function AddSystemPageInner() {
         if (cancelled) return
         toast({ title: e.message || t('加载课程失败'), variant: 'destructive' })
       })
-      .finally(() => {
-      })
     return () => {
       cancelled = true
     }
@@ -247,7 +260,7 @@ function AddSystemPageInner() {
       sourceName?: string,
     ) => {
       const newNode: SystemCourseNode = {
-        id: `node-${Date.now()}`,
+        id: uid('node'),
         courseId: courseId || 'course-1',
         parentId,
         name,
@@ -381,22 +394,20 @@ function AddSystemPageInner() {
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
-  const customKnowledgePointIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     let cancelled = false
-    knowledgeApi
-      .list({ limit: 200 })
-      .then((res) => {
+    fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((items) => {
         if (cancelled) return
         const customIds = new Set<string>()
-        ;(res.items || []).forEach((k) => {
+        items.forEach((k) => {
           if (k.sourceType === 'course' && k.sourceId === editId) {
             customIds.add(k.id)
           }
         })
         setKnowledgePool(
-          (res.items || []).map((k) => ({
+          items.map((k) => ({
             id: k.id,
             name: k.name,
             code: k.code,
@@ -431,7 +442,7 @@ function AddSystemPageInner() {
     }
     setHours(String(node.duration || ''))
     setLearningGoal(node.teachingGoals || '')
-    setLearningGoalPdf((node as any).descriptionPdf || null)
+    setLearningGoalPdf(node.descriptionPdf || null)
     setDetailedDescription(node.detailedDescription || '')
     setBackground(node.background || '')
     setEstimatedHours(node.estimatedHours ? String(node.estimatedHours) : '')
@@ -553,25 +564,37 @@ function AddSystemPageInner() {
 
     // Fetch full grain data for KPs and resources
     try {
-      const grainFull = await courseApi.get(`${grain.id}?_t=${Date.now()}` as any)
+      const grainFull = await courseApi.get(grain.id)
       if (confirmNodeId !== selectedNodeIdRef.current) return
-      setLearningGoalPdf((grainFull as any).evalData?.descriptionPdf || null)
-      const grainKpIds = new Set((grainFull.knowledgePointIds || []).filter((id: any) => !!id))
-      setKnowledgePoints(knowledgePool.filter((k: any) => grainKpIds.has(k.id)))
-      const grainResIds = new Set((grainFull.resourceIds || []).filter((id: any) => !!id))
-      setSelectedResourceIds(Array.from(grainResIds) as string[])
+      setLearningGoalPdf(grainFull.evalData?.descriptionPdf || null)
+      // 颗粒课知识点可能不在本地池内（池按页拉取），用 knowledgePointNames 按序兜底名称，避免克隆后知识点缺失
+      const grainKpIds = (grainFull.knowledgePointIds || []).filter((id): id is string => !!id)
+      const grainKpNames = new Map<string, string>()
+      ;(grainFull.knowledgePointNames || []).forEach((name, i) => {
+        const id = grainKpIds[i]
+        if (id && name) grainKpNames.set(id, name)
+      })
+      setKnowledgePoints(
+        grainKpIds.map((id) => {
+          const fromPool = knowledgePool.find((k) => k.id === id)
+          if (fromPool) return fromPool
+          return { id, name: grainKpNames.get(id) || id, linked: true }
+        }),
+      )
+      const grainResIds = new Set((grainFull.resourceIds || []).filter((id): id is string => !!id))
+      setSelectedResourceIds(Array.from(grainResIds))
       if (grainResIds.size > 0 && !isQuote) {
         try {
-          const libRes = await resourceLibraryApi.list({ limit: 1000, _nocache: Date.now() } as any)
-          const grainResources: ResourceItem[] = ((libRes.items || []) as any[])
-            .filter((r: any) => grainResIds.has(r.id))
-            .map((r: any) => ({
+          const libRes = await resourceLibraryApi.list({ limit: 1000 })
+          const grainResources: ResourceItem[] = (libRes.items || [])
+            .filter((r) => grainResIds.has(r.id))
+            .map((r) => ({
               id: r.id,
               name: r.name,
-              type: r.resourceType || r.type,
+              type: r.resourceType,
               url: r.url,
               description: r.description,
-              size: r.fileSize !== undefined ? r.fileSize : r.size,
+              size: r.fileSize,
             }))
           setResourcePool((prev) => {
             const existing = new Set(prev.map((x) => x.id))
@@ -665,7 +688,7 @@ function AddSystemPageInner() {
               linked: false,
               granularLessonIds: [],
               sourceType: 'course_node',
-            } as any)
+            })
             kpIdMapping.set(kp.id, created.id)
           } catch (createErr) {
             // 创建失败即中止保存：继续会导致该知识点被过滤静默丢失（无提示的数据缺失）
@@ -732,11 +755,10 @@ function AddSystemPageInner() {
       const refreshed = await courseNodeApi.list({ courseId: effectiveCourseId })
       const refreshedNodes = refreshed.items || []
       setNodes(refreshedNodes)
-      // 重映射选中节点：本地 temp id → 后端真实 id（与 hybrid 版行为一致）
-      if (selectedNodeIdRef.current && !refreshedNodes.some((n) => n.id === selectedNodeIdRef.current)) {
-        const prevName = nodesRef.current.find((x) => x.id === selectedNodeIdRef.current)?.name
-        const created = refreshedNodes.find((n) => n.name === prevName && !n.id.startsWith('node-'))
-        if (created) setSelectedNodeId(created.id)
+      // 重映射选中节点：本地 temp id → 后端真实 id（idMapping 已就绪，避免按 name 匹配误中重名节点）
+      if (selectedNodeIdRef.current) {
+        const mapped = idMapping.get(selectedNodeIdRef.current)
+        if (mapped) setSelectedNodeId(mapped)
       }
       const newModes: Record<string, AddMode> = {}
       refreshedNodes.forEach((n) => {
@@ -762,6 +784,7 @@ function AddSystemPageInner() {
         creatorId: '',
         coCreatorIds: [] as string[],
         evalData: {
+          ...existingCourseEvalDataRef.current,
           descriptionPdf: courseDescriptionPdf || undefined,
         },
         abilityPointIds: abilityPoints.map((a) => a.id),
@@ -857,7 +880,7 @@ function AddSystemPageInner() {
                     ? t('试卷测验')
                     : t('现场问答'),
             type: method === 'question_bank' ? ('question_bank' as const) : ('paper' as const),
-            questions: [] as any[],
+            questions: [],
           }))
         : []
 
@@ -1242,7 +1265,6 @@ function AddSystemPageInner() {
                               onChange={setKnowledgePoints}
                               onAddCustom={(name, description) => {
                                 const newId = `kp-custom-${Date.now()}`
-                                customKnowledgePointIdsRef.current.add(newId)
                                 const newKp: KnowledgePointItem = {
                                   id: newId,
                                   name,

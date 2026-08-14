@@ -39,9 +39,10 @@ function mapCourse(backend: BackendCourse, currentUserId: string): Course {
     coverImage: backend.coverImage || undefined,
     courseTag: backend.courseTag || undefined,
     creator:
-      currentUserId && backend.creatorId === currentUserId
+      backend.creatorName ||
+      (currentUserId && backend.creatorId === currentUserId
         ? '杭州知与未来科技有限公司'
-        : backend.creatorId,
+        : backend.creatorId),
     creatorId: backend.creatorId,
     createDate: backend.createdAt,
     coCreator: backend.coCreatorIds?.length ? backend.coCreatorIds.join(', ') : undefined,

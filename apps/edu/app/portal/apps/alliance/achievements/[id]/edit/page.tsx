@@ -20,6 +20,7 @@ import { TagInput } from '@/components/shared/tag-input'
 import { Loader2 } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { useToast, LoadingView, EmptyState, ComboboxSelect } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { FormPageShell } from '@/components/shared/form-page-shell'
@@ -45,18 +46,21 @@ export default function AllianceAchievementEditPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceAchievementApi.get(id),
-      allianceEnterpriseApi.list({ limit: 200 }),
-      allianceProjectApi.list({ limit: 200 }),
+      // 下拉选项全量拉取，避免 limit 截断导致超限企业/项目无法选中或保留
+      listAll((page, pageSize) =>
+        allianceEnterpriseApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      listAll((page, pageSize) =>
+        allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
       .then(([a, ents, projs]) => {
         setItem(a)
         // 已终止合作的企业不再出现在下拉选项中
         setEnterprises(
-          (ents.items || [])
-            .filter((e) => e.status !== 'terminated')
-            .map((e) => ({ label: e.name, value: e.id })),
+          ents.filter((e) => e.status !== 'terminated').map((e) => ({ label: e.name, value: e.id })),
         )
-        setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
+        setProjects(projs.map((p) => ({ label: p.name, value: p.id })))
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))
@@ -85,12 +89,12 @@ export default function AllianceAchievementEditPage() {
 
   const setField = (field: string, value: any) =>
     setItem({ ...item, [field]: value } as AllianceAchievement)
-  const enterpriseIds: string[] = (item as any).enterpriseIds || []
-  const projectIds: string[] = (item as any).projectIds || []
-  const secondaryColleges: string[] = (item as any).secondaryColleges || []
-  const attachments: string[] = (item as any).attachments || []
-  const ownerPersons: string[] = (item as any).ownerPersons || []
-  const coBuilders: string[] = (item as any).coBuilders || []
+  const enterpriseIds: string[] = item.enterpriseIds || []
+  const projectIds: string[] = item.projectIds || []
+  const secondaryColleges: string[] = item.secondaryColleges || []
+  const attachments: string[] = item.attachments || []
+  const ownerPersons: string[] = item.ownerPersons || []
+  const coBuilders: string[] = item.coBuilders || []
 
   return (
     <FormPageShell title={t('编辑合作成果')} sidebar={<div className="space-y-6">

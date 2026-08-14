@@ -88,7 +88,8 @@ export function ResourceBatchImportDialog({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    addFiles(Array.from(e.dataTransfer.files || []))
+    // 上传进行中忽略追加文件，避免 reset() 清空中途新选文件
+    if (!uploading) addFiles(Array.from(e.dataTransfer.files || []))
   }
 
   const reset = () => {
@@ -244,7 +245,8 @@ export function ResourceBatchImportDialog({
               accept={resourceTypeAccept[submitType]}
               className="hidden"
               onChange={(e) => {
-                addFiles(Array.from(e.target.files || []))
+                // 上传进行中忽略追加文件，避免 reset() 清空中途新选文件
+                if (!uploading) addFiles(Array.from(e.target.files || []))
                 e.target.value = ''
               }}
             />

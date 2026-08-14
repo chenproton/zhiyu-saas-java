@@ -12,7 +12,7 @@ import type {
   AlliancePublicAgreement,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
-import { LoadingView, EmptyState } from '@zhiyu/ui'
+import { LoadingView, EmptyState, ErrorState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
   EnterpriseDetailView,
@@ -53,6 +53,8 @@ export default function AlliancePublicEnterpriseDetailPage() {
   const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
   const [agreements, setAgreements] = useState<AlliancePublicAgreement[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!id || !tenantId) return
@@ -110,11 +112,15 @@ export default function AlliancePublicEnterpriseDetailPage() {
       })
       .catch((err) => {
         reportError(err, { source: '加载合作企业详情' })
+        setLoadError(err instanceof Error ? err.message : t('加载失败'))
       })
       .finally(() => setLoading(false))
-  }, [id, tenantId])
+  }, [id, tenantId, reloadKey, t])
 
   if (loading) return <LoadingView />
+  if (loadError) {
+    return <ErrorState description={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
+  }
   if (!enterprise) return <EmptyState title={t('企业不存在')} />
 
   return (

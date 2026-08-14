@@ -5,8 +5,8 @@
 // 裁剪点（共通 bug 修复时需双向检查）：
 // - useAuth/useTaskDatasets 删除：其耦合 portal useAuth 与 12 个 portal api；
 //   替换为文件内 useCoBuildDatasets（只加载 evaluation 需要的学校能力点 + 量规模板，走 partnerCobuildSchoolApi）
-// - 删除卡片：knowledge/ability/resources/weight（含 WeightConfigDialog/persistWeights）、克隆/引用（my/collab/public 三 tab）；
-//   保留 info/description/evaluation/evaluationRules 四种卡片 + 新增/编辑/删除/拖拽排序
+// - 卡片与 portal 保持一致：info/description/knowledge/ability/resources/evaluation/evaluationRules/weight
+//   八种卡片齐备（含 WeightConfigDialog/persistWeights、克隆/引用对话框，见 PARTNER_CARD_TYPES）+ 新增/编辑/删除/拖拽排序
 // - api 全部换成 partnerCobuild*：taskApi→partnerCobuildScenarioApi.createTask/partnerCobuildTaskApi，
 //   taskEvaluationApi→partnerCobuildTaskApi.listEvaluationMethods/saveEvaluationMethods
 // - 删除 portal 专属：预览、publish/archive；按 status 控制（draft/rejected+提交审核，pending+撤回，其余只读）
@@ -448,11 +448,6 @@ export default function PartnerTasksEditPage() {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
-
-  const taskStatesRef = useRef(taskStates)
-  useEffect(() => {
-    taskStatesRef.current = taskStates
-  }, [taskStates])
 
   const schoolTenantId = existingScenario?.schoolTenantId || existingScenario?.tenantId || ''
   const datasets = useCoBuildDatasets(schoolTenantId, existingScenario?.careerPositionId)
@@ -2025,10 +2020,12 @@ function WeightConfigDialog({
 
   const distributeGlobal = () => {
     const unlocked = tasks.filter((t) => !taskStates[t.id]?.locked)
+    if (unlocked.length === 0) return
     const lockedWeight = tasks
       .filter((t) => taskStates[t.id]?.locked)
       .reduce((s, t) => s + (taskStates[t.id]?.weight || 0), 0)
-    const remaining = 100 - lockedWeight
+    // 已锁定权重合计可能 > 100：剩余钳制为 0，避免未锁定任务被分配负权重
+    const remaining = Math.max(0, 100 - lockedWeight)
     const each = Math.floor(remaining / unlocked.length)
     unlocked.forEach((t, i) => {
       updateAnyState(t.id, { weight: each + (i < remaining % unlocked.length ? 1 : 0) })

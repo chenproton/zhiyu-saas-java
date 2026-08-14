@@ -184,7 +184,8 @@ export default function MyResourcesPage() {
       } catch (err: any) {
         toast({ variant: 'destructive', title: t('加载资源失败'), description: err.message })
       } finally {
-        setLoadingResourceKind(null)
+        // 快速切换资源类型 tab 时，过期请求不得提前清掉当前类型的加载态
+        setLoadingResourceKind((cur) => (cur === kind ? null : cur))
       }
     },
     [userId, toast, t],

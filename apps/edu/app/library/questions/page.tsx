@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pencil, Trash2, MessageSquare } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -49,6 +49,7 @@ export default function QuestionsPage() {
     page,
     setPage,
     totalPages,
+    total,
   } = useLibraryCrud(randomDrawQuestionApi.list, {
     limit: 200,
     autoLoad: false,
@@ -70,10 +71,13 @@ export default function QuestionsPage() {
   const [tagIds, setTagIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [majors, setMajors] = useState<any[]>([])
-  const majorNameMap: Record<string, string> = {}
-  majors.forEach((m: any) => {
-    majorNameMap[m.id] = m.name
-  })
+  const majorNameMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    majors.forEach((m: any) => {
+      map[m.id] = m.name
+    })
+    return map
+  }, [majors])
 
   const loadMajors = useCallback(async () => {
     try {
@@ -169,7 +173,7 @@ export default function QuestionsPage() {
         </div>
       }
       statGradient="from-primary/5 to-primary/10"
-      statCount={items.length}
+      statCount={total}
       searchPlaceholder={t('搜索题目名称...')}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}

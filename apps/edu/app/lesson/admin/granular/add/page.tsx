@@ -67,10 +67,7 @@ function AddGranularPageInner() {
   const [courseName, setCourseName] = useState('')
   const [hours, setHours] = useState('')
   const [learningGoal, setLearningGoal] = useState('')
-  const [detailedDescription] = useState('')
-  const [background] = useState('')
   const [learningGoalPdf, setLearningGoalPdf] = useState<string | null>(null)
-  const [estimatedHours] = useState('')
   const [major, setMajor] = useState('')
   const [majorId, setMajorId] = useState('')
   const [difficulty, setDifficulty] = useState<number>(0)
@@ -97,18 +94,19 @@ function AddGranularPageInner() {
             resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }),
           ),
         ])
-        setCustomKnowledgePointIds(new Set())
+        const customIds = new Set<string>()
         kpItems.forEach((k) => {
           if (k.sourceType === 'course' && k.sourceId === editId) {
-            setCustomKnowledgePointIds((prev) => new Set(prev).add(k.id))
+            customIds.add(k.id)
           }
         })
+        setCustomKnowledgePointIds(customIds)
         const pool = kpItems.map((k) => ({
           id: k.id,
           name: k.name,
           code: k.code,
           description: k.description,
-          linked: !customKnowledgePointIds.has(k.id),
+          linked: !customIds.has(k.id),
           granularLessons: (k as any).granularLessonIds || [],
         }))
         setKnowledgePool(pool)
@@ -218,9 +216,6 @@ function AddGranularPageInner() {
       type: 'normal',
       status: 'draft' as const,
       teachingGoals: learningGoal,
-      detailedDescription: detailedDescription || undefined,
-      background: background || undefined,
-      estimatedHours: parseInt(estimatedHours) || undefined,
       descriptionPdf: learningGoalPdf || undefined,
       duration: parseInt(hours) || 0,
       knowledgePoints: kpForCheck,
@@ -233,9 +228,6 @@ function AddGranularPageInner() {
     courseName,
     hours,
     learningGoal,
-    detailedDescription,
-    background,
-    estimatedHours,
     learningGoalPdf,
     courseResourcePool,
     knowledgePoints,
@@ -358,9 +350,6 @@ function AddGranularPageInner() {
         coCreatorIds: course?.coCreatorIds ?? [],
         difficulty: difficulty > 0 ? difficulty : undefined,
         description,
-        detailedDescription: detailedDescription || undefined,
-        background: background || undefined,
-        estimatedHours: parseInt(estimatedHours) || 0,
         evalData: {
           learningGoal: learningGoal || undefined,
           knowledgePointIds,
@@ -394,6 +383,7 @@ function AddGranularPageInner() {
           const realIds = await persistNewResources(c.id)
           await courseApi.update(c.id, { resourceIds: realIds })
         }
+        hasSavedRef.current = true
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)
         toast({ title: t('草稿已保存') })
       }

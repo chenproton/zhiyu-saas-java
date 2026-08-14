@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -192,7 +192,11 @@ export default function PartnerCooperationPage() {
     { deps: [authLoading, user?.id], onError: () => true },
   )
 
+  // 记录当前请求的 kind/id，快速切换行时丢弃过期响应，避免弹窗标题与内容分属不同条目
+  const detailReqRef = useRef<{ kind: RowKind; id: string } | null>(null)
+
   const openDetail = async (kind: RowKind, id: string, name: string) => {
+    detailReqRef.current = { kind, id }
     setDetail({ kind, id, name })
     setDetailData(null)
     setDetailError(null)
@@ -204,12 +208,16 @@ export default function PartnerCooperationPage() {
           : kind === 'achievement'
             ? await partnerCooperationApi.achievement(id)
             : await partnerCooperationApi.agreement(id)
+      if (detailReqRef.current?.id !== id || detailReqRef.current?.kind !== kind) return
       setDetailData(data)
     } catch (err) {
+      if (detailReqRef.current?.id !== id || detailReqRef.current?.kind !== kind) return
       reportError(err, { source: '加载合作内容详情' })
       setDetailError(err instanceof Error ? err.message : t('加载失败'))
     } finally {
-      setDetailLoading(false)
+      if (detailReqRef.current?.id === id && detailReqRef.current?.kind === kind) {
+        setDetailLoading(false)
+      }
     }
   }
 

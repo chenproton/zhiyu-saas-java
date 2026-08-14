@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { useToast } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
@@ -25,13 +26,18 @@ export default function AllianceAgreementDetailPage() {
     if (!tenantId || !id) return
     Promise.all([
       allianceAgreementApi.get(id),
-      allianceEnterpriseApi.list({ limit: 200 }),
-      allianceProjectApi.list({ limit: 200 }),
+      // 全量拉取企业/项目列表，避免 limit 截断导致关联名称解析退化为原始 id
+      listAll((page, pageSize) =>
+        allianceEnterpriseApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      listAll((page, pageSize) =>
+        allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
       .then(([a, ents, projs]) => {
         setAgreement(a)
-        setEnterprises(ents.items || [])
-        setProjects(projs.items || [])
+        setEnterprises(ents)
+        setProjects(projs)
       })
       .catch((e) => toast({ title: t('加载失败'), description: e.message, variant: 'destructive' }))
       .finally(() => setLoading(false))

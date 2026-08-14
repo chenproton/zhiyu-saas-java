@@ -42,7 +42,8 @@ interface KnowledgePointFormDialogProps {
 }
 
 function generateKpCode() {
-  return `KP-${Date.now().toString().slice(-6)}`
+  // 追加随机段，避免同毫秒/跨时段尾数碰撞导致 code 唯一约束冲突
+  return `KP-${Date.now().toString().slice(-6)}${Math.random().toString(36).slice(2, 6)}`
 }
 
 export function KnowledgePointFormDialog({

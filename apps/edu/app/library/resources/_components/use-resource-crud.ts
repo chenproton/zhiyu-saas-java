@@ -11,7 +11,6 @@ const PAGE_SIZE = 200
 export function useResourceCrud(resourceType?: string) {
   const { toast } = useToast()
   const t = useT()
-  const resFileInputRef = useRef<HTMLInputElement>(null)
 
   const [items, setItems] = useState<ResourceLibraryItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -35,7 +34,11 @@ export function useResourceCrud(resourceType?: string) {
     fileTypesWithUpload.includes(resourceType || '') ||
     (editingItem ? fileTypesWithUpload.includes(editingItem.resourceType) : false)
 
+  // 请求序号：过滤条件快速变化时丢弃过期响应，避免旧结果覆盖新筛选
+  const loadSeqRef = useRef(0)
+
   const loadItems = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     setLoading(true)
     try {
       const res = await resourceLibraryApi.list({
@@ -46,6 +49,7 @@ export function useResourceCrud(resourceType?: string) {
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
+      if (seq !== loadSeqRef.current) return
       const totalPages = Math.max(1, Math.ceil((res.total ?? 0) / PAGE_SIZE))
       if (page > totalPages) {
         setPage(totalPages)
@@ -54,13 +58,14 @@ export function useResourceCrud(resourceType?: string) {
       setItems(res.items)
       setTotal(res.total ?? 0)
     } catch (err: any) {
+      if (seq !== loadSeqRef.current) return
       toast({
         variant: 'destructive',
         title: t('加载失败'),
         description: err.message || t('无法获取资源列表'),
       })
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [resourceType, filterType, searchQuery, selectedTagIds, page, toast, t])
 
@@ -243,7 +248,6 @@ export function useResourceCrud(resourceType?: string) {
     deleteTarget,
     setDeleteTarget,
     isFileType,
-    resFileInputRef,
     loadItems,
     handleOpenAdd,
     handleOpenEdit,

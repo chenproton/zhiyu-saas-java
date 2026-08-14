@@ -607,7 +607,7 @@ function ResourceModuleEditor({
 
   const handleChange = (ids: string[]) => {
     const selected = ids
-      .map((id) => pool.find((p) => p.id === id))
+      .map((id) => pool.find((p) => p.id === id) || items.find((i) => i.id === id))
       .filter(Boolean) as ResourceItem[]
     onChange(selected)
   }

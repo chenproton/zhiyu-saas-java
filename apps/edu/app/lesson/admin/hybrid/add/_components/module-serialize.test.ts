@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { makeDefaultEvalRuleConfig } from '@zhiyu/shared-types'
 import {
   createDefaultNodeModuleData,
   type NodeModuleData,
@@ -20,7 +21,7 @@ function fillModule(d: NodeModuleData, key: AtomicModuleKey) {
       break
     case 'preQuizzes':
       d.preQuizEvalMethods = ['quiz']
-      d.preQuizEvalRules = { evaluationMethods: ['quiz'], methodWeights: { quiz: 100 } } as any
+      d.preQuizEvalRules = makeDefaultEvalRuleConfig(['quiz'])
       break
     case 'lecture':
       d.lectureContent = '讲授内容'
@@ -30,10 +31,7 @@ function fillModule(d: NodeModuleData, key: AtomicModuleKey) {
       break
     case 'homeworks':
       d.homeworkEvalMethods = ['homework']
-      d.homeworkEvalRules = {
-        evaluationMethods: ['homework'],
-        methodWeights: { homework: 100 },
-      } as any
+      d.homeworkEvalRules = makeDefaultEvalRuleConfig(['homework'])
       d.homeworks = [{ id: 'h1', requirement: '完成实验报告', allowText: true, allowAttachment: true, deadline: '' }]
       break
     case 'classQuestions':

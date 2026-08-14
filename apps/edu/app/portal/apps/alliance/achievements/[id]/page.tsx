@@ -77,6 +77,14 @@ export default function AllianceAchievementDetailPage() {
   const [results, setResults] = useState<AllianceRelatedRef[]>([])
   const [selected, setSelected] = useState<string>('')
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // 请求序号：快速输入时丢弃过期响应，避免结果与当前关键字不符
+  const searchSeqRef = useRef(0)
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(searchTimer.current)
+    }
+  }, [])
 
   const loadData = () => {
     if (!tenantId || !id) return
@@ -107,22 +115,27 @@ export default function AllianceAchievementDetailPage() {
 
   const currentItems = (): AllianceRelatedRef[] => {
     const key = KIND_TO_KEY[pickDialog.kind]
-    return normalizeRelatedRefs((achievement?.[key] as any) || [])
+    return normalizeRelatedRefs(achievement?.[key] || [])
   }
 
   const runSearch = (kind: RelatedKind, kw: string) => {
+    const seq = ++searchSeqRef.current
     setSearching(true)
     searchRelated(kind, kw)
       .then((items) => {
+        if (seq !== searchSeqRef.current) return
         const linked = new Set(currentItems().map((x) => x.id))
         setResults(items.filter((x) => !linked.has(x.id)))
         setSelected('')
       })
       .catch(() => {
+        if (seq !== searchSeqRef.current) return
         setResults([])
         toast({ title: t('搜索失败'), variant: 'destructive' })
       })
-      .finally(() => setSearching(false))
+      .finally(() => {
+        if (seq === searchSeqRef.current) setSearching(false)
+      })
   }
 
   const openPicker = (kind: RelatedKind) => {
@@ -148,7 +161,7 @@ export default function AllianceAchievementDetailPage() {
   }
 
   const removeItem = async (key: RelatedKey, refId: string) => {
-    const items = normalizeRelatedRefs((achievement?.[key] as any) || []).filter(
+    const items = normalizeRelatedRefs(achievement?.[key] || []).filter(
       (x: AllianceRelatedRef) => x.id !== refId,
     )
     await saveRelated(key, items)

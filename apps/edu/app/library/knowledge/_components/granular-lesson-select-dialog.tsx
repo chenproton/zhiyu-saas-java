@@ -63,7 +63,14 @@ export function GranularLessonSelectDialog({
   )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // 关闭后重置搜索词，避免重新打开时残留上次搜索
+        if (!next) setSearch('')
+        onOpenChange(next)
+      }}
+    >
       <DialogContent className="sm:max-w-[800px] max-h-[80vh] h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

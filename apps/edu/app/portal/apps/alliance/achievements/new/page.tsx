@@ -18,6 +18,7 @@ import { SingleImageUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { reportError } from '@/lib/error-handling'
 import { useToast, ComboboxSelect } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -53,17 +54,20 @@ export default function AllianceAchievementNewPage() {
 
   useEffect(() => {
     Promise.all([
-      allianceEnterpriseApi.list({ limit: 200 }),
-      allianceProjectApi.list({ limit: 200 }),
+      // 下拉选项全量拉取，避免 limit 截断导致超限企业/项目无法选中
+      listAll((page, pageSize) =>
+        allianceEnterpriseApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      listAll((page, pageSize) =>
+        allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
       .then(([ents, projs]) => {
         // 已终止合作的企业不再出现在下拉选项中
         setEnterprises(
-          (ents.items || [])
-            .filter((e) => e.status !== 'terminated')
-            .map((e) => ({ label: e.name, value: e.id })),
+          ents.filter((e) => e.status !== 'terminated').map((e) => ({ label: e.name, value: e.id })),
         )
-        setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
+        setProjects(projs.map((p) => ({ label: p.name, value: p.id })))
       })
       .catch((err) => {
         reportError(err, '加载企业/项目下拉数据')

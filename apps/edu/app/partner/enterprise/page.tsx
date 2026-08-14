@@ -579,7 +579,7 @@ export default function PartnerEnterprisePage() {
             <DialogTitle>{t('展示页预览')}</DialogTitle>
           </DialogHeader>
           <EnterpriseDetailView
-            enterprise={toPreview(item)}
+            enterprise={toPreview(form ?? item)}
             experts={previewExperts ?? []}
             projects={[]}
             achievements={[]}

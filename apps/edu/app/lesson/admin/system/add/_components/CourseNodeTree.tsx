@@ -40,7 +40,6 @@ interface CourseNodeTreeProps {
   onUpdateNode: (nodeId: string, updates: Partial<SystemCourseNode>) => void
   onDeleteNode: (nodeId: string) => void
   onReorderNodes: (nodeId: string, targetNodeId: string, position: 'before' | 'after') => void
-  disableCloneQuote?: boolean
 }
 
 interface TreeItem {

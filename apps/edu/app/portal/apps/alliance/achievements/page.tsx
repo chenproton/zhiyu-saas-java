@@ -15,6 +15,7 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { useToast, useAsync } from '@zhiyu/ui'
 import { usePagedList } from '@/hooks/use-paged-list'
 import { allianceLabel } from '@zhiyu/shared-types'
@@ -36,10 +37,15 @@ export default function AllianceAchievementsPage() {
     async () => {
       if (!tenantId) return { enterprises: [], projects: [] }
       const [ents, projs] = await Promise.all([
-        allianceEnterpriseApi.list({ limit: 200 }),
-        allianceProjectApi.list({ limit: 200 }),
+        // 全量拉取企业/项目列表，避免 limit 截断导致名称解析退化为原始 id
+        listAll((page, pageSize) =>
+          allianceEnterpriseApi.list({ limit: pageSize, offset: page * pageSize }),
+        ),
+        listAll((page, pageSize) =>
+          allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+        ),
       ])
-      return { enterprises: ents.items || [], projects: projs.items || [] }
+      return { enterprises: ents, projects: projs }
     },
     { deps: [tenantId, authLoading], onError: () => true },
   )

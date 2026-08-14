@@ -20,6 +20,7 @@ import { ImageListUpload } from '@/components/shared/image-list-upload'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
+import { listAll } from '@zhiyu/api-client'
 import { syncAgreementProjectLinks } from '@/lib/alliance-links'
 import { reportError } from '@/lib/error-handling'
 import { useToast, ComboboxSelect } from '@zhiyu/ui'
@@ -56,17 +57,20 @@ export default function AllianceAgreementNewPage() {
 
   useEffect(() => {
     Promise.all([
-      allianceEnterpriseApi.list({ limit: 200 }),
-      allianceProjectApi.list({ limit: 200 }),
+      // 下拉选项全量拉取，避免 limit 截断导致超限企业/项目无法选中
+      listAll((page, pageSize) =>
+        allianceEnterpriseApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      listAll((page, pageSize) =>
+        allianceProjectApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
       .then(([ents, projs]) => {
         // 已终止合作的企业不再出现在下拉选项中
         setEnterprises(
-          (ents.items || [])
-            .filter((e) => e.status !== 'terminated')
-            .map((e) => ({ label: e.name, value: e.id })),
+          ents.filter((e) => e.status !== 'terminated').map((e) => ({ label: e.name, value: e.id })),
         )
-        setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
+        setProjects(projs.map((p) => ({ label: p.name, value: p.id })))
       })
       .catch((err) => {
         reportError(err, '加载企业/项目下拉数据')
@@ -93,15 +97,19 @@ export default function AllianceAgreementNewPage() {
       toast({ title: t('到期日期不能早于生效日期'), variant: 'destructive' })
       return
     }
-    if (!item.name) {
-      toast({ title: t('请填写协议名称'), variant: 'destructive' })
-      return
-    }
     setSaving(true)
     try {
       const data = await allianceAgreementApi.create(item)
-      // 双向同步：协议.project_ids ↔ 项目.agreement_ids
-      await syncAgreementProjectLinks(data.id, item.projectIds)
+      try {
+        // 双向同步：协议.project_ids ↔ 项目.agreement_ids
+        await syncAgreementProjectLinks(data.id, item.projectIds)
+      } catch (syncErr) {
+        // 协议已创建成功，仅关联同步失败：单独提示，避免误报"保存失败"诱导重复创建
+        reportError(syncErr, '同步协议-项目关联')
+        toast({ title: t('协议已创建，但项目关联同步失败'), variant: 'destructive' })
+        router.push(`/portal/apps/alliance/agreements/${data.id}`)
+        return
+      }
       toast({ title: t('协议已创建') })
       router.push(`/portal/apps/alliance/agreements/${data.id}`)
     } catch (e: any) {

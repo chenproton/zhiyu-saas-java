@@ -175,24 +175,38 @@ export default function CourseDetailPage() {
 
   useEffect(() => {
     if (!id || !course || !isEditorPreview) return
+    let cancelled = false
 
-    courseNodeApi
-      .list({ courseId: id, limit: 1000 } as any)
-      .then((res) => setNodes((res.items || []) as any))
-      .catch(() => setNodes([]))
+    // 节点/知识点全量拉取，避免后端列表分页上限导致目录树/知识图谱数据缺失
+    fetchAllPages((page, pageSize) => courseNodeApi.list({ courseId: id, limit: pageSize, offset: page * pageSize }))
+      .then((res) => {
+        if (!cancelled) setNodes(res)
+      })
+      .catch(() => {
+        if (!cancelled) setNodes([])
+      })
 
     fetchAllPages((page, pageSize) => courseResourceApi.list({ courseId: id, limit: pageSize, offset: page * pageSize }))
-      .then((res) => setResources(res || []))
-      .catch(() => setResources([]))
-
-    knowledgeApi
-      .list({ limit: 1000 })
       .then((res) => {
+        if (!cancelled) setResources(res || [])
+      })
+      .catch(() => {
+        if (!cancelled) setResources([])
+      })
+
+    fetchAllPages((page, pageSize) => knowledgeApi.list({ limit: pageSize, offset: page * pageSize }))
+      .then((res) => {
+        if (cancelled) return
         const m = new Map<string, KnowledgePoint>()
-        ;(res.items || []).forEach((k) => m.set(k.id, k))
+        res.forEach((k) => m.set(k.id, k))
         setKnowledgeMap(m)
       })
-      .catch(() => setKnowledgeMap(new Map()))
+      .catch(() => {
+        if (!cancelled) setKnowledgeMap(new Map())
+      })
+    return () => {
+      cancelled = true
+    }
   }, [id, course, isEditorPreview])
 
   // 从考试页返回时高亮并定位到对应节点
@@ -683,7 +697,9 @@ export default function CourseDetailPage() {
 
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       <span className="flex items-center gap-1.5">
-                        {t('创建人：{n}', { n: (course.creatorId || '').slice(0, 8) })}
+                        {t('创建人：{n}', {
+                          n: course.creatorName || (course.creatorId || '').slice(0, 8),
+                        })}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" /> {t('更新于 {n}', { n: formatDate(course.updatedAt) })}

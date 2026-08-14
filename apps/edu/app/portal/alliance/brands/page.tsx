@@ -107,8 +107,6 @@ function AlliancePublicBrandsList() {
     }
   }, [tab])
 
-  const isRowLayout = tab === 'employer' || tab === 'job'
-
   return (
     <PublicListShell
       title={t('品牌展示')}
@@ -127,12 +125,6 @@ function AlliancePublicBrandsList() {
           <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-30" />
           <div className="text-[15px] font-medium text-[#475569]">{t('暂无品牌')}</div>
           <div className="text-[13px] mt-1">{t('发布后的品牌成果会展示在这里')}</div>
-        </div>
-      ) : isRowLayout ? (
-        <div className={gridClassName}>
-          {filtered.map((item) => (
-            <BrandPreviewCard key={item.id} item={item} />
-          ))}
         </div>
       ) : (
         <div className={gridClassName}>
