@@ -329,7 +329,8 @@ export function EvalMethodSubmitDialog({
     try {
       const payload: EvalMethodSubmitPayload = {
         methodKey: method.methodKey,
-        maxScore: 100,
+        // 以方法配置的满分为准（当前平台约定满分 100），配置缺失时兜底 100
+        maxScore: Number(resourceConfig.maxScore) || 100,
       }
       if (isManualSubmit) {
         payload.subjectiveContent = { text, files, attempts: 1 }
