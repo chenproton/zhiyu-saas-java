@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -149,10 +150,14 @@ func (s *TrainingProgramStore) PutCourses(ctx context.Context, tx Queryer, progr
 	for _, c := range courses {
 		name := c.Name
 		if name == "" && c.PositionID != nil && *c.PositionID != "" {
-			_ = tx.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *c.PositionID).Scan(&name)
+			if err := tx.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *c.PositionID).Scan(&name); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				slog.Warn("人培方案课程名称回查失败", "positionID", *c.PositionID, "error", err)
+			}
 		}
 		if name == "" && c.CourseID != nil && *c.CourseID != "" {
-			_ = tx.QueryRow(ctx, `SELECT name FROM courses WHERE id=$1`, *c.CourseID).Scan(&name)
+			if err := tx.QueryRow(ctx, `SELECT name FROM courses WHERE id=$1`, *c.CourseID).Scan(&name); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				slog.Warn("人培方案课程名称回查失败", "courseID", *c.CourseID, "error", err)
+			}
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, semester, nature, assessment, position_id, course_id, sort_order)

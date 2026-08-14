@@ -99,7 +99,8 @@ export default function ScenarioEditPage() {
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [difficulty, setDifficulty] = useState<number>(3)
   const [background, setBackground] = useState('')
-  const [creatorName] = useState(t('当前用户'))
+  // 从后端回填真实创建人姓名；新建场景（无 creatorName）回退展示「当前用户」
+  const [creatorName, setCreatorName] = useState('')
   const [creatorId, setCreatorId] = useState<string>('')
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
   const [version, setVersion] = useState('V1.0')
@@ -220,6 +221,7 @@ export default function ScenarioEditPage() {
         setDifficulty(scenario.difficulty || 3)
         setBackground(scenario.background || '')
         setCreatorId(scenario.creatorId || '')
+        setCreatorName(scenario.creatorName || '')
         setCoBuilderIds((scenario.coBuilderIds || []).filter((id) => id !== scenario.creatorId))
         setVersion(scenario.version || 'V1.0')
         setCoverImage(scenario.coverImage || '')
@@ -768,7 +770,7 @@ export default function ScenarioEditPage() {
 
                 <div>
                   <Label className="block text-gray-500 text-xs">{t('创建人')}</Label>
-                  <p className="font-medium text-gray-800 mt-1">{creatorName}</p>
+                  <p className="font-medium text-gray-800 mt-1">{creatorName || t('当前用户')}</p>
                 </div>
 
                 <div>

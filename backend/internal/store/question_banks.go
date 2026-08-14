@@ -71,6 +71,9 @@ func (s *QuestionBankStore) IsDraftPool(ctx context.Context, id string) (bool, e
 
 // Create 创建题库。
 func (s *QuestionBankStore) Create(ctx context.Context, tenantID string, p *QuestionBankCreateParams) (*domain.QuestionBank, error) {
+	if s.beginner == nil {
+		return nil, errors.New("question bank store: queryer does not support transactions")
+	}
 	var id string
 	err := withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx, `

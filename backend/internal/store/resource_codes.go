@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"errors"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
@@ -80,6 +82,9 @@ func (s *ResourceCodeStore) fetchResourceCode(ctx context.Context, id string) (*
 		SELECT id, tenant_id, code, name, description, type, created_at
 		FROM resource_codes WHERE id = $1
 	`, id).Scan(&rc.ID, &rc.TenantID, &rc.Code, &rc.Name, &description, &rc.Type, &rc.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -120,5 +125,3 @@ func ScanResourceCodeRows(rows pgx.Rows) ([]domain.ResourceCode, error) {
 	}
 	return items, rows.Err()
 }
-
-// ===== 推荐位 =====

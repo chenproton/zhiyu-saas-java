@@ -6243,7 +6243,7 @@
 | 031-032 | ecfe59d5 | 专家/批次跨租户写读下沉 SQL 约束、批次写操作带租户条件（三服务共用实现）、queryList 扫描错误上抛、draft 覆盖 RowsAffected 校验、认证查询错误日志、项目扫描去重、唯一冲突映射、死代码清理 |
 | 033-042 | 546bfe99 | 扫描错误日志化/上抛、ErrNotFound 语义统一、课程克隆资源扫描与父级缺失告警、LIKE 通配符转义、Prepare 回查错误日志、字典 Update/Delete 影响行数校验 |
 | 037-038/041-042 | 3f2f3791 | user_extension_fields 租户过滤补全、title_ids COALESCE 保留语义、任务测评扫描错误上抛、角色重绑事务化、租户更新 COALESCE 一致化、UsersExist 去重、管理员角色绑定影响行校验、证书库幂等回读、SaveFull 冲突回读实际行 id、教学计划 rows.Err |
-| 104-105 | — | 历史已应用迁移，不改文件（避免新旧环境不一致），已记录 |
+| 104-105 | — | 历史已应用迁移，不改文件（避免新旧环境不一致），已记录。12 项全部归档：P1 094 跨租户回填（code 撞名错链课程）+ 11 项 P2（001 注释不符、092 无唯一约束、102 无条件清空、111 未去重、116 FK 级联、141 默认值未回填、142/146 TRUNCATE 联盟数据、154 静默丢弃未映射 id、155 LIKE 批量删用户、157 down 回滚可能失败、种子/回填模式重复） |
 
 ### 前端批次（P2）
 
@@ -6272,6 +6272,14 @@
 | 049-050 遗留 | （并入 fix-batch-2） | 评分详情用户反查改 listAll、岗位归档批量删除改 allSettled 汇总；其余已由大修复与 045-050 批次修复（scene-results 序号守卫/TaskMethodTabs 模块级外移、题库批量删/复制 allSettled、头部数量用实时统计、可选 finally 出链、DrawnQuestionCard key 收敛） |
 | 101-102 | 无需补修 | 19 项 P2 已由 079-103 批次修复（library metadata→unknown、status failed/failure 双键收敛、combobox label→value + 关闭清搜索、import-confirm busy 拦截关闭、import-wizard input 重置 + 取消禁用、mixed-tag 死代码与 JSON.stringify 比较移除）；scene-mock 已 deprecated 但仍被 3 个任务编辑页引用（迁移属中改）、status 中英键配色差异、scene/snapshot jsonb any 结构、PlatformSideNav effect 依赖等评估后不改 |
 | 053-054 遗留 | （并入 fix-batch-2） | hybrid 能力点池改 fetchAllPages；其余已由大修复与 051-062 批次修复（拖拽成环 wouldCreateCycle、hybrid evalData 全字段回写、save-utils 可清空+NaN 兜底、测试数据正式类型、临时 ID 统一判定、知识点克隆池外 knowledgePointNames 兜底、课程缓存击穿参数与死代码/死 prop 清理、保存后 idMapping 重映射）；模块序列化 any 类型、learn 页 limit 1000、hover 动态类属评估后不改 |
+| 037-038 遗留 | （并入 fix-batch-3） | scenario_clone 5 处行扫描吞错补 Warn、question_banks Create 补 beginner nil 校验、resource_codes Get 映射 ErrNotFound+删残留注释；其余已由大修复与 033-042/029-030 批次修复（Bind afterBind 上抛、SaveFull 冲突回读实际 id、LIKE 通配符转义、Prepare 回查 Warn、random_draw/recommends ErrNotFound、绑定表/列白名单、roles Assign 影响行校验） |
+| 103 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（EmptyDescription 类型改 div、FieldTitle data-slot 改 field-title、use-import-flow entityLabel 用于错误提示、ui vitest alias 改通用 @ 映射）；Spinner 收敛与 Radix 动画串两处复用候选评估后不改 |
+| 041-042 遗留 | （并入 fix-batch-3） | 删除 tags 薄包装 isUniqueViolation、PutCourses 回查错误补 Warn；其余已由大修复与 3f2f3791 修复（workflows Create 回查、user_extension_fields 租户过滤、title_ids COALESCE、任务测评扫描上抛、角色重绑事务化、租户 COALESCE 一致、UsersExist 去重、管理员角色绑定影响行校验、teaching_plans rows.Err、AttachUserRoles 日志）；student_portraits/tenant_admins ResetPassword/users 写操作等无租户方法 handler 已校验、明文初始密码属产品设计、先 Get 后 Update 双往返模式等评估后不改 |
+| 099-100 | 无需补修 | 5 项 P2 全部已修复（scene methods 类型化、system 树递归类型、fetch-all 最大页数熔断、evaluation-scene 时间改 string、job-source 悬空注释已补实现）；scene.ts jsonb 自由结构 any 与 5 组跨文件类型重复评估后不改 |
+| 073-074 遗留 | （并入 fix-batch-3） | 场景编辑页创建人改从后端 creatorName 回填（新建回退「当前用户」）；其余已由大修复与 063-078 批次修复（AI 补全 formRef 同步、星级/预览/重传按钮 type=button、learn 任务列表 fetchAllPages、建议链复选框、数据集失败回退标记、reviewSteps id 往返保留） |
+| 045-046 遗留 | （并入 fix-batch-3） | 教学计划条目保存并行化 allSettled、测评审批名称映射 fetchAllPages；其余已由大修复与 045-050 批次修复（5 个 P1：截断/路由/时窗 RFC3339/两处 N+1，及 results 除零守卫、usage 失败 toast、建题 try/catch、approvals 归属 Set、失败态区分） |
+| 079-080 | 无需补修 | 2 个 P1（判断题数组比较、shuffleOptions 持久化）已在大修复解决；14 项 P2 全部由 079-103 批次修复（removeOption 纯 updater、空答案过滤、blankCount 实际空位、QUESTION_TYPES 复用、createdAt 兜底删除、预加载 cancelled、切题库清搜索、reviewSteps 同步纯 updater、methodInstanceCounts/showAddQuestion 死代码删除、EvalPointField 类型复用、readOnly 隐藏编辑按钮）；reviewSteps prop 同步脆弱性与 3 组复用候选评估后不改 |
+| 061-062 遗留 | （并入 fix-batch-3） | 成果编辑页 2 处多余 as any 改可选链；其余已由大修复与 051-062 批次修复（P1 agreements 编辑加载失败 item 置 null+EmptyState、六页 limit=200 下拉/列表全量拉取、agreements new/edit 同步失败与保存失败分离提示、重复校验死代码清除、搜索防抖清理+序号守卫、详情失败态分离） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6328,6 +6336,20 @@
 - lesson/landing/[id]/learn 节点/模块 limit 1000（超大课程边缘场景，容忍，见 053-054）
 - system/add hover 动态 Tailwind 类（纯样式，构建期无法提取，人工确认，见 053-054）
 - node-evaluation-results 前端 evaluateeId 可空（后端已强制学生按 claims.UserID 过滤，无泄露，见 053-054）
+- position_bindings/certificates 等 store 无租户限定方法（handler 层已核验归属校验，建议注释标注契约，评估后不改，见 037-038）
+- position_clone/scenario_clone 克隆骨架与 FetchPosition 重复、question_banks fetch 三份扫描体（事务内低频克隆与 20 列扫描重构，见 037-038）
+- questions BatchCreate GenerateEntityCode 无重试（低概率碰撞、批量导入低频，见 037-038）
+- random_draw/resource_library Delete 的 withTxStore 无 beginner nil 校验（生产恒为 Store，测试 fake 未触发，见 037-038）
+- student_portraits GetPortraitByUserPosition/GetArchive、tenant_admins ResetPassword、users 状态/密码写操作无租户限定（handler 层已先 Get+verifyTenantOwnership 校验，越权不可达，见 041-042）
+- tenant_admins NewPassword 明文回传（一次性初始密码属产品设计，日志不记录响应体，见 041-042）
+- 先 Get 校验→Update→再 Get 返回双往返模式 5+ 处与角色 user_count±1 维护 7 处重复（事务内低频写路径，重构收益低，见 041-042）
+- tenants CreateWithDefaults TOCTOU（超管低频操作，唯一约束兜底，见 041-042）
+- scene landing learn 页知识/能力/颗粒课 limit 1000 与 use-task-datasets 五处 limit 1000（非核心映射接口，容忍，见 073-074）
+- 资源归一化/考核训练徽章/live 数据组装 3 组重复（复用重构，见 073-074）
+- landing/[id]/page typeColors 回调内建表（微小性能，见 073-074）
+- exams/[id] canEdit 含 approved/published/archived 终态与拖拽 onDragOver 多次 PUT（终态可编辑属产品决策、dragTargetRef 已防重复提交，见 045-046）
+- teaching-plans 提交审批两步非原子与 exam-usage 初始加载重复实现（需后端合并接口/lint 规则约束，见 045-046）
+- job-ability 列表 limit 200 与 exams/page 弱类型（分页改造/类型建模，见 045-046）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
