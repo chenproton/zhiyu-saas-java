@@ -6269,6 +6269,7 @@
 - course_assessments.go CreateTempExam 与 course_nodes.go Delete 的 check-then-act（低频竞态、非核心，发布流程已有 CAS 兜底，符合「普通业务允许报错或重复插入」）
 - courses.go Delete 中不可达的 course_evaluation_results 防御性 DELETE（保留作为删除保护变更时的兜底）
 - exam_results.go FetchUserProfile 吞错（提交主链路稳定性优先：姓名查询失败不阻断交卷，宁缺名字不断流程）
+- partner 共建任务链 listEvaluationMethods 每任务一次请求（N+1，需后端新增批量接口；非核心流程，容忍，见 057-058）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
