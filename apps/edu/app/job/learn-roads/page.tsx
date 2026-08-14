@@ -500,6 +500,10 @@ export default function LearnRoadsPage() {
   const [saved, setSaved] = useState(false)
   const [learnRoadId, setLearnRoadId] = useState<string | null>(null)
   const [learnRoads, setLearnRoads] = useState<LearnRoad[]>([])
+  // 缓存已拉取的学习路径列表，编辑时复用，避免重复全量请求
+  const learnRoadsRef = useRef<LearnRoad[] | null>(null)
+  // 保存成功提示 2s 自动消失的定时器句柄（卸载时清理）
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [positionScenarios, setPositionScenarios] = useState<Scenario[]>([])
   const [positionTasks, setPositionTasks] = useState<ScenarioTask[]>([])
 
@@ -542,6 +546,7 @@ export default function LearnRoadsPage() {
       setListLoading(true)
       try {
         const res = await learnRoadApi.list({ limit: 1000 })
+        learnRoadsRef.current = res.items || []
         if (!cancelled) setLearnRoads(res.items || [])
       } catch (err) {
         toast({
@@ -557,6 +562,14 @@ export default function LearnRoadsPage() {
       cancelled = true
     }
   }, [toast, t])
+
+  // 卸载时清理保存提示定时器，避免对已卸载组件 setState
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    },
+    [],
+  )
 
   const getRoadForPosition = (positionId: string) =>
     learnRoads.find((r) => r.positionIds?.includes(positionId))
@@ -587,8 +600,6 @@ export default function LearnRoadsPage() {
           ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
           : []
         const allTasks = taskResults.flatMap((r) => r.items || [])
-        setPositionScenarios(scens)
-        setPositionTasks(allTasks)
         return { scenarios: scens, tasks: allTasks }
       } catch (err) {
         reportError(err, '加载岗位学习路径场景')
@@ -597,8 +608,6 @@ export default function LearnRoadsPage() {
           description: err instanceof Error ? err.message : t('请稍后重试'),
           variant: 'destructive',
         })
-        setPositionScenarios([])
-        setPositionTasks([])
         return { scenarios: [] as Scenario[], tasks: [] as ScenarioTask[] }
       }
     },
@@ -614,13 +623,23 @@ export default function LearnRoadsPage() {
       setEditLoading(true)
 
       try {
+        // 复用挂载时已拉取的学习路径列表，避免每次进入编辑重复全量请求
+        const roadsPromise = learnRoadsRef.current
+          ? Promise.resolve({ items: learnRoadsRef.current })
+          : learnRoadApi.list({ limit: 1000 }).then((res) => {
+              learnRoadsRef.current = res.items || []
+              return res
+            })
         const [{ items: roads = [] }, { scenarios, tasks }] = await Promise.all([
-          learnRoadApi.list({ limit: 1000 }),
+          roadsPromise,
           loadPositionScenes(position.id),
         ])
         // 快速连续点击不同岗位时丢弃过期响应，防止先发后至覆盖当前岗位数据
         if (seq !== editSeqRef.current) return
         setLearnRoads(roads)
+        // 场景/任务计数在序号守卫后统一落状态，过期响应不再覆盖头部计数
+        setPositionScenarios(scenarios)
+        setPositionTasks(tasks)
 
         const existing = roads.find((r) => r.positionIds?.includes(position.id))
         let loadedScenes: Scene[] = []
@@ -689,6 +708,7 @@ export default function LearnRoadsPage() {
         })
         id = created.id
         setLearnRoads((prev) => [created, ...prev])
+        learnRoadsRef.current = [created, ...(learnRoadsRef.current ?? [])]
         setLearnRoadId(id)
       }
       const updated = await learnRoadApi.update(id, {
@@ -697,8 +717,12 @@ export default function LearnRoadsPage() {
         steps,
       })
       setLearnRoads((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      learnRoadsRef.current = (learnRoadsRef.current ?? []).map((r) =>
+        r.id === updated.id ? updated : r,
+      )
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+      savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
       toast({ title: t('保存成功'), description: t('学习路径顺序已更新') })
     } catch (err) {
       toast({
