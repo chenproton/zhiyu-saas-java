@@ -6277,6 +6277,7 @@
 | 041-042 遗留 | （并入 fix-batch-3） | 删除 tags 薄包装 isUniqueViolation、PutCourses 回查错误补 Warn；其余已由大修复与 3f2f3791 修复（workflows Create 回查、user_extension_fields 租户过滤、title_ids COALESCE、任务测评扫描上抛、角色重绑事务化、租户 COALESCE 一致、UsersExist 去重、管理员角色绑定影响行校验、teaching_plans rows.Err、AttachUserRoles 日志）；student_portraits/tenant_admins ResetPassword/users 写操作等无租户方法 handler 已校验、明文初始密码属产品设计、先 Get 后 Update 双往返模式等评估后不改 |
 | 099-100 | 无需补修 | 5 项 P2 全部已修复（scene methods 类型化、system 树递归类型、fetch-all 最大页数熔断、evaluation-scene 时间改 string、job-source 悬空注释已补实现）；scene.ts jsonb 自由结构 any 与 5 组跨文件类型重复评估后不改 |
 | 073-074 遗留 | （并入 fix-batch-3） | 场景编辑页创建人改从后端 creatorName 回填（新建回退「当前用户」）；其余已由大修复与 063-078 批次修复（AI 补全 formRef 同步、星级/预览/重传按钮 type=button、learn 任务列表 fetchAllPages、建议链复选框、数据集失败回退标记、reviewSteps id 往返保留） |
+| 045-046 遗留 | （并入 fix-batch-3） | 教学计划条目保存并行化 allSettled、测评审批名称映射 fetchAllPages；其余已由大修复与 045-050 批次修复（5 个 P1：截断/路由/时窗 RFC3339/两处 N+1，及 results 除零守卫、usage 失败 toast、建题 try/catch、approvals 归属 Set、失败态区分） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6344,6 +6345,9 @@
 - scene landing learn 页知识/能力/颗粒课 limit 1000 与 use-task-datasets 五处 limit 1000（非核心映射接口，容忍，见 073-074）
 - 资源归一化/考核训练徽章/live 数据组装 3 组重复（复用重构，见 073-074）
 - landing/[id]/page typeColors 回调内建表（微小性能，见 073-074）
+- exams/[id] canEdit 含 approved/published/archived 终态与拖拽 onDragOver 多次 PUT（终态可编辑属产品决策、dragTargetRef 已防重复提交，见 045-046）
+- teaching-plans 提交审批两步非原子与 exam-usage 初始加载重复实现（需后端合并接口/lint 规则约束，见 045-046）
+- job-ability 列表 limit 200 与 exams/page 弱类型（分页改造/类型建模，见 045-046）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
