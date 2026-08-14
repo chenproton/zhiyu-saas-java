@@ -316,7 +316,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 | 头 | 格式 | 说明 |
 |----|------|------|
-| `Authorization` | `Bearer <JWT>` | HS256；Claims：userId/tenantId/roleCodes/permissions(menus+admin)；有效期 7 天 |
+| `Authorization` | `Bearer <JWT>` | HS256；Claims：userId/tenantId/roleCodes/permissions(menus+admin)；有效期 7 天；**逐请求校验会话态**（`RequireActiveUser`）：用户/租户停用、改密后旧 token 下一请求即 401（见 `docs/security-standards.md` §2） |
 | `Content-Type` | `application/json`（上传为 `multipart/form-data`） | 请求体上限 10MB |
 | `X-Request-ID` | 任意 | 中间件生成，日志关联 |
 

@@ -150,7 +150,7 @@
 ### 4.1 登录与认证
 
 - **输入**：用户名 + 密码（账号密码 Tab；短信/微信为占位）
-- **系统处理**：HS256 JWT 签发（7 天有效期）；Claims 携带 userId/tenantId/roleCodes/permissions；登录接口按 IP 限流 30 次/分钟（Redis 计数，未配置 Redis 自动降级）；**验证码**：字符验证码，连续输错 3 次触发、新设备首次登录必须校验（`/auth/captcha`）
+- **系统处理**：HS256 JWT 签发（7 天有效期）；Claims 携带 userId/tenantId/roleCodes/permissions；登录接口按 IP 限流 30 次/分钟（Redis 计数，未配置 Redis 自动降级）；**验证码**：字符验证码，连续输错 3 次触发、新设备首次登录必须校验（`/auth/captcha`）；**逐请求会话校验**：用户/租户停用、改密后旧 token 下一请求即失效（`RequireActiveUser`，见 `docs/security-standards.md` §2）
 - **输出**：portal / saas / partner 三端 token（平台隔离，token 携带 platform 声明，不可跨端互用）；多租户账号在登录时返回 `needsTenantSelection`，前端弹窗选租户后调用 `select-tenant` 换取最终 token
 - **业务规则**：`login_name` 全局唯一（`tenantID + "_" + 用户名` 拼接存储）；密码 bcrypt；平台隔离（portal token 不可访问 saas 接口，反之亦然）
 
