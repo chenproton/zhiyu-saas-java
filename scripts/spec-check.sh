@@ -6,7 +6,7 @@
 # 所不覆盖的「spec 一致性」硬红线。
 #
 # 注意：这**不是** spec↔代码的语义一致性校验（spec 说的有没有实现、代码做的有没有写进 spec），
-# 那属于 AI 的 analyze 流程（见 docs/spec-standards.md 与 AGENTS.md 九）。本脚本只查可机械判定的硬约束。
+# 那属于 AI 的 analyze 流程（见 docs/spec-standards.md 与 AGENTS.md「一、开发流程」）。本脚本只查可机械判定的硬约束。
 #
 # 用法：
 #   ./scripts/spec-check.sh            # 全量校验，任一项失败即非零退出
@@ -26,7 +26,7 @@ pass()      { echo "  [通过] $*"; }
 echo "== spec 硬约束校验 =="
 
 # ---------------------------------------------------------------
-# 1. 后端分层红线（refactor-layering.md / AGENTS.md 二.5 / ADR-0001）
+# 1. 后端分层红线（refactor-layering.md / AGENTS.md「三、硬性架构约束」3.1 / ADR-0001）
 #    handler 禁止出现裸 SQL 关键字与直接 db.Query/QueryRow/Exec（排除 _test.go）
 # ---------------------------------------------------------------
 echo "-- 1. 后端分层红线（handler 无裸 SQL / 直调 db.*） --"
@@ -89,7 +89,7 @@ done
 [ "$found" -eq 0 ] && pass "store 层不读 HTTP/Claims"
 
 # ---------------------------------------------------------------
-# 2. AI 统一底座红线（ai-development.md / AGENTS.md 六 / ADR-0002）
+# 2. AI 统一底座红线（ai-development.md / AGENTS.md「三、硬性架构约束」3.2 / ADR-0002）
 #    禁止 handler/service 新建 LLM HTTP client 或直接查 tenant_ai_configs / 解密 api_key
 # ---------------------------------------------------------------
 echo "-- 2. AI 统一底座红线 --"
@@ -116,7 +116,7 @@ done
 [ "$found" -eq 0 ] && pass "AI 功能未经 AIService 之外封装 LLM"
 
 # ---------------------------------------------------------------
-# 3. migration 配对（AGENTS.md 二.3）
+# 3. migration 配对（AGENTS.md「四、交付与部署」4.2）
 #    每个 *.up.sql 必须有同名 *.down.sql
 # ---------------------------------------------------------------
 echo "-- 3. migration 配对 --"

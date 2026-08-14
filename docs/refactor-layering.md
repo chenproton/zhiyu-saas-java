@@ -1,7 +1,7 @@
 # zhiyu-saas 后端分层重构计划
 
 > 状态：已完成。P0-P3 全部收口（路线图与各批验收明细已从本文档删除，历史见 git 提交：P0 立规 / P1 骨架 / P2 核心域 73 个 handler 5 批 / P3 清理）。
-> 本文档为**后端分层目标架构与红线的唯一出处**；`AGENTS.md`「二、交付要求」仅保留摘要与链接。
+> 本文档为**后端分层目标架构与红线的唯一出处**；`AGENTS.md`「三、硬性架构约束」第 3.1 条仅保留摘要与链接。
 
 ## 一、现状基线（实测，2026-08-02 更新）
 
@@ -49,7 +49,7 @@ internal/
 
 ## 三、分层红线（P0）
 
-> `AGENTS.md`「二、交付要求」第 5 条引用本清单，此处为唯一出处：
+> `AGENTS.md`「三、硬性架构约束」第 3.1 条引用本清单，此处为唯一出处：
 
 1. **新增** handler 中出现 `SELECT/INSERT/UPDATE/DELETE` 字符串，或直接调用 `db.Query/QueryRow/Exec` → 禁止合并
 2. 新增 handler 禁止持有 `*pgxpool.Pool` 字段（import/export/template 已全部迁移为 `Store *store.Store` 注入）

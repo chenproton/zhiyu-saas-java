@@ -9,7 +9,7 @@
 1. 读 `AGENTS.md` 全部红线（分层、AI 底座、复用优先、部署契约）。
 2. 读本改动的意图：commit message / spec 对应章节 / 相关 ADR（`docs/decisions/`）。
 3. 若有 spec：确认改动是否符合 `spec-standards.md` 的一致性红线（代码 ↔ spec 是否同步）。
-4. 确认排除项（`vendor/`、`node_modules/` 等，见 `AGENTS.md` 八.6），只审自有代码。
+4. 确认排除项（`vendor/`、`node_modules/` 等，见 `AGENTS.md`「五、AI 协作者约定」第 4 条），只审自有代码。
 
 ## 二、五类「代码看不出的问题」（语义检查）
 
@@ -19,7 +19,7 @@
 
 ### 2. 生命周期与并发
 - 异步 setup/callback/进程/teardown：竞态（发布前）、await 期间取消、独立错误上报、回调边界、所有权再入、完整清理。
-- 核心业务是否有加锁防重复（`AGENTS.md` 三：核心加锁、普通容忍）。
+- 核心业务是否有加锁防重复（`AGENTS.md`「二、开发原则」：核心加锁、普通容忍）。
 
 ### 3. 分层红线（本仓库特有，代码最容易看不出的）
 - handler 有无裸 SQL / 直调 `db.Query` / 持有 `*pgxpool.Pool`（`refactor-layering.md`）。

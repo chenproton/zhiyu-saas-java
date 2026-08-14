@@ -57,7 +57,7 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 3. **测试** 至少一种（handler/service/store 单测，见 `refactor-layering.md` 红线）。
 4. **契约** API 变更同步 `02-api-contract.md` 或子平台 spec 的 API 章节；migration 配对 `.down.sql`。
 5. **边界** spec 的「扩展性预留」未写「暂不做」的东西，若实现发现实际做了，要么补 spec，要么删除代码。
-6. **复用评估** 新建公共抽象（组件/函数/hook/store 方法）前已查 `components.md` / `forms-tables.md` / `refactor-layering.md` 复用资产 + 相关 ADR，并**同步登记速查表**；能复用而未复用的需在 commit 说明理由。
+6. **复用评估** 新建公共抽象（组件/函数/hook/store 方法）前已查 `components.md` / `forms-tables.md` / `backend-reuse.md` / `refactor-layering.md` 复用资产 + 相关 ADR，并**同步登记速查表**；能复用而未复用的需在 commit 说明理由。
 
 ## 五、规格的放置与命名
 
@@ -106,7 +106,7 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 
 | 类型 | 手段 | 负责什么 |
 |---|---|---|
-| **硬约束（可自动）** | `scripts/spec-check.sh` | 分层红线、AI 底座、migration 配对、spec 五层齐备、ADR 索引一致 |
+| **硬约束（可自动）** | `scripts/spec-check.sh` | 分层红线、AI 底座、migration 配对、spec 五层齐备、ADR 索引一致、安全红线（关键写租户条件/XSS 提示）、spec↔代码耦合提示 |
 | **语义一致性（需 AI）** | analyze 节点 | spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试 |
 
 `spec-check.sh` 只查「机器能判定的违规」，**不能**判断「spec 与代码语义是否一致」——那必须由 AI 在 analyze/converge 节点做。两者配合：脚本拦截硬红线，AI 补语义。
