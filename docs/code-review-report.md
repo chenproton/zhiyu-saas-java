@@ -6279,6 +6279,7 @@
 | 073-074 遗留 | （并入 fix-batch-3） | 场景编辑页创建人改从后端 creatorName 回填（新建回退「当前用户」）；其余已由大修复与 063-078 批次修复（AI 补全 formRef 同步、星级/预览/重传按钮 type=button、learn 任务列表 fetchAllPages、建议链复选框、数据集失败回退标记、reviewSteps id 往返保留） |
 | 045-046 遗留 | （并入 fix-batch-3） | 教学计划条目保存并行化 allSettled、测评审批名称映射 fetchAllPages；其余已由大修复与 045-050 批次修复（5 个 P1：截断/路由/时窗 RFC3339/两处 N+1，及 results 除零守卫、usage 失败 toast、建题 try/catch、approvals 归属 Set、失败态区分） |
 | 079-080 | 无需补修 | 2 个 P1（判断题数组比较、shuffleOptions 持久化）已在大修复解决；14 项 P2 全部由 079-103 批次修复（removeOption 纯 updater、空答案过滤、blankCount 实际空位、QUESTION_TYPES 复用、createdAt 兜底删除、预加载 cancelled、切题库清搜索、reviewSteps 同步纯 updater、methodInstanceCounts/showAddQuestion 死代码删除、EvalPointField 类型复用、readOnly 隐藏编辑按钮）；reviewSteps prop 同步脆弱性与 3 组复用候选评估后不改 |
+| 061-062 遗留 | （并入 fix-batch-3） | 成果编辑页 2 处多余 as any 改可选链；其余已由大修复与 051-062 批次修复（P1 agreements 编辑加载失败 item 置 null+EmptyState、六页 limit=200 下拉/列表全量拉取、agreements new/edit 同步失败与保存失败分离提示、重复校验死代码清除、搜索防抖清理+序号守卫、详情失败态分离） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
