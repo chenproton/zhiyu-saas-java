@@ -1,7 +1,7 @@
 # 企业平台（Partner）规格文档 — 知与 SaaS
 
 > 二期规格：企业服务台 / Partner 平台（与 Portal 学校平台平级）。
-> 状态：方案设计完成，待实施。含三大校企互动流程（联盟展示/岗位场景共建/测评打分）完整分析。
+> 状态：已实施。含三大校企互动流程（联盟展示/岗位场景共建/测评打分）完整分析。
 
 ---
 
@@ -70,19 +70,13 @@
 |------|------|------|
 | 专家档案 `alliance_experts` | 企业租户 | 资源/档案（企业服务台维护，学校只读） |
 | 企业成员账号 `users`（platform=partner） | 企业租户 | 可登录 partner 平台的人（enterprise_admin / enterprise_member） |
-| 协作影子账号 `users`（platform=portal, role=school，业务角色 enterprise_mentor 经 user_roles 关联） | 学校租户 | 学校侧可被业务表引用的身份（现有岗位共建人/场景共建人/评分人/授课教师均引用 `users.id`） |
 
 **绑定关系（迁移为正式字段）**：
-- `alliance_experts.user_id`（新增，可空）：专家档案 ↔ 企业成员账号。成员登录后可在"我的档案"认领自己的专家档案，认领后由本人维护
-- `alliance_expert_mentor_links`（新表）：专家档案 ↔ 学校租户影子账号
-  ```
-  id, tenant_id(学校), expert_id, user_id(影子账号),
-  enabled boolean DEFAULT true, created_by, created_at,
-  UNIQUE (tenant_id, expert_id)   -- 防重复启用
-  ```
-  学校"启用专家为共建导师"时创建；一个专家可被多个学校分别启用（各自影子账号），同校不重复
+- `alliance_experts.user_id`（可空，不建 FK）：专家档案 ↔ 企业成员账号。成员登录后可在"我的档案"认领自己的专家档案，认领后由本人维护。
 
-**演进方向**：影子账号是过渡方案（业务表零改动）；目标态为业务引用直接指向 partner 侧实体（跨租户引用），绑定表保留 expert_id ↔ 账号关系以便未来平滑迁移。
+**最终方案（已实施）**：企业专家**直接使用企业侧账号**（`alliance_experts.user_id`）参与岗位/场景共建与学生测评打分，业务表（`career_positions.collaborators` / `scenarios.co_builder_ids` / `task_review_steps.assigned_user_ids` / 评分记录 `evaluator_id`）直接引用企业侧账号 id。
+
+> 历史说明：早期曾设计「影子账号」过渡方案（`alliance_expert_mentor_links` 表 + 学校侧 `em_` 前缀 portal 账号），后经产品决策放弃。`alliance_expert_mentor_links` 表已 DROP（migration 154）、影子账号已清理（migration 155）。本文档各章节均以「企业账号直绑」为准。
 
 ### 3.2 互动流程一：产业联盟展示使用
 
@@ -116,13 +110,13 @@
 **目标流程**：
 1. 企业维护专家档案，可选绑定企业成员账号（3.1）
 2. 学校引入企业 → 专家只读可见（`GET /alliance/experts`）
-3. 学校在岗位/场景共建人选择器中选"企业专家"（新数据源：已引入企业的专家）→ 后端按绑定表启用/创建影子账号（username 规范化如 `em_{企业code}_{专家ID前8位}`，`UNIQUE(tenant_id, expert_id)` 防重复）→ 岗位 `collaborators` / 场景 `co_builder_ids` 写入影子账号 id
-4. 企业导师影子账号可登录 portal 参与共建（岗位/场景编辑）、被排课（teacher_type=企业导师）
+3. 学校在岗位/场景共建人选择器中选"企业专家"（数据源：已引入企业的专家，须已绑定企业账号）→ 岗位 `collaborators` / 场景 `co_builder_ids` 直接写入企业账号 id（`alliance_experts.user_id`）
+4. 企业导师用自己的企业账号参与共建（岗位/场景编辑）、被排课（teacher_type=企业导师）
 5. 毕业设计课题正式选择企业导师（复用选择器，修复悬空引用）
 
 **权限收窄（重要）**：移除 `enterprise_mentor` 的 `canManageAlliance` 全量权限，联盟管理归 `school_admin`/`teacher`；保留共建（job/scene 写）+ 测评打分。
-**一期范围**：共建人选择器支持"企业专家"来源 + 影子账号启用机制 + 毕业设计导师选择 + 权限收窄。
-**演进**：跨租户引用模式（业务表直接引用 partner 侧用户/专家 ID）。
+**一期范围**：共建人选择器支持"企业专家"来源（直接绑定企业账号）+ 毕业设计导师选择 + 权限收窄。
+**演进**：partner 平台待评分入口（跨租户评分）。
 
 ### 3.4 互动流程三：企业专家参与学生测评打分
 
@@ -134,13 +128,13 @@
 
 **目标流程**：
 1. 教师在场景任务配置评价方法：主体 `enterprise_mentor` + 权重 + 人数（沿用现有 evaluation-rules-editor 配置器）
-2. 任务级分配：教师从"已引入企业的专家（已启用影子账号）"中选择评分人（新分配机制，落地到任务/测评配置）
-3. 学生完成任务提交测评（`evaluator_id`=影子账号，`evaluator_type=enterprise_mentor`）
-4. 企业导师登录（影子账号）→ 评分页 → 打分 → 结果回写（status: pending → evaluated）
+2. 任务级分配：教师从"已引入企业的专家（已绑定企业账号）"中选择评分人（新分配机制，落地到任务/测评配置）
+3. 学生完成任务提交测评（`evaluator_id`=企业账号，`evaluator_type=enterprise_mentor`）
+4. 企业导师用企业账号评分 → 打分 → 结果回写（status: pending → evaluated）
 5. 教师查看评分汇总/统计（沿用现有场景结果页）
 6. （未来）企业成员登录 partner 平台 → "待评分测评"入口 → 跨租户评分回写
 
-**一期范围**：`/evaluation/scene-results` 评分菜单授权给 enterprise_mentor + 任务级分配机制 + 影子账号打分闭环；毕业设计 `enterprise_score` 与导师绑定。
+**一期范围**：`/evaluation/scene-results` 评分菜单授权给 enterprise_mentor + 任务级分配机制 + 企业账号打分闭环；毕业设计 `enterprise_score` 与导师绑定。
 **演进**：partner 平台待评分入口（跨租户评分），是"企业专家通过自己平台深度参与"的标志性能力。
 
 ### 3.5 互动衔接点清单（现状 → 目标）
@@ -148,7 +142,7 @@
 | # | 现状 | 目标 | 章节 |
 |---|------|------|------|
 | 1 | 专家档案归属学校租户，学校手工创建 | 企业租户维护，学校只读 | §3.1 |
-| 2 | 岗位/场景共建人仅能选学校租户 users | 支持从已引入企业专家启用影子账号 | §3.3 |
+| 2 | 岗位/场景共建人仅能选学校租户 users | 支持从已引入企业专家（绑定企业账号）中选择 | §3.3 |
 | 3 | enterprise_mentor 拥有联盟全量 CRUD 与全部业务写权限 | 收窄为共建 + 打分 | §3.3 |
 | 4 | 测评 enterprise_mentor 主体仅有声明式配置 | 任务级分配 + 评分菜单授权，形成打分闭环 | §3.4 |
 | 5 | `graduation_project_topics.enterprise_mentor_id` 悬空 | 正式选择器 + 绑定 | §3.3 |
@@ -210,43 +204,30 @@ CREATE INDEX idx_alliance_enterprise_links_enterprise ON alliance_enterprise_lin
 - `is_public` 语义改变：从"学校决定展示"变为"企业决定该专家档案是否允许对外展示"（互动流程一的另一开关，企业服务台维护）
 - 其余字段不变（学校端只读展示所需字段齐全）
 
-### 4.5 新表 `alliance_expert_mentor_links`（专家 ↔ 学校影子账号）
+### 4.5 ~~`alliance_expert_mentor_links`（专家 ↔ 学校影子账号）~~（已废弃）
 
-```sql
-CREATE TABLE alliance_expert_mentor_links (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,                 -- 学校租户
-    expert_id UUID NOT NULL REFERENCES alliance_experts(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,                   -- 学校租户内 enterprise_mentor 影子账号 users.id
-    enabled boolean NOT NULL DEFAULT true,
-    created_by uuid,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, expert_id)            -- 同校不重复启用
-);
-CREATE INDEX idx_expert_mentor_links_tenant ON alliance_expert_mentor_links(tenant_id);
-```
-
-支撑互动流程二/三：学校"启用专家为共建导师"时创建影子账号并登记；未来跨租户引用模式迁移的依据。
+> 早期设计的影子账号绑定表，已在 migration 154 中 DROP，migration 155 清理了影子账号。当前方案为专家直接绑定企业账号（`alliance_experts.user_id`），无此表。
 
 ### 4.6 账号体系（复用现有表，无新表）
 
 | 对象 | 设计 |
 |------|------|
 | `users` | 企业侧：`platform='partner'`、`role='enterprise'`、`tenant_id=企业租户`；partner 平台内 username 全局唯一（注册接口应用层校验，避免影响 portal 用户） |
-| `users` | 学校侧：`platform='portal'`、`role='school'`（学校租户内统一 school，与现有 teacher/student 一致）、业务角色 `enterprise_mentor` 经 user_roles 关联（影子账号） |
 | `roles` | 企业租户创建时种子 `enterprise_admin`（全部企业权限）/ `enterprise_member`（只读），租户隔离不冲突 |
 | `user_roles` | 复用，绑定企业角色 |
 
+> 企业专家参与共建/打分直接使用企业侧账号（`alliance_experts.user_id` 绑定），不创建学校侧账号。
+
 ### 4.7 数据重置
 
-TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts`、`alliance_expert_mentor_links` 及协议/项目/成果表（其 `enterprise_ids` 引用随之失效，开发数据整体重置）。不编写数据迁移。
+TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts` 及协议/项目/成果表（其 `enterprise_ids` 引用随之失效，开发数据整体重置）。不编写数据迁移。
 
 ### 4.8 migration 139 清单
 
 | 文件 | 内容 |
 |------|------|
-| `139_partner_enterprise.up.sql` | tenants 加 type；重命名 alliance_enterprises → partner_enterprises 并删列、加 name 唯一约束、加 enable_public；建 alliance_enterprise_links；alliance_experts 加 user_id；建 alliance_expert_mentor_links；TRUNCATE 联盟数据 |
-| `139_partner_enterprise.down.sql` | 反向：删 mentor_links/link 表；回改名；还原列；删 type 列 |
+| `139_partner_enterprise.up.sql` | tenants 加 type；重命名 alliance_enterprises → partner_enterprises 并删列、加 name 唯一约束、加 enable_public；建 alliance_enterprise_links；alliance_experts 加 user_id；TRUNCATE 联盟数据 |
+| `139_partner_enterprise.down.sql` | 反向：删 link 表；回改名；还原列；删 type 列 |
 
 ---
 
@@ -284,9 +265,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | POST | `/alliance/enterprises` | **移除**（学校不再创建企业） |
 | GET | `/alliance/experts` | 按本校 links 企业过滤，跨租户只读；**越权校验：enterprise_id 必须属于本校 links** |
 | POST/PUT/DELETE | `/alliance/experts`、`/alliance/experts/{id}` | **移除**（学校不再维护专家） |
-| POST | `/alliance/experts/{id}/mentor-link` | 新增（互动流程二/三）：启用专家为共建导师（创建影子账号 + 登记 mentor_links，幂等） |
-| DELETE | `/alliance/experts/{id}/mentor-link` | 新增：停用/删除影子账号绑定 |
-| GET | `/alliance/experts/mentor-options` | 新增：共建人选择器数据源（本校已引入企业的专家 + 启用状态），供岗位/场景共建人选择器使用 |
+| GET | `/alliance/experts/mentor-options` | 新增：共建人选择器数据源（本校已引入企业的专家 + 已绑定企业账号状态），供岗位/场景共建人选择器使用 |
 | GET | `/alliance/public/enterprises`、`/experts`、`/projects`、`/achievements`、`/brands`、`/stats` | 改造：数据源从学校租户数据改为「全局企业主体 + links 双控过滤」；无 tenantId 全局展示、带 tenantId 按该校 links 过滤（§3.2） |
 
 ### 5.4 测评打分支撑（互动流程三，`evaluation_result_handler.go` / 场景任务配置）
@@ -294,7 +273,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | 方法 | 路径 | 变更 |
 |------|------|------|
 | PUT | `/evaluation/scene-results/{id}/grade`、`/batch-grade` | 保持现有能力；配合评分菜单授权（见 F16） |
-| — | 任务级企业导师分配 | 新增分配机制：任务/测评配置中选定 `enterprise_mentor` 主体 → 从已启用影子账号中指定具体评分人（落地到 `task_evaluation_methods` 或新分配字段） |
+| — | 任务级企业导师分配 | 新增分配机制：任务/测评配置中选定 `enterprise_mentor` 主体 → 从已绑定企业账号的专家中指定具体评分人（落地到 `task_evaluation_methods` 或新分配字段） |
 
 ### 5.5 导入接口处理
 
@@ -307,7 +286,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 - 企业端：`enterprise_admin` 可写（主体/专家/成员），`enterprise_member` 只读；JWT claims 携带 RoleCodes，handler 校验
 - 学校端：沿用 `canManageAlliance` + `requireTenant`；专家跨租户读取必须校验企业 ID ∈ 本校 links（防越权）
 - **角色收窄（互动流程二）**：`enterprise_mentor` 移除 `canManageAlliance` 权限，联盟管理归 `school_admin`/`teacher`；保留业务共建（job/scene 写）+ 测评打分；影响范围：`handler/common.go:205-217` 与种子角色权限（`store/tenants.go:490-497`）
-- 影子账号创建：仅学校租户可发起（`canManageAlliance`），服务端生成初始密码，学校侧可重置（沿用现有用户管理）
+- 企业专家参与共建/打分直接经企业账号（`alliance_experts.user_id`），无学校侧账号创建
 
 ---
 
@@ -324,7 +303,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | B7 | 学校侧改造：enterprises link 视图/search/link/unlink/update，移除 create | `alliance_handler.go`、`alliance_crud_handler.go` | handler 测试 |
 | B8 | 学校侧改造：experts 只读 + 越权校验，移除写接口 | 同上 | handler 测试 |
 | B9 | 移除 `/import/alliance-enterprises*`、`/import/alliance-experts*` 路由注册 | `routes.go` | — |
-| B10 | 互动：影子账号启用机制（mentor-link 接口：创建 enterprise_mentor 账号 + mentor_links 登记，幂等；mentor-options 数据源） | 新 store/handler | store + handler 测试 |
+| B10 | 互动：企业专家直接绑定机制（mentor-options 数据源返回已绑定企业账号的专家，供选择器绑定；幂等） | 新 store/handler | store + handler 测试 |
 | B11 | 互动：public 接口数据源改造（全局企业 + links 双控过滤，§3.2） | `alliance_handler.go` | handler 测试 |
 | B12 | 互动：任务级企业导师分配机制（测评配置落定具体评分人） | `evaluation_*_handler.go`/store | handler 测试 |
 | B13 | 互动：`enterprise_mentor` 角色收窄（移除 canManageAlliance；种子权限移除联盟菜单） | `common.go`、`store/tenants.go` 种子 | 回归测试 |
@@ -379,7 +358,7 @@ B1 → B2/B3/B4（store）→ B5（认证）→ B6（partner 路由组）
 → F12~F14（学校侧改造）→ 本地验证 → 提请部署
 
 阶段二（互动闭环，企业平台上线后再迭代）：
-B10/B11（影子账号 + public 改造）→ B12（任务级分配）→ B13（角色收窄）→ B14（毕设导师）
+B10/B11（企业账号直绑 + public 改造）→ B12（任务级分配）→ B13（角色收窄）→ B14（毕设导师）
 → F15~F17（共建选择器/评分授权/毕设）
 ```
 
@@ -395,7 +374,6 @@ B10/B11（影子账号 + public 改造）→ B12（任务级分配）→ B13（�
 | partner 用户名唯一性 | 注册接口应用层校验 partner 平台全局唯一（现有唯一约束是租户级，不动） |
 | PUT 全列覆盖语义 | 学校侧企业更新改为专用 handler（仅 link 管理字段），不复用 `ValidateUpdateExisting` 兜底 |
 | enterprise_mentor 角色收窄引发回归 | B13 单独提交并跑联盟/岗位/场景/测评回归测试；已绑定的旧账号权限随角色权限变更即时生效（权限存 roles.permissions） |
-| 影子账号双头管理 | 账号生命周期（启用/停用/密码重置）由学校侧负责；企业侧仅维护专家档案（user_id 绑定），文档写明职责边界 |
 | public 接口语义变化 | 前台展示从"跨租户汇聚"变为"全局企业+双控过滤"，前端展示页（portal/alliance/*）同步适配，避免出现空数据 |
 
 ---
@@ -407,8 +385,7 @@ B10/B11（影子账号 + public 改造）→ B12（任务级分配）→ B13（�
 | 企业平台新增模块（项目/活动/岗位/课程等） | 均为 `partner_*` 表 + `routes_partner.go` 加路由 + handler 按域加文件 + `partnerNavigationConfig` 加菜单，与 portal 扩展流程同构 |
 | 企业角色扩展 | roles 表支持企业租户自定义角色/权限（复用现有机制，本期仅种子两个默认角色） |
 | 合作类型扩展 | link 表 `relation_type` 预留（如校企共建/基地合作），无需改表结构 |
-| 资源分享机制泛化 | 专家跨租户只读模式可泛化为"企业资源对合作学校共享"通用机制（mentor_links 是其第一个实例） |
-| 跨租户引用迁移 | 影子账号模式过渡后，mentor_links 保留 expert_id ↔ user_id 关系，可平滑迁移为业务表直接引用 partner 侧 |
+| 资源分享机制泛化 | 专家跨租户只读模式可泛化为"企业资源对合作学校共享"通用机制 |
 | 企业成员登录 partner 平台参与测评打分 | 待评分入口（跨租户评分），与 F16 的评分授权共用评价结果表，按 evaluator 归属路由到 partner 侧 |
 | 企业注册审核 | 如未来需要审核，可在注册流程加审核态（users.status/institutions.status 已存在），当前注册即生效 |
 | 企业侧更多展示形态 | `enable_public` 双控开关可扩展为细粒度（按品牌/专家/成果分别开关） |
