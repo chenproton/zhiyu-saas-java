@@ -5,3 +5,6 @@
 users.go UpdateStatus ResetPassword
 tenant_admins.go ResetPassword
 exams.go AddQuestion FetchQuestion RemoveQuestion UpdateQuestionScore BulkUpdateScores RecalcExamTotal
+# 导入覆盖场景的密码/状态写（UpdateImportUser/UpdateImportTeacher 为包级函数，
+# 覆盖更新 users 的 password_hash/status，SQL 已带 tenant_id 条件）
+resource_import_export.go UpdateImportUser UpdateImportTeacher

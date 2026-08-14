@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -278,7 +279,9 @@ func (s *ScenarioStore) ListBySourceEnterprise(ctx context.Context, enterpriseID
 		where += fmt.Sprintf(` AND s.tenant_id = $%d`, len(args))
 	}
 	if search != "" {
-		args = append(args, "%"+search+"%")
+		// 与 positions.go ListBySourceEnterprise 一致：转义 %/_ 通配符，避免 "50%" 被当作通配模式
+		escaped := strings.NewReplacer(`\\`, `\\\\`, `%`, `\\%`, `_`, `\\_`).Replace(search)
+		args = append(args, "%"+escaped+"%")
 		where += fmt.Sprintf(` AND s.name ILIKE $%d`, len(args))
 	}
 	if limit <= 0 {

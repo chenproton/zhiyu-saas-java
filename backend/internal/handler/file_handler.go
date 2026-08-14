@@ -23,8 +23,8 @@ import (
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
-const MaxUploadSize = 100 << 20 // 100MB
-const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
+const MaxUploadSize = 10<<20 + 1<<20 // 10MB 文件 + 1MB multipart 头部余量（security-standards §5：单文件 ≤10MB）
+const maxFormMemory = 32 << 20       // 32MB in-memory, rest to temp files
 
 // previewSem 限制并发 LibreOffice 转换数（重 CPU/内存操作，防止用户并发预览拖垮服务）。
 var previewSem = make(chan struct{}, 2)

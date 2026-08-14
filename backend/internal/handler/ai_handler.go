@@ -16,19 +16,8 @@ const (
 	aiChatMaxContentSize = 8000
 )
 
-// 岗位 AI 辅助护栏：上下文条目数与单条长度上限（防止单请求打爆租户额度）。
-const (
-	aiPositionMaxItems    = 50
-	aiPositionMaxTextSize = 8000
-)
-
-// 场景 AI 辅助护栏：文本长度、建议条目数、任务链规模上限。
-const (
-	aiScenarioMaxTextSize      = 8000
-	aiScenarioMaxSuggestionLen = 50
-	aiScenarioMaxChainTasks    = 20
-	aiScenarioMaxIntentionLen  = 500
-)
+// 岗位/场景 AI 辅助护栏常量已下沉至 service 包（AIPositionMax* / AIScenarioMax*），
+// 校验逻辑见 service.ValidatePositionAssistInput / service.ValidateScenarioAssistInput，本文件不再重复定义。
 
 // AIHandler 租户 AI 配置管理与对话入口（无 SQL，仅做 HTTP 适配）。
 type AIHandler struct {
@@ -276,19 +265,9 @@ func (h *AIHandler) PositionAssist(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "field 不合法")
 		return
 	}
-	if len(req.Position.Responsibilities) > aiPositionMaxItems || len(req.Position.Requirements) > aiPositionMaxItems {
-		respondError(w, http.StatusBadRequest, "职责/要求条目数超限")
+	if err := service.ValidatePositionAssistInput(req.Position); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
-	}
-	if len(req.Position.Name) > aiPositionMaxTextSize || len(req.Position.Description) > aiPositionMaxTextSize {
-		respondError(w, http.StatusBadRequest, "岗位信息过长")
-		return
-	}
-	for _, it := range append(append([]string{}, req.Position.Responsibilities...), req.Position.Requirements...) {
-		if len(it) > aiPositionMaxTextSize {
-			respondError(w, http.StatusBadRequest, "单条职责/要求内容过长")
-			return
-		}
 	}
 	result, err := h.Service.PositionAssist(r.Context(), tenantID, middleware.CurrentUser(r).UserID, req.Field, req.Position)
 	if errors.Is(err, service.ErrAINotConfigured) {
@@ -324,22 +303,12 @@ func (h *AIHandler) ScenarioAssist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in := req.Scenario
-	if len(in.Name) > aiScenarioMaxTextSize || len(in.Background) > aiScenarioMaxTextSize ||
-		len(in.TaskName) > aiScenarioMaxTextSize || len(in.TaskBackground) > aiScenarioMaxTextSize ||
-		len(in.TaskDescription) > aiScenarioMaxTextSize || len(in.PositionName) > aiScenarioMaxTextSize {
-		respondError(w, http.StatusBadRequest, "场景/任务信息过长")
+	if !service.ValidScenarioAssistField(req.Field) {
+		respondError(w, http.StatusBadRequest, "field 不合法")
 		return
 	}
-	if len(in.IndustryNames)+len(in.ProfessionNames) > aiScenarioMaxSuggestionLen {
-		respondError(w, http.StatusBadRequest, "行业/专业条目数超限")
-		return
-	}
-	if len(in.ExistingTasks) > aiScenarioMaxChainTasks {
-		respondError(w, http.StatusBadRequest, "现有任务清单过长")
-		return
-	}
-	if len(in.Intention) > aiScenarioMaxIntentionLen {
-		respondError(w, http.StatusBadRequest, "任务链意图描述过长")
+	if err := service.ValidateScenarioAssistInput(in); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	result, err := h.Service.ScenarioAssist(r.Context(), tenantID, middleware.CurrentUser(r).UserID, req.Field, in)

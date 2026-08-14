@@ -104,6 +104,129 @@ func ValidPositionAssistField(f PositionAssistField) bool {
 	return false
 }
 
+// ===== AI 请求护栏（单一事实源）=====
+// 上限常量下沉到本包导出（原定义在 handler，已删除），handler 层只调校验函数，
+// 防止两处常量漂移；上限目的：防止单请求上下文过大打爆租户 token 额度。
+
+const (
+	// AIPositionMaxItems 岗位上下文条目数上限（适用专业/职责/要求/能力点/能力属性）。
+	AIPositionMaxItems = 50
+	// AIPositionMaxTextSize 岗位上下文单条文本长度上限。
+	AIPositionMaxTextSize = 8000
+)
+
+const (
+	// AIScenarioMaxTextSize 场景/任务上下文单条文本长度上限。
+	AIScenarioMaxTextSize = 8000
+	// AIScenarioMaxSuggestionLen 行业/专业名称条目数合计上限。
+	AIScenarioMaxSuggestionLen = 50
+	// AIScenarioMaxChainTasks 现有任务清单条目数上限。
+	AIScenarioMaxChainTasks = 20
+	// AIScenarioMaxIntentionLen 任务链意图描述长度上限。
+	AIScenarioMaxIntentionLen = 500
+)
+
+// ValidScenarioAssistField 校验场景 AI 辅助 field 枚举（合法值见 ai_scenario.go 的 ScenarioAssistField 分派）。
+func ValidScenarioAssistField(f ScenarioAssistField) bool {
+	return validScenarioAssistField(f)
+}
+
+// ValidatePositionAssistInput 校验岗位 AI 辅助请求上下文（条目数/单条长度）。
+// 纯函数：handler 直接调用，返回的中文错误消息按 400 透传前端。
+func ValidatePositionAssistInput(in PositionAssistInput) error {
+	// 单条文本字段（名称/简称/行业/简介）
+	if len(in.Name) > AIPositionMaxTextSize || len(in.ShortName) > AIPositionMaxTextSize ||
+		len(in.Industry) > AIPositionMaxTextSize || len(in.Description) > AIPositionMaxTextSize {
+		return errors.New("岗位信息过长")
+	}
+	if len(in.CareerPath) > AIPositionMaxTextSize {
+		return errors.New("晋升路径过长")
+	}
+	if len(in.ResponsibilityName) > AIPositionMaxTextSize {
+		return errors.New("职责名称过长")
+	}
+	// 适用专业
+	if len(in.Majors) > AIPositionMaxItems {
+		return errors.New("适用专业条目数超限")
+	}
+	for _, m := range in.Majors {
+		if len(m) > AIPositionMaxTextSize {
+			return errors.New("单条适用专业内容过长")
+		}
+	}
+	// 工作职责/任职要求
+	if len(in.Responsibilities) > AIPositionMaxItems || len(in.Requirements) > AIPositionMaxItems {
+		return errors.New("职责/要求条目数超限")
+	}
+	for _, r := range in.Responsibilities {
+		if len(r) > AIPositionMaxTextSize {
+			return errors.New("单条职责内容过长")
+		}
+	}
+	for _, r := range in.Requirements {
+		if len(r) > AIPositionMaxTextSize {
+			return errors.New("单条要求内容过长")
+		}
+	}
+	// 能力点清单（competency 上下文）
+	if len(in.Abilities) > AIPositionMaxItems {
+		return errors.New("能力点清单条目数超限")
+	}
+	for _, a := range in.Abilities {
+		if len(a.Name) > AIPositionMaxTextSize || len(a.Domain) > AIPositionMaxTextSize || len(a.Description) > AIPositionMaxTextSize {
+			return errors.New("能力点信息过长")
+		}
+		if len(a.Attributes) > AIPositionMaxItems {
+			return errors.New("能力属性条目数超限")
+		}
+		for _, attr := range a.Attributes {
+			if len(attr) > AIPositionMaxTextSize {
+				return errors.New("单条能力属性内容过长")
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateScenarioAssistInput 校验场景/任务 AI 辅助请求上下文（文本长度/条目数/任务类型枚举）。
+// 纯函数：handler 直接调用，返回的中文错误消息按 400 透传前端。
+func ValidateScenarioAssistInput(in ScenarioAssistInput) error {
+	if len(in.Name) > AIScenarioMaxTextSize || len(in.Background) > AIScenarioMaxTextSize ||
+		len(in.TaskName) > AIScenarioMaxTextSize || len(in.TaskBackground) > AIScenarioMaxTextSize ||
+		len(in.TaskDescription) > AIScenarioMaxTextSize || len(in.PositionName) > AIScenarioMaxTextSize {
+		return errors.New("场景/任务信息过长")
+	}
+	if len(in.IndustryNames)+len(in.ProfessionNames) > AIScenarioMaxSuggestionLen {
+		return errors.New("行业/专业条目数超限")
+	}
+	for _, n := range in.IndustryNames {
+		if len(n) > AIScenarioMaxTextSize {
+			return errors.New("单条行业名称过长")
+		}
+	}
+	for _, n := range in.ProfessionNames {
+		if len(n) > AIScenarioMaxTextSize {
+			return errors.New("单条专业名称过长")
+		}
+	}
+	if len(in.ExistingTasks) > AIScenarioMaxChainTasks {
+		return errors.New("现有任务清单过长")
+	}
+	for _, t := range in.ExistingTasks {
+		if len(t.Name) > AIScenarioMaxTextSize {
+			return errors.New("单条任务名称过长")
+		}
+		// 任务类型为 training/assessment 枚举（与前端 taskType 取值一致）
+		if t.Type != "training" && t.Type != "assessment" {
+			return errors.New("任务类型不合法")
+		}
+	}
+	if len(in.Intention) > AIScenarioMaxIntentionLen {
+		return errors.New("任务链意图描述过长")
+	}
+	return nil
+}
+
 // positionAssistSystemPrompt 系统提示词：只输出 JSON，贴合岗位信息。
 const positionAssistSystemPrompt = `你是一名资深的企业岗位职业标准建设专家，擅长撰写规范、专业的岗位职业描述文档。
 要求：

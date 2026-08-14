@@ -100,7 +100,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 
 			// AI 对话：租户内任意登录用户可用（handler 内校验 TenantID 与未配置 412）
 			r.With(aiLimiter).Post("/ai/chat", h.aiHandler.Chat)
-			// 岗位 AI 辅助编写（仅生成建议不写库，权限同 /ai/chat）
+			// 岗位 AI 辅助编写（生成内容由前端直接写入表单字段、可恢复上版；服务端不落库，权限同 /ai/chat）
 			r.With(aiLimiter).Post("/ai/position-assist", h.aiHandler.PositionAssist)
 			r.With(aiLimiter).Post("/ai/scenario-assist", h.aiHandler.ScenarioAssist)
 
@@ -223,7 +223,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				registerLessonRoutes(r, h)
 				registerEvaluationRoutes(r, db, h)
 				registerLibraryRoutes(r, h)
-				registerAffairsRoutes(r, h)
+				registerAffairsRoutes(r, h, importExportLimiter)
 
 				// 专业/行业参考数据为各业务模块共用，对业务用户开放只读
 				r.Get("/majors", h.majorHandler.List)

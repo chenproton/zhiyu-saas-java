@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -117,40 +118,104 @@ func RateLimitByUser(client *redis.Client, limit int, window time.Duration) func
 	})
 }
 
+// memEntry 内存降级限流的单 key 状态：窗口起点与窗口内计数。
+type memEntry struct {
+	windowStart time.Time
+	count       int
+}
+
+// memoryLimiter Redis 不可用时的内存降级限流（security-standards §4：
+// 「未配置 Redis 自动降级为内存限流」）。单进程内有效，多副本部署时
+// 各实例独立计数——仅作降级兜底，可接受。
+type memoryLimiter struct {
+	mu      sync.Mutex
+	limit   int
+	window  time.Duration
+	entries map[string]*memEntry
+}
+
+func newMemoryLimiter(limit int, window time.Duration) *memoryLimiter {
+	return &memoryLimiter{limit: limit, window: window, entries: make(map[string]*memEntry)}
+}
+
+// allow 递增 key 计数并返回是否放行、剩余额度与窗口重置时间戳。
+// 窗口过期则重置计数与窗口起点；count > limit 返回不放行（与 Redis 路径语义一致）。
+// 内存有界：每次请求后若 map 超过 4096 条，惰性遍历删除窗口已过期的 entry，
+// 防止异常 key 泛洪撑爆内存（常规 key 规模远小于该阈值，清理开销可忽略）。
+func (m *memoryLimiter) allow(key string, now time.Time) (allowed bool, remaining int, resetUnix int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	e, ok := m.entries[key]
+	if !ok || now.Sub(e.windowStart) >= m.window {
+		e = &memEntry{windowStart: now}
+		m.entries[key] = e
+	}
+	e.count++
+
+	if len(m.entries) > 4096 {
+		for k, v := range m.entries {
+			if now.Sub(v.windowStart) >= m.window {
+				delete(m.entries, k)
+			}
+		}
+	}
+
+	remaining = m.limit - e.count
+	if remaining < 0 {
+		remaining = 0
+	}
+	return e.count <= m.limit, remaining, now.Add(m.window).Unix()
+}
+
+// writeTooManyRequests 输出统一的 429 响应（与 Redis 路径一致）。
+func writeTooManyRequests(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+	w.Write([]byte(`{"error":"too many requests","code":429}`))
+}
+
 func rateLimitWithKey(client *redis.Client, limit int, window time.Duration, keyOf func(r *http.Request) string) func(http.Handler) http.Handler {
+	fallback := newMemoryLimiter(limit, window)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if client == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-
 			key := keyOf(r)
-			ctx := r.Context()
 
-			current, err := client.Incr(ctx, key).Result()
-			if err != nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			if current == 1 {
-				// 设置过期失败时回滚，避免 key 永久存在导致该用户被永久限流
-				if err := client.Expire(ctx, key, window).Err(); err != nil {
-					client.Del(ctx, key)
+			// Redis 可用时走计数路径；Incr 出错（如 Redis 宕机）降级内存限流，不再 fail-open
+			if client != nil {
+				ctx := r.Context()
+				current, err := client.Incr(ctx, key).Result()
+				if err == nil {
+					if current == 1 {
+						// 设置过期失败时回滚，避免 key 永久存在导致该用户被永久限流
+						if err := client.Expire(ctx, key, window).Err(); err != nil {
+							client.Del(ctx, key)
+						}
+					}
+
+					w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
+					w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(max(0, limit-int(current))))
+					w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(window).Unix(), 10))
+
+					if current > int64(limit) {
+						writeTooManyRequests(w)
+						return
+					}
+					next.ServeHTTP(w, r)
+					return
 				}
 			}
 
+			// client == nil 或 Redis Incr 失败：内存降级路径
+			allowed, remaining, resetUnix := fallback.allow(key, time.Now())
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
-			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(max(0, limit-int(current))))
-			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(window).Unix(), 10))
+			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
+			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(resetUnix, 10))
 
-			if current > int64(limit) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte(`{"error":"too many requests","code":429}`))
+			if !allowed {
+				writeTooManyRequests(w)
 				return
 			}
-
 			next.ServeHTTP(w, r)
 		})
 	}
