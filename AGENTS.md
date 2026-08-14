@@ -25,6 +25,7 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
    ```bash
    cd backend && go vet ./... && go build ./... && gofmt -l .
    pnpm typecheck && pnpm lint && pnpm test
+   ./scripts/spec-check.sh   # spec 硬约束（分层红线/AI 底座/migration 配对/spec 制品）
    ```
    migration 需配对 `.down.sql`
 4. 单次 commit 只含当次变更
@@ -102,7 +103,8 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
 ### 9.1 规格（spec）规范
 
 - 功能开发**先读 `docs/spec/` 对齐意图，再写代码**；新增/变更行为必须同步更新 spec（spec-first 硬约束）。
-- spec 的分级、模板、DoD 验收标准、代码↔spec 一致性红线：见 [`docs/spec-standards.md`](docs/spec-standards.md)。
+- spec 的分级、模板、DoD 验收标准、代码↔spec 一致性红线，以及「需求→规格→方案→任务→实现→校验→收敛」的 7 节点闭环：见 [`docs/spec-standards.md`](docs/spec-standards.md)。
+- **硬约束自动校验**：每次提交前跑 `./scripts/spec-check.sh`（分层红线 / AI 底座 / migration 配对 / spec 五层齐备 / ADR 索引），拦截机器可判定的违规；语义一致性由 AI 在 analyze 节点补查。
 
 ### 9.2 文档规范（分层 · 砍废话）
 
