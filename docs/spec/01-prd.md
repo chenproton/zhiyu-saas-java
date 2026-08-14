@@ -234,7 +234,7 @@ rejected → draft / pending / archived
 | 后端运行时 | Go 1.25（CI 校验 gofmt/vet/test） |
 | 前端运行时 | Node ≥ 20（CI 用 22）、pnpm 9.15.9、Next.js 16 App Router |
 | 数据库 | PostgreSQL 15（docker 5433 映射）；Redis 7（可选） |
-| 文档预览 | flyfish-dev/file-viewer（浏览器原生，`@file-viewer/react` + `@file-viewer/preset-office`）；kkfileview 服务（profile 可选启用，端口 8012）保留作回退 |
+| 文档预览 | flyfish-dev/file-viewer（浏览器原生，`@file-viewer/react` + `@file-viewer/preset-all`，覆盖全部 208 扩展名/25 条链路）；kkfileview 服务（profile 可选启用，端口 8012）保留作不支持格式的回退 |
 
 ### 5.4 可维护性
 

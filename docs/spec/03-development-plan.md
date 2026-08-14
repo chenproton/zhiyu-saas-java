@@ -118,8 +118,8 @@
 
 | 依赖 | 说明 | 状态 |
 |------|------|------|
-| file-viewer 文档预览（flyfish-dev） | 浏览器原生（`@file-viewer/react` + `@file-viewer/preset-office`），无服务端转换 | 已启用 |
-| kkfileview 文档预览服务 | 可选 profile，端口 8012（保留作回退） | 可选启用 |
+| file-viewer 文档预览（flyfish-dev） | 浏览器原生（`@file-viewer/react` + `@file-viewer/preset-all`），覆盖全部 208 扩展名，无服务端转换 | 已启用 |
+| kkfileview 文档预览服务 | 可选 profile，端口 8012（保留作 file-viewer 不支持格式的回退） | 可选启用 |
 | Redis | 缓存/限流，未配置自动降级 | 已就绪（docker） |
 | PostgreSQL 15 | 主数据库 | 已就绪（docker） |
 | 设计稿 | 无外部设计稿，组件库（shadcn + 亮色主题）即视觉规范 | 内置 |

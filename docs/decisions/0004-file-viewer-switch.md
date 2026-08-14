@@ -1,6 +1,6 @@
 # 0004: 文件预览从 kkfileview 切换为 flyfish-dev/file-viewer（kkfileview 保留作回退）
 
-- 状态：已接受
+- 状态：已取代
 - 日期：2026-08-14
 
 ## 背景
