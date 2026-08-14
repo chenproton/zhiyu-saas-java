@@ -366,17 +366,9 @@ func findOrCreateKnowledgePoints(ctx context.Context, db store.Queryer, tenantID
 }
 
 // findOrCreateResources 按租户+名称批量查找资源库资源，不存在则按文件后缀推断类型创建
-// （无后缀/未知后缀归入 other），返回命中的 ID 列表。SQL 在 store 层。
+// （无后缀/未知后缀归入 other）。按 resourceType 分组后每组一次批量调用，返回保序 ID 列表。
 func findOrCreateResources(ctx context.Context, db store.Queryer, tenantID string, names []string, userID string) []string {
-	ids := []string{}
-	for _, n := range names {
-		n = strings.TrimSpace(n)
-		if n == "" {
-			continue
-		}
-		ids = append(ids, store.FindOrCreateResourcesByNames(ctx, db, tenantID, []string{n}, resourceTypeByExt(n), userID)...)
-	}
-	return ids
+	return service.FindOrCreateResources(ctx, db, tenantID, names, userID)
 }
 
 // resourceTypeByExt 根据文件名后缀推断资源类型，无法识别（无后缀/未知后缀/URL 等）时返回 other。
