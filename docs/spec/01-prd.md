@@ -45,11 +45,11 @@
 | career | 职业岗位学习平台 | job | 岗位库、能力模型、岗位推荐、学习路径、批次/审批 |
 | scene | 实践场景学习平台 | scene | 场景任务链、评价量规、等级映射、批次/审批 |
 | course | 数字课程服务平台 | lesson | 体系课/颗粒课/混合课、节点（作业/测验/资源）、课堂行为 |
-| ability | 能力评价与测评资源管理平台 | evaluation | 题库/试卷/考试、认证规则、能力画像、毕业设计、微证书、申诉 |
+| ability | 能力评价与测评资源管理平台 | evaluation | 题库/试卷/考试、认证规则、能力画像、成绩申诉 |
 | resource | 教学资源共享服务平台 | library | 资源库、知识点/能力点/证书库、现场问答题库 |
 | affairs | 教务管理服务平台 | affairs | 学期、人培方案、教学计划、排课、批次/审批 |
 | alliance | 产教融合与就业服务平台 | portal/alliance | 校企合作台账、品牌运营、对外展示落地页 |
-| ai | AI 智能服务平台 | portal/apps/ai | AI 助手对话、AI 辅助表单填写（岗位/场景）、AI 数据分析；统一走 AIService 底座 |
+| ai | AI 智能服务平台 | portal/apps/ai | AI 助手对话、AI 辅助表单填写（岗位/场景）；统一走 AIService 底座 |
 | opc | OPC专区 | — | 占位 |
 | decision | 敏捷决策中心 | — | 占位 |
 | research | 教科研服务中心 | — | 占位 |
@@ -63,6 +63,9 @@
 - **OPC 专区、敏捷决策中心、教科研服务**：仅应用中心入口卡片，无页面无接口
 - **平台地址/跳转配置**：`platform_links`/`app_modules` 表已删除（迁移 110），固定地址收敛到前端配置
 - **跨租户数据访问**：平台管理员无跨租户读取特权（明确的产品边界，防止数据泄露）
+- **AI 数据分析**：规划中，未实现
+- **课程/节点作业提交与批改**：数据表已建但无接口与页面（休眠）
+- **毕业设计与毕业资格查询**：数据表已建但无接口与页面（休眠）；**微证书发放**：同（表已建、无路由）
 
 ---
 
@@ -104,6 +107,8 @@
 | C-3 | 作为 teacher，我希望记录课堂行为（考勤/抢答/表扬），以便过程性评价 | behavior-collection 记录打卡；（course, student, date）唯一；支持聚合查询 |
 | C-4 | 作为 school_admin，我希望课程经批次发布与审批流控制，以便管控上线节奏 | 批次 open/closed；课程绑定批次；审批流（workflows + approval_records）推进状态 |
 
+> 注：C-1/C-2 中的课程/节点作业提交与批改接口尚未实现，数据表已建但休眠（无接口无页面），见 `docs/resource-snapshot-versioning.md` §8.7。
+
 ### 3.5 测评认证（ability）
 
 | # | 用户故事 | 验收标准（AC） |
@@ -111,7 +116,7 @@
 | E-1 | 作为 teacher，我希望建题库→组卷→安排考试场次，以便组织考试 | 题库/试卷共享内容状态机；组卷支持手工/随机抽题；场次（exam_usage）可开始/完成 |
 | E-2 | 作为 student，我希望参加考试并查询成绩，以便了解掌握度 | 场次开始后答题提交 → exam_results；(usage, user) 唯一 |
 | E-3 | 作为 teacher，我希望配置岗位认证规则（能力项/权重/关联任务），以便认定学生能力 | 每岗位唯一认证规则；两级权重（能力点占任务分/任务占岗位分）；规则可启用/停用 |
-| E-4 | 作为 school_admin，我希望维护毕业设计（选题/归档/评阅/答辩）与毕业资格，以便完成毕业认定 | 毕设选题容量控制；归档查重标记；毕业资格查询快照（学分/场景/认证） |
+| E-4 | 作为 school_admin，我希望维护毕业设计（选题/归档/评阅/答辩）与毕业资格，以便完成毕业认定 | 毕设选题容量控制；归档查重标记；毕业资格查询快照（学分/场景/认证）（注：毕业设计/毕业资格接口尚未实现，数据表已建但无路由，见 02-api-contract 变更日志 v1.0） |
 | E-5 | 作为 student，我希望对评分结果发起申诉，以便保障公平 | 申诉单流程：创建→教师处理（受理/驳回） |
 
 ### 3.6 资源库（resource）
@@ -134,7 +139,7 @@
 |---|---------|---------------|
 | L-1 | 作为 school_admin，我希望维护合作企业/协议/项目/成果/专家台账，以便产教合作规范管理 | 企业状态流转（negotiating/active/paused/terminated）；协议挂项目；项目带里程碑；专家评级（copper/silver/gold） |
 | L-2 | 作为 school_admin，我希望运营品牌内容（人才/雇主/岗位/专业/师资/文化），以便对外招生宣传 | 品牌内容统一表 + 专题页（grid 布局 + content_blocks）；前台落地页展示 |
-| L-3 | 作为访客/学生，我希望浏览校企合作公开信息，以便了解学校产教实力 | `/alliance/public/*` 12 个公开接口；联盟字典（8 类 38 条种子）中英文编码 |
+| L-3 | 作为访客/学生，我希望浏览校企合作公开信息，以便了解学校产教实力 | `/alliance/public/*` 12 个公开接口；联盟字典（8 类 40 条种子）中英文编码 |
 
 ### 3.9 工作台与门户（portal）
 
@@ -225,7 +230,7 @@
 | 认证 | JWT HS256，密钥 `JWT_SECRET`（.env，禁止入库）；有效 7 天 |
 | 授权 | 三级中间件：平台隔离（RequirePlatform）→ 角色（RequireRole）→ 菜单/按钮权限；GET 放行仅限只读（RequireRoleOrMenu 限制 GET/HEAD/OPTIONS） |
 | 数据权限 | 租户行级隔离；写操作三重校验；登录日志 + 操作日志审计（POST/PUT/DELETE 自动记录） |
-| 限流 | 登录 4 接口 30 次/分钟/IP，Redis 计数，429 + X-RateLimit-* 头 |
+| 限流 | 登录 6 接口 30 次/分钟/IP（`/auth/login`、`/auth/saas/login`、`/auth/portal/login`、`/auth/partner/login`、`/auth/partner/register`、`/auth/select-tenant`），Redis 计数，429 + X-RateLimit-* 头；另有验证码/上传/导入导出/AI 对话/密码写/公开读取限流，见 `docs/security-standards.md` §4 |
 | SQL 注入 | 排序白名单（SanitizeIdentifier）；store 层参数化查询 |
 | 敏感信息 | 密码 bcrypt；管理员初始密码仅返回一次 |
 | 部署加固 | 后端容器只读文件系统 + cap_drop；上传目录独立 |
@@ -256,7 +261,7 @@
 | 术语 | 含义 |
 |------|------|
 | 租户（Tenant） | 独立数据隔离单位（一所学校/一家企业），`tenant_id` 行级隔离 |
-| 平台（Platform） | portal（教育端）/ saas（运营端）双 token 体系 |
+| 平台（Platform） | portal（教育端）/ saas（运营端）/ partner（企业端）三端 token 体系 |
 | 内容状态机 | draft/pending/approved/rejected/published/archived 六态流转 |
 | 批次（Batch） | 内容发布单元，五套同构（岗位/课程/测评/场景/教务） |
 | 能力点（AbilityPoint） | 能力字典最小单元（NL 编码），岗位/课程/场景/评价共同引用 |

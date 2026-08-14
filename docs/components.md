@@ -70,7 +70,7 @@
 | `KnowledgePointFormDialog` | `app/library/knowledge/_components/knowledge-point-form-dialog.tsx` | 知识点创建/编辑/克隆表单 | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
 | `LogTableShell<T>` | `log-table-shell.tsx` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
 | `ScheduleGrid` | `schedule-grid.tsx` | 周课表网格（7 列星期 × 节次行），排课页与学生/教师工作台共用 | `entries`, `periodSlots?`, `week?`, `onEntryClick?`, `getEntryHref?` |
-| `FormFieldRow` / `FormFieldGrid` | `form-field-row.tsx` | 表单字段行/网格布局（label + 必填星号 + 说明 + 控件），47 个文件复用的最高频表单组件 | `label`, `required`, `hint`, `children` |
+| `FormFieldRow` / `FormFieldGrid` | `form-field-row.tsx` | 表单字段行/网格布局（label + 必填星号 + 说明 + 控件），48 个文件复用的最高频表单组件 | `label`, `required`, `hint`, `children` |
 | `ImageListUpload` | `image-list-upload.tsx` | 图片列表上传（多图、预览、删除、排序） | `files`, `onChange`, `uploading` |
 | `StatusActionBar` | `status-action-bar.tsx` | 详情页状态操作栏（当前状态标签 + 可用操作按钮组） | `status`, `actions` |
 | `PaginationBar` | `pagination-bar.tsx` | 表格分页条（总数 + 上一页/下一页 + 页码），供 `PortalCrudPage`/`LogTableShell` 等壳组件使用 | `page`, `totalPages`, `total`, `onPageChange` |
@@ -82,6 +82,11 @@
 | `TagPicker` | `shared/tag-picker.tsx` | 标签选择器（单选/多选） | `value`, `onChange` |
 | `CitationStatsPanel` | `shared/citation-stats-panel.tsx` | 引用统计面板（能力点/证书库被引用情况，5 个文件复用） | 目标实体参数 |
 | `FavoriteButton` | `shared/favorite-button.tsx` | 收藏按钮（岗位/场景收藏，5 个文件复用） | `targetType`, `targetId` |
+| `AiNotConfiguredDialog` | `ai-not-configured-dialog.tsx` | AI 未配置（412 `ai_not_configured`）引导弹窗（引导到 `/portal/apps/system/tenant` 配置页，配合 `useAiNotConfigured`），7 个文件复用 | `open`, `onOpenChange` |
+| `EvalMethodCard` | `eval-method-card.tsx` | 测评方式卡片（学生端学习页展示各测评方式状态与入口），4 个文件复用 | `method`, `result`, `examHref`, `onAction` |
+| `MobileTabDropdown` | `mobile-tab-dropdown.tsx` | 移动端（<md）Tab 折叠下拉选择器（替代窄屏横向滚动/折行的 tab 栏），4 个文件复用 | `items`, `value`, `onValueChange` |
+| `CaptchaInput` | `captcha-input.tsx` | 登录验证码输入（加载/刷新/通过回调），3 个文件复用 | `onPass`, `onError`, `className` |
+| `FileViewerPreview` | `file-viewer-preview.tsx` | file-viewer 浏览器原生预览渲染（覆盖 208 扩展名，`ResourcePreviewModal` 内使用；不支持格式回退 kkfileview），1 个文件复用 | `url`, `name` |
 
 ## 选择器组件
 
@@ -98,6 +103,7 @@
 | `KnowledgeSelector` | `knowledge-selector.tsx` | 知识点选择器 | `value`, `onChange` |
 | `EvalMethodSelector` | `eval-method-selector.tsx` | 测评方式选择器 | `value`, `onChange` |
 | `ResourceSelector` | `resource-selector.tsx` | 资源选择器（7 个文件复用） | `value`, `onChange`, `multiple` |
+| `CoBuildCollaboratorPicker` | `co-build-collaborator-picker.tsx` | 共建人选择器（企业端共建岗位/场景，按合作学校拉取候选），2 个文件复用 | `schoolTenantId`, `value`, `onChange`, `placeholder?`, `disabled?` |
 
 ## 布局组件
 
@@ -116,6 +122,8 @@
 | `DetailPageHeader` | `shared/detail-page-header.tsx` | 详情页头部（返回按钮 + 标题/副标题 + 状态标签 + 编辑/操作区），`AllianceDetailShell` 内部已复用；非联盟域详情页新写页头一律用它 | `title`, `subtitle?`, `backHref?`, `backLabel?`, `statusBadge?`, `actions?`, `editHref?` |
 | `FormPageShell` | `shared/form-page-shell.tsx` | 表单页骨架（返回 + 标题 + 主表单 2 列 + 右侧栏 1 列 + 底部操作区），alliance/partner 表单页已统一 | `title`, `description?`, `backHref?`, `children`, `sidebar?`, `footer?` |
 | `PermissionGuard` | `shared/permission-guard.tsx` | 权限守卫（按权限码控制子元素渲染，4 个文件复用） | `permission`, `children` |
+| `AllianceDetailShell` | `shared/alliance-detail-shell.tsx` | 联盟详情页壳（页头 + 状态徽章 + 操作区 + Tabs 内容区，泛型 `<T extends string>`），16 个文件复用 | `title`, `subtitle?`, `statusBadge?`, `backHref?`, `editHref?`, `actions?`, `tabs`, `defaultTab?`, `loading?`, `notFound?` |
+| `LandingShell` | `shared/landing-shell.tsx` | Landing 页外壳（hero + 数据统计 + 筛选行 + 排序/搜索 + 内容区），5 个文件复用 | `hero`, `stats`, `filterRows`, `sortOptions`, `keyword`, `onSearch`, `children` |
 
 ## Hooks
 

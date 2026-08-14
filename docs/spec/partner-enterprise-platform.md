@@ -243,14 +243,47 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 ### 5.2 partner 路由组（`/api/v1/partner/*`，`RequirePlatform('partner')`，新文件 `routes_partner.go`）
 
+> 2026-08-14 审计修订：删除未实现的成员账号管理（`/partner/members` 无路由无页面）；补登资源共建/合作内容/导师任务端点（§5.7）。
+
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET/PUT | `/partner/enterprise/profile` | admin/member | 企业主体信息维护（含 `enable_public` 展示开关） |
-| GET/POST/PUT/DELETE | `/partner/experts`、`/partner/experts/{id}` | 写操作 admin，读 admin/member | 专家 CRUD（tenant=企业租户，含 `is_public`/`user_id`） |
-| GET/POST/PUT/DELETE | `/partner/members`、`/partner/members/{id}` | 仅 enterprise_admin | 成员账号管理 |
-| PUT | `/partner/me/password` | 所有 | 修改密码 |
+| GET/PUT | `/partner/enterprise/profile` | 读 admin/member，写 admin | 企业主体信息维护（含 `enable_public` 展示开关） |
+| GET | `/partner/experts` | 仅 admin | 专家列表 |
+| GET/POST/PUT/DELETE | `/partner/experts/{id}` | 写 admin，读 admin/member | 专家档案（tenant=企业租户，含 `is_public`/`user_id`） |
+| GET/PUT | `/partner/experts/me` | 所有 | 专家本人档案（member 可用） |
+| PUT | `/partner/me/password` | 所有（限流） | 修改密码 |
 | GET | `/partner/workspace/dashboard` | 所有 | 服务台统计（专家数/合作学校数等） |
 | GET | `/partner/schools` | 所有 | 合作学校列表（link 反向视图） |
+| PUT | `/partner/schools/{tenantId}/status` | 仅 admin | 合作状态双向确认 |
+| GET | `/partner/cooperation`、`/projects/{id}`、`/achievements/{id}`、`/agreements/{id}` | 所有 | 合作内容三合一查看 |
+| GET | `/partner/mentor-tasks` | 所有 | 导师任务列表（承接的测评任务/进度） |
+
+> **成员账号管理（`/partner/members`）未实现**：规格 F9 与早期 §5.2 曾规划，当前企业成员账号由注册时创建（企业管理员）或运营端代管（`/admin/tenants/{tenantId}/enterprise-admins`），无企业侧自助成员 CRUD 页面与接口。若需实现，按 §10 扩展机制新增。
+
+### 5.7 资源共建端点（co-build，admin+member 均可操作）
+
+> 审计补登（2026-08-14）：以下端点已实现但原 §5 未登记。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET/POST | `/partner/co-build/positions` | 共建岗位列表/新建 |
+| GET | `/partner/co-build/positions/{id}` | 共建岗位详情 |
+| POST | `/partner/co-build/positions/{id}/edit` | 编辑源岗位（EditSource，保存后置为草稿由学校发布） |
+| PUT/DELETE | `/partner/co-build/positions/{id}` | 更新/删除 |
+| POST | `/partner/co-build/positions/{id}/submit`、`/withdraw` | 提交/撤回 |
+| POST | `/partner/co-build/positions/{id}/save-full` | 整单保存 |
+| GET | `/partner/co-build/positions/{id}/responsibilities`、`/certificates`、`/ability-bindings`、`/ability-domains` | 岗位子资源读取 |
+| GET/POST | `/partner/co-build/scenes` | 共建场景列表/新建 |
+| GET | `/partner/co-build/scenes/{id}` | 场景详情 |
+| POST | `/partner/co-build/scenes/{id}/edit` | 编辑源场景 |
+| PUT/DELETE | `/partner/co-build/scenes/{id}` | 更新/删除 |
+| POST | `/partner/co-build/scenes/{id}/submit`、`/withdraw` | 提交/撤回 |
+| GET | `/partner/co-build/scenes/{id}/tasks`、`/weights` | 任务/权重读取 |
+| PUT | `/partner/co-build/scenes/{id}/weights` | 权重保存 |
+| POST | `/partner/co-build/scenes/{id}/tasks`、`/tasks/reorder` | 任务创建/重排 |
+| PUT/DELETE | `/partner/co-build/tasks/{taskId}` | 任务更新/删除 |
+| GET/PUT | `/partner/co-build/tasks/{taskId}/evaluation-methods` | 任务测评方式 |
+| GET | `/partner/co-build/schools/{tenantId}/abilities`、`/evaluation-methods`、`/co-builders`、`/knowledge-points`、`/courses`、`/ability-bindings`、`/question-banks`、`/questions`、`/random-draw-questions`、`/exams`、`/majors`、`/scenarios`、`/tasks`、`/resources` | 学校数据源接入（授权内只读） |
 
 ### 5.3 学校侧联盟接口改造（`alliance_handler.go` / `alliance_crud_handler.go`）
 
@@ -272,7 +305,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 | 方法 | 路径 | 变更 |
 |------|------|------|
-| PUT | `/evaluation/scene-results/{id}/grade`、`/batch-grade` | 保持现有能力；配合评分菜单授权（见 F16） |
+| POST | `/evaluation/results/{id}/grade`、`/evaluation/results/batch-grade` | 保持现有能力（实际路径为 `/evaluation/results/*`）；配合评分菜单授权（见 F16） |
 | — | 任务级企业导师分配 | 新增分配机制：任务/测评配置中选定 `enterprise_mentor` 主体 → 从已绑定企业账号的专家中指定具体评分人（落地到 `task_evaluation_methods` 或新分配字段） |
 
 ### 5.5 导入接口处理
@@ -325,7 +358,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | F6 | `/partner/workspace`：企业服务台首页（统计卡 + 入口卡片，参考 portal/workspace 兜底布局） | 新页面 |
 | F7 | `/partner/enterprise`：主体信息维护（改造自 enterprises/new 表单，去掉学校管理字段，含 enable_public 开关） | 新页面 |
 | F8 | `/partner/experts/*`：列表 + 详情 + 新建/编辑（改造自现有专家页面，含 is_public 开关） | 新页面 |
-| F9 | `/partner/members`：成员账号管理（仅 enterprise_admin） | 新页面 |
+| F9 | `/partner/members`：成员账号管理（仅 enterprise_admin）——**未实施**（见 §5.2 备注，当前成员由注册/运营端代管） | 新页面 |
 | F10 | `/partner/schools`：合作学校列表；账号安全（改密码） | 新页面 |
 | F11 | 导航：`partnerNavigationConfig`（复用菜单/权限机制） | `lib/navigation-config.ts` |
 | F12 | 学校侧 enterprises：已引入列表 + "引入企业"搜索 Dialog；保留评级/状态/前台展示管理；移除新建/编辑主体/导入入口 | 改造 |

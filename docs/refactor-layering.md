@@ -3,13 +3,13 @@
 > 状态：已完成。P0-P3 全部收口（路线图与各批验收明细已从本文档删除，历史见 git 提交：P0 立规 / P1 骨架 / P2 核心域 73 个 handler 5 批 / P3 清理）。
 > 本文档为**后端分层目标架构与红线的唯一出处**；`AGENTS.md`「三、硬性架构约束」第 3.1 条仅保留摘要与链接。
 
-## 一、现状基线（实测，2026-08-02 更新）
+## 一、现状基线（实测，2026-08-14 更新）
 
 | 包                | 文件/行数         | 状态                                                                                                                                                                                          |
 | ----------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| handler           | 121 文件          | 全部 handler 无 `*pgxpool.Pool` 字段（import/export/template 已于 2026-08-09 迁移为 Store 注入）；分层红线全量适用                                 |
-| store             | 70+ 文件          | 独立类型模式成熟：`NewXxxStore(q)` 工厂；**列表查询配置全量下沉**（各域 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`ListXxxConfig()` 方法 + `BatchTableConfig` + 日志包级配置），存量 handler 的 SQL 正逐步下沉 store |
-| service           | 50 文件           | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读；`PositionService`/`EvaluationService` 方法已按域重组为独立文件（position/ability/batch/workflow/term/teaching_plan/training_program/workspace_stats 等） |
+| handler           | 188 文件（109 非测试） | 全部 handler 无 `*pgxpool.Pool` 字段（import/export/template 已于 2026-08-09 迁移为 Store 注入）；分层红线全量适用                                 |
+| store             | 124 文件（103 非测试） | 独立类型模式成熟：`NewXxxStore(q)` 工厂；**列表查询配置全量下沉**（各域 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`ListXxxConfig()` 方法 + `BatchTableConfig` + 日志包级配置），存量 handler 的 SQL 正逐步下沉 store |
+| service           | 65 文件（60 非测试） | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读；`PositionService`/`EvaluationService` 方法已按域重组为独立文件（position/ability/batch/workflow/term/teaching_plan/training_program/workspace_stats 等） |
 | domain            | 12 文件 / 2.1k 行 | 类型中心，**保持不动，不新建 model/**                                                                                                                                                         |
 | handler/common.go | ~400 行 | 响应/租户/权限 helper + `executeListQuery` 适配 + `parseLimitOffset`/`safeHandler`；`parseInt`/`parsePageLimit`/`itoa` 委托 store 唯一实现；时间格式化统一 `store.FormatDateTime` |
 

@@ -1,8 +1,9 @@
 # 接口契约文档 — 知与 SaaS
 
 > 基于后端源码（`backend/internal/router/`、`backend/internal/handler/`）回溯整理。
-> 全量接口约 **560+ 个**（含按角色组重复注册的只读接口），本文档以「公共规范 + 通用模式 + 模块清单 + 代表性详写」方式记录，未逐接口展开的遵循同名通用模式。
-> 企业平台（Partner）的接口（`/partner/*`、`/auth/partner/*`）在子平台 spec [`partner-enterprise-platform.md`](partner-enterprise-platform.md) §5 单独记载，本文档不重复。
+> 全量接口约 **700+ 个**（实测 623 条静态注册 + 约 81 条模板展开，含按角色组重复注册的只读接口），本文档以「公共规范 + 通用模式 + 模块清单 + 代表性详写」方式记录，未逐接口展开的遵循同名通用模式。
+> 企业平台（Partner）的接口（`/partner/*`、`/auth/partner/*`）在子平台 spec [`partner-enterprise-platform.md`](partner-enterprise-platform.md) §5 单独记载，本文档不重复（§1.11 仅列 SaaS 运营端跨平台管理入口）。
+> 2026-08-14 全量审计修订：补齐 AI/快照 bundle/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员等漏登记端点；删除毕业设计/微证书/作业模块等无路由僵尸条目；修正认证规则与机器码词汇表。
 
 ---
 
@@ -10,22 +11,34 @@
 
 所有接口前缀 `/api/v1`。权限列标记三档：`公开` = 无需 JWT（匿名）；`登录公开` = 任意已登录用户可见（如 `/alliance/public/*`、`/job/public/*`，仍需 JWT）；其余为 JWT 校验后的角色/菜单组。只读接口（List/Get）普遍同时在更宽角色组（jobViewer 含学生）注册。
 
-### 1.0 全局 / 文件 / 认证
+### 1.0 全局 / 文件 / 认证 / 公共配置
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | `/health` | 公开 | 健康检查 |
-| GET | `/uploads/{filename}` | 公开 | 静态文件 |
-| POST | `/api/v1/files/upload` | JWT | 文件上传（multipart/form-data, `file` 字段） |
-| GET | `/api/v1/files/preview` | JWT | 文件预览（返回预览 URL） |
+| GET | `/health`、`/health/ready` | 公开 | 健康检查（ready 含 DB+Redis 探活） |
+| GET | `/metrics` | 公开 | Prometheus 指标（请求量/耗时/5xx + DB 连接池） |
+| GET | `/uploads/{tenantID}/{filename}` | 公开(混合鉴权) | 静态文件：签名 URL 免登录；登录态需租户匹配，跨租户 403 |
+| POST | `/api/v1/files/upload` | JWT(限流 20/min/用户) | 文件上传（multipart/form-data, `file` 字段，≤10MB，扩展名白名单 + magic bytes 嗅探） |
+| GET | `/api/v1/files/preview` | JWT | 文件预览（服务端转换，office 类） |
+| GET | `/api/v1/files/sign-url` | JWT | 生成文件签名 URL（HMAC，15 分钟有效期） |
 | POST | `/api/v1/auth/login` | 公开(限流) | 通用登录（saas 语义） |
 | POST | `/api/v1/auth/saas/login` | 公开(限流) | SaaS 运营端登录 |
 | POST | `/api/v1/auth/portal/login` | 公开(限流) | Portal 教育端登录 |
-| POST | `/api/v1/auth/select-tenant` | 公开 | 多租户账号选择租户 |
+| POST | `/api/v1/auth/partner/login` | 公开(限流) | Partner 企业端登录 |
+| POST | `/api/v1/auth/partner/register` | 公开(限流) | 企业自助注册（建租户+主体+管理员+签发 token） |
+| POST | `/api/v1/auth/select-tenant` | 公开(限流) | 多租户账号选择租户 |
+| GET | `/api/v1/auth/captcha` | 公开(限流 10/min/IP) | 字符验证码（连续输错 3 次或新设备首次登录时必需） |
 | GET | `/api/v1/auth/portal/me` | portal | 当前用户信息（portal） |
-| GET | `/api/v1/auth/me` | portal | 当前用户信息（通用，含租户/机构/组织/角色） |
+| GET | `/api/v1/auth/me` | saas | 当前用户信息（SaaS 运营端） |
+| GET | `/api/v1/auth/saas/me` | saas | 当前用户信息（saas 语义别名） |
+| GET | `/api/v1/auth/partner/me` | partner | 当前用户信息 + 企业主体合并（partner） |
 | GET | `/api/v1/subscriptions` | portal | 当前租户订阅套餐 |
 | GET | `/api/v1/stats/me` | saas | 我的统计 |
+| GET | `/api/v1/settings/theme` | 公开(限流 120/min/IP) | 平台主题色（全局/租户覆盖生效） |
+| GET | `/api/v1/portal/workspace/dashboard` | portalWorkspace（30s 缓存） | 工作台聚合 |
+| GET | `/api/v1/portal/workspace/my-schedule` | portalWorkspace | 我的课表（学生/教师） |
+| GET/POST/PUT/DELETE | `/api/v1/portal/workspace/honors`、`/{id}` | portalWorkspace | 学生荣誉（本人 CRUD，业务用户可读） |
+| GET/POST | `/api/v1/portal/community/topics`、`/{id}`、`/{id}/replies` | portalWorkspace | 学习社区帖子/回复/阅读数 |
 
 ### 1.1 岗位管理（job，`/job/*`）
 
@@ -37,9 +50,13 @@
 | GET/POST | `/job/positions/{id}/favorite` | 全部 | 收藏状态/切换收藏 |
 | GET | `/job/positions/favorites` | 全部 | 我的收藏列表 |
 | GET | `/job/public/positions`、`/{id}` | jobViewer | 公开岗位列表（2min 缓存）/详情 |
+| GET | `/job/landing/target-positions` | 登录公开 | 岗位大厅推荐岗位 |
+| GET | `/job/positions/{id}/snapshot` | jobViewer | 岗位快照 bundle（`?version=`，见 §1.12） |
 | GET/POST/PUT/DELETE | `/job/abilities`、`/ability-domains` | jobViewer 读 / businessUser 写 | 能力点、能力域（5 动作 CRUD） |
+| GET | `/job/abilities/citation-stats`、`/uncited` | jobViewer | 能力点引用统计/零引用列表 |
 | GET/POST/PUT/DELETE | `/job/position-abilities`、`/position-responsibilities`、`/position-certificates` | 同上 | 岗位能力绑定/职责/证书 |
 | GET/POST/PUT/DELETE | `/job/certificate-library` | businessUser | 证书库（5 CRUD） |
+| GET | `/job/certificate-library/citation-stats`、`/uncited` | jobViewer | 证书库引用统计/零引用 |
 | GET/POST/PUT/DELETE | `/job/recommendations` | businessUser | 岗位推荐（4：List/Create/Update/Delete） |
 | GET/POST/PUT/DELETE | `/job/learn-roads` | businessUser | 学习路径（5 CRUD） |
 | GET/POST/PUT/DELETE | `/job/banners` | businessUser | 岗位首页轮播配置 |
@@ -51,8 +68,9 @@
 |------|------|------|------|
 | POST/PUT/DELETE + 状态动作 | `/scene/scenarios`、`/{id}` | businessUser 写 / jobViewer 读 | 场景内容资源（写 11 动作；List 挂 2min 缓存） |
 | POST | `/scene/scenarios/{id}/clone` | businessUser | 克隆场景 |
+| GET | `/scene/scenarios/{id}/snapshot` | jobViewer | 场景快照 bundle（见 §1.12） |
 | POST/PUT/DELETE | `/scene/tasks`、`/scene/tasks/reorder` | businessUser 写 / jobViewer 读 | 场景任务 |
-| PUT | `/scene/tasks/{taskId}/evaluation-methods` | businessUser | 保存任务评价方式（SaveMethods） |
+| GET/PUT | `/scene/tasks/{taskId}/evaluation-methods` | businessUser 写 / jobViewer 读 | 任务评价方式（GET List / PUT SaveMethods） |
 | GET/POST/PUT/DELETE | `/scene/rubric-templates` | businessUser | 量规模板（5 CRUD，软删除） |
 | GET/POST/DELETE | `/scene/task-resources` | businessUser | 任务资源绑定（List/Bind/Create/Unbind 4 动作） |
 | POST/DELETE | `/scene/task-bindings/knowledge`、`/ability` | businessUser | 任务-知识点/能力点绑定 |
@@ -65,18 +83,15 @@
 |------|------|------|------|
 | GET/POST + 状态动作 | `/lesson/courses`、`/{id}` | businessUser 写 / jobViewer 读 | 课程内容资源（13 动作） |
 | POST | `/lesson/courses/{id}/clone` | businessUser | 克隆课程 |
-| GET | `/lesson/courses/{id}/assessments` | businessUser | 课程评估汇总 |
-| POST | `/lesson/courses/{id}/homeworks/{homeworkId}/submit` | jobViewer | 课程作业提交 |
-| GET | `/lesson/courses/{id}/homeworks/{homeworkId}/submissions` | businessUser | 作业提交列表 |
-| POST | `/lesson/courses/{id}/homeworks/{homeworkId}/grade` | businessUser | 作业批改 |
-| POST | `/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submit`、`/grade` | 学生/教师 | 节点作业提交/批改 |
+| GET | `/lesson/courses/{id}/snapshot` | jobViewer | 课程快照 bundle（见 §1.12） |
+| GET | `/lesson/course-node-evaluation-results` | businessUser | 课程节点评价结果汇总（教师端） |
+| GET/POST | `/lesson/node-evaluation-results`、`/{id}`、`/{id}/grade` | 学生 List/Submit / businessUser 读+评分 | 节点评价结果 |
 | GET/POST/PUT/DELETE | `/lesson/knowledge-points` | jobViewer 读 / businessUser 写 | 知识点 |
+| GET | `/lesson/knowledge-points/citation-stats`、`/uncited` | jobViewer | 知识点引用统计/零引用 |
 | POST/PUT/DELETE | `/lesson/nodes`、`/lesson/nodes/reorder` | businessUser 写 / jobViewer 读 | 课程节点 |
-| GET/POST | `/lesson/node-evaluation-results` | jobViewer | 节点评价结果列表/提交 |
-| GET/POST/PUT/DELETE | `/lesson/nodes/{nodeId}/quizzes`（8 动作） | businessUser | 节点测验：ListQuizzes/CreateQuiz/ListQuestions/UpdateQuiz/DeleteQuiz/AddQuestion/UpdateQuestion/DeleteQuestion |
-| GET/POST/PUT/DELETE | `/lesson/nodes/{nodeId}/homeworks` | businessUser | 节点作业（5 CRUD） |
-| GET/POST/DELETE | `/lesson/nodes/{nodeId}/resources`、`/lesson/courses/{courseId}/resources` | businessUser | 节点/课程资源（4 动作） |
-| GET/POST/PUT/DELETE | `/lesson/hybrid-modules` | businessUser | 混合教学模块 |
+| GET/POST/PUT/DELETE | `/lesson/quizzes`、`/quizzes/{id}`、`/quizzes/{id}/questions`、`/quizzes/questions/{questionId}` | businessUser | 节点测验（扁平路径 8 动作：List/Create/ListQuestions/Update/Delete/AddQuestion/UpdateQuestion/DeleteQuestion） |
+| GET/POST/DELETE | `/lesson/node-resources`、`/course-resources` | businessUser | 节点/课程资源（扁平路径，List/Bind/Create/Unbind） |
+| GET/POST/PUT/DELETE | `/lesson/hybrid-modules`、`/hybrid-modules/batch` | businessUser | 混合教学模块（Upsert/BatchSave） |
 | GET/POST/PUT/DELETE/POST /{id}/status | `/lesson/batches` | businessUser | 课程批次（6 动作） |
 | POST | `/lesson/behavior-collection/records` | jobViewer | 课堂行为打卡 |
 | GET | `/lesson/behavior-collection/aggregate` | businessUser | 行为聚合 |
@@ -86,30 +101,42 @@
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET/POST + 状态动作 | `/evaluation/question-banks`、`/{id}` | businessUser 写 / jobViewer 读 | 题库内容资源（13 动作） |
+| GET | `/evaluation/question-banks/{id}/snapshot` | jobViewer | 题库快照 bundle（见 §1.12） |
 | GET/POST/PUT/DELETE | `/evaluation/questions`、`/evaluation/questions/batch` | businessUser | 试题 CRUD + 批量创建 |
 | GET/POST/PUT/DELETE | `/evaluation/random-draw-questions` | businessUser | 随机抽题（5 CRUD） |
-| POST/PUT/DELETE + 状态动作 | `/evaluation/exams`、`/{id}` | businessUser 写 / jobViewer 读 | 试卷（写 11 动作） |
-| POST/PUT/DELETE | `/evaluation/exams/{id}/questions`（组卷 4 动作） | businessUser | 组卷/调分值/改题/删题 |
-| GET/POST/PUT/DELETE/POST /{id}/finish、/{id}/start | `/evaluation/exam-usages` | businessUser 写 / jobViewer 含学生读+start | 考试场次 |
+| POST/PUT/DELETE + 状态动作 | `/evaluation/exams`、`/{id}` | businessUser 写 / jobViewer 读 | 试卷（写 11 动作；List/Get 挂 jobViewer） |
+| GET | `/evaluation/exams/{id}/snapshot` | jobViewer | 试卷快照 bundle（见 §1.12） |
+| POST/PUT/DELETE | `/evaluation/exams/{id}/questions`、`/questions/scores`、`/questions/{questionId}` | businessUser | 组卷（Add/BulkUpdateScores/UpdateScore/Remove） |
+| GET/POST/PUT/DELETE/POST /{id}/publish、/{id}/finish | `/evaluation/exam-usages` | businessUser 写 / jobViewer 含学生读 | 考试场次（List/Get 挂 jobViewer；写操作含 Publish/Finish） |
+| GET | `/evaluation/exam-center` | jobViewer | 测评中心（学生/教师考试中心聚合） |
 | GET/POST | `/evaluation/exam-results` | 教师 List / 学生 Create | 考试成绩 |
+| GET/POST | `/evaluation/exam-results/{id}`、`/{id}/grade` | businessUser | 成绩详情/教师评分 |
 | GET/POST | `/evaluation/results` | jobViewer 读+Submit / businessUser | 评估结果列表/提交 |
-| GET/POST | `/evaluation/results/{id}/grade`、`/results/batch-grade` | businessUser | 评分/批量评分 |
-| GET/POST | `/evaluation/job-ability/results`、`/summary`、`/aggregate`、`/aggregate/status` | jobViewer 读 / businessUser | 岗位能力汇聚结果/触发聚合 |
-| GET/POST/PUT/DELETE | `/evaluation/certification/...`（21 个） | businessUser | 认证规则/模型/权重/能力项/任务，见 §3.4 |
-| GET/POST/PUT/DELETE | `/evaluation/graduation/topics`、`/archives`、`/evaluations`、`/query`（11 个） | businessUser | 毕业设计 |
-| GET/POST/PUT/DELETE | `/evaluation/portraits`（generate/archives） | jobViewer 含学生 / businessUser | 学生画像 |
-| GET/POST/PUT/DELETE | `/evaluation/micro-cert/templates`、`/certificates/issue`、`/history` | businessUser | 微证书 |
-| GET/POST | `/evaluation/methods/categories`、`/methods`、`/methods/{id}/toggle` | jobViewer | 测评方法字典 |
-| GET/POST | `/evaluation/appeals`、`/{id}`、`/{id}/process` | 全部 | 成绩申诉 |
+| GET/POST | `/evaluation/results/{id}`、`/{id}/grade`、`/results/batch-grade` | businessUser | 结果详情/评分/批量评分 |
+| GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分 |
+| GET/POST | `/evaluation/job-ability/aggregate`、`/aggregate/status` | businessUser | 触发汇聚/状态 |
+| GET/POST/PUT/DELETE | `/evaluation/certifications`、`/{id}` | businessUser | 认证规则（见 §3.4，实际端点以 `/evaluation/certifications` 为前缀） |
+| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重 |
+| PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | businessUser | 能力点五档分数线 |
+| GET/POST | `/evaluation/certifications/{id}/items`、`/items/{id}/points`、`/{id}/full` | businessUser | 能力项/能力点/全量规则 |
+| POST | `/evaluation/certifications/points/{pointId}/tasks`、`/{id}/status` | businessUser | 关联任务/启用停用 |
+| PUT/DELETE | `/evaluation/certifications/items/{id}`、`/points/{id}`、`/tasks/{id}` | businessUser | 能力项/能力点/任务更新删除 |
+| GET/POST | `/evaluation/portraits`、`/portraits/{id}`、`/portraits/student-dashboard` | jobViewer 含学生 | 学生画像（学生本人强制） |
+| POST | `/evaluation/portraits/generate` | businessUser | 画像生成 |
+| GET/POST/DELETE | `/evaluation/portraits/archives`、`/archives/{id}` | businessUser | 画像归档 |
+| GET/POST | `/evaluation/appeals`、`/{id}`、`/{id}/process` | 全部 | 成绩申诉（创建/处理） |
 | GET/POST/PUT/DELETE/POST /{id}/status | `/evaluation/batches` | businessUser | 测评批次（6 动作） |
-| GET | `/evaluation/landing/exams`、`/landing/certifications/{id}/grades` | portal 业务角色（2min 缓存） | 学生落地页 |
 
 ### 1.5 资源库（library，`/library/*`）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET/POST/PUT/DELETE | `/library/resources` | jobViewer 读 / businessUser 写 | 资源库（5 CRUD） |
+| GET | `/library/resources/stats`、`/citation-stats`、`/uncited` | jobViewer | 资源统计/引用统计/零引用 |
+| POST | `/library/resources/import/preview` | businessUser | 资源批量导入预览 |
 | GET/POST/PUT/DELETE | `/library/on-site-questions` | 同上 | 现场问答题库 |
+| GET/POST/PUT/DELETE | `/library/tags`、`/resource-tags` | businessUser | 标签管理 + 资源标签绑定 |
+| POST | `/library/resource-tags/query` | jobViewer | 资源标签批量查询（库浏览必需） |
 
 ### 1.6 教务管理（affairs，`/affairs/*`）
 
@@ -117,27 +144,30 @@
 |------|------|------|------|
 | GET/POST/PUT/DELETE | `/affairs/terms` | businessUser | 学期（4 CRUD） |
 | GET/POST + 状态动作 | `/affairs/programs`、`/{id}` | businessUser | 人培方案（13 动作 + GET/PUT `/{id}/courses` + clone） |
+| GET/POST/PUT/DELETE | `/affairs/teaching-plans`、`/{id}`、`/entries/{id}`、`/{id}/confirm` | businessUser | 教学计划（生成/确认/条目编辑/导出） |
+| GET | `/affairs/teaching-plans/{id}/export` | businessUser | 教学计划导出 Excel |
+| GET/POST/PUT/DELETE | `/affairs/venues`、`/period-slots`（含 `/replace`） | jobViewer 读 / businessUser 写 | 场地、节次 |
+| GET/POST | `/affairs/schedules`（List/Create/auto-schedule/Update/Delete） | businessUser | 排课 |
+| POST | `/affairs/schedules/publish` | businessUser | 排课发布（无 {id}，整学期发布） |
+| GET | `/affairs/schedules/timetable`、`/export` | businessUser | 课表/导出 |
 | GET/POST/PUT/DELETE/POST /{id}/status | `/affairs/batches` | businessUser | 教务批次（6 动作） |
-| GET/POST/PUT/DELETE | `/affairs/workflows` | businessUser | 工作流（5 CRUD） |
-| GET/POST | `/affairs/teaching-plans`、`/{id}`、`/entries/{id}`、`/{id}/confirm` | businessUser | 教学计划（生成/确认） |
-| GET/POST/PUT/DELETE | `/affairs/venues`、`/period-slots` | jobViewer 读 / businessUser 写 | 场地、节次 |
-| GET/POST | `/affairs/schedules`（8 个：List/Create/auto-schedule/Update/Delete/publish/timetable/export） | businessUser | 排课 |
-| GET | `/portal/workspace/my-schedule` | portalWorkspace | 我的课表（学生/教师） |
+| GET/POST/PUT/DELETE | `/affairs/workflows`、`/affairs/workflows/{id}` | businessUser | 教务审批流模板（与 §1.8 门户级工作流同构） |
 
-### 1.7 门户系统管理（portal + systemAdmin，`/portal/...` 与 `/...`）
+### 1.7 门户系统管理（portal + systemAdmin）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET/PUT | `/tenants`、`/tenants/{id}` | systemAdmin | 租户信息（当前租户） |
+| GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流） |
 | GET/POST/PUT/DELETE | `/organizations`、`/organizations/tree`、`/org-types` | systemAdmin | 组织/组织类型 |
-| GET/POST/PUT/DELETE | `/users`（10 个写动作 + List） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/批量创建/毕业/删除/改密/绑定角色等） |
+| GET/POST/PUT/DELETE | `/users`（12 个写动作 + List） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/批量创建/毕业/删除/改密/绑定角色等） |
 | GET/POST/PUT/DELETE | `/staff-titles`、`/user-extension-fields`、`/user-relations` | systemAdmin | 职称/扩展字段/用户关系 |
 | GET/POST/PUT/DELETE | `/roles`、`/roles/{id}/assign` | systemAdmin | 角色与授权 |
 | GET/POST/PUT/DELETE | `/majors`、`/industries` | businessUser 读 / systemAdmin 写 | 专业/行业字典 |
 | GET/POST/PUT/DELETE | `/resource-codes` | systemAdmin | 资源编码 |
 | GET | `/logs/login`、`/logs/operation` | systemAdmin | 审计日志 |
-| GET | `/portal/workspace/dashboard` | portalWorkspace（30s 缓存） | 工作台聚合 |
-| PUT | `/portal/workspace/me`、`/me/password` | portalWorkspace | 个人资料/改密 |
+| GET/POST | `/favorites`、`/favorites/{targetType}/{id}` | jobViewer | 通用收藏（场景/课程/题库/试卷） |
+| PUT | `/portal/workspace/me`、`/me/password` | portalWorkspace | 个人资料/改密（改密限流） |
 
 ### 1.8 工作流 / 审批（portal，school_admin/teacher）
 
@@ -150,33 +180,63 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/brands`（List+Get 共 12 个）+ `GET /stats` | 登录公开（任意已登录用户） | 登录公开只读 |
-| GET/PUT | `/alliance/school-info` | systemAdmin | 学校信息 |
-| GET/POST/PUT/DELETE | `/alliance/enterprises`（5 CRUD）+ `/enterprises/{eid}/agreements`（4） | systemAdmin | 合作企业 |
-| GET/POST/PUT/DELETE | `/alliance/projects`（5 CRUD）+ `/projects/{pid}/milestones`（4） | systemAdmin | 合作项目 |
-| GET/POST/PUT/DELETE | `/alliance/achievements`、`/experts`、`/agreements`、`/permissions`、`/brands` | systemAdmin | 成果/专家/协议/权限/品牌（各 5 CRUD） |
-| GET/POST/PUT/DELETE | `/alliance/dictionaries/{dictType}`、`/dictionaries/{dictType}/{id}` | systemAdmin | 合作字典 |
+| GET | `/alliance/school-info`、`/enterprises`、`/enterprises/search`、`/enterprises/{id}`、`/grants`、`/grants/resource-options`、`/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/achievements/{id}`、`/experts`、`/experts/mentor-options`、`/experts/{id}`、`/agreements`、`/agreements/{id}`、`/permissions`、`/permissions/{id}`、`/dictionaries/{dictType}`、`/brands`、`/brands/talent-ranking`、`/brands/rank-configs`、`/brands/{id}` | businessUser（联盟管理角色） | 联盟只读视图（含全局企业搜索、授权、导师选项、品牌排行） |
+| PUT | `/alliance/school-info` | RequireAllianceManager | 学校信息 |
+| POST | `/alliance/enterprises/register` | RequireAllianceManager | 学校代企业注册 |
+| PUT/DELETE | `/alliance/enterprises/{id}`、`/enterprises/{id}/link` | RequireAllianceManager | 企业更新/引入/解除引入（DELETE 语义=unlink） |
+| PUT | `/alliance/grants` | RequireAllianceManager | 学校-企业资源授权保存 |
+| GET/POST/PUT/DELETE | `/alliance/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/experts`、`/experts/{id}/display`、`/agreements`、`/permissions`、`/dictionaries/{dictType}`、`/brands`、`/brands/rank-configs` | RequireAllianceManager | 联盟写操作（项目/成果/专家/协议/权限/字典/品牌） |
+| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/agreements`、`/brands`、`/brands/talent-ranking`、`/stats`（List+Get 共 16 个） | 登录公开（限流 120/min/IP） | 联盟公开前台（全局企业主体 + links 双控过滤） |
 
 ### 1.10 导入 / 导出 / 模板（portal + businessUser；10min 长超时）
 
 **通用实体**（`/export/{entity}`、`/import/{entity}`、`/import/{entity}/preview`，CSV）：基础字典类（行业/专业/组织/学生/教师等，支持 `?overwrite=1` 覆盖更新）。
 
-**Excel 三件套**（每实体：`/import/{entity}/excel` + `/import/{entity}/preview` + `/templates/{entity}`）：
+**Excel 三件套**（每实体：`/import/{entity}/excel` + `/import/{entity}/preview` + `/templates/{entity}`；全部挂 importExportLimiter 10 次/分钟/用户）：
 
 | 实体 | 说明 |
 |------|------|
 | positions / scenarios / question-banks / question-banks/{bankId}/questions / exams / courses / granular-courses | 岗位/场景/题库/题目/试卷/体系课/颗粒课 |
 | industries / majors / organizations / students / teachers | 基础数据（另含 `/export/{entity}/excel` 导出） |
 | alliance-projects / alliance-achievements / alliance-agreements / alliance-permissions / alliance-brands | 联盟 5 实体（企业/专家导入已随 Partner 平台移除） |
-| schedules / program-courses / affairs-config | 排课/人培课程/教务配置 |
+| schedules / program-courses / affairs-config | 排课/人培课程/教务配置（含模板下载与 `/affairs/schedules/export`、`/affairs/teaching-plans/{id}/export`） |
 
 ### 1.11 SaaS 运营端（saas token + platformAdmin，`/admin/*`）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET/POST/PUT/DELETE/PUT /{id}/status | `/admin/tenants` | 租户 CRUD（AdminList/Create/Update/UpdateStatus/Delete） |
-| GET/POST/PUT/DELETE/POST /{id}/reset-password | `/admin/tenants/{id}/admins` | 租户管理员管理（5） |
-| GET/PUT | `/admin/subscriptions` | 订阅套餐 |
+| GET/PUT | `/admin/tenants/{id}/enterprise` | 企业租户主体信息 |
+| GET/POST/PUT/DELETE/POST /{id}/reset-password | `/admin/tenants/{tenantId}/admins` | 租户管理员管理（5） |
+| GET/POST/PUT/DELETE/POST /{id}/reset-password | `/admin/tenants/{tenantId}/enterprise-admins` | 企业租户管理员管理（5） |
+| GET/PUT/DELETE | `/admin/tenants/{tenantId}/ai/config` | AI 服务代管（同租户自身配置表） |
+| GET/PUT | `/admin/tenants/{tenantId}/subscription` | 租户订阅套餐 |
+| PUT/DELETE | `/admin/tenants/{tenantId}/settings/theme` | 租户主题色覆盖管理 |
+| GET/PUT | `/admin/settings/theme` | 全局主题色配置 |
+
+### 1.12 AI 智能服务（ai，portal 平台组）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET/PUT/DELETE | `/ai/config` | systemAdmin | 租户 AI 服务配置（api_key 仅回传脱敏值） |
+| GET | `/ai/usage` | systemAdmin | AI 用量统计（全量 + 近 30 天序列 + 套餐额度） |
+| POST | `/ai/chat` | portal 任意登录用户（限流 20/min/用户） | AI 助手对话（非流式；messages ≤ 50 条、单条 ≤ 8000 字符） |
+| POST | `/ai/position-assist` | 同上 | 岗位 AI 辅助编写（润色/拆解/推荐；生成内容由前端写入表单，服务端不落库） |
+| POST | `/ai/scenario-assist` | 同上 | 场景/任务 AI 辅助编写（基础信息/任务卡片/任务链建议） |
+
+错误映射统一：未配置 → 412 `ai_not_configured`；上游错误 → 502 + 脱敏 message；其余 → 500（见 [`ai-development.md`](../ai-development.md)）。
+
+### 1.13 内容快照 bundle（五类资源，`GET /{base}/{id}/snapshot?version=`）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/job/positions/{id}/snapshot` | 岗位快照（全树含职责/能力绑定/证书/认定规则） |
+| GET | `/scene/scenarios/{id}/snapshot` | 场景快照（任务链/测评配置/连带引用） |
+| GET | `/lesson/courses/{id}/snapshot` | 课程快照（节点树/测验/混合模块/颗粒课一层） |
+| GET | `/evaluation/exams/{id}/snapshot` | 试卷快照（题目副本） |
+| GET | `/evaluation/question-banks/{id}/snapshot` | 题库快照（已发布题目） |
+
+版本解析：`?version=` 缺省 = 最新已发布快照；快照缺档且 version == live 当前版本 → 回退 live（仅当 live `status='published'`，否则 404）。**安全要求**：学生角色请求时剥离答案/解析字段（`exam_questions.answer/analysis`、`node_quiz_questions.answer`、`random_draw_questions.answer` 等），见 [`resource-snapshot-versioning.md`](../resource-snapshot-versioning.md) §5.2。
 
 ---
 
@@ -190,17 +250,17 @@
 | Get | `GET {base}/{id}` | 详情 | — |
 | Create | `POST {base}` | 创建草稿 | → draft |
 | Update | `PUT {base}/{id}` | 更新（可编辑态） | draft/rejected/approved/published |
-| Delete | `DELETE {base}/{id}` | 物理删除 | draft/rejected/archived |
+| Delete | `DELETE {base}/{id}` | 物理删除（存在成绩/活跃绑定时删除保护拒绝） | draft/rejected/archived |
 | Submit | `POST {base}/{id}/submit` | 提交审批 | → pending |
 | Review | `POST {base}/{id}/review` | 审批通过/驳回 | → approved / rejected |
-| Publish | `POST {base}/{id}/publish` | 发布 | → published |
+| Publish | `POST {base}/{id}/publish` | 发布（事务内生成快照，版本 +0.1） | → published |
 | Archive | `POST {base}/{id}/archive` | 归档 | → archived |
 | Unpublish | `POST {base}/{id}/unpublish` | 取消发布 | → draft |
 | Withdraw | `POST {base}/{id}/withdraw` | 撤回审批 | → draft |
 | SaveDraft | `POST {base}/{id}/save-draft` | 回退草稿 | approved/published → draft |
 | Invite | `POST {base}/{id}/invite` | 协作者邀请 | — |
 
-非法转移返回 `409 {"error": "..."}`；动作经 `store.ContentActionStore` 统一校验。
+非法转移返回 `409 {"error": "..."}`；动作经 `store.ContentActionStore` 统一校验。5 类内容（岗位/场景/课程/题库/试卷）发布即快照（ADR-0006）。
 
 ### 2.2 批次 6 动作（岗位/场景/课程/测评/教务五套同构）
 
@@ -272,16 +332,22 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 **POST `/api/v1/job/positions/{id}/publish`** → `200`
 非法流转（如 draft 直接 publish）→ `409 {"error":"当前状态不允许该操作"}`
 
-### 3.4 认证规则（21 个接口速览）
+### 3.4 认证规则（/evaluation/certifications/*，约 20 个接口）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/evaluation/certification/rules`、`/{id}` | 规则列表/详情 |
-| GET/PUT | `/evaluation/certification/rules/{id}/model`、`/weights` | 规则模型/两级权重 |
-| POST | `/evaluation/certification/rules`、`/rules/{id}/items`、`/points`、`/tasks` | 创建规则/能力项/能力点/关联任务 |
-| PUT | `/evaluation/certification/rules/{id}`、`/items/{itemId}`、`/points/{pointId}`、`/tasks/{taskId}`、`/full` | 更新 |
-| POST | `/evaluation/certification/rules/{id}/status` | 启用/停用 |
-| DELETE | `/evaluation/certification/rules/{id}`、`/items/{itemId}`、`/points/{pointId}`、`/tasks/{taskId}` | 删除 |
+| GET/POST | `/evaluation/certifications`、`/{id}` | 规则列表/详情/创建 |
+| PUT/DELETE | `/evaluation/certifications/{id}` | 更新/删除规则 |
+| POST | `/evaluation/certifications/{id}/status` | 启用/停用 |
+| GET/POST | `/evaluation/certifications/{id}/items` | 能力项列表/新增（ConfigItems） |
+| PUT/DELETE | `/evaluation/certifications/items/{id}` | 能力项更新/删除 |
+| GET/POST | `/evaluation/certifications/items/{id}/points` | 能力点列表/新增（ConfigPoints） |
+| PUT/DELETE | `/evaluation/certifications/points/{id}` | 能力点更新/删除 |
+| POST | `/evaluation/certifications/points/{pointId}/tasks` | 关联任务 |
+| PUT/DELETE | `/evaluation/certifications/tasks/{id}` | 关联任务更新/删除 |
+| GET/PUT | `/evaluation/certifications/{id}/full` | 全量规则读/写 |
+| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | 规则模型/两级权重 |
+| PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | 能力点五档分数线 |
 
 业务规则：每岗位唯一规则（`(tenant, position)` 唯一）；能力项可 inherit（继承岗位绑定）或 custom；权重两级（能力点占任务分 0-100 / 任务占岗位分）。
 
@@ -298,15 +364,28 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 }
 ```
 - 冲突检测：教师/班级/场地任一冲突 → `409 {"error":"教师 张三 在第 3 周 周三 1-2 节已有课"}`（明确冲突项）
-- 发布：**POST `/affairs/schedules/{id}/publish`** → `200 {"published": n, "version": n}`
+- 发布：**POST `/affairs/schedules/publish`** → `200 {"published": n, "version": n}`（无 {id}，整学期草稿发布）
 
 ### 3.6 文件上传
 
-**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，≤10MB）→ `200 {"url": "/uploads/xxx.png"}`；`GET /api/v1/files/preview?url=...` 返回可预览地址。文档预览由前端 file-viewer（flyfish-dev，浏览器原生）渲染：凡扩展名落在 `@file-viewer/core` 的 `DEFAULT_SUPPORTED_EXTENSIONS`（208 个扩展名，覆盖 office/pdf/压缩包/邮件/CAD/3D/地理/脑图/绘图/电子书/图片/音视频/代码文本/字体/设计/数据）一律走 `FileViewerPreview`；其余格式回退 kkfileview。kkfileview 服务保留。
+**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，单文件 ≤10MB，请求体上限含 multipart 头部）→ `200 {"url": "/uploads/{tenantID}/xxx.png"}`；`GET /api/v1/files/preview?url=...` 返回可预览地址；`GET /api/v1/files/sign-url?url=...` 生成 15 分钟签名 URL（无登录态可访问，供 kkfileview 等外部拉取）。文档预览由前端 file-viewer（flyfish-dev，浏览器原生）渲染：凡扩展名落在 `@file-viewer/core` 的 `DEFAULT_SUPPORTED_EXTENSIONS`（208 个扩展名，覆盖 office/pdf/压缩包/邮件/CAD/3D/地理/脑图/绘图/电子书/图片/音视频/代码文本/字体/设计/数据）一律走 `FileViewerPreview`；其余格式回退 kkfileview。kkfileview 服务保留。
 
 ### 3.7 工作台聚合
 
 **GET `/api/v1/portal/workspace/dashboard`** → `200` 按角色聚合的 DTO（课程/任务/考试/课表/待办），30s Redis 缓存（键含 userID+角色）。
+
+### 3.8 AI 对话
+
+**POST `/api/v1/ai/chat`**
+
+- 请求体：
+```json
+{ "messages": [ { "role": "user", "content": "..." } ] }
+```
+- 护栏：messages 1~50 条、单条 ≤ 8000 字符 → 违反返回 `400`
+- 未配置 AI → `412 {"error":"ai_not_configured"}`；上游错误 → `502` + 脱敏后的上游 message；其余 → `500`
+- 成功响应：`{"reply": "...", "usage": {"promptTokens": n, "completionTokens": n, "totalTokens": n}}`
+- 限流：20 次/分钟/用户
 
 ---
 
@@ -320,7 +399,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | `Content-Type` | `application/json`（上传为 `multipart/form-data`） | 请求体上限 10MB |
 | `X-Request-ID` | 任意 | 中间件生成，日志关联 |
 
-平台隔离：portal token 访问 saas 路由（或反之）→ `403 {"error":"平台不匹配"}`（`RequirePlatform` 中间件）。
+平台隔离：portal/saas/partner 三端 token 互不可用（`RequirePlatform` 中间件，越界 → 403）。
 
 ### 4.2 统一响应结构
 
@@ -330,17 +409,23 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | 成功（列表） | `{"items": [...], "total": <count>}` |
 | 错误 | `{"error": "<消息>", "code": "<机器码>?"}`——`error` 为面向用户的消息（中文），`code` 为可选机器码，仅在需前端按码分支时出现 |
 
-机器码词汇表（前端按 `code` 分支，不解析 `error` 文案）：
+机器码词汇表（`backend/internal/handler/error_codes.go` 为唯一事实源；前端按 `code` 分支，不解析 `error` 文案）：
 
 | code | 状态码 | 场景 |
 |------|--------|------|
+| `bad_request` | 400 | 参数/校验错误 |
+| `unauthorized` | 401 | 未认证/token 失效 |
+| `forbidden` | 403 | 无权限/越权/平台不匹配 |
+| `not_found` | 404 | 资源不存在 |
+| `conflict` | 409 | 状态冲突/唯一键冲突/外键被引用 |
+| `too_many_requests` | 429 | 限流（实际响应 code 为数字 `429`，词汇表仅作映射兜底） |
+| `internal_error` | 500 | 服务异常 |
 | `ai_not_configured` | 412 | 租户未配置 AI |
-| `too_many_requests` | 429 | 限流 |
-| `invalid_transition` | 409 | 非法状态流转 |
-| `platform_mismatch` | 403 | 平台隔离越界 |
-| `tenant_mismatch` | 403 | 越权（资源不属于本租户） |
+| `ai_upstream_error` | 502 | AI 上游错误 |
+| `captcha_required` | 400 | 登录需先完成验证码 |
+| `captcha_wrong` | 400 | 验证码不匹配 |
 
-历史接口中部分错误仅有 `error` 无 `code`（向后兼容，不强制回填）；新增接口统一按上表。
+历史接口中部分错误仅有 `error` 无 `code`（向后兼容，不强制回填）；新增接口统一按上表。前端实际分支的码：`captcha_required` / `captcha_wrong` / `ai_not_configured`。
 
 ### 4.3 分页
 
@@ -358,8 +443,10 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | 403 | 无权限 | 角色不匹配/菜单无权限/跨租户操作/平台不匹配 |
 | 404 | 资源不存在 | 实体不存在/实体不归属当前租户（同一响应） |
 | 409 | 状态冲突 | 非法状态流转/唯一键冲突(23505)/外键被引用(23503)/排课冲突 |
-| 429 | 限流 | 登录 30 次/分钟/IP |
+| 412 | 前置条件不满足 | 租户未配置 AI（`ai_not_configured`） |
+| 429 | 限流 | 登录 30 次/分钟/IP；AI 20 次/分钟/用户；上传 20 次/分钟/用户；导入导出 10 次/分钟/用户；密码写 10 次/分钟/用户；公开读取 120 次/分钟/IP（见 `docs/security-standards.md` §4） |
 | 500 | 服务异常 | `{"error":"服务器内部错误"}`（原始 error 记录日志，不泄露） |
+| 502 | 上游错误 | AI 上游非 2xx（透传脱敏 message） |
 
 ### 4.5 其他约定
 
@@ -373,6 +460,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 | 版本 | 日期 | 变更内容 | 影响范围 |
 |------|------|---------|---------|
+| v1.0 | 2026-08-14 | **全量审计修订**：补齐 AI（§1.12）/快照 bundle（§1.13）/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员/联盟 search-grants-mentor-options-talent-ranking 等漏登记端点；修正认证规则端点（`/evaluation/certifications/*`）；删除僵尸条目（毕业设计/微证书/测评方法字典/作业提交批改/`exam-usages/{id}/start`/`lesson/nodes/{nodeId}/quizzes` 等）；接口数量更新为 700+；机器码词汇表与 error_codes.go 对齐（§4.2）；uploads 路径与状态码表补 412/502 | 全模块文档 |
 | v0.9 | 2026-08-04 | 评价标准保存即落库 + 409 重试；联盟字典码中文化→英文编码（迁移 122）；体系课节点测评提交闭环；`/job/student` 重定向至 `/job/landing` | scene/evaluation、alliance 导入识别、lesson |
 | v0.8 | 2026-08-03 | 恢复 RequirePlatform 平台隔离中间件；场景导入按文件后缀推断资源类型 | 安全、导入 |
 | v0.7 | 2026-08-01 | 删除 `platform_links`/`app_modules` 表与相关接口（迁移 110）；排课导入导出重构；联盟全主体关联 + 批量导入导出 | 前端配置收敛、affairs、alliance |

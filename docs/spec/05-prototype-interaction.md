@@ -18,6 +18,8 @@
 | 系统管理 | `/portal/apps/system/*`（tenant/resource/org-user/logs 4 组 15+ 页） | portal | P0 |
 | 产教融合管理 | `/portal/apps/alliance/*`（school/enterprises/projects/achievements/experts/agreements/permissions/dictionaries/brands） | portal | P0 |
 | 联盟公开落地页 | `/portal/alliance`、`/portal/alliance/landing`、`/portal/alliance/brands` 等 | portal | P1 |
+| AI 助手对话页 | `/portal/apps/ai/chat`（右下角 YiKnowAssistant 悬浮球入口） | portal | P1 |
+| AI 服务配置 | `/portal/apps/system/tenant` 租户信息页内 AI 配置区 | portal | P0 |
 | 超管控制台 | `/superadmin` | saas | P0 |
 
 ### 1.2 八大业务子系统
@@ -32,6 +34,8 @@
 | 教务管理服务平台 | `/affairs` | 教务配置、人培方案（列表+详情）、教学计划、排课管理、批次/工作流/审批 | — |
 | 产教融合与就业服务 | `/portal/apps/alliance` | 见 1.1 | `/portal/alliance` |
 | 系统管理 | `/portal/apps/system` | 见 1.1 | — |
+
+> 另：AI 智能服务（`portal/apps/ai`）：AI 助手对话（见 §1.1）；AI 辅助表单编写内嵌于岗位/场景编辑页。
 
 ### 1.3 全局布局
 

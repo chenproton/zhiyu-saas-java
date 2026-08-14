@@ -28,14 +28,14 @@
 
 | 壳组件 | 使用文件数 | 适用场景 | 代表页面 |
 |--------|-----------|---------|---------|
-| `PortalCrudPage<T>` | 28 | 简单 CRUD（搜索+表格+弹窗表单+导入） | `portal/apps/system/resource/{industries,majors,codes}`、`org-user/{org-types,accounts,roles,positions,fields,relations,graduates}`、`alliance/brands/*` |
+| `PortalCrudPage<T>` | 29 | 简单 CRUD（搜索+表格+弹窗表单+导入） | `portal/apps/system/resource/{industries,majors,codes}`、`org-user/{org-types,accounts,roles,positions,fields,relations,graduates}`、`alliance/brands/*` |
 | `PortalSidebarCrudPage<T>` | 3 | 带组织架构树侧栏的 CRUD（含批量加入部门、导入导出） | `org-user/{teachers,students}` |
-| `ContentListPage<T>` | 7 | 内容资源管理全功能（状态筛选、审批流、批次分组、导入导出、共建、批量） | `job/positions`、`scene`、`evaluation/{question-banks,exams}`、`lesson/admin/courses`、`affairs/{programs,teaching-plans}` |
+| `ContentListPage<T>` | 8 | 内容资源管理全功能（状态筛选、审批流、批次分组、导入导出、共建、批量） | `job/positions`、`scene`、`evaluation/{question-banks,exams}`、`lesson/admin/courses`、`affairs/{programs,teaching-plans}` |
 | `ArchiveListPage<T>` | 4 | 归档库（左侧树折叠 + 恢复/删除 + 批量） | `job/archive`、`scene/archive`、`lesson/admin/archive` |
 | `BatchGroupPage` | 6 | 批次分组管理 | `job/batches`、`scene/batches`、`evaluation/batches`、`lesson/admin/batches` |
 | `WorkflowConfigPage` | 6 | 审批流配置 | `job/workflows`、`scene/workflows`、`evaluation/workflows`、`lesson/admin/workflows` |
 | `ApprovalListPage<T>` | 6 | 审批中心（待办/历史） | `job/approvals`、`scene/approvals`、`evaluation/approvals`、`lesson/admin/approvals` |
-| `LogTableShell<T>` | 3 | 日志表格（分页+加载态） | `portal/apps/system/logs/{login,operation}` |
+| `LogTableShell<T>` | 4 | 日志表格（分页+加载态） | `portal/apps/system/logs/{login,operation}` |
 
 ### 3. grid 行式布局（非 Table，仅 4 个文件保留）
 
@@ -64,7 +64,7 @@
 
 | 封装 | 使用文件数 | 所在系统 | 决策 |
 |------|-----------|---------|------|
-| `FormFieldRow` / `FormFieldGrid` | 44 / 19 | 全部系统 | **默认选择**，新表单一律用它 |
+| `FormFieldRow` / `FormFieldGrid` | 48 / 20 | 全部系统 | **默认选择**，新表单一律用它 |
 | `Field` 家族（FieldGroup/Field/FieldLabel…） | 7 | 教务排课/计划/方案、测评题库/试卷/评分 | 保留（container-query 响应式，服务复杂布局），不与 FormFieldRow 互相迁移 |
 | 手写裸字段 | 少量 | 复杂结构 | **合理例外**，不强求抽象 |
 | `form.tsx`（react-hook-form 封装） | 0 | — | **已删除**（2026-08）：零引用死代码，勿再引入 |
@@ -77,7 +77,7 @@
 
 **保持现状、不再大规模抽象的决定**：
 
-1. `FormFieldRow` 已覆盖约 90% 场景（44+ 文件引用），剩余手写均为"合理例外"（flex 开关行、多控件复合字段、双 Label 嵌套选择器），强行抽象收益低、风险高
+1. `FormFieldRow` 已覆盖约 90% 场景（48+ 文件引用），剩余手写均为"合理例外"（flex 开关行、多控件复合字段、双 Label 嵌套选择器），强行抽象收益低、风险高
 2. 两套字段封装（FormFieldRow 与 Field 家族）并存是**有意保留**：FormFieldRow 通用简单、Field 家族服务复杂响应式布局（排课/教学计划/培养方案/题库试卷评分），可随时评估合并；普通表单禁止混用两套
 3. **不建议**引入更高层抽象（schema 驱动自动表单 / react-hook-form 重构）：当前 useState 受控 + FormFieldRow 已满足全部需求，违背"简单优先"原则
 4. `form.tsx`（react-hook-form）已删除（2026-08 死代码清理），`@/components/ui/form` 不可用

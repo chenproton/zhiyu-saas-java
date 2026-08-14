@@ -1,8 +1,8 @@
 # 数据库 Schema 设计 — 知与 SaaS
 
-> 基于 `backend/migrations/`（001_baseline + 091~159 增量）回溯整理。
+> 基于 `backend/migrations/`（001_baseline + 091~160 增量）回溯整理。
 > 当前共 **152 张表**（155 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
-> 124~159 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
+> 124~160 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
 > 约定：主键统一 `uuid DEFAULT gen_random_uuid()`；`created_at/updated_at timestamptz DEFAULT now()`；业务枚举用 `varchar + CHECK`，仅 7 个原生 PG ENUM。
 
 ---
@@ -242,7 +242,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | alliance_experts | expert_type、rating(copper/silver/gold)、enterprise_id SET NULL、partner_source |
 | alliance_agreements | status(draft/active/expired/renewed/terminated)、project_ids[](109)、enterprise_id |
 | alliance_permissions | account_type、resource/platform_permissions jsonb、enterprise_id/experts CASCADE |
-| alliance_dictionaries | dict_type、code、name、(tenant,dict_type,code) 唯一（108 种子 8 类 38 条，122 英文码） |
+| alliance_dictionaries | dict_type、code、name、(tenant,dict_type,code) 唯一（108 种子 8 类 40 条，122 英文码） |
 | alliance_brands | brand_type(talent/employer/job/major/teacher/culture)、data jsonb、is_featured |
 | alliance_brand_topics | layout(grid)、content_blocks jsonb |
 
@@ -285,7 +285,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 
 ---
 
-### 2.18 124~159 增量新增表（补充登记，列名自迁移文件提取）
+### 2.18 124~160 增量新增表（补充登记，列名自迁移文件提取）
 
 | 表 | 关键列 |
 |---|---|
@@ -296,7 +296,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | user_favorites(129) | id, user_id, target_type, target_id, created_at |
 | platform_settings(135) | key, value, updated_at |
 | tenant_settings(136) | tenant_id, key, value, updated_at |
-| tags(137) | id, tag_type, tag_value, tenant_id, institution_id |
+| tags(137) | id, tenant_id, name, color, created_at, updated_at |
 | resource_tag_relations(137) | id, tenant_id, tag_id, resource_type, resource_id, created_at |
 | alliance_enterprise_links(142) | id, tenant_id, enterprise_id, relation_type, status, rating, enterprise_type, is_public, secondary_colleges, created_by, created_at, updated_at |
 | alliance_resource_grants(146) | id, tenant_id, enterprise_id, resource_type, resource_ids, created_by, created_at, updated_at |
@@ -306,7 +306,8 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | tenant_ai_configs(147) | tenant_id, base_url, api_key_encrypted, model, extra, created_at, updated_at |
 | ai_usage_logs(149) | id, tenant_id, user_id, model, prompt_tokens, completion_tokens, total_tokens, created_at |
 
-> 上述为 124~159 新增/结构性扩展的表；124~159 中仅加列/索引/回填的迁移见 §5 变更记录。新增表字段级完整定义随「数据模型变更流程」持续回写。
+> 上述为 124~160 新增/结构性扩展的表；124~160 中仅加列/索引/回填的迁移见 §5 变更记录。新增表字段级完整定义随「数据模型变更流程」持续回写。
+> 注意：137 新建的 `tags` 表（`id, tenant_id, name, color, created_at, updated_at`）与 baseline 的旧 `resource_tags` 表（含 `tag_type/tag_value`）是两张表，前者是标签管理实体，后者为遗留的资源标签结构。
 
 ## 3. 租户隔离说明
 
@@ -394,7 +395,7 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | 105 | tenant_education_fields | 租户教育属性 |
 | 106 | affairs_batches | 教务批次 |
 | 107 | alliance_relations + schedule_multi_class | 联盟关联/多班级排课 |
-| 108 | alliance_dict_seed | 联盟字典种子 8 类 38 条 |
+| 108 | alliance_dict_seed | 联盟字典种子 8 类 40 条 |
 | 109 | alliance_agreement_project_ids | 协议关联项目 |
 | 110 | remove_platform_links | **删除** app_modules/platform_links |
 | 111 | graduation_archive_unique | 毕设归档唯一 |
