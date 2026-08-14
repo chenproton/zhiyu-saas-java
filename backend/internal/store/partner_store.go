@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -443,7 +444,9 @@ func (s *PartnerStore) GetCooperationProject(ctx context.Context, enterpriseID, 
 	v.EndDate = formatDate(endDate)
 	v.Budget = budget
 	if len(colleges) > 0 {
-		_ = json.Unmarshal(colleges, &v.SecondaryColleges)
+		if err := json.Unmarshal(colleges, &v.SecondaryColleges); err != nil {
+			slog.Warn("合作内容 JSON 解析失败，已按空值处理", "error", err)
+		}
 	}
 	milestones, err := s.ListProjectMilestonesByProject(ctx, projectID)
 	if err != nil {
@@ -505,13 +508,19 @@ func (s *PartnerStore) GetCooperationAchievement(ctx context.Context, enterprise
 	v.AchievementDate = formatDate(achievementDate)
 	v.CitationReason = citationReason
 	if len(ownerPersons) > 0 {
-		_ = json.Unmarshal(ownerPersons, &v.OwnerPersons)
+		if err := json.Unmarshal(ownerPersons, &v.OwnerPersons); err != nil {
+			slog.Warn("合作内容 JSON 解析失败，已按空值处理", "error", err)
+		}
 	}
 	if len(coBuilders) > 0 {
-		_ = json.Unmarshal(coBuilders, &v.CoBuilders)
+		if err := json.Unmarshal(coBuilders, &v.CoBuilders); err != nil {
+			slog.Warn("合作内容 JSON 解析失败，已按空值处理", "error", err)
+		}
 	}
 	if len(colleges) > 0 {
-		_ = json.Unmarshal(colleges, &v.SecondaryColleges)
+		if err := json.Unmarshal(colleges, &v.SecondaryColleges); err != nil {
+			slog.Warn("合作内容 JSON 解析失败，已按空值处理", "error", err)
+		}
 	}
 	return &v, nil
 }

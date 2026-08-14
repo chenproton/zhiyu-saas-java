@@ -46,6 +46,7 @@ func (s *PortalStore) ListAnnouncements(ctx context.Context, role string, tenant
 	for rows.Next() {
 		var a AnnouncementRow
 		if err := rows.Scan(&a.ID, &a.Title, &a.Type, &a.IsNew, &a.CreatedAt); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, a)
@@ -150,6 +151,7 @@ func (s *PortalStore) ListTeacherSchedules(ctx context.Context, userID string, t
 	for rows.Next() {
 		var r TeacherScheduleRow
 		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.ClassNames, &r.TeacherName, &r.ScenarioID, &r.CourseID); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -210,6 +212,7 @@ func (s *PortalStore) ListStudentSchedules(ctx context.Context, classNodeID stri
 	for rows.Next() {
 		var r StudentScheduleRow
 		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.TeacherName, &r.ScenarioID, &r.CourseID, &r.ResourceVersion); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -261,6 +264,7 @@ func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string, clas
 	for rows.Next() {
 		var r ExamEventRow
 		if err := rows.Scan(&r.ID, &r.Name, &r.Start, &r.Status, &r.ExamVersion); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -356,6 +360,7 @@ func (s *PortalStore) PersonnelStats(ctx context.Context, tenantID *string) ([]P
 	for rows.Next() {
 		var r PersonnelStatRow
 		if err := rows.Scan(&r.Code, &r.Count); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -386,6 +391,7 @@ func (s *PortalStore) SchoolAdminTodos(ctx context.Context, tenantID *string) ([
 	for rows.Next() {
 		var r SchoolAdminTodoRow
 		if err := rows.Scan(&r.TargetType, &r.Count); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -442,6 +448,7 @@ func (s *PortalStore) ListScenePositions(ctx context.Context, tenantID, userID s
 	for rows.Next() {
 		var r ScenePositionRow
 		if err := rows.Scan(&r.PositionID, &r.Name); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -510,6 +517,7 @@ func (s *PortalStore) ListStudentCourses(ctx context.Context, userID string, ten
 		var r StudentCourseRow
 		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Type, &r.Category, &r.OnlineHours, &r.OfflineHours,
 			&r.Semester, &r.ClassName, &r.Status, &r.CoverColor, &r.CoverImage, &r.Teacher, &r.ResourceVersion); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -565,6 +573,7 @@ func (s *PortalStore) ListSceneTasks(ctx context.Context, userID string, tenantI
 	for rows.Next() {
 		var r SceneTaskRow
 		if err := rows.Scan(&r.ID, &r.ScenarioID, &r.SceneName, &r.TaskName, &r.Difficulty, &r.ResourceVersion); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -622,6 +631,7 @@ func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenan
 	for rows.Next() {
 		var r ExamRow
 		if err := rows.Scan(&r.ID, &r.ExamID, &r.Name, &r.Start, &r.End, &r.Duration, &r.Status, &r.TotalScore, &r.Score); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -669,6 +679,7 @@ func (s *PortalStore) ListTeacherCourses(ctx context.Context, userID string, ten
 		var r TeacherCourseRow
 		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Type, &r.Category, &r.OnlineHours, &r.OfflineHours,
 			&r.Semester, &r.ClassName, &r.Status, &r.CoverColor, &r.CoverImage); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -725,6 +736,7 @@ func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantI
 		if err := rows.Scan(&r.ID, &r.PlanEntryID, &r.CourseName, &r.Type, &r.DayOfWeek, &r.Periods,
 			&r.StartWeek, &r.EndWeek, &r.WeekPattern, &r.Status,
 			&r.TermName, &r.TeacherName, &r.VenueName, &r.ClassNames, &r.ScenarioID, &r.CourseID); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		items = append(items, r)
@@ -764,6 +776,7 @@ func (s *PortalStore) BatchCourseProgress(ctx context.Context, courseIDs []strin
 		var courseID string
 		var total, present int
 		if err := rows.Scan(&courseID, &total, &present); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		if total == 0 {
@@ -795,6 +808,7 @@ func (s *PortalStore) BatchCourseStudentCounts(ctx context.Context, courseIDs []
 		var courseID string
 		var count int
 		if err := rows.Scan(&courseID, &count); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		result[courseID] = count
@@ -822,6 +836,7 @@ func (s *PortalStore) BatchSceneTaskStatus(ctx context.Context, taskIDs []string
 		var taskID, status string
 		var score *float64
 		if err := rows.Scan(&taskID, &status, &score); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		switch {
@@ -858,6 +873,7 @@ func (s *PortalStore) PeriodLabelMap(ctx context.Context, tenantID *string) map[
 	for rows.Next() {
 		var n, t string
 		if err := rows.Scan(&n, &t); err != nil {
+			slog.Warn("行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		pairs = append(pairs, labelPair{name: n, group: t})
@@ -931,6 +947,7 @@ func (s *PortalStore) SchoolAdminResourceGrowth(ctx context.Context, tenantID *s
 			var day string
 			var count int
 			if err := rows.Scan(&day, &count); err != nil {
+				slog.Warn("行扫描失败，已跳过该行", "error", err)
 				continue
 			}
 			if idx, ok := dayIndex[day]; ok {

@@ -6263,6 +6263,15 @@
 | 071-072 遗留 | （并入 fix-batch-1） | 教师画像列表 limit=200、场景归档/审批页 limit=1000 三处改 fetchAllPages 全量拉取；其余已由首轮大修复与 063-078 批次修复（周次计算抽 schedule-utils、批量删除失败不弹成功 toast、roleConfigs 死代码/张老师/12.5% 徽标清理、能力点详情双重断言修正、账号安全图标下标耦合移除） |
 | 065-066 遗留 | （并入 fix-batch-1） | 登录/操作日志搜索改 fetchAllPages 分页全量拉取（后端 limit 上限 200，原单次 10000 被静默钳制导致搜索截断）；其余已由 063-078 批次修复（里程碑双重拉取去重、学校页失败态+重试、accounts 搜索回第一页+翻页清选择、positions 关联用户数用 userCount+仅展示前 N 提示、relations 搜索防抖、org-structure 总人数递归） |
 | 081-082 | 无需补修 | 15 项 P2 全部由 079-103 批次修复（AI apply 走 positionRef 最新快照、空名删职责同步清绑定、Escape 取消编辑、polish 可选链 trim、blob URL revoke、任职要求稳定 key、score-config 整数输入+仅打开时初始化、progress-dialog currentStep<0 契约、onView 走 basePath、分组锚点用职责 id） |
+| 035-036 遗留 | （并入 fix-batch-2） | portal.go 17 处行扫描吞错补 Warn、partner_store 4 处 JSON 解析吞错补 Warn、导入 findOrCreate 插入/回查错误补 Warn、删除无租户且无调用方的 NodeEvaluationResult.Get（Submit 回读改走 GetByID 租户限定）；4 个 P1 均已在首轮大修复解决（imports ClassIDs panic、fetchExamUsage 补租户、聚合先过滤、BulkUpdateScores unnest） |
+| 039-040 | 无需补修 | 7 项 P2 均无需代码修改：scheduling 6 处列表扫描已带 Warn（546bfe99 批次）、场景/职称删除与更新无 SQL 租户条件（handler 层 verifyTenantOwnership/crud CheckOwnership 已覆盖）、排课批量插入与快照颗粒课 N+1 属低频管理路径、快照唯一约束不含租户实际不可达 |
+| 067-068 遗留 | （并入 fix-batch-2） | 教师列表职称 Badge key 改用职称 id；其余已由大修复与 063-078 批次修复（roles 订阅 null 同口径、payload 仅提交可编辑字段、openUsersDialog 独立错误态、学生/教师密码 type=password、refetch 移入 try、industries parentMap 索引化+空值 toast、tenant as any 改类型断言、login doLogin 失败清 token、管理员初始密码引导语） |
+| 095-096 | 无需补修 | 6 项 P2 已由 079-103 批次修复（alliance-dicts 失败不缓存、job-converters 区间单调、format-utils Windows 11 build 判定）；alliance-links 部分同步需后端批量端点、evaluation-rule-store 类型建模、external-links 演示地址默认值属部署配置项，均评估后不改 |
+| 097-098 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（vitest include 覆盖 mobile-access-url/module-serialize 两个漏跑测试 + alias 补全 7 条路径、saveEvaluationMethods 类型收紧 TaskEvaluationMethod[]） |
+| 077-078 遗留 | （并入 fix-batch-2） | auth-provider fetchMe 仅对 401/403 清 token（瞬时错误不再误踢登录）；其余已由 063-078/大修复处理（job-brand 引用岗位并行创建、salaryText 四处置换 formatSalaryRange）；企业信息表单双份/卡片外壳 class 8 处/题库试卷弹窗 180 行同构属复用重构，评估后不改 |
+| 049-050 遗留 | （并入 fix-batch-2） | 评分详情用户反查改 listAll、岗位归档批量删除改 allSettled 汇总；其余已由大修复与 045-050 批次修复（scene-results 序号守卫/TaskMethodTabs 模块级外移、题库批量删/复制 allSettled、头部数量用实时统计、可选 finally 出链、DrawnQuestionCard key 收敛） |
+| 101-102 | 无需补修 | 19 项 P2 已由 079-103 批次修复（library metadata→unknown、status failed/failure 双键收敛、combobox label→value + 关闭清搜索、import-confirm busy 拦截关闭、import-wizard input 重置 + 取消禁用、mixed-tag 死代码与 JSON.stringify 比较移除）；scene-mock 已 deprecated 但仍被 3 个任务编辑页引用（迁移属中改）、status 中英键配色差异、scene/snapshot jsonb any 结构、PlatformSideNav effect 依赖等评估后不改 |
+| 053-054 遗留 | （并入 fix-batch-2） | hybrid 能力点池改 fetchAllPages；其余已由大修复与 051-062 批次修复（拖拽成环 wouldCreateCycle、hybrid evalData 全字段回写、save-utils 可清空+NaN 兜底、测试数据正式类型、临时 ID 统一判定、知识点克隆池外 knowledgePointNames 兜底、课程缓存击穿参数与死代码/死 prop 清理、保存后 idMapping 重映射）；模块序列化 any 类型、learn 页 limit 1000、hover 动态类属评估后不改 |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6294,6 +6303,31 @@
 - 批量导出/导入占位按钮 5 处重复（纯占位即将上线，不抽象，见 065-066）
 - 五级能力等级常量 4 文件重复（四份形态各异：label/描述/颜色/en 对照，统一需超集建模且等级阶梯固定，评估后不改，见 081-082）
 - Date.now+random 临时 id 生成 3 文件重复（碰撞风险已用随机后缀缓解；统一替换 uid 属机械改动，评估后不改，见 081-082）
+- exams.go 题目增删改分未带租户条件（handler 已先按租户 fetchExam 校验，SQL 层补租户属纵深防御，见 035-036）
+- dict 类 store（industries/majors/org_types/on_site）与 organizations Get/Update 无 SQL 租户限定（crud 框架 CheckOwnership 与 org handler verifyTenantOwnership 已覆盖，越权不可达，见 035-036）
+- exam_usages SyncScheduledExamUsageStatus 全表 UPDATE（60s 节流 + 状态幂等，容忍，见 035-036）
+- favorites ToggleFavorite TOCTOU 计数漂移与 NextAutoUsageName COUNT+1（普通业务，指南允许，见 035-036）
+- lesson_content CitationStats 每知识点 4 子查询与 imports 逐名 2-3 条 SQL（管理页低频操作，容忍，见 035-036）
+- portal.go 统计查询 nil 租户返回全平台计数（handler 恒传租户，nil 分支不可达，见 035-036）
+- ListCooperation jsonb enterprise_ids 过滤依赖 GIN 索引（已有索引则无影响，仅提示，见 035-036）
+- tenant 联系电话输入双写 phone/contactPhone（需确认后端两字段语义，评估后不改，见 067-068）
+- roles generateRoleCode 依赖前端列表计算后缀（列表加载失败时可碰撞；需后端生成编码，低概率，见 067-068）
+- school-admin-manager 初始密码 toast 明文（一次性告知 + 已引导立即修改，属产品设计，见 067-068）
+- alliance-links 协议/项目同步串行 2×N 且失败部分同步（需后端批量端点，非核心低频，见 095-096）
+- evaluation-rule-store resourceConfig 用 Record<string,any>（窄接口建模属大规模类型改造，见 095-096）
+- external-links 六平台地址默认回退演示环境（部署需配置 NEXT_PUBLIC_* 环境变量，属部署配置项，见 095-096）
+- navigation-config sideNavItems/userMenuItems、menu-permissions 审批 actions、resource-type-constants 四张并行映射等 4 处复用候选（机械重构，漂移风险低，评估后不改，见 095-096）
+- api-helpers requestWithPlatform/authedFetch 401 逻辑双份、import-export exportByIds、alliance CRUD 工厂、schoolList 等 4 处复用候选（机械重构，漂移风险低，评估后不改，见 097-098）
+- scene-results/[id] EvalPointGradingCard/ScoreRuleGradingCard 约 80 行重复与 job/approvals fetchAllPages 4 处重复（复用重构，评估后不改，见 049-050）
+- job/landing 场景任务 N+1 与 LoginPrompt 双份（需后端批量接口/未达阈值，见 049-050）
+- scene-mock.ts 已 @deprecated 但仍被 3 个任务编辑页引用（迁到 scene.ts 需动 3 个大文件，评估后不改，见 101-102）
+- status.ts ready/待发布、in_progress/进行中 中英双键配色差异与 已完成/已结课 双字面量（不同页面数据源使用不同键，统一属视觉/数据迁移，见 101-102）
+- scene.ts/snapshot.ts jsonb 镜像 Record<string,any> 20+ 处（快照自由结构，收紧需逐字段 schema 建模，见 101-102）
+- 路径激活匹配逻辑 5+ 处内联重复与 PlatformSideNav effect 依赖/展开态（跨包复用重构，漂移风险低，见 101-102）
+- module-serialize/evalData/learn 页多处 Record<string,any> 与 as any（序列化自由结构类型建模，见 053-054）
+- lesson/landing/[id]/learn 节点/模块 limit 1000（超大课程边缘场景，容忍，见 053-054）
+- system/add hover 动态 Tailwind 类（纯样式，构建期无法提取，人工确认，见 053-054）
+- node-evaluation-results 前端 evaluateeId 可空（后端已强制学生按 claims.UserID 过滤，无泄露，见 053-054）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）

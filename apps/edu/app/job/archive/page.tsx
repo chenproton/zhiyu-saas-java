@@ -123,19 +123,23 @@ export default function PositionArchivePage() {
 
   const confirmBatchDelete = async () => {
     if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
-    try {
-      await Promise.all(batchDeleteTarget.map((id) => positionApi.delete(id)))
-      await refresh()
+    // 并发删除并汇总成败，与 handleBatchRestore 口径一致：部分成功不再笼统报为全败
+    const results = await Promise.allSettled(batchDeleteTarget.map((id) => positionApi.delete(id)))
+    const failed = results.filter((r) => r.status === 'rejected').length
+    await refresh()
+    if (failed === 0) {
       toast({ title: t('已批量删除 {n} 个岗位', { n: batchDeleteTarget.length }) })
-    } catch (err: any) {
+    } else {
       toast({
         variant: 'destructive',
-        title: t('批量删除失败'),
-        description: err.message || t('请稍后重试'),
+        title: t('批量删除部分失败'),
+        description: t('成功 {ok} 个，失败 {fail} 个', {
+          ok: batchDeleteTarget.length - failed,
+          fail: failed,
+        }),
       })
-    } finally {
-      setBatchDeleteTarget(null)
     }
+    setBatchDeleteTarget(null)
   }
 
   const columns: ArchiveColumn<Position>[] = [
