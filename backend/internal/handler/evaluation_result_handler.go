@@ -299,6 +299,10 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 	err = h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			respondError(w, http.StatusConflict, "存在已评分或不存在的结果，请刷新后重试")
+			return
+		}
 		respondServerError(w, r, err, "批量评分失败")
 		return
 	}

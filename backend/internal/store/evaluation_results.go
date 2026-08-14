@@ -176,8 +176,8 @@ func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, grad
 			return err
 		}
 		if tag.RowsAffected() == 0 {
-			// 该结果不在 pending 状态（已评分/已提交后再次评分）：整体中止并提示，避免对已评分结果静默成功
-			return fmt.Errorf("结果 %s 不在待评分状态", item.ID)
+			// 与单条 Grade 语义统一：已评分/不存在均返回 ErrNotFound，由 handler 统一映射 409 提示刷新
+			return ErrNotFound
 		}
 	}
 	return nil

@@ -130,7 +130,7 @@ func (h *ExamResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := h.Service.Store().ExamResults().Get(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusNotFound, "考试结果不存在")
 			return
 		}
@@ -173,7 +173,7 @@ func (h *ExamResultHandler) Grade(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := h.Service.GradeExamResult(r.Context(), id, claims.UserID, req.Scores, req.Comment)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusNotFound, "考试结果不存在")
 			return
 		}

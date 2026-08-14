@@ -96,13 +96,25 @@ func (s *DictStore[T]) Create(ctx context.Context, p DictCreateParams) (string, 
 }
 
 func (s *DictStore[T]) Update(ctx context.Context, id string, p DictUpdateParams) error {
-	_, err := s.q.Exec(ctx, s.cfg.UpdateSQL, append(p.Args(), id)...)
-	return err
+	tag, err := s.q.Exec(ctx, s.cfg.UpdateSQL, append(p.Args(), id)...)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *DictStore[T]) Delete(ctx context.Context, id string) error {
-	_, err := s.q.Exec(ctx, s.cfg.DeleteSQL, id)
-	return err
+	tag, err := s.q.Exec(ctx, s.cfg.DeleteSQL, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *DictStore[T]) ListConfig() ListQueryConfig[T] {

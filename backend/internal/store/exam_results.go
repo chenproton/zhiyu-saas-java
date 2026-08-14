@@ -60,7 +60,7 @@ func (s *ExamResultStore) Get(ctx context.Context, id string) (*domain.ExamResul
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, pgx.ErrNoRows
+		return nil, ErrNotFound
 	}
 	var r domain.ExamResult
 	var tenantID *string
