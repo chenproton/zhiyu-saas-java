@@ -143,21 +143,32 @@ func (s *TrainingProgramStore) ListCourses(ctx context.Context, programID string
 }
 
 // PutCourses 保存课程设置（事务：全量替换）。
+// 名称回查先按 ID 批量取（2 次 IN 查询），避免逐课程 2 次回查的 N+1。
 func (s *TrainingProgramStore) PutCourses(ctx context.Context, tx Queryer, programID string, courses []ProgramCourseItem) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM training_program_courses WHERE program_id = $1`, programID); err != nil {
 		return err
 	}
+
+	positionIDs := make([]string, 0, len(courses))
+	courseIDs := make([]string, 0, len(courses))
+	for _, c := range courses {
+		if c.Name == "" && c.PositionID != nil && *c.PositionID != "" {
+			positionIDs = append(positionIDs, *c.PositionID)
+		}
+		if c.Name == "" && c.CourseID != nil && *c.CourseID != "" {
+			courseIDs = append(courseIDs, *c.CourseID)
+		}
+	}
+	positionNames := loadIDNames(ctx, tx, `SELECT id, name FROM career_positions WHERE id = ANY($1)`, positionIDs, "positionID")
+	courseNames := loadIDNames(ctx, tx, `SELECT id, name FROM courses WHERE id = ANY($1)`, courseIDs, "courseID")
+
 	for _, c := range courses {
 		name := c.Name
 		if name == "" && c.PositionID != nil && *c.PositionID != "" {
-			if err := tx.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, *c.PositionID).Scan(&name); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				slog.Warn("人培方案课程名称回查失败", "positionID", *c.PositionID, "error", err)
-			}
+			name = positionNames[*c.PositionID]
 		}
 		if name == "" && c.CourseID != nil && *c.CourseID != "" {
-			if err := tx.QueryRow(ctx, `SELECT name FROM courses WHERE id=$1`, *c.CourseID).Scan(&name); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				slog.Warn("人培方案课程名称回查失败", "courseID", *c.CourseID, "error", err)
-			}
+			name = courseNames[*c.CourseID]
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, semester, nature, assessment, position_id, course_id, sort_order)
@@ -169,6 +180,29 @@ func (s *TrainingProgramStore) PutCourses(ctx context.Context, tx Queryer, progr
 	}
 	_, err := tx.Exec(ctx, `UPDATE training_programs SET updated_at = NOW() WHERE id = $1`, programID)
 	return err
+}
+
+// loadIDNames 按 id 批量回查名称，返回 id→name 映射；查询失败记日志并返回空映射。
+func loadIDNames(ctx context.Context, q Queryer, sql string, ids []string, label string) map[string]string {
+	out := map[string]string{}
+	if len(ids) == 0 {
+		return out
+	}
+	rows, err := q.Query(ctx, sql, ids)
+	if err != nil {
+		slog.Warn("名称批量回查失败", "label", label, "error", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			slog.Warn("名称批量回查扫描失败", "label", label, "error", err)
+			continue
+		}
+		out[id] = name
+	}
+	return out
 }
 
 // ProgramCourseItem 课程项。

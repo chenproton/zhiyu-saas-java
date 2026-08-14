@@ -475,14 +475,16 @@ func (s *LessonContentService) ensureNodePaperUsage(ctx context.Context, q store
 	startTime, endTime := store.ExtractExamUsageWindow(rc)
 	duration := store.ExtractExamUsageDuration(rc, "paper")
 	activationMode := store.ResolveActivationMode(rc, "paper")
+	// 一次 IN 查询批量取已有安排，避免逐 paperID 回查的 N+1。
+	existing, err := s.st.CourseAssessments().FindNodeUsages(ctx, q, paperIDs, n.ID)
+	if err != nil {
+		return rc, err
+	}
 	for _, paperID := range paperIDs {
 		if paperID == "" {
 			continue
 		}
-		usageID, err := s.st.CourseAssessments().FindNodeUsage(ctx, q, paperID, n.ID)
-		if err != nil {
-			return rc, err
-		}
+		usageID := existing[paperID]
 		if usageID == "" {
 			// 名称：课程名-节点名-试卷-{YYYYMMDD}-{序号}
 			usageName, err := store.NextAutoUsageName(ctx, q, info.TenantID, "node", fmt.Sprintf("%s-%s", info.Name, n.Name), "试卷")

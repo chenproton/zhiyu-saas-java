@@ -13,78 +13,149 @@ import (
 // 全部方法接受 Queryer（*pgxpool.Pool / pgx.Tx / 事务内 Store），供导入事务复用。
 
 // FindOrCreateKnowledgePointsByNames 按租户+名称批量查找知识点，不存在则创建
-// （ON CONFLICT DO NOTHING + 回查，并发安全），返回命中的 ID 列表。
+// （先 ANY($N) 批量查已有 + 多行 VALUES 批量插入 + 批量回查，共 3 次查询而非 3N 次，
+// ON CONFLICT DO NOTHING 依赖 (tenant_id,name) 唯一索引，并发安全），返回命中的 ID 列表。
 func FindOrCreateKnowledgePointsByNames(ctx context.Context, q Queryer, tenantID string, names []string) []string {
 	if len(names) == 0 {
 		return []string{}
 	}
-	ids := []string{}
+	// 归一化 + 保序去重
+	clean := make([]string, 0, len(names))
+	seen := make(map[string]bool, len(names))
 	for _, name := range names {
 		name = strings.TrimSpace(name)
-		if name == "" {
+		if name == "" || seen[name] {
 			continue
 		}
-		var id string
-		err := q.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
+		seen[name] = true
+		clean = append(clean, name)
+	}
+	if len(clean) == 0 {
+		return []string{}
+	}
+	existing := loadByName(ctx, q, `SELECT name, id FROM knowledge_points WHERE tenant_id=$1 AND name = ANY($2)`, tenantID, clean)
+
+	// 缺失的批量插入（随机 code，无唯一约束；name 唯一索引承载 ON CONFLICT 去重）
+	var missing []string
+	pending := map[string]string{}
+	for _, n := range clean {
+		if _, ok := existing[n]; !ok {
+			missing = append(missing, n)
+			pending[n] = uuid.NewString()
+		}
+	}
+	if len(missing) > 0 {
+		var b strings.Builder
+		b.WriteString(`INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES `)
+		args := make([]interface{}, 0, len(missing)*4)
+		for i, n := range missing {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			base := i*4 + 1
+			fmt.Fprintf(&b, "($%d,$%d,$%d,$%d)", base, base+1, base+2, base+3)
+			args = append(args, pending[n], tenantID, n, GenerateEntityCode("KP"))
+		}
+		b.WriteString(` ON CONFLICT DO NOTHING`)
+		if _, err := q.Exec(ctx, b.String(), args...); err != nil {
+			slog.Warn("导入知识点批量创建失败", "error", err)
+		}
+		// 批量回查（含并发已存在的行）
+		created := loadByName(ctx, q, `SELECT name, id FROM knowledge_points WHERE tenant_id=$1 AND name = ANY($2)`, tenantID, missing)
+		for n, id := range created {
+			existing[n] = id
+		}
+	}
+
+	ids := make([]string, 0, len(clean))
+	for _, n := range clean {
+		if id, ok := existing[n]; ok {
 			ids = append(ids, id)
 			continue
 		}
-		id = uuid.NewString()
-		code, codeErr := GenerateUniqueEntityCode(ctx, q, "KP", "knowledge_points", tenantID)
-		if codeErr != nil {
-			code = GenerateEntityCode("KP")
-		}
-		_, execErr := q.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, id, tenantID, name, code)
-		if execErr != nil {
-			slog.Warn("导入知识点创建失败", "error", execErr, "name", name)
-		}
-		var existing string
-		if scanErr := q.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing); scanErr != nil {
-			slog.Warn("导入知识点回查失败", "error", scanErr, "name", name)
-		}
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
+		ids = append(ids, pending[n]) // 回查失败兜底：用本次生成的 id（与原逐条行为一致）
 	}
 	return ids
 }
 
+// loadByName 按名称批量回查 id，返回 name→id 映射；查询失败记日志并返回空映射。
+func loadByName(ctx context.Context, q Queryer, sql string, tenantID string, names []string) map[string]string {
+	out := map[string]string{}
+	rows, err := q.Query(ctx, sql, tenantID, names)
+	if err != nil {
+		slog.Warn("导入按名称批量回查失败", "error", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var n, id string
+		if err := rows.Scan(&n, &id); err != nil {
+			slog.Warn("导入按名称批量回查扫描失败", "error", err)
+			continue
+		}
+		out[n] = id
+	}
+	return out
+}
+
 // FindOrCreateResourcesByNames 按租户+名称批量查找资源库资源，不存在则按
-// resourceType 创建（ON CONFLICT DO NOTHING + 回查），返回命中的 ID 列表。
+// resourceType 创建（先 ANY($N) 批量查已有 + 多行 VALUES 批量插入 + 批量回查，
+// 共 3 次查询而非 3N 次），返回命中的 ID 列表。
 func FindOrCreateResourcesByNames(ctx context.Context, q Queryer, tenantID string, names []string, resourceType, userID string) []string {
 	if len(names) == 0 {
 		return []string{}
 	}
-	ids := []string{}
+	clean := make([]string, 0, len(names))
+	seen := make(map[string]bool, len(names))
 	for _, name := range names {
 		name = strings.TrimSpace(name)
-		if name == "" {
+		if name == "" || seen[name] {
 			continue
 		}
-		var id string
-		err := q.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
+		seen[name] = true
+		clean = append(clean, name)
+	}
+	if len(clean) == 0 {
+		return []string{}
+	}
+	existing := loadByName(ctx, q, `SELECT name, id FROM resource_library WHERE tenant_id=$1 AND name = ANY($2)`, tenantID, clean)
+
+	var missing []string
+	pending := map[string]string{}
+	for _, n := range clean {
+		if _, ok := existing[n]; !ok {
+			missing = append(missing, n)
+			pending[n] = uuid.NewString()
+		}
+	}
+	if len(missing) > 0 {
+		var b strings.Builder
+		b.WriteString(`INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES `)
+		args := make([]interface{}, 0, len(missing)*5)
+		for i, n := range missing {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			base := i*5 + 1
+			fmt.Fprintf(&b, "($%d,$%d,$%d,$%d::resource_type,$%d)", base, base+1, base+2, base+3, base+4)
+			args = append(args, pending[n], tenantID, n, resourceType, userID)
+		}
+		if _, err := q.Exec(ctx, b.String(), args...); err != nil {
+			slog.Warn("导入资源批量创建失败", "error", err)
+		}
+		created := loadByName(ctx, q, `SELECT name, id FROM resource_library WHERE tenant_id=$1 AND name = ANY($2)`, tenantID, missing)
+		for n, id := range created {
+			existing[n] = id
+		}
+	}
+
+	ids := make([]string, 0, len(clean))
+	for _, n := range clean {
+		if id, ok := existing[n]; ok {
 			ids = append(ids, id)
 			continue
 		}
-		id = uuid.NewString()
-		_, execErr := q.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,$4::resource_type,$5) ON CONFLICT DO NOTHING`,
-			id, tenantID, name, resourceType, userID)
-		if execErr != nil {
-			slog.Warn("导入资源创建失败", "error", execErr, "name", name)
-		}
-		var existing string
-		if scanErr := q.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing); scanErr != nil {
-			slog.Warn("导入资源回查失败", "error", scanErr, "name", name)
-		}
-		if existing != "" {
-			ids = append(ids, existing)
-		} else {
-			ids = append(ids, id)
-		}
+		ids = append(ids, pending[n])
 	}
 	return ids
 }

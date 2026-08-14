@@ -447,6 +447,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 157 | resource_creator_retain | 用户删除后保留其创建的资源 |
 | 158 | resource_snapshots | 资源快照与版本固化（快照无 FK，见 resource-snapshot-versioning.md） |
 | 159 | 临时考试状态统一 published | 统一临时考试状态 |
+| 161 | alliance_dict_code_unify | 联盟字典编码统一：删 151 回插的中文码重复行（cooperation/agreement/project 三类型），种子 SQL 改英文码 |
 | 160 | users.password_changed_at | 改密时间戳（改密后旧 token 失效，鉴权中间件逐请求校验） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

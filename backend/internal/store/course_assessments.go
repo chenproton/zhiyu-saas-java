@@ -90,6 +90,31 @@ func (s *CourseAssessmentStore) FindNodeUsage(ctx context.Context, q Queryer, ex
 	return usageID, err
 }
 
+// FindNodeUsages 批量查询节点已有的考试安排（examID→usageID），
+// 一次 IN 查询替代逐 examID 循环的 N+1。
+func (s *CourseAssessmentStore) FindNodeUsages(ctx context.Context, q Queryer, examIDs []string, nodeID string) (map[string]string, error) {
+	out := map[string]string{}
+	if len(examIDs) == 0 {
+		return out, nil
+	}
+	rows, err := q.Query(ctx, `
+		SELECT exam_id, id FROM exam_usages
+		WHERE exam_id = ANY($1) AND target_type = 'node' AND $2 = ANY(target_ids)
+	`, examIDs, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var examID, usageID string
+		if err := rows.Scan(&examID, &usageID); err != nil {
+			return nil, err
+		}
+		out[examID] = usageID
+	}
+	return out, rows.Err()
+}
+
 // CreateNodeUsage 创建节点考试安排，startTime/endTime/duration 为空时表示不限时。
 // activationMode 决定初始状态：always → published，manual/scheduled → draft。
 // 创建即 stamp exam_version（快照最新为准，缺档回退 live version，文档 5.3）。
