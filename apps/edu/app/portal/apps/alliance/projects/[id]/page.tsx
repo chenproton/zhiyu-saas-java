@@ -14,7 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { TableCell, TableHead } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -342,26 +349,26 @@ export default function AllianceProjectDetailPage() {
               {t('新增里程碑')}
             </Button>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
-              <thead className="bg-muted/50 border-b">
-                <tr>
+          <div className="rounded-md border">
+            <Table className="min-w-[700px]">
+              <TableHeader className="bg-muted/50 border-b">
+                <TableRow>
                   <TableHead>{t('里程碑名称')}</TableHead>
                   <TableHead>{t('描述')}</TableHead>
                   <TableHead>{t('截止日期')}</TableHead>
                   <TableHead>{t('完成日期')}</TableHead>
                   <TableHead>{t('完成状态')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {milestones.length === 0 ? (
                   <TableEmptyRow colSpan={6} className="py-8">
                     {t('暂无里程碑')}
                   </TableEmptyRow>
                 ) : (
                   milestones.map((m) => (
-                    <tr key={m.id} className="border-b">
+                    <TableRow key={m.id} className="border-b">
                       <TableCell className="font-medium">{m.name}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {m.description || '-'}
@@ -401,11 +408,11 @@ export default function AllianceProjectDetailPage() {
                           </Button>
                         </div>
                       </TableCell>
-                    </tr>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ),
@@ -435,25 +442,25 @@ export default function AllianceProjectDetailPage() {
               </Link>
             </Button>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
-              <thead className="bg-muted/50 border-b">
-                <tr>
+          <div className="rounded-md border">
+            <Table className="min-w-[700px]">
+              <TableHeader className="bg-muted/50 border-b">
+                <TableRow>
                   <TableHead>{t('协议名称')}</TableHead>
                   <TableHead>{t('类型')}</TableHead>
                   <TableHead>{t('状态')}</TableHead>
                   <TableHead>{t('起止日期')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {linkedAgreements.length === 0 ? (
                   <TableEmptyRow colSpan={5} className="py-8">
                     {t('暂无项目协议')}
                   </TableEmptyRow>
                 ) : (
                   linkedAgreements.map((agreement) => (
-                    <tr key={agreement.id} className="border-b">
+                    <TableRow key={agreement.id} className="border-b">
                       <TableCell className="font-medium">{agreement.name}</TableCell>
                       <TableCell>{agreement.type || '-'}</TableCell>
                       <TableCell>{allianceLabel('agreementStatus', agreement.status)}</TableCell>
@@ -470,11 +477,11 @@ export default function AllianceProjectDetailPage() {
                           {t('取消关联')}
                         </Button>
                       </TableCell>
-                    </tr>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ),
@@ -504,24 +511,24 @@ export default function AllianceProjectDetailPage() {
               </Link>
             </Button>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
-              <thead className="bg-muted/50 border-b">
-                <tr>
+          <div className="rounded-md border">
+            <Table className="min-w-[560px]">
+              <TableHeader className="bg-muted/50 border-b">
+                <TableRow>
                   <TableHead>{t('成果名称')}</TableHead>
                   <TableHead>{t('类型')}</TableHead>
                   <TableHead>{t('状态')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {linkedAchievements.length === 0 ? (
                   <TableEmptyRow colSpan={4} className="py-8">
                     {t('暂无关联成果')}
                   </TableEmptyRow>
                 ) : (
                   linkedAchievements.map((a) => (
-                    <tr key={a.id} className="border-b">
+                    <TableRow key={a.id} className="border-b">
                       <TableCell className="font-medium">
                         <Link
                           href={`/portal/apps/alliance/achievements/${a.id}`}
@@ -550,11 +557,11 @@ export default function AllianceProjectDetailPage() {
                           </Button>
                         </div>
                       </TableCell>
-                    </tr>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ),

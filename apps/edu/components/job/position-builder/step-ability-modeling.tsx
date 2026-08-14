@@ -6,6 +6,14 @@ import { HoverActionBar } from '@zhiyu/ui'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import {
   Dialog,
@@ -1227,25 +1235,24 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                 }
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
-                  <thead>
-                    <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
-                      <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
+              <Table className="min-w-[640px]">
+                  <TableHeader>
+                    <TableRow className="border-b bg-gray-50/80 sticky top-0 z-10">
+                      <TableHead className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
                         {t('能力点名称')}
-                      </th>
-                      <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[15%]">
+                      </TableHead>
+                      <TableHead className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[15%]">
                         {t('能力点编码')}
-                      </th>
-                      <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[25%]">
+                      </TableHead>
+                      <TableHead className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[25%]">
                         {t('能力属性')}
-                      </th>
-                      <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
+                      </TableHead>
+                      <TableHead className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[30%]">
                         {t('操作')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-gray-50">
                     {abilityPoolResults.map((ability) => {
                       const isEditing = editingAbilityId === ability.id
                       const alreadyAdded =
@@ -1257,8 +1264,8 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                         )
                       if (isEditing) {
                         return (
-                          <tr key={ability.id} className="bg-primary/5">
-                            <td colSpan={4} className="px-4 py-3">
+                          <TableRow key={ability.id} className="bg-primary/5">
+                            <TableCell colSpan={4} className="px-4 py-3">
                               <div className="flex items-start gap-4">
                                 <div className="flex-1 space-y-2">
                                   <Input
@@ -1319,19 +1326,19 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                                   </Button>
                                 </div>
                               </div>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         )
                       }
                       return (
-                        <tr key={ability.id} className="hover:bg-gray-50/80 transition-colors">
-                          <td className="px-4 py-3">
+                        <TableRow key={ability.id} className="hover:bg-gray-50/80 transition-colors">
+                          <TableCell className="px-4 py-3">
                             <span className="text-sm text-gray-800">{ability.name}</span>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
                             <span className="text-sm text-gray-400">{ability.code || '-'}</span>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               {(ability.attributes || []).map((attr, i) => (
                                 <span
@@ -1345,8 +1352,8 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                                 <span className="text-[11px] text-gray-300">-</span>
                               )}
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1.5">
                               {selectedRespId &&
                                 (alreadyAdded ? (
@@ -1384,13 +1391,12 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                                 </div>
                               )}
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+              </Table>
             )}
           </div>
         </DialogContent>

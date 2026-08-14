@@ -11,7 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { TableCell, TableHead } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
   allianceEnterpriseApi,
@@ -442,18 +449,18 @@ export default function AllianceEnterpriseDetailPage() {
               </Link>
             </Button>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
-              <thead className="bg-muted/50 border-b">
-                <tr>
+          <div className="rounded-md border">
+            <Table className="min-w-[700px]">
+              <TableHeader className="bg-muted/50 border-b">
+                <TableRow>
                   <TableHead>{t('协议名称')}</TableHead>
                   <TableHead>{t('类型')}</TableHead>
                   <TableHead>{t('状态')}</TableHead>
                   <TableHead>{t('起止日期')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {agreements.length === 0 ? (
                   <TableEmptyRow colSpan={5} className="py-8">
                     {t('暂无合作协议，可点击右上角关联或新增')}
@@ -463,7 +470,7 @@ export default function AllianceEnterpriseDetailPage() {
                     // 直接关联（enterprise_ids）可取消；经项目二次关联仅展示
                     const direct = (a.enterpriseIds || []).includes(id)
                     return (
-                      <tr key={a.id} className="border-b">
+                      <TableRow key={a.id} className="border-b">
                         <TableCell className="font-medium">
                           {a.name}
                           {!direct && (
@@ -489,12 +496,12 @@ export default function AllianceEnterpriseDetailPage() {
                             </Button>
                           )}
                         </TableCell>
-                      </tr>
+                      </TableRow>
                     )
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ),
@@ -526,24 +533,24 @@ export default function AllianceEnterpriseDetailPage() {
               </Link>
             </Button>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
-              <thead className="bg-muted/50 border-b">
-                <tr>
+          <div className="rounded-md border">
+            <Table className="min-w-[560px]">
+              <TableHeader className="bg-muted/50 border-b">
+                <TableRow>
                   <TableHead>{t('项目名称')}</TableHead>
                   <TableHead>{t('阶段')}</TableHead>
                   <TableHead>{t('开始日期')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {projects.length === 0 ? (
                   <TableEmptyRow colSpan={4} className="py-8">
                     {t('暂无合作项目')}
                   </TableEmptyRow>
                 ) : (
                   projects.map((p) => (
-                    <tr key={p.id} className="border-b">
+                    <TableRow key={p.id} className="border-b">
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell>{allianceLabel('projectPhase', p.phase)}</TableCell>
                       <TableCell>{p.startDate || '-'}</TableCell>
@@ -557,11 +564,11 @@ export default function AllianceEnterpriseDetailPage() {
                           {t('取消关联')}
                         </Button>
                       </TableCell>
-                    </tr>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ),
@@ -595,17 +602,17 @@ export default function AllianceEnterpriseDetailPage() {
               </Link>
             </Button>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
-              <thead className="bg-muted/50 border-b">
-                <tr>
+          <div className="rounded-md border">
+            <Table className="min-w-[560px]">
+              <TableHeader className="bg-muted/50 border-b">
+                <TableRow>
                   <TableHead>{t('成果名称')}</TableHead>
                   <TableHead>{t('类型')}</TableHead>
                   <TableHead>{t('状态')}</TableHead>
                   <TableHead>{t('操作')}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {achievements.length === 0 ? (
                   <TableEmptyRow colSpan={4} className="py-8">
                     {t('暂无合作成果')}
@@ -614,7 +621,7 @@ export default function AllianceEnterpriseDetailPage() {
                   achievements.map((a) => {
                     const direct = (a.enterpriseIds || []).includes(id)
                     return (
-                      <tr key={a.id} className="border-b">
+                      <TableRow key={a.id} className="border-b">
                         <TableCell className="font-medium">
                           {a.title}
                           {!direct && (
@@ -637,12 +644,12 @@ export default function AllianceEnterpriseDetailPage() {
                             </Button>
                           )}
                         </TableCell>
-                      </tr>
+                      </TableRow>
                     )
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ),

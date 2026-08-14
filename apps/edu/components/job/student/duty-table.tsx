@@ -6,6 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EmptyState } from '@zhiyu/ui'
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { AbilityPointCard } from './ability-point-card'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -70,34 +78,33 @@ export function DutyTable({
         </h4>
 
         {responsibilities.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse min-w-[560px]">
-              <thead>
-                <tr className="bg-[#fafafa]">
-                  <th className="text-left p-4 text-sm font-medium text-[#64748b] w-24">
+          <Table className="min-w-[560px] border-collapse">
+              <TableHeader>
+                <TableRow className="bg-[#fafafa]">
+                  <TableHead className="text-left p-4 text-sm font-medium text-[#64748b] w-24">
                     {t('编号')}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-[#64748b]">
+                  </TableHead>
+                  <TableHead className="text-left p-4 text-sm font-medium text-[#64748b]">
                     {t('职责描述')}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-[#64748b] w-40">
+                  </TableHead>
+                  <TableHead className="text-left p-4 text-sm font-medium text-[#64748b] w-40">
                     {t('关联能力点')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {responsibilities.map((resp, i) => {
                   const items =
                     grouped.find((g) => g.responsibility.id === resp.id)?.abilities || []
                   return (
-                    <tr key={resp.id} className="border-b border-[#f5f5f4] hover:bg-[#fafafa]">
-                      <td className="p-4">
+                    <TableRow key={resp.id} className="border-b border-[#f5f5f4] hover:bg-[#fafafa]">
+                      <TableCell className="p-4">
                         <span className="text-xs text-[#94a3b8] font-medium">
                           T-{String(i + 1).padStart(3, '0')}
                         </span>
-                      </td>
-                      <td className="p-4 text-sm text-[#475569]">{resp.name}</td>
-                      <td className="p-4">
+                      </TableCell>
+                      <TableCell className="p-4 text-sm text-[#475569]">{resp.name}</TableCell>
+                      <TableCell className="p-4">
                         <span className="text-sm font-medium text-primary">
                           {t('{n} 个', { n: items.length })}
                         </span>
@@ -112,13 +119,12 @@ export function DutyTable({
                         >
                           {t('查看详情')}
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+          </Table>
         ) : (
           <EmptyState title={t('暂无岗位职责数据')} className="py-4" titleClassName="text-[#94a3b8]" />
         )}

@@ -4,6 +4,14 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { MapPin, User, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import type { PeriodSlot, ScheduleEntry } from '@/lib/types'
@@ -216,35 +224,34 @@ export function ScheduleGrid({
       : [{ key: '__empty', label: t('暂无节次') } as GridRow]
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[840px] border-collapse">
-        <thead>
-          <tr>
-            <th className="w-[80px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
+    <Table className="min-w-[840px] border-collapse">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[80px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
               {t('节次')}
-            </th>
+            </TableHead>
             {dayLabels.map((d) => (
-              <th
+              <TableHead
                 key={d}
                 className="w-[130px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground"
               >
                 {d}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {displayRows.map((row) => (
-            <tr key={row.key}>
-              <td className="border bg-muted/20 px-2 py-1.5 align-top">
+            <TableRow key={row.key}>
+              <TableCell className="border bg-muted/20 px-2 py-1.5 align-top">
                 <div className="text-xs font-medium text-gray-700">{row.label}</div>
                 {row.time && <div className="text-[10px] text-muted-foreground">{row.time}</div>}
-              </td>
+              </TableCell>
               {dayLabels.map((_, dayIdx) => {
                 const dayEntries = cellMap.get(`${dayIdx + 1}:${row.key}`) || []
                 const canDrop = !!onEntryMove && dayEntries.length === 0
                 return (
-                  <td
+                  <TableCell
                     key={dayIdx}
                     className={cn(
                       'border px-1 py-1 align-top',
@@ -274,13 +281,12 @@ export function ScheduleGrid({
                     }}
                   >
                     <div className="space-y-1 min-h-[2rem]">{dayEntries.map(renderCard)}</div>
-                  </td>
+                  </TableCell>
                 )
               })}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+    </Table>
   )
 }

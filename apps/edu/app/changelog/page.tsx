@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { CHANGELOG_MARKDOWN } from '@/lib/changelog-content'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 
 // 极简 markdown 子集渲染：标题 / 列表 / 引用 / 分隔线 / 表格 / **加粗** / 段落
 function InlineText({ text }: { text: string }) {
@@ -107,28 +108,28 @@ function renderLines(lines: string[]): ReactNode[] {
       }
       if (header) {
         nodes.push(
-          <table key={i} className="mt-4 w-full border-collapse text-sm">
-            <thead>
-              <tr>
+          <Table key={i} className="mt-4 border-collapse text-sm">
+            <TableHeader>
+              <TableRow>
                 {header.map((cell, j) => (
-                  <th key={j} className="border-b border-slate-200 px-3 py-2 text-left font-semibold text-slate-800">
+                  <TableHead key={j} className="border-b border-slate-200 px-3 py-2 text-left font-semibold text-slate-800">
                     <InlineText text={cell} />
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((row, j) => (
-                <tr key={j} className="border-b border-slate-100">
+                <TableRow key={j} className="border-b border-slate-100">
                   {row.map((cell, k) => (
-                    <td key={k} className="px-3 py-2 align-top text-slate-600">
+                    <TableCell key={k} className="px-3 py-2 align-top text-slate-600">
                       <InlineText text={cell} />
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>,
+            </TableBody>
+          </Table>,
         )
       }
       continue

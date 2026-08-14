@@ -821,46 +821,46 @@ function PeriodSlotsSection() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[860px] border-collapse">
-              <thead>
-                <tr>
-                  <th className="w-[150px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
+          <div className="rounded-lg border">
+            <Table className="min-w-[860px] border-collapse">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[150px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
                     {t('节次')}
-                  </th>
+                  </TableHead>
                   {DAY_LABELS.map((d) => (
-                    <th
+                    <TableHead
                       key={d}
                       className="w-[120px] border bg-muted/40 px-1 py-2 text-center text-xs font-medium text-muted-foreground"
                     >
                       {t(d)}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
                       {t('加载中...')}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 border text-center text-sm text-muted-foreground">
                       {t('暂无节次，在右侧配置各时段参数自动生成')}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   rows.map((row) => {
                     const meta = PERIOD_TYPE_META[row.type] || PERIOD_TYPE_META.morning
                     return (
-                      <tr key={row.name}>
-                        <td className="border px-2 py-1.5 align-top">
+                      <TableRow key={row.name}>
+                        <TableCell className="border px-2 py-1.5 align-top">
                           <span className="text-xs font-medium">{row.name}</span>
-                        </td>
+                        </TableCell>
                         {DAY_LABELS.map((d) => (
-                          <td key={d} className="border p-1.5">
+                          <TableCell key={d} className="border p-1.5">
                             <div
                               className={cn(
                                 'flex flex-col items-center gap-1 rounded-md border px-2 py-2.5',
@@ -877,14 +877,14 @@ function PeriodSlotsSection() {
                                   : t('未设置时间')}
                               </span>
                             </div>
-                          </td>
+                          </TableCell>
                         ))}
-                      </tr>
+                      </TableRow>
                     )
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
 

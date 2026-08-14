@@ -16,6 +16,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -325,29 +333,28 @@ export function BankQuestionSelectorPanel({
                     className="py-8"
                   />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm table-fixed">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2">
+                  <Table className="table-fixed">
+                      <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                        <TableRow>
+                          <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2">
                             {t('题目内容')}
-                          </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[88px]">
+                          </TableHead>
+                          <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[88px]">
                             {t('题型')}
-                          </th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[56px]">
+                          </TableHead>
+                          <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[56px]">
                             {t('难度')}
-                          </th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[120px]">
+                          </TableHead>
+                          <TableHead className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[120px]">
                             {t('操作')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-gray-100">
                         {filteredQuestions.map((q: any) => {
                           const isSelected = selectedIds.includes(q.id)
                           return (
-                            <tr
+                            <TableRow
                               key={q.id}
                               className={cn(
                                 'hover:bg-gray-50 transition-colors cursor-pointer',
@@ -355,7 +362,7 @@ export function BankQuestionSelectorPanel({
                               )}
                               onClick={() => onToggleQuestion(q.id)}
                             >
-                              <td className="px-3 py-2">
+                              <TableCell className="px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   <div
                                     className={cn(
@@ -369,20 +376,20 @@ export function BankQuestionSelectorPanel({
                                     {q.content || q.name || t('未命名题目')}
                                   </span>
                                 </div>
-                              </td>
-                              <td className="px-3 py-2">
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
                                 <Badge
                                   className={`text-xs text-white hover:opacity-90 whitespace-nowrap ${typeColorMap[q.type ?? ''] || ''}`}
                                 >
                                   {t(questionTypeLabels[q.type ?? ''] || (q.type ?? ''))}
                                 </Badge>
-                              </td>
-                              <td className="px-3 py-2">
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
                                 <span className="text-xs text-gray-500 whitespace-nowrap">
                                   {t(difficultyLabels[q.difficulty ?? ''] || (q.difficulty ?? ''))}
                                 </span>
-                              </td>
-                              <td className="px-3 py-2">
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
                                 <div className="flex items-center justify-end gap-1">
                                   {isSelected ? (
                                     <Button
@@ -409,13 +416,12 @@ export function BankQuestionSelectorPanel({
                                     </Button>
                                   )}
                                 </div>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           )
                         })}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableBody>
+                  </Table>
                 )}
               </div>
             </>

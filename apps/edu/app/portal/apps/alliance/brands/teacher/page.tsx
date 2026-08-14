@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { TableCell, TableHead } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
@@ -464,19 +471,19 @@ function TeacherBrandSection({
         </div>
       ) : (
         <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-gray-100">
                 <TableHead>{t('姓名')}</TableHead>
                 <TableHead>{t('前台展示')}</TableHead>
                 <TableHead>{t('推荐')}</TableHead>
                 <TableHead>{t('来源')}</TableHead>
                 <TableHead>{t('操作')}</TableHead>
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {items.map((b) => (
-                <tr key={b.id} className="border-b border-gray-50">
+                <TableRow key={b.id} className="border-b border-gray-50">
                   <TableCell className="font-medium">{b.name}</TableCell>
                   <TableCell>
                     <Switch
@@ -512,10 +519,10 @@ function TeacherBrandSection({
                       {t('解除关联')}
                     </Button>
                   </TableRowActions>
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

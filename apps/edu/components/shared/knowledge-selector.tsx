@@ -15,6 +15,14 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchInput } from '@/components/shared/search-input'
 import {
@@ -651,39 +659,38 @@ export function KnowledgeSelector({
             />
           )}
           {filtered.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[560px]">
-                <thead className="bg-gray-50 sticky top-0 z-10">
-                  <tr>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">
+            <Table className="min-w-[560px]">
+                <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">
                       {t('知识点名称')}
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">
+                    </TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">
                       {t('知识点编码')}
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">
+                    </TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">
                       {t('知识点描述')}
-                    </th>
-                    <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
                       {t('操作')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100">
                   {filtered.map((kp) => {
                     const isSelected = selected.some((s) => s.id === kp.id)
                     return (
-                      <tr
+                      <TableRow
                         key={kp.id}
                         className={cn(
                           'hover:bg-gray-50 transition-colors',
                           isSelected ? 'bg-primary/[0.03]' : '',
                         )}
                       >
-                        <td className="px-3 py-2">
+                        <TableCell className="px-3 py-2">
                           <span className="text-sm font-medium text-gray-800">{kp.name}</span>
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
                           {kp.code ? (
                             <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                               {kp.code}
@@ -691,13 +698,13 @@ export function KnowledgeSelector({
                           ) : (
                             <span className="text-xs text-gray-400">-</span>
                           )}
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
                           <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>
                             {kp.description}
                           </p>
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
@@ -741,13 +748,12 @@ export function KnowledgeSelector({
                               </>
                             )}
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )
                   })}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+            </Table>
           )}
         </div>
       </div>

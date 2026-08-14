@@ -42,6 +42,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -1164,54 +1172,53 @@ export function EvaluationRulesEditor({
                         className="py-8"
                       />
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm min-w-[560px]">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
+                      <Table className="min-w-[560px]">
+                          <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                            <TableRow>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">
                                 {t('题目名称')}
-                              </th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                              </TableHead>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
                                 {t('题目描述')}
-                              </th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">
+                              </TableHead>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">
                                 {t('适用专业')}
-                              </th>
-                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                              </TableHead>
+                              <TableHead className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
                                 {t('操作')}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-gray-100">
                             {filteredRdq.map((q) => {
                               const isSelected = config.randomDrawSelectedIds.includes(q.id)
                               return (
-                                <tr
+                                <TableRow
                                   key={q.id}
                                   className={cn(
                                     'hover:bg-gray-50 transition-colors',
                                     isSelected ? 'bg-primary/[0.03]' : '',
                                   )}
                                 >
-                                  <td className="px-3 py-2">
+                                  <TableCell className="px-3 py-2">
                                     <span className="text-sm font-medium text-gray-800">
                                       {q.name}
                                     </span>
-                                  </td>
-                                  <td className="px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2">
                                     <p
                                       className="text-xs text-gray-500 line-clamp-1"
                                       title={q.description}
                                     >
                                       {q.description || '-'}
                                     </p>
-                                  </td>
-                                  <td className="px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2">
                                     <Badge variant="secondary" className="text-[10px]">
                                       {q.majorName || '-'}
                                     </Badge>
-                                  </td>
-                                  <td className="px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2">
                                     <div className="flex items-center justify-end gap-1">
                                       <Button
                                         variant="ghost"
@@ -1265,13 +1272,12 @@ export function EvaluationRulesEditor({
                                         </>
                                       )}
                                     </div>
-                                  </td>
-                                </tr>
+                                  </TableCell>
+                                </TableRow>
                               )
                             })}
-                          </tbody>
-                        </table>
-                      </div>
+                          </TableBody>
+                      </Table>
                     )}
                   </div>
                 </div>
@@ -2910,29 +2916,28 @@ export function EvaluationRulesEditor({
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse min-w-[720px]">
-                      <thead>
-                        <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                          <th className="py-2.5 px-2 text-left w-12">{t('序号')}</th>
-                          <th className="py-2.5 px-2 text-left min-w-[280px]">
+                  <Table className="min-w-[720px] border-collapse">
+                      <TableHeader>
+                        <TableRow className="border-b bg-gray-50 text-gray-500 text-xs">
+                          <TableHead className="py-2.5 px-2 text-left w-12">{t('序号')}</TableHead>
+                          <TableHead className="py-2.5 px-2 text-left min-w-[280px]">
                             {t('评价维度名称/关联知识点/能力点')}
-                          </th>
-                          <th className="py-2.5 px-2 text-left min-w-[320px]">{t('评价等级')}</th>
-                          <th className="py-2.5 px-2 text-center w-20">{t('权重(%)')}</th>
-                          <th className="py-2.5 px-2 text-center w-14">{t('操作')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                          </TableHead>
+                          <TableHead className="py-2.5 px-2 text-left min-w-[320px]">{t('评价等级')}</TableHead>
+                          <TableHead className="py-2.5 px-2 text-center w-20">{t('权重(%)')}</TableHead>
+                          <TableHead className="py-2.5 px-2 text-center w-14">{t('操作')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {info.points.map((ep, idx) => (
-                          <tr
+                          <TableRow
                             key={ep.id}
                             className="border-b hover:bg-gray-50/50 transition-colors"
                           >
-                            <td className="py-3 px-2">
+                            <TableCell className="py-3 px-2">
                               <span className="text-gray-600 align-middle">{idx + 1}</span>
-                            </td>
-                            <td className="py-3 px-2">
+                            </TableCell>
+                            <TableCell className="py-3 px-2">
                               <MixedTagEditor
                                 text={ep.name}
                                 knowledgePointIds={ep.knowledgePointIds || []}
@@ -2943,8 +2948,8 @@ export function EvaluationRulesEditor({
                                 onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)}
                                 onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)}
                               />
-                            </td>
-                            <td className="py-3 px-2">
+                            </TableCell>
+                            <TableCell className="py-3 px-2">
                               <button
                                 onClick={() => {
                                   setEditingGradeMappingPointId(ep.id)
@@ -2963,8 +2968,8 @@ export function EvaluationRulesEditor({
                                 ))}
                                 {!ep.gradeMapping?.length && t('点击配置评价等级')}
                               </button>
-                            </td>
-                            <td className="py-3 px-2">
+                            </TableCell>
+                            <TableCell className="py-3 px-2">
                               <Input
                                 type="number"
                                 value={ep.weight || 0}
@@ -2978,20 +2983,19 @@ export function EvaluationRulesEditor({
                                 }
                                 className="h-8 text-sm text-center"
                               />
-                            </td>
-                            <td className="py-3 px-2 text-center">
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-center">
                               <button
                                 className="text-red-500 hover:text-red-600 text-xs"
                                 onClick={() => removeEvalPoint(info.field, ep.id)}
                               >
                                 {t('删除')}
                               </button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableBody>
+                  </Table>
                   <div className="mt-3 space-y-2">
                     <button
                       onClick={() =>
@@ -3079,29 +3083,28 @@ export function EvaluationRulesEditor({
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse min-w-[560px]">
-                      <thead>
-                        <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                          <th className="py-2.5 px-2 text-left w-16">{t('序号')}</th>
-                          <th className="py-2.5 px-2 text-left min-w-[240px]">
+                  <Table className="min-w-[560px] border-collapse">
+                      <TableHeader>
+                        <TableRow className="border-b bg-gray-50 text-gray-500 text-xs">
+                          <TableHead className="py-2.5 px-2 text-left w-16">{t('序号')}</TableHead>
+                          <TableHead className="py-2.5 px-2 text-left min-w-[240px]">
                             {t('评价项/评分标准描述')}
-                          </th>
-                          <th className="py-2.5 px-2 text-left min-w-[160px]">{t('加减分规则')}</th>
-                          <th className="py-2.5 px-2 text-center w-20">{t('分值')}</th>
-                          <th className="py-2.5 px-2 text-center w-16">{t('操作')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                          </TableHead>
+                          <TableHead className="py-2.5 px-2 text-left min-w-[160px]">{t('加减分规则')}</TableHead>
+                          <TableHead className="py-2.5 px-2 text-center w-20">{t('分值')}</TableHead>
+                          <TableHead className="py-2.5 px-2 text-center w-16">{t('操作')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {taskScoreRules.map((item, idx) => (
-                          <tr
+                          <TableRow
                             key={item.id}
                             className="border-b hover:bg-gray-50/50 transition-colors"
                           >
-                            <td className="py-3 px-2">
+                            <TableCell className="py-3 px-2">
                               <span className="text-gray-600 align-middle">{idx + 1}</span>
-                            </td>
-                            <td className="py-3 px-2">
+                            </TableCell>
+                            <TableCell className="py-3 px-2">
                               <Textarea
                                 value={item.name + (item.desc ? `\n${item.desc}` : '')}
                                 onChange={(e) => {
@@ -3120,8 +3123,8 @@ export function EvaluationRulesEditor({
                                 placeholder={t('请输入评分描述')}
                                 rows={2}
                               />
-                            </td>
-                            <td className="py-3 px-2">
+                            </TableCell>
+                            <TableCell className="py-3 px-2">
                               <Textarea
                                 value={item.rule || ''}
                                 onChange={(e) =>
@@ -3135,8 +3138,8 @@ export function EvaluationRulesEditor({
                                 placeholder={t('输入加减分规则')}
                                 rows={2}
                               />
-                            </td>
-                            <td className="py-3 px-2">
+                            </TableCell>
+                            <TableCell className="py-3 px-2">
                               <Input
                                 type="number"
                                 value={item.weight || 0}
@@ -3153,8 +3156,8 @@ export function EvaluationRulesEditor({
                                 }}
                                 className="h-8 text-sm text-center"
                               />
-                            </td>
-                            <td className="py-3 px-2 text-center">
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-center">
                               <button
                                 className="text-red-500 hover:text-red-600 text-xs"
                                 onClick={() =>
@@ -3165,12 +3168,11 @@ export function EvaluationRulesEditor({
                               >
                                 {t('删除')}
                               </button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableBody>
+                  </Table>
                   <div className="mt-3 space-y-2">
                     <button
                       onClick={() => {
@@ -4649,29 +4651,28 @@ export function EvaluationRulesEditor({
                       />
                     )}
                     {filteredKp.length > 0 && (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm min-w-[560px]">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                      <Table className="min-w-[560px]">
+                          <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                            <TableRow>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
                                 {t('知识点名称')}
-                              </th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                              </TableHead>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
                                 {t('编码')}
-                              </th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
+                              </TableHead>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
                                 {t('描述')}
-                              </th>
-                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
+                              </TableHead>
+                              <TableHead className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
                                 {t('操作')}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-gray-100">
                             {filteredKp.map((kp) => {
                               const isSelected = selectedIds.includes(kp.id)
                               return (
-                                <tr
+                                <TableRow
                                   key={kp.id}
                                   className={cn(
                                     'hover:bg-gray-50 cursor-pointer',
@@ -4679,7 +4680,7 @@ export function EvaluationRulesEditor({
                                   )}
                                   onClick={() => toggleKp(kp.id)}
                                 >
-                                  <td className="px-3 py-2">
+                                  <TableCell className="px-3 py-2">
                                     <div className="flex items-center gap-2">
                                       <div
                                         className={cn(
@@ -4695,8 +4696,8 @@ export function EvaluationRulesEditor({
                                         {kp.name}
                                       </span>
                                     </div>
-                                  </td>
-                                  <td className="px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2">
                                     {kp.code ? (
                                       <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                                         {kp.code}
@@ -4704,13 +4705,13 @@ export function EvaluationRulesEditor({
                                     ) : (
                                       <span className="text-xs text-gray-400">-</span>
                                     )}
-                                  </td>
-                                  <td className="px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2">
                                     <p className="text-xs text-gray-500 line-clamp-1">
                                       {kp.description}
                                     </p>
-                                  </td>
-                                  <td className="px-3 py-2 text-right">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2 text-right">
                                     {isSelected ? (
                                       <Button
                                         size="sm"
@@ -4735,13 +4736,12 @@ export function EvaluationRulesEditor({
                                         {t('选择')}
                                       </Button>
                                     )}
-                                  </td>
-                                </tr>
+                                  </TableCell>
+                                </TableRow>
                               )
                             })}
-                          </tbody>
-                        </table>
-                      </div>
+                          </TableBody>
+                      </Table>
                     )}
                   </div>
                 </div>
@@ -4848,29 +4848,28 @@ export function EvaluationRulesEditor({
                       />
                     )}
                     {filteredAb.length > 0 && (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm min-w-[560px]">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
+                      <Table className="min-w-[560px]">
+                          <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                            <TableRow>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">
                                 {t('能力点名称')}
-                              </th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
+                              </TableHead>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">
                                 {t('编码')}
-                              </th>
-                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
+                              </TableHead>
+                              <TableHead className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">
                                 {t('描述')}
-                              </th>
-                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
+                              </TableHead>
+                              <TableHead className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">
                                 {t('操作')}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-gray-100">
                             {filteredAb.map((ab) => {
                               const isSelected = selectedIds.includes(ab.id)
                               return (
-                                <tr
+                                <TableRow
                                   key={ab.id}
                                   className={cn(
                                     'hover:bg-gray-50 cursor-pointer',
@@ -4878,7 +4877,7 @@ export function EvaluationRulesEditor({
                                   )}
                                   onClick={() => toggleAb(ab.id)}
                                 >
-                                  <td className="px-3 py-2">
+                                  <TableCell className="px-3 py-2">
                                     <div className="flex items-center gap-2">
                                       <div
                                         className={cn(
@@ -4894,8 +4893,8 @@ export function EvaluationRulesEditor({
                                         {ab.name}
                                       </span>
                                     </div>
-                                  </td>
-                                  <td className="px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2">
                                     {ab.code ? (
                                       <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                                         {ab.code}
@@ -4903,13 +4902,13 @@ export function EvaluationRulesEditor({
                                     ) : (
                                     <span className="text-xs text-gray-400">-</span>
                                   )}
-                                </td>
-                                <td className="px-3 py-2">
+                                </TableCell>
+                                <TableCell className="px-3 py-2">
                                   <p className="text-xs text-gray-500 line-clamp-1">
                                     {ab.description}
                                   </p>
-                                </td>
-                                <td className="px-3 py-2 text-right">
+                                </TableCell>
+                                <TableCell className="px-3 py-2 text-right">
                                   {isSelected ? (
                                     <Button
                                       size="sm"
@@ -4934,13 +4933,12 @@ export function EvaluationRulesEditor({
                                       {t('选择')}
                                     </Button>
                                   )}
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             )
                           })}
-                        </tbody>
-                      </table>
-                    </div>
+                        </TableBody>
+                      </Table>
                     )}
                   </div>
                 </div>
