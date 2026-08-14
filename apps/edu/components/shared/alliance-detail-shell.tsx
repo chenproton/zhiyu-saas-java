@@ -1,5 +1,9 @@
 'use client'
 
+// 联盟「门户视角」详情壳：notFound/loading/URL Tab 同步等行为能力（portal 页面组用）。
+// 与 components/alliance/alliance-detail-shell.tsx（企业视角：breadcrumbs/stats/cover 渐变视觉）并存，
+// 两者职责不同（行为 vs 视觉），改动前先确认目标页面组归属，避免双向漂移。
+
 import { type ReactNode, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'

@@ -1,5 +1,9 @@
 'use client'
 
+// 联盟「企业视角」详情壳：breadcrumbs/stats/cover 渐变视觉（企业/品牌详情类页面用）。
+// 与 components/shared/alliance-detail-shell.tsx（「门户视角」壳：notFound/loading/URL Tab 同步）并存，
+// 两者 props 形态刻意不同（视觉 vs 行为），改动前先确认目标页面组归属，避免双向漂移。
+
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'

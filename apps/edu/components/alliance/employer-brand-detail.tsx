@@ -29,6 +29,7 @@ import {
 import { Pencil, Plus, Trash2, Loader2, Briefcase, UserRound } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { EnterpriseProfileForm } from '@/components/alliance/enterprise-profile-form'
@@ -604,10 +605,13 @@ function PositionPickerDialog({
   const { data: positions, loading } = useAsync(
     async () => {
       if (!open || !tenantId) return []
-      const res = await portalRequest<{ items: CareerPosition[] }>(
-        '/job/positions?positionType=teaching&limit=200',
+      // 全量分页拉取，避免超过 200 条时引用岗位弹窗内不可达
+      const res = await fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: CareerPosition[] }>(
+          `/job/positions?positionType=teaching&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
       )
-      return res.items || []
+      return res
     },
     {
       deps: [open, tenantId],
@@ -755,8 +759,13 @@ function StudentPickerDialog({
   const { data: students, loading } = useAsync(
     async () => {
       if (!open || !tenantId) return []
-      const res = await portalRequest<{ items: StudentOption[] }>('/users?role=student&limit=200')
-      return res.items || []
+      // 全量分页拉取，避免超过 200 条时引用学生弹窗内不可达
+      const res = await fetchAllPages((page, pageSize) =>
+        portalRequest<{ items: StudentOption[] }>(
+          `/users?role=student&limit=${pageSize}&offset=${page * pageSize}`,
+        ),
+      )
+      return res
     },
     {
       deps: [open, tenantId],

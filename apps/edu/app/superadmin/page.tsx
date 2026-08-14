@@ -91,6 +91,16 @@ import {
 const TENANTS_API = '/admin/tenants'
 const PAGE_SIZE = 20
 
+// 解析 JWT payload（仅本地读取角色/字段做展示与守卫，签名校验由后端完成）
+function parseJwtPayload(token: string): Record<string, any> {
+  return JSON.parse(
+    atob(
+      token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/') +
+        '==='.slice((token.split('.')[1].length + 3) % 4),
+    ),
+  )
+}
+
 interface AdminTenant {
   id: string
   name: string
@@ -397,12 +407,7 @@ export default function SuperAdminPage() {
       const token = getToken('saas')
       if (token) {
         try {
-          const payload = JSON.parse(
-            atob(
-              token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/') +
-                '==='.slice((token.split('.')[1].length + 3) % 4),
-            ),
-          )
+          const payload = parseJwtPayload(token)
           if (payload.roleCodes?.includes('platform_admin')) {
             setAuthenticated(true)
             setAuthUser(payload.username || t('管理员'))
@@ -439,12 +444,7 @@ export default function SuperAdminPage() {
           ? { captchaId: captchaAnswer.id, captchaCode: captchaAnswer.code }
           : {}),
       })
-      const payload = JSON.parse(
-        atob(
-          data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/') +
-            '==='.slice((data.token.split('.')[1].length + 3) % 4),
-        ),
-      )
+      const payload = parseJwtPayload(data.token)
       if (!payload.roleCodes?.includes('platform_admin')) {
         throw new Error(t('当前账号不是平台管理员，无权限访问'))
       }
