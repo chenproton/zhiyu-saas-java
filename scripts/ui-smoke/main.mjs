@@ -6,7 +6,7 @@ import { chromium } from 'playwright'
 import { execFileSync } from 'child_process'
 import path from 'path'
 import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
-import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES } from './routes.mjs'
+import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES, BUILTIN_CLEANUP_APIS } from './routes.mjs'
 import { walkRoute, tokenKeyForRole } from './clicker.mjs'
 import { cleanupSmokeData } from './forms.mjs'
 import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, isTransientError, printSummary, writeReport } from './report.mjs'
@@ -275,6 +275,9 @@ function buildCleanupSpecs(cfg) {
   const byBase = new Map()
   for (const spec of Object.values(BUILTIN_DYNAMIC_ROUTES)) {
     const base = spec.api.split('?')[0]
+    if (!byBase.has(base)) byBase.set(base, { list: `${base}?limit=100`, del: `${base}/{id}`, fields: ['name', 'title'] })
+  }
+  for (const base of BUILTIN_CLEANUP_APIS) {
     if (!byBase.has(base)) byBase.set(base, { list: `${base}?limit=100`, del: `${base}/{id}`, fields: ['name', 'title'] })
   }
   for (const extra of cfg.cleanupApis || []) byBase.set(extra.list.split('?')[0], extra)

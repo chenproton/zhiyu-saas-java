@@ -248,4 +248,16 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
   return routes.filter(r => affected.has(r))
 }
 
-export { BUILTIN_DYNAMIC_ROUTES }
+// 仅清理、不巡检的内置实体 API：表单测试可能在这些实体上创建 SMOKE_ 数据，但无对应动态路由页，
+// 故不纳入 BUILTIN_DYNAMIC_ROUTES（避免巡检范围扩大），只注册到清理规格。
+const BUILTIN_CLEANUP_APIS = [
+  '/api/v1/library/tags',
+  '/api/v1/job/abilities',
+  '/api/v1/job/certificate-library',
+  '/api/v1/evaluation/random-draw-questions',
+  '/api/v1/affairs/workflows',
+  '/api/v1/partner/experts',
+  '/api/v1/majors',
+]
+
+export { BUILTIN_DYNAMIC_ROUTES, BUILTIN_CLEANUP_APIS }
