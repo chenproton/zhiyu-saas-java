@@ -123,7 +123,9 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
         })
         toast({
           title: t('创建成功'),
-          description: t('初始密码：{pwd}', { pwd: created.newPassword ?? '' }),
+          description: t('初始密码：{pwd}（请管理员登录后立即修改）', {
+            pwd: created.newPassword ?? '',
+          }),
         })
       }
       setInline(null)

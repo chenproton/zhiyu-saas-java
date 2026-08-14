@@ -25,6 +25,7 @@ import {
   allianceProjectApi,
 } from '@/lib/api'
 import { syncAgreementProjectLinks } from '@/lib/alliance-links'
+import { formatYMD } from '@/lib/format-utils'
 import { useToast, EmptyState, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
@@ -213,7 +214,7 @@ export default function AllianceProjectDetailPage() {
   /** 里程碑完成开关：点击立即保存；切为完成时完成日期自动填当天，切回未完成时清空 */
   const toggleMilestone = async (m: AllianceProjectMilestone) => {
     const next = !m.isCompleted
-    const today = new Date().toISOString().slice(0, 10)
+    const today = formatYMD(new Date())
     setTogglingMilestone(m.id)
     try {
       await portalRequest(`/alliance/projects/${id}/milestones/${m.id}`, {
@@ -251,6 +252,9 @@ export default function AllianceProjectDetailPage() {
   // 项目协议（双向合并：协议.project_ids 或 项目.agreement_ids 任一关联即展示）
   const linkedAgreements = allAgreements.filter(
     (a) => (a.projectIds ?? []).includes(id) || (project?.agreementIds ?? []).includes(a.id),
+  )
+  const linkableAgreements = allAgreements.filter(
+    (a) => !(a.projectIds ?? []).includes(id) && !(project?.agreementIds ?? []).includes(a.id),
   )
   const linkedAchievements = achievements.filter((a) => (a.projectIds ?? []).includes(id))
 
@@ -638,7 +642,7 @@ export default function AllianceProjectDetailPage() {
             className="grid gap-4"
           >
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
-            {allAgreements.map((a) => (
+            {linkableAgreements.map((a) => (
               <label
                 key={a.id}
                 className="flex items-center gap-2 p-2 rounded border hover:bg-muted/40 cursor-pointer"
@@ -659,7 +663,7 @@ export default function AllianceProjectDetailPage() {
                 </div>
               </label>
             ))}
-            {allAgreements.length === 0 && (
+            {linkableAgreements.length === 0 && (
               <EmptyState title={t('暂无可关联的协议')} className="py-6" />
             )}
           </div>

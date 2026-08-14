@@ -87,7 +87,20 @@ interface Tenant {
   createdAt: string
 }
 
+// 租户基础类型未覆盖的扩展字段（学校资料），本地显式声明避免 as any
+interface TenantExtras {
+  shortName?: string
+  schoolType?: string
+  province?: string
+  city?: string
+  website?: string
+  contactPhone?: string
+  educationLevel?: string
+  educationNature?: string
+}
+
 function mapBackendTenant(t: BackendTenant): Tenant {
+  const ext = t as BackendTenant & TenantExtras
   return {
     id: t.id,
     code: t.code,
@@ -99,14 +112,14 @@ function mapBackendTenant(t: BackendTenant): Tenant {
     address: t.address || '-',
     enterpriseCode: t.enterpriseCode || '-',
     description: t.description || '-',
-    shortName: (t as any).shortName || '-',
-    schoolType: (t as any).schoolType || '-',
-    province: (t as any).province || '-',
-    city: (t as any).city || '-',
-    website: (t as any).website || '-',
-    contactPhone: (t as any).contactPhone || '-',
-    educationLevel: (t as any).educationLevel || '-',
-    educationNature: (t as any).educationNature || '-',
+    shortName: ext.shortName || '-',
+    schoolType: ext.schoolType || '-',
+    province: ext.province || '-',
+    city: ext.city || '-',
+    website: ext.website || '-',
+    contactPhone: ext.contactPhone || '-',
+    educationLevel: ext.educationLevel || '-',
+    educationNature: ext.educationNature || '-',
     status: t.status,
     createdAt: t.createdAt,
   }
@@ -161,6 +174,8 @@ export default function TenantPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 编辑弹窗内独立错误态，避免保存失败残留到主列表错误横幅
+  const [dialogError, setDialogError] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -318,11 +333,11 @@ export default function TenantPage() {
 
   const handleUpdate = async () => {
     if (!formData.name || !tenant) {
-      setError(t('请填写学校名称'))
+      setDialogError(t('请填写学校名称'))
       return
     }
     setSubmitting(true)
-    setError(null)
+    setDialogError(null)
     try {
       await portalRequest(`/tenants/${tenant.id}`, {
         method: 'PUT',
@@ -353,7 +368,7 @@ export default function TenantPage() {
       toast({ title: t('保存成功') })
       await fetchTenant()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('更新失败'))
+      setDialogError(err instanceof Error ? err.message : t('更新失败'))
     } finally {
       setSubmitting(false)
     }
@@ -399,6 +414,7 @@ export default function TenantPage() {
             size="sm"
             onClick={() => {
               loadTenantToForm(tenant)
+              setDialogError(null)
               setIsEditDialogOpen(true)
             }}
           >
@@ -741,9 +757,9 @@ export default function TenantPage() {
               </div>
             </div>
           </div>
-          {error && (
+          {dialogError && (
             <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive mt-2">
-              {error}
+              {dialogError}
             </div>
           )}
           <FormDialogFooter

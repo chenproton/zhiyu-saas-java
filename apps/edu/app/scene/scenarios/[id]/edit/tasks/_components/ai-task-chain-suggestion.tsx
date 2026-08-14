@@ -304,7 +304,15 @@ export function AiTaskChainSuggestion({
                       <div className="absolute top-2 left-2">
                         <Checkbox
                           checked={selected.has(i)}
-                          onCheckedChange={() => {}}
+                          // 复选框自身可切换选中（键盘可用），stopPropagation 避免与卡片点击重复触发
+                          onCheckedChange={() => {
+                            setSelected((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(i)) next.delete(i)
+                              else next.add(i)
+                              return next
+                            })
+                          }}
                           onClick={(e: React.MouseEvent) => e.stopPropagation()}
                         />
                       </div>

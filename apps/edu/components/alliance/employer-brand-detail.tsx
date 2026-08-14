@@ -609,7 +609,14 @@ function PositionPickerDialog({
       )
       return res.items || []
     },
-    { deps: [open, tenantId], onError: () => true },
+    {
+      deps: [open, tenantId],
+      // 加载失败时提示，而不是静默展示空态误导为"没有可引用岗位"
+      onError: (err) => {
+        toast({ variant: 'destructive', title: t('加载失败'), description: err.message })
+        return true
+      },
+    },
   )
 
   const referable = useMemo(() => {
@@ -751,7 +758,14 @@ function StudentPickerDialog({
       const res = await portalRequest<{ items: StudentOption[] }>('/users?role=student&limit=200')
       return res.items || []
     },
-    { deps: [open, tenantId], onError: () => true },
+    {
+      deps: [open, tenantId],
+      // 加载失败时提示，而不是静默展示空态误导为"没有可引用学生"
+      onError: (err) => {
+        toast({ variant: 'destructive', title: t('加载失败'), description: err.message })
+        return true
+      },
+    },
   )
 
   const referable = useMemo(() => {

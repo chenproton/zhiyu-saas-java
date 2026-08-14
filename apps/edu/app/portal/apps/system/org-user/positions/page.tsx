@@ -235,7 +235,12 @@ export default function PositionsPage() {
           <DialogHeader>
             <DialogTitle>{t('关联用户 - {name}', { name: selectedPosition?.name ?? '' })}</DialogTitle>
             <DialogDescription>
-              {t('共 {n} 名用户关联此职位', { n: titleUsers.length })}
+              {t('共 {n} 名用户关联此职位', {
+                n: selectedPosition?.userCount ?? titleUsers.length,
+              })}
+              {selectedPosition && (selectedPosition.userCount ?? 0) > titleUsers.length
+                ? t('（仅展示前 {n} 名）', { n: titleUsers.length })
+                : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

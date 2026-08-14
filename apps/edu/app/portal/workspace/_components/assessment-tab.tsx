@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Award, Eye, FileCheck, GraduationCap } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -86,16 +86,21 @@ export function AssessmentTab() {
     }
   }, [])
 
+  // 请求序号守卫：连续点击不同行时丢弃过期响应，避免旧明细覆盖新选择
+  const detailSeqRef = useRef(0)
   const openDetail = async (id: string) => {
+    const seq = ++detailSeqRef.current
     setDetailOpen(true)
     setDetailLoading(true)
     setDetail(null)
     try {
-      setDetail(await jobAbilityResultApi.get(id))
+      const res = await jobAbilityResultApi.get(id)
+      if (seq !== detailSeqRef.current) return
+      setDetail(res)
     } catch {
       // 明细加载失败保持弹窗打开，展示兜底文案
     } finally {
-      setDetailLoading(false)
+      if (seq === detailSeqRef.current) setDetailLoading(false)
     }
   }
 

@@ -244,11 +244,7 @@ export default function TasksEditPage() {
     tRef.current = t
   })
 
-  // 离开编辑页时清理模块级缓存，避免跨场景污染
-  useEffect(() => {
-    return () => {
-    }
-  }, [])
+
 
   // Load core data on mount (其余数据集按卡片/对话框首次激活时懒加载)
   useEffect(() => {
@@ -752,7 +748,6 @@ export default function TasksEditPage() {
     setIsCloning(true)
     try {
       const selected = allTasks.filter((t) => selectedClone.includes(t.id))
-      const count = tasks.length + selected.length
 
       const newTasks = selected.map((t, i) => ({
         ...t,
@@ -767,6 +762,10 @@ export default function TasksEditPage() {
         selected.map((t) => taskEvaluationApi.listMethods(t.id).catch(() => ({ methods: [] }))),
       )
 
+      // 权重：保留既有任务已配置的权重，仅在新克隆任务间均分剩余权重（对齐 handleAddTask 口径，总权重不超 100）
+      const usedWeight = Object.values(taskStates).reduce((sum, s) => sum + (s.weight || 0), 0)
+      const remainingWeight = Math.max(0, 100 - usedWeight)
+
       const newStates: Record<string, TaskState> = {}
       selected.forEach((t, i) => {
         const methods = methodsResults[i]?.methods || []
@@ -777,7 +776,10 @@ export default function TasksEditPage() {
         if (t.detailedDescription) ts.description = t.detailedDescription
         if (t.descriptionPdf) ts.descriptionPdf = t.descriptionPdf
         ts.weight =
-          count > 0 ? Math.floor(100 / count) + (tasks.length + i < 100 % count ? 1 : 0) : 0
+          selected.length > 0
+            ? Math.floor(remainingWeight / selected.length) +
+              (i < remainingWeight % selected.length ? 1 : 0)
+            : 0
         newStates[newTasks[i].id] = ts
       })
 
@@ -1402,7 +1404,15 @@ export default function TasksEditPage() {
                     scenarioId,
                     reordered.map((t) => t.id),
                   )
-                  .catch((err) => reportError(err, { source: '保存任务排序' }))
+                  .catch((err) => {
+                    reportError(err, { source: '保存任务排序' })
+                    // 排序保存失败时提示用户，避免 UI 顺序与后端不一致时无感知
+                    toast({
+                      variant: 'destructive',
+                      title: t('排序保存失败'),
+                      description: err instanceof Error ? err.message : undefined,
+                    })
+                  })
               }}
               className={cn(
                 'flex items-center gap-3 p-4 bg-white rounded-xl border shadow-sm hover:shadow-md hover:border-primary/30 transition-all group',
@@ -1741,7 +1751,18 @@ export default function TasksEditPage() {
       <WeightConfigDialog
         open={isWeightConfigOpen}
         onOpenChange={(v) => {
-          if (!v) persistWeights(tasks, taskStates)
+          if (!v) {
+            // await 持久化结果，失败数 >0 时提示用户重试
+            void persistWeights(tasks, taskStates).then((failed) => {
+              if (failed > 0) {
+                toast({
+                  variant: 'destructive',
+                  title: t('权重保存失败'),
+                  description: t('{count} 个任务权重保存失败，请重试', { count: failed }),
+                })
+              }
+            })
+          }
           setIsWeightConfigOpen(v)
         }}
         tasks={tasks}
@@ -1974,9 +1995,11 @@ function EditCardDialog({
         const p = res.task
         if (!p) return
         const skipped: string[] = []
-        if (p.name.trim()) writeField('name', { name: p.name.trim() })
+        // AI 返回缺字段时用空串兜底，避免 .trim() 抛 TypeError 中断写入管线
+        if ((p.name || '').trim()) writeField('name', { name: (p.name || '').trim() })
         else skipped.push(AI_FIELD_LABELS.name)
-        if (p.background.trim()) writeField('background', { background: p.background.trim() })
+        if ((p.background || '').trim())
+          writeField('background', { background: (p.background || '').trim() })
         else skipped.push(AI_FIELD_LABELS.background)
         if (p.difficulty >= 1 && p.difficulty <= 5) writeField('difficulty', { difficulty: p.difficulty })
         else skipped.push(AI_FIELD_LABELS.difficulty)
@@ -2066,12 +2089,13 @@ function EditCardDialog({
           apply: (res) => {
             const p = res.task
             if (!p) return
-            if (target === 'name' && p.name.trim()) {
-              writeField('name', { name: p.name.trim() })
+            // AI 返回缺字段时用空串兜底，避免 .trim() 抛 TypeError 中断写入管线
+            if (target === 'name' && (p.name || '').trim()) {
+              writeField('name', { name: (p.name || '').trim() })
               return
             }
-            if (target === 'background' && p.background.trim()) {
-              writeField('background', { background: p.background.trim() })
+            if (target === 'background' && (p.background || '').trim()) {
+              writeField('background', { background: (p.background || '').trim() })
               return
             }
             if (target === 'difficulty' && p.difficulty >= 1 && p.difficulty <= 5) {
@@ -2223,14 +2247,6 @@ function EditCardDialog({
   const [selectedAbilityForDetail, setSelectedAbilityForDetail] = useState<string | null>(null)
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
   const [isSavingCard, setIsSavingCard] = useState(false)
-
-  // For random draw custom questions (现场问答题)
-
-  // For resources search & upload
-
-  // For question bank config
-
-  // For assessment config
 
   // 评价标准表单「保存」：把当前方法的评价标准立即落库到当前任务×当前测评方式
   const handlePersistStandard = async (

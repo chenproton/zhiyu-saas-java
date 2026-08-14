@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Trash2 } from 'lucide-react'
 import { portalUserRelationApi } from '@/lib/api'
-import { useToast, useAsync } from '@zhiyu/ui'
+import { useToast, useAsync, useDebouncedValue } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { UserSelector } from '@/components/shared/user-selector'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -49,6 +49,8 @@ export default function RelationsPage() {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
   const [searchText, setSearchText] = useState('')
+  // 搜索防抖，避免每次按键都触发一次列表请求
+  const debouncedSearch = useDebouncedValue(searchText, 300)
 
   const {
     data: relations,
@@ -57,10 +59,10 @@ export default function RelationsPage() {
     refresh,
   } = useAsync(
     async () => {
-      const res = await portalUserRelationApi.list({ search: searchText || undefined })
+      const res = await portalUserRelationApi.list({ search: debouncedSearch || undefined })
       return res.items as RelationItem[]
     },
-    { deps: [searchText], onError: () => true },
+    { deps: [debouncedSearch], onError: () => true },
   )
 
   const handleCreate = async (item: RelationItem) => {

@@ -246,6 +246,8 @@ export function taskStateToEvalRuleConfig(state: TaskState): EvalRuleConfig {
     gradeMapping: state.gradeMapping,
     methodResourceConfigs: normalizeMap(state.methodResourceConfigs || {}),
     reviewSteps: (state.reviewSteps || []).map((rs: any, i: number) => ({
+      // 携带原始 id，避免「打开评价规则编辑器→保存」往返后 reviewStep id 被重新生成
+      ...(rs.id ? { id: rs.id } : {}),
       label: rs.label,
       description: rs.desc || null,
       enabled: rs.enabled,

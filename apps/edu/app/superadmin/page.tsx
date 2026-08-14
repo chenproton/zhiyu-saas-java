@@ -298,7 +298,11 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (!authenticated) return
     ;(async () => {
-      setThemeColor(await fetchThemeColor())
+      try {
+        setThemeColor(await fetchThemeColor())
+      } catch {
+        // 主题色拉取失败保持默认色，不阻断页面加载
+      }
     })()
   }, [authenticated])
 
@@ -335,7 +339,12 @@ export default function SuperAdminPage() {
   const openTenantTheme = async (ten: AdminTenant) => {
     setTenantThemeTarget(ten)
     setTenantThemeSaving(false)
-    setTenantThemeColor(await fetchThemeColor(ten.id))
+    try {
+      setTenantThemeColor(await fetchThemeColor(ten.id))
+    } catch {
+      // 租户主题色拉取失败回退默认色
+      setTenantThemeColor(DEFAULT_BRAND_COLOR)
+    }
   }
 
   const saveTenantTheme = async (ten: AdminTenant, color: string) => {
@@ -869,20 +878,29 @@ export default function SuperAdminPage() {
     await loadEnterpriseProfile(ten)
   }
 
-  const saveEnterpriseProfile = async (ten: AdminTenant) => {
+  const saveEnterpriseProfile = async (
+    ten: AdminTenant,
+    enablePublicOverride?: boolean,
+  ): Promise<boolean> => {
     try {
       await adminFetch(`/${ten.id}/enterprise`, {
         method: 'PUT',
-        body: JSON.stringify(profileForm),
+        body: JSON.stringify(
+          enablePublicOverride !== undefined
+            ? { ...profileForm, enablePublic: enablePublicOverride }
+            : profileForm,
+        ),
       })
       toast({ title: t('企业信息已更新') })
       await loadEnterpriseProfile(ten)
+      return true
     } catch (err) {
       toast({
         variant: 'destructive',
         title: t('保存失败'),
         description: err instanceof Error ? err.message : t('未知错误'),
       })
+      return false
     }
   }
 
@@ -1660,11 +1678,16 @@ export default function SuperAdminPage() {
                   <span className="text-muted-foreground">{t('前台展示开关')}：</span>
                   <Switch
                     checked={viewProfile?.enablePublic || false}
-                    onCheckedChange={(v) => {
+                    onCheckedChange={async (v) => {
                       if (viewTarget && viewProfile) {
                         setProfileForm((p) => ({ ...p, enablePublic: v }))
-                        void saveEnterpriseProfile(viewTarget)
-                        setViewProfile((p) => (p ? { ...p, enablePublic: v } : p))
+                        // 先落库成功再更新展示状态；失败时回滚到保存前值，避免 UI 与后端不一致
+                        const ok = await saveEnterpriseProfile(viewTarget, v)
+                        if (!ok) {
+                          setViewProfile((p) =>
+                            p ? { ...p, enablePublic: viewProfile.enablePublic } : p,
+                          )
+                        }
                       }
                     }}
                   />

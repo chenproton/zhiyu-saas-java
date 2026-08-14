@@ -40,11 +40,12 @@ export default function IndustriesPage() {
   const industries = useMemo(() => data ?? [], [data])
 
   const parentMap = useMemo(() => {
+    // 先建 id→industry 索引再一次性关联，避免对每个子节点 O(n²) 查找
+    const byId = new Map(industries.map((i) => [i.id, i]))
     const map = new Map<string, string>()
     for (const ind of industries) {
       if (ind.parentId) {
-        const parent = industries.find((i) => i.id === ind.parentId)
-        map.set(ind.parentId, parent?.name ?? ind.parentId)
+        map.set(ind.parentId, byId.get(ind.parentId)?.name ?? ind.parentId)
       }
     }
     return map
@@ -191,7 +192,10 @@ export default function IndustriesPage() {
           toast({ variant: 'destructive', title: t('保存失败'), description: t('未获取到租户信息') })
           return
         }
-        if (!item.code.trim() || !item.name.trim()) return
+        if (!item.code.trim() || !item.name.trim()) {
+          toast({ variant: 'destructive', title: t('保存失败'), description: t('请填写行业代码与名称') })
+          return
+        }
         if (isEdit) {
           await industryApi.update(item.id, {
             code: item.code.trim(),

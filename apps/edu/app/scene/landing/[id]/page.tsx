@@ -95,6 +95,13 @@ const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
   技能: ['#10b981', '#34d399'],
 }
 
+const TASK_RESOURCE_TYPE_COLORS: Record<string, string> = {
+  document: 'bg-primary/5 text-primary border-primary/10',
+  video: 'bg-amber-50 text-amber-600 border-amber-100',
+  link: 'bg-purple-50 text-purple-600 border-purple-100',
+  file: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+}
+
 function AbilitiesTab({
   tasks,
   abilityMap,
@@ -728,12 +735,6 @@ export default function SceneDetailPage() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {resources.map((r) => {
-                          const typeColors: Record<string, string> = {
-                            document: 'bg-primary/5 text-primary border-primary/10',
-                            video: 'bg-amber-50 text-amber-600 border-amber-100',
-                            link: 'bg-purple-50 text-purple-600 border-purple-100',
-                            file: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-                          }
                           return (
                             <div
                               key={r.id}
@@ -746,7 +747,7 @@ export default function SceneDetailPage() {
                                   </div>
                                   <div className="flex items-center gap-2 text-xs text-slate-400">
                                     <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${TASK_RESOURCE_TYPE_COLORS[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
                                     >
                                       {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                                     </span>

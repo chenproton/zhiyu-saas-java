@@ -270,6 +270,14 @@ export default function AllianceSchoolPage() {
           </Button>
         )}
       </div>
+      {!tenant && error ? (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-sm text-destructive flex items-center justify-between gap-4">
+          <span>{error}</span>
+          <Button size="sm" variant="outline" onClick={() => fetchTenant()}>
+            {t('重试')}
+          </Button>
+        </div>
+      ) : null}
       {tenant && (
         <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
           <div className="px-6 py-5 border-b border-gray-100">

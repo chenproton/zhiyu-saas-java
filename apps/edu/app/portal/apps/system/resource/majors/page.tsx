@@ -136,7 +136,10 @@ export default function MajorsPage() {
           toast({ variant: 'destructive', title: t('保存失败'), description: t('未获取到租户信息') })
           return
         }
-        if (!item.code.trim() || !item.name.trim()) return
+        if (!item.code.trim() || !item.name.trim()) {
+          toast({ variant: 'destructive', title: t('保存失败'), description: t('请填写专业代码与名称') })
+          return
+        }
         if (isEdit) {
           await majorApi.update(item.id, {
             code: item.code.trim(),

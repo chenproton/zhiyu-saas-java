@@ -154,7 +154,7 @@ export default function AllianceEnterpriseDetailPage() {
       for (const aid of linkSelected) {
         const agreement = allAgreements.find((a) => a.id === aid)
         if (!agreement) continue
-        const ids = [...(agreement.enterpriseIds || []), id]
+        const ids = [...new Set([...(agreement.enterpriseIds || []), id])]
         await allianceAgreementApi.update(aid, { ...agreement, enterpriseIds: ids })
       }
       toast({ title: t('已关联 {count} 份协议', { count: linkSelected.length }) })

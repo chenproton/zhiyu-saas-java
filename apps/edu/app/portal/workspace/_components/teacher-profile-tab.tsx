@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Lock, Mail, Phone, Shield, Smartphone, User } from 'lucide-react'
+import { Bell, Shield, User } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Switch } from '@/components/ui/switch'
@@ -107,7 +107,8 @@ export function TeacherProfileTab() {
               </div>
               <div className="space-y-3">
                 {teacherSecurityItems.map((item, index) => {
-                  const Icon = [Lock, Smartphone, Mail, Phone][index]
+                  // 图标由数据条目自带（item.icon），不再依赖数组下标推导
+                  const Icon = item.icon
                   return (
                     <div
                       key={index}
