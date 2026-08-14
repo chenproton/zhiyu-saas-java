@@ -541,6 +541,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-true}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
+      echo "KK_MEDIA_CONVERT_DISABLE=${KK_MEDIA_CONVERT_DISABLE:-true}"  # true：允许远程视频(mov/avi/mkv 等)转码预览，false 会拒绝
       echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
       echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
@@ -558,6 +559,15 @@ set -a; source "$ENV_FILE"; set +a
 if ! grep -q "^ENABLE_KKFILEVIEW=" "$ENV_FILE" 2>/dev/null; then
   update_env_var "$ENV_FILE" "ENABLE_KKFILEVIEW" "true"
   ENABLE_KKFILEVIEW=true
+fi
+
+# 旧 .env 若未配置 KK_MEDIA_CONVERT_DISABLE，补写默认 true：
+# fangzhengjin/kkfileview 镜像在 media.convert.disable=false（镜像默认值）时，
+# 会直接拒绝远程 http(s) 的 mov/avi/mkv 等 MEDIACONVERT 类型文件，
+# 预览返回"系统还不支持该格式文件的在线预览"；true 才允许 ffmpeg 转码预览。
+if ! grep -q "^KK_MEDIA_CONVERT_DISABLE=" "$ENV_FILE" 2>/dev/null; then
+  update_env_var "$ENV_FILE" "KK_MEDIA_CONVERT_DISABLE" "true"
+  KK_MEDIA_CONVERT_DISABLE=true
 fi
 
 # 根据 .env 启用 docker compose profile，兼容 docker compose 与 docker-compose
@@ -648,7 +658,7 @@ DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
 MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/${DB_NAME}?sslmode=disable"
-export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET
+export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET KK_MEDIA_CONVERT_DISABLE
 
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
@@ -1039,14 +1049,18 @@ if ! $OK; then
   rollback_deploy "健康检查未通过"
 fi
 
-# 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）
+# 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）。
+# 首次启动需初始化 LibreOffice 与加载 javacv 转码库，低配机器可能超过 2 分钟，等待上限放宽到 3 分钟
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
   KK_READY=false
-  for i in $(seq 1 60); do
+  for i in $(seq 1 90); do
     wget -qO- http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; KK_READY=true; break; }
     sleep 2
   done
-  $KK_READY || warn "kkfileview 120 秒未就绪，文档预览功能可能不可用（可稍后 docker compose logs kkfileview 排查）"
+  if ! $KK_READY; then
+    warn "kkfileview 180 秒未就绪，文档/视频预览功能可能不可用（可稍后 docker compose logs kkfileview 排查）"
+    compose logs kkfileview --tail 30 2>/dev/null | tail -15 || true
+  fi
 fi
 
 compose ps
