@@ -3,6 +3,7 @@
 import { useEffect, useState, memo } from 'react'
 import { FileText } from 'lucide-react'
 import { DEFAULT_SUPPORTED_EXTENSIONS } from '@file-viewer/core'
+import { setDefaultFileViewerAssetBaseUrl } from '@file-viewer/core/assets'
 import { useT } from '@/lib/i18n/locale-provider'
 
 // flyfish-dev/file-viewer：浏览器原生（无服务端转换）的文件预览渲染器。
@@ -27,6 +28,10 @@ function FileViewerPreviewInner({ url, name }: FileViewerPreviewProps) {
 
   useEffect(() => {
     let cancelled = false
+    // 所有 renderer 的运行时资产（archive/model/typst/pdf 的 worker/wasm/字体）已由
+    // prebuild 脚本复制到 public 的版本化目录（见 scripts/copy-file-viewer-assets.mjs），
+    // 统一把资产 base 设为站点根，让默认相对路径（vendor/…、wasm/…）解析到正确位置。
+    setDefaultFileViewerAssetBaseUrl('/')
     // preset-all 必须先于 FileViewer 挂载加载，注册全部渲染器
     Promise.all([import('@file-viewer/preset-all'), import('@file-viewer/react')])
       .then(([, reactMod]) => {
