@@ -45,50 +45,6 @@ func (s *NodeEvaluationResultStore) ListConfig() ListQueryConfig[domain.NodeEval
 	}
 }
 
-// Get 查询单个节点测评结果。
-func (s *NodeEvaluationResultStore) Get(ctx context.Context, id string) (*domain.NodeEvaluationResult, error) {
-	var r domain.NodeEvaluationResult
-	var totalScore *float64
-	var comment *string
-	var gradedAt *time.Time
-	var gradedBy *string
-	var evaluatorID, evaluatorType, version pgtype.Text
-	err := s.q.QueryRow(ctx, `
-		SELECT id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
-			total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions,
-			comment, graded_at, graded_by, version
-		FROM node_evaluation_results WHERE id = $1
-	`, id).Scan(
-		&r.ID, &r.NodeID, &r.MethodKey, &r.EvaluateeID, &evaluatorID, &evaluatorType, &r.Status,
-		&totalScore, &r.MaxScore, &r.EvalPointScores, &r.ObjectiveAnswers, &r.SubjectiveContent, &r.DrawnQuestions,
-		&comment, &gradedAt, &gradedBy, &version,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	r.EvaluatorID = evaluatorID.String
-	r.EvaluatorType = evaluatorType.String
-	if version.Valid {
-		r.Version = &version.String
-	}
-	if totalScore != nil {
-		r.TotalScore = totalScore
-	}
-	if comment != nil {
-		r.Comment = comment
-	}
-	if gradedAt != nil {
-		r.GradedAt = gradedAt
-	}
-	if gradedBy != nil {
-		r.GradedBy = gradedBy
-	}
-	return &r, nil
-}
-
 // Submit 提交节点测评结果（幂等 upsert）。
 // 提交固化（文档 5.3）：version 服务端盖章——node_id → system_course_nodes.course_id → courses
 // 最新快照版本（expectedVersion 快照存在则采纳，否则回退最新，13.B2 降级语义；快照缺档回退 live version）。
@@ -138,7 +94,7 @@ func (s *NodeEvaluationResultStore) Submit(ctx context.Context, p *NodeEvaluatio
 	if err != nil {
 		return nil, err
 	}
-	return s.Get(ctx, id)
+	return s.GetByID(ctx, p.TenantID, id)
 }
 
 // GetByID 按租户+ID 查询单条节点测评结果。

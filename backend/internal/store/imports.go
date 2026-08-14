@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -34,9 +35,14 @@ func FindOrCreateKnowledgePointsByNames(ctx context.Context, q Queryer, tenantID
 		if codeErr != nil {
 			code = GenerateEntityCode("KP")
 		}
-		_, _ = q.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, id, tenantID, name, code)
+		_, execErr := q.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, id, tenantID, name, code)
+		if execErr != nil {
+			slog.Warn("导入知识点创建失败", "error", execErr, "name", name)
+		}
 		var existing string
-		_ = q.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		if scanErr := q.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing); scanErr != nil {
+			slog.Warn("导入知识点回查失败", "error", scanErr, "name", name)
+		}
 		if existing != "" {
 			ids = append(ids, existing)
 		} else {
@@ -65,10 +71,15 @@ func FindOrCreateResourcesByNames(ctx context.Context, q Queryer, tenantID strin
 			continue
 		}
 		id = uuid.NewString()
-		_, _ = q.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,$4::resource_type,$5) ON CONFLICT DO NOTHING`,
+		_, execErr := q.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,$4::resource_type,$5) ON CONFLICT DO NOTHING`,
 			id, tenantID, name, resourceType, userID)
+		if execErr != nil {
+			slog.Warn("导入资源创建失败", "error", execErr, "name", name)
+		}
 		var existing string
-		_ = q.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		if scanErr := q.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing); scanErr != nil {
+			slog.Warn("导入资源回查失败", "error", scanErr, "name", name)
+		}
 		if existing != "" {
 			ids = append(ids, existing)
 		} else {
