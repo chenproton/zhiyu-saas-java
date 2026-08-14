@@ -6274,6 +6274,7 @@
 | 053-054 遗留 | （并入 fix-batch-2） | hybrid 能力点池改 fetchAllPages；其余已由大修复与 051-062 批次修复（拖拽成环 wouldCreateCycle、hybrid evalData 全字段回写、save-utils 可清空+NaN 兜底、测试数据正式类型、临时 ID 统一判定、知识点克隆池外 knowledgePointNames 兜底、课程缓存击穿参数与死代码/死 prop 清理、保存后 idMapping 重映射）；模块序列化 any 类型、learn 页 limit 1000、hover 动态类属评估后不改 |
 | 037-038 遗留 | （并入 fix-batch-3） | scenario_clone 5 处行扫描吞错补 Warn、question_banks Create 补 beginner nil 校验、resource_codes Get 映射 ErrNotFound+删残留注释；其余已由大修复与 033-042/029-030 批次修复（Bind afterBind 上抛、SaveFull 冲突回读实际 id、LIKE 通配符转义、Prepare 回查 Warn、random_draw/recommends ErrNotFound、绑定表/列白名单、roles Assign 影响行校验） |
 | 103 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（EmptyDescription 类型改 div、FieldTitle data-slot 改 field-title、use-import-flow entityLabel 用于错误提示、ui vitest alias 改通用 @ 映射）；Spinner 收敛与 Radix 动画串两处复用候选评估后不改 |
+| 041-042 遗留 | （并入 fix-batch-3） | 删除 tags 薄包装 isUniqueViolation、PutCourses 回查错误补 Warn；其余已由大修复与 3f2f3791 修复（workflows Create 回查、user_extension_fields 租户过滤、title_ids COALESCE、任务测评扫描上抛、角色重绑事务化、租户 COALESCE 一致、UsersExist 去重、管理员角色绑定影响行校验、teaching_plans rows.Err、AttachUserRoles 日志）；student_portraits/tenant_admins ResetPassword/users 写操作等无租户方法 handler 已校验、明文初始密码属产品设计、先 Get 后 Update 双往返模式等评估后不改 |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6334,6 +6335,10 @@
 - position_clone/scenario_clone 克隆骨架与 FetchPosition 重复、question_banks fetch 三份扫描体（事务内低频克隆与 20 列扫描重构，见 037-038）
 - questions BatchCreate GenerateEntityCode 无重试（低概率碰撞、批量导入低频，见 037-038）
 - random_draw/resource_library Delete 的 withTxStore 无 beginner nil 校验（生产恒为 Store，测试 fake 未触发，见 037-038）
+- student_portraits GetPortraitByUserPosition/GetArchive、tenant_admins ResetPassword、users 状态/密码写操作无租户限定（handler 层已先 Get+verifyTenantOwnership 校验，越权不可达，见 041-042）
+- tenant_admins NewPassword 明文回传（一次性初始密码属产品设计，日志不记录响应体，见 041-042）
+- 先 Get 校验→Update→再 Get 返回双往返模式 5+ 处与角色 user_count±1 维护 7 处重复（事务内低频写路径，重构收益低，见 041-042）
+- tenants CreateWithDefaults TOCTOU（超管低频操作，唯一约束兜底，见 041-042）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
