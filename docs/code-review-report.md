@@ -6269,6 +6269,7 @@
 | 095-096 | 无需补修 | 6 项 P2 已由 079-103 批次修复（alliance-dicts 失败不缓存、job-converters 区间单调、format-utils Windows 11 build 判定）；alliance-links 部分同步需后端批量端点、evaluation-rule-store 类型建模、external-links 演示地址默认值属部署配置项，均评估后不改 |
 | 097-098 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（vitest include 覆盖 mobile-access-url/module-serialize 两个漏跑测试 + alias 补全 7 条路径、saveEvaluationMethods 类型收紧 TaskEvaluationMethod[]） |
 | 077-078 遗留 | （并入 fix-batch-2） | auth-provider fetchMe 仅对 401/403 清 token（瞬时错误不再误踢登录）；其余已由 063-078/大修复处理（job-brand 引用岗位并行创建、salaryText 四处置换 formatSalaryRange）；企业信息表单双份/卡片外壳 class 8 处/题库试卷弹窗 180 行同构属复用重构，评估后不改 |
+| 049-050 遗留 | （并入 fix-batch-2） | 评分详情用户反查改 listAll、岗位归档批量删除改 allSettled 汇总；其余已由大修复与 045-050 批次修复（scene-results 序号守卫/TaskMethodTabs 模块级外移、题库批量删/复制 allSettled、头部数量用实时统计、可选 finally 出链、DrawnQuestionCard key 收敛） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6315,6 +6316,8 @@
 - external-links 六平台地址默认回退演示环境（部署需配置 NEXT_PUBLIC_* 环境变量，属部署配置项，见 095-096）
 - navigation-config sideNavItems/userMenuItems、menu-permissions 审批 actions、resource-type-constants 四张并行映射等 4 处复用候选（机械重构，漂移风险低，评估后不改，见 095-096）
 - api-helpers requestWithPlatform/authedFetch 401 逻辑双份、import-export exportByIds、alliance CRUD 工厂、schoolList 等 4 处复用候选（机械重构，漂移风险低，评估后不改，见 097-098）
+- scene-results/[id] EvalPointGradingCard/ScoreRuleGradingCard 约 80 行重复与 job/approvals fetchAllPages 4 处重复（复用重构，评估后不改，见 049-050）
+- job/landing 场景任务 N+1 与 LoginPrompt 双份（需后端批量接口/未达阈值，见 049-050）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
