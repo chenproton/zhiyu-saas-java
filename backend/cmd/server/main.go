@@ -55,7 +55,7 @@ func main() {
 		slog.Warn("IP 归属地查询未启用（IP2REGION_XDB 未配置或加载失败），登录日志地点将为空")
 	}
 
-	r := router.New(database.Pool, cfg.JWTSecret, redisClient, oplogBuffer, geoSearcher, cfg.AISecret)
+	r := router.New(database.Pool, cfg.JWTSecret, cfg.JWTSecretPrevious, redisClient, oplogBuffer, geoSearcher, cfg.AISecret, cfg.AISecretPrevious)
 	defer r.Shutdown()
 
 	sched := scheduler.Start(database.Pool)

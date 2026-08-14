@@ -309,7 +309,7 @@ func GetUserIDByUsername(ctx context.Context, q Queryer, tenantID, username stri
 // UpdateImportUser 覆盖更新导入学生（不改 title_ids；orgNodeID 为路径解析出的节点 ID）。
 func UpdateImportUser(ctx context.Context, q Queryer, id, tenantID, name, passwordHash, status, orgNodeID string) error {
 	_, err := q.Exec(ctx, `
-		UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, updated_at=NOW()
+		UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, password_changed_at=NOW(), updated_at=NOW()
 		WHERE id=$5 AND tenant_id=$6
 	`, name, passwordHash, status, orgNodeID, id, tenantID)
 	return err
@@ -318,7 +318,7 @@ func UpdateImportUser(ctx context.Context, q Queryer, id, tenantID, name, passwo
 // UpdateImportTeacher 覆盖更新导入教师（含 title_ids）。
 func UpdateImportTeacher(ctx context.Context, q Queryer, id, tenantID, name, passwordHash, status string, orgNodeID *string, titleIDs []string) error {
 	_, err := q.Exec(ctx, `
-		UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, title_ids=$5, updated_at=NOW()
+		UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, title_ids=$5, password_changed_at=NOW(), updated_at=NOW()
 		WHERE id=$6 AND tenant_id=$7
 	`, name, passwordHash, status, orgNodeID, titleIDs, id, tenantID)
 	return err

@@ -102,7 +102,7 @@ func (r *Router) Shutdown() {
 	r.handlers.authHandler.Shutdown()
 }
 
-func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer, geo *geo.Searcher, aiSecret string) *Router {
+func New(db *pgxpool.Pool, jwtSecret, jwtSecretPrevious string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer, geo *geo.Searcher, aiSecret, aiSecretPrevious string) *Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -140,9 +140,9 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	// /uploads/{tenantID}/{filename}：混合鉴权——签名 URL（公开，kkFileView 等
 	// 无登录态服务端抓取）或登录态（Authorization 头 / HttpOnly cookie，<img> 直出），
 	// 未登录且无签名返回 401，跨租户返回 403（见 FileHandler.Serve）
-	r.With(authmw.OptionalJWT(jwtSecret)).Get("/uploads/{tenantID}/{filename}", fileHandler.Serve)
+	r.With(authmw.OptionalJWT(jwtSecret, jwtSecretPrevious)).Get("/uploads/{tenantID}/{filename}", fileHandler.Serve)
 
-	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo, aiSecret)
+	h := NewHandlers(db, jwtSecret, fileHandler, redisClient, geo, aiSecret, aiSecretPrevious)
 	metrics.RegisterPool(db)
 
 	// /health 保持进程存活探针（历史兼容），/health/ready 为就绪探针（DB+Redis）
@@ -172,7 +172,7 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	RegisterAPIRoutes(r, jwtSecret, db, h, redisClient, oplogBuffer)
+	RegisterAPIRoutes(r, jwtSecret, jwtSecretPrevious, db, h, redisClient, oplogBuffer)
 
 	return &Router{Handler: r, handlers: h}
 }

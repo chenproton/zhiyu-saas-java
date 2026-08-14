@@ -60,3 +60,33 @@ func TestDecryptInvalidToken(t *testing.T) {
 		t.Fatalf("过短密文应返回 ErrInvalidToken, got: %v", err)
 	}
 }
+
+// TestDecryptWithFallback 验证密钥轮换：新密文用 primary，历史密文用 legacy，两者都可解。
+func TestDecryptWithFallback(t *testing.T) {
+	primary, legacy := "new-secret", "old-secret"
+
+	// 新密文（primary 加密）→ primary 直接解
+	plain := "sk-new-key"
+	tok, err := Encrypt(primary, plain)
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+	if got, err := DecryptWithFallback(tok, primary, legacy); err != nil || got != plain {
+		t.Fatalf("primary 解密失败: got %q err %v", got, err)
+	}
+
+	// 历史密文（legacy 加密）→ fallback 兜底解
+	legacyPlain := "sk-old-key"
+	legacyTok, err := Encrypt(legacy, legacyPlain)
+	if err != nil {
+		t.Fatalf("Encrypt legacy: %v", err)
+	}
+	if got, err := DecryptWithFallback(legacyTok, primary, legacy); err != nil || got != legacyPlain {
+		t.Fatalf("legacy 兜底解密失败: got %q err %v", got, err)
+	}
+
+	// 空密钥跳过
+	if got, err := DecryptWithFallback(tok, "", primary); err != nil || got != plain {
+		t.Fatalf("空密钥应跳过: got %q err %v", got, err)
+	}
+}

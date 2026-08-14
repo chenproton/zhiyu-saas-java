@@ -96,6 +96,7 @@ tenants(租户) ── 行级隔离一切业务数据
 | student_no / work_id | varchar(64) | — | 可 | 学号/工号 |
 | title_ids | uuid[] | '{}' | 否 | 职称 |
 | status | varchar(16) | — | 否 | active/inactive |
+| password_changed_at | timestamptz | now() | 否 | 改密时间戳（160）；改密/重置时刷新，鉴权中间件据此判定旧 token 失效 |
 
 ### 2.3 `organizations` / `org_types` — 组织树
 
@@ -444,5 +445,6 @@ ability_points：`id, tenant_id, domain_id, name, code(varchar(16), 迁移 120 �
 | 157 | resource_creator_retain | 用户删除后保留其创建的资源 |
 | 158 | resource_snapshots | 资源快照与版本固化（快照无 FK，见 resource-snapshot-versioning.md） |
 | 159 | 临时考试状态统一 published | 统一临时考试状态 |
+| 160 | users.password_changed_at | 改密时间戳（改密后旧 token 失效，鉴权中间件逐请求校验） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

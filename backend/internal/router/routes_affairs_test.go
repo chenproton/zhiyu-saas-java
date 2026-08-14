@@ -17,9 +17,9 @@ import (
 // 该端点至少能被 JWT 中间件命中（返回 401），而不是 404。
 func TestAffairsSchedulesRouteRegistered(t *testing.T) {
 	// 仅验证路由注册，无需真实数据库；未携带 token 时应在 JWT 层返回 401。
-	h := router.NewHandlers(nil, "test-secret", &handler.FileHandler{UploadDir: ""}, nil, nil, "test-ai-secret")
+	h := router.NewHandlers(nil, "test-secret", &handler.FileHandler{UploadDir: ""}, nil, nil, "test-ai-secret", "")
 	r := chi.NewRouter()
-	router.RegisterAPIRoutes(r, "test-secret", nil, h, nil, nil)
+	router.RegisterAPIRoutes(r, "test-secret", "", nil, h, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/affairs/schedules", strings.NewReader("{}"))
 	req.Header.Set("Content-Type", "application/json")

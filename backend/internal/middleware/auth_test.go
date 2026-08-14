@@ -306,3 +306,37 @@ func TestAuthCookiesPerPlatform(t *testing.T) {
 		t.Fatalf("应解析到 portal claims（平台 cookie 优先），实际 %s", gotPlatform)
 	}
 }
+
+// TestJWT_PreviousSecretRotation 验证密钥轮换：旧密钥签发的 token 在轮换窗口内仍可验签。
+func TestJWT_PreviousSecretRotation(t *testing.T) {
+	const current = "current-secret"
+	const previous = "previous-secret"
+
+	user := &domain.User{
+		ID:       "user-rotate",
+		Username: "rotateuser",
+		Role:     domain.UserRoleOperator,
+		TenantID: strPtr("tenant-rotate"),
+	}
+	oldToken, err := middleware.GenerateToken(previous, middleware.TokenInput{User: user})
+	if err != nil {
+		t.Fatalf("generate old token: %v", err)
+	}
+
+	handler := middleware.JWT(current, previous)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if middleware.CurrentUser(r) == nil {
+			t.Error("旧密钥 token 应在轮换窗口内验签通过")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+oldToken)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("旧密钥 token 验签失败，status=%d", w.Code)
+	}
+}

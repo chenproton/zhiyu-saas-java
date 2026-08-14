@@ -6,7 +6,7 @@
 
 ```
 租户在 /portal/apps/system/tenant 配置 base_url / api_key / model（OpenAI 兼容协议）
-  → tenant_ai_configs 表（api_key AES-256-GCM 加密存储；密钥取 AI_CONFIG_SECRET，缺省回落 JWT_SECRET）
+  → tenant_ai_configs 表（api_key AES-256-GCM 加密存储；密钥取 AI_CONFIG_SECRET，独立于 JWT_SECRET，缺失即启动失败）
   → service.AIService（Redis 读穿缓存 ai:cfg:{tenantID}，TTL 10min，Redis 故障降级直查 DB）
   → ai.Client（OpenAI 兼容 chat completions 网关；共享连接池，60s 超时）
 ```

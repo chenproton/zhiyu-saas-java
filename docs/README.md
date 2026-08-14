@@ -13,7 +13,7 @@
 | **写/改后端代码** | [`refactor-layering.md`](refactor-layering.md)（分层红线）+ [`backend-reuse.md`](backend-reuse.md)（后端复用速查） |
 | **写/改前端页面组件** | [`components.md`](components.md)（组件复用速查）+ [`forms-tables.md`](forms-tables.md)（表单/表格盘点） |
 | **写/改 AI 功能** | [`ai-development.md`](ai-development.md)（AIService 统一底座） |
-| **安全非功能（密码/会话/备份/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
+| **安全非功能（密码/会话/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
 | **写/审任何文档** | [`documentation-standards.md`](documentation-standards.md)（分层 + 砍废话）+ [`prose-standards.md`](prose-standards.md)（文字品控） |
 | **做架构取舍/技术选型** | [`decisions/README.md`](decisions/README.md)（ADR：先看有没有既有决策） |
 | **审 PR / 审改动** | [`code-review-checklist.md`](code-review-checklist.md)（语义检查） |
@@ -53,7 +53,7 @@ docs/
 ├── refactor-layering.md         # 后端分层红线
 ├── backend-reuse.md             # 后端可复用资产速查
 ├── ai-development.md            # AI 统一底座
-├── security-standards.md        # 安全非功能规范（密码/会话/备份/密钥/限流/上传）
+├── security-standards.md        # 安全非功能规范（密码/会话/密钥/限流/上传）
 ├── components.md                # 组件复用速查
 ├── forms-tables.md              # 表单/表格架构盘点
 ├── resource-snapshot-versioning.md  # 快照版本机制

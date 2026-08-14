@@ -97,9 +97,9 @@ func setupTestEnv(t *testing.T, keepCaptcha bool) *TestEnv {
 	// redis 与 oplogBuffer 传 nil：cache.RateLimit/Cached 对 nil client 直通，
 	// OperationLog 对 nil buffer 退化为同步写库，均为生产已有行为。
 	// geo 传 nil：登录日志地点留空，不依赖 ip2region 数据文件。
-	h := router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil, nil, "test-ai-secret")
+	h := router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil, nil, "test-ai-secret", "")
 	r := chi.NewRouter()
-	router.RegisterAPIRoutes(r, TestJWTSecret, pool, h, nil, nil)
+	router.RegisterAPIRoutes(r, TestJWTSecret, "", pool, h, nil, nil)
 
 	if !keepCaptcha {
 		// 登录流程测试专注登录本身：解除验证码挂载后登录即回到无验证码路径
@@ -175,8 +175,8 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 
 	pw, _ := bcrypt.GenerateFromPassword([]byte("test123"), bcrypt.DefaultCost)
 	db.Exec(ctx, `
-		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'operator', 'saas', 'seedtestuser', 'seedtestuser', $3, 'Test Operator', 'active', '{}')
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, password_changed_at)
+		VALUES ($1, $2, 'operator', 'saas', 'seedtestuser', 'seedtestuser', $3, 'Test Operator', 'active', '{}', NOW() - interval '1 day')
 		ON CONFLICT (id) DO UPDATE SET
 			username = EXCLUDED.username,
 			login_name = EXCLUDED.login_name,

@@ -137,7 +137,7 @@ func (s *TenantAdminStore) ResetPassword(ctx context.Context, tenantID, adminID,
 		return err
 	}
 	_, err = s.q.Exec(ctx, `
-		UPDATE users SET password_hash = $1, updated_at = NOW()
+		UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW()
 		WHERE id = $2 AND tenant_id = $3
 	`, string(hash), adminID, tenantID)
 	return err

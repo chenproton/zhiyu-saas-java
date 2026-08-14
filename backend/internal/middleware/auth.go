@@ -2,12 +2,16 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type contextKey string
@@ -83,10 +87,13 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func JWT(secret string) func(http.Handler) http.Handler {
+// JWT 解析 Authorization 头或文件通道 cookie 中的令牌，强制鉴权。
+// previous 为可选的历史密钥（密钥轮换窗口内旧 token 仍可验签），签名一律用主密钥。
+func JWT(secret string, previous ...string) func(http.Handler) http.Handler {
+	secrets := append([]string{secret}, previous...)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := tokenClaims(r, secret)
+			claims, ok := tokenClaims(r, secrets...)
 			if !ok {
 				http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
 				return
@@ -104,10 +111,11 @@ func JWT(secret string) func(http.Handler) http.Handler {
 // 用于 /uploads 这类既需签名 URL（公开）又需登录鉴权（cookie/header）的混合场景。
 // 双端登录（portal+partner cookie 共存）时，全部候选 claims 一并放入
 // ContextKeyUserCandidates，供 Serve 按 URL 租户匹配取用。
-func OptionalJWT(secret string) func(http.Handler) http.Handler {
+func OptionalJWT(secret string, previous ...string) func(http.Handler) http.Handler {
+	secrets := append([]string{secret}, previous...)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claimsList := tokenClaimsAll(r, secret)
+			claimsList := tokenClaimsAll(r, secrets...)
 			if len(claimsList) == 0 {
 				next.ServeHTTP(w, r)
 				return
@@ -116,6 +124,49 @@ func OptionalJWT(secret string) func(http.Handler) http.Handler {
 			ctx := context.WithValue(r.Context(), ContextKeyUser, claimsList[0])
 			ctx = context.WithValue(ctx, ContextKeyUserCandidates, claimsList)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireActiveUser 逐请求校验会话有效性：用户/租户未停用、改密后旧 token 失效。
+// 挂载于 JWT 之后（需先有 claims），覆盖全部鉴权路由；DB 异常时 fail-closed（500），
+// 用户不存在返回 401。此中间件让「停用用户/停用租户/改密」即刻生效，而非等到 7 天 token 过期。
+func RequireActiveUser(db *pgxpool.Pool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := CurrentUser(r)
+			if claims == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// db 为 nil 时跳过会话校验：仅路由/权限装配类测试（不验会话态）会传 nil，
+			// 生产与集成测试（testhelper 真库）始终传真实连接池。
+			if db == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			st, err := store.New(db).Auth().GetSessionState(r.Context(), claims.UserID)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+					return
+				}
+				http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+				return
+			}
+			if st.UserStatus != "" && st.UserStatus != "active" {
+				http.Error(w, `{"error":"账号已停用"}`, http.StatusUnauthorized)
+				return
+			}
+			if st.TenantStatus != "" && st.TenantStatus != string(domain.TenantStatusActive) {
+				http.Error(w, `{"error":"租户已停用"}`, http.StatusUnauthorized)
+				return
+			}
+			if claims.IssuedAt != nil && st.PasswordChangedAt.After(claims.IssuedAt.Time) {
+				http.Error(w, `{"error":"密码已修改，请重新登录"}`, http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }
@@ -150,7 +201,7 @@ func ensureAuthCookie(w http.ResponseWriter, r *http.Request, claims *Claims) {
 // （平台独立 cookie + 旧 cookie 兼容）中解析 JWT，返回首个有效 claims。
 // 强制 UserID 非空：排除预授权令牌（同密钥 HS256 但无 userId）等
 // 签名正确但结构不全的令牌类型混淆。
-func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
+func tokenClaims(r *http.Request, secrets ...string) (*Claims, bool) {
 	auth := r.Header.Get("Authorization")
 	tokenStr := strings.TrimPrefix(auth, "Bearer ")
 	if tokenStr == "" || tokenStr == auth {
@@ -164,29 +215,42 @@ func tokenClaims(r *http.Request, secret string) (*Claims, bool) {
 	if tokenStr == "" {
 		return nil, false
 	}
-	return parseToken(tokenStr, secret)
+	return parseToken(tokenStr, secrets...)
 }
 
 // tokenClaimsAll 解析 header（优先）+ 全部 cookie 候选，返回所有有效 claims。
-func tokenClaimsAll(r *http.Request, secret string) []*Claims {
+func tokenClaimsAll(r *http.Request, secrets ...string) []*Claims {
 	var out []*Claims
 	if auth := r.Header.Get("Authorization"); auth != "" {
 		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 		if tokenStr != auth {
-			if c, ok := parseToken(tokenStr, secret); ok {
+			if c, ok := parseToken(tokenStr, secrets...); ok {
 				out = append(out, c)
 			}
 		}
 	}
 	for _, v := range authCookieCandidates(r) {
-		if c, ok := parseToken(v, secret); ok {
+		if c, ok := parseToken(v, secrets...); ok {
 			out = append(out, c)
 		}
 	}
 	return out
 }
 
-func parseToken(tokenStr, secret string) (*Claims, bool) {
+// parseToken 依次用主密钥与历史密钥验签，命中即返回（密钥轮换窗口内旧 token 仍有效）。
+func parseToken(tokenStr string, secrets ...string) (*Claims, bool) {
+	for _, secret := range secrets {
+		if secret == "" {
+			continue
+		}
+		if claims, ok := parseTokenWithSecret(tokenStr, secret); ok {
+			return claims, true
+		}
+	}
+	return nil, false
+}
+
+func parseTokenWithSecret(tokenStr, secret string) (*Claims, bool) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	}, jwt.WithValidMethods([]string{"HS256"}))

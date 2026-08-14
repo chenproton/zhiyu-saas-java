@@ -14,7 +14,7 @@ import (
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
-func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
+func RegisterAPIRoutes(r chi.Router, jwtSecret, jwtSecretPrevious string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
 	r.Route("/api/v1", func(r chi.Router) {
 		// 导入/导出/模板生成涉及大文件解析与批量写入，使用长超时（10 分钟），
 		// 其余接口仍受 30s 保护（statement_timeout=15s 为单语句级别，逐行导入不受影响）
@@ -31,7 +31,7 @@ func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Hand
 		})
 
 		RegisterPublicRoutes(r, h, redisClient)
-		RegisterAuthenticatedRoutes(r, jwtSecret, db, h, redisClient, oplogBuffer)
+		RegisterAuthenticatedRoutes(r, jwtSecret, jwtSecretPrevious, db, h, redisClient, oplogBuffer)
 	})
 }
 
@@ -50,8 +50,8 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.Get("/settings/theme", h.settingsHandler.GetTheme)
 }
 
-func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
-	auth := authmw.JWT(jwtSecret)
+func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
+	auth := authmw.JWT(jwtSecret, jwtSecretPrevious)
 	platformAdmin := authmw.RequireRole(domain.RolePlatformAdmin)
 	systemAdmin := authmw.RequireSystemPermission()
 	portalWorkspace := authmw.RequireRoleOrMenu(domain.RoleTeacher, domain.RoleStudent, domain.RoleSchoolAdmin)
@@ -68,6 +68,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
+		r.Use(authmw.RequireActiveUser(db))
 		r.Use(authmw.OperationLog(db, oplogBuffer))
 
 		// 文件上传/预览/签名 URL：单点注册 + 多平台白名单（portal/partner）。

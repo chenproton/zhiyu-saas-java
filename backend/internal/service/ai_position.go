@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/zhiyu-saas/backend/internal/ai"
-	"github.com/zhiyu-saas/backend/internal/crypto"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -212,7 +211,7 @@ func (s *AIService) PositionAssist(ctx context.Context, tenantID, userID string,
 	if err != nil {
 		return nil, err
 	}
-	apiKey, err := crypto.Decrypt(s.secret, cfg.APIKeyEncrypted)
+	apiKey, err := s.decryptKey(cfg.APIKeyEncrypted)
 	if err != nil {
 		return nil, err
 	}

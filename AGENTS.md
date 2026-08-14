@@ -118,7 +118,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | AI 底座架构 | [`ai-development.md`](docs/ai-development.md) |
 | 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
 | 后端复用速查 | [`backend-reuse.md`](docs/backend-reuse.md) |
-| 安全非功能规范（密码/会话/备份/密钥/限流/上传） | [`security-standards.md`](docs/security-standards.md) |
+| 安全非功能规范（密码/会话/密钥/限流/上传） | [`security-standards.md`](docs/security-standards.md) |
 | 架构决策为什么 | [`decisions/`](docs/decisions/README.md)（ADR） |
 | 审 PR 语义检查 | [`code-review-checklist.md`](docs/code-review-checklist.md) |
 | 写/审文档 | [`documentation-standards.md`](docs/documentation-standards.md) + [`prose-standards.md`](docs/prose-standards.md) |
@@ -138,4 +138,4 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |
 | UI 全站巡检 | `node scripts/ui-smoke/ui-smoke.mjs`（默认不做，见「五.3」） |
 
-环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
+环境变量（`DATABASE_URL`、`JWT_SECRET`、`AI_CONFIG_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。

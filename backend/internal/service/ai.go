@@ -34,15 +34,26 @@ type AIConfigView struct {
 // AIService 租户 AI 配置管理与对话编排。
 type AIService struct {
 	*Service
-	st     *store.Store
-	redis  *redis.Client
-	client *ai.Client
-	secret string
+	st             *store.Store
+	redis          *redis.Client
+	client         *ai.Client
+	secret         string
+	secretPrevious string
 }
 
 // NewAIService 创建 AI 服务；redis 可为 nil（无缓存直查 DB）。
-func NewAIService(s *Service, redisClient *redis.Client, client *ai.Client, secret string) *AIService {
-	return &AIService{Service: s, st: s.Store(), redis: redisClient, client: client, secret: secret}
+// previous 为历史加密密钥（AI_CONFIG_SECRET 独立前曾用 JWT_SECRET 加密存量密文），仅用于解密兜底。
+func NewAIService(s *Service, redisClient *redis.Client, client *ai.Client, secret string, previous ...string) *AIService {
+	prev := ""
+	if len(previous) > 0 {
+		prev = previous[0]
+	}
+	return &AIService{Service: s, st: s.Store(), redis: redisClient, client: client, secret: secret, secretPrevious: prev}
+}
+
+// decryptKey 解密租户 api_key：先试主密钥，再兜底历史密钥（轮换/迁移窗口兼容）。
+func (s *AIService) decryptKey(encrypted string) (string, error) {
+	return crypto.DecryptWithFallback(encrypted, s.secret, s.secretPrevious)
 }
 
 func aiConfigCacheKey(tenantID string) string {
@@ -117,7 +128,7 @@ func (s *AIService) GetConfig(ctx context.Context, tenantID string) (*AIConfigVi
 	if err != nil {
 		return nil, err
 	}
-	plain, err := crypto.Decrypt(s.secret, cfg.APIKeyEncrypted)
+	plain, err := s.decryptKey(cfg.APIKeyEncrypted)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +155,7 @@ func (s *AIService) SaveConfig(ctx context.Context, tenantID, baseURL, apiKey, m
 		if err != nil {
 			return err
 		}
-		plain, err := crypto.Decrypt(s.secret, existing.APIKeyEncrypted)
+		plain, err := s.decryptKey(existing.APIKeyEncrypted)
 		if err != nil {
 			return err
 		}
@@ -222,7 +233,7 @@ func (s *AIService) Chat(ctx context.Context, tenantID, userID string, messages 
 	if err != nil {
 		return "", usage, err
 	}
-	apiKey, err := crypto.Decrypt(s.secret, cfg.APIKeyEncrypted)
+	apiKey, err := s.decryptKey(cfg.APIKeyEncrypted)
 	if err != nil {
 		return "", usage, err
 	}

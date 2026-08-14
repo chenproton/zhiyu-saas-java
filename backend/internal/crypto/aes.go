@@ -65,3 +65,21 @@ func Decrypt(secret, token string) (string, error) {
 	}
 	return string(plain), nil
 }
+
+// DecryptWithFallback 依次尝试 primary、legacy 等密钥解密，用于密钥轮换：
+// 新密文用 primary 加密，历史密文用 legacy 加密，轮换窗口内两者都可读。
+// 空密钥跳过；全部失败返回最后一次错误。
+func DecryptWithFallback(token string, secrets ...string) (string, error) {
+	var lastErr error = ErrInvalidToken
+	for _, secret := range secrets {
+		if secret == "" {
+			continue
+		}
+		plain, err := Decrypt(secret, token)
+		if err == nil {
+			return plain, nil
+		}
+		lastErr = err
+	}
+	return "", lastErr
+}

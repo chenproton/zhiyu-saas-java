@@ -36,7 +36,7 @@ func mwName(mw func(http.Handler) http.Handler) string {
 // 角色/平台级授权中间件（RequireRole*/RequirePlatform*/RequireSystemPermission/RequireUserRead），
 // 防止"漏挂权限 = 默认放行"；同时拦截后注册弱权限组静默顶替强权限组的回归。
 func TestAPIRoutesRequireAuthzMiddleware(t *testing.T) {
-	rt := New(nil, "test-secret", nil, nil, nil, "test-ai-secret")
+	rt := New(nil, "test-secret", "", nil, nil, nil, "test-ai-secret", "")
 	chiRouter, ok := rt.Handler.(chi.Router)
 	if !ok {
 		t.Fatal("router handler is not chi.Router")
@@ -78,7 +78,7 @@ func TestAPIRoutesRequireAuthzMiddleware(t *testing.T) {
 // TestPublicRoutesWhitelistReachable 确保公开白名单路由确实挂在认证组之外
 // （直接请求无 token 不应 401/403 拦截，而是进入 handler 后由业务逻辑响应）。
 func TestPublicRoutesWhitelistReachable(t *testing.T) {
-	rt := New(nil, "test-secret", nil, nil, nil, "test-ai-secret")
+	rt := New(nil, "test-secret", "", nil, nil, nil, "test-ai-secret", "")
 	chiRouter, ok := rt.Handler.(chi.Router)
 	if !ok {
 		t.Fatal("router handler is not chi.Router")
@@ -103,7 +103,7 @@ func TestPublicRoutesWhitelistReachable(t *testing.T) {
 // 该用例同时防"chi 同 method+path 静默覆盖"——若文件路由被挪入单一平台组重复注册，
 // 另一平台 token 将得到 403 而非进入 handler，测试即失败。
 func TestFileRoutesPlatformMatrix(t *testing.T) {
-	rt := New(nil, "test-secret", nil, nil, nil, "test-ai-secret")
+	rt := New(nil, "test-secret", "", nil, nil, nil, "test-ai-secret", "")
 	svr := httptest.NewServer(rt.Handler)
 	defer svr.Close()
 

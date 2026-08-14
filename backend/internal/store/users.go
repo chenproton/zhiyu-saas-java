@@ -169,7 +169,7 @@ func (s *UserStore) ResetPassword(ctx context.Context, tenantID, id, plainPasswo
 	if err != nil {
 		return err
 	}
-	_, err = s.q.Exec(ctx, `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`, string(hash), id, tenantID)
+	_, err = s.q.Exec(ctx, `UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW() WHERE id = $2 AND tenant_id = $3`, string(hash), id, tenantID)
 	return err
 }
 

@@ -129,7 +129,7 @@ func (h *Handlers) CaptchaService() *service.CaptchaService {
 	return h.captchaSvc
 }
 
-func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client, geo *geo.Searcher, aiSecret string) *Handlers {
+func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client, geo *geo.Searcher, aiSecret, aiSecretPrevious string) *Handlers {
 	st := store.New(db)
 	svc := service.New(st)
 	authSvc := service.NewAuthService(svc)
@@ -177,7 +177,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		questionExportHandler:         &handler.QuestionExportHandler{Store: st},
 		examExportHandler:             &handler.ExamExportHandler{Store: st},
 		tenantHandler:                 tenantH,
-		aiHandler:                     &handler.AIHandler{Service: service.NewAIService(svc, redisClient, ai.NewClient(), aiSecret)},
+		aiHandler:                     &handler.AIHandler{Service: service.NewAIService(svc, redisClient, ai.NewClient(), aiSecret, aiSecretPrevious)},
 		orgHandler:                    &handler.OrgHandler{Service: service.NewOrgService(svc)},
 		orgTypeHandler:                &handler.OrgTypeHandler{Store: st.OrgTypes()},
 		userManagementHandler:         &handler.UserManagementHandler{Service: service.NewUserService(svc)},

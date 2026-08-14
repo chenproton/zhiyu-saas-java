@@ -98,6 +98,26 @@ func (s *AuthStore) RecordLoginLog(ctx context.Context, tenantID, userID, userNa
 	}
 }
 
+// SessionState 供鉴权中间件逐请求校验的会话态：用户状态、改密时间、租户状态。
+// 用于「停用用户/停用租户/改密后旧 token」三者的下一请求即失效。
+type SessionState struct {
+	UserStatus        string
+	PasswordChangedAt time.Time
+	TenantStatus      string
+}
+
+// GetSessionState 查询用户会话态（LEFT JOIN 租户，租户缺失时视为 active，兼容平台级账号）。
+func (s *AuthStore) GetSessionState(ctx context.Context, userID string) (SessionState, error) {
+	var st SessionState
+	err := s.q.QueryRow(ctx, `
+		SELECT u.status, u.password_changed_at, COALESCE(t.status, 'active')
+		FROM users u
+		LEFT JOIN tenants t ON t.id = u.tenant_id
+		WHERE u.id = $1
+	`, userID).Scan(&st.UserStatus, &st.PasswordChangedAt, &st.TenantStatus)
+	return st, err
+}
+
 // GetUserByID 查询用户。
 func (s *AuthStore) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
 	var user domain.User
