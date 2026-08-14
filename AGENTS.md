@@ -1,45 +1,128 @@
 # 知与 SaaS 开发契约
 
-> **首要约束：禁止还原/覆盖他人代码。** 无论如何不得对工作区中非当次任务的文件执行 `git checkout`、`git restore`、`git reset` 等还原操作。部署时若遇到与本次任务无关的编译/类型错误，直接报错停止，告知用户即可，禁止擅自修复或还原他人未提交的修改。
+> 本仓库由 AI 完全主导开发：用户给需求，AI 按本契约走完「spec → 代码 → 校验 → 部署」全流程。**安全与架构合理是硬前提，任何功能都不得为了快速而牺牲这两条。**
 
-## 一、分支隔离工作流
+## 零、三条铁律（任何改动前先读，违反即失败）
 
-> 每个 Agent 基于 master 创建特性分支，开发提交后通过 `deploy.sh --branch` 部署验证，健康检查通过后自动合并回 master。
+1. **禁止覆盖/还原他人代码**：不得对非当次任务的文件执行 `git checkout` / `git restore` / `git reset`。遇到与本次任务无关的编译/类型错误，报错停止并告知用户，禁止擅自修复他人未提交的修改。
+2. **禁止破坏安全边界**：不新增越权路径（跨租户读数据）、不泄露密钥（api_key 不回传、不落日志）、不做 SQL 注入前端。
+3. **禁止破坏架构分层**：遵守「三、硬性架构约束」的 handler/service/store 分层与 AI 统一底座，禁止绕过约束抄近路。
 
-1. **创建独立工作树**：`git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> master && cd /tmp/<agent>`
-2. **开发并提交**：`git add -A && git commit -m "feat: 任务描述"`，然后 `git push -u origin <分支>`
-3. **隔离部署验证**：`./deploy.sh --branch <分支名>`（可选 `--clean` 全量重建 / `--force` 破坏性操作 / `--skip-merge` 不自动合并）
-4. **清理工作树**：`cd / && git worktree remove /tmp/<agent>`
+## 一、开发流程（接任务后先判类型，再走对应闭环）
 
-deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初始化数据库+种子数据；后续运行 → 源码 hash 比对，仅构建变更部分（前后端独立判断）；构建前自动质量门禁（后端 `gofmt -l` + `go vet`，DB 可用时 `go test`；前端 `pnpm typecheck` + `pnpm lint`）；数据库首次应用 baseline schema，后续仅增量 migration。
+> 判断任务类型 → 走对应流程。流程细节依据见 [`docs/spec-standards.md`](docs/spec-standards.md)「Spec 工作流」。
 
-**并发安全**：deploy.sh 自带部署锁（`flock` `/tmp/zhiyu-deploy.lock`），多个 Agent 并发执行会自动排队串行（后到者打印"等待部署锁..."阻塞）；每次部署前先 fetch 并强制以最新 `origin/master` 构建，后部署者自动继承先部署者已合并的代码，不会互相覆盖。
+| 任务类型 | 判断标准 | 流程 |
+|---|---|---|
+| **新功能** | 增加能力 / 新模块 / 新接口 | 七节点闭环（见下） |
+| **修复 bug** | 现有行为与 spec/预期不符 | 修复流程（见下） |
+| **重构** | 行为不变，仅改结构/可读性 | 重构流程（见下） |
 
-关键约束：禁止直接在 master 上修改代码；部署前确保分支已推送；与 master 冲突先 `git rebase master`；多 Agent 并行各自 worktree 互不干扰。
+### （一）新功能：七节点闭环
 
-## 二、交付要求
+1. **对齐意图**：读本契约 + 相关 `docs/*.md` + `docs/decisions/`（ADR），确认红线与既有决策。**不写代码**。
+2. **明确需求**：把需求澄清为「做什么/为什么」，聚焦 **WHAT/WHY，不碰 HOW**（不写技术栈/表结构/代码组织）。不清楚就问用户。
+3. **制定方案**：需求 → 数据模型 / API 契约 / 测试场景。**每个技术选择记录理由并回链需求**。选型需拍板时问用户。
+4. **拆解任务**：生成可执行任务清单，标依赖与可并行项（`[P]`）。
+5. **实现**：写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）。走「四、分支隔离工作流」。
+6. **校验**：`./scripts/spec-check.sh`（硬约束）+ 语义自查（spec 说的有没有实现、代码做的有没有写进 spec）。
+7. **收敛**：对照 spec 评估，把「没做完/偏航/新增件」记回任务或 spec，形成下轮输入。
 
-1. 所有**代码修改**后必须通过 `./deploy.sh --branch <分支名>` 部署验证，**无需等待用户确认，直接自动执行**
-2. **纯文档修改**（`AGENTS.md`、`docs/` 下的文件）无需走 `deploy.sh`，直接 commit 合并即可
-3. 提交前检查（本地验证通过后再提请部署）：
-   ```bash
-   cd backend && go vet ./... && go build ./... && gofmt -l .
-   pnpm typecheck && pnpm lint && pnpm test
-   ./scripts/spec-check.sh   # spec 硬约束（分层红线/AI 底座/migration 配对/spec 制品）
-   ```
-   migration 需配对 `.down.sql`
-4. 单次 commit 只含当次变更
-5. **后端分层红线**（完整规范见 [`docs/refactor-layering.md`](docs/refactor-layering.md)）：新增 handler 禁止出现 `SELECT/INSERT/UPDATE/DELETE`、禁止直接 `db.Query/QueryRow/Exec`、禁止持有 `*pgxpool.Pool` 字段（全量适用，含 import/export/template）；`service` 禁止拼接 SQL；`store` 禁止读取 HTTP/Claims；新接口必须附带 handler/service/store 测试至少一种
+### （二）修复 bug 流程
 
-## 三、开发原则
+1. **定位意图**：先读 spec 与 ADR，确认「正确行为」（bug = 实现偏离了 spec/合理预期）。
+2. **补测试**：先写/改能复现 bug 的测试（红）。
+3. **修复**：改代码让测试通过（绿）。**若修复改变行为 → 同步 spec**；纯修复不改 spec，但 commit 说明。
+4. **校验**：`spec-check.sh` + 本地门禁 + `deploy.sh --branch` 部署。
 
-- 简单优先，不过度防御；小概率异常宁可容忍
-- 核心业务加锁防重复，普通业务允许报错或重复插入
-- 核心接口保证流畅，非核心允许等待
-- **组件复用优先**（规范见 [`docs/components.md`](docs/components.md)）：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽象公共组件时先向用户提出方案、经确认后实施，并同场景一并改造
-- **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图，再写代码；新增/变更行为必须同步更新 spec，禁止「只改代码不改 spec」。完整规范见 [`docs/spec-standards.md`](docs/spec-standards.md)
+### （三）重构流程
 
-## 四、运维速查
+1. **确认行为不变**：重构必须等价变换；若改可观察行为 → 走「新功能/修复」，不是重构。
+2. **评估收益**：按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 给证据（调用点），区分「真简化」vs「有意为之」（查 ADR）。
+3. **执行**：改结构，**不同步 spec**（行为没变）。
+4. **校验**：`spec-check.sh` + 全量门禁确认无回归 + 部署。
+
+## 二、开发原则（写代码时的心法）
+
+- **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图再写代码；新增/变更行为必须同步 spec。见 [`docs/spec-standards.md`](docs/spec-standards.md)。
+- **简单优先**：不过度防御；小概率异常宁可容忍；核心业务加锁防重复，普通业务允许报错或重复插入；核心接口保流畅，非核心允许等待。
+- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。速查见 [`docs/components.md`](docs/components.md)、[`docs/forms-tables.md`](docs/forms-tables.md)。
+
+## 三、硬性架构约束（安全 + 架构合理的落地红线）
+
+> 详细规范与理由见对应文档；这里只列「必须遵守」的硬条款，其余放文档。
+
+### 3.1 后端分层红线（完整见 [`docs/refactor-layering.md`](docs/refactor-layering.md)，理由见 ADR-0001）
+
+- **handler**：禁止出现 `SELECT/INSERT/UPDATE/DELETE`、禁止直接 `db.Query/QueryRow/Exec`、禁止持有 `*pgxpool.Pool`（全量适用，含 import/export/template）。
+- **service**：禁止拼接 SQL。
+- **store**：禁止读取 HTTP 请求/Claims。
+- 新接口必须附带 handler/service/store 测试至少一种。
+
+### 3.2 AI 统一底座红线（完整见 [`docs/ai-development.md`](docs/ai-development.md)，理由见 ADR-0002）
+
+- LLM 调用一律经 `AIService`（`AIService.Chat` / `ai.Client.ChatCompletion`）：禁止新建 LLM HTTP client、禁止直接查 `tenant_ai_configs` 或自行解密 api_key。
+- 错误映射：未配置 → 412 `ai_not_configured`；上游错误 → 502 + message；其余 → `respondServerError`。
+- 密钥：api_key 永不回传前端、禁止打日志。
+- 护栏：新端点设请求上限、不自动重试、流式经 `ai.Client.ChatCompletionStream`。
+
+### 3.3 安全红线（越权 / 租户隔离，理由见 ADR-0003）
+
+- 每个新端点必须做归属校验（`verifyTenantOwnership` / crud `CheckOwnership`）。
+- 关键写操作（考试题目增删改分、密码/状态写）SQL 层补租户条件作纵深防御。
+- 新端点写前自检五问：① 有没有跨租户读/写他租户数据？② 密钥/密码是否可能回传或落日志？③ 有没有 SQL 注入面？④ 上传文件是否会执行？⑤ 有没有未鉴权/越权匿名访问路径？
+
+## 四、交付与部署（工具性流程）
+
+### 4.1 分支隔离工作流
+
+1. `git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> master && cd /tmp/<agent>`
+2. `git add -A && git commit -m "feat: 任务描述" && git push -u origin <分支>`
+3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge`）
+4. `cd / && git worktree remove /tmp/<agent>`
+
+deploy.sh 自动：源码 hash 比对只构建变更部分；构建前质量门禁（后端 gofmt/vet + 前端 typecheck/lint）；DB 首次 baseline、后续增量 migration；部署锁保证并发串行。
+
+### 4.2 提交前必跑（代码改动）
+
+```bash
+cd backend && go vet ./... && go build ./... && gofmt -l .
+pnpm typecheck && pnpm lint && pnpm test
+./scripts/spec-check.sh   # spec 硬约束（分层/AI 底座/migration 配对/spec 制品/ADR）
+```
+
+migration 需配对 `.down.sql`；单次 commit 只含当次变更。
+
+### 4.3 交付规则
+
+- 代码修改后必须 `deploy.sh --branch` 部署验证（无需等确认，自动执行）；**全程实时看输出**，禁止只留尾部。
+- 纯文档修改（`AGENTS.md`、`docs/`）无需 deploy，直接 commit。
+- 做完在响应里报告：改了哪些文件、走了哪条流程、spec 是否同步、校验结果。
+
+## 五、AI 协作者约定（协作纪律）
+
+1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖。
+2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
+3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
+4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`apps/edu/public/image-editor`（符号链接）、`backend/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`。
+
+## 六、规范索引（细则去哪找）
+
+> 完整导航见 [`docs/README.md`](docs/README.md)。按需查，不要求通读。
+
+| 我要 | 读 |
+|---|---|
+| spec 分级/模板/DoD/闭环 | [`spec-standards.md`](docs/spec-standards.md) |
+| 后端分层红线细节 | [`refactor-layering.md`](docs/refactor-layering.md) |
+| AI 底座架构 | [`ai-development.md`](docs/ai-development.md) |
+| 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
+| 架构决策为什么 | [`decisions/`](docs/decisions/README.md)（ADR） |
+| 审 PR 语义检查 | [`code-review-checklist.md`](docs/code-review-checklist.md) |
+| 写/审文档 | [`documentation-standards.md`](docs/documentation-standards.md) + [`prose-standards.md`](docs/prose-standards.md) |
+| 找简化点 | [`simplification-notes.md`](docs/simplification-notes.md) |
+| 快照版本机制 | [`resource-snapshot-versioning.md`](docs/resource-snapshot-versioning.md) |
+
+## 七、运维速查（低频，用时查）
 
 | 操作 | 命令 |
 |------|------|
@@ -47,131 +130,9 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
 | 后端日志 | `docker compose logs zhiyu-backend --tail 100` |
 | 健康检查 | `curl -sf http://127.0.0.1:8080/health` |
 | 连接数据库 | `psql "$DATABASE_URL"` |
-| 回滚部署 | `git checkout <上一个tag>` 后 `./deploy.sh`，禁止手动登服务器改代码 |
-
-**打包/迁移工具**（deploy.sh 之外的独立脚本）：
-
-| 工具 | 命令 | 用途 |
-|------|------|------|
-| 离线实施包打包 | `./scripts/package-release.sh v1.0.0` | 生成 `release/zhiyu-saas-v1.0.0/` 交付目录与 tar.gz（无源码，客户机复制后执行 install.sh；需在可联网开发机执行，依赖本地 docker/go/pnpm 与 offline/ 资源） |
-| 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` | 把旧布局 `/uploads/<uuid>` 文件归置到租户子目录并回写 DB URL（幂等可重跑；deploy.sh 检测到旧布局文件时会提示执行） |
+| 回滚部署 | `git checkout <上一tag>` 后 `./deploy.sh`（禁止手动登服务器改代码） |
+| 离线实施包 | `./scripts/package-release.sh v1.0.0` |
+| 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |
+| UI 全站巡检 | `node scripts/ui-smoke/ui-smoke.mjs`（默认不做，见「五.3」） |
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
-
-## 五、前端组件复用
-
-> 新增页面先查阅速查表 [`docs/components.md`](docs/components.md) 与架构盘点 [`docs/forms-tables.md`](docs/forms-tables.md)；复用优先原则见「三、开发原则」。
-
-## 六、AI 功能开发
-
-> 所有 AI 功能（AI 助手对话、AI 辅助表单填写、AI 数据分析等）**必须基于 AIService 统一底座开发，禁止重新封装底层 LLM 调用**。完整架构与开发约定见 [`docs/ai-development.md`](docs/ai-development.md)。核心红线：
-
-1. **LLM 调用一律经 `AIService`**（新 handler + 新 service 方法调 `AIService.Chat` / `ai.Client.ChatCompletion`）：禁止新建 LLM HTTP client、禁止直接查 `tenant_ai_configs` 或自行解密 api_key
-2. **错误映射**：未配置 → 412 `ai_not_configured`（前端引导到 `/portal/apps/system/tenant`）；上游错误 → 502 + 上游 message；其余 500 → `respondServerError`
-3. **密钥红线**：api_key 永不回传前端、禁止打印日志
-4. **护栏**：新端点按场景设请求上限（参考 `POST /ai/chat`：messages ≤ 50、单条 ≤ 8000）；不自动重试；流式必须经 `ai.Client.ChatCompletionStream`
-
-## 七、全站点击巡检（UI Smoke Test）
-
-> 自动登录遍历每个页面（含弹窗/下拉/Tab/动态详情页），监控前端 console/JS 异常与后端接口报错，用于发现"点哪儿坏了"的回归问题。完整说明（安装、选项、账号、报告格式）见 [`scripts/ui-smoke/README.md`](scripts/ui-smoke/README.md)。
-
-| 场景 | 命令 |
-|------|------|
-| 全量巡检（四角色 × 全部页面） | `node scripts/ui-smoke/ui-smoke.mjs` |
-| 重构后定向巡检（只跑 git 改动涉及的路由） | `node scripts/ui-smoke/ui-smoke.mjs --git-diff` |
-| 回归对比 / 单角色 / 单页调试 | `--baseline <上次报告>` / `--roles teacher` / `--route <路径>` |
-
-要点：必须走 nginx 网关（默认 `http://127.0.0.1`）；依赖系统 Chrome，首次 `scripts/ui-smoke` 下 `npm install`；默认只操作 `SMOKE_` 前缀测试数据并自动清理。**默认不做端到端验证，除非用户主动要求**（见「八」第 7 条）。
-
-## 八、AI 协作者约定
-
-1. 只改当次任务相关文件，不碰无关文件
-2. 忽略工作区中他人的未提交修改，不得还原或覆盖
-4. 修改后先本地验证（编译、类型检查、lint），再**自动执行** `./deploy.sh --branch <分支名>` 分支部署验证；**全程实时监控 deploy.sh 输出**，禁止 `2>&1 | tail -20` 等截断方式只留尾部，必须让用户看到部署进展到哪一步
-5. **前端样式修改永远不要主动验证**：禁止无头浏览器自动视觉验证，也禁止任何形式的主动验证手段（DOM/布局测量、CDP 脚本驱动、创建临时测试账号等）；样式问题一律在部署后由用户人工确认，改完代码直接提请部署即可
-6. **代码扫描/统计只覆盖自有代码**：统计代码量、死代码/重复代码扫描、重构巡检时，以下第三方/工具代码与产物路径一律排除（不统计、不扫描、非任务要求不改动）：
-   - `offline/`：离线部署资产与第三方图片编辑器（unlayer）资产的**唯一来源**（更新方式见 `offline/README.md`）
-   - `apps/edu/public/image-editor`：指向 `offline/image-editor` 的符号链接；`deploy.sh` 构建时替换为实体文件（已 gitignore，禁止提交实体文件）
-   - `backend/vendor/`：`go mod vendor` 产物；`deploy.sh` 以 `-mod=vendor` 构建，**不可移动位置**
-   - `node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`：依赖目录与构建/运行产物
-7. **默认不做端到端验证**：除非用户**主动要求**，不执行 UI Smoke 全站巡检、`--route` 单页巡检、浏览器自动化等端到端验证（包括新功能/修复完成后的验证环节）；本地验证以编译、类型检查、lint、单测为准，部署后的功能表现由用户人工确认
-
-## 九、开发流程（新功能 / 修复 / 重构）
-
-> **这是 AI 接任务的统一执行流程。** 本仓库由 AI 完全主导开发，用户只负责给需求与关键决策点拍板。任何任务先判断属于下面哪一类，再按对应流程走完整闭环。流程细节的依据见 [`docs/spec-standards.md`](docs/spec-standards.md)「八、Spec 工作流」。
-
-### 任务三分类（先判对类型）
-
-| 类型 | 判断标准 | 走哪条流程 |
-|---|---|---|
-| **新功能** | 增加能力 / 新模块 / 新接口 | 走「新功能流程」（七节点闭环） |
-| **修复 bug** | 现有行为与 spec/预期不符 | 走「修复流程」 |
-| **重构** | 行为不变，仅改结构/可读性 | 走「重构流程」 |
-
-### 一）新功能流程（七节点闭环）
-
-1. **对齐意图（constitution）**：读 `AGENTS.md` + 相关 `docs/*.md` + `docs/decisions/`，确认本仓红线（分层、AI 底座、复用优先、spec-first）与既有决策（ADR）。**不写任何代码**。
-2. **明确需求（specify）**：把用户需求澄清为「做什么/为什么」，聚焦 **WHAT/WHY，不碰 HOW**（不写技术栈/表结构/代码组织）。需求不清晰时向用户提问。
-3. **制定方案（plan）**：把需求映射为技术方案——数据模型、API 契约、测试场景。**每个技术选择记录理由并回链到需求**。技术选型需拍板时提问。
-4. **拆解任务（tasks）**：从方案生成可执行任务清单，标注依赖与可并行项（`[P]` 标记）。
-5. **实现（implement）**：按任务写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束：代码行为必须同步进 spec）。走「一、分支隔离工作流」。
-6. **校验（analyze）**：跨制品一致性——spec↔代码↔测试是否对齐；跑 `./scripts/spec-check.sh`（硬约束）+ 语义自查（spec 说的有没有实现、代码做的有没有写进 spec）。
-7. **收敛（converge）**：对照 spec 评估实现，把「没做完 / 偏航 / 新增件」记回任务或 spec，形成下一轮迭代输入。
-
-### 二）修复 bug 流程
-
-1. **定位意图**：先读 spec 与 ADR，确认「正确行为」是什么（bug = 实现偏离了 spec 或合理预期）。
-2. **补测试**：先写/改一个能复现 bug 的测试（红）。
-3. **修复**：改代码让测试通过（绿）。**若修复改变行为 → 同步 spec**；纯 bug 修复（行为本就该如此）不需动 spec，但 commit message 说明。
-4. **校验**：`spec-check.sh` + 本地门禁 + `deploy.sh --branch` 部署。
-
-### 三）重构流程
-
-1. **确认行为不变**：重构必须是「语义等价变换」。若可能改变可观察行为 → 走「新功能/修复」流程，不是重构。
-2. **评估收益**：按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 给证据（调用点/consumer），判断是真的简化还是「有意为之」（查 ADR）。
-3. **执行**：改结构，**不同步 spec**（行为没变），commit message 说明「纯重构，行为不变」。
-4. **校验**：`spec-check.sh` + 全量门禁（`go test ./...`、`pnpm test`）确认无回归 + `deploy.sh --branch` 部署。
-
-### 通用硬性动作（三类流程都要）
-
-- **提交前必跑**（见「二、交付要求」第 3 条）：
-  ```bash
-  cd backend && go vet ./... && go build ./... && gofmt -l .
-  pnpm typecheck && pnpm lint && pnpm test
-  ./scripts/spec-check.sh
-  ```
-- **代码改动必走部署**：`./deploy.sh --branch <分支名>`（分支隔离工作流见「一」）。
-- **做完在响应里报告**：改了哪些文件、走了哪条流程、spec 是否同步、校验结果。
-
-## 十、规格、文档与决策规范（spec-first 制度框架）
-
-> 本仓库由 AI 主导开发，以下规范是把「AI 协作者如何正确地写规格、文档、文字、做决策」固化为制度，防止意图漂移、过度设计、误改。**细则入口见 [`docs/README.md`](docs/README.md)**。
-
-### 10.1 规格（spec）规范
-
-- 功能开发**先读 `docs/spec/` 对齐意图，再写代码**；新增/变更行为必须同步更新 spec（spec-first 硬约束）。
-- spec 的分级、模板、DoD 验收标准、代码↔spec 一致性红线，以及「需求→规格→方案→任务→实现→校验→收敛」的 7 节点闭环：见 [`docs/spec-standards.md`](docs/spec-standards.md)。
-- **硬约束自动校验**：每次提交前跑 `./scripts/spec-check.sh`（分层红线 / AI 底座 / migration 配对 / spec 五层齐备 / ADR 索引），拦截机器可判定的违规；语义一致性由 AI 在 analyze 节点补查。
-
-### 10.2 文档规范（分层 · 砍废话）
-
-- 文档分「教程 vs 参考」两类；每个事实只有一个「权威家」，其余用链接。
-- 放置决策、教程/参考判定、砍「文档废话」清单：见 [`docs/documentation-standards.md`](docs/documentation-standards.md)。
-
-### 10.3 文字品控（Prose 规范）
-
-- 覆盖 Markdown / JSDoc / 代码注释 / 测试注释 / 提示词 / CLI·UI 文案：写够「保住契约」的文字，删掉「推理过程、重复、装饰」。
-- 判定与各类型「保什么、砍什么」：见 [`docs/prose-standards.md`](docs/prose-standards.md)。
-
-### 10.4 决策记录（ADR）
-
-- 重要的、有取舍的架构决策写进 [`docs/decisions/`](docs/decisions/README.md)，记录「为什么这么做」；已接受决策不改写，改变则写新 ADR 并标注「取代」。
-- 改动若与某 ADR 冲突 → 视为设计讨论，需明确报告，不得擅自推翻。
-
-### 10.5 代码审查（审 PR / 审改动）
-
-- 自动化门禁（gofmt/vet/typecheck/lint/test）只保证「编译/类型/格式正确」；「语义/契约/意图正确」需按 [`docs/code-review-checklist.md`](docs/code-review-checklist.md) 手动补查（分层红线、越权、生命周期、竞态、过度设计、AI 底座绕过）。
-
-### 10.6 简化审计（找可简化处）
-
-- 「找可简化之处」按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 执行：给证据（调用点/consumer）、区分「简化 vs 改行为」、想法记成 Agent Note（提议态），**未确认前不改代码**。

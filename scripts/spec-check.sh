@@ -146,9 +146,10 @@ done
 echo "-- 5. ADR 索引一致性 --"
 found=0
 if [ -f docs/decisions/README.md ]; then
-  for adr in $(grep -oE '[0-9]{4}-[a-z0-9-]+\.md' docs/decisions/README.md 2>/dev/null | sort -u); do
-    if [ ! -f "docs/decisions/$adr" ]; then
-      violation "ADR 索引登记但文件缺失: $adr"
+  # README 索引表登记形如「| 0001 | 标题 | ...」；按序号检查 docs/decisions/NNNN-*.md 是否存在
+  for num in $(grep -oE '^\| [0-9]{4} \|' docs/decisions/README.md 2>/dev/null | grep -oE '[0-9]{4}' | sort -u); do
+    if ! ls "docs/decisions/${num}-"*.md >/dev/null 2>&1; then
+      violation "ADR 索引登记（${num}）但文件缺失"
       found=1
     fi
   done
