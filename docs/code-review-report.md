@@ -6276,6 +6276,7 @@
 | 103 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（EmptyDescription 类型改 div、FieldTitle data-slot 改 field-title、use-import-flow entityLabel 用于错误提示、ui vitest alias 改通用 @ 映射）；Spinner 收敛与 Radix 动画串两处复用候选评估后不改 |
 | 041-042 遗留 | （并入 fix-batch-3） | 删除 tags 薄包装 isUniqueViolation、PutCourses 回查错误补 Warn；其余已由大修复与 3f2f3791 修复（workflows Create 回查、user_extension_fields 租户过滤、title_ids COALESCE、任务测评扫描上抛、角色重绑事务化、租户 COALESCE 一致、UsersExist 去重、管理员角色绑定影响行校验、teaching_plans rows.Err、AttachUserRoles 日志）；student_portraits/tenant_admins ResetPassword/users 写操作等无租户方法 handler 已校验、明文初始密码属产品设计、先 Get 后 Update 双往返模式等评估后不改 |
 | 099-100 | 无需补修 | 5 项 P2 全部已修复（scene methods 类型化、system 树递归类型、fetch-all 最大页数熔断、evaluation-scene 时间改 string、job-source 悬空注释已补实现）；scene.ts jsonb 自由结构 any 与 5 组跨文件类型重复评估后不改 |
+| 073-074 遗留 | （并入 fix-batch-3） | 场景编辑页创建人改从后端 creatorName 回填（新建回退「当前用户」）；其余已由大修复与 063-078 批次修复（AI 补全 formRef 同步、星级/预览/重传按钮 type=button、learn 任务列表 fetchAllPages、建议链复选框、数据集失败回退标记、reviewSteps id 往返保留） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6340,6 +6341,9 @@
 - tenant_admins NewPassword 明文回传（一次性初始密码属产品设计，日志不记录响应体，见 041-042）
 - 先 Get 校验→Update→再 Get 返回双往返模式 5+ 处与角色 user_count±1 维护 7 处重复（事务内低频写路径，重构收益低，见 041-042）
 - tenants CreateWithDefaults TOCTOU（超管低频操作，唯一约束兜底，见 041-042）
+- scene landing learn 页知识/能力/颗粒课 limit 1000 与 use-task-datasets 五处 limit 1000（非核心映射接口，容忍，见 073-074）
+- 资源归一化/考核训练徽章/live 数据组装 3 组重复（复用重构，见 073-074）
+- landing/[id]/page typeColors 回调内建表（微小性能，见 073-074）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
