@@ -2,6 +2,7 @@
 
 > 基于后端源码（`backend/internal/router/`、`backend/internal/handler/`）回溯整理。
 > 全量接口约 **560+ 个**（含按角色组重复注册的只读接口），本文档以「公共规范 + 通用模式 + 模块清单 + 代表性详写」方式记录，未逐接口展开的遵循同名通用模式。
+> 企业平台（Partner）的接口（`/partner/*`、`/auth/partner/*`）在子平台 spec [`partner-enterprise-platform.md`](partner-enterprise-platform.md) §5 单独记载，本文档不重复。
 
 ---
 
