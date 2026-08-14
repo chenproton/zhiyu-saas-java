@@ -157,19 +157,19 @@ func (s *UserStore) UpdateContact(ctx context.Context, id string, email, phone *
 	return err
 }
 
-// UpdateStatus 更新用户状态。
-func (s *UserStore) UpdateStatus(ctx context.Context, id, status string) error {
-	_, err := s.q.Exec(ctx, `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, status, id)
+// UpdateStatus 更新用户状态（关键写：SQL 层限定租户，ADR-0003）。
+func (s *UserStore) UpdateStatus(ctx context.Context, tenantID, id, status string) error {
+	_, err := s.q.Exec(ctx, `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`, status, id, tenantID)
 	return err
 }
 
-// ResetPassword 重置用户密码。
-func (s *UserStore) ResetPassword(ctx context.Context, id, plainPassword string) error {
+// ResetPassword 重置用户密码（关键写：SQL 层限定租户，ADR-0003）。
+func (s *UserStore) ResetPassword(ctx context.Context, tenantID, id, plainPassword string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
-	_, err = s.q.Exec(ctx, `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, string(hash), id)
+	_, err = s.q.Exec(ctx, `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`, string(hash), id, tenantID)
 	return err
 }
 

@@ -66,6 +66,20 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 - **禁止**把 spec 散落到 `docs/` 根目录或各 `backend/`/`apps/` 内部；spec 是「全项目的单一事实源」，集中一处，任何 AI 协作者都先读这里。
 - 规格文档不设「教程 vs 参考」之分（见 `documentation-standards.md`）：spec 一律是**参考型**，按需查，不要求顺序通读。
 
+## 五.bis、数据模型变更流程（表/迁移 ↔ schema 文档）
+
+新增或修改数据表时，按以下闭环执行，确保「数据库 Schema 单一事实源」（`docs/spec/04-database-schema.md`）不漂移：
+
+1. **分配迁移号**：在 `backend/migrations/` 取当前最大编号 +1，命名 `NNN_<slug>.up.sql` / `.down.sql`（DoD 第 4 条已要求配对）。
+2. **down 可逆性标注**：up 若物理不可逆（删表/清数据），down 必须能写则写、不能写则在文件头注释声明 `-- 不可逆：<原因>`（`TRUNCATE/DROP 数据` 类操作必须声明），供审查与回滚预案评估。
+3. **同步 schema 文档**：同一次提交内回写 `04-database-schema.md`：
+   - §5 变更记录追加一行 `| NNN | slug | 内容 |`；
+   - 新增表在 §2（字段级表定义）登记字段；加列/改列在对应表段落更新。
+4. **契约/数据字典**：若表影响 API 形状或数据字典，同步 `02-api-contract.md` 与 §4 数据字典。
+5. **机械校验**：`scripts/spec-check.sh` 第 7 项自动比对「migrations 编号集合 vs §5 变更记录编号集合」，漏回写即失败。
+
+> 历史债务：124~159 曾漏登记，已一次性补齐；此后按本流程随提交回写。
+
 ## 六、一致性红线（代码 ↔ spec 不得偏航）
 
 1. **新增能力**：必须先（或同时）在 spec 记录「要做什么」，再写代码；不允许「只写代码不改 spec」。
@@ -106,7 +120,8 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 
 | 类型 | 手段 | 负责什么 |
 |---|---|---|
-| **硬约束（可自动）** | `scripts/spec-check.sh` | 分层红线、AI 底座、migration 配对、spec 五层齐备、ADR 索引一致、安全红线（关键写租户条件/XSS 提示）、spec↔代码耦合提示 |
+| **硬约束（可自动，硬拦）** | `scripts/spec-check.sh` | 分层红线、AI 底座、migration 配对、spec 五层齐备、ADR 索引双向一致、ADR-0003 关键写租户条件（点名函数级）、schema 文档↔migrations 编号一致 |
+| **温和提示（可自动，不拦）** | `scripts/spec-check.sh` | XSS（dangerouslySetInnerHTML 清单）、spec↔代码耦合（代码结构变更未同步 spec 时提示） |
 | **语义一致性（需 AI）** | analyze 节点 | spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试 |
 
 `spec-check.sh` 只查「机器能判定的违规」，**不能**判断「spec 与代码语义是否一致」——那必须由 AI 在 analyze/converge 节点做。两者配合：脚本拦截硬红线，AI 补语义。

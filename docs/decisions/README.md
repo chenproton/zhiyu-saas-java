@@ -40,5 +40,7 @@
 | 0003 | 租户隔离采用「handler 层校验 + SQL 层可选限定」 | 已接受 | handler 先 verifyTenantOwnership 兜底，store 层 SQL 限定属纵深防御而非必须 |
 | 0004 | 文件预览从 kkfileview 切换为 flyfish-dev/file-viewer | 已取代 | 前端切浏览器原生 file-viewer，kkfileview 保留作回退（范围被 0005 扩大） |
 | 0005 | 文件预览按 file-viewer 支持格式全覆盖扩大切换范围 | 已接受 | preset-all 覆盖全部格式，删除自研 ZipPreview，其余回退 kkfileview |
+| 0006 | 资源快照与版本固化机制 | 已接受 | 发布即快照、快照表无 FK、成绩行 version 服务端盖章 |
+| 0007 | 企业平台架构——企业全局实体 + 专家账号直绑 | 已接受 | 企业全局唯一经 links 关联，账号直绑取代影子账号 |
 
 > 初建时仅登记已沉淀在 `AGENTS.md`/`docs/*.md` 的重要既有决策（0001~0003），不回溯补写全部历史；后续新决策再按模板新增。

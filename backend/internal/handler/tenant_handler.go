@@ -829,7 +829,7 @@ func (h *TenantHandler) adminResetPassword(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := h.AdminService.SetPassword(r.Context(), adminID, req.Password); err != nil {
+	if err := h.AdminService.SetPassword(r.Context(), tenantID, adminID, req.Password); err != nil {
 		respondServerError(w, r, err, "保存password失败")
 		return
 	}
@@ -1017,7 +1017,7 @@ func (h *TenantHandler) ResetSchoolAdminPassword(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := h.AdminService.SetPassword(r.Context(), adminID, req.Password); err != nil {
+	if err := h.AdminService.SetPassword(r.Context(), tenantID, adminID, req.Password); err != nil {
 		respondServerError(w, r, err, "保存password失败")
 		return
 	}

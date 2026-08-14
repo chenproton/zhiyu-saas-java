@@ -402,7 +402,7 @@ func (h *PartnerHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	// 选填：重置专家账号登录密码
 	if req.Password != "" {
 		if existing.UserID != nil {
-			if err := h.Service.ResetExpertPassword(r.Context(), *existing.UserID, req.Password); err != nil {
+			if err := h.Service.ResetExpertPassword(r.Context(), tenantID, *existing.UserID, req.Password); err != nil {
 				respondServerError(w, r, err, "重置专家密码失败")
 				return
 			}

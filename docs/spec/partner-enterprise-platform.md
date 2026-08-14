@@ -153,7 +153,7 @@
 
 ## 4. 数据模型
 
-> migration 编号：`139_partner_enterprise`（当前最大为 138，实施时以实际为准），必须配对 `.up.sql` / `.down.sql`。
+> migration 编号：实际落地为 `142_partner_enterprise`（实施时原预估 139，落地后回写），必须配对 `.up.sql` / `.down.sql`。
 
 ### 4.1 `tenants` 加 `type`
 
@@ -222,12 +222,12 @@ CREATE INDEX idx_alliance_enterprise_links_enterprise ON alliance_enterprise_lin
 
 TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts` 及协议/项目/成果表（其 `enterprise_ids` 引用随之失效，开发数据整体重置）。不编写数据迁移。
 
-### 4.8 migration 139 清单
+### 4.8 migration 142 清单
 
 | 文件 | 内容 |
 |------|------|
-| `139_partner_enterprise.up.sql` | tenants 加 type；重命名 alliance_enterprises → partner_enterprises 并删列、加 name 唯一约束、加 enable_public；建 alliance_enterprise_links；alliance_experts 加 user_id；TRUNCATE 联盟数据 |
-| `139_partner_enterprise.down.sql` | 反向：删 link 表；回改名；还原列；删 type 列 |
+| `142_partner_enterprise.up.sql` | tenants 加 type；重命名 alliance_enterprises → partner_enterprises 并删列、加 name 唯一约束、加 enable_public；建 alliance_enterprise_links；alliance_experts 加 user_id；TRUNCATE 联盟数据 |
+| `142_partner_enterprise.down.sql` | 反向：删 link 表；回改名；还原列；删 type 列 |
 
 ---
 
@@ -339,7 +339,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 ## 8. 部署与验证
 
-1. migration 139（配对 `.down.sql`），部署时 `go run ./cmd/migrate/main.go up`
+1. migration 142（配对 `.down.sql`），部署时 `go run ./cmd/migrate/main.go up`
 2. 本地门禁：`cd backend && go vet ./... && go build ./... && gofmt -l .`；`pnpm typecheck && pnpm lint`
 3. 分支隔离：`git worktree add -b feat/partner-平台 ...` → 开发提交 → 推送 → `./deploy.sh --branch <分支>`
 4. 健康检查：`curl -sf http://127.0.0.1:8080/health`；部署通过后自动合并回 master
