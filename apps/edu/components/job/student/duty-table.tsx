@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ListChecks, ChevronLeft, ChevronRight, X, Star } from 'lucide-react'
+import { ListChecks, ChevronLeft, ChevronRight, Star } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@zhiyu/ui'
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from '@/lib/types/job'
 import { Button } from '@/components/ui/button'
@@ -148,104 +149,90 @@ export function DutyTable({
       </div>
 
       {modalDuty && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setModalDuty(null)}
-        >
-          <div
-            className="bg-white rounded-2xl w-[1000px] max-w-[95vw] max-h-[86vh] overflow-hidden shadow-xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#f1f5f9]">
-              <div>
-                <div className="text-lg font-semibold text-[#1f2937]">
-                  {t('职责关联能力点')}
-                </div>
-                <div className="text-xs text-[#64748b] mt-1">
-                  {t('正在查看：{name}', { name: modalDuty.name })}
-                </div>
-              </div>
-              <button
-                className="text-[#94a3b8] hover:text-[#1f2937] p-1"
-                onClick={() => setModalDuty(null)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Dialog open onOpenChange={(open) => !open && setModalDuty(null)}>
+        <DialogContent className="sm:max-w-[1000px] p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b border-[#f1f5f9]">
+            <DialogTitle className="text-lg font-semibold text-[#1f2937]">
+              {t('职责关联能力点')}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#64748b] mt-1">
+              {t('正在查看：{name}', { name: modalDuty.name })}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="p-6 overflow-y-auto flex-1 bg-[#f8fafc]">
-              {modalAbilities.length === 0 ? (
-                <EmptyState
-                  className="h-64 py-0"
-                  iconClassName="text-[#64748b]"
-                  icon={
-                    <svg
-                      className="w-12 h-12 opacity-50"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
+          <div className="p-6 overflow-y-auto bg-[#f8fafc]">
+            {modalAbilities.length === 0 ? (
+              <EmptyState
+                className="h-64 py-0"
+                iconClassName="text-[#64748b]"
+                icon={
+                  <svg
+                    className="w-12 h-12 opacity-50"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12"
+                    />
+                  </svg>
+                }
+                title={t('该职责暂无关联能力点')}
+                titleClassName="text-[#64748b]"
+              />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pageItems.map((ab, idx) => (
+                    <AbilityPointCard
+                      key={ab.id}
+                      binding={ab}
+                      abilityPoint={abilityMap[ab.abilityPointId]}
+                      index={page * perPage + idx}
+                    />
+                  ))}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <button
+                      className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary/40 hover:text-primary"
+                      disabled={page <= 0}
+                      onClick={() => setPage(page - 1)}
+                      aria-label={t('上一页')}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25m-2.25 2.25V4.5m-6 0h12"
-                      />
-                    </svg>
-                  }
-                  title={t('该职责暂无关联能力点')}
-                  titleClassName="text-[#64748b]"
-                />
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {pageItems.map((ab, idx) => (
-                      <AbilityPointCard
-                        key={ab.id}
-                        binding={ab}
-                        abilityPoint={abilityMap[ab.abilityPointId]}
-                        index={page * perPage + idx}
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setPage(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${page === i ? 'bg-primary w-5' : 'bg-[#e2e8f0]'}`}
                       />
                     ))}
+                    <button
+                      className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary/40 hover:text-primary"
+                      disabled={page >= totalPages - 1}
+                      onClick={() => setPage(page + 1)}
+                      aria-label={t('下一页')}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
+                )}
 
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-2 mt-6">
-                      <button
-                        className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary/40 hover:text-primary"
-                        disabled={page <= 0}
-                        onClick={() => setPage(page - 1)}
-                        aria-label={t('上一页')}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setPage(i)}
-                          className={`w-2 h-2 rounded-full transition-all ${page === i ? 'bg-primary w-5' : 'bg-[#e2e8f0]'}`}
-                        />
-                      ))}
-                      <button
-                        className="w-8 h-8 rounded-full border border-[#e2e8f0] bg-white text-[#64748b] flex items-center justify-center disabled:opacity-40 hover:border-primary/40 hover:text-primary"
-                        disabled={page >= totalPages - 1}
-                        onClick={() => setPage(page + 1)}
-                        aria-label={t('下一页')}
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-
-                  <p className="text-xs text-[#94a3b8] text-center mt-3">
-                    <Star className="w-3 h-3 inline mr-1" />
-                    {t('共 {n} 个能力点', { n: modalAbilities.length })}
-                  </p>
-                </>
-              )}
-            </div>
+                <p className="text-xs text-[#94a3b8] text-center mt-3">
+                  <Star className="w-3 h-3 inline mr-1" />
+                  {t('共 {n} 个能力点', { n: modalAbilities.length })}
+                </p>
+              </>
+            )}
           </div>
-        </div>
+        </DialogContent>
+      </Dialog>
       )}
     </div>
   )

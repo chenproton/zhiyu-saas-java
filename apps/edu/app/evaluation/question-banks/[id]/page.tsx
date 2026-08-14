@@ -21,6 +21,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
@@ -863,59 +864,59 @@ export default function QuestionBankDetailPage() {
       />
 
       {/* 批量移动弹窗 */}
-      {batchMoveOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-semibold">{t('批量移动题目')}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t('选择目标题库，将选中的 {n} 道题目移动过去', { n: selectedQuestions.size })}
-            </p>
-            <SearchInput
-              wrapperClassName="mt-4"
-              iconClassName="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              placeholder={t('搜索题库名称...')}
-              value={moveSearch}
-              onChange={setMoveSearch}
-              inputClassName="h-9 pl-9 text-sm"
-            />
-            <div className="mt-3 max-h-60 overflow-auto">
-              {questionBanks
-                .filter(
-                  (b) => b.id !== bankId && b.name.toLowerCase().includes(moveSearch.toLowerCase()),
-                )
-                .map((bank) => (
-                  <button
-                    key={bank.id}
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
-                    onClick={() => handleBatchMove(bank.id)}
-                  >
-                    <div className="flex size-8 items-center justify-center rounded bg-blue-50">
-                      <ImageIcon className="size-4 text-blue-600" />
+      <Dialog open={batchMoveOpen} onOpenChange={(open) => !open && setBatchMoveOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('批量移动题目')}</DialogTitle>
+          </DialogHeader>
+          <p className="-mt-2 text-sm text-muted-foreground">
+            {t('选择目标题库，将选中的 {n} 道题目移动过去', { n: selectedQuestions.size })}
+          </p>
+          <SearchInput
+            wrapperClassName="mt-2"
+            iconClassName="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            placeholder={t('搜索题库名称...')}
+            value={moveSearch}
+            onChange={setMoveSearch}
+            inputClassName="h-9 pl-9 text-sm"
+          />
+          <div className="max-h-60 overflow-auto">
+            {questionBanks
+              .filter(
+                (b) => b.id !== bankId && b.name.toLowerCase().includes(moveSearch.toLowerCase()),
+              )
+              .map((bank) => (
+                <button
+                  key={bank.id}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                  onClick={() => handleBatchMove(bank.id)}
+                >
+                  <div className="flex size-8 items-center justify-center rounded bg-blue-50">
+                    <ImageIcon className="size-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium">{bank.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t('{n} 题', { n: questionCountByBank.get(bank.id) || 0 })}
                     </div>
-                    <div>
-                      <div className="font-medium">{bank.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {t('{n} 题', { n: questionCountByBank.get(bank.id) || 0 })}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setBatchMoveOpen(false)
-                  setMoveSearch('')
-                }}
-              >
-                {t('取消')}
-              </Button>
-            </div>
+                  </div>
+                </button>
+              ))}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setBatchMoveOpen(false)
+                setMoveSearch('')
+              }}
+            >
+              {t('取消')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

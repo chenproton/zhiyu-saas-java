@@ -34,6 +34,7 @@ import type {
   AlliancePublicAgreement,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { formatDate } from '@/lib/format-utils'
 import { LoadingView, EmptyState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { AchievementCard } from '@/components/alliance/public-cards'
@@ -155,8 +156,8 @@ export default function AlliancePublicProjectDetailPage() {
           {allianceLabel('projectPhase', project.phase)}
         </Badge>,
         <Badge key="period" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
-          {project.startDate ? new Date(project.startDate).toLocaleDateString('zh-CN') : '-'} ~{' '}
-          {project.endDate ? new Date(project.endDate).toLocaleDateString('zh-CN') : '-'}
+          {project.startDate ? formatDate(project.startDate) : '-'} ~{' '}
+          {project.endDate ? formatDate(project.endDate) : '-'}
         </Badge>,
       ]}
       stats={stats}
@@ -237,20 +238,20 @@ export default function AlliancePublicProjectDetailPage() {
                   />
                   <DetailInfoBlock
                     label={t('开始日期')}
-                    value={project.startDate ? new Date(project.startDate).toLocaleDateString('zh-CN') : '-'}
+                    value={project.startDate ? formatDate(project.startDate) : '-'}
                   />
                   <DetailInfoBlock
                     label={t('结束日期')}
-                    value={project.endDate ? new Date(project.endDate).toLocaleDateString('zh-CN') : '-'}
+                    value={project.endDate ? formatDate(project.endDate) : '-'}
                   />
                   <DetailInfoBlock label={t('预算')} value={project.budget} />
                   <DetailInfoBlock
                     label={t('创建时间')}
-                    value={new Date(project.createdAt).toLocaleDateString('zh-CN')}
+                    value={formatDate(project.createdAt)}
                   />
                   <DetailInfoBlock
                     label={t('更新时间')}
-                    value={new Date(project.updatedAt).toLocaleDateString('zh-CN')}
+                    value={formatDate(project.updatedAt)}
                   />
                 </div>
                 {project.coverImage && (
@@ -314,13 +315,13 @@ export default function AlliancePublicProjectDetailPage() {
                                 {m.dueDate && (
                                   <span className="flex items-center gap-1">
                                     <Calendar className="h-4 w-4" />
-                                    {t('计划：{date}', { date: new Date(m.dueDate).toLocaleDateString('zh-CN') })}
+                                    {t('计划：{date}', { date: formatDate(m.dueDate) })}
                                   </span>
                                 )}
                                 {m.completedDate && (
                                   <span className="flex items-center gap-1 text-emerald-600">
                                     <CheckCircle2 className="h-4 w-4" />
-                                    {t('完成：{date}', { date: new Date(m.completedDate).toLocaleDateString('zh-CN') })}
+                                    {t('完成：{date}', { date: formatDate(m.completedDate) })}
                                   </span>
                                 )}
                               </div>

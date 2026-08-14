@@ -25,6 +25,7 @@ import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync, FormDialogFooter } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { useT } from '@/lib/i18n/locale-provider'
+import { formatDate } from '@/lib/format-utils'
 import type { BrandMajorRankConfig, TalentRankStudent } from '@/lib/types'
 
 type SortKey =
@@ -317,7 +318,7 @@ function PositionDetailRows({ student }: { student: TalentRankStudent }) {
                 <TableCell>{p.grade || '-'}</TableCell>
                 <TableCell>
                   {p.evaluatedAt
-                    ? new Date(p.evaluatedAt).toLocaleDateString('zh-CN')
+                    ? formatDate(p.evaluatedAt)
                     : '-'}
                 </TableCell>
               </TableRow>

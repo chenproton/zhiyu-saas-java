@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 
 import { Input } from '@/components/ui/input'
@@ -603,109 +604,102 @@ export default function OrgStructurePage() {
         </div>
       }
     >
-      {isDialogOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsDialogOpen(false)
-          }}
-        >
-          <div className="bg-background w-full max-w-[500px] rounded-lg border p-6 shadow-lg">
-            <div className="flex flex-col gap-2 text-center sm:text-left mb-4">
-              <h2 className="text-lg font-semibold">
-                {dialogMode === 'addRoot'
-                  ? t('新增节点')
-                  : dialogMode === 'addChild'
-                    ? t('添加子节点：{name}', { name: selectedNode?.name ?? '' })
-                    : t('编辑节点')}
-              </h2>
-              <p className="text-muted-foreground text-sm">{t('配置组织节点信息')}</p>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogMode === 'addRoot'
+                ? t('新增节点')
+                : dialogMode === 'addChild'
+                  ? t('添加子节点：{name}', { name: selectedNode?.name ?? '' })
+                  : t('编辑节点')}
+            </DialogTitle>
+            <DialogDescription>{t('配置组织节点信息')}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>{t('节点组织名称')}</Label>
+              <Input
+                placeholder={t('如：信息学院')}
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
             </div>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>{t('节点组织名称')}</Label>
-                <Input
-                  placeholder={t('如：信息学院')}
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                />
+            <div className="grid gap-2">
+              <Label>{t('组织类型')}</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {orgTypes.map((type) => {
+                  const meta = typeMetaFor(type.name)
+                  const Icon = meta.icon
+                  const selected = formTypeId === type.id
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => setFormTypeId(type.id)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors',
+                        selected
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                          : 'border-input hover:bg-accent hover:text-accent-foreground',
+                      )}
+                    >
+                      <Icon className={cn('h-5 w-5', meta.color)} />
+                      <span className="text-xs font-medium">{type.name}</span>
+                    </button>
+                  )
+                })}
               </div>
-              <div className="grid gap-2">
-                <Label>{t('组织类型')}</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {orgTypes.map((type) => {
-                    const meta = typeMetaFor(type.name)
-                    const Icon = meta.icon
-                    const selected = formTypeId === type.id
-                    return (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() => setFormTypeId(type.id)}
-                        className={cn(
-                          'flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors',
-                          selected
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'border-input hover:bg-accent hover:text-accent-foreground',
-                        )}
-                      >
-                        <Icon className={cn('h-5 w-5', meta.color)} />
-                        <span className="text-xs font-medium">{type.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  {t('父节点')}
-                  {dialogMode === 'edit' && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      {t('更改父节点后，当前节点及其全部子节点将迁移到新父节点下')}
-                    </span>
-                  )}
-                </Label>
-                <Select value={formParentId} onValueChange={setFormParentId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('选择父节点')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__root__">{t('无（作为一级节点）')}</SelectItem>
-                    {parentOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {`${'　'.repeat(option.depth)}${option.name}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>{t('排序序号')}</Label>
-                <Input
-                  type="number"
-                  placeholder="1"
-                  value={formSortOrder}
-                  onChange={(e) => setFormSortOrder(e.target.value)}
-                />
-              </div>
-              {formError && (
-                <div className="rounded border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-                  {formError}
-                </div>
-              )}
             </div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-4">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleSave} disabled={saving || !formName.trim() || !formTypeId}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('保存')}
-              </Button>
+            <div className="space-y-2">
+              <Label>
+                {t('父节点')}
+                {dialogMode === 'edit' && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    {t('更改父节点后，当前节点及其全部子节点将迁移到新父节点下')}
+                  </span>
+                )}
+              </Label>
+              <Select value={formParentId} onValueChange={setFormParentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('选择父节点')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__root__">{t('无（作为一级节点）')}</SelectItem>
+                  {parentOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {`${'　'.repeat(option.depth)}${option.name}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            <div className="space-y-2">
+              <Label>{t('排序序号')}</Label>
+              <Input
+                type="number"
+                placeholder="1"
+                value={formSortOrder}
+                onChange={(e) => setFormSortOrder(e.target.value)}
+              />
+            </div>
+            {formError && (
+              <div className="rounded border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                {formError}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
+              {t('取消')}
+            </Button>
+            <Button onClick={handleSave} disabled={saving || !formName.trim() || !formTypeId}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('保存')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!deleteTarget}

@@ -18,9 +18,9 @@ import {
   Eye,
   Share2,
   Sparkles,
-  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFileSize } from '@/lib/utils'
 import { reportError } from '@/lib/error-handling'
@@ -223,50 +223,38 @@ function AbilitiesTab({
       </div>
 
       {selectedAbility && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setSelectedAbility(null)}
-        >
-          <div
-            className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-base font-semibold text-[#1f2937]">{t('能力点详情')}</div>
-              <button
-                className="text-[#94a3b8] hover:text-[#1f2937]"
-                onClick={() => setSelectedAbility(null)}
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Dialog open onOpenChange={(open) => !open && setSelectedAbility(null)}>
+        <DialogContent className="sm:max-w-[520px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('能力点详情')}</DialogTitle>
+          </DialogHeader>
+          <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-primary/60" />
+            <div className="text-sm font-semibold text-[#1f2937] mb-3">
+              {selectedAbility.ap.name}
             </div>
-            <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-primary/60" />
-              <div className="text-sm font-semibold text-[#1f2937] mb-3">
-                {selectedAbility.ap.name}
+            {(selectedAbility.ap.code || selectedAbility.ap.id) && (
+              <div className="text-xs text-[#94a3b8] mb-2 font-mono">
+                {t('ID：')}{selectedAbility.ap.code || selectedAbility.ap.id}
               </div>
-              {(selectedAbility.ap.code || selectedAbility.ap.id) && (
-                <div className="text-xs text-[#94a3b8] mb-2 font-mono">
-                  {t('ID：')}{selectedAbility.ap.code || selectedAbility.ap.id}
-                </div>
-              )}
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-medium text-[#94a3b8]">{t('能力属性：')}</span>
-                  <span className="text-[#475569]">
-                    {selectedAbility.ap.attributes?.length
-                      ? selectedAbility.ap.attributes.join('、')
-                      : t('未配置')}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-[#94a3b8]">{t('关联任务：')}</span>
-                  <span className="text-[#475569]">{selectedAbility.taskNames.join('、')}</span>
-                </div>
+            )}
+            <div className="space-y-2 text-xs">
+              <div>
+                <span className="font-medium text-[#94a3b8]">{t('能力属性：')}</span>
+                <span className="text-[#475569]">
+                  {selectedAbility.ap.attributes?.length
+                    ? selectedAbility.ap.attributes.join('、')
+                    : t('未配置')}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-[#94a3b8]">{t('关联任务：')}</span>
+                <span className="text-[#475569]">{selectedAbility.taskNames.join('、')}</span>
               </div>
             </div>
           </div>
-        </div>
+        </DialogContent>
+      </Dialog>
       )}
     </div>
   )

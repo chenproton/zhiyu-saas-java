@@ -37,6 +37,7 @@ import type {
   AllianceProject,
 } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
+import { formatDate } from '@/lib/format-utils'
 import { LoadingView, EmptyState, ErrorState } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -165,7 +166,7 @@ export default function AlliancePublicAchievementDetailPage() {
         </Badge>,
         <Badge key="date" variant="outline" className="bg-white/70 border-slate-200 text-slate-600">
           {achievement.achievementDate
-            ? new Date(achievement.achievementDate).toLocaleDateString('zh-CN')
+            ? formatDate(achievement.achievementDate)
             : '-'}
         </Badge>,
       ]}
@@ -268,11 +269,11 @@ export default function AlliancePublicAchievementDetailPage() {
                     />
                     <DetailInfoBlock
                       label={t('创建时间')}
-                      value={new Date(achievement.createdAt).toLocaleDateString('zh-CN')}
+                      value={formatDate(achievement.createdAt)}
                     />
                     <DetailInfoBlock
                       label={t('更新时间')}
-                      value={new Date(achievement.updatedAt).toLocaleDateString('zh-CN')}
+                      value={formatDate(achievement.updatedAt)}
                     />
                   </div>
                 </DetailSectionCard>

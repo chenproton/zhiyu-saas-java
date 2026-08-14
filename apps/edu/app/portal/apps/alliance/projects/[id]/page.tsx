@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { DateInput } from '@/components/shared/date-input'
-import { Label } from '@/components/ui/label'
+import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -597,29 +597,26 @@ export default function AllianceProjectDetailPage() {
             className="grid gap-4"
           >
             <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label>{t('名称 *')}</Label>
+            <FormFieldRow label={t('名称')} required>
               <Input
                 value={mForm.name}
                 onChange={(e) => setMForm({ ...mForm, name: e.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('描述')}</Label>
+            </FormFieldRow>
+            <FormFieldRow label={t('描述')}>
               <Textarea
                 value={mForm.description}
                 onChange={(e) => setMForm({ ...mForm, description: e.target.value })}
                 rows={2}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('截止日期')}</Label>
+            </FormFieldRow>
+            <FormFieldRow label={t('截止日期')}>
               <DateInput
                 type="date"
                 value={mForm.dueDate}
                 onChange={(e) => setMForm({ ...mForm, dueDate: e.target.value })}
               />
-            </div>
+            </FormFieldRow>
           </div>
           <FormDialogFooter
             onCancel={() => setMilestoneDialog({ open: false })}

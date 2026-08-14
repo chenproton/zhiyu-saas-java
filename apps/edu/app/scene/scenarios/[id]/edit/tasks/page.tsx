@@ -703,7 +703,7 @@ export default function TasksEditPage() {
       if (newId && mapped.length > 0) {
         await taskApi
           .update(newId, { dependencyIds: mapped } as Partial<Omit<ApiScenarioTask, 'id'>>)
-          .catch(() => {})
+          .catch((err) => reportError(err, '更新任务依赖'))
       }
     }
     if (recreated.length > 0) {
@@ -789,7 +789,7 @@ export default function TasksEditPage() {
     if (mode === 'overwrite' && lastErr) {
       // 新链创建失败：清理已建新任务并回滚重建旧任务
       for (const ct of createdTasks) {
-        await taskApi.delete(ct.id).catch(() => {})
+        await taskApi.delete(ct.id).catch((err) => reportError(err, '清理已建任务'))
       }
       if (removedSnapshot) {
         setTasks([])
@@ -853,7 +853,7 @@ export default function TasksEditPage() {
   }) => {
     const { created: createdTasks, mode, removedSnapshot } = payload
     for (const ct of createdTasks) {
-      await taskApi.delete(ct.id).catch(() => {})
+      await taskApi.delete(ct.id).catch((err) => reportError(err, '清理已建任务'))
     }
     setTasks((prev) => prev.filter((t) => !createdTasks.some((ct) => ct.id === t.id)))
     setTaskStates((prev) => {

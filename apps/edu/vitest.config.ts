@@ -5,12 +5,14 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: [
-      'lib/**/*.test.ts',
-      'components/**/*.test.ts',
-      'app/scene/scenarios/[id]/edit/tasks/_components/**/*.test.ts',
-      'app/lesson/admin/system/add/_components/**/*.test.ts',
-      'app/lesson/admin/hybrid/add/_components/**/*.test.ts',
+    // 默认全量收集 *.test.ts（不再白名单，避免新增测试被漏跑）；
+    // 排除 node_modules/.next/dist/public/image-editor（符号链接）等非源码目录。
+    exclude: [
+      'node_modules/**',
+      '.next/**',
+      'dist/**',
+      'public/image-editor/**',
+      '**/node_modules/**',
     ],
   },
   resolve: {

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest } from '@/lib/api'
@@ -169,53 +170,45 @@ function DictionaryTab({ dictType }: { dictType: string }) {
           </tbody>
         </table>
       </div>
-      {dialogOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setDialogOpen(false)}
-        >
-          <div
-            className="bg-background rounded-lg shadow-lg w-full max-w-sm p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold mb-4">
-              {editId ? t('编辑字典项') : t('新增字典项')}
-            </h2>
-            <div className="space-y-4">
-              <FormFieldRow label={t('编码')} required>
-                <Input
-                  value={formItem.code}
-                  onChange={(e) => setFormItem({ ...formItem, code: e.target.value })}
-                  disabled={!!editId}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('名称')} required>
-                <Input
-                  value={formItem.name}
-                  onChange={(e) => setFormItem({ ...formItem, name: e.target.value })}
-                />
-              </FormFieldRow>
-              <FormFieldRow label={t('排序')}>
-                <Input
-                  type="number"
-                  value={formItem.sortOrder}
-                  onChange={(e) =>
-                    setFormItem({ ...formItem, sortOrder: parseInt(e.target.value) || 0 })
-                  }
-                />
-              </FormFieldRow>
-            </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                {t('取消')}
-              </Button>
-              <Button onClick={handleSave} disabled={saving || !formItem.code || !formItem.name}>
-                {saving ? t('保存中...') : t('保存')}
-              </Button>
-            </div>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editId ? t('编辑字典项') : t('新增字典项')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <FormFieldRow label={t('编码')} required>
+              <Input
+                value={formItem.code}
+                onChange={(e) => setFormItem({ ...formItem, code: e.target.value })}
+                disabled={!!editId}
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('名称')} required>
+              <Input
+                value={formItem.name}
+                onChange={(e) => setFormItem({ ...formItem, name: e.target.value })}
+              />
+            </FormFieldRow>
+            <FormFieldRow label={t('排序')}>
+              <Input
+                type="number"
+                value={formItem.sortOrder}
+                onChange={(e) =>
+                  setFormItem({ ...formItem, sortOrder: parseInt(e.target.value) || 0 })
+                }
+              />
+            </FormFieldRow>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              {t('取消')}
+            </Button>
+            <Button onClick={handleSave} disabled={saving || !formItem.code || !formItem.name}>
+              {saving ? t('保存中...') : t('保存')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(v) => {

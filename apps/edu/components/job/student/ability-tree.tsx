@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Layers, Sparkles, Target, X } from 'lucide-react'
+import { Layers, Sparkles, Target } from 'lucide-react'
 import { EmptyState } from '@zhiyu/ui'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { PositionAbilityBinding, AbilityPoint, AbilityDomain } from '@/lib/types/job'
 import { AbilityPointCard } from './ability-point-card'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -154,29 +155,17 @@ export function AbilityTree({ bindings, abilityPoints, abilityDomains }: Ability
       </div>
 
       {selectedAbility && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setSelectedAbility(null)}
-        >
-          <div
-            className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-base font-semibold text-[#1f2937]">{t('能力点详情')}</div>
-              <button
-                className="text-[#94a3b8] hover:text-[#1f2937]"
-                onClick={() => setSelectedAbility(null)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <AbilityPointCard
-              binding={selectedAbility.binding}
-              abilityPoint={selectedAbility.abilityPoint}
-            />
-          </div>
-        </div>
+      <Dialog open onOpenChange={(open) => !open && setSelectedAbility(null)}>
+        <DialogContent className="sm:max-w-[520px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('能力点详情')}</DialogTitle>
+          </DialogHeader>
+          <AbilityPointCard
+            binding={selectedAbility.binding}
+            abilityPoint={selectedAbility.abilityPoint}
+          />
+        </DialogContent>
+      </Dialog>
       )}
     </div>
   )
