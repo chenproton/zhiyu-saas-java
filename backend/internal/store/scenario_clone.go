@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -106,6 +107,7 @@ func (s *ScenarioCloneStore) CloneScenario(ctx context.Context, tx Queryer, tena
 			&tr.description, &tr.detailedDescription, &tr.descriptionPdf,
 			&tr.estimatedHours, &tr.taskType, &tr.difficulty, &tr.background,
 			&tr.dependencyIDs, &tr.knowledgePointIDs, &tr.abilityPointIDs, &tr.resourceIDs, &tr.evalData); err != nil {
+			slog.Warn("克隆行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		taskData = append(taskData, tr)
@@ -203,6 +205,7 @@ func (s *ScenarioCloneStore) cloneTaskDeliverables(ctx context.Context, tx Query
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.typ, &r.name, &r.description, &r.evalPoints, &r.sortOrder); err != nil {
+			slog.Warn("克隆行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		data = append(data, r)
@@ -413,6 +416,7 @@ func (s *ScenarioCloneStore) cloneSimpleBindings(ctx context.Context, tx Queryer
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
+			slog.Warn("克隆行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		ids = append(ids, id)
@@ -463,6 +467,7 @@ func (s *ScenarioCloneStore) cloneScenarioWeights(ctx context.Context, tx Querye
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.oldTaskID, &r.weight); err != nil {
+			slog.Warn("克隆行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		if _, ok := taskIDMap[r.oldTaskID]; !ok {
@@ -504,6 +509,7 @@ func (s *ScenarioCloneStore) cloneScenarioGradeMappings(ctx context.Context, tx 
 	for rows.Next() {
 		var r row
 		if err := rows.Scan(&r.oldTaskID, &r.level, &r.minScore, &r.maxScore, &r.description, &r.color); err != nil {
+			slog.Warn("克隆行扫描失败，已跳过该行", "error", err)
 			continue
 		}
 		if r.oldTaskID != nil {
