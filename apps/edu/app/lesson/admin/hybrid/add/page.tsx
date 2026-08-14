@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 import { courseApi, courseNodeApi, hybridModuleApi, fileApi, lessonBatchApi, abilityApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { HybridNodeModule } from '@zhiyu/api-client'
 import { MajorSelect } from '@/components/shared/major-select'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
@@ -110,10 +111,12 @@ function HybridCourseAddForm() {
   }, [abilityPool])
 
   useEffect(() => {
-    abilityApi
-      .list({ limit: 1000 })
+    // 能力点池全量分页拉取，避免超过 1000 条时池内能力点缺失/回显截断
+    fetchAllPages((page, pageSize) =>
+      abilityApi.list({ limit: pageSize, offset: page * pageSize }),
+    )
       .then((res) => {
-        const pool = (res.items || []).map((a: any) => ({
+        const pool = (res || []).map((a: any) => ({
           id: a.id,
           name: a.name,
           code: a.code,
