@@ -50,6 +50,16 @@ function copyDir(pkgDirPrefix, srcRel, destRel) {
   cpSync(src, dest, { recursive: true })
 }
 
+// 复制整个目录（源为绝对路径，用于 offline/ 下的离线资产）。
+function copyDirFromAbs(srcAbs, destRel) {
+  if (!existsSync(srcAbs)) {
+    throw new Error(`缺少离线资产源目录: ${srcAbs}`)
+  }
+  const dest = path.join(publicDir, destRel)
+  rmSync(dest, { recursive: true, force: true })
+  cpSync(srcAbs, dest, { recursive: true })
+}
+
 // ---- CAD（DWG/DXF/DWF，@flyfish-dev/cad-viewer 0.8.0）----
 const CAD_WASM = '@flyfish-dev+cad-viewer@0.8.0'
 for (const f of ['dwg-worker.js', 'dwfv-render.wasm', 'libredwg-web.js', 'libredwg-web.wasm']) {
@@ -111,4 +121,14 @@ copyDir(PDFJS, 'pdfjs-dist/cmaps', 'vendor/pdf/cmaps')
 copyDir(PDFJS, 'pdfjs-dist/standard_fonts', 'vendor/pdf/standard_fonts')
 copyDir(PDFJS, 'pdfjs-dist/wasm', 'vendor/pdf/wasm')
 
-console.log('[file-viewer] 已完成 CAD/archive/ppt/model/typst/pdf 资产的 public 复制')
+// ---- PDF CJK 字体兜底（@fontsource-variable/noto-sans-sc，未嵌入中文字体的 PDF 缺字兜底）----
+// pdfFontFallback.js 期望 noto-sans-sc.css + files/*.woff2 结构；wght.css 即该 CSS（Noto Sans SC Variable）。
+const NOTO_SANS = '@fontsource-variable+noto-sans-sc@5.2.10'
+copyFile(NOTO_SANS, '@fontsource-variable/noto-sans-sc/wght.css', 'vendor/pdf/fonts/noto-sans-sc.css')
+copyDir(NOTO_SANS, '@fontsource-variable/noto-sans-sc/files', 'vendor/pdf/fonts/files')
+
+// ---- Typst 默认字体（offline/file-viewer/typst-fonts，开源字体，无公共 CDN 依赖）----
+const offlineFontsDir = path.resolve(__dirname, '../../../offline/file-viewer/typst-fonts')
+copyDirFromAbs(offlineFontsDir, 'wasm/typst/fonts')
+
+console.log('[file-viewer] 已完成 CAD/archive/ppt/model/typst/pdf 及 CJK/typst 字体资产的 public 复制')

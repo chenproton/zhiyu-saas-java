@@ -32,7 +32,17 @@ offline/
 └── ip2region_v4.xdb            # ip2region v2.2 IPv4 数据文件（必需，~11MB，登录日志 IP 归属地）
                                 # 下载: https://github.com/lionsoul2014/ip2region/raw/master/data/ip2region_v4.xdb
                                 # deploy.sh 构建后端镜像时自动打包进容器 /app/data/
+└── file-viewer/                # file-viewer 预览服务的运行时离线资产（typst 默认字体）
+    └── typst-fonts/            # 17 个开源字体（DejaVuSansMono / LibertinusSerif / NewCM / NewCMMath，~8.4MB）
+                                # 下载: https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/
+                                # prebuild 脚本复制到 apps/edu/public/wasm/typst/fonts/（typst 预览，无 CDN 依赖）
 ```
+
+> file-viewer 其余运行时资产（CAD/archive/ppt/model/typst 的 worker/wasm、pdf 的 cmaps/标准字体/CJK 字体兜底）
+> 均来自 npm 依赖包（`@flyfish-dev/cad-viewer`、`libarchive.js`、`@file-viewer/ppt`、`occt-import-js`、
+> `@myriaddreamin/typst-ts-*`、`pdfjs-dist`、`@fontsource-variable/noto-sans-sc`），由
+> `apps/edu/scripts/copy-file-viewer-assets.mjs` 在 `next build` 前自动复制到 `apps/edu/public/`，
+> 无需额外离线下载。唯一需要从 CDN 预置的是 `file-viewer/typst-fonts/`（上方）。
 
 ## 使用方式
 
