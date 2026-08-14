@@ -217,6 +217,8 @@ export default function TasksEditPage() {
 
   const scenarioDataRef = useRef<Scenario | null>(null)
   const taskStatesRef = useRef(taskStates)
+  // AI 任务链建议面板的挂载容器（portal 目标，脱离按钮行整行全宽展示）
+  const aiTaskChainPanelRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     taskStatesRef.current = taskStates
   }, [taskStates])
@@ -1355,11 +1357,13 @@ export default function TasksEditPage() {
               difficulty: (tk.difficulty as number) || 3,
             }))}
             onAdopt={handleAdoptTaskChain}
+            panelSlot={aiTaskChainPanelRef}
           />
         </div>
       </div>
 
-      {/* AI 任务链建议面板（采纳后创建的入口在父页面，面板由组件内联渲染） */}
+      {/* AI 任务链建议面板挂载点（portal 目标，位于标题行下方、整行全宽） */}
+      <div ref={aiTaskChainPanelRef} />
 
       {/* Task List with unified horizontal scroll */}
       <div className="overflow-x-auto pb-2 -mx-2 px-2">
