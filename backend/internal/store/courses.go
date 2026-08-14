@@ -172,9 +172,8 @@ func (s *CourseStore) Delete(ctx context.Context, id, tenantID string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, id); err != nil {
 			return fmt.Errorf("delete course homeworks: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM course_evaluation_results WHERE course_id = $1`, id); err != nil {
-			return fmt.Errorf("delete course eval results: %w", err)
-		}
+		// course_evaluation_results 由末尾 DELETE FROM courses 的 FK ON DELETE CASCADE 级联清理；
+		// 且 inUse 检查已保证执行到此处无成绩行，无需显式 DELETE。
 		// 课程级考试安排/作业测评一并清理，防止孤儿 usage 残留；
 		// 已有成绩的安排保留（exam_results 经 FK CASCADE 会随安排删除，删除保护兜底）
 		if _, err := tx.Exec(ctx, `

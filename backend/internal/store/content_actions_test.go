@@ -6,18 +6,9 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
-// 状态流转矩阵：from → 允许的 to 集合。
-var transitionMatrix = map[domain.ContentStatus][]domain.ContentStatus{
-	domain.StatusDraft:     {domain.StatusPending, domain.StatusArchived},
-	domain.StatusRejected:  {domain.StatusDraft, domain.StatusPending, domain.StatusArchived},
-	domain.StatusPending:   {domain.StatusDraft, domain.StatusApproved, domain.StatusRejected},
-	domain.StatusApproved:  {domain.StatusDraft, domain.StatusPublished, domain.StatusArchived},
-	domain.StatusPublished: {domain.StatusDraft, domain.StatusArchived},
-	domain.StatusArchived:  {domain.StatusDraft},
-}
-
 func TestCanTransition(t *testing.T) {
-	for from, tos := range transitionMatrix {
+	m := allowedStatusTransitions
+	for from, tos := range m {
 		for _, to := range tos {
 			if !canTransition(from, to) {
 				t.Errorf("canTransition(%s, %s) = false, want true", from, to)
@@ -34,7 +25,7 @@ func TestCanTransitionRejectsIllegal(t *testing.T) {
 	for _, from := range all {
 		for _, to := range all {
 			expected := false
-			for _, allowed := range transitionMatrix[from] {
+			for _, allowed := range allowedStatusTransitions[from] {
 				if allowed == to {
 					expected = true
 					break

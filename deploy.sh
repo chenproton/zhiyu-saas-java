@@ -636,6 +636,23 @@ if [[ -z "${NEXT_PUBLIC_SITE_URL:-}" ]]; then
 fi
 update_env_var "$ENV_FILE" "NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_SITE_URL"
 
+# 生产 https 部署下，外部平台链接若未显式配置会回退到 http 演示地址，
+# 浏览器会因混合内容拦截导致跨平台跳转/评分 iframe 静默失效，这里仅告警不阻断。
+if [[ "$site_scheme" == "https" ]]; then
+  for _var in NEXT_PUBLIC_CAREER_PLATFORM_URL NEXT_PUBLIC_SCENE_PLATFORM_URL \
+             NEXT_PUBLIC_ALLIANCE_PLATFORM_URL NEXT_PUBLIC_ABILITY_PLATFORM_URL \
+             NEXT_PUBLIC_COURSE_LEARN_URL NEXT_PUBLIC_MALL_URL NEXT_PUBLIC_AI_ASSISTANT_URL; do
+    _val=""
+    # shellcheck disable=SC2154
+    if [[ -n "${!_var:-}" ]]; then
+      _val="${!_var}"
+    fi
+    if [[ -z "$_val" || "$_val" == http://* ]]; then
+      warn "生产 https 部署未配置 ${_var}（或其值为 http），跨平台链接将回退到演示地址并可能被浏览器拦截，请在 .env 中显式填 https 地址。"
+    fi
+  done
+fi
+
 # 如果数据库 host 端口发生变化，同步更新 DATABASE_URL 中的 host 端口
 if [[ "$DATABASE_URL" != *":${POSTGRES_HOST_PORT}/zhiyu-saas"* ]]; then
   DATABASE_URL=$(echo "$DATABASE_URL" | sed -E "s|@127\.0\.0\.1:[0-9]+/|@127.0.0.1:${POSTGRES_HOST_PORT}/|")

@@ -83,11 +83,11 @@ export default function ExamsPage() {
         })
         setRefreshKey((k) => k + 1)
         router.push(`/evaluation/exams/${newItem.id}?new=true`)
-      } catch (err: any) {
+      } catch (err) {
         toast({
           variant: 'destructive',
           title: t('创建失败'),
-          description: err.message || t('创建失败'),
+          description: err instanceof Error ? err.message : t('创建失败'),
         })
       }
     },

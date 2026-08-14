@@ -1317,13 +1317,22 @@ export default function TasksEditPage() {
     return weightFailures
   }
 
+  // 共用的「保存任务 + 非草稿态退回草稿」核心，返回是否触发了退回草稿。
+  const saveAndGuardDraft = async () => {
+    await saveTasksToBackend()
+    if (existingScenario?.status !== 'draft') {
+      await scenarioApi.saveDraft(scenarioId)
+      setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
+      return true
+    }
+    return false
+  }
+
   const handleSaveDraft = async () => {
     setIsSaving(true)
     try {
-      await saveTasksToBackend()
-      if (existingScenario?.status !== 'draft') {
-        await scenarioApi.saveDraft(scenarioId)
-        setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
+      const reverted = await saveAndGuardDraft()
+      if (reverted) {
         toast({ title: t('草稿已保存'), description: t('场景已退回草稿状态') })
       } else {
         toast({ title: t('草稿已保存') })
@@ -1338,10 +1347,8 @@ export default function TasksEditPage() {
   const handleFinish = async () => {
     setIsSaving(true)
     try {
-      await saveTasksToBackend()
-      if (existingScenario?.status !== 'draft') {
-        await scenarioApi.saveDraft(scenarioId)
-        setExistingScenario((prev) => (prev ? { ...prev, status: 'draft' } : prev))
+      const reverted = await saveAndGuardDraft()
+      if (reverted) {
         toast({ title: t('配置已保存'), description: t('场景已退回草稿状态') })
       } else {
         toast({ title: t('配置已保存') })

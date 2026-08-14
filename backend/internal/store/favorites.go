@@ -89,33 +89,42 @@ func (s *FavoritesStore) ToggleFavorite(ctx context.Context, userID, targetType,
 			return err
 		}
 		if exists {
-			if _, err := tx.Exec(ctx, `
+			tag, err := tx.Exec(ctx, `
 				DELETE FROM user_favorites WHERE user_id = $1 AND target_type = $2 AND target_id = $3
-			`, userID, targetType, targetID); err != nil {
+			`, userID, targetType, targetID)
+			if err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `
-				UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
-				WHERE target_type = $1 AND target_id = $2
-			`, targetType, targetID); err != nil {
-				return err
+			// 并发下该行可能已被另一事务取消收藏，仅在实际删除后才递减计数，避免漂移。
+			if tag.RowsAffected() > 0 {
+				if _, err := tx.Exec(ctx, `
+					UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
+					WHERE target_type = $1 AND target_id = $2
+				`, targetType, targetID); err != nil {
+					return err
+				}
 			}
 			toggled = false
 			return nil
 		}
-		if _, err := tx.Exec(ctx, `
+		tag, err := tx.Exec(ctx, `
 			INSERT INTO user_favorites (id, user_id, target_type, target_id)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (user_id, target_type, target_id) DO NOTHING
-		`, uuid.NewString(), userID, targetType, targetID); err != nil {
+		`, uuid.NewString(), userID, targetType, targetID)
+		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO favorite_counters (target_type, target_id, cnt)
-			VALUES ($1, $2, 1)
-			ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
-		`, targetType, targetID); err != nil {
-			return err
+		// 并发下该行可能已被另一事务插入（ON CONFLICT DO NOTHING 静默 no-op），
+		// 仅在实际插入后才递增计数，避免计数漂移。
+		if tag.RowsAffected() > 0 {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO favorite_counters (target_type, target_id, cnt)
+				VALUES ($1, $2, 1)
+				ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
+			`, targetType, targetID); err != nil {
+				return err
+			}
 		}
 		toggled = true
 		return nil

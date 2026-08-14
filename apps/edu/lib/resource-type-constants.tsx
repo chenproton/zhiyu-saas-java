@@ -13,61 +13,92 @@ import {
   HelpCircle,
 } from 'lucide-react'
 
-export const TYPE_ICONS: Record<string, React.ReactNode> = {
-  document: <FileText className="size-4" />,
-  spreadsheet: <Table className="size-4" />,
-  image: <Image className="size-4" aria-label="图片" />,
-  link: <Link className="size-4" />,
-  audio: <Music className="size-4" />,
-  video: <Video className="size-4" />,
-  archive: <Archive className="size-4" />,
-  venue: <Building className="size-4" />,
-  facility: <Wrench className="size-4" />,
-  software: <AppWindow className="size-4" />,
-  other: <HelpCircle className="size-4" />,
+// 资源类型元数据（单一权威源）：每个 type 的 icon/color/bg/badge 集中一处，
+// 下方 TYPE_* 导出由它派生，新增 type 漏配任意一栏会编译报错。
+const RESOURCE_TYPE_META = {
+  document: {
+    icon: <FileText className="size-4" />,
+    color: '#f97316',
+    bg: 'bg-orange-50',
+    badge: 'bg-orange-50 text-orange-600 border-orange-200',
+  },
+  spreadsheet: {
+    icon: <Table className="size-4" />,
+    color: '#22c55e',
+    bg: 'bg-emerald-50',
+    badge: 'bg-green-50 text-green-600 border-green-200',
+  },
+  image: {
+    icon: <Image className="size-4" aria-label="图片" />,
+    color: '#a855f7',
+    bg: 'bg-purple-50',
+    badge: 'bg-purple-50 text-purple-600 border-purple-200',
+  },
+  link: {
+    icon: <Link className="size-4" />,
+    color: '#06b6d4',
+    bg: 'bg-cyan-50',
+    badge: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+  },
+  audio: {
+    icon: <Music className="size-4" />,
+    color: '#ec4899',
+    bg: 'bg-pink-50',
+    badge: 'bg-pink-50 text-pink-600 border-pink-200',
+  },
+  video: {
+    icon: <Video className="size-4" />,
+    color: '#3b82f6',
+    bg: 'bg-blue-50',
+    badge: 'bg-blue-50 text-blue-600 border-blue-200',
+  },
+  archive: {
+    icon: <Archive className="size-4" />,
+    color: '#64748b',
+    bg: 'bg-slate-50',
+    badge: 'bg-slate-50 text-slate-600 border-slate-200',
+  },
+  venue: {
+    icon: <Building className="size-4" />,
+    color: '#ef4444',
+    bg: 'bg-red-50',
+    badge: 'bg-red-50 text-red-600 border-red-200',
+  },
+  facility: {
+    icon: <Wrench className="size-4" />,
+    color: '#6366f1',
+    bg: 'bg-indigo-50',
+    badge: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+  },
+  software: {
+    icon: <AppWindow className="size-4" />,
+    color: '#14b8a6',
+    bg: 'bg-teal-50',
+    badge: 'bg-teal-50 text-teal-600 border-teal-200',
+  },
+  other: {
+    icon: <HelpCircle className="size-4" />,
+    color: '#78716c',
+    bg: 'bg-stone-50',
+    badge: 'bg-stone-50 text-stone-600 border-stone-200',
+  },
 }
 
-export const TYPE_COLORS: Record<string, string> = {
-  document: '#f97316',
-  spreadsheet: '#22c55e',
-  image: '#a855f7',
-  link: '#06b6d4',
-  audio: '#ec4899',
-  video: '#3b82f6',
-  archive: '#64748b',
-  venue: '#ef4444',
-  facility: '#6366f1',
-  software: '#14b8a6',
-  other: '#78716c',
-}
+export const TYPE_ICONS: Record<string, React.ReactNode> = Object.fromEntries(
+  Object.entries(RESOURCE_TYPE_META).map(([k, v]) => [k, v.icon]),
+)
 
-export const TYPE_BG: Record<string, string> = {
-  document: 'bg-orange-50',
-  spreadsheet: 'bg-emerald-50',
-  image: 'bg-purple-50',
-  link: 'bg-cyan-50',
-  audio: 'bg-pink-50',
-  video: 'bg-blue-50',
-  archive: 'bg-slate-50',
-  venue: 'bg-red-50',
-  facility: 'bg-indigo-50',
-  software: 'bg-teal-50',
-  other: 'bg-stone-50',
-}
+export const TYPE_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(RESOURCE_TYPE_META).map(([k, v]) => [k, v.color]),
+)
 
-export const TYPE_BADGE: Record<string, string> = {
-  document: 'bg-orange-50 text-orange-600 border-orange-200',
-  spreadsheet: 'bg-green-50 text-green-600 border-green-200',
-  image: 'bg-purple-50 text-purple-600 border-purple-200',
-  link: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-  audio: 'bg-pink-50 text-pink-600 border-pink-200',
-  video: 'bg-blue-50 text-blue-600 border-blue-200',
-  archive: 'bg-slate-50 text-slate-600 border-slate-200',
-  venue: 'bg-red-50 text-red-600 border-red-200',
-  facility: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-  software: 'bg-teal-50 text-teal-600 border-teal-200',
-  other: 'bg-stone-50 text-stone-600 border-stone-200',
-}
+export const TYPE_BG: Record<string, string> = Object.fromEntries(
+  Object.entries(RESOURCE_TYPE_META).map(([k, v]) => [k, v.bg]),
+)
+
+export const TYPE_BADGE: Record<string, string> = Object.fromEntries(
+  Object.entries(RESOURCE_TYPE_META).map(([k, v]) => [k, v.badge]),
+)
 
 export const LIBRARY_LANDING_TYPE_COLORS: Record<string, string> = {
   video: '#3b82f6',

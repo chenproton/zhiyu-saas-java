@@ -17,6 +17,7 @@ import type { ResourceItem } from '@/components/shared/resource-selector'
 import type { RubricScheme } from '@/components/evaluation-rules/types'
 import { reportError } from '@/lib/error-handling'
 import { useI18n, translate } from '@/lib/i18n/locale-provider'
+import { fetchAllPages } from '@zhiyu/api-client'
 
 export type { RubricScheme }
 
@@ -161,13 +162,17 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
       const jobs = pending.map(async (key) => {
         try {
           if (key === 'knowledge') {
-            const [kpRes, glRes] = await Promise.all([
-              knowledgeApi.list({ limit: 1000 }),
-              courseApi.list({ type: 'granular', limit: 1000 }),
+            const [kps, granularLessons] = await Promise.all([
+              fetchAllPages((page, pageSize) =>
+                knowledgeApi.list({ limit: pageSize, offset: page * pageSize }),
+              ),
+              fetchAllPages((page, pageSize) =>
+                courseApi.list({ type: 'granular', limit: pageSize, offset: page * pageSize }),
+              ),
             ])
             const nextKp: TaskKnowledgePointItem[] = []
             const creatorCustomIds = new Set<string>()
-            ;(kpRes.items || []).forEach((kp: unknown) => {
+            ;(kps || []).forEach((kp: unknown) => {
               const item = kp as TaskKnowledgePointItem & { granularLessonIds?: string[] }
               nextKp.push({
                 ...item,
@@ -186,10 +191,12 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
               })
               return next
             })
-            setGranularLessons((glRes.items || []) as Course[])
+            setGranularLessons((granularLessons || []) as Course[])
           } else if (key === 'ability') {
-            const apRes = await abilityApi.list({ limit: 1000 })
-            setAbilityPoints(apRes.items || [])
+            const abilityPoints = await fetchAllPages((page, pageSize) =>
+              abilityApi.list({ limit: pageSize, offset: page * pageSize }),
+            )
+            setAbilityPoints(abilityPoints || [])
             const scenarioData = scenarioDataRef?.current as
               { careerPositionId?: string } | undefined
             const positionId = scenarioData?.careerPositionId
@@ -202,9 +209,11 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
               }
             }
           } else if (key === 'resources') {
-            const resRes = await resourceLibraryApi.list({ limit: 1000 })
+            const resources = await fetchAllPages((page, pageSize) =>
+              resourceLibraryApi.list({ limit: pageSize, offset: page * pageSize }),
+            )
             setLearningResources(
-              (resRes.items || []).map((res: unknown) => {
+              (resources || []).map((res: unknown) => {
                 const item = res as TaskResourceItem & {
                   resourceType?: string
                   fileSize?: number | string
@@ -273,12 +282,14 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
               }
             }
           } else if (key === 'users') {
-            const userRes = await userManagementApi.list({ limit: 1000 })
-            setUsers(userRes.items || [])
+            const users = await fetchAllPages((page, pageSize) =>
+              userManagementApi.list({ limit: pageSize, offset: page * pageSize }),
+            )
+            setUsers(users || [])
             // 补齐头部共建人姓名（初始挂载时以 id 占位）
             if (setExistingScenario) {
               const nameMap = new Map(
-                (userRes.items || []).map((u: unknown) => [
+                (users || []).map((u: unknown) => [
                   (u as { id: string }).id,
                   (u as { name: string }).name,
                 ]),
@@ -300,14 +311,18 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
           } else if (key === 'clone') {
             // 克隆对话框候选：全部场景及其任务
             try {
-              const allScenariosRes = await scenarioApi.list({ limit: 1000 })
-              const allTasksRes = await taskApi.list({ limit: 1000 })
+              const allScenarios = await fetchAllPages((page, pageSize) =>
+                scenarioApi.list({ limit: pageSize, offset: page * pageSize }),
+              )
+              const allTasks = await fetchAllPages((page, pageSize) =>
+                taskApi.list({ limit: pageSize, offset: page * pageSize }),
+              )
               const scenarioNameMap = new Map<string, string>()
               const scenarioMetaMap = new Map<
                 string,
                 { creatorId: string; coBuilderIds: string[]; status: string }
               >()
-              for (const s of allScenariosRes.items) {
+              for (const s of allScenarios) {
                 scenarioNameMap.set(s.id, s.name)
                 scenarioMetaMap.set(s.id, {
                   creatorId: s.creatorId,
@@ -316,7 +331,7 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
                 })
               }
               const tasksByScenarioId = new Map<string, unknown[]>()
-              for (const t of allTasksRes.items) {
+              for (const t of allTasks) {
                 const sName = scenarioNameMap.get(t.scenarioId) || translate('未知场景', locale)
                 const sMeta = scenarioMetaMap.get(t.scenarioId) || {
                   creatorId: '',
@@ -336,7 +351,7 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
               const nextScenarios: unknown[] = []
               const currentScenario = scenarioDataRef?.current
               if (currentScenario) nextScenarios.push(currentScenario)
-              for (const s of allScenariosRes.items) {
+              for (const s of allScenarios) {
                 const tasksForScenario = tasksByScenarioId.get(s.id) || []
                 if (tasksForScenario.length > 0) {
                   nextScenarios.push({ ...s, tasks: tasksForScenario })

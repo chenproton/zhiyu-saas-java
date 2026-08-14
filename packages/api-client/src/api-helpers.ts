@@ -156,6 +156,17 @@ export function getToken(platform?: AuthPlatform): string | null {
   return localStorage.getItem(TOKEN_KEYS[p])
 }
 
+// handleUnauthorized 统一处理 401：清除对应平台 token 并跳转登录页。
+// requestWithPlatform 与 authedFetch 共用，避免登录跳转逻辑双份维护漂移。
+function handleUnauthorized(platform: AuthPlatform): void {
+  localStorage.removeItem(TOKEN_KEYS[platform])
+  const loginPath =
+    platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'
+  if (!window.location.pathname.startsWith(loginPath)) {
+    window.location.href = loginPath
+  }
+}
+
 export function isPortalPath(path?: string): boolean {
   if (typeof window === 'undefined') return false
   const p = path ?? window.location.pathname
@@ -221,12 +232,7 @@ async function requestWithPlatform<T>(
     err.code = (data as any).code
     err.status = res.status
     if (res.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem(TOKEN_KEYS[platform])
-      const loginPath =
-        platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'
-      if (!window.location.pathname.startsWith(loginPath)) {
-        window.location.href = loginPath
-      }
+      handleUnauthorized(platform)
     } else if (globalErrorHandler) {
       globalErrorHandler(errorMessage, res.status, path, err.code)
     }
@@ -276,12 +282,7 @@ async function authedFetch(path: string, init: RequestInit = {}): Promise<Respon
   })
 
   if (res.status === 401 && typeof window !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEYS[platform as keyof typeof TOKEN_KEYS])
-    const loginPath =
-      platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'
-    if (!window.location.pathname.startsWith(loginPath)) {
-      window.location.href = loginPath
-    }
+    handleUnauthorized(platform)
   }
   return res
 }

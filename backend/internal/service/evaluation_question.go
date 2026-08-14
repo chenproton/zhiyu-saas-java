@@ -56,31 +56,31 @@ func (s *EvaluationService) AddExamQuestion(ctx context.Context, tenantID, examI
 		if err := txStore.Exams().AddQuestion(ctx, tenantID, examID, q, score); err != nil {
 			return err
 		}
-		return txStore.Exams().RecalcExamTotal(ctx, examID)
+		return txStore.Exams().RecalcExamTotal(ctx, tenantID, examID)
 	})
 }
 
 // RemoveExamQuestion 移除试卷题目（事务内：移除 + 重算总分）。
-func (s *EvaluationService) RemoveExamQuestion(ctx context.Context, examID, questionID string) error {
+func (s *EvaluationService) RemoveExamQuestion(ctx context.Context, tenantID, examID, questionID string) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
-		if err := txStore.Exams().RemoveQuestion(ctx, examID, questionID); err != nil {
+		if err := txStore.Exams().RemoveQuestion(ctx, tenantID, examID, questionID); err != nil {
 			return err
 		}
-		return txStore.Exams().RecalcExamTotal(ctx, examID)
+		return txStore.Exams().RecalcExamTotal(ctx, tenantID, examID)
 	})
 }
 
 // UpdateExamQuestionScore 更新题目分数（事务内：更新 + 重算总分）。
-func (s *EvaluationService) UpdateExamQuestionScore(ctx context.Context, examID, questionID string, score float64) error {
+func (s *EvaluationService) UpdateExamQuestionScore(ctx context.Context, tenantID, examID, questionID string, score float64) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
-		hit, err := txStore.Exams().UpdateQuestionScore(ctx, examID, questionID, score)
+		hit, err := txStore.Exams().UpdateQuestionScore(ctx, tenantID, examID, questionID, score)
 		if err != nil {
 			return err
 		}
 		if !hit {
 			return store.ErrNotFound
 		}
-		return txStore.Exams().RecalcExamTotal(ctx, examID)
+		return txStore.Exams().RecalcExamTotal(ctx, tenantID, examID)
 	})
 }
 

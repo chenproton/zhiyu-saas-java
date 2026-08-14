@@ -240,68 +240,18 @@ type QuestionBankUpdateParams struct {
 	KnowledgePointIDs   []string
 }
 
-func (s *QuestionBankStore) fetchBank(ctx context.Context, id string) (*domain.QuestionBank, error) {
-	var version *string
-
-	var desc *string
-
-	var b domain.QuestionBank
-	var coverImage, creatorID, batchID *string
-	err := s.q.QueryRow(ctx, `
-		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
-                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
-                qb.creator_id,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text, '') AS creator_name,
-			qb.collaborator_ids,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
-			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
-			qb.created_at, qb.updated_at
-		FROM question_banks qb WHERE qb.id = $1
-	`, id).Scan(
-		&b.ID, &b.Code, &b.Name, &desc, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
-		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
-		&b.CollaboratorDeptIDs, &batchID, &version, &b.OwnerType, &b.IsDraftPool,
-		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	b.CoverImage = coverImage
-	b.Description = desc
-	b.Version = version
-	b.CreatorID = creatorID
-	b.BatchID = batchID
-	return &b, nil
-}
-
 // fetchBankScoped 查询单个题库（限定租户）。
+// SELECT 列复用 questionBankListSelectColumns + questionBankListJoins，与列表查询保持单一权威源。
 func (s *QuestionBankStore) fetchBankScoped(ctx context.Context, id, tenantID string) (*domain.QuestionBank, error) {
 	var version *string
-
 	var desc *string
 
 	var b domain.QuestionBank
 	var coverImage, creatorID, batchID *string
 	err := s.q.QueryRow(ctx, `
-		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
-                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
-                qb.creator_id,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text, '') AS creator_name,
-			qb.collaborator_ids,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
-			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
-			qb.created_at, qb.updated_at
-		FROM question_banks qb WHERE qb.id = $1 AND qb.tenant_id = $2
+		SELECT `+questionBankListSelectColumns+`
+		FROM `+questionBankListFrom+questionBankListJoins+`
+		WHERE qb.id = $1 AND qb.tenant_id = $2
 	`, id, tenantID).Scan(
 		&b.ID, &b.Code, &b.Name, &desc, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
 		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,

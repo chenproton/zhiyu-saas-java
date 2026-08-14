@@ -269,7 +269,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
       {/* 视图内容 */}
       {view === 'week' && <WeekView events={events} weekStart={weekStart} weekEnd={weekEnd} />}
       {view === 'month' && <MonthView year={year} month={month} events={events} />}
-      {view === 'year' && <YearView events={events} />}
+      {view === 'year' && <YearView year={year} events={events} />}
     </div>
   )
 }
@@ -540,13 +540,21 @@ function MonthView({
   )
 }
 
-function YearView({ events }: { events: ScheduleEvent[] }) {
+function YearView({ year, events }: { year: number; events: ScheduleEvent[] }) {
   const t = useT()
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {months.map((m) => {
-        const monthEvents = events.filter((e) => e.dayOfWeek % 4 === m % 4).slice(0, 4)
+        // 与 MonthView 一致：仅带 date 的单次事件按日期归月；
+        // 不带 date 的每周重复排课不属于特定月份，年视图不按月乱塞（原 dayOfWeek 取模为占位伪逻辑）。
+        const monthKey = `${year}-${String(m).padStart(2, '0')}`
+        const monthEvents = events
+          .filter((e) => {
+            const eventDate = (e as ScheduleEvent & { date?: string }).date
+            return eventDate ? eventDate.slice(0, 7) === monthKey : false
+          })
+          .slice(0, 4)
         return (
           <div
             key={m}

@@ -28,6 +28,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { certApi, positionApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { CareerPosition, CertificationRule } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -47,15 +48,22 @@ export default function JobAbilityPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([positionApi.list({ limit: 200 }), certApi.listRules({ limit: 200 })])
-      .then(async ([positionRes, ruleRes]) => {
+    Promise.all([
+      fetchAllPages((page, pageSize) =>
+        positionApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      fetchAllPages((page, pageSize) =>
+        certApi.listRules({ limit: pageSize, offset: page * pageSize }),
+      ),
+    ])
+      .then(async ([positions, rules]) => {
         if (cancelled) return
-        setPositions(positionRes.items)
-        setRules(ruleRes.items)
+        setPositions(positions)
+        setRules(rules)
         // 统计每条规则对应岗位下已配置的能力点数（以岗位能力绑定为准）
         // 同一岗位可能关联多条规则：按岗位 id 去重后只拉一次模型，避免每规则一次 getPositionModel 的 N+1 请求
         const positionIds = Array.from(
-          new Set(ruleRes.items.map((rule) => rule.careerPositionId)),
+          new Set(rules.map((rule) => rule.careerPositionId)),
         )
         const modelResults = await Promise.all(
           positionIds.map(async (positionId) => {
@@ -72,7 +80,7 @@ export default function JobAbilityPage() {
         )
         const counts: Record<string, number> = {}
         const countByPosition = new Map(modelResults.map((m) => [m.positionId, m.count]))
-        ruleRes.items.forEach((rule) => {
+        rules.forEach((rule) => {
           counts[rule.id] = countByPosition.get(rule.careerPositionId) ?? 0
         })
         if (!cancelled) setPointCounts(counts)

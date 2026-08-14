@@ -35,6 +35,7 @@ import {
   onSiteQuestionLibraryApi,
   resourceLibraryApi,
 } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type {
   KnowledgePoint,
   AbilityPoint,
@@ -98,8 +99,6 @@ export default function MyResourcesPage() {
 
   // 记录已成功加载过的资源类型，避免空数据时 effect 反复触发加载
   const loadedResourceKinds = useRef<Set<ResourceKind>>(new Set())
-  // 任一列表超过后端 maxPageSize=200 被截断时置 true，展示兜底提示
-  const [truncated, setTruncated] = useState(false)
 
   const userId = user?.id
 
@@ -117,13 +116,14 @@ export default function MyResourcesPage() {
   }
   tabs.push({ key: 'questions', label: t('现场问答题库'), icon: <MessageSquare className="size-4" /> })
 
-  // TODO: 列表接口后端上限 maxPageSize=200，此处全量展示会被截断，需改为服务端分页
+  // 后端列表接口上限 maxPageSize=200，用 fetchAllPages 分页全量拉取避免静默截断
   const loadKnowledge = useCallback(async () => {
     setLoadingKnowledge(true)
     try {
-      const res = await knowledgeApi.list({ creatorId: userId!, limit: 200 })
-      setKnowledgeItems(res.items)
-      if (res.total > res.items.length) setTruncated(true)
+      const items = await fetchAllPages((page, pageSize) =>
+        knowledgeApi.list({ creatorId: userId!, limit: pageSize, offset: page * pageSize }),
+      )
+      setKnowledgeItems(items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('加载知识点失败'), description: err.message })
     } finally {
@@ -134,9 +134,10 @@ export default function MyResourcesPage() {
   const loadAbilities = useCallback(async () => {
     setLoadingAbility(true)
     try {
-      const res = await abilityApi.list({ creatorId: userId!, limit: 200 })
-      setAbilityItems(res.items)
-      if (res.total > res.items.length) setTruncated(true)
+      const items = await fetchAllPages((page, pageSize) =>
+        abilityApi.list({ creatorId: userId!, limit: pageSize, offset: page * pageSize }),
+      )
+      setAbilityItems(items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('加载能力点失败'), description: err.message })
     } finally {
@@ -147,9 +148,10 @@ export default function MyResourcesPage() {
   const loadCertificates = useCallback(async () => {
     setLoadingCertificates(true)
     try {
-      const res = await certificateLibraryApi.list({ creatorId: userId!, limit: 200 })
-      setCertificateItems(res.items)
-      if (res.total > res.items.length) setTruncated(true)
+      const items = await fetchAllPages((page, pageSize) =>
+        certificateLibraryApi.list({ creatorId: userId!, limit: pageSize, offset: page * pageSize }),
+      )
+      setCertificateItems(items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('加载证书失败'), description: err.message })
     } finally {
@@ -160,9 +162,10 @@ export default function MyResourcesPage() {
   const loadQuestions = useCallback(async () => {
     setLoadingQuestions(true)
     try {
-      const res = await onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: 200 })
-      setQuestionItems(res.items)
-      if (res.total > res.items.length) setTruncated(true)
+      const items = await fetchAllPages((page, pageSize) =>
+        onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: pageSize, offset: page * pageSize }),
+      )
+      setQuestionItems(items)
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('加载问答题失败'), description: err.message })
     } finally {
@@ -174,12 +177,15 @@ export default function MyResourcesPage() {
     async (kind: ResourceKind) => {
       setLoadingResourceKind(kind)
       try {
-        const res = await resourceLibraryApi.list({
-          uploadedBy: userId!,
-          resourceType: kind,
-          limit: 200,
-        })
-        setResourceItemsMap((prev) => ({ ...prev, [kind]: res.items }))
+        const items = await fetchAllPages((page, pageSize) =>
+          resourceLibraryApi.list({
+            uploadedBy: userId!,
+            resourceType: kind,
+            limit: pageSize,
+            offset: page * pageSize,
+          }),
+        )
+        setResourceItemsMap((prev) => ({ ...prev, [kind]: items }))
         loadedResourceKinds.current.add(kind)
       } catch (err: any) {
         toast({ variant: 'destructive', title: t('加载资源失败'), description: err.message })
@@ -239,11 +245,6 @@ export default function MyResourcesPage() {
 
   return (
     <div className="p-6 space-y-5">
-      {truncated && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
-          {t('部分数据超过单次加载上限（200 条），当前仅展示前 200 条，请按条件筛选查看完整数据。')}
-        </div>
-      )}
       <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
         <CardContent className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">

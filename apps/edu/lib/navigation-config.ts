@@ -17,6 +17,14 @@ import {
    统一导航树（数字课程平台）
    不再区分课程资源中心 / 课程建设与教学运行 / 学生学习平台
    ============================================================ */
+
+// 通用用户菜单（个人中心/账号设置/退出登录），多个平台配置共用，避免七处重复维护。
+const COMMON_USER_MENU_ITEMS: NonNullable<PlatformNavigationConfig['userMenuItems']> = [
+  { id: 'profile', label: '个人中心', icon: 'user' },
+  { id: 'account', label: '账号设置', icon: 'settings' },
+  { id: 'logout', label: '退出登录', tone: 'danger' },
+]
+
 export const unifiedNavigationConfig: PlatformNavigationConfig = {
   brandTitle: '数字课程服务平台',
   currentPlatformId: 'lesson-unified',
@@ -29,12 +37,7 @@ export const unifiedNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '教学用户',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'resource-center',
       label: '在线课资源库',
@@ -117,12 +120,7 @@ export const adminNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '课程资源中心',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'resource-center',
       label: '在线课资源库',
@@ -208,12 +206,7 @@ export const jobNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '教学用户',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'position-center',
       label: '岗位中心',
@@ -294,12 +287,7 @@ export const sceneNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '教学用户',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'scenario-center',
       label: '场景中心',
@@ -361,12 +349,7 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '教学用户',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'exam-center',
       label: '测评资源',
@@ -628,12 +611,7 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '教学用户',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'resource-center',
       label: '公共资源库',
@@ -779,12 +757,7 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
   currentUserRoleLabel: '教学用户',
   showCurrentTime: true,
   showUserMenu: true,
-  userMenuItems: [
-    { id: 'profile', label: '个人中心', icon: 'user' },
-    { id: 'account', label: '账号设置', icon: 'settings' },
-    { id: 'logout', label: '退出登录', tone: 'danger' },
-  ],
-  sideNavItems: [
+  userMenuItems: COMMON_USER_MENU_ITEMS,  sideNavItems: [
     {
       id: 'affairs-mgmt',
       label: '教务管理',
