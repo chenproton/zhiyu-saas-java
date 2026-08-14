@@ -6275,6 +6275,7 @@
 | 037-038 遗留 | （并入 fix-batch-3） | scenario_clone 5 处行扫描吞错补 Warn、question_banks Create 补 beginner nil 校验、resource_codes Get 映射 ErrNotFound+删残留注释；其余已由大修复与 033-042/029-030 批次修复（Bind afterBind 上抛、SaveFull 冲突回读实际 id、LIKE 通配符转义、Prepare 回查 Warn、random_draw/recommends ErrNotFound、绑定表/列白名单、roles Assign 影响行校验） |
 | 103 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（EmptyDescription 类型改 div、FieldTitle data-slot 改 field-title、use-import-flow entityLabel 用于错误提示、ui vitest alias 改通用 @ 映射）；Spinner 收敛与 Radix 动画串两处复用候选评估后不改 |
 | 041-042 遗留 | （并入 fix-batch-3） | 删除 tags 薄包装 isUniqueViolation、PutCourses 回查错误补 Warn；其余已由大修复与 3f2f3791 修复（workflows Create 回查、user_extension_fields 租户过滤、title_ids COALESCE、任务测评扫描上抛、角色重绑事务化、租户 COALESCE 一致、UsersExist 去重、管理员角色绑定影响行校验、teaching_plans rows.Err、AttachUserRoles 日志）；student_portraits/tenant_admins ResetPassword/users 写操作等无租户方法 handler 已校验、明文初始密码属产品设计、先 Get 后 Update 双往返模式等评估后不改 |
+| 099-100 | 无需补修 | 5 项 P2 全部已修复（scene methods 类型化、system 树递归类型、fetch-all 最大页数熔断、evaluation-scene 时间改 string、job-source 悬空注释已补实现）；scene.ts jsonb 自由结构 any 与 5 组跨文件类型重复评估后不改 |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
