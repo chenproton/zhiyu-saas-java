@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebouncedValue } from '@zhiyu/ui'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -26,10 +26,13 @@ export default function OperationLogsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const debouncedSearch = useDebouncedValue(searchTerm, 300)
   const [page, setPage] = useState(1)
+  // 请求序号守卫：快速翻页/连续搜索时丢弃过期响应，避免旧数据覆盖新结果
+  const seqRef = useRef(0)
 
   const loadLogs = useCallback(
     async (targetPage = page) => {
       if (!tenantId) return
+      const seq = ++seqRef.current
       setLoading(true)
       setError(null)
       try {
@@ -40,12 +43,14 @@ export default function OperationLogsPage() {
           limit: searching ? 10000 : PAGE_SIZE,
           offset: searching ? 0 : (targetPage - 1) * PAGE_SIZE,
         })
+        if (seq !== seqRef.current) return
         setLogs(res.items)
         setTotal(res.total)
       } catch (err: any) {
+        if (seq !== seqRef.current) return
         setError(err?.message || t('加载操作日志失败'))
       } finally {
-        setLoading(false)
+        if (seq === seqRef.current) setLoading(false)
       }
     },
     [tenantId, page, debouncedSearch, t],

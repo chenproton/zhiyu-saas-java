@@ -188,7 +188,11 @@ export default function GraduatesPage() {
       pagination={{ total, page, totalPages: Math.max(1, Math.ceil(total / pageSize)), onPageChange: setPage }}
       searchPlaceholder={t('搜索姓名或学号...')}
       searchValue={searchTerm}
-      onSearchChange={setSearchTerm}
+      onSearchChange={(v) => {
+        setSearchTerm(v)
+        // 搜索词变化回到第 1 页，避免展示搜索结果的非首页
+        setPage(1)
+      }}
       searchRight={
         <Select value={yearFilter} onValueChange={setYearFilter}>
           <SelectTrigger className="w-32">

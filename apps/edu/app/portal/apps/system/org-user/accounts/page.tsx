@@ -147,7 +147,12 @@ export default function AccountsPage() {
       colSpan={7}
       searchPlaceholder={t('搜索姓名或账户...')}
       searchValue={searchText}
-      onSearchChange={setSearchText}
+      onSearchChange={(v) => {
+        setSearchText(v)
+        // 搜索词变化回到第 1 页，并清空跨页累积的行选择
+        setPage(1)
+        setSelectedAccounts([])
+      }}
       hideImport
       hideCreate
       emptyContent={searchText ? t('未找到匹配的账户') : t('暂无账户数据')}
@@ -165,7 +170,16 @@ export default function AccountsPage() {
           </Tabs>
         </div>
       }
-      pagination={{ page, total, totalPages, onPageChange: setPage }}
+      pagination={{
+        page,
+        total,
+        totalPages,
+        onPageChange: (p) => {
+          setPage(p)
+          // 翻页后清空行选择，避免批量删除非当前页账户的误操作
+          setSelectedAccounts([])
+        },
+      }}
       rowSelection={{
         selectedIds: selectedAccounts,
         onToggle: (id, checked) =>

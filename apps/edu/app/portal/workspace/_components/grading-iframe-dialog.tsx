@@ -29,7 +29,6 @@ export function GradingIframeDialog({
   className,
 }: GradingIframeDialogProps) {
   const t = useT()
-  const [loading, setLoading] = useState(true)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,23 +42,50 @@ export function GradingIframeDialog({
             {sessionTitle} · {className || t('全部学生')}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0 relative">
-          {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
-                <span className="text-sm text-gray-500">{t('加载评分页面...')}</span>
-              </div>
-            </div>
-          )}
-          <iframe
-            src={GRADING_URL}
-            className="w-full h-[70vh] border-0 rounded-lg"
-            title={t('评分页面')}
-            onLoad={() => setLoading(false)}
-          />
-        </div>
+        {/* 弹窗关闭时内容卸载，重新打开即自动重置加载态 */}
+        <GradingIframeBody />
       </DialogContent>
     </Dialog>
+  )
+}
+
+function GradingIframeBody() {
+  const t = useT()
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+
+  return (
+    <div className="flex-1 min-h-0 relative">
+      {(loading || loadError) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+          {loadError ? (
+            <div className="flex flex-col items-center gap-2 px-6 text-center">
+              <span className="text-sm text-gray-500">
+                {t('评分页面加载失败，请确认场景平台允许嵌入访问后重试')}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
+              <span className="text-sm text-gray-500">{t('加载评分页面...')}</span>
+            </div>
+          )}
+        </div>
+      )}
+      <iframe
+        src={GRADING_URL}
+        className="w-full h-[70vh] border-0 rounded-lg"
+        title={t('评分页面')}
+        onLoad={() => {
+          setLoading(false)
+          setLoadError(false)
+        }}
+        onError={() => {
+          // 外部平台拒绝嵌入（X-Frame-Options）或网络失败时结束加载遮罩并提示
+          setLoading(false)
+          setLoadError(true)
+        }}
+      />
+    </div>
   )
 }

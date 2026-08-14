@@ -7,6 +7,8 @@
 // 接入真实后端接口后，数据常量改为从 API 获取
 // ============================================================
 
+import { Lock, Smartphone, Mail, Phone } from 'lucide-react'
+
 export interface TeacherInfo {
   id: string
   name: string
@@ -232,4 +234,6 @@ export const teacherSecurityItems: {
   status: string
   statusText: string
   action: string
+  /** 条目图标由数据自带，避免消费方按数组下标取图标造成错配 */
+  icon: typeof Lock | typeof Smartphone | typeof Mail | typeof Phone
 }[] = []

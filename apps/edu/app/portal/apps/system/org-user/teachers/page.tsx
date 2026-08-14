@@ -158,7 +158,12 @@ export default function TeachersPage() {
       setBatchDeleting(false)
       setBatchDeleteTarget(null)
     }
-    await refetch()
+    // 删除已成功：刷新失败不应产生未处理 rejection（与共享 CRUD 页一致，静默处理）
+    try {
+      await refetch()
+    } catch {
+      /* ignore */
+    }
   }
 
   const formValid =
@@ -225,8 +230,8 @@ export default function TeachersPage() {
             <TableCell className="hidden md:table-cell">
               {teacher.roles.length > 0 ? (
                 <div className="flex gap-1 flex-wrap">
-                  {teacher.roles.map((role, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">
+                  {teacher.roles.map((role) => (
+                    <Badge key={role} variant="outline" className="text-xs">
                       {role}
                     </Badge>
                   ))}
@@ -371,7 +376,7 @@ export default function TeachersPage() {
             {!selectedTeacher && (
               <FormFieldRow label={t('密码')} required>
                 <Input
-                  type="text"
+                  type="password"
                   placeholder={t('请输入密码')}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import type { QuestionBank, QuestionBankFormData } from '@/lib/types'
 import { evaluationBatchApi, fileApi } from '@/lib/api'
+import { reportError } from '@/lib/error-handling'
 import { UserSelector } from '@/components/shared/user-selector'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { useAuth } from '@/components/auth-provider'
@@ -54,8 +55,9 @@ export function BankFormDialog({ open, onOpenChange, bank, onSubmit }: BankFormD
       try {
         const res = await evaluationBatchApi.list({ limit: 1000 })
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
-      } catch (_err) {
-        // ignore
+      } catch (err) {
+        // 与 exam-form-dialog 对齐：批次加载失败走 reportError，而非静默吞错
+        reportError(err, '加载题库批次')
       } finally {
         if (!cancelled) setLoadingBatches(false)
       }

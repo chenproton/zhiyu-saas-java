@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
@@ -56,7 +55,7 @@ export default function AllianceProjectsPage() {
   )
 
   // 里程碑只拉当前页项目（分页/搜索变化时自动重拉）
-  const { data: msData, refresh: refreshMilestones } = useAsync(
+  const { data: msData } = useAsync(
     async () => {
       const ms: Record<string, AllianceProjectMilestone[]> = {}
       const milestoneResults = await Promise.all(
@@ -71,9 +70,6 @@ export default function AllianceProjectsPage() {
     },
     { deps: [list.items, tenantId], onError: () => true },
   )
-  useEffect(() => {
-    refreshMilestones()
-  }, [list.items, refreshMilestones])
 
   const milestones = msData ?? {}
 

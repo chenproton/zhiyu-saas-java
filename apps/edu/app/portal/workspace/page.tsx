@@ -338,19 +338,11 @@ function WorkspacePageInner() {
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
 
   const t = useT()
-  // 不同身份的服务台内容（非学生角色保留原展示；公告/待办/日历事件均由后端接口提供）
+  // 不同身份的服务台内容（学生/教师/学校管理员已提前分支返回，此处仅企业导师等通用视图使用）
   const roleConfigs = {
-    teacher: {
-      welcomeText: t('欢迎回来，张老师。'),
-      stats: { label1: t('授课课程'), value1: 8, label2: t('学生人数'), value2: 256 },
-    },
     enterprise: {
       welcomeText: t('欢迎回来，企业用户。'),
       stats: { label1: t('合作项目'), value1: 5, label2: t('实习学生'), value2: 23 },
-    },
-    admin: {
-      welcomeText: t('欢迎回来，管理员。'),
-      stats: { label1: t('在线用户'), value1: 1256, label2: t('总用户数'), value2: 8500 },
     },
   }
 
@@ -425,7 +417,8 @@ function WorkspacePageInner() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{t('教师工作台')}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {t('欢迎回来，张老师。今天是{todayLabel}。管理你的课程、教学跟踪与测评。', {
+              {t('欢迎回来，{name}。今天是{todayLabel}。管理你的课程、教学跟踪与测评。', {
+                name: user?.name || t('老师'),
                 todayLabel,
               })}
             </p>
@@ -766,9 +759,18 @@ function WorkspacePageInner() {
                 </div>
                 {t('本周活跃度')}
               </CardTitle>
-              <Badge variant="secondary" className="text-xs">
-                +12.5%
-              </Badge>
+              {weeklyData.length > 1 && (() => {
+                const first = weeklyData[0].value
+                const last = weeklyData[weeklyData.length - 1].value
+                if (first === 0) return null
+                const pct = Math.round(((last - first) / first) * 1000) / 10
+                return (
+                  <Badge variant="secondary" className="text-xs">
+                    {pct > 0 ? '+' : ''}
+                    {pct}%
+                  </Badge>
+                )
+              })()}
             </div>
           </CardHeader>
           <CardContent>

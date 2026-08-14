@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   BookOpen,
@@ -83,7 +83,10 @@ export function HybridGradingDialog({
   const [userMap, setUserMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
+  // 请求序号守卫：快速切换左侧课程时丢弃过期响应，避免旧课程数据覆盖新课程
+  const courseSeqRef = useRef(0)
   const loadCourseData = (cid: string) => {
+    const seq = ++courseSeqRef.current
     setLoading(true)
     Promise.all([
       courseNodeApi.list({ courseId: cid, limit: 1000 }).catch(() => ({ items: [] as any[] })),
@@ -91,14 +94,20 @@ export function HybridGradingDialog({
       userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
     ])
       .then(([nodeRes, resRes, userRes]) => {
+        if (seq !== courseSeqRef.current) return
         setNodes((nodeRes.items || []) as SystemCourseNode[])
         setResults(resRes.items || [])
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
         setUserMap(uMap)
       })
-      .catch(() => reportError(new Error('加载混合课测评数据失败'), '加载混合课测评数据'))
-      .finally(() => setLoading(false))
+      .catch(() => {
+        if (seq !== courseSeqRef.current) return
+        reportError(new Error('加载混合课测评数据失败'), '加载混合课测评数据')
+      })
+      .finally(() => {
+        if (seq === courseSeqRef.current) setLoading(false)
+      })
   }
 
   useEffect(() => {

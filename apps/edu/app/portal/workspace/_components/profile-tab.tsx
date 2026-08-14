@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Bell,
   Mail,
@@ -51,6 +51,15 @@ interface HonorForm {
 
 const emptyForm: HonorForm = { name: '', issuer: '', honorDate: '', fileName: '', fileUrl: '' }
 
+/** 手机号脱敏：长号码保留前 3 后 4；短号码（<8 位）仅保留首尾各 1 位，避免遮蔽段重叠泄露 */
+function maskPhone(phone: string): string {
+  if (phone.length <= 4) return '*'.repeat(phone.length)
+  if (phone.length < 8) {
+    return `${phone.slice(0, 1)}${'*'.repeat(phone.length - 2)}${phone.slice(-1)}`
+  }
+  return `${phone.slice(0, 3)}****${phone.slice(-4)}`
+}
+
 export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
   const { user, major, orgNode, institution } = usePortalAuth()
   const t = useT()
@@ -65,7 +74,7 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const loadHonors = async () => {
+  const loadHonors = useCallback(async () => {
     setHonorsLoading(true)
     try {
       const res = await studentHonorApi.list()
@@ -75,26 +84,15 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
     } finally {
       setHonorsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (isStaff) return
-    let cancelled = false
-    studentHonorApi
-      .list()
-      .then((res) => {
-        if (!cancelled) setHonors(res.items || [])
-      })
-      .catch(() => {
-        if (!cancelled) setHonors([])
-      })
-      .finally(() => {
-        if (!cancelled) setHonorsLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [isStaff])
+    // 复用 loadHonors，避免重复实现同一拉取逻辑（微任务调度，避免 effect 内同步 setState）
+    queueMicrotask(() => {
+      void loadHonors()
+    })
+  }, [isStaff, loadHonors])
 
   const openCreate = () => {
     setEditingId(null)
@@ -182,9 +180,7 @@ export function ProfileTab({ variant = 'student' }: ProfileTabProps) {
     {
       label: t('手机绑定'),
       status: 'bound',
-      statusText: user?.phone
-        ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`
-        : t('未绑定'),
+      statusText: user?.phone ? maskPhone(user.phone) : t('未绑定'),
       action: user?.phone ? t('更换') : t('绑定'),
       icon: Smartphone,
     },

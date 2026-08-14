@@ -72,7 +72,13 @@ export default function AllianceTeacherBrandPage() {
       // 校本师资：删除品牌时同步清理其展示资料档案，避免孤儿数据
       const expertId = (item.data as any)?.teacherExpertId
       if (expertId) {
-        await allianceExpertApi.delete(expertId).catch(() => null)
+        try {
+          await allianceExpertApi.delete(expertId)
+        } catch (e: any) {
+          // 展示资料档案删除失败时中止品牌删除，避免悬挂引用成为孤儿档案
+          toast({ title: t('解除关联失败'), description: e.message, variant: 'destructive' })
+          return
+        }
       }
       await allianceBrandApi.delete(item.id)
       toast({ title: t('已解除关联') })
@@ -162,6 +168,7 @@ export default function AllianceTeacherBrandPage() {
               return res.items || []
             }}
             pickerTitle={t('关联校本教师')}
+            actionLabel={t('关联校本教师')}
             searchPlaceholder={t('搜索教师姓名或工号...')}
             displayInfo={(b) => (
               <span className="text-xs text-muted-foreground">
@@ -191,6 +198,7 @@ export default function AllianceTeacherBrandPage() {
               }))
             }}
             pickerTitle={t('关联企业专家')}
+            actionLabel={t('关联企业专家')}
             searchPlaceholder={t('搜索专家姓名或机构...')}
             displayInfo={(b) => (
               <span className="text-xs text-muted-foreground">
@@ -256,6 +264,7 @@ function TeacherBrandSection({
   linkField,
   fetchOptions,
   pickerTitle,
+  actionLabel,
   searchPlaceholder,
   displayInfo,
   allowEditProfile,
@@ -270,6 +279,7 @@ function TeacherBrandSection({
   linkField: 'teacherId' | 'expertId'
   fetchOptions: () => Promise<TeacherOption[]>
   pickerTitle: string
+  actionLabel: string
   searchPlaceholder: string
   displayInfo: (brand: AllianceBrand) => React.ReactNode
   allowEditProfile?: boolean
@@ -410,9 +420,15 @@ function TeacherBrandSection({
       } else {
         const expert = await allianceExpertApi.create(payload)
         expertId = expert.id
-        await allianceBrandApi.update(profileTarget.id, {
-          data: { ...(profileTarget.data || {}), teacherExpertId: expertId },
-        } as any)
+        try {
+          await allianceBrandApi.update(profileTarget.id, {
+            data: { ...(profileTarget.data || {}), teacherExpertId: expertId },
+          } as any)
+        } catch (err) {
+          // 品牌回写失败时回滚刚创建的专家档案，避免孤儿数据
+          await allianceExpertApi.delete(expertId).catch(() => null)
+          throw err
+        }
       }
       toast({ title: existingId ? t('师资资料已更新') : t('师资资料已创建') })
       setProfileTarget(null)
@@ -434,7 +450,7 @@ function TeacherBrandSection({
         </div>
         <Button size="sm" onClick={openPicker}>
           <UserRound className="h-4 w-4 mr-1" />
-          {t('关联{title}', { title: pickerTitle.replace('关联', '') })}
+          {actionLabel}
         </Button>
       </div>
 

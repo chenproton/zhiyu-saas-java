@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { AlertCircle, User, Lock, Building2, History } from 'lucide-react'
-import { authApi, setToken, getDeviceId } from '@/lib/api'
+import { authApi, setToken, removeToken, getDeviceId } from '@/lib/api'
 import type { TenantOption } from '@/lib/api'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAuth } from '@/components/auth-provider'
@@ -65,10 +65,16 @@ export default function PortalLoginPage() {
 
   const doLogin = async (token: string) => {
     setToken(token, 'portal')
-    await Promise.all([refresh(), refreshRootAuth()])
-    const me = await authApi.portalMe()
-    const activeRole = resolveActiveRole(me.user?.id, me.roles)
-    router.replace(getPostLoginPath(activeRole?.code))
+    try {
+      await Promise.all([refresh(), refreshRootAuth()])
+      const me = await authApi.portalMe()
+      const activeRole = resolveActiveRole(me.user?.id, me.roles)
+      router.replace(getPostLoginPath(activeRole?.code))
+    } catch (err) {
+      // 会话校验失败：清除刚写入的 token，避免"已登录但停在登录页"的中间态
+      removeToken('portal')
+      throw err
+    }
   }
 
   const handleSelectTenant = async (tenantId: string) => {

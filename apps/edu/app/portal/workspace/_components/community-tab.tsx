@@ -72,6 +72,8 @@ export function CommunityTab() {
   const [loading, setLoading] = useState(true)
   // 排序切换请求序号：丢弃过期响应
   const loadSeqRef = useRef(0)
+  // 详情加载序号守卫：返回列表/连续打开不同话题时丢弃过期响应
+  const detailSeqRef = useRef(0)
 
   // 帖子详情
   const [detail, setDetail] = useState<CommunityTopic | null>(null)
@@ -118,6 +120,7 @@ export function CommunityTab() {
   }, [sort, loadTopics])
 
   const openDetail = useCallback(async (topic: CommunityTopic) => {
+    const seq = ++detailSeqRef.current
     setDetail(topic)
     setDetailLoading(true)
     setReplies([])
@@ -128,17 +131,21 @@ export function CommunityTab() {
         portalCommunityApi.getTopic(topic.id),
         portalCommunityApi.listReplies(topic.id),
       ])
+      if (seq !== detailSeqRef.current) return
       setDetail(topicDetail)
       setReplies(replyRes.items)
     } catch (e) {
+      if (seq !== detailSeqRef.current) return
       reportError(e, '加载话题详情失败')
       setDetail(null)
     } finally {
-      setDetailLoading(false)
+      if (seq === detailSeqRef.current) setDetailLoading(false)
     }
   }, [])
 
   const closeDetail = useCallback(() => {
+    // 使进行中的详情请求过期，避免迟到的响应重新弹出详情
+    detailSeqRef.current += 1
     setDetail(null)
     setReplyingTo(null)
     setReplyText('')

@@ -349,6 +349,8 @@ export function useTaskDatasets(): UseTaskDatasetsResult {
             }
           }
         } catch (err) {
+          // 失败时回退已加载标记，允许同会话内后续重试，避免数据集一直为空直到整页刷新
+          loadedDatasetsRef.current.delete(key)
           reportError(err, `加载数据集 ${key}`)
         }
       })

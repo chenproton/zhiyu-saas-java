@@ -92,7 +92,11 @@ function mapToOrgNode(
 }
 
 function totalMembers(nodes: OrgNode[]): number {
-  return nodes.reduce((sum, node) => sum + node.memberCount, 0)
+  // 递归累加子节点，与 countByType 口径一致（memberCount 为节点自身人数时）
+  return nodes.reduce(
+    (sum, node) => sum + node.memberCount + (node.children ? totalMembers(node.children) : 0),
+    0,
+  )
 }
 
 function TreeNode({

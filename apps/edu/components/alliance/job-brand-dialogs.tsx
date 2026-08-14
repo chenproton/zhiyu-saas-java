@@ -92,14 +92,17 @@ export function JobBrandRefDialog({
     if (selected.length === 0) return
     setSubmitting(true)
     try {
-      for (const p of selected) {
-        await allianceBrandApi.create({
-          brandType,
-          name: p.name,
-          positionId: p.id,
-          isPublic: false,
-        } as any)
-      }
+      // 并行创建，避免选中较多岗位时串行请求线性放大耗时
+      await Promise.all(
+        selected.map((p) =>
+          allianceBrandApi.create({
+            brandType,
+            name: p.name,
+            positionId: p.id,
+            isPublic: false,
+          } as any),
+        ),
+      )
       toast({ title: t('已引用 {count} 个岗位', { count: selected.length }) })
       setSelected([])
       setSearch('')

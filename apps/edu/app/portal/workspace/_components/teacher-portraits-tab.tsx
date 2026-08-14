@@ -36,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { jobAbilityResultApi } from '@/lib/api'
-import type { JobAbilityResult, JobAbilityPointDetail } from '@/lib/api'
+import type { JobAbilityResult } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const gradeColorMap: Record<string, string> = {
@@ -116,8 +116,9 @@ export function TeacherPortraitsTab() {
       if (!uid) return
       const existing = map.get(uid)
       if (existing && existing.achievementRate >= r.achievementRate) return
+      // abilityPointDetails 已在 JobAbilityResult 类型上声明为 JobAbilityPointDetail[]，无需强转
       const abilities: { name: string; score: number }[] = Array.isArray(r.abilityPointDetails)
-        ? (r.abilityPointDetails as unknown as JobAbilityPointDetail[]).map((a) => ({
+        ? r.abilityPointDetails.map((a) => ({
             name: a.abilityPointName || '',
             score: a.score || 0,
           }))
