@@ -6263,6 +6263,7 @@
 | 071-072 遗留 | （并入 fix-batch-1） | 教师画像列表 limit=200、场景归档/审批页 limit=1000 三处改 fetchAllPages 全量拉取；其余已由首轮大修复与 063-078 批次修复（周次计算抽 schedule-utils、批量删除失败不弹成功 toast、roleConfigs 死代码/张老师/12.5% 徽标清理、能力点详情双重断言修正、账号安全图标下标耦合移除） |
 | 065-066 遗留 | （并入 fix-batch-1） | 登录/操作日志搜索改 fetchAllPages 分页全量拉取（后端 limit 上限 200，原单次 10000 被静默钳制导致搜索截断）；其余已由 063-078 批次修复（里程碑双重拉取去重、学校页失败态+重试、accounts 搜索回第一页+翻页清选择、positions 关联用户数用 userCount+仅展示前 N 提示、relations 搜索防抖、org-structure 总人数递归） |
 | 081-082 | 无需补修 | 15 项 P2 全部由 079-103 批次修复（AI apply 走 positionRef 最新快照、空名删职责同步清绑定、Escape 取消编辑、polish 可选链 trim、blob URL revoke、任职要求稳定 key、score-config 整数输入+仅打开时初始化、progress-dialog currentStep<0 契约、onView 走 basePath、分组锚点用职责 id） |
+| 035-036 遗留 | （并入 fix-batch-2） | portal.go 17 处行扫描吞错补 Warn、partner_store 4 处 JSON 解析吞错补 Warn、导入 findOrCreate 插入/回查错误补 Warn、删除无租户且无调用方的 NodeEvaluationResult.Get（Submit 回读改走 GetByID 租户限定）；4 个 P1 均已在首轮大修复解决（imports ClassIDs panic、fetchExamUsage 补租户、聚合先过滤、BulkUpdateScores unnest） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6294,6 +6295,13 @@
 - 批量导出/导入占位按钮 5 处重复（纯占位即将上线，不抽象，见 065-066）
 - 五级能力等级常量 4 文件重复（四份形态各异：label/描述/颜色/en 对照，统一需超集建模且等级阶梯固定，评估后不改，见 081-082）
 - Date.now+random 临时 id 生成 3 文件重复（碰撞风险已用随机后缀缓解；统一替换 uid 属机械改动，评估后不改，见 081-082）
+- exams.go 题目增删改分未带租户条件（handler 已先按租户 fetchExam 校验，SQL 层补租户属纵深防御，见 035-036）
+- dict 类 store（industries/majors/org_types/on_site）与 organizations Get/Update 无 SQL 租户限定（crud 框架 CheckOwnership 与 org handler verifyTenantOwnership 已覆盖，越权不可达，见 035-036）
+- exam_usages SyncScheduledExamUsageStatus 全表 UPDATE（60s 节流 + 状态幂等，容忍，见 035-036）
+- favorites ToggleFavorite TOCTOU 计数漂移与 NextAutoUsageName COUNT+1（普通业务，指南允许，见 035-036）
+- lesson_content CitationStats 每知识点 4 子查询与 imports 逐名 2-3 条 SQL（管理页低频操作，容忍，见 035-036）
+- portal.go 统计查询 nil 租户返回全平台计数（handler 恒传租户，nil 分支不可达，见 035-036）
+- ListCooperation jsonb enterprise_ids 过滤依赖 GIN 索引（已有索引则无影响，仅提示，见 035-036）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
