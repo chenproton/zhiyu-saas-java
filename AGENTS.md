@@ -114,6 +114,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 我要 | 读 |
 |---|---|
 | spec 分级/模板/DoD/闭环 | [`spec-standards.md`](docs/spec-standards.md) |
+| spec-first 执行手册（AI 技能，任务开始时加载） | [`.dsh/skills/spec-workflow/SKILL.md`](.dsh/skills/spec-workflow/SKILL.md) |
 | 后端分层红线细节 | [`refactor-layering.md`](docs/refactor-layering.md) |
 | AI 底座架构 | [`ai-development.md`](docs/ai-development.md) |
 | 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
