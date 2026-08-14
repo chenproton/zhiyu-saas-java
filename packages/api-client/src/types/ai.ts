@@ -208,6 +208,8 @@ export interface AIScenarioAssistResponse {
   polish?: AIScenarioPolish
   industrySuggestions?: AIScenarioSuggestion[]
   professionSuggestions?: AIScenarioSuggestion[]
+  /** 目标岗位建议（polish 返回 0-1 个；命中系统已有岗位时回填 matchedId/matchedName） */
+  positionSuggestion?: AIScenarioSuggestion
   task?: AIScenarioTaskPolish
   taskDescription?: string
   suggestions?: AIScenarioSuggestion[]

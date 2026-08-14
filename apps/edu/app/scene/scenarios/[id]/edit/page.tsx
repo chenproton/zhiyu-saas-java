@@ -36,7 +36,7 @@ import {
   majorApi,
   scenarioAiAssist,
 } from '@/lib/api'
-import type { AIScenarioAssistResponse } from '@/lib/api'
+import type { AIScenarioAssistResponse, AIScenarioSuggestion } from '@/lib/api'
 import type { CareerPosition } from '@/lib/types/job'
 import type { Industry, Major } from '@/lib/types/backend'
 import type { SceneBatch } from '@/lib/types/scene'
@@ -58,10 +58,10 @@ import {
 /** AI 辅助编写一键流程的步骤（与字段顺序一一对应） */
 const AI_ASSIST_STEPS = ['阅读场景基础信息', '生成场景基础信息']
 
-/** AI 可直接写入的字段键（3 个文本/枚举字段 + 2 个字典建议字段），各含 1 级撤销历史 */
-type AiWriteKey = 'name' | 'background' | 'difficulty' | 'industry' | 'profession'
+/** AI 可直接写入的字段键（3 个文本/枚举字段 + 2 个字典建议字段 + 目标岗位），各含 1 级撤销历史 */
+type AiWriteKey = 'name' | 'background' | 'difficulty' | 'industry' | 'profession' | 'position'
 
-const AI_WRITE_KEYS: AiWriteKey[] = ['name', 'background', 'difficulty', 'industry', 'profession']
+const AI_WRITE_KEYS: AiWriteKey[] = ['name', 'background', 'difficulty', 'industry', 'profession', 'position']
 
 /** 基础信息中可由 AI 单独填充的字段（polish 一次返回 3 个，按目标字段单独应用） */
 type PolishFieldKey = 'name' | 'background' | 'difficulty'
@@ -73,6 +73,7 @@ interface ScenarioDraft {
   difficulty: number
   industryIds: string[]
   professionIds: string[]
+  positionId: string
 }
 
 export default function ScenarioEditPage() {
@@ -118,10 +119,18 @@ export default function ScenarioEditPage() {
     difficulty: 3,
     industryIds: [],
     professionIds: [],
+    positionId: '',
   })
   useEffect(() => {
-    formRef.current = { name: scenarioName, background, difficulty, industryIds, professionIds }
-  }, [scenarioName, background, difficulty, industryIds, professionIds])
+    formRef.current = {
+      name: scenarioName,
+      background,
+      difficulty,
+      industryIds,
+      professionIds,
+      positionId,
+    }
+  }, [scenarioName, background, difficulty, industryIds, professionIds, positionId])
 
   /** 某字段被 AI 覆盖前的快照（1 级历史用） */
   const snapshotField = (key: AiWriteKey): Partial<ScenarioDraft> => {
@@ -137,6 +146,8 @@ export default function ScenarioEditPage() {
         return { industryIds: cur.industryIds }
       case 'profession':
         return { professionIds: cur.professionIds }
+      case 'position':
+        return { positionId: cur.positionId }
     }
   }
 
@@ -147,6 +158,7 @@ export default function ScenarioEditPage() {
     if (data.difficulty !== undefined) setDifficulty(data.difficulty)
     if (data.industryIds !== undefined) setIndustryIds(data.industryIds)
     if (data.professionIds !== undefined) setProfessionIds(data.professionIds)
+    if (data.positionId !== undefined) setPositionId(data.positionId)
   }
 
   const ai = useAiNotConfigured()
@@ -345,6 +357,18 @@ export default function ScenarioEditPage() {
     }
   }
 
+  /** 目标岗位建议：命中系统已有岗位则自动选中（计入 AI 更新历史，可恢复上版）；未命中仅提示不写入 */
+  const applyPositionSuggestion = (suggestion?: AIScenarioSuggestion) => {
+    if (!suggestion) return
+    if (suggestion.matchedId) {
+      writeField('position', { positionId: suggestion.matchedId })
+      return
+    }
+    toast({
+      title: t('AI 建议的目标岗位「{name}」未在系统中找到，请手动选择', { name: suggestion.name }),
+    })
+  }
+
   /** 应用 polish 结果：3 个字段逐项写入（各自独立历史/高亮）；未生成项提示保留原值 */
   const applyPolish = (res: AIScenarioAssistResponse) => {
     const p = res.polish
@@ -361,6 +385,7 @@ export default function ScenarioEditPage() {
     }
     applyDictSuggestions('industry', res.industrySuggestions, formRef.current.industryIds)
     applyDictSuggestions('profession', res.professionSuggestions, formRef.current.professionIds)
+    applyPositionSuggestion(res.positionSuggestion)
   }
 
   /** 基础信息单字段生成：调 polish 一次，仅应用目标字段 */
@@ -704,9 +729,29 @@ export default function ScenarioEditPage() {
 
             <Card>
               <CardContent className="pt-6 space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="position" className="block">
+                <div className={`grid gap-2 ${flashKey === 'position' ? 'ai-write-flash' : ''}`}>
+                  <Label htmlFor="position" className="flex items-center gap-2">
                     {t('目标岗位')}
+                    {aiHistories.position !== undefined && (
+                      <>
+                        <Badge
+                          variant="outline"
+                          className="h-4 px-1.5 text-[10px] leading-none border-purple-200 text-purple-700 bg-purple-50/50 shrink-0"
+                        >
+                          {t('已更新')}
+                        </Badge>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-1.5 text-[11px] text-purple-700 hover:bg-purple-50"
+                          onClick={() => restoreField('position')}
+                        >
+                          <Undo2 className="h-3 w-3 mr-0.5" />
+                          {t('恢复上版')}
+                        </Button>
+                      </>
+                    )}
                   </Label>
                   <div className="relative">
                     <Select value={positionId} onValueChange={setPositionId}>

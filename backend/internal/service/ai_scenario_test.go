@@ -26,7 +26,7 @@ func TestScenarioAssistPrompt(t *testing.T) {
 		Intention:       "从前端基础到全栈实战",
 	}
 	p := scenarioAssistPrompt(ScenarioAssistPolish, in)
-	for _, want := range []string{"电商平台实战场景", "后端开发工程师", `"difficulty"`, `"industryNames"`} {
+	for _, want := range []string{"电商平台实战场景", "后端开发工程师", `"difficulty"`, `"industryNames"`, `"positionName"`} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("polish prompt 缺少 %q:\n%s", want, p)
 		}
@@ -60,13 +60,16 @@ func TestParseScenarioAssistOutput(t *testing.T) {
 		{
 			name:  "polish",
 			field: ScenarioAssistPolish,
-			text:  `{"name":"电商实战场景","background":"介绍","difficulty":4,"industryNames":["互联网/IT",""],"professionNames":["软件工程"]}`,
+			text:  `{"name":"电商实战场景","background":"介绍","difficulty":4,"industryNames":["互联网/IT",""],"professionNames":["软件工程"],"positionName":" 后端开发工程师 "}`,
 			check: func(t *testing.T, r *ScenarioAssistResult) {
 				if r.Polish == nil || r.Polish.Difficulty != 4 || r.Polish.Name != "电商实战场景" {
 					t.Fatalf("polish 结果错误: %+v", r.Polish)
 				}
 				if len(r.IndustrySuggestions) != 1 || r.IndustrySuggestions[0].Name != "互联网/IT" {
 					t.Fatalf("industrySuggestions 未去空: %+v", r.IndustrySuggestions)
+				}
+				if r.PositionSuggestion == nil || r.PositionSuggestion.Name != "后端开发工程师" {
+					t.Fatalf("positionSuggestion 未解析/去空格: %+v", r.PositionSuggestion)
 				}
 			},
 		},

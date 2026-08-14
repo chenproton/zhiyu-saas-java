@@ -113,6 +113,7 @@ type ScenarioAssistResult struct {
 	Polish                *ScenarioPolish      `json:"polish,omitempty"`
 	IndustrySuggestions   []ScenarioSuggestion `json:"industrySuggestions,omitempty"`
 	ProfessionSuggestions []ScenarioSuggestion `json:"professionSuggestions,omitempty"`
+	PositionSuggestion    *ScenarioSuggestion  `json:"positionSuggestion,omitempty"`
 	Task                  *ScenarioTaskPolish  `json:"task,omitempty"`
 	TaskDescription       string               `json:"taskDescription,omitempty"`
 	Suggestions           []ScenarioSuggestion `json:"suggestions,omitempty"`
@@ -140,8 +141,9 @@ func scenarioAssistPrompt(field ScenarioAssistField, in ScenarioAssistInput) str
 			"2. 场景介绍：200-300 字的背景介绍，包含背景、意义与学习目标；\n" +
 			"3. 难度等级：1-5 整数（1 入门 / 2 基础 / 3 中级 / 4 高级 / 5 专家），贴合岗位要求；\n" +
 			"4. industryNames：建议 0-2 个面向行业名称（常见行业通用名）；\n" +
-			"5. professionNames：建议 0-2 个适用专业名称（常见专业通用名）。"
-		spec = `{"name": "string", "background": "string", "difficulty": 1-5, "industryNames": ["string"], "professionNames": ["string"]}`
+			"5. professionNames：建议 0-2 个适用专业名称（常见专业通用名）；\n" +
+			"6. positionName：建议 1 个与该场景最匹配的目标岗位名称（常见岗位通用名，不超过 30 字；无法判断时留空）。"
+		spec = `{"name": "string", "background": "string", "difficulty": 1-5, "industryNames": ["string"], "professionNames": ["string"], "positionName": "string"}`
 	case ScenarioAssistTaskPolish:
 		task = "润色并补全该任务的基础信息：\n" +
 			"1. 任务名称：动词开头、一句话（不超过 30 字）；\n" +
@@ -244,6 +246,7 @@ func parseScenarioAssistOutput(field ScenarioAssistField, text string, result *S
 			Difficulty      int      `json:"difficulty"`
 			IndustryNames   []string `json:"industryNames"`
 			ProfessionNames []string `json:"professionNames"`
+			PositionName    string   `json:"positionName"`
 		}
 		if err := json.Unmarshal(raw, &out); err != nil {
 			return fmt.Errorf("parse polish output: %w", err)
@@ -255,6 +258,9 @@ func parseScenarioAssistOutput(field ScenarioAssistField, text string, result *S
 		result.Polish = &ScenarioPolish{Name: strings.TrimSpace(out.Name), Background: strings.TrimSpace(out.Background), Difficulty: out.Difficulty}
 		result.IndustrySuggestions = trimSuggestionNames(out.IndustryNames)
 		result.ProfessionSuggestions = trimSuggestionNames(out.ProfessionNames)
+		if posName := strings.TrimSpace(out.PositionName); posName != "" {
+			result.PositionSuggestion = &ScenarioSuggestion{Name: posName}
+		}
 	case ScenarioAssistTaskPolish:
 		var out struct {
 			Name       string `json:"name"`
@@ -462,6 +468,24 @@ func (s *AIService) matchScenarioSuggestions(ctx context.Context, tenantID strin
 				return err
 			}
 			fillMatched(result.ProfessionSuggestions, majorNameMap(items))
+		}
+		// 目标岗位：从系统已有岗位（租户内、非归档）中按名精确匹配，命中即关联选中
+		if result.PositionSuggestion != nil && result.PositionSuggestion.Name != "" {
+			items, _, err := s.st.Positions().List(ctx, store.ListParams{
+				TenantID: tenantID,
+				Search:   result.PositionSuggestion.Name,
+				Limit:    10,
+			}, s.st.Positions().AdminListConfig())
+			if err != nil {
+				return err
+			}
+			for _, it := range items {
+				if it.Name == result.PositionSuggestion.Name {
+					result.PositionSuggestion.MatchedID = it.ID
+					result.PositionSuggestion.MatchedName = it.Name
+					break
+				}
+			}
 		}
 	case ScenarioAssistTaskKnowledge:
 		items, err := s.st.KnowledgePoints().FindByNames(ctx, tenantID, suggestionNames(result.Suggestions))
