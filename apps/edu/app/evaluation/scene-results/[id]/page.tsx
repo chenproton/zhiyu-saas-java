@@ -28,7 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils'
 import { computeTotalScore, formatDateTime } from '@/lib/format-utils'
 import { reportError } from '@/lib/error-handling'
-import { fetchAllPages } from '@zhiyu/api-client'
+import { fetchAllPages, listAll } from '@zhiyu/api-client'
 import {
   evaluationResultApi,
   taskEvaluationApi,
@@ -742,8 +742,11 @@ export default function GradingDetailPage() {
           }
         }
 
-        const u = await userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] }))
-        const found = (u.items || []).find((x: any) => x.id === res.evaluateeId)
+        // 全量分页拉取反查姓名，避免超过 1000 用户时姓名缺失（原 limit:1000 截断）
+        const users = await listAll((page, pageSize) =>
+          userManagementApi.list({ limit: pageSize, offset: page * pageSize }),
+        ).catch(() => [])
+        const found = users.find((x: any) => x.id === res.evaluateeId)
         setUser(found || null)
       } catch (e) {
         reportError(e, '加载评分详情')
