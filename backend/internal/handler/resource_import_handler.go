@@ -98,6 +98,7 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 	overwrite := importOverwriteParam(r)
 	rename := importRenameParam(r)
 
+	r.Body = http.MaxBytesReader(w, r.Body, 60<<20)
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "表单无效")
 		return

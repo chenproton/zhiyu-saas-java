@@ -17,6 +17,10 @@ import (
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
+// maxCSVImportBodySize CSV 模板导入/预览的总请求体上限（含 multipart 头部余量），
+// 防认证用户超大 multipart 溢出磁盘（配合 10 次/分钟限流，对齐 security-standards §5 思路）。
+const maxCSVImportBodySize = 30 << 20
+
 type ImportExportHandler struct {
 	Store *store.Store
 }
@@ -155,6 +159,7 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxCSVImportBodySize)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "表单无效")
 		return
@@ -226,6 +231,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	overwrite := importOverwriteParam(r)
 	rename := importRenameParam(r)
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxCSVImportBodySize)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "表单无效")
 		return

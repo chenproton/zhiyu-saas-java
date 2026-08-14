@@ -349,10 +349,10 @@ export const fileTypesWithUpload = [
   'other',
 ]
 
-export const RESOURCE_MAX_FILE_SIZE = 100 * 1024 * 1024
+export const RESOURCE_MAX_FILE_SIZE = 10 * 1024 * 1024 // 对齐 security-standards §5 单文件 ≤10MB（后端 MaxUploadSize=10MB+1MB 头部余量）
 
 export function validateResourceFile(file: File, type: string): string | null {
-  if (file.size > RESOURCE_MAX_FILE_SIZE) return '文件大小超过 100MB'
+  if (file.size > RESOURCE_MAX_FILE_SIZE) return '文件大小超过 10MB'
   const allowed = resourceTypeExtensionMap[type] || []
   if (allowed.length === 0) return null
   const ext = file.name.split('.').pop()?.toLowerCase() || ''

@@ -28,6 +28,8 @@ var statusToCode = map[int]string{
 	http.StatusNotFound:            CodeNotFound,
 	http.StatusConflict:            CodeConflict,
 	http.StatusTooManyRequests:     CodeTooManyRequests,
+	http.StatusPreconditionFailed:  CodeAINotConfigured,
+	http.StatusBadGateway:          CodeAIUpstreamError,
 	http.StatusInternalServerError: CodeInternalError,
 }
 

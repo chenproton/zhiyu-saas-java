@@ -47,8 +47,8 @@ export function RichTextEditor({
       toast({ variant: 'destructive', title: t('请上传 PDF 文件') })
       return
     }
-    if (file.size > 20 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: t('文件大小超过 20MB') })
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: t('文件大小超过 10MB') })
       return
     }
     setPdfUploading(true)
@@ -161,7 +161,7 @@ export function RichTextEditor({
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700">{t('点击或拖拽上传课程说明书')}</p>
-                <p className="text-xs text-gray-500 mt-1">{t('支持 PDF 格式，最大 20MB')}</p>
+                <p className="text-xs text-gray-500 mt-1">{t('支持 PDF 格式，最大 10MB')}</p>
               </div>
             </>
           )}

@@ -221,7 +221,7 @@ export function ResourceSelector({
   }
 
   const validateResourceFile = (file: File, type: string): string | null => {
-    if (file.size > RESOURCE_MAX_FILE_SIZE) return t('文件大小超过 100MB')
+    if (file.size > RESOURCE_MAX_FILE_SIZE) return t('文件大小超过 10MB')
     const allowed = resourceTypeExtensionMap[type] || []
     if (allowed.length === 0) return null
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
@@ -846,8 +846,8 @@ export function ResourceSelector({
                       <p className="text-sm font-medium text-gray-700">{t('点击或拖拽上传文件')}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {resourceTypeAccept[newResType]
-                          ? t('支持 {exts}，最大 100MB', { exts: resourceTypeAccept[newResType] })
-                          : t('支持多种格式，最大 100MB')}
+                          ? t('支持 {exts}，最大 10MB', { exts: resourceTypeAccept[newResType] })
+                          : t('支持多种格式，最大 10MB')}
                       </p>
                     </div>
                   </>
