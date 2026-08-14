@@ -22,6 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { randomDrawQuestionApi, majorApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagFilterBar } from '@/components/shared/tag-filter-bar'
@@ -81,8 +82,11 @@ export default function QuestionsPage() {
 
   const loadMajors = useCallback(async () => {
     try {
-      const res = await majorApi.list({ limit: 1000 })
-      setMajors((res.items || []).map((m: any) => ({ id: m.id, name: m.name })))
+      // 专业列表分页全量拉取，避免超过后端分页上限时姓名/专业缺失
+      const res = await fetchAllPages((page, pageSize) =>
+        majorApi.list({ limit: pageSize, offset: page * pageSize }),
+      )
+      setMajors((res || []).map((m: any) => ({ id: m.id, name: m.name })))
     } catch {
       /* ignore */
     }
