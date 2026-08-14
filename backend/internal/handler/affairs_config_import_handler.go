@@ -1,34 +1,21 @@
 package handler
 
+// 教务配置导入 HTTP 适配：鉴权/租户/文件解析/模板生成/响应映射，
+// 三 Sheet 事务导入在 service.AffairsConfigImportService（refactor-layering.md 分层契约）。
+
 import (
 	"log/slog"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AffairsConfigImportHandler struct {
 	Store *store.Store
-}
-
-// parseSlotTypeName 将「时段类型」列中文值映射为 slot_type，无法识别时返回空串。
-func parseSlotTypeName(s string) string {
-	switch s {
-	case "早自习":
-		return "morning_self"
-	case "上午":
-		return "morning"
-	case "下午":
-		return "afternoon"
-	case "晚自习":
-		return "evening"
-	default:
-		return ""
-	}
+	Svc   *service.AffairsConfigImportService
 }
 
 // ImportExcel POST /import/affairs-config/excel — 三 Sheet Excel 导入学期/场地/节次。
@@ -50,131 +37,8 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	}
 	defer xlsx.Close()
 
-	ctx := r.Context()
-	result := map[string]interface{}{}
-	// 三 Sheet 导入在同一事务中执行；行级错误跳过并计入结果（失败行不阻断其余行），
-	// 仅系统级错误（如 DB 故障）返回 error 使事务整体回滚
-	if err := h.Store.WithTx(ctx, func(txStore *store.Store) error {
-		if rows, _ := xlsx.GetRows("学期"); len(rows) > 2 {
-			created, skipped, failed := 0, 0, 0
-			for i, row := range rows {
-				if i < 2 {
-					continue
-				}
-				name := strings.TrimSpace(col(row, 0))
-				startDate := strings.TrimSpace(col(row, 1))
-				endDate := strings.TrimSpace(col(row, 2))
-				weeksStr := strings.TrimSpace(col(row, 3))
-				if name == "" || startDate == "" || endDate == "" {
-					skipped++
-					continue
-				}
-				weeks, _ := strconv.Atoi(weeksStr)
-				if weeks <= 0 {
-					weeks = 16
-				}
-				isNew, err := store.ImportTerm(ctx, txStore.Q(), tenantID, name, startDate, endDate, weeks)
-				if err != nil {
-					slog.Error("[affairs-config-import] 学期导入失败", "name", name, "error", err)
-					failed++
-					continue
-				}
-				if isNew {
-					created++
-				} else {
-					skipped++
-				}
-			}
-			result["termsCreated"] = created
-			result["termsSkipped"] = skipped
-			result["termsFailed"] = failed
-		}
-
-		if rows, _ := xlsx.GetRows("场地"); len(rows) > 2 {
-			created, skipped, failed := 0, 0, 0
-			for i, row := range rows {
-				if i < 2 {
-					continue
-				}
-				name := strings.TrimSpace(col(row, 0))
-				vtype := strings.TrimSpace(col(row, 1))
-				capacityStr := strings.TrimSpace(col(row, 2))
-				if name == "" || vtype == "" {
-					skipped++
-					continue
-				}
-				capacity, _ := strconv.Atoi(capacityStr)
-				var cap *int
-				if capacity > 0 {
-					cap = &capacity
-				}
-				isNew, err := store.ImportVenue(ctx, txStore.Q(), tenantID, name, vtype, cap)
-				if err != nil {
-					slog.Error("[affairs-config-import] 场地导入失败", "name", name, "error", err)
-					failed++
-					continue
-				}
-				if isNew {
-					created++
-				} else {
-					skipped++
-				}
-			}
-			result["venuesCreated"] = created
-			result["venuesSkipped"] = skipped
-			result["venuesFailed"] = failed
-		}
-
-		if rows, _ := xlsx.GetRows("节次"); len(rows) > 2 {
-			created, skipped, failed := 0, 0, 0
-			for i, row := range rows {
-				if i < 2 {
-					continue
-				}
-				name := strings.TrimSpace(col(row, 0))
-				startTime := strings.TrimSpace(col(row, 1))
-				endTime := strings.TrimSpace(col(row, 2))
-				sortStr := strings.TrimSpace(col(row, 3))
-				if name == "" {
-					skipped++
-					continue
-				}
-				sortOrder, _ := strconv.Atoi(sortStr)
-				// 时段类型优先读「时段类型」列；为空时按排序位置推断（0-3 上午、4-7 下午、8+ 晚自习）
-				slotType := parseSlotTypeName(col(row, 4))
-				if slotType == "" {
-					slotType = "morning"
-					if sortOrder >= 4 && sortOrder < 8 {
-						slotType = "afternoon"
-					} else if sortOrder >= 8 {
-						slotType = "evening"
-					}
-				}
-				var st, et *string
-				if startTime != "" {
-					st = &startTime
-				}
-				if endTime != "" {
-					et = &endTime
-				}
-				isNew, err := store.ImportPeriodSlot(ctx, txStore.Q(), tenantID, name, slotType, st, et, sortOrder)
-				if err != nil {
-					slog.Error("[affairs-config-import] 节次导入失败", "name", name, "error", err)
-					failed++
-					continue
-				}
-				if isNew {
-					created++
-				} else {
-					skipped++
-				}
-			}
-			result["periodSlotsCreated"] = created
-			result["periodSlotsSkipped"] = skipped
-			result["periodSlotsFailed"] = failed
-		}
-		return nil
-	}); err != nil {
+	result, err := h.Svc.ImportSheets(r.Context(), tenantID, xlsx)
+	if err != nil {
 		slog.Error("[affairs-config-import] 事务提交失败", "error", err)
 		respondServerError(w, r, err, "导入提交失败")
 		return

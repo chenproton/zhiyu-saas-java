@@ -118,15 +118,34 @@ func FindOrCreateKnowledgePoints(ctx context.Context, db store.Queryer, tenantID
 }
 
 // FindOrCreateResources 按租户+名称批量查找资源库资源，不存在则按文件后缀推断类型创建
-// （无后缀/未知后缀归入 other），返回命中的 ID 列表。
+// （无后缀/未知后缀归入 other）。按 resourceType 分组后每组一次批量调用
+// （每组 3 次查询而非 3N），返回命中的 ID 列表（顺序与输入一致）。
 func FindOrCreateResources(ctx context.Context, db store.Queryer, tenantID string, names []string, userID string) []string {
-	ids := []string{}
+	// 保序去重 + 按类型分组
+	order := make([]string, 0, len(names))
+	seen := make(map[string]bool, len(names))
+	groups := map[string][]string{}
 	for _, n := range names {
 		n = strings.TrimSpace(n)
-		if n == "" {
+		if n == "" || seen[n] {
 			continue
 		}
-		ids = append(ids, store.FindOrCreateResourcesByNames(ctx, db, tenantID, []string{n}, ResourceTypeByExt(n), userID)...)
+		seen[n] = true
+		order = append(order, n)
+		rt := ResourceTypeByExt(n)
+		groups[rt] = append(groups[rt], n)
+	}
+	idByName := map[string]string{}
+	for rt, batch := range groups {
+		for _, id := range store.FindOrCreateResourcesByNames(ctx, db, tenantID, batch, rt, userID) {
+			// batch 与返回 id 列表同序（store 实现保证）
+			idByName[batch[0]] = id
+			batch = batch[1:]
+		}
+	}
+	ids := make([]string, 0, len(order))
+	for _, n := range order {
+		ids = append(ids, idByName[n])
 	}
 	return ids
 }

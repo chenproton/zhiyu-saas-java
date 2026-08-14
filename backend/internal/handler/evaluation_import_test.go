@@ -33,7 +33,7 @@ func TestEvaluationImports(t *testing.T) {
 		{"安全生产题库", "安全培训考核用", ""},
 	})
 	req := makeRequest(t, "/api/v1/import/question-banks/excel", bankFile, claims)
-	hBank := &handler.QuestionBankImportHandler{Store: env.Store}
+	hBank := &handler.QuestionBankImportHandler{Store: env.Store, Svc: service.NewQuestionBankImportService(service.New(env.Store))}
 	w := httptest.NewRecorder()
 	hBank.ImportExcel(w, req)
 	if w.Code != 200 {
@@ -59,7 +59,7 @@ func TestEvaluationImports(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("bankId", bankID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	hQuestion := &handler.QuestionImportHandler{Store: env.Store}
+	hQuestion := &handler.QuestionImportHandler{Store: env.Store, Svc: service.NewQuestionImportService(service.New(env.Store))}
 	w = httptest.NewRecorder()
 	hQuestion.ImportExcel(w, req)
 	if w.Code != 200 {
