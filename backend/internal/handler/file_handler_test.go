@@ -63,7 +63,7 @@ func writeTestFile(t *testing.T, dir, tenant, name, content string) {
 
 func TestFileServeRequiresAuth(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+	writeTestFile(t, dir, "11111111-1111-1111-1111-111111111111", "x.png", "pngdata")
 
 	h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
 	r := newUploadsRouter(h, "sec")
@@ -77,13 +77,13 @@ func TestFileServeRequiresAuth(t *testing.T) {
 		want   int
 	}{
 		{"未登录返回401", "", "", http.StatusUnauthorized},
-		{"跨租户返回403", tokenFor(t, "sec", "tenant-b"), "", http.StatusForbidden},
-		{"同租户Header返回200", tokenFor(t, "sec", "tenant-a"), "", http.StatusOK},
-		{"同租户Cookie返回200", "", tokenFor(t, "sec", "tenant-a"), http.StatusOK},
+		{"跨租户返回403", tokenFor(t, "sec", "22222222-2222-2222-2222-222222222222"), "", http.StatusForbidden},
+		{"同租户Header返回200", tokenFor(t, "sec", "11111111-1111-1111-1111-111111111111"), "", http.StatusOK},
+		{"同租户Cookie返回200", "", tokenFor(t, "sec", "11111111-1111-1111-1111-111111111111"), http.StatusOK},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req, _ := http.NewRequest(http.MethodGet, svr.URL+"/uploads/tenant-a/x.png", nil)
+			req, _ := http.NewRequest(http.MethodGet, svr.URL+"/uploads/11111111-1111-1111-1111-111111111111/x.png", nil)
 			if tc.header != "" {
 				req.Header.Set("Authorization", "Bearer "+tc.header)
 			}
@@ -104,14 +104,14 @@ func TestFileServeRequiresAuth(t *testing.T) {
 
 func TestFileServeRejectsPathTraversal(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+	writeTestFile(t, dir, "11111111-1111-1111-1111-111111111111", "x.png", "pngdata")
 
 	h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
 
-	req := httptest.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
-	req = withClaims(req, tenantClaims("tenant-a"))
+	req := httptest.NewRequest(http.MethodGet, "/uploads/11111111-1111-1111-1111-111111111111/x.png", nil)
+	req = withClaims(req, tenantClaims("11111111-1111-1111-1111-111111111111"))
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("tenantID", "tenant-a")
+	rctx.URLParams.Add("tenantID", "11111111-1111-1111-1111-111111111111")
 	rctx.URLParams.Add("filename", "../x.png")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
@@ -124,13 +124,13 @@ func TestFileServeRejectsPathTraversal(t *testing.T) {
 
 func TestFileServePublicAllianceFile(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+	writeTestFile(t, dir, "11111111-1111-1111-1111-111111111111", "x.png", "pngdata")
 
 	h := &FileHandler{
 		UploadDir: dir,
 		JWTSecret: "sec",
 		IsPublicAllianceFile: func(_ context.Context, fileTenantID, fileURL string) (bool, error) {
-			return fileTenantID == "tenant-a" && fileURL == "/uploads/tenant-a/x.png", nil
+			return fileTenantID == "11111111-1111-1111-1111-111111111111" && fileURL == "/uploads/11111111-1111-1111-1111-111111111111/x.png", nil
 		},
 	}
 	r := newUploadsRouter(h, "sec")
@@ -143,15 +143,15 @@ func TestFileServePublicAllianceFile(t *testing.T) {
 		want   int
 	}{
 		{"公开文件未登录放行", "", http.StatusOK},
-		{"公开文件跨租户放行", tokenFor(t, "sec", "tenant-b"), http.StatusOK},
+		{"公开文件跨租户放行", tokenFor(t, "sec", "22222222-2222-2222-2222-222222222222"), http.StatusOK},
 		{"非公开文件未登录仍401", "", http.StatusUnauthorized},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			url := svr.URL + "/uploads/tenant-a/x.png"
+			url := svr.URL + "/uploads/11111111-1111-1111-1111-111111111111/x.png"
 			if tc.want == http.StatusUnauthorized {
 				// 非公开场景：切换 IsPublicAllianceFile 返回 false 的文件路径
-				url = svr.URL + "/uploads/tenant-a/y.png"
+				url = svr.URL + "/uploads/11111111-1111-1111-1111-111111111111/y.png"
 			}
 			req, _ := http.NewRequest(http.MethodGet, url, nil)
 			if tc.header != "" {
@@ -171,7 +171,7 @@ func TestFileServePublicAllianceFile(t *testing.T) {
 
 func TestFileServeSignedURL(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+	writeTestFile(t, dir, "11111111-1111-1111-1111-111111111111", "x.png", "pngdata")
 
 	h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
 	r := newUploadsRouter(h, "sec")
@@ -180,7 +180,7 @@ func TestFileServeSignedURL(t *testing.T) {
 
 	sign := func(exp int64) string {
 		mac := hmac.New(sha256.New, []byte("sec"))
-		mac.Write([]byte("/uploads/tenant-a/x.png|" + strconv.FormatInt(exp, 10)))
+		mac.Write([]byte("/uploads/11111111-1111-1111-1111-111111111111/x.png|" + strconv.FormatInt(exp, 10)))
 		return hex.EncodeToString(mac.Sum(nil))
 	}
 	valid := time.Now().Add(time.Minute).Unix()
@@ -198,7 +198,7 @@ func TestFileServeSignedURL(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req, _ := http.NewRequest(http.MethodGet, svr.URL+"/uploads/tenant-a/x.png"+tc.query, nil)
+			req, _ := http.NewRequest(http.MethodGet, svr.URL+"/uploads/11111111-1111-1111-1111-111111111111/x.png"+tc.query, nil)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatal(err)
@@ -228,7 +228,7 @@ func TestUploadTenantDirAndWhitelist(t *testing.T) {
 		mw.Close()
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/files/upload", strings.NewReader(b.String()))
 		req.Header.Set("Content-Type", mw.FormDataContentType())
-		req = withClaims(req, tenantClaims("tenant-a"))
+		req = withClaims(req, tenantClaims("11111111-1111-1111-1111-111111111111"))
 		w := httptest.NewRecorder()
 		h.Upload(w, req)
 		return w
@@ -244,7 +244,7 @@ func TestUploadTenantDirAndWhitelist(t *testing.T) {
 		t.Fatalf("正常 png 应上传成功, got %d", code)
 	}
 	// 上传后按租户目录落盘
-	entries, err := os.ReadDir(filepath.Join(dir, "tenant-a"))
+	entries, err := os.ReadDir(filepath.Join(dir, "11111111-1111-1111-1111-111111111111"))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("文件应落在租户子目录, err=%v entries=%d", err, len(entries))
 	}
@@ -261,24 +261,24 @@ func TestUploadTenantDirAndWhitelist(t *testing.T) {
 // 访问任一租户文件均应 200（Serve 按 URL 租户在候选 claims 中匹配）。
 func TestFileServeDualPlatformCookies(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
-	writeTestFile(t, dir, "tenant-b", "y.png", "pngdata")
+	writeTestFile(t, dir, "11111111-1111-1111-1111-111111111111", "x.png", "pngdata")
+	writeTestFile(t, dir, "22222222-2222-2222-2222-222222222222", "y.png", "pngdata")
 
 	h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
 	r := newUploadsRouter(h, "sec")
 	svr := httptest.NewServer(r)
 	defer svr.Close()
 
-	portalTok := tokenFor(t, "sec", "tenant-a")
-	partnerTok := tokenFor(t, "sec", "tenant-b")
+	portalTok := tokenFor(t, "sec", "11111111-1111-1111-1111-111111111111")
+	partnerTok := tokenFor(t, "sec", "22222222-2222-2222-2222-222222222222")
 
 	for _, tc := range []struct {
 		name string
 		file string
 		want int
 	}{
-		{"portal 租户文件", "tenant-a/x.png", http.StatusOK},
-		{"partner 租户文件", "tenant-b/y.png", http.StatusOK},
+		{"portal 租户文件", "11111111-1111-1111-1111-111111111111/x.png", http.StatusOK},
+		{"partner 租户文件", "22222222-2222-2222-2222-222222222222/y.png", http.StatusOK},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, svr.URL+"/uploads/"+tc.file, nil)
@@ -296,21 +296,21 @@ func TestFileServeDualPlatformCookies(t *testing.T) {
 }
 
 // TestFileServeCrossTenantPublicEnterprise 联盟公开企业文件跨租户放行：
-// 学校租户（tenant-b）登录访问企业租户（tenant-a）文件时，CrossTenantAccess
+// 学校租户（22222222-2222-2222-2222-222222222222）登录访问企业租户（11111111-1111-1111-1111-111111111111）文件时，CrossTenantAccess
 // 判定通过返回 200，未配置/判定拒绝保持 403。
 func TestFileServeCrossTenantPublicEnterprise(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, dir, "tenant-a", "x.png", "pngdata")
+	writeTestFile(t, dir, "11111111-1111-1111-1111-111111111111", "x.png", "pngdata")
 
 	accessCheck := func(_ context.Context, fileTenantID, viewerTenantID string) (bool, error) {
-		return fileTenantID == "tenant-a" && viewerTenantID == "tenant-b", nil
+		return fileTenantID == "11111111-1111-1111-1111-111111111111" && viewerTenantID == "22222222-2222-2222-2222-222222222222", nil
 	}
 
 	t.Run("判定通过返回200", func(t *testing.T) {
 		h := &FileHandler{UploadDir: dir, JWTSecret: "sec", CrossTenantAccess: accessCheck}
 		r := newUploadsRouter(h, "sec")
-		req, _ := http.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
-		req = withClaims(req, tenantClaims("tenant-b"))
+		req, _ := http.NewRequest(http.MethodGet, "/uploads/11111111-1111-1111-1111-111111111111/x.png", nil)
+		req = withClaims(req, tenantClaims("22222222-2222-2222-2222-222222222222"))
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
@@ -321,8 +321,8 @@ func TestFileServeCrossTenantPublicEnterprise(t *testing.T) {
 	t.Run("判定拒绝仍403", func(t *testing.T) {
 		h := &FileHandler{UploadDir: dir, JWTSecret: "sec", CrossTenantAccess: accessCheck}
 		r := newUploadsRouter(h, "sec")
-		req, _ := http.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
-		req = withClaims(req, tenantClaims("tenant-c"))
+		req, _ := http.NewRequest(http.MethodGet, "/uploads/11111111-1111-1111-1111-111111111111/x.png", nil)
+		req = withClaims(req, tenantClaims("33333333-3333-3333-3333-333333333333"))
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
@@ -333,8 +333,8 @@ func TestFileServeCrossTenantPublicEnterprise(t *testing.T) {
 	t.Run("未配置保持403", func(t *testing.T) {
 		h := &FileHandler{UploadDir: dir, JWTSecret: "sec"}
 		r := newUploadsRouter(h, "sec")
-		req, _ := http.NewRequest(http.MethodGet, "/uploads/tenant-a/x.png", nil)
-		req = withClaims(req, tenantClaims("tenant-b"))
+		req, _ := http.NewRequest(http.MethodGet, "/uploads/11111111-1111-1111-1111-111111111111/x.png", nil)
+		req = withClaims(req, tenantClaims("22222222-2222-2222-2222-222222222222"))
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
