@@ -32,6 +32,10 @@ offline/
 └── ip2region_v4.xdb            # ip2region v2.2 IPv4 数据文件（必需，~11MB，登录日志 IP 归属地）
                                 # 下载: https://github.com/lionsoul2014/ip2region/raw/master/data/ip2region_v4.xdb
                                 # deploy.sh 构建后端镜像时自动打包进容器 /app/data/
+├── node_modules.tar.gz          # 前端 npm 依赖离线包（可选，~268MB，完全离线安装 npm 依赖用）
+│                                 # 生成（联网开发机，装好依赖后）:
+│                                 #   tar --hard-dereference -czf offline/node_modules.tar.gz node_modules
+│                                 # deploy.sh 检测到本包时解压到构建树、跳过 pnpm install（无需 npm registry / pnpm store）
 └── file-viewer/                # file-viewer 预览服务的运行时离线资产（typst 默认字体）
     └── typst-fonts/            # 17 个开源字体（DejaVuSansMono / LibertinusSerif / NewCM / NewCMMath，~8.4MB）
                                 # 下载: https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/
@@ -49,6 +53,11 @@ offline/
 1. 在能联网的机器上按上方命令导出资源。
 2. 把 `offline/` 整个目录连同代码一起拷贝到目标服务器。
 3. 在目标服务器执行 `./deploy.sh` 即可；`deploy.sh` 会自动检测并使用本地资源。
+
+> **关于 npm 依赖离线**：`node_modules.tar.gz`（~268MB）用于「完全无外网、源码部署」场景，
+> 命中后 `deploy.sh` 直接解压依赖、跳过 `pnpm install`。若目标服务器可访问 npm registry，
+> 无需生成此包（`pnpm install` 会自动联网）。注意该包是平台相关的（linux x64），且
+> 依赖版本变化后需在联网机重新生成。
 
 ## 生成无源码交付包（实施部署）
 

@@ -930,11 +930,20 @@ if $BUILD_FRONTEND; then
   log "构建前端"
 
   if $NEED_INSTALL; then
-    log "  安装依赖..."
-    # 先试离线安装（需要 node_modules 或 pnpm store 已就绪）
-    (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
-    (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
-    (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+    # 离线依赖包：offline/node_modules.tar.gz（联网机按 offline/README.md 预生成，~268MB）。
+    # 命中则直接解压到构建树，跳过 pnpm install——完全离线、无需 npm registry / pnpm store。
+    OFFLINE_NODE_MODULES="$OFFLINE_DIR/node_modules.tar.gz"
+    if [[ -f "$OFFLINE_NODE_MODULES" ]]; then
+      log "  离线依赖包命中，解压 node_modules（跳过 pnpm install）..."
+      rm -rf "$BUILD_ROOT/node_modules"
+      tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" || die "解压 offline/node_modules.tar.gz 失败"
+    else
+      log "  安装依赖..."
+      # 先试离线安装（需要 node_modules 或 pnpm store 已就绪）
+      (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
+      (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
+      (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+    fi
     echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
   fi
 
