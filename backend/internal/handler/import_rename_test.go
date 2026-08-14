@@ -33,7 +33,7 @@ func TestImportRenameMode_Excel(t *testing.T) {
 		{"题库名称 *", "题库简介", "所属批次"},
 		{bankPrefix, "重名测试", ""},
 	})
-	hBank := &handler.QuestionBankImportHandler{Store: env.Store}
+	hBank := &handler.QuestionBankImportHandler{Store: env.Store, Svc: service.NewQuestionBankImportService(service.New(env.Store))}
 
 	req := makeRequest(t, "/api/v1/import/question-banks/excel", bankFile, claims)
 	w := httptest.NewRecorder()
@@ -111,7 +111,7 @@ func TestImportOverwritePermission(t *testing.T) {
 		{bankName, "权限测试", ""},
 	})
 
-	h := &handler.QuestionBankImportHandler{Store: env.Store}
+	h := &handler.QuestionBankImportHandler{Store: env.Store, Svc: service.NewQuestionBankImportService(service.New(env.Store))}
 
 	// 用户 A 创建题库
 	req := makeRequest(t, "/api/v1/import/question-banks/excel", fileData, userA)

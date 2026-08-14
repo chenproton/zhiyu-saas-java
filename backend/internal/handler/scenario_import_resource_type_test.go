@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 // TestScenarioImportResourceType 验证场景导入时，未命中的资源按文件后缀推断类型，
@@ -73,7 +74,7 @@ func TestScenarioImportResourceType(t *testing.T) {
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
 
-	h := &handler.ScenarioImportHandler{Store: env.Store}
+	h := &handler.ScenarioImportHandler{Store: env.Store, Svc: service.NewScenarioImportService(service.New(env.Store))}
 	w := httptest.NewRecorder()
 	h.ImportExcel(w, req)
 	if w.Code != http.StatusOK {

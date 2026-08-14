@@ -1,19 +1,16 @@
 package handler
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strings"
 
-	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioExportHandler struct {
 	Store *store.Store
+	Svc   *service.ScenarioExportService
 }
 
 func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -36,136 +33,10 @@ func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	th := &TemplateHandler{Store: h.Store}
 	f := th.generateScenarioTemplate(ctx, tenantID)
 
-	if err := h.fillScenariosData(ctx, f, tenantID, ids); err != nil {
+	if err := h.Svc.FillScenariosData(ctx, f, tenantID, ids); err != nil {
 		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
 	writeExcel(w, r, f, "场景导出.xlsx")
-}
-
-func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *excelize.File, tenantID string, scenarioIDs []string) error {
-
-	// Fill Sheet 1: 场景基本信息
-	type sRow struct {
-		name, position, industries, professions, difficulty, background, batch string
-	}
-	var sRows []sRow
-
-	for _, sid := range scenarioIDs {
-		scn, err := h.Store.Scenarios().Get(ctx, sid)
-		if err != nil {
-			slog.Warn("导出场景行跳过", "scenarioId", sid, "error", err)
-			continue
-		}
-		// 跨租户场景禁止导出（Get 仅按 id 查询，无租户条件）
-		if scn.TenantID == nil || *scn.TenantID != tenantID {
-			slog.Warn("导出场景行跳过（跨租户）", "scenarioId", sid, "tenantID", scn.TenantID)
-			continue
-		}
-		name := scn.Name
-		diff := fmt.Sprintf("%d", scn.Difficulty)
-		bg := ""
-		if scn.Background != nil {
-			bg = *scn.Background
-		}
-		batchName := ""
-		careerPositionID := scn.CareerPositionID
-		industryIDs := scn.IndustryIDs
-		professionIDs := scn.ProfessionIDs
-		batchID := scn.BatchID
-
-		positionName := ""
-		if careerPositionID != nil && *careerPositionID != "" {
-			if pn, err := store.LookupCareerPositionNameByID(ctx, h.Store.Q(), *careerPositionID); err != nil {
-				slog.Warn("导出场景岗位名查询失败", "positionId", *careerPositionID, "error", err)
-			} else {
-				positionName = pn
-			}
-		}
-		if batchID != nil && *batchID != "" {
-			if bn, err := store.LookupSceneBatchNameByID(ctx, h.Store.Q(), *batchID); err != nil {
-				slog.Warn("导出场景批次名查询失败", "batchId", *batchID, "error", err)
-			} else {
-				batchName = bn
-			}
-		}
-
-		industryNames := store.LookupNamesByTable(ctx, h.Store.Q(), "industries", industryIDs)
-		professionNames := store.LookupNamesByTable(ctx, h.Store.Q(), "majors", professionIDs)
-
-		sRows = append(sRows, sRow{
-			name, positionName,
-			strings.Join(industryNames, ","),
-			strings.Join(professionNames, ","),
-			diff, bg, batchName,
-		})
-	}
-
-	setCell := newSetCell(f)
-	for ri, row := range sRows {
-		r := 3 + ri
-		setCell("场景基本信息", fmt.Sprintf("A%d", r), row.name)
-		setCell("场景基本信息", fmt.Sprintf("B%d", r), row.position)
-		setCell("场景基本信息", fmt.Sprintf("C%d", r), row.industries)
-		setCell("场景基本信息", fmt.Sprintf("D%d", r), row.professions)
-		setCell("场景基本信息", fmt.Sprintf("E%d", r), row.difficulty)
-		setCell("场景基本信息", fmt.Sprintf("F%d", r), row.background)
-		setCell("场景基本信息", fmt.Sprintf("G%d", r), row.batch)
-		f.SetRowHeight("场景基本信息", r, 24)
-	}
-
-	// Fill Sheet 2: 任务配置
-	taskRow := 3
-	for _, sid := range scenarioIDs {
-		scenarioName, err := store.LookupScenarioNameByID(ctx, h.Store.Q(), sid)
-		if err != nil {
-			slog.Warn("导出场景任务名称查询失败", "scenarioId", sid, "error", err)
-		}
-
-		taskRows, err := h.Store.ScenarioTasks().ListByScenarioID(ctx, h.Store.Q(), tenantID, sid)
-		if err != nil {
-			slog.Warn("导出场景任务查询失败", "scenarioId", sid, "error", err)
-			continue
-		}
-		for _, t := range taskRows {
-			kpNames := store.LookupKnowledgePointNamesByIDs(ctx, h.Store.Q(), t.KnowledgePointIDs)
-			apNames := store.LookupAbilityPointNamesByIDs(ctx, h.Store.Q(), t.AbilityPointIDs)
-			resNames := store.LookupResourceNamesByIDs(ctx, h.Store.Q(), t.ResourceIDs)
-
-			evalMethods := h.lookupTaskEvalMethods(ctx, tenantID, t.ID)
-
-			setCell("任务配置", fmt.Sprintf("A%d", taskRow), scenarioName)
-			setCell("任务配置", fmt.Sprintf("B%d", taskRow), t.Name)
-			setCell("任务配置", fmt.Sprintf("C%d", taskRow), mapTaskTypeToChinese(t.TaskType))
-			setCell("任务配置", fmt.Sprintf("D%d", taskRow), fmt.Sprintf("%d", t.Difficulty))
-			setCell("任务配置", fmt.Sprintf("E%d", taskRow), fmt.Sprintf("%.1f", t.EstimatedHours))
-			setCell("任务配置", fmt.Sprintf("F%d", taskRow), t.Background)
-			setCell("任务配置", fmt.Sprintf("G%d", taskRow), t.DetailedDesc)
-			setCell("任务配置", fmt.Sprintf("H%d", taskRow), strings.Join(kpNames, ","))
-			setCell("任务配置", fmt.Sprintf("I%d", taskRow), strings.Join(apNames, ","))
-			setCell("任务配置", fmt.Sprintf("J%d", taskRow), strings.Join(resNames, ","))
-			setCell("任务配置", fmt.Sprintf("K%d", taskRow), strings.Join(evalMethods, ","))
-
-			f.SetRowHeight("任务配置", taskRow, 24)
-			taskRow++
-		}
-	}
-
-	return nil
-}
-
-func (h *ScenarioExportHandler) lookupTaskEvalMethods(ctx context.Context, tenantID, taskID string) []string {
-	return h.Store.TaskEval().ListEnabledMethodKeys(ctx, h.Store.Q(), tenantID, taskID)
-}
-
-func mapTaskTypeToChinese(t string) string {
-	switch t {
-	case "assessment":
-		return "考核"
-	case "training":
-		return "训练"
-	default:
-		return t
-	}
 }

@@ -1,6 +1,10 @@
 package handler
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/zhiyu-saas/backend/internal/service"
+)
 
 // TestMapEvalMethod 验证场景导入测评方式名称到 method_key 的映射，含现场问答。
 func TestMapEvalMethod(t *testing.T) {
@@ -17,8 +21,8 @@ func TestMapEvalMethod(t *testing.T) {
 		"":       "",
 	}
 	for name, want := range cases {
-		if got := mapEvalMethod(name); got != want {
-			t.Errorf("mapEvalMethod(%q) = %q, want %q", name, got, want)
+		if got := service.MapEvalMethod(name); got != want {
+			t.Errorf("service.MapEvalMethod(%q) = %q, want %q", name, got, want)
 		}
 	}
 }

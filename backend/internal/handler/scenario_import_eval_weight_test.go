@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 // TestScenarioImportEvalWeight 验证场景导入时测评方式按等分写入权重（如 4 种各 25），
@@ -60,7 +61,7 @@ func TestScenarioImportEvalWeight(t *testing.T) {
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
 
-	h := &handler.ScenarioImportHandler{Store: env.Store}
+	h := &handler.ScenarioImportHandler{Store: env.Store, Svc: service.NewScenarioImportService(service.New(env.Store))}
 	w := httptest.NewRecorder()
 	h.ImportExcel(w, req)
 	if w.Code != http.StatusOK {

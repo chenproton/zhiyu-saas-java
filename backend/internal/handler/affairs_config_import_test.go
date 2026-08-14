@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 // TestAffairsConfigImportPeriodSlotType 验证教务配置导入时节次时段类型解析：
@@ -83,7 +84,7 @@ func TestAffairsConfigImportPeriodSlotType(t *testing.T) {
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req = req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUser, claims))
 
-	h := &handler.AffairsConfigImportHandler{Store: env.Store}
+	h := &handler.AffairsConfigImportHandler{Store: env.Store, Svc: service.NewAffairsConfigImportService(service.New(env.Store))}
 	w := httptest.NewRecorder()
 	h.ImportExcel(w, req)
 	if w.Code != http.StatusOK {

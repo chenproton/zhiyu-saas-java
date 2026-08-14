@@ -22,7 +22,9 @@ func (f *fakeResourceQueryer) Query(ctx context.Context, sql string, args ...any
 	return &fakeResRows{}, nil
 }
 
-func (f *fakeResourceQueryer) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row { return nil }
+func (f *fakeResourceQueryer) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return nil
+}
 
 func (f *fakeResourceQueryer) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	if strings.Contains(sql, "INSERT INTO resource_library") {

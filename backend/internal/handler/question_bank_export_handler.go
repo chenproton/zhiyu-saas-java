@@ -1,18 +1,16 @@
 package handler
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
 	"net/http"
 
-	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type QuestionBankExportHandler struct {
 	Store *store.Store
+	Svc   *service.QuestionBankExportService
 }
 
 func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
@@ -36,51 +34,10 @@ func (h *QuestionBankExportHandler) ExportExcel(w http.ResponseWriter, r *http.R
 	th := &TemplateHandler{Store: h.Store}
 	f := th.generateQuestionBankTemplate(ctx, tenantID)
 
-	if err := h.fillBanksData(ctx, f, tenantID, ids); err != nil {
+	if err := h.Svc.FillBanksData(ctx, f, tenantID, ids); err != nil {
 		respondServerError(w, r, err, "填充export data失败")
 		return
 	}
 
 	writeExcel(w, r, f, "题库导出.xlsx")
-}
-
-func (h *QuestionBankExportHandler) fillBanksData(ctx context.Context, f *excelize.File, tenantID string, bankIDs []string) error {
-	dataStyle := makeDataStyle(f)
-	wrapAlign := makeWrapAlign(f)
-
-	setCell := func(sheet, cell, val string) {
-		f.SetCellValue(sheet, cell, val)
-		f.SetCellStyle(sheet, cell, cell, dataStyle)
-		f.SetCellStyle(sheet, cell, cell, wrapAlign)
-	}
-
-	failed := 0
-	for ri, bid := range bankIDs {
-		name, desc, batchID, err := store.GetQuestionBankForExport(ctx, h.Store.Q(), bid, tenantID)
-		if err != nil {
-			failed++
-			slog.Warn("导出题库行跳过", "bankId", bid, "error", err)
-			continue
-		}
-
-		batchName := ""
-		if batchID != nil && *batchID != "" {
-			var err error
-			batchName, err = store.GetEvaluationBatchNameByID(ctx, h.Store.Q(), *batchID)
-			if err != nil {
-				slog.Warn("导出题库批次名查询失败", "batchId", *batchID, "error", err)
-			}
-		}
-
-		r := 3 + ri
-		setCell("题库基本信息", fmt.Sprintf("A%d", r), name)
-		setCell("题库基本信息", fmt.Sprintf("B%d", r), desc)
-		setCell("题库基本信息", fmt.Sprintf("C%d", r), batchName)
-		f.SetRowHeight("题库基本信息", r, 24)
-	}
-
-	if failed > 0 {
-		return fmt.Errorf("%d 个题库数据导出失败", failed)
-	}
-	return nil
 }
