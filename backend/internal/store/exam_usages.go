@@ -60,7 +60,7 @@ func (s *ExamUsageStore) ListConfig() ListQueryConfig[domain.ExamUsage] {
 
 // Get 查询单个考试安排（查询前同步定时启停状态）。
 func (s *ExamUsageStore) Get(ctx context.Context, tenantID, id string) (*domain.ExamUsage, error) {
-	SyncScheduledExamUsageStatus(ctx, s.q, "", time.Now())
+	SyncScheduledExamUsageStatus(ctx, s.q, tenantID, time.Now())
 	u, err := s.fetchExamUsage(ctx, tenantID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound

@@ -1113,8 +1113,8 @@ function AddSystemPageInner() {
                         desc: t('自行上传并编辑课程资源'),
                         icon: Upload,
                         color: 'bg-blue-500',
-                        border: 'border-blue-500',
-                        bg: 'bg-blue-50/50',
+                        hoverBorder: 'hover:border-blue-500',
+                        hoverBg: 'hover:bg-blue-50/50',
                       },
                       {
                         key: 'clone' as const,
@@ -1122,8 +1122,8 @@ function AddSystemPageInner() {
                         desc: t('复制颗粒课内容生成独立节点'),
                         icon: Copy,
                         color: 'bg-amber-500',
-                        border: 'border-amber-500',
-                        bg: 'bg-amber-50/50',
+                        hoverBorder: 'hover:border-amber-500',
+                        hoverBg: 'hover:bg-amber-50/50',
                       },
                       {
                         key: 'quote' as const,
@@ -1131,8 +1131,8 @@ function AddSystemPageInner() {
                         desc: t('引用颗粒课内容，关联可同步编辑'),
                         icon: Link2,
                         color: 'bg-purple-500',
-                        border: 'border-purple-500',
-                        bg: 'bg-purple-50/50',
+                        hoverBorder: 'hover:border-purple-500',
+                        hoverBg: 'hover:bg-purple-50/50',
                       },
                     ].map((opt) => (
                       <button
@@ -1145,7 +1145,8 @@ function AddSystemPageInner() {
                         className={cn(
                           'group flex flex-col items-center gap-3 p-5 rounded-xl border-2 bg-white text-center transition-all',
                           'hover:-translate-y-0.5 hover:shadow-md',
-                          `hover:${opt.border} hover:${opt.bg}`,
+                          opt.hoverBorder,
+                          opt.hoverBg,
                         )}
                       >
                         <div

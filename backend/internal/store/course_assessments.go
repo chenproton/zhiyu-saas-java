@@ -143,6 +143,15 @@ func (s *CourseAssessmentStore) CreateTempExam(ctx context.Context, q Queryer, t
 		VALUES ($1, $2, $3, $4, '', 'published', 0, $5, NULL, '{}', '{}', NULL, 'V1.0', 'mine', $6, TRUE)
 	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
+		// 并发下另一事务已创建同名临时考试（check-then-act 竞态），复用其 id 而非让事务中止。
+		if IsUniqueViolation(err) {
+			var reusedID string
+			if qerr := q.QueryRow(ctx, `
+				SELECT id FROM exams WHERE tenant_id = $1 AND name = $2 AND is_temp = TRUE
+			`, tenantID, name).Scan(&reusedID); qerr == nil && reusedID != "" {
+				return reusedID, nil
+			}
+		}
 		return "", fmt.Errorf("创建临时考试失败: %w", err)
 	}
 	return id, nil

@@ -75,23 +75,20 @@ func (s *CommunityStore) CreateTopic(ctx context.Context, q Queryer, tenantID, a
 
 // ListTopics 按排序方式分页查询帖子（mine 时按作者过滤）。
 func (s *CommunityStore) ListTopics(ctx context.Context, tenantID string, sort TopicSort, authorID string, limit, offset int) ([]CommunityTopicRow, int, error) {
-	countQuery := `SELECT COUNT(*) FROM community_topics t WHERE t.tenant_id = $1`
-	countArgs := []any{tenantID}
-	if sort == TopicSortMine {
-		countQuery += ` AND t.author_id = $2`
-		countArgs = append(countArgs, authorID)
-	}
-	var total int
-	if err := s.q.QueryRow(ctx, countQuery, countArgs...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
+	// where 条件单点维护：COUNT 与列表查询共用，新增过滤条件仅需改这一处。
 	where := `t.tenant_id = $1`
 	args := []any{tenantID}
 	if sort == TopicSortMine {
 		where += ` AND t.author_id = $2`
 		args = append(args, authorID)
 	}
+
+	countQuery := `SELECT COUNT(*) FROM community_topics t WHERE ` + where
+	var total int
+	if err := s.q.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	orderBy := `t.created_at DESC`
 	if sort == TopicSortHot {
 		orderBy = `COALESCE(vc.cnt, 0) DESC, t.created_at DESC`

@@ -186,6 +186,17 @@ export interface PermissionModule {
   pages: PermissionPage[]
 }
 
+// 内容型模块共用的审批/发布/删除/审核操作清单（四页重复定义，收敛为单点）。
+const COMMON_APPROVAL_ACTIONS: PermissionAction[] = [
+  { action: 'submit_approval', label: '提交审批' },
+  { action: 'withdraw_approval', label: '撤回审批' },
+  { action: 'publish', label: '发布' },
+  { action: 'unpublish', label: '取消发布' },
+  { action: 'delete', label: '删除' },
+  { action: 'review', label: '审核' },
+  { action: 'reject', label: '驳回' },
+]
+
 export const permissionModuleConfig: PermissionModule[] = [
   {
     module: 'scene',
@@ -194,15 +205,7 @@ export const permissionModuleConfig: PermissionModule[] = [
       {
         page: 'scenarios',
         label: '场景管理',
-        actions: [
-          { action: 'submit_approval', label: '提交审批' },
-          { action: 'withdraw_approval', label: '撤回审批' },
-          { action: 'publish', label: '发布' },
-          { action: 'unpublish', label: '取消发布' },
-          { action: 'delete', label: '删除' },
-          { action: 'review', label: '审核' },
-          { action: 'reject', label: '驳回' },
-        ],
+        actions: COMMON_APPROVAL_ACTIONS,
       },
     ],
   },
@@ -213,15 +216,7 @@ export const permissionModuleConfig: PermissionModule[] = [
       {
         page: 'positions',
         label: '岗位管理',
-        actions: [
-          { action: 'submit_approval', label: '提交审批' },
-          { action: 'withdraw_approval', label: '撤回审批' },
-          { action: 'publish', label: '发布' },
-          { action: 'unpublish', label: '取消发布' },
-          { action: 'delete', label: '删除' },
-          { action: 'review', label: '审核' },
-          { action: 'reject', label: '驳回' },
-        ],
+        actions: COMMON_APPROVAL_ACTIONS,
       },
     ],
   },
@@ -232,15 +227,7 @@ export const permissionModuleConfig: PermissionModule[] = [
       {
         page: 'courses',
         label: '课程管理',
-        actions: [
-          { action: 'submit_approval', label: '提交审批' },
-          { action: 'withdraw_approval', label: '撤回审批' },
-          { action: 'publish', label: '发布' },
-          { action: 'unpublish', label: '取消发布' },
-          { action: 'delete', label: '删除' },
-          { action: 'review', label: '审核' },
-          { action: 'reject', label: '驳回' },
-        ],
+        actions: COMMON_APPROVAL_ACTIONS,
       },
     ],
   },
@@ -251,15 +238,7 @@ export const permissionModuleConfig: PermissionModule[] = [
       {
         page: 'exams',
         label: '试卷管理',
-        actions: [
-          { action: 'submit_approval', label: '提交审批' },
-          { action: 'withdraw_approval', label: '撤回审批' },
-          { action: 'publish', label: '发布' },
-          { action: 'unpublish', label: '取消发布' },
-          { action: 'delete', label: '删除' },
-          { action: 'review', label: '审核' },
-          { action: 'reject', label: '驳回' },
-        ],
+        actions: COMMON_APPROVAL_ACTIONS,
       },
     ],
   },

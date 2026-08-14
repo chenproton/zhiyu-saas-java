@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -348,16 +349,21 @@ type UserProfile struct {
 }
 
 // FetchUserProfile 查询用户姓名/班级/专业。
+// 姓名查询失败不阻断交卷主链路，仅记录日志便于排障（宁缺名字不断流程）。
 func (s *ExamResultStore) FetchUserProfile(ctx context.Context, userID string) (*UserProfile, error) {
 	var p UserProfile
-	_ = s.q.QueryRow(ctx, `SELECT name FROM users WHERE id = $1`, userID).Scan(&p.Name)
-	_ = s.q.QueryRow(ctx, `
+	if err := s.q.QueryRow(ctx, `SELECT name FROM users WHERE id = $1`, userID).Scan(&p.Name); err != nil {
+		slog.Warn("fetch user profile name failed", "userID", userID, "error", err)
+	}
+	if err := s.q.QueryRow(ctx, `
 		SELECT COALESCE(o.name, '') AS class_name, COALESCE(m.name, '') AS major_name, u.major_id
 		FROM users u
 		LEFT JOIN organizations o ON o.id = u.org_node_id
 		LEFT JOIN majors m ON m.id = u.major_id
 		WHERE u.id = $1
-	`, userID).Scan(&p.ClassName, &p.MajorName, &p.MajorID)
+	`, userID).Scan(&p.ClassName, &p.MajorName, &p.MajorID); err != nil {
+		slog.Warn("fetch user profile class/major failed", "userID", userID, "error", err)
+	}
 	return &p, nil
 }
 

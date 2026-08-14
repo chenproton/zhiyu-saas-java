@@ -581,6 +581,12 @@ func (s *PositionStore) ListFavorites(ctx context.Context, userID string, p List
 }
 
 func (s *PositionStore) fetchPosition(ctx context.Context, q Queryer, id string) (*domain.CareerPosition, error) {
+	return fetchCareerPositionDetail(ctx, q, id)
+}
+
+// fetchCareerPositionDetail 按 id 查询完整岗位（含专业/协作者/计数/来源字段）。
+// 供岗位 store 与岗位克隆 store 复用，避免 30 列 SELECT + Scan 双份维护。
+func fetchCareerPositionDetail(ctx context.Context, q Queryer, id string) (*domain.CareerPosition, error) {
 	var pos domain.CareerPosition
 	var batchID, shortName, industryID, coverImage, description, careerPath *string
 	var salaryMin, salaryMax *int

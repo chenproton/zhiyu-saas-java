@@ -292,52 +292,11 @@ func (s *PositionCloneStore) cloneCertificates(ctx context.Context, tx Queryer, 
 }
 
 // FetchPosition 查询完整岗位（含专业/计数/协作者名称）。
+// FetchPosition 查询完整岗位（含专业/协作者/计数/来源字段），复用岗位 store 的共享查询。
 func (s *PositionCloneStore) FetchPosition(ctx context.Context, id string) (domain.CareerPosition, error) {
-	var p domain.CareerPosition
-	var batchID, shortName, industryID, coverImage, description, careerPath *string
-	var salaryMin, salaryMax *int
-	var majorIDs, majorNames, requirements, collaborators []string
-
-	err := s.q.QueryRow(ctx, `
-		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
-			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
-			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
-			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
-			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
-			cp.collaborators,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			COALESCE(fc.cnt, 0) AS favorite_count,
-			COALESCE(vc.cnt, 0) AS view_count,
-			cp.created_at, cp.updated_at
-		FROM career_positions cp
-		LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id
-		LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id
-		WHERE cp.id = $1
-	`, id).Scan(
-		&p.ID, &batchID, &p.Code, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
-		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-		&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &p.CollaboratorNames, &p.FavoriteCount, &p.ViewCount,
-		&p.CreatedAt, &p.UpdatedAt,
-	)
+	p, err := fetchCareerPositionDetail(ctx, s.q, id)
 	if err != nil {
-		return p, err
+		return domain.CareerPosition{}, err
 	}
-	p.BatchID = batchID
-	p.ShortName = shortName
-	p.IndustryID = industryID
-	p.SalaryMin = salaryMin
-	p.SalaryMax = salaryMax
-	p.CoverImage = coverImage
-	p.Description = description
-	p.Requirements = requirements
-	p.CareerPath = careerPath
-	p.MajorIDs = majorIDs
-	p.MajorNames = majorNames
-	p.Collaborators = collaborators
-	return p, nil
+	return *p, nil
 }

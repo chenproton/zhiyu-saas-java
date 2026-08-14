@@ -128,10 +128,10 @@ export default function SceneLearnPage() {
 
   useEffect(() => {
     if (!id || !scenario || !isEditorPreview) return
-    taskApi
-      .list({ scenarioId: id, limit: 1000 })
-      .then((res) => {
-        const tList = res.items || []
+    fetchAllPages((page, pageSize) =>
+      taskApi.list({ scenarioId: id, limit: pageSize, offset: page * pageSize }),
+    )
+      .then((tList) => {
         setTasks(tList)
         setActiveTaskId((prev) => {
           if (targetTaskId && tList.find((t) => t.id === targetTaskId)) {
@@ -163,21 +163,25 @@ export default function SceneLearnPage() {
       .catch(() => setResourceMap(new Map()))
 
     Promise.all([
-      knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [] as KnowledgePoint[], total: 0 })),
-      abilityApi.list({ limit: 1000 }).catch(() => ({ items: [] as AbilityPoint[], total: 0 })),
-      courseApi
-        .list({ type: 'granular', limit: 1000 })
-        .catch(() => ({ items: [] as Course[], total: 0 })),
+      fetchAllPages((page, pageSize) =>
+        knowledgeApi.list({ limit: pageSize, offset: page * pageSize }),
+      ).catch(() => [] as KnowledgePoint[]),
+      fetchAllPages((page, pageSize) =>
+        abilityApi.list({ limit: pageSize, offset: page * pageSize }),
+      ).catch(() => [] as AbilityPoint[]),
+      fetchAllPages((page, pageSize) =>
+        courseApi.list({ type: 'granular', limit: pageSize, offset: page * pageSize }),
+      ).catch(() => [] as Course[]),
     ])
-      .then(([kRes, aRes, gRes]) => {
+      .then(([kList, aList, gList]) => {
         const kMap = new Map<string, KnowledgePoint>()
-        ;(kRes.items || []).forEach((k) => kMap.set(k.id, k))
+        ;(kList || []).forEach((k) => kMap.set(k.id, k))
         setKnowledgeMap(kMap)
         const aMap = new Map<string, AbilityPoint>()
-        ;(aRes.items || []).forEach((a) => aMap.set(a.id, a))
+        ;(aList || []).forEach((a) => aMap.set(a.id, a))
         setAbilityMap(aMap)
         const gMap = new Map<string, Course>()
-        ;(gRes.items || []).forEach((c) => gMap.set(c.id, c))
+        ;(gList || []).forEach((c) => gMap.set(c.id, c))
         setGranularCourseMap(gMap)
       })
       .catch((err) => {

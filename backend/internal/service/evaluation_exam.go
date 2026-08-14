@@ -43,9 +43,9 @@ func (s *EvaluationService) DeleteExam(ctx context.Context, tenantID, id string)
 }
 
 // BulkUpdateExamScores 批量更新分数（事务内）。
-func (s *EvaluationService) BulkUpdateExamScores(ctx context.Context, examID string, scores map[string]float64) error {
+func (s *EvaluationService) BulkUpdateExamScores(ctx context.Context, tenantID, examID string, scores map[string]float64) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
-		return txStore.Exams().BulkUpdateScores(ctx, txStore.Q(), examID, scores)
+		return txStore.Exams().BulkUpdateScores(ctx, txStore.Q(), tenantID, examID, scores)
 	})
 }
 

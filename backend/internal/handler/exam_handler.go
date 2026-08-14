@@ -366,7 +366,7 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
 		return
 	}
-	if err := h.Service.RemoveExamQuestion(r.Context(), id, questionID); err != nil {
+	if err := h.Service.RemoveExamQuestion(r.Context(), tenantID, id, questionID); err != nil {
 		respondServerError(w, r, err, "移除题目失败")
 		return
 	}
@@ -418,7 +418,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = h.Service.UpdateExamQuestionScore(r.Context(), examID, questionID, req.Score)
+	err = h.Service.UpdateExamQuestionScore(r.Context(), tenantID, examID, questionID, req.Score)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusNotFound, "考试中未找到该题目")
@@ -475,7 +475,7 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 	if exam.TenantID != nil && !verifyTenantOwnership(w, r, *exam.TenantID) {
 		return
 	}
-	if err := h.Service.BulkUpdateExamScores(r.Context(), examID, req); err != nil {
+	if err := h.Service.BulkUpdateExamScores(r.Context(), tenantID, examID, req); err != nil {
 		respondServerError(w, r, err, "批量更新分数失败")
 		return
 	}

@@ -328,7 +328,7 @@ export function QuestionGradingCard({
                     {t('学生答案')}
                   </div>
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {t(getAnswerLabel(answer))}
+                    {getAnswerLabel(answer)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -351,13 +351,13 @@ export function QuestionGradingCard({
                   <span
                     className={correct ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}
                   >
-                    {t(getAnswerLabel(answer))}
+                    {getAnswerLabel(answer)}
                   </span>
                 </div>
                 <div className="text-sm">
                   <span className="text-gray-500">{t('正确答案：')}</span>
                   <span className="text-green-600 font-medium">
-                    {t(getAnswerLabel(question.answer))}
+                    {getAnswerLabel(question.answer)}
                   </span>
                 </div>
               </div>

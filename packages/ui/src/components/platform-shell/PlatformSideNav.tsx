@@ -99,8 +99,10 @@ export function PlatformSideNav({
       )
       .map((item) => item.id)
 
-    setExpandedItems((prev) => Array.from(new Set([...defaultExpanded, ...activeParents, ...prev])))
-  }, [visibleSideNavItems, defaultExpanded, pathname])
+    // 仅追加当前路由的活跃父项；不再并回 defaultExpanded，避免用户手动折叠的默认项
+    // 在路由切换后被强制重新展开（折叠不粘滞）。默认展开态已由 useState 初始值承载。
+    setExpandedItems((prev) => Array.from(new Set([...activeParents, ...prev])))
+  }, [visibleSideNavItems, pathname])
 
   const toggleExpand = (itemId: string) => {
     setExpandedItems((prev) =>

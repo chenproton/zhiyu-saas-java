@@ -146,26 +146,26 @@ func (s *ExamStore) AddQuestion(ctx context.Context, tenantID, examID string, q 
 	return err
 }
 
-// RemoveQuestion 从试卷移除题目。
-func (s *ExamStore) RemoveQuestion(ctx context.Context, examID, questionID string) error {
-	_, err := s.q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, examID, questionID)
+// RemoveQuestion 从试卷移除题目（限定租户）。
+func (s *ExamStore) RemoveQuestion(ctx context.Context, tenantID, examID, questionID string) error {
+	_, err := s.q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1 AND question_id = $2 AND tenant_id = $3`, examID, questionID, tenantID)
 	return err
 }
 
-// UpdateQuestionScore 更新试卷题目分数，返回是否命中。
-func (s *ExamStore) UpdateQuestionScore(ctx context.Context, examID, questionID string, score float64) (bool, error) {
+// UpdateQuestionScore 更新试卷题目分数，返回是否命中（限定租户）。
+func (s *ExamStore) UpdateQuestionScore(ctx context.Context, tenantID, examID, questionID string, score float64) (bool, error) {
 	tag, err := s.q.Exec(ctx, `
-		UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
-	`, score, examID, questionID)
+		UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3 AND tenant_id = $4
+	`, score, examID, questionID, tenantID)
 	if err != nil {
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
 }
 
-// BulkUpdateScores 事务内批量更新分数并重算总分。
+// BulkUpdateScores 事务内批量更新分数并重算总分（限定租户）。
 // 单条 UPDATE ... FROM unnest 批量写入，替代按题目循环逐条 UPDATE 的写放大。
-func (s *ExamStore) BulkUpdateScores(ctx context.Context, tx Queryer, examID string, scores map[string]float64) error {
+func (s *ExamStore) BulkUpdateScores(ctx context.Context, tx Queryer, tenantID, examID string, scores map[string]float64) error {
 	ids := make([]string, 0, len(scores))
 	vals := make([]float64, 0, len(scores))
 	for questionID, score := range scores {
@@ -179,24 +179,24 @@ func (s *ExamStore) BulkUpdateScores(ctx context.Context, tx Queryer, examID str
 		if _, err := tx.Exec(ctx, `
 			UPDATE exam_questions eq SET score = u.score
 			FROM unnest($1::uuid[], $2::float8[]) AS u(question_id, score)
-			WHERE eq.exam_id = $3 AND eq.question_id = u.question_id
-		`, ids, vals, examID); err != nil {
+			WHERE eq.exam_id = $3 AND eq.tenant_id = $4 AND eq.question_id = u.question_id
+		`, ids, vals, examID, tenantID); err != nil {
 			return err
 		}
 	}
 	_, err := tx.Exec(ctx, `
 		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
-		WHERE id = $1
-	`, examID)
+		WHERE id = $1 AND tenant_id = $2
+	`, examID, tenantID)
 	return err
 }
 
-// RecalcExamTotal 重算试卷总分。
-func (s *ExamStore) RecalcExamTotal(ctx context.Context, examID string) error {
+// RecalcExamTotal 重算试卷总分（限定租户）。
+func (s *ExamStore) RecalcExamTotal(ctx context.Context, tenantID, examID string) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
-		WHERE id = $1
-	`, examID)
+		WHERE id = $1 AND tenant_id = $2
+	`, examID, tenantID)
 	return err
 }
 

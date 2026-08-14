@@ -54,6 +54,14 @@ import {
 /** 教师/管理员读 landing 仍为 live（可预览 draft，文档 8.5）；学生等角色走快照 bundle */
 const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
+/** 资源类型徽章配色（模块级常量，避免在 map 回调内每次重建） */
+const RESOURCE_TYPE_COLORS: Record<string, string> = {
+  document: 'bg-primary/5 text-primary border-primary/10',
+  video: 'bg-primary/5 text-primary border-primary/10',
+  link: 'bg-purple-50 text-purple-600 border-purple-100',
+  file: 'bg-primary/5 text-primary border-primary/10',
+}
+
 const SYSTEM_TABS = [
   { value: 'nodes', label: '课程目录', icon: ListChecks },
   { value: 'resources', label: '资源中心', icon: FolderOpen },
@@ -495,12 +503,6 @@ export default function CourseDetailPage() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {resList.map((r) => {
-                            const typeColors: Record<string, string> = {
-                              document: 'bg-primary/5 text-primary border-primary/10',
-                              video: 'bg-primary/5 text-primary border-primary/10',
-                              link: 'bg-purple-50 text-purple-600 border-purple-100',
-                              file: 'bg-primary/5 text-primary border-primary/10',
-                            }
                             return (
                               <div
                                 key={r.id}
@@ -513,7 +515,7 @@ export default function CourseDetailPage() {
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-slate-400">
                                       <span
-                                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${RESOURCE_TYPE_COLORS[r.type] || 'bg-slate-100 text-slate-500 border-slate-200'}`}
                                       >
                                         {RESOURCE_TYPE_SHORT_LABELS[r.type] || r.type}
                                       </span>
