@@ -125,7 +125,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		if _, isTransition := err.(interface{ Transition() }); isTransition || strings.HasPrefix(err.Error(), "invalid transition") {
-			respondError(w, http.StatusBadRequest, err.Error())
+			respondError(w, http.StatusConflict, "当前状态不允许该操作（"+c.entityName+"）")
 			return
 		}
 		respondServerError(w, r, err, "状态流转失败")

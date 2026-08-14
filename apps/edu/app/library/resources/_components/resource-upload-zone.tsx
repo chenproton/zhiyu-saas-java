@@ -81,8 +81,8 @@ export function ResourceUploadZone({
             <p className="text-sm font-medium text-gray-700">{t('点击或拖拽上传文件')}</p>
             <p className="text-xs text-gray-500 mt-1">
               {resourceTypeAccept[resourceType]
-                ? t('支持 {types}，最大 100MB', { types: resourceTypeAccept[resourceType] })
-                : t('支持多种格式，最大 100MB')}
+                ? t('支持 {types}，最大 10MB', { types: resourceTypeAccept[resourceType] })
+                : t('支持多种格式，最大 10MB')}
             </p>
           </div>
         </>

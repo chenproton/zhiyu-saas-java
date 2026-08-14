@@ -1,3 +1,4 @@
+-- 不可逆：删除 approval_records 中待审批状态重复行（保留最早一条），被删重复记录不可恢复。
 -- 清理同一目标重复的 pending 审批记录（每组保留最早一条）
 DELETE FROM approval_records a
 USING approval_records b

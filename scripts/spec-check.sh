@@ -130,16 +130,16 @@ for down in backend/migrations/*.down.sql; do
 done
 [ "$found" -eq 0 ] && pass "migration up/down 全部配对"
 
-# down 不可逆标注（spec-standards.md 六.2）：up 若物理不可逆（TRUNCATE/DROP TABLE 清数据），
+# down 不可逆标注（spec-standards.md 六.2）：up 若物理不可逆（TRUNCATE/DROP TABLE/DELETE FROM 清数据），
 # 其 down（或 up）须声明「不可逆/不可恢复」；仅提示，不阻断（DROP TABLE 回滚建表可部分恢复结构，数据仍需人工评估）。
 _dn_hits=$(for u in backend/migrations/*.up.sql; do
-  if grep -qE '\b(TRUNCATE|DROP TABLE)\b' "$u"; then
+  if grep -qE '\b(TRUNCATE|DROP TABLE|DELETE FROM)\b' "$u"; then
     d="${u%.up.sql}.down.sql"
     if ! { grep -qE '不可逆|不可恢复' "$u" 2>/dev/null || grep -qE '不可逆|不可恢复' "$d" 2>/dev/null; }; then basename "$u"; fi
   fi
 done)
 if [ -n "$_dn_hits" ]; then
-  echo "  [提示] 以下 up 迁移含 TRUNCATE/DROP TABLE 清数据但未声明「不可逆/不可恢复」，请确认回滚预案："
+  echo "  [提示] 以下 up 迁移含 TRUNCATE/DROP TABLE/DELETE FROM 清数据但未声明「不可逆/不可恢复」，请确认回滚预案："
   for h in $_dn_hits; do echo "         $h"; done
 fi
 

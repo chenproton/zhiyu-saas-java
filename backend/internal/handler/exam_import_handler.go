@@ -130,7 +130,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, q store.Queryer, xl
 		description := nullableStr(col(row, 1))
 		batchName := col(row, 2)
 
-		batchID := lookupBatchID(ctx, h.Store.Q(), "evaluation_batches", tenantID, batchName)
+		batchID := lookupBatchID(ctx, q, "evaluation_batches", tenantID, batchName)
 
 		if seen[name] {
 			result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{

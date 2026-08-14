@@ -78,7 +78,7 @@ export function ResourceBatchImportDialog({
         toast({
           variant: 'destructive',
           title: t('部分文件被跳过'),
-          description: t('{n} 个文件格式不支持或超过 100MB，已跳过', { n: skipped }),
+          description: t('{n} 个文件格式不支持或超过 10MB，已跳过', { n: skipped }),
         })
       }
     },
@@ -256,7 +256,7 @@ export function ResourceBatchImportDialog({
             <div>
               <p className="text-sm font-medium text-gray-700">{t('点击或拖拽批量选择文件')}</p>
               <p className="text-xs text-gray-500 mt-1 break-words">
-                {t('支持 Office 文档、PDF、图片、CAD 图纸、音视频、压缩包、代码文件、电子书 等常见格式，单文件最大 100MB。')}
+                {t('支持 Office 文档、PDF、图片、CAD 图纸、音视频、压缩包、代码文件、电子书 等常见格式，单文件最大 10MB。')}
               </p>
             </div>
           </div>
