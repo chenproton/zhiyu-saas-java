@@ -6257,6 +6257,7 @@
 | 079-103 | b4817454 | components-packages 批次（55 文件：evaluation 三弹窗、evaluation-rules、job/position-builder 6 文件、lesson/portal/providers/scene、shared 组件 14、hooks/lib 5、packages 11、vitest 配置——纯 updater/竞态防护/死代码清理/类型收紧/fetch-all 分页熔断） |
 | 047-048 遗留 | 5bb91020 | examFromSnapshot 三处收敛共享 lib/exam-snapshot.ts（去 any）、题型标签复用 QUESTION_TYPE_LABELS、用户反查与提交计数改 listAll 防截断（saveFailed 复位/0 分题排除已在 045-050 修好，复核未动） |
 | 051-052 遗留 | 8eb944e6 | learn-roads 编辑竞态（场景/任务计数移到序号守卫后落状态）、保存提示定时器卸载清理、学习路径列表缓存复用（编辑不再重复全量拉取） |
+| 055-056 遗留 | 191b668d | 现场问答页专业列表改 fetchAllPages 全量拉取防截断（其余 21 项 P2 已由 051-062 批次修复：live 预览 cancelled/fetchAllPages、creatorName 优先、冗余 IIFE 移除、搜索定时器句柄化、ability 双层 try 收敛、majorNameMap useMemo、statCount 用 total、landing 时间窗口漂移、搜索词关闭重置、上传中忽略追加、kp code 防碰撞、my-resources 加载态守卫等） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6270,6 +6271,10 @@
 - courses.go Delete 中不可达的 course_evaluation_results 防御性 DELETE（保留作为删除保护变更时的兜底）
 - exam_results.go FetchUserProfile 吞错（提交主链路稳定性优先：姓名查询失败不阻断交卷，宁缺名字不断流程）
 - partner 共建任务链 listEvaluationMethods 每任务一次请求（N+1，需后端新增批量接口；非核心流程，容忍，见 057-058）
+- 公开 landing 资源库 fetchAllPages 全量拉取 + 前端筛选（服务端筛选需后端配合；公共页非核心，容忍，见 055-056）
+- lesson/landing 混合课/颗粒课无分页全量渲染（课程量大时 DOM 开销；大规模改造，容忍，见 055-056）
+- library/knowledge 编辑时新建颗粒课立即落库（产品交互决策：不经保存即关联，保持现状，见 055-056）
+- my-resources 五列表单页 limit 200 截断（banner 已有提示 + TODO；服务端分页属大规模改造，容忍，见 055-056）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
