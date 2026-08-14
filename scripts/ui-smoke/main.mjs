@@ -326,7 +326,7 @@ async function waitForReady(cfg) {
 // ── 后端容器日志增量抓取（可选） ───────────────────────────
 function tailBackendLogs(startTime) {
   try {
-    const out = execFileSync('docker', ['compose', '-f', 'deploy/docker-compose.yml', 'logs', '--since', startTime, 'zhiyu-backend'],
+    const out = execFileSync('docker', ['compose', '-f', 'deploy/docker-compose.yml', 'logs', '--since', startTime, 'backend'],
       { cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 30000 })
     return out.split('\n').filter(l => /error|panic|fatal/i.test(l)).slice(0, 50)
   } catch (e) {
