@@ -12,6 +12,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 // TestBrandTemplateAlignsWithFrontend 校验品牌内容导入模板表头与前端表单展示字段完全对齐：
@@ -109,7 +110,7 @@ func TestBrandImportAllFields(t *testing.T) {
 		{"师资品牌", "测试师资品牌", "师资品牌描述", "已发布", "是", "是", "https://example.com/teacher.jpg", "", "", "", "", "测试教师甲", "测试关联专家"},
 		{"文化品牌", "测试文化品牌", "文化品牌描述", "已归档", "否", "否", "", "", "", "", "测试关联专业", "", ""},
 	})
-	h := &handler.ResourceImportHandler{Store: env.Store}
+	h := &handler.ResourceImportHandler{Svc: service.NewResourceImportService(service.New(env.Store))}
 	w := httptest.NewRecorder()
 	h.ImportBrands(w, makeRequest(t, "/import/alliance-brands/excel", file, claims))
 	if w.Code != 200 {
@@ -345,7 +346,7 @@ func TestBrandTypedImport(t *testing.T) {
 	defer env.Cleanup()
 	tenantID, claims, ids := brandImportEnv(t, env)
 	ctx := context.Background()
-	h := &handler.ResourceImportHandler{Store: env.Store}
+	h := &handler.ResourceImportHandler{Svc: service.NewResourceImportService(service.New(env.Store))}
 
 	// 1. 人才品牌（就业案例）：学生角色过滤匹配 + 专业关联 + 未命中报错
 	file := buildExcel(t, "品牌内容", [][]interface{}{

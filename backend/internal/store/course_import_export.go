@@ -158,12 +158,21 @@ func CourseImportInsertNodeResourceBinding(ctx context.Context, q Queryer, tenan
 }
 
 // CourseImportUpdateNodeBindingArrays 回写节点字段 knowledge_point_ids/resource_ids（与 scenario_tasks 保持一致）。
+// 空切片 pgx 会编码为 NULL 触发 NOT NULL 违反（23502）；统一转 nil + COALESCE '{}' 兜底，
+// 避免「导入无知识点/资源的节点」静默回滚整个事务（原实现错误被忽略）。
 func CourseImportUpdateNodeBindingArrays(ctx context.Context, q Queryer, nodeID string, kpIDs, resIDs []string) {
+	var kpArg, resArg any
+	if len(kpIDs) > 0 {
+		kpArg = kpIDs
+	}
+	if len(resIDs) > 0 {
+		resArg = resIDs
+	}
 	_, _ = q.Exec(ctx, `
 		UPDATE system_course_nodes
-		SET knowledge_point_ids = $2, resource_ids = $3
+		SET knowledge_point_ids = COALESCE($2::uuid[], '{}'), resource_ids = COALESCE($3::uuid[], '{}')
 		WHERE id = $1
-	`, nodeID, kpIDs, resIDs)
+	`, nodeID, kpArg, resArg)
 }
 
 // CourseImportInsertNodeQuiz 写入节点测评（导入用）。

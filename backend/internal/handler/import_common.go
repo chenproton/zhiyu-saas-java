@@ -13,6 +13,7 @@ import (
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -39,32 +40,14 @@ func jsonBytes(v any) []byte {
 	return store.MarshalJSONBytes(v, "[]")
 }
 
-// ImportPreviewItem 单条重复记录预览信息。
-type ImportPreviewItem struct {
-	RowNum int    `json:"rowNum"`
-	Key    string `json:"key"`  // 业务主键值
-	Name   string `json:"name"` // 显示名称
-}
+// ImportPreviewItem 单条重复记录预览信息（唯一出处：service.ImportPreviewItem，handler 保留别名）。
+type ImportPreviewItem = service.ImportPreviewItem
 
-// ImportPreviewResult 导入 preview 接口统一返回结构。
-type ImportPreviewResult struct {
-	Created        int                 `json:"created"`
-	Duplicates     int                 `json:"duplicates"`
-	Failed         int                 `json:"failed"`
-	DuplicateItems []ImportPreviewItem `json:"duplicateItems"`
-	Errors         []string            `json:"errors"`
-}
+// ImportPreviewResult 别名（唯一出处：service）。
+type ImportPreviewResult = service.ImportPreviewResult
 
-// ImportExecuteResult 导入执行接口的基础返回结构，各 handler 可在此基础上扩展。
-type ImportExecuteResult struct {
-	Created int `json:"created"`
-	Failed  int `json:"failed"`
-	Skipped int `json:"skipped"`
-	// PermissionSkipped 无权限覆盖（非本人创建且未参与共建）而跳过的条数。
-	PermissionSkipped int      `json:"permissionSkipped,omitempty"`
-	Entity            string   `json:"entity"`
-	Errors            []string `json:"errors"`
-}
+// ImportExecuteResult 别名（唯一出处：service）。
+type ImportExecuteResult = service.ImportExecuteResult
 
 // importOverwriteParam 从请求中获取是否覆盖已存在数据的标识。
 func importOverwriteParam(r *http.Request) bool {

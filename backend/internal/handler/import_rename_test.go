@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 // TestImportRenameMode_Excel 验证 Excel 导入的 rename 模式（题库/试卷）：
@@ -68,7 +69,7 @@ func TestImportRenameMode_Excel(t *testing.T) {
 		{"试卷名称 *", "试卷简介", "所属批次"},
 		{examPrefix, "重名测试", ""},
 	})
-	hExam := &handler.ExamImportHandler{Store: env.Store}
+	hExam := &handler.ExamImportHandler{Svc: service.NewExamImportService(service.New(env.Store))}
 
 	req = makeRequest(t, "/api/v1/import/exams/excel", examFile, claims)
 	w = httptest.NewRecorder()

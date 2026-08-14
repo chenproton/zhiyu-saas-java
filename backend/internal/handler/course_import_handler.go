@@ -1,48 +1,23 @@
 package handler
 
+// 体系课 Excel 导入 HTTP 适配：鉴权/租户/文件解析/响应映射，
+// 业务编排与事务边界在 service.CourseImportService（refactor-layering.md 分层契约）。
+
 import (
-	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/xuri/excelize/v2"
-	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/store"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type CourseImportHandler struct {
-	Store *store.Store
+	Svc *service.CourseImportService
 }
 
-type CourseImportResult struct {
-	Created           int
-	Failed            int
-	Skipped           int
-	PermissionSkipped int
-	CourseCreated     int
-	NodeCreated       int
-	Errors            []string
-	DuplicateItems    []ImportPreviewItem
-}
-
-type nodeRow struct {
-	rowNum              int
-	courseName          string
-	nodeName            string
-	parentName          string
-	refType             string
-	sortOrder           int
-	manualTeachingGoals *string
-	manualDuration      float64
-	manualDifficulty    int
-	knowledgeNames      []string
-	resourceNames       []string
-	evalMethodNames     []string
-	courseID            string
-}
+// CourseImportResult 别名（唯一出处：service.CourseImportService）。
+type CourseImportResult = service.CourseImportResult
 
 func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
@@ -66,10 +41,7 @@ func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	aggregated := ImportPreviewResult{}
 	mfu.ForEach(func(xlsx *excelize.File) {
-		result := &CourseImportResult{}
-		courseMap := make(map[string]string)
-		h.importCourses(ctx, h.Store.Q(), xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
-		h.importNodes(ctx, h.Store.Q(), xlsx, tenantID, claims.UserID, true, false, false, courseMap, result)
+		result := h.Svc.Preview(ctx, tenantID, claims.UserID, xlsx)
 		aggregated.Created += result.Created
 		aggregated.Failed += result.Failed
 		aggregated.Duplicates += len(result.DuplicateItems)
@@ -102,30 +74,15 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctx := r.Context()
-	aggregated := &CourseImportResult{}
-	// 覆盖导入整体包在事务内：overwrite 会清空旧课程节点再重建，
-	// 任一步失败整体回滚，防止"旧数据已清空、新数据未写入"的不可恢复中间态。
-	if err := h.Store.WithTx(ctx, func(txStore *store.Store) error {
-		mfu.ForEach(func(xlsx *excelize.File) {
-			courseMap := make(map[string]string)
-			h.importCourses(ctx, txStore.Q(), xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
-			if len(courseMap) > 0 {
-				h.importNodes(ctx, txStore.Q(), xlsx, tenantID, userID, false, overwrite, rename, courseMap, aggregated)
-			}
-		})
-		return nil
-	}); err != nil {
-		slog.Error("[course-import] 事务提交失败", "error", err)
-		respondServerError(w, r, err, "导入提交失败")
-		return
-	}
+	defer func() {
+		for _, f := range mfu.Files {
+			f.Close()
+		}
+	}()
+	aggregated := h.Svc.Import(r.Context(), tenantID, userID, overwrite, rename, mfu.Files)
 
 	if len(aggregated.Errors) > 0 {
-		slog.Info(fmt.Sprintf("[course-import] tenant=%s created=%d failed=%d skipped=%d errors:\n", tenantID, aggregated.Created, aggregated.Failed, aggregated.Skipped))
-		for _, e := range aggregated.Errors {
-			slog.Info(fmt.Sprintf("[course-import]   %s\n", e))
-		}
+		slog.Info("[course-import] 存在错误条目", "created", aggregated.Created, "failed", aggregated.Failed, "errors", aggregated.Errors)
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -139,376 +96,4 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 		"errors":            aggregated.Errors,
 		"sheets":            mfu.FirstSheets(),
 	})
-}
-
-func (h *CourseImportHandler) importCourses(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *CourseImportResult) {
-	rows, err := xlsx.GetRows("课程基本信息")
-	if err != nil {
-		return
-	}
-	for i, row := range rows {
-		if i < 2 {
-			continue
-		}
-		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
-			continue
-		}
-		name := strings.TrimSpace(row[0])
-		majorName := col(row, 1)
-		courseIntro := col(row, 2)
-		batchName := col(row, 3)
-		abilityPointNames := splitTrim(col(row, 4), ",")
-
-		// 统一走传入的 Queryer：未来若将导入包进事务，这些查询需在同一连接内参与回滚
-		majorID := lookupMajorID(ctx, q, tenantID, majorName)
-		batchID := lookupBatchID(ctx, q, "lesson_batches", tenantID, batchName)
-		abilityPointIDs := h.lookupAbilityPoints(ctx, q, tenantID, abilityPointNames)
-
-		var descPtr *string
-		if courseIntro != "" {
-			descPtr = &courseIntro
-		}
-
-		ident, err := store.CourseImportFindSystemCourseIdentity(ctx, q, tenantID, name)
-		exists := err == nil && ident.ID != ""
-
-		origName := ""
-		if exists {
-			if preview {
-				if len(result.DuplicateItems) < 100 {
-					result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
-						RowNum: i + 1,
-						Key:    name,
-						Name:   name,
-					})
-				}
-				result.Skipped++
-				continue
-			}
-			if !overwrite && !rename {
-				result.Skipped++
-				continue
-			}
-			if overwrite {
-				if !canOverwriteContent(ident.CreatorID, ident.CoCreatorIDs, userID) {
-					result.PermissionSkipped++
-					continue
-				}
-				if err := store.CourseImportUpdateSystemCourseOverwrite(ctx, q, ident.ID, tenantID, majorID, batchID, descPtr, abilityPointIDs); err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
-					continue
-				}
-				if err := h.clearCourseNodes(ctx, q, ident.ID); err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]清理旧节点失败: %v", name, err))
-					continue
-				}
-				courseMap[name] = ident.ID
-				continue
-			}
-			// rename 模式：追加随机后缀生成新名称，按新对象导入
-			origName = name
-			name = uniqueSuffixed(name, func(c string) bool {
-				return store.CourseImportSystemCourseIDByName(ctx, q, tenantID, c) != ""
-			})
-		}
-
-		if preview {
-			result.Created++
-			continue
-		}
-
-		courseID, err := store.CourseImportCreateImportedSystemCourse(ctx, q, store.CourseImportCourseParams{
-			TenantID:        tenantID,
-			Name:            name,
-			MajorID:         majorID,
-			BatchID:         batchID,
-			Description:     descPtr,
-			AbilityPointIDs: abilityPointIDs,
-			CreatorID:       userID,
-		})
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]创建失败: %v", name, err))
-			continue
-		}
-		courseMap[name] = courseID
-		if origName != "" {
-			courseMap[origName] = courseID
-		}
-		result.CourseCreated++
-		result.Created++
-	}
-}
-
-func (h *CourseImportHandler) importNodes(ctx context.Context, q store.Queryer, xlsx *excelize.File, tenantID, userID string, preview, overwrite, rename bool, courseMap map[string]string, result *CourseImportResult) {
-	if preview {
-		return
-	}
-
-	rows, err := xlsx.GetRows("节点配置")
-	if err != nil {
-		return
-	}
-
-	pending := make([]nodeRow, 0)
-	for i, row := range rows {
-		if i < 2 {
-			continue
-		}
-		if len(row) < 2 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" {
-			continue
-		}
-		courseName := strings.TrimSpace(row[0])
-		nodeName := strings.TrimSpace(row[1])
-		courseID, ok := courseMap[courseName]
-		if !ok {
-			result.Skipped++
-			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]找不到课程,已跳过", courseName, nodeName))
-			continue
-		}
-		pending = append(pending, nodeRow{
-			rowNum:              i + 1,
-			courseName:          courseName,
-			nodeName:            nodeName,
-			parentName:          col(row, 2),
-			refType:             mapCourseRefType(col(row, 3)),
-			sortOrder:           parseIntDefault(col(row, 4), 0),
-			manualTeachingGoals: nullableStr(col(row, 5)),
-			manualDuration:      parseFloatDefault(col(row, 6), 0),
-			manualDifficulty:    parseIntDefault(col(row, 7), 0),
-			knowledgeNames:      splitTrim(col(row, 8), ","),
-			resourceNames:       splitTrim(col(row, 9), ","),
-			evalMethodNames:     splitTrim(strings.ReplaceAll(col(row, 10), "，", ","), ","),
-			courseID:            courseID,
-		})
-	}
-
-	// courseName -> nodeName -> nodeID
-	nodeNameMap := make(map[string]map[string]string)
-
-	for len(pending) > 0 {
-		progressed := false
-		remaining := make([]nodeRow, 0)
-
-		for _, nr := range pending {
-			if nodeNameMap[nr.courseName] == nil {
-				nodeNameMap[nr.courseName] = make(map[string]string)
-			}
-
-			var parentID *string
-			if nr.parentName != "" {
-				if pid, ok := nodeNameMap[nr.courseName][nr.parentName]; ok {
-					parentID = &pid
-				} else {
-					remaining = append(remaining, nr)
-					continue
-				}
-			}
-
-			if err := h.createSystemCourseNode(ctx, q, tenantID, userID, nr, parentID, nodeNameMap, result); err == nil {
-				progressed = true
-			}
-		}
-
-		if !progressed {
-			for _, nr := range remaining {
-				result.Skipped++
-				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]父节点[%s]未找到或存在循环依赖,已跳过", nr.courseName, nr.nodeName, nr.parentName))
-			}
-			break
-		}
-		pending = remaining
-	}
-}
-
-func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, q store.Queryer, tenantID, userID string, nr nodeRow, parentID *string, nodeNameMap map[string]map[string]string, result *CourseImportResult) error {
-	var sourceID, sourceName *string
-	var teachingGoals *string
-	var duration float64
-	var difficulty int
-	var baseKnowledgeIDs []string
-	var baseResourceIDs []string
-
-	if nr.refType == "original" {
-		g := h.lookupGranularCourse(ctx, q, tenantID, nr.nodeName)
-		if g == nil {
-			result.Skipped++
-			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]未找到同名颗粒课,已跳过", nr.courseName, nr.nodeName))
-			return fmt.Errorf("未找到颗粒课")
-		}
-		sourceID = &g.ID
-		sn := g.Name
-		sourceName = &sn
-		// 优先使用 Excel 中填写的学习目标，未填写时回退到颗粒课描述
-		teachingGoals = nr.manualTeachingGoals
-		if teachingGoals == nil || *teachingGoals == "" {
-			teachingGoals = g.Description
-		}
-		// 优先使用 Excel 中填写的课时，未填写时回退到颗粒课课时
-		duration = nr.manualDuration
-		if duration == 0 && g.OnlineHours != nil {
-			duration = *g.OnlineHours
-		}
-		// 优先使用 Excel 中填写的难度，未填写时回退到颗粒课难度
-		difficulty = nr.manualDifficulty
-		if difficulty == 0 && g.Difficulty != nil {
-			difficulty = *g.Difficulty
-		}
-		// 回退到颗粒课关联的知识点和资源（以绑定表为准，避免 courses 表数组字段为空）
-		baseKnowledgeIDs = h.lookupGranularCourseKnowledgePointIDs(ctx, q, g.ID)
-		baseResourceIDs = h.lookupGranularCourseResourceIDs(ctx, q, g.ID)
-	} else {
-		teachingGoals = nr.manualTeachingGoals
-		duration = nr.manualDuration
-		difficulty = nr.manualDifficulty
-	}
-
-	nodeID, err := store.CourseImportCreateImportedCourseNode(ctx, q, store.CourseImportCourseNodeParams{
-		TenantID:      tenantID,
-		CourseID:      nr.courseID,
-		ParentID:      parentID,
-		Name:          nr.nodeName,
-		SortOrder:     nr.sortOrder,
-		RefType:       nr.refType,
-		SourceID:      sourceID,
-		SourceName:    sourceName,
-		TeachingGoals: teachingGoals,
-		Duration:      int(duration),
-		Difficulty:    difficulty,
-	})
-	if err != nil {
-		result.Failed++
-		result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]创建失败: %v", nr.courseName, nr.nodeName, err))
-		return err
-	}
-	nodeNameMap[nr.courseName][nr.nodeName] = nodeID
-	result.NodeCreated++
-	result.Created++
-
-	// 合并 Excel 中填写的知识点/资源与颗粒课自带的知识点/资源
-	knowledgePointIDs := h.mergeIDs(findOrCreateKnowledgePoints(ctx, q, tenantID, nr.knowledgeNames), baseKnowledgeIDs)
-	for _, kpID := range knowledgePointIDs {
-		store.CourseImportInsertNodeKnowledgeBinding(ctx, q, nodeID, kpID)
-	}
-
-	resourceIDs := h.mergeIDs(findOrCreateResources(ctx, q, tenantID, nr.resourceNames, userID), baseResourceIDs)
-	for _, resID := range resourceIDs {
-		store.CourseImportInsertNodeResourceBinding(ctx, q, tenantID, nodeID, resID)
-	}
-
-	// 同时写入节点字段，与 scenario_tasks 保持一致
-	store.CourseImportUpdateNodeBindingArrays(ctx, q, nodeID, knowledgePointIDs, resourceIDs)
-
-	for _, evalName := range nr.evalMethodNames {
-		methodKey := mapCourseEvalMethod(evalName)
-		if methodKey == "" {
-			continue
-		}
-		switch methodKey {
-		case "homework":
-			// 节点作业功能已下线，导入时跳过
-			continue
-		default:
-			title := "题库测验"
-			if methodKey == "paper" {
-				title = "试卷测验"
-			} else if methodKey == "quiz" {
-				title = "随堂测"
-			}
-			if err := store.CourseImportInsertNodeQuiz(ctx, q, tenantID, nodeID, title, methodKey); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]测评[%s]创建失败: %v", nr.courseName, nr.nodeName, evalName, err))
-			}
-		}
-	}
-
-	return nil
-}
-
-func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string {
-	seen := make(map[string]bool)
-	var merged []string
-	for _, id := range manual {
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		merged = append(merged, id)
-	}
-	for _, id := range base {
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		merged = append(merged, id)
-	}
-	return merged
-}
-
-func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, q store.Queryer, courseID string) error {
-	return store.CourseImportClearImportedCourseNodes(ctx, q, courseID)
-}
-
-func (h *CourseImportHandler) lookupAbilityPoints(ctx context.Context, q store.Queryer, tenantID string, names []string) []string {
-	if len(names) == 0 {
-		return []string{}
-	}
-	ids := []string{}
-	for _, name := range names {
-		if name == "" {
-			continue
-		}
-		id, err := store.CourseImportFindAbilityPointIDByName(ctx, q, tenantID, name)
-		if err != nil {
-			continue
-		}
-		ids = append(ids, id)
-	}
-	return ids
-}
-
-func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, q store.Queryer, tenantID, name string) *domain.Course {
-	if name == "" {
-		return nil
-	}
-	c, err := store.CourseImportFindGranularCourseByName(ctx, q, tenantID, name)
-	if err != nil {
-		return nil
-	}
-	return c
-}
-
-func (h *CourseImportHandler) lookupGranularCourseKnowledgePointIDs(ctx context.Context, q store.Queryer, courseID string) []string {
-	return store.CourseImportCourseKnowledgePointIDs(ctx, q, courseID)
-}
-
-func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Context, q store.Queryer, courseID string) []string {
-	return store.CourseImportCourseResourceIDs(ctx, q, courseID)
-}
-
-func mapCourseRefType(t string) string {
-	t = strings.TrimSpace(t)
-	switch t {
-	case "颗粒课":
-		return "original"
-	default:
-		return "normal"
-	}
-}
-
-func mapCourseEvalMethod(t string) string {
-	t = strings.TrimSpace(t)
-	switch t {
-	case "题库":
-		return "question_bank"
-	case "试卷":
-		return "paper"
-	case "随堂测":
-		return "quiz"
-	case "作业":
-		return "homework"
-	default:
-		return ""
-	}
 }

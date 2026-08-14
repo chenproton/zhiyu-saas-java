@@ -10,6 +10,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 // TestAllianceImportWithRelations 验证 alliance 导入的名称关联：
@@ -53,7 +54,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"项目名称 *", "合作类型", "项目阶段", "预算", "开始日期", "结束日期", "项目描述", "合作企业", "二级学院", "公开显示"},
 		{"测试联合研发项目", "联合研发", "执行中", "300万", "2026-01-15", "2027-06-30", "项目描述", "测试企业甲", "智能制造学院；人工智能学院", "是"},
 	})
-	hProj := &handler.ResourceImportHandler{Store: env.Store}
+	hProj := &handler.ResourceImportHandler{Svc: service.NewResourceImportService(service.New(env.Store))}
 	w := httptest.NewRecorder()
 	hProj.ImportProjects(w, makeRequest(t, "/import/alliance-projects/excel", projFile, claims))
 	if w.Code != 200 {
@@ -99,7 +100,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"成果名称 *", "成果类型", "成果日期", "成果描述", "归属项目", "合作企业", "二级学院", "公开显示"},
 		{"测试视觉质检标准", "自定义成果", "2026-05-20", "成果描述", "测试联合研发项目", "测试企业甲", "智能制造学院", "是"},
 	})
-	hAch := &handler.ResourceImportHandler{Store: env.Store}
+	hAch := &handler.ResourceImportHandler{Svc: service.NewResourceImportService(service.New(env.Store))}
 	w = httptest.NewRecorder()
 	hAch.ImportAchievements(w, makeRequest(t, "/import/alliance-achievements/excel", achFile, claims))
 	if w.Code != 200 {
@@ -135,7 +136,7 @@ func TestAllianceImportWithRelations(t *testing.T) {
 		{"协议名称 *", "协议类型", "协议状态", "开始日期", "结束日期", "内容", "合作企业", "关联项目"},
 		{"测试共建实验室协议", "实验室共建", "生效中", "2026-01-10", "2027-01-09", "协议内容", "测试企业甲", "测试联合研发项目"},
 	})
-	hAgr := &handler.ResourceImportHandler{Store: env.Store}
+	hAgr := &handler.ResourceImportHandler{Svc: service.NewResourceImportService(service.New(env.Store))}
 	w = httptest.NewRecorder()
 	hAgr.ImportAgreements(w, makeRequest(t, "/import/alliance-agreements/excel", agrFile, claims))
 	if w.Code != 200 {

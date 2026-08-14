@@ -15,6 +15,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 func TestEvaluationImports(t *testing.T) {
@@ -78,7 +79,7 @@ func TestEvaluationImports(t *testing.T) {
 		{"安全知识期末考试", "期末考核", ""},
 	})
 	req = makeRequest(t, "/api/v1/import/exams/excel", examFile, claims)
-	hExam := &handler.ExamImportHandler{Store: env.Store}
+	hExam := &handler.ExamImportHandler{Svc: service.NewExamImportService(service.New(env.Store))}
 	w = httptest.NewRecorder()
 	hExam.ImportExcel(w, req)
 	if w.Code != 200 {
