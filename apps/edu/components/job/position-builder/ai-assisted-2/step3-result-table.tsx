@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -66,6 +66,12 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
   const bindings = position.abilityBindings
   const [confirmAiOpen, setConfirmAiOpen] = useState(false)
 
+  // 最新 position 快照：AI apply/撤销时读取，避免闭包内过期值整体覆盖用户编辑
+  const positionRef = useRef(position)
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
+
   const ai = useAiNotConfigured()
   const pipeline = useAiPipeline<unknown, AIPositionAssistResponse>({
     steps: [t('分析能力点特征'), t('生成掌握程度与胜任标准')],
@@ -116,7 +122,6 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
   const runAiFill = () => {
     if (bindings.length === 0 || pipeline.isRunning) return
     setConfirmAiOpen(false)
-    const snapshot = bindings
     void pipeline
       .run([
         {
@@ -126,20 +131,21 @@ export function Step3ResultTable({ position, onUpdate }: Step3ResultTableProps) 
             const fills = res?.competencies || []
             if (fills.length === 0) return
             const byName = new Map(fills.map((f) => [f.name, f]))
+            const latest = positionRef.current.abilityBindings
+            const snapshot = latest
             let matched = 0
-            onUpdate({
-              abilityBindings: position.abilityBindings.map((b) => {
-                const fill = byName.get(b.name)
-                if (!fill) return b
-                matched++
-                return {
-                  ...b,
-                  level: fill.level as CompetencyLevel,
-                  rubricDescription: fill.rubricDescription || b.rubricDescription,
-                }
-              }),
+            const next = latest.map((b) => {
+              const fill = byName.get(b.name)
+              if (!fill) return b
+              matched++
+              return {
+                ...b,
+                level: fill.level as CompetencyLevel,
+                rubricDescription: fill.rubricDescription || b.rubricDescription,
+              }
             })
             if (matched === 0) return
+            onUpdate({ abilityBindings: next })
             toast({
               title: t('AI 已填充 {n} 个能力点的掌握标准', { n: matched }),
               description: t('10 秒内可撤销'),

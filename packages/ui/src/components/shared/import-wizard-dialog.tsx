@@ -201,14 +201,18 @@ export function ImportWizardDialog({
                   multiple={allowMultiple}
                   accept=".xlsx"
                   className="hidden"
-                  onChange={(e) => handleAddFiles(e.target.files)}
+                  onChange={(e) => {
+                    handleAddFiles(e.target.files)
+                    // 重置 value：允许移除文件后重新选择同一文件
+                    e.target.value = ''
+                  }}
                 />
               </div>
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={resetAndClose}>
+          <Button variant="outline" onClick={resetAndClose} disabled={importing}>
             取消
           </Button>
           {step === 'download' ? (

@@ -47,7 +47,11 @@ export function AllianceDetailShell<T extends string = string>({
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab')
 
-  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? tabs[0]?.key ?? '')
+  // 首帧即按 URL 深链 ?tab=xxx 校验取值，避免深链在首次渲染不生效
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (urlTab && tabs.some((t) => t.key === urlTab)) return urlTab
+    return defaultTab ?? tabs[0]?.key ?? ''
+  })
   const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
   if (urlTab !== prevUrlTab) {
     setPrevUrlTab(urlTab)

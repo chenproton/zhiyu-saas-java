@@ -433,8 +433,11 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                 <TableRow className="border-border">
                   <TableHead className="w-12">
                     <Checkbox
+                      // 与 portal-crud-page 一致：部分选中时展示 indeterminate 半选态
                       checked={
-                        selectedIds.length === filteredItems.length && filteredItems.length > 0
+                        selectedIds.length > 0 && selectedIds.length < filteredItems.length
+                          ? 'indeterminate'
+                          : selectedIds.length === filteredItems.length && filteredItems.length > 0
                       }
                       onCheckedChange={toggleSelectAll}
                     />

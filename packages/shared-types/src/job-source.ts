@@ -277,9 +277,6 @@ export const COMPETENCY_LEVEL_LABELS: Record<CompetencyLevel, string> = {
   expert: '精通',
 }
 
-// 岗位状态标签映射
-// 批次状态标签映射
-// 角色标签映射
 // 岗位推荐配置（按专业配置前台推荐岗位及顺序）
 export interface PositionRecommendation {
   id: string

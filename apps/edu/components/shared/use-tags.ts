@@ -37,6 +37,13 @@ function getServerSnapshot() {
 export function useTags() {
   const v = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const [loading, setLoading] = useState(cachedTags === null)
+  const [prevVersion, setPrevVersion] = useState(v)
+
+  // reload 失效缓存（v 变化且缓存为空）时恢复加载态（渲染期同步），避免 UI 误显示「暂无标签」
+  if (prevVersion !== v) {
+    setPrevVersion(v)
+    if (cachedTags === null) setLoading(true)
+  }
 
   useEffect(() => {
     if (cachedTags !== null) return

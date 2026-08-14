@@ -55,7 +55,6 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   // 日志状态
   success: { label: '成功', color: '#16a34a', bg: '#dcfce7' },
   failed: { label: '失败', color: '#dc2626', bg: '#fee2e2' },
-  failure: { label: '失败', color: '#dc2626', bg: '#fee2e2' },
   // 出勤状态
   present: { label: '已到', color: '#16a34a', bg: '#dcfce7' },
   late: { label: '迟到', color: '#d97706', bg: '#fef3c7' },

@@ -271,7 +271,7 @@ export default function LibraryLandingPage() {
     if (sortBy === 'popular') {
       list = [...list].sort(
         (a, b) =>
-          (b.metadata?.viewCount ?? 0) - (a.metadata?.viewCount ?? 0) ||
+          (Number(b.metadata?.viewCount) || 0) - (Number(a.metadata?.viewCount) || 0) ||
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
     } else {

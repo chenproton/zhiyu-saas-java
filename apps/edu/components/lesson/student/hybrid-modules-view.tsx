@@ -15,6 +15,7 @@ import {
   ListChecks,
   Sun,
   Moon,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ import {
 } from '@/components/shared/resource-preview-modal'
 import type { TaskResource } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export const HYBRID_EVAL_MODULE_KEYS = ['preQuizzes', 'inClassQuizzes', 'homeworks'] as const
@@ -75,6 +77,12 @@ const ACTIVITY_ORDER: string[] = [
   'extensionMaterials',
   'trainingReports',
 ]
+
+// 模块图标辅助组件：解析失败兜底 Lightbulb
+function ModuleIcon({ moduleKey }: { moduleKey: string }) {
+  const Icon = MODULE_ICONS[moduleKey] || Lightbulb
+  return <Icon className="h-4 w-4" />
+}
 
 const MODULE_ICONS: Record<string, React.ElementType> = {
   prePreview: BookOpen,
@@ -250,12 +258,15 @@ function EvalModuleCards({
   const t = useT()
   const ruleConfig = (data?.evalRules || {}) as EvalRuleConfig
   let methods: any[] = []
+  let parseFailed = false
   try {
     methods = evalRuleConfigToMethods(ruleConfig).filter((m) => m.isEnabled !== false)
-  } catch {
-    methods = []
+  } catch (err) {
+    // 解析异常不再静默吞掉：记录错误并给出占位提示，避免整个评价模块无提示消失
+    parseFailed = true
+    reportError(err, { source: '解析评价模块配置' })
   }
-  if (methods.length === 0) return null
+  if (methods.length === 0 && !parseFailed) return null
 
   const getExamHref = (m: any) => {
     const isExamMethod = ['paper', 'question_bank', 'quiz'].includes(m.methodKey)
@@ -274,6 +285,12 @@ function EvalModuleCards({
 
   return (
     <div className="space-y-3">
+      {parseFailed && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-xs text-amber-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {t('评价模块配置解析失败，请检查配置')}
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
           <ListChecks className="h-4 w-4" />
@@ -337,7 +354,7 @@ function renderModuleContent(
     return (
       <EvalModuleCards
         moduleKey={m.moduleKey}
-        label={t(label)}
+        label={label}
         data={data}
         courseId={courseId}
         nodeId={nodeId}
@@ -567,10 +584,7 @@ export function HybridModulesView({
                                 'bg-gray-50 text-gray-500 border-gray-200',
                             )}
                           >
-                            {(() => {
-                              const Icon = MODULE_ICONS[m.moduleKey] || Lightbulb
-                              return <Icon className="h-4 w-4" />
-                            })()}
+                            <ModuleIcon moduleKey={m.moduleKey} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">

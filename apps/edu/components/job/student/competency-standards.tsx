@@ -45,26 +45,32 @@ export function CompetencyStandards({
   }, [abilityPoints])
 
   const groups = useMemo(() => {
-    const map = new Map<string, (PositionAbilityBinding & { name: string })[]>()
-    responsibilities.forEach((r) => map.set(r.name, []))
+    // 以职责 id 作为分组 key（name 仅作展示），避免同名职责被合并、DOM id 重复导致滚动定位错乱
+    const map = new Map<
+      string,
+      { id: string; name: string; items: (PositionAbilityBinding & { name: string })[] }
+    >()
+    responsibilities.forEach((r) => map.set(r.id, { id: r.id, name: r.name, items: [] }))
     bindings.forEach((b) => {
       const resp = responsibilities.find((r) => r.id === b.responsibilityId)
-      const key = resp?.name || b.domain || t('其他')
-      const list = map.get(key) || []
-      list.push({
+      const fallbackName = b.domain || t('其他')
+      const key = resp ? resp.id : `fallback-${fallbackName}`
+      let entry = map.get(key)
+      if (!entry) {
+        entry = { id: key, name: resp ? resp.name : fallbackName, items: [] }
+        map.set(key, entry)
+      }
+      entry.items.push({
         ...b,
         name: abilityNameMap[b.abilityPointId] || b.abilityName || t('未命名能力'),
       })
-      map.set(key, list)
     })
-    return Array.from(map.entries())
-      .map(([duty, items]) => ({ duty, items }))
-      .filter((g) => g.items.length > 0)
+    return Array.from(map.values()).filter((g) => g.items.length > 0)
   }, [responsibilities, bindings, abilityNameMap, t])
 
   useEffect(() => {
     if (groups.length > 0 && !activeId) {
-      queueMicrotask(() => setActiveId(groups[0].duty))
+      queueMicrotask(() => setActiveId(groups[0].id))
     }
   }, [groups, activeId])
 
@@ -74,10 +80,10 @@ export function CompetencyStandards({
     const onScroll = () => {
       let current = ''
       groups.forEach((g) => {
-        const sec = document.getElementById(`comp-sec-${g.duty}`)
+        const sec = document.getElementById(`comp-sec-${g.id}`)
         if (sec) {
           const top = sec.offsetTop - el.offsetTop
-          if (el.scrollTop >= top - 50) current = g.duty
+          if (el.scrollTop >= top - 50) current = g.id
         }
       })
       if (current) setActiveId(current)
@@ -86,8 +92,8 @@ export function CompetencyStandards({
     return () => el.removeEventListener('scroll', onScroll)
   }, [groups])
 
-  const scrollTo = (duty: string) => {
-    const sec = document.getElementById(`comp-sec-${duty}`)
+  const scrollTo = (id: string) => {
+    const sec = document.getElementById(`comp-sec-${id}`)
     const container = contentRef.current
     if (sec && container) {
       container.scrollTo({ top: sec.offsetTop - container.offsetTop, behavior: 'smooth' })
@@ -118,15 +124,15 @@ export function CompetencyStandards({
         <div className="hidden md:block w-60 shrink-0 bg-[#fafafa] rounded-xl p-2 border border-[#f5f5f4] h-full overflow-y-auto">
           {groups.map((g) => (
             <button
-              key={g.duty}
-              onClick={() => scrollTo(g.duty)}
+              key={g.id}
+              onClick={() => scrollTo(g.id)}
               className={`w-full text-left px-4 py-3 rounded-md text-sm transition-colors mb-1 ${
-                activeId === g.duty
+                activeId === g.id
                   ? 'bg-primary/5 text-primary font-medium'
                   : 'text-[#64748b] hover:bg-primary/5 hover:text-primary'
               }`}
             >
-              {g.duty}
+              {g.name}
             </button>
           ))}
         </div>
@@ -136,15 +142,15 @@ export function CompetencyStandards({
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             {groups.map((g) => (
               <button
-                key={g.duty}
-                onClick={() => scrollTo(g.duty)}
+                key={g.id}
+                onClick={() => scrollTo(g.id)}
                 className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] border transition-colors whitespace-nowrap ${
-                  activeId === g.duty
+                  activeId === g.id
                     ? 'bg-primary/5 text-primary font-medium border-primary/20'
                     : 'text-[#64748b] border-[#e7e5e4] bg-white hover:text-primary hover:border-primary/30'
                 }`}
               >
-                {g.duty}
+                {g.name}
               </button>
             ))}
           </div>
@@ -153,10 +159,10 @@ export function CompetencyStandards({
         {/* Content */}
         <div ref={contentRef} className="flex-1 md:h-full md:overflow-y-auto pr-4">
           {groups.map((g) => (
-            <div key={g.duty} id={`comp-sec-${g.duty}`} className="mb-10 pt-2">
+            <div key={g.id} id={`comp-sec-${g.id}`} className="mb-10 pt-2">
               <div className="text-base font-semibold text-[#1f2937] mb-4 pb-3 border-b border-[#f5f5f4] flex items-center gap-2">
                 <Target className="w-4 h-4 text-primary" />
-                {g.duty}
+                {g.name}
               </div>
               <div className="grid grid-cols-2 max-md:grid-cols-1 gap-4">
                 {g.items.map((item) => {

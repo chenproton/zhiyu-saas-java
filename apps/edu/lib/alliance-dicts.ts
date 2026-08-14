@@ -46,8 +46,11 @@ export function fetchAllianceDict(
   if (!p) {
     p = portalRequest<{ items: AllianceDictItem[] }>(`/alliance/dictionaries/${dictType}`)
       .then((r) => r.items || [])
-      // 字典读取失败不阻塞页面：展示回退静态映射，表单选项为空
-      .catch(() => [])
+      .catch(() => {
+        // 失败不缓存：下次调用可重试，避免一次瞬时错误导致整会话该字典恒为空
+        cache.delete(key)
+        return []
+      })
     cache.set(key, p)
   }
   return p

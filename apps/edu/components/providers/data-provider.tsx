@@ -18,7 +18,12 @@ import { questionBankApi, questionApi, examApi, evaluationBatchApi, approvalApi 
 
 // ==================== Date parsing helpers ====================
 
-const parseDate = (v: string | Date | undefined): string => (v ? new Date(v).toISOString() : new Date().toISOString())
+const parseDate = (v: string | Date | undefined): string => {
+  if (!v) return new Date().toISOString()
+  const d = new Date(v)
+  // 非法日期回退当前时间，避免 toISOString 抛 RangeError 拖垮整页加载
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
+}
 
 const parseQuestionBank = (bank: QuestionBank): QuestionBank => ({
   ...bank,
@@ -159,8 +164,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     async (id: string, data: QuestionFormData) => {
       const q = questions.find((item) => item.id === id)
       // 补 bankId：后端更新接口按题库归属校验（编辑表单不含该字段，缺省会 400）
-      await questionApi.update(id, { ...data, bankId: q?.bankId } as QuestionFormData)
-      if (q) await loadBankQuestions(q.bankId)
+      if (!q) {
+        throw new Error('未找到该题目，题库可能尚未加载，请刷新后重试')
+      }
+      await questionApi.update(id, { ...data, bankId: q.bankId } as QuestionFormData)
+      await loadBankQuestions(q.bankId)
     },
     [questions, loadBankQuestions],
   )
@@ -236,11 +244,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
           const batch = await evaluationBatchApi.get(exam.batchId)
           await examApi.submit(id)
-          await approvalApi.create({
-            targetType: 'exam',
-            targetId: id,
-            workflowId: batch.workflowId,
-          })
+          try {
+            await approvalApi.create({
+              targetType: 'exam',
+              targetId: id,
+              workflowId: batch.workflowId,
+            })
+          } catch (err) {
+            // 试卷已提交但审批记录创建失败：提示用户，避免状态不一致被静默忽略
+            reportError(err, { source: '创建审批记录' })
+            toast({
+              variant: 'destructive',
+              title: t('试卷已提交，但审批记录创建失败'),
+              description: t('请联系管理员处理，或撤回后重新提交审批'),
+            })
+          }
           break
         }
         case 'withdraw':

@@ -172,9 +172,7 @@ export function QuestionFormDialog({
 
   const blankCount = useMemo(() => {
     const matches = content.match(/\{(\d+)\}/g)
-    if (!matches) return 0
-    const nums = matches.map((m) => parseInt(m.replace(/[{}]/g, ''), 10))
-    return Math.max(0, ...nums)
+    return matches ? matches.length : 0
   }, [content])
 
   const normalizedFillAnswer = useMemo(() => {
@@ -198,9 +196,12 @@ export function QuestionFormDialog({
   const buildFormData = useCallback((): QuestionFormData => {
     let finalAnswer: string[]
     if (type === 'single') {
-      finalAnswer = [options[parseInt(answer as string, 10)] || '']
+      const chosen = options[parseInt(answer as string, 10)] || ''
+      finalAnswer = chosen ? [chosen] : []
     } else if (type === 'multiple') {
-      finalAnswer = (answer as string[]).map((a) => options[parseInt(a, 10)] || '')
+      finalAnswer = (answer as string[])
+        .map((a) => options[parseInt(a, 10)] || '')
+        .filter(Boolean)
     } else if (Array.isArray(answer)) {
       finalAnswer = [...answer]
     } else {
@@ -275,27 +276,27 @@ export function QuestionFormDialog({
     setOptions((prev) => (prev.length >= MAX_OPTIONS ? prev : [...prev, '']))
   }, [])
 
-  const removeOption = useCallback((index: number) => {
-    setOptions((prev) => {
-      if (prev.length <= MIN_OPTIONS) return prev
-      const next = prev.filter((_, i) => i !== index)
-
+  const removeOption = useCallback(
+    (index: number) => {
+      if (options.length <= MIN_OPTIONS) return
+      const next = options.filter((_, i) => i !== index)
+      const adjust = (a: string): string | null => {
+        const idx = parseInt(a, 10)
+        if (idx === index) return null
+        if (idx > index) return String(idx - 1)
+        return String(idx)
+      }
+      setOptions(next)
       setAnswer((prevAnswer) => {
-        const adjust = (a: string): string | null => {
-          const idx = parseInt(a, 10)
-          if (idx === index) return null
-          if (idx > index) return String(idx - 1)
-          return String(idx)
-        }
         if (Array.isArray(prevAnswer)) {
           return prevAnswer.map(adjust).filter((a): a is string => a !== null)
         }
         const adjusted = adjust(prevAnswer as string)
         return adjusted === null ? '' : adjusted
       })
-      return next
-    })
-  }, [])
+    },
+    [options],
+  )
 
   const moveOption = useCallback(
     (index: number, dir: number) => {

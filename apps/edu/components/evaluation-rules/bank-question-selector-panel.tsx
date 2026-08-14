@@ -79,6 +79,15 @@ export function BankQuestionSelectorPanel({
   const [questionSearch, setQuestionSearch] = useState('')
   const [scoreDialogOpen, setScoreDialogOpen] = useState(false)
   const [preloadedQuestions, setPreloadedQuestions] = useState<any[]>([])
+  // 预加载 effect 通过 ref 读取最新缓存，避免把缓存加入依赖导致加载完成后重复执行
+  const questionCacheRef = useRef(questionCache)
+  const preloadedQuestionsRef = useRef(preloadedQuestions)
+  useEffect(() => {
+    questionCacheRef.current = questionCache
+  }, [questionCache])
+  useEffect(() => {
+    preloadedQuestionsRef.current = preloadedQuestions
+  }, [preloadedQuestions])
 
   const loadBanks = useCallback(async () => {
     setLoadingBanks(true)
@@ -108,9 +117,12 @@ export function BankQuestionSelectorPanel({
 
   useEffect(() => {
     const missingIds = selectedIds.filter(
-      (qid) => !questionCache.has(qid) && !preloadedQuestions.some((q) => q.id === qid),
+      (qid) =>
+        !questionCacheRef.current.has(qid) &&
+        !preloadedQuestionsRef.current.some((q) => q.id === qid),
     )
     if (missingIds.length === 0) return
+    let cancelled = false
     Promise.all(
       missingIds.map(async (qid) => {
         try {
@@ -124,6 +136,7 @@ export function BankQuestionSelectorPanel({
         }
       }),
     ).then((results) => {
+      if (cancelled) return
       const loaded = results.filter(Boolean)
       loaded.forEach((q) => {
         setQuestionCache((prev) => {
@@ -134,7 +147,10 @@ export function BankQuestionSelectorPanel({
       })
       setPreloadedQuestions((prev) => [...prev, ...loaded])
     })
-  }, [selectedIds, preloadedQuestions, questionCache, dataSource])
+    return () => {
+      cancelled = true
+    }
+  }, [selectedIds, dataSource])
 
   const loadQuestions = useCallback(
     async (bankId: string) => {
@@ -172,6 +188,8 @@ export function BankQuestionSelectorPanel({
   const handleSelectBank = (bankId: string, bankName: string) => {
     setSelectedBankId(bankId)
     setSelectedBankName(bankName)
+    // 切换题库时清空上一题库的搜索词，避免「没有找到匹配的题目」误导
+    setQuestionSearch('')
     loadQuestions(bankId)
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -41,17 +41,21 @@ export function ScoreConfigDialog({
   const types = useMemo(() => Object.keys(typeQuestionsMap) as QuestionType[], [typeQuestionsMap])
 
   const [typeScores, setTypeScores] = useState<Record<string, string>>({})
+  const wasOpen = useRef(false)
 
+  // 仅在弹窗从关闭→打开时初始化分值为 '0'，避免 open/types 变化时清空用户已输入的值
   useEffect(() => {
-    ;(async () => {
-      if (open && types.length > 0) {
-        const init: Record<string, string> = {}
-        types.forEach((t) => {
-          init[t] = '0'
-        })
-        setTypeScores(init)
-      }
-    })()
+    if (!open) {
+      wasOpen.current = false
+      return
+    }
+    if (wasOpen.current) return
+    wasOpen.current = true
+    const init: Record<string, string> = {}
+    types.forEach((t) => {
+      init[t] = '0'
+    })
+    setTypeScores(init)
   }, [open, types])
 
   const totalInput = useMemo(() => {
@@ -109,7 +113,13 @@ export function ScoreConfigDialog({
                   max={100}
                   step={1}
                   value={typeScores[qt] ?? '0'}
-                  onChange={(e) => setTypeScores((prev) => ({ ...prev, [qt]: e.target.value }))}
+                  onChange={(e) =>
+                    setTypeScores((prev) => ({
+                      ...prev,
+                      // 仅允许 0-100 的整数，避免小数导致浮点求和与 === 100 严格比较失效
+                      [qt]: e.target.value.replace(/[^\d]/g, '').slice(0, 3),
+                    }))
+                  }
                   className="w-24"
                 />
                 <span className="text-sm text-muted-foreground">{t('分')}</span>

@@ -22,7 +22,12 @@ import { fetchAllPages } from '@zhiyu/api-client'
 import { reportError } from '@/lib/error-handling'
 import { cn } from '@/lib/utils'
 import type { Question, QuestionType, Difficulty, EvalKnowledgePoint } from '@/lib/types'
-import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS, QUESTION_TYPE_BADGE_CLASSES } from '@/lib/types'
+import {
+  QUESTION_TYPES,
+  QUESTION_TYPE_LABELS,
+  DIFFICULTY_LABELS,
+  QUESTION_TYPE_BADGE_CLASSES,
+} from '@/lib/types'
 import { useT } from '@/lib/i18n/locale-provider'
 
 interface RandomQuestionDialogProps {
@@ -32,14 +37,6 @@ interface RandomQuestionDialogProps {
   onAddQuestions: (questions: Question[]) => void
 }
 
-const questionTypes: QuestionType[] = [
-  'single',
-  'multiple',
-  'judge',
-  'fill',
-  'short_answer',
-  'essay',
-]
 const difficulties: Difficulty[] = ['easy', 'medium', 'hard']
 
 const TYPE_COLORS = QUESTION_TYPE_BADGE_CLASSES
@@ -81,12 +78,7 @@ export function RandomQuestionDialog({
           questionApi.list({ limit: pageSize, offset: page * pageSize }),
         )
         if (cancelled) return
-        setQuestions(
-          items.map((q) => ({
-            ...q,
-            createdAt: (q.createdAt as unknown as string) || new Date().toISOString(),
-          })),
-        )
+        setQuestions(items)
       } catch (err) {
         reportError(err, '加载题目列表')
       } finally {
@@ -165,7 +157,7 @@ export function RandomQuestionDialog({
       case 'bank':
         return selectedBankIds.length > 0 ? selectedBankIds : publishedBanks.map((b) => b.id)
       case 'type':
-        return questionTypes
+        return QUESTION_TYPES
       case 'difficulty':
         return difficulties
       case 'knowledge':
@@ -180,7 +172,7 @@ export function RandomQuestionDialog({
     const dims: WeightDimension[] = []
     const bankKeys = selectedBankIds.length > 0 ? selectedBankIds : publishedBanks.map((b) => b.id)
     if (bankKeys.length >= 2) dims.push('bank')
-    const typeKeys = selectedTypes.length > 0 ? selectedTypes : questionTypes
+    const typeKeys = selectedTypes.length > 0 ? selectedTypes : QUESTION_TYPES
     if (typeKeys.length >= 2) dims.push('type')
     const diffKeys = selectedDifficulties.length > 0 ? selectedDifficulties : difficulties
     if (diffKeys.length >= 2) dims.push('difficulty')
@@ -523,7 +515,7 @@ export function RandomQuestionDialog({
           <div>
             <Label className="text-sm font-medium mb-2 block">{t('题目类型')}</Label>
             <div className="flex flex-wrap gap-1.5">
-              {questionTypes.map((type) => (
+              {QUESTION_TYPES.map((type) => (
                 <Badge
                   key={type}
                   variant={selectedTypes.includes(type) ? 'default' : 'outline'}

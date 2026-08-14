@@ -2,7 +2,7 @@
 
 // 共建岗位编辑页共建人选择器（partner 端）：数据源为合作学校共建人候选接口
 // （学校教师 + 企业专家），保存值为可写回 collaborators 的 users.id 数组。
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { Briefcase, GraduationCap, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -39,15 +39,25 @@ export function CoBuildCollaboratorPicker({
   const [options, setOptions] = useState<CoBuildUserOption[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const loadedTenantRef = useRef<string | null>(null)
+  const [prevTenantId, setPrevTenantId] = useState(schoolTenantId)
+
+  // 切换合作学校时清空缓存（渲染期同步派生状态），确保重新拉取该租户的共建人候选
+  if (prevTenantId !== schoolTenantId) {
+    setPrevTenantId(schoolTenantId)
+    setOptions(null)
+  }
 
   const loadOptions = async () => {
-    if (options !== null) return
+    if (options !== null && loadedTenantRef.current === schoolTenantId) return
     setLoading(true)
     try {
       const res = await partnerCobuildSchoolApi.coBuilders(schoolTenantId)
       setOptions(res.items || [])
+      loadedTenantRef.current = schoolTenantId
     } catch {
       setOptions([])
+      loadedTenantRef.current = schoolTenantId
     } finally {
       setLoading(false)
     }

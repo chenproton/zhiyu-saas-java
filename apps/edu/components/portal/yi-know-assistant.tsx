@@ -421,8 +421,8 @@ function ResourceItem({
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t(resource.desc)}</p>
             {resource.tags && (
               <div className="flex flex-wrap gap-1 mt-2">
-                {resource.tags.map((tag) => (
-                  <Badge key={t(tag)} variant="secondary" className="text-[10px] px-1.5 py-0">
+                {resource.tags.map((tag, idx) => (
+                  <Badge key={`${idx}-${tag}`} variant="secondary" className="text-[10px] px-1.5 py-0">
                     {t(tag)}
                   </Badge>
                 ))}
@@ -768,6 +768,8 @@ export function YiKnowAssistant() {
                         key={r.id}
                         className="flex items-center gap-2 p-1.5 rounded-md bg-muted/60 hover:bg-muted cursor-pointer"
                         onClick={() => {
+                          // 关闭对话并跳转到对应 Tab，避免点击后停留在聊天视图无任何反馈
+                          handleCloseChat()
                           if (r.platformId) {
                             setActiveTab('platform')
                             setExpandedIds((prev) => new Set(prev).add(r.id))
@@ -1156,7 +1158,7 @@ export function YiKnowAssistant() {
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                   {PROMPT_TAGS.map((tag) => (
                     <button
-                      key={t(tag.label)}
+                      key={tag.label}
                       type="button"
                       className="shrink-0 px-3 py-1.5 rounded-full text-xs border bg-background/80 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all duration-200 active:scale-95 shadow-sm"
                       onClick={() => {

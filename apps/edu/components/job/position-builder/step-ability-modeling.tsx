@@ -102,9 +102,15 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
   const [abilities, setAbilities] = useState<Ability[]>([])
   const [selectedRespId, setSelectedRespId] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  // 最新 position 快照：AI 回调/撤销时读取，避免闭包内过期值覆盖用户编辑
+  const positionRef = useRef(position)
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
+  // Escape 取消职责编辑时置位，防止 input 卸载触发的 blur 再次保存
+  const respEditCancelledRef = useRef(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newAbilityName, setNewAbilityName] = useState('')
-  const [aiNotice] = useState<string | null>(null)
   const [editingRespId, setEditingRespId] = useState<string | null>(null)
   const [editRespName, setEditRespName] = useState('')
   const [editingAbilityId, setEditingAbilityId] = useState<string | null>(null)
@@ -255,7 +261,7 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
     }
 
     const newBinding: PositionAbilityBinding = {
-      id: `bind-${Date.now()}`,
+      id: `bind-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       responsibilityId: selectedRespId,
       source: 'public',
       publicAbilityId: ability.id,
@@ -287,7 +293,7 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
     }
 
     const newBinding: PositionAbilityBinding = {
-      id: `bind-${Date.now()}`,
+      id: `bind-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       responsibilityId: selectedRespId,
       source: 'custom',
       name: trimmed,
@@ -381,7 +387,11 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
     const trimmed = editRespName.trim()
     if (!trimmed) {
       const remaining = position.responsibilities.filter((r) => r.id !== editingRespId)
-      onUpdate({ responsibilities: remaining })
+      // 与 handleRemoveResponsibility 一致：删除职责时同步清理其能力绑定，避免孤儿绑定
+      onUpdate({
+        responsibilities: remaining,
+        abilityBindings: position.abilityBindings.filter((b) => b.responsibilityId !== editingRespId),
+      })
       if (selectedRespId === editingRespId) {
         setSelectedRespId(remaining.length > 0 ? remaining[0].id : null)
       }
@@ -507,8 +517,15 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
     const resps = position.responsibilities
     if (resps.length === 0 || pipeline.isRunning) return
     setConfirmAiOpen(false)
-    const bindingsSnapshot = position.abilityBindings
-    let allBindings = [...bindingsSnapshot]
+    // 记录各职责拆解前的绑定，供撤销时精确回滚被 AI 覆盖的职责
+    const preRunByResp = new Map<string, PositionAbilityBinding[]>()
+    resps.forEach((resp) => {
+      preRunByResp.set(
+        resp.id,
+        position.abilityBindings.filter((b) => b.responsibilityId === resp.id),
+      )
+    })
+    const appliedRespIds = new Set<string>()
     const tasks = resps.map((resp) => ({
       id: 'abilities',
       meta: resp,
@@ -519,6 +536,9 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
       apply: (res: AIPositionAssistResponse) => {
         const items = res?.abilities
         if (!items || items.length === 0) return
+        // 以最新 position 为准合并，保留 AI 运行期间用户手动新增/编辑的绑定
+        const current = positionRef.current.abilityBindings
+        appliedRespIds.add(resp.id)
         const newBindings: PositionAbilityBinding[] = items.map((a) => ({
           id: `bind-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           responsibilityId: resp.id,
@@ -530,11 +550,15 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
           attributes: a.attributes || [],
           domain: a.domain || undefined,
         }))
-        allBindings = [...allBindings.filter((b) => b.responsibilityId !== resp.id), ...newBindings]
-        onUpdate({ abilityBindings: allBindings })
+        onUpdate({
+          abilityBindings: [
+            ...current.filter((b) => b.responsibilityId !== resp.id),
+            ...newBindings,
+          ],
+        })
       },
     }))
-    // 完成后支持一键撤销到拆解前
+    // 完成后支持一键撤销到拆解前（仅回滚被 AI 覆盖的职责，保留运行期间的手动修改）
     void pipeline.run(tasks).then((result) => {
       if (result.success === 0) return
       toast({
@@ -546,7 +570,13 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
             altText={t('撤销')}
             className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
             onClick={() => {
-              onUpdate({ abilityBindings: bindingsSnapshot })
+              const current = positionRef.current.abilityBindings
+              let next = current
+              appliedRespIds.forEach((respId) => {
+                const pre = preRunByResp.get(respId) || []
+                next = [...next.filter((b) => b.responsibilityId !== respId), ...pre]
+              })
+              onUpdate({ abilityBindings: next })
               toast({ title: t('已撤销') })
             }}
           >
@@ -608,9 +638,20 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
                         onChange={(e) => setEditRespName(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleSaveEditResp()
-                          if (e.key === 'Escape') handleSaveEditResp()
+                          if (e.key === 'Escape') {
+                            // Escape 取消编辑（不再保存，避免清空名称误删职责）
+                            respEditCancelledRef.current = true
+                            setEditingRespId(null)
+                            setEditRespName('')
+                          }
                         }}
-                        onBlur={handleSaveEditResp}
+                        onBlur={() => {
+                          if (respEditCancelledRef.current) {
+                            respEditCancelledRef.current = false
+                            return
+                          }
+                          handleSaveEditResp()
+                        }}
                         placeholder={t('输入职责名称...')}
                         className="h-7 text-xs border-gray-200"
                         autoFocus
@@ -703,13 +744,6 @@ export function StepAbilityModeling({ position, onUpdate, abilityPoolSource }: S
         </div>
 
         <div className="flex-1 overflow-y-auto" ref={contentRef}>
-          {aiNotice && (
-            <div className="mx-3 mt-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2 text-xs text-amber-700">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{aiNotice}</span>
-            </div>
-          )}
-
           {position.responsibilities.length === 0 ? (
             <EmptyState
               className="py-20"

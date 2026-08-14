@@ -54,7 +54,7 @@ export interface ResourceLibraryItem {
   description?: string
   thumbnail?: string
   fileSize?: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   uploadedBy?: string
   uploaderName?: string
   uploaderOrgName?: string

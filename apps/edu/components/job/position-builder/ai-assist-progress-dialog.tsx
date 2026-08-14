@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { CheckCircle2, Loader2, Sparkles } from 'lucide-react'
+import { useT } from '@/lib/i18n/locale-provider'
 
 interface AiAssistProgressDialogProps {
   open: boolean
@@ -24,21 +25,24 @@ interface AiAssistProgressDialogProps {
 export function AiAssistProgressDialog({
   open,
   onOpenChange,
-  title = 'AI 辅助编写中',
-  description = '大模型正在处理岗位信息，请稍候...',
+  title,
+  description,
   steps,
   currentStep,
   progress,
 }: AiAssistProgressDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-xl border-gray-200">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-gray-800">
             <Sparkles className="h-5 w-5 text-purple-500" />
-            {title}
+            {title ?? t('AI 辅助编写中')}
           </DialogTitle>
-          <DialogDescription className="text-gray-400">{description}</DialogDescription>
+          <DialogDescription className="text-gray-400">
+            {description ?? t('大模型正在处理岗位信息，请稍候...')}
+          </DialogDescription>
         </DialogHeader>
         <div className="py-6 space-y-5">
           <div className="space-y-2">
@@ -51,7 +55,7 @@ export function AiAssistProgressDialog({
 
           <div className="space-y-2">
             {steps.map((step, idx) => {
-              const isDone = currentStep >= steps.length || idx < currentStep
+              const isDone = currentStep < 0 || currentStep >= steps.length || idx < currentStep
               const isActive = !isDone && idx === currentStep
               return (
                 <div

@@ -10,6 +10,8 @@ import type {
 import { request, buildQuery, ListResponse } from '../api-helpers'
 import { createCrudApi } from '../api-factory'
 
+type OrgTreeNode = Organization & { children?: OrgTreeNode[] }
+
 export const orgApi = {
   ...createCrudApi<
     Organization,
@@ -17,9 +19,7 @@ export const orgApi = {
     Partial<Omit<Organization, 'id' | 'createdAt' | 'updatedAt'>>
   >('/organizations'),
   tree: (params?: { tenantId?: string; typeId?: string }) =>
-    request<{ items: (Organization & { children?: (Organization & { children?: any[] })[] })[] }>(
-      `/organizations/tree${buildQuery(params || {})}`,
-    ),
+    request<{ items: OrgTreeNode[] }>(`/organizations/tree${buildQuery(params || {})}`),
 }
 
 export const orgTypeApi = createCrudApi<

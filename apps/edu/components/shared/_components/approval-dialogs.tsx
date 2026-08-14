@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ApprovalStepInfo } from '@/hooks/use-approvals'
 import { useT } from '@/lib/i18n/locale-provider'
 import { formatDateTime } from '@/lib/format-utils'
-import { FormDialogFooter } from '@zhiyu/ui'
+import { FormDialogFooter, toast } from '@zhiyu/ui'
 
 interface ApprovalHistoryItem {
   action?: string
@@ -148,6 +148,13 @@ export function useApprovalDialogs({
       await onApprove(comment)
       setApproveOpen(false)
       setComment('')
+    } catch (err) {
+      // 回调失败（接口错误）：保持弹窗打开并提示，避免未处理 rejection
+      toast({
+        variant: 'destructive',
+        title: t('审批失败'),
+        description: err instanceof Error ? err.message : undefined,
+      })
     } finally {
       setSubmitting(false)
     }
@@ -161,6 +168,12 @@ export function useApprovalDialogs({
       await onReject(comment.trim())
       setRejectOpen(false)
       setComment('')
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('审批失败'),
+        description: err instanceof Error ? err.message : undefined,
+      })
     } finally {
       setSubmitting(false)
     }

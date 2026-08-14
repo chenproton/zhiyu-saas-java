@@ -61,7 +61,11 @@ export function ImageEditorDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) onCancel()
+        if (!v) {
+          // 关闭时重置加载态，避免再次打开时「编辑器加载中」遮罩缺失
+          setLoaded(false)
+          onCancel()
+        }
       }}
     >
       <DialogContent className="sm:max-w-[960px] max-h-[92vh] p-0 overflow-hidden">

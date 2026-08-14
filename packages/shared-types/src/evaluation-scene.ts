@@ -44,12 +44,13 @@ export interface SceneEvaluationResult {
   subjectiveContent: Record<string, any>
   drawnQuestions: Record<string, any>
   comment?: string
-  gradedAt?: Date
+  // 接口 JSON 序列化后均为 ISO 字符串，统一用 string 类型避免调用方误用 Date API
+  gradedAt?: string
   gradedBy?: string
   /** 提交时服务端盖章的场景资源版本（对应快照版本，如 V1.0） */
   version?: string
-  createdAt?: Date
-  updatedAt?: Date
+  createdAt?: string
+  updatedAt?: string
 }
 
 // 岗位能力测评结果-能力点明细

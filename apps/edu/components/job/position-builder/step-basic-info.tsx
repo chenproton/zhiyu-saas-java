@@ -291,6 +291,17 @@ export function StepBasicInfo({
   })
   const [certImageFile, setCertImageFile] = useState<File | null>(null)
 
+  // 证书图片 blob URL 生命周期管理：替换/关闭/保存时 revoke，避免内存泄漏
+  const revokeCertImageUrl = () => {
+    if (newCert.image?.startsWith('blob:')) URL.revokeObjectURL(newCert.image)
+  }
+
+  const handlePickCertImage = (file: File) => {
+    revokeCertImageUrl()
+    setCertImageFile(file)
+    setNewCert({ ...newCert, image: URL.createObjectURL(file) })
+  }
+
   // ===== AI 辅助编写 =====
   // 行业/专业表单存的是字典 ID，喂给 LLM 前解析为名称
   const resolveIndustryName = (id: string) => {
@@ -336,15 +347,15 @@ export function StepBasicInfo({
   const applyPolishTarget = (res: AIPositionAssistResponse, target: PolishFieldKey) => {
     const p = res.polish
     if (!p) return
-    if (target === 'name' && p.name.trim()) {
+    if (target === 'name' && p.name?.trim()) {
       writeField('name', { name: p.name.trim() })
       return
     }
-    if (target === 'shortName' && p.shortName.trim()) {
+    if (target === 'shortName' && p.shortName?.trim()) {
       writeField('shortName', { shortName: p.shortName.trim() })
       return
     }
-    if (target === 'description' && p.description.trim()) {
+    if (target === 'description' && p.description?.trim()) {
       writeField('description', { description: p.description.trim() })
       return
     }
@@ -360,11 +371,11 @@ export function StepBasicInfo({
     const p = res.polish
     if (!p) return
     const skipped: string[] = []
-    if (p.name.trim()) writeField('name', { name: p.name.trim() })
+    if (p.name?.trim()) writeField('name', { name: p.name.trim() })
     else skipped.push(polishFieldLabel('name'))
-    if (p.shortName.trim()) writeField('shortName', { shortName: p.shortName.trim() })
+    if (p.shortName?.trim()) writeField('shortName', { shortName: p.shortName.trim() })
     else skipped.push(polishFieldLabel('shortName'))
-    if (p.description.trim()) writeField('description', { description: p.description.trim() })
+    if (p.description?.trim()) writeField('description', { description: p.description.trim() })
     else skipped.push(polishFieldLabel('description'))
     if (p.salaryMin > 0 && p.salaryMax >= p.salaryMin) {
       writeField('salaryRange', { salaryRange: [p.salaryMin, p.salaryMax] })
@@ -551,6 +562,14 @@ export function StepBasicInfo({
   // 回车新增行后聚焦到新输入框
   const pendingFocusIdRef = useRef<string | null>(null)
 
+  // 任职要求行稳定 id（与 position.requirements 平行维护），避免删除中间行时 key/index 串位
+  const genReqId = () => `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const [reqIds, setReqIds] = useState<string[]>(() => position.requirements.map(() => genReqId()))
+  // 外部整体替换（AI/父级重置）导致数量不一致时重建 id 表（渲染期同步派生状态）
+  if (reqIds.length !== position.requirements.length) {
+    setReqIds(position.requirements.map(() => genReqId()))
+  }
+
   useEffect(() => {
     const id = pendingFocusIdRef.current
     if (!id) return
@@ -577,12 +596,15 @@ export function StepBasicInfo({
 
   const addRequirement = (focusNew = false) => {
     const next = [...position.requirements, '']
-    if (focusNew) pendingFocusIdRef.current = `req-${next.length - 1}`
+    const newId = genReqId()
+    setReqIds((prev) => [...prev, newId])
+    if (focusNew) pendingFocusIdRef.current = newId
     onUpdate({ requirements: next })
   }
 
   const removeRequirement = (index: number) => {
     onUpdate({ requirements: position.requirements.filter((_, i) => i !== index) })
+    setReqIds((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSelectCertificate = (certId: string, checked: boolean) => {
@@ -662,6 +684,7 @@ export function StepBasicInfo({
           },
         ],
       })
+      revokeCertImageUrl()
       setNewCert({ name: '', url: '', description: '', image: '' })
       setCertImageFile(null)
       setIsNewCertDialogOpen(false)
@@ -1048,7 +1071,10 @@ export function StepBasicInfo({
         <CardContent>
           <div className="space-y-3">
             {position.requirements.map((item, index) => (
-              <div key={index} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-start">
+              <div
+                key={reqIds[index] ?? `req-fallback-${index}`}
+                className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-start"
+              >
                 {!isCreate && (
                   <Badge variant="outline" className="w-full justify-center">
                     {index + 1}
@@ -1068,7 +1094,7 @@ export function StepBasicInfo({
                       addRequirement(true)
                     }
                   }}
-                  data-focus-id={`req-${index}`}
+                  data-focus-id={reqIds[index] ?? `req-fallback-${index}`}
                   className="text-sm min-h-8 py-1"
                 />
                 <Button
@@ -1313,7 +1339,16 @@ export function StepBasicInfo({
       </Dialog>
 
       {/* 新增证书对话框 */}
-      <Dialog open={isNewCertDialogOpen} onOpenChange={setIsNewCertDialogOpen}>
+      <Dialog
+        open={isNewCertDialogOpen}
+        onOpenChange={(v) => {
+          if (!v) {
+            revokeCertImageUrl()
+            setNewCert((prev) => ({ ...prev, image: '' }))
+          }
+          setIsNewCertDialogOpen(v)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('新增证书')}</DialogTitle>
@@ -1359,10 +1394,7 @@ export function StepBasicInfo({
                   input.accept = 'image/*'
                   input.onchange = (e) => {
                     const file = (e.target as HTMLInputElement).files?.[0]
-                    if (file) {
-                      setCertImageFile(file)
-                      setNewCert({ ...newCert, image: URL.createObjectURL(file) })
-                    }
+                    if (file) handlePickCertImage(file)
                   }
                   input.click()
                 }}
@@ -1384,7 +1416,11 @@ export function StepBasicInfo({
             </div>
           </div>
           <FormDialogFooter
-            onCancel={() => setIsNewCertDialogOpen(false)}
+            onCancel={() => {
+              revokeCertImageUrl()
+              setNewCert((prev) => ({ ...prev, image: '' }))
+              setIsNewCertDialogOpen(false)
+            }}
             confirmText={t('添加')}
             cancelText={t('取消')}
             confirmDisabled={!newCert.name}

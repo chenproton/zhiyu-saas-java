@@ -115,7 +115,7 @@ export const partnerCobuildTaskApi = {
     partnerRequest<{ methods: TaskEvaluationMethod[] }>(
       `/partner/co-build/tasks/${taskId}/evaluation-methods`,
     ),
-  saveEvaluationMethods: (taskId: string, data: { version?: number; methods: any[] }) =>
+  saveEvaluationMethods: (taskId: string, data: { version?: number; methods: TaskEvaluationMethod[] }) =>
     partnerRequest<{ methods: TaskEvaluationMethod[] }>(
       `/partner/co-build/tasks/${taskId}/evaluation-methods`,
       {

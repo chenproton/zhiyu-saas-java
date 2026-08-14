@@ -102,7 +102,10 @@ export function ImageListUpload({
   const addUrl = () => {
     const u = urlInput.trim()
     if (!u) return
-    onChange(multiple ? [...value, u] : [u])
+    // 与上传路径一致基于 valueRef 构造，避免上传进行中父组件未重渲染时旧 value 覆盖并发条目
+    const next = multiple ? [...valueRef.current, u] : [u]
+    valueRef.current = next
+    onChange(next)
     setUrlInput('')
   }
 

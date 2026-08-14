@@ -33,7 +33,8 @@ import type { CareerPosition } from '@/lib/types/job'
 import { useT } from '@/lib/i18n/locale-provider'
 
 function generateKpCode() {
-  return `KP-${Date.now().toString().slice(-6)}`
+  // 追加随机后缀，避免相近时间创建的编码撞车
+  return `KP-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 // 服务端知识点 → 选择器条目（granularLessonIds 归一为 granularLessons）
@@ -180,9 +181,10 @@ export function KnowledgeSelector({
       if (!cancelled) setAllKps(items.map((k) => mapServerKp(k as any)))
     }
     if (dataSource?.listKnowledgePoints) {
-      dataSource
-        .listKnowledgePoints({ limit: 200, offset: 0 })
-        .then((res) => apply(res.items || []))
+      // 与默认路径一致全量分页，避免只读数据源超 200 条时筛选遗漏
+      const listKnowledgePoints = dataSource.listKnowledgePoints
+      fetchAllPages(({ limit, offset }) => listKnowledgePoints({ limit, offset }))
+        .then(apply)
         .catch(() => {
           if (!cancelled) setAllKps([])
         })
@@ -418,6 +420,22 @@ export function KnowledgeSelector({
           : s,
       )
       onChange?.(updated)
+      // 同步刷新搜索结果中同 id 条目，避免左栏/详情仍显示旧名称旧描述
+      setSearchResults((prev) =>
+        prev
+          ? prev.map((p) =>
+              p.id === kpActionTarget.id
+                ? {
+                    ...p,
+                    name,
+                    description: newKpForm.description.trim(),
+                    code: newKpForm.code,
+                    granularLessons: newKpForm.granularLessons,
+                  }
+                : p,
+            )
+          : prev,
+      )
       setAllKps(null) // 失效全量缓存，下次筛选重新拉取
       setKpActionOpen(false)
       return
@@ -776,17 +794,19 @@ export function KnowledgeSelector({
                   >
                     <div className="flex items-center gap-1 mb-1">
                       <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 text-gray-400 -mr-1 -mt-1"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveKp(kp.id)
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+                      {!dataSource?.readOnly && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 text-gray-400 -mr-1 -mt-1"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveKp(kp.id)
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                     <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
                     {kpGlNames.length > 0 && (
@@ -1173,12 +1193,14 @@ export function KnowledgeSelector({
               )}
             >
               {kp.name}
-              <button
-                className="ml-1 text-primary/70 hover:text-primary"
-                onClick={() => handleRemoveKp(kp.id)}
-              >
-                <X className="h-3 w-3" />
-              </button>
+              {!dataSource?.readOnly && (
+                <button
+                  className="ml-1 text-primary/70 hover:text-primary"
+                  onClick={() => handleRemoveKp(kp.id)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </Badge>
           ))}
         </div>

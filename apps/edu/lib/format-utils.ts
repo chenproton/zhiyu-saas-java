@@ -99,7 +99,12 @@ export function describeDevice(ua: string | null | undefined): string {
     parts.push(m ? `Android ${m[1]}` : 'Android')
   } else if (/Windows/i.test(ua)) {
     const m = ua.match(/Windows NT (\d+\.\d+)/)
-    const ver = m ? NT_VERSION[m[1]] || m[1] : ''
+    let ver = m ? NT_VERSION[m[1]] || m[1] : ''
+    // Windows 11 的 UA 仍为 NT 10.0：带 build 号（>=22000）时判定为 11，否则保持 10
+    const build = ua.match(/Windows NT 10\.0[\s\S]*?Build\s+(\d+)/i)
+    if (m?.[1] === '10.0' && build && Number(build[1]) >= 22000) {
+      ver = '11'
+    }
     parts.push(`PC web · Windows${ver ? ' ' + ver : ''}`)
   } else if (/Mac OS X|Macintosh/i.test(ua)) {
     const m = ua.match(/Mac OS X (\d+)[_](\d+)(?:[_](\d+))?/)

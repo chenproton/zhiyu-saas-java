@@ -25,7 +25,6 @@ function isApprovalPermissionDenied(err: any): boolean {
 
 interface UseApprovalsOptions {
   targetType: string
-  limit?: number
 }
 
 interface UseApprovalsReturn {

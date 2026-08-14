@@ -7,9 +7,10 @@ export default defineConfig({
     globals: true,
     include: [
       'lib/**/*.test.ts',
-      'components/shared/**/*.test.ts',
+      'components/**/*.test.ts',
       'app/scene/scenarios/[id]/edit/tasks/_components/**/*.test.ts',
       'app/lesson/admin/system/add/_components/**/*.test.ts',
+      'app/lesson/admin/hybrid/add/_components/**/*.test.ts',
     ],
   },
   resolve: {
@@ -30,6 +31,34 @@ export default defineConfig({
       {
         find: /^@\/lib\/utils$/,
         replacement: path.resolve(__dirname, '../../packages/ui/src/lib/utils.ts'),
+      },
+      {
+        find: /^@\/lib\/api$/,
+        replacement: path.resolve(__dirname, '../../packages/api-client/src/index.ts'),
+      },
+      {
+        find: /^@\/lib\/api-factory$/,
+        replacement: path.resolve(__dirname, '../../packages/api-client/src/api-factory.ts'),
+      },
+      {
+        find: /^@\/hooks\/use-toast$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/hooks/use-toast.ts'),
+      },
+      {
+        find: /^@zhiyu\/ui$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/index.ts'),
+      },
+      {
+        find: /^@zhiyu\/ui\/(.*)$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/$1'),
+      },
+      {
+        find: /^@zhiyu\/shared-types$/,
+        replacement: path.resolve(__dirname, '../../packages/shared-types/src/index.ts'),
+      },
+      {
+        find: /^@zhiyu\/shared-types\/(.*)$/,
+        replacement: path.resolve(__dirname, '../../packages/shared-types/src/$1'),
       },
       {
         find: /^@\/(.*)$/,

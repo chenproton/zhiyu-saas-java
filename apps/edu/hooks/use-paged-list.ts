@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useAsync } from '@zhiyu/ui'
 
 export interface PagedListParams {
@@ -41,6 +41,12 @@ export function usePagedList<T>(
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
 
+  // 与文档契约一致：搜索切换时自动回到第 1 页
+  const handleSearchChange = useCallback((v: string) => {
+    setSearch(v)
+    setPage(1)
+  }, [])
+
   const { data, loading, error, refresh } = useAsync(
     async () => fetcher({ page, limit: pageSize, search: search.trim() || undefined }),
     { deps: [...deps, page, search], onError: () => true },
@@ -58,7 +64,7 @@ export function usePagedList<T>(
     page,
     setPage,
     search,
-    setSearch,
+    setSearch: handleSearchChange,
     pagination: { page, total, totalPages, onPageChange: setPage },
   }
 }

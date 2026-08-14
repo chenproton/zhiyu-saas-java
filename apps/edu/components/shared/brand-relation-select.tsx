@@ -78,7 +78,8 @@ export function BrandRelationSelect({
               {o.label}
             </SelectItem>
           ))}
-          {options.length === 0 && !loading && (
+          {/* 非必选时「不关联」已占用 __none 值，空态占位仅在必选时渲染，避免重复 value */}
+          {!optional && options.length === 0 && !loading && (
             <SelectItem value="__none" disabled>
               {t('暂无选项')}
             </SelectItem>

@@ -14,16 +14,16 @@ interface SceneCardProps {
   knowledgePointCount?: number
 }
 
-const industryTagMap: Record<string, { bg: string; text: string; border: string }> = {
-  default: { bg: '#fff7ed', text: '#c2410c', border: '#ffedd5' },
+const industryTag: { bg: string; text: string; border: string } = {
+  bg: '#fff7ed',
+  text: '#c2410c',
+  border: '#ffedd5',
 }
 
-const professionTagMap: Record<string, { bg: string; text: string; border: string }> = {
-  default: {
-    bg: 'color-mix(in srgb, var(--primary) 8%, white)',
-    text: 'var(--primary)',
-    border: 'color-mix(in srgb, var(--primary) 15%, white)',
-  },
+const professionTag: { bg: string; text: string; border: string } = {
+  bg: 'color-mix(in srgb, var(--primary) 8%, white)',
+  text: 'var(--primary)',
+  border: 'color-mix(in srgb, var(--primary) 15%, white)',
 }
 
 export function SceneCard({
@@ -39,10 +39,8 @@ export function SceneCard({
 
   const industryName =
     scenario.industryNames?.[0] || (scenario.industryIds?.length ? t('已关联') : t('未分类'))
-  const industryTag = industryTagMap.default
   const professionName =
     scenario.professionNames?.[0] || (scenario.professionIds?.length ? t('已关联') : t('未分类'))
-  const professionTag = professionTagMap.default
   const viewCount = scenario.viewCount ?? 0
   const creatorName = scenario.creatorName || scenario.creatorId?.slice(0, 8) || '-'
 

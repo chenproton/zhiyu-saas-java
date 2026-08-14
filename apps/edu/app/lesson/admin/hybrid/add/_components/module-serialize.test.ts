@@ -107,7 +107,8 @@ describe('module-serialize round-trip', () => {
   it('skips empty modules', () => {
     const d = createDefaultNodeModuleData()
     const payloads = buildModulesForNode(d, ['prePreview', 'preTasks'])
-    expect(payloads.length).toBe(0)
+    // 默认数据含教学设计占位模板（非空，按设计随课保存）；prePreview/preTasks 为空应被跳过
+    expect(payloads.map((p) => p.moduleKey)).toEqual([TEACHING_DESIGN_KEY])
   })
 
   it('extracts per-module data fields', () => {

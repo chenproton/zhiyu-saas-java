@@ -8,7 +8,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@/lib/utils': path.resolve(__dirname, './src/lib/utils.ts'),
+      // 通用映射：本包 hooks/components 的 @/ 路径均可解析
+      '@': path.resolve(__dirname, './src'),
     },
   },
 })

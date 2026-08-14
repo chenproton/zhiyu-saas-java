@@ -63,7 +63,13 @@ export function ImportConfirmDialog({
   const busy = pending !== null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      // 导入进行中禁止 ESC/遮罩/X 关闭，避免界面与异步导入状态脱节
+      onOpenChange={(v) => {
+        if (v || !busy) onOpenChange(v)
+      }}
+    >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>

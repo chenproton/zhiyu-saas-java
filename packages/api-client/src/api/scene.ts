@@ -82,7 +82,7 @@ export const taskResourceApi = {
 export const taskEvaluationApi = {
   listMethods: (taskId: string) =>
     request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`),
-  saveMethods: (taskId: string, data: { version?: number; methods: any[] }) =>
+  saveMethods: (taskId: string, data: { version?: number; methods: TaskEvaluationMethod[] }) =>
     request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`, {
       method: 'PUT',
       body: JSON.stringify(data),

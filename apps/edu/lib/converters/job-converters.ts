@@ -32,7 +32,11 @@ export function convertCareerPositionToPosition(cp: CareerPosition): Position {
     industry: cp.industryId || '',
     majors: cp.majorIds,
     positionType: cp.positionType,
-    salaryRange: [cp.salaryMin ?? 0, cp.salaryMax ?? 0] as [number, number],
+    // 任一端缺失时两端一并置 0，避免出现 [8000, 0] 这类非单调区间
+    salaryRange:
+      cp.salaryMin != null && cp.salaryMax != null
+        ? ([cp.salaryMin, cp.salaryMax] as [number, number])
+        : ([0, 0] as [number, number]),
     coverImage: cp.coverImage,
     certificates: [],
     description: cp.description || '',

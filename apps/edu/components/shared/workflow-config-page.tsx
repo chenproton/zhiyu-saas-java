@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { workflowApi, majorApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useT } from '@/lib/i18n/locale-provider'
 import { formatDate } from '@/lib/format-utils'
 import type { Workflow } from '@/lib/types/backend'
@@ -73,8 +74,9 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
   const loadWorkflows = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await workflowApi.list({ limit: 1000 })
-      setWorkflows(res.items)
+      // 分页合并全量拉取，避免超过后端 maxPageSize(200) 时审批流程静默截断
+      const items = await fetchAllPages((p, ps) => workflowApi.list({ limit: ps, offset: p * ps }))
+      setWorkflows(items)
     } catch (err: any) {
       toast({
         variant: 'destructive',

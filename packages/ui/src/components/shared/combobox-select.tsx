@@ -97,11 +97,11 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
     return options.find((o) => o.value === props.value)?.label || props.value
   }, [isMultiple, props.value, options, placeholder])
 
-  const selectedLabels = useMemo(() => {
+  const selectedEntries = useMemo(() => {
     if (!isMultiple) return []
     return props.value
-      .map((v) => options.find((o) => o.value === v)?.label)
-      .filter(Boolean) as string[]
+      .map((v) => options.find((o) => o.value === v))
+      .filter((o): o is ComboboxSelectOption => Boolean(o))
   }, [isMultiple, props.value, options])
 
   const toggleValue = (v: string) => {
@@ -140,7 +140,14 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
     filtered.filter((o) => !o.disabled).every((o) => selectedSet.has(o.value))
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        // 关闭时清空搜索词，再次打开不残留上次过滤条件
+        if (!v) setSearch('')
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -196,7 +203,8 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
                 return (
                   <CommandItem
                     key={o.value}
-                    value={o.label}
+                    // value 需同时满足唯一性与可搜索性（label 搜索），拼接 value 避免重复 label 冲突
+                    value={`${o.label}:${o.value}`}
                     disabled={o.disabled}
                     onSelect={() => toggleValue(o.value)}
                   >
@@ -219,16 +227,13 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
             <>
               <Separator />
               <div className="p-2 flex flex-wrap gap-1 max-h-[80px] overflow-y-auto">
-                {selectedLabels.map((label) => (
-                  <Badge key={label} variant="secondary" className="text-xs gap-1">
-                    {label}
+                {selectedEntries.map((o) => (
+                  <Badge key={o.value} variant="secondary" className="text-xs gap-1">
+                    {o.label}
                     <button
                       type="button"
-                      aria-label={`移除${label}`}
-                      onClick={() => {
-                        const val = options.find((o) => o.label === label)?.value
-                        if (val) toggleValue(val)
-                      }}
+                      aria-label={`移除${o.label}`}
+                      onClick={() => toggleValue(o.value)}
                       className="ml-0.5 rounded-full hover:bg-muted-foreground/20"
                     >
                       <X className="size-3" />

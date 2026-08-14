@@ -180,7 +180,9 @@ export function PositionList({
                     <StatusActionBar
                       status={position.status}
                       isPublicPool={activeTab === 'public'}
-                      onView={() => router.push(`/job/landing/${position.id}`)}
+                      onView={() =>
+                        router.push(`${basePath.replace(/\/positions$/, '')}/landing/${position.id}`)
+                      }
                       onEdit={() => router.push(`${basePath}/${position.id}/edit`)}
                       onClone={onClone ? () => onClone(position) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(position) : undefined}

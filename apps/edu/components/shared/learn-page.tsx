@@ -33,6 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SCENE_DIFFICULTY, RESOURCE_TYPE_SHORT_LABELS } from '@/lib/types'
+import type { TaskResource } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -69,7 +70,14 @@ export interface LearnUnit {
   knowledgePoints: KnowledgePoint[]
   /** 仅场景学习页提供；提供后右侧面板会多出“能力点”页签 */
   abilityPoints?: AbilityPoint[]
-  resources: Array<{ id: string; name: string; type: string; size?: string | number }>
+  resources: Array<{
+    id: string
+    name: string
+    type: string
+    url?: string
+    size?: string | number
+    uploadedAt?: string
+  }>
   /** 仅场景任务使用：任务类型徽标（assessment=考核，其余=训练） */
   taskType?: string
 }
@@ -193,7 +201,6 @@ export function LearnPage({
     let totalScore = 0
     let totalWeight = 0
     let evaluatedCount = 0
-    let pendingCount = 0
     for (const m of evalMethods) {
       const weight = m.weight || 0
       totalWeight += weight
@@ -201,15 +208,12 @@ export function LearnPage({
       if (r?.status === 'evaluated' && (r.maxScore ?? 0) > 0) {
         totalScore += ((r.totalScore || 0) / (r.maxScore ?? 1)) * weight
         evaluatedCount++
-      } else if (r) {
-        pendingCount++
       }
     }
     return {
       score: totalWeight > 0 ? Math.round(totalScore * 100) / 100 : 0,
       maxScore: totalWeight,
       evaluatedCount,
-      pendingCount,
       totalMethods: evalMethods.length,
     }
   }, [evalMethods, evalResults])
@@ -538,7 +542,8 @@ export function LearnPage({
                                     url: activeUnit.descriptionPdf,
                                     name: labels.descriptionPdfName,
                                     type: 'pdf',
-                                  } as any)
+                                    uploadedAt: '',
+                                  })
                                 }
                                 className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 shadow-sm transition-all"
                               >
@@ -745,7 +750,7 @@ export function LearnPage({
                         <div
                           key={r.id}
                           className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
-                          onClick={() => addPreviewResource(r as any)}
+                          onClick={() => addPreviewResource(r as TaskResource)}
                         >
                           <div
                             className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || 'text-gray-400 bg-gray-50'}`}

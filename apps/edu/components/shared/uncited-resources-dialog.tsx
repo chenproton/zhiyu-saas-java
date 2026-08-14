@@ -180,10 +180,6 @@ export function UncitedResourcesDialog({
       await Promise.all([...selected].map((id) => propsRef.current.deleteItem(id)))
       toast({ title: t('已批量删除 {n} 个{label}', { n: selected.size, label: entityLabel }) })
       propsRef.current.onDeleted?.()
-      const remainingPages = Math.max(1, Math.ceil((total - selected.size) / PAGE_SIZE))
-      const nextPage = Math.min(page, remainingPages)
-      setPage(nextPage)
-      await load(nextPage)
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -191,6 +187,11 @@ export function UncitedResourcesDialog({
         description: err.message || t('请稍后重试'),
       })
     } finally {
+      // 无论成败均重载当前页：部分失败时已删除项也要移除，避免残留与分页计算失真
+      const remainingPages = Math.max(1, Math.ceil((total - selected.size) / PAGE_SIZE))
+      const nextPage = Math.min(page, remainingPages)
+      setPage(nextPage)
+      await load(nextPage)
       setDeleting(false)
       setConfirmOpen(false)
     }

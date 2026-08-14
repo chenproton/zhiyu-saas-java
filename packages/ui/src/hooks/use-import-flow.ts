@@ -17,6 +17,7 @@ export interface UseImportFlowOptions {
 
 export function useImportFlow({
   importType,
+  entityLabel,
   templateFileName,
   onSuccess,
   extraQuery,
@@ -81,7 +82,7 @@ export function useImportFlow({
     } catch (err: unknown) {
       toast({
         variant: 'destructive',
-        title: '导入失败',
+        title: `${entityLabel}导入失败`,
         description: err instanceof Error ? err.message : '导入失败',
       })
       return false
@@ -104,7 +105,7 @@ export function useImportFlow({
     } catch (err: unknown) {
       toast({
         variant: 'destructive',
-        title: '导入失败',
+        title: `${entityLabel}导入失败`,
         description: err instanceof Error ? err.message : '导入失败',
       })
       setIsImporting(false)
@@ -120,7 +121,7 @@ export function useImportFlow({
     } catch (err: unknown) {
       toast({
         variant: 'destructive',
-        title: '下载模板失败',
+        title: `${entityLabel}模板下载失败`,
         description: err instanceof Error ? err.message : '下载模板失败',
       })
     } finally {

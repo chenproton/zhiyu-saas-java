@@ -155,6 +155,13 @@ export function QuestionGradingCard({
   const t = useT()
   const [localScore, setLocalScore] = useState(score.toString())
   const [expanded, setExpanded] = useState(!isAutoQuestion(question))
+  const [prevScore, setPrevScore] = useState(score)
+
+  // 父组件外部更新该题分数（批量给满分/自动评分回填）时同步本地输入框（渲染期同步派生状态）
+  if (score !== prevScore) {
+    setPrevScore(score)
+    setLocalScore(score.toString())
+  }
 
   const commitIfValid = (val: string) => {
     const num = parseFloat(val)

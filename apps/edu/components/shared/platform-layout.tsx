@@ -31,6 +31,11 @@ export function PlatformLayout({ navigationConfig, landingPath, children }: Plat
     return <>{children}</>
   }
 
+  // 未登录：等待登录跳转，不进入 PermissionGuard「无权限」误导分支
+  if (!loading && !user) {
+    return null
+  }
+
   // 未授权时不渲染 children：避免页面在无权限时仍发起数据请求（403 噪音 + 无效请求）
   return (
     <PermissionGuard loading={loading} allowed={allowed}>

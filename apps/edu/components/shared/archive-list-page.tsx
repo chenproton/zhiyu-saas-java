@@ -134,7 +134,8 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
     setDeleteTarget(null)
   }
 
-  const colSpan = columns.length + (hasBatchOps ? 2 : 1)
+  // 表格实际列数 =（批量操作时 1 个勾选列）+ columns + 状态列 + 操作列
+  const colSpan = columns.length + (hasBatchOps ? 3 : 2)
 
   return (
     <div className="space-y-6">

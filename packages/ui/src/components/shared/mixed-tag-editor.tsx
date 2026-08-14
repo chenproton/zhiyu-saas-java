@@ -46,43 +46,12 @@ export function MixedTagEditor({
   const kpIdsRef = useRef(knowledgePointIds)
   const abIdsRef = useRef(abilityPointIds)
   const prevTags = useRef({ kp: [] as string[], ab: [] as string[] })
-  const cursorOffsetRef = useRef<number | null>(null)
 
   useEffect(() => {
     onChangeRef.current = onChange
     kpIdsRef.current = knowledgePointIds
     abIdsRef.current = abilityPointIds
   }, [onChange, knowledgePointIds, abilityPointIds])
-
-  const updateCursorOffset = () => {
-    const el = ref.current
-    if (!el) return
-    const selection = document.getSelection()
-    if (!selection || !selection.rangeCount) return
-    const range = selection.getRangeAt(0)
-    if (!el.contains(range.startContainer) && range.startContainer !== el) return
-
-    let offset = 0
-    if (range.startContainer.nodeType === Node.TEXT_NODE) {
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-      let node
-      while ((node = walker.nextNode())) {
-        if (node === range.startContainer) {
-          offset += range.startOffset
-          break
-        }
-        offset += node.textContent?.length || 0
-      }
-    } else if (range.startContainer === el) {
-      for (let i = 0; i < range.startOffset && i < el.childNodes.length; i++) {
-        const child = el.childNodes[i]
-        if (child.nodeType === Node.TEXT_NODE) {
-          offset += child.textContent?.length || 0
-        }
-      }
-    }
-    cursorOffsetRef.current = offset
-  }
 
   const createTagSpan = useCallback(
     (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
@@ -152,12 +121,17 @@ export function MixedTagEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text])
 
-  // 仅当标签 ID 集合变化时做增量更新，避免输入焦点丢失
+  // 仅当标签 ID 集合变化时做增量更新，避免输入焦点丢失（集合比较，顺序变化不视为变更）
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const kpChanged = JSON.stringify(prevTags.current.kp) !== JSON.stringify(knowledgePointIds)
-    const abChanged = JSON.stringify(prevTags.current.ab) !== JSON.stringify(abilityPointIds)
+    const idsChanged = (prev: string[], next: string[]) => {
+      if (prev.length !== next.length) return true
+      const nextSet = new Set(next)
+      return prev.some((id) => !nextSet.has(id))
+    }
+    const kpChanged = idsChanged(prevTags.current.kp, knowledgePointIds)
+    const abChanged = idsChanged(prevTags.current.ab, abilityPointIds)
     const domText = Array.from(el.childNodes)
       .filter((n) => n.nodeType === Node.TEXT_NODE)
       .map((n) => n.textContent)
@@ -302,9 +276,6 @@ export function MixedTagEditor({
         className="flex-1 outline-none min-w-[80px] text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
         data-placeholder={placeholder}
         onBlur={handleBlur}
-        onInput={updateCursorOffset}
-        onKeyUp={updateCursorOffset}
-        onMouseUp={updateCursorOffset}
         onCompositionStart={() => {
           isComposing.current = true
         }}

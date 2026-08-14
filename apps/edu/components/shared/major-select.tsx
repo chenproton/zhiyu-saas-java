@@ -54,9 +54,11 @@ export function MajorSelect({
       if (seq !== loadSeqRef.current) return
       setMajors(items.filter((m) => m.enabled))
     } catch (err) {
+      // 过期请求的失败不能覆盖新租户的加载状态
+      if (seq !== loadSeqRef.current) return
       setError(err instanceof Error ? err.message : t('加载专业失败'))
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [tenantId, t])
 

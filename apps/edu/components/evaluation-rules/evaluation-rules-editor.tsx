@@ -80,6 +80,7 @@ import {
   type EvalSubType,
   type RubricScheme,
   type EvalPoint,
+  type EvalPointField,
   type EvalRuleScoreRule,
   type EvalRuleSubjectConfig,
   type EvalRuleReviewStepInput,
@@ -223,9 +224,6 @@ export function EvaluationRulesEditor({
   const [erDialogMethod, setErDialogMethod] = useState<string | null>(null)
   const [isOrderConfigOpen, setIsOrderConfigOpen] = useState(false)
   const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
-  const [methodInstanceCounts] = useState<Record<string, number>>({})
-
-  const [showAddQuestion, setShowAddQuestion] = useState(false)
 
   const [rdqSearch, setRdqSearch] = useState('')
   const [rdqActionOpen, setRdqActionOpen] = useState(false)
@@ -397,6 +395,19 @@ export function EvaluationRulesEditor({
     return () => clearTimeout(timer)
   }, [rubricAbSearchTerm, dataSource])
 
+  // 本地 reviewSteps 变化后同步记录「已同步形状」，供下方 prop 同步 effect 跳过自写回环
+  useEffect(() => {
+    lastSyncedReviewStepsRef.current = reviewSteps.map((rs, i) => ({
+      label: rs.label,
+      description: rs.desc || null,
+      enabled: rs.enabled,
+      subjectType: rs.subjectType || null,
+      assignedUserIds: rs.assignedUserIds || [],
+      weight: rs.weight,
+      sortOrder: i,
+    }))
+  }, [reviewSteps])
+
   useEffect(() => {
     const incoming = configProp.reviewSteps || []
     const lastSynced = lastSyncedReviewStepsRef.current
@@ -453,26 +464,24 @@ export function EvaluationRulesEditor({
   // 用户操作驱动本地 state 与 store 同步，避免 useEffect 双向同步导致的无限重渲染
   const setReviewStepsAndSync = useCallback(
     (updater: React.SetStateAction<ReviewStep[]>) => {
-      setReviewSteps((prev) => {
-        const next =
-          typeof updater === 'function'
-            ? (updater as (prev: ReviewStep[]) => ReviewStep[])(prev)
-            : updater
-        const synced: EvalRuleReviewStepInput[] = next.map((rs, i) => ({
-          label: rs.label,
-          description: rs.desc || null,
-          enabled: rs.enabled,
-          subjectType: rs.subjectType || null,
-          assignedUserIds: rs.assignedUserIds || [],
-          weight: rs.weight,
-          sortOrder: i,
-        }))
-        lastSyncedReviewStepsRef.current = synced
-        store.setReviewSteps(synced)
-        return next
-      })
+      // 先基于最新 state 计算 next，再统一 setState + 同步 store，避免 updater 内副作用（StrictMode 下会执行两次）
+      const next =
+        typeof updater === 'function'
+          ? (updater as (prev: ReviewStep[]) => ReviewStep[])(reviewSteps)
+          : updater
+      const synced: EvalRuleReviewStepInput[] = next.map((rs, i) => ({
+        label: rs.label,
+        description: rs.desc || null,
+        enabled: rs.enabled,
+        subjectType: rs.subjectType || null,
+        assignedUserIds: rs.assignedUserIds || [],
+        weight: rs.weight,
+        sortOrder: i,
+      }))
+      store.setReviewSteps(synced)
+      setReviewSteps(next)
     },
-    [store],
+    [store, reviewSteps],
   )
   const [showAddStep, setShowAddStep] = useState(false)
   const [newStepLabel, setNewStepLabel] = useState('')
@@ -775,12 +784,7 @@ export function EvaluationRulesEditor({
 
   // ============ Helpers ============
   const getMethodInstances = () => {
-    const instances: { methodKey: string; instanceIndex: number }[] = []
-    config.evaluationMethods.forEach((methodKey) => {
-      const count = methodInstanceCounts[methodKey] || 1
-      for (let i = 0; i < count; i++) instances.push({ methodKey, instanceIndex: i })
-    })
-    return instances
+    return config.evaluationMethods.map((methodKey) => ({ methodKey, instanceIndex: 0 }))
   }
 
   const subjectLabels: Record<string, string> = {
@@ -867,15 +871,6 @@ export function EvaluationRulesEditor({
     newSubjects[idx] = { ...newSubjects[idx], ...updates }
     updateConfig({ methodEvalSubjects: { ...config.methodEvalSubjects, [methodKey]: newSubjects } })
   }
-
-  type EvalPointField =
-    | 'randomDrawEvalPoints'
-    | 'reviewEvalPoints'
-    | 'paperEvalPoints'
-    | 'questionBankEvalPoints'
-    | 'outcomeEvalPoints'
-    | 'homeworkEvalPoints'
-    | 'quizEvalPoints'
 
   const getEvalPoints = (field: EvalPointField) => {
     switch (field) {
@@ -1229,14 +1224,16 @@ export function EvaluationRulesEditor({
                                       >
                                         {t('详情')}
                                       </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
-                                        onClick={() => handleEditRdqLocal(q)}
-                                      >
-                                        {t('编辑')}
-                                      </Button>
+                                      {!readOnly && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
+                                          onClick={() => handleEditRdqLocal(q)}
+                                        >
+                                          {t('编辑')}
+                                        </Button>
+                                      )}
                                       {!readOnly && (
                                         <>
                                           {isSelected ? (
@@ -4360,9 +4357,7 @@ export function EvaluationRulesEditor({
                 {getMethodInstances().map(({ methodKey, instanceIndex }, index) => {
                   const method = evaluationMethodOptions.find((o) => o.key === methodKey)
                   if (!method) return null
-                  const instanceCount = methodInstanceCounts[methodKey] || 1
-                  const displayLabel =
-                    instanceCount > 1 ? `${t(method.label)} ${instanceIndex + 1}` : t(method.label)
+                  const displayLabel = t(method.label)
                   return (
                     <div
                       key={`${methodKey}-${instanceIndex}`}
@@ -4433,9 +4428,7 @@ export function EvaluationRulesEditor({
                   {getMethodInstances().map(({ methodKey, instanceIndex }) => {
                     const method = evaluationMethodOptions.find((o) => o.key === methodKey)
                     if (!method) return null
-                    const instanceCount = methodInstanceCounts[methodKey] || 1
-                    const displayLabel =
-                      instanceCount > 1 ? `${t(method.label)} ${instanceIndex + 1}` : t(method.label)
+                    const displayLabel = t(method.label)
                     const weight = config.methodWeights[methodKey] || 0
                     return (
                       <div
@@ -4477,9 +4470,7 @@ export function EvaluationRulesEditor({
           {getMethodInstances().map(({ methodKey, instanceIndex }) => {
             const method = evaluationMethodOptions.find((o) => o.key === methodKey)
             if (!method) return null
-            const instanceCount = methodInstanceCounts[methodKey] || 1
-            const displayLabel =
-              instanceCount > 1 ? `${t(method.label)} ${instanceIndex + 1}` : t(method.label)
+            const displayLabel = t(method.label)
             return (
               <div
                 key={`${methodKey}-${instanceIndex}`}
@@ -4600,18 +4591,6 @@ export function EvaluationRulesEditor({
         </DialogContent>
       </Dialog>
 
-
-      <Dialog open={showAddQuestion} onOpenChange={setShowAddQuestion}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('新增题目')}</DialogTitle>
-          </DialogHeader>
-          <div className="py-8 text-center text-gray-500">{t('请前往题库管理添加题目')}</div>
-          <DialogFooter>
-            <Button onClick={() => setShowAddQuestion(false)}>{t('知道了')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={rubricKpDialogOpen}
