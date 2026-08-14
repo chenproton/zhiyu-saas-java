@@ -27,8 +27,10 @@ import { useAiNotConfigured, useAiPipeline } from '@/lib/ai/use-ai-assist'
  * AI 任务链结构建议（交互参考 demo：意图输入 → 建议面板勾选 → 采纳创建）。
  * 与字段级 AI 的区别：生成的是新实体清单，无法"直接写入+恢复上版"，故采用建议面板形态；
  * 视觉语言（紫色 Sparkles/面板）与错误体系（412 引导、取消、toast）与既有 AI 底座一致。
- * 采纳后由父页面 onAdopt 负责创建任务（并给出 10 秒内撤销 toast）。
+ * 已有任务时先弹"追加/覆盖"模式选择；采纳后由父页面 onAdopt 负责创建任务（并给出 10 秒内撤销 toast）。
  */
+export type TaskChainMode = 'append' | 'overwrite'
+
 export function AiTaskChainSuggestion({
   scenario,
   existingTasks,
@@ -45,18 +47,28 @@ export function AiTaskChainSuggestion({
     positionId: string
   }
   existingTasks: { name: string; type: 'training' | 'assessment'; difficulty: number }[]
-  onAdopt: (tasks: AIScenarioTaskChainTask[]) => Promise<void>
+  onAdopt: (payload: { tasks: AIScenarioTaskChainTask[]; mode: TaskChainMode }) => Promise<void>
   disabled?: boolean
   /** 建议面板的挂载容器；传入后面板经 portal 渲染到容器中（用于脱离按钮行、整行全宽展示） */
   panelSlot?: React.RefObject<HTMLDivElement | null>
 }) {
   const t = useT()
+  const [mode, setMode] = useState<TaskChainMode>('append')
+  const [modeOpen, setModeOpen] = useState(false)
   const [inputOpen, setInputOpen] = useState(false)
   const [input, setInput] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
   const [result, setResult] = useState<AIScenarioTaskChainTask[] | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [adopting, setAdopting] = useState(false)
+
+  // 现有任务名预览（模式选择弹窗提示用）：最多展示前 3 个，超出省略
+  const existingTaskNames = existingTasks.map((x) => x.name)
+  const existingTasksPreview =
+    existingTaskNames.length === 0
+      ? ''
+      : existingTaskNames.slice(0, 3).map((n) => `“${n}”`).join('') +
+        (existingTaskNames.length > 3 ? t('等 {n} 个任务', { n: existingTaskNames.length }) : '')
 
   const ai = useAiNotConfigured()
   const pipeline = useAiPipeline<unknown, { chain?: { tasks: AIScenarioTaskChainTask[] } }>({
@@ -77,7 +89,8 @@ export function AiTaskChainSuggestion({
             taskBackground: '',
             taskDescription: '',
             taskDifficulty: 0,
-            existingTasks,
+            // 追加模式：携带现有任务供 AI 避开重复；覆盖模式：不带，让 AI 重新思考完整任务链
+            existingTasks: mode === 'append' ? existingTasks : [],
             intention: input.trim(),
           },
         },
@@ -118,6 +131,13 @@ export function AiTaskChainSuggestion({
       })
   }
 
+  /** 选定生成模式（追加/覆盖）后进入意图输入弹窗 */
+  const pickMode = (next: TaskChainMode) => {
+    setMode(next)
+    setModeOpen(false)
+    setInputOpen(true)
+  }
+
   const allSelected = result !== null && selected.size === result.length
 
   const handleAdopt = async () => {
@@ -125,7 +145,7 @@ export function AiTaskChainSuggestion({
     const chosen = result.filter((_, i) => selected.has(i))
     setAdopting(true)
     try {
-      await onAdopt(chosen)
+      await onAdopt({ tasks: chosen, mode })
       setPanelOpen(false)
       setResult(null)
       setSelected(new Set())
@@ -146,7 +166,11 @@ export function AiTaskChainSuggestion({
           <Sparkles className="h-4 w-4 text-purple-500" />
           <span className="text-sm font-medium text-gray-800">{t('AI 任务链结构建议')}</span>
           <span className="text-xs text-gray-500 hidden sm:inline">
-            {t('AI 根据场景主题和目标岗位分析了建议的任务链结构')}
+            {mode === 'overwrite'
+              ? t('AI 重新设计了完整任务链，采纳后将完全覆盖现有 {n} 个任务', {
+                  n: existingTasks.length,
+                })
+              : t('AI 根据场景主题和目标岗位分析了建议的任务链结构')}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -311,12 +335,69 @@ export function AiTaskChainSuggestion({
         disabled={disabled || pipeline.isRunning}
         onClick={() => {
           setInput('')
-          setInputOpen(true)
+          // 已有任务链时先选择生成模式（追加/覆盖），否则直接进入意图输入
+          if (existingTasks.length > 0) {
+            setModeOpen(true)
+          } else {
+            setMode('append')
+            setInputOpen(true)
+          }
         }}
       >
         <Sparkles className="h-4 w-4" />
         {t('AI 建议任务链')}
       </Button>
+
+      {/* 生成模式选择弹窗：已有任务链时提示保留追加（推荐）或完全覆盖 */}
+      <Dialog open={modeOpen} onOpenChange={setModeOpen}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              {t('AI 建议任务链')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('检测到当前场景已有“{names}”任务，请选择生成方式：', { names: existingTasksPreview })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <button
+              type="button"
+              onClick={() => pickMode('append')}
+              className="w-full text-left rounded-lg border border-purple-200 bg-purple-50/50 p-3 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-800">
+                  {t('保留当前已有的任务，往后追加新的任务')}
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                  {t('推荐')}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {t('系统将保留当前已有的任务，往后追加新的任务（推荐）')}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => pickMode('overwrite')}
+              className="w-full text-left rounded-lg border p-3 hover:border-purple-300 hover:bg-purple-50/30 transition-colors"
+            >
+              <div className="font-medium text-sm text-gray-800">
+                {t('重新生成完整任务链，完全覆盖')}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {t('系统将重新思考场景所需完整任务链，将现有任务链完全覆盖')}
+              </p>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModeOpen(false)}>
+              {t('取消')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 意图输入弹窗（对齐快速补全视觉） */}
       <Dialog open={inputOpen} onOpenChange={setInputOpen}>

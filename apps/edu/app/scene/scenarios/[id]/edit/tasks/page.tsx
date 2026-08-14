@@ -119,7 +119,7 @@ import { ToastAction } from '@/components/ui/toast'
 import { AiAssistProgressDialog } from '@/components/job/position-builder/ai-assist-progress-dialog'
 import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
 import { useAiNotConfigured, useAiFieldWriter, useAiPipeline } from '@/lib/ai/use-ai-assist'
-import { AiTaskChainSuggestion } from './_components/ai-task-chain-suggestion'
+import { AiTaskChainSuggestion, type TaskChainMode } from './_components/ai-task-chain-suggestion'
 
 // 详情头部展示用场景增强模型（附加已解析的名称/共建人）
 interface EnrichedScenario extends Scenario {
@@ -653,8 +653,103 @@ export default function TasksEditPage() {
     }
   }
 
-  /** AI 任务链采纳：逐个创建任务（部分失败保留已创建），权重分配不覆盖既有配置，10 秒内可撤销 */
-  const handleAdoptTaskChain = async (suggested: AIScenarioTaskChainTask[]) => {
+  /** 视图任务 → 创建 payload（覆盖模式回滚/撤销时重建被删除的旧任务用） */
+  const taskToCreatePayload = (tk: Task): Omit<ApiScenarioTask, 'id'> => ({
+    scenarioId,
+    name: tk.name,
+    code: tk.code,
+    sortOrder: tk.order,
+    description: tk.description,
+    detailedDescription: tk.detailedDescription,
+    descriptionPdf: tk.descriptionPdf,
+    estimatedHours: tk.estimatedHours,
+    taskType: tk.taskType,
+    difficulty: tk.difficulty,
+    background: tk.background,
+    dependencyIds: [],
+    isReferenced: !!tk.isReferenced,
+    sourceScenarioId: tk.sourceScenarioId,
+    knowledgePointIds: tk.knowledgePoints,
+    abilityPointIds: tk.abilityPoints,
+    resourceIds: tk.resources,
+  })
+
+  /** 重建被删除的旧任务（覆盖模式回滚/撤销）：依赖关系经新 ID 映射回填，任务状态一并恢复 */
+  const restoreRemovedTasks = async (removed: Task[], removedStates: Record<string, TaskState>) => {
+    const idMap = new Map<string, string>()
+    const recreated: Task[] = []
+    for (const rt of removed) {
+      try {
+        const created = await taskApi.create(taskToCreatePayload(rt))
+        idMap.set(rt.id, created.id)
+        recreated.push({
+          ...(created as any),
+          order: created.sortOrder,
+          deliverables: rt.deliverables,
+          knowledgePoints: rt.knowledgePoints,
+          abilityPoints: rt.abilityPoints,
+          resources: rt.resources,
+          dependencies: rt.dependencies,
+          assessment: rt.assessment,
+        })
+      } catch {
+        // 小概率失败容忍：能恢复多少恢复多少，不阻断整体回滚
+      }
+    }
+    for (const rt of removed) {
+      const newId = idMap.get(rt.id)
+      const mapped = (rt.dependencies || [])
+        .map((d) => idMap.get(d))
+        .filter((x): x is string => !!x)
+      if (newId && mapped.length > 0) {
+        await taskApi
+          .update(newId, { dependencyIds: mapped } as Partial<Omit<ApiScenarioTask, 'id'>>)
+          .catch(() => {})
+      }
+    }
+    if (recreated.length > 0) {
+      setTasks((prev) => [...prev, ...recreated])
+      setTaskStates((prev) => ({ ...prev, ...removedStates }))
+    }
+  }
+
+  /**
+   * AI 任务链采纳：
+   * - append：逐个创建任务追加在现有任务之后（部分失败保留已创建），权重不覆盖既有配置；
+   * - overwrite：先删除现有全部任务，再按新链创建（任一步失败回滚重建旧任务），权重在新任务间平分；
+   * 两种模式均 10 秒内可撤销。
+   */
+  const handleAdoptTaskChain = async (payload: {
+    tasks: AIScenarioTaskChainTask[]
+    mode: TaskChainMode
+  }) => {
+    const { tasks: suggested, mode } = payload
+    let removedSnapshot:
+      | { removed: Task[]; removedStates: Record<string, TaskState> }
+      | undefined
+
+    if (mode === 'overwrite' && tasks.length > 0) {
+      // 覆盖模式：删除现有全部任务，任一删除失败则重建已删除部分并中止
+      const removedStates = { ...taskStates }
+      const removed: Task[] = []
+      for (const old of tasks) {
+        try {
+          await taskApi.delete(old.id)
+          removed.push(old)
+        } catch (err: any) {
+          if (removed.length > 0) await restoreRemovedTasks(removed, removedStates)
+          toast({
+            variant: 'destructive',
+            title: t('覆盖失败'),
+            description: t('无法删除任务「{name}」：{msg}', { name: old.name, msg: err.message }),
+          })
+          return
+        }
+      }
+      removedSnapshot = { removed, removedStates }
+    }
+
+    const baseOrder = mode === 'overwrite' ? 0 : tasks.length
     const createdTasks: Task[] = []
     let lastErr: any = null
     for (let i = 0; i < suggested.length; i++) {
@@ -663,8 +758,8 @@ export default function TasksEditPage() {
         const payload: Omit<ApiScenarioTask, 'id'> = {
           scenarioId,
           name: s.name,
-          code: `TK-${Date.now().toString().slice(-6)}-${i}`,
-          sortOrder: tasks.length + i + 1,
+          code: `TK-${crypto.randomUUID().slice(0, 6)}-${i}`,
+          sortOrder: baseOrder + i + 1,
           estimatedHours: s.estimatedHours,
           taskType: s.type as 'assessment' | 'training',
           difficulty: s.difficulty as 1 | 2 | 3 | 4 | 5,
@@ -691,14 +786,30 @@ export default function TasksEditPage() {
         break
       }
     }
+
+    if (mode === 'overwrite' && lastErr) {
+      // 新链创建失败：清理已建新任务并回滚重建旧任务
+      for (const ct of createdTasks) {
+        await taskApi.delete(ct.id).catch(() => {})
+      }
+      if (removedSnapshot) {
+        setTasks([])
+        setTaskStates({})
+        await restoreRemovedTasks(removedSnapshot.removed, removedSnapshot.removedStates)
+      }
+      toast({ variant: 'destructive', title: t('覆盖失败'), description: lastErr.message })
+      return
+    }
+
     if (createdTasks.length > 0) {
-      setTasks((prev) => [...prev, ...createdTasks])
+      const appendMode = mode === 'append'
+      setTasks((prev) => (appendMode ? [...prev, ...createdTasks] : [...createdTasks]))
       setTaskStates((prev) => {
-        const next = { ...prev }
+        const next = appendMode ? { ...prev } : {}
         createdTasks.forEach((ct, i) => {
-          next[ct.id] = makeDefaultTaskState(tasks.length + createdTasks.length, tasks.length + i)
+          next[ct.id] = makeDefaultTaskState(baseOrder + createdTasks.length, baseOrder + i)
         })
-        // 新任务分配剩余权重（不覆盖既有任务配置）
+        // 新任务分配剩余权重（append 不覆盖既有任务配置；overwrite 旧任务已清空，即平分 100）
         const used = Object.values(next).reduce((sum, st) => sum + (st.weight || 0), 0)
         const remaining = Math.max(0, 100 - used)
         const n = createdTasks.length
@@ -711,7 +822,10 @@ export default function TasksEditPage() {
         return next
       })
       toast({
-        title: t('AI 任务链已采纳 {n} 个任务', { n: createdTasks.length }),
+        title:
+          mode === 'overwrite'
+            ? t('AI 任务链已覆盖为 {n} 个任务', { n: createdTasks.length })
+            : t('AI 任务链已采纳 {n} 个任务', { n: createdTasks.length }),
         description: t('10 秒内可撤销'),
         duration: 10000,
         action: (
@@ -719,7 +833,7 @@ export default function TasksEditPage() {
             altText={t('撤销')}
             className="h-7 px-2.5 text-xs bg-white border-gray-200 hover:bg-gray-50"
             onClick={() => {
-              void handleUndoAdoptChain(createdTasks)
+              void handleUndoAdoptChain({ created: createdTasks, mode, removedSnapshot })
             }}
           >
             {t('撤销')}
@@ -732,8 +846,13 @@ export default function TasksEditPage() {
     }
   }
 
-  /** 撤销 AI 任务链采纳：删除刚创建的任务并清理状态 */
-  const handleUndoAdoptChain = async (createdTasks: Task[]) => {
+  /** 撤销 AI 任务链采纳：删除刚创建的任务并清理状态；覆盖模式同时重建被删除的旧任务 */
+  const handleUndoAdoptChain = async (payload: {
+    created: Task[]
+    mode: TaskChainMode
+    removedSnapshot?: { removed: Task[]; removedStates: Record<string, TaskState> }
+  }) => {
+    const { created: createdTasks, mode, removedSnapshot } = payload
     for (const ct of createdTasks) {
       await taskApi.delete(ct.id).catch(() => {})
     }
@@ -743,6 +862,9 @@ export default function TasksEditPage() {
       createdTasks.forEach((ct) => delete next[ct.id])
       return next
     })
+    if (mode === 'overwrite' && removedSnapshot) {
+      await restoreRemovedTasks(removedSnapshot.removed, removedSnapshot.removedStates)
+    }
     toast({ title: t('已撤销') })
   }
 
