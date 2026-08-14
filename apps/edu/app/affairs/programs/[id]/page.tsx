@@ -178,7 +178,7 @@ export default function ProgramEditPage() {
             <div className="rounded-lg border bg-white p-6">
               <FieldGroup>
                 <Field>
-                  <FieldLabel>{t('方案名称 *')}</FieldLabel>
+                  <FieldLabel required>{t('方案名称')}</FieldLabel>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -196,7 +196,7 @@ export default function ProgramEditPage() {
                     />
                   </Field>
                   <Field>
-                    <FieldLabel>{t('入学年份 *')}</FieldLabel>
+                    <FieldLabel required>{t('入学年份')}</FieldLabel>
                     <Input
                       type="number"
                       value={entryYear}

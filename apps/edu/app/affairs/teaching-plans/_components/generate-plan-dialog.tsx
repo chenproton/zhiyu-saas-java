@@ -112,7 +112,7 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
         >
           <FieldGroup className="py-4">
             <Field>
-              <FieldLabel>{t('人培方案（已发布）*')}</FieldLabel>
+              <FieldLabel required>{t('人培方案（已发布）')}</FieldLabel>
               <Select value={programId} onValueChange={setProgramId}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('请选择人培方案')} />
@@ -133,7 +133,7 @@ export function GeneratePlanDialog({ open, onOpenChange, onGenerated }: Generate
               </Select>
             </Field>
             <Field>
-              <FieldLabel>{t('目标学期 *')}</FieldLabel>
+              <FieldLabel required>{t('目标学期')}</FieldLabel>
               <Select value={termId} onValueChange={setTermId}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('请选择学期')} />

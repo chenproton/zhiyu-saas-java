@@ -265,7 +265,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
           >
             <FieldGroup className="py-4">
               <Field>
-                <FieldLabel>{t('学期名称 *')}</FieldLabel>
+                <FieldLabel required>{t('学期名称')}</FieldLabel>
                 <Input
                   placeholder={t('如 2025-2026-1')}
                   value={name}
@@ -273,7 +273,7 @@ function TermsSection({ onTermsChanged }: { onTermsChanged?: () => void }) {
                 />
               </Field>
               <Field>
-                <FieldLabel>{t('起止日期 *')}</FieldLabel>
+                <FieldLabel required>{t('起止日期')}</FieldLabel>
                 <DateRangePicker value={dateRange} onChange={setDateRange} />
               </Field>
               <Field>
@@ -494,7 +494,7 @@ function VenuesSection() {
           >
             <FieldGroup className="py-4">
               <Field>
-                <FieldLabel>{t('场地名称 *')}</FieldLabel>
+                <FieldLabel required>{t('场地名称')}</FieldLabel>
                 <Input
                   placeholder={t('如 A栋-301')}
                   value={name}
@@ -502,7 +502,7 @@ function VenuesSection() {
                 />
               </Field>
               <Field>
-                <FieldLabel>{t('场地类型 *')}</FieldLabel>
+                <FieldLabel required>{t('场地类型')}</FieldLabel>
                 <Select value={type} onValueChange={setType}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('请选择场地类型')} />

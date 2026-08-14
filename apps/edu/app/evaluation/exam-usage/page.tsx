@@ -514,7 +514,7 @@ export default function ExamUsagePage() {
             <FieldGroup className="py-4">
             {!editingUsage && (
               <Field>
-                <FieldLabel>{t('选择试卷 *')}</FieldLabel>
+                <FieldLabel required>{t('选择试卷')}</FieldLabel>
                 <Select value={formExamId} onValueChange={setFormExamId}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('请选择一份试卷')} />
@@ -533,7 +533,7 @@ export default function ExamUsagePage() {
             )}
 
             <Field>
-              <FieldLabel>{t('考试名称 *')}</FieldLabel>
+              <FieldLabel required>{t('考试名称')}</FieldLabel>
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
@@ -584,7 +584,7 @@ export default function ExamUsagePage() {
             </Field>
 
             <Field>
-              <FieldLabel>{t('参与班级 *')}</FieldLabel>
+              <FieldLabel required>{t('参与班级')}</FieldLabel>
               <MultiOrgNodePicker
                 tenantId={user?.tenantId}
                 value={formClassIds}
