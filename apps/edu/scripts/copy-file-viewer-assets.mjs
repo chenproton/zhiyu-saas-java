@@ -1,11 +1,14 @@
-// 把 file-viewer 的 CAD（DWG/DXF/DWF）WASM/worker 资产复制到 public，供运行时按需加载。
+// 把 file-viewer 各 renderer 的运行时 WASM/worker/字体/脚本资产复制到 public，
+// 供浏览器按需加载（这些资产不会被 Next.js standalone 打包进产物，运行时通过 URL 请求）。
 //
-// 背景：@file-viewer/renderer-cad 基于 @flyfish-dev/cad-viewer，DWG 预览走
-// `new Worker(workerUrl)` 并在 worker 内加载 libredwg-web.js/libredwg-web.wasm。
-// Next.js 独立构建（standalone）不会把这些二进制资产打进产物，运行时自动推断
-// 的 worker/wasm 路径会 404，导致 "DWG worker failed"。
-// 因此在 next build 前把 cad-viewer 包内的资产复制到 public 的版本化目录，
-// 前端再通过 FileViewer 的 cad.workerUrl / cad.wasmPath / cad.dwfWasmUrl 显式指向。
+// 背景：@file-viewer/preset-all 的若干 renderer 用「运行时 URL 加载」方式获取资产：
+//   - CAD    → new Worker(workerUrl) + libredwg-web.wasm（DWG/DXF/DWF）
+//   - archive → new Worker(workerUrl) + libarchive.wasm（7z/rar/tar/gz 等；zip 另有 jszip 兜底）
+//   - model  → occt worker/runtime/wasm（STEP/IGES/BREP 等几何内核）
+//   - typst  → typst.ts 编译器/渲染器 WASM（.typ/.typst）
+//   - pdf    → cmaps / standard_fonts / wasm（CJK 文本解码、标准字体、图片解码）
+// 若这些资产缺失，对应格式会报错或降级。因此在 next build 前把依赖包内的资产
+// 复制到 public 的版本化目录，前端再通过 setDefaultFileViewerAssetBaseUrl('/') 统一解析。
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -13,39 +16,99 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // 脚本位于 apps/edu/scripts/，仓库根 node_modules/.pnpm 在 ../../../node_modules/.pnpm
 const pnpmDir = path.resolve(__dirname, '../../../node_modules/.pnpm')
-const targetDir = path.resolve(__dirname, '../public/wasm/cad/0.8.0')
+const publicDir = path.resolve(__dirname, '../public')
 
-const ASSET_FILES = ['dwg-worker.js', 'dwfv-render.wasm', 'libredwg-web.js', 'libredwg-web.wasm']
-const CAD_VIEWER_VERSION = '0.8.0'
-
-function findCadViewerWasmDir() {
-  const entries = readdirSync(pnpmDir).filter((e) =>
-    e.startsWith(`@flyfish-dev+cad-viewer@${CAD_VIEWER_VERSION}`),
-  )
+// 在 .pnpm 中按「目录名前缀」定位包，返回其 node_modules 目录。
+// 目录名形如 `@file-viewer+ppt@0.3.3` 或 `libarchive.js@2.0.2`（可能带 peer 后缀）。
+function findPkgNodeModules(pkgDirPrefix) {
+  const entries = readdirSync(pnpmDir).filter((e) => e.startsWith(pkgDirPrefix))
   if (entries.length === 0) {
-    throw new Error(`未找到 @flyfish-dev/cad-viewer@${CAD_VIEWER_VERSION}，请先 pnpm install`)
+    throw new Error(`未找到 ${pkgDirPrefix}，请先 pnpm install`)
   }
-  return path.join(
-    pnpmDir,
-    entries[0],
-    'node_modules',
-    '@flyfish-dev',
-    'cad-viewer',
-    'dist',
-    'wasm',
-  )
+  return path.join(pnpmDir, entries[0], 'node_modules')
 }
 
-const srcDir = findCadViewerWasmDir()
-rmSync(targetDir, { recursive: true, force: true })
-mkdirSync(targetDir, { recursive: true })
-for (const file of ASSET_FILES) {
-  const src = path.join(srcDir, file)
+// 复制单个文件：srcRel 相对包 node_modules 目录，destRel 相对 public 目录。
+function copyFile(pkgDirPrefix, srcRel, destRel) {
+  const src = path.join(findPkgNodeModules(pkgDirPrefix), srcRel)
   if (!existsSync(src)) {
-    throw new Error(`缺少 CAD 资产源文件: ${src}`)
+    throw new Error(`缺少资产源文件: ${src}`)
   }
-  cpSync(src, path.join(targetDir, file))
+  const dest = path.join(publicDir, destRel)
+  mkdirSync(path.dirname(dest), { recursive: true })
+  cpSync(src, dest)
 }
-console.log(
-  `[file-viewer] 已复制 ${ASSET_FILES.length} 个 CAD WASM 资产到 public/wasm/cad/${CAD_VIEWER_VERSION}/`,
+
+// 复制整个目录：srcRel 相对包 node_modules 目录，destRel 相对 public 目录。
+function copyDir(pkgDirPrefix, srcRel, destRel) {
+  const src = path.join(findPkgNodeModules(pkgDirPrefix), srcRel)
+  if (!existsSync(src)) {
+    throw new Error(`缺少资产源目录: ${src}`)
+  }
+  const dest = path.join(publicDir, destRel)
+  rmSync(dest, { recursive: true, force: true })
+  cpSync(src, dest, { recursive: true })
+}
+
+// ---- CAD（DWG/DXF/DWF，@flyfish-dev/cad-viewer 0.8.0）----
+const CAD_WASM = '@flyfish-dev+cad-viewer@0.8.0'
+for (const f of ['dwg-worker.js', 'dwfv-render.wasm', 'libredwg-web.js', 'libredwg-web.wasm']) {
+  copyFile(CAD_WASM, `@flyfish-dev/cad-viewer/dist/wasm/${f}`, `wasm/cad/0.8.0/${f}`)
+}
+
+// ---- archive（libarchive.js 2.0.2，7z/rar/tar/gz 等）----
+const LIBARCHIVE = 'libarchive.js@2.0.2'
+copyFile(LIBARCHIVE, 'libarchive.js/dist/worker-bundle.js', 'vendor/libarchive/worker-bundle.js')
+copyFile(LIBARCHIVE, 'libarchive.js/dist/libarchive.wasm', 'vendor/libarchive/libarchive.wasm')
+
+// ---- PowerPoint 97–2003（@file-viewer/ppt 0.3.3）----
+const PPT = '@file-viewer+ppt@0.3.3'
+for (const f of [
+  'index.mjs',
+  'worker.mjs',
+  'frame-cache.mjs',
+  'ppt-native.wasm',
+  'ppt-font-cjk.otf',
+  'manifest.json',
+  'package.json',
+  'LICENSE',
+  'NOTICE',
+]) {
+  copyFile(PPT, `@file-viewer/ppt/${f}`, `vendor/ppt/${f}`)
+}
+
+// ---- 3D 模型（occt-import-js + geometry-engine，STEP/IGES/BREP）----
+copyFile(
+  '@file-viewer+geometry-engine@2.2.9',
+  '@file-viewer/geometry-engine/assets/occt-worker.js',
+  'wasm/model/occt-worker.js',
 )
+const OCCT = 'occt-import-js@0.0.23'
+copyFile(OCCT, 'occt-import-js/dist/occt-import-js.js', 'wasm/model/occt-import-js.js')
+copyFile(OCCT, 'occt-import-js/dist/occt-import-js.wasm', 'wasm/model/occt-import-js.wasm')
+copyFile(OCCT, 'occt-import-js/dist/license.occt.txt', 'wasm/model/LICENSE.occt.txt')
+copyFile(
+  OCCT,
+  'occt-import-js/dist/license.occt-import-js.txt',
+  'wasm/model/LICENSE.occt-import-js.txt',
+)
+
+// ---- Typst（@myriaddreamin/typst.ts 0.7.0 编译器/渲染器 WASM）----
+copyFile(
+  '@myriaddreamin+typst-ts-web-compiler@0.7.0',
+  '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm',
+  'wasm/typst/typst_ts_web_compiler_bg.wasm',
+)
+copyFile(
+  '@myriaddreamin+typst-ts-renderer@0.7.0',
+  '@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm',
+  'wasm/typst/typst_ts_renderer_bg.wasm',
+)
+
+// ---- PDF（pdfjs-dist 5.4.624，CJK cmaps / 标准字体 / 图片解码 wasm）----
+const PDFJS = 'pdfjs-dist@5.4.624'
+copyDir(PDFJS, 'pdfjs-dist/cmaps', 'vendor/pdf/cmaps')
+copyDir(PDFJS, 'pdfjs-dist/standard_fonts', 'vendor/pdf/standard_fonts')
+copyDir(PDFJS, 'pdfjs-dist/wasm', 'vendor/pdf/wasm')
+
+console.log('[file-viewer] 已完成 CAD/archive/ppt/model/typst/pdf 资产的 public 复制')

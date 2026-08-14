@@ -52,5 +52,7 @@ offline/debs/*.deb
 # deploy.sh 构建时会替换为实体文件；禁止把实体文件提交入库
 /apps/edu/public/image-editor/
 
-# file-viewer CAD WASM assets: 由 prebuild 脚本从 node_modules 复制生成，不提交入库
+# file-viewer 运行时资产（CAD/archive/ppt/model/typst/pdf 的 worker/wasm/字体）：
+# 由 prebuild 脚本从 node_modules 复制生成，不提交入库
 /apps/edu/public/wasm/
+/apps/edu/public/vendor/
