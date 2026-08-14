@@ -110,7 +110,7 @@
 | GET/POST/PUT/DELETE/POST /{id}/publish、/{id}/finish | `/evaluation/exam-usages` | businessUser 写 / jobViewer 含学生读 | 考试场次（List/Get 挂 jobViewer；写操作含 Publish/Finish） |
 | GET | `/evaluation/exam-center` | jobViewer | 测评中心（学生/教师考试中心聚合） |
 | GET/POST | `/evaluation/exam-results` | 教师 List / 学生 Create | 考试成绩 |
-| GET/POST | `/evaluation/exam-results/{id}`、`/{id}/grade` | businessUser | 成绩详情/教师评分 |
+| GET | `/evaluation/exam-results/{id}`、POST `/{id}/grade` | businessUser | 成绩详情/教师评分 |
 | GET/POST | `/evaluation/results` | jobViewer 读+Submit / businessUser | 评估结果列表/提交 |
 | GET/POST | `/evaluation/results/{id}`、`/{id}/grade`、`/results/batch-grade` | businessUser | 结果详情/评分/批量评分 |
 | GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分 |
@@ -186,7 +186,7 @@
 | PUT/DELETE | `/alliance/enterprises/{id}`、`/enterprises/{id}/link` | RequireAllianceManager | 企业更新/引入/解除引入（DELETE 语义=unlink） |
 | PUT | `/alliance/grants` | RequireAllianceManager | 学校-企业资源授权保存 |
 | GET/POST/PUT/DELETE | `/alliance/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/experts`、`/experts/{id}/display`、`/agreements`、`/permissions`、`/dictionaries/{dictType}`、`/brands`、`/brands/rank-configs` | RequireAllianceManager | 联盟写操作（项目/成果/专家/协议/权限/字典/品牌） |
-| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/agreements`、`/brands`、`/brands/talent-ranking`、`/stats`（List+Get 共 16 个） | 登录公开（限流 120/min/IP） | 联盟公开前台（全局企业主体 + links 双控过滤） |
+| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/agreements`、`/brands`、`/brands/talent-ranking`、`/stats`（List+Get 共 15 个） | 登录公开（限流 120/min/IP） | 联盟公开前台（全局企业主体 + links 双控过滤） |
 
 ### 1.10 导入 / 导出 / 模板（portal + businessUser；10min 长超时）
 
@@ -320,15 +320,16 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
   "user": { "id": "...", "loginName": "teacher01", "orgNodeId": "...", "titleIds": [] },
   "tenant": { "id": "...", "name": "某某学校", "status": "active" },
   "orgNode": { "id": "...", "name": "信息工程系" },
-  "major": null,
+  "major": { "id": "...", "name": "..." },  // 无专业时整个键省略（omitempty），不返回 null
+  "institution": { "id": "...", "name": "..." },
   "roles": [ { "id": "...", "code": "teacher", "name": "教师" } ]
 }
 ```
 
 ### 3.3 内容发布流转（以岗位为例）
 
-**POST `/api/v1/job/positions/{id}/submit`** → `200 {"id":"..."}`；已 published 提交 → `409`
-**POST `/api/v1/job/positions/{id}/review`** 请求体 `{"approved": true, "comment": "同意"}` → `200`
+**POST `/api/v1/job/positions/{id}/submit`** → `200` 返回完整实体对象（前端按实体消费；不单独返回 `{"id"}`）；已 published 提交 → `409`
+**POST `/api/v1/job/positions/{id}/review`** 请求体 `{"status": "approved"|"rejected", "comment": "同意"}` → `200`
 **POST `/api/v1/job/positions/{id}/publish`** → `200`
 非法流转（如 draft 直接 publish）→ `409 {"error":"当前状态不允许该操作"}`
 
@@ -358,17 +359,17 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 - 请求体（示例）：
 ```json
 {
-  "termId": "...", "teachingPlanEntryId": "...", "dayOfWeek": 3,
+  "termId": "...", "planEntryId": "...", "dayOfWeek": 3,
   "periods": [1, 2], "weekPattern": "all", "classNodeIds": ["..."],
   "teacherId": "...", "venueId": "...", "type": "traditional"
 }
 ```
-- 冲突检测：教师/班级/场地任一冲突 → `409 {"error":"教师 张三 在第 3 周 周三 1-2 节已有课"}`（明确冲突项）
+- 冲突检测：教师/班级/场地任一冲突 → `409 {"error":"排课冲突","conflicts":[{kind,entryId,courseName,className,teacherName,venueName,dayOfWeek,periods,startWeek,endWeek,weekPattern}]}`（结构化冲突项数组）
 - 发布：**POST `/affairs/schedules/publish`** → `200 {"published": n, "version": n}`（无 {id}，整学期草稿发布）
 
 ### 3.6 文件上传
 
-**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，单文件 ≤10MB，请求体上限含 multipart 头部）→ `200 {"url": "/uploads/{tenantID}/xxx.png"}`；`GET /api/v1/files/preview?url=...` 返回可预览地址；`GET /api/v1/files/sign-url?url=...` 生成 15 分钟签名 URL（无登录态可访问，供 kkfileview 等外部拉取）。文档预览由前端 file-viewer（flyfish-dev，浏览器原生）渲染：凡扩展名落在 `@file-viewer/core` 的 `DEFAULT_SUPPORTED_EXTENSIONS`（208 个扩展名，覆盖 office/pdf/压缩包/邮件/CAD/3D/地理/脑图/绘图/电子书/图片/音视频/代码文本/字体/设计/数据）一律走 `FileViewerPreview`；其余格式回退 kkfileview。kkfileview 服务保留。
+**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，单文件 ≤10MB，请求体上限含 multipart 头部）→ `201 {"url": "/uploads/{tenantID}/xxx.png", "name": "...", "size": n, "mimeType": "..."}`；`GET /api/v1/files/preview?url=...` 返回可预览地址；`GET /api/v1/files/sign-url?url=...` 生成 15 分钟签名 URL（无登录态可访问，供 kkfileview 等外部拉取）。文档预览由前端 file-viewer（flyfish-dev，浏览器原生）渲染：凡扩展名落在 `@file-viewer/core` 的 `DEFAULT_SUPPORTED_EXTENSIONS`（208 个扩展名，覆盖 office/pdf/压缩包/邮件/CAD/3D/地理/脑图/绘图/电子书/图片/音视频/代码文本/字体/设计/数据）一律走 `FileViewerPreview`；其余格式回退 kkfileview。kkfileview 服务保留。
 
 ### 3.7 工作台聚合
 

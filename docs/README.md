@@ -14,6 +14,7 @@
 | **写/改前端页面组件** | [`components.md`](components.md)（组件复用速查）+ [`forms-tables.md`](forms-tables.md)（表单/表格盘点） |
 | **写/改 AI 功能** | [`ai-development.md`](ai-development.md)（AIService 统一底座） |
 | **安全非功能（密码/会话/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
+| **性能/可观测/国际化/测试** | [`non-functional-standards.md`](non-functional-standards.md) |
 | **写/审任何文档** | [`documentation-standards.md`](documentation-standards.md)（分层 + 砍废话）+ [`prose-standards.md`](prose-standards.md)（文字品控） |
 | **做架构取舍/技术选型** | [`decisions/README.md`](decisions/README.md)（ADR：先看有没有既有决策） |
 | **审 PR / 审改动** | [`code-review-checklist.md`](code-review-checklist.md)（语义检查） |

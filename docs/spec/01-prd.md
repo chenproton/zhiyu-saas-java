@@ -102,8 +102,8 @@
 
 | # | 用户故事 | 验收标准（AC） |
 |---|---------|---------------|
-| C-1 | 作为 teacher，我希望建设体系课（课程→节点树），以便结构化组织教学内容 | 节点树形（parent_id），支持测验（8 个子接口）、作业（提交/批改闭环）、资源绑定 |
-| C-2 | 作为 student，我希望完成节点测验/作业并查看成绩，以便检验学习效果 | 节点作业提交后教师批改，成绩回写；(homework, student) 唯一约束防重复提交 |
+| C-1 | 作为 teacher，我希望建设体系课（课程→节点树），以便结构化组织教学内容 | 节点树形（parent_id），支持测验（8 个子接口）、资源绑定；作业提交/批改接口休眠（数据表已建、无接口无页面，见注） |
+| C-2 | 作为 student，我希望完成节点测验/作业并查看成绩，以便检验学习效果 | 测验/现场问答可完成并查看成绩；节点作业提交/批改休眠（见注）；(homework, student) 唯一约束防重复提交 |
 | C-3 | 作为 teacher，我希望记录课堂行为（考勤/抢答/表扬），以便过程性评价 | behavior-collection 记录打卡；（course, student, date）唯一；支持聚合查询 |
 | C-4 | 作为 school_admin，我希望课程经批次发布与审批流控制，以便管控上线节奏 | 批次 open/closed；课程绑定批次；审批流（workflows + approval_records）推进状态 |
 
@@ -139,7 +139,7 @@
 |---|---------|---------------|
 | L-1 | 作为 school_admin，我希望维护合作企业/协议/项目/成果/专家台账，以便产教合作规范管理 | 企业状态流转（negotiating/active/paused/terminated）；协议挂项目；项目带里程碑；专家评级（copper/silver/gold） |
 | L-2 | 作为 school_admin，我希望运营品牌内容（人才/雇主/岗位/专业/师资/文化），以便对外招生宣传 | 品牌内容统一表 + 专题页（grid 布局 + content_blocks）；前台落地页展示 |
-| L-3 | 作为访客/学生，我希望浏览校企合作公开信息，以便了解学校产教实力 | `/alliance/public/*` 12 个公开接口；联盟字典（8 类 40 条种子）中英文编码 |
+| L-3 | 作为访客/学生，我希望浏览校企合作公开信息，以便了解学校产教实力 | `/alliance/public/*` 15 个公开接口；联盟字典（8 类 40 条种子）中英文编码 |
 
 ### 3.9 工作台与门户（portal）
 
@@ -161,7 +161,7 @@
 
 ### 4.2 内容统一状态机
 
-覆盖**7 类内容实体**：岗位、场景、课程、题库、试卷、人培方案、教学计划（`domain/status.go` + `store/content_actions.go` `AllowedContentTables`）；其中**5 类**（岗位/场景/课程/题库/试卷）含 `version` 列、发布即快照（ADR-0006，`versionedContentTables`），人培方案/教学计划不版本化。
+统一内容状态机覆盖**5 类版本化内容实体**：岗位、场景、课程、题库、试卷（`domain/status.go` + `store/content_actions.go`）；这 5 类含 `version` 列、发布即快照（ADR-0006，`versionedContentTables`）。**人培方案、教学计划不接入六态**：仅两态（draft/published、draft/confirmed），不版本化，但同列 `AllowedContentTables` 白名单，共享提交/发布/归档等统一动作的表名校验；**题目（exam_questions）不接入内容状态机**（随题库/试卷整体流转）。
 
 状态 6 个：`draft` / `pending` / `approved` / `rejected` / `published` / `archived`。
 
