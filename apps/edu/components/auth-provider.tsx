@@ -91,7 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
     } catch (err) {
       if (seq !== meSeqRef.current) return
-      removeToken('portal')
+      // 仅鉴权类错误（401/403）清除登录态；网络抖动/服务端瞬时错误保留 token，避免误踢登录
+      const status = (err as { status?: number })?.status
+      if (status === 401 || status === 403) removeToken('portal')
       setState({
         loading: false,
         error: err instanceof Error ? err.message : t('获取用户信息失败'),
