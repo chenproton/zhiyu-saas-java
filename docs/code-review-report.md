@@ -6219,6 +6219,47 @@
 - deploy.sh 缩进修正
 - AGENTS.md 四、运维速查补「打包/迁移工具」：package-release.sh、migrate_uploads.sh
 
+
+## 后续批次修复明细（逐批修复→本地验证→deploy.sh 部署自动合并）
+
+### 后端批次
+
+| 批次 | 提交 | 内容 |
+|---|---|---|
+| 001-002 | 2c0281a9 | 迁移 SQL 切分器支持 $tag$ 定界符、修正误导注释、补学期 CRUD 测试 |
+| 003-004 | 49ec5c96 | 里程碑/权限/字典部分更新兜底、品牌 CRUD 死代码清理、SaveBrandRankConfigs/ToggleExpertDisplay 补权限校验、审批流加载失败 500、项目 isPublic 回归测试、公开协议测试解析加固 |
+| 005-006 | 032c2c08 | preAuthToken 一次性校验 LoadOrStore 原子化、课程克隆解码走 decodeBody 约定 |
+| 007-008 | 201aa629 | 课程导入 findOrCreate/查询统一走传入 Queryer（事务化时同连接回滚）、exam_result errors.Is 一致化 |
+| 009-010 | 3201f06d | 导入导出实体 hasCode 显式化、预览空结果独立错误、Serve 租户 ID UUID 校验 |
+| 013-014 | 78051c61 | 组织类型创建校验与更新一致、共建岗位 shortName 空串可清空、scenarioTaskParams 死参数移除、专家更新密码校验前置+绑定账号租户校验、org 测试死代码清理 |
+| 015-016 | 476d14e9 | 工作台节次标签死代码、测试数据补租户列、证书/能力绑定越权校验、shortName/description 可清空、收藏数错误日志、导入清理补 ability_domains、题库导出错误日志、方案导入校验、题目导出 5-8 选项列 |
+| 017-018 | e78c6306 | 组织路径分隔符优先级、未知题型计入失败行、导出非法 JSON 400、用户角色绑定错误检查 |
+| 019-020 | 4d5a33ae | 场景覆盖导入清空失败计入失败行、排课导入移除死参数 overwrite、周次区间解析校验、角色测试死代码清理 |
+| 021-022 | a4cabf83 | 节次删除外键冲突 400、学生档案创建租户校验、排课参数组装去重 |
+| 023-024 | aafe272c | 模板 preload 重复查询、扩展字段错误文案、人培方案创建丢 batchId、用户关系删除归属校验、审批流 scene 回退、metrics 流式透传 |
+| 025-026 | fba2c664 | 移除被 jobViewer 组覆盖的收藏路由冗余注册、澄清企业 DELETE 语义注释 |
+| 027-028 | 0d1db9df | syncExamResultScoreTx 真实错误上抛、GetQuestionBank 重复方法收敛、批次通用操作抽 sharedBatchOps（两服务 7 方法去重） |
+| 029-030 | 64877ca2 | service 裸 SQL 下沉 store、绑定表/列白名单、nil 租户与 nil UserID 防护、AI 配置 extra 更新、删除语义与 code 生成错误上抛、品牌列表 limit 钳制、重复注释清理 |
+| 031-032 | ecfe59d5 | 专家/批次跨租户写读下沉 SQL 约束、批次写操作带租户条件（三服务共用实现）、queryList 扫描错误上抛、draft 覆盖 RowsAffected 校验、认证查询错误日志、项目扫描去重、唯一冲突映射、死代码清理 |
+| 033-042 | 546bfe99 | 扫描错误日志化/上抛、ErrNotFound 语义统一、课程克隆资源扫描与父级缺失告警、LIKE 通配符转义、Prepare 回查错误日志、字典 Update/Delete 影响行数校验 |
+| 037-038/041-042 | 3f2f3791 | user_extension_fields 租户过滤补全、title_ids COALESCE 保留语义、任务测评扫描错误上抛、角色重绑事务化、租户更新 COALESCE 一致化、UsersExist 去重、管理员角色绑定影响行校验、证书库幂等回读、SaveFull 冲突回读实际行 id、教学计划 rows.Err |
+| 104-105 | — | 历史已应用迁移，不改文件（避免新旧环境不一致），已记录 |
+
+### 前端批次（P2）
+
+| 批次 | 提交 | 内容 |
+|---|---|---|
+| 083-084 | 3f2f6b7f | 场景统计 majorCount 语义修正、课时展示兜底、节点类型标签单一来源（GRAPH_NODE_TYPE_LABELS 三处收敛）、死字段/死代码清理 |
+| 043-044 | 8fa8809e | 类型强化、分页一致化、O(n²) 收敛、异步竞态与加载态修复 |
+| 045-050 | 3660147b | evaluation 批次（工作台四 Tab、登录页、任务链建议、bank-form-dialog 等 36 文件） |
+| 051-062 | 7d6c3ffd | lesson-alliance 批次（39 文件：类型弱化/as any 去除、竞态序号守卫、下拉截断改用 fetchAllPages/listAll、死代码清理、NaN 兜底、错误态与 notFound 分离） |
+| 063-078 | e22f2f94 | portal-alliance-scene 批次（36 文件：类型强化、竞态防护、加载态、死代码、复用收敛） |
+| 079-103 | （待合并） | components-packages 批次 |
+
+### 新增复用抽象（补充）
+- 后端：sharedBatchOps（岗位/测评/场景三服务共用批量操作）、ReviewStep/LockApproval/SetHistory（审批并发评审）、scanApproval/scanWorkflow（扫描去重）
+- 前端：GRAPH_NODE_TYPE_LABELS（知识图谱节点标签单一来源）、formatSalaryRange、schedule-utils.ts、fetchAllPages/listAll（分页全量拉取统一入口）
+
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
 - 前端：pnpm typecheck 4 包通过；pnpm lint 0 错误；pnpm test 97/97 通过
