@@ -74,6 +74,13 @@ func (s *ResourceBindingService) CourseSyncBind(ctx context.Context, courseID, r
 	return store.CourseSyncBind(ctx, s.st.Q(), courseID, resourceID)
 }
 
+
+// SyncCourseResourceBindingWithQ 通用 Create 回调使用的课程资源绑定同步钩子：
+// 接受调用方事务 Queryer（同步须与绑定在同一事务内），handler 经 service 层注册，不直调 store。
+func SyncCourseResourceBindingWithQ(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
+	return store.CourseSyncBind(ctx, q, courseID, resourceID)
+}
+
 // CourseSyncUnbind 课程解绑后同步聚合字段。
 func (s *ResourceBindingService) CourseSyncUnbind(ctx context.Context, courseID, resourceID string) error {
 	return store.CourseSyncUnbind(ctx, s.st.Q(), courseID, resourceID)

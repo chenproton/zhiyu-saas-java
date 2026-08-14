@@ -101,7 +101,7 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		FileSize:    fileSize,
 		UploadedBy:  &uploadedBy,
 	}, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
-		return store.CourseSyncBind(ctx, q, courseID, resourceID)
+		return service.SyncCourseResourceBindingWithQ(ctx, q, courseID, resourceID)
 	})
 	if err != nil {
 		respondServerError(w, r, err, "创建课程资源失败")
@@ -156,7 +156,7 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 	}
 
 	id, err := h.Service.Bind(r.Context(), tenantID, "course_resource_bindings", "course_id", req.CourseID, req.ResourceID, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
-		return store.CourseSyncBind(ctx, q, courseID, resourceID)
+		return service.SyncCourseResourceBindingWithQ(ctx, q, courseID, resourceID)
 	})
 	if err != nil {
 		respondServerError(w, r, err, "绑定课程资源失败")

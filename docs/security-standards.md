@@ -23,6 +23,7 @@
   - 停用用户 / 停用租户 / 删除用户 → 下一请求即 401（不等到 7 天过期）；
   - 修改/重置密码后 → 旧 token 下一请求即 401（`users.password_changed_at` 早于 token `iat` 判定）。
 - **登出**：前端清除本地 token（无服务端会话状态）；7 天过期 + 逐请求吊销已覆盖会话生命周期，无需服务端吊销通道。
+- **存储介质评估（2026-08-15 结论）**：token 存 localStorage（`packages/api-client`），可被同源 XSS 窃取；后端已具备 HttpOnly cookie 通道（`middleware.SetAuthCookie`，仅 /uploads 图片通道使用）。**评估结论：主认证不迁移 HttpOnly cookie**——迁移需配套 CSRF 防护、改造三端全部请求链路与文件下载鉴权，收益（XSS 场景已由 CSP/上传沙箱/输入消毒多层缓解）与成本风险不成比例；未来若引入第三方脚本面扩大再复议。
 - **Claims 最小化**：只放 userId/tenantId/roleCodes/permissions/platform，不放密钥、密码哈希等敏感信息。
 
 ## 3. 密钥管理
