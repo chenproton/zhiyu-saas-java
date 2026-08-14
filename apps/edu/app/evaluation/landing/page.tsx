@@ -146,6 +146,7 @@ export default function LandingHomePage() {
   const [centerItems, setCenterItems] = useState<ExamCenterItem[]>([])
   const [batchNames, setBatchNames] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [sort, setSort] = useState('default')
   const [keyword, setKeyword] = useState('')
@@ -156,8 +157,8 @@ export default function LandingHomePage() {
       setLoading(true)
       try {
         const [banksRes, examsRes, batchesRes, centerRes] = await Promise.all([
-          questionBankApi.list({ status: 'published', limit: 1000 } as any),
-          examApi.list({ status: 'published', limit: 1000 } as any),
+          questionBankApi.list({ status: 'published', limit: 1000 }),
+          examApi.list({ status: 'published', limit: 1000 }),
           evaluationBatchApi.list({ limit: 1000 }),
           examUsageApi.center().catch(() => []),
         ])
@@ -169,14 +170,15 @@ export default function LandingHomePage() {
           if (b.id && b.name) map.set(b.id, b.name)
         })
         setBatchNames(map)
-      } catch {
-        // ignore
+      } catch (err) {
+        // 首屏加载失败给出用户可见提示，避免静默渲染空列表误导用户
+        setLoadError(err instanceof Error ? err.message : t('加载失败'))
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [t])
 
   const centerStats = useMemo(() => {
     const total = centerItems.length
@@ -377,9 +379,15 @@ export default function LandingHomePage() {
         },
       ]}
       beforeList={
-        loading ? (
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-6" />
-        ) : centerItems.length > 0 ? (
+        <>
+          {loadError && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
+              {t('资源加载失败，请刷新重试')}
+            </div>
+          )}
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-6" />
+          ) : centerItems.length > 0 ? (
           <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-6 overflow-hidden">
             <div className="px-6 pt-6 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100">
               <div className="flex items-start gap-4">
@@ -589,6 +597,8 @@ export default function LandingHomePage() {
             </div>
           </div>
         )
+        }
+        </>
       }
       filterTitle={t('资源筛选')}
       filterRows={

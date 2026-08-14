@@ -998,7 +998,8 @@ export default function GradingDetailPage() {
             )}
             {rdQuestions.map((q, idx) => (
               <DrawnQuestionCard
-                key={`${q.id}-${oralAnswers[q.id] || ''}`}
+                // key 只保留 q.id：失焦提交口头回答后 oralAnswers 变化不应导致整卡卸载重挂载（局部 state/焦点丢失）
+                key={q.id}
                 question={q}
                 index={idx}
                 oralAnswer={oralAnswers[q.id] || ''}

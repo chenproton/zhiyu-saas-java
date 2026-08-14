@@ -109,6 +109,8 @@ export default function BankDetailPage() {
   const [bank, setBank] = useState<QuestionBank | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(!!id)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('全部')
   const [showAllAnswers, setShowAllAnswers] = useState(false)
@@ -120,6 +122,7 @@ export default function BankDetailPage() {
     if (!id || authLoading || isEditorPreview) return
     const fetchData = async () => {
       setLoading(true)
+      setLoadError(null)
       try {
         await Promise.all([
           Promise.all([
@@ -130,9 +133,13 @@ export default function BankDetailPage() {
               setBank(mergeBankSnapshot(live, snap.question_bank))
               setQuestions(bankSnapshotQuestions(snap))
             })
-            .catch(() => {
+            .catch((err: any) => {
+              // 区分「确实不存在/未公开」（404）与网络/服务端瞬时错误，后者给出错误提示与重试入口
               setBank(null)
               setQuestions([])
+              if (err?.status !== 404) {
+                setLoadError(err instanceof Error ? err.message : t('加载失败'))
+              }
             }),
           knowledgeApi
             .list({ limit: 1000 })
@@ -150,7 +157,7 @@ export default function BankDetailPage() {
       }
     }
     fetchData()
-  }, [id, authLoading, isEditorPreview])
+  }, [id, authLoading, isEditorPreview, reloadKey, t])
 
   // live 路径（教师/管理员预览）：保持原多接口组装
   useEffect(() => {
@@ -235,16 +242,41 @@ export default function BankDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
         <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-          <div className="w-20 h-20 mb-5 rounded-3xl bg-slate-100 flex items-center justify-center">
-            <Library className="w-10 h-10 opacity-40" />
-          </div>
-          <div className="text-lg font-semibold text-slate-600">{t('题库不存在或暂未公开')}</div>
-          <Link
-            href="/evaluation/landing"
-            className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium"
-          >
-            {t('返回测评首页')}
-          </Link>
+          {loadError ? (
+            <>
+              <div className="w-20 h-20 mb-5 rounded-3xl bg-red-50 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-red-400" />
+              </div>
+              <div className="text-lg font-semibold text-slate-600">{t('加载失败')}</div>
+              <div className="mt-2 text-sm text-slate-400 max-w-md text-center">{loadError}</div>
+              <Button
+                variant="outline"
+                className="mt-3 text-sm"
+                onClick={() => setReloadKey((k) => k + 1)}
+              >
+                {t('重试')}
+              </Button>
+              <Link
+                href="/evaluation/landing"
+                className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium"
+              >
+                {t('返回测评首页')}
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="w-20 h-20 mb-5 rounded-3xl bg-slate-100 flex items-center justify-center">
+                <Library className="w-10 h-10 opacity-40" />
+              </div>
+              <div className="text-lg font-semibold text-slate-600">{t('题库不存在或暂未公开')}</div>
+              <Link
+                href="/evaluation/landing"
+                className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium"
+              >
+                {t('返回测评首页')}
+              </Link>
+            </>
+          )}
         </div>
         <Footer className="mt-auto" />
       </div>

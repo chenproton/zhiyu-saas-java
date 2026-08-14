@@ -7,7 +7,7 @@ import { EvaluationListTable } from '@/components/evaluation/evaluation-list-tab
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
 import { examApi, evaluationBatchApi, approvalApi, importExportApi } from '@/lib/api'
 import type { ContentBatch } from '@/components/shared/content-list-page'
-import type { ExamFormData, Exam, EvaluationBatch } from '@/lib/types'
+import type { ExamFormData, Exam, EvaluationBatch, ExamQuestion } from '@/lib/types'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@zhiyu/ui'
 import { reportError } from '@/lib/error-handling'
@@ -29,10 +29,10 @@ interface ExamItem {
   collaboratorNames: string[]
   creatorName: string
   updatedAt: string
-  questions: any[]
+  questions: ExamQuestion[]
 }
 
-function mapExamItem(backend: any, _currentUserId: string): ExamItem {
+function mapExamItem(backend: Exam, _currentUserId: string): ExamItem {
   return {
     id: backend.id,
     name: backend.name,
@@ -52,7 +52,7 @@ function mapExamItem(backend: any, _currentUserId: string): ExamItem {
   }
 }
 
-function mapBatch(backend: any): ContentBatch {
+function mapBatch(backend: EvaluationBatch): ContentBatch {
   return { id: backend.id, name: backend.name, workflowId: backend.workflowId }
 }
 

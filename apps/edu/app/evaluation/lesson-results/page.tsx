@@ -80,9 +80,9 @@ function LessonResultsPageContent() {
       try {
         const [courseRes, userRes] = await Promise.all([
           courseApi
-            .list({ status: 'published', limit: 1000 } as any)
-            .catch(() => ({ items: [] as any[] })),
-          userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
+            .list({ status: 'published', limit: 1000 })
+            .catch(() => ({ items: [] })),
+          userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] })),
         ])
         const loadedCourses = (courseRes.items || []).filter(
           (c: any) => c.type === 'system' || c.type === 'hybrid',
@@ -109,9 +109,9 @@ function LessonResultsPageContent() {
     if (!selectedCourseId) return
     const seq = ++courseResultSeqRef.current
     courseNodeApi
-      .list({ courseId: selectedCourseId, limit: 1000 } as any)
+      .list({ courseId: selectedCourseId, limit: 1000 })
       .then((res) => {
-        if (seq === courseResultSeqRef.current) setNodes((res.items || []) as any)
+        if (seq === courseResultSeqRef.current) setNodes(res.items || [])
       })
       .catch(() => {
         if (seq === courseResultSeqRef.current) setNodes([])
@@ -244,7 +244,12 @@ function LessonResultsPageContent() {
             {filteredCourses.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setSelectedCourseId(c.id)}
+                onClick={() => {
+                  // 切换课程先清空旧课程数据，避免新数据返回前短暂展示上一课程的节点/提交记录（seq 守卫防乱序覆盖）
+                  setNodes([])
+                  setResults([])
+                  setSelectedCourseId(c.id)
+                }}
                 className={cn(
                   'w-full text-left rounded-xl p-3 transition-all border',
                   selectedCourseId === c.id

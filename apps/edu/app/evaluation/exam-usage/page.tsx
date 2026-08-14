@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send, PencilLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useData } from '@/components/providers/data-provider'
-import { TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
+import { TableEmptyRow, FormDialogFooter, toast } from '@zhiyu/ui'
 import { SearchInput } from '@/components/shared/search-input'
 import { PageHeaderCard } from '@/components/shared/page-header-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -98,28 +98,29 @@ export default function ExamUsagePage() {
     'manual' | 'scheduled' | 'always'
   >('manual')
 
-  const loadUsages = async () => {
+  // 列表接口显式带 limit：后端默认仅返回 50 条（封顶 200），不传会静默截断考试安排
+  const fetchUsages = useCallback(async () => {
+    const res = await examUsageApi.list({ limit: 200 })
+    setUsages(res.items)
+  }, [])
+
+  // 事件触发的重新加载（带 loading 态）；初始加载走 fetchUsages，避免在 effect 内同步置位 loading
+  const loadUsages = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await examUsageApi.list()
-      setUsages(res.items)
+      await fetchUsages()
     } finally {
       setLoading(false)
     }
-  }
+  }, [fetchUsages])
 
   useEffect(() => {
     // 初始加载：loading 初始值已为 true，无需在此同步设置
     const load = async () => {
-      try {
-        const res = await examUsageApi.list()
-        setUsages(res.items)
-      } finally {
-        setLoading(false)
-      }
+      await fetchUsages()
     }
-    load()
-  }, [])
+    void load()
+  }, [fetchUsages])
 
   const examMap = useMemo(() => {
     const map = new Map(exams.map((e) => [e.id, e]))
@@ -232,8 +233,13 @@ export default function ExamUsagePage() {
       resetForm()
       setEditingUsage(null)
       await loadUsages()
-    } catch (err) {
+    } catch (err: any) {
       reportError(err, editingUsage ? '编辑考试安排' : '创建考试安排')
+      toast({
+        variant: 'destructive',
+        title: t(editingUsage ? '编辑考试失败' : '创建考试失败'),
+        description: err?.message || t('请稍后重试'),
+      })
     } finally {
       setCreateSubmitting(false)
     }
@@ -242,8 +248,13 @@ export default function ExamUsagePage() {
   const handlePublish = async (id: string) => {
     try {
       await examUsageApi.publish(id)
-    } catch (err) {
+    } catch (err: any) {
       reportError(err, '开启考试')
+      toast({
+        variant: 'destructive',
+        title: t('开启考试失败'),
+        description: err?.message || t('请稍后重试'),
+      })
       return
     }
     await loadUsages()
@@ -252,8 +263,13 @@ export default function ExamUsagePage() {
   const handleFinish = async (id: string) => {
     try {
       await examUsageApi.finish(id)
-    } catch (err) {
+    } catch (err: any) {
       reportError(err, '停止考试')
+      toast({
+        variant: 'destructive',
+        title: t('停止考试失败'),
+        description: err?.message || t('请稍后重试'),
+      })
       return
     }
     await loadUsages()
@@ -271,8 +287,13 @@ export default function ExamUsagePage() {
       setConfirmDeleteOpen(false)
       setDeletingUsageId(null)
       await loadUsages()
-    } catch (err) {
+    } catch (err: any) {
       reportError(err, '删除考试安排')
+      toast({
+        variant: 'destructive',
+        title: t('删除考试安排失败'),
+        description: err?.message || t('请稍后重试'),
+      })
     }
   }
 

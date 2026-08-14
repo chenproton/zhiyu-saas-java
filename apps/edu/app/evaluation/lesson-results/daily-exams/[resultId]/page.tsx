@@ -134,8 +134,13 @@ export default function DailyExamGradingPage() {
     computeTotalScore(result?.totalScore, exam?.totalScore, examQuestions)
 
   const pendingQuestions = useMemo(() => {
+    // 与 allScored 口径一致：0 分主观题视为无需评分，不纳入待评分计数
     return examQuestions.filter(
-      (q: any) => !isAutoQuestion(q) && !gradedIds.has(q.id) && (pointScores[q.id] ?? 0) === 0,
+      (q: any) =>
+        !isAutoQuestion(q) &&
+        q.score !== 0 &&
+        !gradedIds.has(q.id) &&
+        (pointScores[q.id] ?? 0) === 0,
     )
   }, [examQuestions, pointScores, gradedIds])
 
@@ -164,6 +169,8 @@ export default function DailyExamGradingPage() {
       })
       await examResultApi.grade(result.id, { scores, comment: comment || undefined })
       setSaved(true)
+      // 重试成功后复位失败标记，避免同时展示「已提交」徽标与「保存失败」红字
+      setSaveFailed(false)
     } catch (e) {
       reportError(e, '保存评分')
       setSaveFailed(true)
