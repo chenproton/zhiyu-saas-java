@@ -6266,6 +6266,7 @@
 | 035-036 遗留 | （并入 fix-batch-2） | portal.go 17 处行扫描吞错补 Warn、partner_store 4 处 JSON 解析吞错补 Warn、导入 findOrCreate 插入/回查错误补 Warn、删除无租户且无调用方的 NodeEvaluationResult.Get（Submit 回读改走 GetByID 租户限定）；4 个 P1 均已在首轮大修复解决（imports ClassIDs panic、fetchExamUsage 补租户、聚合先过滤、BulkUpdateScores unnest） |
 | 039-040 | 无需补修 | 7 项 P2 均无需代码修改：scheduling 6 处列表扫描已带 Warn（546bfe99 批次）、场景/职称删除与更新无 SQL 租户条件（handler 层 verifyTenantOwnership/crud CheckOwnership 已覆盖）、排课批量插入与快照颗粒课 N+1 属低频管理路径、快照唯一约束不含租户实际不可达 |
 | 067-068 遗留 | （并入 fix-batch-2） | 教师列表职称 Badge key 改用职称 id；其余已由大修复与 063-078 批次修复（roles 订阅 null 同口径、payload 仅提交可编辑字段、openUsersDialog 独立错误态、学生/教师密码 type=password、refetch 移入 try、industries parentMap 索引化+空值 toast、tenant as any 改类型断言、login doLogin 失败清 token、管理员初始密码引导语） |
+| 095-096 | 无需补修 | 6 项 P2 已由 079-103 批次修复（alliance-dicts 失败不缓存、job-converters 区间单调、format-utils Windows 11 build 判定）；alliance-links 部分同步需后端批量端点、evaluation-rule-store 类型建模、external-links 演示地址默认值属部署配置项，均评估后不改 |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6307,6 +6308,10 @@
 - tenant 联系电话输入双写 phone/contactPhone（需确认后端两字段语义，评估后不改，见 067-068）
 - roles generateRoleCode 依赖前端列表计算后缀（列表加载失败时可碰撞；需后端生成编码，低概率，见 067-068）
 - school-admin-manager 初始密码 toast 明文（一次性告知 + 已引导立即修改，属产品设计，见 067-068）
+- alliance-links 协议/项目同步串行 2×N 且失败部分同步（需后端批量端点，非核心低频，见 095-096）
+- evaluation-rule-store resourceConfig 用 Record<string,any>（窄接口建模属大规模类型改造，见 095-096）
+- external-links 六平台地址默认回退演示环境（部署需配置 NEXT_PUBLIC_* 环境变量，属部署配置项，见 095-096）
+- navigation-config sideNavItems/userMenuItems、menu-permissions 审批 actions、resource-type-constants 四张并行映射等 4 处复用候选（机械重构，漂移风险低，评估后不改，见 095-096）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）
