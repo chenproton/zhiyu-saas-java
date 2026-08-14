@@ -46,7 +46,8 @@
 
 - **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图再写代码；新增/变更行为必须同步 spec。见 [`docs/spec-standards.md`](docs/spec-standards.md)。
 - **简单优先**：不过度防御；小概率异常宁可容忍；核心业务加锁防重复，普通业务允许报错或重复插入；核心接口保流畅，非核心允许等待。
-- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。速查见 [`docs/components.md`](docs/components.md)、[`docs/forms-tables.md`](docs/forms-tables.md)。
+- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端速查见 [`docs/components.md`](docs/components.md)、[`docs/forms-tables.md`](docs/forms-tables.md)；后端速查见 [`docs/backend-reuse.md`](docs/backend-reuse.md)。
+- **性能自检（温和，写代码时自问，不硬拦）**：涉及列表/批量/聚合的代码，写完自问——① 有没有循环内逐条 SQL（N+1）？应改 JOIN / `IN($N)` / 批量；② 列表/聚合查询有没有显式 LIMIT 或「数据量有界」的论证？③ 新增后台任务/goroutine 有没有超时 + panic 兜底 + 去重？④ 新增外部 HTTP 调用有没有设 timeout？「简单优先」指代码形状简单（一行 JOIN 与十行循环一样简单），不代表可以先写 N+1 再说。详见 [`docs/code-review-checklist.md`](docs/code-review-checklist.md)。
 
 ## 三、硬性架构约束（安全 + 架构合理的落地红线）
 
@@ -116,6 +117,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 后端分层红线细节 | [`refactor-layering.md`](docs/refactor-layering.md) |
 | AI 底座架构 | [`ai-development.md`](docs/ai-development.md) |
 | 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
+| 后端复用速查 | [`backend-reuse.md`](docs/backend-reuse.md) |
 | 架构决策为什么 | [`decisions/`](docs/decisions/README.md)（ADR） |
 | 审 PR 语义检查 | [`code-review-checklist.md`](docs/code-review-checklist.md) |
 | 写/审文档 | [`documentation-standards.md`](docs/documentation-standards.md) + [`prose-standards.md`](docs/prose-standards.md) |

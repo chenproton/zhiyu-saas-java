@@ -866,6 +866,8 @@ if $BUILD_BACKEND; then
     else
       warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
     fi
+    # spec 硬约束（分层红线/AI 底座/migration 配对/spec 制品/ADR 索引/安全）
+    "$PROJECT_ROOT/scripts/spec-check.sh" || die "spec-check.sh 硬约束校验失败"
   else
     log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
   fi

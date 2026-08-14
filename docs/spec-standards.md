@@ -57,6 +57,7 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 3. **测试** 至少一种（handler/service/store 单测，见 `refactor-layering.md` 红线）。
 4. **契约** API 变更同步 `02-api-contract.md` 或子平台 spec 的 API 章节；migration 配对 `.down.sql`。
 5. **边界** spec 的「扩展性预留」未写「暂不做」的东西，若实现发现实际做了，要么补 spec，要么删除代码。
+6. **复用评估** 新建公共抽象（组件/函数/hook/store 方法）前已查 `components.md` / `forms-tables.md` / `refactor-layering.md` 复用资产 + 相关 ADR，并**同步登记速查表**；能复用而未复用的需在 commit 说明理由。
 
 ## 五、规格的放置与命名
 

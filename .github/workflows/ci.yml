@@ -90,3 +90,6 @@ jobs:
       - name: go test
         working-directory: backend
         run: go test ./...
+
+      - name: spec 硬约束校验
+        run: ./scripts/spec-check.sh

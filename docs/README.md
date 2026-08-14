@@ -10,7 +10,7 @@
 |---|---|
 | 任何开发任务的**第一步** | [`../AGENTS.md`](../AGENTS.md)（契约 + spec-first 硬约束） |
 | **新增/变更功能** | [`spec-standards.md`](spec-standards.md)（spec 分级/模板/DoD + 7 节点闭环）→ 对应 [`spec/`](spec/) |
-| **写/改后端代码** | [`refactor-layering.md`](refactor-layering.md)（分层红线） |
+| **写/改后端代码** | [`refactor-layering.md`](refactor-layering.md)（分层红线）+ [`backend-reuse.md`](backend-reuse.md)（后端复用速查） |
 | **写/改前端页面组件** | [`components.md`](components.md)（组件复用速查）+ [`forms-tables.md`](forms-tables.md)（表单/表格盘点） |
 | **写/改 AI 功能** | [`ai-development.md`](ai-development.md)（AIService 统一底座） |
 | **写/审任何文档** | [`documentation-standards.md`](documentation-standards.md)（分层 + 砍废话）+ [`prose-standards.md`](prose-standards.md)（文字品控） |
@@ -50,6 +50,7 @@ docs/
 ├── code-review-checklist.md     # 审 PR 语义检查
 ├── simplification-notes.md      # 简化审计 + Agent Note
 ├── refactor-layering.md         # 后端分层红线
+├── backend-reuse.md             # 后端可复用资产速查
 ├── ai-development.md            # AI 统一底座
 ├── components.md                # 组件复用速查
 ├── forms-tables.md              # 表单/表格架构盘点
