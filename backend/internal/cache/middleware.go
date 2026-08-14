@@ -100,21 +100,25 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.Handler) http.Handler {
+// RateLimit 按客户端 IP 限流。namespace 区分不同限流场景（login/captcha/theme/public-read 等）：
+// 各场景必须有独立计数桶，共用同一 key 会导致高频场景（如主题读取）耗尽低频场景
+// （如验证码 10 次/分钟）的额度，把无关请求误限为 429。
+func RateLimit(client *redis.Client, namespace string, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return rateLimitWithKey(client, limit, window, func(r *http.Request) string {
-		return "zhiyu:ratelimit:" + clientIP(r)
+		return "zhiyu:ratelimit:" + namespace + ":" + clientIP(r)
 	})
 }
 
 // RateLimitByUser 按登录用户限流（未登录退回 IP 维度），
 // 用于导入/导出/上传等对"单用户资源消耗"更敏感的接口。
-func RateLimitByUser(client *redis.Client, limit int, window time.Duration) func(http.Handler) http.Handler {
+// namespace 与 RateLimit 同理：不同场景独立计数桶。
+func RateLimitByUser(client *redis.Client, namespace string, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return rateLimitWithKey(client, limit, window, func(r *http.Request) string {
 		uid := middleware.CurrentUser(r)
 		if uid != nil && uid.UserID != "" {
-			return "zhiyu:ratelimit:user:" + uid.UserID
+			return "zhiyu:ratelimit:user:" + namespace + ":" + uid.UserID
 		}
-		return "zhiyu:ratelimit:" + clientIP(r)
+		return "zhiyu:ratelimit:" + namespace + ":" + clientIP(r)
 	})
 }
 

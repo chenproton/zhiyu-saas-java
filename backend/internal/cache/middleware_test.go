@@ -8,12 +8,56 @@ import (
 	"time"
 )
 
+// TestRateLimitNamespaceIsolation 验证不同 namespace 的限流器使用独立计数桶：
+// 场景 A（如主题读取）高频请求不得挤占场景 B（如验证码）的额度。
+// 回归背景：历史上所有 RateLimit 共享同一 Redis key（zhiyu:ratelimit:<ip>），
+// 冒烟巡检的高频主题/公开读取把验证码 10 次/分钟额度耗尽，登录被误限 429。
+func TestRateLimitNamespaceIsolation(t *testing.T) {
+	const limitA = 2
+	const limitB = 5
+	const window = time.Minute
+	limiterA := RateLimit(nil, "ns-a", limitA, window)
+	limiterB := RateLimit(nil, "ns-b", limitB, window)
+
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handlerA := limiterA(next)
+	handlerB := limiterB(next)
+
+	req := func(h http.Handler) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+		return rec
+	}
+
+	// 场景 A 打满自己的额度
+	for i := 0; i < limitA; i++ {
+		if rec := req(handlerA); rec.Code != http.StatusOK {
+			t.Fatalf("ns-a request %d: got status %d, want 200", i+1, rec.Code)
+		}
+	}
+	if rec := req(handlerA); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("ns-a over limit: got status %d, want 429", rec.Code)
+	}
+
+	// 场景 B 不受影响：仍按自身额度放行
+	for i := 0; i < limitB; i++ {
+		if rec := req(handlerB); rec.Code != http.StatusOK {
+			t.Fatalf("ns-b request %d: got status %d, want 200（namespace 应隔离计数）", i+1, rec.Code)
+		}
+	}
+	if rec := req(handlerB); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("ns-b over limit: got status %d, want 429", rec.Code)
+	}
+}
+
 // TestRateLimitMemoryFallback 验证 client == nil 时降级为内存限流：
 // limit 次内放行、超限 429 且响应头/响应体正确（不依赖真实 Redis）。
 func TestRateLimitMemoryFallback(t *testing.T) {
 	const limit = 3
 	const window = time.Minute
-	limiter := RateLimit(nil, limit, window)
+	limiter := RateLimit(nil, "test", limit, window)
 
 	var hits int
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +113,7 @@ func TestRateLimitMemoryFallback(t *testing.T) {
 func TestRateLimitMemoryWindowReset(t *testing.T) {
 	const limit = 2
 	const window = 50 * time.Millisecond
-	limiter := RateLimit(nil, limit, window)
+	limiter := RateLimit(nil, "test", limit, window)
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

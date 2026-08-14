@@ -36,11 +36,11 @@ func RegisterAPIRoutes(r chi.Router, jwtSecret, jwtSecretPrevious string, db *pg
 }
 
 func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) {
-	loginLimiter := cache.RateLimit(redisClient, 30, time.Minute)
+	loginLimiter := cache.RateLimit(redisClient, "login", 30, time.Minute)
 	// 验证码生成有图片合成开销，按 IP 收紧限流防刷爆 CPU
-	captchaLimiter := cache.RateLimit(redisClient, 10, time.Minute)
+	captchaLimiter := cache.RateLimit(redisClient, "captcha", 10, time.Minute)
 	// 主题读取：公开端点返回租户主题色，按 IP 限流防扫描（纵深防御，成本极低）
-	themeLimiter := cache.RateLimit(redisClient, 120, time.Minute)
+	themeLimiter := cache.RateLimit(redisClient, "theme", 120, time.Minute)
 	r.With(captchaLimiter).Get("/auth/captcha", h.captchaHandler.Get)
 	r.With(loginLimiter).Post("/auth/login", h.authHandler.Login)
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
@@ -65,14 +65,14 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 	cachedDashboard := cache.Cached(redisClient, 30*time.Second, cache.DashboardKey())
 
 	// 导入/导出/上传涉及大文件与批量写入，按用户限流防资源耗尽
-	importExportLimiter := cache.RateLimitByUser(redisClient, 10, time.Minute)
-	uploadLimiter := cache.RateLimitByUser(redisClient, 20, time.Minute)
+	importExportLimiter := cache.RateLimitByUser(redisClient, "import-export", 10, time.Minute)
+	uploadLimiter := cache.RateLimitByUser(redisClient, "upload", 20, time.Minute)
 	// AI 对话/生成按用户限流：LLM 调用按 token 计费，防单用户/单会话打爆租户额度
-	aiLimiter := cache.RateLimitByUser(redisClient, 20, time.Minute)
+	aiLimiter := cache.RateLimitByUser(redisClient, "ai", 20, time.Minute)
 	// 密码写操作（改密/重置）按用户限流，防暴力试旧密码/批量重置
-	passwordLimiter := cache.RateLimitByUser(redisClient, 10, time.Minute)
+	passwordLimiter := cache.RateLimitByUser(redisClient, "password", 10, time.Minute)
 	// 公开只读接口按 IP 限流防爬（登录公开的联盟前台等）
-	publicReadLimiter := cache.RateLimit(redisClient, 120, time.Minute)
+	publicReadLimiter := cache.RateLimit(redisClient, "public-read", 120, time.Minute)
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
