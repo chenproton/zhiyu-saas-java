@@ -10,6 +10,15 @@ const nextConfig = {
     unoptimized: true,
   },
   transpilePackages: ['@zhiyu/ui', '@zhiyu/api-client', '@zhiyu/shared-types'],
+  // file-viewer 的 renderer-mindmap 依赖 @ljheee/xmind-parser，其 utils.js 里有被
+  // process.versions.node 守卫的 `import('fs/promises')`，浏览器永不执行但 Turbopack 仍会
+  // 静态解析导致构建失败；将 fs/fs/promises 映射到空桩即可正常打包（见 lib/fs-stub.ts）。
+  turbopack: {
+    resolveAlias: {
+      fs: './lib/fs-stub.ts',
+      'fs/promises': './lib/fs-stub.ts',
+    },
+  },
   env: {
     NEXT_PUBLIC_DEFAULT_PLATFORM: 'portal',
   },

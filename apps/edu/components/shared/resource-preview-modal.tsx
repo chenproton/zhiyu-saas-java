@@ -10,7 +10,6 @@ import { fileApi } from '@zhiyu/api-client'
 import type { TaskResource } from '@/lib/types'
 import { isSafeExternalUrl } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
-import ZipPreview, { isZipUrl } from '@/components/shared/zip-preview'
 import FileViewerPreview, { isFileViewerUrl } from '@/components/shared/file-viewer-preview'
 
 const MIN_WIDTH = 320
@@ -101,7 +100,7 @@ function ResourcePreviewModalInner({
   }, [])
 
   useEffect(() => {
-    if (!open || !resource?.url || isZipUrl(resource.url)) return
+    if (!open || !resource?.url) return
     const url = resource.url
     let cancelled = false
     const apply = (u: string) => {
@@ -291,12 +290,11 @@ function ResourcePreviewModalInner({
 
         <div className="flex-1 min-h-0 mt-2 border rounded overflow-hidden bg-gray-100">
           {resource?.url ? (
-            isZipUrl(resource.url) ? (
-              <ZipPreview key={resource.url} url={resource.url} name={resource.name} />
-            ) : isFileViewerUrl(resource.url) && previewSrc ? (
-              // office/pdf/文本 走浏览器原生 file-viewer（纯前端，无服务端转换）
+            isFileViewerUrl(resource.url) && previewSrc ? (
+              // file-viewer 支持的格式优先走浏览器原生渲染（纯前端，无服务端转换）
               <FileViewerPreview key={resource.url} url={previewSrc} name={resource.name} />
             ) : iframeSrc ? (
+              // file-viewer 不支持的格式回退 kkfileview
               <iframe
                 ref={iframeRef}
                 src={iframeSrc}

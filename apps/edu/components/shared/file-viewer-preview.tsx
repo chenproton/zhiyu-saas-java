@@ -2,15 +2,17 @@
 
 import { useEffect, useState, memo } from 'react'
 import { FileText } from 'lucide-react'
+import { DEFAULT_SUPPORTED_EXTENSIONS } from '@file-viewer/core'
 import { useT } from '@/lib/i18n/locale-provider'
 
 // flyfish-dev/file-viewer：浏览器原生（无服务端转换）的文件预览渲染器。
-// 与 kkfileview（服务端转换 + iframe）不同，它在浏览器内 fetch 文件并直接渲染
-// office/pdf 等格式，无需独立预览服务容器。
+// 与 kkfileview（服务端转换 + iframe）不同，它在浏览器内 fetch 文件并直接渲染，
+// 无需独立预览服务容器。
 //
-// 组件懒加载 + import('@file-viewer/preset-office') 会触发 registerFileViewerAutoRendererPreset
-// 副作用，使 office/pdf 渲染器自动注册到 FileViewer 的 renderer registry
-// （autoRenderers 默认开启，见 createViewer 的 ensureRendererPluginsInstalled）。
+// @file-viewer/preset-all 一次性注册全部 25 条预览链路（office/pdf/压缩包/邮件/CAD/3D/
+// 地理/脑图/绘图/电子书/图片/音视频/代码文本/字体/设计/数据等），覆盖 DEFAULT_SUPPORTED_EXTENSIONS
+// 的 208 个扩展名。组件懒加载 preset-all + react，autoRenderers 默认开启时自动注入 renderer registry
+// （见 core createViewer 的 ensureRendererPluginsInstalled）。
 interface FileViewerPreviewProps {
   url: string
   name?: string
@@ -25,11 +27,8 @@ function FileViewerPreviewInner({ url, name }: FileViewerPreviewProps) {
 
   useEffect(() => {
     let cancelled = false
-    // preset-office 必须先于 FileViewer 挂载加载，注册 office/pdf 渲染器
-    Promise.all([
-      import('@file-viewer/preset-office'),
-      import('@file-viewer/react'),
-    ])
+    // preset-all 必须先于 FileViewer 挂载加载，注册全部渲染器
+    Promise.all([import('@file-viewer/preset-all'), import('@file-viewer/react')])
       .then(([, reactMod]) => {
         if (!cancelled) setMod(reactMod)
       })
@@ -73,14 +72,26 @@ function FileViewerPreviewInner({ url, name }: FileViewerPreviewProps) {
 export const FileViewerPreview = memo(FileViewerPreviewInner)
 export default FileViewerPreview
 
-/**
- * 判断某 URL 是否应交给 file-viewer 渲染。
- * zip 走自研 ZipPreview（解压列举），其余非图片/音视频的 office/pdf/文本交 file-viewer。
- * 图片与音视频浏览器原生支持，继续保留在原有 iframe 分支内。
- */
-const OFFICE_EXT_RE =
-  /\.(doc|docx|docm|dot|dotx|dotm|ppt|pptx|pptm|potx|potm|ppsx|ppsm|xls|xlsx|xlsm|xlsb|xlt|xltx|xltm|csv|tsv|ods|fods|numbers|pdf|ofd|rtf|odt|odp|txt|md|json|yaml|yml|xml|log|typ|typst)(\?|$)/i
+// file-viewer 支持扩展名的唯一事实源：DEFAULT_SUPPORTED_EXTENSIONS 由
+// core 的 registry/formats.ts（DEFAULT_RENDERER_DEFINITIONS 展开去重）派生，
+// v2.2.9 共 208 个不重复扩展名。用 Set 加速判定。
+const SUPPORTED_EXTS = new Set<string>(
+  (DEFAULT_SUPPORTED_EXTENSIONS as readonly string[]).map((e) => e.toLowerCase()),
+)
 
+function extOf(url: string): string {
+  // 去掉查询串/片段，取路径最后一段的扩展名
+  const path = url.split(/[?#]/)[0]
+  const i = path.lastIndexOf('.')
+  return i < 0 ? '' : path.slice(i + 1).toLowerCase()
+}
+
+/**
+ * 判断某 URL 的扩展名是否属于 file-viewer 支持范围。
+ * file-viewer 优先：支持的格式一律走 FileViewerPreview；不支持的才回退 kkfileview。
+ */
 export function isFileViewerUrl(url: string | undefined | null): boolean {
-  return !!url && OFFICE_EXT_RE.test(url)
+  if (!url) return false
+  const ext = extOf(url)
+  return ext !== '' && SUPPORTED_EXTS.has(ext)
 }
