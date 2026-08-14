@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { scenarioApi, sceneBatchApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { Scenario, SceneBatch } from '@/lib/types/scene'
 import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
@@ -41,10 +42,18 @@ export default function SceneApprovalsPage() {
   const [batchMap, setBatchMap] = useState<Map<string, SceneBatch>>(new Map())
 
   useEffect(() => {
-    Promise.all([scenarioApi.list({ limit: 1000 }), sceneBatchApi.list({ limit: 1000 })])
+    // 全量分页拉取，避免场景/批次超过 1000 时名称回退显示原始 id
+    Promise.all([
+      fetchAllPages((page, pageSize) =>
+        scenarioApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      fetchAllPages((page, pageSize) =>
+        sceneBatchApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+    ])
       .then(([scenarioRes, batchRes]) => {
-        setScenarioMap(new Map(scenarioRes.items.map((s) => [s.id, s])))
-        setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
+        setScenarioMap(new Map(scenarioRes.map((s) => [s.id, s])))
+        setBatchMap(new Map(batchRes.map((b) => [b.id, b])))
       })
       .catch((err) => {
         handleLoadError(err, toast, t, '加载场景/批次列表失败', '加载场景/批次列表')

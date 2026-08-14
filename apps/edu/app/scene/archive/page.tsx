@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 
 import { scenarioApi, sceneBatchApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { formatDate } from '@/lib/format-utils'
 import type { Scenario } from '@/lib/types/scene'
 import { useToast, useAsync } from '@zhiyu/ui'
@@ -18,11 +19,16 @@ export default function SceneArchivePage() {
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const { data, loading, refresh } = useAsync(async () => {
+    // 全量分页拉取，避免归档场景/批次超过 1000 时回退显示原始 id
     const [scenarioRes, batchRes] = await Promise.all([
-      scenarioApi.list({ status: 'archived', limit: 1000 }),
-      sceneBatchApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) =>
+        scenarioApi.list({ status: 'archived', limit: pageSize, offset: page * pageSize }),
+      ),
+      fetchAllPages((page, pageSize) =>
+        sceneBatchApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
-    return { scenarios: scenarioRes.items, batches: batchRes.items }
+    return { scenarios: scenarioRes, batches: batchRes }
   })
 
   const { scenarios, batches } = data ?? {}

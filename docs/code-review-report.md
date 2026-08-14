@@ -6260,6 +6260,7 @@
 | 055-056 遗留 | 191b668d | 现场问答页专业列表改 fetchAllPages 全量拉取防截断（其余 21 项 P2 已由 051-062 批次修复：live 预览 cancelled/fetchAllPages、creatorName 优先、冗余 IIFE 移除、搜索定时器句柄化、ability 双层 try 收敛、majorNameMap useMemo、statCount 用 total、landing 时间窗口漂移、搜索词关闭重置、上传中忽略追加、kp code 防碰撞、my-resources 加载态守卫等） |
 | 089-090 遗留 | （并入 fix-batch-1） | eval-method-card 提交满分改读 resourceConfig.maxScore（缺失兜底 100）；其余 13 项 P2 已由 079-103 批次修复（knowledge-selector 全量分页/编辑同步/readOnly 删除按钮守卫/kp code 随机后缀、grading-card 分数外部同步、image-editor loaded 关闭重置、image-list addUrl 走 valueRef） |
 | 075-076 遗留 | （并入 fix-batch-1） | 雇主品牌引用岗位/学生弹窗 limit=200 截断改 fetchAllPages、superadmin JWT 解码两处收敛 parseJwtPayload、双 alliance-detail-shell 补边界注释；其余已由 063-078 批次修复（AI 字段 trim 兜底、克隆权重剩余分配不超 100、reorder/persistWeights 失败提示、主题色请求 catch、enablePublic 保存失败回滚、空 cleanup effect 与死注释清理、salaryText 收敛 formatSalaryRange） |
+| 071-072 遗留 | （并入 fix-batch-1） | 教师画像列表 limit=200、场景归档/审批页 limit=1000 三处改 fetchAllPages 全量拉取；其余已由首轮大修复与 063-078 批次修复（周次计算抽 schedule-utils、批量删除失败不弹成功 toast、roleConfigs 死代码/张老师/12.5% 徽标清理、能力点详情双重断言修正、账号安全图标下标耦合移除） |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
@@ -6284,6 +6285,8 @@
 - 场景任务链保存路径按任务串行 2-3 个 API（并行化涉及 409 重试/权重时序，改造风险高，任务链通常短，容忍，见 075-076）
 - handleSaveDraft/handleFinish 主体重复（30 行小重复，清晰可读，不抽，见 075-076）
 - 双 alliance-detail-shell 平行实现（合并为单一壳属视觉重构，已补注释说明边界，见 075-076）
+- workspace 教师课程/期末总评等演示 mock 空数据与硬编码跳转链接（数据接入真实 API 前保留演示占位，属产品排期，见 071-072）
+- workspace-schedule-grid YearView 事件归属占位伪逻辑（同演示占位，见 071-072）
 
 ## 验证结论
 - 后端：gofmt 0 违规；go vet ./... 通过；go build ./... 通过；store/middleware/cache/crypto/geo/mask 单测通过（含修复后的品牌夹具测试）

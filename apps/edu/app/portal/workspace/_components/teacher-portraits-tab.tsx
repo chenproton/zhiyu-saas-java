@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/table'
 import { jobAbilityResultApi } from '@/lib/api'
 import type { JobAbilityResult } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const gradeColorMap: Record<string, string> = {
@@ -90,11 +91,13 @@ export function TeacherPortraitsTab() {
 
   useEffect(() => {
     let cancelled = false
-    jobAbilityResultApi
-      .list({ limit: 200 })
+    // 全量分页拉取（该接口为 page/limit 分页，page 从 1 起），避免学生数 >200 时列表截断
+    fetchAllPages((page, pageSize) =>
+      jobAbilityResultApi.list({ page: page + 1, limit: pageSize }),
+    )
       .then((res) => {
         if (!cancelled) {
-          setAllResults(res.items || [])
+          setAllResults(res || [])
           setLoading(false)
         }
       })
