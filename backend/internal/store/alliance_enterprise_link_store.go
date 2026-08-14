@@ -98,7 +98,7 @@ func (s *AllianceEnterpriseLinkStore) EnsureLinksByEnterpriseIDs(ctx context.Con
 			EnterpriseType: "cooperation",
 			CreatedBy:      createdBy,
 		}); err != nil {
-			if isUniqueViolation(err) {
+			if IsUniqueViolation(err) {
 				continue
 			}
 			return err

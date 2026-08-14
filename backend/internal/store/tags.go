@@ -13,11 +13,6 @@ import (
 // ErrDuplicateTagName 标签名称已存在（租户内唯一）。
 var ErrDuplicateTagName = errors.New("duplicate tag name")
 
-// isUniqueViolation 判断是否为唯一键冲突（store 层独立实现，不依赖 handler 包）。
-func isUniqueViolation(err error) bool {
-	return IsUniqueViolation(err)
-}
-
 // TagStore 标签持久化：标签 CRUD、资源绑定关系维护、绑定批量查询。
 // SQL 全部收敛于此。
 type TagStore struct {
@@ -67,7 +62,7 @@ func (s *TagStore) Create(ctx context.Context, tenantID, name, color string) (*d
 		INSERT INTO tags (id, tenant_id, name, color)
 		VALUES ($1, $2, $3, $4)
 	`, id, tenantID, name, color); err != nil {
-		if isUniqueViolation(err) {
+		if IsUniqueViolation(err) {
 			return nil, ErrDuplicateTagName
 		}
 		return nil, err
@@ -81,7 +76,7 @@ func (s *TagStore) Update(ctx context.Context, tenantID, id, name, color string)
 		UPDATE tags SET name = $1, color = $2, updated_at = NOW()
 		WHERE id = $3 AND tenant_id = $4
 	`, name, color, id, tenantID); err != nil {
-		if isUniqueViolation(err) {
+		if IsUniqueViolation(err) {
 			return nil, ErrDuplicateTagName
 		}
 		return nil, err
