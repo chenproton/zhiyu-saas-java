@@ -6264,6 +6264,7 @@
 | 065-066 遗留 | （并入 fix-batch-1） | 登录/操作日志搜索改 fetchAllPages 分页全量拉取（后端 limit 上限 200，原单次 10000 被静默钳制导致搜索截断）；其余已由 063-078 批次修复（里程碑双重拉取去重、学校页失败态+重试、accounts 搜索回第一页+翻页清选择、positions 关联用户数用 userCount+仅展示前 N 提示、relations 搜索防抖、org-structure 总人数递归） |
 | 081-082 | 无需补修 | 15 项 P2 全部由 079-103 批次修复（AI apply 走 positionRef 最新快照、空名删职责同步清绑定、Escape 取消编辑、polish 可选链 trim、blob URL revoke、任职要求稳定 key、score-config 整数输入+仅打开时初始化、progress-dialog currentStep<0 契约、onView 走 basePath、分组锚点用职责 id） |
 | 035-036 遗留 | （并入 fix-batch-2） | portal.go 17 处行扫描吞错补 Warn、partner_store 4 处 JSON 解析吞错补 Warn、导入 findOrCreate 插入/回查错误补 Warn、删除无租户且无调用方的 NodeEvaluationResult.Get（Submit 回读改走 GetByID 租户限定）；4 个 P1 均已在首轮大修复解决（imports ClassIDs panic、fetchExamUsage 补租户、聚合先过滤、BulkUpdateScores unnest） |
+| 039-040 | 无需补修 | 7 项 P2 均无需代码修改：scheduling 6 处列表扫描已带 Warn（546bfe99 批次）、场景/职称删除与更新无 SQL 租户条件（handler 层 verifyTenantOwnership/crud CheckOwnership 已覆盖）、排课批量插入与快照颗粒课 N+1 属低频管理路径、快照唯一约束不含租户实际不可达 |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
