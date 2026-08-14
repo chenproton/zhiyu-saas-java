@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p ${EDU_PORT:-3020}",
+    "prebuild": "node scripts/copy-file-viewer-assets.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",

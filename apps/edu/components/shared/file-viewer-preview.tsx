@@ -65,6 +65,16 @@ function FileViewerPreviewInner({ url, name }: FileViewerPreviewProps) {
       filename={name}
       className="w-full h-full"
       style={{ width: '100%', height: '100%', minHeight: 0 }}
+      options={{
+        // CAD（DWG/DXF/DWF）的 worker/wasm 资产由 prebuild 脚本复制到
+        // public/wasm/cad/0.8.0/（见 scripts/copy-file-viewer-assets.mjs），
+        // 这里显式指向，避免 Turbopack/standalone 下自动推断的 worker 路径 404。
+        cad: {
+          workerUrl: '/wasm/cad/0.8.0/dwg-worker.js',
+          wasmPath: '/wasm/cad/0.8.0/',
+          dwfWasmUrl: '/wasm/cad/0.8.0/dwfv-render.wasm',
+        },
+      }}
     />
   )
 }

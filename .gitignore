@@ -51,3 +51,6 @@ offline/debs/*.deb
 # Image editor assets: 仓库中是指向 offline/image-editor 的符号链接，
 # deploy.sh 构建时会替换为实体文件；禁止把实体文件提交入库
 /apps/edu/public/image-editor/
+
+# file-viewer CAD WASM assets: 由 prebuild 脚本从 node_modules 复制生成，不提交入库
+/apps/edu/public/wasm/

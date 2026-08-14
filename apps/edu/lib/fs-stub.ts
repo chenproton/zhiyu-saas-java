@@ -29,4 +29,5 @@ export const promises = {
   readdir: noop,
 }
 
-export default { ...promises, createReadStream, createWriteStream }
+const fsStubDefault = { ...promises, createReadStream, createWriteStream }
+export default fsStubDefault
