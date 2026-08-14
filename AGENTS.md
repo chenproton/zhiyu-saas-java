@@ -96,35 +96,82 @@ deploy.sh 自动判断：首次运行 → 安装系统依赖、生成 .env、初
    - `node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`：依赖目录与构建/运行产物
 7. **默认不做端到端验证**：除非用户**主动要求**，不执行 UI Smoke 全站巡检、`--route` 单页巡检、浏览器自动化等端到端验证（包括新功能/修复完成后的验证环节）；本地验证以编译、类型检查、lint、单测为准，部署后的功能表现由用户人工确认
 
-## 九、规格、文档与决策规范（spec-first 制度框架）
+## 九、开发流程（新功能 / 修复 / 重构）
 
-> 本仓库由 AI 主导开发，以下规范是把「AI 协作者如何正确地写规格、文档、文字、做决策」固化为制度，防止意图漂移、过度设计、误改。
+> **这是 AI 接任务的统一执行流程。** 本仓库由 AI 完全主导开发，用户只负责给需求与关键决策点拍板。任何任务先判断属于下面哪一类，再按对应流程走完整闭环。流程细节的依据见 [`docs/spec-standards.md`](docs/spec-standards.md)「八、Spec 工作流」。
 
-### 9.1 规格（spec）规范
+### 任务三分类（先判对类型）
+
+| 类型 | 判断标准 | 走哪条流程 |
+|---|---|---|
+| **新功能** | 增加能力 / 新模块 / 新接口 | 走「新功能流程」（七节点闭环） |
+| **修复 bug** | 现有行为与 spec/预期不符 | 走「修复流程」 |
+| **重构** | 行为不变，仅改结构/可读性 | 走「重构流程」 |
+
+### 一）新功能流程（七节点闭环）
+
+1. **对齐意图（constitution）**：读 `AGENTS.md` + 相关 `docs/*.md` + `docs/decisions/`，确认本仓红线（分层、AI 底座、复用优先、spec-first）与既有决策（ADR）。**不写任何代码**。
+2. **明确需求（specify）**：把用户需求澄清为「做什么/为什么」，聚焦 **WHAT/WHY，不碰 HOW**（不写技术栈/表结构/代码组织）。需求不清晰时向用户提问。
+3. **制定方案（plan）**：把需求映射为技术方案——数据模型、API 契约、测试场景。**每个技术选择记录理由并回链到需求**。技术选型需拍板时提问。
+4. **拆解任务（tasks）**：从方案生成可执行任务清单，标注依赖与可并行项（`[P]` 标记）。
+5. **实现（implement）**：按任务写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束：代码行为必须同步进 spec）。走「一、分支隔离工作流」。
+6. **校验（analyze）**：跨制品一致性——spec↔代码↔测试是否对齐；跑 `./scripts/spec-check.sh`（硬约束）+ 语义自查（spec 说的有没有实现、代码做的有没有写进 spec）。
+7. **收敛（converge）**：对照 spec 评估实现，把「没做完 / 偏航 / 新增件」记回任务或 spec，形成下一轮迭代输入。
+
+### 二）修复 bug 流程
+
+1. **定位意图**：先读 spec 与 ADR，确认「正确行为」是什么（bug = 实现偏离了 spec 或合理预期）。
+2. **补测试**：先写/改一个能复现 bug 的测试（红）。
+3. **修复**：改代码让测试通过（绿）。**若修复改变行为 → 同步 spec**；纯 bug 修复（行为本就该如此）不需动 spec，但 commit message 说明。
+4. **校验**：`spec-check.sh` + 本地门禁 + `deploy.sh --branch` 部署。
+
+### 三）重构流程
+
+1. **确认行为不变**：重构必须是「语义等价变换」。若可能改变可观察行为 → 走「新功能/修复」流程，不是重构。
+2. **评估收益**：按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 给证据（调用点/consumer），判断是真的简化还是「有意为之」（查 ADR）。
+3. **执行**：改结构，**不同步 spec**（行为没变），commit message 说明「纯重构，行为不变」。
+4. **校验**：`spec-check.sh` + 全量门禁（`go test ./...`、`pnpm test`）确认无回归 + `deploy.sh --branch` 部署。
+
+### 通用硬性动作（三类流程都要）
+
+- **提交前必跑**（见「二、交付要求」第 3 条）：
+  ```bash
+  cd backend && go vet ./... && go build ./... && gofmt -l .
+  pnpm typecheck && pnpm lint && pnpm test
+  ./scripts/spec-check.sh
+  ```
+- **代码改动必走部署**：`./deploy.sh --branch <分支名>`（分支隔离工作流见「一」）。
+- **做完在响应里报告**：改了哪些文件、走了哪条流程、spec 是否同步、校验结果。
+
+## 十、规格、文档与决策规范（spec-first 制度框架）
+
+> 本仓库由 AI 主导开发，以下规范是把「AI 协作者如何正确地写规格、文档、文字、做决策」固化为制度，防止意图漂移、过度设计、误改。**细则入口见 [`docs/README.md`](docs/README.md)**。
+
+### 10.1 规格（spec）规范
 
 - 功能开发**先读 `docs/spec/` 对齐意图，再写代码**；新增/变更行为必须同步更新 spec（spec-first 硬约束）。
 - spec 的分级、模板、DoD 验收标准、代码↔spec 一致性红线，以及「需求→规格→方案→任务→实现→校验→收敛」的 7 节点闭环：见 [`docs/spec-standards.md`](docs/spec-standards.md)。
 - **硬约束自动校验**：每次提交前跑 `./scripts/spec-check.sh`（分层红线 / AI 底座 / migration 配对 / spec 五层齐备 / ADR 索引），拦截机器可判定的违规；语义一致性由 AI 在 analyze 节点补查。
 
-### 9.2 文档规范（分层 · 砍废话）
+### 10.2 文档规范（分层 · 砍废话）
 
 - 文档分「教程 vs 参考」两类；每个事实只有一个「权威家」，其余用链接。
 - 放置决策、教程/参考判定、砍「文档废话」清单：见 [`docs/documentation-standards.md`](docs/documentation-standards.md)。
 
-### 9.3 文字品控（Prose 规范）
+### 10.3 文字品控（Prose 规范）
 
 - 覆盖 Markdown / JSDoc / 代码注释 / 测试注释 / 提示词 / CLI·UI 文案：写够「保住契约」的文字，删掉「推理过程、重复、装饰」。
 - 判定与各类型「保什么、砍什么」：见 [`docs/prose-standards.md`](docs/prose-standards.md)。
 
-### 9.4 决策记录（ADR）
+### 10.4 决策记录（ADR）
 
 - 重要的、有取舍的架构决策写进 [`docs/decisions/`](docs/decisions/README.md)，记录「为什么这么做」；已接受决策不改写，改变则写新 ADR 并标注「取代」。
 - 改动若与某 ADR 冲突 → 视为设计讨论，需明确报告，不得擅自推翻。
 
-### 9.5 代码审查（审 PR / 审改动）
+### 10.5 代码审查（审 PR / 审改动）
 
 - 自动化门禁（gofmt/vet/typecheck/lint/test）只保证「编译/类型/格式正确」；「语义/契约/意图正确」需按 [`docs/code-review-checklist.md`](docs/code-review-checklist.md) 手动补查（分层红线、越权、生命周期、竞态、过度设计、AI 底座绕过）。
 
-### 9.6 简化审计（找可简化处）
+### 10.6 简化审计（找可简化处）
 
 - 「找可简化之处」按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 执行：给证据（调用点/consumer）、区分「简化 vs 改行为」、想法记成 Agent Note（提议态），**未确认前不改代码**。
