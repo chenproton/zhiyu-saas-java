@@ -206,9 +206,48 @@ for m in json.load(sys.stdin):
   return 0
 }
 
+# 迁移版本表规范化：migrate 工具以全名（如 "157_resource_creator_retain"）记录版本，
+# 历史 psql 兜底曾以裸数字（如 "157"）记录，导致已应用迁移被重复执行而失败回滚。
+# 规则（幂等，每次部署均可安全运行）：
+#   1. 裸数字行对应的全部全名均已存在 → 删除裸数字行（冗余记录）
+#   2. 裸数字行唯一对应一个迁移文件且全名缺失 → 改名为全名
+#   3. 裸数字对应多个迁移文件且全名记录不完整 → 无法判定归属，保留并警告人工确认
+normalize_migration_versions() {
+  local backend_dir="$1" migrate_url="$2"
+  local sql="" bare full all_full files=()
+  for bare in $(psql "$migrate_url" -Atc "SELECT version FROM schema_migrations WHERE version ~ '^[0-9]+\$';" 2>/dev/null || true); do
+    files=()
+    for f in "$backend_dir"/migrations/${bare}_*.up.sql; do
+      [[ -f "$f" ]] || continue
+      files+=("$(basename "$f" .up.sql)")
+    done
+    [[ ${#files[@]} -gt 0 ]] || continue
+    all_full=true
+    for full in "${files[@]}"; do
+      if [[ -z "$(psql "$migrate_url" -Atc "SELECT 1 FROM schema_migrations WHERE version='$full'" 2>/dev/null || true)" ]]; then
+        all_full=false
+      fi
+    done
+    if [[ "$all_full" == "true" ]]; then
+      sql+="DELETE FROM schema_migrations WHERE version='$bare';"
+    elif [[ ${#files[@]} -eq 1 ]]; then
+      sql+="UPDATE schema_migrations SET version='${files[0]}' WHERE version='$bare';"
+    else
+      warn "迁移版本 $bare 对应多个迁移文件且全名记录不完整，跳过自动规范化，请人工确认"
+    fi
+  done
+  [[ -n "$sql" ]] || return 0
+  if psql "$migrate_url" -v ON_ERROR_STOP=1 -c "$sql" >/dev/null 2>&1; then
+    log "  迁移版本表已规范化（裸数字版本对齐全名）"
+  else
+    warn "迁移版本表规范化失败，继续尝试 migrate 工具"
+  fi
+}
+
 # 执行数据库迁移；若 migrate 工具失败，使用 psql 兜底逐个执行未应用迁移文件
 run_migrations() {
   local backend_dir="$1" migrate_url="$2"
+  normalize_migration_versions "$backend_dir" "$migrate_url"
   if (cd "$backend_dir" && DATABASE_URL="$migrate_url" go run ./cmd/migrate/main.go up); then
     return 0
   fi
@@ -221,7 +260,7 @@ run_migrations() {
   for f in "$backend_dir"/migrations/*.up.sql; do
     [[ -f "$f" ]] || continue
     local version
-    version=$(basename "$f" | sed 's/_.*//')
+    version=$(basename "$f" .up.sql)
     if echo "$applied_versions" | grep -qx "$version"; then
       continue
     fi
@@ -569,6 +608,16 @@ if ! grep -q "^KK_MEDIA_CONVERT_DISABLE=" "$ENV_FILE" 2>/dev/null; then
   update_env_var "$ENV_FILE" "KK_MEDIA_CONVERT_DISABLE" "true"
   KK_MEDIA_CONVERT_DISABLE=true
 fi
+
+# 旧 .env 若未配置 AI_CONFIG_SECRET（租户 AI API Key 独立加密密钥），补写随机值。
+# 后端 config.Load 强制校验该变量（禁止回落 JWT_SECRET），旧 .env 缺失或留空都会导致
+# migrate/seed/server 启动失败并触发部署回滚；存量密文仍由后端用 JWT_SECRET 兜底解密。
+if ! grep -q "^AI_CONFIG_SECRET=..*" "$ENV_FILE" 2>/dev/null; then
+  AI_CONFIG_SECRET=$(rand_str 64)
+  update_env_var "$ENV_FILE" "AI_CONFIG_SECRET" "$AI_CONFIG_SECRET"
+  log "旧 .env 已补写 AI_CONFIG_SECRET"
+fi
+export AI_CONFIG_SECRET
 
 # 根据 .env 启用 docker compose profile，兼容 docker compose 与 docker-compose
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
