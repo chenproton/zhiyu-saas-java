@@ -160,6 +160,9 @@ services:
       KK_CONTEXT_PATH: /kkfileview
       KK_OFFICE_PREVIEW_TYPE: pdf
       KK_OFFICE_PREVIEW_SWITCH_DISABLED: "true"
+      # 该镜像逻辑：为 true 时远程 http(s) 视频（mov/avi/mkv 等 MEDIACONVERT 类型）才走 ffmpeg 转码预览，
+      # 否则直接返回"系统还不支持该格式文件的在线预览"
+      KK_MEDIA_CONVERT_DISABLE: "true"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8012/kkfileview/onlinePreview >/dev/null || exit 1"]
       interval: 10s
