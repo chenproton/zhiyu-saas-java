@@ -79,6 +79,7 @@ deploy.sh 自动做：源码 hash 增量构建、质量门禁（gofmt/vet + type
 | 节点 | 工具 |
 |---|---|
 | 2 需求澄清 | `ask_user_question`（每次只问一个关键决策） |
+| 2/3 需求与方案 | `spec_scaffold`（新模块按 10 节模板生成 docs/spec/<slug>.md 骨架，防结构漂移） |
 | 3/4 方案与任务 | `plan-mode`（大方案先 exit_plan_mode 给用户审）+ `todo_write` |
 | 5 实现 | `bash`（构建/测试）、`edit`/`write` |
 | 6/7 校验与收敛 | `spec_check`（机器硬约束）+ `spec_analyze`（子代理语义复查）+ `goal`（长任务跨轮驱动） |
