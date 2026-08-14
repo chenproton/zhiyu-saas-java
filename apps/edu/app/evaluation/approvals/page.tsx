@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { questionBankApi, examApi, evaluationBatchApi, approvalApi } from '@/lib/api'
+import { fetchAllPages } from '@zhiyu/api-client'
 import type { Exam, QuestionBank, EvaluationBatch } from '@/lib/types/evaluation'
 import type { ApprovalHistoryItem, ApprovalRecord } from '@/lib/types/backend'
 import { useApprovals } from '@/hooks/use-approvals'
@@ -59,15 +60,22 @@ export default function EvaluationApprovalsPage() {
   const [batchMap, setBatchMap] = useState<Map<string, EvaluationBatch>>(new Map())
 
   useEffect(() => {
+    // 全量分页拉取名称映射，避免后端 limit 封顶 200 导致映射截断
     Promise.all([
-      questionBankApi.list({ limit: 1000 }),
-      examApi.list({ limit: 1000 }),
-      evaluationBatchApi.list({ limit: 1000 }),
+      fetchAllPages((page, pageSize) =>
+        questionBankApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      fetchAllPages((page, pageSize) =>
+        examApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
+      fetchAllPages((page, pageSize) =>
+        evaluationBatchApi.list({ limit: pageSize, offset: page * pageSize }),
+      ),
     ])
       .then(([bankRes, examRes, batchRes]) => {
-        setBankMap(new Map(bankRes.items.map((b) => [b.id, b])))
-        setExamMap(new Map(examRes.items.map((e) => [e.id, e])))
-        setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
+        setBankMap(new Map(bankRes.map((b) => [b.id, b])))
+        setExamMap(new Map(examRes.map((e) => [e.id, e])))
+        setBatchMap(new Map(batchRes.map((b) => [b.id, b])))
       })
       .catch((err) => {
         handleLoadError(err, toast, t, '加载题库/试卷/批次列表失败', '加载题库/试卷/批次列表')

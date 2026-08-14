@@ -125,12 +125,11 @@ export default function TeachingPlanDetailPage() {
   const handleSaveAll = async () => {
     setSaving(true)
     const toSave = entries.filter((e) => editMap[e.id])
-    let success = 0
-    const failedIds: string[] = []
-    for (const e of toSave) {
-      const s = editMap[e.id]
-      try {
-        const updated = await teachingPlanApi.updateEntry(e.id, {
+    // 并行保存全部条目并汇总成败，避免条目多时串行往返线性放大
+    const results = await Promise.allSettled(
+      toSave.map((e) => {
+        const s = editMap[e.id]
+        return teachingPlanApi.updateEntry(e.id, {
           startWeek: Number(s.startWeek) || 1,
           endWeek: Number(s.endWeek) || 1,
           credits: s.credits !== '' ? Number(s.credits) : undefined,
@@ -139,12 +138,21 @@ export default function TeachingPlanDetailPage() {
           classNodeIds: s.classNodeIds,
           teacherId: s.teacherId ?? '',
         })
-        setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+      }),
+    )
+    let success = 0
+    const failedIds: string[] = []
+    const updatedById = new Map<string, TeachingPlanEntry>()
+    toSave.forEach((e, i) => {
+      const r = results[i]
+      if (r.status === 'fulfilled') {
         success++
-      } catch {
+        updatedById.set(e.id, r.value)
+      } else {
         failedIds.push(e.id)
       }
-    }
+    })
+    setEntries((prev) => prev.map((x) => (updatedById.has(x.id) ? updatedById.get(x.id)! : x)))
     if (failedIds.length > 0) {
       // 保留失败条目的编辑态供重试，并明确提示失败项
       const next = { ...editMap }
