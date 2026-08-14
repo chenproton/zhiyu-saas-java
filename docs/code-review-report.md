@@ -6273,6 +6273,7 @@
 | 101-102 | 无需补修 | 19 项 P2 已由 079-103 批次修复（library metadata→unknown、status failed/failure 双键收敛、combobox label→value + 关闭清搜索、import-confirm busy 拦截关闭、import-wizard input 重置 + 取消禁用、mixed-tag 死代码与 JSON.stringify 比较移除）；scene-mock 已 deprecated 但仍被 3 个任务编辑页引用（迁移属中改）、status 中英键配色差异、scene/snapshot jsonb any 结构、PlatformSideNav effect 依赖等评估后不改 |
 | 053-054 遗留 | （并入 fix-batch-2） | hybrid 能力点池改 fetchAllPages；其余已由大修复与 051-062 批次修复（拖拽成环 wouldCreateCycle、hybrid evalData 全字段回写、save-utils 可清空+NaN 兜底、测试数据正式类型、临时 ID 统一判定、知识点克隆池外 knowledgePointNames 兜底、课程缓存击穿参数与死代码/死 prop 清理、保存后 idMapping 重映射）；模块序列化 any 类型、learn 页 limit 1000、hover 动态类属评估后不改 |
 | 037-038 遗留 | （并入 fix-batch-3） | scenario_clone 5 处行扫描吞错补 Warn、question_banks Create 补 beginner nil 校验、resource_codes Get 映射 ErrNotFound+删残留注释；其余已由大修复与 033-042/029-030 批次修复（Bind afterBind 上抛、SaveFull 冲突回读实际 id、LIKE 通配符转义、Prepare 回查 Warn、random_draw/recommends ErrNotFound、绑定表/列白名单、roles Assign 影响行校验） |
+| 103 | 无需补修 | 4 项 P2 全部由 079-103 批次修复（EmptyDescription 类型改 div、FieldTitle data-slot 改 field-title、use-import-flow entityLabel 用于错误提示、ui vitest alias 改通用 @ 映射）；Spinner 收敛与 Radix 动画串两处复用候选评估后不改 |
 | 033-034 遗留 | 7779f08a | 字典通用基类 DictStore Update/Delete 影响行数校验（ErrNotFound）、ExamResult Get 统一 ErrNotFound（handler 两处检查同步）、批量评分与单条评分错误语义统一（409 提示刷新） |
 
 ### 新增复用抽象（补充）
