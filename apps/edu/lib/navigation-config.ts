@@ -923,6 +923,13 @@ export const partnerNavigationConfig: PlatformNavigationConfig = {
       matchers: ['/partner/co-build/positions'],
     },
     {
+      id: 'employment-projects',
+      label: '就业项目',
+      icon: ClipboardList,
+      href: '/partner/employment-projects',
+      matchers: ['/partner/employment-projects'],
+    },
+    {
       id: 'cobuild-scenes',
       label: '场景共建',
       icon: Workflow,
@@ -1102,8 +1109,27 @@ export const allianceNavigationConfig: PlatformNavigationConfig = {
         },
       ],
     },
+    {
+      id: 'employment',
+      label: '就业服务管理',
+      icon: 'briefcase',
+      children: [
+        {
+          id: 'employmentproject',
+          label: '就业项目',
+          href: '/portal/apps/alliance/employmentproject',
+          matchers: ['/portal/apps/alliance/employmentproject'],
+        },
+        {
+          id: 'employmentjob',
+          label: '岗位与投递',
+          href: '/portal/apps/alliance/employmentjob',
+          matchers: ['/portal/apps/alliance/employmentjob'],
+        },
+      ],
+    },
   ],
-  defaultExpandedSideNavIds: ['cooperation', 'brand'],
+  defaultExpandedSideNavIds: ['cooperation', 'brand', 'employment'],
   platformSwitchItems: [],
   shellClassName: 'bg-background',
   mainClassName: 'min-w-0 flex-1',

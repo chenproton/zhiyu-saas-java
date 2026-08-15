@@ -441,6 +441,10 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Get("/grants", h.allianceHandler.ListGrants)
 		r.Get("/grants/resource-options", h.allianceHandler.ListGrantResourceOptions)
 		r.Get("/projects", h.allianceHandler.ListProjects)
+		r.Get("/employment-projects", h.allianceEmploymentHandler.ListEmploymentProjects)
+		r.Get("/employment-projects/{id}", h.allianceEmploymentHandler.GetEmploymentProject)
+		r.Get("/employment-jobs", h.allianceEmploymentHandler.ListEmploymentJobs)
+		r.Get("/employment-applications", h.allianceEmploymentHandler.ListEmploymentApplications)
 		r.Get("/projects/{id}", h.allianceHandler.GetProject)
 		r.Get("/projects/{pid}/milestones", h.allianceHandler.ListMilestones)
 		r.Get("/achievements", h.allianceHandler.ListAchievements)
@@ -471,6 +475,10 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 			// 学校侧无删除企业主体的能力（与 /link 共用 UnlinkEnterprise）
 			r.Delete("/enterprises/{id}", h.allianceHandler.UnlinkEnterprise)
 			r.Put("/grants", h.allianceHandler.SaveGrants)
+			r.Post("/employment-projects", h.allianceEmploymentHandler.CreateEmploymentProject)
+			r.Put("/employment-projects/{id}", h.allianceEmploymentHandler.UpdateEmploymentProject)
+			r.Delete("/employment-projects/{id}", h.allianceEmploymentHandler.DeleteEmploymentProject)
+			r.Put("/employment-jobs/{id}/status", h.allianceEmploymentHandler.AdminSetEmploymentJobStatus)
 			r.Post("/projects", h.allianceHandler.CreateProject)
 			r.Put("/projects/{id}", h.allianceHandler.UpdateProject)
 			r.Delete("/projects/{id}", h.allianceHandler.DeleteProject)
@@ -517,6 +525,13 @@ func registerAlliancePublicRoutes(r chi.Router, h *Handlers) {
 		r.Get("/brands/talent-ranking", h.allianceHandler.ListPublicTalentRanking)
 		r.Get("/brands/{id}", h.allianceHandler.GetPublicBrand)
 		r.Get("/stats", h.allianceHandler.GetPublicStats)
+		// 人才与岗位供需服务大厅（学生按 target_groups 可见性过滤；投递仅学生）
+		r.Get("/employment-projects", h.allianceEmploymentHandler.ListPublicEmploymentProjects)
+		r.Get("/employment-projects/{id}", h.allianceEmploymentHandler.GetPublicEmploymentProject)
+		r.Get("/employment-projects/{id}/jobs", h.allianceEmploymentHandler.ListPublicEmploymentJobsByProject)
+		r.Get("/employment-jobs/{id}", h.allianceEmploymentHandler.GetPublicEmploymentJob)
+		r.Post("/employment-jobs/{id}/apply", h.allianceEmploymentHandler.ApplyPublicEmploymentJob)
+		r.Get("/employment-applications/mine", h.allianceEmploymentHandler.ListMyEmploymentApplications)
 	})
 }
 

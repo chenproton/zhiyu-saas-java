@@ -9,6 +9,7 @@ const FULL_WIDTH_PAGES = [
   '/portal/alliance/achievements',
   '/portal/alliance/experts',
   '/portal/alliance/brands',
+  '/portal/alliance/employment',
 ]
 
 export default function AlliancePublicLayout({ children }: { children: React.ReactNode }) {

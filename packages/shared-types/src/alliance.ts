@@ -553,3 +553,132 @@ export function allianceLabel(dictKey: AllianceDictKey, value?: string | null): 
     (ALLIANCE_DICTS[dictKey] as Record<string, string>)
   return dict[value] ?? value
 }
+
+// ==================== 就业服务管理（人才与岗位供需服务大厅） ====================
+
+/** 就业项目类型 */
+export type EmploymentProjectType = 'spring' | 'autumn' | 'directed' | 'order' | (string & {})
+
+export const EMPLOYMENT_PROJECT_TYPE_LABELS: Record<string, string> = {
+  spring: '春季招聘',
+  autumn: '秋季招聘',
+  directed: '定向招聘',
+  order: '订单班招聘',
+}
+
+/** 就业项目展示状态（由起止日期派生，不落库） */
+export type EmploymentProjectPhase = 'preparing' | 'ongoing' | 'ended'
+
+export const EMPLOYMENT_PROJECT_PHASE_LABELS: Record<EmploymentProjectPhase, string> = {
+  preparing: '筹备中',
+  ongoing: '进行中',
+  ended: '已结束',
+}
+
+/** 由起止日期派生项目展示状态 */
+export function deriveEmploymentProjectPhase(p: {
+  startDate?: string
+  endDate?: string
+}): EmploymentProjectPhase {
+  const today = new Date().toISOString().slice(0, 10)
+  if (p.startDate && p.startDate > today) return 'preparing'
+  if (p.endDate && p.endDate < today) return 'ended'
+  return 'ongoing'
+}
+
+/** 面向学生群体条件（组内 AND、组间 OR；空数组 = 面向全校） */
+export interface EmploymentTargetGroup {
+  orgNodeId?: string
+  orgNodeName?: string
+  majorId?: string
+  majorName?: string
+  graduateYear?: number
+}
+
+export interface EmploymentProject {
+  id: string
+  tenantId: string
+  name: string
+  type: EmploymentProjectType
+  organizer?: string
+  description?: string
+  startDate?: string
+  endDate?: string
+  publishStatus: 'draft' | 'published'
+  enterpriseIds?: string[]
+  targetGroups?: EmploymentTargetGroup[]
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+  jobCount: number
+  applicationCount: number
+}
+
+/** 岗位类型 */
+export type EmploymentJobType = 'full-time' | 'part-time' | 'internship' | 'apprentice'
+
+export const EMPLOYMENT_JOB_TYPE_LABELS: Record<EmploymentJobType, string> = {
+  'full-time': '全职',
+  'part-time': '兼职',
+  internship: '实习',
+  apprentice: '学徒',
+}
+
+/** 岗位状态 */
+export type EmploymentJobStatus = 'draft' | 'published' | 'closed'
+
+export const EMPLOYMENT_JOB_STATUS_LABELS: Record<EmploymentJobStatus, string> = {
+  draft: '草稿',
+  published: '招聘中',
+  closed: '已关闭',
+}
+
+export interface EmploymentJob {
+  id: string
+  tenantId: string
+  enterpriseId: string
+  projectId?: string
+  title: string
+  jobType: EmploymentJobType
+  location?: string
+  /** 薪资范围（千元/月） */
+  salaryMin?: number
+  salaryMax?: number
+  headcount?: number
+  education?: string
+  suitableMajors?: string[]
+  description?: string
+  responsibilities?: string
+  requirements?: string
+  contactPerson?: string
+  contactPhone?: string
+  deadline?: string
+  status: EmploymentJobStatus
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+  enterpriseName?: string
+  projectName?: string
+  applicationCount: number
+}
+
+export interface EmploymentApplication {
+  id: string
+  tenantId: string
+  jobId: string
+  enterpriseId: string
+  studentId: string
+  studentName?: string
+  studentNo?: string
+  majorName?: string
+  className?: string
+  phone?: string
+  email?: string
+  coverLetter?: string
+  status: 'pending'
+  createdAt: string
+  updatedAt: string
+  jobTitle?: string
+  enterpriseName?: string
+  projectName?: string
+}

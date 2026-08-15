@@ -286,6 +286,18 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | GET/PUT | `/partner/co-build/tasks/{taskId}/evaluation-methods` | 任务测评方式 |
 | GET | `/partner/co-build/schools/{tenantId}/abilities`、`/evaluation-methods`、`/co-builders`、`/knowledge-points`、`/courses`、`/ability-bindings`、`/question-banks`、`/questions`、`/random-draw-questions`、`/exams`、`/majors`、`/scenarios`、`/tasks`、`/resources` | 学校数据源接入（授权内只读） |
 
+### 5.8 就业服务端点（employment，admin+member 均可操作；人才与岗位供需服务大厅）
+
+> 2026-08 新增（迁移 162/163）：学校发布就业项目并分配参与企业 → 企业录入岗位（独立或挂项目，挂项目且 published 才上大厅）→ 学生在大厅投递 → 企业只读查看投递。身份解析：token tenant → `partner_enterprises.id`（resolveEnterprise 同共建）。写操作校验边界：新建岗位（唯一携带 schoolTenantId 的写）前置校验学校-企业 active link；更新/删除按 enterprise_id 归属过滤（SQL 层）；publish 绑定项目时校验项目已分配本企业且与岗位同租户。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/partner/employment-projects`、`/{id}` | 分配本企业的就业项目列表/详情（`?schoolTenantId=` 按学校过滤；enterprise_ids 包含判断） |
+| GET/POST | `/partner/employment-jobs` | 岗位列表（`?projectId/status` 过滤）/新建（必填 schoolTenantId；projectId 可空=独立岗位；初始 draft） |
+| GET/PUT/DELETE | `/partner/employment-jobs/{id}` | 详情/更新/删除（限本企业；仅草稿可删，避免 CASCADE 清空投递） |
+| POST | `/partner/employment-jobs/{id}/status` | publish（可绑定/改绑项目，校验项目已分配本企业）/ close |
+| GET | `/partner/employment-jobs/{id}/applications`、`/partner/employment-applications/{id}` | 学生投递只读查看（限本企业） |
+
 ### 5.3 学校侧联盟接口改造（`alliance_handler.go` / `alliance_crud_handler.go`）
 
 | 方法 | 路径 | 变更 |

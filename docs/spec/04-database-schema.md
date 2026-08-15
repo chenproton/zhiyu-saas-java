@@ -1,7 +1,7 @@
 # 数据库 Schema 设计 — 知与 SaaS
 
 > 基于 `backend/migrations/`（001_baseline + 091~160 增量）回溯整理。
-> 当前共 **152 张表**（155 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
+> 当前共 **155 张表**（158 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
 > 124~160 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
 > 约定：主键统一 `uuid DEFAULT gen_random_uuid()`；`created_at/updated_at timestamptz DEFAULT now()`；业务枚举用 `varchar + CHECK`，仅 7 个原生 PG ENUM。
 
@@ -41,6 +41,7 @@ tenants(租户) ── 行级隔离一切业务数据
 │
 ├─ 【联盟链】partner_enterprises ↔ alliance_enterprise_links ↔ projects(→milestones) ↔ agreements ↔ experts
 │   → achievements / brands / permissions / dictionaries / school_info
+│   → employment_projects ← employment_jobs（enterprise_id→partner_enterprises）← employment_applications（→users）
 │
 └─ 【支撑】workflows → approval_records ; 五套同构 batches(岗位/课程/测评/场景/教务)
     evaluation_methods(评价方法字典) ; subscription_packages(订阅)
@@ -245,6 +246,9 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | alliance_dictionaries | dict_type、code、name、(tenant,dict_type,code) 唯一（108 种子 8 类 40 条，122 英文码） |
 | alliance_brands | brand_type(talent/employer/job/major/teacher/culture)、data jsonb、is_featured |
 | alliance_brand_topics | layout(grid)、content_blocks jsonb |
+| alliance_employment_projects | 就业项目（162 新建）：tenant_id(学校)、type(spring/autumn/directed/order/custom:文本)、organizer、start/end_date、publish_status(draft/published；展示状态由日期派生不落库)、enterprise_ids jsonb、target_groups jsonb（[{orgNodeId?,majorId?,graduateYear?}] 组内 AND 组间 OR，空=全校） |
+| alliance_employment_jobs | 企业岗位（162 新建）：tenant_id(学校)、enterprise_id→partner_enterprises CASCADE、project_id→employment_projects SET NULL（空=独立岗位不上大厅）、job_type(full-time/part-time/internship/apprentice)、salary_min/max(千元/月)、suitable_majors jsonb、status(draft/published/closed) |
+| alliance_employment_applications | 学生投递（162 新建）：job_id CASCADE、enterprise_id 冗余、student_id→users CASCADE、档案快照列(name/student_no/major/class/phone/email)、cover_letter、status 固定 pending、(job_id,student_id) 唯一防重复 |
 
 ### 2.16 画像 / 汇聚 / 证书 / 毕业
 
@@ -365,6 +369,9 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | alliance_experts.rating | copper / silver / gold |
 | alliance_achievements.type | job / scene / course / custom |
 | alliance_dictionaries（122 英文码） | cooperation_type: talent_training/internship/tech_rd/course_co_build/teacher_training/employment 等 8 类 |
+| alliance_employment_projects.type / publish_status | spring / autumn / directed / order / custom:<文本>；draft / published |
+| alliance_employment_jobs.job_type / status | full-time / part-time / internship / apprentice；draft / published / closed |
+| alliance_employment_applications.status | pending（本期固定，预留 viewed/interview/offer/hired/rejected 流转） |
 
 ### 4.4 软删除策略
 
@@ -449,5 +456,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 159 | 临时考试状态统一 published | 统一临时考试状态 |
 | 160 | users.password_changed_at | 改密时间戳（改密后旧 token 失效，鉴权中间件逐请求校验） |
 | 161 | alliance_dict_code_unify | 联盟字典编码统一：删 151 回插的中文码重复行（cooperation/agreement/project 三类型），种子 SQL 改英文码 |
+| 162 | alliance_employment | 就业服务三表：employment_projects/employment_jobs/employment_applications（down 不可逆：DROP 丢业务数据） |
+| 163 | employment_menu_default | 存量租户 teacher 角色 menus 回填就业服务管理两路径（/portal/apps/alliance/employmentproject、/employmentjob） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

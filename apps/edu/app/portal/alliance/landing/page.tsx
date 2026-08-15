@@ -17,10 +17,12 @@ import {
   Globe,
   School,
   Medal,
+  Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { portalRequest } from '@/lib/api'
+import { portalRequest, allianceEmploymentPublicApi } from '@/lib/api'
 import type {
   AlliancePublicStats,
   AlliancePublicBrand,
@@ -29,6 +31,12 @@ import type {
   AllianceExpert,
   AllianceAchievement,
   TalentRankMajorGroup,
+  EmploymentProject,
+} from '@/lib/types'
+import {
+  EMPLOYMENT_PROJECT_TYPE_LABELS,
+  EMPLOYMENT_PROJECT_PHASE_LABELS,
+  deriveEmploymentProjectPhase,
 } from '@/lib/types'
 import type { Tenant as BackendTenant } from '@/lib/types/backend'
 import { reportError } from '@/lib/error-handling'
@@ -58,6 +66,7 @@ interface LandingData {
   achievements: AllianceAchievement[]
   brands: AlliancePublicBrand[]
   talentRanking: TalentRankMajorGroup[]
+  employmentProjects: EmploymentProject[]
 }
 
 const BRAND_CATEGORIES = [
@@ -171,6 +180,59 @@ function ViewAllLink({ href }: { href: string }) {
     >
       {t('查看全部')}
       <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+    </Link>
+  )
+}
+
+/** 就业项目卡（前台服务大厅）：名称/类型/派生状态/起止日期/发起单位，点击进项目详情 */
+function EmploymentProjectCard({ project }: { project: EmploymentProject }) {
+  const t = useT()
+  const phase = deriveEmploymentProjectPhase(project)
+  const phaseLabel = EMPLOYMENT_PROJECT_PHASE_LABELS[phase]
+  const typeLabel = EMPLOYMENT_PROJECT_TYPE_LABELS[project.type] ?? project.type
+  return (
+    <Link href={`/portal/alliance/employment/${project.id}`}>
+      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+        <div className="relative aspect-[16/10] overflow-hidden">
+          <GradientPlaceholder
+            seed={project.name}
+            label={project.name}
+            className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
+              {typeLabel}
+            </Badge>
+            <Badge
+              className={`border-0 shadow-sm text-[11px] font-medium text-white ${
+                phase === 'ongoing'
+                  ? 'bg-emerald-500'
+                  : phase === 'preparing'
+                    ? 'bg-amber-500'
+                    : 'bg-slate-500'
+              }`}
+            >
+              {phaseLabel}
+            </Badge>
+          </div>
+        </div>
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-primary transition-colors line-clamp-1">
+            {project.name}
+          </h4>
+          <p className="text-xs text-slate-500 truncate">
+            {t('发起单位：{org}', { org: project.organizer || '-' })}
+          </p>
+          <div className="mt-auto flex items-center gap-1.5 text-xs text-slate-500 pt-3">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {project.startDate ?? '-'}
+              {project.endDate ? ` ${t('至')} ${project.endDate}` : ''}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     </Link>
   )
 }
@@ -336,6 +398,7 @@ export default function AllianceLandingPage() {
     achievements: [],
     brands: [],
     talentRanking: [],
+    employmentProjects: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -353,6 +416,7 @@ export default function AllianceLandingPage() {
       Promise<{ items: AllianceAchievement[] } | null>,
       Promise<{ items: AlliancePublicBrand[] } | null>,
       Promise<{ items: TalentRankMajorGroup[] } | null>,
+      Promise<{ items: EmploymentProject[] } | null>,
     ] = [
       portalRequest<AlliancePublicStats>(`/alliance/public/stats${q}`).catch(() => null),
       portalRequest<{ items: AllianceEnterprise[] }>(`/alliance/public/enterprises${q}`).catch(
@@ -377,6 +441,9 @@ export default function AllianceLandingPage() {
       ).catch(() => ({
         items: [],
       })),
+      allianceEmploymentPublicApi.listProjects(tenantId, { limit: 6 }).catch(() => ({
+        items: [],
+      })),
     ]
 
     const schoolInfoRequest = tenantId
@@ -396,6 +463,7 @@ export default function AllianceLandingPage() {
           achievements,
           brands,
           talentRanking,
+          employmentProjects,
         ]) => {
           setData({
             schoolInfo,
@@ -406,6 +474,7 @@ export default function AllianceLandingPage() {
             achievements: achievements?.items?.slice(0, 8) ?? [],
             brands: brands?.items ?? [],
             talentRanking: talentRanking?.items ?? [],
+            employmentProjects: employmentProjects?.items ?? [],
           })
         },
       )
@@ -754,6 +823,23 @@ export default function AllianceLandingPage() {
             </div>
           )}
         </div>
+      </section>
+
+      {/* 人才与岗位供需服务大厅 */}
+      <section className="relative py-14">
+        <SectionSubHeading
+          title={t('人才与岗位供需服务大厅')}
+          action={<ViewAllLink href="/portal/alliance/employment" />}
+        />
+        {data.employmentProjects.length === 0 ? (
+          <LandingEmpty title={t('暂无就业项目')} hint={t('发布后的就业项目会展示在这里')} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {data.employmentProjects.map((project) => (
+              <EmploymentProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 产教品牌库 */}

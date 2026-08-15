@@ -38,9 +38,14 @@ function PartnerShell({ children }: { children: React.ReactNode }) {
     const items = partnerNavigationConfig.sideNavItems
       .filter((item) => {
         if (isAdmin) return true
-        return ['experts', 'cobuild-positions', 'cobuild-scenes', 'tasks', 'settings'].includes(
-          item.id,
-        )
+        return [
+          'experts',
+          'cobuild-positions',
+          'employment-projects',
+          'cobuild-scenes',
+          'tasks',
+          'settings',
+        ].includes(item.id)
       })
       .map((item) => ({
         ...item,

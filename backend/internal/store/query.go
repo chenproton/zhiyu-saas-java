@@ -124,6 +124,9 @@ var (
 		"alliance_experts",
 		"alliance_permissions",
 		"alliance_projects",
+		"alliance_employment_projects",
+		"alliance_employment_jobs j LEFT JOIN partner_enterprises pe ON pe.id = j.enterprise_id LEFT JOIN alliance_employment_projects p ON p.id = j.project_id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM alliance_employment_applications a WHERE a.job_id = j.id) ac ON true",
+		"alliance_employment_applications a LEFT JOIN alliance_employment_jobs j ON j.id = a.job_id LEFT JOIN partner_enterprises pe ON pe.id = a.enterprise_id LEFT JOIN alliance_employment_projects p ON p.id = j.project_id",
 		"appeal_records",
 		"approval_records",
 		"banner_configs",
@@ -196,6 +199,9 @@ var (
 		"id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, user_id, created_by, created_at, updated_at",
 		"id, tenant_id, account_name, account_type, enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions, created_at, updated_at",
 		"id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
+		"id, tenant_id, name, type, organizer, description, start_date, end_date, publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at",
+		"j.id, j.tenant_id, j.enterprise_id, j.project_id, j.title, j.job_type, j.location, j.salary_min, j.salary_max, j.headcount, j.education, j.suitable_majors, j.description, j.responsibilities, j.requirements, j.contact_person, j.contact_phone, j.deadline, j.status, j.created_by, j.created_at, j.updated_at, COALESCE(pe.name, '') AS enterprise_name, COALESCE(p.name, '') AS project_name, COALESCE(ac.cnt, 0) AS application_count",
+		"a.id, a.tenant_id, a.job_id, a.enterprise_id, a.student_id, a.student_name, a.student_no, a.major_name, a.class_name, a.phone, a.email, a.cover_letter, a.status, a.created_at, a.updated_at, COALESCE(j.title, '') AS job_title, COALESCE(pe.name, '') AS enterprise_name, COALESCE(p.name, '') AS project_name",
 		"id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by, version",
 		"b.id, b.name, b.code, b.org_node_id, b.major_id, COALESCE(m.name, '') AS major_name, b.workflow_id, b.status, b.position_count, b.published_count, b.pending_count, b.created_at, b.updated_at", "eb.id, eb.name, eb.code, eb.org_node_id, eb.major_id, COALESCE(m.name, '') AS major_name, eb.workflow_id, eb.status, eb.created_at, eb.updated_at",
 		"er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.grading_status, er.grading_scores, er.grading_comment, er.grader_id, er.graded_at, er.submit_time, er.created_at, er.version",
@@ -265,6 +271,7 @@ var (
 	}
 
 	allowedListQueryOrderBy = []string{
+		"a.created_at DESC",
 		"b.id DESC",
 		"c.created_at DESC",
 		"cp.created_at DESC",
@@ -273,6 +280,7 @@ var (
 		"evaluated_at DESC",
 		"id DESC",
 		"issue_date DESC",
+		"j.created_at DESC",
 		"last_updated DESC",
 		"qb.is_draft_pool DESC, qb.created_at DESC",
 		"tp.entry_year DESC, tp.created_at DESC",
@@ -299,6 +307,7 @@ var (
 
 	allowedListQueryTenantColumns = []string{
 		"",
+		"a.tenant_id",
 		"tenant_id",
 		"ab.tenant_id",
 		"b.tenant_id",
@@ -309,6 +318,7 @@ var (
 		"eb.tenant_id",
 		"er.tenant_id",
 		"id",
+		"j.tenant_id",
 		"lb.tenant_id",
 		"p.tenant_id",
 		"pr.tenant_id",
@@ -320,6 +330,7 @@ var (
 	}
 
 	allowedListQuerySearchColumns = []string{
+		"a.student_name",
 		"ab.name",
 		"account_name",
 		"b.name",
@@ -338,6 +349,7 @@ var (
 		"email",
 		"answer",
 		"industry",
+		"j.title",
 		"lb.code",
 		"lb.name",
 		"m.name",

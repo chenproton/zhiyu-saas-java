@@ -543,6 +543,7 @@ func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenant
 		"/portal/apps/alliance/brands/talent": true, "/portal/apps/alliance/brands/employer": true,
 		"/portal/apps/alliance/brands/job": true, "/portal/apps/alliance/brands/major": true,
 		"/portal/apps/alliance/brands/teacher": true, "/portal/apps/alliance/brands/culture": true,
+		"/portal/apps/alliance/employmentproject": true, "/portal/apps/alliance/employmentjob": true,
 		// 我的服务台
 		"/portal/workspace": true,
 	}

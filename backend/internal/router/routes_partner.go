@@ -34,6 +34,18 @@ func registerPartnerRoutes(r chi.Router, h *Handlers, passwordLimiter func(http.
 		r.With(passwordLimiter).Put("/partner/me/password", h.partnerHandler.ChangeMyPassword)
 
 		// 资源共建（岗位/场景，admin+member 均可操作）
+		// 就业服务（就业项目/岗位/投递，admin+member 均可操作，同共建惯例）
+		r.Get("/partner/employment-projects", h.partnerEmploymentHandler.ListProjects)
+		r.Get("/partner/employment-projects/{id}", h.partnerEmploymentHandler.GetProject)
+		r.Get("/partner/employment-jobs", h.partnerEmploymentHandler.ListJobs)
+		r.Post("/partner/employment-jobs", h.partnerEmploymentHandler.CreateJob)
+		r.Get("/partner/employment-jobs/{id}", h.partnerEmploymentHandler.GetJob)
+		r.Put("/partner/employment-jobs/{id}", h.partnerEmploymentHandler.UpdateJob)
+		r.Delete("/partner/employment-jobs/{id}", h.partnerEmploymentHandler.DeleteJob)
+		r.Post("/partner/employment-jobs/{id}/status", h.partnerEmploymentHandler.SetJobStatus)
+		r.Get("/partner/employment-jobs/{id}/applications", h.partnerEmploymentHandler.ListApplications)
+		r.Get("/partner/employment-applications/{id}", h.partnerEmploymentHandler.GetApplication)
+
 		r.Get("/partner/co-build/positions", h.partnerCoBuildHandler.ListPositions)
 		r.Post("/partner/co-build/positions", h.partnerCoBuildHandler.CreatePosition)
 		r.Get("/partner/co-build/positions/{id}", h.partnerCoBuildHandler.GetPosition)
