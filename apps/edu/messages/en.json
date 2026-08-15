@@ -4525,5 +4525,21 @@
   "文档数": "Documents",
   "被问次数": "Asks",
   "对话轮数": "Chats",
-  "预览对话": "Preview chat"
+  "预览对话": "Preview chat",
+  "让每个师生都拥有": "Give every teacher and student",
+  "专属 AI 助手": "their own AI assistant",
+  "师生可创建自己的知识库与智能体，经审核后发布到广场共享；也可直接使用他人发布的智能体对话、向知识库提问。": "Teachers and students can create their own knowledge bases and agents, published to the square after review; or chat with published agents and ask questions to knowledge bases directly.",
+  "逛逛 AI 广场": "Explore the AI Square",
+  "第三方服务": "Third-party Services",
+  "加载中…": "Loading…",
+  "广场上还没有内容": "Nothing on the square yet",
+  "去「我的工坊」创建第一个知识库或智能体，审核通过后就会出现在这里": "Go to My Studio to create your first knowledge base or agent — it will appear here once approved",
+  "热门智能体": "Popular Agents",
+  "{n} 次对话": "{n} chats",
+  "精选知识库": "Featured Knowledge Bases",
+  "{n} 篇文档": "{n} docs",
+  "{n} 次提问": "{n} questions",
+  "创建你自己的 AI 应用": "Create your own AI app",
+  "上传资料建知识库、配置提示词建智能体，提交审核后即可发布到广场与全校共享": "Upload materials to build a knowledge base, configure prompts to build an agent, and share it with the school on the square after approval",
+  "去我的工坊创建": "Create in My Studio"
 }

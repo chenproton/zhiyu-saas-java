@@ -63,6 +63,7 @@ export function buildMenuTree(): MenuTreeItem[] {
   })
 
   const ai = platformGroup('ai', 'AI 智能服务平台', aiNavigationConfig)
+  ai.children?.push({ id: 'ai-landing', label: '前台落地页', href: '/portal/ai/landing' })
 
   const system = platformGroup('system-entry', '系统设置', systemNavigationConfig)
   system.children?.unshift({
@@ -117,6 +118,7 @@ function getKnownMenuPaths(): ReadonlySet<string> {
 const PLATFORM_PATH_PREFIXES = [
   { prefix: '/portal/apps/system', platform: 'system' },
   { prefix: '/portal/apps/ai', platform: 'ai' },
+  { prefix: '/portal/ai', platform: 'ai' },
   { prefix: '/portal/apps/alliance', platform: 'alliance' },
   { prefix: '/job', platform: 'career' },
   { prefix: '/lesson', platform: 'course' },
