@@ -53,7 +53,7 @@
 | 审核 | 自建轻量审核（状态字段 + `ai_review_logs` 留痕），**不接入** workflows/approval_records 重审批流 | 审核语义简单（单级通过/驳回），重审批流过度设计 |
 | 收藏 | 扩展 `FavoritesStore` 类型 `ai_kb`/`ai_agent`（`user_favorites.target_type` 为 varchar 无枚举约束，无需迁移）；**仅 published 对象可收藏**（FavoriteTargetTenant 对非 published 返回 404，私有内容不暴露存在性） | D8 复用优先 |
 | 前端落位 | 扩展现有 `apps/edu/app/portal/apps/ai/`（广场/工坊/对话/后台审核），不动现有 `/chat` 通用助手 | ai 模块已存在于应用中心 |
-| 前台主页（落地页） | `/portal/apps/ai/landing` **单页集成前台全部功能**（v1.2，用户拍板"广场/工坊都集成在落地页，不二次跳转"）：LandingShell 骨架 hero + 统计条 → 「我的工坊」区块（#studio，知识库/智能体表格+新建+行内审核操作）→「AI 广场」区块（#square，三 Tab+搜索+排序+收藏）；两区块抽为共享组件 `_components/studio-section.tsx`/`square-section.tsx` 单一事实源。旧路由 `/square`、`/studio` 重定向至本页锚点（#square/#studio 平滑滚动）；侧边栏简化为 首页/AI 助手/平台管理。对话页、库详情、智能体编辑器保持独立路由（创作/消费全屏页）；门户卡片与 INTERNAL_ROUTES 入口均指向本页 | 与六平台 landing 等地位且更进一步：落地页即工作台，师生一跳内完成创建与管理 |
+| 前台主页（落地页） | `/portal/apps/ai/landing` **单页集成前台全部功能**（v1.2，用户拍板"广场/工坊都集成在落地页，不二次跳转"）：LandingShell 骨架 hero + 统计条 → 「我的工坊」区块（#studio，知识库/智能体表格+新建+行内审核操作）→「AI 广场」区块（#square，三 Tab+搜索+排序+收藏）；两区块抽为共享组件 `_components/studio-section.tsx`/`square-section.tsx` 单一事实源。旧路由 `/square`、`/studio` 重定向至本页锚点（#square/#studio 平滑滚动）；侧边栏对齐其他平台惯例只列业务功能（AI 助手/平台管理，无「首页」项——落地页由卡片主入口进入）。对话页、库详情、智能体编辑器保持独立路由（创作/消费全屏页）；门户卡片与 INTERNAL_ROUTES 入口均指向本页 | 与六平台 landing 等地位且更进一步：落地页即工作台，师生一跳内完成创建与管理 |
 | 菜单权限 | **纳入 menus 权限树，前台合并为单一开关**：权限树 ai 平台组 = 「AI 智能服务中心」(href=`/portal/apps/ai`，由 checkMenuPermission 前缀回溯覆盖助手/广场/工坊/落地页全部前台子路径）+「平台管理」组（内容审核/第三方挂接独立勾选）；`/portal/apps/ai` 挂订阅模块门禁（key=ai）。存量回填：166 授 chat/square/studio → 168 收敛为 `/portal/apps/ai` 一键并清理旧键（teacher/student/有 menus 的 school_admin 默认授予）；后端 `RequireRole(school_admin)` 仍为接口防线（非管理员一律 403） | 用户明确要求：前台都在门户内，一个菜单一起授权；管理功能需单独管控 |
 
 ### 2.2 安全锚点（检索越权防线）
@@ -362,6 +362,7 @@ B1/B2/B3（基建，部分并行）→ B4 → B5/B6 → B7 → B8 → B9/B10 →
 - **菜单权限接入（v1.1）**：初版「不进权限树、后端 403 兜底」按用户反馈反转——AI 中心已纳入权限树（§2.1），侧边栏/权限门经 `apps/ai/layout.tsx` 落地，存量回填见迁移 166。
 - **前台落地页（v1.1 补齐）**：初版未做 landing 页，按用户反馈补齐落地页并纳入权限树；v1.2 按「单一菜单开关」反馈将路径并入 `/portal/apps/ai/landing`（layout 全宽直出，同 alliance FULL_WIDTH_PAGES 模式），见 §2.1。
 - **前台单页集成（v1.2）**：按用户拍板（广场/工坊都集成在落地页、不二次跳转、长页面上下分区、智能体表单保留跳编辑器页），落地页成为前台唯一主页；/square、/studio 旧路由重定向至落地页锚点，验收 flow 的 goto 目标经重定向仍有效（区块组件原样渲染，clickRow/click 定位不变）。
+- **侧边栏无「首页」项（v1.2 修正）**：落地页集成后曾加「首页」侧边栏项，按用户反馈对齐其他平台惯例移除（平台侧边栏只列业务功能，落地页走卡片主入口 + 返回应用中心按钮）。
 - **菜单单一开关（v1.2）**：初版权限树为 chat/square/studio/landing 四节点 + 管理组，按用户反馈收敛为 `/portal/apps/ai` 一个开关联动全部前台页面（迁移 168 收敛存量授权键）；管理组两项保持独立勾选。门户首页 INTERNAL_ROUTES 与卡片 href 统一指向落地页。
 - **空列表序列化（v1.1 修复）**：Go nil slice 会序列化为 `"items": null` 导致前端 `items.length` 崩溃（studio 页白屏事故根因）；store 层 14 处列表查询统一 `make([]T, 0)`，智能体 KbIDs/KbNames 同样非 nil 保证，回归测试 `TestAICenter_EmptyListsReturnEmptyArray` 覆盖 9 个列表端点。
 - **广场卡片收藏态**：每张卡片挂载时 `GET /favorites/{type}/{id}`（N 卡 N 请求）。列表接口返回 isFavorite/favoriteCount 的批量方案留作性能优化项（当前广场数据量小，可接受）。

@@ -614,28 +614,21 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
   showCurrentTime: true,
   showUserMenu: true,
   userMenuItems: COMMON_USER_MENU_ITEMS,
-  // v1.2：广场/工坊已并入落地页区块（landing#square / #studio），侧边栏只留
-  // 首页/AI 助手/平台管理；对话页与库详情属广场内容消费页，matcher 归到首页高亮
+  // v1.2：广场/工坊已并入落地页区块（landing#square / #studio）。
+  // 侧边栏对齐其他平台惯例只列业务功能（无「首页」项——落地页由平台卡片主入口进入，
+  // 页内返回走侧边栏顶部「返回应用中心」按钮）；对话页/库详情高亮归 AI 助手
   sideNavItems: [
-    {
-      id: 'home',
-      label: '首页',
-      icon: 'home',
-      href: '/portal/apps/ai/landing',
-      matchers: [
-        '/portal/apps/ai/landing',
-        '/portal/apps/ai/square',
-        '/portal/apps/ai/kb',
-        '/portal/apps/ai/agents',
-        '/portal/apps/ai/studio',
-      ],
-    },
     {
       id: 'chat',
       label: 'AI 助手',
       icon: 'sparkles',
       href: '/portal/apps/ai/chat',
-      matchers: ['/portal/apps/ai/chat'],
+      matchers: [
+        '/portal/apps/ai/chat',
+        '/portal/apps/ai/kb',
+        '/portal/apps/ai/agents',
+        '/portal/apps/ai/studio',
+      ],
     },
     {
       id: 'admin',
@@ -1343,7 +1336,6 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'affairs-teaching-approval': '维护审批流程与批次管理',
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
-  'ai-home': 'AI 平台首页：我的工坊与 AI 广场一体集成',
   'ai-chat': '基于租户自有 AI 服务的智能对话助手',
   'ai-admin-reviews': '审核知识库与智能体的上架申请',
   'ai-admin-integrations': '维护第三方智能体与应用链接卡片',
