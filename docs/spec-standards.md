@@ -60,10 +60,11 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 4. **契约** API 变更同步 `02-api-contract.md` 或子平台 spec 的 API 章节；migration 配对 `.down.sql`。
 5. **边界** spec 的「扩展性预留」未写「暂不做」的东西，若实现发现实际做了，要么补 spec，要么删除代码。
 6. **复用评估** 新建公共抽象（组件/函数/hook/store 方法）前已查 `components.md` / `forms-tables.md` / `backend-reuse.md` / `refactor-layering.md` 复用资产 + 相关 ADR，并**同步登记速查表**；能复用而未复用的需在 commit 说明理由。
+7. **验收流程** 功能涉及核心业务链路（跨角色/跨页面的端到端操作链）时，已在 `docs/spec/06-acceptance-flows.md` 新增或更新对应 flow（与 PRD 用户故事挂钩），并在部署环境跑通 `node scripts/ui-smoke/ui-smoke.mjs --flows`；纯局部页面/内部逻辑改动可豁免（commit 说明理由）。
 
 ## 五、规格的放置与命名
 
-- 全平台 spec 固定在 `docs/spec/`，编号 `01`~`05`。
+- 全平台 spec 固定在 `docs/spec/`，编号 `01`~`05` 为必备五层，`06` 为验收流程补充层（核心链路按需，见 DoD 第 7 条）。
 - 子平台 spec 放在 `docs/spec/`，命名 `<模块英文名>.md`（小写连字符），不编号，因为一个模块是独立范围。
 - **禁止**把 spec 散落到 `docs/` 根目录或各 `backend/`/`apps/` 内部；spec 是「全项目的单一事实源」，集中一处，任何 AI 协作者都先读这里。
 - 规格文档不设「教程 vs 参考」之分（见 `documentation-standards.md`）：spec 一律是**参考型**，按需查，不要求顺序通读。
@@ -105,10 +106,10 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 |---|---|---|---|---|
 | 1 | 对齐意图（constitution） | 读 `AGENTS.md` + 相关 `docs/*.md` 与 ADR，确立本仓的红线、分层、复用、AI 底座约束 | 无新产物 | 否 |
 | 2 | 明确需求（specify） | 把用户需求澄清为「做什么/为什么」，聚焦 WHAT/WHY，**不碰 HOW**（技术栈、表结构、代码组织一律后置） | 更新/新建 spec 的需求章节 | 需求不清晰时提问 |
-| 3 | 制定方案（plan） | 把需求映射为技术方案，每个技术选择**记录理由并回链到需求** | spec 的架构/API/数据章节 | 技术选型需要拍板时提问 |
+| 3 | 制定方案（plan） | 把需求映射为技术方案，每个技术选择**记录理由并回链到需求**；涉及核心业务链路的，同时设计验收流程步骤（哪几个角色、按什么顺序、断言什么） | spec 的架构/API/数据章节 + 06 flow 草案 | 技术选型需要拍板时提问 |
 | 4 | 拆解任务（tasks） | 从方案生成可执行任务清单，标注依赖与可并行项 | 任务清单（可写入 spec 开发计划章节） | 否 |
-| 5 | 实现（implement） | 按任务写代码 + 测试 + migration，**同时回写 spec** | 代码 + 回写的 spec | 否（自动） |
-| 6 | 校验（analyze） | 跨制品一致性：spec↔代码↔测试是否对齐，跑 `scripts/spec-check.sh` 硬约束 + 语义自查 | 校验报告 | 否 |
+| 5 | 实现（implement） | 按任务写代码 + 测试 + migration，**同时回写 spec**；核心链路的验收 flow 与代码同次提交 | 代码 + 回写的 spec + 06 flow | 否（自动） |
+| 6 | 校验（analyze） | 跨制品一致性：spec↔代码↔测试是否对齐，跑 `scripts/spec-check.sh` 硬约束 + 语义自查 + 部署后跑 `--flows` 验证业务链路 | 校验报告 | 否 |
 | 7 | 收敛（converge） | 对照 spec 评估实现，把「没做完/偏航/新增件」记回任务或 spec，形成下一轮迭代输入 | 收敛记录 | 否 |
 
 ### 关键原则（从 spec-kit 提炼）
@@ -125,5 +126,6 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 | **硬约束（可自动，硬拦）** | `scripts/spec-check.sh` | 分层红线、AI 底座、migration 配对、spec 五层齐备、ADR 索引双向一致、ADR-0003 关键写租户条件（点名函数级）、schema 文档↔migrations 编号一致 |
 | **温和提示（可自动，不拦）** | `scripts/spec-check.sh` | XSS（dangerouslySetInnerHTML 清单）、spec↔代码耦合（代码结构变更未同步 spec 时提示） |
 | **语义一致性（需 AI）** | analyze 节点 | spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试 |
+| **业务链路（可自动，真实环境）** | `scripts/ui-smoke` `--flows` | 按 06 的 flow 定义驱动浏览器跨角色走核心链路，断言接口响应与关键文案；逐页巡检保覆盖面、流程巡检保链路不断 |
 
 `spec-check.sh` 只查「机器能判定的违规」，**不能**判断「spec 与代码语义是否一致」——那必须由 AI 在 analyze/converge 节点做。两者配合：脚本拦截硬红线，AI 补语义。

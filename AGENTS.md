@@ -24,7 +24,7 @@
 2. **明确需求**：把需求澄清为「做什么/为什么」，聚焦 **WHAT/WHY，不碰 HOW**（不写技术栈/表结构/代码组织）。不清楚就问用户。
 3. **制定方案**：需求 → 数据模型 / API 契约 / 测试场景。**每个技术选择记录理由并回链需求**。选型需拍板时问用户。
 4. **拆解任务**：生成可执行任务清单，标依赖与可并行项（`[P]`）。
-5. **实现**：写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）。走「四、分支隔离工作流」。
+5. **实现**：写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）；核心业务链路（跨角色/跨页面端到端链）同步设计并登记验收流程（`docs/spec/06-acceptance-flows.md`，DoD 第 7 条）。走「四、分支隔离工作流」。
 6. **校验**：`./scripts/spec-check.sh`（硬约束）+ 语义自查（spec 说的有没有实现、代码做的有没有写进 spec）。
 7. **收敛**：对照 spec 评估，把「没做完/偏航/新增件」记回任务或 spec，形成下轮输入。
 
@@ -114,6 +114,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 我要 | 读 |
 |---|---|
 | spec 分级/模板/DoD/闭环 | [`spec-standards.md`](docs/spec-standards.md) |
+| 写/跑业务链路验收流程 | [`spec/06-acceptance-flows.md`](docs/spec/06-acceptance-flows.md)（flow DSL） |
 | spec-first 执行手册（AI 技能，任务开始时加载） | [`.dsh/skills/spec-workflow/SKILL.md`](.dsh/skills/spec-workflow/SKILL.md) |
 | 后端分层红线细节 | [`refactor-layering.md`](docs/refactor-layering.md) |
 | AI 底座架构 | [`ai-development.md`](docs/ai-development.md) |
@@ -139,5 +140,6 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 离线实施包 | `./scripts/package-release.sh v1.0.0` |
 | 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |
 | UI 全站巡检 | `node scripts/ui-smoke/ui-smoke.mjs`（默认不做，见「五.3」） |
+| 业务链路验收 | `node scripts/ui-smoke/ui-smoke.mjs --flows`（spec 06 驱动；新功能核心链路须同步设计 flow，见 `docs/spec-standards.md` DoD 7） |
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`AI_CONFIG_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
