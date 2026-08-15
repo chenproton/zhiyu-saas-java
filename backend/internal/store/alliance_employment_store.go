@@ -21,19 +21,20 @@ import (
 
 // employmentProjectColumns 就业项目基础列（ScanEmploymentProjectRows 顺序一致；
 // 单行字面量与 query.go allowedListQuerySelectColumns 白名单完全一致）。
-const employmentProjectColumns = "id, tenant_id, name, type, organizer, description, start_date, end_date, publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at"
+const employmentProjectColumns = "id, tenant_id, name, type, organizer, description, cover_image, start_date, end_date, publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at"
 
 func scanEmploymentProject(row interface{ Scan(...any) error }, p *domain.EmploymentProject) error {
-	var organizer, description, createdBy *string
+	var organizer, description, coverImage, createdBy *string
 	var startDate, endDate *time.Time
 	var enterpriseIDs, targetGroups json.RawMessage
-	if err := row.Scan(&p.ID, &p.TenantID, &p.Name, &p.Type, &organizer, &description,
+	if err := row.Scan(&p.ID, &p.TenantID, &p.Name, &p.Type, &organizer, &description, &coverImage,
 		&startDate, &endDate, &p.PublishStatus, &enterpriseIDs, &targetGroups, &createdBy,
 		&p.CreatedAt, &p.UpdatedAt); err != nil {
 		return err
 	}
 	p.Organizer = organizer
 	p.Description = description
+	p.CoverImage = coverImage
 	p.StartDate = formatDate(startDate)
 	p.EndDate = formatDate(endDate)
 	p.EnterpriseIDs = enterpriseIDs
@@ -212,10 +213,10 @@ func (s *AllianceStore) GetEmploymentProjectCounts(ctx context.Context, id, tena
 func (s *AllianceStore) CreateEmploymentProject(ctx context.Context, p *domain.EmploymentProject) (string, error) {
 	id := uuid.NewString()
 	_, err := s.q.Exec(ctx, `
-		INSERT INTO alliance_employment_projects (id, tenant_id, name, type, organizer, description,
+		INSERT INTO alliance_employment_projects (id, tenant_id, name, type, organizer, description, cover_image,
 			start_date, end_date, publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
-	`, id, p.TenantID, p.Name, p.Type, p.Organizer, p.Description,
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+	`, id, p.TenantID, p.Name, p.Type, p.Organizer, p.Description, p.CoverImage,
 		p.StartDate, p.EndDate, p.PublishStatus,
 		emptyJSON(p.EnterpriseIDs), emptyJSON(p.TargetGroups), p.CreatedBy)
 	if err != nil {
@@ -227,11 +228,11 @@ func (s *AllianceStore) CreateEmploymentProject(ctx context.Context, p *domain.E
 func (s *AllianceStore) UpdateEmploymentProject(ctx context.Context, id, tenantID string, p *domain.EmploymentProject) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE alliance_employment_projects SET
-			name = $1, type = $2, organizer = $3, description = $4,
-			start_date = $5, end_date = $6, publish_status = $7,
-			enterprise_ids = $8, target_groups = $9, updated_at = NOW()
-		WHERE id = $10 AND tenant_id = $11
-	`, p.Name, p.Type, p.Organizer, p.Description,
+			name = $1, type = $2, organizer = $3, description = $4, cover_image = $5,
+			start_date = $6, end_date = $7, publish_status = $8,
+			enterprise_ids = $9, target_groups = $10, updated_at = NOW()
+		WHERE id = $11 AND tenant_id = $12
+	`, p.Name, p.Type, p.Organizer, p.Description, p.CoverImage,
 		p.StartDate, p.EndDate, p.PublishStatus,
 		emptyJSON(p.EnterpriseIDs), emptyJSON(p.TargetGroups), id, tenantID)
 	return err
@@ -313,11 +314,49 @@ func (s *AllianceStore) ListPublicEmploymentProjects(ctx context.Context, tenant
 		limit = 100
 	}
 	args := []any{tenantID, limit, offset}
-	return queryList(ctx, s.q, s.ScanEmploymentProjectRows, fmt.Sprintf(`
+	// 附带在招岗位数（published 岗位计数，landing 卡片/统计行用）
+	cols := employmentProjectColumns + ", (SELECT COUNT(*) FROM alliance_employment_jobs j WHERE j.project_id = p.id AND j.status = 'published') AS job_count"
+	rows, err := s.q.Query(ctx, fmt.Sprintf(`
 		SELECT %s FROM alliance_employment_projects p
 		WHERE p.publish_status = 'published' AND p.tenant_id = $1
 		ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d
-	`, employmentProjectColumns, len(args)-1, len(args)), args...)
+	`, cols, len(args)-1, len(args)), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]domain.EmploymentProject, 0)
+	for rows.Next() {
+		var p domain.EmploymentProject
+		var jobCount int
+		if err := scanEmploymentProjectWithExtra(rows, &p, &jobCount); err != nil {
+			return nil, err
+		}
+		p.JobCount = jobCount
+		items = append(items, p)
+	}
+	return items, rows.Err()
+}
+
+// scanEmploymentProjectWithExtra 扫描项目基础列 + 尾部一个 int 聚合列（如 job_count）。
+func scanEmploymentProjectWithExtra(row interface{ Scan(...any) error }, p *domain.EmploymentProject, extra *int) error {
+	var organizer, description, coverImage, createdBy *string
+	var startDate, endDate *time.Time
+	var enterpriseIDs, targetGroups json.RawMessage
+	if err := row.Scan(&p.ID, &p.TenantID, &p.Name, &p.Type, &organizer, &description, &coverImage,
+		&startDate, &endDate, &p.PublishStatus, &enterpriseIDs, &targetGroups, &createdBy,
+		&p.CreatedAt, &p.UpdatedAt, extra); err != nil {
+		return err
+	}
+	p.Organizer = organizer
+	p.Description = description
+	p.CoverImage = coverImage
+	p.StartDate = formatDate(startDate)
+	p.EndDate = formatDate(endDate)
+	p.EnterpriseIDs = enterpriseIDs
+	p.TargetGroups = targetGroups
+	p.CreatedBy = createdBy
+	return nil
 }
 
 // GetPublicEmploymentProjectByID 大厅项目详情：已发布即可读（不校验 target_groups）。

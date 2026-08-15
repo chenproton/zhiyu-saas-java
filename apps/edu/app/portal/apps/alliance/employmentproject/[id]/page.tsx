@@ -31,9 +31,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   allianceEmploymentProjectApi,
+  fileApi,
   allianceEmploymentAdminApi,
   allianceEnterpriseApi,
 } from '@/lib/api'
@@ -276,6 +278,7 @@ export default function EmploymentProjectDetailPage() {
     endDate: '',
     publishStatus: 'draft' as 'draft' | 'published',
     description: '',
+    coverImage: '',
   })
 
   const { data: enterprises } = useAsync(
@@ -322,12 +325,27 @@ export default function EmploymentProjectDetailPage() {
       endDate: project.endDate || '',
       publishStatus: project.publishStatus || 'draft',
       description: project.description || '',
+      coverImage: project.coverImage || '',
     })
     setEditing(true)
   }
 
   const setEditField = (field: string, value: any) =>
     setEditForm({ ...editForm, [field]: value })
+
+  const [coverUploading, setCoverUploading] = useState(false)
+  const handleCoverUpload = async (file: File) => {
+    setCoverUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setEditForm((prev) => ({ ...prev, coverImage: res.url }))
+      toast({ title: t('封面上传成功') })
+    } catch (e: any) {
+      toast({ title: t('上传失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setCoverUploading(false)
+    }
+  }
   const addTargetGroup = () =>
     setEditForm({ ...editForm, targetGroups: [...editForm.targetGroups, {}] })
   const removeTargetGroup = (idx: number) =>
@@ -355,6 +373,7 @@ export default function EmploymentProjectDetailPage() {
         type: editForm.type === 'custom' ? `custom:${editForm.customType.trim()}` : editForm.type,
         organizer: editForm.organizer.trim() || undefined,
         description: editForm.description || undefined,
+        coverImage: editForm.coverImage || undefined,
         startDate: editForm.startDate || undefined,
         endDate: editForm.endDate || undefined,
         publishStatus: editForm.publishStatus,
@@ -577,6 +596,23 @@ export default function EmploymentProjectDetailPage() {
 
           <Card>
             <CardHeader>
+              <CardTitle>{t('封面图')}</CardTitle>
+              <p className="text-xs text-muted-foreground">{t('展示在服务大厅与联盟首页，建议 16:9 横图')}</p>
+            </CardHeader>
+            <CardContent>
+              <CoverImageUpload
+                imageUrl={editForm.coverImage}
+                uploading={coverUploading}
+                label={t('项目封面')}
+                alt={t('项目封面')}
+                onUpload={handleCoverUpload}
+                onRemove={() => setEditField('coverImage', '')}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>{t('项目简介')}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -612,6 +648,13 @@ export default function EmploymentProjectDetailPage() {
                 <CardTitle>{t('基础信息')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
+                {project?.coverImage && (
+                  <img
+                    src={project.coverImage}
+                    alt={t('项目封面')}
+                    className="w-full h-32 object-cover rounded-md mb-2"
+                  />
+                )}
                 <p>
                   <span className="text-muted-foreground">{t('项目类型：')}</span>
                   {employmentTypeLabel(project?.type)}

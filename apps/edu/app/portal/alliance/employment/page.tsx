@@ -41,11 +41,19 @@ function EmploymentProjectCard({ project }: { project: EmploymentProject }) {
     <Link href={`/portal/alliance/employment/${project.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/9] overflow-hidden">
-          <GradientPlaceholder
-            seed={project.name}
-            label={project.name}
-            className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
-          />
+          {project.coverImage ? (
+            <img
+              src={project.coverImage}
+              alt={project.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <GradientPlaceholder
+              seed={project.name}
+              label={project.name}
+              className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
             <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">

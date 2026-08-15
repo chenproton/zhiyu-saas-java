@@ -17,7 +17,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { Loader2, Plus, Trash2, X } from 'lucide-react'
-import { allianceEmploymentProjectApi, allianceEnterpriseApi } from '@/lib/api'
+import { allianceEmploymentProjectApi, allianceEnterpriseApi, fileApi } from '@/lib/api'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { useToast, useAsync, ComboboxSelect } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { FormPageShell } from '@/components/shared/form-page-shell'
@@ -51,7 +52,22 @@ export default function EmploymentProjectNewPage() {
     endDate: '',
     publishStatus: 'draft' as 'draft' | 'published',
     description: '',
+    coverImage: '',
   })
+  const [coverUploading, setCoverUploading] = useState(false)
+
+  const handleCoverUpload = async (file: File) => {
+    setCoverUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setItem((prev) => ({ ...prev, coverImage: res.url }))
+      toast({ title: t('封面上传成功') })
+    } catch (e: any) {
+      toast({ title: t('上传失败'), description: e.message, variant: 'destructive' })
+    } finally {
+      setCoverUploading(false)
+    }
+  }
 
   const { data: enterprises } = useAsync(
     async () => {
@@ -92,6 +108,7 @@ export default function EmploymentProjectNewPage() {
         type: item.type === 'custom' ? `custom:${item.customType.trim()}` : item.type,
         organizer: item.organizer.trim() || undefined,
         description: item.description || undefined,
+        coverImage: item.coverImage || undefined,
         startDate: item.startDate || undefined,
         endDate: item.endDate || undefined,
         publishStatus: item.publishStatus,
@@ -328,6 +345,23 @@ export default function EmploymentProjectNewPage() {
               </Button>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('封面图')}</CardTitle>
+          <p className="text-xs text-muted-foreground">{t('展示在服务大厅与联盟首页，建议 16:9 横图')}</p>
+        </CardHeader>
+        <CardContent>
+          <CoverImageUpload
+            imageUrl={item.coverImage}
+            uploading={coverUploading}
+            label={t('项目封面')}
+            alt={t('项目封面')}
+            onUpload={handleCoverUpload}
+            onRemove={() => setField('coverImage', '')}
+          />
         </CardContent>
       </Card>
 

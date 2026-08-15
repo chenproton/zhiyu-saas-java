@@ -71,6 +71,9 @@ func (h *AllianceEmploymentHandler) employmentProjectCRUD() crudConfig[domain.Em
 		if t.Description == nil {
 			t.Description = existing.Description
 		}
+		if t.CoverImage == nil {
+			t.CoverImage = existing.CoverImage
+		}
 		if t.StartDate == nil {
 			t.StartDate = existing.StartDate
 		}

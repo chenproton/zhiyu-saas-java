@@ -18,6 +18,8 @@ import {
   School,
   Medal,
   Calendar,
+  CheckCircle2,
+  Target,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -184,26 +186,41 @@ function ViewAllLink({ href }: { href: string }) {
   )
 }
 
-/** 就业项目卡（前台服务大厅）：名称/类型/派生状态/起止日期/发起单位，点击进项目详情 */
-function EmploymentProjectCard({ project }: { project: EmploymentProject }) {
+/** 就业项目卡（供需大厅封面大卡，参考 zhiyu-brand landingpage1 风格）：
+ * 封面图（未设置用渐变占位）+ 状态/类型徽标 + 标题压图 + 简介/日期/岗位数/参与企业 */
+function EmploymentProjectCard({
+  project,
+  enterprises,
+}: {
+  project: EmploymentProject
+  enterprises: AllianceEnterprise[]
+}) {
   const t = useT()
   const phase = deriveEmploymentProjectPhase(project)
   const phaseLabel = EMPLOYMENT_PROJECT_PHASE_LABELS[phase]
   const typeLabel = EMPLOYMENT_PROJECT_TYPE_LABELS[project.type] ?? project.type
+  const partnerNames = (project.enterpriseIds ?? [])
+    .map((eid) => enterprises.find((e) => e.id === eid)?.name)
+    .filter(Boolean) as string[]
   return (
     <Link href={`/portal/alliance/employment/${project.id}`}>
-      <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
-        <div className="relative aspect-[16/10] overflow-hidden">
-          <GradientPlaceholder
-            seed={project.name}
-            label={project.name}
-            className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
+        <div className="relative h-44 overflow-hidden">
+          {project.coverImage ? (
+            <img
+              src={project.coverImage}
+              alt={project.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <GradientPlaceholder
+              seed={project.name}
+              label={project.name}
+              className="w-full h-full text-4xl group-hover:scale-105 transition-transform duration-500"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-            <Badge className="bg-white/92 text-slate-800 border-0 shadow-sm text-[11px] font-medium backdrop-blur-sm">
-              {typeLabel}
-            </Badge>
             <Badge
               className={`border-0 shadow-sm text-[11px] font-medium text-white ${
                 phase === 'ongoing'
@@ -215,20 +232,38 @@ function EmploymentProjectCard({ project }: { project: EmploymentProject }) {
             >
               {phaseLabel}
             </Badge>
+            <Badge className="bg-white/90 text-slate-800 backdrop-blur-sm border-0 shadow-sm text-[11px] font-medium">
+              {typeLabel}
+            </Badge>
+          </div>
+          <div className="absolute bottom-3 left-4 right-4">
+            <h4 className="font-semibold text-white text-base drop-shadow-md line-clamp-1">
+              {project.name}
+            </h4>
           </div>
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
-          <h4 className="font-semibold text-slate-900 text-sm mb-1.5 group-hover:text-primary transition-colors line-clamp-1">
-            {project.name}
-          </h4>
-          <p className="text-xs text-slate-500 truncate">
-            {t('发起单位：{org}', { org: project.organizer || '-' })}
+          <p className="text-xs text-slate-600 line-clamp-2 mb-3 min-h-[2rem]">
+            {project.description || t('面向本校学生提供优质就业岗位与实习机会')}
           </p>
-          <div className="mt-auto flex items-center gap-1.5 text-xs text-slate-500 pt-3">
-            <Calendar className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mb-2">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-primary" />
               {project.startDate ?? '-'}
-              {project.endDate ? ` ${t('至')} ${project.endDate}` : ''}
+              {project.endDate ? ` ~ ${project.endDate}` : ''}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Briefcase className="h-3.5 w-3.5 text-indigo-500" />
+              {t('{count} 个在招岗位', { count: project.jobCount ?? 0 })}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-2.5 border-t border-slate-100 mt-auto">
+            <Building2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {partnerNames.length > 0
+                ? partnerNames.slice(0, 2).join(t('、')) +
+                  (partnerNames.length > 2 ? t(' 等{n}家', { n: partnerNames.length }) : '')
+                : project.organizer || t('校企联合')}
             </span>
           </div>
         </CardContent>
@@ -441,7 +476,8 @@ export default function AllianceLandingPage() {
       ).catch(() => ({
         items: [],
       })),
-      allianceEmploymentPublicApi.listProjects(tenantId, { limit: 6 }).catch(() => ({
+      // 统计行需要全量已发布项目（正常学校量级有界，limit 100 兜底），卡片只展示前 6 个
+      allianceEmploymentPublicApi.listProjects(tenantId, { limit: 100 }).catch(() => ({
         items: [],
       })),
     ]
@@ -512,6 +548,17 @@ export default function AllianceLandingPage() {
     })
     return byType
   }, [data.brands])
+
+  // 供需大厅统计（全量已发布项目现算，量级有界）
+  const employmentStats = useMemo(() => {
+    const list = data.employmentProjects
+    return {
+      total: list.length,
+      ongoing: list.filter((p) => deriveEmploymentProjectPhase(p) === 'ongoing').length,
+      jobCount: list.reduce((sum, p) => sum + (p.jobCount ?? 0), 0),
+      enterpriseCount: new Set(list.flatMap((p) => p.enterpriseIds ?? [])).size,
+    }
+  }, [data.employmentProjects])
 
   const brandCountByType = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -825,23 +872,6 @@ export default function AllianceLandingPage() {
         </div>
       </section>
 
-      {/* 人才与岗位供需服务大厅 */}
-      <section className="relative py-14">
-        <SectionSubHeading
-          title={t('人才与岗位供需服务大厅')}
-          action={<ViewAllLink href="/portal/alliance/employment" />}
-        />
-        {data.employmentProjects.length === 0 ? (
-          <LandingEmpty title={t('暂无就业项目')} hint={t('发布后的就业项目会展示在这里')} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {data.employmentProjects.map((project) => (
-              <EmploymentProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* 产教品牌库 */}
       <section className="relative py-14">
         <SectionHeading
@@ -891,6 +921,85 @@ export default function AllianceLandingPage() {
             </Fragment>
           ))
         )}
+      </section>
+
+      {/* 人才与岗位供需服务大厅（页底压轴区块，参考 zhiyu-brand landingpage1 风格：
+          渐变底 + 四项统计卡 + 封面大卡 + 查看全部 CTA） */}
+      <section className="relative py-16">
+        <div className="rounded-3xl bg-gradient-to-b from-primary/5 via-indigo-50/40 to-violet-50/40 px-4 sm:px-8 lg:px-10 py-14">
+          <SectionHeading
+            eyebrow={t('就业 · EMPLOYMENT')}
+            title={t('人才与岗位供需服务大厅')}
+            subtitle={t('校企合作就业项目，汇聚优质岗位资源')}
+          />
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+            {[
+              {
+                label: t('发布场次'),
+                value: employmentStats.total,
+                icon: Briefcase,
+                color: 'from-blue-500 to-blue-600',
+              },
+              {
+                label: t('进行中'),
+                value: employmentStats.ongoing,
+                icon: CheckCircle2,
+                color: 'from-emerald-500 to-emerald-600',
+              },
+              {
+                label: t('在招岗位'),
+                value: employmentStats.jobCount,
+                icon: Target,
+                color: 'from-indigo-500 to-indigo-600',
+              },
+              {
+                label: t('合作企业'),
+                value: employmentStats.enterpriseCount,
+                icon: Building2,
+                color: 'from-amber-500 to-amber-600',
+              },
+            ].map((stat) => (
+              <Card
+                key={stat.label}
+                className="border border-slate-100 shadow-sm rounded-2xl bg-white/80 backdrop-blur-sm"
+              >
+                <CardContent className="p-5 text-center">
+                  <div
+                    className={`inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br ${stat.color} text-white mb-3 shadow-md`}
+                  >
+                    <stat.icon className="h-5 w-5" />
+                  </div>
+                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-sm text-slate-500 mt-1 font-medium">{stat.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {data.employmentProjects.length === 0 ? (
+            <LandingEmpty title={t('暂无就业项目')} hint={t('发布后的就业项目会展示在这里')} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {data.employmentProjects.slice(0, 6).map((project) => (
+                <EmploymentProjectCard
+                  key={project.id}
+                  project={project}
+                  enterprises={data.enterprises}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-12 text-center">
+            <Button
+              asChild
+              className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
+            >
+              <Link href="/portal/alliance/employment">{t('查看全部岗位')}</Link>
+            </Button>
+          </div>
+        </div>
       </section>
 
       {/* CTA */}

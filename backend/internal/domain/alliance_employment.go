@@ -12,12 +12,14 @@ import (
 
 // EmploymentProject 就业项目（学校发布，指定参与企业与面向学生群体）
 type EmploymentProject struct {
-	ID            string  `json:"id"`
-	TenantID      string  `json:"tenantId"`
-	Name          string  `json:"name"`
-	Type          string  `json:"type"` // spring|autumn|directed|order|custom:<文本>
-	Organizer     *string `json:"organizer,omitempty"`
-	Description   *string `json:"description,omitempty"`
+	ID          string  `json:"id"`
+	TenantID    string  `json:"tenantId"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"` // spring|autumn|directed|order|custom:<文本>
+	Organizer   *string `json:"organizer,omitempty"`
+	Description *string `json:"description,omitempty"`
+	// CoverImage 项目封面图 URL（landing 供需大厅封面大卡；空则前端用默认占位图）
+	CoverImage    *string `json:"coverImage,omitempty"`
 	StartDate     *string `json:"startDate,omitempty"`
 	EndDate       *string `json:"endDate,omitempty"`
 	PublishStatus string  `json:"publishStatus"` // draft|published

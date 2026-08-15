@@ -220,7 +220,30 @@ func TestAllianceEmployment_VisibilityAndApply(t *testing.T) {
 		t.Fatal("草稿项目下的岗位详情不应可读")
 	}
 
-	// 9. 企业发布岗位并绑定项目（回归：enterprise_id 与 enterprise_ids 共用参数时
+	// 9. 封面图字段读写往返（migration 165）
+	coverURL := "https://example.com/cover.jpg"
+	coverProjID, err := st.CreateEmploymentProject(ctx, &domain.EmploymentProject{
+		TenantID: schoolTenant, Name: "项目E-封面", Type: "spring", PublishStatus: "draft",
+		CoverImage: &coverURL,
+	})
+	if err != nil {
+		t.Fatalf("CreateEmploymentProject(封面): %v", err)
+	}
+	cp, err := st.GetEmploymentProjectByID(ctx, coverProjID, schoolTenant)
+	if err != nil || cp.CoverImage == nil || *cp.CoverImage != coverURL {
+		t.Fatalf("封面读回失败: cp=%+v err=%v", cp, err)
+	}
+	newCover := "https://example.com/cover2.jpg"
+	cp.CoverImage = &newCover
+	if err := st.UpdateEmploymentProject(ctx, coverProjID, schoolTenant, cp); err != nil {
+		t.Fatalf("UpdateEmploymentProject(封面): %v", err)
+	}
+	cp2, _ := st.GetEmploymentProjectByID(ctx, coverProjID, schoolTenant)
+	if cp2.CoverImage == nil || *cp2.CoverImage != newCover {
+		t.Fatalf("封面更新读回失败: %+v", cp2)
+	}
+
+	// 10. 企业发布岗位并绑定项目（回归：enterprise_id 与 enterprise_ids 共用参数时
 	// 服务端把参数推断为 uuid，jsonb ? 需显式 ::text，否则 SQLSTATE 42883）
 	ok, err := st.SetPartnerEmploymentJobStatus(ctx, jobDraft, enterpriseID, "published", projA)
 	if err != nil || !ok {

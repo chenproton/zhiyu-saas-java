@@ -602,6 +602,8 @@ export interface EmploymentProject {
   type: EmploymentProjectType
   organizer?: string
   description?: string
+  /** 封面图 URL（landing/大厅封面大卡；空则用默认占位） */
+  coverImage?: string
   startDate?: string
   endDate?: string
   publishStatus: 'draft' | 'published'
