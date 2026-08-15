@@ -614,27 +614,28 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
   showCurrentTime: true,
   showUserMenu: true,
   userMenuItems: COMMON_USER_MENU_ITEMS,
+  // v1.2：广场/工坊已并入落地页区块（landing#square / #studio），侧边栏只留
+  // 首页/AI 助手/平台管理；对话页与库详情属广场内容消费页，matcher 归到首页高亮
   sideNavItems: [
+    {
+      id: 'home',
+      label: '首页',
+      icon: 'home',
+      href: '/portal/apps/ai/landing',
+      matchers: [
+        '/portal/apps/ai/landing',
+        '/portal/apps/ai/square',
+        '/portal/apps/ai/kb',
+        '/portal/apps/ai/agents',
+        '/portal/apps/ai/studio',
+      ],
+    },
     {
       id: 'chat',
       label: 'AI 助手',
       icon: 'sparkles',
       href: '/portal/apps/ai/chat',
       matchers: ['/portal/apps/ai/chat'],
-    },
-    {
-      id: 'square',
-      label: 'AI 广场',
-      icon: 'layoutGrid',
-      href: '/portal/apps/ai/square',
-      matchers: ['/portal/apps/ai/square', '/portal/apps/ai/kb', '/portal/apps/ai/agents'],
-    },
-    {
-      id: 'studio',
-      label: '我的工坊',
-      icon: 'layers',
-      href: '/portal/apps/ai/studio',
-      matchers: ['/portal/apps/ai/studio'],
     },
     {
       id: 'admin',
@@ -1293,10 +1294,7 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     // 菜单权限：AI 中心已纳入权限树（menu-permissions.ts buildMenuTree），
     // 角色勾选控制可见性；管理组（内容审核/第三方挂接）不回填 teacher/student，
     // 仅 school_admin（无 menus 不限制）默认可见；后端 RequireRole(school_admin) 兜底。
-    subModules: [
-      { id: 'landing', label: '前台落地页', href: '/portal/apps/ai/landing' },
-      ...subModulesFromNavConfig(aiNavigationConfig),
-    ],
+    subModules: subModulesFromNavConfig(aiNavigationConfig),
   },
   opc: {
     id: 'opc',
@@ -1345,10 +1343,8 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'affairs-teaching-approval': '维护审批流程与批次管理',
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
-  'ai-landing': 'AI 平台前台落地页：热门智能体、精选知识库与第三方服务总览',
+  'ai-home': 'AI 平台首页：我的工坊与 AI 广场一体集成',
   'ai-chat': '基于租户自有 AI 服务的智能对话助手',
-  'ai-square': '浏览租户内已发布的知识库、智能体与第三方应用',
-  'ai-studio': '创建并管理我的知识库与智能体',
   'ai-admin-reviews': '审核知识库与智能体的上架申请',
   'ai-admin-integrations': '维护第三方智能体与应用链接卡片',
 }

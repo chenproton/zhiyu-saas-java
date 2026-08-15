@@ -116,7 +116,7 @@ export default function AgentEditPage({ params }: { params: { id: string } }) {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6 flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/studio')}>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/landing#studio')}>
           <ArrowLeft className="w-4 h-4 mr-1" />
           {t('返回')}
         </Button>

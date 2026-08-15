@@ -149,7 +149,7 @@ export default function AIKbDetailPage() {
         icon={<BookOpen className="h-10 w-10" />}
         title={t('知识库不存在或无权访问')}
         action={
-          <Button variant="outline" onClick={() => router.push('/portal/apps/ai/square')}>
+          <Button variant="outline" onClick={() => router.push('/portal/apps/ai/landing#square')}>
             {t('返回广场')}
           </Button>
         }
@@ -159,7 +159,7 @@ export default function AIKbDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/square')}>
+      <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/landing#square')}>
         <ArrowLeft className="h-4 w-4 mr-1" />
         {t('返回广场')}
       </Button>
