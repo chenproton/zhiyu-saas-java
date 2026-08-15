@@ -96,3 +96,43 @@ describe('checkMenuPermission 教务平台订阅链路', () => {
     expect(checkMenuPermission({}, '/affairs/programs', { affairs: true })).toBe(false)
   })
 })
+
+describe('checkMenuPermission AI 中心单一开关', () => {
+  // AI 平台菜单树收敛为单一节点 href=/portal/apps/ai（168 迁移），
+  // 前台功能（助手/广场/工坊/落地页及其动态子路径）随该开关一起授权
+  const granted = { '/portal/apps/ai': true }
+
+  it('授予单一开关后前台页面全部放行', () => {
+    expect(checkMenuPermission(granted, '/portal/apps/ai/chat')).toBe(true)
+    expect(checkMenuPermission(granted, '/portal/apps/ai/square')).toBe(true)
+    expect(checkMenuPermission(granted, '/portal/apps/ai/studio')).toBe(true)
+    expect(checkMenuPermission(granted, '/portal/apps/ai/studio/kb/some-uuid')).toBe(true)
+    expect(checkMenuPermission(granted, '/portal/apps/ai/agents/some-uuid')).toBe(true)
+    expect(checkMenuPermission(granted, '/portal/apps/ai/landing')).toBe(true)
+  })
+
+  it('单一开关不覆盖管理组（管理路径在权限树内，未勾选即拒绝）', () => {
+    expect(checkMenuPermission(granted, '/portal/apps/ai/admin/reviews')).toBe(false)
+    expect(checkMenuPermission(granted, '/portal/apps/ai/admin/integrations')).toBe(false)
+  })
+
+  it('管理组可独立勾选', () => {
+    const adminOnly = { '/portal/apps/ai/admin/reviews': true }
+    expect(checkMenuPermission(adminOnly, '/portal/apps/ai/admin/reviews')).toBe(true)
+    expect(checkMenuPermission(adminOnly, '/portal/apps/ai/chat')).toBe(false)
+  })
+
+  it('未授予单一开关时前台页面拒绝', () => {
+    expect(checkMenuPermission({}, '/portal/apps/ai/chat')).toBe(false)
+    expect(checkMenuPermission({}, '/portal/apps/ai/landing')).toBe(false)
+  })
+
+  it('订阅未开通 ai 模块时整体不可见', () => {
+    expect(
+      checkMenuPermission(granted, '/portal/apps/ai/chat', { ai: false }),
+    ).toBe(false)
+    expect(
+      checkMenuPermission(granted, '/portal/apps/ai/chat', { ai: true }),
+    ).toBe(true)
+  })
+})

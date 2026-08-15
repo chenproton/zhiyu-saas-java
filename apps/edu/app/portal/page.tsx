@@ -339,7 +339,7 @@ const INTERNAL_ROUTES: Record<string, string> = {
   resource: '/library/landing',
   affairs: '/affairs/programs',
   alliance: '/portal/alliance/landing',
-  ai: '/portal/ai/landing',
+  ai: '/portal/apps/ai/landing',
 }
 
 /* ─── Components ─── */

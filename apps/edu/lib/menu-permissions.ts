@@ -8,7 +8,6 @@ import {
   affairsNavigationConfig,
   allianceNavigationConfig,
   systemNavigationConfig,
-  aiNavigationConfig,
 } from '@/lib/navigation-config'
 
 export interface MenuTreeItem {
@@ -62,8 +61,28 @@ export function buildMenuTree(): MenuTreeItem[] {
     href: '/portal/alliance/landing',
   })
 
-  const ai = platformGroup('ai', 'AI 智能服务平台', aiNavigationConfig)
-  ai.children?.push({ id: 'ai-landing', label: '前台落地页', href: '/portal/ai/landing' })
+  // AI 平台菜单树：前台功能（助手/广场/工坊/落地页）合并为单一开关，
+  // href=/portal/apps/ai 由前缀继承机制覆盖全部前台子路径（checkMenuPermission 向上回溯）；
+  // 管理功能（内容审核/第三方挂接）保持独立勾选，不随前台开关授权。
+  const ai: MenuTreeItem = {
+    id: 'ai',
+    label: 'AI 智能服务平台',
+    children: [
+      { id: 'ai-main', label: 'AI 智能服务中心', href: '/portal/apps/ai' },
+      {
+        id: 'ai-admin',
+        label: '平台管理',
+        children: [
+          { id: 'ai-admin-reviews', label: '内容审核', href: '/portal/apps/ai/admin/reviews' },
+          {
+            id: 'ai-admin-integrations',
+            label: '第三方挂接',
+            href: '/portal/apps/ai/admin/integrations',
+          },
+        ],
+      },
+    ],
+  }
 
   const system = platformGroup('system-entry', '系统设置', systemNavigationConfig)
   system.children?.unshift({
@@ -118,7 +137,6 @@ function getKnownMenuPaths(): ReadonlySet<string> {
 const PLATFORM_PATH_PREFIXES = [
   { prefix: '/portal/apps/system', platform: 'system' },
   { prefix: '/portal/apps/ai', platform: 'ai' },
-  { prefix: '/portal/ai', platform: 'ai' },
   { prefix: '/portal/apps/alliance', platform: 'alliance' },
   { prefix: '/job', platform: 'career' },
   { prefix: '/lesson', platform: 'course' },

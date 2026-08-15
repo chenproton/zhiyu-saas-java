@@ -1289,12 +1289,12 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     icon: 'sparkles',
     // 卡片入口对齐其他平台惯例指向落地页（portal 首页 INTERNAL_ROUTES.ai 同），
     // 落地页纳入 subModules 使「仅授予前台落地页」的角色也能看到并进入卡片
-    href: '/portal/ai/landing',
+    href: '/portal/apps/ai/landing',
     // 菜单权限：AI 中心已纳入权限树（menu-permissions.ts buildMenuTree），
     // 角色勾选控制可见性；管理组（内容审核/第三方挂接）不回填 teacher/student，
     // 仅 school_admin（无 menus 不限制）默认可见；后端 RequireRole(school_admin) 兜底。
     subModules: [
-      { id: 'landing', label: '前台落地页', href: '/portal/ai/landing' },
+      { id: 'landing', label: '前台落地页', href: '/portal/apps/ai/landing' },
       ...subModulesFromNavConfig(aiNavigationConfig),
     ],
   },

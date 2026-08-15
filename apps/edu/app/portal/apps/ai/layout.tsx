@@ -15,9 +15,15 @@ import { useT } from '@/lib/i18n/locale-provider'
 
 const menuItems = aiNavigationConfig.sideNavItems
 
+// 前台落地页为全宽页面（自带 hero/页脚），不包侧边栏（同 alliance FULL_WIDTH_PAGES 模式）
+const FULL_WIDTH_PAGES = ['/portal/apps/ai/landing']
+
 export default function AICenterLayout({ children }: { children: React.ReactNode }) {
   const t = useT()
   const pathname = usePathname()
+  const isFullWidth = FULL_WIDTH_PAGES.some(
+    (p) => pathname === p || pathname.startsWith(p + '/'),
+  )
   const { hasMenuPermission, loading } = usePortalAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>(() =>
@@ -145,6 +151,19 @@ export default function AICenterLayout({ children }: { children: React.ReactNode
       </nav>
     </>
   )
+
+  if (isFullWidth) {
+    // 落地页同样受权限门控制（单一开关 /portal/apps/ai 未授权时拦截）
+    if (loading) return null
+    if (!permitted) {
+      return (
+        <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+          {t('当前角色暂无权限访问该页面，请联系管理员在角色权限中开通')}
+        </div>
+      )
+    }
+    return <>{children}</>
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] bg-[#f5f7fa]">
