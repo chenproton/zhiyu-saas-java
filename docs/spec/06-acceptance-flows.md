@@ -123,6 +123,7 @@ steps:
     expectText: "{{projectName}}"
   - role: student
     clickText: "{{projectName}}"
+    click: 岗位列表
     expectText: "{{jobName}}"
   - role: student
     clickText: "{{jobName}}"
@@ -146,7 +147,6 @@ steps:
     goto: /portal/apps/alliance/employmentjob
     fill: { 搜索岗位名称: "{{jobName}}" }
     clickRow: { text: "{{jobName}}", action: 下架 }
-    confirm: true
     expectApi: { method: PUT, url: /alliance/employment-jobs/, status: 200 }
     optional: true
   - role: school
@@ -160,6 +160,6 @@ steps:
     fill: { 搜索项目名称: "{{projectName}}" }
     clickRow: { text: "{{projectName}}", action: 删除 }
     confirm: true
-    expectApi: { method: DELETE, url: /alliance/employment-projects/, status: 204 }
+    expectApi: { method: DELETE, url: /alliance/employment-projects/, status: 200 }
     optional: true
 ```

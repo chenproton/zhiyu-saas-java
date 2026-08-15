@@ -68,32 +68,43 @@ function cssEscape(s) {
   return s.replace(/["\\]/g, '\\$&')
 }
 
+// 元素等待出现（列表刷新/弹窗挂载有延迟，count() 立即判无太脆）
+async function waitFirstVisible(locator, ms = 6000) {
+  try {
+    await locator.first().waitFor({ state: 'visible', timeout: ms })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // 精确文字点击按钮/链接；找不到退回任意可点击元素
 async function clickExact(page, text) {
   const btn = page.getByRole('button', { name: text, exact: true })
-  if (await btn.count()) { await btn.first().click(); return }
+  if (await waitFirstVisible(btn, 4000)) { await btn.first().click(); return }
   const link = page.getByRole('link', { name: text, exact: true })
-  if (await link.count()) { await link.first().click(); return }
+  if (await waitFirstVisible(link, 1500)) { await link.first().click(); return }
   const any = page.locator(`button:has-text("${cssEscape(text)}"), a:has-text("${cssEscape(text)}")`)
-  if (await any.count()) { await any.first().click(); return }
+  if (await waitFirstVisible(any, 1500)) { await any.first().click(); return }
   throw new Error(`未找到可点击元素「${text}」`)
 }
 
 // 点击包含文字的可点击元素（卡片/链接/行标题）
 async function clickContaining(page, text) {
   const link = page.getByRole('link').filter({ hasText: text })
-  if (await link.count()) { await link.first().click(); return }
+  if (await waitFirstVisible(link, 6000)) { await link.first().click(); return }
   const btn = page.getByRole('button').filter({ hasText: text })
-  if (await btn.count()) { await btn.first().click(); return }
+  if (await waitFirstVisible(btn, 1500)) { await btn.first().click(); return }
   const t = page.getByText(text, { exact: false })
-  if (await t.count()) { await t.first().click(); return }
+  if (await waitFirstVisible(t, 1500)) { await t.first().click(); return }
   throw new Error(`未找到包含「${text}」的元素`)
 }
 
 // 表格行内操作：按行文字定位 tr，点击行内按钮；action 缺省时点击整行（行点击开详情/弹窗场景）
 async function clickRowAction(page, rowText, action) {
   const row = page.locator('tr').filter({ hasText: rowText })
-  if (!await row.count()) throw new Error(`未找到包含「${rowText}」的表格行`)
+  // 列表搜索有防抖+接口延迟，给行出现留出窗口
+  if (!await waitFirstVisible(row, 8000)) throw new Error(`未找到包含「${rowText}」的表格行`)
   const r = row.first()
   if (!action) { await r.click(); return }
   const btn = r.getByRole('button', { name: action, exact: true })
@@ -180,6 +191,7 @@ async function clickConfirm(page, cfg) {
 }
 
 // ── 单步执行 ───────────────────────────────────────────────
+// 动作按步骤内 YAML 键的书写顺序执行（js-yaml 保留键序），与 spec §1 语义一致
 async function execStep(page, cfg, step, vars, rand, progress) {
   const actions = []
   const mark = a => { if (progress) progress.current = a }
@@ -190,68 +202,91 @@ async function execStep(page, cfg, step, vars, rand, progress) {
   }
   if (step.expectApi) page.on('response', collector)
   try {
-    if (step.goto) {
-      mark(`goto ${step.goto}`)
-      await page.goto(`${cfg.baseUrl}${render(step.goto, vars, rand)}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
-      await waitSettled(page, cfg)
-      actions.push(`goto ${step.goto}`)
-    }
-    if (step.click) {
-      mark(`click ${step.click}`)
-      await clickExact(page, render(step.click, vars, rand))
-      await waitSettled(page, cfg)
-      actions.push(`click ${step.click}`)
-    }
-    if (step.clickText) {
-      mark(`clickText ${step.clickText}`)
-      await clickContaining(page, render(step.clickText, vars, rand))
-      await waitSettled(page, cfg)
-      actions.push(`clickText ${step.clickText}`)
-    }
-    if (step.clickRow) {
-      mark(`clickRow ${step.clickRow.text}→${step.clickRow.action || '(行)'}`)
-      const rowText = render(step.clickRow.text, vars, rand)
-      const action = render(step.clickRow.action, vars, rand)
-      await clickRowAction(page, rowText, action)
-      await waitSettled(page, cfg)
-      actions.push(`clickRow ${rowText}→${action}`)
-    }
-    if (step.fill) {
-      for (const [label, raw] of Object.entries(step.fill)) {
-        mark(`fill ${label}`)
-        const value = render(String(raw), vars, rand)
-        const input = await fieldInput(page, label)
-        if (!input) throw new Error(`未找到字段「${label}」的输入框`)
-        await input.click().catch(() => {})
-        await input.fill(value)
-        if (step.saveAs) {
-          for (const [varName, fieldLabel] of Object.entries(step.saveAs)) {
-            if (fieldLabel === label) vars[varName] = value
-          }
+    for (const [key, rawVal] of Object.entries(step)) {
+      switch (key) {
+        case 'role': case 'expectApi': case 'saveAs': case 'optional': case 'timeoutMs':
+          break
+        case 'goto': {
+          mark(`goto ${rawVal}`)
+          await page.goto(`${cfg.baseUrl}${render(rawVal, vars, rand)}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+          await waitSettled(page, cfg)
+          actions.push(`goto ${rawVal}`)
+          break
         }
-        actions.push(`fill ${label}`)
+        case 'click': {
+          mark(`click ${rawVal}`)
+          await clickExact(page, render(rawVal, vars, rand))
+          await waitSettled(page, cfg)
+          actions.push(`click ${rawVal}`)
+          break
+        }
+        case 'clickText': {
+          mark(`clickText ${rawVal}`)
+          await clickContaining(page, render(rawVal, vars, rand))
+          await waitSettled(page, cfg)
+          actions.push(`clickText ${rawVal}`)
+          break
+        }
+        case 'clickRow': {
+          mark(`clickRow ${rawVal.text}→${rawVal.action || '(行)'}`)
+          const rowText = render(rawVal.text, vars, rand)
+          const action = rawVal.action ? render(rawVal.action, vars, rand) : null
+          await clickRowAction(page, rowText, action)
+          await waitSettled(page, cfg)
+          actions.push(`clickRow ${rowText}→${action || '(行)'}`)
+          break
+        }
+        case 'fill': {
+          for (const [label, raw] of Object.entries(rawVal)) {
+            mark(`fill ${label}`)
+            const value = render(String(raw), vars, rand)
+            const input = await fieldInput(page, label)
+            if (!input) throw new Error(`未找到字段「${label}」的输入框`)
+            await input.click().catch(() => {})
+            await input.fill(value)
+            if (step.saveAs) {
+              for (const [varName, fieldLabel] of Object.entries(step.saveAs)) {
+                if (fieldLabel === label) vars[varName] = value
+              }
+            }
+            actions.push(`fill ${label}`)
+          }
+          break
+        }
+        case 'select': {
+          for (const [label, raw] of Object.entries(rawVal)) {
+            mark(`select ${label}`)
+            const option = render(String(raw), vars, rand)
+            await selectOption(page, label, option)
+            await sleep(200)
+            actions.push(`select ${label}=${option}`)
+          }
+          break
+        }
+        case 'submit': {
+          mark('submit')
+          await clickSubmit(page, cfg, rawVal === true ? true : render(String(rawVal), vars, rand))
+          await waitSettled(page, cfg)
+          actions.push('submit')
+          break
+        }
+        case 'confirm': {
+          mark('confirm')
+          await clickConfirm(page, cfg)
+          await waitSettled(page, cfg)
+          actions.push('confirm')
+          break
+        }
+        case 'expectText': {
+          mark(`expectText ${rawVal}`)
+          const text = render(String(rawVal), vars, rand)
+          await page.getByText(text, { exact: false }).first().waitFor({ state: 'visible', timeout: step.timeoutMs || 8000 })
+          actions.push('expectText ✓')
+          break
+        }
+        default:
+          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/fill/select/submit/confirm/expectApi/expectText/saveAs/optional/timeoutMs）`)
       }
-    }
-    if (step.select) {
-      for (const [label, raw] of Object.entries(step.select)) {
-        mark(`select ${label}`)
-        const option = render(String(raw), vars, rand)
-        await selectOption(page, label, option)
-        await sleep(200)
-        actions.push(`select ${label}=${option}`)
-      }
-    }
-    if (step.submit) {
-      mark('submit')
-      await clickSubmit(page, cfg, step.submit === true ? true : render(step.submit, vars, rand))
-      await waitSettled(page, cfg)
-      actions.push('submit')
-    }
-    if (step.confirm) {
-      mark('confirm')
-      await clickConfirm(page, cfg)
-      await waitSettled(page, cfg)
-      actions.push('confirm')
     }
     if (step.expectApi) {
       mark('expectApi')
@@ -264,12 +299,6 @@ async function execStep(page, cfg, step, vars, rand, progress) {
         throw new Error(`expectApi 未命中 ${exp.method || '*'} ${exp.url} → ${exp.status || '*'}（窗口内 API: ${apiHits.map(h => `${h.status} ${h.method} ${new URL(h.url).pathname}`).slice(-6).join(', ') || '无'}）`)
       }
       actions.push(`expectApi ✓ ${hit.status} ${hit.method}`)
-    }
-    if (step.expectText) {
-      mark(`expectText ${step.expectText}`)
-      const text = render(step.expectText, vars, rand)
-      await page.getByText(text, { exact: false }).first().waitFor({ state: 'visible', timeout: step.timeoutMs || 8000 })
-      actions.push(`expectText ✓`)
     }
   } finally {
     if (step.expectApi) page.off('response', collector)
@@ -291,7 +320,7 @@ export async function runFlows(flows, cfg, deps) {
     console.log(`\n=== [flow] ${flow.flow}（${flow.desc || ''}）===`)
     let failed = false
     for (const [i, step] of flow.steps.entries()) {
-      const desc = [step.goto, step.click, step.clickText, step.clickRow && `${step.clickRow.action}`, step.fill && 'fill', step.select && 'select', step.submit && 'submit', step.confirm && 'confirm', step.expectText && `expect:${step.expectText}`].filter(Boolean).join(' → ')
+      const desc = [step.goto, step.click, step.clickText, step.clickRow && (step.clickRow.action || `行:${step.clickRow.text}`), step.fill && 'fill', step.select && 'select', step.submit && 'submit', step.confirm && 'confirm', step.expectText && `expect:${step.expectText}`].filter(Boolean).join(' → ')
       const rec = { i: i + 1, role: step.role, desc: (desc || '(空步骤)').slice(0, 120), status: 'pass', actions: [], optional: !!step.optional }
       const progress = { current: '' }
       try {
