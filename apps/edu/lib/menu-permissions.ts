@@ -8,6 +8,7 @@ import {
   affairsNavigationConfig,
   allianceNavigationConfig,
   systemNavigationConfig,
+  aiNavigationConfig,
 } from '@/lib/navigation-config'
 
 export interface MenuTreeItem {
@@ -61,6 +62,8 @@ export function buildMenuTree(): MenuTreeItem[] {
     href: '/portal/alliance/landing',
   })
 
+  const ai = platformGroup('ai', 'AI 智能服务平台', aiNavigationConfig)
+
   const system = platformGroup('system-entry', '系统设置', systemNavigationConfig)
   system.children?.unshift({
     id: 'system-entry-main',
@@ -78,6 +81,7 @@ export function buildMenuTree(): MenuTreeItem[] {
   return [
     workspace,
     system,
+    ai,
     career,
     course,
     scene,
@@ -112,6 +116,7 @@ function getKnownMenuPaths(): ReadonlySet<string> {
 
 const PLATFORM_PATH_PREFIXES = [
   { prefix: '/portal/apps/system', platform: 'system' },
+  { prefix: '/portal/apps/ai', platform: 'ai' },
   { prefix: '/portal/apps/alliance', platform: 'alliance' },
   { prefix: '/job', platform: 'career' },
   { prefix: '/lesson', platform: 'course' },

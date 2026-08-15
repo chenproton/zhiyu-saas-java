@@ -597,6 +597,70 @@ export const systemNavigationConfig: PlatformNavigationConfig = {
 }
 
 /* ============================================================
+   AI 智能服务中心导航（门户-AI 平台）
+   sideNavItems 同时驱动：页面侧边栏（apps/ai/layout.tsx）与角色菜单权限树
+   （menu-permissions.ts buildMenuTree），改动需同步评估权限回填（见迁移 166）。
+   ============================================================ */
+export const aiNavigationConfig: PlatformNavigationConfig = {
+  brandTitle: 'AI 智能服务平台',
+  currentPlatformId: 'ai',
+  currentPlatformLabel: 'AI 智能服务平台',
+  brandHref: '/portal/apps/ai/chat',
+  brandIcon: 'sparkles',
+  platformIcon: 'sparkles',
+  sideBackHref: '/portal/apps',
+  currentUserName: '用户',
+  currentUserRoleLabel: '平台用户',
+  showCurrentTime: true,
+  showUserMenu: true,
+  userMenuItems: COMMON_USER_MENU_ITEMS,
+  sideNavItems: [
+    {
+      id: 'chat',
+      label: 'AI 助手',
+      icon: 'sparkles',
+      href: '/portal/apps/ai/chat',
+      matchers: ['/portal/apps/ai/chat'],
+    },
+    {
+      id: 'square',
+      label: 'AI 广场',
+      icon: 'layoutGrid',
+      href: '/portal/apps/ai/square',
+      matchers: ['/portal/apps/ai/square', '/portal/apps/ai/kb', '/portal/apps/ai/agents'],
+    },
+    {
+      id: 'studio',
+      label: '我的工坊',
+      icon: 'layers',
+      href: '/portal/apps/ai/studio',
+      matchers: ['/portal/apps/ai/studio'],
+    },
+    {
+      id: 'admin',
+      label: '平台管理',
+      icon: 'settings',
+      children: [
+        {
+          id: 'admin-reviews',
+          label: '内容审核',
+          href: '/portal/apps/ai/admin/reviews',
+        },
+        {
+          id: 'admin-integrations',
+          label: '第三方挂接',
+          href: '/portal/apps/ai/admin/integrations',
+        },
+      ],
+    },
+  ],
+  defaultExpandedSideNavIds: ['admin'],
+  platformSwitchItems: [],
+  shellClassName: 'bg-background',
+  mainClassName: 'min-w-0 flex-1',
+}
+
+/* ============================================================
    Library 模块导航（资源共享平台）
    ============================================================ */
 export const libraryNavigationConfig: PlatformNavigationConfig = {
@@ -1223,16 +1287,11 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     id: 'ai',
     label: 'AI 智能服务平台',
     icon: 'sparkles',
-    href: '/portal/apps/ai/chat',
-    // subModules 类型无角色过滤字段；admin 页面可见性由后端 RequireRole(school_admin) 兜底
-    // （docs/spec/ai-service-center.md §2.1：AI 中心不进 menus 权限树，路径默认可见）
-    subModules: [
-      { id: 'chat', label: 'AI 助手', href: '/portal/apps/ai/chat' },
-      { id: 'square', label: 'AI 广场', href: '/portal/apps/ai/square' },
-      { id: 'studio', label: '我的工坊', href: '/portal/apps/ai/studio' },
-      { id: 'admin-reviews', label: '内容审核', href: '/portal/apps/ai/admin/reviews' },
-      { id: 'admin-integrations', label: '第三方挂接', href: '/portal/apps/ai/admin/integrations' },
-    ],
+    href: firstHrefFromNavConfig(aiNavigationConfig),
+    // 菜单权限：AI 中心已纳入权限树（menu-permissions.ts buildMenuTree），
+    // 角色勾选控制可见性；管理组（内容审核/第三方挂接）不回填 teacher/student，
+    // 仅 school_admin（无 menus 不限制）默认可见；后端 RequireRole(school_admin) 兜底。
+    subModules: subModulesFromNavConfig(aiNavigationConfig),
   },
   opc: {
     id: 'opc',

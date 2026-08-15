@@ -442,3 +442,38 @@ func TestAICenter_KBAsk(t *testing.T) {
 
 // 防止未使用导入告警（time 预留给后续断言时间字段）。
 var _ = time.Now
+
+// TestAICenter_EmptyListsReturnEmptyArray 回归：空列表必须序列化为 [] 而非 null
+// （Go nil slice → JSON null，前端 items.length 直接崩；本次事故根因）。
+func TestAICenter_EmptyListsReturnEmptyArray(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	aiSeedUsers(t, env)
+	owner, _, admin, _ := aiTokens(env)
+
+	endpoints := []struct {
+		path  string
+		token string
+	}{
+		{"/api/v1/ai/kb", owner},
+		{"/api/v1/ai/kb?scope=collaborating", owner},
+		{"/api/v1/ai/agents", owner},
+		{"/api/v1/ai/square/kbs", owner},
+		{"/api/v1/ai/square/agents", owner},
+		{"/api/v1/ai/integrations", owner},
+		{"/api/v1/ai/admin/reviews?type=kb", admin},
+		{"/api/v1/ai/admin/reviews?type=agent", admin},
+		{"/api/v1/ai/admin/integrations", admin},
+	}
+	for _, ep := range endpoints {
+		w := env.DoWithToken("GET", ep.path, nil, ep.token)
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s: expected 200, got %d: %s", ep.path, w.Code, testhelper.ErrMsg(w))
+		}
+		resp, _ := testhelper.Unmarshal[map[string]any](w)
+		items, ok := resp["items"].([]any)
+		if !ok || items == nil {
+			t.Fatalf("%s: items must be [] not null, body=%s", ep.path, w.Body.String())
+		}
+	}
+}

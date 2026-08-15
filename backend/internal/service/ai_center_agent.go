@@ -53,6 +53,9 @@ func (svc *AICenterService) CreateAgent(ctx context.Context, tenantID, ownerID s
 		return nil, err
 	}
 	a.KbIDs = in.KbIDs
+	if a.KbIDs == nil {
+		a.KbIDs = []string{}
+	}
 	return a, nil
 }
 
@@ -94,6 +97,8 @@ func (svc *AICenterService) GetAgent(ctx context.Context, tenantID, agentID, use
 	if err != nil {
 		return nil, err
 	}
+	a.KbIDs = make([]string, 0, len(kbs))
+	a.KbNames = make([]string, 0, len(kbs))
 	for _, kb := range kbs {
 		a.KbIDs = append(a.KbIDs, kb.ID)
 		a.KbNames = append(a.KbNames, kb.Name)

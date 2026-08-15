@@ -128,7 +128,7 @@ func (s *AICenterStore) ListMyKBs(ctx context.Context, tenantID, userID, scope, 
 		return nil, 0, err
 	}
 	defer rows.Close()
-	var out []domain.AIKnowledgeBase
+	out := make([]domain.AIKnowledgeBase, 0)
 	for rows.Next() {
 		kb, err := scanKBWithOwner(rows)
 		if err != nil {
@@ -169,7 +169,7 @@ func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sor
 		return nil, 0, err
 	}
 	defer rows.Close()
-	var out []domain.AIKnowledgeBase
+	out := make([]domain.AIKnowledgeBase, 0)
 	for rows.Next() {
 		kb, err := scanKBWithOwner(rows)
 		if err != nil {
@@ -276,7 +276,7 @@ func (s *AICenterStore) ListDocuments(ctx context.Context, tenantID, kbID string
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIKBDocument
+	out := make([]domain.AIKBDocument, 0)
 	for rows.Next() {
 		var d domain.AIKBDocument
 		if err := rows.Scan(&d.ID, &d.TenantID, &d.KbID, &d.UploaderID, &d.Name, &d.FilePath, &d.FileSize,
@@ -373,7 +373,7 @@ func (s *AICenterStore) ListCollaborators(ctx context.Context, tenantID, kbID st
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIKBCollaborator
+	out := make([]domain.AIKBCollaborator, 0)
 	for rows.Next() {
 		var c domain.AIKBCollaborator
 		if err := rows.Scan(&c.ID, &c.TenantID, &c.KbID, &c.UserID, &c.Role, &c.CreatedAt, &c.UserName); err != nil {
@@ -465,7 +465,7 @@ func (s *AICenterStore) ListMyAgents(ctx context.Context, tenantID, userID strin
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIAgent
+	out := make([]domain.AIAgent, 0)
 	for rows.Next() {
 		a, err := scanAgent(rows)
 		if err != nil {
@@ -502,7 +502,7 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 		return nil, 0, err
 	}
 	defer rows.Close()
-	var out []domain.AIAgent
+	out := make([]domain.AIAgent, 0)
 	for rows.Next() {
 		var a domain.AIAgent
 		var reviewedBy *string
@@ -594,7 +594,7 @@ func (s *AICenterStore) ListAgentKBs(ctx context.Context, tenantID, agentID stri
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIKnowledgeBase
+	out := make([]domain.AIKnowledgeBase, 0)
 	for rows.Next() {
 		kb, err := scanKB(rows)
 		if err != nil {
@@ -644,7 +644,7 @@ func (s *AICenterStore) SearchChunks(ctx context.Context, tenantID, userID strin
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIKBChunk
+	out := make([]domain.AIKBChunk, 0)
 	for rows.Next() {
 		var c domain.AIKBChunk
 		if err := rows.Scan(&c.ID, &c.TenantID, &c.DocID, &c.KbID, &c.Seq, &c.Content, &c.DocName); err != nil {
@@ -690,7 +690,7 @@ func (s *AICenterStore) ListConversations(ctx context.Context, tenantID, agentID
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIConversation
+	out := make([]domain.AIConversation, 0)
 	for rows.Next() {
 		var cv domain.AIConversation
 		if err := rows.Scan(&cv.ID, &cv.TenantID, &cv.AgentID, &cv.UserID, &cv.Title, &cv.CreatedAt, &cv.UpdatedAt); err != nil {
@@ -746,7 +746,7 @@ func (s *AICenterStore) ListMessages(ctx context.Context, tenantID, conversation
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIMessage
+	out := make([]domain.AIMessage, 0)
 	for rows.Next() {
 		var m domain.AIMessage
 		var sources []byte
@@ -775,7 +775,7 @@ func (s *AICenterStore) ListRecentMessages(ctx context.Context, tenantID, conver
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIMessage
+	out := make([]domain.AIMessage, 0)
 	for rows.Next() {
 		var m domain.AIMessage
 		var sources []byte
@@ -812,7 +812,7 @@ func (s *AICenterStore) ListIntegrations(ctx context.Context, tenantID, kind str
 		return nil, err
 	}
 	defer rows.Close()
-	var out []domain.AIIntegration
+	out := make([]domain.AIIntegration, 0)
 	for rows.Next() {
 		var it domain.AIIntegration
 		var createdBy *string
@@ -912,7 +912,7 @@ func (s *AICenterStore) ListReviewKBs(ctx context.Context, tenantID, status stri
 		return nil, 0, err
 	}
 	defer rows.Close()
-	var out []domain.AIKnowledgeBase
+	out := make([]domain.AIKnowledgeBase, 0)
 	for rows.Next() {
 		kb, err := scanKBWithOwner(rows)
 		if err != nil {
@@ -947,7 +947,7 @@ func (s *AICenterStore) ListReviewAgents(ctx context.Context, tenantID, status s
 		return nil, 0, err
 	}
 	defer rows.Close()
-	var out []domain.AIAgent
+	out := make([]domain.AIAgent, 0)
 	for rows.Next() {
 		var a domain.AIAgent
 		var reviewedBy *string

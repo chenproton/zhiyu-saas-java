@@ -53,7 +53,7 @@
 | 审核 | 自建轻量审核（状态字段 + `ai_review_logs` 留痕），**不接入** workflows/approval_records 重审批流 | 审核语义简单（单级通过/驳回），重审批流过度设计 |
 | 收藏 | 扩展 `FavoritesStore` 类型 `ai_kb`/`ai_agent`（`user_favorites.target_type` 为 varchar 无枚举约束，无需迁移）；**仅 published 对象可收藏**（FavoriteTargetTenant 对非 published 返回 404，私有内容不暴露存在性） | D8 复用优先 |
 | 前端落位 | 扩展现有 `apps/edu/app/portal/apps/ai/`（广场/工坊/对话/后台审核），不动现有 `/chat` 通用助手 | ai 模块已存在于应用中心 |
-| 菜单权限 | 不纳入 menus 权限树（`knownMenuPaths` 外路径默认可见，全员可建可用是需求本意）；admin 入口在导航 subModules 全员可见（subModules 无角色过滤字段），**后端 `RequireRole(school_admin)` 是唯一防线**（非管理员访问一律 403） | AI 中心面向全体师生开放；避免 163 式存量回填 |
+| 菜单权限 | **纳入 menus 权限树**（`menu-permissions.ts` buildMenuTree 新增 ai 平台组，侧边栏由 `aiNavigationConfig` 驱动，与系统设置等平台同模式）；`/portal/apps/ai` 挂入订阅模块门禁（key=ai）。存量回填迁移 166：teacher/student 默认授予 chat/square/studio；管理组（内容审核/第三方挂接）不回填普通角色，school_admin 无 menus 不限制天然可见，配置了 menus 的 school_admin 行补齐五路径；后端 `RequireRole(school_admin)` 仍为接口防线（非管理员一律 403） | 用户明确要求与既有平台等地位、可在角色管理中配置；全员可用由回填默认值保证，管理员可收回 |
 
 ### 2.2 安全锚点（检索越权防线）
 
@@ -358,7 +358,8 @@ B1/B2/B3（基建，部分并行）→ B4 → B5/B6 → B7 → B8 → B9/B10 →
 
 ## 11. 复查收敛记录（v1 交付时）
 
-- **admin 入口可见性**：导航 subModules 无角色过滤字段，「内容审核/第三方挂接」入口全员可见；唯一防线为后端 `RequireRole(school_admin)`（非管理员全 403）。为有意为之的简化（见 §2.1 菜单权限行），后续若补 subModules 角色过滤再收紧入口渲染。
+- **菜单权限接入（v1.1）**：初版「不进权限树、后端 403 兜底」按用户反馈反转——AI 中心已纳入权限树（§2.1），侧边栏/权限门经 `apps/ai/layout.tsx` 落地，存量回填见迁移 166。
+- **空列表序列化（v1.1 修复）**：Go nil slice 会序列化为 `"items": null` 导致前端 `items.length` 崩溃（studio 页白屏事故根因）；store 层 14 处列表查询统一 `make([]T, 0)`，智能体 KbIDs/KbNames 同样非 nil 保证，回归测试 `TestAICenter_EmptyListsReturnEmptyArray` 覆盖 9 个列表端点。
 - **广场卡片收藏态**：每张卡片挂载时 `GET /favorites/{type}/{id}`（N 卡 N 请求）。列表接口返回 isFavorite/favoriteCount 的批量方案留作性能优化项（当前广场数据量小，可接受）。
 - **done 事件 usage 不下发**：token 用量由 `recordUsage` 落库（ai_usage_logs），前端不展示逐次用量；如需前端展示再扩展 done 载荷。
 - **私有智能体预览**：AG-1 的「预览仅创建者可用」以编辑器「预览对话」按钮落地（任意状态可进对话页，后端放行 owner）。
