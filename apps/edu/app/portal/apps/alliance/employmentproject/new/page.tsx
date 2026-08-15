@@ -244,6 +244,16 @@ export default function EmploymentProjectNewPage() {
               />
             </FormFieldRow>
           </FormFieldGrid>
+          <div className="mt-4">
+            <CoverImageUpload
+              imageUrl={item.coverImage}
+              uploading={coverUploading}
+              label={t('项目封面（展示在服务大厅与联盟首页，建议 16:9 横图）')}
+              alt={t('项目封面')}
+              onUpload={handleCoverUpload}
+              onRemove={() => setField('coverImage', '')}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -345,23 +355,6 @@ export default function EmploymentProjectNewPage() {
               </Button>
             </div>
           ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('封面图')}</CardTitle>
-          <p className="text-xs text-muted-foreground">{t('展示在服务大厅与联盟首页，建议 16:9 横图')}</p>
-        </CardHeader>
-        <CardContent>
-          <CoverImageUpload
-            imageUrl={item.coverImage}
-            uploading={coverUploading}
-            label={t('项目封面')}
-            alt={t('项目封面')}
-            onUpload={handleCoverUpload}
-            onRemove={() => setField('coverImage', '')}
-          />
         </CardContent>
       </Card>
 

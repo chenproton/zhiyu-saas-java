@@ -469,6 +469,16 @@ export default function EmploymentProjectDetailPage() {
                   />
                 </FormFieldRow>
               </FormFieldGrid>
+              <div className="mt-4">
+                <CoverImageUpload
+                  imageUrl={editForm.coverImage}
+                  uploading={coverUploading}
+                  label={t('项目封面（展示在服务大厅与联盟首页，建议 16:9 横图）')}
+                  alt={t('项目封面')}
+                  onUpload={handleCoverUpload}
+                  onRemove={() => setEditField('coverImage', '')}
+                />
+              </div>
               <div className="mt-4 flex items-center justify-between rounded-md border p-3">
                 <span className="text-sm">{t('发布到服务大厅')}</span>
                 <Switch
@@ -591,23 +601,6 @@ export default function EmploymentProjectDetailPage() {
                   </Button>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('封面图')}</CardTitle>
-              <p className="text-xs text-muted-foreground">{t('展示在服务大厅与联盟首页，建议 16:9 横图')}</p>
-            </CardHeader>
-            <CardContent>
-              <CoverImageUpload
-                imageUrl={editForm.coverImage}
-                uploading={coverUploading}
-                label={t('项目封面')}
-                alt={t('项目封面')}
-                onUpload={handleCoverUpload}
-                onRemove={() => setEditField('coverImage', '')}
-              />
             </CardContent>
           </Card>
 

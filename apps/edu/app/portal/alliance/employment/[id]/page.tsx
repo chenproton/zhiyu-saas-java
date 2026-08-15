@@ -148,6 +148,17 @@ export default function AllianceEmploymentProjectDetailPage() {
           content: (
             <div className="grid lg:grid-cols-3 gap-6">
               <DetailSectionCard icon={Briefcase} title={t('项目简介')} className="lg:col-span-2">
+                {/* 封面图：与其他联盟详情页同款（projects/[id]） */}
+                {project.coverImage && (
+                  <div className="mb-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={project.coverImage}
+                      alt={project.name}
+                      className="w-full max-h-72 object-cover rounded-2xl border border-slate-100 shadow-sm"
+                    />
+                  </div>
+                )}
                 <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
                   {project.description || '-'}
                 </p>
