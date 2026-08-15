@@ -53,7 +53,7 @@
 | 审核 | 自建轻量审核（状态字段 + `ai_review_logs` 留痕），**不接入** workflows/approval_records 重审批流 | 审核语义简单（单级通过/驳回），重审批流过度设计 |
 | 收藏 | 扩展 `FavoritesStore` 类型 `ai_kb`/`ai_agent`（`user_favorites.target_type` 为 varchar 无枚举约束，无需迁移）；**仅 published 对象可收藏**（FavoriteTargetTenant 对非 published 返回 404，私有内容不暴露存在性） | D8 复用优先 |
 | 前端落位 | 扩展现有 `apps/edu/app/portal/apps/ai/`（广场/工坊/对话/后台审核），不动现有 `/chat` 通用助手 | ai 模块已存在于应用中心 |
-| 前台落地页 | `/portal/ai/landing`（复用 LandingShell 骨架：hero + 已发布智能体/知识库/第三方服务统计 + 热门智能体/精选知识库/第三方服务区块 + 创建引导卡，数据取广场 published 列表）；注册进权限树（ai-landing），回填迁移 167（teacher/student/有 menus 的 school_admin 默认授予） | 与 career/course/scene/ability/resource/alliance 六平台的 landing 页等地位 |
+| 前台落地页 | `/portal/ai/landing`（复用 LandingShell 骨架：hero + 已发布智能体/知识库/第三方服务统计 + 热门智能体/精选知识库/第三方服务区块 + 创建引导卡，数据取广场 published 列表）；注册进权限树（ai-landing），回填迁移 167（teacher/student/有 menus 的 school_admin 默认授予） | 与 career/course/scene/ability/resource/alliance 六平台的 landing 页等地位 ；门户首页卡片 INTERNAL_ROUTES.ai 与应用中心卡片 href 均指向落地页（与其他平台惯例一致），落地页纳入卡片 subModules 保证「仅授予落地页」的角色可见可进 |
 | 菜单权限 | **纳入 menus 权限树**（`menu-permissions.ts` buildMenuTree 新增 ai 平台组，侧边栏由 `aiNavigationConfig` 驱动，与系统设置等平台同模式）；`/portal/apps/ai` 挂入订阅模块门禁（key=ai）。存量回填迁移 166：teacher/student 默认授予 chat/square/studio；管理组（内容审核/第三方挂接）不回填普通角色，school_admin 无 menus 不限制天然可见，配置了 menus 的 school_admin 行补齐五路径；后端 `RequireRole(school_admin)` 仍为接口防线（非管理员一律 403） | 用户明确要求与既有平台等地位、可在角色管理中配置；全员可用由回填默认值保证，管理员可收回 |
 
 ### 2.2 安全锚点（检索越权防线）

@@ -1287,11 +1287,16 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     id: 'ai',
     label: 'AI 智能服务平台',
     icon: 'sparkles',
-    href: firstHrefFromNavConfig(aiNavigationConfig),
+    // 卡片入口对齐其他平台惯例指向落地页（portal 首页 INTERNAL_ROUTES.ai 同），
+    // 落地页纳入 subModules 使「仅授予前台落地页」的角色也能看到并进入卡片
+    href: '/portal/ai/landing',
     // 菜单权限：AI 中心已纳入权限树（menu-permissions.ts buildMenuTree），
     // 角色勾选控制可见性；管理组（内容审核/第三方挂接）不回填 teacher/student，
     // 仅 school_admin（无 menus 不限制）默认可见；后端 RequireRole(school_admin) 兜底。
-    subModules: subModulesFromNavConfig(aiNavigationConfig),
+    subModules: [
+      { id: 'landing', label: '前台落地页', href: '/portal/ai/landing' },
+      ...subModulesFromNavConfig(aiNavigationConfig),
+    ],
   },
   opc: {
     id: 'opc',
@@ -1340,6 +1345,7 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'affairs-teaching-approval': '维护审批流程与批次管理',
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
+  'ai-landing': 'AI 平台前台落地页：热门智能体、精选知识库与第三方服务总览',
   'ai-chat': '基于租户自有 AI 服务的智能对话助手',
   'ai-square': '浏览租户内已发布的知识库、智能体与第三方应用',
   'ai-studio': '创建并管理我的知识库与智能体',
