@@ -9,6 +9,7 @@ import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
 import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES, BUILTIN_CLEANUP_APIS } from './routes.mjs'
 import { walkRoute, tokenKeyForRole } from './clicker.mjs'
 import { cleanupSmokeData } from './forms.mjs'
+import { loadFlows, runFlows } from './flows.mjs'
 import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, isTransientError, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
 
@@ -436,8 +437,58 @@ export async function main() {
     }, cfg.timeoutMin * 60000)
   }
 
+  // ── 验收流程（spec 06 驱动）：跨角色业务链路，默认在全量巡检前执行 ──
+  let flowResults = null
+  let flowErrors = []
+  const flowRoles = new Set()
+  const wantFlows = (cfg.flowsOnly || (cfg.flows !== false && !cfg.clickOnly && !cfg.route && !cfg.gitDiff))
+  if (wantFlows) {
+    try {
+      const flows = await loadFlows(cfg.flowsSpec).catch(e => {
+        console.warn(`[flow] 读取验收流程失败（${e.message}），跳过流程巡检`)
+        return []
+      })
+      if (flows.length) {
+        console.log(`\n=== 验收流程：${flows.length} 条（spec 06 驱动）===`)
+        const flowSink = []
+        const roleSessions = new Map()
+        const ensureContext = async (role) => {
+          if (roleSessions.has(role)) return roleSessions.get(role)
+          await ensureBrowser()
+          const fctx = await withTimeout(bstate.browser.newContext(), 20000, 'newContext')
+          const fpage = await withTimeout(fctx.newPage(), 20000, 'newPage')
+          // 单元素操作 10s 快速失败：避免单个定位器卡满整个步骤超时，错误信息更可定位
+          fpage.setDefaultTimeout(10000)
+          attachListeners(fpage, flowSink, cfg, { clickIndex: -1, url: '' })
+          const loginListeners = []
+          try {
+            await login(fctx, fpage, cfg, role, loginListeners)
+            console.log(`  [flow] [${role}] 登录成功`)
+          } finally {
+            for (const l of loginListeners) fpage.off(l.kind, l.handler)
+          }
+          const session = { ctx: fctx, page: fpage }
+          roleSessions.set(role, session)
+          return session
+        }
+        flowResults = await runFlows(flows, cfg, { ensureContext })
+        flowErrors = flowSink
+        for (const fr of flowResults) for (const st of fr.steps) flowRoles.add(st.role)
+        for (const sess of roleSessions.values()) await sess.ctx.close().catch(() => {})
+        const passN = flowResults.filter(f => f.status !== 'fail').length
+        console.log(`\n[flow] 验收流程完成：${passN}/${flowResults.length} 通过`)
+      } else if (cfg.flowsOnly) {
+        console.log('[flow] spec 06 中无验收流程定义，无流程可跑')
+        flowResults = []
+      }
+    } catch (e) {
+      console.error(`[flow] 验收流程执行异常（不影响逐页巡检）: ${e.message}`)
+      flowResults = flowResults || []
+    }
+  }
+
   try {
-    for (const role of cfg.roles) {
+    for (const role of cfg.flowsOnly ? [] : cfg.roles) {
       console.log(`\n=== [${role}] 开始巡检 ===`)
       let ctx
       try {
@@ -577,9 +628,11 @@ export async function main() {
     const specs = buildCleanupSpecs(cfg)
     const seenIds = new Set()
     cleanupTotal = { deleted: 0, failed: 0 }
-    for (const role of cfg.roles) {
-      if (results[role]?.login !== 'ok') continue
+    const cleanupRoles = cfg.flowsOnly ? [...flowRoles] : cfg.roles
+    for (const role of cleanupRoles) {
+      if (!cfg.flowsOnly && results[role]?.login !== 'ok') continue
       const token = await readStateToken(role)
+      if (!token) continue
       const roleCreatedIds = new Set()
       for (const rt of results[role]?.routes || []) {
         for (const id of rt.createdIds || []) roleCreatedIds.add(id)
@@ -602,6 +655,16 @@ export async function main() {
   const totalErrors = Object.values(results).reduce((acc, r) => {
     return acc + (r?.routes?.filter(x => x.errors.length).length || 0)
   }, 0)
+  const flowFailures = (flowResults || []).filter(f => f.status === 'fail').length
+  if (flowResults?.length) {
+    console.log('\n=== 验收流程结果 ===')
+    for (const f of flowResults) {
+      const warnN = f.steps.filter(x => x.status === 'warn').length
+      console.log(`  [${f.status}] ${f.flow}${f.story ? `（${f.story}）` : ''}${warnN ? ` ${warnN} 步警告` : ''}`)
+      const bad = f.steps.find(x => x.status === 'fail')
+      if (bad) console.log(`       失败步骤 ${bad.i} [${bad.role}] ${bad.desc}：${bad.reason}`)
+    }
+  }
   const aggregate = aggregateErrors(results)
   const diff = cfg.baseline ? await diffWithBaseline(cfg.baseline, results) : null
   printSummary(results, aggregate, diff, totalErrors, cfg)
@@ -620,10 +683,12 @@ export async function main() {
     } : null,
     cleanup: cleanupTotal,
     backendLogLines,
+    flows: flowResults,
+    flowErrors,
     results,
   }
   await writeReport(cfg.report, report)
-  console.log(`\n共 ${totalErrors} 个页面发现问题，报告已保存: ${cfg.report}（耗时 ${Math.round((Date.now() - startedAt) / 1000)}s）`)
+  console.log(`\n共 ${totalErrors} 个页面发现问题${flowResults?.length ? `，验收流程 ${flowResults.length - flowFailures}/${flowResults.length} 通过` : ''}，报告已保存: ${cfg.report}（耗时 ${Math.round((Date.now() - startedAt) / 1000)}s）`)
 
-  if (cfg.failOnError && totalErrors > 0) process.exit(1)
+  if (cfg.failOnError && (totalErrors > 0 || flowFailures > 0)) process.exit(1)
 }

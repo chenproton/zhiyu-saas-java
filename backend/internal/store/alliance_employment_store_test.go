@@ -219,4 +219,15 @@ func TestAllianceEmployment_VisibilityAndApply(t *testing.T) {
 	if _, err := st.GetPublicEmploymentJobByID(ctx, jobA, schoolTenant, scopeOut); err == nil {
 		t.Fatal("范围外学生不应读到不可见项目下的岗位详情")
 	}
+
+	// 9. 企业发布岗位并绑定项目（回归：enterprise_id 与 enterprise_ids 共用参数时
+	// 服务端把参数推断为 uuid，jsonb ? 需显式 ::text，否则 SQLSTATE 42883）
+	ok, err := st.SetPartnerEmploymentJobStatus(ctx, jobDraft, enterpriseID, "published", projA)
+	if err != nil || !ok {
+		t.Fatalf("发布并绑定已分配项目应成功，实得 ok=%v err=%v", ok, err)
+	}
+	// 绑定不存在/未分配的项目 → 0 行命中返回 false（不报错）
+	if ok, err := st.SetPartnerEmploymentJobStatus(ctx, jobDraft, enterpriseID, "published", uuid.NewString()); err != nil || ok {
+		t.Fatalf("绑定未分配项目应返回 false，实得 ok=%v err=%v", ok, err)
+	}
 }

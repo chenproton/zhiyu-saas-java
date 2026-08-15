@@ -505,11 +505,13 @@ func (s *AllianceStore) DeleteEmploymentJob(ctx context.Context, id, enterpriseI
 // projectID 非空时要求项目存在且企业已被分配（enterprise_ids 包含本企业），否则 0 行命中返回 false。
 func (s *AllianceStore) SetPartnerEmploymentJobStatus(ctx context.Context, id, enterpriseID, status, projectID string) (bool, error) {
 	if projectID != "" {
+		// 注意：$4 同时与 uuid 列比较（j.enterprise_id），服务端会把参数推断为 uuid，
+		// 而 jsonb `?` 操作符需要 text 操作数，必须显式 ::text（否则 SQLSTATE 42883）
 		tag, err := s.q.Exec(ctx, `
 			UPDATE alliance_employment_jobs j SET status = $1, project_id = $2, updated_at = NOW()
 			FROM alliance_employment_projects p
 			WHERE j.id = $3 AND j.enterprise_id = $4
-			  AND p.id = $2 AND p.enterprise_ids ? $4
+			  AND p.id = $2 AND p.enterprise_ids ? $4::text
 			  AND p.tenant_id = j.tenant_id
 		`, status, projectID, id, enterpriseID)
 		if err != nil {

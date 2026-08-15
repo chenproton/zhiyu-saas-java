@@ -1,21 +1,85 @@
 {
   "baseUrl": "http://127.0.0.1",
-  "roles": ["school"],
+  "roles": [
+    "school"
+  ],
   "workers": 3,
   "maxClicks": 100,
-  "excludeRoutes": ["/partner", "/superadmin"],
-  "expectedAuthPages": ["/superadmin"],
+  "excludeRoutes": [
+    "/partner",
+    "/superadmin"
+  ],
+  "expectedAuthPages": [
+    "/superadmin"
+  ],
   "routeOverrides": {
-    "/evaluation/question-banks": { "maxClicks": 25, "routeTimeoutSec": 300 },
-    "/evaluation/landing/banks": { "maxClicks": 25, "routeTimeoutSec": 300 }
+    "/evaluation/question-banks": {
+      "maxClicks": 25,
+      "routeTimeoutSec": 300
+    },
+    "/evaluation/landing/banks": {
+      "maxClicks": 25,
+      "routeTimeoutSec": 300
+    }
   },
   "cleanupApis": [
-    { "list": "/api/v1/tenants?limit=100", "del": "/api/v1/tenants/{id}", "fields": ["name"] },
-    { "list": "/api/v1/job/positions?limit=100", "del": "/api/v1/job/positions/{id}", "fields": ["name"] },
-    { "list": "/api/v1/partner/co-build/positions?limit=100", "del": "/api/v1/partner/co-build/positions/{id}", "fields": ["name"] },
-    { "list": "/api/v1/partner/co-build/scenes?limit=100", "del": "/api/v1/partner/co-build/scenes/{id}", "fields": ["name"] },
-    { "list": "/api/v1/partner/experts?limit=100", "del": "/api/v1/partner/experts/{id}", "fields": ["name"] },
-    { "list": "/api/v1/users?limit=100", "del": "/api/v1/users/{id}", "fields": ["username", "name"] },
-    { "list": "/api/v1/admins?limit=100", "del": "/api/v1/admins/{id}", "fields": ["username", "name"] }
+    {
+      "list": "/api/v1/tenants?limit=100",
+      "del": "/api/v1/tenants/{id}",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/job/positions?limit=100",
+      "del": "/api/v1/job/positions/{id}",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/partner/co-build/positions?limit=100",
+      "del": "/api/v1/partner/co-build/positions/{id}",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/partner/co-build/scenes?limit=100",
+      "del": "/api/v1/partner/co-build/scenes/{id}",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/partner/experts?limit=100",
+      "del": "/api/v1/partner/experts/{id}",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/users?limit=100",
+      "del": "/api/v1/users/{id}",
+      "fields": [
+        "username",
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/admins?limit=100",
+      "del": "/api/v1/admins/{id}",
+      "fields": [
+        "username",
+        "name"
+      ]
+    },
+    {
+      "list": "/api/v1/alliance/employment-projects?limit=100",
+      "del": "/api/v1/alliance/employment-projects/{id}",
+      "fields": [
+        "name"
+      ]
+    }
   ]
 }

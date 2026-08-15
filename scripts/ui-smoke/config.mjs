@@ -57,6 +57,9 @@ const DEFAULTS = {
   // 启动前就绪探测：等待 nginx 能正常连到前后端（避免部署刚结束上游还在切换导致 502）
   readyTimeoutSec: 120,
   readyIntervalMs: 1500,
+  // 验收流程（docs/spec/06-acceptance-flows.md 驱动）：全量巡检默认先跑流程再逐页巡检
+  flows: true,
+  flowsSpec: path.join(PROJECT_ROOT, 'docs', 'spec', '06-acceptance-flows.md'),
   // 瞬态错误重试：502/503/504 或连接被拒绝时重试整页（区分于崩溃重试）
   retryTransient: 2,
   retryTransientDelayMs: 1200,
@@ -143,6 +146,9 @@ export function parseArgs(argv) {
       case '--click-only': args.clickOnly = true; break
       case '--test-forms': args.testForms = true; break
       case '--no-cleanup': args.cleanup = false; break
+      case '--flows': args.flowsOnly = true; break
+      case '--no-flows': args.flows = false; break
+      case '--flows-spec': args.flowsSpec = next(); break
       case '--max-form-submits': args.maxFormSubmits = parseInt(next(), 10); break
       case '--tail-backend': args.tailBackend = true; break
       case '--fail-on-error': args.failOnError = true; break
@@ -180,6 +186,9 @@ export function parseArgs(argv) {
   --timeout-min <n>     全局看门狗超时（分钟，默认不限）
   --ready-timeout <n>   启动前就绪探测超时（秒，默认 120）
   --retry-transient <n> 单路由瞬态 502/连接错误重试次数（默认 2）
+  --flows               只跑验收流程（docs/spec/06-acceptance-flows.md，跨角色业务链路）
+  --no-flows            全量巡检时跳过验收流程（默认先跑流程再逐页巡检）
+  --flows-spec <path>   验收流程 spec 文件路径（默认 docs/spec/06-acceptance-flows.md）
 `)
         process.exit(0)
       default:
