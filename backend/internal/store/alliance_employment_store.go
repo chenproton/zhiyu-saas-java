@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -303,38 +304,28 @@ func (s *AllianceStore) ListEmploymentApplicationsConfig() ListQueryConfig[domai
 	}
 }
 
-// ---------- 前台大厅（登录公开，学生按 target_groups 过滤） ----------
+// ---------- 前台大厅（登录公开，浏览全量可见；target_groups 仅控制投递资格） ----------
 
-// ListPublicEmploymentProjects 大厅项目列表：仅已发布；scope 非 nil（学生）时按 target_groups 过滤。
-func (s *AllianceStore) ListPublicEmploymentProjects(ctx context.Context, tenantID string, scope *EmploymentStudentScope, limit, offset int) ([]domain.EmploymentProject, error) {
+// ListPublicEmploymentProjects 大厅项目列表：仅已发布，登录用户全量可见（不分角色）。
+// target_groups 语义为「投递资格」而非「可见性」，投递时在 CreateEmploymentApplication 校验。
+func (s *AllianceStore) ListPublicEmploymentProjects(ctx context.Context, tenantID string, limit, offset int) ([]domain.EmploymentProject, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	args := []any{tenantID}
-	where := "p.publish_status = 'published' AND p.tenant_id = $1"
-	if scope != nil {
-		args = append(args, scope.OrgPathIDs, scope.MajorID, scope.GraduateYear)
-		where += " AND " + employmentTargetGroupsCondition("p", "$2", "$3", "$4")
-	}
-	args = append(args, limit, offset)
+	args := []any{tenantID, limit, offset}
 	return queryList(ctx, s.q, s.ScanEmploymentProjectRows, fmt.Sprintf(`
 		SELECT %s FROM alliance_employment_projects p
-		WHERE %s
+		WHERE p.publish_status = 'published' AND p.tenant_id = $1
 		ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d
-	`, employmentProjectColumns, where, len(args)-1, len(args)), args...)
+	`, employmentProjectColumns, len(args)-1, len(args)), args...)
 }
 
-// GetPublicEmploymentProjectByID 大厅项目详情：已发布 + 学生可见性校验（不可见返回 nil）。
-func (s *AllianceStore) GetPublicEmploymentProjectByID(ctx context.Context, id, tenantID string, scope *EmploymentStudentScope) (*domain.EmploymentProject, error) {
-	args := []any{id, tenantID}
-	where := "p.id = $1 AND p.tenant_id = $2 AND p.publish_status = 'published'"
-	if scope != nil {
-		args = append(args, scope.OrgPathIDs, scope.MajorID, scope.GraduateYear)
-		where += " AND " + employmentTargetGroupsCondition("p", "$3", "$4", "$5")
-	}
-	return queryOne(ctx, s.q, s.ScanEmploymentProjectRows, fmt.Sprintf(`
-		SELECT %s FROM alliance_employment_projects p WHERE %s
-	`, employmentProjectColumns, where), args...)
+// GetPublicEmploymentProjectByID 大厅项目详情：已发布即可读（不校验 target_groups）。
+func (s *AllianceStore) GetPublicEmploymentProjectByID(ctx context.Context, id, tenantID string) (*domain.EmploymentProject, error) {
+	return queryOne(ctx, s.q, s.ScanEmploymentProjectRows, `
+		SELECT `+employmentProjectColumns+` FROM alliance_employment_projects p
+		WHERE p.id = $1 AND p.tenant_id = $2 AND p.publish_status = 'published'
+	`, id, tenantID)
 }
 
 // ListPublicEmploymentJobsByProject 大厅项目下岗位列表：仅已发布岗位。
@@ -347,23 +338,26 @@ func (s *AllianceStore) ListPublicEmploymentJobsByProject(ctx context.Context, p
 	`, projectID, tenantID)
 }
 
-// GetPublicEmploymentJobByID 大厅岗位详情：已发布 + 所属项目已发布 + 学生可见性校验。
-func (s *AllianceStore) GetPublicEmploymentJobByID(ctx context.Context, id, tenantID string, scope *EmploymentStudentScope) (*domain.EmploymentJob, error) {
-	args := []any{id, tenantID}
-	where := `j.id = $1 AND j.tenant_id = $2 AND j.status = 'published'
-		AND p.publish_status = 'published'`
-	if scope != nil {
-		args = append(args, scope.OrgPathIDs, scope.MajorID, scope.GraduateYear)
-		where += " AND " + employmentTargetGroupsCondition("p", "$3", "$4", "$5")
-	}
-	return queryOne(ctx, s.q, s.ScanEmploymentJobRows, fmt.Sprintf(`
-		SELECT %s FROM %s WHERE %s
-	`, employmentJobColumns, employmentJobFrom, where), args...)
+// GetPublicEmploymentJobByID 大厅岗位详情：已发布 + 所属项目已发布即可读（不校验 target_groups）。
+func (s *AllianceStore) GetPublicEmploymentJobByID(ctx context.Context, id, tenantID string) (*domain.EmploymentJob, error) {
+	return queryOne(ctx, s.q, s.ScanEmploymentJobRows, `
+		SELECT `+employmentJobColumns+`
+		FROM `+employmentJobFrom+`
+		WHERE j.id = $1 AND j.tenant_id = $2 AND j.status = 'published'
+		  AND p.publish_status = 'published'
+	`, id, tenantID)
 }
 
+// ErrEmploymentNotEligible 学生不在岗位面向的目标群体（target_groups）内，无投递资格。
+var ErrEmploymentNotEligible = errors.New("不在岗位面向的学生群体内")
+
+// IsEmploymentNotEligible 判定投递资格拒绝错误。
+func IsEmploymentNotEligible(err error) bool { return errors.Is(err, ErrEmploymentNotEligible) }
+
 // CreateEmploymentApplication 学生投递：档案快照随 INSERT 从 users/majors/organizations 带出；
-// 仅允许投递「已发布岗位 + 所属项目已发布 + 学生可见」的岗位；重复投递由 (job_id, student_id) 唯一约束兜底。
-// 返回新投递 id；岗位不可投递时返回 ("", nil)。
+// 仅允许投递「已发布岗位 + 所属项目已发布 + 学生具备投递资格（target_groups 匹配）」的岗位；
+// 重复投递由 (job_id, student_id) 唯一约束兜底。
+// 返回新投递 id；岗位不存在/未开放返回 ("", nil)；资格不符返回 ErrEmploymentNotEligible。
 func (s *AllianceStore) CreateEmploymentApplication(ctx context.Context, jobID string, scope *EmploymentStudentScope, studentID, coverLetter string) (string, error) {
 	id := uuid.NewString()
 	args := []any{id, jobID, studentID, coverLetter}
@@ -387,6 +381,17 @@ func (s *AllianceStore) CreateEmploymentApplication(ctx context.Context, jobID s
 		RETURNING id
 	`, visibility), args...).Scan(&inserted)
 	if err == pgx.ErrNoRows {
+		// 区分「无投递资格」与「岗位不存在/未开放」：岗位存在且已发布（项目已发布）但插入 0 行 → 资格不符
+		var eligible bool
+		chk := s.q.QueryRow(ctx, `
+			SELECT TRUE FROM alliance_employment_jobs j
+			LEFT JOIN alliance_employment_projects p ON p.id = j.project_id
+			WHERE j.id = $1 AND j.status = 'published'
+			  AND (j.project_id IS NULL OR p.publish_status = 'published')
+		`, jobID).Scan(&eligible)
+		if chk == nil {
+			return "", ErrEmploymentNotEligible
+		}
 		return "", nil
 	}
 	if err != nil {

@@ -109,8 +109,8 @@ func TestAllianceEmployment_VisibilityAndApply(t *testing.T) {
 	}
 	projA := mkProject("项目A-信息学院", "published", `[{"orgNodeId":"`+collegeID+`","orgNodeName":"信息学院"}]`)
 	mkProject("项目B-CS2026", "published", `[{"majorId":"`+majorID+`","graduateYear":2026}]`)
-	mkProject("项目C-全校", "published", `[]`)
-	mkProject("项目D-草稿", "draft", `[]`)
+	projC := mkProject("项目C-全校", "published", `[]`)
+	projD := mkProject("项目D-草稿", "draft", `[]`)
 
 	mkJob := func(title, projectID, status string) string {
 		id := uuid.NewString()
@@ -124,6 +124,7 @@ func TestAllianceEmployment_VisibilityAndApply(t *testing.T) {
 	}
 	jobA := mkJob("岗位A", projA, "published")
 	jobDraft := mkJob("岗位-草稿", projA, "draft")
+	jobD := mkJob("岗位D-草稿项目", projD, "published")
 
 	names := func(items []domain.EmploymentProject) []string {
 		out := make([]string, 0, len(items))
@@ -150,33 +151,26 @@ func TestAllianceEmployment_VisibilityAndApply(t *testing.T) {
 		t.Fatalf("范围内学生组织祖先链应为 2（班级+学院），实得 %v", scopeIn.OrgPathIDs)
 	}
 
-	// 2. 范围内学生可见 A/B/C，不见草稿 D
-	listIn, err := st.ListPublicEmploymentProjects(ctx, schoolTenant, scopeIn, 100, 0)
+	// 2. 大厅浏览全量可见（2026-08 语义变更：target_groups 控制投递资格，不再控制可见性）：
+	// 任意登录用户可见全部已发布项目 A/B/C，不见草稿 D
+	listIn, err := st.ListPublicEmploymentProjects(ctx, schoolTenant, 100, 0)
 	if err != nil {
-		t.Fatalf("ListPublicEmploymentProjects(in): %v", err)
+		t.Fatalf("ListPublicEmploymentProjects: %v", err)
 	}
 	got := names(listIn)
 	for _, want := range []string{"项目A-信息学院", "项目B-CS2026", "项目C-全校"} {
 		if !contains(got, want) {
-			t.Fatalf("范围内学生应见 %s，实际 %v", want, got)
+			t.Fatalf("大厅应见 %s，实际 %v", want, got)
 		}
 	}
 	if contains(got, "项目D-草稿") {
 		t.Fatalf("草稿项目不应出现在大厅: %v", got)
 	}
 
-	// 3. 范围外学生仅见全校项目 C
+	// 3. 范围外学生画像（用于投递资格断言）
 	scopeOut, err := st.GetEmploymentStudentScope(ctx, studentOut)
 	if err != nil {
 		t.Fatalf("GetEmploymentStudentScope(out): %v", err)
-	}
-	listOut, err := st.ListPublicEmploymentProjects(ctx, schoolTenant, scopeOut, 100, 0)
-	if err != nil {
-		t.Fatalf("ListPublicEmploymentProjects(out): %v", err)
-	}
-	gotOut := names(listOut)
-	if len(gotOut) != 1 || gotOut[0] != "项目C-全校" {
-		t.Fatalf("范围外学生应仅见 项目C-全校，实际 %v", gotOut)
 	}
 
 	// 4. 投递：档案快照带出 + 求职信落库
@@ -207,17 +201,23 @@ func TestAllianceEmployment_VisibilityAndApply(t *testing.T) {
 		t.Fatalf("投递草稿岗位应返回空 id，实得 id=%q err=%v", id, err)
 	}
 
-	// 7. 范围外学生投递项目A岗位（不可见）→ 拒绝
-	if id, err := st.CreateEmploymentApplication(ctx, jobA, scopeOut, studentOut, "x"); err != nil || id != "" {
-		t.Fatalf("范围外学生投递不可见岗位应拒绝，实得 id=%q err=%v", id, err)
+	// 7. 范围外学生投递项目A岗位（可见但无投递资格）→ ErrEmploymentNotEligible
+	if id, err := st.CreateEmploymentApplication(ctx, jobA, scopeOut, studentOut, "x"); err == nil || !IsEmploymentNotEligible(err) || id != "" {
+		t.Fatalf("范围外学生投递应返回资格不符错误，实得 id=%q err=%v", id, err)
+	}
+	// 范围内学生投递项目C（空 target_groups=全校可投）的岗位列表校验 → 正常返回
+	jobsC, err := st.ListPublicEmploymentJobsByProject(ctx, projC, schoolTenant)
+	if err != nil || len(jobsC) != 0 {
+		t.Fatalf("项目C无岗位应为空列表，实得 len=%d err=%v", len(jobsC), err)
 	}
 
-	// 8. 大厅岗位详情：范围内学生可读，范围外学生 404
-	if _, err := st.GetPublicEmploymentJobByID(ctx, jobA, schoolTenant, scopeIn); err != nil {
-		t.Fatalf("范围内学生应可读岗位详情: %v", err)
+	// 8. 大厅岗位详情：浏览全量可见——范围外学生同样可读已发布岗位
+	if _, err := st.GetPublicEmploymentJobByID(ctx, jobA, schoolTenant); err != nil {
+		t.Fatalf("已发布岗位详情应对所有登录用户可读: %v", err)
 	}
-	if _, err := st.GetPublicEmploymentJobByID(ctx, jobA, schoolTenant, scopeOut); err == nil {
-		t.Fatal("范围外学生不应读到不可见项目下的岗位详情")
+	// 未发布项目下的岗位详情仍不可见
+	if _, err := st.GetPublicEmploymentJobByID(ctx, jobD, schoolTenant); err == nil {
+		t.Fatal("草稿项目下的岗位详情不应可读")
 	}
 
 	// 9. 企业发布岗位并绑定项目（回归：enterprise_id 与 enterprise_ids 共用参数时

@@ -93,7 +93,8 @@ export default function AllianceEmploymentJobDetailPage() {
         setData({ ...data, applied: true })
         setDialogOpen(false)
       } else if (status === 403) {
-        toast({ title: t('仅学生角色可投递岗位'), variant: 'destructive' })
+        // 403 两种情形：非学生角色 / 学生不在岗位面向群体（target_groups）内，统一展示服务端文案
+        toast({ title: t('暂不可投递'), description: (e as Error).message || undefined, variant: 'destructive' })
       } else if (status === 404) {
         toast({ title: t('该岗位暂不可投递'), variant: 'destructive' })
       } else {

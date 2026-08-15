@@ -160,46 +160,20 @@ func (h *AllianceEmploymentHandler) ListEmploymentApplications(w http.ResponseWr
 	allianceList(w, r, h.Store.Q(), h.Store.ListEmploymentApplicationsConfig(), "查询投递列表失败")
 }
 
-// ===== 前台大厅（登录公开；学生按 target_groups 可见性过滤） =====
-
-// employmentScope 解析大厅可见性画像：学生返回其组织/专业/毕业年份，其余登录角色返回 nil（不过滤）。
-func (h *AllianceEmploymentHandler) employmentScope(w http.ResponseWriter, r *http.Request) (*store.EmploymentStudentScope, bool) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "未登录")
-		return nil, false
-	}
-	if !middleware.HasRole(claims, domain.RoleStudent) {
-		return nil, true
-	}
-	scope, err := h.Store.GetEmploymentStudentScope(r.Context(), claims.UserID)
-	if err != nil {
-		respondServerError(w, r, err, "读取学生信息失败")
-		return nil, false
-	}
-	return scope, true
-}
+// ===== 前台大厅（登录公开；浏览全量可见，target_groups 仅控制投递资格） =====
 
 func (h *AllianceEmploymentHandler) ListPublicEmploymentProjects(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	limit, offset := publicListParams(r)
-	scope, ok := h.employmentScope(w, r)
-	if !ok {
-		return
-	}
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.EmploymentProject, error) {
-		return h.Store.ListPublicEmploymentProjects(ctx, tenantID, scope, limit, offset)
+		return h.Store.ListPublicEmploymentProjects(ctx, tenantID, limit, offset)
 	})
 }
 
 func (h *AllianceEmploymentHandler) GetPublicEmploymentProject(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	scope, ok := h.employmentScope(w, r)
-	if !ok {
-		return
-	}
 	id := chi.URLParam(r, "id")
-	item, err := h.Store.GetPublicEmploymentProjectByID(r.Context(), id, tenantID, scope)
+	item, err := h.Store.GetPublicEmploymentProjectByID(r.Context(), id, tenantID)
 	if err != nil {
 		alliancePublicGetErr(w, r, err, "就业项目不存在")
 		return
@@ -207,16 +181,12 @@ func (h *AllianceEmploymentHandler) GetPublicEmploymentProject(w http.ResponseWr
 	respondJSON(w, http.StatusOK, item)
 }
 
-// ListPublicEmploymentJobsByProject 大厅项目下岗位列表（项目须对学生可见）。
+// ListPublicEmploymentJobsByProject 大厅项目下岗位列表（项目须已发布）。
 func (h *AllianceEmploymentHandler) ListPublicEmploymentJobsByProject(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	scope, ok := h.employmentScope(w, r)
-	if !ok {
-		return
-	}
 	projectID := chi.URLParam(r, "id")
-	// 先校验项目可见性，避免学生枚举不可见项目的岗位
-	if _, err := h.Store.GetPublicEmploymentProjectByID(r.Context(), projectID, tenantID, scope); err != nil {
+	// 先校验项目存在且已发布，避免枚举未发布项目的岗位
+	if _, err := h.Store.GetPublicEmploymentProjectByID(r.Context(), projectID, tenantID); err != nil {
 		alliancePublicGetErr(w, r, err, "就业项目不存在")
 		return
 	}
@@ -227,12 +197,8 @@ func (h *AllianceEmploymentHandler) ListPublicEmploymentJobsByProject(w http.Res
 
 func (h *AllianceEmploymentHandler) GetPublicEmploymentJob(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	scope, ok := h.employmentScope(w, r)
-	if !ok {
-		return
-	}
 	id := chi.URLParam(r, "id")
-	item, err := h.Store.GetPublicEmploymentJobByID(r.Context(), id, tenantID, scope)
+	item, err := h.Store.GetPublicEmploymentJobByID(r.Context(), id, tenantID)
 	if err != nil {
 		alliancePublicGetErr(w, r, err, "岗位不存在")
 		return
@@ -240,7 +206,7 @@ func (h *AllianceEmploymentHandler) GetPublicEmploymentJob(w http.ResponseWriter
 	respondJSON(w, http.StatusOK, item)
 }
 
-// ApplyPublicEmploymentJob 学生投递岗位（档案快照带出 + 求职信；重复投递 409）。
+// ApplyPublicEmploymentJob 学生投递岗位（档案快照带出 + 求职信；重复投递 409；不在 target_groups 面向群体内 403）。
 func (h *AllianceEmploymentHandler) ApplyPublicEmploymentJob(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -272,6 +238,10 @@ func (h *AllianceEmploymentHandler) ApplyPublicEmploymentJob(w http.ResponseWrit
 	if err != nil {
 		if store.IsUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "已投递过该岗位")
+			return
+		}
+		if store.IsEmploymentNotEligible(err) {
+			respondError(w, http.StatusForbidden, "你不在该岗位面向的学生群体内，暂不可投递")
 			return
 		}
 		respondServerError(w, r, err, "投递失败")

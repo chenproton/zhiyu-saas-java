@@ -190,8 +190,8 @@
 | GET/POST/PUT/DELETE | `/alliance/employment-projects`、`/alliance/employment-projects/{id}` | canManageAlliance（注册于 businessUser 组，handler 层仅 teacher/school_admin/platform_admin/系统菜单权限放行，企业导师排除） | 就业项目 CRUD（L-4；target_groups 面向学生群体，enterprise_ids 参与企业） |
 | GET | `/alliance/employment-jobs`、`/alliance/employment-applications` | canManageAlliance（同上） | 岗位总览 / 投递总览（筛选 projectId/enterpriseId/status/jobId） |
 | PUT | `/alliance/employment-jobs/{id}/status` | RequireAllianceManager | 学校端治理：下架(closed)/恢复(published)岗位 |
-| GET | `/alliance/public/employment-projects`、`/alliance/public/employment-projects/{id}`、`/alliance/public/employment-projects/{id}/jobs`、`/alliance/public/employment-jobs/{id}` | 登录公开（同上限流） | 供需大厅：仅 published；学生按 target_groups 可见性过滤（其余角色不过滤） |
-| POST/GET | `/alliance/public/employment-jobs/{id}/apply`、`/alliance/public/employment-applications/mine` | 登录公开（仅学生） | 学生投递（档案快照+求职信，唯一约束防重 409）/ 我的投递 |
+| GET | `/alliance/public/employment-projects`、`/alliance/public/employment-projects/{id}`、`/alliance/public/employment-projects/{id}/jobs`、`/alliance/public/employment-jobs/{id}` | 登录公开（同上限流） | 供需大厅：仅 published；浏览全量可见（不分角色），target_groups 仅在投递时校验资格 |
+| POST/GET | `/alliance/public/employment-jobs/{id}/apply`、`/alliance/public/employment-applications/mine` | 登录公开（仅学生） | 学生投递（档案快照+求职信，唯一约束防重 409；不在岗位 target_groups 面向群体内 403「暂不可投递」）/ 我的投递 |
 
 ### 1.10 导入 / 导出 / 模板（portal + businessUser；10min 长超时）
 
