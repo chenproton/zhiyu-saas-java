@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
+	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20260809012320-907400bb3023
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/prometheus/client_golang v1.19.1

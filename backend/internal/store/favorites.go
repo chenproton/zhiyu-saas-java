@@ -14,12 +14,16 @@ const (
 	FavoriteTypeCourse       = "course"
 	FavoriteTypeQuestionBank = "question_bank"
 	FavoriteTypeExam         = "exam"
+	// AI 智能服务中心（spec ai-service-center.md §2.1）：仅已发布对象可收藏，私有内容不暴露存在性
+	FavoriteTypeAIKB    = "ai_kb"
+	FavoriteTypeAIAgent = "ai_agent"
 )
 
 // ValidFavoriteType 校验收藏目标类型是否受支持。
 func ValidFavoriteType(targetType string) bool {
 	switch targetType {
-	case FavoriteTypeScene, FavoriteTypeCourse, FavoriteTypeQuestionBank, FavoriteTypeExam:
+	case FavoriteTypeScene, FavoriteTypeCourse, FavoriteTypeQuestionBank, FavoriteTypeExam,
+		FavoriteTypeAIKB, FavoriteTypeAIAgent:
 		return true
 	}
 	return false
@@ -51,6 +55,13 @@ func (s *FavoritesStore) FavoriteTargetTenant(ctx context.Context, targetType, t
 		return tenantID, err
 	case FavoriteTypeExam:
 		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM exams WHERE id = $1`, targetID).Scan(&tenantID)
+		return tenantID, err
+	case FavoriteTypeAIKB:
+		// 仅 published 可收藏：私有/审核中/驳回的知识库对非可见者不暴露存在性（404 语义）
+		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM ai_knowledge_bases WHERE id = $1 AND status = 'published'`, targetID).Scan(&tenantID)
+		return tenantID, err
+	case FavoriteTypeAIAgent:
+		err := s.q.QueryRow(ctx, `SELECT tenant_id FROM ai_agents WHERE id = $1 AND status = 'published'`, targetID).Scan(&tenantID)
 		return tenantID, err
 	}
 	return "", pgx.ErrNoRows

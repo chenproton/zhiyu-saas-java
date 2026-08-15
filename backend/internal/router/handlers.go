@@ -36,6 +36,8 @@ type Handlers struct {
 	examExportHandler             *handler.ExamExportHandler
 	tenantHandler                 *handler.TenantHandler
 	aiHandler                     *handler.AIHandler
+	aiCenterHandler               *handler.AICenterHandler
+	aiCenterAdminHandler          *handler.AICenterAdminHandler
 	orgHandler                    *handler.OrgHandler
 	orgTypeHandler                *handler.OrgTypeHandler
 	userManagementHandler         *handler.UserManagementHandler
@@ -146,6 +148,8 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	lessonContentSvc := service.NewLessonContentService(svc)
 	favoritesSvc := service.NewFavoritesService(svc)
 	partnerSvc := service.NewPartnerService(svc)
+	aiSvc := service.NewAIService(svc, redisClient, ai.NewClient(), aiSecret, aiSecretPrevious)
+	aiCenterSvc := service.NewAICenterService(svc, aiSvc, fileHandler.UploadDir)
 	authH := handler.NewAuthHandler(authSvc, jwtSecret)
 	authH.PartnerService = partnerSvc
 	authH.Captcha = captchaSvc
@@ -179,7 +183,9 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		questionExportHandler:         &handler.QuestionExportHandler{Store: st, Svc: service.NewQuestionExportService(svc)},
 		examExportHandler:             &handler.ExamExportHandler{Store: st},
 		tenantHandler:                 tenantH,
-		aiHandler:                     &handler.AIHandler{Service: service.NewAIService(svc, redisClient, ai.NewClient(), aiSecret, aiSecretPrevious)},
+		aiHandler:                     &handler.AIHandler{Service: aiSvc},
+		aiCenterHandler:               &handler.AICenterHandler{Service: aiCenterSvc, UploadDir: fileHandler.UploadDir},
+		aiCenterAdminHandler:          &handler.AICenterAdminHandler{Service: aiCenterSvc},
 		orgHandler:                    &handler.OrgHandler{Service: service.NewOrgService(svc)},
 		orgTypeHandler:                &handler.OrgTypeHandler{Store: st.OrgTypes()},
 		userManagementHandler:         &handler.UserManagementHandler{Service: service.NewUserService(svc)},

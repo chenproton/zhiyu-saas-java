@@ -33,6 +33,10 @@
 | `handler.safeHandler` | `handler/common.go` | 带 panic recover 的 handler 包装 |
 | `store.LockByKey` | `store/query.go` | 分布式锁（核心业务防重复） |
 | `store.IsUniqueViolation` | `store/query.go` | 判断唯一键冲突（23505） |
+| `ai.Client.ChatCompletionStream` | `ai/stream.go` | SSE 流式 LLM 调用（delta 回调 + usage 捕获 + 上游错误脱敏）；任何流式 AI 端点必须用它（ADR-0002） |
+| `AIService.ChatStream` | `service/ai_stream.go` | 流式编排（租户配置加载/解密/用量记录），业务 service 一律经它，禁止直连 ai.Client |
+| `handler.sseEmitter` | `handler/ai_center_handler.go` | SSE 事件写出（meta/sources/delta/done/error + 惰性提交头：流前错误仍返回 HTTP JSON） |
+| `store.escapeLike` 惯例 | `store/query.go` / `ai_center.go` | ILIKE 搜索转义 %/_ 并加 `ESCAPE '\'` |
 | `store.MarshalJSONBytes` | `store/query.go` | JSON 序列化（含 fallback） |
 | `store.GenerateUniqueEntityCode` | `store/entity_code.go` | 唯一实体编码生成（前缀+查重重试） |
 | `store.FormatDateTime` | `store/` | 时间格式化（避免各层重复） |

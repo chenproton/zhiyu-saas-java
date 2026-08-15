@@ -104,6 +104,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 			r.With(aiLimiter).Post("/ai/position-assist", h.aiHandler.PositionAssist)
 			r.With(aiLimiter).Post("/ai/scenario-assist", h.aiHandler.ScenarioAssist)
 
+			// AI 智能服务中心（知识库/智能体/广场/审核上架/第三方挂接，spec ai-service-center.md §5）
+			registerAICenterRoutes(r, h, aiLimiter, uploadLimiter)
+
 			// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
 			r.Group(func(r chi.Router) {
 				r.Use(businessUser)

@@ -1224,7 +1224,15 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     label: 'AI 智能服务平台',
     icon: 'sparkles',
     href: '/portal/apps/ai/chat',
-    subModules: [{ id: 'chat', label: 'AI 助手', href: '/portal/apps/ai/chat' }],
+    // subModules 类型无角色过滤字段；admin 页面可见性由后端 RequireRole(school_admin) 兜底
+    // （docs/spec/ai-service-center.md §2.1：AI 中心不进 menus 权限树，路径默认可见）
+    subModules: [
+      { id: 'chat', label: 'AI 助手', href: '/portal/apps/ai/chat' },
+      { id: 'square', label: 'AI 广场', href: '/portal/apps/ai/square' },
+      { id: 'studio', label: '我的工坊', href: '/portal/apps/ai/studio' },
+      { id: 'admin-reviews', label: '内容审核', href: '/portal/apps/ai/admin/reviews' },
+      { id: 'admin-integrations', label: '第三方挂接', href: '/portal/apps/ai/admin/integrations' },
+    ],
   },
   opc: {
     id: 'opc',
@@ -1274,6 +1282,10 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
   'ai-chat': '基于租户自有 AI 服务的智能对话助手',
+  'ai-square': '浏览租户内已发布的知识库、智能体与第三方应用',
+  'ai-studio': '创建并管理我的知识库与智能体',
+  'ai-admin-reviews': '审核知识库与智能体的上架申请',
+  'ai-admin-integrations': '维护第三方智能体与应用链接卡片',
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {

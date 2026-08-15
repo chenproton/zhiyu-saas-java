@@ -138,6 +138,7 @@
 | `useSubmitterNames` | 提交人姓名批量缓存 |
 | `useOrgTree` | 组织树数据（orgs、orgTree、orgMap、orgTypeMap、typeNameMap、loading、refetch） |
 | `usePortalUsers` | Portal 用户列表（users、roles、roleMap、total、loading、refetch），支持 `roleCode` 筛选 |
+| `streamAICenter`（`@/lib/api`，非 hook） | SSE 流式调用统一封装（chat/ask 共用：onMeta/onSources/onDelta/onDone/onError 回调 + AbortSignal 取消；开始前错误抛 ApiErrorWithCode，412 走 useAiNotConfigured） |
 | `useSubscriptionModules` | 租户订阅模块开关，返回 `Record<string, boolean>` |
 | `useLibraryCrud` | library 列表页统一数据加载（search+limit+loading+失败 toast+首载），见 `app/library/_components/use-library-crud.ts`；需要随页面 state 联动筛选时 `autoLoad: false` + 自行 `useEffect` 触发 `loadItems` |
 | `usePagedList` | 分页列表统一数据加载（9 个文件复用：partner/co-build、portal/alliance 列表页） |

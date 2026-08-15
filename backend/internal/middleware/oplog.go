@@ -81,6 +81,19 @@ func (sr *statusRecorder) WriteHeader(code int) {
 	sr.ResponseWriter.WriteHeader(code)
 }
 
+// Flush 透传底层 http.Flusher：SSE 流式端点（AI 智能服务中心对话）经本中间件时
+// 不能丢失 Flush 能力，否则流式降级为 500（"streaming unsupported"）。
+func (sr *statusRecorder) Flush() {
+	if f, ok := sr.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap 支持 http.ResponseController 取到底层 writer（Flusher/Hijacker 等能力探测）。
+func (sr *statusRecorder) Unwrap() http.ResponseWriter {
+	return sr.ResponseWriter
+}
+
 // ClientIP 获取客户端真实 IP。
 // 后端仅暴露于内网并经 nginx 网关转发（网关已透传 X-Real-IP / X-Forwarded-For），
 // 故当直接连接方为回环/内网地址时优先取 X-Forwarded-For 首个地址，其次 X-Real-IP，

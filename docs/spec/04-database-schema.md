@@ -1,7 +1,7 @@
 # 数据库 Schema 设计 — 知与 SaaS
 
 > 基于 `backend/migrations/`（001_baseline + 091~160 增量）回溯整理。
-> 当前共 **155 张表**（158 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
+> 当前共 **165 张表**（168 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
 > 124~160 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
 > 约定：主键统一 `uuid DEFAULT gen_random_uuid()`；`created_at/updated_at timestamptz DEFAULT now()`；业务枚举用 `varchar + CHECK`，仅 7 个原生 PG ENUM。
 
@@ -312,9 +312,26 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 
 > 上述为 124~160 新增/结构性扩展的表；124~160 中仅加列/索引/回填的迁移见 §5 变更记录。partner_enterprises（142，全局企业主体）见 partner-enterprise-platform.md §4.2；alliance_expert_mentor_links（142）已于 154 废弃删除，不登记。
 
+### 2.19 AI 智能服务中心（164，详见 docs/spec/ai-service-center.md §4）
+
+| 表 | 字段级定义（列名/类型/NOT NULL/默认/FK/唯一） |
+|---|---|
+| ai_knowledge_bases(164) | `id PK, tenant_id NOT NULL, owner_id NOT NULL FK→users, name varchar(200) NOT NULL, description text DEFAULT '', tags jsonb DEFAULT '[]', status varchar(16) DEFAULT 'private' CHECK(private/pending/published/rejected), review_comment text DEFAULT '', reviewed_by, reviewed_at, doc_count int DEFAULT 0（ready 文档数冗余）, ask_count bigint DEFAULT 0, created_at, updated_at` |
+| ai_kb_documents(164) | `id PK, tenant_id NOT NULL, kb_id NOT NULL FK→ai_knowledge_bases CASCADE, uploader_id NOT NULL FK→users, name varchar(255) NOT NULL, file_path text NOT NULL, file_size bigint DEFAULT 0, mime varchar(100) DEFAULT '', status varchar(16) DEFAULT 'parsing' CHECK(parsing/ready/failed), error text DEFAULT '', chunk_count int DEFAULT 0, char_count int DEFAULT 0, created_at` |
+| ai_kb_chunks(164) | `id PK, tenant_id NOT NULL, doc_id NOT NULL FK→ai_kb_documents CASCADE, kb_id NOT NULL（冗余免 JOIN，随 doc 级联，刻意不建 FK）, seq int NOT NULL, content text NOT NULL, created_at`；`content` 上 GIN 索引（pg_trgm gin_trgm_ops，检索可见性过滤见 ai-service-center.md §2.2） |
+| ai_kb_collaborators(164) | `id PK, tenant_id NOT NULL, kb_id NOT NULL FK→ai_knowledge_bases CASCADE, user_id NOT NULL FK→users, role varchar(16) NOT NULL CHECK(editor/viewer), created_at`；(kb_id, user_id) 唯一 |
+| ai_agents(164) | `id PK, tenant_id NOT NULL, owner_id NOT NULL FK→users, name varchar(100) NOT NULL, avatar varchar(500) DEFAULT ''（emoji）, description text DEFAULT '', greeting text DEFAULT '', system_prompt text NOT NULL（无默认）, status/review_comment/reviewed_by/reviewed_at 同知识库状态机, chat_count bigint DEFAULT 0, created_at, updated_at` |
+| ai_agent_kbs(164) | `id PK, tenant_id NOT NULL, agent_id NOT NULL FK→ai_agents CASCADE, kb_id NOT NULL FK→ai_knowledge_bases CASCADE, created_at`；(agent_id, kb_id) 唯一 |
+| ai_conversations(164) | `id PK, tenant_id NOT NULL, agent_id NOT NULL FK→ai_agents CASCADE, user_id NOT NULL FK→users, title varchar(100) DEFAULT ''（首条用户消息截 30 字）, created_at, updated_at` |
+| ai_messages(164) | `id PK, tenant_id NOT NULL, conversation_id NOT NULL FK→ai_conversations CASCADE, role varchar(16) NOT NULL CHECK(user/assistant), content text NOT NULL, sources jsonb DEFAULT '[]', created_at` |
+| ai_integrations(164) | `id PK, tenant_id NOT NULL, kind varchar(16) NOT NULL CHECK(agent/app), name varchar(200) NOT NULL, description text DEFAULT '', url varchar(500) NOT NULL（仅 http/https，service 层校验）, icon varchar(500) DEFAULT '', category varchar(50) DEFAULT '', sort int DEFAULT 0, status varchar(16) DEFAULT 'active' CHECK(active/inactive), created_by, created_at, updated_at` |
+| ai_review_logs(164) | `id PK, tenant_id NOT NULL, target_type varchar(16) NOT NULL CHECK(kb/agent), target_id NOT NULL, action varchar(16) NOT NULL CHECK(submit/approve/reject/unpublish/takedown), actor_id NOT NULL, comment text DEFAULT '', created_at` |
+
+> 迁移 164 同时 `CREATE EXTENSION IF NOT EXISTS pg_trgm`（PG13+ 可信扩展，无需超级用户）。down 迁移 DROP 上述 10 表（业务数据不可恢复，属预期）；pg_trgm 保留不卸载（可能被既有库复用）。租户隔离为「所有查询路径带 tenant_id 条件」的代码纪律（tenant_id 不建 FK，与全库既有惯例一致）；分块检索 SQL 内嵌可见性过滤（published OR owner OR collaborator），防私有库经已发布智能体泄露。
+
 ## 3. 租户隔离说明
 
-- **绝大多数业务表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 152 张）为准。
+- **绝大多数业务表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 165 张）为准。
 - **少数表无 `tenant_id`**，分三类：
   1. **平台级公共表**：`platform_configs`（全局 KV）、`tenants`（本身）
   2. **计数器**：`favorite_counters`、`view_counters`（按 target_type+target_id 聚合，跨租户无妨）
@@ -458,6 +475,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 161 | alliance_dict_code_unify | 联盟字典编码统一：删 151 回插的中文码重复行（cooperation/agreement/project 三类型），种子 SQL 改英文码 |
 | 162 | alliance_employment | 就业服务三表：employment_projects/employment_jobs/employment_applications（down 不可逆：DROP 丢业务数据） |
 | 163 | employment_menu_default | 存量租户 teacher 角色 menus 回填就业服务管理两路径（/portal/apps/alliance/employmentproject、/employmentjob） |
+| 164 | ai_service_center | AI 智能服务中心 10 表（知识库/文档/分块/协作者/智能体/关联/会话/消息/挂接/审核日志）+ pg_trgm 扩展（down：DROP 10 表、保留扩展，业务数据不可恢复属预期） |
 | 165 | alliance_employment_project_cover | 就业项目加 cover_image（landing 供需大厅封面大卡 + 管理端封面编辑） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

@@ -393,6 +393,58 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 - 成功响应：`{"reply": "...", "usage": {"promptTokens": n, "completionTokens": n, "totalTokens": n}}`
 - 限流：20 次/分钟/用户
 
+### 3.9 AI 智能服务中心（/ai/kb、/ai/agents、/ai/square、/ai/integrations、/ai/admin/*）
+
+> 完整契约（请求/响应字段、SSE 事件协议、状态机）见 [`ai-service-center.md`](ai-service-center.md) §5；此处登记路由面与公共约定。
+
+**用户端（portal 平台组，任意登录角色，可见性由 service 层判定）**
+
+- 知识库：`GET/POST /ai/kb`，`GET/PUT/DELETE /ai/kb/{id}`，`POST /ai/kb/{id}/submit|unpublish`；文档 `GET/POST /ai/kb/{id}/documents`（POST 为 multipart 上传，≤10MB，扩展名白名单 pdf/docx/txt/md，走 uploadLimiter）、`GET/DELETE /ai/kb/{id}/documents/{docId}`；协作者 `GET/POST /ai/kb/{id}/collaborators`、`PUT/DELETE /ai/kb/{id}/collaborators/{userId}`；库内问答 `POST /ai/kb/{id}/ask`（SSE，aiLimiter）。
+- 智能体：`GET/POST /ai/agents`，`GET/PUT/DELETE /ai/agents/{id}`，`POST /ai/agents/{id}/submit|unpublish`；对话 `POST /ai/agents/{id}/chat`（SSE，aiLimiter）；会话 `GET /ai/agents/{id}/conversations`、`GET/DELETE /ai/conversations/{id}`。
+- 广场：`GET /ai/square/kbs|agents`（q/tag/sort=hot|new + 分页）、`GET /ai/integrations?kind=`。
+- 收藏：复用通用收藏 `GET/POST /favorites/{targetType}/{id}`，targetType 扩展 `ai_kb`/`ai_agent`，仅 published 对象可收藏（其余 404）。
+
+**管理端（school_admin 角色组）**
+
+- `GET /ai/admin/reviews?type=kb|agent&status=`、`POST /ai/admin/reviews/{type}/{id}/{action}`（action=approve/reject/takedown，reject 必须 comment）
+- `GET /ai/admin/overview`
+- 挂接 CRUD：`GET/POST /ai/admin/integrations`、`PUT /ai/admin/integrations/{id}`、`POST /ai/admin/integrations/{id}/toggle`、`DELETE /ai/admin/integrations/{id}`（url 仅允许 http/https，防 javascript: XSS）
+
+**SSE 流式协议（chat/ask 共用）**：`event: meta`（conversationId/messageId）→ `event: sources`（命中资料段，无命中则不发送）→ `event: delta`（增量文本 ×N）→ `event: done`；流中途失败发 `event: error`；开始前失败仍返回 HTTP JSON（401/403/404/412/500）。未配置 AI → 412 `ai_not_configured`；上游错误 → 502 脱敏 message。护栏：消息 ≤2000 字符、system_prompt ≤4000 字符、关联知识库 ≤5 个、历史窗口 10 条。
+
+**路由登记表**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /ai/kb | 我的/共享给我的知识库列表 |
+| POST | /ai/kb | 创建知识库 |
+| GET/PUT/DELETE | /ai/kb/{id} | 详情 / 编辑 / 删除（删除仅 private/rejected 态） |
+| POST | /ai/kb/{id}/submit | 提交发布审核 |
+| POST | /ai/kb/{id}/unpublish | 下架回私有 |
+| GET/POST | /ai/kb/{id}/documents | 文档列表 / multipart 上传 |
+| GET/DELETE | /ai/kb/{id}/documents/{id} | 文档详情 / 删除 |
+| GET/POST | /ai/kb/{id}/collaborators | 协作者列表 / 添加 |
+| PUT/DELETE | /ai/kb/{id}/collaborators/{id} | 变更角色（路径末段为 userId）/ 移除 |
+| POST | /ai/kb/{id}/ask | 库内问答（SSE） |
+| GET/POST | /ai/agents | 我的智能体列表 / 创建 |
+| GET/PUT/DELETE | /ai/agents/{id} | 详情 / 编辑 / 删除 |
+| POST | /ai/agents/{id}/submit | 提交审核（响应含 warnings） |
+| POST | /ai/agents/{id}/unpublish | 下架 |
+| POST | /ai/agents/{id}/chat | 智能体对话（SSE） |
+| GET | /ai/agents/{id}/conversations | 我的会话列表 |
+| GET/DELETE | /ai/conversations/{id} | 会话详情（含消息）/ 删除 |
+| GET | /ai/square/kbs | 广场知识库（q/tag/sort/分页） |
+| GET | /ai/square/agents | 广场智能体 |
+| GET | /ai/integrations | 第三方挂接展示（上架中） |
+| GET | /ai/admin/reviews | 审核列表（school_admin） |
+| POST | /ai/admin/reviews/{type}/{id}/{action} | 审核操作（type=kb/agent；action=approve/reject/takedown） |
+| GET | /ai/admin/overview | 管理概览统计 |
+| GET/POST | /ai/admin/integrations | 挂接列表（含下架）/ 新增 |
+| PUT/DELETE | /ai/admin/integrations/{id} | 编辑 / 删除 |
+| POST | /ai/admin/integrations/{id}/toggle | 上架/下架 |
+
+
+
 ---
 
 ## 4. 公共规范
@@ -466,6 +518,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 | 版本 | 日期 | 变更内容 | 影响范围 |
 |------|------|---------|---------|
+| v1.1 | 2026-08-15 | 新增 §3.9 AI 智能服务中心：知识库/智能体/广场/审核上架/第三方挂接路由面 + SSE 流式协议（meta/sources/delta/done/error）+ 通用收藏类型扩展（ai_kb/ai_agent，仅 published 可收藏） | ai 模块（见 ai-service-center.md §5） |
 | v1.0 | 2026-08-14 | **全量审计修订**：补齐 AI（§1.12）/快照 bundle（§1.13）/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员/联盟 search-grants-mentor-options-talent-ranking 等漏登记端点；修正认证规则端点（`/evaluation/certifications/*`）；删除僵尸条目（毕业设计/微证书/测评方法字典/作业提交批改/`exam-usages/{id}/start`/`lesson/nodes/{nodeId}/quizzes` 等）；接口数量更新为 700+；机器码词汇表与 error_codes.go 对齐（§4.2）；uploads 路径与状态码表补 412/502 | 全模块文档 |
 | v0.9 | 2026-08-04 | 评价标准保存即落库 + 409 重试；联盟字典码中文化→英文编码（迁移 122）；体系课节点测评提交闭环；`/job/student` 重定向至 `/job/landing` | scene/evaluation、alliance 导入识别、lesson |
 | v0.8 | 2026-08-03 | 恢复 RequirePlatform 平台隔离中间件；场景导入按文件后缀推断资源类型 | 安全、导入 |

@@ -103,6 +103,7 @@ type Store struct {
 	platformSettings *PlatformSettingsStore
 	aiConfigs        *AIConfigStore
 	aiUsage          *AIUsageStore
+	aiCenter         *AICenterStore
 	tags             *TagStore
 }
 
@@ -195,6 +196,7 @@ func newStore(q Queryer) *Store {
 		platformSettings: NewPlatformSettingsStore(q),
 		aiConfigs:        NewAIConfigStore(q),
 		aiUsage:          NewAIUsageStore(q),
+		aiCenter:         NewAICenterStore(q),
 		tags:             NewTagStore(q, beginner),
 	}
 }
@@ -680,6 +682,11 @@ func (s *Store) AIConfigs() *AIConfigStore {
 // AIUsage 返回 AI 用量记录 store。
 func (s *Store) AIUsage() *AIUsageStore {
 	return s.aiUsage
+}
+
+// AICenter 返回 AI 智能服务中心 store。
+func (s *Store) AICenter() *AICenterStore {
+	return s.aiCenter
 }
 
 // Tags 返回标签 store。

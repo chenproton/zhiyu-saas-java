@@ -53,6 +53,11 @@ steps:
 | flow id | story | 角色链 | 业务链路 |
 |---------|-------|--------|---------|
 | employment-hall-loop | L-4 | school→partner→student→partner→school | 学校引入并激活企业→发布就业项目→企业录岗位并挂项目发布→学生大厅可见并投递→企业查看投递→学校下架治理 |
+| ai-kb-publish-loop | KB-1/KB-3/AD-1 | teacher→school→student→school→teacher | 教师建知识库→提交审核→学校管理员通过→学生广场可见→管理员下架→教师清理 |
+| ai-agent-publish-loop | AG-1/AD-1 | teacher→school→student→school→teacher | 教师建智能体→提交审核→管理员通过→学生广场可见→管理员下架→教师清理 |
+| ai-integration-loop | AD-2 | school→student→school | 管理员挂接第三方应用→学生广场应用区可见→管理员下架 |
+
+> AI 智能服务中心的对话链路（SSE 流式问答、私有库泄露防线 ST-1）涉及真实 LLM 调用，按 DSL 约束不进本文件，由后端集成测试覆盖（`backend/internal/handler/ai_center_flow_test.go`：TestAICenter_AgentChatStream 含泄露防线断言、TestAICenter_KBAsk 含溯源断言）。
 
 ---
 
@@ -161,5 +166,138 @@ steps:
     clickRow: { text: "{{projectName}}", action: 删除 }
     confirm: true
     expectApi: { method: DELETE, url: /alliance/employment-projects/, status: 200 }
+    optional: true
+```
+
+### 3.2 知识库发布闭环（ai-kb-publish-loop）
+
+```flow
+flow: ai-kb-publish-loop
+story: KB-1
+desc: 教师建知识库 → 提交审核 → 学校管理员通过 → 学生广场可见 → 管理员下架 → 教师清理
+steps:
+  # 幂等清理（上次失败残留）
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    clickRow: { text: "SMOKE_AI库", action: 删除 }
+    confirm: true
+    optional: true
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    click: 新建知识库
+    fill: { 名称: "SMOKE_AI库{rand}" }
+    saveAs: { kbName: 名称 }
+    submit: true
+    expectApi: { method: POST, url: /ai/kb, status: 201 }
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    clickRow: { text: "{{kbName}}", action: 提交审核 }
+    expectApi: { method: POST, url: /ai/kb/, status: 200 }
+  - role: school
+    goto: /portal/apps/ai/admin/reviews
+    clickRow: { text: "{{kbName}}", action: 通过 }
+    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
+  - role: student
+    goto: /portal/apps/ai/square
+    click: 知识库
+    expectText: "{{kbName}}"
+    timeoutMs: 20000
+  - role: school
+    goto: /portal/apps/ai/admin/reviews
+    click: 已发布
+    clickRow: { text: "{{kbName}}", action: 下架 }
+    confirm: true
+    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    clickRow: { text: "{{kbName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /ai/kb/, status: 200 }
+```
+
+### 3.3 智能体发布闭环（ai-agent-publish-loop）
+
+```flow
+flow: ai-agent-publish-loop
+story: AG-1
+desc: 教师建智能体 → 提交审核（警告确认）→ 管理员通过 → 学生广场可见 → 管理员下架 → 教师清理
+steps:
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    clickRow: { text: "SMOKE_AI助手", action: 删除 }
+    confirm: true
+    optional: true
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    click: 我的智能体
+    click: 新建智能体
+    fill: { 名称: "SMOKE_AI助手{rand}" }
+    saveAs: { agentName: 名称 }
+    fill: { 角色提示词: "你是 SMOKE 测试助手" }
+    submit: 创建智能体
+    expectApi: { method: POST, url: /ai/agents, status: 201 }
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    click: 我的智能体
+    clickRow: { text: "{{agentName}}", action: 提交审核 }
+    confirm: true
+    expectApi: { method: POST, url: /ai/agents/, status: 200 }
+  - role: school
+    goto: /portal/apps/ai/admin/reviews
+    click: 智能体审核
+    clickRow: { text: "{{agentName}}", action: 通过 }
+    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
+  - role: student
+    goto: /portal/apps/ai/square
+    expectText: "{{agentName}}"
+    timeoutMs: 20000
+  - role: school
+    goto: /portal/apps/ai/admin/reviews
+    click: 智能体审核
+    click: 已发布
+    clickRow: { text: "{{agentName}}", action: 下架 }
+    confirm: true
+    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    click: 我的智能体
+    clickRow: { text: "{{agentName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /ai/agents/, status: 200 }
+```
+
+### 3.4 第三方挂接管理闭环（ai-integration-loop）
+
+```flow
+flow: ai-integration-loop
+story: AD-2
+desc: 管理员挂接第三方应用 → 学生广场应用区可见 → 管理员下架清理
+steps:
+  - role: school
+    goto: /portal/apps/ai/admin/integrations
+    clickRow: { text: "SMOKE_应用", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /portal/apps/ai/admin/integrations
+    click: 新增
+    fill: { 名称: "SMOKE_应用{rand}", URL: "https://example.com/app{rand}" }
+    saveAs: { appName: 名称 }
+    submit: true
+    expectApi: { method: POST, url: /ai/admin/integrations, status: 201 }
+  - role: student
+    goto: /portal/apps/ai/square
+    click: 第三方服务
+    expectText: "{{appName}}"
+    timeoutMs: 20000
+  - role: school
+    goto: /portal/apps/ai/admin/integrations
+    clickRow: { text: "{{appName}}", action: 下架 }
+    expectApi: { method: POST, url: /ai/admin/integrations/, status: 200 }
+  - role: school
+    goto: /portal/apps/ai/admin/integrations
+    clickRow: { text: "{{appName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /ai/admin/integrations/, status: 200 }
     optional: true
 ```
