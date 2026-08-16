@@ -201,10 +201,16 @@ async function execStep(page, cfg, step, vars, rand, progress) {
     if (res.url().includes('/api/')) apiHits.push({ method: res.request().method(), url: res.url(), status: res.status() })
   }
   if (step.expectApi) page.on('response', collector)
+  // pageerror 哨兵：本步窗口内任何未捕获前端异常（React 渲染崩溃等）都判步骤失败，
+  // 覆盖「接口正常但页面白屏」的事故类（2026-08 AI 工坊 params 事故：接口 200 但页面崩溃，
+  // 流程未进动态路由页因而漏检）。步骤可选 skipPageErrorCheck: true 显式豁免。
+  const pageErrors = []
+  const onPageError = err => pageErrors.push(String((err && err.message) || err))
+  page.on('pageerror', onPageError)
   try {
     for (const [key, rawVal] of Object.entries(step)) {
       switch (key) {
-        case 'role': case 'expectApi': case 'saveAs': case 'optional': case 'timeoutMs':
+        case 'role': case 'expectApi': case 'saveAs': case 'optional': case 'timeoutMs': case 'skipPageErrorCheck':
           break
         case 'goto': {
           mark(`goto ${rawVal}`)
@@ -285,7 +291,7 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           break
         }
         default:
-          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/fill/select/submit/confirm/expectApi/expectText/saveAs/optional/timeoutMs）`)
+          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/fill/select/submit/confirm/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
       }
     }
     if (step.expectApi) {
@@ -300,8 +306,12 @@ async function execStep(page, cfg, step, vars, rand, progress) {
       }
       actions.push(`expectApi ✓ ${hit.status} ${hit.method}`)
     }
+    if (!step.skipPageErrorCheck && pageErrors.length > 0) {
+      throw new Error(`页面脚本错误（pageerror ×${pageErrors.length}）：${pageErrors[0].slice(0, 200)}`)
+    }
   } finally {
     if (step.expectApi) page.off('response', collector)
+    page.off('pageerror', onPageError)
   }
   return actions
 }

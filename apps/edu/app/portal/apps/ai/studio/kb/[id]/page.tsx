@@ -2,7 +2,7 @@
 
 // 知识库管理（spec docs/spec/ai-service-center.md §7 F2/F3）：基本信息 / 文档管理 / 协作者。
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -34,8 +34,9 @@ import { AIStatusBadge } from '../../components/ai-status-badge'
 const ACCEPT = '.pdf,.docx,.txt,.md'
 const POLL_INTERVAL = 2500
 
-export default function KBManagePage({ params }: { params: { id: string } }) {
-  const kbId = params.id
+export default function KBManagePage() {
+  const params = useParams()
+  const kbId = String(params.id)
   const t = useT()
   const router = useRouter()
   const { toast } = useToast()

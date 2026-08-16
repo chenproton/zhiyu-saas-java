@@ -31,6 +31,8 @@ steps:
     saveAs: { 变量名: 字段label }                 # 把本步 fill 的值存入流程上下文
     optional: true                               # 失败记 warn 不判失败（用于幂等前置步骤）
     timeoutMs: 10000                             # 单步看门狗（默认 15000）
+    skipPageErrorCheck: true                     # 豁免本步 pageerror 哨兵（默认开启：步骤窗口内任何
+                                                 # 未捕获前端异常=步骤失败，覆盖「接口正常但页面白屏」事故类）
 ```
 
 **模板变量**：
@@ -41,6 +43,7 @@ steps:
 **执行语义**：
 - 步骤按数组顺序执行；`role` 切换时巡检器按需登录并复用该角色会话；
 - 非 `optional` 步骤失败 = 流程失败（报告记录失败步骤与原因）；流程失败不影响后续流程与逐页巡检；
+- **pageerror 哨兵（默认开启）**：每步执行窗口内浏览器任何未捕获异常（React 渲染崩溃、`undefined` 拼接等）即判该步失败——2026-08 AI 工坊事故（接口全 200 但管理页白屏）暴露「只断言接口与文字、不看脚本错误」的盲区，此哨兵兜底该类问题；误伤时可用 `skipPageErrorCheck` 单步豁免；
 - 所有创建数据必须使用 `SMOKE_` 前缀（走巡检器统一清理与安全护栏）；
 - 不产生真实 LLM 调用；不点击语言切换/超管危险操作（继承巡检器危险词护栏）。
 
@@ -189,6 +192,13 @@ steps:
     saveAs: { kbName: 名称 }
     submit: true
     expectApi: { method: POST, url: /ai/kb, status: 201 }
+  # 回归护栏：进入库管理页验证动态路由参数解析（Next 15+ params 为 Promise，
+  # 误读 params.id 会得到 undefined → 页面报错；2026-08 事故，见 ai-service-center §11）
+  - role: teacher
+    goto: /portal/apps/ai/studio
+    clickRow: { text: "{{kbName}}", action: 编辑 }
+    expectText: 文档管理
+    timeoutMs: 20000
   - role: teacher
     goto: /portal/apps/ai/studio
     clickRow: { text: "{{kbName}}", action: 提交审核 }
@@ -236,6 +246,9 @@ steps:
     fill: { 角色提示词: "你是 SMOKE 测试助手" }
     submit: 创建智能体
     expectApi: { method: POST, url: /ai/agents, status: 201 }
+    # 创建成功自动进入编辑器：断言编辑器渲染（动态路由参数回归护栏）
+    expectText: 角色提示词
+    timeoutMs: 20000
   - role: teacher
     goto: /portal/apps/ai/studio
     click: 我的智能体

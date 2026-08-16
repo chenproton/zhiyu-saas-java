@@ -477,3 +477,25 @@ func TestAICenter_EmptyListsReturnEmptyArray(t *testing.T) {
 		}
 	}
 }
+
+// TestAICenter_InvalidUUIDReturns400 回归：非法 UUID 路径参数（如 "undefined"）必须 400，
+// 不得透成 500（Next 15+ params Promise 误读事故伴生问题，见 spec §11）。
+func TestAICenter_InvalidUUIDReturns400(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	aiSeedUsers(t, env)
+	owner, _, _, _ := aiTokens(env)
+
+	for _, path := range []string{
+		"/api/v1/ai/kb/undefined",
+		"/api/v1/ai/kb/undefined/documents",
+		"/api/v1/ai/kb/undefined/collaborators",
+		"/api/v1/ai/agents/undefined",
+		"/api/v1/ai/agents/undefined/conversations",
+	} {
+		w := env.DoWithToken("GET", path, nil, owner)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("%s: expected 400, got %d: %s", path, w.Code, testhelper.ErrMsg(w))
+		}
+	}
+}

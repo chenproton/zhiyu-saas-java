@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zhiyu-saas/backend/internal/ai"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -42,6 +43,10 @@ func aiCenterError(w http.ResponseWriter, r *http.Request, err error, fallback s
 		respondError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, service.ErrAINotConfigured):
 		respondError(w, http.StatusPreconditionFailed, "ai_not_configured")
+	case isInvalidUUIDSyntax(err):
+		// 非法 UUID 路径参数（如前端 bug 或手拼 URL 传入 "undefined"）属客户端错误，
+		// 不应当作 500 服务端故障（PG 22P02）
+		respondError(w, http.StatusBadRequest, "请求参数格式错误")
 	default:
 		var upErr *ai.UpstreamError
 		if errors.As(err, &upErr) {
@@ -50,6 +55,12 @@ func aiCenterError(w http.ResponseWriter, r *http.Request, err error, fallback s
 		}
 		respondServerError(w, r, err, fallback)
 	}
+}
+
+// isInvalidUUIDSyntax 判断是否为 PG 非法 UUID/类型语法错误（SQLSTATE 22P02）。
+func isInvalidUUIDSyntax(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
 }
 
 // aiCenterPage 解析 page/pageSize（默认 1/20，pageSize ≤ 50）。

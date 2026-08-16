@@ -364,6 +364,7 @@ B1/B2/B3（基建，部分并行）→ B4 → B5/B6 → B7 → B8 → B9/B10 →
 - **前台单页集成（v1.2）**：按用户拍板（广场/工坊都集成在落地页、不二次跳转、长页面上下分区、智能体表单保留跳编辑器页），落地页成为前台唯一主页；/square、/studio 旧路由重定向至落地页锚点，验收 flow 的 goto 目标经重定向仍有效（区块组件原样渲染，clickRow/click 定位不变）。
 - **侧边栏无「首页」项（v1.2 修正）**：落地页集成后曾加「首页」侧边栏项，按用户反馈对齐其他平台惯例移除（平台侧边栏只列业务功能，落地页走卡片主入口 + 返回应用中心按钮）。
 - **菜单单一开关（v1.2）**：初版权限树为 chat/square/studio/landing 四节点 + 管理组，按用户反馈收敛为 `/portal/apps/ai` 一个开关联动全部前台页面（迁移 168 收敛存量授权键）；管理组两项保持独立勾选。门户首页 INTERNAL_ROUTES 与卡片 href 统一指向落地页。
+- **动态路由参数事故（v1.2 修复）**：`studio/kb/[id]` 与 `studio/agents/[id]` 两页误用 Next 15+ 已废弃的同步 `params` 解构（`params.id` 读 Promise → undefined → 请求 `/ai/kb/undefined` 500，用户感知为「创建失败」）；同仓库 `useParams()` 正确写法已在 kb 详情/对话页使用，属实现不一致漏检。修复：两页改 `useParams()`；全仓审计无其他同步 params 页面；后端纵深防御 `aiCenterError` 将 PG 22P02（非法 UUID）映射 400 不再透 500。回归覆盖：后端 `TestAICenter_InvalidUUIDReturns400`（5 端点）；验收 flow 两条 AI 闭环补「进入库管理页/编辑器」断言步骤；巡检器新增 pageerror 哨兵（06 §1）。
 - **空列表序列化（v1.1 修复）**：Go nil slice 会序列化为 `"items": null` 导致前端 `items.length` 崩溃（studio 页白屏事故根因）；store 层 14 处列表查询统一 `make([]T, 0)`，智能体 KbIDs/KbNames 同样非 nil 保证，回归测试 `TestAICenter_EmptyListsReturnEmptyArray` 覆盖 9 个列表端点。
 - **广场卡片收藏态**：每张卡片挂载时 `GET /favorites/{type}/{id}`（N 卡 N 请求）。列表接口返回 isFavorite/favoriteCount 的批量方案留作性能优化项（当前广场数据量小，可接受）。
 - **done 事件 usage 不下发**：token 用量由 `recordUsage` 落库（ai_usage_logs），前端不展示逐次用量；如需前端展示再扩展 done 载荷。

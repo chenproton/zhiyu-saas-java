@@ -2,7 +2,7 @@
 
 // 智能体编辑器（spec docs/spec/ai-service-center.md §7 F5/F6）：编辑 + 状态操作（提交审核/下架/去对话）。
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,8 +20,9 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { AgentForm } from '../../components/agent-form'
 import { AIStatusBadge } from '../../components/ai-status-badge'
 
-export default function AgentEditPage({ params }: { params: { id: string } }) {
-  const agentId = params.id
+export default function AgentEditPage() {
+  const params = useParams()
+  const agentId = String(params.id)
   const t = useT()
   const router = useRouter()
   const { toast } = useToast()
