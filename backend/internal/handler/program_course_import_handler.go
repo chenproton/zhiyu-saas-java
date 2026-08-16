@@ -129,15 +129,6 @@ func (h *ProgramCourseImportHandler) ServeTemplate(w http.ResponseWriter, r *htt
 	writeExcel(w, r, f, "方案课程批量导入模板.xlsx")
 }
 
-// currentTenant 读取当前请求租户（checkAuth 已保证存在）。
-func (h *ProgramCourseImportHandler) currentTenant(r *http.Request) string {
-	claims := middleware.CurrentUser(r)
-	if claims == nil || claims.TenantID == nil {
-		return ""
-	}
-	return *claims.TenantID
-}
-
 func (h *ProgramCourseImportHandler) checkAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {

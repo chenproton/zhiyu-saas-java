@@ -260,6 +260,10 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusBadRequest, "缺少评分项")
 		return
 	}
+	if len(req.Items) > 200 {
+		respondError(w, http.StatusBadRequest, "单次最多评分 200 项")
+		return
+	}
 
 	// 批量查一次（替代逐条 GetEvaluationResult 的 N+1），租户限定在查询内
 	ids := make([]string, 0, len(req.Items))

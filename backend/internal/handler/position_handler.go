@@ -533,10 +533,6 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("查询收藏数失败", "positionId", id, "error", err)
 		cnt = 0
 	}
-	if err != nil {
-		slog.Warn("favorite count failed", "positionID", id, "error", err)
-		cnt = 0
-	}
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav, FavoriteCount: cnt})
 }
 

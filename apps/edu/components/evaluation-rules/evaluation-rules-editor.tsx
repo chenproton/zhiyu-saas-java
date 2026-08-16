@@ -3221,14 +3221,16 @@ export function EvaluationRulesEditor({
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => void handleSaveStandard()}
-                  disabled={isSavingStandard}
-                >
-                  {isSavingStandard ? t('保存中…') : t('保存')}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    size="sm"
+                    className="text-xs h-8"
+                    onClick={() => void handleSaveStandard()}
+                    disabled={isSavingStandard}
+                  >
+                    {isSavingStandard ? t('保存中…') : t('保存')}
+                  </Button>
+                )}
                 {!readOnly && (
                   <Button
                     size="sm"

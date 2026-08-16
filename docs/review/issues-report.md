@@ -68,17 +68,14 @@
 - `store/query.go` / `scenario_import_export.go` 循环逐名称/逐 id 查（导入导出场景，数据量有界）。
 - ILIKE 搜索未转义 `%/_`（`learn_roads.go` / `job_ability_results.go` / `alliance_*_store.go`）——参数化无注入，仅匹配面放大；建议统一 `escapeLike`。
 - `store/scenario_configs.go` 动态表名未走白名单（当前仅硬编码字面量，无注入面）。
-- Excel 导入未设 `http.MaxBytesReader`（`exam_import_handler.go` / `granular_course_import_handler.go` / `course_import_handler`）——建议补 30MB 上限。
-- `evaluation_result_handler.go` BatchGrade 无 items 上限——建议钳制 ≤200。
+- Excel 导入未设 `http.MaxBytesReader`（`exam_import_handler.go` / `granular_course_import_handler.go` / `course_import_handler`）——建议补总量上限（需核对各端点既有 `ParseMultipartForm` 50MB/200MB 口径）。
 - `service/evaluation_result.go` SubmitExamResult 检查与写入分离（TOCTOU）——已有 `(usage,user)` 唯一约束兜底。
 - `service/position_import.go` 关联写入错误 `_=` 静默丢弃——建议计入 Failed/Errors。
 - `service/granular_course_import.go` 覆盖导入未包事务（先删后插非原子）——建议 `WithTx`。
 - `service/lesson_content.go` / `scenario.go` CloneCourse 源租户 nil 放行（与 position_clone 不一致）。
 - `router/router_dup_test.go` 重复注册测试失效（每 Group 新建 seen map）——建议共享 map。
 - `handler/stats_handler.go` MyStats 硬编码 0 占位桩——建议未实现则不注册。
-- 死代码：`position_handler.go` / `program_course_import_handler.go` / `ai_center_kb.go`——建议删除（无害）。
-- 前端 `evaluation-rules-editor.tsx` 只读共建模式「保存评价标准」按钮未隐藏——建议 `!readOnly` 门控（中危，需确认交互）。
-- `packages/api-client/src/api-helpers.ts` authedFetch 无 timeout/signal——建议对齐 40s `AbortSignal.timeout`。
+- `packages/api-client/src/api-helpers.ts` authedFetch 无 timeout/signal——建议对齐 40s `AbortSignal.timeout`（需核对大文件上传/下载调用点）。
 - `packages/ui/src/components/ui/chart.tsx` id/color 未转义插入 `<style>`——建议白名单校验（当前调用方传硬编码 id）。
 
 ---
