@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  BarChart3,
   BookOpen,
   FileText,
   HelpCircle,
@@ -32,6 +33,7 @@ import {
   Undo2,
   Wrench,
 } from 'lucide-react'
+import { PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterAgentApi, aiCenterKbApi, fileApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
@@ -438,6 +440,14 @@ export function StudioSection() {
 
   const totalMine = myKbs.length + agents.length
 
+  // 类型占比环图：我的知识库 / 我的智能体 / 共享给我的（v2.1，纯前端聚合）
+  const typePie = [
+    { name: t('知识库'), value: myKbs.length, color: 'hsl(var(--primary))' },
+    { name: t('智能体'), value: agents.length, color: '#10b981' },
+    { name: t('共享给我的'), value: sharedKbs.length, color: '#f59e0b' },
+  ].filter((d) => d.value > 0)
+  const totalAll = totalMine + sharedKbs.length
+
   return (
     <div className="max-w-[1400px] mx-auto">
       {/* 工坊大面板（对标考试中心面板） */}
@@ -476,15 +486,62 @@ export function StudioSection() {
         <div className="p-5">
           {kbLoading || agentLoading ? (
             renderLoading
-          ) : totalMine + sharedKbs.length === 0 ? (
+          ) : totalAll === 0 ? (
             emptyBox(t('还没有产出，点击右上角新建知识库或智能体开始'))
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {[
-                ...myKbs.map(renderKbCard),
-                ...agents.map(renderAgentCard),
-                ...sharedKbs.map(renderKbCard),
-              ]}
+            <div className="flex flex-col lg:flex-row gap-5">
+              {/* 左栏：类型占比环图（知识库 vs 智能体 vs 共享） */}
+              <div className="lg:w-[220px] shrink-0">
+                <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-4 h-full">
+                  <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-2">
+                    <BarChart3 className="w-4 h-4 text-primary" /> {t('类型占比')}
+                  </div>
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={130}>
+                      <RePieChart>
+                        <Pie
+                          data={typePie}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={36}
+                          outerRadius={52}
+                          paddingAngle={3}
+                          dataKey="value"
+                          strokeWidth={0}
+                        >
+                          {typePie.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number, name: string) => [t('{n} 项', { n: value }), name]} />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <div className="text-[18px] font-bold text-[#0f172a] leading-none">{totalAll}</div>
+                      <div className="text-[11px] text-[#64748b] mt-1">{t('全部')}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 mt-3">
+                    {typePie.map((d) => (
+                      <div key={d.name} className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-2 text-[#475569]">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
+                          {d.name}
+                        </span>
+                        <span className="font-semibold text-[#0f172a]">{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* 右栏：混排卡片网格 */}
+              <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 content-start">
+                {[
+                  ...myKbs.map(renderKbCard),
+                  ...agents.map(renderAgentCard),
+                  ...sharedKbs.map(renderKbCard),
+                ]}
+              </div>
             </div>
           )}
         </div>
