@@ -103,4 +103,25 @@ describe('streamAICenter SSE 解析', () => {
     ).rejects.toBe(abortErr)
     expect(onError).not.toHaveBeenCalled()
   })
+
+  it('闲置超时经 onError 回调（不抛异常）', async () => {
+    vi.useFakeTimers()
+    try {
+      // 永不产生数据也不关闭的流：触发闲置超时
+      const stream = new ReadableStream<Uint8Array>({
+        start() {},
+      })
+      globalThis.fetch = vi.fn(
+        async () =>
+          new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+      )
+      const onError = vi.fn()
+      const pending = streamAICenter('/ai/kb/1/ask', { message: 'hi' }, { onError })
+      await vi.advanceTimersByTimeAsync(60_000)
+      await pending
+      expect(onError).toHaveBeenCalledWith('stream_error', '流式响应超时')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

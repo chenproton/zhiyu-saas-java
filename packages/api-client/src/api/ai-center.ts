@@ -303,10 +303,36 @@ export interface AIStreamCallbacks {
   onError?: (code: string, message: string) => void
 }
 
+// 流式读取闲置超时：单次 read 超过该时长仍无新数据即视为流中断（后端 30s 超时，前端放宽到 60s）。
+// 只作用于「无新数据」的空闲场景，不限制正常流式输出的总时长。
+const SSE_IDLE_TIMEOUT_MS = 60_000
+
+/**
+ * 带闲置超时的单次 read：超时以普通 Error 拒绝（走 onError，区别于 AbortError 的用户取消）。
+ * 超时后原 read 仍在挂起，附加空 catch 避免后续流错误成为未处理拒绝。
+ */
+async function readWithIdleTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const read = reader.read()
+  read.catch(() => {})
+  try {
+    return await Promise.race([
+      read,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('流式响应超时')), SSE_IDLE_TIMEOUT_MS)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * SSE 流式调用（spec §5.5）：POST + text/event-stream 解析。
  * 开始前失败（401/403/404/412/500）按 HTTP JSON 错误抛 ApiErrorWithCode（401 同时跳登录）；
- * 流中途失败经 onError 事件回调（不再抛异常）。
+ * 流中途失败（含闲置超时）经 onError 事件回调（不再抛异常）。
  * signal 取消即中断（AbortController，AbortError 向上抛由调用方以 isAbortError 识别，不触发 onError）。
  * 解析遵循 SSE 规范：兼容 \n / \r\n 行结束符，多行 data 按 \n 拼接，
  * 事件以空行分界，未显式 event 的行视为默认事件，流结束刷新尾部缓冲。
@@ -409,7 +435,7 @@ export async function streamAICenter(
 
   try {
     for (;;) {
-      const { done, value } = await reader.read()
+      const { done, value } = await readWithIdleTimeout(reader)
       if (done) break
       buffer += decoder.decode(value, { stream: true })
       // 只切到最后一个换行符：尾部残留（含可能被截断的 \r）留待下块，
