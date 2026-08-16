@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YIKnow · 人才培养方案智能助理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3370FF;
+            --primary-hover: #2860E1;
+            --primary-light: #E8F0FF;
+            --success: #34C759;
+            --warning: #FF9500;
+            --text-primary: #1F2329;
+            --text-secondary: #646A73;
+            --text-tertiary: #8F959E;
+            --border: #DEE0E3;
+            --bg-page: #F5F6F7;
+            --bg-white: #FFFFFF;
+            --shadow: 0 4px 20px rgba(31, 35, 41, 0.08);
+            --shadow-lg: 0 8px 40px rgba(31, 35, 41, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* 主布局 */
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), #667EEA);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .user-info {
+            padding: 16px 20px;
+            background: var(--primary-light);
+            margin: 16px;
+            border-radius: 12px;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #FF6B6B, #FFE66D);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .user-role {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .nav-menu {
+            padding: 12px;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-page);
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 16px 24px;
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-page);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        /* 对话区域 */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+            animation: fadeInUp 0.4s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.ai {
+            align-self: flex-start;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, var(--primary), #667EEA);
+            color: white;
+            font-size: 18px;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #FF6B6B, #FFE66D);
+            color: white;
+            font-weight: 600;
+        }
+
+        .message-content {
+            background: var(--bg-white);
+            padding: 16px 20px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .message.user .message-content {
+            background: var(--primary);
+            color: white;
+        }
+
+        .message-text {
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .message-text strong {
+            color: var(--primary);
+        }
+
+        .message.user .message-text strong {
+            color: white;
+        }
+
+        /* 配置表单 */
+        .config-form {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-top: 16px;
+        }
+
+        .form-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .form-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .form-subtitle {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-label .required {
+            color: #F54A45;
+        }
+
+        .form-select {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-white);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-hint {
+            background: #FFF7E6;
+            border: 1px solid #FFE4B5;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .form-hint-icon {
+            font-size: 18px;
+        }
+
+        .form-hint-text {
+            font-size: 13px;
+            color: #B7791F;
+            line-height: 1.5;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-lg {
+            padding: 12px 32px;
+            font-size: 15px;
+        }
+
+        /* 进度流程 */
+        .progress-container {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-top: 16px;
+        }
+
+        .progress-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .progress-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .progress-subtitle {
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 0;
+            opacity: 0.4;
+            transition: all 0.5s ease;
+        }
+
+        .progress-step.active {
+            opacity: 1;
+        }
+
+        .progress-step.completed {
+            opacity: 1;
+        }
+
+        .step-indicator {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-tertiary);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .progress-step.active .step-indicator {
+            background: var(--primary);
+            color: white;
+        }
+
+        .progress-step.completed .step-indicator {
+            background: var(--success);
+            color: white;
+        }
+
+        .step-indicator::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 32px;
+            background: var(--border);
+        }
+
+        .progress-step:last-child .step-indicator::after {
+            display: none;
+        }
+
+        .progress-step.completed .step-indicator::after {
+            background: var(--success);
+        }
+
+        .step-content {
+            flex: 1;
+            padding-top: 6px;
+        }
+
+        .step-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .step-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .step-loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--primary-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 目录展示 */
+        .toc-container {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-top: 16px;
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toc-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toc-icon {
+            font-size: 24px;
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toc-item:hover {
+            background: var(--bg-page);
+        }
+
+        .toc-item.level-1 {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .toc-item.level-2 {
+            padding-left: 40px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .toc-item.level-3 {
+            padding-left: 64px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .toc-number {
+            min-width: 36px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .toc-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* 生成流程弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 20px;
+            width: 500px;
+            max-width: 90vw;
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.9);
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .agent-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-page);
+            border-radius: 10px;
+            opacity: 0.4;
+            transition: all 0.5s;
+        }
+
+        .agent-item.active {
+            opacity: 1;
+            background: var(--primary-light);
+        }
+
+        .agent-item.completed {
+            opacity: 1;
+        }
+
+        .agent-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .agent-item.active .agent-icon {
+            background: var(--primary);
+            color: white;
+        }
+
+        .agent-item.completed .agent-icon {
+            background: var(--success);
+            color: white;
+        }
+
+        .agent-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .agent-status {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .agent-item.active .agent-status {
+            color: var(--primary);
+        }
+
+        .agent-item.completed .agent-status {
+            color: var(--success);
+        }
+
+        /* 预览区域 */
+        .preview-container {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 70%;
+            height: 100vh;
+            background: var(--bg-white);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-container.show {
+            right: 0;
+        }
+
+        .preview-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .preview-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .preview-title h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .preview-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--bg-page);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .preview-close:hover {
+            background: var(--border);
+        }
+
+        .preview-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 48px;
+        }
+
+        .preview-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .preview-backdrop.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 文档预览样式 */
+        .doc-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .doc-header {
+            text-align: center;
+            padding-bottom: 32px;
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: 32px;
+        }
+
+        .doc-school {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .doc-main-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+
+        .doc-meta {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        .doc-section {
+            margin-bottom: 32px;
+        }
+
+        .doc-section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .doc-subsection {
+            margin-bottom: 20px;
+        }
+
+        .doc-subsection-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .doc-text {
+            font-size: 15px;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            text-align: justify;
+        }
+
+        .doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        .doc-table th,
+        .doc-table td {
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .doc-table th {
+            background: var(--bg-page);
+            font-weight: 600;
+        }
+
+        .doc-table tr:hover td {
+            background: var(--primary-light);
+        }
+
+        .doc-list {
+            padding-left: 20px;
+            margin: 12px 0;
+        }
+
+        .doc-list li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .highlight-box {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+        }
+
+        .highlight-box-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        /* 输入框区域 */
+        .input-area {
+            padding: 16px 24px;
+            background: var(--bg-white);
+            border-top: 1px solid var(--border);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-box {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            resize: none;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .input-box:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--primary);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .send-btn svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        /* 隐藏类 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 打字效果 */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-tertiary);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 成功状态 */
+        .success-message {
+            background: #E8FAE8;
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .success-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .success-text {
+            flex: 1;
+        }
+
+        .success-title {
+            font-weight: 600;
+            color: #166534;
+            margin-bottom: 4px;
+        }
+
+        .success-desc {
+            font-size: 13px;
+            color: #15803D;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="logo-section">
+                <div class="logo">
+                    <div class="logo-icon">YI</div>
+                    <div>
+                        <div class="logo-text">YIKnow</div>
+                        <div class="logo-subtitle">人才培养方案智能助理</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-avatar">赵</div>
+                <div class="user-name">赵老师</div>
+                <div class="user-role">现代物流管理系 · 专业负责人</div>
+            </div>
+
+            <nav class="nav-menu">
+                <div class="nav-item active">
+                    <span class="nav-icon">💬</span>
+                    <span>智能对话</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">📋</span>
+                    <span>我的方案</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">🎯</span>
+                    <span>岗位库</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">🏭</span>
+                    <span>场景库</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">📚</span>
+                    <span>知识库</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <span>设置</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title">🎓 人才培养方案生成</h1>
+                <div class="header-actions">
+                    <button class="btn btn-secondary">
+                        <span>📖</span> 使用指南
+                    </button>
+                    <button class="btn btn-primary" id="startBtn">
+                        <span>✨</span> 开始新对话
+                    </button>
+                </div>
+            </header>
+
+            <!-- 对话容器 -->
+            <div class="chat-container" id="chatContainer">
+                <!-- 消息将在这里动态添加 -->
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea class="input-box" placeholder="输入您的需求..." rows="1"></textarea>
+                    <button class="send-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 生成流程弹窗 -->
+    <div class="modal-overlay" id="agentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon">🤖</div>
+                <div>
+                    <div class="modal-title">智能体协作生成中</div>
+                    <div class="modal-subtitle" style="font-size: 13px; color: var(--text-tertiary);">多个AI智能体正在协同工作</div>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="agent-list">
+                    <div class="agent-item" data-agent="1">
+                        <div class="agent-icon">📑</div>
+                        <div class="agent-name">目录生成智能体</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="agent-item" data-agent="2">
+                        <div class="agent-icon">🏭</div>
+                        <div class="agent-name">场景拆解智能体</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="agent-item" data-agent="3">
+                        <div class="agent-icon">💼</div>
+                        <div class="agent-name">岗位拆解智能体</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="agent-item" data-agent="4">
+                        <div class="agent-icon">📅</div>
+                        <div class="agent-name">日程编排引擎</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="agent-item" data-agent="5">
+                        <div class="agent-icon">✨</div>
+                        <div class="agent-name">格式排版引擎</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div id="modalStatus" style="flex: 1; font-size: 14px; color: var(--text-tertiary);">
+                    生成中，请稍后...
+                </div>
+                <button class="btn btn-primary hidden" id="previewBtn">
+                    <span>👁️</span> 点击预览
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览遮罩 -->
+    <div class="preview-backdrop" id="previewBackdrop"></div>
+
+    <!-- 预览面板 -->
+    <div class="preview-container" id="previewPanel">
+        <div class="preview-header">
+            <div class="preview-title">
+                <span style="font-size: 24px;">📄</span>
+                <h2>人才培养方案预览</h2>
+            </div>
+            <button class="preview-close" id="closePreview">×</button>
+        </div>
+        <div class="preview-body">
+            <div class="doc-content">
+                <div class="doc-header">
+                    <div class="doc-school">XX职业技术学院</div>
+                    <h1 class="doc-main-title">基于场景化数智教学模式的<br>现代物流管理专业人才培养方案</h1>
+                    <div class="doc-meta">
+                        <span>📅 2024-2025学年</span>
+                        <span>👥 三年制高职</span>
+                        <span>🏷️ V1.3 示例版</span>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">一、专业名称及代码</h2>
+                    <div class="doc-text">
+                        <p><strong>专业名称：</strong>现代物流管理</p>
+                        <p><strong>专业代码：</strong>530802</p>
+                        <p><strong>所属产业大类：</strong>财经商贸大类</p>
+                        <p><strong>所属专业类：</strong>物流类</p>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">二、入学要求</h2>
+                    <div class="doc-text">
+                        <p>普通高级中学毕业、中等职业学校毕业或具备同等学力者。</p>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">三、修业年限</h2>
+                    <div class="doc-text">
+                        <p>基本修业年限：三年</p>
+                        <p>弹性修业年限：2.5-5年</p>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">四、职业面向</h2>
+                    <div class="highlight-box">
+                        <div class="highlight-box-title">🎯 核心岗位群</div>
+                        <p>基于场景化教学模式，本专业面向以下核心岗位：</p>
+                    </div>
+                    <table class="doc-table">
+                        <thead>
+                            <tr>
+                                <th>所属行业</th>
+                                <th>主要职业类别</th>
+                                <th>主要岗位群</th>
+                                <th>职业资格/等级证书</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>交通运输、仓储和邮政业</td>
+                                <td>物流服务人员</td>
+                                <td>仓储管理员</td>
+                                <td>1+X 物流管理职业技能等级证书</td>
+                            </tr>
+                            <tr>
+                                <td>交通运输、仓储和邮政业</td>
+                                <td>物流服务人员</td>
+                                <td>运输调度员</td>
+                                <td>1+X 智能仓储职业技能等级证书</td>
+                            </tr>
+                            <tr>
+                                <td>批发和零售业</td>
+                                <td>采购人员</td>
+                                <td>采购专员</td>
+                                <td>采购师职业资格证书</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">五、培养目标与培养规格</h2>
+                    
+                    <div class="doc-subsection">
+                        <h3 class="doc-subsection-title">（一）培养目标</h3>
+                        <div class="doc-text">
+                            <p>本专业培养理想信念坚定，德、智、体、美、劳全面发展，具有一定的科学文化水平、良好的人文素养、职业道德和创新意识，精益求精的工匠精神，较强的就业能力和可持续发展的能力；掌握现代物流管理专业知识和技术技能，面向道路运输业、多式联运和运输代理业、装卸搬运和仓储业、邮政业等行业的管理（工业）工程技术人员、装卸搬运和运输代理服务人员、仓储人员等职业群，能够从事仓储、运输与配送、采购、供应链管理等基层管理及物流服务等工作的高素质技术技能人才。</p>
+                        </div>
+                    </div>
+
+                    <div class="doc-subsection">
+                        <h3 class="doc-subsection-title">（二）培养规格</h3>
+                        
+                        <div class="highlight-box">
+                            <div class="highlight-box-title">💡 素质目标</div>
+                        </div>
+                        <ol class="doc-list">
+                            <li>坚定拥护中国共产党领导和我国社会主义制度</li>
+                            <li>践行社会主义核心价值观，具有深厚的爱国情感和中华民族自豪感</li>
+                            <li>具有良好的职业道德和职业素养</li>
+                            <li>具有精益求精的工匠精神</li>
+                            <li>具有较强的集体意识和团队合作精神</li>
+                            <li>具有良好的身心素质和人文素养</li>
+                        </ol>
+
+                        <div class="highlight-box">
+                            <div class="highlight-box-title">📚 知识目标</div>
+                        </div>
+                        <ol class="doc-list">
+                            <li>掌握必备的思想政治理论、科学文化基础知识和中华优秀传统文化知识</li>
+                            <li>熟悉与本专业相关的法律法规以及环境保护、安全消防等相关知识</li>
+                            <li>掌握现代物流管理的基本理论和专业知识</li>
+                            <li>掌握仓储作业、运输作业、配送作业的操作流程及规范</li>
+                            <li>掌握采购与供应链管理的基本理论与方法</li>
+                            <li>了解智能物流技术及其应用</li>
+                        </ol>
+
+                        <div class="highlight-box">
+                            <div class="highlight-box-title">🔧 能力目标</div>
+                        </div>
+                        <ol class="doc-list">
+                            <li>具有探究学习、终身学习、分析问题和解决问题的能力</li>
+                            <li>具有良好的语言、文字表达能力和沟通能力</li>
+                            <li>能够进行仓储作业管理，包括入库、在库、出库等环节的操作与管理</li>
+                            <li>能够进行运输与配送作业管理，包括运输方式选择、路线规划、配送调度等</li>
+                            <li>能够进行采购管理，包括供应商选择、采购谈判、采购合同管理等</li>
+                            <li>能够运用信息技术进行物流数据分析与处理</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">六、场景化课程体系</h2>
+                    
+                    <div class="highlight-box">
+                        <div class="highlight-box-title">🏭 核心实践场景</div>
+                        <p>基于真实企业工作场景，构建"场景-任务-能力"三位一体的课程体系</p>
+                    </div>
+
+                    <table class="doc-table">
+                        <thead>
+                            <tr>
+                                <th>场景名称</th>
+                                <th>典型工作任务</th>
+                                <th>对应课程</th>
+                                <th>学时</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td rowspan="3">智能仓储场景</td>
+                                <td>入库验收与上架</td>
+                                <td>仓储管理实务</td>
+                                <td>64</td>
+                            </tr>
+                            <tr>
+                                <td>库存盘点与管理</td>
+                                <td>库存控制技术</td>
+                                <td>48</td>
+                            </tr>
+                            <tr>
+                                <td>拣选与出库作业</td>
+                                <td>智能仓储技术</td>
+                                <td>64</td>
+                            </tr>
+                            <tr>
+                                <td rowspan="2">运输配送场景</td>
+                                <td>运输计划编制</td>
+                                <td>运输管理实务</td>
+                                <td>64</td>
+                            </tr>
+                            <tr>
+                                <td>配送路线优化</td>
+                                <td>配送中心运营</td>
+                                <td>48</td>
+                            </tr>
+                            <tr>
+                                <td rowspan="2">采购供应场景</td>
+                                <td>供应商开发评估</td>
+                                <td>采购管理</td>
+                                <td>48</td>
+                            </tr>
+                            <tr>
+                                <td>采购谈判与合同</td>
+                                <td>商务谈判</td>
+                                <td>32</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">七、教学进程安排</h2>
+                    
+                    <div class="doc-subsection">
+                        <h3 class="doc-subsection-title">（一）学期教学周数分配表</h3>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>学年</th>
+                                    <th>学期</th>
+                                    <th>教学周</th>
+                                    <th>考试周</th>
+                                    <th>实践周</th>
+                                    <th>合计</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td rowspan="2">一</td>
+                                    <td>1</td>
+                                 <td>16</td>
+                                    <td>2</td>
+                                    <td>2</td>
+                                    <td>20</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>16</td>
+                                    <td>2</td>
+                                    <td>2</td>
+                                    <td>20</td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="2">二</td>
+                                    <td>3</td>
+                                    <td>14</td>
+                                    <td>2</td>
+                                    <td>4</td>
+                                    <td>20</td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>14</td>
+                                    <td>2</td>
+                                    <td>4</td>
+                                    <td>20</td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="2">三</td>
+                                    <td>5</td>
+                                    <td>8</td>
+                                    <td>2</td>
+                                    <td>10</td>
+                                    <td>20</td>
+                                </tr>
+                                <tr>
+                                    <td>6</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>20</td>
+                                    <td>20</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">八、实施保障</h2>
+                    
+                    <div class="doc-subsection">
+                        <h3 class="doc-subsection-title">（一）师资队伍</h3>
+                        <div class="doc-text">
+                            <p>本专业专任教师与兼职教师之比为3:1，"双师型"教师占专业课教师比例达到60%以上。专任教师具有高校教师资格，具有物流管理或相关专业本科及以上学历。</p>
+                        </div>
+                    </div>
+
+                    <div class="doc-subsection">
+                        <h3 class="doc-subsection-title">（二）教学设施</h3>
+                        <div class="highlight-box">
+                            <div class="highlight-box-title">🏢 校内实训基地</div>
+                        </div>
+                        <ul class="doc-list">
+                            <li>智能仓储实训中心（含AGV、立体货架、WMS系统）</li>
+                            <li>物流信息技术实训室</li>
+                            <li>供应链沙盘模拟实训室</li>
+                            <li>电子商务物流实训室</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h2 class="doc-section-title">九、毕业要求</h2>
+                    <div class="doc-text">
+                        <p>学生须修满本专业人才培养方案规定的学时学分，完成规定的教学活动，符合以下条件方可毕业：</p>
+                    </div>
+                    <ol class="doc-list">
+                        <li>思想品德考核合格</li>
+                        <li>修满 140 学分</li>
+                        <li>完成顶岗实习并考核合格</li>
+                        <li>取得至少1个与专业相关的职业技能等级证书</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 状态管理
+        let currentStep = 0;
+        const chatContainer = document.getElementById('chatContainer');
+
+        // 工具函数：延时
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        // 添加消息
+        function addMessage(type, content, isHTML = false) {
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            
+            const avatar = type === 'ai' ? '🤖' : '赵';
+            const avatarHTML = `<div class="message-avatar">${avatar}</div>`;
+            
+            const contentHTML = `
+                <div class="message-content">
+                    <div class="message-text">${isHTML ? content : content}</div>
+                </div>
+            `;
+            
+            message.innerHTML = avatarHTML + contentHTML;
+            chatContainer.appendChild(message);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return message;
+        }
+
+        // 添加配置表单
+        function addConfigForm() {
+            const formHTML = `
+                <div class="config-form" id="configForm">
+                    <div class="form-header">
+                        <div class="form-icon">⚙️</div>
+                        <div>
+                            <div class="form-title">基础信息配置</div>
+                            <div class="form-subtitle">请选择生成人才培养方案所需的基础配置</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="required">*</span> 选择岗位
+                            </label>
+                            <select class="form-select" id="selectJob">
+                                <option value="">请选择岗位...</option>
+                                <option value="warehouse">仓储管理员</option>
+                                <option value="transport">运输调度员</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="required">*</span> 选择专业
+                            </label>
+                            <select class="form-select" id="selectMajor">
+                                <option value="">请选择专业...</option>
+                                <option value="logistics">现代物流管理</option>
+                                <option value="supply">供应链运营</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="required">*</span> 选择场景
+                            </label>
+                            <select class="form-select" id="selectScene">
+                                <option value="">请选择场景...</option>
+                                <option value="smart-warehouse">智能仓储场景</option>
+                                <option value="transport">运输配送场景</option>
+                                <option value="purchase">采购供应场景</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="required">*</span> 选择学制
+                            </label>
+                            <select class="form-select" id="selectYear">
+                                <option value="">请选择学制...</option>
+                                <option value="3">三年制高职</option>
+                                <option value="5">五年制高职</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-hint">
+                        <span class="form-hint-icon">💡</span>
+                        <span class="form-hint-text">
+                            我已经分析了您的账号信息，根据您的账号信息，您导学了 <strong>2个岗位</strong>、<strong>2个专业</strong>、<strong>3个场景</strong>，请选择您需要生成人培方案的基础信息配置。
+                        </span>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-secondary">取消</button>
+                        <button class="btn btn-primary btn-lg" id="confirmConfig">
+                            <span>✓</span> 确认配置
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const container = document.createElement('div');
+            container.innerHTML = formHTML;
+            chatContainer.appendChild(container);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 绑定确认按钮
+            document.getElementById('confirmConfig').addEventListener('click', handleConfigConfirm);
+        }
+
+        // 处理配置确认
+        async function handleConfigConfirm() {
+            const job = document.getElementById('selectJob').value;
+            const major = document.getElementById('selectMajor').value;
+            const scene = document.getElementById('selectScene').value;
+            const year = document.getElementById('selectYear').value;
+            
+            if (!job || !major || !scene || !year) {
+                alert('请完整填写所有配置项！');
+                return;
+            }
+            
+            // 隐藏配置表单
+            document.getElementById('configForm').style.display = 'none';
+            
+            // 用户确认消息
+            addMessage('user', '已完成配置：仓储管理员 + 现代物流管理 + 智能仓储场景 + 三年制');
+            
+            await delay(800);
+            
+            // 显示生成流程
+            addMessage('ai', '好的，我已收到您的配置信息！现在开始为您生成人才培养方案，请稍候...');
+            
+            await delay(1000);
+            
+            // 添加进度面板
+            addProgressPanel();
+        }
+
+        // 添加进度面板
+        async function addProgressPanel() {
+            const progressHTML = `
+                <div class="progress-container" id="progressPanel">
+                    <div class="progress-header">
+                        <div class="progress-title">📊 方案生成进度</div>
+                        <div class="progress-subtitle">正在基于场景化数智教学模式生成人才培养方案</div>
+                    </div>
+                    <div class="progress-steps">
+                        <div class="progress-step" data-step="1">
+                            <div class="step-indicator">1</div>
+                            <div class="step-content">
+                                <div class="step-title">基础信息配置</div>
+                                <div class="step-desc">解析专业定位、学制要求等基础参数</div>
+                            </div>
+                        </div>
+                        <div class="progress-step" data-step="2">
+                            <div class="step-indicator">2</div>
+                            <div class="step-content">
+                                <div class="step-title">岗位锚定与能力分析</div>
+                                <div class="step-desc">分析岗位需求，提取核心能力指标</div>
+                            </div>
+                        </div>
+                        <div class="progress-step" data-step="3">
+                            <div class="step-indicator">3</div>
+                            <div class="step-content">
+                                <div class="step-title">场景映射与任务设计</div>
+                                <div class="step-desc">将能力需求映射到真实工作场景</div>
+                            </div>
+                        </div>
+                        <div class="progress-step" data-step="4">
+                            <div class="step-indicator">4</div>
+                            <div class="step-content">
+                                <div class="step-title">知识与评价挂载</div>
+                                <div class="step-desc">关联知识点与考核评价标准</div>
+                            </div>
+                        </div>
+                        <div class="progress-step" data-step="5">
+                            <div class="step-indicator">5</div>
+                            <div class="step-content">
+                                <div class="step-title">学期编排与生成</div>
+                                <div class="step-desc">智能编排教学进度，生成完整方案</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const container = document.createElement('div');
+            container.innerHTML = progressHTML;
+            chatContainer.appendChild(container);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 逐步显示进度
+            for (let i = 1; i <= 5; i++) {
+                await delay(2000);
+                const step = document.querySelector(`.progress-step[data-step="${i}"]`);
+                step.classList.add('active');
+                
+                await delay(500);
+                step.classList.remove('active');
+                step.classList.add('completed');
+                step.querySelector('.step-indicator').innerHTML = '✓';
+            }
+            
+            await delay(1000);
+            
+            // 显示目录
+            addTocPanel();
+        }
+
+        // 添加目录面板
+        async function addTocPanel() {
+            const tocHTML = `
+                <div class="toc-container" id="tocPanel">
+                    <div class="toc-header">
+                        <div class="toc-title">
+                            <span class="toc-icon">📋</span>
+                            <div>
+                                <div style="font-size: 18px; font-weight: 600;">人才培养方案目录</div>
+                                <div style="font-size: 13px; color: var(--text-tertiary);">基于场景化数智教学模式的现代物流管理专业</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <ul class="toc-list">
+                        <li class="toc-item level-1"><span class="toc-number">一、</span>专业名称及代码</li>
+                        <li class="toc-item level-1"><span class="toc-number">二、</span>入学要求</li>
+                        <li class="toc-item level-1"><span class="toc-number">三、</span>修业年限</li>
+                        <li class="toc-item level-1"><span class="toc-number">四、</span>职业面向</li>
+                        <li class="toc-item level-1"><span class="toc-number">五、</span>培养目标与培养规格</li>
+                        <li class="toc-item level-2"><span class="toc-number">5.1</span>培养目标</li>
+                        <li class="toc-item level-2"><span class="toc-number">5.2</span>培养规格（素质、知识、能力）</li>
+                        <li class="toc-item level-1"><span class="toc-number">六、</span>场景化课程体系</li>
+                        <li class="toc-item level-2"><span class="toc-number">6.1</span>课程体系架构</li>
+                        <li class="toc-item level-2"><span class="toc-number">6.2</span>场景-课程映射表</li>
+                        <li class="toc-item level-2"><span class="toc-number">6.3</span>核心课程说明</li>
+                        <li class="toc-item level-1"><span class="toc-number">七、</span>教学进程安排</li>
+                        <li class="toc-item level-2"><span class="toc-number">7.1</span>学期教学周数分配</li>
+                        <li class="toc-item level-2"><span class="toc-number">7.2</span>教学进程总表</li>
+                        <li class="toc-item level-1"><span class="toc-number">八、</span>实施保障</li>
+                        <li class="toc-item level-2"><span class="toc-number">8.1</span>师资队伍</li>
+                        <li class="toc-item level-2"><span class="toc-number">8.2</span>教学设施</li>
+                        <li class="toc-item level-2"><span class="toc-number">8.3</span>教学资源</li>
+                        <li class="toc-item level-1"><span class="toc-number">九、</span>毕业要求</li>
+                    </ul>
+                    
+                    <div class="toc-actions">
+                        <button class="btn btn-secondary" id="editToc">
+                            <span>✏️</span> 编排调整
+                        </button>
+                        <button class="btn btn-primary btn-lg" id="generateDoc">
+                            <span>🚀</span> 直接生成方案
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            addMessage('ai', '方案框架已生成完成！以下是人才培养方案的目录结构：');
+            
+            await delay(500);
+            
+            const container = document.createElement('div');
+            container.innerHTML = tocHTML;
+            chatContainer.appendChild(container);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            await delay(500);
+            
+            addMessage('ai', '您需要进行编排调整，还是直接为您输出人培方案？点击下方按钮进行选择。');
+            
+            // 绑定按钮
+            document.getElementById('generateDoc').addEventListener('click', showAgentModal);
+        }
+
+        // 显示智能体弹窗
+        async function showAgentModal() {
+            const modal = document.getElementById('agentModal');
+            modal.classList.add('show');
+            
+            const agents = document.querySelectorAll('.agent-item');
+            const statusTexts = [
+                '正在调用...',
+                '正在调用...',
+                '正在调用...',
+                '正在编排...',
+                '正在排版...'
+            ];
+            
+            // 逐个激活智能体
+            for (let i = 0; i < agents.length; i++) {
+                await delay(1500);
+                
+                agents[i].classList.add('active');
+                agents[i].querySelector('.agent-status').textContent = statusTexts[i];
+                
+                await delay(1000);
+                
+                agents[i].classList.remove('active');
+                agents[i].classList.add('completed');
+                agents[i].querySelector('.agent-status').textContent = '已完成 ✓';
+            }
+            
+            await delay(500);
+            
+            // 显示预览按钮
+            document.getElementById('modalStatus').innerHTML = '<span style="color: var(--success); font-weight: 600;">✓ 已完成！请点击预览查看您是否满意</span>';
+            document.getElementById('previewBtn').classList.remove('hidden');
+            
+            // 绑定预览按钮
+            document.getElementById('previewBtn').addEventListener('click', showPreview);
+        }
+
+        // 显示预览
+        function showPreview() {
+            document.getElementById('agentModal').classList.remove('show');
+            document.getElementById('previewBackdrop').classList.add('show');
+            document.getElementById('previewPanel').classList.add('show');
+        }
+
+        // 关闭预览
+        document.getElementById('closePreview').addEventListener('click', () => {
+            document.getElementById('previewBackdrop').classList.remove('show');
+            document.getElementById('previewPanel').classList.remove('show');
+            
+            // 添加成功消息
+            addMessage('ai', `
+                <div class="success-message">
+                    <div class="success-icon">✓</div>
+                    <div class="success-text">
+                        <div class="success-title">人才培养方案已生成完成！</div>
+                        <div class="success-desc">您可以下载完整方案文档，或继续对方案进行调整优化。</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                    <button class="btn btn-primary"><span>📥</span> 下载Word文档</button>
+                    <button class="btn btn-secondary"><span>📄</span> 导出PDF</button>
+                    <button class="btn btn-secondary"><span>🔄</span> 继续优化</button>
+                </div>
+            `, true);
+        });
+
+        document.getElementById('previewBackdrop').addEventListener('click', () => {
+            document.getElementById('previewBackdrop').classList.remove('show');
+            document.getElementById('previewPanel').classList.remove('show');
+        });
+
+        // 开始新对话
+        document.getElementById('startBtn').addEventListener('click', startConversation);
+
+        // 启动对话流程
+        async function startConversation() {
+            // 清空现有内容
+            chatContainer.innerHTML = '';
+            
+            // 第一条消息
+            addMessage('ai', `
+                <strong>你好呀，赵老师！👋</strong><br><br>
+                我是 <strong>YIKnow</strong>，将协助您基于<strong>场景化数智教学模式</strong>，快速生成符合企业真实岗位需求的人才培养方案。<br><br>
+                让我们开始吧！请先配置基础信息 ⬇️
+            `, true);
+            
+            await delay(1500);
+            
+            // 显示配置表单
+            addConfigForm();
+        }
+
+        // 页面加载后自动开始
+        window.addEventListener('load', () => {
+            setTimeout(startConversation, 500);
+        });
+    </script>
+</body>
+</html>

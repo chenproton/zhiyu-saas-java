@@ -1,0 +1,2427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库大厅 - AI服务中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #3370ff;
+            --primary-hover: #2860e1;
+            --primary-light: #e8f0ff;
+            --bg-color: #f5f6f7;
+            --card-bg: #ffffff;
+            --text-primary: #1f2329;
+            --text-secondary: #646a73;
+            --text-tertiary: #8f959e;
+            --border-color: #e5e6e8;
+            --success-color: #34c759;
+            --warning-color: #ff9500;
+            --purple-color: #7c3aed;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* 顶部导航 */
+        .top-nav {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 32px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-color);
+            color: var(--primary-color);
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-title i {
+            font-size: 24px;
+            color: var(--primary-color);
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: var(--bg-color);
+            border-radius: 20px;
+            padding: 8px 16px;
+            width: 320px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .search-box:focus-within {
+            border-color: var(--primary-color);
+            background: var(--card-bg);
+            box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.1);
+        }
+
+        .search-box i {
+            color: var(--text-tertiary);
+            margin-right: 8px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .view-toggle {
+            display: flex;
+            align-items: center;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+            padding: 2px;
+        }
+
+        .view-toggle button {
+            padding: 6px 10px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: var(--card-bg);
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 主内容区 */
+        .main-container {
+            display: flex;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        /* 左侧筛选栏 */
+        .filter-sidebar {
+            width: 240px;
+            flex-shrink: 0;
+        }
+
+        .filter-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-title i {
+            color: var(--primary-color);
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .filter-option:hover {
+            background: var(--bg-color);
+        }
+
+        .filter-option.active {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .filter-option i {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        .filter-option .count {
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            background: var(--bg-color);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .filter-option.active .count {
+            background: rgba(51, 112, 255, 0.2);
+            color: var(--primary-color);
+        }
+
+        /* 标签筛选 */
+        .tag-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag-filter {
+            padding: 6px 12px;
+            background: var(--bg-color);
+            border-radius: 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tag-filter:hover {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .tag-filter.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* 右侧内容区 */
+        .content-area {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* 统计栏 */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 16px 24px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-icon.blue {
+            background: linear-gradient(135deg, #3370ff 0%, #66a3ff 100%);
+            color: white;
+        }
+
+        .stat-icon.purple {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            color: white;
+        }
+
+        .stat-icon.green {
+            background: linear-gradient(135deg, #34c759 0%, #6ee7b7 100%);
+            color: white;
+        }
+
+        .stat-icon.orange {
+            background: linear-gradient(135deg, #ff9500 0%, #fbbf24 100%);
+            color: white;
+        }
+
+        .stat-info h4 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-info p {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* 排序栏 */
+        .sort-bar {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sort-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .sort-tab {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .sort-tab:hover {
+            background: var(--bg-color);
+        }
+
+        .sort-tab.active {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .result-info {
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        .result-info span {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* 知识库网格 */
+        .kb-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 20px;
+        }
+
+        /* 知识库卡片 */
+        .kb-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .kb-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .kb-card-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kb-card-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+
+        .kb-card-header.type-1 {
+            background: linear-gradient(135deg, #3370ff 0%, #00c6ff 100%);
+        }
+
+        .kb-card-header.type-2 {
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+        }
+
+        .kb-card-header.type-3 {
+            background: linear-gradient(135deg, #059669 0%, #34d399 100%);
+        }
+
+        .kb-card-header.type-4 {
+            background: linear-gradient(135deg, #ea580c 0%, #facc15 100%);
+        }
+
+        .kb-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            border-radius: 12px;
+            font-size: 11px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .kb-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .kb-header-info h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 6px;
+        }
+
+        .kb-header-info p {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .kb-card-body {
+            padding: 20px;
+        }
+
+        .kb-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .kb-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .kb-meta-item i {
+            color: var(--text-tertiary);
+        }
+
+        .kb-meta-item.highlight {
+            color: var(--primary-color);
+        }
+
+        .kb-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 12px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+        }
+
+        .kb-stat {
+            text-align: center;
+        }
+
+        .kb-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .kb-stat-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        .kb-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .kb-tag {
+            padding: 4px 10px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        .kb-tag.secondary {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+
+        .kb-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .kb-creator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .kb-creator-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3370ff 0%, #00c6ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .kb-creator-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kb-creator-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .kb-creator-dept {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .kb-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .kb-action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-color);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .kb-action-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .kb-action-btn.favorited {
+            background: #fff7ed;
+            color: #f59e0b;
+        }
+
+        /* 分页 */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 32px;
+            padding: 20px;
+        }
+
+        .page-btn {
+            min-width: 36px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .page-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 详情弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-container {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            padding: 24px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .modal-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -30%;
+            width: 80%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.2s;
+            z-index: 1;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .modal-header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 20px;
+        }
+
+        .modal-icon {
+            width: 72px;
+            height: 72px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        .modal-title-area {
+            flex: 1;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+        }
+
+        .modal-badges {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-badge {
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-size: 12px;
+            color: white;
+        }
+
+        .modal-body {
+            padding: 24px 32px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-section-title i {
+            color: var(--primary-color);
+        }
+
+        /* 创建者信息 */
+        .creator-detail {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+        }
+
+        .creator-avatar-large {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3370ff 0%, #00c6ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .creator-detail-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .creator-detail-info p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .creator-contact {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        .contact-btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .contact-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* 共建者列表 */
+        .collaborators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .collaborator-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+        }
+
+        .collaborator-item:hover {
+            background: var(--primary-light);
+        }
+
+        .collaborator-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .collaborator-info h5 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .collaborator-info p {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .collaborator-role {
+            margin-left: auto;
+            font-size: 11px;
+            padding: 3px 8px;
+            background: var(--card-bg);
+            border-radius: 10px;
+            color: var(--text-tertiary);
+        }
+
+        /* 统计概览 */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+        }
+
+        .stat-item-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .stat-item-icon.blue {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .stat-item-icon.purple {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+
+        .stat-item-icon.green {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .stat-item-icon.orange {
+            background: #ffedd5;
+            color: #ea580c;
+        }
+
+        .stat-item-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-item-label {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* 内容项目列表 */
+        .content-list {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .content-list-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 80px;
+            padding: 12px 16px;
+            background: var(--bg-color);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .content-list-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 80px;
+            padding: 14px 16px;
+            border-top: 1px solid var(--border-color);
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .content-list-item:hover {
+            background: var(--bg-color);
+        }
+
+        .content-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .content-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .content-icon.doc {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .content-icon.video {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .content-icon.pdf {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .content-icon.ppt {
+            background: #fce7f3;
+            color: #db2777;
+        }
+
+        .content-icon.audio {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .content-title {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .content-type {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .content-contributor {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .content-date {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .content-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .content-action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .content-action-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        /* 活动日志 */
+        .activity-timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+
+        .activity-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .activity-item {
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        .activity-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .activity-dot {
+            position: absolute;
+            left: -20px;
+            top: 4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: 2px solid var(--card-bg);
+        }
+
+        .activity-content {
+            padding: 12px 16px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+        }
+
+        .activity-text {
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .activity-text strong {
+            color: var(--primary-color);
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* 弹窗底部 */
+        .modal-footer {
+            padding: 16px 32px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--card-bg);
+        }
+
+        .modal-footer-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .footer-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .footer-stat i {
+            color: var(--text-tertiary);
+        }
+
+        .modal-footer-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            padding: 10px 24px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.secondary {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .modal-btn.secondary:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #3370ff 0%, #5a8eff 100%);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 12px rgba(51, 112, 255, 0.3);
+        }
+
+        .modal-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(51, 112, 255, 0.4);
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            color: var(--text-tertiary);
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .main-container {
+                padding: 16px;
+            }
+
+            .stats-bar {
+                flex-wrap: wrap;
+            }
+
+            .stat-card {
+                flex: 1 1 calc(50% - 8px);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .filter-sidebar {
+                display: none;
+            }
+
+            .kb-grid {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+
+            .stats-overview {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-nav {
+                padding: 0 16px;
+            }
+
+            .search-box {
+                width: 200px;
+            }
+
+            .kb-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-container {
+                width: 95%;
+                max-height: 95vh;
+            }
+
+            .modal-header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .modal-icon {
+                margin: 0 auto;
+            }
+
+            .content-list-header,
+            .content-list-item {
+                grid-template-columns: 2fr 1fr 80px;
+            }
+
+            .content-list-header > *:nth-child(3),
+            .content-list-header > *:nth-child(4),
+            .content-list-item > *:nth-child(3),
+            .content-list-item > *:nth-child(4) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <a href="1前台AI服务中心.html" class="back-btn">
+                <i class="ri-arrow-left-line"></i>
+                返回首页
+            </a>
+            <h1 class="page-title">
+                <i class="ri-database-2-line"></i>
+                知识库大厅
+            </h1>
+        </div>
+        <div class="nav-right">
+            <div class="search-box">
+                <i class="ri-search-line"></i>
+                <input type="text" placeholder="搜索知识库名称、标签、创建者...">
+            </div>
+            <div class="view-toggle">
+                <button class="active" title="网格视图">
+                    <i class="ri-grid-fill"></i>
+                </button>
+                <button title="列表视图">
+                    <i class="ri-list-check"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <!-- 左侧筛选栏 -->
+        <aside class="filter-sidebar">
+            <div class="filter-card">
+                <h3 class="filter-title">
+                    <i class="ri-folder-line"></i>
+                    知识库类型
+                </h3>
+                <div class="filter-options">
+                    <div class="filter-option active">
+                        <i class="ri-apps-line"></i>
+                        全部类型
+                        <span class="count">128</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-book-open-line"></i>
+                        课程资源库
+                        <span class="count">42</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-flask-line"></i>
+                        科研成果库
+                        <span class="count">28</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-graduation-cap-line"></i>
+                        教学案例库
+                        <span class="count">35</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-question-answer-line"></i>
+                        问答知识库
+                        <span class="count">23</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <h3 class="filter-title">
+                    <i class="ri-building-line"></i>
+                    所属院系
+                </h3>
+                <div class="filter-options">
+                    <div class="filter-option active">
+                        <i class="ri-apps-line"></i>
+                        全部院系
+                        <span class="count">128</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-computer-line"></i>
+                        计算机学院
+                        <span class="count">38</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-money-dollar-circle-line"></i>
+                        经济管理学院
+                        <span class="count">25</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-quill-pen-line"></i>
+                        文学院
+                        <span class="count">22</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-translate"></i>
+                        外国语学院
+                        <span class="count">18</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-calculator-line"></i>
+                        数学学院
+                        <span class="count">15</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-more-line"></i>
+                        更多院系...
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <h3 class="filter-title">
+                    <i class="ri-shield-check-line"></i>
+                    访问权限
+                </h3>
+                <div class="filter-options">
+                    <div class="filter-option active">
+                        <i class="ri-apps-line"></i>
+                        全部
+                        <span class="count">128</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-global-line"></i>
+                        完全公开
+                        <span class="count">65</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-group-line"></i>
+                        校内公开
+                        <span class="count">48</span>
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-lock-line"></i>
+                        申请访问
+                        <span class="count">15</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <h3 class="filter-title">
+                    <i class="ri-price-tag-3-line"></i>
+                    热门标签
+                </h3>
+                <div class="tag-filters">
+                    <span class="tag-filter active">全部</span>
+                    <span class="tag-filter">人工智能</span>
+                    <span class="tag-filter">机器学习</span>
+                    <span class="tag-filter">数据分析</span>
+                    <span class="tag-filter">编程开发</span>
+                    <span class="tag-filter">教学设计</span>
+                    <span class="tag-filter">学术写作</span>
+                    <span class="tag-filter">项目管理</span>
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <h3 class="filter-title">
+                    <i class="ri-time-line"></i>
+                    更新时间
+                </h3>
+                <div class="filter-options">
+                    <div class="filter-option active">
+                        <i class="ri-apps-line"></i>
+                        不限
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-calendar-line"></i>
+                        最近一周
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-calendar-line"></i>
+                        最近一月
+                    </div>
+                    <div class="filter-option">
+                        <i class="ri-calendar-line"></i>
+                        最近三月
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右侧内容区 -->
+        <main class="content-area">
+            <!-- 统计栏 -->
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i class="ri-database-2-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h4>128</h4>
+                        <p>知识库总数</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <i class="ri-file-list-3-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h4>12,580</h4>
+                        <p>资源文件数</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i class="ri-team-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h4>486</h4>
+                        <p>共建贡献者</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <i class="ri-eye-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h4>58.6万</h4>
+                        <p>总访问量</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 排序栏 -->
+            <div class="sort-bar">
+                <div class="sort-tabs">
+                    <button class="sort-tab active">综合排序</button>
+                    <button class="sort-tab">最新创建</button>
+                    <button class="sort-tab">最近更新</button>
+                    <button class="sort-tab">访问量最高</button>
+                    <button class="sort-tab">资源最多</button>
+                </div>
+                <div class="result-info">
+                    共找到 <span>128</span> 个知识库
+                </div>
+            </div>
+
+            <!-- 知识库网格 -->
+            <div class="kb-grid">
+                <!-- 知识库卡片1 -->
+                <div class="kb-card" onclick="openKbModal(1)">
+                    <div class="kb-card-header type-1">
+                        <span class="kb-badge">热门</span>
+                        <div class="kb-icon">
+                            <i class="ri-robot-line"></i>
+                        </div>
+                        <div class="kb-header-info">
+                          <h3>招投标知识与技巧课程资源库</h3>
+                          <p>涵盖招投标法律法规、项目采购流程、商务谈判策略、合同风险管理、案例分析与实战演练等完整知识体系</p>
+                        </div>
+                    </div>
+                    <div class="kb-card-body">
+                        <div class="kb-meta">
+                            <div class="kb-meta-item">
+                                <i class="ri-building-line"></i>
+                              工商管理学院
+                            </div>
+                            <div class="kb-meta-item">
+                                <i class="ri-time-line"></i>
+                                更新于2小时前
+                            </div>
+                            <div class="kb-meta-item highlight">
+                                <i class="ri-global-line"></i>
+                                完全公开
+                            </div>
+                        </div>
+                        <div class="kb-stats">
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">256</div>
+                                <div class="kb-stat-label">文档</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">48</div>
+                                <div class="kb-stat-label">视频</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">12</div>
+                                <div class="kb-stat-label">共建者</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">8.6k</div>
+                                <div class="kb-stat-label">访问</div>
+                            </div>
+                        </div>
+                        <div class="kb-tags">
+                            <span class="kb-tag">项目采购流程</span>
+                            <span class="kb-tag secondary">商务谈判</span>
+                            <span class="kb-tag">案例分析</span>
+                        </div>
+                        <div class="kb-card-footer">
+                            <div class="kb-creator">
+                                <div class="kb-creator-avatar">张</div>
+                                <div class="kb-creator-info">
+                                    <span class="kb-creator-name">张教授</span>
+                                    <span class="kb-creator-dept">工商管理学院</span>
+                                </div>
+                            </div>
+                            <div class="kb-actions">
+                                <button class="kb-action-btn favorited" title="已收藏" onclick="event.stopPropagation()">
+                                    <i class="ri-star-fill"></i>
+                                </button>
+                                <button class="kb-action-btn" title="分享" onclick="event.stopPropagation()">
+                                    <i class="ri-share-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 知识库卡片2 -->
+                <div class="kb-card" onclick="openKbModal(2)">
+                    <div class="kb-card-header type-2">
+                        <span class="kb-badge">精选</span>
+                        <div class="kb-icon">
+                            <i class="ri-line-chart-line"></i>
+                        </div>
+                        <div class="kb-header-info">
+                            <h3>数据科学与商业分析</h3>
+                            <p>整合数据挖掘、统计分析、商业智能等领域知识，助力数据驱动决策</p>
+                        </div>
+                    </div>
+                    <div class="kb-card-body">
+                        <div class="kb-meta">
+                            <div class="kb-meta-item">
+                                <i class="ri-building-line"></i>
+                                经济管理学院
+                            </div>
+                            <div class="kb-meta-item">
+                                <i class="ri-time-line"></i>
+                                更新于1天前
+                            </div>
+                            <div class="kb-meta-item highlight">
+                                <i class="ri-group-line"></i>
+                                校内公开
+                            </div>
+                        </div>
+                        <div class="kb-stats">
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">189</div>
+                                <div class="kb-stat-label">文档</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">36</div>
+                                <div class="kb-stat-label">视频</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">8</div>
+                                <div class="kb-stat-label">共建者</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">5.2k</div>
+                                <div class="kb-stat-label">访问</div>
+                            </div>
+                        </div>
+                        <div class="kb-tags">
+                            <span class="kb-tag">数据分析</span>
+                            <span class="kb-tag secondary">商业智能</span>
+                            <span class="kb-tag">Python</span>
+                        </div>
+                        <div class="kb-card-footer">
+                            <div class="kb-creator">
+                                <div class="kb-creator-avatar" style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);">李</div>
+                                <div class="kb-creator-info">
+                                    <span class="kb-creator-name">李明华</span>
+                                    <span class="kb-creator-dept">经济管理学院</span>
+                                </div>
+                            </div>
+                            <div class="kb-actions">
+                                <button class="kb-action-btn" title="收藏" onclick="event.stopPropagation()">
+                                    <i class="ri-star-line"></i>
+                                </button>
+                                <button class="kb-action-btn" title="分享" onclick="event.stopPropagation()">
+                                    <i class="ri-share-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 知识库卡片3 -->
+                <div class="kb-card" onclick="openKbModal(3)">
+                    <div class="kb-card-header type-3">
+                        <div class="kb-icon">
+                            <i class="ri-quill-pen-line"></i>
+                        </div>
+                        <div class="kb-header-info">
+                            <h3>学术论文写作指南</h3>
+                            <p>从选题、文献综述到论文撰写、投稿发表的全流程学术写作指导</p>
+                        </div>
+                    </div>
+                    <div class="kb-card-body">
+                        <div class="kb-meta">
+                            <div class="kb-meta-item">
+                                <i class="ri-building-line"></i>
+                                研究生院
+                            </div>
+                            <div class="kb-meta-item">
+                                <i class="ri-time-line"></i>
+                                更新于3天前
+                            </div>
+                            <div class="kb-meta-item highlight">
+                                <i class="ri-global-line"></i>
+                                完全公开
+                            </div>
+                        </div>
+                        <div class="kb-stats">
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">156</div>
+                                <div class="kb-stat-label">文档</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">24</div>
+                                <div class="kb-stat-label">视频</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">15</div>
+                                <div class="kb-stat-label">共建者</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">12.8k</div>
+                                <div class="kb-stat-label">访问</div>
+                            </div>
+                        </div>
+                        <div class="kb-tags">
+                            <span class="kb-tag">学术写作</span>
+                            <span class="kb-tag secondary">论文投稿</span>
+                            <span class="kb-tag">文献综述</span>
+                        </div>
+                        <div class="kb-card-footer">
+                            <div class="kb-creator">
+                                <div class="kb-creator-avatar" style="background: linear-gradient(135deg, #059669 0%, #34d399 100%);">王</div>
+                                <div class="kb-creator-info">
+                                    <span class="kb-creator-name">王文静</span>
+                                    <span class="kb-creator-dept">研究生院</span>
+                                </div>
+                            </div>
+                            <div class="kb-actions">
+                                <button class="kb-action-btn" title="收藏" onclick="event.stopPropagation()">
+                                    <i class="ri-star-line"></i>
+                                </button>
+                                <button class="kb-action-btn" title="分享" onclick="event.stopPropagation()">
+                                    <i class="ri-share-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 知识库卡片4 -->
+                <div class="kb-card" onclick="openKbModal(4)">
+                    <div class="kb-card-header type-4">
+                        <span class="kb-badge">新上线</span>
+                        <div class="kb-icon">
+                            <i class="ri-translate-2"></i>
+                        </div>
+                        <div class="kb-header-info">
+                            <h3>英语学术演讲与写作</h3>
+                            <p>提升学术英语表达能力，包含演讲技巧、学术词汇、写作规范等内容</p>
+                        </div>
+                    </div>
+                    <div class="kb-card-body">
+                        <div class="kb-meta">
+                            <div class="kb-meta-item">
+                                <i class="ri-building-line"></i>
+                                外国语学院
+                            </div>
+                            <div class="kb-meta-item">
+                                <i class="ri-time-line"></i>
+                                更新于5小时前
+                            </div>
+                            <div class="kb-meta-item highlight">
+                                <i class="ri-global-line"></i>
+                                完全公开
+                            </div>
+                        </div>
+                        <div class="kb-stats">
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">98</div>
+                                <div class="kb-stat-label">文档</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">52</div>
+                                <div class="kb-stat-label">视频</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">6</div>
+                                <div class="kb-stat-label">共建者</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">3.4k</div>
+                                <div class="kb-stat-label">访问</div>
+                            </div>
+                        </div>
+                        <div class="kb-tags">
+                            <span class="kb-tag">学术英语</span>
+                            <span class="kb-tag secondary">演讲技巧</span>
+                            <span class="kb-tag">写作规范</span>
+                        </div>
+                        <div class="kb-card-footer">
+                            <div class="kb-creator">
+                                <div class="kb-creator-avatar" style="background: linear-gradient(135deg, #ea580c 0%, #facc15 100%);">陈</div>
+                                <div class="kb-creator-info">
+                                    <span class="kb-creator-name">陈思雨</span>
+                                    <span class="kb-creator-dept">外国语学院</span>
+                                </div>
+                            </div>
+                            <div class="kb-actions">
+                                <button class="kb-action-btn" title="收藏" onclick="event.stopPropagation()">
+                                    <i class="ri-star-line"></i>
+                                </button>
+                                <button class="kb-action-btn" title="分享" onclick="event.stopPropagation()">
+                                    <i class="ri-share-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 知识库卡片5 -->
+                <div class="kb-card" onclick="openKbModal(5)">
+                    <div class="kb-card-header type-1">
+                        <div class="kb-icon">
+                            <i class="ri-code-s-slash-line"></i>
+                        </div>
+                        <div class="kb-header-info">
+                            <h3>全栈Web开发实战</h3>
+                            <p>前端框架、后端技术、数据库设计、部署运维全流程开发资源</p>
+                        </div>
+                    </div>
+                    <div class="kb-card-body">
+                        <div class="kb-meta">
+                            <div class="kb-meta-item">
+                                <i class="ri-building-line"></i>
+                                计算机学院
+                            </div>
+                            <div class="kb-meta-item">
+                                <i class="ri-time-line"></i>
+                                更新于1周前
+                            </div>
+                            <div class="kb-meta-item highlight">
+                                <i class="ri-group-line"></i>
+                                校内公开
+                            </div>
+                        </div>
+                        <div class="kb-stats">
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">312</div>
+                                <div class="kb-stat-label">文档</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">86</div>
+                                <div class="kb-stat-label">视频</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">18</div>
+                                <div class="kb-stat-label">共建者</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">15.2k</div>
+                                <div class="kb-stat-label">访问</div>
+                            </div>
+                        </div>
+                        <div class="kb-tags">
+                            <span class="kb-tag">Web开发</span>
+                            <span class="kb-tag secondary">React</span>
+                            <span class="kb-tag">Node.js</span>
+                        </div>
+                        <div class="kb-card-footer">
+                            <div class="kb-creator">
+                                <div class="kb-creator-avatar">刘</div>
+                                <div class="kb-creator-info">
+                                    <span class="kb-creator-name">刘工程师</span>
+                                    <span class="kb-creator-dept">计算机学院</span>
+                                </div>
+                            </div>
+                            <div class="kb-actions">
+                                <button class="kb-action-btn favorited" title="已收藏" onclick="event.stopPropagation()">
+                                    <i class="ri-star-fill"></i>
+                                </button>
+                                <button class="kb-action-btn" title="分享" onclick="event.stopPropagation()">
+                                    <i class="ri-share-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 知识库卡片6 -->
+                <div class="kb-card" onclick="openKbModal(6)">
+                    <div class="kb-card-header type-2">
+                        <div class="kb-icon">
+                            <i class="ri-mental-health-line"></i>
+                        </div>
+                        <div class="kb-header-info">
+                            <h3>教育心理学理论与实践</h3>
+                            <p>学习理论、认知发展、教学设计、学生心理辅导等教育心理学核心内容</p>
+                        </div>
+                    </div>
+                    <div class="kb-card-body">
+                        <div class="kb-meta">
+                            <div class="kb-meta-item">
+                                <i class="ri-building-line"></i>
+                                教育学院
+                            </div>
+                            <div class="kb-meta-item">
+                                <i class="ri-time-line"></i>
+                                更新于2天前
+                            </div>
+                            <div class="kb-meta-item highlight">
+                                <i class="ri-global-line"></i>
+                                完全公开
+                            </div>
+                        </div>
+                        <div class="kb-stats">
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">145</div>
+                                <div class="kb-stat-label">文档</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">28</div>
+                                <div class="kb-stat-label">视频</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">9</div>
+                                <div class="kb-stat-label">共建者</div>
+                            </div>
+                            <div class="kb-stat">
+                                <div class="kb-stat-value">6.8k</div>
+                                <div class="kb-stat-label">访问</div>
+                            </div>
+                        </div>
+                        <div class="kb-tags">
+                            <span class="kb-tag">教育心理</span>
+                            <span class="kb-tag secondary">教学设计</span>
+                            <span class="kb-tag">学习理论</span>
+                        </div>
+                        <div class="kb-card-footer">
+                            <div class="kb-creator">
+                                <div class="kb-creator-avatar" style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);">赵</div>
+                                <div class="kb-creator-info">
+                                    <span class="kb-creator-name">赵心怡</span>
+                                    <span class="kb-creator-dept">教育学院</span>
+                                </div>
+                            </div>
+                            <div class="kb-actions">
+                                <button class="kb-action-btn" title="收藏" onclick="event.stopPropagation()">
+                                    <i class="ri-star-line"></i>
+                                </button>
+                                <button class="kb-action-btn" title="分享" onclick="event.stopPropagation()">
+                                    <i class="ri-share-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分页 -->
+            <div class="pagination">
+                <button class="page-btn" disabled>
+                    <i class="ri-arrow-left-s-line"></i>
+                </button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">3</button>
+                <button class="page-btn">4</button>
+                <button class="page-btn">5</button>
+                <span style="color: var(--text-tertiary);">...</span>
+                <button class="page-btn">12</button>
+                <button class="page-btn">
+                    <i class="ri-arrow-right-s-line"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- 知识库详情弹窗 -->
+    <div class="modal-overlay" id="kbModal">
+        <div class="modal-container">
+            <div class="modal-header type-1">
+                <button class="modal-close" onclick="closeKbModal()">
+                    <i class="ri-close-line"></i>
+                </button>
+                <div class="modal-header-content">
+                    <div class="modal-icon">
+                        <i class="ri-robot-line"></i>
+                    </div>
+                    <div class="modal-title-area">
+                      <h2 class="modal-title">招投标知识与技巧课程资源库</h2>
+                      <p class="modal-subtitle">涵盖招投标法律法规、项目采购流程、商务谈判策略、合同风险管理、案例分析与实战演练等完整知识体系</p>
+                        <div class="modal-badges">
+                            <span class="modal-badge">
+                                <i class="ri-global-line"></i> 完全公开
+                            </span>
+                            <span class="modal-badge">
+                                <i class="ri-verified-badge-line"></i> 官方认证
+                            </span>
+                            <span class="modal-badge">
+                                <i class="ri-fire-line"></i> 热门资源
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <!-- 创建者信息 -->
+                <div class="detail-section">
+                    <h3 class="detail-section-title">
+                        <i class="ri-user-star-line"></i>
+                        创建者信息
+                    </h3>
+                    <div class="creator-detail">
+                        <div class="creator-avatar-large">张</div>
+                        <div class="creator-detail-info">
+                            <h4>张教授</h4>
+                            <p>工商管理学院 · 工程管理系 · 教授/博导</p>
+                            <p style="color: var(--text-tertiary); font-size: 12px; margin-top: 4px;">
+                                <i class="ri-mail-line"></i> zhangwei@university.edu.cn ·
+                                <i class="ri-calendar-line"></i> 创建于 2025年10月15日
+                            </p>
+                        </div>
+                        <div class="creator-contact">
+                            <button class="contact-btn">
+                                <i class="ri-message-3-line"></i>
+                                发消息
+                            </button>
+                            <button class="contact-btn">
+                                <i class="ri-user-add-line"></i>
+                                关注
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 共建者列表 -->
+                <div class="detail-section">
+                    <h3 class="detail-section-title">
+                        <i class="ri-team-line"></i>
+                        共建贡献者 (12人)
+                    </h3>
+                    <div class="collaborators-grid">
+                        <div class="collaborator-item">
+                            <div class="collaborator-avatar">李</div>
+                            <div class="collaborator-info">
+                                <h5>李明博士</h5>
+                                <p>工商管理学院</p>
+                            </div>
+                            <span class="collaborator-role">核心贡献</span>
+                        </div>
+                        <div class="collaborator-item">
+                            <div class="collaborator-avatar" style="background: linear-gradient(135deg, #059669 0%, #34d399 100%);">王</div>
+                            <div class="collaborator-info">
+                                <h5>王小红</h5>
+                                <p>工商管理学院</p>
+                            </div>
+                            <span class="collaborator-role">核心贡献</span>
+                        </div>
+                        <div class="collaborator-item">
+                            <div class="collaborator-avatar" style="background: linear-gradient(135deg, #ea580c 0%, #facc15 100%);">陈</div>
+                            <div class="collaborator-info">
+                                <h5>陈工程师</h5>
+                                <p>AI研究院</p>
+                            </div>
+                            <span class="collaborator-role">技术支持</span>
+                        </div>
+                        <div class="collaborator-item">
+                            <div class="collaborator-avatar" style="background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);">赵</div>
+                            <div class="collaborator-info">
+                                <h5>赵研究员</h5>
+                                <p>工商管理学院</p>
+                            </div>
+                            <span class="collaborator-role">内容审核</span>
+                        </div>
+                        <div class="collaborator-item">
+                            <div class="collaborator-avatar" style="background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);">刘</div>
+                            <div class="collaborator-info">
+                                <h5>刘助教</h5>
+                                <p>工商管理学院</p>
+                            </div>
+                            <span class="collaborator-role">资料整理</span>
+                        </div>
+                        <div class="collaborator-item">
+                            <div class="collaborator-avatar" style="background: linear-gradient(135deg, #0891b2 0%, #22d3ee 100%);">孙</div>
+                            <div class="collaborator-info">
+                                <h5>孙同学</h5>
+                                <p>研究生</p>
+                            </div>
+                            <span class="collaborator-role">内容贡献</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 资源统计 -->
+                <div class="detail-section">
+                    <h3 class="detail-section-title">
+                        <i class="ri-pie-chart-line"></i>
+                        资源统计概览
+                    </h3>
+                    <div class="stats-overview">
+                        <div class="stat-item">
+                            <div class="stat-item-icon blue">
+                                <i class="ri-file-text-line"></i>
+                            </div>
+                            <div class="stat-item-value">256</div>
+                            <div class="stat-item-label">文档资料</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-item-icon purple">
+                                <i class="ri-video-line"></i>
+                            </div>
+                            <div class="stat-item-value">48</div>
+                            <div class="stat-item-label">视频教程</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-item-icon green">
+                                <i class="ri-slideshow-line"></i>
+                            </div>
+                            <div class="stat-item-value">32</div>
+                            <div class="stat-item-label">PPT课件</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-item-icon orange">
+                                <i class="ri-code-box-line"></i>
+                            </div>
+                            <div class="stat-item-value">86</div>
+                            <div class="stat-item-label">代码示例</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 内容项目列表 -->
+                <div class="detail-section">
+                    <h3 class="detail-section-title">
+                        <i class="ri-folder-open-line"></i>
+                        内容项目明细 (最近更新)
+                    </h3>
+                    <div class="content-list">
+                        <div class="content-list-header">
+                            <span>文件名称</span>
+                            <span>类型</span>
+                            <span>贡献者</span>
+                            <span>更新时间</span>
+                            <span>操作</span>
+                        </div>
+                        <div class="content-list-item">
+                            <div class="content-name">
+                                <div class="content-icon doc">
+                                    <i class="ri-file-word-line"></i>
+                                </div>
+                                <span class="content-title">如何编好投标文件.docx</span>
+                            </div>
+                            <span class="content-type">Word文档</span>
+                            <span class="content-contributor">李明博士</span>
+                            <span class="content-date">2小时前</span>
+                            <div class="content-actions">
+                                <button class="content-action-btn" title="预览">
+                                    <i class="ri-eye-line"></i>
+                                </button>
+                                <button class="content-action-btn" title="下载">
+                                    <i class="ri-download-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="content-list-item">
+                            <div class="content-name">
+                                <div class="content-icon video">
+                                    <i class="ri-video-line"></i>
+                                </div>
+                                <span class="content-title">商务标、技术标、经济标的定义与区别.docx</span>
+                            </div>
+                            <span class="content-type">Word文档</span>
+                            <span class="content-contributor">张教授</span>
+                            <span class="content-date">1天前</span>
+                            <div class="content-actions">
+                                <button class="content-action-btn" title="预览">
+                                    <i class="ri-play-line"></i>
+                                </button>
+                                <button class="content-action-btn" title="下载">
+                                    <i class="ri-download-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="content-list-item">
+                            <div class="content-name">
+                                <div class="content-icon ppt">
+                                    <i class="ri-file-ppt-line"></i>
+                                </div>
+                                <span class="content-title">招投标基础知识与投标技巧.pptx</span>
+                            </div>
+                            <span class="content-type">PPT</span>
+                            <span class="content-contributor">王小红</span>
+                            <span class="content-date">2天前</span>
+                            <div class="content-actions">
+                                <button class="content-action-btn" title="预览">
+                                    <i class="ri-eye-line"></i>
+                                </button>
+                                <button class="content-action-btn" title="下载">
+                                    <i class="ri-download-line"></i>
+                                </button>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+
+                <!-- 最近活动 -->
+                <div class="detail-section">
+                    <h3 class="detail-section-title">
+                        <i class="ri-history-line"></i>
+                        最近更新动态
+                    </h3>
+                    <div class="activity-timeline">
+                        <div class="activity-item">
+                            <div class="activity-dot"></div>
+                            <div class="activity-content">
+                              <p class="activity-text"><strong>李明博士</strong> 上传了新文档《如何编好投标文件.docx》</p>
+                                <span class="activity-time">2小时前</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-dot" style="background: #7c3aed;"></div>
+                            <div class="activity-content">
+                              <p class="activity-text"><strong>张教授</strong> 更新了视频《商务标、技术标、经济标的定义与区别.docx》</p>
+                                <span class="activity-time">1天前</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-dot" style="background: #059669;"></div>
+                            <div class="activity-content">
+                                <p class="activity-text"><strong>孙同学</strong> 被添加为共建贡献者</p>
+                                <span class="activity-time">2天前</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-dot" style="background: #ea580c;"></div>
+                            <div class="activity-content">
+                              <p class="activity-text"><strong>王小红</strong> 上传了课件《招投标基础知识与投标技巧.pptx》</p>
+                                <span class="activity-time">3天前</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="modal-footer-left">
+                    <div class="footer-stat">
+                        <i class="ri-eye-line"></i>
+                        <span>8,632 次访问</span>
+                    </div>
+                    <div class="footer-stat">
+                        <i class="ri-star-line"></i>
+                        <span>1,256 人收藏</span>
+                    </div>
+                    <div class="footer-stat">
+                        <i class="ri-share-forward-line"></i>
+                        <span>328 次分享</span>
+                    </div>
+                </div>
+                <div class="modal-footer-right">
+                    <button class="modal-btn secondary">
+                        <i class="ri-star-line"></i>
+                        收藏知识库
+                    </button>
+                    <button class="modal-btn primary">
+                        <i class="ri-robot-line"></i>
+                        生成问答智能体
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 打开知识库详情弹窗
+        function openKbModal(id) {
+            document.getElementById('kbModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 关闭知识库详情弹窗
+        function closeKbModal() {
+            document.getElementById('kbModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // 点击遮罩层关闭弹窗
+        document.getElementById('kbModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeKbModal();
+            }
+        });
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeKbModal();
+            }
+        });
+
+        // 筛选选项点击效果
+        document.querySelectorAll('.filter-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const parent = this.closest('.filter-options');
+                parent.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 标签筛选点击效果
+        document.querySelectorAll('.tag-filter').forEach(tag => {
+            tag.addEventListener('click', function() {
+                document.querySelectorAll('.tag-filter').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 排序标签点击效果
+        document.querySelectorAll('.sort-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 视图切换
+        document.querySelectorAll('.view-toggle button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 分页点击效果
+        document.querySelectorAll('.page-btn:not(:disabled)').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!this.querySelector('i')) {
+                    document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        // 收藏按钮切换
+        document.querySelectorAll('.kb-action-btn').forEach(btn => {
+            if (btn.title === '收藏' || btn.title === '已收藏') {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    this.classList.toggle('favorited');
+                    const icon = this.querySelector('i');
+                    if (this.classList.contains('favorited')) {
+                        icon.className = 'ri-star-fill';
+                        this.title = '已收藏';
+                    } else {
+                        icon.className = 'ri-star-line';
+                        this.title = '收藏';
+                    }
+                });
+            }
+        });
+
+        // 弹窗内收藏按钮
+        document.querySelector('.modal-btn.secondary').addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon.className === 'ri-star-line') {
+                icon.className = 'ri-star-fill';
+                this.innerHTML = '<i class="ri-star-fill"></i> 已收藏';
+                this.style.background = '#fff7ed';
+                this.style.borderColor = '#f59e0b';
+                this.style.color = '#f59e0b';
+            } else {
+                icon.className = 'ri-star-line';
+                this.innerHTML = '<i class="ri-star-line"></i> 收藏知识库';
+                this.style.background = '';
+                this.style.borderColor = '';
+                this.style.color = '';
+            }
+        });
+
+        // 生成问答智能体按钮
+        document.querySelector('.modal-btn.primary').addEventListener('click', function() {
+            window.location.href = './知识库转问答体页面.html';
+        });
+    </script>
+</body>
+</html>

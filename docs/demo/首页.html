@@ -1,0 +1,2674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 服务平台 - 场景化数智教学服务平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #3370ff;
+            --primary-hover: #2860e1;
+            --primary-light: #e8f0ff;
+            --bg-color: #f5f6f7;
+            --card-bg: #ffffff;
+            --text-primary: #1f2329;
+            --text-secondary: #646a73;
+            --text-tertiary: #8f959e;
+            --border-color: #e5e6eb;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* 顶部导航栏 */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .logo i {
+            font-size: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .nav-link.active {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .global-search {
+            position: relative;
+            width: 280px;
+        }
+
+        .global-search input {
+            width: 100%;
+            padding: 8px 16px 8px 40px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .global-search input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
+
+        .global-search i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-color);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            margin-top: 56px;
+            padding: 24px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Banner区域 */
+        .banner-section {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .banner-main {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        .banner-main::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 60%;
+            height: 200%;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(15deg);
+        }
+
+        .banner-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .banner-desc {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+            max-width: 500px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .banner-actions {
+            display: flex;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .banner-btn {
+            padding: 10px 24px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .banner-btn.white {
+            background: white;
+            color: #667eea;
+            border: none;
+        }
+
+        .banner-btn.outline {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .banner-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Logo轮播区 */
+        .logo-carousel {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .logo-carousel-title {
+            font-size: 14px;
+            color: var(--text-tertiary);
+            margin-bottom: 20px;
+        }
+
+        .logo-slider {
+            width: 100%;
+            height: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-item {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .logo-item.active {
+            opacity: 1;
+        }
+
+        .logo-item img {
+            max-width: 120px;
+            max-height: 60px;
+        }
+
+        .logo-placeholder {
+            width: 120px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-light), #e8f5e9);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .logo-dots {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-color);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logo-dot.active {
+            background: var(--primary-color);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        /* 区块标题 */
+        .section {
+            margin-bottom: 48px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .section-title i {
+            color: var(--primary-color);
+        }
+
+        .section-more {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .section-more:hover {
+            color: var(--primary-color);
+        }
+
+        /* 模型广场 */
+        .hot-models {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .hot-model-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+            min-width: 100px;
+        }
+
+        .hot-model-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .hot-model-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+
+        .hot-model-name {
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .hot-model-tag {
+            font-size: 12px;
+            color: var(--primary-color);
+            background: var(--primary-light);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 6px;
+        }
+
+        /* 筛选栏 */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tabs {
+            display: flex;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+        }
+
+        .filter-tab {
+            padding: 6px 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .filter-tab.active {
+            background: var(--card-bg);
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-select {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            color: var(--text-secondary);
+            background: var(--card-bg);
+            cursor: pointer;
+            outline: none;
+        }
+
+        .filter-select:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* 模型卡片网格 */
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .model-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .model-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .model-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .model-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .model-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .model-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .model-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .model-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .model-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .model-tag {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--bg-color);
+            color: var(--text-secondary);
+        }
+
+        .model-tag.primary {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        /* 智能体卡片 */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .agent-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .agent-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .agent-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .agent-info {
+            flex: 1;
+        }
+
+        .agent-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .agent-creator {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .agent-badge {
+            padding: 4px 10px;
+            background: linear-gradient(135deg, #ff9a56, #ff6b6b);
+            color: white;
+            font-size: 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .agent-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .agent-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .agent-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .agent-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* 知识库卡片 */
+        .kb-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .kb-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .kb-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .kb-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .kb-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .kb-info {
+            flex: 1;
+        }
+
+        .kb-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .kb-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .kb-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .kb-status.open {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .kb-status.invite {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .kb-stats {
+            display: flex;
+            gap: 24px;
+            padding: 12px 0;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 12px;
+        }
+
+        .kb-stat-item {
+            text-align: center;
+        }
+
+        .kb-stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .kb-stat-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .kb-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kb-dept {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* AI技能大厅 */
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .skill-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .skill-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .skill-cover {
+            height: 140px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+        }
+
+        .skill-content {
+            padding: 16px;
+        }
+
+        .skill-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .skill-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .skill-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* AI前沿动态 */
+        .news-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .news-column {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .news-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .news-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .news-card.featured {
+            flex-direction: column;
+        }
+
+        .news-image {
+            width: 160px;
+            height: 100px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .news-card.featured .news-image {
+            width: 100%;
+            height: 180px;
+        }
+
+        .news-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .news-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            font-size: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            width: fit-content;
+        }
+
+        .news-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .news-summary {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .news-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* 弹出框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 640px;
+            max-height: 85vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            color: var(--text-tertiary);
+            font-size: 20px;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* 详情弹窗内容 */
+        .detail-header {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .detail-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+        }
+
+        .detail-info h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .detail-meta {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .detail-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .detail-tag {
+            padding: 4px 12px;
+            background: var(--bg-color);
+            border-radius: 16px;
+            font-size: 13px;
+        }
+
+        .detail-stats {
+            display: flex;
+            gap: 32px;
+            padding: 16px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+        }
+
+        .detail-stat {
+            text-align: center;
+        }
+
+        .detail-stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .detail-stat-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* AI对话弹窗 */
+        .chat-modal .modal {
+            max-width: 800px;
+            height: 80vh;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 0;
+        }
+
+        .chat-message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+
+        .chat-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .chat-message.ai .chat-avatar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .chat-message.user .chat-avatar {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .chat-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+        }
+
+        .chat-message.ai .chat-bubble {
+            background: var(--bg-color);
+        }
+
+        .chat-message.user .chat-bubble {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            outline: none;
+            resize: none;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .chat-send {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-color);
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .chat-send:hover {
+            background: var(--primary-hover);
+        }
+
+        /* 知识库详情弹窗 */
+        .kb-detail-section {
+            margin-bottom: 24px;
+        }
+
+        .kb-detail-section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .kb-contributors {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .kb-contributor {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .kb-contributor-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .kb-contributor-info {
+            font-size: 13px;
+        }
+
+        .kb-contributor-name {
+            font-weight: 500;
+        }
+
+        .kb-contributor-role {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .kb-content-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .kb-content-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .kb-content-item i {
+            color: var(--primary-color);
+            margin-right: 8px;
+        }
+
+        .kb-content-count {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* AI技能详情弹窗 */
+        .skill-detail-cover {
+            height: 200px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+
+        .skill-detail-content {
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .skill-detail-content h3 {
+            font-size: 18px;
+            margin: 24px 0 12px;
+            padding-left: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .skill-detail-content p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+
+        .skill-detail-content .tip-box {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary-color);
+            padding: 16px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin: 16px 0;
+        }
+
+        .skill-detail-content .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+
+        .skill-detail-video {
+            width: 100%;
+            height: 240px;
+            background: #000;
+            border-radius: var(--radius-md);
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .skill-detail-video i {
+            font-size: 48px;
+            opacity: 0.8;
+        }
+
+        /* AI动态详情弹窗 */
+        .news-detail-header {
+            margin-bottom: 24px;
+        }
+
+        .news-detail-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            font-size: 12px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+        }
+
+        .news-detail-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .news-detail-meta {
+            display: flex;
+            gap: 24px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .news-detail-cover {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 64px;
+        }
+
+        .news-detail-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        .news-detail-content p {
+            margin-bottom: 16px;
+        }
+
+        .news-detail-content blockquote {
+            background: var(--bg-color);
+            border-left: 4px solid var(--primary-color);
+            padding: 16px 20px;
+            margin: 20px 0;
+            font-style: italic;
+        }
+
+        .news-detail-content .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .news-detail-actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .news-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .news-action-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .banner-section {
+                grid-template-columns: 1fr;
+            }
+
+            .news-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .global-search {
+                width: 200px;
+            }
+
+            .hot-models {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 8px;
+            }
+
+            .modal {
+                width: 95%;
+                max-height: 90vh;
+            }
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="logo">
+                <i class="ri-robot-2-fill"></i>
+                <span>AI 服务平台</span>
+            </div>
+            <div class="nav-links">
+                <a href="#models" class="nav-link active">模型广场</a>
+                <a href="#agents" class="nav-link">智能体广场</a>
+                <a href="#knowledge" class="nav-link">知识库大厅</a>
+                <a href="#skills" class="nav-link">AI技能大厅</a>
+                <a href="#news" class="nav-link">AI前沿动态</a>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="global-search">
+                <i class="ri-search-line"></i>
+                <input type="text" placeholder="搜索模型、智能体、知识库...">
+            </div>
+            <button class="btn-secondary">
+                <i class="ri-lightbulb-line"></i>
+                我要提需求
+            </button>
+			<a href="../ai/后台第0页：AI服务中心工作台.html" >
+            <button class="btn-primary">
+                <i class="ri-dashboard-line"></i>
+                我的服务台
+            </button>
+			</a>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- Banner区域 -->
+        <section class="banner-section">
+            <div class="banner-main">
+                <h1 class="banner-title">YIKnow: <p></p>You Ask  I Know · 你问，我懂</h1>
+                <p class="banner-desc">融合场景化数智教学模式，为职业教育提供智能化教学辅助、岗位能力评估、个性化学习路径规划等全方位AI服务，助力培养适应产业需求的高素质技术技能人才。</p>
+                <div class="banner-actions">
+                    <a href="./人培方案生成 1_副本.html" class="banner-btn white">立即体验</a>
+                    <a href="./yino二级页.html" class="banner-btn outline">探索YIKnow</a>
+                </div>
+            </div>
+            <div class="logo-carousel">
+                <div class="logo-carousel-title">合作伙伴</div>
+                <div class="logo-slider">
+                    <div class="logo-item active">
+                        <div class="logo-placeholder">通义千问</div>
+                    </div>
+                    <div class="logo-item">
+                        <div class="logo-placeholder" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb);">DeepSeek</div>
+                    </div>
+                    <div class="logo-item">
+                        <div class="logo-placeholder" style="background: linear-gradient(135deg, #fce4ec, #f8bbd9);">豆包</div>
+                    </div>
+                </div>
+                <div class="logo-dots">
+                    <div class="logo-dot active" data-index="0"></div>
+                    <div class="logo-dot" data-index="1"></div>
+                    <div class="logo-dot" data-index="2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模型广场 -->
+        <section id="models" class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="ri-cpu-line"></i>
+                    模型广场
+                </h2>
+                <a href="#" class="section-more">查看全部 <i class="ri-arrow-right-s-line"></i></a>
+            </div>
+
+            <!-- 快捷直达 -->
+            <div class="hot-models">
+                <div class="hot-model-card" data-model="qianwen" onclick="showModelDetail(this)">
+                    <div class="hot-model-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        <i class="ri-chat-smile-2-fill"></i>
+                    </div>
+                    <div class="hot-model-name">通义千问</div>
+                    <div class="hot-model-tag">国产优秀</div>
+                </div>
+                <div class="hot-model-card" data-model="deepseek" onclick="showModelDetail(this)">
+                    <div class="hot-model-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white;">
+                        <i class="ri-brain-fill"></i>
+                    </div>
+                    <div class="hot-model-name">DeepSeek</div>
+                    <div class="hot-model-tag">免费通用</div>
+                </div>
+                <div class="hot-model-card" data-model="doubao" onclick="showModelDetail(this)">
+                    <div class="hot-model-icon" style="background: linear-gradient(135deg, #ff416c, #ff4b2b); color: white;">
+                        <i class="ri-magic-fill"></i>
+                    </div>
+                    <div class="hot-model-name">豆包</div>
+                    <div class="hot-model-tag">免费通用</div>
+                </div>
+                <div class="hot-model-card" data-model="wenxin" onclick="showModelDetail(this)">
+                    <div class="hot-model-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">
+                        <i class="ri-quill-pen-fill"></i>
+                    </div>
+                    <div class="hot-model-name">文心一言</div>
+                    <div class="hot-model-tag">国产优秀</div>
+                </div>
+                <div class="hot-model-card" data-model="kimi" onclick="showModelDetail(this)">
+                    <div class="hot-model-icon" style="background: linear-gradient(135deg, #fa709a, #fee140); color: white;">
+                        <i class="ri-fire-fill"></i>
+                    </div>
+                    <div class="hot-model-name">Kimi</div>
+                    <div class="hot-model-tag">长文本</div>
+                </div>
+            </div>
+
+            <!-- 模型筛选 -->
+            <div class="filter-bar">
+                <div class="filter-tabs">
+                    <div class="filter-tab active">全部</div>
+                    <div class="filter-tab">开源模型</div>
+                    <div class="filter-tab">写作</div>
+                    <div class="filter-tab">编程</div>
+                    <div class="filter-tab">绘画</div>
+                    <div class="filter-tab">视频</div>
+                </div>
+            </div>
+
+            <!-- 模型列表 -->
+            <div class="model-grid">
+                <div class="model-card" onclick="showModelDetail(this)">
+                    <div class="model-card-header">
+                        <div class="model-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <i class="ri-code-box-fill"></i>
+                        </div>
+                        <div class="model-info">
+                            <div class="model-name">CodeLlama</div>
+                            <div class="model-meta">Meta · 开源模型</div>
+                        </div>
+                    </div>
+                    <div class="model-desc">专为代码生成和理解优化的大语言模型，支持多种编程语言。</div>
+                    <div class="model-tags">
+                        <span class="model-tag primary">编程</span>
+                        <span class="model-tag">开源</span>
+                        <span class="model-tag">代码补全</span>
+                    </div>
+                </div>
+                <div class="model-card" onclick="showModelDetail(this)">
+                    <div class="model-card-header">
+                        <div class="model-avatar" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">
+                            <i class="ri-image-fill"></i>
+                        </div>
+                        <div class="model-info">
+                            <div class="model-name">Stable Diffusion XL</div>
+                            <div class="model-meta">Stability AI · 开源模型</div>
+                        </div>
+                    </div>
+                    <div class="model-desc">高质量文生图模型，支持多种艺术风格和精细控制。</div>
+                    <div class="model-tags">
+                        <span class="model-tag primary">绘画</span>
+                        <span class="model-tag">开源</span>
+                        <span class="model-tag">文生图</span>
+                    </div>
+                </div>
+                <div class="model-card" onclick="showModelDetail(this)">
+                    <div class="model-card-header">
+                        <div class="model-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">
+                            <i class="ri-file-text-fill"></i>
+                        </div>
+                        <div class="model-info">
+                            <div class="model-name">GLM-4</div>
+                            <div class="model-meta">智谱AI · 商业模型</div>
+                        </div>
+                    </div>
+                    <div class="model-desc">国产自研大模型，擅长中文理解与生成，支持长文本处理。</div>
+                    <div class="model-tags">
+                        <span class="model-tag primary">写作</span>
+                        <span class="model-tag">中文</span>
+                        <span class="model-tag">长文本</span>
+                    </div>
+                </div>
+                <div class="model-card" onclick="showModelDetail(this)">
+                    <div class="model-card-header">
+                        <div class="model-avatar" style="background: linear-gradient(135deg, #fa709a, #fee140); color: white;">
+                            <i class="ri-video-fill"></i>
+                        </div>
+                        <div class="model-info">
+                            <div class="model-name">Runway Gen-2</div>
+                            <div class="model-meta">Runway · 商业模型</div>
+                        </div>
+                    </div>
+                    <div class="model-desc">先进的AI视频生成模型，支持文生视频和图生视频。</div>
+                    <div class="model-tags">
+                        <span class="model-tag primary">视频</span>
+                        <span class="model-tag">生成式</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 智能体广场 -->
+        <section id="agents" class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="ri-robot-fill"></i>
+                    智能体广场
+                </h2>
+                <a href="#" class="section-more">查看全部 <i class="ri-arrow-right-s-line"></i></a>
+            </div>
+
+            <div class="filter-bar">
+                <div class="filter-tabs">
+                    <div class="filter-tab active">推荐</div>
+                    <div class="filter-tab">热门</div>
+                    <div class="filter-tab">最新</div>
+                </div>
+                <select class="filter-select">
+                    <option>全部专业</option>
+                    <option>计算机科学</option>
+                    <option>护理学</option>
+                    <option>机械工程</option>
+                    <option>新能源汽车</option>
+                </select>
+                <select class="filter-select">
+                    <option>全部岗位</option>
+                    <option>Java开发工程师</option>
+                    <option>前端开发工程师</option>
+                    <option>护士</option>
+                    <option>汽车维修技师</option>
+                </select>
+                <select class="filter-select">
+                    <option>全部场景</option>
+                    <option>代码评审</option>
+                    <option>医患沟通</option>
+                    <option>故障诊断</option>
+                </select>
+            </div>
+
+            <div class="agent-grid">
+                <div class="agent-card" onclick="showAgentDetail(this)">
+                    <div class="agent-header">
+                        <div class="agent-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <i class="ri-code-s-slash-fill"></i>
+                        </div>
+                        <div class="agent-info">
+                            <div class="agent-name">Java面试官</div>
+                            <div class="agent-creator">创建者：张老师 · 计算机学院</div>
+                        </div>
+                        <span class="agent-badge">平台严选</span>
+                    </div>
+                    <div class="agent-desc">模拟真实Java开发岗位面试场景，提供专业的面试问答训练和反馈指导。</div>
+                    <div class="model-tags" style="margin-bottom: 12px;">
+                        <span class="model-tag primary">Java开发</span>
+                        <span class="model-tag">面试模拟</span>
+                    </div>
+                    <div class="agent-footer">
+                        <div class="agent-stats">
+                            <span class="agent-stat"><i class="ri-star-fill" style="color: #faad14;"></i> 4.9</span>
+                            <span class="agent-stat"><i class="ri-user-line"></i> 2.3k使用</span>
+                            <span class="agent-stat"><i class="ri-heart-line"></i> 856收藏</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="agent-card" onclick="showAgentDetail(this)">
+                    <div class="agent-header">
+                        <div class="agent-avatar" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white;">
+                            <i class="ri-bug-fill"></i>
+                        </div>
+                        <div class="agent-info">
+                            <div class="agent-name">代码审计助手</div>
+                            <div class="agent-creator">创建者：李老师 · 软件工程系</div>
+                        </div>
+                    </div>
+                    <div class="agent-desc">帮助学生分析代码问题，提供排查思路而非直接答案，培养独立解决问题的能力。</div>
+                    <div class="model-tags" style="margin-bottom: 12px;">
+                        <span class="model-tag primary">代码评审</span>
+                        <span class="model-tag">Debug辅助</span>
+                    </div>
+                    <div class="agent-footer">
+                        <div class="agent-stats">
+                            <span class="agent-stat"><i class="ri-star-fill" style="color: #faad14;"></i> 4.8</span>
+                            <span class="agent-stat"><i class="ri-user-line"></i> 1.8k使用</span>
+                            <span class="agent-stat"><i class="ri-heart-line"></i> 624收藏</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="agent-card" onclick="showAgentDetail(this)">
+                    <div class="agent-header">
+                        <div class="agent-avatar" style="background: linear-gradient(135deg, #ff416c, #ff4b2b); color: white;">
+                            <i class="ri-heart-pulse-fill"></i>
+                        </div>
+                        <div class="agent-info">
+                            <div class="agent-name">护理情景模拟</div>
+                            <div class="agent-creator">创建者：王老师 · 护理学院</div>
+                        </div>
+                        <span class="agent-badge">平台严选</span>
+                    </div>
+                    <div class="agent-desc">模拟各类护理场景下的医患沟通，训练专业的沟通技巧和应急处理能力。</div>
+                    <div class="model-tags" style="margin-bottom: 12px;">
+                        <span class="model-tag primary">护理学</span>
+                        <span class="model-tag">医患沟通</span>
+                    </div>
+                    <div class="agent-footer">
+                        <div class="agent-stats">
+                            <span class="agent-stat"><i class="ri-star-fill" style="color: #faad14;"></i> 4.9</span>
+                            <span class="agent-stat"><i class="ri-user-line"></i> 1.5k使用</span>
+                            <span class="agent-stat"><i class="ri-heart-line"></i> 512收藏</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="agent-card" onclick="showAgentDetail(this)">
+                    <div class="agent-header">
+                        <div class="agent-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">
+                            <i class="ri-car-fill"></i>
+                        </div>
+                        <div class="agent-info">
+                            <div class="agent-name">汽车故障诊断师</div>
+                            <div class="agent-creator">创建者：陈老师 · 汽车工程系</div>
+                        </div>
+                    </div>
+                    <div class="agent-desc">根据故障现象引导学生进行系统化故障排查，掌握新能源汽车维修技能。</div>
+                    <div class="model-tags" style="margin-bottom: 12px;">
+                        <span class="model-tag primary">新能源汽车</span>
+                        <span class="model-tag">故障诊断</span>
+                    </div>
+                    <div class="agent-footer">
+                        <div class="agent-stats">
+                            <span class="agent-stat"><i class="ri-star-fill" style="color: #faad14;"></i> 4.7</span>
+                            <span class="agent-stat"><i class="ri-user-line"></i> 986使用</span>
+                            <span class="agent-stat"><i class="ri-heart-line"></i> 328收藏</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 知识库大厅 -->
+        <section id="knowledge" class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="ri-book-open-fill"></i>
+                    知识库大厅
+                </h2>
+                <a href="../ai/2前台知识库大厅二级页面.html" class="section-more">查看全部 <i class="ri-arrow-right-s-line"></i></a>
+            </div>
+
+            <div class="filter-bar">
+                <div class="filter-tabs">
+                    <div class="filter-tab active">全部</div>
+                    <div class="filter-tab">校级</div>
+                    <div class="filter-tab">院级</div>
+                    <div class="filter-tab">专业级</div>
+                </div>
+            </div>
+
+            <div class="kb-grid">
+                <div class="kb-card" onclick="showKBDetail(this)">
+                    <div class="kb-header">
+                        <div class="kb-icon">
+                            <i class="ri-book-2-fill"></i>
+                        </div>
+                        <div class="kb-info">
+                            <div class="kb-name">新能源汽车维修手册</div>
+                            <div class="kb-meta">汽车工程系</div>
+                        </div>
+                        <span class="kb-status open">开放查看</span>
+                    </div>
+                    <div class="kb-stats">
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">128</div>
+                            <div class="kb-stat-label">文档数</div>
+                        </div>
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">5</div>
+                            <div class="kb-stat-label">共建者</div>
+                        </div>
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">2.1k</div>
+                            <div class="kb-stat-label">引用次数</div>
+                        </div>
+                    </div>
+                    <div class="kb-footer">
+                        <span class="kb-dept"><i class="ri-building-line"></i> 工程学院</span>
+                        <span class="agent-stat"><i class="ri-heart-line"></i> 加入共建</span>
+                    </div>
+                </div>
+                <div class="kb-card" onclick="showKBDetail(this)">
+                    <div class="kb-header">
+                        <div class="kb-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                            <i class="ri-heart-pulse-fill"></i>
+                        </div>
+                        <div class="kb-info">
+                            <div class="kb-name">临床护理操作规范</div>
+                            <div class="kb-meta">护理学院</div>
+                        </div>
+                        <span class="kb-status invite">邀请共建</span>
+                    </div>
+                    <div class="kb-stats">
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">86</div>
+                            <div class="kb-stat-label">文档数</div>
+                        </div>
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">8</div>
+                            <div class="kb-stat-label">共建者</div>
+                        </div>
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">1.5k</div>
+                            <div class="kb-stat-label">引用次数</div>
+                        </div>
+                    </div>
+                    <div class="kb-footer">
+                        <span class="kb-dept"><i class="ri-building-line"></i> 医学院</span>
+                        <span class="agent-stat"><i class="ri-heart-line"></i> 申请加入</span>
+                    </div>
+                </div>
+                <div class="kb-card" onclick="showKBDetail(this)">
+                    <div class="kb-header">
+                        <div class="kb-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="ri-code-box-fill"></i>
+                        </div>
+                        <div class="kb-info">
+                            <div class="kb-name">Java开发最佳实践</div>
+                            <div class="kb-meta">计算机学院</div>
+                        </div>
+                        <span class="kb-status open">开放查看</span>
+                    </div>
+                    <div class="kb-stats">
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">256</div>
+                            <div class="kb-stat-label">文档数</div>
+                        </div>
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">12</div>
+                            <div class="kb-stat-label">共建者</div>
+                        </div>
+                        <div class="kb-stat-item">
+                            <div class="kb-stat-value">5.6k</div>
+                            <div class="kb-stat-label">引用次数</div>
+                        </div>
+                    </div>
+                    <div class="kb-footer">
+                        <span class="kb-dept"><i class="ri-building-line"></i> 信息学院</span>
+                        <span class="agent-stat"><i class="ri-heart-line"></i> 加入共建</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI技能大厅 -->
+        <section id="skills" class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="ri-lightbulb-fill"></i>
+                    AI技能大厅
+                </h2>
+                <a href="#" class="section-more">查看全部 <i class="ri-arrow-right-s-line"></i></a>
+            </div>
+
+            <div class="skill-grid">
+                <div class="skill-card" onclick="showSkillDetail(this)">
+                    <div class="skill-cover" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                        <i class="ri-chat-4-fill"></i>
+                    </div>
+                    <div class="skill-content">
+                        <div class="skill-title">提示词工程入门指南</div>
+                        <div class="skill-desc">掌握与AI对话的艺术，学会编写高效的提示词，让AI输出更精准。</div>
+                        <div class="skill-footer">
+                            <span><i class="ri-eye-line"></i> 3.2k阅读</span>
+                            <span><i class="ri-bookmark-line"></i> 订阅</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="skill-card" onclick="showSkillDetail(this)">
+                    <div class="skill-cover" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+                        <i class="ri-file-edit-fill"></i>
+                    </div>
+                    <div class="skill-content">
+                        <div class="skill-title">AI辅助备课实战技巧</div>
+                        <div class="skill-desc">教师专属教程，教你如何用AI快速生成教案、课件和练习题。</div>
+                        <div class="skill-footer">
+                            <span><i class="ri-eye-line"></i> 2.8k阅读</span>
+                            <span><i class="ri-bookmark-line"></i> 订阅</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="skill-card" onclick="showSkillDetail(this)">
+                    <div class="skill-cover" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
+                        <i class="ri-article-fill"></i>
+                    </div>
+                    <div class="skill-content">
+                        <div class="skill-title">AI论文润色与写作辅助</div>
+                        <div class="skill-desc">学会用AI工具优化论文结构、润色语言表达、检查引用格式。</div>
+                        <div class="skill-footer">
+                            <span><i class="ri-eye-line"></i> 4.5k阅读</span>
+                            <span><i class="ri-bookmark-line"></i> 订阅</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="skill-card" onclick="showSkillDetail(this)">
+                    <div class="skill-cover" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                        <i class="ri-robot-fill"></i>
+                    </div>
+                    <div class="skill-content">
+                        <div class="skill-title">智能体创建完全手册</div>
+                        <div class="skill-desc">从零开始教你搭建专属教学智能体，包含提示词设计和知识库配置。</div>
+                        <div class="skill-footer">
+                            <span><i class="ri-eye-line"></i> 1.9k阅读</span>
+                            <span><i class="ri-bookmark-line"></i> 订阅</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI前沿动态 -->
+        <section id="news" class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="ri-newspaper-fill"></i>
+                    AI前沿动态
+                </h2>
+                <a href="#" class="section-more">查看全部 <i class="ri-arrow-right-s-line"></i></a>
+            </div>
+
+            <div class="news-container">
+                <div class="news-column">
+                    <div class="news-card featured" onclick="showNewsDetail(this)">
+                        <div class="news-image">
+                            <i class="ri-rocket-fill"></i>
+                        </div>
+                        <div class="news-content">
+                            <span class="news-tag">产业动态</span>
+                            <div class="news-title">DeepSeek-V3发布：国产开源大模型再创新高</div>
+                            <div class="news-summary">DeepSeek团队发布最新V3版本，在多项基准测试中超越GPT-4，代码能力和数学推理能力大幅提升...</div>
+                            <div class="news-meta">
+                                <span><i class="ri-time-line"></i> 2小时前</span>
+                                <span><i class="ri-eye-line"></i> 5.2k阅读</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="news-card" onclick="showNewsDetail(this)">
+                        <div class="news-image" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="ri-book-open-fill"></i>
+                        </div>
+                        <div class="news-content">
+                            <span class="news-tag">政策解读</span>
+                            <div class="news-title">教育部发布《职业教育数字化转型指导意见》</div>
+                            <div class="news-summary">文件明确提出要加快AI在职业教育中的应用...</div>
+                            <div class="news-meta">
+                                <span><i class="ri-time-line"></i> 昨天</span>
+                                <span><i class="ri-eye-line"></i> 3.8k阅读</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="news-column">
+                    <div class="news-card" onclick="showNewsDetail(this)">
+                        <div class="news-image" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+                            <i class="ri-video-fill"></i>
+                        </div>
+                        <div class="news-content">
+                            <span class="news-tag">技术前沿</span>
+                            <div class="news-title">Sora开放API：视频生成进入应用时代</div>
+                            <div class="news-summary">OpenAI宣布Sora视频生成模型开放API接口...</div>
+                            <div class="news-meta">
+                                <span><i class="ri-time-line"></i> 3天前</span>
+                                <span><i class="ri-eye-line"></i> 8.6k阅读</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="news-card" onclick="showNewsDetail(this)">
+                        <div class="news-image" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                            <i class="ri-graduation-cap-fill"></i>
+                        </div>
+                        <div class="news-content">
+                            <span class="news-tag">行业应用</span>
+                            <div class="news-title">清华大学发布教育专用大模型EduGPT</div>
+                            <div class="news-summary">专为教育场景优化，支持智能批改、个性化辅导...</div>
+                            <div class="news-meta">
+                                <span><i class="ri-time-line"></i> 5天前</span>
+                                <span><i class="ri-eye-line"></i> 4.2k阅读</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="news-card" onclick="showNewsDetail(this)">
+                        <div class="news-image" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                            <i class="ri-global-fill"></i>
+                        </div>
+                        <div class="news-content">
+                            <span class="news-tag">产业动态</span>
+                            <div class="news-title">多模态AI：2024年最值得关注的技术趋势</div>
+                            <div class="news-summary">从文本到图像、音频、视频的统一理解与生成...</div>
+                            <div class="news-meta">
+                                <span><i class="ri-time-line"></i> 1周前</span>
+                                <span><i class="ri-eye-line"></i> 6.1k阅读</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 模型详情弹窗 -->
+    <div class="modal-overlay" id="modelModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">模型详情</h3>
+                <button class="modal-close" onclick="closeModal('modelModal')">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-header">
+                    <div class="detail-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        <i class="ri-chat-smile-2-fill"></i>
+                    </div>
+                    <div class="detail-info">
+                        <h3 id="modelDetailName">通义千问</h3>
+                        <p class="detail-meta" id="modelDetailMeta">阿里云 · 国产大模型 · 免费使用</p>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">模型简介</div>
+                    <p id="modelDetailDesc">通义千问是阿里云推出的超大规模语言模型，具备强大的中文理解和生成能力，支持多轮对话、文本创作、代码生成等多种任务。</p>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">适用场景</div>
+                    <div class="detail-tags">
+                        <span class="detail-tag">智能问答</span>
+                        <span class="detail-tag">文本创作</span>
+                        <span class="detail-tag">代码辅助</span>
+                        <span class="detail-tag">知识检索</span>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">模型参数</div>
+                    <div class="detail-stats">
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">72B</div>
+                            <div class="detail-stat-label">参数规模</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">128K</div>
+                            <div class="detail-stat-label">上下文窗口</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">中/英</div>
+                            <div class="detail-stat-label">支持语言</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="toggleFavorite(this)">
+                    <i class="ri-star-line"></i> 收藏
+                </button>
+                <button class="btn-primary" onclick="openChatModal()">
+                    <i class="ri-message-3-line"></i> 立即使用
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 智能体详情弹窗 -->
+    <div class="modal-overlay" id="agentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">智能体详情</h3>
+                <button class="modal-close" onclick="closeModal('agentModal')">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-header">
+                    <div class="detail-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        <i class="ri-code-s-slash-fill"></i>
+                    </div>
+                    <div class="detail-info">
+                        <h3>Java面试官</h3>
+                        <p class="detail-meta">创建者：张老师 · 计算机学院</p>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">智能体简介</div>
+                    <p>模拟真实Java开发岗位面试场景，涵盖基础语法、集合框架、多线程、JVM、Spring等核心知识点，提供专业的面试问答训练和详细的反馈指导，帮助学生全面提升面试能力。</p>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">关联信息</div>
+                    <div class="detail-tags">
+                        <span class="detail-tag">专业：计算机科学</span>
+                        <span class="detail-tag">岗位：Java开发工程师</span>
+                        <span class="detail-tag">场景：技术面试</span>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">试用提示</div>
+                    <div class="detail-tags">
+                        <span class="detail-tag">"请问Java的四大特性是什么？"</span>
+                        <span class="detail-tag">"解释一下HashMap的工作原理"</span>
+                        <span class="detail-tag">"模拟一场完整的技术面试"</span>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">使用数据</div>
+                    <div class="detail-stats">
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">4.9</div>
+                            <div class="detail-stat-label">用户评分</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">2.3k</div>
+                            <div class="detail-stat-label">使用次数</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">856</div>
+                            <div class="detail-stat-label">收藏数</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="toggleFavorite(this)">
+                    <i class="ri-star-line"></i> 收藏
+                </button>
+                <button class="btn-primary" onclick="openChatModal()">
+                    <i class="ri-message-3-line"></i> 立即使用
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 知识库详情弹窗 -->
+    <div class="modal-overlay" id="kbModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">知识库详情</h3>
+                <button class="modal-close" onclick="closeModal('kbModal')">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-header">
+                    <div class="detail-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">
+                        <i class="ri-book-2-fill"></i>
+                    </div>
+                    <div class="detail-info">
+                        <h3>新能源汽车维修手册</h3>
+                        <p class="detail-meta">汽车工程系 · 工程学院</p>
+                    </div>
+                </div>
+
+                <div class="kb-detail-section">
+                    <h4>创建人</h4>
+                    <div class="kb-contributors">
+                        <div class="kb-contributor">
+                            <div class="kb-contributor-avatar">陈</div>
+                            <div class="kb-contributor-info">
+                                <div class="kb-contributor-name">陈建国</div>
+                                <div class="kb-contributor-role">创建人 · 汽车工程系主任</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kb-detail-section">
+                    <h4>共建人员（5人）</h4>
+                    <div class="kb-contributors">
+                        <div class="kb-contributor">
+                            <div class="kb-contributor-avatar">李</div>
+                            <div class="kb-contributor-info">
+                                <div class="kb-contributor-name">李明</div>
+                                <div class="kb-contributor-role">专业教师</div>
+                            </div>
+                        </div>
+                        <div class="kb-contributor">
+                            <div class="kb-contributor-avatar">王</div>
+                            <div class="kb-contributor-info">
+                                <div class="kb-contributor-name">王芳</div>
+                                <div class="kb-contributor-role">专业教师</div>
+                            </div>
+                        </div>
+                        <div class="kb-contributor">
+                            <div class="kb-contributor-avatar">张</div>
+                            <div class="kb-contributor-info">
+                                <div class="kb-contributor-name">张伟</div>
+                                <div class="kb-contributor-role">企业导师</div>
+                            </div>
+                        </div>
+                        <div class="kb-contributor">
+                            <div class="kb-contributor-avatar">刘</div>
+                            <div class="kb-contributor-info">
+                                <div class="kb-contributor-name">刘洋</div>
+                                <div class="kb-contributor-role">学生助理</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kb-detail-section">
+                    <h4>知识库内容</h4>
+                    <div class="kb-content-list">
+                        <div class="kb-content-item">
+                            <span><i class="ri-file-pdf-line"></i> 电池系统维修指南</span>
+                            <span class="kb-content-count">32份文档</span>
+                        </div>
+                        <div class="kb-content-item">
+                            <span><i class="ri-file-pdf-line"></i> 电机控制器检修手册</span>
+                            <span class="kb-content-count">28份文档</span>
+                        </div>
+                        <div class="kb-content-item">
+                            <span><i class="ri-file-pdf-line"></i> 充电系统故障排查</span>
+                            <span class="kb-content-count">24份文档</span>
+                        </div>
+                        <div class="kb-content-item">
+                            <span><i class="ri-file-pdf-line"></i> 整车电气系统</span>
+                            <span class="kb-content-count">44份文档</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">统计数据</div>
+                    <div class="detail-stats">
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">128</div>
+                            <div class="detail-stat-label">文档总数</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">2.1k</div>
+                            <div class="detail-stat-label">引用次数</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value">98%</div>
+                            <div class="detail-stat-label">问答准确率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="toggleFavorite(this)">
+                    <i class="ri-star-line"></i> 收藏
+                </button>
+                <button class="btn-primary" onclick="openChatModal()">
+                    <i class="ri-robot-line"></i> 生成问答智能体
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI技能详情弹窗 -->
+    <div class="modal-overlay" id="skillModal">
+        <div class="modal" style="max-width: 720px;">
+            <div class="modal-header">
+                <h3 class="modal-title">AI技能教程</h3>
+                <button class="modal-close" onclick="closeModal('skillModal')">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="skill-detail-cover">
+                    <i class="ri-chat-4-fill"></i>
+                </div>
+
+                <div class="skill-detail-content">
+                    <h2 style="font-size: 22px; margin-bottom: 8px;">提示词工程入门指南</h2>
+                    <p style="color: var(--text-tertiary); margin-bottom: 24px;"><i class="ri-eye-line"></i> 3.2k阅读 · <i class="ri-time-line"></i> 预计阅读15分钟</p>
+
+                    <h3>什么是提示词工程？</h3>
+                    <p>提示词工程（Prompt Engineering）是指通过设计和优化输入给AI模型的文本提示，来引导模型生成更准确、更有用的输出的技术。</p>
+
+                    <div class="tip-box">
+                        <strong>💡 核心原则：</strong>好的提示词应该是清晰、具体、有上下文的。
+                    </div>
+
+                    <h3>基础提示词结构</h3>
+                    <p>一个完整的提示词通常包含以下几个部分：</p>
+
+                    <div class="code-block">
+你是一名[角色]，专注于[领域]。
+请根据以下要求完成任务：
+- 任务目标：[具体目标]
+- 输出格式：[期望格式]
+- 注意事项：[限制条件]
+
+输入内容：[用户输入]
+                    </div>
+
+                    <h3>实战演示</h3>
+                    <div class="skill-detail-video">
+                        <i class="ri-play-circle-fill"></i>
+                    </div>
+                    <p style="text-align: center; color: var(--text-tertiary); font-size: 13px;">视频：5分钟掌握提示词优化技巧</p>
+
+                    <h3>常见错误与优化</h3>
+                    <p>❌ 错误示例："帮我写个代码"</p>
+                    <p>✅ 优化后："请用Python编写一个函数，实现用户登录验证功能，要求：1. 验证邮箱格式 2. 密码长度至少8位 3. 返回验证结果和错误信息"</p>
+
+                    <div class="tip-box" style="background: #e8f5e9; border-color: #4caf50;">
+                        <strong>🎯 记住：</strong>越具体的提示词，AI给出的答案越精准！
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary">
+                    <i class="ri-bookmark-line"></i> 订阅专栏
+                </button>
+                <button class="btn-primary">
+                    <i class="ri-share-line"></i> 分享
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI动态详情弹窗 -->
+    <div class="modal-overlay" id="newsModal">
+        <div class="modal" style="max-width: 720px;">
+            <div class="modal-header">
+                <h3 class="modal-title">AI前沿动态</h3>
+                <button class="modal-close" onclick="closeModal('newsModal')">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="news-detail-header">
+                    <span class="news-detail-tag">产业动态</span>
+                    <h1 class="news-detail-title">DeepSeek-V3发布：国产开源大模型再创新高</h1>
+                    <div class="news-detail-meta">
+                        <span><i class="ri-time-line"></i> 2024年12月26日</span>
+                        <span><i class="ri-user-line"></i> AI资讯编辑部</span>
+                        <span><i class="ri-eye-line"></i> 5.2k阅读</span>
+                    </div>
+                </div>
+
+                <div class="news-detail-cover">
+                    <i class="ri-rocket-fill"></i>
+                </div>
+
+                <div class="news-detail-content">
+                    <p>12月26日，深度求索（DeepSeek）团队正式发布了DeepSeek-V3大模型，这是继V2版本之后的又一次重大升级。新版本在多项基准测试中展现出了卓越的性能，<span class="highlight">部分指标已超越GPT-4</span>。</p>
+
+                    <blockquote>
+                        "DeepSeek-V3的发布标志着国产开源大模型进入了一个新的发展阶段。"
+                        <br>—— DeepSeek CEO 梁文锋
+                    </blockquote>
+
+                    <p><strong>核心技术突破：</strong></p>
+                    <p>• 采用全新的MoE（混合专家）架构，有效提升推理效率<br>
+                    • 代码生成能力提升40%，在HumanEval测试中达到92.1%<br>
+                    • 数学推理能力大幅增强，GSM8K测试准确率达95.8%<br>
+                    • 支持128K上下文窗口，长文本处理能力显著提升</p>
+
+                    <p><strong>教育领域应用展望：</strong></p>
+                    <p>DeepSeek-V3的开源特性使其在教育领域具有广阔的应用前景。学校可以基于该模型构建专属的教学智能体，实现个性化辅导、智能批改等功能，同时无需担心数据隐私问题。</p>
+
+                    <p>目前，DeepSeek-V3已在GitHub开源，并提供了完整的模型权重和训练代码。开发者可以免费下载使用，也可以通过API调用在线服务。</p>
+                </div>
+
+                <div class="news-detail-actions">
+                    <button class="news-action-btn">
+                        <i class="ri-thumb-up-line"></i> 点赞 (328)
+                    </button>
+                    <button class="news-action-btn">
+                        <i class="ri-bookmark-line"></i> 收藏
+                    </button>
+                    <button class="news-action-btn">
+                        <i class="ri-share-forward-line"></i> 分享
+                    </button>
+                    <button class="news-action-btn">
+                        <i class="ri-file-list-line"></i> 生成摘要
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI对话弹窗 -->
+    <div class="modal-overlay chat-modal" id="chatModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="chat-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 32px; height: 32px; font-size: 16px;">
+                        <i class="ri-robot-fill"></i>
+                    </div>
+                    <h3 class="modal-title" id="chatTitle">通义千问</h3>
+                </div>
+                <button class="modal-close" onclick="closeModal('chatModal')">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 16px 24px;">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message ai">
+                            <div class="chat-avatar">
+                                <i class="ri-robot-fill"></i>
+                            </div>
+                            <div class="chat-bubble">
+                                你好！我是AI助手，很高兴为您服务。请问有什么我可以帮助您的吗？
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea class="chat-input" id="chatInput" rows="1" placeholder="输入消息，按Enter发送..." onkeypress="handleKeyPress(event)"></textarea>
+                        <button class="chat-send" onclick="sendMessage()">
+                            <i class="ri-send-plane-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Logo轮播
+        let currentLogoIndex = 0;
+        const logoItems = document.querySelectorAll('.logo-item');
+        const logoDots = document.querySelectorAll('.logo-dot');
+
+        function showLogo(index) {
+            logoItems.forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+            logoDots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        }
+
+        function nextLogo() {
+            currentLogoIndex = (currentLogoIndex + 1) % logoItems.length;
+            showLogo(currentLogoIndex);
+        }
+
+        logoDots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                currentLogoIndex = index;
+                showLogo(currentLogoIndex);
+            });
+        });
+
+        setInterval(nextLogo, 3000);
+
+        // 导航栏滚动跳转
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    const offsetTop = targetElement.offsetTop - 80;
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                }
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 滚动时更新导航状态
+        window.addEventListener('scroll', () => {
+            const sections = ['models', 'agents', 'knowledge', 'skills', 'news'];
+            const scrollPos = window.scrollY + 100;
+
+            sections.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                        document.querySelectorAll('.nav-link').forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('href') === '#' + sectionId);
+                        });
+                    }
+                }
+            });
+        });
+
+        // 筛选标签切换
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                this.parentElement.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 弹窗控制
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // 点击遮罩关闭弹窗
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+
+        // 模型详情
+        function showModelDetail(el) {
+            showModal('modelModal');
+        }
+
+        // 智能体详情
+        function showAgentDetail(el) {
+            showModal('agentModal');
+        }
+
+        // 知识库详情
+        function showKBDetail(el) {
+            showModal('kbModal');
+        }
+
+        // AI技能详情
+        function showSkillDetail(el) {
+            showModal('skillModal');
+        }
+
+        // AI动态详情
+        function showNewsDetail(el) {
+            showModal('newsModal');
+        }
+
+        // 打开对话弹窗
+        function openChatModal() {
+            closeModal('modelModal');
+            closeModal('agentModal');
+            closeModal('kbModal');
+            setTimeout(() => {
+                showModal('chatModal');
+            }, 200);
+        }
+
+        // 收藏切换
+        function toggleFavorite(btn) {
+            const icon = btn.querySelector('i');
+            const isFavorited = icon.classList.contains('ri-star-fill');
+            if (isFavorited) {
+                icon.classList.remove('ri-star-fill');
+                icon.classList.add('ri-star-line');
+                icon.style.color = '';
+                btn.innerHTML = '<i class="ri-star-line"></i> 收藏';
+            } else {
+                icon.classList.remove('ri-star-line');
+                icon.classList.add('ri-star-fill');
+                icon.style.color = '#faad14';
+                btn.innerHTML = '<i class="ri-star-fill" style="color: #faad14;"></i> 已收藏';
+            }
+        }
+
+        // 发送消息
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const messagesContainer = document.getElementById('chatMessages');
+
+            // 添加用户消息
+            const userMsg = document.createElement('div');
+            userMsg.className = 'chat-message user';
+            userMsg.innerHTML = `
+                <div class="chat-avatar"><i class="ri-user-fill"></i></div>
+                <div class="chat-bubble">${message}</div>
+            `;
+            messagesContainer.appendChild(userMsg);
+
+            input.value = '';
+
+            // 模拟AI回复
+            setTimeout(() => {
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'chat-message ai';
+                aiMsg.innerHTML = `
+                    <div class="chat-avatar"><i class="ri-robot-fill"></i></div>
+                    <div class="chat-bubble">收到您的消息："${message}"。这是一个演示回复，实际应用中将连接到真实的AI服务。</div>
+                `;
+                messagesContainer.appendChild(aiMsg);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 800);
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 回车发送
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
