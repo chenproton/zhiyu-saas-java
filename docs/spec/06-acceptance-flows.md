@@ -207,9 +207,9 @@ steps:
     goto: /portal/apps/ai/admin/reviews
     clickRow: { text: "{{kbName}}", action: 通过 }
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
+  # v1.3 起广场平铺无 Tab：/square 重定向落地页 #square 锚点，三区内容同页可见，直接断言
   - role: student
     goto: /portal/apps/ai/square
-    click: 知识库
     expectText: "{{kbName}}"
     timeoutMs: 20000
   - role: school

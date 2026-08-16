@@ -224,7 +224,7 @@ export const aiCenterAgentApi = {
 // ==================== 广场 / 挂接展示 ====================
 
 export const aiCenterSquareApi = {
-  kbs: (params: { q?: string; tag?: string; sort?: 'hot' | 'new'; page?: number; pageSize?: number } = {}) =>
+  kbs: (params: { q?: string; tag?: string; sort?: 'hot' | 'new' | 'updated' | 'docs'; page?: number; pageSize?: number } = {}) =>
     portalRequest<ListResult<AIKnowledgeBase>>(`/ai/square/kbs${buildQuery({ ...params })}`),
 
   agents: (params: { q?: string; sort?: 'hot' | 'new'; page?: number; pageSize?: number } = {}) =>

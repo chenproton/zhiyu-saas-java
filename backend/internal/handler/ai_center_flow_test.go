@@ -187,6 +187,14 @@ func TestAICenter_KBLifecycleAndVisibility(t *testing.T) {
 	if total, _ := sq["total"].(float64); total != 0 {
 		t.Fatalf("unpublished kb must leave square, total=%v", total)
 	}
+	// 排序白名单扩展（知识库大厅）：docs=资源最多 / updated=最近更新，均不应报错
+	for _, sort := range []string{"docs", "updated"} {
+		w = env.DoWithToken("GET", "/api/v1/ai/square/kbs?sort="+sort, nil, other)
+		if w.Code != http.StatusOK {
+			t.Fatalf("square kbs sort=%s: %d %s", sort, w.Code, testhelper.ErrMsg(w))
+		}
+	}
+
 	if w := env.DoWithToken("DELETE", "/api/v1/ai/kb/"+kb.ID, nil, owner); w.Code != http.StatusOK {
 		t.Fatalf("delete private kb: %d %s", w.Code, testhelper.ErrMsg(w))
 	}

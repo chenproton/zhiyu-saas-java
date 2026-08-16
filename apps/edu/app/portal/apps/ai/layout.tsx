@@ -16,7 +16,8 @@ import { useT } from '@/lib/i18n/locale-provider'
 const menuItems = aiNavigationConfig.sideNavItems
 
 // 前台落地页为全宽页面（自带 hero/页脚），不包侧边栏（同 alliance FULL_WIDTH_PAGES 模式）
-const FULL_WIDTH_PAGES = ['/portal/apps/ai/landing']
+// 全宽页：landing 自带 hero；chat（YIKnow）自带左侧功能轨，均不包平台侧边栏
+const FULL_WIDTH_PAGES = ['/portal/apps/ai/landing', '/portal/apps/ai/chat']
 
 export default function AICenterLayout({ children }: { children: React.ReactNode }) {
   const t = useT()

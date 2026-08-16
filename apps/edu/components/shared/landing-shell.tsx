@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronRight, Filter, Search, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,9 @@ interface LandingShellProps {
     title: React.ReactNode
     description: string
     ctaLabel: string
+    /** 提供时 CTA 跳转该路由（而非滚动到列表）；secondaryCtaLabel 为次按钮（滚动） */
+    ctaHref?: string
+    secondaryCtaLabel?: string
     right?: React.ReactNode
   }
   stats?: LandingStat[]
@@ -75,6 +79,7 @@ export function LandingShell({
   children,
 }: LandingShellProps) {
   const t = useT()
+  const router = useRouter()
   const innerRef = useRef<HTMLDivElement>(null)
   const targetRef = listRef ?? innerRef
 
@@ -113,12 +118,23 @@ export function LandingShell({
             <p className="text-[15px] sm:text-[17px] text-white/85 mb-6 sm:mb-7 max-w-2xl leading-relaxed">
               {hero.description}
             </p>
-            <Button
-              className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-6 sm:px-7 h-11 sm:h-12 rounded-full text-sm font-semibold shadow-lg transition-all w-full sm:w-auto justify-center"
-              onClick={scrollToList}
-            >
-              {hero.ctaLabel} <ChevronRight className="w-4 h-4" />
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-6 sm:px-7 h-11 sm:h-12 rounded-full text-sm font-semibold shadow-lg transition-all w-full sm:w-auto justify-center"
+                onClick={hero.ctaHref ? () => router.push(hero.ctaHref!) : scrollToList}
+              >
+                {hero.ctaLabel} <ChevronRight className="w-4 h-4" />
+              </Button>
+              {hero.secondaryCtaLabel && (
+                <Button
+                  variant="outline"
+                  className="inline-flex items-center gap-2 bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white px-6 sm:px-7 h-11 sm:h-12 rounded-full text-sm font-semibold transition-all w-full sm:w-auto justify-center"
+                  onClick={scrollToList}
+                >
+                  {hero.secondaryCtaLabel}
+                </Button>
+              )}
+            </div>
           </div>
 
           {hero.right && (

@@ -151,9 +151,15 @@ func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sor
 		args = append(args, tag)
 		where += fmt.Sprintf(` AND kb.tags @> to_jsonb($%d::text)`, len(args))
 	}
+	// hot=提问数（默认）/ new=最新创建 / docs=资源最多 / updated=最近更新（知识库大厅排序，spec §5.3）
 	order := `kb.created_at DESC`
-	if sort == "hot" {
+	switch sort {
+	case "hot":
 		order = `kb.ask_count DESC, kb.created_at DESC`
+	case "docs":
+		order = `kb.doc_count DESC, kb.created_at DESC`
+	case "updated":
+		order = `kb.updated_at DESC`
 	}
 	var total int
 	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM ai_knowledge_bases kb WHERE `+where, args...).Scan(&total); err != nil {
