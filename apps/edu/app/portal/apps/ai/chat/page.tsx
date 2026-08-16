@@ -2,10 +2,10 @@
 
 // YIKnow 全局智能助手（/portal/apps/ai/chat）：公司主推产品入口（spec §2.1 YIKnow）。
 // 布局对齐 docs/demo《YIKnow AI 对话》原型：左侧功能轨 + 智能对话主区。
-// 左侧功能项（我的方案/岗位库/场景库/知识库/设置）为预留入口，本期仅占位（点击提示敬请期待）；
-// 智能对话复用租户统一 AI 服务（sendAIChat），会话不保存、刷新即清空。
+// v2.2 A1：会话持久化——SSE 流式对话（streamYiknowChat）+ 左侧会话历史（新建/继续/删除）。
+// 左侧功能项（我的方案/岗位库/场景库/知识库/设置）为预留入口，本期仅占位（点击提示敬请期待）。
 // 本页全宽自渲染（layout FULL_WIDTH_PAGES），不再叠加平台侧边栏。
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -18,13 +18,15 @@ import {
   MessageSquare,
   Loader2,
   Send,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useToast } from '@zhiyu/ui'
-import { sendAIChat } from '@/lib/api'
-import type { AIChatMessage } from '@/lib/api'
+import { aiCenterAgentApi, aiCenterV22Api, streamYiknowChat } from '@/lib/api'
+import type { AIConversation } from '@/lib/api'
 import { useAiNotConfigured } from '@/lib/ai/use-ai-assist'
 import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -38,32 +40,117 @@ const PLACEHOLDER_ITEMS = [
   { id: 'settings', label: '设置', icon: Settings },
 ] as const
 
+interface ChatMsg {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export default function YIKnowChatPage() {
-  const [messages, setMessages] = useState<AIChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [conversations, setConversations] = useState<AIConversation[]>([])
+  const [activeConvId, setActiveConvId] = useState<string | null>(null)
+  const [loadingConv, setLoadingConv] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const { toast } = useToast()
   const t = useT()
   // 412 ai_not_configured 统一走共享 hook + 引导弹窗（与 AI 辅助编写三件套一致）
   const ai = useAiNotConfigured()
 
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }), 0)
+  }, [])
+
+  const loadConversations = useCallback(() => {
+    aiCenterV22Api
+      .listYiknowConversations()
+      .then((res) => setConversations(res.items || []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    loadConversations()
+    return () => abortRef.current?.abort()
+  }, [loadConversations])
+
+  const startNewChat = () => {
+    abortRef.current?.abort()
+    setActiveConvId(null)
+    setMessages([])
+    setInput('')
+  }
+
+  const openConversation = async (id: string) => {
+    if (id === activeConvId || loadingConv) return
+    abortRef.current?.abort()
+    setLoadingConv(true)
+    try {
+      const res = await aiCenterAgentApi.getConversation(id)
+      setActiveConvId(id)
+      setMessages(
+        (res.messages || []).map((m: { role: string; content: string }) => ({
+          role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.content,
+        })),
+      )
+      scrollToBottom()
+    } catch {
+      toast({ title: t('加载会话失败'), variant: 'destructive' })
+    } finally {
+      setLoadingConv(false)
+    }
+  }
+
+  const deleteConversation = async (id: string) => {
+    try {
+      await aiCenterAgentApi.removeConversation(id)
+      if (id === activeConvId) startNewChat()
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+    } catch {
+      toast({ title: t('删除失败'), variant: 'destructive' })
+    }
+  }
+
   const handleSend = async (preset?: string) => {
     const content = (preset ?? input).trim()
     if (!content || sending) return
-    const next: AIChatMessage[] = [...messages, { role: 'user', content }]
-    setMessages(next)
+    setMessages((prev) => [...prev, { role: 'user', content }, { role: 'assistant', content: '' }])
     setInput('')
     setSending(true)
+    scrollToBottom()
+    abortRef.current = new AbortController()
     try {
-      const res = await sendAIChat({ messages: next })
-      setMessages([...next, { role: 'assistant', content: res.reply }])
-      setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }), 0)
+      await streamYiknowChat(
+        activeConvId,
+        content,
+        {
+          onMeta: (data) => {
+            const cid = (data as { conversationId?: string }).conversationId
+            if (cid) setActiveConvId(cid)
+          },
+          onDelta: (text) => {
+            setMessages((prev) => {
+              const next = [...prev]
+              const last = next[next.length - 1]
+              if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: last.content + text }
+              return next
+            })
+            scrollToBottom()
+          },
+          onDone: () => loadConversations(),
+          onError: (_code, message) => {
+            setMessages((prev) => prev.slice(0, -1))
+            toast({ title: t('发送失败'), description: message, variant: 'destructive' })
+          },
+        },
+        abortRef.current.signal,
+      )
     } catch (err) {
-      // 后端 412 固定返回 ai_not_configured（见 handler.AIHandler.Chat），命中即打开统一引导弹窗
-      if (ai.markNotConfigured(err)) {
-        // 未配置：不弹发送失败 toast
-      } else {
+      setMessages((prev) => prev.slice(0, -1))
+      // 后端 412 固定返回 ai_not_configured，命中即打开统一引导弹窗
+      if (!ai.markNotConfigured(err)) {
         toast({
           title: t('发送失败'),
           description: err instanceof Error ? err.message : undefined,
@@ -99,7 +186,7 @@ export default function YIKnowChatPage() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <nav className="p-3 space-y-1">
           <button
             className={cn(
               'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm',
@@ -128,8 +215,49 @@ export default function YIKnowChatPage() {
             </button>
           ))}
         </nav>
+
+        {/* 会话历史（v2.2 A1） */}
+        <div className="flex-1 min-h-0 flex flex-col border-t border-border">
+          <div className="flex items-center justify-between px-3 pt-3 pb-2">
+            <span className="text-xs font-medium text-muted-foreground">{t('历史会话')}</span>
+            <button
+              onClick={startNewChat}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t('新对话')}
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2 space-y-0.5">
+            {conversations.length === 0 && (
+              <p className="text-[11px] text-muted-foreground px-2 py-3">{t('暂无历史会话')}</p>
+            )}
+            {conversations.map((c) => (
+              <div
+                key={c.id}
+                className={cn(
+                  'group flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs cursor-pointer transition-colors',
+                  c.id === activeConvId ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted',
+                )}
+                onClick={() => openConversation(c.id)}
+              >
+                <span className="flex-1 min-w-0 truncate">{c.title || t('未命名会话')}</span>
+                <button
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteConversation(c.id)
+                  }}
+                  aria-label={t('删除会话')}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="p-3 border-t border-border text-[11px] text-muted-foreground">
-          {t('基于租户自有 AI 服务，会话不保存，刷新即清空')}
+          {t('基于租户自有 AI 服务，会话自动保存')}
         </div>
       </aside>
 
@@ -146,7 +274,11 @@ export default function YIKnowChatPage() {
       <main className="flex-1 min-w-0 flex flex-col max-md:pt-10">
         <div className="flex-1 flex flex-col min-h-0 max-w-3xl w-full mx-auto px-4 sm:px-6 py-4">
           <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
-            {messages.length === 0 && (
+            {loadingConv ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg mb-4">
                   <Bot className="w-8 h-8 text-white" />
@@ -168,26 +300,23 @@ export default function YIKnowChatPage() {
                   ))}
                 </div>
               </div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap break-words ${
-                    m.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background border border-border'
-                  }`}
-                >
-                  {m.content}
+            ) : (
+              messages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap break-words ${
+                      m.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background border border-border'
+                    }`}
+                  >
+                    {m.content}
+                    {sending && i === messages.length - 1 && m.role === 'assistant' && m.content === '' && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {sending && (
-              <div className="flex justify-start">
-                <div className="bg-background border border-border rounded-lg px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                </div>
-              </div>
+              ))
             )}
           </div>
           <div className="pt-3 flex gap-2">

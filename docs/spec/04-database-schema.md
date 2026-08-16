@@ -1,7 +1,7 @@
 # 数据库 Schema 设计 — 知与 SaaS
 
 > 基于 `backend/migrations/`（001_baseline + 091~160 增量）回溯整理。
-> 当前共 **165 张表**（168 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
+> 当前共 **166 张表**（169 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
 > 124~160 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
 > 约定：主键统一 `uuid DEFAULT gen_random_uuid()`；`created_at/updated_at timestamptz DEFAULT now()`；业务枚举用 `varchar + CHECK`，仅 7 个原生 PG ENUM。
 
@@ -331,7 +331,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 
 ## 3. 租户隔离说明
 
-- **绝大多数业务表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 165 张）为准。
+- **绝大多数业务表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 166 张）为准。
 - **少数表无 `tenant_id`**，分三类：
   1. **平台级公共表**：`platform_configs`（全局 KV）、`tenants`（本身）
   2. **计数器**：`favorite_counters`、`view_counters`（按 target_type+target_id 聚合，跨租户无妨）
@@ -481,5 +481,8 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 167 | ai_landing_menu_default | AI 前台落地页 /portal/ai/landing 菜单回填：teacher/student/有 menus 的 school_admin 默认授予（down：移除勾选，幂等） |
 | 168 | ai_menu_single_entry | AI 菜单收敛单一开关：持旧键角色补授 /portal/apps/ai，清理 166/167 的 chat/square/studio 与 /portal/ai/landing 旧键（landing 路径已并入 /portal/apps/ai/landing）（down：恢复分散授权键并移除单一开关） |
 | 169 | `169_ai_cover_image` | ai_knowledge_bases / ai_agents + cover_image TEXT（封面图，空=前端渐变兜底） |
+| 170 | ai_view_counts | ai_knowledge_bases/ai_agents 加 view_count 浏览量（v2.2 B5） |
+| 171 | ai_kb_asks | 知识库问答记录表（v2.2 B6：我的提问历史） |
+| 172 | ai_conversations_general | ai_conversations.agent_id 可空，支持 YIKnow 通用会话（v2.2 A1） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

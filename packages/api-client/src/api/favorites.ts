@@ -2,9 +2,10 @@ import { request } from '../api-helpers'
 import type { Scenario } from '../types/scene'
 import type { Course } from '../types/lesson'
 import type { QuestionBank, Exam } from '../types/evaluation'
+import type { AIAgent, AIKnowledgeBase } from './ai-center'
 
 // 通用收藏目标类型（岗位收藏沿用 positionApi 的独立接口）
-export type FavoriteTargetType = 'scene' | 'course' | 'question_bank' | 'exam'
+export type FavoriteTargetType = 'scene' | 'course' | 'question_bank' | 'exam' | 'ai_kb' | 'ai_agent'
 
 export interface FavoriteStatus {
   isFavorite: boolean
@@ -16,6 +17,8 @@ export interface FavoriteListResponse {
   course: Course[]
   question_bank: QuestionBank[]
   exam: Exam[]
+  ai_kb: AIKnowledgeBase[] // v2.2 B8
+  ai_agent: AIAgent[]      // v2.2 B8
 }
 
 export const favoriteApi = {

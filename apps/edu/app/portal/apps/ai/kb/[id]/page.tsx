@@ -8,10 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, BookOpen, FileText, HelpCircle, Loader2, Send, User } from 'lucide-react'
+import { ArrowLeft, BookOpen, Eye, FileText, HelpCircle, Loader2, Send, User, Users } from 'lucide-react'
 import {
   aiCenterKbApi,
+  aiCenterV22Api,
   streamAICenter,
+  type AIKBAsk,
+  type AIKBCollaborator,
   type AIKBDocument,
   type AIKnowledgeBase,
   type AIMessageSource,
@@ -49,6 +52,7 @@ export default function AIKbDetailPage() {
 
   const [kb, setKb] = useState<AIKnowledgeBase | null>(null)
   const [docs, setDocs] = useState<AIKBDocument[]>([])
+  const [collaborators, setCollaborators] = useState<AIKBCollaborator[]>([])
   const [loading, setLoading] = useState(true)
 
   const [qaList, setQaList] = useState<QAItem[]>([])
@@ -61,11 +65,24 @@ export default function AIKbDetailPage() {
     let alive = true
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 路由参数 kbId 变化时重新进入加载态
     setLoading(true)
-    Promise.all([aiCenterKbApi.get(kbId), aiCenterKbApi.listDocuments(kbId)])
-      .then(([kbRes, docRes]) => {
+    Promise.all([
+      aiCenterKbApi.get(kbId),
+      aiCenterKbApi.listDocuments(kbId),
+      aiCenterKbApi.listCollaborators(kbId).catch(() => ({ items: [] as AIKBCollaborator[] })),
+      aiCenterV22Api.listMyKBAsks(kbId).catch(() => ({ items: [] as AIKBAsk[] })),
+    ])
+      .then(([kbRes, docRes, colRes, askRes]) => {
         if (!alive) return
         setKb(kbRes)
         setDocs(docRes.items)
+        setCollaborators(colRes.items || [])
+        // B6：历史问答并入问答列表（时间升序展示）
+        setQaList(
+          (askRes.items || [])
+            .slice()
+            .reverse()
+            .map((a) => ({ id: a.id, question: a.question, answer: a.answer, sources: [], streaming: false })),
+        )
       })
       .catch((err) => {
         if (!alive) return
@@ -209,9 +226,48 @@ export default function AIKbDetailPage() {
               {t('{count} 次提问', { count: kb.askCount })}
             </span>
             <span className="inline-flex items-center gap-1">
+              <Eye className="h-3.5 w-3.5" />
+              {t('{count} 次浏览', { count: kb.viewCount ?? 0 })}
+            </span>
+            <span className="inline-flex items-center gap-1">
               <User className="h-3.5 w-3.5" />
               {kb.ownerName || t('未知')}
             </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 贡献者区（A2 原型对齐：创建者 + 协作者头像缩写 + 角色） */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            {t('贡献者')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 rounded-full border border-border pl-1 pr-3 py-1">
+              <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                {(kb.ownerName || '?').slice(0, 1)}
+              </span>
+              <span className="text-sm">{kb.ownerName || t('未知')}</span>
+              <Badge variant="secondary" className="text-[10px]">{t('创建者')}</Badge>
+            </div>
+            {collaborators.map((c) => (
+              <div key={c.id} className="flex items-center gap-2 rounded-full border border-border pl-1 pr-3 py-1">
+                <span className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-semibold flex items-center justify-center">
+                  {(c.userName || '?').slice(0, 1)}
+                </span>
+                <span className="text-sm">{c.userName || t('未知')}</span>
+                <Badge variant="outline" className="text-[10px]">
+                  {c.role === 'editor' ? t('编辑者') : t('查看者')}
+                </Badge>
+              </div>
+            ))}
+            {collaborators.length === 0 && (
+              <span className="text-xs text-muted-foreground self-center">{t('暂无协作者')}</span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -224,23 +280,46 @@ export default function AIKbDetailPage() {
           {docs.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">{t('暂无文档')}</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
-              {docs.map((doc) => (
-                <li key={doc.id} className="py-2.5 flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm truncate flex-1">{doc.name}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {t('{count} 个分块', { count: doc.chunkCount })}
-                  </span>
-                  {docStatusBadge(doc.status, t)}
-                  {doc.status === 'failed' && doc.error && (
-                    <span className="text-xs text-destructive truncate max-w-40" title={doc.error}>
-                      {doc.error}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs text-muted-foreground">
+                    <th className="text-left py-2 pr-3 font-medium">{t('名称')}</th>
+                    <th className="text-left py-2 pr-3 font-medium">{t('类型')}</th>
+                    <th className="text-left py-2 pr-3 font-medium">{t('贡献者')}</th>
+                    <th className="text-left py-2 pr-3 font-medium">{t('上传时间')}</th>
+                    <th className="text-left py-2 font-medium">{t('状态')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {docs.map((doc) => (
+                    <tr key={doc.id}>
+                      <td className="py-2.5 pr-3">
+                        <span className="inline-flex items-center gap-2 min-w-0">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="truncate max-w-56" title={doc.name}>{doc.name}</span>
+                          {doc.status === 'failed' && doc.error && (
+                            <span className="text-xs text-destructive truncate max-w-32" title={doc.error}>
+                              {doc.error}
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-2.5 pr-3 text-xs text-muted-foreground uppercase">
+                        {(doc.name.split('.').pop() || '').slice(0, 6)}
+                      </td>
+                      <td className="py-2.5 pr-3 text-xs text-muted-foreground">
+                        {doc.uploaderName || t('未知')}
+                      </td>
+                      <td className="py-2.5 pr-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(doc.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-2.5">{docStatusBadge(doc.status, t)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -249,7 +328,7 @@ export default function AIKbDetailPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">{t('问一问')}</CardTitle>
           <p className="text-xs text-muted-foreground">
-            {t('基于库内文档回答，回答附来源片段')}
+            {t('基于库内文档回答，回答附来源片段；你的提问记录会自动保存')}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

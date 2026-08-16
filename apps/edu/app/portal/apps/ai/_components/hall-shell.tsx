@@ -32,8 +32,8 @@ interface HallShellProps {
   searchPlaceholder: string
   total: number
   loading: boolean
-  hasMore: boolean
-  onLoadMore: () => void
+  hasMore?: boolean
+  onLoadMore?: () => void
   children: React.ReactNode
 }
 

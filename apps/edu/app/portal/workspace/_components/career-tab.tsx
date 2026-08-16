@@ -12,14 +12,13 @@ import {
   ClipboardList,
   Loader2,
   MapPin,
-  ChevronRight,
-} from 'lucide-react'
+  ChevronRight, Sparkles } from 'lucide-react'
 import { StatusBadge, UnderlineTabs, useToast } from '@zhiyu/ui'
 import { SectionCard } from './section-card'
 import { favoriteApi, positionApi } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { CareerPosition, Scenario, Course, QuestionBank, Exam } from '@/lib/types'
-import type { FavoriteTargetType } from '@/lib/api'
+import type { FavoriteTargetType, AIAgent, AIKnowledgeBase } from '@/lib/api'
 import { JobCard } from '@/components/job/student/job-card'
 import { SceneCard } from '@/components/scene/student/scene-card'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -39,6 +38,8 @@ interface FavoritesState {
   courses: Course[]
   banks: QuestionBank[]
   exams: Exam[]
+  aiKbs: AIKnowledgeBase[] // v2.2 B8
+  aiAgents: AIAgent[]      // v2.2 B8
 }
 
 const emptyFavorites: FavoritesState = {
@@ -47,15 +48,18 @@ const emptyFavorites: FavoritesState = {
   courses: [],
   banks: [],
   exams: [],
+  aiKbs: [],
+  aiAgents: [],
 }
 
 // 分类 -> 收藏实体集合的键名映射（测评资源含题库与试卷）
 const categoryKeys: Record<string, (keyof FavoritesState)[]> = {
-  all: ['jobs', 'scenes', 'courses', 'banks', 'exams'],
+  all: ['jobs', 'scenes', 'courses', 'banks', 'exams', 'aiKbs', 'aiAgents'],
   jobs: ['jobs'],
   scenes: ['scenes'],
   courses: ['courses'],
   exams: ['banks', 'exams'],
+  ai: ['aiKbs', 'aiAgents'],
 }
 
 function CoverBadge({ label }: { label: string }) {
@@ -267,6 +271,7 @@ export function CareerTab() {
     scenes: { label: t('实践场景'), icon: Layers, color: 'amber' as const },
     courses: { label: t('数字课程'), icon: BookOpen, color: 'emerald' as const },
     exams: { label: t('测评资源'), icon: FileText, color: 'purple' as const },
+    ai: { label: t('AI 服务'), icon: Sparkles, color: 'cyan' as const },
   }
 
   const [activeCategory, setActiveCategory] = useState('all')
@@ -295,6 +300,8 @@ export function CareerTab() {
           courses: favRes?.course || [],
           banks: favRes?.question_bank || [],
           exams: favRes?.exam || [],
+          aiKbs: favRes?.ai_kb || [],
+          aiAgents: favRes?.ai_agent || [],
         })
       } finally {
         if (!cancelled) setLoading(false)
@@ -341,7 +348,9 @@ export function CareerTab() {
     favorites.scenes.length +
     favorites.courses.length +
     favorites.banks.length +
-    favorites.exams.length
+    favorites.exams.length +
+    favorites.aiKbs.length +
+    favorites.aiAgents.length
 
   return (
     <div className="space-y-5">
@@ -523,6 +532,80 @@ export function CareerTab() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* AI 服务：知识库 + 智能体（v2.2 B8） */}
+            {visibleKeys.includes('aiKbs') && favorites.aiKbs.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-500" />
+                  {t('AI 知识库')}
+                  <span className="text-xs text-gray-400 font-normal">
+                    （{favorites.aiKbs.length}）
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {favorites.aiKbs.map((kb) => (
+                    <div key={kb.id} className="relative group">
+                      <Link
+                        href={`/portal/apps/ai/kb/${kb.id}`}
+                        className="block rounded-xl border border-gray-100 bg-white p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="text-sm font-medium text-gray-900 truncate">{kb.name}</div>
+                        <div className="text-xs text-gray-500 mt-1 line-clamp-2 min-h-[2rem]">
+                          {kb.description || t('无描述')}
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-2">
+                          {t('{count} 个文档', { count: kb.docCount })}
+                        </div>
+                      </Link>
+                      <button
+                        onClick={() => handleUnfavorite('aiKbs', kb.id, 'ai_kb')}
+                        className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/5 text-gray-500 hover:text-rose-500 transition-colors"
+                        title={t('取消收藏')}
+                      >
+                        <Heart className="w-3 h-3 fill-current" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {visibleKeys.includes('aiAgents') && favorites.aiAgents.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-500" />
+                  {t('AI 智能体')}
+                  <span className="text-xs text-gray-400 font-normal">
+                    （{favorites.aiAgents.length}）
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {favorites.aiAgents.map((a) => (
+                    <div key={a.id} className="relative group">
+                      <Link
+                        href={`/portal/apps/ai/agents/${a.id}`}
+                        className="block rounded-xl border border-gray-100 bg-white p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{a.avatar}</span>
+                          <div className="text-sm font-medium text-gray-900 truncate">{a.name}</div>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 line-clamp-2 min-h-[2rem]">
+                          {a.description || a.greeting || t('无描述')}
+                        </div>
+                      </Link>
+                      <button
+                        onClick={() => handleUnfavorite('aiAgents', a.id, 'ai_agent')}
+                        className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/5 text-gray-500 hover:text-rose-500 transition-colors"
+                        title={t('取消收藏')}
+                      >
+                        <Heart className="w-3 h-3 fill-current" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>

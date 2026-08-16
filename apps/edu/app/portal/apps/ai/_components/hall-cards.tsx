@@ -5,7 +5,7 @@
 // 知识库（封面横幅 + BookOpen + tags + 文档/提问数）、第三方服务（链接卡片）。
 // 封面：coverImage 优先，无则 coverGradientFor 渐变 + 居中图标（对齐考试中心卡片模式）。
 import { useRouter } from 'next/navigation'
-import { BookOpen, ExternalLink, FileText, HelpCircle, MessageSquare, Sparkles } from 'lucide-react'
+import { BookOpen, ExternalLink, Eye, FileText, HelpCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { AIAgent, AIKnowledgeBase, AIIntegration } from '@/lib/api'
@@ -90,6 +90,10 @@ export function AgentHallCard({ agent }: { agent: AIAgent }) {
             <MessageSquare className="h-3.5 w-3.5" />
             {t('{count} 次对话', { count: agent.chatCount })}
           </span>
+          <span className="inline-flex items-center gap-1">
+            <Eye className="h-3.5 w-3.5" />
+            {t('{count} 次浏览', { count: agent.viewCount ?? 0 })}
+          </span>
           <Button
             size="sm"
             className="gap-1"
@@ -151,6 +155,10 @@ export function KbHallCard({ kb }: { kb: AIKnowledgeBase }) {
           <span className="inline-flex items-center gap-1">
             <HelpCircle className="h-3.5 w-3.5" />
             {t('{count} 次提问', { count: kb.askCount })}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Eye className="h-3.5 w-3.5" />
+            {t('{count} 次浏览', { count: kb.viewCount ?? 0 })}
           </span>
         </div>
       </div>

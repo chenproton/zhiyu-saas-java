@@ -19,6 +19,7 @@ export interface AIKnowledgeBase {
   reviewComment?: string
   docCount: number
   askCount: number
+  viewCount: number
   ownerId: string
   ownerName?: string
   myRole?: AIKBOwnerRole
@@ -59,6 +60,7 @@ export interface AIAgent {
   status: AIContentStatus
   reviewComment?: string
   chatCount: number
+  viewCount: number
   ownerId: string
   ownerName?: string
   kbIds?: string[]
@@ -227,10 +229,10 @@ export const aiCenterAgentApi = {
 // ==================== 广场 / 挂接展示 ====================
 
 export const aiCenterSquareApi = {
-  kbs: (params: { q?: string; tag?: string; sort?: 'hot' | 'new' | 'updated' | 'docs'; page?: number; pageSize?: number } = {}) =>
+  kbs: (params: { q?: string; tag?: string; sort?: 'hot' | 'new' | 'updated' | 'docs' | 'views'; page?: number; pageSize?: number } = {}) =>
     portalRequest<ListResult<AIKnowledgeBase>>(`/ai/square/kbs${buildQuery({ ...params })}`),
 
-  agents: (params: { q?: string; sort?: 'hot' | 'new'; page?: number; pageSize?: number } = {}) =>
+  agents: (params: { q?: string; sort?: 'hot' | 'new' | 'views'; page?: number; pageSize?: number } = {}) =>
     portalRequest<ListResult<AIAgent>>(`/ai/square/agents${buildQuery({ ...params })}`),
 
   integrations: (kind?: 'agent' | 'app') =>
@@ -379,4 +381,43 @@ export async function streamAICenter(
       }
     }
   }
+}
+
+// ==================== v2.2：问答记录 / YIKnow 通用会话 / 智能体预览 ====================
+
+export interface AIKBAsk {
+  id: string
+  question: string
+  answer: string
+  createdAt: string
+}
+
+export const aiCenterV22Api = {
+  /** 我在该库下的提问历史（B6） */
+  listMyKBAsks: (kbId: string) =>
+    portalRequest<{ items: AIKBAsk[] }>(`/ai/kb/${kbId}/asks`),
+  /** 我的 YIKnow 通用会话列表（A1） */
+  listYiknowConversations: () =>
+    portalRequest<{ items: AIConversation[] }>('/ai/yiknow/conversations'),
+  /** 智能体预览试聊（B7，owner 专属，不落库） */
+  previewAgent: (agentId: string, systemPrompt: string, message: string) =>
+    portalRequest<{ reply: string }>(`/ai/agents/${agentId}/preview`, {
+      method: 'POST',
+      body: JSON.stringify({ systemPrompt, message }),
+    }),
+}
+
+/** YIKnow 流式对话（A1，与智能体对话同一 SSE 协议：meta/delta/done/error） */
+export async function streamYiknowChat(
+  conversationId: string | null,
+  message: string,
+  callbacks: AIStreamCallbacks,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamAICenter(
+    '/ai/yiknow/chat',
+    { conversationId: conversationId ?? undefined, message },
+    callbacks,
+    signal,
+  )
 }

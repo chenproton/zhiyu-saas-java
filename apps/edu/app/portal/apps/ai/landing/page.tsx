@@ -221,6 +221,7 @@ function FlatBlock({
   moreHref,
   moreLabel,
   emptyLabel,
+  emptyHref,
   hasItems,
   children,
 }: {
@@ -231,6 +232,7 @@ function FlatBlock({
   moreHref?: string
   moreLabel?: string
   emptyLabel: string
+  emptyHref?: string
   hasItems: boolean
   children?: React.ReactNode
 }) {
@@ -266,8 +268,16 @@ function FlatBlock({
         {hasItems ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">{children}</div>
         ) : (
-          <div className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            {t(emptyLabel)}
+          <div className="rounded-xl border border-dashed border-border py-10 text-center">
+            <p className="text-sm text-muted-foreground">{t(emptyLabel)}</p>
+            {emptyHref && (
+              <a
+                href={emptyHref}
+                className="inline-flex items-center mt-3 rounded-full bg-primary text-white px-5 h-9 text-sm font-medium hover:bg-primary/90"
+              >
+                {t('去创建')}
+              </a>
+            )}
           </div>
         )}
       </div>

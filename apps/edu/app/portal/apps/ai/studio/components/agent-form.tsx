@@ -13,6 +13,7 @@ import { aiCenterKbApi, aiCenterSquareApi, fileApi } from '@/lib/api'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import type { AIAgent, AIAgentInput, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
+import { AgentPreviewPanel } from './agent-preview'
 
 const MAX_PROMPT_LEN = 4000
 const MAX_KB = 5
@@ -216,6 +217,9 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
           rows={8}
         />
       </div>
+
+      {/* 实时试聊（v2.2 B7）：仅编辑已有智能体时可用（预览端点需已存在的 agent） */}
+      {initial?.id && <AgentPreviewPanel agentId={initial.id} systemPrompt={systemPrompt} />}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
