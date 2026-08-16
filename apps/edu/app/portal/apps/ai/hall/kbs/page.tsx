@@ -69,6 +69,7 @@ export default function KbHallPage() {
   return (
     <HallShell
       title={t('知识库大厅')}
+      headerIcon={<BookOpen className="w-6 h-6 text-white" />}
       subtitle={t('租户内已发布的全部知识库，点击进入详情并可向知识库提问')}
       stats={[
         { value: total, label: t('知识库总数') },

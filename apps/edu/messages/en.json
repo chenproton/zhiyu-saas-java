@@ -4585,5 +4585,18 @@
   "YIKnow 智能对话": "YIKnow Chat",
   "你好，我是 YIKnow 智能助手。输入内容开始对话，我会尽力帮助你。": "Hi, I'm the YIKnow AI assistant. Type a message to start chatting and I'll do my best to help.",
   "知识库封面": "Knowledge Base Cover",
-  "智能体封面": "Agent Cover"
+  "智能体封面": "Agent Cover",
+  "我的产出": "My Creations",
+  "还没有产出，从新建开始吧": "Nothing yet — start by creating one",
+  "暂无知识库，点击右上角「新建知识库」开始": "No knowledge bases yet — click \"New Knowledge Base\" above to start",
+  "暂无智能体，点击右上角「新建智能体」开始": "No agents yet — click \"New Agent\" above to start",
+  "把你的知识变成全校可用的 AI 服务": "Turn Your Knowledge into AI Services for Everyone",
+  "上传资料建成知识库，或配置一个专属智能体，审核通过后即可发布到广场。": "Upload materials to build a knowledge base, or configure your own agent — once approved, it goes live in the square.",
+  "去工坊创作": "Go to Studio",
+  "帮我总结一下这周实训报告的写作要点": "Summarize the key points for this week's practical training report",
+  "好的！实训报告一般包含：目的、内容、步骤、结果与反思。建议按「任务→操作→收获」三段式展开……": "Sure! A practical training report usually covers: objectives, content, steps, results and reflection. Try the task → operation → takeaway structure...",
+  "帮我写一份实训报告大纲": "Draft an outline for my practical training report",
+  "如何准备一场技术面试？": "How do I prepare for a technical interview?",
+  "推荐一些专业课的学习方法": "Recommend study methods for my major courses",
+  "被退回": "Rejected"
 }

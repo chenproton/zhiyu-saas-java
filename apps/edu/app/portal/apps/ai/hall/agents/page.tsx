@@ -55,6 +55,7 @@ export default function AgentHallPage() {
   return (
     <HallShell
       title={t('智能体大厅')}
+      headerIcon={<Bot className="w-6 h-6 text-white" />}
       subtitle={t('租户内已发布的全部智能体，点击「立即体验」开始对话')}
       stats={[
         { value: total, label: t('智能体总数') },

@@ -168,7 +168,7 @@ export default function AIKbDetailPage() {
       <Card className="overflow-hidden">
         {/* 封面横幅：coverImage 优先，无则渐变 + 图标（对齐卡片族模式） */}
         <div
-          className="h-28 flex items-center justify-center relative"
+          className="h-32 flex items-center justify-center relative"
           style={
             kb.coverImage
               ? { backgroundImage: `url('${kb.coverImage}')`, backgroundSize: 'cover', backgroundPosition: 'center' }

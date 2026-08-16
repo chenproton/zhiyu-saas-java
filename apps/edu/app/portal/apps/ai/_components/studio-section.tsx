@@ -4,6 +4,8 @@
 // 由落地页（landing）嵌入；/studio 旧路由重定向至 landing#studio。
 // v1.4 卡片化：对齐 evaluation/landing 考试中心卡片模式——封面横幅（coverImage，无则渐变兜底）
 // + 右上角状态徽标 + 正文统计 + 操作按钮；卡片带 data-smoke-card 供验收 flow clickCard 定位。
+// v2.0 面板化（对标考试中心大面板）：图标头部 + 胶囊 CTA + 左侧状态环图 + 右侧分组卡片，
+// 取消 Tabs（一个面板全看到）。
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -17,8 +19,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  BarChart3,
   BookOpen,
   FileText,
   HelpCircle,
@@ -29,7 +31,9 @@ import {
   Send,
   Trash2,
   Undo2,
+  Wrench,
 } from 'lucide-react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterAgentApi, aiCenterKbApi, fileApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
@@ -421,7 +425,7 @@ export function StudioSection() {
   )
 
   const cardGrid = (items: React.ReactNode) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{items}</div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">{items}</div>
   )
 
   const renderLoading = (
@@ -431,83 +435,165 @@ export function StudioSection() {
     </div>
   )
 
-  const sectionHead = (title: string, action?: React.ReactNode) => (
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="text-base font-semibold flex items-center gap-2">{title}</h2>
-      {action}
+  const groupHead = (title: string, count: number) => (
+    <h3 className="text-[15px] font-bold text-[#0f172a] flex items-center gap-2 mb-3">
+      <span className="w-1 h-4 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
+      {title}
+      <span className="text-[13px] text-[#64748b] font-normal">({count})</span>
+    </h3>
+  )
+
+  const emptyBox = (text: string) => (
+    <div className="rounded-2xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+      {text}
     </div>
   )
 
+  // 状态环图数据（对齐考试中心左栏）：我的知识库 + 智能体按状态聚合
+  const STATUS_COLORS: Record<string, string> = {
+    published: '#22c55e',
+    pending: '#f59e0b',
+    private: '#94a3b8',
+    rejected: '#ef4444',
+  }
+  const statusCounts = (() => {
+    const all = [...myKbs, ...agents]
+    const acc: Record<string, number> = {}
+    for (const item of all) acc[item.status] = (acc[item.status] || 0) + 1
+    const labelOf: Record<string, string> = {
+      published: t('已发布'),
+      pending: t('审核中'),
+      private: t('私有'),
+      rejected: t('被退回'),
+    }
+    return Object.entries(acc).map(([status, value]) => ({
+      name: labelOf[status] || status,
+      value,
+      color: STATUS_COLORS[status] || '#cbd5e1',
+    }))
+  })()
+  const totalMine = myKbs.length + agents.length
+
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold">{t('我的工坊')}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t('创建并管理你的知识库与智能体，提交审核后发布到广场')}
-        </p>
+    <div className="max-w-[1400px] mx-auto">
+      {/* 工坊大面板（对标考试中心面板） */}
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="px-6 pt-6 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+              <Wrench className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#0f172a]">{t('我的工坊')}</h2>
+              <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                {t('创建并管理你的知识库与智能体，提交审核后发布到广场')}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2.5 shrink-0">
+            <Button
+              className="rounded-full px-5 h-10 text-sm font-semibold bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              {t('新建知识库')}
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-full px-5 h-10 text-sm font-semibold hover:-translate-y-0.5 transition-all"
+              onClick={() => router.push('/portal/apps/ai/studio/agents/new')}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              {t('新建智能体')}
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="flex flex-col lg:flex-row gap-5">
+            {/* 左栏：状态分布环图（对齐考试中心） */}
+            <div className="lg:w-[250px] shrink-0">
+              <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-4 h-full">
+                <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-3">
+                  <BarChart3 className="w-4 h-4 text-primary" /> {t('状态分布')}
+                </div>
+                {totalMine === 0 ? (
+                  <p className="text-xs text-muted-foreground py-10 text-center">
+                    {t('还没有产出，从新建开始吧')}
+                  </p>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <ResponsiveContainer width="100%" height={140}>
+                        <PieChart>
+                          <Pie
+                            data={statusCounts}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
+                            outerRadius={58}
+                            paddingAngle={3}
+                            dataKey="value"
+                            strokeWidth={0}
+                          >
+                            {statusCounts.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number, name: string) => [t('{n} 项', { n: value }), name]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <div className="text-[20px] font-bold text-[#0f172a] leading-none">{totalMine}</div>
+                        <div className="text-[11px] text-[#64748b] mt-1">{t('我的产出')}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2 mt-4">
+                      {statusCounts.map((d) => (
+                        <div key={d.name} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-2 text-[#475569]">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
+                            {d.name}
+                          </span>
+                          <span className="font-semibold text-[#0f172a]">{d.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 右栏：分组卡片（知识库 / 共享 / 智能体） */}
+            <div className="flex-1 min-w-0 space-y-7">
+              <div>
+                {groupHead(t('我的知识库'), myKbs.length)}
+                {kbLoading
+                  ? renderLoading
+                  : myKbs.length === 0
+                    ? emptyBox(t('暂无知识库，点击右上角「新建知识库」开始'))
+                    : cardGrid(myKbs.map(renderKbCard))}
+              </div>
+              {(sharedKbs.length > 0 || kbLoading) && (
+                <div>
+                  {groupHead(t('共享给我的'), sharedKbs.length)}
+                  {kbLoading ? renderLoading : cardGrid(sharedKbs.map(renderKbCard))}
+                </div>
+              )}
+              <div>
+                {groupHead(t('我的智能体'), agents.length)}
+                {agentLoading
+                  ? renderLoading
+                  : agents.length === 0
+                    ? emptyBox(t('暂无智能体，点击右上角「新建智能体」开始'))
+                    : cardGrid(agents.map(renderAgentCard))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <Tabs defaultValue="kb">
-        <TabsList>
-          <TabsTrigger value="kb">{t('我的知识库')}</TabsTrigger>
-          <TabsTrigger value="agent">{t('我的智能体')}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="kb" className="mt-4 space-y-8">
-          <div>
-            {sectionHead(
-              t('我的知识库'),
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('新建知识库')}
-              </Button>,
-            )}
-            {kbLoading ? (
-              renderLoading
-            ) : myKbs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-                {t('暂无知识库，点击「新建知识库」开始')}
-              </div>
-            ) : (
-              cardGrid(myKbs.map(renderKbCard))
-            )}
-          </div>
-
-          <div>
-            {sectionHead(t('共享给我的'))}
-            {kbLoading ? (
-              renderLoading
-            ) : sharedKbs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-                {t('暂无共享给我的知识库')}
-              </div>
-            ) : (
-              cardGrid(sharedKbs.map(renderKbCard))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="agent" className="mt-4">
-          <div>
-            {sectionHead(
-              t('我的智能体'),
-              <Button size="sm" onClick={() => router.push('/portal/apps/ai/studio/agents/new')}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('新建智能体')}
-              </Button>,
-            )}
-            {agentLoading ? (
-              renderLoading
-            ) : agents.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-                {t('暂无智能体，点击「新建智能体」开始')}
-              </div>
-            ) : (
-              cardGrid(agents.map(renderAgentCard))
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
 
       {/* 新建知识库 */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

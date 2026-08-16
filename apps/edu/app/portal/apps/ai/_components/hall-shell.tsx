@@ -18,6 +18,7 @@ export interface HallSortOption {
 interface HallShellProps {
   title: string
   subtitle?: string
+  headerIcon?: React.ReactNode
   stats?: { value: number | string; label: string }[]
   tags?: string[]
   activeTag?: string
@@ -39,6 +40,7 @@ interface HallShellProps {
 export function HallShell({
   title,
   subtitle,
+  headerIcon,
   stats,
   tags,
   activeTag,
@@ -58,19 +60,26 @@ export function HallShell({
 }: HallShellProps) {
   const t = useT()
   return (
-    <div className="max-w-6xl mx-auto space-y-5 px-4 sm:px-8 py-6">
-      {/* 返回 + 标题 */}
-      <div>
-        <Link
-          href="/portal/apps/ai/landing"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {t('返回首页')}
-        </Link>
-        <div className="mt-3 flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+    <div className="max-w-[1400px] mx-auto space-y-5 px-4 sm:px-8 py-6">
+      {/* 渐变页头（对齐 exam-center 页头模式，负边距全幅出血） */}
+      <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40 -mx-4 sm:-mx-8 -mt-6 px-4 sm:px-8 py-7 rounded-b-2xl shadow-[0_8px_24px_rgba(22,119,255,0.18)]">
+        <div className="max-w-6xl mx-auto">
+          <Link
+            href="/portal/apps/ai/landing"
+            className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-white transition-colors mb-3"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {t('返回首页')}
+          </Link>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0">
+              {headerIcon}
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">{title}</h1>
+              {subtitle && <p className="text-sm text-white/80 mt-0.5">{subtitle}</p>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -89,6 +98,8 @@ export function HallShell({
         </div>
       )}
 
+      {/* 筛选工具面板 */}
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_6px_rgba(0,0,0,0.04)] p-4 space-y-3">
       {/* 标签筛选 */}
       {tags && tags.length > 0 && onTagChange && (
         <div className="flex flex-wrap items-center gap-2">
@@ -139,6 +150,7 @@ export function HallShell({
           placeholder={searchPlaceholder}
           wrapperClassName="w-full sm:w-72"
         />
+      </div>
       </div>
 
       {/* 内容 */}

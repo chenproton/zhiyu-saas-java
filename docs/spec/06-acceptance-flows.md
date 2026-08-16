@@ -240,7 +240,6 @@ steps:
     optional: true
   - role: teacher
     goto: /portal/apps/ai/studio
-    click: 我的智能体
     click: 新建智能体
     fill: { 名称: "SMOKE_AI助手{rand}" }
     saveAs: { agentName: 名称 }
@@ -252,7 +251,6 @@ steps:
     timeoutMs: 20000
   - role: teacher
     goto: /portal/apps/ai/studio
-    click: 我的智能体
     clickCard: { text: "{{agentName}}", action: 提交审核 }
     confirm: true
     expectApi: { method: POST, url: /ai/agents/, status: 200 }
@@ -274,7 +272,6 @@ steps:
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   - role: teacher
     goto: /portal/apps/ai/studio
-    click: 我的智能体
     clickCard: { text: "{{agentName}}", action: 删除 }
     confirm: true
     expectApi: { method: DELETE, url: /ai/agents/, status: 200 }

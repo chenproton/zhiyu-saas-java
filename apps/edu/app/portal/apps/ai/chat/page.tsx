@@ -48,8 +48,8 @@ export default function YIKnowChatPage() {
   // 412 ai_not_configured 统一走共享 hook + 引导弹窗（与 AI 辅助编写三件套一致）
   const ai = useAiNotConfigured()
 
-  const handleSend = async () => {
-    const content = input.trim()
+  const handleSend = async (preset?: string) => {
+    const content = (preset ?? input).trim()
     if (!content || sending) return
     const next: AIChatMessage[] = [...messages, { role: 'user', content }]
     setMessages(next)
@@ -155,6 +155,18 @@ export default function YIKnowChatPage() {
                 <p className="text-sm text-muted-foreground mt-2 max-w-md">
                   {t('你好，我是 YIKnow 智能助手。输入内容开始对话，我会尽力帮助你。')}
                 </p>
+                <div className="flex flex-wrap justify-center gap-2 mt-5 max-w-lg">
+                  {['帮我写一份实训报告大纲', '如何准备一场技术面试？', '推荐一些专业课的学习方法'].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => handleSend(q)}
+                      disabled={sending}
+                      className="rounded-full border border-border bg-background px-3.5 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                    >
+                      {t(q)}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {messages.map((m, i) => (
@@ -189,7 +201,7 @@ export default function YIKnowChatPage() {
               disabled={sending}
               className="bg-background"
             />
-            <Button onClick={handleSend} disabled={sending || !input.trim()}>
+            <Button onClick={() => handleSend()} disabled={sending || !input.trim()}>
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
