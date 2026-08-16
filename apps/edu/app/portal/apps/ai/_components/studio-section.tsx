@@ -20,7 +20,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  BarChart3,
   BookOpen,
   FileText,
   HelpCircle,
@@ -33,7 +32,6 @@ import {
   Undo2,
   Wrench,
 } from 'lucide-react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterAgentApi, aiCenterKbApi, fileApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
@@ -424,23 +422,11 @@ export function StudioSection() {
     </div>
   )
 
-  const cardGrid = (items: React.ReactNode) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">{items}</div>
-  )
-
   const renderLoading = (
     <div className="px-4 py-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
       <Loader2 className="h-4 w-4 animate-spin" />
       {t('加载中...')}
     </div>
-  )
-
-  const groupHead = (title: string, count: number) => (
-    <h3 className="text-[15px] font-bold text-[#0f172a] flex items-center gap-2 mb-3">
-      <span className="w-1 h-4 rounded-full bg-gradient-to-b from-primary/80 to-primary/70" />
-      {title}
-      <span className="text-[13px] text-[#64748b] font-normal">({count})</span>
-    </h3>
   )
 
   const emptyBox = (text: string) => (
@@ -449,29 +435,7 @@ export function StudioSection() {
     </div>
   )
 
-  // 状态环图数据（对齐考试中心左栏）：我的知识库 + 智能体按状态聚合
-  const STATUS_COLORS: Record<string, string> = {
-    published: '#22c55e',
-    pending: '#f59e0b',
-    private: '#94a3b8',
-    rejected: '#ef4444',
-  }
-  const statusCounts = (() => {
-    const all = [...myKbs, ...agents]
-    const acc: Record<string, number> = {}
-    for (const item of all) acc[item.status] = (acc[item.status] || 0) + 1
-    const labelOf: Record<string, string> = {
-      published: t('已发布'),
-      pending: t('审核中'),
-      private: t('私有'),
-      rejected: t('被退回'),
-    }
-    return Object.entries(acc).map(([status, value]) => ({
-      name: labelOf[status] || status,
-      value,
-      color: STATUS_COLORS[status] || '#cbd5e1',
-    }))
-  })()
+
   const totalMine = myKbs.length + agents.length
 
   return (
@@ -510,88 +474,19 @@ export function StudioSection() {
         </div>
 
         <div className="p-5">
-          <div className="flex flex-col lg:flex-row gap-5">
-            {/* 左栏：状态分布环图（对齐考试中心） */}
-            <div className="lg:w-[250px] shrink-0">
-              <div className="bg-[#f8fafc] border border-[#eef2f7] rounded-2xl p-4 h-full">
-                <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2 mb-3">
-                  <BarChart3 className="w-4 h-4 text-primary" /> {t('状态分布')}
-                </div>
-                {totalMine === 0 ? (
-                  <p className="text-xs text-muted-foreground py-10 text-center">
-                    {t('还没有产出，从新建开始吧')}
-                  </p>
-                ) : (
-                  <>
-                    <div className="relative">
-                      <ResponsiveContainer width="100%" height={140}>
-                        <PieChart>
-                          <Pie
-                            data={statusCounts}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={58}
-                            paddingAngle={3}
-                            dataKey="value"
-                            strokeWidth={0}
-                          >
-                            {statusCounts.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value: number, name: string) => [t('{n} 项', { n: value }), name]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <div className="text-[20px] font-bold text-[#0f172a] leading-none">{totalMine}</div>
-                        <div className="text-[11px] text-[#64748b] mt-1">{t('我的产出')}</div>
-                      </div>
-                    </div>
-                    <div className="space-y-2 mt-4">
-                      {statusCounts.map((d) => (
-                        <div key={d.name} className="flex items-center justify-between text-xs">
-                          <span className="flex items-center gap-2 text-[#475569]">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
-                            {d.name}
-                          </span>
-                          <span className="font-semibold text-[#0f172a]">{d.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+          {kbLoading || agentLoading ? (
+            renderLoading
+          ) : totalMine + sharedKbs.length === 0 ? (
+            emptyBox(t('还没有产出，点击右上角新建知识库或智能体开始'))
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {[
+                ...myKbs.map(renderKbCard),
+                ...agents.map(renderAgentCard),
+                ...sharedKbs.map(renderKbCard),
+              ]}
             </div>
-
-            {/* 右栏：分组卡片（知识库 / 共享 / 智能体） */}
-            <div className="flex-1 min-w-0 space-y-7">
-              <div>
-                {groupHead(t('我的知识库'), myKbs.length)}
-                {kbLoading
-                  ? renderLoading
-                  : myKbs.length === 0
-                    ? emptyBox(t('暂无知识库，点击右上角「新建知识库」开始'))
-                    : cardGrid(myKbs.map(renderKbCard))}
-              </div>
-              {(sharedKbs.length > 0 || kbLoading) && (
-                <div>
-                  {groupHead(t('共享给我的'), sharedKbs.length)}
-                  {kbLoading ? renderLoading : cardGrid(sharedKbs.map(renderKbCard))}
-                </div>
-              )}
-              <div>
-                {groupHead(t('我的智能体'), agents.length)}
-                {agentLoading
-                  ? renderLoading
-                  : agents.length === 0
-                    ? emptyBox(t('暂无智能体，点击右上角「新建智能体」开始'))
-                    : cardGrid(agents.map(renderAgentCard))}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

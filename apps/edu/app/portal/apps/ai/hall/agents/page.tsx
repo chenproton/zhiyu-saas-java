@@ -83,7 +83,7 @@ export default function AgentHallPage() {
           description={t('还没有已发布的智能体')}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {agents.map((a) => (
             <AgentHallCard key={a.id} agent={a} />
           ))}
