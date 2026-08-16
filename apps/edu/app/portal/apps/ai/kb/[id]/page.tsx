@@ -20,6 +20,7 @@ import { useToast, EmptyState, LoadingView } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 import { useAiNotConfigured, isAbortError } from '@/lib/ai/use-ai-assist'
 import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
+import { coverGradientFor } from '@/lib/cover-gradients'
 import { AICenterFavoriteButton } from '../../_components/favorite-button'
 import { AISourceList } from '../../_components/source-list'
 
@@ -164,7 +165,18 @@ export default function AIKbDetailPage() {
         {t('返回广场')}
       </Button>
 
-      <Card>
+      <Card className="overflow-hidden">
+        {/* 封面横幅：coverImage 优先，无则渐变 + 图标（对齐卡片族模式） */}
+        <div
+          className="h-28 flex items-center justify-center relative"
+          style={
+            kb.coverImage
+              ? { backgroundImage: `url('${kb.coverImage}')`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : { background: coverGradientFor(kb.id) }
+          }
+        >
+          {!kb.coverImage && <BookOpen className="h-10 w-10 text-white/80" />}
+        </div>
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

@@ -2,7 +2,8 @@
 
 // 我的工坊区块（spec docs/spec/ai-service-center.md §7 F2/F5）：我的知识库 + 我的智能体管理。
 // 由落地页（landing）嵌入；/studio 旧路由重定向至 landing#studio。
-// 列表采用与 admin/reviews 一致的表格布局（Table 组件，每行 <tr> 含名称文本，供验收 flow clickRow 定位）。
+// v1.4 卡片化：对齐 evaluation/landing 考试中心卡片模式——封面横幅（coverImage，无则渐变兜底）
+// + 右上角状态徽标 + 正文统计 + 操作按钮；卡片带 data-smoke-card 供验收 flow clickCard 定位。
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -15,23 +16,59 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, MessageSquare, Pencil, Plus, Send, Trash2, Undo2 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  BookOpen,
+  FileText,
+  HelpCircle,
+  Loader2,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Send,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
-import { aiCenterAgentApi, aiCenterKbApi } from '@/lib/api'
+import { aiCenterAgentApi, aiCenterKbApi, fileApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
+import { coverGradientFor } from '@/lib/cover-gradients'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import { AIStatusBadge } from '../studio/components/ai-status-badge'
+
+/** 卡片封面横幅：有封面图用图，无则渐变 + 居中图标（对齐 ExamCenterCard） */
+function CardCover({
+  cover,
+  seed,
+  icon,
+  status,
+}: {
+  cover?: string
+  seed: string
+  icon: React.ReactNode
+  status: React.ReactNode
+}) {
+  return (
+    <div
+      className="h-24 flex items-center justify-center shrink-0 relative"
+      style={
+        cover
+          ? { backgroundImage: `url('${cover}')`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : { background: coverGradientFor(seed) }
+      }
+    >
+      {!cover && icon}
+      <div className="absolute top-3 right-3 [&_span]:bg-white/90 [&_span]:backdrop-blur-sm [&_span]:shadow-sm">
+        {status}
+      </div>
+    </div>
+  )
+}
+
+const cardClass =
+  'bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all'
 
 export function StudioSection() {
   const t = useT()
@@ -46,6 +83,8 @@ export function StudioSection() {
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newTags, setNewTags] = useState('')
+  const [newCover, setNewCover] = useState('')
+  const [coverUploading, setCoverUploading] = useState(false)
   const [creating, setCreating] = useState(false)
 
   // ---------- 智能体 ----------
@@ -96,6 +135,31 @@ export function StudioSection() {
     loadAgents()
   }, [loadKbs, loadAgents])
 
+  // 封面上传（复用通用组件 CoverImageUpload，落 fileApi 本地存储，≤5MB）
+  const handleCoverUpload = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: t('提示'), description: t('文件大小不能超过 5MB') })
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: t('提示'), description: t('请上传图片文件') })
+      return
+    }
+    setCoverUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setNewCover(res.url)
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: t('上传失败'),
+        description: err instanceof Error ? err.message : undefined,
+      })
+    } finally {
+      setCoverUploading(false)
+    }
+  }
+
   const handleCreateKb = async () => {
     if (!newName.trim()) {
       toast({ title: t('请填写名称'), variant: 'destructive' })
@@ -107,12 +171,18 @@ export function StudioSection() {
         .split(/[,，]/)
         .map((s) => s.trim())
         .filter(Boolean)
-      await aiCenterKbApi.create({ name: newName.trim(), description: newDesc.trim(), tags })
+      await aiCenterKbApi.create({
+        name: newName.trim(),
+        description: newDesc.trim(),
+        tags,
+        coverImage: newCover || undefined,
+      })
       toast({ title: t('创建成功') })
       setCreateOpen(false)
       setNewName('')
       setNewDesc('')
       setNewTags('')
+      setNewCover('')
       loadKbs()
     } catch (err) {
       toast({
@@ -199,31 +269,25 @@ export function StudioSection() {
     }
   }
 
-  const kbTableHeader = (
-    <TableHeader>
-      <TableRow>
-        <TableHead>{t('名称')}</TableHead>
-        <TableHead>{t('状态')}</TableHead>
-        <TableHead>{t('文档数')}</TableHead>
-        <TableHead>{t('被问次数')}</TableHead>
-        <TableHead className="text-right">{t('操作')}</TableHead>
-      </TableRow>
-    </TableHeader>
-  )
-
-  const renderKbRow = (kb: AIKnowledgeBase) => {
+  const renderKbCard = (kb: AIKnowledgeBase) => {
     const role = kb.myRole ?? 'owner'
     const canEdit = role === 'owner' || role === 'editor'
     const isOwner = role === 'owner'
     return (
-      <TableRow key={kb.id}>
-        <TableCell className="max-w-[280px]">
-          <p className="font-medium truncate">{kb.name}</p>
+      <div key={kb.id} data-smoke-card className={cardClass}>
+        <CardCover
+          cover={kb.coverImage}
+          seed={kb.id}
+          icon={<BookOpen className="w-10 h-10 text-white/80" />}
+          status={<AIStatusBadge status={kb.status} />}
+        />
+        <div className="p-4 flex-1 flex flex-col">
+          <h3 className="text-[15px] font-semibold text-slate-800 truncate">{kb.name}</h3>
           {kb.description && (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{kb.description}</p>
+            <p className="text-xs text-slate-400 mt-1 truncate">{kb.description}</p>
           )}
           {kb.tags.length > 0 && (
-            <div className="mt-1 flex items-center gap-1 flex-wrap">
+            <div className="mt-1.5 flex items-center gap-1 flex-wrap">
               {kb.tags.map((tag) => (
                 <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                   {tag}
@@ -232,18 +296,19 @@ export function StudioSection() {
             </div>
           )}
           {kb.status === 'rejected' && kb.reviewComment && (
-            <p className="mt-0.5 text-xs text-red-600">
+            <p className="mt-1 text-xs text-red-600">
               {t('驳回原因')}：{kb.reviewComment}
             </p>
           )}
-        </TableCell>
-        <TableCell>
-          <AIStatusBadge status={kb.status} />
-        </TableCell>
-        <TableCell>{kb.docCount}</TableCell>
-        <TableCell>{kb.askCount}</TableCell>
-        <TableCell className="text-right">
-          <div className="flex justify-end gap-1">
+          <div className="flex items-center gap-4 text-[11px] text-slate-400 py-2.5 mt-2 border-b border-slate-50">
+            <span className="flex items-center gap-1">
+              <FileText className="w-3 h-3" /> {t('{count} 个文档', { count: kb.docCount })}
+            </span>
+            <span className="flex items-center gap-1">
+              <HelpCircle className="w-3 h-3" /> {t('{count} 次提问', { count: kb.askCount })}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1 pt-2.5">
             {canEdit && (
               <Button
                 variant="ghost"
@@ -279,35 +344,35 @@ export function StudioSection() {
               </Button>
             )}
           </div>
-        </TableCell>
-      </TableRow>
+        </div>
+      </div>
     )
   }
 
-  const renderAgentRow = (agent: AIAgent) => (
-    <TableRow key={agent.id}>
-      <TableCell className="max-w-[280px]">
-        <div className="flex items-center gap-2">
-          {agent.avatar && <span className="text-lg shrink-0">{agent.avatar}</span>}
-          <div className="min-w-0">
-            <p className="font-medium truncate">{agent.name}</p>
-            {agent.description && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{agent.description}</p>
-            )}
-            {agent.status === 'rejected' && agent.reviewComment && (
-              <p className="mt-0.5 text-xs text-red-600">
-                {t('驳回原因')}：{agent.reviewComment}
-              </p>
-            )}
-          </div>
+  const renderAgentCard = (agent: AIAgent) => (
+    <div key={agent.id} data-smoke-card className={cardClass}>
+      <CardCover
+        cover={agent.coverImage}
+        seed={agent.id}
+        icon={<span className="text-4xl">{agent.avatar || '🤖'}</span>}
+        status={<AIStatusBadge status={agent.status} />}
+      />
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className="text-[15px] font-semibold text-slate-800 truncate">{agent.name}</h3>
+        {agent.description && (
+          <p className="text-xs text-slate-400 mt-1 truncate">{agent.description}</p>
+        )}
+        {agent.status === 'rejected' && agent.reviewComment && (
+          <p className="mt-1 text-xs text-red-600">
+            {t('驳回原因')}：{agent.reviewComment}
+          </p>
+        )}
+        <div className="flex items-center gap-4 text-[11px] text-slate-400 py-2.5 mt-2 border-b border-slate-50">
+          <span className="flex items-center gap-1">
+            <MessageSquare className="w-3 h-3" /> {t('{count} 次对话', { count: agent.chatCount })}
+          </span>
         </div>
-      </TableCell>
-      <TableCell>
-        <AIStatusBadge status={agent.status} />
-      </TableCell>
-      <TableCell>{agent.chatCount}</TableCell>
-      <TableCell className="text-right">
-        <div className="flex justify-end gap-1">
+        <div className="flex flex-wrap gap-1 pt-2.5">
           <Button
             variant="ghost"
             size="sm"
@@ -351,8 +416,12 @@ export function StudioSection() {
             </Button>
           )}
         </div>
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
+  )
+
+  const cardGrid = (items: React.ReactNode) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{items}</div>
   )
 
   const renderLoading = (
@@ -362,8 +431,15 @@ export function StudioSection() {
     </div>
   )
 
+  const sectionHead = (title: string, action?: React.ReactNode) => (
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="text-base font-semibold flex items-center gap-2">{title}</h2>
+      {action}
+    </div>
+  )
+
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-semibold">{t('我的工坊')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -377,75 +453,57 @@ export function StudioSection() {
           <TabsTrigger value="agent">{t('我的智能体')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="kb" className="mt-4 space-y-6">
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-medium">{t('我的知识库')}</h2>
+        <TabsContent value="kb" className="mt-4 space-y-8">
+          <div>
+            {sectionHead(
+              t('我的知识库'),
               <Button size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" />
                 {t('新建知识库')}
-              </Button>
-            </div>
+              </Button>,
+            )}
             {kbLoading ? (
               renderLoading
             ) : myKbs.length === 0 ? (
-              <p className="px-4 py-10 text-sm text-muted-foreground text-center">
+              <div className="rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
                 {t('暂无知识库，点击「新建知识库」开始')}
-              </p>
+              </div>
             ) : (
-              <Table>
-                {kbTableHeader}
-                <TableBody>{myKbs.map(renderKbRow)}</TableBody>
-              </Table>
+              cardGrid(myKbs.map(renderKbCard))
             )}
           </div>
 
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h2 className="text-sm font-medium">{t('共享给我的')}</h2>
-            </div>
+          <div>
+            {sectionHead(t('共享给我的'))}
             {kbLoading ? (
               renderLoading
             ) : sharedKbs.length === 0 ? (
-              <p className="px-4 py-10 text-sm text-muted-foreground text-center">
+              <div className="rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
                 {t('暂无共享给我的知识库')}
-              </p>
+              </div>
             ) : (
-              <Table>
-                {kbTableHeader}
-                <TableBody>{sharedKbs.map(renderKbRow)}</TableBody>
-              </Table>
+              cardGrid(sharedKbs.map(renderKbCard))
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="agent" className="mt-4">
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-medium">{t('我的智能体')}</h2>
+          <div>
+            {sectionHead(
+              t('我的智能体'),
               <Button size="sm" onClick={() => router.push('/portal/apps/ai/studio/agents/new')}>
                 <Plus className="w-4 h-4 mr-1" />
                 {t('新建智能体')}
-              </Button>
-            </div>
+              </Button>,
+            )}
             {agentLoading ? (
               renderLoading
             ) : agents.length === 0 ? (
-              <p className="px-4 py-10 text-sm text-muted-foreground text-center">
+              <div className="rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
                 {t('暂无智能体，点击「新建智能体」开始')}
-              </p>
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('名称')}</TableHead>
-                    <TableHead>{t('状态')}</TableHead>
-                    <TableHead>{t('对话轮数')}</TableHead>
-                    <TableHead className="text-right">{t('操作')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>{agents.map(renderAgentRow)}</TableBody>
-              </Table>
+              cardGrid(agents.map(renderAgentCard))
             )}
           </div>
         </TabsContent>
@@ -460,15 +518,25 @@ export function StudioSection() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>{t('名称')}</Label>
+              <CoverImageUpload
+                imageUrl={newCover}
+                uploading={coverUploading}
+                label={t('封面')}
+                alt={t('知识库封面')}
+                onUpload={handleCoverUpload}
+                onRemove={() => setNewCover('')}
+              />
+            </div>
+            <div className="space-y-2">
+              <span className="text-sm font-medium">{t('名称')}</span>
               <Input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label>{t('描述')}</Label>
+              <span className="text-sm font-medium">{t('描述')}</span>
               <Textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)} rows={3} />
             </div>
             <div className="space-y-2">
-              <Label>{t('标签')}</Label>
+              <span className="text-sm font-medium">{t('标签')}</span>
               <Input
                 value={newTags}
                 onChange={(e) => setNewTags(e.target.value)}
@@ -529,3 +597,4 @@ export function StudioSection() {
     </div>
   )
 }
+

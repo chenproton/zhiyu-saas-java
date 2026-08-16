@@ -242,6 +242,18 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           actions.push(`clickRow ${rowText}→${action || '(行)'}`)
           break
         }
+        case 'clickCard': {
+          // 卡片式列表的行内操作（工坊等卡片网格，卡片需带 data-smoke-card 属性）
+          mark(`clickCard ${rawVal.text}→${rawVal.action}`)
+          const cardText = render(rawVal.text, vars, rand)
+          const cardAction = render(rawVal.action, vars, rand)
+          const card = page.locator('[data-smoke-card]').filter({ hasText: cardText }).first()
+          await card.scrollIntoViewIfNeeded()
+          await card.getByRole('button', { name: cardAction, exact: false }).first().click()
+          await waitSettled(page, cfg)
+          actions.push(`clickCard ${cardText}→${cardAction}`)
+          break
+        }
         case 'fill': {
           for (const [label, raw] of Object.entries(rawVal)) {
             mark(`fill ${label}`)
@@ -291,7 +303,7 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           break
         }
         default:
-          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/fill/select/submit/confirm/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
+          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/clickCard/fill/select/submit/confirm/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
       }
     }
     if (step.expectApi) {

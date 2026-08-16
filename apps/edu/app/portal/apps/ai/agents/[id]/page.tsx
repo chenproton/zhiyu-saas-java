@@ -294,7 +294,13 @@ export default function AIAgentChatPage() {
       </aside>
 
       {/* 对话主区 */}
-      <div className="flex-1 min-w-0 rounded-lg border border-gray-100 bg-white shadow-sm flex flex-col min-h-0">
+      <div className="flex-1 min-w-0 rounded-lg border border-gray-100 bg-white shadow-sm flex flex-col min-h-0 overflow-hidden">
+        {agent.coverImage && (
+          <div
+            className="h-20 shrink-0"
+            style={{ backgroundImage: `url('${agent.coverImage}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+          />
+        )}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-xl shrink-0">
             {agent.avatar || <Bot className="w-4 h-4 text-primary" />}

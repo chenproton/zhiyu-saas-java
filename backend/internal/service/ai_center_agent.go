@@ -27,6 +27,7 @@ type AgentInput struct {
 	Name         string   `json:"name"`
 	Avatar       string   `json:"avatar"`
 	Description  string   `json:"description"`
+	CoverImage   string   `json:"coverImage"` // /uploads 相对路径，可空
 	Greeting     string   `json:"greeting"`
 	SystemPrompt string   `json:"systemPrompt"`
 	KbIDs        []string `json:"kbIds"`
@@ -40,6 +41,7 @@ func (svc *AICenterService) CreateAgent(ctx context.Context, tenantID, ownerID s
 		Name:         strings.TrimSpace(in.Name),
 		Avatar:       strings.TrimSpace(in.Avatar),
 		Description:  strings.TrimSpace(in.Description),
+		CoverImage:   strings.TrimSpace(in.CoverImage),
 		Greeting:     strings.TrimSpace(in.Greeting),
 		SystemPrompt: strings.TrimSpace(in.SystemPrompt),
 	}
@@ -131,6 +133,7 @@ func (svc *AICenterService) UpdateAgent(ctx context.Context, tenantID, agentID, 
 	a.Name = strings.TrimSpace(in.Name)
 	a.Avatar = strings.TrimSpace(in.Avatar)
 	a.Description = strings.TrimSpace(in.Description)
+	a.CoverImage = strings.TrimSpace(in.CoverImage)
 	a.Greeting = strings.TrimSpace(in.Greeting)
 	a.SystemPrompt = strings.TrimSpace(in.SystemPrompt)
 	if err := svc.s.Store().AICenter().UpdateAgent(ctx, a); err != nil {

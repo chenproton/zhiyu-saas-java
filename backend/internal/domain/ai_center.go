@@ -50,6 +50,7 @@ type AIKnowledgeBase struct {
 	Name          string     `json:"name"`
 	Description   string     `json:"description"`
 	Tags          []string   `json:"tags"`
+	CoverImage    string     `json:"coverImage"` // 封面图（/uploads 相对路径，空=前端渐变兜底）
 	Status        string     `json:"status"`
 	ReviewComment string     `json:"reviewComment,omitempty"`
 	ReviewedBy    string     `json:"reviewedBy,omitempty"`
@@ -114,6 +115,7 @@ type AIAgent struct {
 	Name          string     `json:"name"`
 	Avatar        string     `json:"avatar"`
 	Description   string     `json:"description"`
+	CoverImage    string     `json:"coverImage"` // 封面图（同知识库）
 	Greeting      string     `json:"greeting"`
 	SystemPrompt  string     `json:"systemPrompt"`
 	Status        string     `json:"status"`

@@ -70,6 +70,7 @@ type CreateKBInput struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
+	CoverImage  string   `json:"coverImage"` // /uploads 相对路径，可空
 }
 
 // CreateKB 创建知识库（任何登录用户；创建即私有）。
@@ -80,6 +81,7 @@ func (svc *AICenterService) CreateKB(ctx context.Context, tenantID, ownerID stri
 		Name:        strings.TrimSpace(in.Name),
 		Description: strings.TrimSpace(in.Description),
 		Tags:        normalizeTags(in.Tags),
+		CoverImage:  strings.TrimSpace(in.CoverImage),
 	}
 	if err := svc.s.Store().AICenter().CreateKB(ctx, kb); err != nil {
 		return nil, err
@@ -158,6 +160,7 @@ func (svc *AICenterService) UpdateKB(ctx context.Context, tenantID, kbID, userID
 	kb.Name = strings.TrimSpace(in.Name)
 	kb.Description = strings.TrimSpace(in.Description)
 	kb.Tags = normalizeTags(in.Tags)
+	kb.CoverImage = strings.TrimSpace(in.CoverImage)
 	return svc.s.Store().AICenter().UpdateKB(ctx, kb)
 }
 

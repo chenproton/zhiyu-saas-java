@@ -1,15 +1,16 @@
 'use client'
 
 // AI 大厅卡片族（landing 平铺区与 hall 大厅页共用，spec §2.1）：
-// 三类内容三种卡片样式——智能体（emoji 头像 + 立即体验按钮）、
-// 知识库（BookOpen 图标 + tags + 文档/提问数）、第三方服务（链接卡片）。
+// 三类内容三种卡片样式——智能体（封面横幅 + emoji + 立即体验按钮）、
+// 知识库（封面横幅 + BookOpen + tags + 文档/提问数）、第三方服务（链接卡片）。
+// 封面：coverImage 优先，无则 coverGradientFor 渐变 + 居中图标（对齐考试中心卡片模式）。
 import { useRouter } from 'next/navigation'
 import { BookOpen, ExternalLink, FileText, HelpCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import type { AIAgent, AIKnowledgeBase, AIIntegration } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
+import { coverGradientFor } from '@/lib/cover-gradients'
 import { AICenterFavoriteButton } from './favorite-button'
 
 const NEW_DAYS = 7
@@ -21,26 +22,56 @@ export function isNewContent(createdAt: string): boolean {
 function NewBadge() {
   const t = useT()
   return (
-    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow">
+    <span className="absolute top-3 right-3 rounded-full bg-amber-500/95 backdrop-blur-sm px-2 py-0.5 text-[11px] font-medium text-white shadow">
       {t('新上线')}
     </span>
   )
 }
 
-/** 智能体卡片：emoji 头像 + 名称/创建者 + 描述 + 对话数 + 立即体验 */
+const cardClass =
+  'bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden flex flex-col h-full shadow-[0_2px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all group'
+
+/** 封面横幅：有图用图，无图渐变 + 居中内容 */
+function CardBanner({
+  cover,
+  seed,
+  center,
+  isNew,
+}: {
+  cover?: string
+  seed: string
+  center: React.ReactNode
+  isNew: boolean
+}) {
+  return (
+    <div
+      className="h-24 flex items-center justify-center shrink-0 relative"
+      style={
+        cover
+          ? { backgroundImage: `url('${cover}')`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : { background: coverGradientFor(seed) }
+      }
+    >
+      {!cover && center}
+      {isNew && <NewBadge />}
+    </div>
+  )
+}
+
+/** 智能体卡片：封面横幅 + 名称/创建者 + 描述 + 对话数 + 立即体验 */
 export function AgentHallCard({ agent }: { agent: AIAgent }) {
   const t = useT()
   const router = useRouter()
   return (
-    <Card className="hover:shadow-lg hover:border-primary/40 transition-all group h-full">
-      <CardContent className="p-5 flex flex-col h-full">
-        <div className="flex items-start gap-3">
-          <div className="relative shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-2xl">
-              {agent.avatar || agent.name.charAt(0)}
-            </div>
-            {isNewContent(agent.createdAt) && <NewBadge />}
-          </div>
+    <div className={cardClass}>
+      <CardBanner
+        cover={agent.coverImage}
+        seed={agent.id}
+        center={<span className="text-4xl drop-shadow-sm">{agent.avatar || '🤖'}</span>}
+        isNew={isNewContent(agent.createdAt)}
+      />
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-semibold truncate group-hover:text-primary transition-colors">
               {agent.name}
@@ -51,7 +82,7 @@ export function AgentHallCard({ agent }: { agent: AIAgent }) {
           </div>
           <AICenterFavoriteButton targetType="ai_agent" targetId={agent.id} />
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mt-3">
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mt-2">
           {agent.description || agent.greeting || t('无描述')}
         </p>
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-border">
@@ -68,28 +99,28 @@ export function AgentHallCard({ agent }: { agent: AIAgent }) {
             {t('立即体验')}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-/** 知识库卡片：BookOpen 图标 + 名称/创建者 + 描述 + tags + 文档/提问数，整卡进详情 */
+/** 知识库卡片：封面横幅 + 名称/创建者 + 描述 + tags + 文档/提问数，整卡进详情 */
 export function KbHallCard({ kb }: { kb: AIKnowledgeBase }) {
   const t = useT()
   const router = useRouter()
   return (
-    <Card
-      className="cursor-pointer hover:shadow-lg hover:border-primary/40 transition-all group h-full"
+    <div
+      className={`${cardClass} cursor-pointer`}
       onClick={() => router.push(`/portal/apps/ai/kb/${kb.id}`)}
     >
-      <CardContent className="p-5 flex flex-col h-full">
-        <div className="flex items-start gap-3">
-          <div className="relative shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
-              <BookOpen className="h-5 w-5 text-emerald-600" />
-            </div>
-            {isNewContent(kb.createdAt) && <NewBadge />}
-          </div>
+      <CardBanner
+        cover={kb.coverImage}
+        seed={kb.id}
+        center={<BookOpen className="h-10 w-10 text-white/80" />}
+        isNew={isNewContent(kb.createdAt)}
+      />
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-semibold truncate group-hover:text-primary transition-colors">
               {kb.name}
@@ -100,7 +131,7 @@ export function KbHallCard({ kb }: { kb: AIKnowledgeBase }) {
           </div>
           <AICenterFavoriteButton targetType="ai_kb" targetId={kb.id} />
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mt-3">
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mt-2">
           {kb.description || t('无描述')}
         </p>
         {kb.tags.length > 0 && (
@@ -122,8 +153,8 @@ export function KbHallCard({ kb }: { kb: AIKnowledgeBase }) {
             {t('{count} 次提问', { count: kb.askCount })}
           </span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

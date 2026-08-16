@@ -23,7 +23,7 @@ func NewAICenterStore(q Queryer) *AICenterStore {
 	return &AICenterStore{q: q}
 }
 
-var kbColumns = `id, tenant_id, owner_id, name, description, tags, status, review_comment,
+var kbColumns = `id, tenant_id, owner_id, name, description, tags, cover_image, status, review_comment,
 	reviewed_by, reviewed_at, doc_count, ask_count, created_at, updated_at`
 
 // kbCols 生成带表前缀的列清单（JOIN users 时避免 id 等列歧义）。
@@ -54,8 +54,8 @@ func scanKBCols(row pgx.Row, ownerName *string) (*domain.AIKnowledgeBase, error)
 	var kb domain.AIKnowledgeBase
 	var tags []byte
 	var reviewedBy *string
-	dest := []any{&kb.ID, &kb.TenantID, &kb.OwnerID, &kb.Name, &kb.Description, &tags, &kb.Status,
-		&kb.ReviewComment, &reviewedBy, &kb.ReviewedAt, &kb.DocCount, &kb.AskCount, &kb.CreatedAt, &kb.UpdatedAt}
+	dest := []any{&kb.ID, &kb.TenantID, &kb.OwnerID, &kb.Name, &kb.Description, &tags, &kb.CoverImage,
+		&kb.Status, &kb.ReviewComment, &reviewedBy, &kb.ReviewedAt, &kb.DocCount, &kb.AskCount, &kb.CreatedAt, &kb.UpdatedAt}
 	if ownerName != nil {
 		dest = append(dest, ownerName)
 	}
@@ -81,10 +81,10 @@ func scanKBCols(row pgx.Row, ownerName *string) (*domain.AIKnowledgeBase, error)
 func (s *AICenterStore) CreateKB(ctx context.Context, kb *domain.AIKnowledgeBase) error {
 	tags, _ := json.Marshal(kb.Tags)
 	return s.q.QueryRow(ctx, `
-		INSERT INTO ai_knowledge_bases (tenant_id, owner_id, name, description, tags)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO ai_knowledge_bases (tenant_id, owner_id, name, description, tags, cover_image)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, status, doc_count, ask_count, created_at, updated_at
-	`, kb.TenantID, kb.OwnerID, kb.Name, kb.Description, tags).
+	`, kb.TenantID, kb.OwnerID, kb.Name, kb.Description, tags, kb.CoverImage).
 		Scan(&kb.ID, &kb.Status, &kb.DocCount, &kb.AskCount, &kb.CreatedAt, &kb.UpdatedAt)
 }
 
@@ -190,9 +190,9 @@ func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sor
 func (s *AICenterStore) UpdateKB(ctx context.Context, kb *domain.AIKnowledgeBase) error {
 	tags, _ := json.Marshal(kb.Tags)
 	ct, err := s.q.Exec(ctx, `
-		UPDATE ai_knowledge_bases SET name = $3, description = $4, tags = $5, updated_at = now()
-		WHERE tenant_id = $1 AND id = $2 AND owner_id = $6
-	`, kb.TenantID, kb.ID, kb.Name, kb.Description, tags, kb.OwnerID)
+		UPDATE ai_knowledge_bases SET name = $3, description = $4, tags = $5, cover_image = $6, updated_at = now()
+		WHERE tenant_id = $1 AND id = $2 AND owner_id = $7
+	`, kb.TenantID, kb.ID, kb.Name, kb.Description, tags, kb.CoverImage, kb.OwnerID)
 	if err != nil {
 		return err
 	}
@@ -425,14 +425,14 @@ func (s *AICenterStore) GetCollaboratorRoles(ctx context.Context, tenantID, user
 
 // ==================== 智能体 ====================
 
-var agentColumns = `id, tenant_id, owner_id, name, avatar, description, greeting, system_prompt, status,
+var agentColumns = `id, tenant_id, owner_id, name, avatar, description, cover_image, greeting, system_prompt, status,
 	review_comment, reviewed_by, reviewed_at, chat_count, created_at, updated_at`
 
 func scanAgent(row pgx.Row) (*domain.AIAgent, error) {
 	var a domain.AIAgent
 	var reviewedBy *string
-	err := row.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.Greeting,
-		&a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount, &a.CreatedAt, &a.UpdatedAt)
+	err := row.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
+		&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -445,10 +445,10 @@ func scanAgent(row pgx.Row) (*domain.AIAgent, error) {
 // CreateAgent 新建智能体（默认 private）。
 func (s *AICenterStore) CreateAgent(ctx context.Context, a *domain.AIAgent) error {
 	return s.q.QueryRow(ctx, `
-		INSERT INTO ai_agents (tenant_id, owner_id, name, avatar, description, greeting, system_prompt)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO ai_agents (tenant_id, owner_id, name, avatar, description, cover_image, greeting, system_prompt)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, status, chat_count, created_at, updated_at
-	`, a.TenantID, a.OwnerID, a.Name, a.Avatar, a.Description, a.Greeting, a.SystemPrompt).
+	`, a.TenantID, a.OwnerID, a.Name, a.Avatar, a.Description, a.CoverImage, a.Greeting, a.SystemPrompt).
 		Scan(&a.ID, &a.Status, &a.ChatCount, &a.CreatedAt, &a.UpdatedAt)
 }
 
@@ -528,9 +528,9 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 // UpdateAgent 编辑智能体（tenant+owner 双条件纵深防御）。
 func (s *AICenterStore) UpdateAgent(ctx context.Context, a *domain.AIAgent) error {
 	ct, err := s.q.Exec(ctx, `
-		UPDATE ai_agents SET name = $3, avatar = $4, description = $5, greeting = $6, system_prompt = $7, updated_at = now()
-		WHERE tenant_id = $1 AND id = $2 AND owner_id = $8
-	`, a.TenantID, a.ID, a.Name, a.Avatar, a.Description, a.Greeting, a.SystemPrompt, a.OwnerID)
+		UPDATE ai_agents SET name = $3, avatar = $4, description = $5, cover_image = $6, greeting = $7, system_prompt = $8, updated_at = now()
+		WHERE tenant_id = $1 AND id = $2 AND owner_id = $9
+	`, a.TenantID, a.ID, a.Name, a.Avatar, a.Description, a.CoverImage, a.Greeting, a.SystemPrompt, a.OwnerID)
 	if err != nil {
 		return err
 	}
@@ -590,7 +590,7 @@ func (s *AICenterStore) ReplaceAgentKBs(ctx context.Context, tenantID, agentID s
 // ListAgentKBs 智能体关联的知识库（含状态，供可见性判定与前端展示）。
 func (s *AICenterStore) ListAgentKBs(ctx context.Context, tenantID, agentID string) ([]domain.AIKnowledgeBase, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT kb.id, kb.tenant_id, kb.owner_id, kb.name, kb.description, kb.tags, kb.status, kb.review_comment,
+		SELECT kb.id, kb.tenant_id, kb.owner_id, kb.name, kb.description, kb.tags, kb.cover_image, kb.status, kb.review_comment,
 		       kb.reviewed_by, kb.reviewed_at, kb.doc_count, kb.ask_count, kb.created_at, kb.updated_at
 		FROM ai_agent_kbs ak JOIN ai_knowledge_bases kb ON kb.id = ak.kb_id
 		WHERE ak.tenant_id = $1 AND ak.agent_id = $2

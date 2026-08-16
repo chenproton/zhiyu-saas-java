@@ -218,9 +218,9 @@ id/tenant_id/target_type(kb|agent)/target_id/action(submit|approve|reject|unpubl
 | GET | `/ai/kb?scope=owned\|collaborating\|all&q=` | 我的知识库（默认 all=owned+collaborating） |
 
 > 输入护栏（service 层统一归一/拒绝）：tags ≤10 个且单个 ≤30 字；知识库名 ≤200 字、知识库描述 ≤2000 字、智能体名 ≤100 字、智能体描述/开场白 ≤500 字、system_prompt ≤4000 字（超长 400）；协作者角色仅 editor/viewer；owner 不能被加为协作者。
-| POST | `/ai/kb` | 创建 `{name, description, tags[]}` → 私有 |
+| POST | `/ai/kb`（body 含 coverImage 可选） | 创建 `{name, description, tags[]}` → 私有 |
 | GET | `/ai/kb/{id}` | 详情 + 我的角色（owner/editor/viewer/member）；收藏态另经通用收藏 `GET /favorites/ai_kb/{id}` 查询 |
-| PUT | `/ai/kb/{id}` | 编辑信息（owner） |
+| PUT | `/ai/kb/{id}`（body 含 coverImage 可选） | 编辑信息（owner） |
 | DELETE | `/ai/kb/{id}` | 删除（owner；仅 private/rejected；级联文档与分块、删文件） |
 | POST | `/ai/kb/{id}/submit` | 提交上架审核（private/rejected→pending） |
 | POST | `/ai/kb/{id}/unpublish` | 下架（published→private，owner） |
@@ -239,9 +239,9 @@ id/tenant_id/target_type(kb|agent)/target_id/action(submit|approve|reject|unpubl
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/ai/agents` | 我的智能体 |
-| POST | `/ai/agents` | 创建 `{name, avatar, description, greeting, system_prompt, kb_ids[]}` |
+| POST | `/ai/agents`（body 含 coverImage 可选） | 创建 `{name, avatar, description, greeting, system_prompt, kb_ids[]}` |
 | GET | `/ai/agents/{id}` | 详情 + 关联库（published 或 owner 可见）；收藏态另经 `GET /favorites/ai_agent/{id}` 查询 |
-| PUT | `/ai/agents/{id}` | 编辑（owner；published 编辑不自动下架，状态不变） |
+| PUT | `/ai/agents/{id}`（body 含 coverImage 可选） | 编辑（owner；published 编辑不自动下架，状态不变） |
 | DELETE | `/ai/agents/{id}` | 删除（owner；仅 private/rejected） |
 | POST | `/ai/agents/{id}/submit` | 提交审核（关联私有库时**响应体**带 `warnings[]` 提示，不阻断） |
 | POST | `/ai/agents/{id}/unpublish` | 下架（owner） |
@@ -365,6 +365,7 @@ B1/B2/B3（基建，部分并行）→ B4 → B5/B6 → B7 → B8 → B9/B10 →
 - **前台单页集成（v1.2）**：按用户拍板（广场/工坊都集成在落地页、不二次跳转、长页面上下分区、智能体表单保留跳编辑器页），落地页成为前台唯一主页；/square、/studio 旧路由重定向至落地页锚点，验收 flow 的 goto 目标经重定向仍有效（区块组件原样渲染，clickRow/click 定位不变）。
 - **侧边栏无「首页」项（v1.2 修正）**：落地页集成后曾加「首页」侧边栏项，按用户反馈对齐其他平台惯例移除（平台侧边栏只列业务功能，落地页走卡片主入口 + 返回应用中心按钮）。
 - **菜单单一开关（v1.2）**：初版权限树为 chat/square/studio/landing 四节点 + 管理组，按用户反馈收敛为 `/portal/apps/ai` 一个开关联动全部前台页面（迁移 168 收敛存量授权键）；管理组两项保持独立勾选。门户首页 INTERNAL_ROUTES 与卡片 href 统一指向落地页。
+- **v1.4 封面字段 + 工坊卡片化**：知识库/智能体新增 `cover_image` 字段（迁移 169，TEXT 空串=前端渐变兜底），贯通 domain/store/service（含 ListAgentKBs 手写列清单同步）；前端表单复用通用 `CoverImageUpload`+`fileApi.upload`（≤5MB，知识库新建对话框/智能体表单）。工坊从表格改为考试中心式卡片网格（封面横幅+右上角状态徽标+统计行+操作按钮，卡片带 `data-smoke-card`）；广场/大厅卡片族同步封面横幅化（无封面用 `coverGradientFor` 渐变+图标）；KB 详情页加封面横幅、智能体对话页有封面时顶部加横幅。巡检 DSL 新增 `clickCard` 动作（data-smoke-card 定位），工坊相关 flow 步骤由 clickRow 迁移。
 - **v1.3.1 前后台严格分离**：前台浏览页一律全宽直出（无平台侧边栏）——FULL_WIDTH_PAGES 扩为 landing / chat(YIKnow) / hall/* / agents/[id] / kb/[id]；后台管理页（studio 工坊管理、admin 审核/集成）保留侧边栏。全宽页自带页面留白，对话详情页视口高度按仅顶栏重算（100vh-3.5rem）。
 - **v1.3 前台视觉重构**（demo 原型对齐）：hero 主推 YIKnow + chat 改造 YIKnow 对话页 + 广场三区平铺（hall-cards 卡片族）+ hall/agents、hall/kbs 大厅页（hall-shell 骨架）+ KB 排序扩展 updated|docs（store 白名单，无注入面）；flow ai-kb-publish-loop 学生步去 Tab 点击。回归测试：TestAICenter_KBLifecycleAndVisibility 补 sort=docs/updated 断言。
 - **动态路由参数事故（v1.2 修复）**：`studio/kb/[id]` 与 `studio/agents/[id]` 两页误用 Next 15+ 已废弃的同步 `params` 解构（`params.id` 读 Promise → undefined → 请求 `/ai/kb/undefined` 500，用户感知为「创建失败」）；同仓库 `useParams()` 正确写法已在 kb 详情/对话页使用，属实现不一致漏检。修复：两页改 `useParams()`；全仓审计无其他同步 params 页面；后端纵深防御 `aiCenterError` 将 PG 22P02（非法 UUID）映射 400 不再透 500。回归覆盖：后端 `TestAICenter_InvalidUUIDReturns400`（5 端点）；验收 flow 两条 AI 闭环补「进入库管理页/编辑器」断言步骤；巡检器新增 pageerror 哨兵（06 §1）。

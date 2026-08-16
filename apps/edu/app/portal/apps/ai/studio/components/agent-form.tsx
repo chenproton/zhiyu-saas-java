@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
-import { aiCenterKbApi, aiCenterSquareApi } from '@/lib/api'
+import { aiCenterKbApi, aiCenterSquareApi, fileApi } from '@/lib/api'
+import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import type { AIAgent, AIAgentInput, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -32,6 +33,8 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
   const [greeting, setGreeting] = useState(initial?.greeting ?? '')
   const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? '')
   const [kbIds, setKbIds] = useState<string[]>(initial?.kbIds ?? [])
+  const [coverUrl, setCoverUrl] = useState(initial?.coverImage ?? '')
+  const [coverUploading, setCoverUploading] = useState(false)
   const [kbOptions, setKbOptions] = useState<AIKnowledgeBase[]>([])
   const [loadingKbs, setLoadingKbs] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -71,6 +74,31 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
 
   const promptLen = useMemo(() => Array.from(systemPrompt).length, [systemPrompt])
 
+  // 封面上传（复用通用 CoverImageUpload，fileApi 本地存储，≤5MB）
+  const handleCoverUpload = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: t('提示'), description: t('文件大小不能超过 5MB') })
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: t('提示'), description: t('请上传图片文件') })
+      return
+    }
+    setCoverUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setCoverUrl(res.url)
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: t('上传失败'),
+        description: err instanceof Error ? err.message : undefined,
+      })
+    } finally {
+      setCoverUploading(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       toast({ title: t('请填写名称'), variant: 'destructive' })
@@ -86,6 +114,7 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
         name: name.trim(),
         avatar: avatar.trim(),
         description: description.trim(),
+        coverImage: coverUrl || undefined,
         greeting: greeting.trim(),
         systemPrompt: systemPrompt.trim(),
         kbIds,
@@ -148,6 +177,17 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t('描述智能体的用途')}
           maxLength={200}
+        />
+      </div>
+
+      <div className="space-y-2 max-w-[400px]">
+        <CoverImageUpload
+          imageUrl={coverUrl}
+          uploading={coverUploading}
+          label={t('封面')}
+          alt={t('智能体封面')}
+          onUpload={handleCoverUpload}
+          onRemove={() => setCoverUrl('')}
         />
       </div>
 

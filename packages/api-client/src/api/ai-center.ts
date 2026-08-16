@@ -14,6 +14,7 @@ export interface AIKnowledgeBase {
   name: string
   description: string
   tags: string[]
+  coverImage?: string
   status: AIContentStatus
   reviewComment?: string
   docCount: number
@@ -52,6 +53,7 @@ export interface AIAgent {
   name: string
   avatar: string
   description: string
+  coverImage?: string
   greeting: string
   systemPrompt: string
   status: AIContentStatus
@@ -122,12 +124,12 @@ export const aiCenterKbApi = {
   listMine: (params: { scope?: string; q?: string; page?: number; pageSize?: number } = {}) =>
     portalRequest<ListResult<AIKnowledgeBase>>(`/ai/kb${buildQuery({ ...params })}`),
 
-  create: (body: { name: string; description?: string; tags?: string[] }) =>
+  create: (body: { name: string; description?: string; tags?: string[]; coverImage?: string }) =>
     portalRequest<AIKnowledgeBase>('/ai/kb', { method: 'POST', body: JSON.stringify(body) }),
 
   get: (id: string) => portalRequest<AIKnowledgeBase>(`/ai/kb/${id}`),
 
-  update: (id: string, body: { name: string; description?: string; tags?: string[] }) =>
+  update: (id: string, body: { name: string; description?: string; tags?: string[]; coverImage?: string }) =>
     portalRequest<{ status: string }>(`/ai/kb/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
 
   remove: (id: string) => portalRequest<{ status: string }>(`/ai/kb/${id}`, { method: 'DELETE' }),
@@ -184,6 +186,7 @@ export interface AIAgentInput {
   name: string
   avatar?: string
   description?: string
+  coverImage?: string
   greeting?: string
   systemPrompt: string
   kbIds?: string[]

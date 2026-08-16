@@ -68,6 +68,7 @@ func TestAICenter_KBLifecycleAndVisibility(t *testing.T) {
 	// 创建（owner）
 	w := env.DoWithToken("POST", "/api/v1/ai/kb", map[string]any{
 		"name": "学生手册知识库", "description": "校规校纪", "tags": []string{"制度"},
+		"coverImage": "/uploads/2026/08/cover-kb.png",
 	}, owner)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create kb: %d %s", w.Code, testhelper.ErrMsg(w))
@@ -75,6 +76,9 @@ func TestAICenter_KBLifecycleAndVisibility(t *testing.T) {
 	kb, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
 	if kb.Status != "private" {
 		t.Fatalf("new kb should be private, got %s", kb.Status)
+	}
+	if kb.CoverImage != "/uploads/2026/08/cover-kb.png" {
+		t.Fatalf("coverImage not persisted on create, got %q", kb.CoverImage)
 	}
 
 	// 私有可见性：other 404，跨租户 404
@@ -122,8 +126,14 @@ func TestAICenter_KBLifecycleAndVisibility(t *testing.T) {
 	}, owner); w.Code != http.StatusOK {
 		t.Fatalf("update collaborator role via path: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
-	if w := env.DoWithToken("PUT", "/api/v1/ai/kb/"+kb.ID, map[string]string{"name": "学生手册知识库"}, other); w.Code != http.StatusOK {
+	if w := env.DoWithToken("PUT", "/api/v1/ai/kb/"+kb.ID, map[string]string{"name": "学生手册知识库", "coverImage": "/uploads/2026/08/cover-kb-v2.png"}, other); w.Code != http.StatusOK {
 		t.Fatalf("editor should edit kb after role change, got %d", w.Code)
+	}
+	// 封面更新回读（UpdateKB 参数序回归：cover_image=$6 与 owner_id=$7 不冲突）
+	w = env.DoWithToken("GET", "/api/v1/ai/kb/"+kb.ID, nil, other)
+	kbAfter, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
+	if kbAfter.CoverImage != "/uploads/2026/08/cover-kb-v2.png" {
+		t.Fatalf("coverImage not updated, got %q", kbAfter.CoverImage)
 	}
 	// 改回 viewer 保持后续断言语义
 	env.DoWithToken("PUT", fmt.Sprintf("/api/v1/ai/kb/%s/collaborators/%s", kb.ID, aiTestOtherID), map[string]string{

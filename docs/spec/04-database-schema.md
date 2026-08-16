@@ -480,5 +480,6 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 166 | ai_center_menu_perms | AI 中心菜单权限回填：teacher/student 授予 chat/square/studio，配置过 menus 的 school_admin 补齐五路径；订阅包 modules 补 ai=true（down：移除菜单勾选，modules 回填不逆向） |
 | 167 | ai_landing_menu_default | AI 前台落地页 /portal/ai/landing 菜单回填：teacher/student/有 menus 的 school_admin 默认授予（down：移除勾选，幂等） |
 | 168 | ai_menu_single_entry | AI 菜单收敛单一开关：持旧键角色补授 /portal/apps/ai，清理 166/167 的 chat/square/studio 与 /portal/ai/landing 旧键（landing 路径已并入 /portal/apps/ai/landing）（down：恢复分散授权键并移除单一开关） |
+| 169 | `169_ai_cover_image` | ai_knowledge_bases / ai_agents + cover_image TEXT（封面图，空=前端渐变兜底） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

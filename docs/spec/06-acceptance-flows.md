@@ -21,6 +21,7 @@ steps:
     click: 按钮文字                               # 点击精确匹配文字的按钮/链接
     clickText: 文字                               # 点击包含该文字的可点击元素（卡片/链接，用于卡片网格）
     clickRow: { text: 行内文字, action: 按钮文字 }  # 表格行内操作（先按文字定位行，再点行内按钮）
+    clickCard: { text: 卡内文字, action: 按钮文字 } # 卡片网格内操作（卡片需带 data-smoke-card，先按文字定位卡片再点卡内按钮）
     fill: { 字段label: 值 }                       # 按 label 填充文本/数字/日期字段
     select: { 字段label: 选项文字 或 first }        # 下拉/Radix Select/Combobox 选择；first = 第一个选项
     submit: 按钮文字 或 true                      # 点击提交按钮（true = 自动识别 保存/创建/确认 等提交词）
@@ -196,12 +197,12 @@ steps:
   # 误读 params.id 会得到 undefined → 页面报错；2026-08 事故，见 ai-service-center §11）
   - role: teacher
     goto: /portal/apps/ai/studio
-    clickRow: { text: "{{kbName}}", action: 编辑 }
+    clickCard: { text: "{{kbName}}", action: 编辑 }
     expectText: 文档管理
     timeoutMs: 20000
   - role: teacher
     goto: /portal/apps/ai/studio
-    clickRow: { text: "{{kbName}}", action: 提交审核 }
+    clickCard: { text: "{{kbName}}", action: 提交审核 }
     expectApi: { method: POST, url: /ai/kb/, status: 200 }
   - role: school
     goto: /portal/apps/ai/admin/reviews
@@ -215,12 +216,12 @@ steps:
   - role: school
     goto: /portal/apps/ai/admin/reviews
     click: 已发布
-    clickRow: { text: "{{kbName}}", action: 下架 }
+    clickCard: { text: "{{kbName}}", action: 下架 }
     confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   - role: teacher
     goto: /portal/apps/ai/studio
-    clickRow: { text: "{{kbName}}", action: 删除 }
+    clickCard: { text: "{{kbName}}", action: 删除 }
     confirm: true
     expectApi: { method: DELETE, url: /ai/kb/, status: 200 }
 ```
@@ -252,7 +253,7 @@ steps:
   - role: teacher
     goto: /portal/apps/ai/studio
     click: 我的智能体
-    clickRow: { text: "{{agentName}}", action: 提交审核 }
+    clickCard: { text: "{{agentName}}", action: 提交审核 }
     confirm: true
     expectApi: { method: POST, url: /ai/agents/, status: 200 }
   - role: school
@@ -268,13 +269,13 @@ steps:
     goto: /portal/apps/ai/admin/reviews
     click: 智能体审核
     click: 已发布
-    clickRow: { text: "{{agentName}}", action: 下架 }
+    clickCard: { text: "{{agentName}}", action: 下架 }
     confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   - role: teacher
     goto: /portal/apps/ai/studio
     click: 我的智能体
-    clickRow: { text: "{{agentName}}", action: 删除 }
+    clickCard: { text: "{{agentName}}", action: 删除 }
     confirm: true
     expectApi: { method: DELETE, url: /ai/agents/, status: 200 }
 ```
