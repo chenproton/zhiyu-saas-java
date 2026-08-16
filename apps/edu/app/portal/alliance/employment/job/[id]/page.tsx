@@ -64,15 +64,23 @@ export default function AllianceEmploymentJobDetailPage() {
   const { data, loading, error, refresh, setData } = useAsync(
     async () => {
       if (!id || !tenantId) return undefined
-      const [jobData, apps] = await Promise.all([
-        allianceEmploymentPublicApi.getJob(id, tenantId),
-        isStudent
-          ? allianceEmploymentPublicApi
-              .myApplications()
-              .catch(() => ({ items: [] as EmploymentApplication[] }))
-          : Promise.resolve({ items: [] as EmploymentApplication[] }),
-      ])
-      return { job: jobData, applied: apps.items.some((a) => a.jobId === id) }
+      try {
+        const [jobData, apps] = await Promise.all([
+          allianceEmploymentPublicApi.getJob(id, tenantId),
+          isStudent
+            ? allianceEmploymentPublicApi
+                .myApplications()
+                .catch(() => ({ items: [] as EmploymentApplication[] }))
+            : Promise.resolve({ items: [] as EmploymentApplication[] }),
+        ])
+        return { job: jobData, applied: apps.items.some((a) => a.jobId === id) }
+      } catch (e) {
+        // 岗位已下架/删除时 public 接口返回 404，给出友好提示而非通用错误态
+        if ((e as { status?: number })?.status === 404) {
+          throw new Error(t('该岗位已下架或不可见'))
+        }
+        throw e
+      }
     },
     { deps: [id, tenantId, isStudent], onError: () => true },
   )

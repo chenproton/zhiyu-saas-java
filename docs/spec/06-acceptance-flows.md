@@ -207,6 +207,7 @@ steps:
   - role: school
     goto: /portal/apps/ai/admin/reviews
     clickRow: { text: "{{kbName}}", action: 通过 }
+    confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   # v1.3 起广场平铺无 Tab：/square 重定向落地页 #square 锚点，三区内容同页可见，直接断言
   - role: student
@@ -251,7 +252,6 @@ steps:
   - role: teacher
     goto: /portal/apps/ai/studio
     clickCard: { text: "{{agentName}}", action: 提交审核 }
-    confirm: true
     expectApi: { method: POST, url: /ai/agents/, status: 200 }
   - role: school
     goto: /portal/apps/ai/admin/reviews
@@ -297,8 +297,7 @@ steps:
     submit: true
     expectApi: { method: POST, url: /ai/admin/integrations, status: 201 }
   - role: student
-    goto: /portal/apps/ai/square
-    click: 第三方服务
+    goto: /portal/apps/ai/landing#square
     expectText: "{{appName}}"
     timeoutMs: 20000
   - role: school

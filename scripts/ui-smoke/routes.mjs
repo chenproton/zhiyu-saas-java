@@ -56,6 +56,20 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/partner/co-build/positions/[id]/edit': { api: '/api/v1/partner/co-build/positions?limit=10', url: '/partner/co-build/positions/{id}/edit' },
   '/partner/co-build/scenes/[id]/edit': { api: '/api/v1/partner/co-build/scenes?limit=10', url: '/partner/co-build/scenes/{id}/edit' },
   '/partner/co-build/scenes/[id]/edit/tasks': { api: '/api/v1/partner/co-build/scenes?limit=10', url: '/partner/co-build/scenes/{id}/edit/tasks' },
+
+  // ===== AI 智能服务中心（v1.1+）动态路由 =====
+  '/portal/apps/ai/agents/[id]': { api: '/api/v1/ai/agents?limit=10', url: '/portal/apps/ai/agents/{id}' },
+  '/portal/apps/ai/kb/[id]': { api: '/api/v1/ai/kb?limit=10', url: '/portal/apps/ai/kb/{id}' },
+  '/portal/apps/ai/studio/agents/[id]': { api: '/api/v1/ai/agents?limit=10', url: '/portal/apps/ai/studio/agents/{id}' },
+  '/portal/apps/ai/studio/kb/[id]': { api: '/api/v1/ai/kb?limit=10', url: '/portal/apps/ai/studio/kb/{id}' },
+
+  // ===== 就业供需（L-4）动态路由 =====
+  '/portal/apps/alliance/employmentproject/[id]': { api: '/api/v1/alliance/employment-projects?limit=10', url: '/portal/apps/alliance/employmentproject/{id}' },
+  '/portal/alliance/employment/[id]': { api: '/api/v1/alliance/public/employment-projects?limit=10&tenantId={tenantId}', url: '/portal/alliance/employment/{id}' },
+  '/portal/alliance/employment/job/[id]': { api: '/api/v1/alliance/public/employment-jobs?limit=10', url: '/portal/alliance/employment/job/{id}' },
+  '/partner/employment-jobs/[id]': { api: '/api/v1/partner/employment-jobs?limit=10', url: '/partner/employment-jobs/{id}' },
+  '/partner/employment-jobs/[id]/edit': { api: '/api/v1/partner/employment-jobs?limit=10', url: '/partner/employment-jobs/{id}/edit' },
+  '/partner/employment-projects/[id]': { api: '/api/v1/partner/employment-projects?limit=10', url: '/partner/employment-projects/{id}' },
 }
 
 // 静态路由枚举：跳过动态段 [id]（由 resolveDynamicRoutes 单独处理）；(group) 分组段不占 URL，继续向下遍历

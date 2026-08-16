@@ -196,3 +196,39 @@
 - `cd backend && go build ./...` ✅ 通过
 - `cd backend && go vet ./...` ✅ 通过
 - `./scripts/spec-check.sh` ✅ 硬约束全通过（路由契约、验收流程 YAML 已修复，仅剩 2 处 dangerouslySetInnerHTML 误报提示）
+
+---
+
+## 8. UI 全站巡查（ui-smoke --all-roles，2026-08-16）
+
+> 全量全角色巡检（school/teacher/student/partner，约 500 页，35 分钟），含工具完备性审查。
+
+### 8.1 工具完备性（先审查后执行）
+
+- **结论：逻辑成熟完备**（登录+验证码自动识别 / 静态+动态路由枚举 / 多角色 / 四类错误监听 / CRUD+SMOKE_ 清理 / 验收流程 spec06 驱动 / 崩溃自愈 / 瞬态重试 / 基线 diff / 断点续跑 / git-diff 定向）。
+- **补全 1 处覆盖缺口**：`BUILTIN_DYNAMIC_ROUTES` 缺失 10 个动态路由（AI 中心 agents/kb/studio 详情 + 就业 6 个详情页），已补全，动态路由数 school 29→39、teacher→54。
+- **已知边界**：`/library/resources/[type]`（`[type]` 为资源类型枚举而非实体 id，现有机制仅支持 `{id}` 型）未纳入——本质是资源库类型筛选视图，核心功能在 `/library/resources` 已覆盖。
+
+### 8.2 巡查发现与处置
+
+| # | 页面/流程 | 问题 | 处置 |
+|---|---|---|---|
+| 1 | 验收流程 `ai-kb-publish-loop` | school 点「通过」后 expectApi 未命中（「通过」走 ConfirmDialog，flow 缺 confirm 步） | ✅ 已修 flow：加 `confirm: true` |
+| 2 | 验收流程 `ai-agent-publish-loop` | confirm 报「无弹窗」（智能体「提交审核」不弹确认框，直接 submit） | ✅ 已修 flow：去 `confirm: true` |
+| 3 | 验收流程 `ai-integration-loop` | 学生广场「第三方服务」找不到（`/ai/square` 已重定向到 `/ai/landing#square`，「第三方服务」为区块标题非可点元素） | ✅ 已修 flow：改 `goto /ai/landing#square` + `expectText` |
+| 4 | `/portal/apps/ai/chat`（3 角色） | `412 POST /ai/yiknow/chat` | ✅ **预期行为**：本次修的「SSE 412 预检」生效，巡检环境未配置 AI，前端未崩溃（无 pageerror） |
+| 5 | `/evaluation/question-banks/{1013题题库}`（school/teacher） | 单路由超时 >180s、0 次点击 | ⏸ **遗留**：非核心性能问题（全量 `fetchAllPages` 拉取 1013 题 + 渲染超长表格 + 巡检 collectClickables 遍历慢），需服务端分页/虚拟滚动，属「非核心允许等待」 |
+| 6 | `/portal/alliance/employment/mine`（student） | 5× `404 GET /alliance/public/employment-jobs/{id}` | ✅ 已修：`job/[id]` 详情页 404 时显示「该岗位已下架或不可见」友好提示（岗位下架后 public 接口 404 是设计如此，前端此前显示通用错误态） |
+
+**关键结论**：未发现本次安全修复引入的回归（chat 412 为修复生效，其余为存量问题）。
+
+### 8.3 本轮新增修复文件
+
+| 文件 | 修复 |
+|---|---|
+| `scripts/ui-smoke/routes.mjs` | 补全 10 个动态路由映射 |
+| `docs/spec/06-acceptance-flows.md` | 修 3 条 flow 定义（confirm 补/删、广场定位词） |
+| `apps/edu/app/portal/alliance/employment/job/[id]/page.tsx` | 404 友好提示 |
+
+- `pnpm --filter @zhiyu/edu typecheck` ✅ 通过
+- `./scripts/spec-check.sh` ✅ 硬约束全通过（flow YAML 可解析）
