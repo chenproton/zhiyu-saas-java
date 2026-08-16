@@ -158,7 +158,7 @@ export default function AIKbDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="max-w-4xl mx-auto space-y-4 px-4 sm:px-8 py-6">
       <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/landing#square')}>
         <ArrowLeft className="h-4 w-4 mr-1" />
         {t('返回广场')}

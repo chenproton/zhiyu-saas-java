@@ -58,7 +58,7 @@ export function HallShell({
 }: HallShellProps) {
   const t = useT()
   return (
-    <div className="max-w-6xl mx-auto space-y-5">
+    <div className="max-w-6xl mx-auto space-y-5 px-4 sm:px-8 py-6">
       {/* 返回 + 标题 */}
       <div>
         <Link

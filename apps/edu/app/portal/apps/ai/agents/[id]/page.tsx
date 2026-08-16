@@ -252,7 +252,7 @@ export default function AIAgentChatPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto flex gap-4 h-[calc(100vh-8rem)]">
+    <div className="max-w-6xl mx-auto flex gap-4 h-[calc(100vh-3.5rem)] px-4 sm:px-8 py-4">
       {/* 会话列表（桌面端） */}
       <aside className="hidden md:flex w-60 shrink-0 flex-col rounded-lg border border-gray-100 bg-white shadow-sm">
         <div className="p-3 border-b border-gray-100">
