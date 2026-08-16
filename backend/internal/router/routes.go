@@ -293,7 +293,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 
 			r.Get("/auth/me", h.authHandler.SaasMe)
 			r.Get("/auth/saas/me", h.authHandler.SaasMe)
-			r.Get("/stats/me", h.statsHandler.MyStats)
 
 			r.Group(func(r chi.Router) {
 				r.Use(platformAdmin)

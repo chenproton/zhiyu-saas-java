@@ -33,7 +33,6 @@
 | GET | `/api/v1/auth/saas/me` | saas | 当前用户信息（saas 语义别名） |
 | GET | `/api/v1/auth/partner/me` | partner | 当前用户信息 + 企业主体合并（partner） |
 | GET | `/api/v1/subscriptions` | portal | 当前租户订阅套餐 |
-| GET | `/api/v1/stats/me` | saas | 我的统计 |
 | GET | `/api/v1/settings/theme` | 公开(限流 120/min/IP) | 平台主题色（全局/租户覆盖生效） |
 | GET | `/api/v1/portal/workspace/dashboard` | portalWorkspace（30s 缓存） | 工作台聚合 |
 | GET | `/api/v1/portal/workspace/my-schedule` | portalWorkspace | 我的课表（学生/教师） |

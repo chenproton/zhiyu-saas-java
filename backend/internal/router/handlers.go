@@ -14,7 +14,6 @@ type Handlers struct {
 	authHandler                   *handler.AuthHandler
 	captchaHandler                *handler.CaptchaHandler
 	fileHandler                   *handler.FileHandler
-	statsHandler                  *handler.StatsHandler
 	portalHandler                 *handler.PortalHandler
 	importExportHandler           *handler.ImportExportHandler
 	positionImportHandler         *handler.PositionImportHandler
@@ -162,7 +161,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		captchaHandler:                &handler.CaptchaHandler{Service: captchaSvc},
 		captchaSvc:                    captchaSvc,
 		fileHandler:                   fileHandler,
-		statsHandler:                  &handler.StatsHandler{},
 		portalHandler:                 &handler.PortalHandler{Service: positionSvc},
 		importExportHandler:           &handler.ImportExportHandler{Store: st, Svc: service.NewCsvImportService(svc)},
 		positionImportHandler:         &handler.PositionImportHandler{Svc: service.NewPositionImportService(svc)},

@@ -74,7 +74,6 @@
 - `service/granular_course_import.go` 覆盖导入未包事务（先删后插非原子）——建议 `WithTx`。
 - `service/lesson_content.go` / `scenario.go` CloneCourse 源租户 nil 放行（与 position_clone 不一致）。
 - `router/router_dup_test.go` 重复注册测试失效（每 Group 新建 seen map）——建议共享 map。
-- `handler/stats_handler.go` MyStats 硬编码 0 占位桩——建议未实现则不注册。
 - `packages/api-client/src/api-helpers.ts` authedFetch 无 timeout/signal——建议对齐 40s `AbortSignal.timeout`（需核对大文件上传/下载调用点）。
 - `packages/ui/src/components/ui/chart.tsx` id/color 未转义插入 `<style>`——建议白名单校验（当前调用方传硬编码 id）。
 
