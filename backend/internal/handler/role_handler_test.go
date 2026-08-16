@@ -198,7 +198,7 @@ func TestRole_Assign(t *testing.T) {
 	userID := uuid.NewString()
 	tid := testhelper.TestTenantID
 	_, err := env.DB.Exec(ctx,
-		`INSERT INTO users (id, tenant_id, role, login_name, username, password_hash, name, status) VALUES ($1, $2, 'operator', $3, $3, $4, 'Assign Test User', 'active')`,
+		`INSERT INTO users (id, tenant_id, role, login_name, username, password_hash, name, status) VALUES ($1, $2, 'operator', $3, $3, $4, 'Assign Test User', 'active') ON CONFLICT (id) DO NOTHING`,
 		userID, tid, userID, "$2a$10$placeholder",
 	)
 	if err != nil {

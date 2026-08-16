@@ -158,7 +158,7 @@ func TestExamUsage_Flow(t *testing.T) {
 		pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 		execOrFail(t, env, ctx, `
 			INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
-			VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '考试流程学生', 'active', '{}', $5)
+			VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '考试流程学生', 'active', '{}', $5) ON CONFLICT (id) DO NOTHING
 		`, id, testhelper.TestTenantID, "stu-"+uuid.NewString()[:8], string(pw), orgNodeID)
 		return id
 	}

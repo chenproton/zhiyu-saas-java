@@ -43,6 +43,12 @@ func registerAICenterRoutes(r chi.Router, h *Handlers, aiLimiter, uploadLimiter 
 	r.Get("/ai/conversations/{id}", h.aiCenterHandler.GetConversation)
 	r.Delete("/ai/conversations/{id}", h.aiCenterHandler.DeleteConversation)
 
+	// ---- v2.2：KB 问答记录 / YIKnow 通用会话 / 智能体预览 ----
+	r.Get("/ai/kb/{id}/asks", h.aiCenterHandler.ListMyKBAsks)
+	r.Get("/ai/yiknow/conversations", h.aiCenterHandler.ListGeneralConversations)
+	r.With(aiLimiter).Post("/ai/yiknow/chat", h.aiCenterHandler.YIKnowChat)
+	r.With(aiLimiter).Post("/ai/agents/{id}/preview", h.aiCenterHandler.PreviewAgent)
+
 	// ---- 广场与第三方挂接展示 ----
 	r.Get("/ai/square/kbs", h.aiCenterHandler.SquareKBs)
 	r.Get("/ai/square/agents", h.aiCenterHandler.SquareAgents)

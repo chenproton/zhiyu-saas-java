@@ -2,6 +2,8 @@ package handler_test
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 	"net/http"
 	"testing"
 	"time"
@@ -806,7 +808,7 @@ func TestEvaluationResult_SubmitWithoutEvaluator(t *testing.T) {
 	userID := "11111111-2222-4333-8444-555555555555"
 	_, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'saas', 'evalres-stu', 'evalres-stu', 'x', 'Eval Stu', 'active', '{}')
+		VALUES ($1, $2, 'school', 'saas', 'evalres-stu', 'evalres-stu', 'x', 'Eval Stu', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, userID, testhelper.TestTenantID)
 	if err != nil {
 		t.Fatalf("insert user: %v", err)
@@ -981,8 +983,17 @@ func TestCertification_ConfigItemsPoints(t *testing.T) {
 		t.Fatalf("list items: expected 200, got %d", w.Code)
 	}
 
+	// handler 校验能力点真实存在且属于本租户（悬挂/跨租户防护）：先落一个真实能力点
+	apID := uuid.NewString()
+	if _, err := env.DB.Exec(context.Background(),
+		`INSERT INTO ability_points (id, tenant_id, name, code) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+		apID, testhelper.TestTenantID, "认证测试能力点", "cert-ap-"+apID[:8]); err != nil {
+		t.Fatalf("seed ability point: %v", err)
+	}
+	defer env.DB.Exec(context.Background(), "DELETE FROM ability_points WHERE id = $1", apID)
+
 	w = env.Do("POST", "/api/v1/evaluation/certifications/items/"+item.ID+"/points", map[string]interface{}{
-		"abilityPointId": "test-ability-point-id",
+		"abilityPointId": apID,
 		"requiredLevel":  "A",
 		"weight":         50,
 	})

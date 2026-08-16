@@ -85,7 +85,7 @@ func TestWorkflow_DeleteBlockedByPendingApproval(t *testing.T) {
 	submitterID := uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'wf_submitter', 'wf_submitter', $3, '审批提交人', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'wf_submitter', 'wf_submitter', $3, '审批提交人', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, submitterID, testhelper.TestTenantID, "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"); err != nil {
 		t.Fatalf("预置提交人失败: %v", err)
 	}

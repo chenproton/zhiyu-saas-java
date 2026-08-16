@@ -73,7 +73,7 @@ func TestHybridGradeWritebackExamResult(t *testing.T) {
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	execOrFail(t, env, ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '混合课回写学生', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '混合课回写学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw))
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
 

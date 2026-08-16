@@ -18,10 +18,12 @@ type FavoritesHandler struct {
 
 // FavoriteListResponse 收藏列表响应（岗位收藏仍走 /job/positions/favorites）。
 type FavoriteListResponse struct {
-	Scenes        []domain.Scenario     `json:"scene"`
-	Courses       []domain.Course       `json:"course"`
-	QuestionBanks []domain.QuestionBank `json:"question_bank"`
-	Exams         []domain.Exam         `json:"exam"`
+	Scenes        []domain.Scenario        `json:"scene"`
+	Courses       []domain.Course          `json:"course"`
+	QuestionBanks []domain.QuestionBank    `json:"question_bank"`
+	Exams         []domain.Exam            `json:"exam"`
+	AIKBs         []domain.AIKnowledgeBase `json:"ai_kb"`    // v2.2 B8
+	AIAgents      []domain.AIAgent         `json:"ai_agent"` // v2.2 B8
 }
 
 // GetFavorite 查询收藏状态。
@@ -130,10 +132,22 @@ func (h *FavoritesHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询收藏试卷失败")
 		return
 	}
+	aiKBs, err := h.Service.ListAIKBs(ctx, userID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询收藏知识库失败")
+		return
+	}
+	aiAgents, err := h.Service.ListAIAgents(ctx, userID, tenantID)
+	if err != nil {
+		respondServerError(w, r, err, "查询收藏智能体失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, FavoriteListResponse{
 		Scenes:        scenes,
 		Courses:       courses,
 		QuestionBanks: banks,
 		Exams:         exams,
+		AIKBs:         aiKBs,
+		AIAgents:      aiAgents,
 	})
 }

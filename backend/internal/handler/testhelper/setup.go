@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -166,6 +167,12 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 		"lesson_batches", "scene_batches", "evaluation_batches", "affairs_batches",
 		"certification_rules", "certification_ability_items", "certification_ability_points",
 		"appeal_records", "user_relations", "hybrid_node_modules", "job_ability_results", "student_honors",
+		// alliance 模块（开发库模板拷贝会带入脏数据，计数断言需干净起点；无 tenant_id 的表 DELETE 报错被忽略）
+		"alliance_enterprise_links", "alliance_brands", "alliance_experts", "alliance_projects",
+		"alliance_dictionaries", "alliance_resource_grants", "alliance_agreements", "alliance_achievements",
+		"alliance_employment_jobs", "alliance_employment_projects", "alliance_employment_applications",
+		"alliance_brand_topics", "alliance_permissions", "alliance_project_milestones",
+		"alliance_school_info", "alliance_enterprise_agreements",
 	}
 	for _, tbl := range tables {
 		db.Exec(ctx, "DELETE FROM "+tbl+" WHERE tenant_id = $1", TestTenantID)
@@ -263,9 +270,46 @@ func (e *TestEnv) NewUserToken(userID, tenantID string, role domain.UserRole, in
 }
 
 func (e *TestEnv) NewTokenWithIdentity(userID, tenantID string, role domain.UserRole, institutionID *string, roleCode string) string {
-	u := &domain.User{ID: userID, TenantID: &tenantID, Role: role, Platform: domain.UserPlatformPortal, Username: "aux-user", InstitutionID: institutionID}
+	// RequireActiveUser 逐请求校验会话态（34f12b2b 起）：辅助用户必须在库中存在。
+	// 历史测试用非 UUID 字符串 ID（如 "school-admin-001"），确定性映射为 UUID v5 后落库，
+	// 调用点无需改动；租户不存在时一并补种（users.tenant_id 外键）。
+	realID := userID
+	if _, err := uuid.Parse(userID); err != nil {
+		realID = uuid.NewSHA1(uuid.NameSpaceOID, []byte("testaux:"+userID)).String()
+	}
+	e.seedAuxUser(realID, tenantID, role)
+	u := &domain.User{ID: realID, TenantID: &tenantID, Role: role, Platform: domain.UserPlatformPortal, Username: "aux-user", InstitutionID: institutionID}
 	token, _ := middleware.GenerateToken(TestJWTSecret, middleware.TokenInput{User: u, RoleCodes: []string{roleCode}})
 	return token
+}
+
+// seedAuxUser 幂等补种辅助用户（与种子 operator 一致：password_changed_at 早于 token 签发，
+// 避免被「改密后旧 token 失效」误判）。
+func (e *TestEnv) seedAuxUser(userID, tenantID string, role domain.UserRole) {
+	ctx := context.Background()
+	// code 有全局唯一约束：按租户 ID 派生，避免多 aux 租户互撞
+	code := tenantID
+	if len(code) > 8 {
+		code = code[:8]
+	}
+	if _, err := e.DB.Exec(ctx, `INSERT INTO tenants (id, name, code, status) VALUES ($1, 'Aux Tenant', $2, 'active') ON CONFLICT DO NOTHING`, tenantID, "aux-"+code); err != nil {
+		fmt.Printf("SEED-TENANT-ERR: %v\n", err)
+	}
+	// 部分老测试把 roleCode（student/teacher）误传为 UserRole：非法枚举值归一为 school
+	if role != domain.UserRoleSchool && role != domain.UserRoleEnterprise && role != domain.UserRoleOperator {
+		role = domain.UserRoleSchool
+	}
+	platform := string(domain.UserPlatformPortal)
+	if role == domain.UserRoleOperator {
+		platform = "saas"
+	}
+	if _, err := e.DB.Exec(ctx, `
+		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, password_changed_at)
+		VALUES ($1, $2, $3, $4, $5, $5, 'x', 'Aux User', 'active', '{}', NOW() - interval '1 day')
+		ON CONFLICT (id) DO NOTHING
+	`, userID, tenantID, string(role), platform, "aux-"+userID); err != nil {
+		fmt.Printf("SEED-USER-ERR: %v\n", err)
+	}
 }
 
 func (e *TestEnv) DoWithToken(method, path string, body interface{}, token string) *httptest.ResponseRecorder {

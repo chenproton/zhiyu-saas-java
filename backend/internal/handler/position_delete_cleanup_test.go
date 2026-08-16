@@ -46,7 +46,7 @@ func TestPositionDeleteCleansAbilityData(t *testing.T) {
 	// 学生画像 user_id 有 CASCADE 外键，先建用户
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'portraitclean', 'portraitclean', 'x', '测试学生', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'portraitclean', 'portraitclean', 'x', '测试学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, studentID, testhelper.TestTenantID)
 
 	env.DB.Exec(ctx, `

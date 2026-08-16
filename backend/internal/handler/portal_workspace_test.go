@@ -19,7 +19,7 @@ func createPortalUser(t *testing.T, env *testhelper.TestEnv, username, password 
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	_, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '测试用户', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '测试用户', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, id, testhelper.TestTenantID, username, string(hash))
 	if err != nil {
 		t.Fatalf("insert portal user: %v", err)

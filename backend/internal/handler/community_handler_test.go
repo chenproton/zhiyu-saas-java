@@ -231,7 +231,7 @@ func TestCommunity_TenantIsolation(t *testing.T) {
 	defer env.DB.Exec(ctx, "DELETE FROM tenants WHERE id = $1", otherTenantID)
 	_, err = env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'other-tenant', 'other-tenant', 'x', '外校学生', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'other-tenant', 'other-tenant', 'x', '外校学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, otherUserID, otherTenantID)
 	if err != nil {
 		t.Fatalf("insert other tenant user: %v", err)

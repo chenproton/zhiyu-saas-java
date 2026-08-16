@@ -23,7 +23,7 @@ func NewAICenterStore(q Queryer) *AICenterStore {
 	return &AICenterStore{q: q}
 }
 
-var kbColumns = `id, tenant_id, owner_id, name, description, tags, cover_image, status, review_comment,
+var kbColumns = `id, tenant_id, owner_id, name, description, tags, cover_image, view_count, status, review_comment,
 	reviewed_by, reviewed_at, doc_count, ask_count, created_at, updated_at`
 
 // kbCols 生成带表前缀的列清单（JOIN users 时避免 id 等列歧义）。
@@ -54,7 +54,7 @@ func scanKBCols(row pgx.Row, ownerName *string) (*domain.AIKnowledgeBase, error)
 	var kb domain.AIKnowledgeBase
 	var tags []byte
 	var reviewedBy *string
-	dest := []any{&kb.ID, &kb.TenantID, &kb.OwnerID, &kb.Name, &kb.Description, &tags, &kb.CoverImage,
+	dest := []any{&kb.ID, &kb.TenantID, &kb.OwnerID, &kb.Name, &kb.Description, &tags, &kb.CoverImage, &kb.ViewCount,
 		&kb.Status, &kb.ReviewComment, &reviewedBy, &kb.ReviewedAt, &kb.DocCount, &kb.AskCount, &kb.CreatedAt, &kb.UpdatedAt}
 	if ownerName != nil {
 		dest = append(dest, ownerName)
@@ -158,6 +158,8 @@ func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sor
 		order = `kb.ask_count DESC, kb.created_at DESC`
 	case "docs":
 		order = `kb.doc_count DESC, kb.created_at DESC`
+	case "views":
+		order = `kb.view_count DESC, kb.created_at DESC`
 	case "updated":
 		order = `kb.updated_at DESC`
 	}
@@ -425,13 +427,13 @@ func (s *AICenterStore) GetCollaboratorRoles(ctx context.Context, tenantID, user
 
 // ==================== 智能体 ====================
 
-var agentColumns = `id, tenant_id, owner_id, name, avatar, description, cover_image, greeting, system_prompt, status,
+var agentColumns = `id, tenant_id, owner_id, name, avatar, description, cover_image, view_count, greeting, system_prompt, status,
 	review_comment, reviewed_by, reviewed_at, chat_count, created_at, updated_at`
 
 func scanAgent(row pgx.Row) (*domain.AIAgent, error) {
 	var a domain.AIAgent
 	var reviewedBy *string
-	err := row.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
+	err := row.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage, &a.ViewCount,
 		&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -491,8 +493,11 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 		where += fmt.Sprintf(` AND (a.name ILIKE $%[1]d ESCAPE '\' OR a.description ILIKE $%[1]d ESCAPE '\')`, len(args))
 	}
 	order := `a.created_at DESC`
-	if sort == "hot" {
+	switch sort {
+	case "hot":
 		order = `a.chat_count DESC, a.created_at DESC`
+	case "views":
+		order = `a.view_count DESC, a.created_at DESC`
 	}
 	var total int
 	if err := s.q.QueryRow(ctx, `SELECT COUNT(*) FROM ai_agents a WHERE `+where, args...).Scan(&total); err != nil {
@@ -590,7 +595,7 @@ func (s *AICenterStore) ReplaceAgentKBs(ctx context.Context, tenantID, agentID s
 // ListAgentKBs 智能体关联的知识库（含状态，供可见性判定与前端展示）。
 func (s *AICenterStore) ListAgentKBs(ctx context.Context, tenantID, agentID string) ([]domain.AIKnowledgeBase, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT kb.id, kb.tenant_id, kb.owner_id, kb.name, kb.description, kb.tags, kb.cover_image, kb.status, kb.review_comment,
+		SELECT kb.id, kb.tenant_id, kb.owner_id, kb.name, kb.description, kb.tags, kb.cover_image, kb.view_count, kb.status, kb.review_comment,
 		       kb.reviewed_by, kb.reviewed_at, kb.doc_count, kb.ask_count, kb.created_at, kb.updated_at
 		FROM ai_agent_kbs ak JOIN ai_knowledge_bases kb ON kb.id = ak.kb_id
 		WHERE ak.tenant_id = $1 AND ak.agent_id = $2
@@ -667,7 +672,7 @@ func (s *AICenterStore) SearchChunks(ctx context.Context, tenantID, userID strin
 func (s *AICenterStore) CreateConversation(ctx context.Context, cv *domain.AIConversation) error {
 	return s.q.QueryRow(ctx, `
 		INSERT INTO ai_conversations (tenant_id, agent_id, user_id, title)
-		VALUES ($1, $2, $3, $4)
+		VALUES ($1, NULLIF($2, '')::uuid, $3, $4)
 		RETURNING id, created_at, updated_at
 	`, cv.TenantID, cv.AgentID, cv.UserID, cv.Title).Scan(&cv.ID, &cv.CreatedAt, &cv.UpdatedAt)
 }
@@ -675,12 +680,16 @@ func (s *AICenterStore) CreateConversation(ctx context.Context, cv *domain.AICon
 // GetConversation 取会话。
 func (s *AICenterStore) GetConversation(ctx context.Context, tenantID, id string) (*domain.AIConversation, error) {
 	var cv domain.AIConversation
+	var agentID *string
 	err := s.q.QueryRow(ctx, `
 		SELECT id, tenant_id, agent_id, user_id, title, created_at, updated_at
 		FROM ai_conversations WHERE tenant_id = $1 AND id = $2
-	`, tenantID, id).Scan(&cv.ID, &cv.TenantID, &cv.AgentID, &cv.UserID, &cv.Title, &cv.CreatedAt, &cv.UpdatedAt)
+	`, tenantID, id).Scan(&cv.ID, &cv.TenantID, &agentID, &cv.UserID, &cv.Title, &cv.CreatedAt, &cv.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
+	}
+	if agentID != nil {
+		cv.AgentID = *agentID
 	}
 	return &cv, err
 }
@@ -699,8 +708,38 @@ func (s *AICenterStore) ListConversations(ctx context.Context, tenantID, agentID
 	out := make([]domain.AIConversation, 0)
 	for rows.Next() {
 		var cv domain.AIConversation
-		if err := rows.Scan(&cv.ID, &cv.TenantID, &cv.AgentID, &cv.UserID, &cv.Title, &cv.CreatedAt, &cv.UpdatedAt); err != nil {
+		var agentID *string
+		if err := rows.Scan(&cv.ID, &cv.TenantID, &agentID, &cv.UserID, &cv.Title, &cv.CreatedAt, &cv.UpdatedAt); err != nil {
 			return nil, err
+		}
+		if agentID != nil {
+			cv.AgentID = *agentID
+		}
+		out = append(out, cv)
+	}
+	return out, rows.Err()
+}
+
+// ListGeneralConversations 我的通用（YIKnow）会话（agent_id IS NULL，最近更新在前）。
+func (s *AICenterStore) ListGeneralConversations(ctx context.Context, tenantID, userID string) ([]domain.AIConversation, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, tenant_id, agent_id, user_id, title, created_at, updated_at
+		FROM ai_conversations WHERE tenant_id = $1 AND agent_id IS NULL AND user_id = $2
+		ORDER BY updated_at DESC LIMIT 100
+	`, tenantID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]domain.AIConversation, 0)
+	for rows.Next() {
+		var cv domain.AIConversation
+		var agentID *string // 通用会话恒 NULL
+		if err := rows.Scan(&cv.ID, &cv.TenantID, &agentID, &cv.UserID, &cv.Title, &cv.CreatedAt, &cv.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if agentID != nil {
+			cv.AgentID = *agentID
 		}
 		out = append(out, cv)
 	}
@@ -990,4 +1029,49 @@ func (s *AICenterStore) AdminOverview(ctx context.Context, tenantID string) (map
 		out[k] = n
 	}
 	return out, nil
+}
+
+// ==================== 浏览量（v2.2 B5） ====================
+
+// IncrementKBView 知识库浏览量 +1（仅非 owner/editor 详情查看时由 service 调用；尽力而为）。
+func (s *AICenterStore) IncrementKBView(ctx context.Context, tenantID, id string) {
+	_, _ = s.q.Exec(ctx, `UPDATE ai_knowledge_bases SET view_count = view_count + 1 WHERE tenant_id = $1 AND id = $2`, tenantID, id)
+}
+
+// IncrementAgentView 智能体浏览量 +1（同上）。
+func (s *AICenterStore) IncrementAgentView(ctx context.Context, tenantID, id string) {
+	_, _ = s.q.Exec(ctx, `UPDATE ai_agents SET view_count = view_count + 1 WHERE tenant_id = $1 AND id = $2`, tenantID, id)
+}
+
+// ==================== 知识库问答记录（v2.2 B6） ====================
+
+// InsertKBAsk 记录一次问答。
+func (s *AICenterStore) InsertKBAsk(ctx context.Context, a *domain.AIKBAsk) error {
+	return s.q.QueryRow(ctx, `
+		INSERT INTO ai_kb_asks (tenant_id, kb_id, user_id, question, answer)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at
+	`, a.TenantID, a.KbID, a.UserID, a.Question, a.Answer).Scan(&a.ID, &a.CreatedAt)
+}
+
+// ListMyKBAsks 我在某知识库下的提问历史（最近在前，≤50）。
+func (s *AICenterStore) ListMyKBAsks(ctx context.Context, tenantID, kbID, userID string) ([]domain.AIKBAsk, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, tenant_id, kb_id, user_id, question, answer, created_at
+		FROM ai_kb_asks WHERE tenant_id = $1 AND kb_id = $2 AND user_id = $3
+		ORDER BY created_at DESC LIMIT 50
+	`, tenantID, kbID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]domain.AIKBAsk, 0)
+	for rows.Next() {
+		var a domain.AIKBAsk
+		if err := rows.Scan(&a.ID, &a.TenantID, &a.KbID, &a.UserID, &a.Question, &a.Answer, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
 }

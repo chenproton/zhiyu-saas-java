@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -515,5 +516,201 @@ func TestAICenter_InvalidUUIDReturns400(t *testing.T) {
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("%s: expected 400, got %d: %s", path, w.Code, testhelper.ErrMsg(w))
 		}
+	}
+}
+
+// mockAIJSONServer 非流式补全 mock（B7 预览走 AIService.Chat，非 SSE）。
+func mockAIJSONServer(t *testing.T, reply string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"choices":[{"message":{"role":"assistant","content":%q}}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}`, reply)
+	}))
+}
+
+// TestAICenter_V22 A+B 优化包后端：浏览量/问答记录/YIKnow 会话/智能体预览/收藏列表纳入。
+func TestAICenter_V22(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	aiSeedUsers(t, env)
+	owner, other, admin, _ := aiTokens(env)
+
+	// 双模 mock：stream=true → SSE，否则 JSON（预览用非流式）
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/chat/completions") {
+			var reqBody struct {
+				Stream bool `json:"stream"`
+			}
+			var raw [1024 * 64]byte
+			n, _ := r.Body.Read(raw[:])
+			_ = json.Unmarshal(raw[:n], &reqBody)
+			if reqBody.Stream {
+				w.Header().Set("Content-Type", "text/event-stream")
+				fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":{\"content\":\"模拟回答\"}}]}\n\n")
+				fmt.Fprint(w, "data: [DONE]\n\n")
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"模拟回答"}}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}`)
+			}
+			return
+		}
+		http.Error(w, "not found", 404)
+	}))
+	defer upstream.Close()
+	if w := env.DoWithToken("PUT", "/api/v1/ai/config", map[string]string{
+		"baseUrl": upstream.URL, "apiKey": "sk-testkey123456", "model": "test-model",
+	}, admin); w.Code != http.StatusOK {
+		t.Fatalf("save ai config: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// ── 准备：owner 建库+智能体并发布 ──
+	w := env.DoWithToken("POST", "/api/v1/ai/kb", map[string]any{"name": "V22库"}, owner)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create kb: %d", w.Code)
+	}
+	kb, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
+	w = env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/kb/%s/submit", kb.ID), nil, owner)
+	if w.Code != http.StatusOK {
+		t.Fatalf("submit kb: %d", w.Code)
+	}
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/admin/reviews/kb/%s/approve", kb.ID), nil, admin); w.Code != http.StatusOK {
+		t.Fatalf("approve kb: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.DoWithToken("POST", "/api/v1/ai/agents", map[string]any{"name": "V22助手", "systemPrompt": "你是助手"}, owner)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create agent: %d", w.Code)
+	}
+	agent, _ := testhelper.Unmarshal[domain.AIAgent](w)
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/agents/%s/submit", agent.ID), nil, owner); w.Code != http.StatusOK {
+		t.Fatalf("submit agent: %d", w.Code)
+	}
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/admin/reviews/agent/%s/approve", agent.ID), nil, admin); w.Code != http.StatusOK {
+		t.Fatalf("approve agent: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// ── B5 浏览量：other 看详情 +1；owner 自己看不计 ──
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), nil, other)
+	if w.Code != http.StatusOK {
+		t.Fatalf("other get kb: %d", w.Code)
+	}
+	kb2, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
+	if kb2.ViewCount != 1 {
+		t.Fatalf("kb viewCount want 1 got %d", kb2.ViewCount)
+	}
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), nil, owner)
+	kb3, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
+	if w.Code != http.StatusOK || kb3.ViewCount != 1 {
+		t.Fatalf("owner view should not count: %d %d", w.Code, kb3.ViewCount)
+	}
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/agents/%s", agent.ID), nil, other)
+	ag2, _ := testhelper.Unmarshal[domain.AIAgent](w)
+	if w.Code != http.StatusOK || ag2.ViewCount != 1 {
+		t.Fatalf("agent viewCount want 1: %d %d", w.Code, ag2.ViewCount)
+	}
+	// sort=views 进入广场排序白名单
+	w = env.DoWithToken("GET", "/api/v1/ai/square/kbs?sort=views", nil, other)
+	if w.Code != http.StatusOK {
+		t.Fatalf("square kbs sort=views: %d", w.Code)
+	}
+
+	// ── B6 问答记录：other 提问 → 历史可见；owner 的列表不含 other 的 ──
+	w = env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/kb/%s/ask", kb.ID), map[string]string{"message": "怎么用？"}, other)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "event: done") {
+		t.Fatalf("kb ask: %d %s", w.Code, w.Body.String())
+	}
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s/asks", kb.ID), nil, other)
+	asks, _ := testhelper.Unmarshal[struct {
+		Items []domain.AIKBAsk `json:"items"`
+	}](w)
+	if w.Code != http.StatusOK || len(asks.Items) != 1 || asks.Items[0].Question != "怎么用？" || asks.Items[0].Answer != "模拟回答" {
+		t.Fatalf("asks history wrong: %d %+v", w.Code, asks.Items)
+	}
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s/asks", kb.ID), nil, owner)
+	asks2, _ := testhelper.Unmarshal[struct {
+		Items []domain.AIKBAsk `json:"items"`
+	}](w)
+	if len(asks2.Items) != 0 {
+		t.Fatalf("owner should not see other's asks: %+v", asks2.Items)
+	}
+
+	// ── A1 YIKnow 通用会话：对话持久化 + 列表 + 历史 ──
+	w = env.DoWithToken("POST", "/api/v1/ai/yiknow/chat", map[string]string{"message": "你好 YIKnow"}, other)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "event: meta") {
+		t.Fatalf("yiknow chat: %d %s", w.Code, w.Body.String())
+	}
+	w = env.DoWithToken("GET", "/api/v1/ai/yiknow/conversations", nil, other)
+	convs, _ := testhelper.Unmarshal[struct {
+		Items []domain.AIConversation `json:"items"`
+	}](w)
+	if w.Code != http.StatusOK || len(convs.Items) != 1 || convs.Items[0].AgentID != "" {
+		t.Fatalf("general conversations wrong: %d %+v", w.Code, convs.Items)
+	}
+	cvID := convs.Items[0].ID
+	if convs.Items[0].Title == "" {
+		t.Fatalf("conversation title should be set from first message")
+	}
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/conversations/%s", cvID), nil, other)
+	cvResp, _ := testhelper.Unmarshal[struct {
+		Messages []domain.AIMessage `json:"messages"`
+	}](w)
+	if w.Code != http.StatusOK || len(cvResp.Messages) != 2 {
+		t.Fatalf("conversation messages want 2: %d %d", w.Code, len(cvResp.Messages))
+	}
+	// 续聊（带 conversationId）
+	w = env.DoWithToken("POST", "/api/v1/ai/yiknow/chat", map[string]string{
+		"message": "再问一个", "conversationId": cvID,
+	}, other)
+	if w.Code != http.StatusOK {
+		t.Fatalf("yiknow continue: %d %s", w.Code, w.Body.String())
+	}
+	// 他人不能续我的会话
+	w = env.DoWithToken("POST", "/api/v1/ai/yiknow/chat", map[string]string{
+		"message": "x", "conversationId": cvID,
+	}, owner)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("cross-user conversation should 403: %d", w.Code)
+	}
+
+	// ── B7 智能体预览：owner 可试聊（不落库），他人 403 ──
+	w = env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/agents/%s/preview", agent.ID), map[string]string{
+		"message": "试一下", "systemPrompt": "临时提示词",
+	}, owner)
+	if w.Code != http.StatusOK {
+		t.Fatalf("preview: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	pv, _ := testhelper.Unmarshal[struct {
+		Reply string `json:"reply"`
+	}](w)
+	if pv.Reply != "模拟回答" {
+		t.Fatalf("preview reply wrong: %q", pv.Reply)
+	}
+	w = env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/agents/%s/preview", agent.ID), map[string]string{"message": "x"}, other)
+	if w.Code == http.StatusOK {
+		t.Fatalf("non-owner preview should fail: %d", w.Code)
+	}
+	// 预览不计对话数
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/agents/%s", agent.ID), nil, owner)
+	ag3, _ := testhelper.Unmarshal[domain.AIAgent](w)
+	if ag3.ChatCount != 0 {
+		t.Fatalf("preview should not bump chatCount: %d", ag3.ChatCount)
+	}
+
+	// ── B8 收藏列表纳入 ai_kb/ai_agent ──
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/favorites/ai_kb/%s", kb.ID), nil, other); w.Code != http.StatusOK {
+		t.Fatalf("fav kb: %d", w.Code)
+	}
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/favorites/ai_agent/%s", agent.ID), nil, other); w.Code != http.StatusOK {
+		t.Fatalf("fav agent: %d", w.Code)
+	}
+	w = env.DoWithToken("GET", "/api/v1/favorites", nil, other)
+	fav, _ := testhelper.Unmarshal[struct {
+		AIKBs    []domain.AIKnowledgeBase `json:"ai_kb"`
+		AIAgents []domain.AIAgent         `json:"ai_agent"`
+	}](w)
+	if w.Code != http.StatusOK || len(fav.AIKBs) != 1 || len(fav.AIAgents) != 1 {
+		t.Fatalf("favorites list should include ai types: %d %+v", w.Code, fav)
+	}
+	if fav.AIKBs[0].ID != kb.ID || fav.AIAgents[0].ID != agent.ID {
+		t.Fatalf("favorites content mismatch")
 	}
 }

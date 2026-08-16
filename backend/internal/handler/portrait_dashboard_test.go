@@ -77,11 +77,11 @@ func TestStudentDashboard(t *testing.T) {
 	`, classNode, testhelper.TestTenantID, orgTypeID)
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
-		VALUES ($1, $2, 'school', 'portal', 'dash-stu', 'dash-stu', 'x', '测试学生', 'active', '{}', $3)
+		VALUES ($1, $2, 'school', 'portal', 'dash-stu', 'dash-stu', 'x', '测试学生', 'active', '{}', $3) ON CONFLICT (id) DO NOTHING
 	`, userID, testhelper.TestTenantID, classNode)
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'dash-creator', 'dash-creator', 'x', '创建者', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'dash-creator', 'dash-creator', 'x', '创建者', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, creatorID, testhelper.TestTenantID)
 
 	// 已发布场景 A（关联岗位A）+ 场景 B（关联岗位B），各带一个任务

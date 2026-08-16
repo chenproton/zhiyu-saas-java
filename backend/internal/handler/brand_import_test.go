@@ -90,9 +90,9 @@ func TestBrandImportAllFields(t *testing.T) {
 	expID := uuid.NewString()
 	pw := "x"
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'operator','saas','tstu','tstu',$3,'测试学生甲','active','{}')`, studentID, tenantID, pw)
+		VALUES ($1,$2,'operator','saas','tstu','tstu',$3,'测试学生甲','active','{}') ON CONFLICT (id) DO NOTHING`, studentID, tenantID, pw)
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'operator','saas','tteach','tteach',$3,'测试教师甲','active','{}')`, teacherID, tenantID, pw)
+		VALUES ($1,$2,'operator','saas','tteach','tteach',$3,'测试教师甲','active','{}') ON CONFLICT (id) DO NOTHING`, teacherID, tenantID, pw)
 	env.DB.Exec(ctx, `INSERT INTO partner_enterprises (id, tenant_id, name) VALUES ($1,$2,$3)`, entID, tenantID, "测试关联企业")
 	env.DB.Exec(ctx, `INSERT INTO career_positions (id, tenant_id, name, position_type, version, status, created_by, code)
 		VALUES ($1,$2,$3,'profession','v1','published',$4,$5)`, posID, tenantID, "测试关联岗位", testhelper.TestOperatorID, "TEST-POS-01")
@@ -218,12 +218,12 @@ func brandImportEnv(t *testing.T, env *testhelper.TestEnv) (tenantID string, cla
 	ids = map[string]string{}
 	pw := "x"
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'operator','saas','tstu2','tstu2',$3,'测试学生甲','active','{}')`, uuid.NewString(), tenantID, pw)
+		VALUES ($1,$2,'operator','saas','tstu2','tstu2',$3,'测试学生甲','active','{}') ON CONFLICT (id) DO NOTHING`, uuid.NewString(), tenantID, pw)
 	var studentID string
 	env.DB.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND name='测试学生甲'`, tenantID).Scan(&studentID)
 	ids["student"] = studentID
 	env.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1,$2,'operator','saas','tteach2','tteach2',$3,'测试教师甲','active','{}')`, uuid.NewString(), tenantID, pw)
+		VALUES ($1,$2,'operator','saas','tteach2','tteach2',$3,'测试教师甲','active','{}') ON CONFLICT (id) DO NOTHING`, uuid.NewString(), tenantID, pw)
 	var teacherID string
 	env.DB.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND name='测试教师甲'`, tenantID).Scan(&teacherID)
 	ids["teacher"] = teacherID

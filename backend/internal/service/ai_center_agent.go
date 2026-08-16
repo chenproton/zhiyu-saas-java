@@ -95,6 +95,11 @@ func (svc *AICenterService) GetAgent(ctx context.Context, tenantID, agentID, use
 	if a.OwnerID != userID && a.Status != domain.AIContentStatusPublished {
 		return nil, store.ErrNotFound
 	}
+	// 浏览量（v2.2 B5）：非 owner 浏览详情计数
+	if a.OwnerID != userID {
+		svc.s.Store().AICenter().IncrementAgentView(ctx, tenantID, agentID)
+		a.ViewCount++
+	}
 	kbs, err := svc.s.Store().AICenter().ListAgentKBs(ctx, tenantID, agentID)
 	if err != nil {
 		return nil, err
@@ -357,6 +362,9 @@ func (svc *AICenterService) KBAsk(ctx context.Context, tenantID, kbID, userID, m
 		return nil
 	}
 	svc.s.Store().AICenter().IncrementKBAskCount(ctx, tenantID, []string{kb.ID})
+	// 问答记录落库（v2.2 B6：我的提问历史；尽力而为，失败不影响回答）
+	ask := &domain.AIKBAsk{TenantID: tenantID, KbID: kb.ID, UserID: userID, Question: message, Answer: reply}
+	_ = svc.s.Store().AICenter().InsertKBAsk(ctx, ask)
 	return emit("done", map[string]any{"answer": reply})
 }
 

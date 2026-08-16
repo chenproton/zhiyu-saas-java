@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -183,4 +184,42 @@ func listFavoritesByType[T any](ctx context.Context, q Queryer, userID, tenantID
 	}
 	defer rows.Close()
 	return scan(rows)
+}
+
+// ListAIKBs 查询用户收藏的知识库（仅已发布；v2.2 B8 收藏列表纳入）。
+func (s *FavoritesStore) ListAIKBs(ctx context.Context, userID, tenantID string) ([]domain.AIKnowledgeBase, error) {
+	return listFavoritesByType(ctx, s.q, userID, tenantID, FavoriteTypeAIKB,
+		"ai_knowledge_bases kb ON kb.id = f.target_id",
+		kbCols("kb"), "kb.tenant_id", " AND kb.status = 'published'", scanAIKBFavoriteRows)
+}
+
+// ListAIAgents 查询用户收藏的智能体（仅已发布）。
+func (s *FavoritesStore) ListAIAgents(ctx context.Context, userID, tenantID string) ([]domain.AIAgent, error) {
+	return listFavoritesByType(ctx, s.q, userID, tenantID, FavoriteTypeAIAgent,
+		"ai_agents a ON a.id = f.target_id",
+		"a."+strings.ReplaceAll(agentColumns, ", ", ", a."), "a.tenant_id", " AND a.status = 'published'", scanAIAgentFavoriteRows)
+}
+
+func scanAIKBFavoriteRows(rows pgx.Rows) ([]domain.AIKnowledgeBase, error) {
+	out := make([]domain.AIKnowledgeBase, 0)
+	for rows.Next() {
+		kb, err := scanKBCols(rows, nil)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *kb)
+	}
+	return out, rows.Err()
+}
+
+func scanAIAgentFavoriteRows(rows pgx.Rows) ([]domain.AIAgent, error) {
+	out := make([]domain.AIAgent, 0)
+	for rows.Next() {
+		a, err := scanAgent(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *a)
+	}
+	return out, rows.Err()
 }

@@ -25,7 +25,7 @@ func TestLogin_Success(t *testing.T) {
 
 	tid := testhelper.TestTenantID
 	_, err = env.DB.Exec(ctx,
-		`INSERT INTO users (id, tenant_id, role, login_name, username, password_hash, name, status, title_ids) VALUES ($1, $2, 'operator', $3, $3, $4, 'Test Login User', 'active', '{}')`,
+		`INSERT INTO users (id, tenant_id, role, login_name, username, password_hash, name, status, title_ids) VALUES ($1, $2, 'operator', $3, $3, $4, 'Test Login User', 'active', '{}') ON CONFLICT (id) DO NOTHING`,
 		userID, tid, username, string(hash),
 	)
 	if err != nil {

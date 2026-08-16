@@ -57,3 +57,13 @@ func (s *FavoritesService) ListQuestionBanks(ctx context.Context, userID, tenant
 func (s *FavoritesService) ListExams(ctx context.Context, userID, tenantID string) ([]domain.Exam, error) {
 	return s.st.Favorites().ListExams(ctx, userID, tenantID)
 }
+
+// ListAIKBs 查询用户收藏的知识库（仅已发布；v2.2 B8）。
+func (s *FavoritesService) ListAIKBs(ctx context.Context, userID, tenantID string) ([]domain.AIKnowledgeBase, error) {
+	return s.st.Favorites().ListAIKBs(ctx, userID, tenantID)
+}
+
+// ListAIAgents 查询用户收藏的智能体（仅已发布）。
+func (s *FavoritesService) ListAIAgents(ctx context.Context, userID, tenantID string) ([]domain.AIAgent, error) {
+	return s.st.Favorites().ListAIAgents(ctx, userID, tenantID)
+}

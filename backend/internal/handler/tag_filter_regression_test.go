@@ -44,7 +44,7 @@ func TestTagFilter_KnowledgePoint(t *testing.T) {
 	// 知识点 creator_id 有外键约束，先建用户（user_role 枚举：school/enterprise/operator）
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, username, login_name, password_hash, name, status)
-		VALUES ($1, $2, 'operator', $3, $3, 'x', $3, 'active')
+		VALUES ($1, $2, 'operator', $3, $3, 'x', $3, 'active') ON CONFLICT (id) DO NOTHING
 	`, userID, testhelper.TestTenantID, "tag-filter-teacher-"+userID[:8]); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}

@@ -52,7 +52,7 @@ func TestPortalWorkspace_LearningScheduleFilter(t *testing.T) {
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	execOrFail(t, env, ctx, `
 		INSERT INTO users (id, tenant_id, org_node_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, $3, 'school', 'portal', $4, $4, $5, '测试学生', 'active', '{}')
+		VALUES ($1, $2, $3, 'school', 'portal', $4, $4, $5, '测试学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, studentID, tenantID, class1, "stu-"+uuid.NewString()[:8], string(pw))
 
 	// 5. 课程：course1 排给班1已发布；course2 排给班2；course3 未排课；course4 排给班1但草稿

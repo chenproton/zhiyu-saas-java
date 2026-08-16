@@ -706,3 +706,90 @@ func (h *AICenterHandler) ListIntegrations(w http.ResponseWriter, r *http.Reques
 	}
 	respondJSON(w, http.StatusOK, map[string]any{"items": items})
 }
+
+// ==================== v2.2：KB 问答记录 / YIKnow 通用会话 / 智能体预览 ====================
+
+// ListMyKBAsks GET /ai/kb/{id}/asks（B6 我的提问历史）
+func (h *AICenterHandler) ListMyKBAsks(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := aiCenterUser(r)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, err := h.Service.ListMyKBAsks(r.Context(), tenantID, chi.URLParam(r, "id"), userID)
+	if aiCenterError(w, r, err, "查询问答记录失败"); err != nil {
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// ListGeneralConversations GET /ai/yiknow/conversations（A1 YIKnow 会话列表）
+func (h *AICenterHandler) ListGeneralConversations(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := aiCenterUser(r)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, err := h.Service.ListGeneralConversations(r.Context(), tenantID, userID)
+	if aiCenterError(w, r, err, "查询会话失败"); err != nil {
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// YIKnowChat POST /ai/yiknow/chat（SSE，与 AgentChat 同一事件协议：meta/delta/done/error）
+func (h *AICenterHandler) YIKnowChat(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := aiCenterUser(r)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	var req aiChatStreamRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	req.Message = strings.TrimSpace(req.Message)
+	if req.Message == "" || len([]rune(req.Message)) > 2000 {
+		respondError(w, http.StatusBadRequest, "消息必填且不超过 2000 字")
+		return
+	}
+	emit, started, err := sseEmitter(w)
+	if err != nil {
+		respondServerError(w, r, err, "当前环境不支持流式输出")
+		return
+	}
+	err = h.Service.YIKnowChat(r.Context(), tenantID, userID, req.ConversationID, req.Message, emit)
+	if err != nil && !started() {
+		aiCenterError(w, r, err, "对话失败")
+		return
+	}
+	if err != nil {
+		slog.Warn("yiknow stream aborted", "error", err)
+	}
+}
+
+// PreviewAgent POST /ai/agents/{id}/preview（B7 owner 专属试聊，不落库）
+func (h *AICenterHandler) PreviewAgent(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := aiCenterUser(r)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	var req struct {
+		SystemPrompt string `json:"systemPrompt"`
+		Message      string `json:"message"`
+	}
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	req.Message = strings.TrimSpace(req.Message)
+	if req.Message == "" || len([]rune(req.Message)) > 2000 {
+		respondError(w, http.StatusBadRequest, "消息必填且不超过 2000 字")
+		return
+	}
+	reply, err := h.Service.PreviewAgent(r.Context(), tenantID, chi.URLParam(r, "id"), userID, req.SystemPrompt, req.Message)
+	if aiCenterError(w, r, err, "预览对话失败"); err != nil {
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"reply": reply})
+}

@@ -20,7 +20,7 @@ func TestStudentHonorCRUD(t *testing.T) {
 	studentID := "11111111-2222-4333-8444-777777777791"
 	if _, err := env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'honor-stu', 'honor-stu', 'x', '荣誉学生', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'honor-stu', 'honor-stu', 'x', '荣誉学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, studentID, testhelper.TestTenantID); err != nil {
 		t.Fatalf("insert student user: %v", err)
 	}

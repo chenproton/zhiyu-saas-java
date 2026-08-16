@@ -60,7 +60,7 @@ func TestGrantResourceOptions_AllSchoolResources(t *testing.T) {
 	} {
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, source_type, source_enterprise_id, batch_id, version, created_by)
-			VALUES ($1,$2,$3,$4,'internship',$5, CASE WHEN $6 IS NULL THEN 'school' ELSE 'enterprise' END, $6, $7, 'V1.0', $8)
+			VALUES ($1,$2,$3,$4,'internship',$5, CASE WHEN $6::uuid IS NULL THEN 'school' ELSE 'enterprise' END, $6, $7, 'V1.0', $8)
 		`, p.id, tenantID, "opt-"+p.id[:8], p.name, p.status, p.sourceID, p.batch, testhelper.TestOperatorID); err != nil {
 			t.Fatalf("预置岗位失败: %v", err)
 		}
@@ -90,16 +90,16 @@ func TestGrantResourceOptions_AllSchoolResources(t *testing.T) {
 
 	// 他租户资源（不应出现）
 	otherTenantID := uuid.NewString()
-	if _, err := env.DB.Exec(ctx, `INSERT INTO tenants (id, name, type, status) VALUES ($1,$2,'school','active')`,
-		otherTenantID, "他校-"+otherTenantID[:8]); err != nil {
+	if _, err := env.DB.Exec(ctx, `INSERT INTO tenants (id, name, code, type, status) VALUES ($1,$2,$3,'school','active')`,
+		otherTenantID, "他校-"+otherTenantID[:8], "t-"+otherTenantID[:8]); err != nil {
 		t.Fatalf("预置他校失败: %v", err)
 	}
 	defer env.DB.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, otherTenantID)
 	otherPosID := uuid.NewString()
 	if _, err := env.DB.Exec(ctx, `
-		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, source_type, version)
-		VALUES ($1,$2,$3,'他校岗位','internship','published','school','V1.0')
-	`, otherPosID, otherTenantID, "opt-other-"+otherPosID[:8]); err != nil {
+		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, source_type, version, created_by)
+		VALUES ($1,$2,$3,'他校岗位','internship','published','school','V1.0',$4)
+	`, otherPosID, otherTenantID, "opt-other-"+otherPosID[:8], testhelper.TestOperatorID); err != nil {
 		t.Fatalf("预置他校岗位失败: %v", err)
 	}
 	defer env.DB.Exec(ctx, `DELETE FROM career_positions WHERE id = $1`, otherPosID)
@@ -147,7 +147,7 @@ func TestGrantResourceOptions_AllSchoolResources(t *testing.T) {
 		if wantEntID != nil && (o.SourceEnterpriseName == nil || *o.SourceEnterpriseName == "") {
 			t.Fatalf("%s 应返回来源企业名称", id)
 		}
-		if o.BatchName == nil || *o.BatchName == "" {
+		if wantBatch != nil && (o.BatchName == nil || *o.BatchName == "") {
 			t.Fatalf("%s 应返回批次名称", id)
 		}
 	}

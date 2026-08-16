@@ -759,9 +759,9 @@ func TestPartnerCoBuild_GrantedPositionSubResources(t *testing.T) {
 	// 学校自建并发布岗位（source_enterprise_id 为空），带子资源数据
 	positionID := uuid.NewString()
 	if _, err := env.DB.Exec(context.Background(), `
-		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status)
-		VALUES ($1, $2, $3, $4, 'enterprise', 'published')
-	`, positionID, schoolID, "gr-"+suffix, "授权岗位-"+suffix); err != nil {
+		INSERT INTO career_positions (id, tenant_id, code, name, position_type, status, version, created_by)
+		VALUES ($1, $2, $3, $4, 'enterprise', 'published', 'V1.0', $5)
+	`, positionID, schoolID, "gr-"+suffix, "授权岗位-"+suffix, testhelper.TestOperatorID); err != nil {
 		t.Fatalf("预置学校岗位失败: %v", err)
 	}
 	responsibilityID := uuid.NewString()
@@ -774,7 +774,7 @@ func TestPartnerCoBuild_GrantedPositionSubResources(t *testing.T) {
 
 	// 学校把岗位授权给企业
 	svc := store.New(env.DB)
-	if err := svc.AllianceGrants().Upsert(context.Background(), schoolID, enterpriseID, "position", []string{positionID}, "test"); err != nil {
+	if err := svc.AllianceGrants().Upsert(context.Background(), schoolID, enterpriseID, "position", []string{positionID}, testhelper.TestOperatorID); err != nil {
 		t.Fatalf("预置授权失败: %v", err)
 	}
 	t.Cleanup(func() {
@@ -996,7 +996,7 @@ func TestPartnerCoBuild_ListSchoolCoBuilders(t *testing.T) {
 	}{{teacherID, "共建教师-" + suffix}, {studentID, "学生-" + suffix}} {
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO users (id, tenant_id, role, platform, username, password_hash, name, status)
-			VALUES ($1, $2, 'school', 'portal', $3, 'hash', $4, 'active')
+			VALUES ($1, $2, 'school', 'portal', $3, 'hash', $4, 'active') ON CONFLICT (id) DO NOTHING
 		`, u.id, schoolID, "cob_user_"+u.id[:8], u.name); err != nil {
 			t.Fatalf("预置用户失败: %v", err)
 		}

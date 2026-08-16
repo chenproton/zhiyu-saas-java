@@ -79,7 +79,7 @@ func TestExamRetakePolicy(t *testing.T) {
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	execOrFail(t, env, ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
-		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '重交策略学生', 'active', '{}', $5)
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '重交策略学生', 'active', '{}', $5) ON CONFLICT (id) DO NOTHING
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw), classID)
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
 	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")
@@ -132,7 +132,7 @@ func TestExamSubmitWindow(t *testing.T) {
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	execOrFail(t, env, ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids, org_node_id)
-		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '窗口校验学生', 'active', '{}', $5)
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '窗口校验学生', 'active', '{}', $5) ON CONFLICT (id) DO NOTHING
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw), classID)
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
 	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")
@@ -216,7 +216,7 @@ func TestNodeGradeSyncsExamResult(t *testing.T) {
 	pw, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	execOrFail(t, env, ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '节点评分学生', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '节点评分学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, studentID, tenantID, "stu-"+uuid.NewString()[:8], string(pw))
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", studentID)
 	studentToken := env.NewTokenWithIdentity(studentID, tenantID, domain.RoleStudent, nil, "student")

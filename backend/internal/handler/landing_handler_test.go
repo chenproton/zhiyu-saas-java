@@ -73,12 +73,12 @@ func setupLandingEnv(t *testing.T) *landingEnv {
 	// 学生（users.role 统一 school，业务角色经 user_roles 关联）
 	le.student = uuid.NewString()
 	if _, err := e.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, org_node_id)
-		VALUES ($1, $2, 'school', 'portal', 'stu1', 'stu1', 'x', '学生1', 'active', $3)`, le.student, tenantID, le.classID); err != nil {
+		VALUES ($1, $2, 'school', 'portal', 'stu1', 'stu1', 'x', '学生1', 'active', $3) ON CONFLICT (id) DO NOTHING`, le.student, tenantID, le.classID); err != nil {
 		t.Fatalf("create student: %v", err)
 	}
 	le.student2 = uuid.NewString()
 	if _, err := e.DB.Exec(ctx, `INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status)
-		VALUES ($1, $2, 'school', 'portal', 'stu2', 'stu2', 'x', '学生2（未分班）', 'active')`, le.student2, tenantID); err != nil {
+		VALUES ($1, $2, 'school', 'portal', 'stu2', 'stu2', 'x', '学生2（未分班）', 'active') ON CONFLICT (id) DO NOTHING`, le.student2, tenantID); err != nil {
 		t.Fatalf("create unassigned student: %v", err)
 	}
 

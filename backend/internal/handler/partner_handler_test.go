@@ -908,7 +908,7 @@ func TestPartner_MentorTasks(t *testing.T) {
 	} {
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-			VALUES ($1,$2,'school','portal',$3,$4,'x',$5,'active','{}')
+			VALUES ($1,$2,'school','portal',$3,$4,'x',$5,'active','{}') ON CONFLICT (id) DO NOTHING
 		`, u.id, schoolID, "em_"+u.id[:8], schoolID+"_em_"+u.id[:8], u.name); err != nil {
 			t.Fatalf("预置影子账号 users 失败: %v", err)
 		}
@@ -917,7 +917,7 @@ func TestPartner_MentorTasks(t *testing.T) {
 	for _, id := range []string{evaluatee1, evaluatee2} {
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-			VALUES ($1,$2,'school','portal',$3,$4,'x','被评人','active','{}')
+			VALUES ($1,$2,'school','portal',$3,$4,'x','被评人','active','{}') ON CONFLICT (id) DO NOTHING
 		`, id, schoolID, "ee_"+id[:8], schoolID+"_ee_"+id[:8]); err != nil {
 			t.Fatalf("预置被评人失败: %v", err)
 		}

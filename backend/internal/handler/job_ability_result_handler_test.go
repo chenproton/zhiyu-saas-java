@@ -44,7 +44,7 @@ func TestJobAbilityResultIndicators(t *testing.T) {
 	for _, uid := range []string{userA, userB} {
 		env.DB.Exec(ctx, `
 			INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-			VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '测试学生', 'active', '{}')
+			VALUES ($1, $2, 'school', 'portal', $3, $3, $4, '测试学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 		`, uid, testhelper.TestTenantID, "indicator"+uid[len(uid)-3:], pw)
 	}
 
@@ -156,7 +156,7 @@ func TestJobAbilityResultSummary(t *testing.T) {
 	pw, _ := bcrypt.GenerateFromPassword([]byte("test123"), bcrypt.DefaultCost)
 	env.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, role, platform, username, login_name, password_hash, name, status, title_ids)
-		VALUES ($1, $2, 'school', 'portal', 'summarytest', 'summarytest', $3, '测试学生', 'active', '{}')
+		VALUES ($1, $2, 'school', 'portal', 'summarytest', 'summarytest', $3, '测试学生', 'active', '{}') ON CONFLICT (id) DO NOTHING
 	`, studentID, testhelper.TestTenantID, pw)
 	env.DB.Exec(ctx, `
 		INSERT INTO job_ability_results (career_position_id, user_id, total_ability_points, achieved_ability_points, achievement_rate, grade, tenant_id)

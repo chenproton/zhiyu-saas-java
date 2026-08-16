@@ -51,6 +51,7 @@ type AIKnowledgeBase struct {
 	Description   string     `json:"description"`
 	Tags          []string   `json:"tags"`
 	CoverImage    string     `json:"coverImage"` // 封面图（/uploads 相对路径，空=前端渐变兜底）
+	ViewCount     int64      `json:"viewCount"`  // 浏览量（非 owner/editor 查看详情 +1）
 	Status        string     `json:"status"`
 	ReviewComment string     `json:"reviewComment,omitempty"`
 	ReviewedBy    string     `json:"reviewedBy,omitempty"`
@@ -116,6 +117,7 @@ type AIAgent struct {
 	Avatar        string     `json:"avatar"`
 	Description   string     `json:"description"`
 	CoverImage    string     `json:"coverImage"` // 封面图（同知识库）
+	ViewCount     int64      `json:"viewCount"`  // 浏览量（同知识库规则）
 	Greeting      string     `json:"greeting"`
 	SystemPrompt  string     `json:"systemPrompt"`
 	Status        string     `json:"status"`
@@ -136,7 +138,7 @@ type AIAgent struct {
 type AIConversation struct {
 	ID        string    `json:"id"`
 	TenantID  string    `json:"tenantId"`
-	AgentID   string    `json:"agentId"`
+	AgentID   string    `json:"agentId"` // 空 = 通用 YIKnow 会话（列可空，172 迁移）
 	UserID    string    `json:"userId"`
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -189,4 +191,15 @@ type AIReviewLog struct {
 	ActorID    string    `json:"actorId"`
 	Comment    string    `json:"comment"`
 	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// AIKBAsk 知识库问答记录（171，B6：我的提问历史）。
+type AIKBAsk struct {
+	ID        string    `json:"id"`
+	TenantID  string    `json:"tenantId"`
+	KbID      string    `json:"kbId"`
+	UserID    string    `json:"userId"`
+	Question  string    `json:"question"`
+	Answer    string    `json:"answer"`
+	CreatedAt time.Time `json:"createdAt"`
 }

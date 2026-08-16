@@ -42,6 +42,7 @@ func TestAlliancePublicBrandsDisplaySwitch(t *testing.T) {
 		},
 	}
 	for _, b := range brands {
+		b.row[0] = b.id // 修正：插入的 id 必须与 b.id 一致（原来两个 uuid 不一致，详情断言恒 404）
 		if _, err := env.DB.Exec(ctx, `
 			INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public, data)
 			VALUES ($1, $2, $3, $4, $5, $6, '{}')
