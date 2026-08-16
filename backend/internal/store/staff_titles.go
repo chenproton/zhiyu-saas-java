@@ -47,10 +47,10 @@ func (p StaffTitleUpdateParams) Args() []any {
 	return []any{p.Name, p.Description, p.Status}
 }
 
-// UpdateStatus 仅更新启用状态（不走通用 Update 的 COALESCE 分支）。
-func (s *StaffTitlesStore) UpdateStatus(ctx context.Context, id, status string) error {
+// UpdateStatus 仅更新启用状态（不走通用 Update 的 COALESCE 分支；限定租户，纵深防御）。
+func (s *StaffTitlesStore) UpdateStatus(ctx context.Context, tenantID, id, status string) error {
 	_, err := s.Q().Exec(ctx,
-		`UPDATE staff_titles SET status=$1 WHERE id=$2`, status, id,
+		`UPDATE staff_titles SET status=$1 WHERE id=$2 AND tenant_id=$3`, status, id, tenantID,
 	)
 	return err
 }

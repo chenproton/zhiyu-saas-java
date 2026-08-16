@@ -26,12 +26,21 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 	}
 	now := time.Now()
 	if usage.StartTime != nil {
-		if t, perr := time.Parse(time.RFC3339, *usage.StartTime); perr == nil && now.Before(t) {
+		t, perr := time.Parse(time.RFC3339, *usage.StartTime)
+		if perr != nil {
+			// 时间戳格式异常时 fail-closed：拒绝提交，避免核心考试窗口门禁被静默绕过
+			return nil, store.ErrExamNotStarted
+		}
+		if now.Before(t) {
 			return nil, store.ErrExamNotStarted
 		}
 	}
 	if usage.EndTime != nil {
-		if t, perr := time.Parse(time.RFC3339, *usage.EndTime); perr == nil && now.After(t) {
+		t, perr := time.Parse(time.RFC3339, *usage.EndTime)
+		if perr != nil {
+			return nil, store.ErrExamEnded
+		}
+		if now.After(t) {
 			return nil, store.ErrExamEnded
 		}
 	}
@@ -156,7 +165,7 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 }
 
 // GradeExamResult 教师评分日常考试结果：客观分按存储答案重算，加上教师主观题分数后落库。
-func (s *EvaluationService) GradeExamResult(ctx context.Context, id, graderID string, scores map[string]interface{}, comment *string) (*domain.ExamResult, error) {
+func (s *EvaluationService) GradeExamResult(ctx context.Context, tenantID, id, graderID string, scores map[string]interface{}, comment *string) (*domain.ExamResult, error) {
 	result, err := s.st.ExamResults().Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -212,7 +221,7 @@ func (s *EvaluationService) GradeExamResult(ctx context.Context, id, graderID st
 	}
 	score := RoundScore(objective + subjective)
 	isPass := score >= totalScore*0.6
-	if err := s.st.ExamResults().Grade(ctx, id, graderID, &store.GradeExamResultParams{
+	if err := s.st.ExamResults().Grade(ctx, tenantID, id, graderID, &store.GradeExamResultParams{
 		Score:          score,
 		IsPass:         isPass,
 		GradingScores:  domain.JSONMap(scores),
@@ -258,9 +267,9 @@ func (s *EvaluationService) SubmitEvaluationResult(ctx context.Context, p *store
 }
 
 // GradeEvaluationResult 评分并同步考试分数（同一事务：评分与回写原子）。
-func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, id, graderID string, p *store.EvaluationResultGradeParams, taskID, methodKey, evaluateeID string) error {
+func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, tenantID, id, graderID string, p *store.EvaluationResultGradeParams, taskID, methodKey, evaluateeID string) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {
-		if err := txStore.EvaluationResults().Grade(ctx, txStore.Q(), id, graderID, p); err != nil {
+		if err := txStore.EvaluationResults().Grade(ctx, txStore.Q(), tenantID, id, graderID, p); err != nil {
 			return err
 		}
 		return s.syncExamResultScoreTx(ctx, txStore, id, taskID, methodKey, evaluateeID, p.Score)
@@ -268,7 +277,7 @@ func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, id, grade
 }
 
 // BatchGradeEvaluationResults 批量评分（事务）并同步考试分数。
-func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, graderID string, items []store.EvaluationResultGradeItem) error {
+func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, tenantID, graderID string, items []store.EvaluationResultGradeItem) error {
 	ids := make([]string, 0, len(items))
 	scoreByID := make(map[string]float64, len(items))
 	for _, item := range items {
@@ -277,7 +286,7 @@ func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, gra
 	}
 	var targets []store.EvaluationResultGradeTarget
 	err := s.WithTx(ctx, func(txStore *store.Store) error {
-		if err := txStore.EvaluationResults().BatchGrade(ctx, txStore.Q(), graderID, items); err != nil {
+		if err := txStore.EvaluationResults().BatchGrade(ctx, txStore.Q(), tenantID, graderID, items); err != nil {
 			return err
 		}
 		var err2 error

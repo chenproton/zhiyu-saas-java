@@ -174,7 +174,12 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	id := chi.URLParam(r, "id")
 	courseID, err := h.Service.BindTargetID(r.Context(), "course_resource_bindings", id)
 	if err != nil {
-		respondJSON(w, http.StatusOK, map[string]string{"id": id})
+		// 绑定不存在视为幂等成功；其余 DB 错误上抛（不静默吞错）
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
+			respondJSON(w, http.StatusOK, map[string]string{"id": id})
+			return
+		}
+		respondServerError(w, r, err, "解绑课程资源失败")
 		return
 	}
 	courseTenantID, err := h.Service.CourseTenantID(r.Context(), courseID)

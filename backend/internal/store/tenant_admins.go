@@ -111,11 +111,15 @@ func (s *TenantAdminStore) Update(ctx context.Context, tenantID, adminID, userna
 func (s *TenantAdminStore) Delete(ctx context.Context, tx Queryer, tenantID, adminID string) error {
 	if _, err := tx.Exec(ctx, `
 		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
-		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
-	`, adminID); err != nil {
+		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1
+			AND user_id IN (SELECT id FROM users WHERE id = $1 AND tenant_id = $2))
+	`, adminID, tenantID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, adminID); err != nil {
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM user_roles WHERE user_id = $1
+			AND user_id IN (SELECT id FROM users WHERE id = $1 AND tenant_id = $2)
+	`, adminID, tenantID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `

@@ -154,7 +154,7 @@ function HybridCourseAddForm() {
         course: parsed.course,
         teacher: parsed.teacher,
         className: parsed.className,
-        sessions: parsed.sessions || [],
+        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       }
     } catch (err) {
       reportError(err, '解析排课会话参数')

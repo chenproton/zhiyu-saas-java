@@ -61,7 +61,7 @@ import {
   TYPE_BG,
   fileTypesWithUpload,
 } from '@/lib/resource-type-constants'
-import { formatSize } from '@/lib/format-utils'
+import { formatSize, isSafeLinkUrl } from '@/lib/format-utils'
 import { useResourceCrud } from './use-resource-crud'
 import { ResourceUploadZone } from './resource-upload-zone'
 import { ResourceBatchImportDialog } from './resource-batch-import-dialog'
@@ -391,15 +391,19 @@ export function ResourcesPage({ resourceType }: { resourceType?: ResourceKind })
                       )}
                       <TableCell className="p-3 hidden md:table-cell">
                         {item.url ? (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
-                          >
-                            <ExternalLink className="size-3" />
-                            {t('访问')}
-                          </a>
+                          isSafeLinkUrl(item.url) ? (
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+                            >
+                              <ExternalLink className="size-3" />
+                              {t('访问')}
+                            </a>
+                          ) : (
+                            '-'
+                          )
                         ) : (
                           '-'
                         )}

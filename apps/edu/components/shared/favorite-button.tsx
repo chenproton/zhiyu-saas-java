@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
@@ -37,6 +37,7 @@ export function FavoriteButton({
   const [isFavorite, setIsFavorite] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const togglingRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -61,7 +62,9 @@ export function FavoriteButton({
       toast({ title: t('提示'), description: t('请先登录后再{label}', { label }) })
       return
     }
-    if (loading) return
+    // 用 ref 同步置位防同帧双击并发触发两次切换
+    if (togglingRef.current) return
+    togglingRef.current = true
     setLoading(true)
     try {
       const res = await favoriteApi.toggle(targetType, targetId)
@@ -74,6 +77,7 @@ export function FavoriteButton({
         description: t('操作失败，请稍后再试'),
       })
     } finally {
+      togglingRef.current = false
       setLoading(false)
     }
   }

@@ -150,12 +150,12 @@ func (s *EvaluationResultStore) Submit(ctx context.Context, p *EvaluationResultS
 	return s.Get(ctx, id)
 }
 
-// Grade 评分（pending→evaluated）。
-func (s *EvaluationResultStore) Grade(ctx context.Context, q Queryer, id, graderID string, p *EvaluationResultGradeParams) error {
+// Grade 评分（pending→evaluated；限定租户，纵深防御）。
+func (s *EvaluationResultStore) Grade(ctx context.Context, q Queryer, tenantID, id, graderID string, p *EvaluationResultGradeParams) error {
 	tag, err := q.Exec(ctx, `
 		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, subjective_content = $5, status = 'evaluated', graded_at = NOW(), graded_by = $6, updated_at = NOW()
-		WHERE id = $7 AND status = 'pending'
-	`, p.Score, p.Comment, p.EvalPointScores, p.DrawnQuestions, p.SubjectiveContent, graderID, id)
+		WHERE id = $7 AND tenant_id = $8 AND status = 'pending'
+	`, p.Score, p.Comment, p.EvalPointScores, p.DrawnQuestions, p.SubjectiveContent, graderID, id, tenantID)
 	if err != nil {
 		return err
 	}
@@ -165,13 +165,13 @@ func (s *EvaluationResultStore) Grade(ctx context.Context, q Queryer, id, grader
 	return nil
 }
 
-// BatchGrade 事务内批量评分。
-func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, graderID string, items []EvaluationResultGradeItem) error {
+// BatchGrade 事务内批量评分（限定租户，纵深防御）。
+func (s *EvaluationResultStore) BatchGrade(ctx context.Context, tx Queryer, tenantID, graderID string, items []EvaluationResultGradeItem) error {
 	for _, item := range items {
 		tag, err := tx.Exec(ctx, `
 			UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4, updated_at = NOW()
-			WHERE id = $5 AND status = 'pending'
-		`, item.Score, item.Comment, item.EvalPointScores, graderID, item.ID)
+			WHERE id = $5 AND tenant_id = $6 AND status = 'pending'
+		`, item.Score, item.Comment, item.EvalPointScores, graderID, item.ID, tenantID)
 		if err != nil {
 			return err
 		}

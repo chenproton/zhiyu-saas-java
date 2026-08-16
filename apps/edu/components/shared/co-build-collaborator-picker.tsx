@@ -40,6 +40,7 @@ export function CoBuildCollaboratorPicker({
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const loadedTenantRef = useRef<string | null>(null)
+  const loadSeqRef = useRef(0)
   const [prevTenantId, setPrevTenantId] = useState(schoolTenantId)
 
   // 切换合作学校时清空缓存（渲染期同步派生状态），确保重新拉取该租户的共建人候选
@@ -50,16 +51,19 @@ export function CoBuildCollaboratorPicker({
 
   const loadOptions = async () => {
     if (options !== null && loadedTenantRef.current === schoolTenantId) return
+    const seq = ++loadSeqRef.current
     setLoading(true)
     try {
       const res = await partnerCobuildSchoolApi.coBuilders(schoolTenantId)
+      if (seq !== loadSeqRef.current) return
       setOptions(res.items || [])
       loadedTenantRef.current = schoolTenantId
     } catch {
+      if (seq !== loadSeqRef.current) return
       setOptions([])
       loadedTenantRef.current = schoolTenantId
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) setLoading(false)
     }
   }
 

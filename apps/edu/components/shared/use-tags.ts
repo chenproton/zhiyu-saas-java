@@ -56,6 +56,11 @@ export function useTags() {
           cachedTags = res.items || []
           emitChange()
         })
+        .catch(() => {
+          // 失败落空态并通知订阅者（而非永久 loading），避免静默「暂无标签」；可经 reload 手动重试
+          cachedTags = []
+          emitChange()
+        })
         .finally(() => {
           inflight = null
         })

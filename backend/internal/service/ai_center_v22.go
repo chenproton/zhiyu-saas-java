@@ -29,9 +29,17 @@ func (svc *AICenterService) ListGeneralConversations(ctx context.Context, tenant
 
 // YIKnowChat 通用助手流式对话（无检索、无智能体提示词；会话持久化，agent_id 为空）。
 func (svc *AICenterService) YIKnowChat(ctx context.Context, tenantID, userID, conversationID, message string, emit ChatEmit) error {
+	// AI 配置预检：未配置在 SSE 开始前返回 412，且置于会话创建之前，避免未配置时留孤儿会话
+	cfg, err := svc.ai.GetConfig(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if !cfg.Configured {
+		return ErrAINotConfigured
+	}
+
 	// 会话：复用（校验归属与通用性）或新建
 	var cv *domain.AIConversation
-	var err error
 	if conversationID != "" {
 		cv, err = svc.s.Store().AICenter().GetConversation(ctx, tenantID, conversationID)
 		if err != nil {
@@ -45,15 +53,6 @@ func (svc *AICenterService) YIKnowChat(ctx context.Context, tenantID, userID, co
 		if err := svc.s.Store().AICenter().CreateConversation(ctx, cv); err != nil {
 			return err
 		}
-	}
-
-	// AI 配置预检：未配置在 SSE 开始前返回 412
-	cfg, err := svc.ai.GetConfig(ctx, tenantID)
-	if err != nil {
-		return err
-	}
-	if !cfg.Configured {
-		return ErrAINotConfigured
 	}
 
 	// 历史上下文（近 5 轮）

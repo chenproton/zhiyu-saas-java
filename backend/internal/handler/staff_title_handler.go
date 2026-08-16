@@ -186,7 +186,7 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.Store.UpdateStatus(r.Context(), id, req.Status); err != nil {
+	if err := h.Store.UpdateStatus(r.Context(), title.TenantID, id, req.Status); err != nil {
 		respondServerError(w, r, err, "更新状态失败")
 		return
 	}

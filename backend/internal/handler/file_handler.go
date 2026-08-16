@@ -435,9 +435,11 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	base := strings.TrimSuffix(filename, ext)
 
 	// CommandContext 绑定请求上下文：超时/取消时终止子进程，避免 504 后
-	// libreoffice 成为孤儿进程持续占用资源
+	// libreoffice 成为孤儿进程持续占用资源；再叠加绝对超时防恶意客户端长期占满预览并发
 	if format == "png" {
-		cmd := exec.CommandContext(r.Context(), "libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
+		convertCtx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(convertCtx, "libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
 		if _, err := cmd.CombinedOutput(); err != nil {
 			respondServerError(w, r, err, "文件转换失败")
 			return

@@ -192,9 +192,13 @@ func (s *PartnerCoBuildService) EditSourcePosition(ctx context.Context, partnerT
 	if err := s.requireActiveLink(ctx, ent.ID, src.TenantID); err != nil {
 		return nil, err
 	}
-	// 幂等：已有未完结编辑稿直接返回
-	if existing, err := s.st.Positions().FindDraftBySource(ctx, ent.ID, id); err == nil {
+	// 幂等：已有未完结编辑稿直接返回；仅「无草稿」继续复制，真实 DB 错误上抛
+	existing, findErr := s.st.Positions().FindDraftBySource(ctx, ent.ID, id)
+	if findErr == nil {
 		return existing, nil
+	}
+	if !errors.Is(findErr, pgx.ErrNoRows) && !errors.Is(findErr, store.ErrNotFound) {
+		return nil, findErr
 	}
 	var draftID string
 	err = s.st.WithTx(ctx, func(txStore *store.Store) error {
@@ -485,8 +489,12 @@ func (s *PartnerCoBuildService) EditSourceScenario(ctx context.Context, partnerT
 	if err := s.requireActiveLink(ctx, ent.ID, *src.TenantID); err != nil {
 		return nil, err
 	}
-	if existing, err := s.st.Scenarios().FindDraftBySource(ctx, ent.ID, id); err == nil {
+	existing, findErr := s.st.Scenarios().FindDraftBySource(ctx, ent.ID, id)
+	if findErr == nil {
 		return existing, nil
+	}
+	if !errors.Is(findErr, pgx.ErrNoRows) && !errors.Is(findErr, store.ErrNotFound) {
+		return nil, findErr
 	}
 	var draftID string
 	err = s.st.WithTx(ctx, func(txStore *store.Store) error {

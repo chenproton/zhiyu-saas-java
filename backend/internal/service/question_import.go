@@ -141,7 +141,7 @@ func (s *QuestionImportService) ImportQuestions(ctx context.Context, xlsx *excel
 					continue
 				}
 				knowledgeIDs := FindOrCreateKnowledgePoints(ctx, s.s.Store().Q(), tenantID, knowledgeNames)
-				err = store.UpdateQuestionImport(ctx, s.s.Store().Q(), qType, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, existingID)
+				err = store.UpdateQuestionImport(ctx, s.s.Store().Q(), tenantID, qType, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, existingID)
 				if err != nil {
 					execRes.Failed++
 					msg := fmt.Sprintf("第%d行题目更新失败: %v", i+1, err)

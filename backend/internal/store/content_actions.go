@@ -132,7 +132,13 @@ func (s *ContentActionStore) Transition(ctx context.Context, table, id string, t
 		return err
 	}
 
-	current, err := s.GetStatus(ctx, table, id)
+	// 同时读取当前状态与租户（租户条件用于 CAS 更新的纵深防御）
+	var current domain.ContentStatus
+	var tenantID string
+	err = s.q.QueryRow(ctx, `SELECT status, tenant_id FROM `+tbl+` WHERE id = $1`, id).Scan(&current, &tenantID)
+	if err == pgx.ErrNoRows {
+		return ErrNotFound
+	}
 	if err != nil {
 		return err
 	}
@@ -145,7 +151,7 @@ func (s *ContentActionStore) Transition(ctx context.Context, table, id string, t
 	}
 	return withTxStore(ctx, s.beginner, func(tx pgx.Tx) error {
 		// CAS 更新：仅当状态仍为读取时的值才流转，防止并发双发重复触发 hook（如发布时生成测评资源）
-		tag, err := tx.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, to, id, current)
+		tag, err := tx.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 AND status = $4`, to, id, tenantID, current)
 		if err != nil {
 			return fmt.Errorf("update status: %w", err)
 		}
@@ -215,7 +221,15 @@ func (s *ContentActionStore) Review(ctx context.Context, table, id string, statu
 	if status != domain.StatusApproved && status != domain.StatusRejected {
 		return fmt.Errorf("invalid review status: %s", status)
 	}
-	tag, err := s.q.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
+	// 读租户作纵深防御（调用方 handler 已 verifyTenantOwnership，SQL 层再限定）
+	var tenantID string
+	if err := s.q.QueryRow(ctx, `SELECT tenant_id FROM `+tbl+` WHERE id = $1`, id).Scan(&tenantID); err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
+	tag, err := s.q.Exec(ctx, `UPDATE `+tbl+` SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 AND status = $4`, status, id, tenantID, domain.StatusPending)
 	if err != nil {
 		return err
 	}

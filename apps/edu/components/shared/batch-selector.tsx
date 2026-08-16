@@ -38,11 +38,18 @@ export function BatchSelector({
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
+    let cancelled = false
     batchApi
       .list({ limit: 1000 })
-      .then((res) => setBatches(res.items))
+      .then((res) => {
+        if (!cancelled) setBatches(res.items)
+      })
       .catch((err) => reportError(err, { source: '加载批次列表' }))
-  }, [batchApi])
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="space-y-1.5">

@@ -13,13 +13,13 @@ import (
 // 返回 changed 表示题目集合（题目/内容/分值/排序）实际发生变化，供调用方决定是否
 // bump 临时考试版本并重写快照（文档 5.1 末条 temp exam 兜底）。
 func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, questionIDs []string, questionScores map[string]float64) (bool, error) {
-	before, err := examQuestionsChecksum(ctx, q, examID)
+	before, err := examQuestionsChecksum(ctx, q, tenantID, examID)
 	if err != nil {
 		return false, err
 	}
 	if _, err := q.Exec(ctx, `
-		DELETE FROM exam_questions WHERE exam_id = $1 AND NOT (question_id = ANY($2))
-	`, examID, questionIDs); err != nil {
+		DELETE FROM exam_questions WHERE exam_id = $1 AND tenant_id = $2 AND NOT (question_id = ANY($3))
+	`, examID, tenantID, questionIDs); err != nil {
 		return false, fmt.Errorf("prune exam questions: %w", err)
 	}
 
@@ -85,12 +85,12 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 	}
 
 	if _, err := q.Exec(ctx, `
-		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
-		WHERE id = $1
-	`, examID); err != nil {
+		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1 AND tenant_id = $2), 0), updated_at = NOW()
+		WHERE id = $1 AND tenant_id = $2
+	`, examID, tenantID); err != nil {
 		return false, fmt.Errorf("recalc exam total: %w", err)
 	}
-	after, err := examQuestionsChecksum(ctx, q, examID)
+	after, err := examQuestionsChecksum(ctx, q, tenantID, examID)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +99,7 @@ func SyncExamQuestions(ctx context.Context, q Queryer, tenantID, examID string, 
 
 // examQuestionsChecksum 考试题目集合摘要：题目 id/类型/内容/选项/答案/解析/分值按排序聚合取 md5，
 // 供 SyncExamQuestions 比对同步前后是否实际变化（ON CONFLICT 盲目重写不产生假变更）。
-func examQuestionsChecksum(ctx context.Context, q Queryer, examID string) (string, error) {
+func examQuestionsChecksum(ctx context.Context, q Queryer, tenantID, examID string) (string, error) {
 	var sum string
 	err := q.QueryRow(ctx, `
 		SELECT COALESCE(md5(string_agg(
@@ -107,7 +107,7 @@ func examQuestionsChecksum(ctx context.Context, q Queryer, examID string) (strin
 				md5(answer), md5(COALESCE(analysis, '')), score::text),
 			',' ORDER BY sort_order, id
 		)), '')
-		FROM exam_questions WHERE exam_id = $1
-	`, examID).Scan(&sum)
+		FROM exam_questions WHERE exam_id = $1 AND tenant_id = $2
+	`, examID, tenantID).Scan(&sum)
 	return sum, err
 }

@@ -41,6 +41,17 @@ export function isSafeExternalUrl(url?: string | null): boolean {
   }
 }
 
+/**
+ * 校验可安全渲染为 <a href> 的链接：站内相对路径（/ 开头）或 http/https 外链，
+ * 拒绝 javascript:/data: 等危险协议（存储型 XSS 防线）。
+ */
+export function isSafeLinkUrl(url?: string | null): boolean {
+  if (!url) return false
+  const trimmed = url.trim()
+  if (trimmed.startsWith('/')) return true
+  return isSafeExternalUrl(trimmed)
+}
+
 /** 格式化为 YYYY-MM-DD（本地时区）。 */
 export function formatYMD(d: Date): string {
   const y = d.getFullYear()

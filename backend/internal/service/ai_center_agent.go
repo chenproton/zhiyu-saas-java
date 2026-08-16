@@ -232,6 +232,16 @@ func (svc *AICenterService) AgentChat(ctx context.Context, tenantID, agentID, us
 		return store.ErrNotFound // 不可见即不存在
 	}
 
+	// AI 配置预检：未配置在 SSE 开始前返回 412（spec §5.5），且置于会话创建之前，
+	// 避免未配置租户每次对话尝试都留下孤儿会话行
+	cfg, err := svc.ai.GetConfig(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if !cfg.Configured {
+		return ErrAINotConfigured
+	}
+
 	// 会话：复用（校验归属）或新建
 	var cv *domain.AIConversation
 	if conversationID != "" {
@@ -247,15 +257,6 @@ func (svc *AICenterService) AgentChat(ctx context.Context, tenantID, agentID, us
 		if err := svc.s.Store().AICenter().CreateConversation(ctx, cv); err != nil {
 			return err
 		}
-	}
-
-	// AI 配置预检：未配置在 SSE 开始前返回 412（spec §5.5）
-	cfg, err := svc.ai.GetConfig(ctx, tenantID)
-	if err != nil {
-		return err
-	}
-	if !cfg.Configured {
-		return ErrAINotConfigured
 	}
 
 	// 召回（安全锚点：SQL 层按请求者可见性过滤）

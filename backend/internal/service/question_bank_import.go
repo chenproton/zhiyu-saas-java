@@ -89,7 +89,7 @@ func (s *QuestionBankImportService) ImportBanks(ctx context.Context, xlsx *excel
 					execRes.PermissionSkipped++
 					continue
 				}
-				err = store.UpdateQuestionBankImport(ctx, s.s.Store().Q(), name, description, batchID, existingID)
+				err = store.UpdateQuestionBankImport(ctx, s.s.Store().Q(), tenantID, name, description, batchID, existingID)
 				if err != nil {
 					execRes.Failed++
 					msg := fmt.Sprintf("题库[%s]更新失败: %v", name, err)

@@ -35,11 +35,11 @@ func FindQuestionBankByTenantName(ctx context.Context, q Queryer, tenantID, name
 	return
 }
 
-// UpdateQuestionBankImport 覆盖导入：更新题库名称/描述/批次。
-func UpdateQuestionBankImport(ctx context.Context, q Queryer, name string, description, batchID *string, id string) error {
+// UpdateQuestionBankImport 覆盖导入：更新题库名称/描述/批次（限定租户，纵深防御）。
+func UpdateQuestionBankImport(ctx context.Context, q Queryer, tenantID, name string, description, batchID *string, id string) error {
 	_, err := q.Exec(ctx, `
-		UPDATE question_banks SET name=$1, description=$2, batch_id=$3 WHERE id=$4
-	`, name, description, batchID, id)
+		UPDATE question_banks SET name=$1, description=$2, batch_id=$3 WHERE id=$4 AND tenant_id=$5
+	`, name, description, batchID, id, tenantID)
 	return err
 }
 
@@ -84,12 +84,12 @@ func FindQuestionByTenantBankContent(ctx context.Context, q Queryer, tenantID, b
 	return
 }
 
-// UpdateQuestionImport 覆盖导入：更新题目类型/选项/答案/解析/分值/难度/知识点（不更新题干）。
-func UpdateQuestionImport(ctx context.Context, q Queryer, qType, options, answer string, analysis *string, score float64, difficulty *string, knowledgePointIDs []string, id string) error {
+// UpdateQuestionImport 覆盖导入：更新题目类型/选项/答案/解析/分值/难度/知识点（不更新题干；限定租户，纵深防御）。
+func UpdateQuestionImport(ctx context.Context, q Queryer, tenantID, qType, options, answer string, analysis *string, score float64, difficulty *string, knowledgePointIDs []string, id string) error {
 	_, err := q.Exec(ctx, `
 		UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
-		WHERE id=$8
-	`, qType, options, answer, analysis, score, difficulty, knowledgePointIDs, id)
+		WHERE id=$8 AND tenant_id=$9
+	`, qType, options, answer, analysis, score, difficulty, knowledgePointIDs, id, tenantID)
 	return err
 }
 

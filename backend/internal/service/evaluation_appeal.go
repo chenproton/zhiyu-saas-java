@@ -22,6 +22,6 @@ func (s *EvaluationService) CreateAppeal(ctx context.Context, tenantID, userID, 
 }
 
 // ProcessAppeal 处理申诉。
-func (s *EvaluationService) ProcessAppeal(ctx context.Context, id, status string) (*domain.AppealRecord, error) {
-	return s.st.Appeals().Process(ctx, id, status)
+func (s *EvaluationService) ProcessAppeal(ctx context.Context, tenantID, id, status string) (*domain.AppealRecord, error) {
+	return s.st.Appeals().Process(ctx, tenantID, id, status)
 }

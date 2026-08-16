@@ -117,8 +117,8 @@ export default function AllianceEmploymentJobDetailPage() {
     }
   }
 
-  if (loading || data === undefined) return <LoadingView />
-  if (error) return <ErrorState description={error.message} onRetry={refresh} />
+  if (loading) return <LoadingView />
+  if (error || data === undefined) return <ErrorState description={error?.message} onRetry={refresh} />
 
   const { job, applied } = data
 

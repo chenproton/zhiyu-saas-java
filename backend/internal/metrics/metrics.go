@@ -71,7 +71,8 @@ func Middleware(next http.Handler) http.Handler {
 		start := time.Now()
 		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rw, r)
-		route := r.URL.Path
+		// 未匹配路由（404/OPTIONS 等）用固定标签，避免以完整 URL 路径为标签导致基数爆炸
+		route := "unmatched"
 		if rctx := chi.RouteContext(r.Context()); rctx != nil && rctx.RoutePattern() != "" {
 			route = rctx.RoutePattern()
 		}

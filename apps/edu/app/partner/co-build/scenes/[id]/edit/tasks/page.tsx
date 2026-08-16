@@ -1281,7 +1281,7 @@ export default function PartnerTasksEditPage() {
               <Label>{t('难度')}</Label>
               <div className="flex gap-1 mt-1.5">
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} onClick={() => setNewTask({ ...newTask, difficulty: n })}>
+                  <button key={n} type="button" onClick={() => setNewTask({ ...newTask, difficulty: n })}>
                     <Star
                       className={cn(
                         'h-6 w-6',

@@ -140,7 +140,7 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "申诉不存在")
 		return
 	}
-	appeal, err := h.Service.ProcessAppeal(r.Context(), id, req.Status)
+	appeal, err := h.Service.ProcessAppeal(r.Context(), tenantID, id, req.Status)
 	if err != nil {
 		respondServerError(w, r, err, "处理申诉失败")
 		return

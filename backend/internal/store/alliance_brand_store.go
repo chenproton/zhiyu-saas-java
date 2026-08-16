@@ -227,7 +227,7 @@ const publicBrandFrom = `alliance_brands b
 	LEFT JOIN organizations org ON org.id = u.org_node_id
 	LEFT JOIN alliance_experts ae ON
 		(b.teacher_id IS NOT NULL AND ae.user_id = b.teacher_id AND ae.tenant_id = b.tenant_id AND ae.enterprise_id IS NULL)
-		OR (b.expert_id IS NOT NULL AND ae.id = b.expert_id)`
+		OR (b.expert_id IS NOT NULL AND ae.id = b.expert_id AND ae.tenant_id = b.tenant_id)`
 
 // ScanPublicBrandRows 扫描前台品牌行（含关联对象资料）。
 func (s *AllianceStore) ScanPublicBrandRows(rows pgx.Rows) ([]domain.PublicBrandItem, error) {

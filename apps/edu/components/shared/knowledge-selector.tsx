@@ -109,6 +109,9 @@ export function KnowledgeSelector({
   const searchSeqRef = useRef(0)
   // 场景/岗位筛选请求序号：快速连续切换时丢弃过期响应
   const filterSeqRef = useRef(0)
+  // dataSource 常为调用方内联对象，用 ref 稳定引用，避免 effect 因对象身份变化整页重复拉取
+  const dataSourceRef = useRef(dataSource)
+  dataSourceRef.current = dataSource
   const [kpDetailOpen, setKpDetailOpen] = useState(false)
   const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
 
@@ -145,9 +148,9 @@ export function KnowledgeSelector({
   const t = useT()
 
   useEffect(() => {
-    if (dataSource?.loadGranularCourses) {
-      dataSource
-        .loadGranularCourses()
+    const ds = dataSourceRef.current
+    if (ds?.loadGranularCourses) {
+      ds.loadGranularCourses()
         .then(setGranularCourses)
         .catch(() => setGranularCourses([]))
       return
@@ -158,17 +161,16 @@ export function KnowledgeSelector({
         setGranularCourses(res.items || [])
       })
       .catch(() => setGranularCourses([]))
-  }, [dataSource])
+  }, [])
 
   // 岗位/场景下拉数据（真实数据，分页拉全量）
   useEffect(() => {
-    if (dataSource?.loadPositions && dataSource?.loadScenarios) {
-      dataSource
-        .loadPositions()
+    const ds = dataSourceRef.current
+    if (ds?.loadPositions && ds?.loadScenarios) {
+      ds.loadPositions()
         .then(setPositions)
         .catch(() => setPositions([]))
-      dataSource
-        .loadScenarios()
+      ds.loadScenarios()
         .then(setScenarios)
         .catch(() => setScenarios([]))
       return
@@ -179,7 +181,7 @@ export function KnowledgeSelector({
     fetchAllPages(({ limit, offset }) => scenarioApi.list({ limit, offset }))
       .then(setScenarios)
       .catch(() => setScenarios([]))
-  }, [dataSource])
+  }, [])
 
   // 筛选命中集合非空时，懒加载全量知识点（超出 pool 200 条的部分也能筛出来）
   useEffect(() => {

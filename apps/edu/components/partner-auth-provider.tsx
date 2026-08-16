@@ -64,7 +64,9 @@ export function PartnerAuthProvider({ children }: { children: React.ReactNode })
       setState({ me: data, loading: false, error: undefined })
     } catch (err) {
       if (seq !== meSeqRef.current) return
-      removeToken('partner')
+      // 仅 401/403 清 token（会话失效）；网络/服务端瞬时错误保留 token，避免误踢已登录用户
+      const status = (err as { status?: number })?.status
+      if (status === 401 || status === 403) removeToken('partner')
       setState({
         loading: false,
         error: err instanceof Error ? err.message : t('获取用户信息失败'),

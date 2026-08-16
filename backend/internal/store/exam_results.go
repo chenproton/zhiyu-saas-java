@@ -84,15 +84,15 @@ func (s *ExamResultStore) ResultSubmitted(ctx context.Context, usageID, userID s
 	return exists, err
 }
 
-// Grade 教师评分：更新总分/及格/评分状态与逐题分数。
-func (s *ExamResultStore) Grade(ctx context.Context, id, graderID string, p *GradeExamResultParams) error {
+// Grade 教师评分：更新总分/及格/评分状态与逐题分数（限定租户，纵深防御）。
+func (s *ExamResultStore) Grade(ctx context.Context, tenantID, id, graderID string, p *GradeExamResultParams) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE exam_results SET
 			score = $2, is_pass = $3, grading_status = 'evaluated',
 			grading_scores = $4, grading_comment = $5, grader_id = $6, graded_at = NOW(),
 			updated_at = NOW()
-		WHERE id = $1
-	`, id, p.Score, p.IsPass, p.GradingScores, p.GradingComment, graderID)
+		WHERE id = $1 AND tenant_id = $7
+	`, id, p.Score, p.IsPass, p.GradingScores, p.GradingComment, graderID, tenantID)
 	return err
 }
 

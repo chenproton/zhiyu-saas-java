@@ -43,7 +43,10 @@ export function getCachedBrandColor(tenantId?: string): string {
 export async function fetchThemeColor(tenantId?: string): Promise<string> {
   try {
     const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ''
-    const res = await fetch(`${API_BASE}/settings/theme${query}`, { cache: 'no-store' })
+    const res = await fetch(`${API_BASE}/settings/theme${query}`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    })
     if (!res.ok) return getCachedBrandColor(tenantId)
     const data = (await res.json()) as { primary?: string }
     return data.primary && isHexColor(data.primary) ? data.primary : DEFAULT_BRAND_COLOR

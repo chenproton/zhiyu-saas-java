@@ -833,7 +833,7 @@ export default function SceneDetailPage() {
                       />
                     )}
                     <span className="absolute bottom-3 right-3 z-10 bg-[#0f172a]/40 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-[11px] border border-white/20">
-                      {scenario.id.slice(0, 8)}
+                      {scenario.code || ''}
                     </span>
                   </div>
 
@@ -852,7 +852,7 @@ export default function SceneDetailPage() {
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       <span className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5" />{' '}
-                        {t('创建人：{id}', { id: (scenario.creatorId || '').slice(0, 8) })}
+                        {t('创建人：{id}', { id: scenario.creatorName || '-' })}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" /> {t('更新于 {date}', { date: formatDate(scenario.updatedAt) })}

@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { TableHead, TableCell, TableRow } from '@/components/ui/table'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { certificateLibraryApi, fileApi } from '@/lib/api'
-import { formatDate } from '@/lib/format-utils'
+import { formatDate, isSafeLinkUrl } from '@/lib/format-utils'
 import type { CertificateLibraryItem } from '@/lib/types/job'
 import { useToast, FormDialogFooter } from '@zhiyu/ui'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -224,15 +224,19 @@ export default function CertificatesPage() {
           </TableCell>
           <TableCell className="p-3 hidden md:table-cell">
             {item.url ? (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
-              >
-                <ExternalLink className="size-3" />
-                {t('访问')}
-              </a>
+              isSafeLinkUrl(item.url) ? (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+                >
+                  <ExternalLink className="size-3" />
+                  {t('访问')}
+                </a>
+              ) : (
+                '-'
+              )
             ) : (
               '-'
             )}

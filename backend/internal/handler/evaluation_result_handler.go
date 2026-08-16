@@ -96,7 +96,8 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
-	if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
+	if res.TenantID == nil || claims.TenantID == nil || *res.TenantID != *claims.TenantID {
+		// 租户缺失行（基线表该列可空）一律视为不可见，防止跨租户读取/评分
 		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
@@ -213,11 +214,12 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		respondServerError(w, r, err, "查询失败")
 		return
 	}
-	if res.TenantID != nil && (claims.TenantID == nil || *res.TenantID != *claims.TenantID) {
+	if res.TenantID == nil || claims.TenantID == nil || *res.TenantID != *claims.TenantID {
+		// 租户缺失行（基线表该列可空）一律视为不可见，防止跨租户读取/评分
 		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
-	err = h.Service.GradeEvaluationResult(r.Context(), id, claims.UserID, &store.EvaluationResultGradeParams{
+	err = h.Service.GradeEvaluationResult(r.Context(), *res.TenantID, id, claims.UserID, &store.EvaluationResultGradeParams{
 		Score:             req.Score,
 		Comment:           req.Comment,
 		EvalPointScores:   jsonRawMessageToJSONMap(req.EvalPointScores),
@@ -297,7 +299,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 		})
 	}
 
-	err = h.Service.BatchGradeEvaluationResults(r.Context(), claims.UserID, items)
+	err = h.Service.BatchGradeEvaluationResults(r.Context(), *claims.TenantID, claims.UserID, items)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusConflict, "存在已评分或不存在的结果，请刷新后重试")

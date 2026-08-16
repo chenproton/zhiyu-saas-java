@@ -241,7 +241,7 @@ func TestEvaluationResultSubmit_VersionStamp(t *testing.T) {
 	}
 
 	// 教师评分后重交：拒绝，version 不动
-	if err := st.Grade(ctx, pool, res.ID, userID, &EvaluationResultGradeParams{Score: 90}); err != nil {
+	if err := st.Grade(ctx, pool, tenantID, res.ID, userID, &EvaluationResultGradeParams{Score: 90}); err != nil {
 		t.Fatalf("Grade: %v", err)
 	}
 	if _, err := st.Submit(ctx, newParams("", nil)); err != ErrAlreadyGraded {

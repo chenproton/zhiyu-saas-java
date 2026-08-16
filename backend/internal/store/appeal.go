@@ -74,14 +74,14 @@ func (s *AppealStore) Create(ctx context.Context, tenantID, userID, appealType, 
 	return s.Get(ctx, id)
 }
 
-// Process 处理申诉（status: approved/rejected）。
-func (s *AppealStore) Process(ctx context.Context, id, status string) (*domain.AppealRecord, error) {
+// Process 处理申诉（status: approved/rejected；限定租户，纵深防御）。
+func (s *AppealStore) Process(ctx context.Context, tenantID, id, status string) (*domain.AppealRecord, error) {
 	if _, err := s.Get(ctx, id); err != nil {
 		return nil, err
 	}
 	if _, err := s.q.Exec(ctx, `
-		UPDATE appeal_records SET status = $1 WHERE id = $2
-	`, status, id); err != nil {
+		UPDATE appeal_records SET status = $1 WHERE id = $2 AND tenant_id = $3
+	`, status, id, tenantID); err != nil {
 		return nil, err
 	}
 	return s.Get(ctx, id)

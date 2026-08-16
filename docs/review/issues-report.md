@@ -232,3 +232,90 @@
 
 - `pnpm --filter @zhiyu/edu typecheck` ✅ 通过
 - `./scripts/spec-check.sh` ✅ 硬约束全通过（flow YAML 可解析）
+
+---
+
+## 9. 第二轮全量复查（2026-08-16 第二轮）
+
+> 24 子代理重新逐文件全量读（覆盖 0 缺失），重点：上一轮修复回归验证 + 补漏 + 遗留项复查。
+
+### 9.1 回归验证结论
+
+上一轮修复（d70f8726 + ef6d00a1）全部核实正确，**发现并修复 1 处回归**：`job/[id]` 的 404 友好提示因渲染判断 `loading || data === undefined` 在前而永远不生效（页面转圈），已调换判断顺序。
+
+### 9.2 本轮修复（21 项）
+
+| 类别 | 问题 | 文件 |
+|---|---|---|
+| 跨租户 | 考试安排 Create 未校验 examId 归属（可建引用他租户试卷，判分回退读他租户答案） | `exam_usage_handler.go` |
+| 跨租户 | 考试结果/评价结果 Grade 空租户（tenant_id NULL）跳过校验 → 跨租户改分 | `exam_result_handler.go`、`evaluation_result_handler.go` |
+| 跨租户 | 题目/题库覆盖导入 UPDATE 缺租户（红线） | `question_import_export.go`（+service 2 调用方） |
+| 跨租户 | 品牌专家 expert_id JOIN 分支缺 tenant（门户联出他租户专家 PII） | `alliance_brand_store.go` |
+| 跨租户 | 管理员/用户 Delete 先改共享角色计数表再删（跨租户计数漂移） | `tenant_admins.go`、`users.go` |
+| 跨租户 | 创建节点测验未校验 nodeId 租户 | `node_quiz_handler.go` |
+| 稳定性 | Prometheus 未匹配路由以完整 URL 为标签（基数爆炸，匿名可打爆） | `metrics.go` |
+| 稳定性 | LibreOffice 预览转换无绝对超时（恶意客户端占满并发） | `file_handler.go` |
+| 正确性 | 考试提交窗口时间戳解析失败 fail-open（绕过窗口门禁） | `evaluation_result.go` |
+| 正确性 | 独立岗位（project_id NULL）永远无法投递（INNER JOIN 项目表） | `alliance_employment_store.go` |
+| 正确性 | 解绑课程资源把任意 DB 错误当幂等成功吞掉 | `course_resource_handler.go` |
+| 正确性 | AI 412 预检在会话创建之后（未配置租户留孤儿会话） | `ai_center_agent.go`、`ai_center_v22.go` |
+| 前端 XSS | 证书/资源链接 href 未校验 scheme（javascript: 存储型 XSS） | `library/certificates`、`resources-page`（+`isSafeLinkUrl` 工具） |
+| 前端 bug | 添加任务难度星级按钮缺 type="button"（点击触发整表提交） | `partner/.../tasks/page.tsx` |
+| 前端 bug | 混合课 claimSessions 参数未校验数组（畸形参数白屏） | `lesson/admin/hybrid/add/page.tsx` |
+| 信息泄露 | 场景落地页公开显示创建人/场景内部 UUID 片段 | `scene/landing/[id]/page.tsx` |
+| 稳定性 | fetchThemeColor 无超时（根布局每页触发） | `lib/theme-brand.ts` |
+| spec | ai-service-center「统一收藏列表」既列「暂不做」又「已实现」（内部矛盾） | `docs/spec/ai-service-center.md`（2 处） |
+
+### 9.3 本轮仍遗留（记录，不修）
+
+- **约 30 处租户纵深防御缺口**（positions 级联删除、dict_store 基类、organizations、approval ReviewStep、exam_results/exam_questions 改分、scenarios/resource_library/resource_bindings 等写操作 SQL 缺租户条件）：handler 均 `verifyTenantOwnership`/`CheckOwnership` 兜底，无真实越权路径，属 ADR-0003「可选限定」。
+- **前端大量 limit 截断/竞态/全量拉取**：`fetchAllPages` 全表拉取、`limit:1000` 被后端钳 200、竞态无 seq 守卫、防抖缺失等约 40 处——非核心路径/UX 抖动，后端为真实边界。
+- **api-client SSE 解析器健壮性**（只认 `\n\n`、传输错误不转 onError、无超时、绕过 401 处理）：改动牵涉核心流式对话，需专项排期。
+- **menu-permissions 缺 menus 放行系统路径**：后端 `HasSystemPermission` 403 兜底，前端多渲染 UI，属权限模型对齐，需确认角色字段后单独排期。
+- **tool**：`adr0003-key-writes.txt` 名单未覆盖全部关键写（状态写/改分），扩充名单需先修存量缺口（本轮已修 question_import_export 等部分，其余见上「纵深防御缺口」）。
+
+- `cd backend && go build ./... && go vet ./...` ✅ 通过
+- `pnpm --filter @zhiyu/edu typecheck` ✅ 通过
+- `./scripts/spec-check.sh` ✅ 硬约束全通过
+
+---
+
+## 10. 第三轮「全部修复」（2026-08-16）
+
+> 按用户要求修复遗留的高价值项：AGENTS.md 3.3 关键写租户条件 + 后端明确 bug + 前端明确项 + 工具名单扩充。
+
+### 10.1 关键写租户条件（AGENTS.md 3.3 硬要求，共 6 组）
+
+| store 函数 | 类型 | 修复 |
+|---|---|---|
+| `content_actions.go` Transition/Review | 内容状态机流转/审核（状态写） | 内部读 tenant_id，CAS UPDATE 补 `AND tenant_id` |
+| `exam_results.go` Grade | 考试结果改分 | 签名加 tenantID，WHERE 补租户（service/handler 透传） |
+| `evaluation_results.go` Grade/BatchGrade | 评价结果改分 | 签名加 tenantID，WHERE 补租户 |
+| `appeal.go` Process | 申诉处理（状态写） | 签名加 tenantID，WHERE 补租户 |
+| `exam_questions.go` SyncExamQuestions | 题目增删改分 | DELETE/总分重算/checksum 补租户 |
+| `staff_titles.go` UpdateStatus | 职称启停（状态写） | 签名加 tenantID，WHERE 补租户 |
+
+### 10.2 后端明确 bug
+
+- `auth_handler.go` SelectTenant：签发会话前复核租户 status + 有效期（关闭 1 分钟预授权窗口的登录门禁绕过）。
+- `scenario_clone.go` remapTaskDependencyIDs：区分 ErrNoRows 与真实 DB 错误，不再静默吞错。
+- `partner_cobuild.go` EditSourcePosition/Scenario：区分「无草稿」与真实 DB 错误，瞬态错误不再重复建草稿。
+
+### 10.3 前端明确项
+
+- `partner-auth-provider`：仅 401/403 清 token（瞬时错误不再误踢已登录用户）。
+- `student-portraits`：catch 取消判断写反修正（错误态可正常显示）。
+- `archive-list-page`：批量/单项操作补 try/catch + toast + busy 锁。
+- `co-build-collaborator-picker`：加 loadSeqRef 防租户切换竞态。
+- `use-tags`：加载失败落空态并通知订阅者（避免静默「暂无标签」）。
+- `knowledge-selector`：dataSource 用 ref 稳定引用，effect 不再因对象身份重复拉取。
+- `batch-selector`：加 cancelled 清理。
+- `favorite-button`：用 ref 锁防同帧双击并发切换。
+
+### 10.4 工具改进
+
+- `scripts/spec-check-data/adr0003-key-writes.txt`：补录 6 组关键写（状态写/改分），spec-check 第 6 项现在能拦住未来新增的关键写缺租户。
+
+- `cd backend && go build ./... && go vet ./... && go test ./internal/{store,service,handler,middleware,router} ./cmd/migrate` ✅ 通过
+- `pnpm --filter @zhiyu/edu typecheck` ✅ 通过
+- `./scripts/spec-check.sh` ✅ 硬约束全通过（含扩充后的 ADR-0003 名单）

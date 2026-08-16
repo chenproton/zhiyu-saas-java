@@ -83,6 +83,15 @@ func (h *ExamUsageHandler) crud() crudConfig[ExamUsageRequest, domain.ExamUsage]
 			return ""
 		},
 		CreateFn: func(ctx context.Context, t *ExamUsageRequest, tenantID, userID string) (string, error) {
+			// 校验试卷归属当前租户：防止建出引用他租户试卷的考试安排，
+			// 否则判分快照缺失回退时经 exam_id 读取他租户题目答案（跨租户读链）
+			examTenantID, err := h.Service.ExamTenantID(ctx, t.ExamID)
+			if err != nil {
+				return "", store.ErrNotFound
+			}
+			if examTenantID != tenantID {
+				return "", store.ErrNotFound
+			}
 			// 初始状态按启用条件：随时作答 → 已发布；定时/手动启停 → 草稿
 			status := "draft"
 			if t.ActivationMode == "always" {

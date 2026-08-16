@@ -412,11 +412,11 @@ func (s *AllianceStore) CreateEmploymentApplication(ctx context.Context, jobID s
 		SELECT $1, j.tenant_id, j.id, j.enterprise_id, u.id,
 			u.name, u.student_no, m.name, o.name, u.phone, u.email, $4, 'pending', NOW(), NOW()
 		FROM alliance_employment_jobs j
-		JOIN alliance_employment_projects p ON p.id = j.project_id AND p.publish_status = 'published'
+		LEFT JOIN alliance_employment_projects p ON p.id = j.project_id
 		JOIN users u ON u.id = $3 AND u.tenant_id = j.tenant_id
 		LEFT JOIN majors m ON m.id = u.major_id
 		LEFT JOIN organizations o ON o.id = u.org_node_id
-		WHERE j.id = $2 AND j.status = 'published'%s
+		WHERE j.id = $2 AND j.status = 'published' AND (j.project_id IS NULL OR p.publish_status = 'published')%s
 		RETURNING id
 	`, visibility), args...).Scan(&inserted)
 	if err == pgx.ErrNoRows {

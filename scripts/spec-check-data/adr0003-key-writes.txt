@@ -8,3 +8,12 @@ exams.go AddQuestion FetchQuestion RemoveQuestion UpdateQuestionScore BulkUpdate
 # 导入覆盖场景的密码/状态写（UpdateImportUser/UpdateImportTeacher 为包级函数，
 # 覆盖更新 users 的 password_hash/status，SQL 已带 tenant_id 条件）
 resource_import_export.go UpdateImportUser UpdateImportTeacher
+# 状态写/改分（2026-08 第二轮复查补录）：
+# 内容状态机流转/审核、考试/评价结果改分、申诉处理、题目同步、职称启停
+content_actions.go Transition Review
+exam_results.go Grade
+evaluation_results.go Grade BatchGrade
+appeal.go Process
+exam_questions.go SyncExamQuestions
+staff_titles.go UpdateStatus
+

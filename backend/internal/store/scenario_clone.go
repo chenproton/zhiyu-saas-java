@@ -438,7 +438,13 @@ func (s *ScenarioCloneStore) cloneSimpleBindings(ctx context.Context, tx Queryer
 func (s *ScenarioCloneStore) remapTaskDependencyIDs(ctx context.Context, tx Queryer, taskID string, idMap map[string]string) error {
 	var oldDeps []string
 	err := tx.QueryRow(ctx, `SELECT dependency_ids FROM scenario_tasks WHERE id = $1`, taskID).Scan(&oldDeps)
-	if err != nil || len(oldDeps) == 0 {
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil // 任务不存在视为无需重映射
+		}
+		return err // 真实 DB 错误上抛，不静默吞掉（克隆核心路径）
+	}
+	if len(oldDeps) == 0 {
 		return nil
 	}
 	newDeps := make([]string, 0, len(oldDeps))

@@ -94,7 +94,7 @@ export default function StudentPortraitsPage() {
         if (cancelled) return
         setUsers(all)
       } catch (err) {
-        if (!cancelled) return
+        if (cancelled) return
         setError(err instanceof Error ? err.message : t('加载失败'))
       } finally {
         if (!cancelled) setLoading(false)

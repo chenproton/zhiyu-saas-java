@@ -168,10 +168,15 @@ func (h *ExamResultHandler) Grade(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "考试结果不存在")
 		return
 	}
-	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
+	if existing.TenantID == nil {
+		// 租户缺失行（基线表该列可空）一律视为不可见，防止跨租户改分
+		respondError(w, http.StatusNotFound, "考试结果不存在")
 		return
 	}
-	result, err := h.Service.GradeExamResult(r.Context(), id, claims.UserID, req.Scores, req.Comment)
+	if !verifyTenantOwnership(w, r, *existing.TenantID) {
+		return
+	}
+	result, err := h.Service.GradeExamResult(r.Context(), *existing.TenantID, id, claims.UserID, req.Scores, req.Comment)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
 			respondError(w, http.StatusNotFound, "考试结果不存在")

@@ -76,6 +76,11 @@ func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// 校验节点归属当前租户，防止创建引用他租户节点的测验
+	if _, err := h.Service.Store().CourseNodes().Get(r.Context(), req.NodeID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "课程节点不存在")
+		return
+	}
 
 	quiz, err := h.Service.CreateQuiz(r.Context(), tenantID, &store.NodeQuizParams{
 		NodeID:    req.NodeID,

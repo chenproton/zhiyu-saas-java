@@ -27,6 +27,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useToast } from '@zhiyu/ui'
 
 export interface ArchiveColumn<T> {
   header: string
@@ -87,9 +88,11 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
   emptyMessage = `暂无归档${entityLabel}`,
 }: ArchiveListPageProps<T>) {
   const t = useT()
+  const { toast } = useToast()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   const hasBatchOps = !!(onBatchRestore || onBatchDelete)
 
@@ -107,19 +110,41 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
   const someSelected = items.some((p) => selectedIds.includes(p.id)) && !allSelected
 
   const handleBatchRestore = async () => {
-    if (!onBatchRestore || selectedIds.length === 0) return
-    await onBatchRestore(selectedIds)
-    setSelectedIds([])
+    if (!onBatchRestore || selectedIds.length === 0 || busy) return
+    setBusy(true)
+    try {
+      await onBatchRestore(selectedIds)
+      setSelectedIds([])
+    } catch (err) {
+      toast({ title: t('批量恢复失败'), description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const handleBatchDelete = async () => {
-    if (!onBatchDelete || selectedIds.length === 0) return
-    await onBatchDelete(selectedIds)
-    setSelectedIds([])
+    if (!onBatchDelete || selectedIds.length === 0 || busy) return
+    setBusy(true)
+    try {
+      await onBatchDelete(selectedIds)
+      setSelectedIds([])
+    } catch (err) {
+      toast({ title: t('批量删除失败'), description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const handleRestore = async (item: T) => {
-    await onRestore(item)
+    if (busy) return
+    setBusy(true)
+    try {
+      await onRestore(item)
+    } catch (err) {
+      toast({ title: t('恢复失败'), description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const handleDelete = async (item: T) => {
@@ -128,10 +153,17 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
   }
 
   const confirmDelete = async () => {
-    if (!deleteTarget || !onDelete) return
-    await onDelete(deleteTarget)
-    setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id))
-    setDeleteTarget(null)
+    if (!deleteTarget || !onDelete || busy) return
+    setBusy(true)
+    try {
+      await onDelete(deleteTarget)
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id))
+      setDeleteTarget(null)
+    } catch (err) {
+      toast({ title: t('删除失败'), description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   // 表格实际列数 =（批量操作时 1 个勾选列）+ columns + 状态列 + 操作列

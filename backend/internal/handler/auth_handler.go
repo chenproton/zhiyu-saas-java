@@ -385,6 +385,20 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "账号已停用")
 		return
 	}
+	// 复核选中租户状态与有效期（与登录门禁一致，防止 1 分钟预授权窗口内租户被停用/过期仍换会话）
+	tenant := h.fetchTenantByID(r.Context(), req.TenantID)
+	if tenant == nil {
+		respondError(w, http.StatusUnauthorized, "租户不存在")
+		return
+	}
+	if tenant.Status != "" && string(tenant.Status) != string(domain.TenantStatusActive) {
+		respondError(w, http.StatusUnauthorized, "租户已停用")
+		return
+	}
+	if !isTenantWithinValidity(*tenant) {
+		respondError(w, http.StatusForbidden, "租户不在有效期内，请联系管理员")
+		return
+	}
 	h.issueTokenForUser(w, r, &user)
 }
 
