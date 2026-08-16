@@ -144,11 +144,9 @@ func (svc *AICenterService) GetKB(ctx context.Context, tenantID, kbID, userID st
 		return nil, err
 	}
 	kb.MyRole = role
-	// 浏览量（v2.2 B5）：仅广场普通浏览者（member）计数，owner/协作者编辑不算
-	if role == "member" {
-		svc.s.Store().AICenter().IncrementKBView(ctx, tenantID, kbID)
-		kb.ViewCount++
-	}
+	// 浏览量（v2.2.1 统一）：浏览详情即 +1（全局 view_counters 机制，不排 owner，与岗位/场景口径一致）
+	svc.s.Store().AICenter().IncrementKBView(ctx, tenantID, kbID)
+	kb.ViewCount++
 	return kb, nil
 }
 

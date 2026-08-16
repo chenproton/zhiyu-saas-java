@@ -95,11 +95,9 @@ func (svc *AICenterService) GetAgent(ctx context.Context, tenantID, agentID, use
 	if a.OwnerID != userID && a.Status != domain.AIContentStatusPublished {
 		return nil, store.ErrNotFound
 	}
-	// 浏览量（v2.2 B5）：非 owner 浏览详情计数
-	if a.OwnerID != userID {
-		svc.s.Store().AICenter().IncrementAgentView(ctx, tenantID, agentID)
-		a.ViewCount++
-	}
+	// 浏览量（v2.2.1 统一）：浏览详情即 +1（全局 view_counters 机制，不排 owner）
+	svc.s.Store().AICenter().IncrementAgentView(ctx, tenantID, agentID)
+	a.ViewCount++
 	kbs, err := svc.s.Store().AICenter().ListAgentKBs(ctx, tenantID, agentID)
 	if err != nil {
 		return nil, err

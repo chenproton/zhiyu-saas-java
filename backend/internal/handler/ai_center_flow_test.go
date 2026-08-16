@@ -588,7 +588,7 @@ func TestAICenter_V22(t *testing.T) {
 		t.Fatalf("approve agent: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// ── B5 浏览量：other 看详情 +1；owner 自己看不计 ──
+	// ── B5 浏览量（v2.2.1 统一口径）：浏览详情即 +1，不排 owner ──
 	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), nil, other)
 	if w.Code != http.StatusOK {
 		t.Fatalf("other get kb: %d", w.Code)
@@ -599,8 +599,8 @@ func TestAICenter_V22(t *testing.T) {
 	}
 	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), nil, owner)
 	kb3, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
-	if w.Code != http.StatusOK || kb3.ViewCount != 1 {
-		t.Fatalf("owner view should not count: %d %d", w.Code, kb3.ViewCount)
+	if w.Code != http.StatusOK || kb3.ViewCount != 2 {
+		t.Fatalf("owner view also counts: %d %d", w.Code, kb3.ViewCount)
 	}
 	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/agents/%s", agent.ID), nil, other)
 	ag2, _ := testhelper.Unmarshal[domain.AIAgent](w)
