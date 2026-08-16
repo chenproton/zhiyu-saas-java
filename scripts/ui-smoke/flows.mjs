@@ -178,7 +178,7 @@ async function clickSubmit(page, cfg, submit) {
 async function clickConfirm(page, cfg) {
   const dialog = page.locator('[role="dialog"]:visible, [role="alertdialog"]:visible').last()
   if (!await dialog.count()) throw new Error('confirm：当前无可确认弹窗')
-  const words = ['确认', '确定', '删除', '发布', '下架', '关闭', '启用', '禁用', 'OK', 'Confirm', 'Delete']
+  const words = ['确认', '确定', '删除', '通过', '发布', '下架', '关闭', '启用', '禁用', 'OK', 'Confirm', 'Delete']
   const re = new RegExp(`^(?:${words.join('|')})`)
   const btns = dialog.locator('button:visible')
   const n = await btns.count()

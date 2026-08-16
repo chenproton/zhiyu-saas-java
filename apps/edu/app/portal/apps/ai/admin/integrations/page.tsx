@@ -280,6 +280,7 @@ export default function AIAdminIntegrationsPage() {
                           size="sm"
                           variant="outline"
                           className="text-destructive"
+                          aria-label={t('删除')}
                           onClick={() => setDeleteTarget(item)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />

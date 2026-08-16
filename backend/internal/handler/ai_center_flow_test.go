@@ -497,6 +497,58 @@ func TestAICenter_EmptyListsReturnEmptyArray(t *testing.T) {
 	}
 }
 
+// TestAICenter_AgentReviewListWithData 回归：agent 审核列表/广场列表带数据时必须 200 且返回目标行。
+// v2.2.1 浏览量并入全局 view_counters（36777678）给 SELECT 追加 view_expr 列但内联 Scan 未补，
+// 18 列 vs 16 个目标 → pgx 报错 → 500；「空列表测试」因无行不触发 Scan 而漏检。
+func TestAICenter_AgentReviewListWithData(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	aiSeedUsers(t, env)
+	owner, _, admin, _ := aiTokens(env)
+
+	w := env.DoWithToken("POST", "/api/v1/ai/agents", map[string]any{
+		"name": "审核列表助手", "systemPrompt": "你是测试助手",
+	}, owner)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create agent: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	agent, _ := testhelper.Unmarshal[domain.AIAgent](w)
+
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/agents/%s/submit", agent.ID), nil, owner); w.Code != http.StatusOK {
+		t.Fatalf("submit agent: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	w = env.DoWithToken("GET", "/api/v1/ai/admin/reviews?type=agent&status=pending", nil, admin)
+	if w.Code != http.StatusOK {
+		t.Fatalf("agent review list: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	resp, _ := testhelper.Unmarshal[map[string]any](w)
+	items, _ := resp["items"].([]any)
+	for _, it := range items {
+		if m, ok := it.(map[string]any); ok && m["id"] == agent.ID {
+			goto approved
+		}
+	}
+	t.Fatalf("pending agent %s not in agent review list: %s", agent.ID, w.Body.String())
+
+approved:
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/admin/reviews/agent/%s/approve", agent.ID), nil, admin); w.Code != http.StatusOK {
+		t.Fatalf("approve agent: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.DoWithToken("GET", "/api/v1/ai/square/agents", nil, owner)
+	if w.Code != http.StatusOK {
+		t.Fatalf("square agents list: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	resp, _ = testhelper.Unmarshal[map[string]any](w)
+	items, _ = resp["items"].([]any)
+	for _, it := range items {
+		if m, ok := it.(map[string]any); ok && m["id"] == agent.ID {
+			return
+		}
+	}
+	t.Fatalf("published agent %s not in square agents list: %s", agent.ID, w.Body.String())
+}
+
 // TestAICenter_InvalidUUIDReturns400 回归：非法 UUID 路径参数（如 "undefined"）必须 400，
 // 不得透成 500（Next 15+ params Promise 误读事故伴生问题，见 spec §11）。
 func TestAICenter_InvalidUUIDReturns400(t *testing.T) {

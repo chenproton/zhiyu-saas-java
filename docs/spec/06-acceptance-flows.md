@@ -180,10 +180,10 @@ flow: ai-kb-publish-loop
 story: KB-1
 desc: 教师建知识库 → 提交审核 → 学校管理员通过 → 学生广场可见 → 管理员下架 → 教师清理
 steps:
-  # 幂等清理（上次失败残留）
+  # 幂等清理（上次失败残留；工坊为卡片布局，用 clickCard 定位）
   - role: teacher
     goto: /portal/apps/ai/studio
-    clickRow: { text: "SMOKE_AI库", action: 删除 }
+    clickCard: { text: "SMOKE_AI库", action: 删除 }
     confirm: true
     optional: true
   - role: teacher
@@ -236,7 +236,7 @@ desc: 教师建智能体 → 提交审核（警告确认）→ 管理员通过 �
 steps:
   - role: teacher
     goto: /portal/apps/ai/studio
-    clickRow: { text: "SMOKE_AI助手", action: 删除 }
+    clickCard: { text: "SMOKE_AI助手", action: 删除 }
     confirm: true
     optional: true
   - role: teacher
@@ -257,6 +257,7 @@ steps:
     goto: /portal/apps/ai/admin/reviews
     click: 智能体审核
     clickRow: { text: "{{agentName}}", action: 通过 }
+    confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   - role: student
     goto: /portal/apps/ai/square

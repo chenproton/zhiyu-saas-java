@@ -527,9 +527,9 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 	for rows.Next() {
 		var a domain.AIAgent
 		var reviewedBy *string
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.Greeting,
-			&a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount,
-			&a.CreatedAt, &a.UpdatedAt, &a.OwnerName); err != nil {
+		if err := rows.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
+			&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount,
+			&a.CreatedAt, &a.UpdatedAt, &a.ViewCount, &a.OwnerName); err != nil {
 			return nil, 0, err
 		}
 		if reviewedBy != nil {
@@ -1006,9 +1006,9 @@ func (s *AICenterStore) ListReviewAgents(ctx context.Context, tenantID, status s
 	for rows.Next() {
 		var a domain.AIAgent
 		var reviewedBy *string
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.Greeting,
-			&a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount,
-			&a.CreatedAt, &a.UpdatedAt, &a.OwnerName); err != nil {
+		if err := rows.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
+			&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount,
+			&a.CreatedAt, &a.UpdatedAt, &a.ViewCount, &a.OwnerName); err != nil {
 			return nil, 0, err
 		}
 		if reviewedBy != nil {
