@@ -157,8 +157,8 @@ export function getToken(platform?: AuthPlatform): string | null {
 }
 
 // handleUnauthorized 统一处理 401：清除对应平台 token 并跳转登录页。
-// requestWithPlatform 与 authedFetch 共用，避免登录跳转逻辑双份维护漂移。
-function handleUnauthorized(platform: AuthPlatform): void {
+// requestWithPlatform / authedFetch / SSE 流式调用共用，避免登录跳转逻辑双份维护漂移。
+export function handleUnauthorized(platform: AuthPlatform): void {
   localStorage.removeItem(TOKEN_KEYS[platform])
   const loginPath =
     platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'

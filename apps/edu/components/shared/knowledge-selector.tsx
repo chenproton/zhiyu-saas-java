@@ -109,9 +109,9 @@ export function KnowledgeSelector({
   const searchSeqRef = useRef(0)
   // 场景/岗位筛选请求序号：快速连续切换时丢弃过期响应
   const filterSeqRef = useRef(0)
-  // dataSource 常为调用方内联对象，用 ref 稳定引用，避免 effect 因对象身份变化整页重复拉取
+  // dataSource 常为调用方内联对象，用 ref 捕获挂载时引用，避免 effect 因对象身份变化整页重复拉取
+  // （仅挂载时读取；渲染期写 ref 会被 react-hooks/refs 拦截，且此处为冗余赋值）
   const dataSourceRef = useRef(dataSource)
-  dataSourceRef.current = dataSource
   const [kpDetailOpen, setKpDetailOpen] = useState(false)
   const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
 

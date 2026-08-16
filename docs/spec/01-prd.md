@@ -147,7 +147,7 @@
 | # | 用户故事 | 验收标准（AC） |
 |---|---------|---------------|
 | P-1 | 作为 teacher/student/school_admin，我希望登录后进入角色化工作台，以便直达常用功能 | 登录后按角色跳转（school_admin→应用中心，teacher/student→工作台）；工作台数据按角色聚合（30s 缓存，键含 userID） |
-| P-2 | 作为用户，我希望通过菜单权限控制页面可见性，以便按岗位职责隔离功能 | 菜单权限（menus JSON）控制侧边导航渲染；按钮级权限控制操作 |
+| P-2 | 作为用户，我希望通过菜单权限控制页面可见性，以便按岗位职责隔离功能 | 菜单权限（menus JSON）控制侧边导航渲染（fail-closed：menus 缺失/非法时权限树内已知菜单路径默认拒绝，不再隐式放行）；school_admin/platform_admin 按角色全量放行（与后端 RequireSystemPermission 角色兜底一致）；按钮级权限控制操作 |
 
 ### 3.10 AI 智能服务中心（ai，详见 docs/spec/ai-service-center.md §3）
 

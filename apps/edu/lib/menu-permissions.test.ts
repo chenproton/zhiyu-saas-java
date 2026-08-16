@@ -16,10 +16,10 @@ describe('normalizeMenuPath', () => {
 })
 
 describe('checkMenuPermission 无订阅信息时', () => {
-  it('menus 为 null/undefined/非对象时放行', () => {
-    expect(checkMenuPermission(null, '/job/positions')).toBe(true)
-    expect(checkMenuPermission(undefined, '/job/positions')).toBe(true)
-    expect(checkMenuPermission('x', '/job/positions')).toBe(true)
+  it('menus 为 null/undefined/非对象时视为无授权，已知菜单路径拒绝（fail-closed）', () => {
+    expect(checkMenuPermission(null, '/job/positions')).toBe(false)
+    expect(checkMenuPermission(undefined, '/job/positions')).toBe(false)
+    expect(checkMenuPermission('x', '/job/positions')).toBe(false)
   })
 
   it('menus 为空数组视为无授权，已知菜单路径拒绝', () => {
@@ -50,9 +50,9 @@ describe('checkMenuPermission 无订阅信息时', () => {
 })
 
 describe('checkMenuPermission 我的服务台', () => {
-  it('menus 缺失（如学校管理员）放行', () => {
-    expect(checkMenuPermission(undefined, '/portal/workspace')).toBe(true)
-    expect(checkMenuPermission(null, '/portal/workspace')).toBe(true)
+  it('menus 缺失时我的服务台入口按无授权拒绝（超级管理员由调用方按角色放行）', () => {
+    expect(checkMenuPermission(undefined, '/portal/workspace')).toBe(false)
+    expect(checkMenuPermission(null, '/portal/workspace')).toBe(false)
   })
 
   it('已勾选 /portal/workspace 放行', () => {

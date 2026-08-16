@@ -59,9 +59,11 @@ func (h *WorkflowHandler) crud() crudConfig[WorkflowRequest, domain.Workflow] {
 			return ""
 		},
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *WorkflowRequest) (string, bool) {
+			// 审批流程必须绑定学校（方案 B：不支持全局流程）；无租户直接拒绝
 			claims := middleware.CurrentUser(r)
 			if claims == nil || claims.TenantID == nil {
-				return "", true
+				respondError(w, http.StatusForbidden, "缺少租户信息")
+				return "", false
 			}
 			return *claims.TenantID, true
 		},
@@ -89,7 +91,7 @@ func (h *WorkflowHandler) crud() crudConfig[WorkflowRequest, domain.Workflow] {
 			if majorIds == nil {
 				majorIds = domain.StringSlice{}
 			}
-			wf, err := h.Service.CreateWorkflow(ctx, store.StrPtrIfNonEmpty(tenantID), &store.WorkflowParams{
+			wf, err := h.Service.CreateWorkflow(ctx, tenantID, &store.WorkflowParams{
 				Name: t.Name, Scene: t.Scene, Description: t.Description,
 				Steps: steps, MajorIds: majorIds, Status: domain.WorkflowStatusActive,
 			})

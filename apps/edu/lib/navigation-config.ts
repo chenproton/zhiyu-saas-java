@@ -1286,7 +1286,7 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     href: '/portal/apps/ai/landing',
     // 菜单权限：AI 中心已纳入权限树（menu-permissions.ts buildMenuTree），
     // 角色勾选控制可见性；管理组（内容审核/第三方挂接）不回填 teacher/student，
-    // 仅 school_admin（无 menus 不限制）默认可见；后端 RequireRole(school_admin) 兜底。
+    // 仅 school_admin（超级管理员角色全量放行）默认可见；后端 RequireRole(school_admin) 兜底。
     subModules: subModulesFromNavConfig(aiNavigationConfig),
   },
   opc: {

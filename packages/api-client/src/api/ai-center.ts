@@ -1,6 +1,12 @@
 // AI 智能服务中心 API 封装（docs/spec/ai-service-center.md §5）。
 // 普通端点走 portalRequest；SSE 流式端点（对话/库内问答）用 fetch + ReadableStream 自解析。
-import { buildQuery, getToken, portalRequest, type ApiErrorWithCode } from '../api-helpers'
+import {
+  buildQuery,
+  getToken,
+  handleUnauthorized,
+  portalRequest,
+  type ApiErrorWithCode,
+} from '../api-helpers'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
@@ -299,9 +305,11 @@ export interface AIStreamCallbacks {
 
 /**
  * SSE 流式调用（spec §5.5）：POST + text/event-stream 解析。
- * 开始前失败（401/403/404/412/500）按 HTTP JSON 错误抛 ApiErrorWithCode；
+ * 开始前失败（401/403/404/412/500）按 HTTP JSON 错误抛 ApiErrorWithCode（401 同时跳登录）；
  * 流中途失败经 onError 事件回调（不再抛异常）。
- * signal 取消即中断（AbortController）。
+ * signal 取消即中断（AbortController，AbortError 向上抛由调用方以 isAbortError 识别，不触发 onError）。
+ * 解析遵循 SSE 规范：兼容 \n / \r\n 行结束符，多行 data 按 \n 拼接，
+ * 事件以空行分界，未显式 event 的行视为默认事件，流结束刷新尾部缓冲。
  */
 export async function streamAICenter(
   path: string,
@@ -323,8 +331,11 @@ export async function streamAICenter(
 
   const contentType = res.headers.get('content-type') || ''
   if (!res.ok || !contentType.includes('text/event-stream')) {
-    // 开始前错误：JSON 错误体
+    // 开始前错误：JSON 错误体（401 统一跳登录，与 requestWithPlatform 一致）
     const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+    if (res.status === 401 && typeof window !== 'undefined') {
+      handleUnauthorized('portal')
+    }
     const err: ApiErrorWithCode = new Error((data as any).error || `HTTP ${res.status}`)
     err.code = (data as any).code
     err.status = res.status
@@ -335,10 +346,17 @@ export async function streamAICenter(
   if (!reader) throw new Error('当前浏览器不支持流式响应')
   const decoder = new TextDecoder()
   let buffer = ''
-  let currentEvent = ''
+  let eventType = ''
+  let dataLines: string[] = []
 
-  const dispatch = (event: string, dataStr: string) => {
-    let data: any
+  // 一个 SSE 事件完成（空行分界）后派发；无 data 字段则不触发回调
+  const dispatch = () => {
+    const event = eventType
+    const dataStr = dataLines.join('\n')
+    eventType = ''
+    dataLines = []
+    if (!dataStr) return
+    let data: unknown
     try {
       data = JSON.parse(dataStr)
     } catch {
@@ -346,7 +364,7 @@ export async function streamAICenter(
     }
     switch (event) {
       case 'meta':
-        callbacks.onMeta?.(data)
+        callbacks.onMeta?.(data as { conversationId: string; messageId: string })
         break
       case 'sources':
         callbacks.onSources?.(data as AIMessageSource[])
@@ -355,32 +373,73 @@ export async function streamAICenter(
         callbacks.onDelta?.((data as { text: string }).text)
         break
       case 'done':
-        callbacks.onDone?.(data)
+        callbacks.onDone?.(data as Record<string, unknown>)
         break
       case 'error':
-        callbacks.onError?.((data as any).code ?? 'error', (data as any).message ?? '未知错误')
+        callbacks.onError?.(
+          (data as { code?: string }).code ?? 'error',
+          (data as { message?: string }).message ?? '未知错误',
+        )
         break
     }
   }
 
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    // SSE 事件以空行分隔
-    let idx: number
-    while ((idx = buffer.indexOf('\n\n')) >= 0) {
-      const block = buffer.slice(0, idx)
-      buffer = buffer.slice(idx + 2)
-      for (const line of block.split('\n')) {
-        if (line.startsWith('event:')) {
-          currentEvent = line.slice(6).trim()
-        } else if (line.startsWith('data:')) {
-          dispatch(currentEvent, line.slice(5).trim())
-        }
-      }
+  // 逐行累积字段：空行派发事件；event/data 按规范解析；注释与未知字段忽略
+  const processLine = (line: string) => {
+    if (line === '') {
+      dispatch()
+      return
+    }
+    if (line.startsWith(':')) return
+    const colon = line.indexOf(':')
+    if (colon === -1) return
+    const field = line.slice(0, colon)
+    let value = line.slice(colon + 1)
+    if (value.startsWith(' ')) value = value.slice(1)
+    switch (field) {
+      case 'event':
+        eventType = value
+        break
+      case 'data':
+        dataLines.push(value)
+        break
+      // id / retry 当前协议不使用，忽略
     }
   }
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // 只切到最后一个换行符：尾部残留（含可能被截断的 \r）留待下块，
+      // 以正确识别跨 chunk 的 \r\n 行结束符
+      const lastLF = buffer.lastIndexOf('\n')
+      if (lastLF === -1) continue
+      const head = buffer.slice(0, lastLF)
+      buffer = buffer.slice(lastLF + 1)
+      for (const line of head.split('\n')) {
+        processLine(line.endsWith('\r') ? line.slice(0, -1) : line)
+      }
+    }
+    // 流结束：刷新解码器残余与尾部缓冲，再派发未以空行结尾的最后事件
+    buffer += decoder.decode()
+    for (const line of buffer.split('\n')) {
+      processLine(line.endsWith('\r') ? line.slice(0, -1) : line)
+    }
+    dispatch()
+  } catch (err) {
+    // 用户主动取消（AbortController）：保留 AbortError 向上抛，
+    // 让调用方以 isAbortError 区分取消（不再触发 onError，与调用方既有取消处理兼容）
+    if (isAbortError(err)) throw err
+    // 流中途传输错误：经 onError 回调（不再抛异常，符合流式调用契约）
+    callbacks.onError?.('stream_error', err instanceof Error ? err.message : '网络中断')
+  }
+}
+
+/** 判断错误是否为主动取消（AbortController），跨环境兼容（不依赖 DOMException 全局） */
+function isAbortError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { name?: string }).name === 'AbortError'
 }
 
 // ==================== v2.2：问答记录 / YIKnow 通用会话 / 智能体预览 ====================

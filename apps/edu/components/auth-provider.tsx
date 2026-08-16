@@ -182,9 +182,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasMenuPermission = useCallback(
     (path: string) => {
+      // 超级管理员（学校/平台管理员）显式全量放行：与后端 RequireSystemPermission
+      // 的角色兜底一致，不再依赖「无 menus = 全部可见」的隐式约定（checkMenuPermission 已 fail-closed）
+      const code = activeRole?.code
+      if (code === 'school_admin' || code === 'platform_admin') return true
       return checkMenuPermission(permissions?.menus, path, subscriptionModules ?? undefined)
     },
-    [permissions, subscriptionModules],
+    [permissions, subscriptionModules, activeRole?.code],
   )
 
   const contextValue = useMemo(

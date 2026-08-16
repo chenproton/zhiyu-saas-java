@@ -157,9 +157,10 @@ function getPathPlatformId(path: string): string | null {
 }
 
 /**
- * 菜单权限判定：
+ * 菜单权限判定（纯菜单门禁，fail-closed）：
  * - 先受租户套餐（subscriptionModules）控制：路径所属平台未订阅 → 直接不可见
- * - 角色未配置 menus（如 school_admin）→ 不限制，全部可见
+ * - menus 缺失/非法（null/undefined/非对象）→ 视为无授权，权限树内已知菜单路径拒绝
+ *   （超级管理员全量放行由调用方按角色显式短路，不再依赖「无 menus = 全部可见」的隐式约定）
  * - 已配置 menus → 权限树内的页面严格按勾选控制；子路径（如 /job/positions/xxx/edit）继承最近的已授权父菜单
  * - 权限树未覆盖的路径（如资源商城）→ 默认可见
  *
@@ -175,11 +176,11 @@ export function checkMenuPermission(
     return false
   }
 
-  if (!menus || typeof menus !== 'object') return true
-
   const granted = new Set<string>()
-  for (const [key, value] of Object.entries(menus as Record<string, unknown>)) {
-    if (value === true) granted.add(normalizeMenuPath(key))
+  if (menus && typeof menus === 'object') {
+    for (const [key, value] of Object.entries(menus as Record<string, unknown>)) {
+      if (value === true) granted.add(normalizeMenuPath(key))
+    }
   }
 
   const known = getKnownMenuPaths()

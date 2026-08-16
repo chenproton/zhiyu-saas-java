@@ -17,7 +17,7 @@ func (s *ApprovalService) GetWorkflow(ctx context.Context, id, tenantID string) 
 }
 
 // CreateWorkflow 创建审批流程。
-func (s *ApprovalService) CreateWorkflow(ctx context.Context, tenantID *string, p *store.WorkflowParams) (*domain.Workflow, error) {
+func (s *ApprovalService) CreateWorkflow(ctx context.Context, tenantID string, p *store.WorkflowParams) (*domain.Workflow, error) {
 	return s.st.Workflows().Create(ctx, tenantID, p)
 }
 
