@@ -206,7 +206,7 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "考试安排不在已发布状态")
 		return
 	}
-	if err := h.Service.SetExamUsageStatus(r.Context(), id, "finished"); err != nil {
+	if err := h.Service.SetExamUsageStatus(r.Context(), tenantID, id, "finished"); err != nil {
 		respondServerError(w, r, err, "停止考试安排失败")
 		return
 	}
@@ -237,7 +237,7 @@ func (h *ExamUsageHandler) Publish(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "考试安排不在草稿状态")
 		return
 	}
-	if err := h.Service.SetExamUsageStatus(r.Context(), id, "published"); err != nil {
+	if err := h.Service.SetExamUsageStatus(r.Context(), tenantID, id, "published"); err != nil {
 		respondServerError(w, r, err, "开启考试安排失败")
 		return
 	}

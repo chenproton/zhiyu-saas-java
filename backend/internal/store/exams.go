@@ -93,11 +93,17 @@ func (s *ExamStore) Delete(ctx context.Context, q Queryer, tenantID, id string) 
 	if inUse {
 		return ErrResourceInUse
 	}
-	if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1`, id); err != nil {
+	if _, err := q.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id = $1 AND tenant_id = $2`, id, tenantID); err != nil {
 		return fmt.Errorf("delete exam questions: %w", err)
 	}
-	_, err := q.Exec(ctx, `DELETE FROM exams WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	return err
+	tag, err := q.Exec(ctx, `DELETE FROM exams WHERE id = $1 AND tenant_id = $2`, id, tenantID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // QuestionSnapshot 题目快照（AddQuestion 用）。

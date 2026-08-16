@@ -62,11 +62,6 @@ func (b *OpLogBuffer) Shutdown() {
 
 func (b *OpLogBuffer) flushLoop() {
 	defer close(b.done)
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("oplog flush loop panic", "panic", rec)
-		}
-	}()
 	ticker := time.NewTicker(oplogFlushInterval)
 	defer ticker.Stop()
 
@@ -77,12 +72,12 @@ func (b *OpLogBuffer) flushLoop() {
 		case entry := <-b.ch:
 			batch = append(batch, entry)
 			if len(batch) >= oplogBatchSize {
-				b.flush(batch)
+				b.flushSafe(batch)
 				batch = batch[:0]
 			}
 		case <-ticker.C:
 			if len(batch) > 0 {
-				b.flush(batch)
+				b.flushSafe(batch)
 				batch = batch[:0]
 			}
 		case <-b.ctx.Done():
@@ -92,13 +87,24 @@ func (b *OpLogBuffer) flushLoop() {
 					batch = append(batch, entry)
 				default:
 					if len(batch) > 0 {
-						b.flush(batch)
+						b.flushSafe(batch)
 					}
 					return
 				}
 			}
 		}
 	}
+}
+
+// flushSafe 每次 flush 独立 recover：flush 内 panic 只丢当前批，不终止 flushLoop
+// （否则循环永久退出、后续操作日志静默丢失）。
+func (b *OpLogBuffer) flushSafe(entries []OpLogEntry) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("oplog flush panic", "panic", rec)
+		}
+	}()
+	b.flush(entries)
 }
 
 func (b *OpLogBuffer) flush(entries []OpLogEntry) {

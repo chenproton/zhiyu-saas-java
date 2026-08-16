@@ -236,8 +236,9 @@ func splitSQLStatements(sql string) []string {
 		if sql[i] == '$' {
 			// 尝试匹配关闭标签
 			if openTag != "" && strings.HasPrefix(sql[i:], openTag) {
+				tag := openTag
 				openTag = ""
-				i += len(openTag) - 1
+				i += len(tag) - 1
 				continue
 			}
 			// 尝试匹配开启标签（$$ 或 $tag$）

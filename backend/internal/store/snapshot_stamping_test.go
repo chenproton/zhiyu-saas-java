@@ -166,7 +166,7 @@ func TestExamUsageStore_CreateAndPublishStamp(t *testing.T) {
 
 	// 发布时重新 stamp：补齐 V1.1 快照后发布 → V1.1
 	stampingSaveSnap(t, pool, tenantID, SnapshotResourceExam, exam2ID, "V1.1")
-	if err := st.SetStatus(ctx, u2.ID, "published"); err != nil {
+	if err := st.SetStatus(ctx, tenantID, u2.ID, "published"); err != nil {
 		t.Fatalf("SetStatus published: %v", err)
 	}
 	u2, err = st.Get(ctx, tenantID, u2.ID)
@@ -178,7 +178,7 @@ func TestExamUsageStore_CreateAndPublishStamp(t *testing.T) {
 	}
 
 	// 非发布流转不动版本
-	if err := st.SetStatus(ctx, u2.ID, "finished"); err != nil {
+	if err := st.SetStatus(ctx, tenantID, u2.ID, "finished"); err != nil {
 		t.Fatalf("SetStatus finished: %v", err)
 	}
 	u2, _ = st.Get(ctx, tenantID, u2.ID)

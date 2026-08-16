@@ -297,8 +297,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 
 			r.Group(func(r chi.Router) {
 				r.Use(platformAdmin)
-				// 运营端租户/订阅/主题等变更操作纳入操作审计
-				r.Use(authmw.OperationLog(db, oplogBuffer))
+				// 运营端写操作已由外层 OperationLog（第 80 行）统一审计，此处不再重复挂载
 				registerSuperAdminRoutes(r, h, passwordLimiter)
 			})
 		})

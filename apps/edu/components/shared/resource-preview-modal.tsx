@@ -122,8 +122,12 @@ function ResourcePreviewModalInner({
     }
   }, [open, resource])
 
+  // kkfileview 服务端代理仅服务本系统上传文件（/uploads/ 前缀）；外链/第三方 URL 不交由
+  // 服务端抓取（避免 SSRF 内网探测），非 file-viewer 支持格式时引导用户新窗口打开。
   const iframeSrc =
-    previewFor === resource?.url && previewSrc ? buildKkFileViewUrl(previewSrc) : null
+    previewFor === resource?.url && previewSrc && mayNeedSignUrl(previewSrc)
+      ? buildKkFileViewUrl(previewSrc)
+      : null
 
   useEffect(() => {
     ;(async () => {
@@ -304,6 +308,10 @@ function ResourcePreviewModalInner({
                 loading="lazy"
                 style={{ pointerEvents: dragging || resizing ? 'none' : 'auto' }}
               />
+            ) : isSafeExternalUrl(resource.url) ? (
+              <div className="flex flex-col items-center justify-center gap-2 h-full text-gray-400 text-sm">
+                <span>{t('该链接无法内嵌预览，请点击右上角「新窗口打开」')}</span>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                 {t('加载中…')}

@@ -180,7 +180,7 @@ func (s *ExamUsageStore) Delete(ctx context.Context, tenantID, id string) error 
 
 // SetStatus 更新考试安排状态。发布时重新 stamp exam_version（快照最新版本为准、缺档回退 live version），
 // 保证"建安排后试卷再发布"的场景下安排绑定的是发布时刻的最新快照版本；其余状态流转不动版本。
-func (s *ExamUsageStore) SetStatus(ctx context.Context, id, status string) error {
+func (s *ExamUsageStore) SetStatus(ctx context.Context, tenantID, id, status string) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE exam_usages SET status = $1,
 			exam_version = CASE WHEN $1::varchar = 'published' THEN COALESCE(
@@ -190,8 +190,8 @@ func (s *ExamUsageStore) SetStatus(ctx context.Context, id, status string) error
 				(SELECT e.version FROM exams e WHERE e.id = exam_usages.exam_id))
 				ELSE exam_version END,
 			updated_at = NOW()
-		WHERE id = $2
-	`, status, id)
+		WHERE id = $2 AND tenant_id = $3
+	`, status, id, tenantID)
 	return err
 }
 

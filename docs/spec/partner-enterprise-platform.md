@@ -250,7 +250,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 |------|------|------|------|
 | GET/PUT | `/partner/enterprise/profile` | 读 admin/member，写 admin | 企业主体信息维护（含 `enable_public` 展示开关） |
 | GET | `/partner/experts` | 仅 admin | 专家列表 |
-| GET/POST/PUT/DELETE | `/partner/experts/{id}` | 写 admin，读 admin/member | 专家档案（tenant=企业租户，含 `is_public`/`user_id`） |
+| GET/POST/PUT/DELETE | `/partner/experts/{id}` | 仅 admin（读/写均 admin；member 只可经 `/experts/me` 读本人档案） | 专家档案（tenant=企业租户，含 `is_public`/`user_id`） |
 | GET/PUT | `/partner/experts/me` | 所有 | 专家本人档案（member 可用） |
 | PUT | `/partner/me/password` | 所有（限流） | 修改密码 |
 | GET | `/partner/workspace/dashboard` | 所有 | 服务台统计（专家数/合作学校数等） |

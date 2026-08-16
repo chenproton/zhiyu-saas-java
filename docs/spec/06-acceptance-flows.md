@@ -241,9 +241,8 @@ steps:
   - role: teacher
     goto: /portal/apps/ai/studio
     click: 新建智能体
-    fill: { 名称: "SMOKE_AI助手{rand}" }
+    fill: { 名称: "SMOKE_AI助手{rand}", 角色提示词: "你是 SMOKE 测试助手" }
     saveAs: { agentName: 名称 }
-    fill: { 角色提示词: "你是 SMOKE 测试助手" }
     submit: 创建智能体
     expectApi: { method: POST, url: /ai/agents, status: 201 }
     # 创建成功自动进入编辑器：断言编辑器渲染（动态路由参数回归护栏）
@@ -266,6 +265,7 @@ steps:
   - role: school
     goto: /portal/apps/ai/admin/reviews
     click: 智能体审核
+  - role: school
     click: 已发布
     clickCard: { text: "{{agentName}}", action: 下架 }
     confirm: true

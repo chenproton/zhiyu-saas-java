@@ -1459,13 +1459,14 @@ func (h *AllianceHandler) ListPublicAgreements(w http.ResponseWriter, r *http.Re
 }
 
 // ListPublicExperts 前台公开专家列表；includeNonPublic=true 时忽略专家 is_public
-// （企业详情页"专家团队"用）。仅已登录用户可用，匿名访客强制 is_public 过滤，
-// 防止隐私开关被查询参数绕过。
+// （企业详情页"专家团队"用）。仅本校联盟管理角色可用，其余登录用户与匿名访客
+// 强制 is_public 过滤，防止隐私开关被查询参数绕过、跨租户枚举未公开专家。
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	limit, offset := publicListParams(r)
 	includeNonPublic := false
-	if middleware.CurrentUser(r) != nil {
+	if claims := middleware.CurrentUser(r); claims != nil &&
+		claims.TenantID != nil && *claims.TenantID == tenantID && canManageAlliance(claims) {
 		includeNonPublic = r.URL.Query().Get("includeNonPublic") == "true"
 	}
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {

@@ -48,8 +48,12 @@ func (svc *AICenterService) YIKnowChat(ctx context.Context, tenantID, userID, co
 	}
 
 	// AI 配置预检：未配置在 SSE 开始前返回 412
-	if _, err := svc.ai.GetConfig(ctx, tenantID); err != nil {
+	cfg, err := svc.ai.GetConfig(ctx, tenantID)
+	if err != nil {
 		return err
+	}
+	if !cfg.Configured {
+		return ErrAINotConfigured
 	}
 
 	// 历史上下文（近 5 轮）

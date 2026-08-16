@@ -250,8 +250,12 @@ func (svc *AICenterService) AgentChat(ctx context.Context, tenantID, agentID, us
 	}
 
 	// AI 配置预检：未配置在 SSE 开始前返回 412（spec §5.5）
-	if _, err := svc.ai.GetConfig(ctx, tenantID); err != nil {
+	cfg, err := svc.ai.GetConfig(ctx, tenantID)
+	if err != nil {
 		return err
+	}
+	if !cfg.Configured {
+		return ErrAINotConfigured
 	}
 
 	// 召回（安全锚点：SQL 层按请求者可见性过滤）
@@ -335,8 +339,12 @@ func (svc *AICenterService) KBAsk(ctx context.Context, tenantID, kbID, userID, m
 	if err != nil {
 		return err
 	}
-	if _, err := svc.ai.GetConfig(ctx, tenantID); err != nil {
+	cfg, err := svc.ai.GetConfig(ctx, tenantID)
+	if err != nil {
 		return err
+	}
+	if !cfg.Configured {
+		return ErrAINotConfigured
 	}
 	chunks, err := svc.retrieveChunks(ctx, tenantID, userID, []string{kb.ID}, message)
 	if err != nil {

@@ -203,6 +203,13 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 租户有效期（valid_from/valid_until）影响登录门禁，仅平台管理员可修改；
+	// 租户自身管理员（portal）更新本租户信息时剥离有效期字段，防止自行延长订阅。
+	validFrom, validUntil := req.ValidFrom, req.ValidUntil
+	if !canManagePlatform(claims) {
+		validFrom, validUntil = nil, nil
+	}
+
 	err := h.Service.Update(r.Context(), id, &store.TenantUpdateParams{
 		Name:              req.Name,
 		LogoURL:           req.LogoURL,
@@ -222,8 +229,8 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 		SecondaryColleges: req.SecondaryColleges,
 		EducationLevel:    req.EducationLevel,
 		EducationNature:   req.EducationNature,
-		ValidFrom:         req.ValidFrom,
-		ValidUntil:        req.ValidUntil,
+		ValidFrom:         validFrom,
+		ValidUntil:        validUntil,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新租户失败")

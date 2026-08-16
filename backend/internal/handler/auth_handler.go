@@ -444,6 +444,8 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "查询用户信息失败")
 		return
 	}
+	// OAuth 第三方凭据不随 /auth/me 响应下发（与登录/partner 路径一致）
+	user.Oauth = nil
 
 	resp := MeResponse{User: user}
 

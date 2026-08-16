@@ -157,7 +157,7 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET/PUT | `/tenants`、`/tenants/{id}` | systemAdmin | 租户信息（当前租户） |
+| GET/PUT | `/tenants`、`/tenants/{id}` | systemAdmin 读/平台管理员写；本租户 portal 管理员可经归属校验更新本租户基础信息 | 租户信息（当前租户）；**有效期 `valid_from`/`valid_until` 仅平台管理员可修改**，本租户管理员（portal）更新时自动剥离有效期字段（防止自行延长订阅） |
 | GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流） |
 | GET/POST/PUT/DELETE | `/organizations`、`/organizations/tree`、`/org-types` | systemAdmin | 组织/组织类型 |
 | GET/POST/PUT/DELETE | `/users`（12 个写动作 + List） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/批量创建/毕业/删除/改密/绑定角色等） |
@@ -186,7 +186,7 @@
 | PUT/DELETE | `/alliance/enterprises/{id}`、`/enterprises/{id}/link` | RequireAllianceManager | 企业更新/引入/解除引入（DELETE 语义=unlink） |
 | PUT | `/alliance/grants` | RequireAllianceManager | 学校-企业资源授权保存 |
 | GET/POST/PUT/DELETE | `/alliance/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/experts`、`/experts/{id}/display`、`/agreements`、`/permissions`、`/dictionaries/{dictType}`、`/brands`、`/brands/rank-configs` | RequireAllianceManager | 联盟写操作（项目/成果/专家/协议/权限/字典/品牌） |
-| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/agreements`、`/brands`、`/brands/talent-ranking`、`/stats`（List+Get 共 15 个） | 登录公开（限流 120/min/IP） | 联盟公开前台（全局企业主体 + links 双控过滤） |
+| GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/agreements`、`/brands`、`/brands/talent-ranking`、`/stats`（List+Get 共 15 个） | 登录公开（限流 120/min/IP） | 联盟公开前台（全局企业主体 + links 双控过滤）；`/experts` 的 `includeNonPublic=true` 查询参数仅同租户 `canManageAlliance` 角色可用，其余登录用户与匿名访客强制 `is_public` 过滤 |
 | GET/POST/PUT/DELETE | `/alliance/employment-projects`、`/alliance/employment-projects/{id}` | canManageAlliance（注册于 businessUser 组，handler 层仅 teacher/school_admin/platform_admin/系统菜单权限放行，企业导师排除） | 就业项目 CRUD（L-4；target_groups 面向学生群体，enterprise_ids 参与企业，coverImage 封面图） |
 | GET | `/alliance/employment-jobs`、`/alliance/employment-applications` | canManageAlliance（同上） | 岗位总览 / 投递总览（筛选 projectId/enterpriseId/status/jobId） |
 | PUT | `/alliance/employment-jobs/{id}/status` | RequireAllianceManager | 学校端治理：下架(closed)/恢复(published)岗位 |
@@ -433,6 +433,8 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | POST | /ai/agents/{id}/chat | 智能体对话（SSE） |
 | GET | /ai/agents/{id}/conversations | 我的会话列表 |
 | GET/DELETE | /ai/conversations/{id} | 会话详情（含消息）/ 删除 |
+| POST | /ai/yiknow/chat | YIKnow 通用会话对话（SSE，同 chat 事件协议 meta/delta/done/error；无 agent_id） |
+| GET | /ai/yiknow/conversations | YIKnow 通用会话列表（复用 /ai/conversations/{id} 读写删） |
 | GET | /ai/square/kbs | 广场知识库（q/tag/sort/分页） |
 | GET | /ai/square/agents | 广场智能体 |
 | GET | /ai/integrations | 第三方挂接展示（上架中） |

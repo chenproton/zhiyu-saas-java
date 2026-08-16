@@ -79,10 +79,10 @@
 
 1. `git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> master && cd /tmp/<agent>`
 2. `git add -A && git commit -m "feat: 任务描述" && git push -u origin <分支>`
-3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge`）
+3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge` / `--gates`）
 4. `cd / && git worktree remove /tmp/<agent>`
 
-deploy.sh 自动：源码 hash 比对只构建变更部分；构建前质量门禁（后端 gofmt/vet + 前端 typecheck/lint）；DB 首次 baseline、后续增量 migration；部署锁保证并发串行。
+deploy.sh 自动：源码 hash 比对只构建变更部分；DB 首次 baseline、后续增量 migration；部署锁保证并发串行。质量门禁默认由 CI（`.github/workflows/ci.yml`）覆盖，`--gates` 可选在部署前本地执行（后端 gofmt/vet/test + 前端 typecheck/lint/test + spec-check）。
 
 ### 4.2 提交前必跑（代码改动）
 

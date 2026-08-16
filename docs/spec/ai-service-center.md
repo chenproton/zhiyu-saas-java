@@ -249,6 +249,8 @@ id/tenant_id/target_type(kb|agent)/target_id/action(submit|approve|reject|unpubl
 | GET | `/ai/agents/{id}/conversations` | 我在该智能体下的会话列表 |
 | GET | `/ai/conversations/{id}` | 会话消息列表（仅本人） |
 | DELETE | `/ai/conversations/{id}` | 删除会话（仅本人） |
+| POST | `/ai/yiknow/chat` | YIKnow 通用会话对话（SSE，事件协议同 §5.5；`{conversationId?, message}`，agent_id 为空） |
+| GET | `/ai/yiknow/conversations` | YIKnow 通用会话列表（本人；复用 `/ai/conversations/{id}` 读写删） |
 
 ### 5.3 广场与挂接展示
 
@@ -286,7 +288,7 @@ id/tenant_id/target_type(kb|agent)/target_id/action(submit|approve|reject|unpubl
 
 | 端点组 | 中间件 | 业务校验 |
 |--------|--------|---------|
-| `/ai/kb*` `/ai/agents*` `/ai/square*` `/ai/integrations` `/ai/conversations*` | portal 平台组（任意登录角色） | handler 内租户归属 + 资源可见性（§2.2） |
+| `/ai/kb*` `/ai/agents*` `/ai/square*` `/ai/integrations` `/ai/conversations*` `/ai/yiknow*` | portal 平台组（任意登录角色） | handler 内租户归属 + 资源可见性（§2.2） |
 | `/ai/kb/{id}/documents`（写）、`/ai/kb/{id}`（PUT/DELETE） | 同上 | owner/editor / owner |
 | `/ai/admin/*` | `RequireRole(school_admin)` | `verifyTenantOwnership` |
 

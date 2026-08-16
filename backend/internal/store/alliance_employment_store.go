@@ -413,7 +413,7 @@ func (s *AllianceStore) CreateEmploymentApplication(ctx context.Context, jobID s
 			u.name, u.student_no, m.name, o.name, u.phone, u.email, $4, 'pending', NOW(), NOW()
 		FROM alliance_employment_jobs j
 		JOIN alliance_employment_projects p ON p.id = j.project_id AND p.publish_status = 'published'
-		JOIN users u ON u.id = $3
+		JOIN users u ON u.id = $3 AND u.tenant_id = j.tenant_id
 		LEFT JOIN majors m ON m.id = u.major_id
 		LEFT JOIN organizations o ON o.id = u.org_node_id
 		WHERE j.id = $2 AND j.status = 'published'%s

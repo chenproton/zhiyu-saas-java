@@ -75,8 +75,8 @@ func (s *EvaluationService) DeleteExamUsage(ctx context.Context, tenantID, id st
 }
 
 // SetExamUsageStatus 更新考试安排状态。
-func (s *EvaluationService) SetExamUsageStatus(ctx context.Context, id, status string) error {
-	return s.st.ExamUsages().SetStatus(ctx, id, status)
+func (s *EvaluationService) SetExamUsageStatus(ctx context.Context, tenantID, id, status string) error {
+	return s.st.ExamUsages().SetStatus(ctx, tenantID, id, status)
 }
 
 // ListExamCenter 考试中心列表。isStudent 为 true 时班级类考试按本人班级过滤可参加标记。
