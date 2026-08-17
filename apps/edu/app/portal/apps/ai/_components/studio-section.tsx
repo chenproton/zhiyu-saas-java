@@ -35,12 +35,10 @@ import {
 } from 'lucide-react'
 import { PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useToast } from '@zhiyu/ui'
-import { aiCenterAgentApi, aiCenterKbApi, fileApi } from '@/lib/api'
+import { aiCenterAgentApi, aiCenterKbApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { coverGradientFor } from '@/lib/cover-gradients'
-import { CoverImageUpload } from '@/components/shared/cover-image-upload'
-import { ClassifySelects, type ClassifyValue } from './classify-selects'
 import { AIStatusBadge } from '../studio/components/ai-status-badge'
 
 /** 卡片封面横幅：有封面图用图，无则渐变 + 居中图标（对齐 ExamCenterCard） */
@@ -84,15 +82,7 @@ export function StudioSection() {
   const [myKbs, setMyKbs] = useState<AIKnowledgeBase[]>([])
   const [sharedKbs, setSharedKbs] = useState<AIKnowledgeBase[]>([])
   const [kbLoading, setKbLoading] = useState(true)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newDesc, setNewDesc] = useState('')
-  const [newTags, setNewTags] = useState('')
-  const [newCover, setNewCover] = useState('')
-  // 分类字段（v2.4 大厅筛选）
-  const [newClassify, setNewClassify] = useState<ClassifyValue>({ majorId: '', departmentId: '', kbType: '' })
-  const [coverUploading, setCoverUploading] = useState(false)
-  const [creating, setCreating] = useState(false)
+  // v2.6.1：新建知识库改为独立编辑页（/studio/kb/new），不再弹窗
 
   // ---------- 智能体 ----------
   const [agents, setAgents] = useState<AIAgent[]>([])
@@ -142,69 +132,6 @@ export function StudioSection() {
     loadAgents()
   }, [loadKbs, loadAgents])
 
-  // 封面上传（复用通用组件 CoverImageUpload，落 fileApi 本地存储，≤5MB）
-  const handleCoverUpload = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: t('提示'), description: t('文件大小不能超过 5MB') })
-      return
-    }
-    if (!file.type.startsWith('image/')) {
-      toast({ variant: 'destructive', title: t('提示'), description: t('请上传图片文件') })
-      return
-    }
-    setCoverUploading(true)
-    try {
-      const res = await fileApi.upload(file)
-      setNewCover(res.url)
-    } catch (err: unknown) {
-      toast({
-        variant: 'destructive',
-        title: t('上传失败'),
-        description: err instanceof Error ? err.message : undefined,
-      })
-    } finally {
-      setCoverUploading(false)
-    }
-  }
-
-  const handleCreateKb = async () => {
-    if (!newName.trim()) {
-      toast({ title: t('请填写名称'), variant: 'destructive' })
-      return
-    }
-    setCreating(true)
-    try {
-      const tags = newTags
-        .split(/[,，]/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-      await aiCenterKbApi.create({
-        name: newName.trim(),
-        description: newDesc.trim(),
-        tags,
-        coverImage: newCover || undefined,
-        majorId: newClassify.majorId || undefined,
-        departmentId: newClassify.departmentId || undefined,
-        kbType: (newClassify.kbType || undefined) as import('@/lib/api').AIKBType | undefined,
-      })
-      toast({ title: t('创建成功') })
-      setCreateOpen(false)
-      setNewName('')
-      setNewDesc('')
-      setNewTags('')
-      setNewCover('')
-      setNewClassify({ majorId: '', departmentId: '', kbType: '' })
-      loadKbs()
-    } catch (err) {
-      toast({
-        title: t('创建失败'),
-        description: err instanceof Error ? err.message : undefined,
-        variant: 'destructive',
-      })
-    } finally {
-      setCreating(false)
-    }
-  }
 
   const runAction = async (fn: () => Promise<unknown>, successTitle: string, reload: () => void) => {
     if (acting) return
@@ -474,7 +401,7 @@ export function StudioSection() {
           <div className="flex gap-2.5 shrink-0">
             <Button
               className="rounded-full px-5 h-10 text-sm font-semibold bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all"
-              onClick={() => setCreateOpen(true)}
+              onClick={() => router.push('/portal/apps/ai/studio/kb/new')}
             >
               <Plus className="w-4 h-4 mr-1" />
               {t('新建知识库')}
@@ -555,52 +482,6 @@ export function StudioSection() {
       </div>
 
       {/* 新建知识库 */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('新建知识库')}</DialogTitle>
-            <DialogDescription>{t('创建后为私有，可上传文档并提交审核发布到广场')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <CoverImageUpload
-                imageUrl={newCover}
-                uploading={coverUploading}
-                label={t('封面')}
-                alt={t('知识库封面')}
-                onUpload={handleCoverUpload}
-                onRemove={() => setNewCover('')}
-              />
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-medium">{t('名称')}</span>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={200} />
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-medium">{t('描述')}</span>
-              <Textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)} rows={3} />
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-medium">{t('标签')}</span>
-              <Input
-                value={newTags}
-                onChange={(e) => setNewTags(e.target.value)}
-                placeholder={t('多个标签用逗号分隔')}
-              />
-            </div>
-            <ClassifySelects value={newClassify} onChange={setNewClassify} withKbType />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              {t('取消')}
-            </Button>
-            <Button onClick={handleCreateKb} disabled={creating}>
-              {creating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {t('创建')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 删除二次确认 */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

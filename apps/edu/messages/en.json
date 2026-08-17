@@ -4656,5 +4656,12 @@
   "文档管理（{count}）": "Documents ({count})",
   "协作者（{count}）": "Collaborators ({count})",
   "支持 PDF / DOCX / TXT / MD，单个文件不超过 10MB，解析后即可被检索提问": "PDF / DOCX / TXT / MD up to 10MB each; searchable once parsed",
-  "邀请同租户成员共建：编辑者可维护文档，查看者只读": "Invite tenant members: editors maintain docs, viewers are read-only"
+  "邀请同租户成员共建：编辑者可维护文档，查看者只读": "Invite tenant members: editors maintain docs, viewers are read-only",
+  "创建成功，继续上传文档吧": "Created — now upload your documents",
+  "创建知识库": "Create Knowledge Base",
+  "创建后为私有，保存后进入管理页上传文档、邀请协作者，再提交审核发布到广场": "Private once created. Save, then upload documents, invite collaborators, and submit for review to publish",
+  "基本信息与协作者": "Basic Info & Collaborators",
+  "名称、描述与分类决定大厅展示与筛选；协作者可共同维护文档": "Name, description and classification drive hall display & filtering; collaborators co-maintain documents",
+  "在左侧填写并保存后，即可在这里用当前配置实时试聊效果": "Fill in the form on the left and save, then live-test the current configuration here",
+  "创建成功，现在可以在右侧试聊了": "Created — try it in the preview on the right"
 }

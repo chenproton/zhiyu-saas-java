@@ -22,9 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Textarea } from '@/components/ui/textarea'
-import { BookOpen, FileText, Loader2, Trash2, Upload, UserPlus } from 'lucide-react'
+import { BookOpen, ChevronDown, FileText, Loader2, Trash2, Upload, UserPlus } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterKbApi } from '@/lib/api'
 import type { AIKBCollaborator, AIKBDocument, AIKnowledgeBase } from '@/lib/api'
@@ -52,6 +52,7 @@ export default function KBManagePage() {
   const [tags, setTags] = useState('')
   const [classify, setClassify] = useState<ClassifyValue>({ majorId: '', departmentId: '', kbType: '' })
   const [saving, setSaving] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(true) // 顶部信息区可折叠（默认展开，对齐 lesson add 页）
 
   // 文档
   const [docs, setDocs] = useState<AIKBDocument[]>([])
@@ -340,57 +341,139 @@ export default function KBManagePage() {
         </div>
       )}
 
-      <Tabs defaultValue="info">
-        <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
-          <TabsTrigger value="info" className="px-5 rounded-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">{t('基本信息')}</TabsTrigger>
-          <TabsTrigger value="docs" className="px-5 rounded-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">{t('文档管理（{count}）', { count: docs.length })}</TabsTrigger>
-          <TabsTrigger value="collaborators" className="px-5 rounded-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">{t('协作者（{count}）', { count: collaborators.length })}</TabsTrigger>
-        </TabsList>
-
-        {/* 基本信息 */}
-        <TabsContent value="info" className="mt-4">
-          <EditorCard title={t('基本信息')} desc={t('名称、描述与分类决定了它在大厅中的展示与筛选')}>
-            <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('名称')}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} maxLength={200} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('描述')}</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                disabled={!canEdit}
+      {/* 顶部：基本信息 + 协作者合并大卡（可折叠，默认展开）；下方：文档管理（对齐 /lesson/admin/system/add） */}
+      <Collapsible open={infoOpen} onOpenChange={setInfoOpen} className="mb-5">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_6px_rgba(0,0,0,0.04)] overflow-hidden">
+          <CollapsibleTrigger asChild>
+            <button className="w-full px-5 py-4 flex items-center justify-between border-b border-dashed border-[#e7e5e4]">
+              <span className="text-sm font-semibold text-[#0f172a] flex items-center gap-2">
+                {t('基本信息与协作者')}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {t('名称、描述与分类决定大厅展示与筛选；协作者可共同维护文档')}
+                </span>
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-400 transition-transform ${infoOpen ? 'rotate-180' : ''}`}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('标签')}</Label>
-              <Input
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder={t('多个标签用逗号分隔')}
-                disabled={!canEdit}
-              />
-            </div>
-            <div className={canEdit ? '' : 'pointer-events-none opacity-60'}>
-              <ClassifySelects value={classify} onChange={setClassify} withKbType />
-            </div>
-            {canEdit && (
-              <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving} className="px-8">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  {t('保存')}
-                </Button>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 p-5">
+              {/* 左：基本信息表单 */}
+              <div className="space-y-4 min-w-0">
+                <div className="space-y-2">
+                  <Label>{t('名称')}</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} maxLength={200} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('描述')}</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('标签')}</Label>
+                  <Input
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    placeholder={t('多个标签用逗号分隔')}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className={canEdit ? '' : 'pointer-events-none opacity-60'}>
+                  <ClassifySelects value={classify} onChange={setClassify} withKbType />
+                </div>
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button onClick={handleSave} disabled={saving} className="px-8">
+                      {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      {t('保存')}
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-            </div>
-          </EditorCard>
-        </TabsContent>
 
-        {/* 文档管理 */}
-        <TabsContent value="docs" className="mt-4">
-          <EditorCard title={t('文档管理')} desc={t('支持 PDF / DOCX / TXT / MD，单个文件不超过 10MB，解析后即可被检索提问')} className="overflow-hidden" contentClassName="p-0">
+              {/* 右：协作者 */}
+              <div className="min-w-0 lg:border-l lg:border-dashed lg:border-[#e7e5e4] lg:pl-6">
+                <div className="text-sm font-medium mb-3">
+                  {t('协作者')}
+                  <span className="text-xs text-muted-foreground font-normal ml-2">
+                    {t('{count} 人', { count: collaborators.length })}
+                  </span>
+                </div>
+                {isOwner && (
+                  <div className="space-y-2 mb-3">
+                    <Input
+                      value={newUserId}
+                      onChange={(e) => setNewUserId(e.target.value)}
+                      placeholder={t('输入同租户用户的 ID')}
+                    />
+                    <div className="flex gap-2">
+                      <Select value={newRole} onValueChange={(v) => setNewRole(v as 'editor' | 'viewer')}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="editor">{t('编辑者')}</SelectItem>
+                          <SelectItem value="viewer">{t('查看者')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={handleAddCollaborator} disabled={collabActing} className="shrink-0">
+                        {collabActing ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                        ) : (
+                          <UserPlus className="w-4 h-4 mr-1" />
+                        )}
+                        {t('添加')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {collabLoading ? (
+                    <div className="py-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {t('加载中...')}
+                    </div>
+                  ) : collaborators.length === 0 ? (
+                    <p className="py-6 text-xs text-muted-foreground text-center">{t('暂无协作者')}</p>
+                  ) : (
+                    collaborators.map((c) => (
+                      <div key={c.id} className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2">
+                        <span className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-semibold flex items-center justify-center shrink-0">
+                          {(c.userName || '?').slice(0, 1)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{c.userName || c.userId}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {c.role === 'editor' ? t('编辑者') : t('查看者')}
+                          </p>
+                        </div>
+                        {isOwner && (
+                          <button
+                            className="text-muted-foreground hover:text-red-600 transition-colors shrink-0"
+                            disabled={collabActing}
+                            onClick={() => setRemoveCollab(c)}
+                            title={t('移除')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* 下方：文档管理 */}
+      <EditorCard title={t('文档管理')} desc={t('支持 PDF / DOCX / TXT / MD，单个文件不超过 10MB，解析后即可被检索提问')} className="overflow-hidden" contentClassName="p-0">
             <div className="px-5 py-3 border-b border-dashed border-[#e7e5e4] flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {t('支持 PDF / DOCX / TXT / MD，单个文件不超过 10MB')}
@@ -461,79 +544,7 @@ export default function KBManagePage() {
                 ))
               )}
             </div>
-          </EditorCard>
-        </TabsContent>
-
-        {/* 协作者 */}
-        <TabsContent value="collaborators" className="mt-4">
-          <EditorCard title={t('协作者')} desc={t('邀请同租户成员共建：编辑者可维护文档，查看者只读')} className="overflow-hidden" contentClassName="p-0">
-            {isOwner && (
-              <div className="px-5 py-4 border-b border-dashed border-[#e7e5e4] flex items-end gap-2 flex-wrap">
-                <div className="space-y-1 flex-1 min-w-[12rem]">
-                  <Label className="text-xs">{t('用户 ID')}</Label>
-                  <Input
-                    value={newUserId}
-                    onChange={(e) => setNewUserId(e.target.value)}
-                    placeholder={t('输入同租户用户的 ID')}
-                  />
-                </div>
-                <div className="space-y-1 w-32">
-                  <Label className="text-xs">{t('角色')}</Label>
-                  <Select value={newRole} onValueChange={(v) => setNewRole(v as 'editor' | 'viewer')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="editor">{t('编辑者')}</SelectItem>
-                      <SelectItem value="viewer">{t('查看者')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button size="sm" onClick={handleAddCollaborator} disabled={collabActing}>
-                  {collabActing ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  ) : (
-                    <UserPlus className="w-4 h-4 mr-1" />
-                  )}
-                  {t('添加协作者')}
-                </Button>
-              </div>
-            )}
-            <div className="divide-y divide-gray-100">
-              {collabLoading ? (
-                <div className="px-4 py-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t('加载中...')}
-                </div>
-              ) : collaborators.length === 0 ? (
-                <p className="px-4 py-10 text-sm text-muted-foreground text-center">{t('暂无协作者')}</p>
-              ) : (
-                collaborators.map((c) => (
-                  <div key={c.id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{c.userName || c.userId}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.role === 'editor' ? t('编辑者') : t('查看者')} · {formatDateTime(c.createdAt)}
-                      </p>
-                    </div>
-                    {isOwner && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        disabled={collabActing}
-                        onClick={() => setRemoveCollab(c)}
-                      >
-                        {t('移除')}
-                      </Button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </EditorCard>
-        </TabsContent>
-      </Tabs>
+      </EditorCard>
 
       {/* 删除文档二次确认 */}
       <Dialog open={!!deleteDoc} onOpenChange={(open) => !open && setDeleteDoc(null)}>
