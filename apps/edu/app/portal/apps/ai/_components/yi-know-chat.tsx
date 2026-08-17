@@ -30,6 +30,7 @@ import { aiCenterAgentApi, aiCenterV22Api, streamYiknowChat } from '@/lib/api'
 import type { AIConversation } from '@/lib/api'
 import { useAiNotConfigured } from '@/lib/ai/use-ai-assist'
 import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
+import { YIKnowMyAssets } from './yi-know-my-assets'
 import { useT } from '@/lib/i18n/locale-provider'
 
 // 预留功能入口（本期仅占位）
@@ -37,7 +38,6 @@ const PLACEHOLDER_ITEMS = [
   { id: 'plans', label: '我的方案', icon: ClipboardList },
   { id: 'jobs', label: '岗位库', icon: Target },
   { id: 'scenes', label: '场景库', icon: Factory },
-  { id: 'kbs', label: '知识库', icon: BookOpen },
   { id: 'settings', label: '设置', icon: Settings },
 ] as const
 
@@ -46,11 +46,20 @@ interface ChatMsg {
   content: string
 }
 
-export function YIKnowChat({ variant = 'page' }: { variant?: 'page' | 'modal' }) {
+export function YIKnowChat({
+  variant = 'page',
+  onNavigate,
+}: {
+  variant?: 'page' | 'modal'
+  /** 跳详情/对话页时回调（浮动面板用于自动收起） */
+  onNavigate?: () => void
+}) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [conversations, setConversations] = useState<AIConversation[]>([])
+  // v2.7：左侧功能轨视图切换（chat=智能对话；kbs/agents=我的资产列表）
+  const [view, setView] = useState<'chat' | 'kbs' | 'agents'>('chat')
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [loadingConv, setLoadingConv] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
@@ -196,13 +205,40 @@ export function YIKnowChat({ variant = 'page' }: { variant?: 'page' | 'modal' })
         </div>
         <nav className="p-3 space-y-1">
           <button
+            onClick={() => setView('chat')}
             className={cn(
-              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm',
-              'bg-primary text-white font-medium',
+              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors',
+              view === 'chat'
+                ? 'bg-primary text-white font-medium'
+                : 'text-muted-foreground hover:bg-muted',
             )}
           >
             <MessageSquare className="w-4 h-4" />
             {t('智能对话')}
+          </button>
+          <button
+            onClick={() => setView('kbs')}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors',
+              view === 'kbs'
+                ? 'bg-primary text-white font-medium'
+                : 'text-muted-foreground hover:bg-muted',
+            )}
+          >
+            <BookOpen className="w-4 h-4" />
+            {t('我的知识库')}
+          </button>
+          <button
+            onClick={() => setView('agents')}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors',
+              view === 'agents'
+                ? 'bg-primary text-white font-medium'
+                : 'text-muted-foreground hover:bg-muted',
+            )}
+          >
+            <Bot className="w-4 h-4" />
+            {t('我的智能体')}
           </button>
           {PLACEHOLDER_ITEMS.map((item) => (
             <button
@@ -280,8 +316,12 @@ export function YIKnowChat({ variant = 'page' }: { variant?: 'page' | 'modal' })
         <span className="text-[11px] text-muted-foreground">{t('你问，我懂')}</span>
       </div>
 
-      {/* 对话主区 */}
+      {/* 主区：智能对话 / 我的知识库 / 我的智能体 */}
       <main className="flex-1 min-w-0 flex flex-col">
+        {view !== 'chat' ? (
+          <YIKnowMyAssets kind={view} onNavigate={onNavigate} />
+        ) : (
+          <>
         <div className="flex-1 flex flex-col min-h-0 max-w-4xl w-full mx-auto px-4 sm:px-8 py-5">
           <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
             {loadingConv ? (
@@ -349,6 +389,8 @@ export function YIKnowChat({ variant = 'page' }: { variant?: 'page' | 'modal' })
             </Button>
           </div>
         </div>
+          </>
+        )}
       </main>
       <AiNotConfiguredDialog open={ai.notConfiguredOpen} onOpenChange={ai.setNotConfiguredOpen} />
     </div>

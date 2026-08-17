@@ -4679,5 +4679,11 @@
   "共 {count} 条": "{count} total",
   "浏览量": "Views",
   "下架后将从 AI 广场移除并回到私有状态，确定下架「{name}」吗？": "Unpublishing removes it from the AI square back to private. Unpublish \"{name}\"?",
-  "确认下架": "Confirm Unpublish"
+  "确认下架": "Confirm Unpublish",
+  "你创建的与收藏的知识库，点击即可进入详情提问": "Your created and favorited knowledge bases — click to open and ask",
+  "你创建的与收藏的智能体，点击即可进入对话": "Your created and favorited agents — click to start chatting",
+  "暂无知识库": "No knowledge bases yet",
+  "暂无智能体": "No agents yet",
+  "我创建的": "Created by Me",
+  "我收藏的": "My Favorites"
 }
