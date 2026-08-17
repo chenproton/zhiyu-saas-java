@@ -159,6 +159,18 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Post("/favorites/{targetType}/{id}", h.favoritesHandler.ToggleFavorite)
 			})
 
+			// 跨模块只读引用（课程/知识点列表）：岗位/场景详情页知识图谱等前台页面
+			// 引用 lesson 模块数据做图谱节点，属 jobViewer 只读语义（ADR-0008：
+			// 落地页菜单隐含映射其只读 API 面）。任一业务管理/落地页菜单即可读；
+			// 写操作仍在 lesson 管理面，不在此组。
+			r.Group(func(r chi.Router) {
+				r.Use(authmw.RequireMenu(append(allManageMenus(),
+					"/job/landing", "/lesson/landing", "/scene/landing",
+					"/evaluation/landing", "/library/landing")...))
+				r.Get("/lesson/courses", h.courseHandler.List)
+				r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
+			})
+
 			// 系统管理（关键写白名单 + 系统菜单）：school_admin/platform_admin 角色兜底
 			r.Group(func(r chi.Router) {
 				r.Use(systemAdmin)
@@ -258,7 +270,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 			// lesson 只读面（体系课学习页）
 			r.Group(func(r chi.Router) {
 				r.Use(authmw.RequireMenu(append(append([]string{}, lessonManageMenus...), "/lesson/landing")...))
-				r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
 				r.Get("/lesson/knowledge-points/citation-stats", h.knowledgePointHandler.CitationStats)
 				r.Get("/lesson/knowledge-points/uncited", h.knowledgePointHandler.UncitedList)
 				r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
@@ -266,7 +277,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
 				r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
 				r.Post("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.Submit)
-				registerContentReadRoutes(r, "/lesson/courses", h.courseHandler)
+				r.Get("/lesson/courses/{id}", h.courseHandler.Get)
 				r.Get("/lesson/courses/{id}/snapshot", h.snapshotHandler.GetCourseSnapshot)
 			})
 

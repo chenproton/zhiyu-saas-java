@@ -105,6 +105,60 @@ func TestMenuGrant_FullAccessFallback(t *testing.T) {
 	}
 }
 
+// TestRequireMenu_CrossModuleReadGrant 跨模块只读引用授权（回归）：
+// 岗位/场景详情页知识图谱引用 lesson 模块课程/知识点列表，属 jobViewer 只读语义。
+// 仅勾选 /job/landing 菜单的企业导师等角色应可读，未勾任何业务菜单则 403。
+// 背景：曾因这两个 List 接口挂在 lesson 管理菜单面，企业导师访问岗位知识图谱 403。
+func TestRequireMenu_CrossModuleReadGrant(t *testing.T) {
+	build := func() *chi.Mux {
+		r := chi.NewRouter()
+		r.Use(MenuContext(nil, nil))
+		r.With(RequireMenu(
+			"/job/landing", "/lesson/landing", "/scene/landing",
+			"/evaluation/landing", "/library/landing",
+			"/job/positions", "/job/batches",
+			"/lesson/admin/granular",
+		)).Get("/api/v1/lesson/courses", okMenuHandler)
+		r.With(RequireMenu(
+			"/job/landing", "/lesson/landing", "/scene/landing",
+			"/evaluation/landing", "/library/landing",
+			"/lesson/admin/granular",
+		)).Get("/api/v1/lesson/knowledge-points", okMenuHandler)
+		return r
+	}
+	req := func(r *chi.Mux, path string, perms domain.JSONMap) int {
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, menuReqWithClaims(http.MethodGet, path,
+			&Claims{UserID: "u", TenantID: menuStrPtr("t1"), Permissions: perms}))
+		return rr.Code
+	}
+
+	t.Run("仅勾选 /job/landing 菜单可读课程列表（岗位知识图谱引用）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/job/landing": true}}
+		if c := req(build(), "/api/v1/lesson/courses", perms); c != http.StatusOK {
+			t.Fatalf("job landing 用户读课程列表: got %d, want 200", c)
+		}
+	})
+	t.Run("仅勾选 /job/landing 菜单可读知识点列表", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/job/landing": true}}
+		if c := req(build(), "/api/v1/lesson/knowledge-points", perms); c != http.StatusOK {
+			t.Fatalf("job landing 用户读知识点列表: got %d, want 200", c)
+		}
+	})
+	t.Run("勾选 /scene/landing 菜单可读课程列表（场景知识图谱引用）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/scene/landing": true}}
+		if c := req(build(), "/api/v1/lesson/courses", perms); c != http.StatusOK {
+			t.Fatalf("scene landing 用户读课程列表: got %d, want 200", c)
+		}
+	})
+	t.Run("未勾选任何业务菜单拒绝 403", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/portal/workspace": true}}
+		if c := req(build(), "/api/v1/lesson/courses", perms); c != http.StatusForbidden {
+			t.Fatalf("无业务菜单读课程列表: got %d, want 403", c)
+		}
+	})
+}
+
 func okMenuHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
