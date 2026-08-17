@@ -1,9 +1,16 @@
 package router
 
-import "github.com/go-chi/chi/v5"
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
 
-func registerLessonRoutes(r chi.Router, h *Handlers) {
-	registerContentRoutes(r, "/lesson/courses", h.courseHandler)
+func registerLessonRoutes(r chi.Router, db *pgxpool.Pool, h *Handlers) {
+	// 写路由只注册写操作（GET List/Get 由跨模块只读组 / lesson 只读面提供）：
+	// 此前 registerContentRoutes 同时注册 GET /lesson/courses，chi 同路径后注册顶替先注册，
+	// 把宽授权（任一业务落地页菜单）的 List 顶成 lesson 管理菜单窄授权，
+	// 导致仅 /job/landing 菜单的角色访问岗位知识图谱 403。
+	registerContentWriteRoutes(r, "/lesson/courses", "courses", db, h.courseHandler)
 	r.Post("/lesson/courses/{id}/clone", h.courseCloneHandler.Clone)
 
 	// 节点测评结果评分（教师端）

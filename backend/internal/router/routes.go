@@ -195,7 +195,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 			})
 			r.Group(func(r chi.Router) {
 				r.Use(authmw.RequireMenu(lessonManageMenus...))
-				registerLessonRoutes(r, h)
+				registerLessonRoutes(r, db, h)
 			})
 			r.Group(func(r chi.Router) {
 				r.Use(authmw.RequireMenu(evaluationManageMenus...))
