@@ -25,6 +25,10 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Label } from '@/components/ui/label'
 import { useT } from '@/lib/i18n/locale-provider'
 
+// 临时隐藏「新增」按钮（产品决策：租户自助新增学校管理员暂不开放，后续可能恢复）。
+// 恢复方法：将 SHOW_ADD_BUTTON 改为 true 即可，无需其他改动。
+const SHOW_ADD_BUTTON = false
+
 interface TenantAdmin {
   id: string
   tenantId: string
@@ -200,10 +204,12 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
           <h3 className="text-base font-semibold">{t('学校管理员')}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">{t('管理当前租户的学校管理员账号')}</p>
         </div>
-        <Button size="sm" onClick={startAdd} disabled={inline !== null}>
-          <Plus className="h-4 w-4 mr-1" />
-          {t('新增')}
-        </Button>
+        {SHOW_ADD_BUTTON && (
+          <Button size="sm" onClick={startAdd} disabled={inline !== null}>
+            <Plus className="h-4 w-4 mr-1" />
+            {t('新增')}
+          </Button>
+        )}
       </div>
 
       <div className="p-4">
