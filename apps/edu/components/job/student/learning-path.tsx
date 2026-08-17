@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import type { LearnRoad } from '@/lib/types'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
+import { orderScenariosByLearnRoad } from '@/lib/learn-road-order'
 import { EmptyState } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -60,33 +61,12 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
 
   const road = roads[0]
 
-  const orderedScenarios = useMemo(() => {
-    if (!scenarios.length) return []
-    if (!road?.steps?.length) return scenarios
-    const scenarioMap = new Map(scenarios.map((s) => [s.id, s]))
-    const usedIds = new Set<string>()
-    const result: Scenario[] = []
-
-    for (const step of road.steps) {
-      if (step.scenarioId && scenarioMap.has(step.scenarioId) && !usedIds.has(step.scenarioId)) {
-        const sc = scenarioMap.get(step.scenarioId)!
-        result.push(sc)
-        usedIds.add(sc.id)
-        continue
-      }
-      // 兼容旧数据：按名称匹配
-      const matched = scenarios.find((s) => s.name === step.name && !usedIds.has(s.id))
-      if (matched) {
-        result.push(matched)
-        usedIds.add(matched.id)
-      }
-    }
-
-    for (const sc of scenarios) {
-      if (!usedIds.has(sc.id)) result.push(sc)
-    }
-    return result
-  }, [road, scenarios])
+  // 排序规则统一收敛在 orderScenariosByLearnRoad（与岗位落地页「实践场景」tab 共用，
+  // 两页均受 /job/learn-roads 管理，见 docs/spec/05-prototype-interaction.md §2.2）
+  const orderedScenarios = useMemo(
+    () => orderScenariosByLearnRoad(roads, scenarios),
+    [roads, scenarios],
+  )
 
   const taskMap = useMemo(() => {
     const map = new Map<string, ScenarioTask[]>()
