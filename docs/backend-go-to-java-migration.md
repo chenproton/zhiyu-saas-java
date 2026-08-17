@@ -183,7 +183,21 @@
 | 框架默认关闭的外置服务（SnailJob/SnailAI/Monitor）被误启用 | 部署复杂化 | 本期全部关闭，仅用框架核心（web/mybatis/redis/satoken/log） |
 | 生成器产物与现有业务逻辑冲突（覆盖手写代码） | 进度损失 | 生成器只产出骨架目录，业务逻辑统一放 service 实现层，遵循框架分层 |
 
-## 7. 附录
+## 7. 迁移进度（2026-08-17 启动，实时更新）
+
+> 实施分支：目标仓库 `feat/go-to-java-migration-zhiyu`。前端 React 与 PG migrations 已直接复制进目标仓库（零改动）。
+
+| 阶段 | 状态 | 说明 |
+|---|---|---|
+| 阶段 0 环境 | ✅ | PG 驱动、框架系统表导入 zhiyu-saas 库、Sa-Token 登录跑通 |
+| 阶段 2 认证横切 | ✅ | 多平台登录/选租户/Me + Bearer 鉴权 + 租户上下文（契约形状与 Go 一致） |
+| 阶段 3 业务域 | 🔄 7/13 | 已翻译 auth/portal/favorites/library/scene/job/evaluation ≈ 257 端点；待 affairs/lesson/partner/alliance/system/superadmin/ai/import-export |
+| 阶段 4 专项 | ⏳ | AI SSE / 定时任务 / 文件 / Excel |
+| 阶段 5 适配 | 🔄 | 前端 dev 跑通（/portal 等路由 200），api-client 零改动对接 /api/v1 |
+
+实施中确认的关键适配决策（与 §2 预判的差异详见目标仓库文档）：zhiyu 接口返回裸 JSON（不用 R<T>）；分页 {items,total}+limit/offset；/api/v1/** 排除框架拦截器走自有 Filter；Mapper 用原生 selectList（同型 Vo 无 converter）；PG `stringtype=unspecified`；租户过滤按 Go 语义显式翻译（框架租户插件副本已裁剪）。
+
+## 8. 附录
 
 - 现有 API 契约：`docs/spec/02-api-contract.md`（548 行，迁移期基准）
 - 现有库表设计：`docs/spec/04-database-schema.md`（490 行）
