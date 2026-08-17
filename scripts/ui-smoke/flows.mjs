@@ -84,6 +84,9 @@ async function clickExact(page, text) {
   if (await waitFirstVisible(btn, 4000)) { await btn.first().click(); return }
   const link = page.getByRole('link', { name: text, exact: true })
   if (await waitFirstVisible(link, 1500)) { await link.first().click(); return }
+  // Radix Select/下拉的选项（role=option）：需先点击触发器让下拉展开（flow 里在点击前先点触发器文本）
+  const opt = page.getByRole('option', { name: text, exact: true })
+  if (await waitFirstVisible(opt, 1500)) { await opt.first().click(); return }
   const any = page.locator(`button:has-text("${cssEscape(text)}"), a:has-text("${cssEscape(text)}")`)
   if (await waitFirstVisible(any, 1500)) { await any.first().click(); return }
   throw new Error(`未找到可点击元素「${text}」`)
@@ -214,7 +217,14 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           break
         case 'goto': {
           mark(`goto ${rawVal}`)
-          await page.goto(`${cfg.baseUrl}${render(rawVal, vars, rand)}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+          const target = `${cfg.baseUrl}${render(rawVal, vars, rand)}`
+          if (page.url() === target) {
+            // 重访相同 URL（含相同 hash）：page.goto 只做同文档 hash 导航不重载，
+            // 页面停留旧数据导致断言失败（2026-08 AI 挂接流程学生重访广场事故），强制 reload
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 })
+          } else {
+            await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 30000 })
+          }
           await waitSettled(page, cfg)
           actions.push(`goto ${rawVal}`)
           break

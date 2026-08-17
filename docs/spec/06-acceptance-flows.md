@@ -216,8 +216,11 @@ steps:
     timeoutMs: 20000
   - role: school
     goto: /portal/apps/ai/admin/reviews
+    # 状态筛选是 Radix Select：先点触发器（当前值「待审核」）展开下拉，再选「已发布」选项
+    click: 待审核
+  - role: school
     click: 已发布
-    clickCard: { text: "{{kbName}}", action: 下架 }
+    clickRow: { text: "{{kbName}}", action: 下架 }
     confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   - role: teacher
@@ -267,8 +270,11 @@ steps:
     goto: /portal/apps/ai/admin/reviews
     click: 智能体审核
   - role: school
+    # 状态筛选是 Radix Select：先点触发器（当前值「待审核」）展开下拉，再选「已发布」选项
+    click: 待审核
+  - role: school
     click: 已发布
-    clickCard: { text: "{{agentName}}", action: 下架 }
+    clickRow: { text: "{{agentName}}", action: 下架 }
     confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
   - role: teacher
