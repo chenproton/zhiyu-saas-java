@@ -52,7 +52,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useToast, FormDialogFooter } from '@zhiyu/ui'
+import { useToast, FormDialogFooter, PasswordInput } from '@zhiyu/ui'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalRequest, getAIConfig, saveAIConfig, deleteAIConfig, getAIUsage } from '@/lib/api'
 import type { AIConfigView, AIUsageStats } from '@/lib/api'
@@ -795,8 +795,7 @@ export default function TenantPage() {
               />
             </FormFieldRow>
             <FormFieldRow label={t('API Key')} required={!aiConfig?.configured}>
-              <Input
-                type="password"
+              <PasswordInput
                 value={aiForm.apiKey}
                 onChange={(e) => setAiForm((prev) => ({ ...prev, apiKey: e.target.value }))}
                 placeholder={aiConfig?.configured ? t('留空则不修改') : 'sk-...'}

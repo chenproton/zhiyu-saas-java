@@ -21,7 +21,7 @@ import {
 } from '@/lib/api'
 import { reportError } from '@/lib/error-handling'
 import type { StaffTitle } from '@/lib/types/backend'
-import { useToast, ComboboxSelect } from '@zhiyu/ui'
+import { useToast, ComboboxSelect, PasswordInput } from '@zhiyu/ui'
 import { PortalSidebarCrudPage } from '@/components/shared/portal-sidebar-crud-page'
 import { Pencil, Trash2, Key, UserCheck, Ban, Users, Loader2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -375,8 +375,7 @@ export default function TeachersPage() {
             </FormFieldRow>
             {!selectedTeacher && (
               <FormFieldRow label={t('密码')} required>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder={t('请输入密码')}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@zhiyu/ui'
 import { Label } from '@/components/ui/label'
 import { Loader2, KeyRound } from 'lucide-react'
 import { partnerExpertApi } from '@/lib/api'
@@ -94,8 +94,7 @@ export default function PartnerExpertEditPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t('新密码（选填）')}</Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder={t('至少 8 位，包含字母和数字')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}

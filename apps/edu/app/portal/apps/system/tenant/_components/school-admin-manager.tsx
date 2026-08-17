@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Trash2, Loader2, KeyRound } from 'lucide-react'
-import { useToast, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui'
+import { useToast, TableEmptyRow, FormDialogFooter, PasswordInput } from '@zhiyu/ui'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Label } from '@/components/ui/label'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -418,9 +418,8 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
                 <Label htmlFor="set-password">{t('新密码')}</Label>
-                <Input
+                <PasswordInput
                   id="set-password"
-                  type="password"
                   placeholder={t('至少 8 位，包含字母和数字')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -428,9 +427,8 @@ export function SchoolAdminManager({ fetcher }: SchoolAdminManagerProps) {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="set-confirm-password">{t('确认新密码')}</Label>
-                <Input
+                <PasswordInput
                   id="set-confirm-password"
-                  type="password"
                   placeholder={t('再次输入新密码')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
