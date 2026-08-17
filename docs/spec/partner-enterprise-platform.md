@@ -115,7 +115,7 @@
 4. 企业导师用自己的企业账号参与共建（岗位/场景编辑）、被排课（teacher_type=企业导师）
 5. 毕业设计课题正式选择企业导师（复用选择器，修复悬空引用）
 
-**权限收窄（重要，2026-08-17 起为配置级，ADR-0008）**：移除 `enterprise_mentor` 的 `canManageAlliance` 全量权限，联盟管理归 `school_admin`/`teacher`；保留共建（job/scene 写）+ 测评打分。菜单驱动 RBAC 后，`enterprise_mentor` 默认种子不勾联盟菜单即无联盟权限（配置可覆盖），代码级收窄取消。
+**权限收窄（重要，2026-08-17 起为配置级，ADR-0008）**：移除 `enterprise_mentor` 的 `canManageAlliance` 全量权限，联盟管理归 `school_admin`/`teacher`；保留共建（job/scene 写）+ 测评打分。菜单驱动 RBAC 后，`enterprise_mentor` 默认种子不勾联盟菜单即无联盟权限（配置可覆盖），代码级收窄取消。联盟写授权面 = `/portal/apps/alliance` 管理菜单：仅勾联盟前台落地页（`/portal/alliance/landing`）的角色是前台只读角色，不获联盟管理 CRUD 权限。
 **一期范围**：共建人选择器支持"企业专家"来源（直接绑定企业账号）+ 毕业设计导师选择 + 权限收窄。
 **演进**：partner 平台待评分入口（跨租户评分）。
 

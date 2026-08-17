@@ -280,9 +280,10 @@ func forcePublishedForStudent(r *http.Request, params *store.ListParams) bool {
 }
 
 // canManageAlliance reports whether the caller may manage the alliance
-// (产教融合) module. 菜单驱动（ADR-0008）：配置任一联盟菜单（管理面或前台
-// /portal/apps/alliance、/portal/alliance）即视为联盟管理权限；B13 企业导师
-// 默认不勾联盟菜单即无权限（配置可覆盖）；系统菜单授权兜底。
+// (产教融合) module. 菜单驱动（ADR-0008）：配置任一联盟**管理**菜单
+// （/portal/apps/alliance 前缀）即视为联盟管理权限；仅勾前台落地页
+// （/portal/alliance/landing）是前台只读角色，不获管理权限；B13 企业导师
+// 默认不勾联盟管理菜单即无权限（配置可覆盖）；系统菜单授权兜底。
 func canManageAlliance(r *http.Request) bool {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -292,7 +293,7 @@ func canManageAlliance(r *http.Request) bool {
 		return true
 	}
 	if g := menuGrantFor(r); g != nil {
-		return g.CoversPrefix("/portal/apps/alliance") || g.CoversPrefix("/portal/alliance")
+		return g.CoversPrefix("/portal/apps/alliance")
 	}
 	return false
 }

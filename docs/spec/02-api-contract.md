@@ -61,7 +61,7 @@
 | PUT | `/job/positions/{id}/save-full` | businessUser | 整单保存（构建器一次提交） |
 | POST | `/job/positions/{id}/clone` | businessUser | 克隆岗位 |
 | GET/POST | `/job/positions/{id}/favorite` | 全部 | 收藏状态/切换收藏 |
-| GET | `/job/positions/favorites` | 全部 | 我的收藏列表 |
+| GET | `/job/positions/favorites` | 任一业务管理/落地页菜单 | 我的收藏列表 |
 | GET | `/job/public/positions`、`/{id}` | jobViewer | 公开岗位列表（2min 缓存）/详情 |
 | GET | `/job/landing/target-positions` | 登录公开 | 岗位大厅推荐岗位 |
 | GET | `/job/positions/{id}/snapshot` | jobViewer | 岗位快照 bundle（`?version=`，见 §1.12） |
@@ -159,7 +159,7 @@
 | GET/POST + 状态动作 | `/affairs/programs`、`/{id}` | businessUser | 人培方案（13 动作 + GET/PUT `/{id}/courses` + clone） |
 | GET/POST/PUT/DELETE | `/affairs/teaching-plans`、`/{id}`、`/entries/{id}`、`/{id}/confirm` | businessUser | 教学计划（生成/确认/条目编辑/导出） |
 | GET | `/affairs/teaching-plans/{id}/export` | businessUser | 教学计划导出 Excel |
-| GET/POST/PUT/DELETE | `/affairs/venues`、`/period-slots`（含 `/replace`） | jobViewer 读 / businessUser 写 | 场地、节次 |
+| GET/POST/PUT/DELETE | `/affairs/venues`、`/period-slots`（含 `/replace`） | 只读 GET `/affairs/period-slots` 登录公开（工作台课表渲染，学生/教师均需）；其余 affairs 管理菜单 | 场地、节次 |
 | GET/POST | `/affairs/schedules`（List/Create/auto-schedule/Update/Delete） | businessUser | 排课 |
 | POST | `/affairs/schedules/publish` | businessUser | 排课发布（无 {id}，整学期发布） |
 | GET | `/affairs/schedules/timetable`、`/export` | businessUser | 课表/导出 |
@@ -179,7 +179,7 @@
 | GET/POST/PUT/DELETE | `/majors`、`/industries` | businessUser 读 / systemAdmin 写 | 专业/行业字典 |
 | GET/POST/PUT/DELETE | `/resource-codes` | systemAdmin | 资源编码 |
 | GET | `/logs/login`、`/logs/operation` | systemAdmin | 审计日志 |
-| GET/POST | `/favorites`、`/favorites/{targetType}/{id}` | jobViewer | 通用收藏（场景/课程/题库/试卷） |
+| GET/POST | `/favorites`、`/favorites/{targetType}/{id}` | 任一业务管理/落地页菜单 | 通用收藏（场景/课程/题库/试卷） |
 | PUT | `/portal/workspace/me`、`/me/password` | portalWorkspace | 个人资料/改密（改密限流） |
 
 ### 1.8 工作流 / 审批（portal，school_admin/teacher）

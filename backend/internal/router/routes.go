@@ -124,27 +124,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				registerWorkflowRoutes(r, h)
 			})
 
-			r.Group(func(r chi.Router) {
-				r.Use(portalWorkspace)
-				// dashboard 内容按 userID 查询，缓存键含 userID（30s TTL），跨用户不串数据
-				r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
-				r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
-				// 学生荣誉（个人中心配置/画像页展示）：学生本人 CRUD，业务用户可读
-				r.Get("/portal/workspace/honors", h.studentHonorHandler.List)
-				r.Post("/portal/workspace/honors", h.studentHonorHandler.Create)
-				r.Put("/portal/workspace/honors/{id}", h.studentHonorHandler.Update)
-				r.Delete("/portal/workspace/honors/{id}", h.studentHonorHandler.Delete)
-				// 个人中心自助接口：修改本人姓名/密码（学生/教师/学校管理员）
-				r.Put("/portal/workspace/me", h.userManagementHandler.UpdateMe)
-				r.With(passwordLimiter).Post("/portal/workspace/me/password", h.userManagementHandler.ChangeMyPassword)
-				// 学习社区：发帖/回复/阅读数（学生/教师/学校管理员）
-				r.Get("/portal/community/topics", h.communityHandler.ListTopics)
-				r.Post("/portal/community/topics", h.communityHandler.CreateTopic)
-				r.Get("/portal/community/topics/{id}", h.communityHandler.GetTopic)
-				r.Get("/portal/community/topics/{id}/replies", h.communityHandler.ListReplies)
-				r.Post("/portal/community/topics/{id}/replies", h.communityHandler.CreateReply)
-			})
-
 			// 服务台（角色特色保留：workspace 按角色聚合，PRD P-1）
 			r.Group(func(r chi.Router) {
 				r.Use(portalWorkspace)
@@ -218,9 +197,11 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Use(authmw.RequireMenu(affairsManageMenus...))
 				registerAffairsRoutes(r, h, importExportLimiter)
 			})
-			// 产教融合管理面（教师/学校管理员/企业导师按菜单配置，B13 默认不勾联盟菜单）
+			// 产教融合管理面（教师/学校管理员/企业导师按菜单配置，B13 默认不勾联盟菜单）。
+			// 写授权面仅联盟**管理**菜单：仅勾前台落地页（/portal/alliance/landing）的角色
+			// 是前台只读角色，不授予联盟 CRUD 写权限（spec 02 §1.9）。
 			r.Group(func(r chi.Router) {
-				r.Use(authmw.RequireMenu(append(append([]string{}, allianceManageMenus...), alliancePublicMenus...)...))
+				r.Use(authmw.RequireMenu(allianceManageMenus...))
 				registerAllianceRoutes(r, h)
 			})
 
@@ -320,11 +301,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Get("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Get)
 			})
 
-			// affairs 只读（无 landing 端）：工作台课表渲染需要节次定义
-			r.Group(func(r chi.Router) {
-				r.Use(authmw.RequireMenu(affairsManageMenus...))
-				r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
-			})
+			// 节次定义（工作台课表渲染，学生/教师均需）：登录公开只读
+			// （数据为租户级节次定义，低敏感；原 jobViewer 组即覆盖全部业务角色）
+			r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
 
 			// 本租户详情只读（联盟前台 hero 学校卡/学校信息页）：任何登录用户可读本租户
 			// （handler 强制本租户归属，跨租户 403）。注册于 systemAdmin 组之后以覆盖其
@@ -505,9 +484,9 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Get("/brands/rank-configs", h.allianceHandler.ListBrandMajorRankConfigs)
 		r.Get("/brands/{id}", h.allianceHandler.GetBrand)
 
-		// 写操作：授权由调用处 RequireMenu(allianceManageMenus ∪ alliancePublicMenus)
-		// 控制（菜单驱动 RBAC，ADR-0008；B13 企业导师默认不勾联盟菜单即无写权限）；
-		// handler 层 canManageAlliance 保留作纵深防御（下阶段统一改为菜单判定）。
+		// 写操作：授权由调用处 RequireMenu(allianceManageMenus) 控制（菜单驱动 RBAC，
+		// ADR-0008；仅勾前台落地页菜单的角色不获联盟写权限，B13 企业导师默认不勾
+		// 联盟管理菜单即无权限）；handler 层 canManageAlliance 保留作纵深防御。
 		r.Group(func(r chi.Router) {
 			r.Put("/school-info", h.allianceHandler.UpdateSchoolInfo)
 			r.Post("/enterprises/register", h.allianceHandler.RegisterEnterprise)

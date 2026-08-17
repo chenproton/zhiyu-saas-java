@@ -31,9 +31,10 @@ func (g *MenuGrant) Merge(perms JSONMap) {
 
 // Covers 判定授权视图是否覆盖所需菜单路径（菜单树同链匹配）：
 //   - Admin 全量放行；
-//   - 已授权路径与所需路径相等、互为祖先/子孙（同一条菜单链）即视为已授权，
-//     与前端 checkMenuPermission 的「子路径继承最近已授权父菜单」语义一致
-//     （如勾选 /portal/apps/alliance/brands 即授权 brands/employer 子页 API）。
+//   - 已授权路径与所需路径相等、互为祖先/子孙（同一条菜单链）即视为已授权。
+//     注意：后端按「同链任一方向」判定，比前端 checkMenuPermission（仅请求路径
+//     向上回溯找已授权父菜单）略宽——勾选子菜单（如 brands/employer）也能覆盖
+//     祖先需求（brands 页 API）。这是有意为之：菜单树中子菜单页依赖父页 API。
 func (g *MenuGrant) Covers(menuPath string) bool {
 	if g == nil {
 		return false

@@ -60,7 +60,7 @@ func TestAPIRoutesRequireAuthzMiddleware(t *testing.T) {
 				strings.Contains(n, "RequireAnyPlatform") ||
 				strings.Contains(n, "RequireSystemPermission") ||
 				strings.Contains(n, "RequireUserRead") ||
-				strings.Contains(n, "RequireAllianceManager") {
+				strings.Contains(n, "RequireMenu") {
 				return nil
 			}
 		}

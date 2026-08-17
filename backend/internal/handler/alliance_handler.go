@@ -1258,7 +1258,7 @@ func (h *AllianceHandler) ListBrandMajorRankConfigs(w http.ResponseWriter, r *ht
 	respondJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
-// SaveBrandMajorRankConfigs 批量保存专业排名启用配置（路由挂 RequireAllianceManager）。
+// SaveBrandMajorRankConfigs 批量保存专业排名启用配置（写授权面为联盟管理菜单）。
 func (h *AllianceHandler) SaveBrandMajorRankConfigs(w http.ResponseWriter, r *http.Request) {
 	// 与同文件其余写接口一致：handler 内补权限校验（纵深防御，不依赖路由中间件）
 	if !canManageAlliance(r) {
