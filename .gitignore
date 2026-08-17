@@ -56,3 +56,35 @@ offline/debs/*.deb
 # 由 prebuild 脚本从 node_modules 复制生成，不提交入库
 /apps/edu/public/wasm/
 /apps/edu/public/vendor/
+
+### Java 框架（base-dev-framework6，同步自 saas-framework6-java-vue）###
+target/
+.classpath
+.factorypath
+.project
+.settings
+.flattened-pom.xml
+# Frontend - plus-ui
+plus-ui/.history/
+plus-ui/node_modules/
+plus-ui/dist/
+plus-ui/npm-debug.log*
+plus-ui/yarn-debug.log*
+plus-ui/yarn-error.log*
+plus-ui/**/*.log
+plus-ui/tests/**/coverage/
+plus-ui/tests/e2e/reports/
+plus-ui/selenium-debug.log
+plus-ui/.idea/
+plus-ui/.vscode/
+plus-ui/*.iml
+plus-ui/*.suo
+plus-ui/*.ntvs*
+plus-ui/*.njsproj
+plus-ui/*.sln
+plus-ui/*.local
+plus-ui/package-lock.json
+plus-ui/yarn.lock
+plus-ui/auto-imports.d.ts
+plus-ui/components.d.ts
+deploy/docker/build-context/

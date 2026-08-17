@@ -1,0 +1,2 @@
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS education_level VARCHAR(32);
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS education_nature VARCHAR(16);

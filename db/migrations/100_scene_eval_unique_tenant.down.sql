@@ -1,0 +1,2 @@
+ALTER TABLE scene_evaluation_results DROP CONSTRAINT IF EXISTS scene_evaluation_results_tenant_task_evaluatee_method_key;
+ALTER TABLE scene_evaluation_results ADD CONSTRAINT scene_evaluation_results_task_id_evaluatee_id_method_key_key UNIQUE (task_id, evaluatee_id, method_key);

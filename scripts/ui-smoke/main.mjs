@@ -21,14 +21,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
 const SMOKE_DEVICE_ID = 'smoke-device-portal'
 
 /**
- * 从 Redis 读取验证码明文答案（base64Captcha 答案仅存服务端 Redis，
+ * 从 Redis 读取验证码明文答案（答案仅存服务端 Redis，
  * 巡检环境可直接读取；生产环境验证码答案只在服务端内存流转）。
+ * Redis 容器可配（SMOKE_REDIS_CONTAINER 环境变量）：
+ * Go 版 = zhiyu-redis，Java 版 = zhiyu-java-redis-compose。
  */
 function captchaAnswer(captchaId) {
   if (!captchaId) return null
+  const container = process.env.SMOKE_REDIS_CONTAINER || 'zhiyu-java-redis-compose'
   try {
     const out = execFileSync(
-      'docker', ['exec', 'zhiyu-redis', 'redis-cli', 'GET', `zhiyu:captcha:answer:${captchaId}`],
+      'docker', ['exec', container, 'redis-cli', '-a', 'ruoyi123', 'GET', `zhiyu:captcha:answer:${captchaId}`],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
     )
     return (out || '').trim() || null
