@@ -11,6 +11,12 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
+// certificationSceneTasksOnly 临时开关（产品决策，后续可能恢复）：
+// 岗位能力认定全链路（胜任配置弹窗 / 测试打分 / 汇总岗位分数 / 学生画像）
+// 只使用场景任务，暂时过滤体系课/混合课课程任务（taskType=course）。
+// 恢复课程参与时改为 false 即可（LoadModel 2b 分支代码保留）。
+const certificationSceneTasksOnly = true
+
 // CertificationStore 认证规则持久化。
 type CertificationStore struct {
 	q        Queryer
@@ -861,30 +867,35 @@ func (s *CertificationStore) LoadModel(ctx context.Context, tenantID, positionID
 	}
 
 	// 2b. 能力点→关联课程：课程上 ability_point_ids 与岗位能力点匹配。
-	courseRows, err := s.q.Query(ctx, `
-		SELECT DISTINCT u.ap_id, c.id, COALESCE(c.name, '')
-		FROM courses c
-		CROSS JOIN LATERAL unnest(c.ability_point_ids) AS u(ap_id)
-		WHERE c.tenant_id = $1 AND c.status = 'published' AND u.ap_id = ANY($2)
-		ORDER BY u.ap_id, c.id
-	`, tenantID, pointIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer courseRows.Close()
-	for courseRows.Next() {
-		var apID string
-		var t domain.CertificationModelTask
-		if err := courseRows.Scan(&apID, &t.TaskID, &t.TaskName); err != nil {
+	// 临时关闭（certificationSceneTasksOnly=true）：岗位能力认定全链路（胜任配置/测试
+	// 打分/汇总岗位分数/学生画像）只使用场景任务，过滤体系课/混合课课程任务；
+	// 恢复课程参与时置 false 重新启用本分支（代码保留）。
+	if !certificationSceneTasksOnly {
+		courseRows, err := s.q.Query(ctx, `
+			SELECT DISTINCT u.ap_id, c.id, COALESCE(c.name, '')
+			FROM courses c
+			CROSS JOIN LATERAL unnest(c.ability_point_ids) AS u(ap_id)
+			WHERE c.tenant_id = $1 AND c.status = 'published' AND u.ap_id = ANY($2)
+			ORDER BY u.ap_id, c.id
+		`, tenantID, pointIDs)
+		if err != nil {
 			return nil, err
 		}
-		t.TaskType = "course"
-		if i, ok := pointIdx[apID]; ok {
-			points[i].point.Tasks = append(points[i].point.Tasks, t)
+		defer courseRows.Close()
+		for courseRows.Next() {
+			var apID string
+			var t domain.CertificationModelTask
+			if err := courseRows.Scan(&apID, &t.TaskID, &t.TaskName); err != nil {
+				return nil, err
+			}
+			t.TaskType = "course"
+			if i, ok := pointIdx[apID]; ok {
+				points[i].point.Tasks = append(points[i].point.Tasks, t)
+			}
 		}
-	}
-	if err := courseRows.Err(); err != nil {
-		return nil, err
+		if err := courseRows.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	// 3. 两级权重：certification_weights（task_id 为 NULL 的行是能力点占岗位总分的权重）

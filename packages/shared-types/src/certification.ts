@@ -119,11 +119,13 @@ export interface CertificationRelatedTask {
 
 // ==================== 岗位能力模型（只读组装）与权重配置 ====================
 
-/** 能力点下关联的场景任务（来自场景编辑页的关联，只读） */
+/** 能力点下关联的任务（场景任务或课程，来自编辑页关联，只读） */
 export interface CertificationModelTask {
   taskId: string
   taskName: string
   scenarioName: string
+  /** 任务类型："scene"（场景任务）| "course"（体系课/混合课课程）；当前后端临时仅返回 scene（见后端 certificationSceneTasksOnly 开关） */
+  taskType?: string
   /** 任务得分占能力点得分的权重（点内合计 100，后端缺省时给均分默认） */
   weight: number
 }

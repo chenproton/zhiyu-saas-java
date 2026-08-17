@@ -126,10 +126,10 @@
 | GET | `/evaluation/exam-results/{id}`、POST `/{id}/grade` | businessUser | 成绩详情/教师评分 |
 | GET/POST | `/evaluation/results` | jobViewer 读+Submit / businessUser | 评估结果列表/提交 |
 | GET/POST | `/evaluation/results/{id}`、`/{id}/grade`、`/results/batch-grade` | businessUser | 结果详情/评分/批量评分 |
-| GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分 |
+| GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分；`/course-scores` 当前被学生画像页临时隐藏（`student_portrait.html` `SHOW_COURSE_SCORES` 开关，见 `docs/系统功能清单.md`「六、6 认证结果与能力汇聚」） |
 | GET/POST | `/evaluation/job-ability/aggregate`、`/aggregate/status` | businessUser | 触发汇聚/状态 |
 | GET/POST/PUT/DELETE | `/evaluation/certifications`、`/{id}` | businessUser | 认证规则（见 §3.4，实际端点以 `/evaluation/certifications` 为前缀） |
-| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重 |
+| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：`certifications.go` `certificationSceneTasksOnly` 开关过滤体系课/混合课课程任务，恢复课程置 false） |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | businessUser | 能力点五档分数线 |
 | GET/POST | `/evaluation/certifications/{id}/items`、`/items/{id}/points`、`/{id}/full` | businessUser | 能力项/能力点/全量规则 |
 | POST | `/evaluation/certifications/points/{pointId}/tasks`、`/{id}/status` | businessUser | 关联任务/启用停用 |
