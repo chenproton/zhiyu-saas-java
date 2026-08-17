@@ -32,6 +32,8 @@ import { useAiNotConfigured } from '@/lib/ai/use-ai-assist'
 import { AiNotConfiguredDialog } from '@/components/shared/ai-not-configured-dialog'
 import { YIKnowMyAssets } from './yi-know-my-assets'
 import { useT } from '@/lib/i18n/locale-provider'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 // 预留功能入口（本期仅占位）
 const PLACEHOLDER_ITEMS = [
@@ -175,7 +177,7 @@ export function YIKnowChat({
   return (
     <div
       className={cn(
-        'flex bg-[#f5f7fa]',
+        'flex bg-[#f5f7fa] min-h-0',
         variant === 'page' ? 'h-[calc(100vh-3.5rem)]' : 'h-full',
       )}
     >
@@ -354,15 +356,22 @@ export function YIKnowChat({
               messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[75%] rounded-lg px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    className={`max-w-[75%] rounded-lg px-4 py-2 text-sm leading-relaxed break-words ${
                       m.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary text-primary-foreground whitespace-pre-wrap'
                         : 'bg-background border border-border'
                     }`}
                   >
-                    {m.content}
-                    {sending && i === messages.length - 1 && m.role === 'assistant' && m.content === '' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    {/* assistant 消息渲染 Markdown（GFM：表格/删除线/任务列表），流式增量直接渲染 */}
+                    {m.role === 'assistant' ? (
+                      <div className="ai-md">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                        {sending && i === messages.length - 1 && m.content === '' && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                    ) : (
+                      m.content
                     )}
                   </div>
                 </div>
