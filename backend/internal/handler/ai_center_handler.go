@@ -43,6 +43,8 @@ func aiCenterError(w http.ResponseWriter, r *http.Request, err error, fallback s
 		respondError(w, http.StatusConflict, "当前状态不允许该操作")
 	case errors.Is(err, service.ErrAIAgentTooManyKBs):
 		respondError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, service.ErrAIConversationTitleRequired):
+		respondError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, service.ErrAINotConfigured):
 		respondError(w, http.StatusPreconditionFailed, "ai_not_configured")
 	case isInvalidUUIDSyntax(err):
@@ -660,6 +662,26 @@ func (h *AICenterHandler) DeleteConversation(w http.ResponseWriter, r *http.Requ
 	}
 	err := h.Service.DeleteConversation(r.Context(), tenantID, chi.URLParam(r, "id"), userID)
 	if aiCenterError(w, r, err, "删除会话失败"); err != nil {
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// RenameConversation PATCH /ai/conversations/{id}（重命名，仅本人）。
+func (h *AICenterHandler) RenameConversation(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := aiCenterUser(r)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	var req struct {
+		Title string `json:"title"`
+	}
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	err := h.Service.RenameConversation(r.Context(), tenantID, chi.URLParam(r, "id"), userID, req.Title)
+	if aiCenterError(w, r, err, "重命名会话失败"); err != nil {
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})

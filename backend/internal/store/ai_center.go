@@ -834,6 +834,21 @@ func (s *AICenterStore) TouchConversation(ctx context.Context, tenantID, id, tit
 	`, tenantID, id, titleIfEmpty)
 }
 
+// RenameConversation 重命名会话（仅本人；title 截断 100 字）。
+func (s *AICenterStore) RenameConversation(ctx context.Context, tenantID, id, userID, title string) error {
+	ct, err := s.q.Exec(ctx, `
+		UPDATE ai_conversations SET title = $4, updated_at = now()
+		WHERE tenant_id = $1 AND id = $2 AND user_id = $3
+	`, tenantID, id, userID, title)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // DeleteConversation 删除会话（仅本人；级联消息）。
 func (s *AICenterStore) DeleteConversation(ctx context.Context, tenantID, id, userID string) error {
 	ct, err := s.q.Exec(ctx, `DELETE FROM ai_conversations WHERE tenant_id = $1 AND id = $2 AND user_id = $3`, tenantID, id, userID)

@@ -257,6 +257,12 @@ export const aiCenterAgentApi = {
   getConversation: (convId: string) =>
     portalRequest<{ conversation: AIConversation; messages: AIMessage[] }>(`/ai/conversations/${convId}`),
 
+  renameConversation: (convId: string, title: string) =>
+    portalRequest<{ status: string }>(`/ai/conversations/${convId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    }),
+
   removeConversation: (convId: string) =>
     portalRequest<{ status: string }>(`/ai/conversations/${convId}`, { method: 'DELETE' }),
 }

@@ -4685,5 +4685,18 @@
   "暂无知识库": "No knowledge bases yet",
   "暂无智能体": "No agents yet",
   "我创建的": "Created by Me",
-  "我收藏的": "My Favorites"
+  "我收藏的": "My Favorites",
+  "输入消息，Enter 发送，Shift+Enter 换行": "Type a message — Enter to send, Shift+Enter for newline",
+  "已复制": "Copied",
+  "重新生成": "Regenerate",
+  "生成失败 · 点击重试": "Generation failed · click to retry",
+  "双击重命名": "Double-click to rename",
+  "重命名会话": "Rename conversation",
+  "重命名失败": "Rename failed",
+  "昨天": "Yesterday",
+  "7 天内": "Last 7 Days",
+  "更早": "Earlier",
+  "打开导航": "Open navigation",
+  "YIKnow 导航": "YIKnow Navigation",
+  "复制失败": "Copy failed"
 }

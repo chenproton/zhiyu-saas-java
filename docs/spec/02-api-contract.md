@@ -413,7 +413,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 **用户端（portal 平台组，任意登录角色，可见性由 service 层判定）**
 
 - 知识库：`GET/POST /ai/kb`，`GET/PUT/DELETE /ai/kb/{id}`，`POST /ai/kb/{id}/submit|unpublish`；文档 `GET/POST /ai/kb/{id}/documents`（POST 为 multipart 上传，≤10MB，扩展名白名单 pdf/docx/txt/md，走 uploadLimiter）、`GET/DELETE /ai/kb/{id}/documents/{docId}`；协作者 `GET/POST /ai/kb/{id}/collaborators`、`PUT/DELETE /ai/kb/{id}/collaborators/{userId}`；库内问答 `POST /ai/kb/{id}/ask`（SSE，aiLimiter）。
-- 智能体：`GET/POST /ai/agents`，`GET/PUT/DELETE /ai/agents/{id}`，`POST /ai/agents/{id}/submit|unpublish`；对话 `POST /ai/agents/{id}/chat`（SSE，aiLimiter）；会话 `GET /ai/agents/{id}/conversations`、`GET/DELETE /ai/conversations/{id}`。
+- 智能体：`GET/POST /ai/agents`，`GET/PUT/DELETE /ai/agents/{id}`，`POST /ai/agents/{id}/submit|unpublish`；对话 `POST /ai/agents/{id}/chat`（SSE，aiLimiter）；会话 `GET /ai/agents/{id}/conversations`、`GET/PATCH/DELETE /ai/conversations/{id}`（PATCH=重命名，v2.7.3）。
 - 广场：`GET /ai/square/kbs|agents`（q/tag/sort=hot|new + 分页）、`GET /ai/integrations?kind=`。
 - 收藏：复用通用收藏 `GET/POST /favorites/{targetType}/{id}`，targetType 扩展 `ai_kb`/`ai_agent`，仅 published 对象可收藏（其余 404）。
 
@@ -445,7 +445,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | POST | /ai/agents/{id}/unpublish | 下架 |
 | POST | /ai/agents/{id}/chat | 智能体对话（SSE） |
 | GET | /ai/agents/{id}/conversations | 我的会话列表 |
-| GET/DELETE | /ai/conversations/{id} | 会话详情（含消息）/ 删除 |
+| GET/PATCH/DELETE | /ai/conversations/{id} | 会话详情（含消息）/ 重命名 / 删除 |
 | POST | /ai/yiknow/chat | YIKnow 通用会话对话（SSE，同 chat 事件协议 meta/delta/done/error；无 agent_id） |
 | GET | /ai/yiknow/conversations | YIKnow 通用会话列表（复用 /ai/conversations/{id} 读写删） |
 | GET | /ai/square/kbs | 广场知识库（q/tag/sort/分页） |

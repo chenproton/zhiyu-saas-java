@@ -41,6 +41,7 @@ func registerAICenterRoutes(r chi.Router, h *Handlers, aiLimiter, uploadLimiter 
 	r.Get("/ai/agents/{id}/conversations", h.aiCenterHandler.ListConversations)
 	r.Get("/ai/conversations/{id}", h.aiCenterHandler.GetConversation)
 	r.Delete("/ai/conversations/{id}", h.aiCenterHandler.DeleteConversation)
+	r.Patch("/ai/conversations/{id}", h.aiCenterHandler.RenameConversation)
 
 	// ---- v2.2：KB 问答记录 / YIKnow 通用会话 / 智能体预览 ----
 	r.Get("/ai/kb/{id}/asks", h.aiCenterHandler.ListMyKBAsks)

@@ -722,6 +722,23 @@ func TestAICenter_V22(t *testing.T) {
 	if convs.Items[0].Title == "" {
 		t.Fatalf("conversation title should be set from first message")
 	}
+	// v2.7.3 会话重命名：本人可改、空标题 400、他人 404
+	if w := env.DoWithToken("PATCH", fmt.Sprintf("/api/v1/ai/conversations/%s", cvID), map[string]string{"title": "  "}, other); w.Code != http.StatusBadRequest {
+		t.Fatalf("rename empty title should 400, got %d", w.Code)
+	}
+	if w := env.DoWithToken("PATCH", fmt.Sprintf("/api/v1/ai/conversations/%s", cvID), map[string]string{"title": "改名"}, owner); w.Code != http.StatusNotFound {
+		t.Fatalf("rename other's conversation should 404, got %d", w.Code)
+	}
+	if w := env.DoWithToken("PATCH", fmt.Sprintf("/api/v1/ai/conversations/%s", cvID), map[string]string{"title": "我的 YIKnow 会话"}, other); w.Code != http.StatusOK {
+		t.Fatalf("rename conversation: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.DoWithToken("GET", "/api/v1/ai/yiknow/conversations", nil, other)
+	convs2, _ := testhelper.Unmarshal[struct {
+		Items []domain.AIConversation `json:"items"`
+	}](w)
+	if len(convs2.Items) != 1 || convs2.Items[0].Title != "我的 YIKnow 会话" {
+		t.Fatalf("renamed title not persisted: %+v", convs2.Items)
+	}
 	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/conversations/%s", cvID), nil, other)
 	cvResp, _ := testhelper.Unmarshal[struct {
 		Messages []domain.AIMessage `json:"messages"`

@@ -69,6 +69,9 @@ func (svc *AICenterService) CreateAgent(ctx context.Context, tenantID, ownerID s
 // ErrAIAgentTooManyKBs 关联知识库超限（handler 映射 400）。
 var ErrAIAgentTooManyKBs = errors.New("关联知识库最多 5 个")
 
+// ErrAIConversationTitleRequired 会话重命名空标题（handler 映射 400）。
+var ErrAIConversationTitleRequired = errors.New("会话标题不能为空")
+
 // validateAgentKBLinks 关联校验：owner 对每个库须为 owner/协作者，或库已发布（spec §4.6）。
 func (svc *AICenterService) validateAgentKBLinks(ctx context.Context, tenantID, ownerID string, kbIDs []string) error {
 	if len(kbIDs) > aiAgentMaxKBLinks {
@@ -425,4 +428,17 @@ func (svc *AICenterService) GetConversationMessages(ctx context.Context, tenantI
 // DeleteConversation 删除会话（仅本人）。
 func (svc *AICenterService) DeleteConversation(ctx context.Context, tenantID, conversationID, userID string) error {
 	return svc.s.Store().AICenter().DeleteConversation(ctx, tenantID, conversationID, userID)
+}
+
+// RenameConversation 重命名会话（仅本人；空标题拒绝）。
+func (svc *AICenterService) RenameConversation(ctx context.Context, tenantID, conversationID, userID, title string) error {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return ErrAIConversationTitleRequired
+	}
+	runes := []rune(title)
+	if len(runes) > 100 {
+		title = string(runes[:100])
+	}
+	return svc.s.Store().AICenter().RenameConversation(ctx, tenantID, conversationID, userID, title)
 }
