@@ -70,24 +70,37 @@ export default function AILandingPage() {
     <LandingShell
       hero={{
         badge: t('AI 智能服务平台'),
-        title: <>{t('AI 赋能培养宽技能数智化人才，适应复合型岗位新需求')}</>,
+        // 两行标题对齐 /job/landing 风格：首行白色，次行 text-white/80
+        title: (
+          <>
+            {t('AI 赋能场景化数智教学')}
+            <br />
+            <span className="text-white/80">{t('培养宽技能数智化人才，适应复合型岗位新需求')}</span>
+          </>
+        ),
         description: t(
           '融合场景化数智教学模式，为职业教育提供智能化教学辅助、岗位能力评估、个性化学习路径规划等全方位AI服务，助力培养适应产业需求的高素质技术技能人才。',
         ),
-        ctaLabel: t('立即体验 YIKnow'),
-        ctaHref: '/portal/apps/ai/chat',
+        // 主按钮滚动到我的工坊（#studio 锚点），次按钮滚动到 AI 广场（LandingShell 默认 listRef=#square）
+        ctaLabel: t('制作专属智能体/知识库'),
+        ctaHref: '#studio',
         secondaryCtaLabel: t('逛逛 AI 广场'),
         right: (
-          // v2.3：hero 右侧改为 YIKnow 品牌展示卡（去对话示例/输入框/待上线清单）
+          // v2.4：hero 右侧 YIKnow 品牌展示卡（品牌标签 + 定位 + 口号 + 能力说明 + 立即体验）
           <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md p-8 shadow-xl">
-            <div className="flex items-center gap-2 text-white/90 text-sm font-medium mb-5">
-              <Sparkles className="w-4 h-4 text-yellow-300" />
-              {t('AI 智能服务平台')}
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold tracking-widest text-white/90 mb-5">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+              YI KNOW
             </div>
-            <div className="text-4xl font-bold text-white tracking-wide">YIKnow</div>
+            <div className="text-2xl font-bold text-white leading-snug">
+              {t('职业教育场景化教学智能助理')}
+            </div>
             <div className="text-sm text-white/70 mt-2">
               You Ask · I Know · {t('你问，我懂')}
             </div>
+            <p className="text-xs text-white/60 leading-relaxed mt-4">
+              {t('集成多元大模型能力，以知识库与智能体全面赋能职业教育场景化教学')}
+            </p>
             <a
               href="/portal/apps/ai/chat"
               className="inline-flex items-center gap-1.5 mt-6 rounded-full bg-white text-primary px-6 h-10 text-sm font-semibold leading-10 hover:bg-yellow-300 hover:text-slate-800 transition-colors"
