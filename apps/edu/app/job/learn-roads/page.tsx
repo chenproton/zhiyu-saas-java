@@ -51,6 +51,8 @@ import { useToast, EmptyState, TableEmptyRow } from '@zhiyu/ui'
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
 import type { Scenario, ScenarioTask } from '@/lib/types/scene'
+import { buildPositionSceneStats } from '@/lib/position-scene-stats'
+import { orderScenariosByLearnRoad } from '@/lib/learn-road-order'
 import { TableRowActions } from '@/components/shared/table-row-actions'
 import { SearchInput } from '@/components/shared/search-input'
 import { reportError } from '@/lib/error-handling'
@@ -99,68 +101,12 @@ function scenarioToScene(scenario: Scenario, allTasks: ScenarioTask[]): Scene {
   }
 }
 
-function stepsToScenes(
-  steps: LearnRoadStep[],
-  scenarios: Scenario[],
-  allTasks: ScenarioTask[],
-): Scene[] {
-  const scenarioMap = new Map(scenarios.map((s) => [s.id, s]))
-  const result: Scene[] = []
-  const usedScenarioIds = new Set<string>()
-
-  for (const step of steps) {
-    if (step.scenarioId && scenarioMap.has(step.scenarioId)) {
-      const sc = scenarioMap.get(step.scenarioId)!
-      result.push(scenarioToScene(sc, allTasks))
-      usedScenarioIds.add(sc.id)
-      continue
-    }
-    // 兼容旧数据：按名称匹配场景
-    const matched = scenarios.find((s) => s.name === step.name && !usedScenarioIds.has(s.id))
-    if (matched) {
-      result.push(scenarioToScene(matched, allTasks))
-      usedScenarioIds.add(matched.id)
-      continue
-    }
-    // 未匹配到真实场景的步骤，保留名称和缓存的任务
-    const orphanTasks = Array.isArray(step.tasks)
-      ? step.tasks.map((t) => ({ id: String(t.id), name: String(t.name) }))
-      : []
-    result.push({
-      id: `orphan-${step.name}-${Math.random().toString(36).slice(2, 8)}`,
-      name: step.name,
-      hours: 0,
-      tasks: orphanTasks,
-    })
-  }
-
-  // 追加尚未纳入学习路径的新场景
-  for (const sc of scenarios) {
-    if (!usedScenarioIds.has(sc.id)) {
-      result.push(scenarioToScene(sc, allTasks))
-    }
-  }
-
-  return result
-}
-
 function scenesToSteps(scenes: Scene[]): LearnRoadStep[] {
   return scenes.map((scene) => ({
     name: scene.name,
-    scenarioId: scene.id.startsWith('orphan-') ? undefined : scene.id,
+    scenarioId: scene.id,
     tasks: scene.tasks,
   }))
-}
-
-function countScenesAndTasks(road?: LearnRoad): { sceneCount: number; taskCount: number } {
-  const steps = road?.steps || []
-  return {
-    sceneCount: steps.length,
-    taskCount: steps.reduce(
-      (sum, step) => sum + (Array.isArray(step.tasks) ? step.tasks.length : 0),
-      0,
-    ),
-  }
 }
 
 interface EditViewProps {
@@ -499,13 +445,16 @@ export default function LearnRoadsPage() {
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [learnRoadId, setLearnRoadId] = useState<string | null>(null)
-  const [learnRoads, setLearnRoads] = useState<LearnRoad[]>([])
   // 缓存已拉取的学习路径列表，编辑时复用，避免重复全量请求
   const learnRoadsRef = useRef<LearnRoad[] | null>(null)
   // 保存成功提示 2s 自动消失的定时器句柄（卸载时清理）
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [positionScenarios, setPositionScenarios] = useState<Scenario[]>([])
   const [positionTasks, setPositionTasks] = useState<ScenarioTask[]>([])
+  // 全量场景（挂载时一次拉取）：列表页「场景数/任务数」按 careerPositionId 实时分组统计，
+  // 不再使用学习路径 steps 快照（steps 是保存时缓存，场景/任务增删后不更新，
+  // 且无学习路径的岗位会错误显示 0/0）
+  const [allScenarios, setAllScenarios] = useState<Scenario[]>([])
 
   const [listLoading, setListLoading] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -545,9 +494,16 @@ export default function LearnRoadsPage() {
     ;(async () => {
       setListLoading(true)
       try {
-        const res = await learnRoadApi.list({ limit: 1000 })
-        learnRoadsRef.current = res.items || []
-        if (!cancelled) setLearnRoads(res.items || [])
+        // 学习路径 + 全量场景并行加载：列表统计与编辑视图复用同一份数据，
+        // 避免为统计逐岗位发请求（N+1）
+        const [roadRes, scenarioRes] = await Promise.all([
+          learnRoadApi.list({ limit: 1000 }),
+          scenarioApi.list({ limit: 1000 }),
+        ])
+        learnRoadsRef.current = roadRes.items || []
+        if (!cancelled) {
+          setAllScenarios(scenarioRes.items || [])
+        }
       } catch (err) {
         toast({
           title: t('加载失败'),
@@ -563,6 +519,12 @@ export default function LearnRoadsPage() {
     }
   }, [toast, t])
 
+  // 列表页「场景数/任务数」：按岗位实时统计（场景数 + 场景 taskCount 之和）
+  const positionSceneStats = useMemo(
+    () => buildPositionSceneStats(allScenarios),
+    [allScenarios],
+  )
+
   // 卸载时清理保存提示定时器，避免对已卸载组件 setState
   useEffect(
     () => () => {
@@ -570,9 +532,6 @@ export default function LearnRoadsPage() {
     },
     [],
   )
-
-  const getRoadForPosition = (positionId: string) =>
-    learnRoads.find((r) => r.positionIds?.includes(positionId))
 
   const filteredPositions = useMemo(() => {
     let result = positions
@@ -636,7 +595,6 @@ export default function LearnRoadsPage() {
         ])
         // 快速连续点击不同岗位时丢弃过期响应，防止先发后至覆盖当前岗位数据
         if (seq !== editSeqRef.current) return
-        setLearnRoads(roads)
         // 场景/任务计数在序号守卫后统一落状态，过期响应不再覆盖头部计数
         setPositionScenarios(scenarios)
         setPositionTasks(tasks)
@@ -645,7 +603,12 @@ export default function LearnRoadsPage() {
         let loadedScenes: Scene[] = []
         if (existing?.id) {
           setLearnRoadId(existing.id)
-          loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
+          // 编辑列表 = 岗位关联场景按学习路径步骤顺序（与 landing/learn 页同一套
+          // orderScenariosByLearnRoad 排序规则，见 docs/spec/05-prototype-interaction.md §2.6）；
+          // 任务实时加载自 scenario_tasks，不用 steps 里缓存的快照，避免统计/展示过期
+          loadedScenes = orderScenariosByLearnRoad([existing], scenarios).map((s) =>
+            scenarioToScene(s, tasks),
+          )
         } else {
           // 无已有路径时不立即写库，进入本地编辑态，保存时才创建
           setLearnRoadId(null)
@@ -707,7 +670,6 @@ export default function LearnRoadsPage() {
           steps,
         })
         id = created.id
-        setLearnRoads((prev) => [created, ...prev])
         learnRoadsRef.current = [created, ...(learnRoadsRef.current ?? [])]
         setLearnRoadId(id)
       }
@@ -716,7 +678,6 @@ export default function LearnRoadsPage() {
         positionIds: [editingPosition.id],
         steps,
       })
-      setLearnRoads((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
       learnRoadsRef.current = (learnRoadsRef.current ?? []).map((r) =>
         r.id === updated.id ? updated : r,
       )
@@ -802,9 +763,9 @@ export default function LearnRoadsPage() {
                 </TableEmptyRow>
               ) : (
                 filteredPositions.map((position) => {
-                  const { sceneCount, taskCount } = countScenesAndTasks(
-                    getRoadForPosition(position.id),
-                  )
+                  const stats = positionSceneStats.get(position.id)
+                  const sceneCount = stats?.sceneCount ?? 0
+                  const taskCount = stats?.taskCount ?? 0
 
                   return (
                     <TableRow key={position.id} className="group">
