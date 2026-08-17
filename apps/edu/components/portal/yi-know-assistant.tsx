@@ -27,6 +27,8 @@ export function YiKnowAssistant() {
             className="relative bg-white rounded-2xl px-5 py-3.5 shadow-lg max-w-[210px]"
             style={{
               boxShadow: '0 20px 48px -8px rgba(60,80,140,0.2), 0 4px 12px rgba(60,80,140,0.06)',
+              animation: 'rb-pop 0.6s cubic-bezier(.2,1.3,.4,1) both',
+              animationDelay: '.5s',
             }}
           >
             <div className="absolute -top-px left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-primary/30 to-transparent rounded-full" />
