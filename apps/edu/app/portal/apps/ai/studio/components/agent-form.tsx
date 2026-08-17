@@ -14,6 +14,7 @@ import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import type { AIAgent, AIAgentInput, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AgentPreviewPanel } from './agent-preview'
+import { ClassifySelects, type ClassifyValue } from '../../_components/classify-selects'
 
 const MAX_PROMPT_LEN = 4000
 const MAX_KB = 5
@@ -33,6 +34,11 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
   const [description, setDescription] = useState(initial?.description ?? '')
   const [greeting, setGreeting] = useState(initial?.greeting ?? '')
   const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? '')
+  const [classify, setClassify] = useState<ClassifyValue>({
+    majorId: initial?.majorId ?? '',
+    departmentId: initial?.departmentId ?? '',
+    kbType: '',
+  })
   const [kbIds, setKbIds] = useState<string[]>(initial?.kbIds ?? [])
   const [coverUrl, setCoverUrl] = useState(initial?.coverImage ?? '')
   const [coverUploading, setCoverUploading] = useState(false)
@@ -119,6 +125,8 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
         greeting: greeting.trim(),
         systemPrompt: systemPrompt.trim(),
         kbIds,
+        majorId: classify.majorId || undefined,
+        departmentId: classify.departmentId || undefined,
       })
     } catch (err) {
       toast({
@@ -217,6 +225,9 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
           rows={8}
         />
       </div>
+
+      {/* 分类字段（v2.4 大厅筛选） */}
+      <ClassifySelects value={classify} onChange={setClassify} />
 
       {/* 实时试聊（v2.2 B7）：仅编辑已有智能体时可用（预览端点需已存在的 agent） */}
       {initial?.id && <AgentPreviewPanel agentId={initial.id} systemPrompt={systemPrompt} />}

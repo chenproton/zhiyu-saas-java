@@ -765,4 +765,70 @@ func TestAICenter_V22(t *testing.T) {
 	if fav.AIKBs[0].ID != kb.ID || fav.AIAgents[0].ID != agent.ID {
 		t.Fatalf("favorites content mismatch")
 	}
+
+	// ── v2.4 大厅筛选：所属专业/院系/更新时间/知识库类型 ──
+	ctx := context.Background()
+	majorID, deptTypeID, deptID := "cccccccc-0000-0000-0000-0000000000a1", "cccccccc-0000-0000-0000-0000000000a2", "cccccccc-0000-0000-0000-0000000000a3"
+	env.DB.Exec(ctx, `INSERT INTO majors (id, tenant_id, code, name) VALUES ($1,$2,'V22-MAJ','V22 测试专业') ON CONFLICT (id) DO NOTHING`, majorID, testhelper.TestTenantID)
+	env.DB.Exec(ctx, `INSERT INTO org_types (id, tenant_id, name, category) VALUES ($1,$2,'二级学院','internal') ON CONFLICT (id) DO NOTHING`, deptTypeID, testhelper.TestTenantID)
+	env.DB.Exec(ctx, `INSERT INTO organizations (id, tenant_id, name, type_id, sort_order) VALUES ($1,$2,'V22 测试学院',$3,0) ON CONFLICT (id) DO NOTHING`, deptID, testhelper.TestTenantID, deptTypeID)
+
+	// 更新 kb 分类字段（kb 已发布，编辑不改状态）
+	w = env.DoWithToken("PUT", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), map[string]any{
+		"name": "V22库", "majorId": majorID, "departmentId": deptID, "kbType": "teaching_case",
+	}, owner)
+	if w.Code != http.StatusOK {
+		t.Fatalf("update kb classify: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	// 非法 kbType 拒绝
+	w = env.DoWithToken("PUT", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), map[string]any{
+		"name": "V22库", "kbType": "bogus",
+	}, owner)
+	if w.Code == http.StatusOK {
+		t.Fatalf("invalid kbType should be rejected")
+	}
+	// agent 分类字段
+	w = env.DoWithToken("PUT", fmt.Sprintf("/api/v1/ai/agents/%s", agent.ID), map[string]any{
+		"name": "V22助手", "systemPrompt": "你是助手", "majorId": majorID, "departmentId": deptID,
+	}, owner)
+	if w.Code != http.StatusOK {
+		t.Fatalf("update agent classify: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	// 详情返回字典名
+	w = env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s", kb.ID), nil, other)
+	kb4, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
+	if kb4.MajorName != "V22 测试专业" || kb4.DepartmentName != "V22 测试学院" || kb4.KBType == nil || *kb4.KBType != "teaching_case" {
+		t.Fatalf("kb classify roundtrip: %+v", kb4)
+	}
+	// 广场过滤：majorId 命中 / 未命中；kbType 命中；updated=7d 命中（刚更新）
+	type listRes struct {
+		Items []domain.AIKnowledgeBase `json:"items"`
+		Total int                      `json:"total"`
+	}
+	assertKBTotal := func(query string, want int) {
+		w := env.DoWithToken("GET", "/api/v1/ai/square/kbs?"+query, nil, other)
+		res, _ := testhelper.Unmarshal[listRes](w)
+		if w.Code != http.StatusOK || res.Total != want {
+			t.Fatalf("square kbs %s want %d got %d (%d)", query, want, res.Total, w.Code)
+		}
+	}
+	assertKBTotal("majorId="+majorID, 1)
+	assertKBTotal("majorId=cccccccc-0000-0000-0000-000000000099", 0)
+	assertKBTotal("kbType=teaching_case", 1)
+	assertKBTotal("kbType=qa", 0)
+	assertKBTotal("updated=7d", 1)
+	assertKBTotal("departmentId="+deptID, 1)
+	w = env.DoWithToken("GET", "/api/v1/ai/square/kbs?kbType=bogus", nil, other)
+	if w.Code == http.StatusOK {
+		t.Fatalf("invalid kbType filter should be rejected")
+	}
+	// agent 广场按专业过滤
+	w = env.DoWithToken("GET", "/api/v1/ai/square/agents?majorId="+majorID, nil, other)
+	agents, _ := testhelper.Unmarshal[struct {
+		Items []domain.AIAgent `json:"items"`
+		Total int              `json:"total"`
+	}](w)
+	if w.Code != http.StatusOK || agents.Total != 1 {
+		t.Fatalf("square agents majorId filter: %d %d", w.Code, agents.Total)
+	}
 }

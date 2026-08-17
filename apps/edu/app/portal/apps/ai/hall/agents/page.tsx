@@ -12,6 +12,8 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { HallShell } from '../../_components/hall-shell'
 import { AgentHallCard } from '../../_components/hall-cards'
 import { LandingPagination } from '@/components/shared/landing-pagination'
+import { LandingFilterRow } from '@/components/shared/landing-filter-row'
+import { useClassifyDicts } from '../../_components/classify-dicts'
 
 const PAGE_SIZE = 12
 
@@ -28,12 +30,15 @@ function AgentHallInner() {
   const appliedQ = searchParams.get('q') || ''
   const rawSort = searchParams.get('sort') || 'hot'
   const sort = (SORTS.includes(rawSort as AgentSort) ? rawSort : 'hot') as AgentSort
+  const majorId = searchParams.get('major') || ''
+  const departmentId = searchParams.get('dept') || ''
+  const updated = searchParams.get('updated') || ''
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
 
   const [qInput, setQInput] = useState(appliedQ)
   const [agents, setAgents] = useState<AIAgent[]>([])
   const [total, setTotal] = useState(0)
-  const reqKey = `${appliedQ}|${sort}|${page}`
+  const reqKey = `${appliedQ}|${sort}|${majorId}|${departmentId}|${updated}|${page}`
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
   const loading = loadedKey !== reqKey
 
@@ -52,7 +57,15 @@ function AgentHallInner() {
   useEffect(() => {
     let alive = true
     aiCenterSquareApi
-      .agents({ q: appliedQ || undefined, sort, page, pageSize: PAGE_SIZE })
+      .agents({
+        q: appliedQ || undefined,
+        sort,
+        page,
+        pageSize: PAGE_SIZE,
+        majorId: majorId || undefined,
+        departmentId: departmentId || undefined,
+        updated: (updated || undefined) as '7d' | '30d' | '180d' | undefined,
+      })
       .then((res) => {
         if (!alive) return
         setAgents(res.items)
@@ -71,19 +84,21 @@ function AgentHallInner() {
     return () => {
       alive = false
     }
-  }, [appliedQ, sort, page, reqKey, toast, t])
+  }, [appliedQ, sort, page, majorId, departmentId, updated, reqKey, toast, t])
 
-  const totalChats = agents.reduce((sum, a) => sum + (a.chatCount || 0), 0)
+  const { majors, departments } = useClassifyDicts()
+  const UPDATED_OPTIONS = [
+    { v: '', label: t('全部') },
+    { v: '7d', label: t('最近一周') },
+    { v: '30d', label: t('最近一月') },
+    { v: '180d', label: t('最近半年') },
+  ]
 
   return (
     <HallShell
       title={t('智能体大厅')}
       headerIcon={<Bot className="w-6 h-6 text-white" />}
       subtitle={t('租户内已发布的全部智能体，点击「立即体验」开始对话')}
-      stats={[
-        { value: total, label: t('智能体总数') },
-        { value: totalChats, label: t('累计对话（当前页）') },
-      ]}
       sortOptions={[
         { value: 'hot', label: t('最热') },
         { value: 'new', label: t('最新') },
@@ -94,6 +109,38 @@ function AgentHallInner() {
       searchValue={qInput}
       onSearchChange={setQInput}
       onSearch={() => setQuery({ q: qInput.trim(), page: '' })}
+      filters={
+        <>
+          <LandingFilterRow
+            label={t('院系')}
+            items={[t('全部'), ...departments.map((d) => d.name)]}
+            selected={departmentId ? departments.find((d) => d.id === departmentId)?.name || t('全部') : t('全部')}
+            onSelect={(label) =>
+              setQuery({ dept: departments.find((d) => d.name === label)?.id || '', page: '' })
+            }
+            accentColor="primary"
+          />
+          <LandingFilterRow
+            label={t('专业')}
+            items={[t('全部'), ...majors.map((m) => m.name)]}
+            selected={majorId ? majors.find((m) => m.id === majorId)?.name || t('全部') : t('全部')}
+            onSelect={(label) =>
+              setQuery({ major: majors.find((m) => m.name === label)?.id || '', page: '' })
+            }
+            accentColor="primary"
+          />
+          <LandingFilterRow
+            label={t('时间')}
+            items={UPDATED_OPTIONS.map((o) => o.label)}
+            selected={UPDATED_OPTIONS.find((o) => o.v === updated)?.label || t('全部')}
+            onSelect={(label) =>
+              setQuery({ updated: UPDATED_OPTIONS.find((o) => o.label === label)?.v || '', page: '' })
+            }
+            accentColor="primary"
+            showBorder={false}
+          />
+        </>
+      }
       searchPlaceholder={t('搜索智能体')}
       total={total}
       loading={loading}

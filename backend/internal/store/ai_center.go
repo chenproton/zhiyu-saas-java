@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -24,7 +25,7 @@ func NewAICenterStore(q Queryer) *AICenterStore {
 }
 
 var kbColumns = `id, tenant_id, owner_id, name, description, tags, cover_image, status, review_comment,
-	reviewed_by, reviewed_at, doc_count, ask_count, created_at, updated_at`
+	reviewed_by, reviewed_at, doc_count, ask_count, created_at, updated_at, major_id, department_id, kb_type`
 
 // kbViewExpr/agentViewExpr：浏览量联查全局 view_counters（v2.2.1，与岗位/场景同一机制，见 RecordView）
 func kbViewExpr(alias string) string {
@@ -49,22 +50,35 @@ func escapeLike(s string) string {
 }
 
 func scanKB(row pgx.Row) (*domain.AIKnowledgeBase, error) {
-	return scanKBCols(row, nil)
+	var majorName, deptName string
+	kb, err := scanKBCols(row, nil, &majorName, &deptName)
+	if err == nil {
+		kb.MajorName, kb.DepartmentName = majorName, deptName
+	}
+	return kb, err
 }
 
 // scanKBWithOwner 扫描带 owner_name 尾列的行（列表查询 LEFT JOIN users）。
 func scanKBWithOwner(row pgx.Row) (*domain.AIKnowledgeBase, error) {
-	var ownerName string
-	return scanKBCols(row, &ownerName)
+	var ownerName, majorName, deptName string
+	kb, err := scanKBCols(row, &ownerName, &majorName, &deptName)
+	if err == nil {
+		kb.MajorName, kb.DepartmentName = majorName, deptName
+	}
+	return kb, err
 }
 
-func scanKBCols(row pgx.Row, ownerName *string) (*domain.AIKnowledgeBase, error) {
+// scanKBCols 扫描知识库行；dictNames 非空时追加扫描 major_name/department_name 两列（列序：…view_count, major_name, department_name[, owner_name]）。
+func scanKBCols(row pgx.Row, ownerName *string, dictNames ...*string) (*domain.AIKnowledgeBase, error) {
 	var kb domain.AIKnowledgeBase
 	var tags []byte
 	var reviewedBy *string
 	dest := []any{&kb.ID, &kb.TenantID, &kb.OwnerID, &kb.Name, &kb.Description, &tags, &kb.CoverImage,
 		&kb.Status, &kb.ReviewComment, &reviewedBy, &kb.ReviewedAt, &kb.DocCount, &kb.AskCount, &kb.CreatedAt, &kb.UpdatedAt,
-		&kb.ViewCount}
+		&kb.MajorID, &kb.DepartmentID, &kb.KBType, &kb.ViewCount}
+	if len(dictNames) == 2 {
+		dest = append(dest, dictNames[0], dictNames[1])
+	}
 	if ownerName != nil {
 		dest = append(dest, ownerName)
 	}
@@ -90,16 +104,20 @@ func scanKBCols(row pgx.Row, ownerName *string) (*domain.AIKnowledgeBase, error)
 func (s *AICenterStore) CreateKB(ctx context.Context, kb *domain.AIKnowledgeBase) error {
 	tags, _ := json.Marshal(kb.Tags)
 	return s.q.QueryRow(ctx, `
-		INSERT INTO ai_knowledge_bases (tenant_id, owner_id, name, description, tags, cover_image)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO ai_knowledge_bases (tenant_id, owner_id, name, description, tags, cover_image, major_id, department_id, kb_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, status, doc_count, ask_count, created_at, updated_at
-	`, kb.TenantID, kb.OwnerID, kb.Name, kb.Description, tags, kb.CoverImage).
+	`, kb.TenantID, kb.OwnerID, kb.Name, kb.Description, tags, kb.CoverImage, kb.MajorID, kb.DepartmentID, kb.KBType).
 		Scan(&kb.ID, &kb.Status, &kb.DocCount, &kb.AskCount, &kb.CreatedAt, &kb.UpdatedAt)
 }
 
 // GetKB 按租户取知识库；不存在返回 ErrNotFound。
 func (s *AICenterStore) GetKB(ctx context.Context, tenantID, id string) (*domain.AIKnowledgeBase, error) {
-	kb, err := scanKB(s.q.QueryRow(ctx, `SELECT `+kbColumns+`, `+kbViewExpr("ai_knowledge_bases")+` FROM ai_knowledge_bases WHERE tenant_id = $1 AND id = $2`, tenantID, id))
+	kb, err := scanKB(s.q.QueryRow(ctx, `SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(m.name, ''), COALESCE(d.name, '')
+		FROM ai_knowledge_bases kb
+		LEFT JOIN majors m ON m.id = kb.major_id
+		LEFT JOIN organizations d ON d.id = kb.department_id
+		WHERE kb.tenant_id = $1 AND kb.id = $2`, tenantID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -129,8 +147,10 @@ func (s *AICenterStore) ListMyKBs(ctx context.Context, tenantID, userID, scope, 
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := s.q.Query(ctx, `
-		SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(u.name, '') FROM ai_knowledge_bases kb
+		SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(m.name, ''), COALESCE(d.name, ''), COALESCE(u.name, '') FROM ai_knowledge_bases kb
 		LEFT JOIN users u ON u.id = kb.owner_id
+		LEFT JOIN majors m ON m.id = kb.major_id
+		LEFT JOIN organizations d ON d.id = kb.department_id
 		WHERE `+where+` ORDER BY kb.updated_at DESC
 		LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	if err != nil {
@@ -149,9 +169,25 @@ func (s *AICenterStore) ListMyKBs(ctx context.Context, tenantID, userID, scope, 
 }
 
 // ListSquareKBs 广场列表：仅 published，hot=ask_count 降序 / new=created_at 降序。
-func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sort string, page, pageSize int) ([]domain.AIKnowledgeBase, int, error) {
+func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sort string, page, pageSize int, majorID, departmentID, kbType string, updatedAfter *time.Time) ([]domain.AIKnowledgeBase, int, error) {
 	args := []any{tenantID}
 	where := `kb.tenant_id = $1 AND kb.status = 'published'`
+	if majorID != "" {
+		args = append(args, majorID)
+		where += fmt.Sprintf(` AND kb.major_id = $%d`, len(args))
+	}
+	if departmentID != "" {
+		args = append(args, departmentID)
+		where += fmt.Sprintf(` AND kb.department_id = $%d`, len(args))
+	}
+	if kbType != "" {
+		args = append(args, kbType)
+		where += fmt.Sprintf(` AND kb.kb_type = $%d`, len(args))
+	}
+	if updatedAfter != nil {
+		args = append(args, *updatedAfter)
+		where += fmt.Sprintf(` AND kb.updated_at >= $%d`, len(args))
+	}
 	if q != "" {
 		args = append(args, "%"+escapeLike(q)+"%")
 		where += fmt.Sprintf(` AND (kb.name ILIKE $%[1]d ESCAPE '\' OR kb.description ILIKE $%[1]d ESCAPE '\')`, len(args))
@@ -178,8 +214,10 @@ func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sor
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := s.q.Query(ctx, `
-		SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(u.name, '') FROM ai_knowledge_bases kb
+		SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(m.name, ''), COALESCE(d.name, ''), COALESCE(u.name, '') FROM ai_knowledge_bases kb
 		LEFT JOIN users u ON u.id = kb.owner_id
+		LEFT JOIN majors m ON m.id = kb.major_id
+		LEFT JOIN organizations d ON d.id = kb.department_id
 		WHERE `+where+` ORDER BY `+order+`
 		LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	if err != nil {
@@ -201,9 +239,10 @@ func (s *AICenterStore) ListSquareKBs(ctx context.Context, tenantID, q, tag, sor
 func (s *AICenterStore) UpdateKB(ctx context.Context, kb *domain.AIKnowledgeBase) error {
 	tags, _ := json.Marshal(kb.Tags)
 	ct, err := s.q.Exec(ctx, `
-		UPDATE ai_knowledge_bases SET name = $3, description = $4, tags = $5, cover_image = $6, updated_at = now()
+		UPDATE ai_knowledge_bases SET name = $3, description = $4, tags = $5, cover_image = $6, updated_at = now(),
+			major_id = $8, department_id = $9, kb_type = $10
 		WHERE tenant_id = $1 AND id = $2 AND owner_id = $7
-	`, kb.TenantID, kb.ID, kb.Name, kb.Description, tags, kb.CoverImage, kb.OwnerID)
+	`, kb.TenantID, kb.ID, kb.Name, kb.Description, tags, kb.CoverImage, kb.OwnerID, kb.MajorID, kb.DepartmentID, kb.KBType)
 	if err != nil {
 		return err
 	}
@@ -437,15 +476,27 @@ func (s *AICenterStore) GetCollaboratorRoles(ctx context.Context, tenantID, user
 // ==================== 智能体 ====================
 
 var agentColumns = `id, tenant_id, owner_id, name, avatar, description, cover_image, greeting, system_prompt, status,
-	review_comment, reviewed_by, reviewed_at, chat_count, created_at, updated_at`
+	review_comment, reviewed_by, reviewed_at, chat_count, created_at, updated_at, major_id, department_id`
 
+// scanAgent 扫描智能体行；列序：…updated_at, view_count, major_name, department_name（后两列由名称 JOIN 提供）。
 func scanAgent(row pgx.Row) (*domain.AIAgent, error) {
+	return scanAgentRow(row, false)
+}
+
+func scanAgentWithOwner(row pgx.Row) (*domain.AIAgent, error) {
+	return scanAgentRow(row, true)
+}
+
+func scanAgentRow(row pgx.Row, withOwner bool) (*domain.AIAgent, error) {
 	var a domain.AIAgent
 	var reviewedBy *string
-	err := row.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
+	dest := []any{&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
 		&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount, &a.CreatedAt, &a.UpdatedAt,
-		&a.ViewCount)
-	if err != nil {
+		&a.MajorID, &a.DepartmentID, &a.ViewCount, &a.MajorName, &a.DepartmentName}
+	if withOwner {
+		dest = append(dest, &a.OwnerName)
+	}
+	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
 	if reviewedBy != nil {
@@ -454,19 +505,25 @@ func scanAgent(row pgx.Row) (*domain.AIAgent, error) {
 	return &a, nil
 }
 
+// agentNameJoins 名称联查片段（majors/organizations 字典名）。
+const agentNameCols = `, COALESCE(m.name, ''), COALESCE(d.name, '')`
+const agentNameJoins = ` LEFT JOIN majors m ON m.id = a.major_id LEFT JOIN organizations d ON d.id = a.department_id`
+
 // CreateAgent 新建智能体（默认 private）。
 func (s *AICenterStore) CreateAgent(ctx context.Context, a *domain.AIAgent) error {
 	return s.q.QueryRow(ctx, `
-		INSERT INTO ai_agents (tenant_id, owner_id, name, avatar, description, cover_image, greeting, system_prompt)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO ai_agents (tenant_id, owner_id, name, avatar, description, cover_image, greeting, system_prompt, major_id, department_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, status, chat_count, created_at, updated_at
-	`, a.TenantID, a.OwnerID, a.Name, a.Avatar, a.Description, a.CoverImage, a.Greeting, a.SystemPrompt).
+	`, a.TenantID, a.OwnerID, a.Name, a.Avatar, a.Description, a.CoverImage, a.Greeting, a.SystemPrompt, a.MajorID, a.DepartmentID).
 		Scan(&a.ID, &a.Status, &a.ChatCount, &a.CreatedAt, &a.UpdatedAt)
 }
 
 // GetAgent 按租户取智能体。
 func (s *AICenterStore) GetAgent(ctx context.Context, tenantID, id string) (*domain.AIAgent, error) {
-	a, err := scanAgent(s.q.QueryRow(ctx, `SELECT `+agentColumns+`, `+agentViewExpr("ai_agents")+` FROM ai_agents WHERE tenant_id = $1 AND id = $2`, tenantID, id))
+	a, err := scanAgent(s.q.QueryRow(ctx, `SELECT a.`+strings.ReplaceAll(agentColumns, `, `, `, a.`)+`, `+agentViewExpr("a")+agentNameCols+`
+		FROM ai_agents a`+agentNameJoins+`
+		WHERE a.tenant_id = $1 AND a.id = $2`, tenantID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -476,8 +533,10 @@ func (s *AICenterStore) GetAgent(ctx context.Context, tenantID, id string) (*dom
 // ListMyAgents 我创建的智能体。
 func (s *AICenterStore) ListMyAgents(ctx context.Context, tenantID, userID string) ([]domain.AIAgent, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT `+agentColumns+`, `+agentViewExpr("ai_agents")+` FROM ai_agents WHERE tenant_id = $1 AND owner_id = $2
-		ORDER BY updated_at DESC LIMIT 200
+		SELECT a.`+strings.ReplaceAll(agentColumns, `, `, `, a.`)+`, `+agentViewExpr("a")+agentNameCols+`
+		FROM ai_agents a`+agentNameJoins+`
+		WHERE a.tenant_id = $1 AND a.owner_id = $2
+		ORDER BY a.updated_at DESC LIMIT 200
 	`, tenantID, userID)
 	if err != nil {
 		return nil, err
@@ -495,9 +554,21 @@ func (s *AICenterStore) ListMyAgents(ctx context.Context, tenantID, userID strin
 }
 
 // ListSquareAgents 广场已发布智能体。
-func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort string, page, pageSize int) ([]domain.AIAgent, int, error) {
+func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort string, page, pageSize int, majorID, departmentID string, updatedAfter *time.Time) ([]domain.AIAgent, int, error) {
 	args := []any{tenantID}
 	where := `a.tenant_id = $1 AND a.status = 'published'`
+	if majorID != "" {
+		args = append(args, majorID)
+		where += fmt.Sprintf(` AND a.major_id = $%d`, len(args))
+	}
+	if departmentID != "" {
+		args = append(args, departmentID)
+		where += fmt.Sprintf(` AND a.department_id = $%d`, len(args))
+	}
+	if updatedAfter != nil {
+		args = append(args, *updatedAfter)
+		where += fmt.Sprintf(` AND a.updated_at >= $%d`, len(args))
+	}
 	if q != "" {
 		args = append(args, "%"+escapeLike(q)+"%")
 		where += fmt.Sprintf(` AND (a.name ILIKE $%[1]d ESCAPE '\' OR a.description ILIKE $%[1]d ESCAPE '\')`, len(args))
@@ -515,8 +586,8 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := s.q.Query(ctx, `
-		SELECT a.`+strings.ReplaceAll(agentColumns, `, `, `, a.`)+`, `+agentViewExpr("a")+`, COALESCE(u.name, '')
-		FROM ai_agents a LEFT JOIN users u ON u.id = a.owner_id
+		SELECT a.`+strings.ReplaceAll(agentColumns, `, `, `, a.`)+`, `+agentViewExpr("a")+agentNameCols+`, COALESCE(u.name, '')
+		FROM ai_agents a LEFT JOIN users u ON u.id = a.owner_id`+agentNameJoins+`
 		WHERE `+where+` ORDER BY `+order+`
 		LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	if err != nil {
@@ -525,17 +596,11 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 	defer rows.Close()
 	out := make([]domain.AIAgent, 0)
 	for rows.Next() {
-		var a domain.AIAgent
-		var reviewedBy *string
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
-			&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount,
-			&a.CreatedAt, &a.UpdatedAt, &a.ViewCount, &a.OwnerName); err != nil {
+		a, err := scanAgentWithOwner(rows)
+		if err != nil {
 			return nil, 0, err
 		}
-		if reviewedBy != nil {
-			a.ReviewedBy = *reviewedBy
-		}
-		out = append(out, a)
+		out = append(out, *a)
 	}
 	return out, total, rows.Err()
 }
@@ -543,9 +608,10 @@ func (s *AICenterStore) ListSquareAgents(ctx context.Context, tenantID, q, sort 
 // UpdateAgent 编辑智能体（tenant+owner 双条件纵深防御）。
 func (s *AICenterStore) UpdateAgent(ctx context.Context, a *domain.AIAgent) error {
 	ct, err := s.q.Exec(ctx, `
-		UPDATE ai_agents SET name = $3, avatar = $4, description = $5, cover_image = $6, greeting = $7, system_prompt = $8, updated_at = now()
+		UPDATE ai_agents SET name = $3, avatar = $4, description = $5, cover_image = $6, greeting = $7, system_prompt = $8, updated_at = now(),
+			major_id = $10, department_id = $11
 		WHERE tenant_id = $1 AND id = $2 AND owner_id = $9
-	`, a.TenantID, a.ID, a.Name, a.Avatar, a.Description, a.CoverImage, a.Greeting, a.SystemPrompt, a.OwnerID)
+	`, a.TenantID, a.ID, a.Name, a.Avatar, a.Description, a.CoverImage, a.Greeting, a.SystemPrompt, a.OwnerID, a.MajorID, a.DepartmentID)
 	if err != nil {
 		return err
 	}
@@ -606,8 +672,11 @@ func (s *AICenterStore) ReplaceAgentKBs(ctx context.Context, tenantID, agentID s
 func (s *AICenterStore) ListAgentKBs(ctx context.Context, tenantID, agentID string) ([]domain.AIKnowledgeBase, error) {
 	rows, err := s.q.Query(ctx, `
 		SELECT kb.id, kb.tenant_id, kb.owner_id, kb.name, kb.description, kb.tags, kb.cover_image, kb.status, kb.review_comment,
-		       kb.reviewed_by, kb.reviewed_at, kb.doc_count, kb.ask_count, kb.created_at, kb.updated_at, `+kbViewExpr("kb")+`
+		       kb.reviewed_by, kb.reviewed_at, kb.doc_count, kb.ask_count, kb.created_at, kb.updated_at, kb.major_id, kb.department_id, kb.kb_type,
+		       `+kbViewExpr("kb")+`, COALESCE(m.name, ''), COALESCE(d.name, '')
 		FROM ai_agent_kbs ak JOIN ai_knowledge_bases kb ON kb.id = ak.kb_id
+		LEFT JOIN majors m ON m.id = kb.major_id
+		LEFT JOIN organizations d ON d.id = kb.department_id
 		WHERE ak.tenant_id = $1 AND ak.agent_id = $2
 		ORDER BY kb.created_at ASC LIMIT 50
 	`, tenantID, agentID)
@@ -959,8 +1028,10 @@ func (s *AICenterStore) ListReviewKBs(ctx context.Context, tenantID, status stri
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := s.q.Query(ctx, `
-		SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(u.name, '') FROM ai_knowledge_bases kb
+		SELECT `+kbCols("kb")+`, `+kbViewExpr("kb")+`, COALESCE(m.name, ''), COALESCE(d.name, ''), COALESCE(u.name, '') FROM ai_knowledge_bases kb
 		LEFT JOIN users u ON u.id = kb.owner_id
+		LEFT JOIN majors m ON m.id = kb.major_id
+		LEFT JOIN organizations d ON d.id = kb.department_id
 		WHERE `+where+` ORDER BY CASE kb.status WHEN 'pending' THEN 0 ELSE 1 END, kb.updated_at DESC
 		LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	if err != nil {
@@ -994,8 +1065,8 @@ func (s *AICenterStore) ListReviewAgents(ctx context.Context, tenantID, status s
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := s.q.Query(ctx, `
-		SELECT a.`+strings.ReplaceAll(agentColumns, `, `, `, a.`)+`, `+agentViewExpr("a")+`, COALESCE(u.name, '')
-		FROM ai_agents a LEFT JOIN users u ON u.id = a.owner_id
+		SELECT a.`+strings.ReplaceAll(agentColumns, `, `, `, a.`)+`, `+agentViewExpr("a")+agentNameCols+`, COALESCE(u.name, '')
+		FROM ai_agents a LEFT JOIN users u ON u.id = a.owner_id`+agentNameJoins+`
 		WHERE `+where+` ORDER BY CASE a.status WHEN 'pending' THEN 0 ELSE 1 END, a.updated_at DESC
 		LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	if err != nil {
@@ -1004,17 +1075,11 @@ func (s *AICenterStore) ListReviewAgents(ctx context.Context, tenantID, status s
 	defer rows.Close()
 	out := make([]domain.AIAgent, 0)
 	for rows.Next() {
-		var a domain.AIAgent
-		var reviewedBy *string
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.OwnerID, &a.Name, &a.Avatar, &a.Description, &a.CoverImage,
-			&a.Greeting, &a.SystemPrompt, &a.Status, &a.ReviewComment, &reviewedBy, &a.ReviewedAt, &a.ChatCount,
-			&a.CreatedAt, &a.UpdatedAt, &a.ViewCount, &a.OwnerName); err != nil {
+		a, err := scanAgentWithOwner(rows)
+		if err != nil {
 			return nil, 0, err
 		}
-		if reviewedBy != nil {
-			a.ReviewedBy = *reviewedBy
-		}
-		out = append(out, a)
+		out = append(out, *a)
 	}
 	return out, total, rows.Err()
 }

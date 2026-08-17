@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -669,7 +670,8 @@ func (h *AICenterHandler) SquareKBs(w http.ResponseWriter, r *http.Request) {
 	page, pageSize := aiCenterPage(r)
 	q := r.URL.Query()
 	items, total, err := h.Service.ListSquareKBs(r.Context(), tenantID,
-		strings.TrimSpace(q.Get("q")), strings.TrimSpace(q.Get("tag")), q.Get("sort"), page, pageSize)
+		strings.TrimSpace(q.Get("q")), strings.TrimSpace(q.Get("tag")), q.Get("sort"), page, pageSize,
+		q.Get("majorId"), q.Get("departmentId"), q.Get("kbType"), aiUpdatedAfter(q.Get("updated")))
 	if aiCenterError(w, r, err, "查询广场失败"); err != nil {
 		return
 	}
@@ -686,7 +688,8 @@ func (h *AICenterHandler) SquareAgents(w http.ResponseWriter, r *http.Request) {
 	page, pageSize := aiCenterPage(r)
 	q := r.URL.Query()
 	items, total, err := h.Service.ListSquareAgents(r.Context(), tenantID,
-		strings.TrimSpace(q.Get("q")), q.Get("sort"), page, pageSize)
+		strings.TrimSpace(q.Get("q")), q.Get("sort"), page, pageSize,
+		q.Get("majorId"), q.Get("departmentId"), aiUpdatedAfter(q.Get("updated")))
 	if aiCenterError(w, r, err, "查询广场失败"); err != nil {
 		return
 	}
@@ -792,4 +795,21 @@ func (h *AICenterHandler) PreviewAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"reply": reply})
+}
+
+// aiUpdatedAfter 更新时间窗口参数（大厅筛选：7d=最近一周/30d=最近一月/180d=最近半年/空=不限）。
+func aiUpdatedAfter(v string) *time.Time {
+	var d time.Duration
+	switch v {
+	case "7d":
+		d = 7 * 24 * time.Hour
+	case "30d":
+		d = 30 * 24 * time.Hour
+	case "180d":
+		d = 180 * 24 * time.Hour
+	default:
+		return nil
+	}
+	t := time.Now().Add(-d)
+	return &t
 }
