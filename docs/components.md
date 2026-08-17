@@ -56,6 +56,7 @@
 | `HoverActionBar` | `packages/ui` re-export | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
 | `ComboboxSelect` | `packages/ui` re-export | 可搜索下拉选择（单选/多选），内置搜索/清空/全选（`showSelectAll`）/已选徽章（`showSelectedBadges`）；旧 `MultiSelect`/`MultiSelectSearch` 已删除，统一用它 | `options`, `value`, `onChange`, `multiple`, `loading`, `renderOption`, `showSelectAll`, `showSelectedBadges` |
 | `SearchInput` | `packages/ui` re-export | 统一搜索框（放大镜图标 + 输入框，内置 `type="search"`/`autoComplete="off"` 防浏览器自动填充），替换各页面手写的 Search 图标 + Input 样板 | `value`, `onChange`, `placeholder`, `onSearch?`, `searchButton?`, `icon?`, `wrapperClassName?`, `iconClassName?`, `inputClassName?` |
+| `PasswordInput` | `packages/ui` re-export | 统一密码输入框（右侧小眼睛按钮，明文/掩码切换，`onMouseDown` 阻止失焦），**全局所有密码输入框必须使用**（登录/注册/重置密码/AI Key 等，13 文件 25 处已替换）；其他 input props 全部透传 | `className?`（作用于内部 input）, `defaultVisible?`, 及 `Input` 全部 props |
 | `EmptyState` / `TableEmptyRow` | `packages/ui` re-export | 列表/详情空态（居中图标+文案，可带 action）与表格空行，替换手写 `text-center py-8` 样板 | `icon?`, `title?`, `description?`, `action?`, `className?`, `compact?`；`TableEmptyRow`: `colSpan`, `children`, `className` |
 | `FormDialogFooter` | `packages/ui` re-export | 弹窗表单底部「取消 + 保存/确定」统一组件，内置 loading spinner | `onCancel`, `confirmText?`, `confirmDisabled?`, `loading?`, `variant?`, `extra?` |
 | `UnderlineTabs` | `packages/ui` re-export | 下划线式 Tab 栏（border-b-2 激活态，可配 accent 色），与 shadcn Tabs 并存 | `items`, `activeKey`, `onSelect`, `accentClassName?`, `badge` |

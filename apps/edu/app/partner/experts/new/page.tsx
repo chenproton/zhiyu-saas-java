@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, KeyRound } from 'lucide-react'
 import { partnerExpertApi } from '@/lib/api'
-import { useToast } from '@zhiyu/ui'
+import { useToast, PasswordInput } from '@zhiyu/ui'
 import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import { FormPageShell } from '@/components/shared/form-page-shell'
@@ -92,8 +92,7 @@ export default function PartnerExpertNewPage() {
                 <Label>
                   {t('初始密码')} <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder={t('至少 8 位，包含字母和数字')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

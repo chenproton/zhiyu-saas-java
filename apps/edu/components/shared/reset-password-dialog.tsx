@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@zhiyu/ui'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { AlertCircle } from 'lucide-react'
@@ -101,18 +101,16 @@ export function ResetPasswordDialog({
         >
           <div className="grid gap-4 py-4">
           <FormFieldRow label={t('新密码')} htmlFor="reset-password">
-            <Input
+            <PasswordInput
               id="reset-password"
-              type="password"
               placeholder={t('至少 8 位，包含字母和数字')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </FormFieldRow>
           <FormFieldRow label={t('确认新密码')} htmlFor="reset-confirm-password">
-            <Input
+            <PasswordInput
               id="reset-confirm-password"
-              type="password"
               placeholder={t('再次输入新密码')}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

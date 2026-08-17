@@ -37,7 +37,7 @@ import {
   allianceAchievementApi,
   allianceAgreementApi,
 } from '@/lib/api'
-import { useToast, useAsync, FormDialogFooter, ComboboxSelect } from '@zhiyu/ui'
+import { useToast, useAsync, FormDialogFooter, ComboboxSelect, PasswordInput } from '@zhiyu/ui'
 import { usePagedList } from '@/hooks/use-paged-list'
 import { allianceLabel } from '@zhiyu/shared-types'
 import { TableRowActions } from '@/components/shared/table-row-actions'
@@ -588,8 +588,7 @@ export default function AllianceEnterprisesPage() {
                 <Label>
                   {t('密码')} <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder={t('设置登录密码')}
                   value={reg.password}
                   onChange={(e) => setReg((p) => ({ ...p, password: e.target.value }))}
@@ -601,8 +600,7 @@ export default function AllianceEnterprisesPage() {
                 <Label>
                   {t('确认密码')} <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder={t('再次输入密码')}
                   value={reg.confirmPassword}
                   onChange={(e) => setReg((p) => ({ ...p, confirmPassword: e.target.value }))}

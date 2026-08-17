@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { StatusBadge, FormDialogFooter } from '@zhiyu/ui'
+import { StatusBadge, FormDialogFooter, PasswordInput } from '@zhiyu/ui'
 import {
   Table,
   TableBody,
@@ -1097,9 +1097,8 @@ export default function SuperAdminPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t('密码')}</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder={t('请输入密码')}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
@@ -1419,8 +1418,7 @@ export default function SuperAdminPage() {
                   />
                 </FormFieldRow>
                 <FormFieldRow label={t('初始密码')} required>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     placeholder={t('至少 8 位，包含字母和数字')}
                     value={entPassword}
                     onChange={(e) => setEntPassword(e.target.value)}
@@ -1866,8 +1864,7 @@ export default function SuperAdminPage() {
                 />
               </FormFieldRow>
             <FormFieldRow label={t('API Key')} required={!aiConfig?.configured}>
-              <Input
-                type="password"
+              <PasswordInput
                 value={aiForm.apiKey}
                 onChange={(e) => setAiForm((prev) => ({ ...prev, apiKey: e.target.value }))}
                 placeholder={aiConfig?.configured ? t('留空则不修改') : 'sk-...'}
@@ -2259,18 +2256,16 @@ export default function SuperAdminPage() {
           >
             <div className="grid gap-4 py-2">
               <FormFieldRow label={t('新密码')} htmlFor="set-password">
-                <Input
+                <PasswordInput
                   id="set-password"
-                  type="password"
                   placeholder={t('至少 8 位，包含字母和数字')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
               </FormFieldRow>
             <FormFieldRow label={t('确认新密码')} htmlFor="set-confirm-password">
-              <Input
+              <PasswordInput
                 id="set-confirm-password"
-                type="password"
                 placeholder={t('再次输入新密码')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

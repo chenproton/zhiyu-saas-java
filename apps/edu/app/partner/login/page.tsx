@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@zhiyu/ui'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -239,9 +240,8 @@ export default function PartnerLoginPage() {
                   </Label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
-                    <Input
+                    <PasswordInput
                       id="password"
-                      type="password"
                       placeholder={t('请输入密码')}
                       className="h-11 rounded-lg border-slate-200 bg-slate-50/80 pl-10 text-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary/60 focus-visible:bg-white focus-visible:ring-primary/20"
                       value={password}
@@ -361,8 +361,7 @@ export default function PartnerLoginPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium text-slate-600">{t('密码')}</Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder={t('设置登录密码')}
                       className="h-10 rounded-lg border-slate-200 bg-slate-50/80 text-sm"
                       value={reg.password}
@@ -373,8 +372,7 @@ export default function PartnerLoginPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium text-slate-600">{t('确认密码')}</Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder={t('再次输入密码')}
                       className="h-10 rounded-lg border-slate-200 bg-slate-50/80 text-sm"
                       value={reg.confirmPassword}

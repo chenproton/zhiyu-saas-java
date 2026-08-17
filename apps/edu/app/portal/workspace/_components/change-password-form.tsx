@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@zhiyu/ui'
 import { Button } from '@/components/ui/button'
 import { FormFieldRow, FormFieldGrid } from '@/components/shared/form-field-row'
 import { useToast } from '@zhiyu/ui'
@@ -50,9 +50,8 @@ export function ChangePasswordForm() {
     <div className="space-y-4">
       <FormFieldGrid>
         <FormFieldRow label={t('新密码')} htmlFor="new-password" labelClassName="text-gray-700">
-          <Input
+          <PasswordInput
             id="new-password"
-            type="password"
             placeholder={t('至少 8 位，包含字母和数字')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -63,9 +62,8 @@ export function ChangePasswordForm() {
           htmlFor="confirm-new-password"
           labelClassName="text-gray-700"
         >
-          <Input
+          <PasswordInput
             id="confirm-new-password"
-            type="password"
             placeholder={t('再次输入新密码')}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

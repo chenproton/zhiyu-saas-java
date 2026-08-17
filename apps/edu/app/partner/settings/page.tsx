@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@zhiyu/ui'
 import { FormFieldRow } from '@/components/shared/form-field-row'
 import { Loader2 } from 'lucide-react'
 import { partnerMeApi } from '@/lib/api'
@@ -53,8 +53,7 @@ export default function PartnerSettingsPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <FormFieldRow label={t('当前密码')} required>
-              <Input
-                type="password"
+              <PasswordInput
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
                 autoComplete="current-password"
@@ -62,8 +61,7 @@ export default function PartnerSettingsPage() {
               />
             </FormFieldRow>
             <FormFieldRow label={t('新密码')} required>
-              <Input
-                type="password"
+              <PasswordInput
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
@@ -71,8 +69,7 @@ export default function PartnerSettingsPage() {
               />
             </FormFieldRow>
             <FormFieldRow label={t('确认新密码')} required>
-              <Input
-                type="password"
+              <PasswordInput
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"

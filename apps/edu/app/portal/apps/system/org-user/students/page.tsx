@@ -14,7 +14,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { roleApi, portalUserManagementApi, importExportApi, downloadBlob, type User } from '@/lib/api'
 import { listAll } from '@zhiyu/api-client'
 import type { Organization, Role } from '@/lib/types/backend'
-import { useToast, StatusBadge } from '@zhiyu/ui'
+import { useToast, StatusBadge, PasswordInput } from '@zhiyu/ui'
 import { PortalSidebarCrudPage } from '@/components/shared/portal-sidebar-crud-page'
 import { Pencil, Power, Trash2, Key, Award, Users, Loader2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -421,8 +421,7 @@ export default function StudentsPage() {
             </FormFieldRow>
             {!selectedStudent && (
               <FormFieldRow label={t('密码')} required>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder={t('请输入密码')}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
