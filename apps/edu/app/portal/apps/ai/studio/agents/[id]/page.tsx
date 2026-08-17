@@ -1,6 +1,7 @@
 'use client'
 
-// 智能体编辑器（spec docs/spec/ai-service-center.md §7 F5/F6）：编辑 + 状态操作（提交审核/下架/去对话）。
+// 智能体编辑器（spec docs/spec/ai-service-center.md §7 F5/F6）：
+// v2.6 全宽双栏 builder（对齐 zhiyu-ai builder 模式）：左表单分卡片，右栏 sticky 实时试聊。
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,13 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Loader2, MessageSquare, Send, Undo2 } from 'lucide-react'
+import { Loader2, MessageSquare, Send, Undo2 } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterAgentApi } from '@/lib/api'
 import type { AIAgent, AIAgentInput } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AgentForm } from '../../components/agent-form'
+import { AgentPreviewPanel } from '../../components/agent-preview'
 import { AIStatusBadge } from '../../components/ai-status-badge'
+import { StudioEditorShell } from '../../../_components/studio-editor-shell'
 
 export default function AgentEditPage() {
   const params = useParams()
@@ -31,11 +34,16 @@ export default function AgentEditPage() {
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [warnings, setWarnings] = useState<string[] | null>(null)
+  // 表单实时状态（右栏试聊镜像）
+  const [live, setLive] = useState({ prompt: '', name: '', avatar: '' })
 
   const loadAgent = useCallback(() => {
     aiCenterAgentApi
       .get(agentId)
-      .then((data) => setAgent(data))
+      .then((data) => {
+        setAgent(data)
+        setLive({ prompt: data.systemPrompt, name: data.name, avatar: data.avatar })
+      })
       .catch((err: unknown) =>
         toast({
           title: t('加载失败'),
@@ -99,7 +107,7 @@ export default function AgentEditPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto py-20 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+      <div className="py-20 flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         {t('加载中...')}
       </div>
@@ -108,25 +116,18 @@ export default function AgentEditPage() {
 
   if (!agent) {
     return (
-      <div className="max-w-3xl mx-auto py-20 text-center text-sm text-muted-foreground">
-        {t('加载失败')}
-      </div>
+      <div className="py-20 text-center text-sm text-muted-foreground">{t('加载失败')}</div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6 flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/landing#studio')}>
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          {t('返回')}
-        </Button>
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="text-xl">{agent.avatar}</span>
-          <h1 className="text-xl font-semibold truncate">{t('编辑智能体')}</h1>
-          <AIStatusBadge status={agent.status} />
-        </div>
-        <div className="flex items-center gap-2">
+    <StudioEditorShell
+      wide
+      icon={<span className="text-xl">{agent.avatar}</span>}
+      title={agent.name}
+      badge={<AIStatusBadge status={agent.status} />}
+      actions={
+        <>
           {/* 预览对话：创建者任意状态可用（spec AG-1 AC：预览仅创建者可用；后端 AgentChat 放行 owner） */}
           <Button
             size="sm"
@@ -148,22 +149,36 @@ export default function AgentEditPage() {
               {t('下架')}
             </Button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {agent.status === 'rejected' && agent.reviewComment && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {t('驳回原因')}：{agent.reviewComment}
         </div>
       )}
       {agent.status === 'pending' && (
-        <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
+        <div className="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
           {t('审核中，请等待管理员处理')}
         </div>
       )}
 
-      <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-6">
-        <AgentForm initial={agent} submitLabel={t('保存修改')} onSubmit={handleSave} />
+      {/* 双栏 builder：左表单（分卡片），右栏实时试聊（xl 以下堆叠为上下） */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-5 items-start">
+        <AgentForm
+          initial={agent}
+          submitLabel={t('保存修改')}
+          onSubmit={handleSave}
+          onLiveChange={setLive}
+        />
+        <div className="hidden xl:block">
+          <AgentPreviewPanel
+            agentId={agent.id}
+            systemPrompt={live.prompt}
+            avatar={live.avatar}
+            name={live.name}
+          />
+        </div>
       </div>
 
       {/* 提交审核 warnings（关联私有库对他人不可见，spec §3.1 AG-2） */}
@@ -183,6 +198,6 @@ export default function AgentEditPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </StudioEditorShell>
   )
 }

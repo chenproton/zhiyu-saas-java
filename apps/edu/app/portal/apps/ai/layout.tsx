@@ -24,6 +24,7 @@ const FULL_WIDTH_PAGES = [
   '/portal/apps/ai/hall',
   '/portal/apps/ai/agents', // 智能体对话详情：广场浏览链路，前台
   '/portal/apps/ai/kb', // 知识库详情：广场浏览链路，前台
+  '/portal/apps/ai/studio', // 创作页（知识库/智能体编辑器）：自带顶栏，不包平台侧边栏（v2.6，对齐 zhiyu-ai builder 模式）
 ]
 
 export default function AICenterLayout({ children }: { children: React.ReactNode }) {
