@@ -1,6 +1,7 @@
 'use client'
 
-// 智能体编辑共用表单（新建/编辑页共用）：基础信息 + 提示词 + 关联知识库（≤5）。
+// 智能体编辑共用表单（新建/编辑页共用，v2.6 分卡片版：基本信息 / 对话设定 / 关联知识库）。
+// 实时试聊面板由编辑页右栏承载（onPromptChange 上提当前提示词），表单内不再内嵌。
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,8 +14,8 @@ import { aiCenterKbApi, aiCenterSquareApi, fileApi } from '@/lib/api'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
 import type { AIAgent, AIAgentInput, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
-import { AgentPreviewPanel } from './agent-preview'
 import { ClassifySelects, type ClassifyValue } from '../../_components/classify-selects'
+import { EditorCard } from '../../_components/studio-editor-shell'
 
 const MAX_PROMPT_LEN = 4000
 const MAX_KB = 5
@@ -24,16 +25,34 @@ interface AgentFormProps {
   initial?: AIAgent
   submitLabel: string
   onSubmit: (input: AIAgentInput) => Promise<void>
+  /** 表单实时状态上提（编辑页右栏实时试聊用：提示词 + 名称 + 头像） */
+  onLiveChange?: (v: { prompt: string; name: string; avatar: string }) => void
 }
 
-export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
+export function AgentForm({ initial, submitLabel, onSubmit, onLiveChange }: AgentFormProps) {
   const t = useT()
   const { toast } = useToast()
-  const [name, setName] = useState(initial?.name ?? '')
-  const [avatar, setAvatar] = useState(initial?.avatar ?? '🤖')
+  const [name, setNameState] = useState(initial?.name ?? '')
+  const [avatar, setAvatarState] = useState(initial?.avatar ?? '🤖')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [greeting, setGreeting] = useState(initial?.greeting ?? '')
-  const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? '')
+  const [systemPrompt, setSystemPromptState] = useState(initial?.systemPrompt ?? '')
+  const liveRef = { prompt: systemPrompt, name, avatar }
+  const emitLive = (patch: Partial<typeof liveRef>) => {
+    onLiveChange?.({ ...liveRef, ...patch })
+  }
+  const setName = (v: string) => {
+    setNameState(v)
+    emitLive({ name: v })
+  }
+  const setAvatar = (v: string) => {
+    setAvatarState(v)
+    emitLive({ avatar: v })
+  }
+  const setSystemPrompt = (v: string) => {
+    setSystemPromptState(v)
+    emitLive({ prompt: v })
+  }
   const [classify, setClassify] = useState<ClassifyValue>({
     majorId: initial?.majorId ?? '',
     departmentId: initial?.departmentId ?? '',
@@ -140,7 +159,8 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      <EditorCard title={t('基本信息')} desc={t('名称、头像与分类决定了它在大厅中的展示与筛选')}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>{t('名称')}</Label>
@@ -189,7 +209,7 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
         />
       </div>
 
-      <div className="space-y-2 max-w-[400px]">
+      <div className="space-y-2 max-w-[400px] mt-4">
         <CoverImageUpload
           imageUrl={coverUrl}
           uploading={coverUploading}
@@ -200,6 +220,12 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
         />
       </div>
 
+      <div className="mt-4">
+        <ClassifySelects value={classify} onChange={setClassify} />
+      </div>
+      </EditorCard>
+
+      <EditorCard title={t('对话设定')} desc={t('开场白与角色提示词直接决定对话风格与回答边界')}>
       <div className="space-y-2">
         <Label>{t('开场白')}</Label>
         <Textarea
@@ -226,12 +252,12 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
         />
       </div>
 
-      {/* 分类字段（v2.4 大厅筛选） */}
-      <ClassifySelects value={classify} onChange={setClassify} />
+      </EditorCard>
 
-      {/* 实时试聊（v2.2 B7）：仅编辑已有智能体时可用（预览端点需已存在的 agent） */}
-      {initial?.id && <AgentPreviewPanel agentId={initial.id} systemPrompt={systemPrompt} />}
-
+      <EditorCard
+        title={t('关联知识库')}
+        desc={t('勾选后对话将基于库内文档检索回答（我创建的 / 共享给我的 / 广场已发布）')}
+      >
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>{t('关联知识库')}</Label>
@@ -269,9 +295,10 @@ export function AgentForm({ initial, submitLabel, onSubmit }: AgentFormProps) {
           )}
         </div>
       </div>
+      </EditorCard>
 
       <div className="flex justify-end">
-        <Button onClick={handleSubmit} disabled={submitting}>
+        <Button onClick={handleSubmit} disabled={submitting} className="px-8">
           {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           {submitLabel}
         </Button>

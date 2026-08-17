@@ -1,8 +1,9 @@
 'use client'
 
 // 知识库管理（spec docs/spec/ai-service-center.md §7 F2/F3）：基本信息 / 文档管理 / 协作者。
+// v2.6：全宽创作页（无侧边栏）+ 共享编辑器骨架 + 卡片化视觉（对齐 zhiyu-ai/landing 设计语言）。
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,13 +24,14 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, FileText, Loader2, Trash2, Upload, UserPlus } from 'lucide-react'
+import { BookOpen, FileText, Loader2, Trash2, Upload, UserPlus } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterKbApi } from '@/lib/api'
 import type { AIKBCollaborator, AIKBDocument, AIKnowledgeBase } from '@/lib/api'
 import { formatDateTime, formatSize } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AIStatusBadge } from '../../components/ai-status-badge'
+import { StudioEditorShell, EditorCard } from '../../../_components/studio-editor-shell'
 import { ClassifySelects, type ClassifyValue } from '../../../_components/classify-selects'
 
 const ACCEPT = '.pdf,.docx,.txt,.md'
@@ -39,7 +41,6 @@ export default function KBManagePage() {
   const params = useParams()
   const kbId = String(params.id)
   const t = useT()
-  const router = useRouter()
   const { toast } = useToast()
 
   const [kb, setKb] = useState<AIKnowledgeBase | null>(null)
@@ -305,7 +306,7 @@ export default function KBManagePage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-20 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+      <div className="py-20 flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         {t('加载中...')}
       </div>
@@ -314,46 +315,42 @@ export default function KBManagePage() {
 
   if (!kb) {
     return (
-      <div className="max-w-4xl mx-auto py-20 text-center text-sm text-muted-foreground">
-        {t('加载失败')}
-      </div>
+      <div className="py-20 text-center text-sm text-muted-foreground">{t('加载失败')}</div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6 flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/landing#studio')}>
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          {t('返回')}
-        </Button>
-        <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-xl font-semibold truncate">{kb.name}</h1>
-          <AIStatusBadge status={kb.status} />
+    <StudioEditorShell
+      icon={
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <BookOpen className="w-4 h-4 text-primary" />
         </div>
-      </div>
-
+      }
+      title={kb.name}
+      badge={<AIStatusBadge status={kb.status} />}
+    >
       {kb.status === 'rejected' && kb.reviewComment && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {t('驳回原因')}：{kb.reviewComment}
         </div>
       )}
       {!canEdit && (
-        <div className="mb-4 rounded-md border border-gray-200 bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+        <div className="mb-4 rounded-xl border border-gray-200 bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
           {t('当前为只读权限，仅可查看')}
         </div>
       )}
 
       <Tabs defaultValue="info">
-        <TabsList>
-          <TabsTrigger value="info">{t('基本信息')}</TabsTrigger>
-          <TabsTrigger value="docs">{t('文档管理')}</TabsTrigger>
-          <TabsTrigger value="collaborators">{t('协作者')}</TabsTrigger>
+        <TabsList className="bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm h-11">
+          <TabsTrigger value="info" className="px-5 rounded-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">{t('基本信息')}</TabsTrigger>
+          <TabsTrigger value="docs" className="px-5 rounded-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">{t('文档管理（{count}）', { count: docs.length })}</TabsTrigger>
+          <TabsTrigger value="collaborators" className="px-5 rounded-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">{t('协作者（{count}）', { count: collaborators.length })}</TabsTrigger>
         </TabsList>
 
         {/* 基本信息 */}
         <TabsContent value="info" className="mt-4">
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-6 space-y-4">
+          <EditorCard title={t('基本信息')} desc={t('名称、描述与分类决定了它在大厅中的展示与筛选')}>
+            <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('名称')}</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} maxLength={200} />
@@ -381,19 +378,20 @@ export default function KBManagePage() {
             </div>
             {canEdit && (
               <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving}>
+                <Button onClick={handleSave} disabled={saving} className="px-8">
                   {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   {t('保存')}
                 </Button>
               </div>
             )}
-          </div>
+            </div>
+          </EditorCard>
         </TabsContent>
 
         {/* 文档管理 */}
         <TabsContent value="docs" className="mt-4">
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <EditorCard title={t('文档管理')} desc={t('支持 PDF / DOCX / TXT / MD，单个文件不超过 10MB，解析后即可被检索提问')} className="overflow-hidden" contentClassName="p-0">
+            <div className="px-5 py-3 border-b border-dashed border-[#e7e5e4] flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {t('支持 PDF / DOCX / TXT / MD，单个文件不超过 10MB')}
               </p>
@@ -463,14 +461,14 @@ export default function KBManagePage() {
                 ))
               )}
             </div>
-          </div>
+          </EditorCard>
         </TabsContent>
 
         {/* 协作者 */}
         <TabsContent value="collaborators" className="mt-4">
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+          <EditorCard title={t('协作者')} desc={t('邀请同租户成员共建：编辑者可维护文档，查看者只读')} className="overflow-hidden" contentClassName="p-0">
             {isOwner && (
-              <div className="px-4 py-3 border-b border-gray-100 flex items-end gap-2 flex-wrap">
+              <div className="px-5 py-4 border-b border-dashed border-[#e7e5e4] flex items-end gap-2 flex-wrap">
                 <div className="space-y-1 flex-1 min-w-[12rem]">
                   <Label className="text-xs">{t('用户 ID')}</Label>
                   <Input
@@ -533,7 +531,7 @@ export default function KBManagePage() {
                 ))
               )}
             </div>
-          </div>
+          </EditorCard>
         </TabsContent>
       </Tabs>
 
@@ -580,6 +578,6 @@ export default function KBManagePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </StudioEditorShell>
   )
 }
