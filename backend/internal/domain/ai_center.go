@@ -44,22 +44,28 @@ const (
 
 // AIKnowledgeBase 知识库。
 type AIKnowledgeBase struct {
-	ID            string     `json:"id"`
-	TenantID      string     `json:"tenantId"`
-	OwnerID       string     `json:"ownerId"`
-	Name          string     `json:"name"`
-	Description   string     `json:"description"`
-	Tags          []string   `json:"tags"`
-	CoverImage    string     `json:"coverImage"` // 封面图（/uploads 相对路径，空=前端渐变兜底）
-	ViewCount     int64      `json:"viewCount"`  // 浏览量（非 owner/editor 查看详情 +1）
-	Status        string     `json:"status"`
-	ReviewComment string     `json:"reviewComment,omitempty"`
-	ReviewedBy    string     `json:"reviewedBy,omitempty"`
-	ReviewedAt    *time.Time `json:"reviewedAt,omitempty"`
-	DocCount      int        `json:"docCount"`
-	AskCount      int64      `json:"askCount"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
+	ID          string   `json:"id"`
+	TenantID    string   `json:"tenantId"`
+	OwnerID     string   `json:"ownerId"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
+	CoverImage  string   `json:"coverImage"` // 封面图（/uploads 相对路径，空=前端渐变兜底）
+	ViewCount   int64    `json:"viewCount"`  // 浏览量（浏览详情即 +1）
+	// 分类字段（大厅筛选，空=不限；字典：majors 专业 / organizations 院系/二级学院）
+	MajorID        *string    `json:"majorId,omitempty"`
+	DepartmentID   *string    `json:"departmentId,omitempty"`
+	MajorName      string     `json:"majorName,omitempty"`
+	DepartmentName string     `json:"departmentName,omitempty"`
+	KBType         *string    `json:"kbType,omitempty"` // course_resource/research/teaching_case/qa
+	Status         string     `json:"status"`
+	ReviewComment  string     `json:"reviewComment,omitempty"`
+	ReviewedBy     string     `json:"reviewedBy,omitempty"`
+	ReviewedAt     *time.Time `json:"reviewedAt,omitempty"`
+	DocCount       int        `json:"docCount"`
+	AskCount       int64      `json:"askCount"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 
 	// 视图扩展字段（非表列）：查询时按需填充
 	OwnerName string `json:"ownerName,omitempty"`
@@ -110,23 +116,27 @@ type AIKBCollaborator struct {
 
 // AIAgent 自建智能体。
 type AIAgent struct {
-	ID            string     `json:"id"`
-	TenantID      string     `json:"tenantId"`
-	OwnerID       string     `json:"ownerId"`
-	Name          string     `json:"name"`
-	Avatar        string     `json:"avatar"`
-	Description   string     `json:"description"`
-	CoverImage    string     `json:"coverImage"` // 封面图（同知识库）
-	ViewCount     int64      `json:"viewCount"`  // 浏览量（同知识库规则）
-	Greeting      string     `json:"greeting"`
-	SystemPrompt  string     `json:"systemPrompt"`
-	Status        string     `json:"status"`
-	ReviewComment string     `json:"reviewComment,omitempty"`
-	ReviewedBy    string     `json:"reviewedBy,omitempty"`
-	ReviewedAt    *time.Time `json:"reviewedAt,omitempty"`
-	ChatCount     int64      `json:"chatCount"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
+	ID             string     `json:"id"`
+	TenantID       string     `json:"tenantId"`
+	OwnerID        string     `json:"ownerId"`
+	Name           string     `json:"name"`
+	Avatar         string     `json:"avatar"`
+	Description    string     `json:"description"`
+	CoverImage     string     `json:"coverImage"` // 封面图（同知识库）
+	ViewCount      int64      `json:"viewCount"`  // 浏览量（同知识库规则）
+	MajorID        *string    `json:"majorId,omitempty"`
+	DepartmentID   *string    `json:"departmentId,omitempty"`
+	MajorName      string     `json:"majorName,omitempty"`
+	DepartmentName string     `json:"departmentName,omitempty"`
+	Greeting       string     `json:"greeting"`
+	SystemPrompt   string     `json:"systemPrompt"`
+	Status         string     `json:"status"`
+	ReviewComment  string     `json:"reviewComment,omitempty"`
+	ReviewedBy     string     `json:"reviewedBy,omitempty"`
+	ReviewedAt     *time.Time `json:"reviewedAt,omitempty"`
+	ChatCount      int64      `json:"chatCount"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 
 	// 视图扩展字段
 	OwnerName string   `json:"ownerName,omitempty"`

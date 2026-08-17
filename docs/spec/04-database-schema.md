@@ -485,5 +485,6 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 171 | ai_kb_asks | 知识库问答记录表（v2.2 B6：我的提问历史） |
 | 172 | ai_conversations_general | ai_conversations.agent_id 可空，支持 YIKnow 通用会话（v2.2 A1） |
 | 173 | ai_view_counters_unify | AI 浏览量并入全局 view_counters/view_logs（v2.2.1：搬存量、删两表 view_count 列） |
+| 174 | ai_kb_agent_classify | AI 知识库/智能体分类字段（major_id/department_id/kb_type + 4 索引，大厅筛选） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。

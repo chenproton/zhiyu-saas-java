@@ -75,16 +75,14 @@ export default function AILandingPage() {
           <>
             {t('AI 赋能场景化数智教学')}
             <br />
-            <span className="text-white/80">{t('培养宽技能数智化人才，适应复合型岗位新需求')}</span>
+            <span className="text-white/80">{t('培养适应复合型岗位新需求人才')}</span>
           </>
         ),
         description: t(
           '融合场景化数智教学模式，为职业教育提供智能化教学辅助、岗位能力评估、个性化学习路径规划等全方位AI服务，助力培养适应产业需求的高素质技术技能人才。',
         ),
-        // 主按钮滚动到我的工坊（#studio 锚点），次按钮滚动到 AI 广场（LandingShell 默认 listRef=#square）
-        ctaLabel: t('制作专属智能体/知识库'),
-        ctaHref: '#studio',
-        secondaryCtaLabel: t('逛逛 AI 广场'),
+        // 仅保留「逛逛 AI 广场」（滚动到 AI 广场区块，LandingShell listRef=#square）
+        ctaLabel: t('逛逛 AI 广场'),
         right: (
           // v2.4：hero 右侧 YIKnow 品牌展示卡（品牌标签 + 定位 + 口号 + 能力说明 + 立即体验）
           <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md p-8 shadow-xl">

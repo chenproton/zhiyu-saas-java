@@ -30,6 +30,7 @@ import type { AIKBCollaborator, AIKBDocument, AIKnowledgeBase } from '@/lib/api'
 import { formatDateTime, formatSize } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AIStatusBadge } from '../../components/ai-status-badge'
+import { ClassifySelects, type ClassifyValue } from '../../_components/classify-selects'
 
 const ACCEPT = '.pdf,.docx,.txt,.md'
 const POLL_INTERVAL = 2500
@@ -48,6 +49,7 @@ export default function KBManagePage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
+  const [classify, setClassify] = useState<ClassifyValue>({ majorId: '', departmentId: '', kbType: '' })
   const [saving, setSaving] = useState(false)
 
   // 文档
@@ -80,6 +82,7 @@ export default function KBManagePage() {
         setName(data.name)
         setDescription(data.description)
         setTags((data.tags ?? []).join(', '))
+        setClassify({ majorId: data.majorId ?? '', departmentId: data.departmentId ?? '', kbType: data.kbType ?? '' })
       })
       .catch((err: unknown) =>
         toast({
@@ -170,6 +173,9 @@ export default function KBManagePage() {
           .split(/[,，]/)
           .map((s) => s.trim())
           .filter(Boolean),
+        majorId: classify.majorId || undefined,
+        departmentId: classify.departmentId || undefined,
+        kbType: (classify.kbType || undefined) as import('@/lib/api').AIKBType | undefined,
       })
       toast({ title: t('保存成功') })
       loadKb()
@@ -369,6 +375,9 @@ export default function KBManagePage() {
                 placeholder={t('多个标签用逗号分隔')}
                 disabled={!canEdit}
               />
+            </div>
+            <div className={canEdit ? '' : 'pointer-events-none opacity-60'}>
+              <ClassifySelects value={classify} onChange={setClassify} withKbType />
             </div>
             {canEdit && (
               <div className="flex justify-end">

@@ -13,6 +13,9 @@ import { useT } from '@/lib/i18n/locale-provider'
 import { HallShell } from '../../_components/hall-shell'
 import { KbHallCard } from '../../_components/hall-cards'
 import { LandingPagination } from '@/components/shared/landing-pagination'
+import { LandingFilterRow } from '@/components/shared/landing-filter-row'
+import { AI_KB_TYPE_LABELS, type AIKBType } from '@/lib/api'
+import { useClassifyDicts } from '../../_components/classify-dicts'
 
 const PAGE_SIZE = 12
 
@@ -30,13 +33,17 @@ function KbHallInner() {
   const rawSort = searchParams.get('sort') || 'hot'
   const sort = (SORTS.includes(rawSort as KbSort) ? rawSort : 'hot') as KbSort
   const tag = searchParams.get('tag') || ''
+  const majorId = searchParams.get('major') || ''
+  const departmentId = searchParams.get('dept') || ''
+  const kbType = searchParams.get('type') || ''
+  const updated = searchParams.get('updated') || ''
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
 
   const [qInput, setQInput] = useState(appliedQ)
   const [kbs, setKbs] = useState<AIKnowledgeBase[]>([])
   const [total, setTotal] = useState(0)
   // 加载态派生：已完成请求钥匙 ≠ 当前参数钥匙 即加载中（避免 effect 内同步 setState）
-  const reqKey = `${appliedQ}|${tag}|${sort}|${page}`
+  const reqKey = `${appliedQ}|${tag}|${sort}|${majorId}|${departmentId}|${kbType}|${updated}|${page}`
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
   const loading = loadedKey !== reqKey
 
@@ -61,6 +68,10 @@ function KbHallInner() {
         sort,
         page,
         pageSize: PAGE_SIZE,
+        majorId: majorId || undefined,
+        departmentId: departmentId || undefined,
+        kbType: (kbType || undefined) as AIKBType | undefined,
+        updated: (updated || undefined) as '7d' | '30d' | '180d' | undefined,
       })
       .then((res) => {
         if (!alive) return
@@ -80,26 +91,25 @@ function KbHallInner() {
     return () => {
       alive = false
     }
-  }, [appliedQ, tag, sort, page, reqKey, toast, t])
+  }, [appliedQ, tag, sort, page, majorId, departmentId, kbType, updated, reqKey, toast, t])
 
   // 标签筛选 chips：当前结果集标签并集 + 已选标签（保证可取消）
   const tagOptions = Array.from(
     new Set([...(tag ? [tag] : []), ...kbs.flatMap((k) => k.tags || [])]),
   )
-  const totalDocs = kbs.reduce((sum, k) => sum + (k.docCount || 0), 0)
-  const totalAsks = kbs.reduce((sum, k) => sum + (k.askCount || 0), 0)
+  const { majors, departments } = useClassifyDicts()
+  const UPDATED_OPTIONS = [
+    { v: '', label: t('全部') },
+    { v: '7d', label: t('最近一周') },
+    { v: '30d', label: t('最近一月') },
+    { v: '180d', label: t('最近半年') },
+  ]
 
   return (
     <HallShell
       title={t('知识库大厅')}
       headerIcon={<BookOpen className="w-6 h-6 text-white" />}
       subtitle={t('租户内已发布的全部知识库，点击进入详情并可向知识库提问')}
-      stats={[
-        { value: total, label: t('知识库总数') },
-        { value: totalDocs, label: t('文档总数（当前页）') },
-        { value: totalAsks, label: t('被提问次数（当前页）') },
-        { value: tagOptions.length, label: t('标签数（当前页）') },
-      ]}
       tags={tagOptions}
       activeTag={tag}
       onTagChange={(v) => setQuery({ tag: v, page: '' })}
@@ -115,6 +125,50 @@ function KbHallInner() {
       searchValue={qInput}
       onSearchChange={setQInput}
       onSearch={() => setQuery({ q: qInput.trim(), page: '' })}
+      filters={
+        <>
+          <LandingFilterRow
+            label={t('院系')}
+            items={[t('全部'), ...departments.map((d) => d.name)]}
+            selected={departmentId ? departments.find((d) => d.id === departmentId)?.name || t('全部') : t('全部')}
+            onSelect={(label) =>
+              setQuery({ dept: departments.find((d) => d.name === label)?.id || '', page: '' })
+            }
+            accentColor="primary"
+          />
+          <LandingFilterRow
+            label={t('专业')}
+            items={[t('全部'), ...majors.map((m) => m.name)]}
+            selected={majorId ? majors.find((m) => m.id === majorId)?.name || t('全部') : t('全部')}
+            onSelect={(label) =>
+              setQuery({ major: majors.find((m) => m.name === label)?.id || '', page: '' })
+            }
+            accentColor="primary"
+          />
+          <LandingFilterRow
+            label={t('类型')}
+            items={[t('全部'), ...Object.values(AI_KB_TYPE_LABELS).map((l) => t(l))]}
+            selected={kbType ? t(AI_KB_TYPE_LABELS[kbType as AIKBType] || kbType) : t('全部')}
+            onSelect={(label) => {
+              const entry = (Object.entries(AI_KB_TYPE_LABELS) as [AIKBType, string][]).find(
+                ([, l]) => t(l) === label,
+              )
+              setQuery({ type: entry?.[0] || '', page: '' })
+            }}
+            accentColor="primary"
+          />
+          <LandingFilterRow
+            label={t('时间')}
+            items={UPDATED_OPTIONS.map((o) => o.label)}
+            selected={UPDATED_OPTIONS.find((o) => o.v === updated)?.label || t('全部')}
+            onSelect={(label) =>
+              setQuery({ updated: UPDATED_OPTIONS.find((o) => o.label === label)?.v || '', page: '' })
+            }
+            accentColor="primary"
+            showBorder={false}
+          />
+        </>
+      }
       searchPlaceholder={t('搜索知识库')}
       total={total}
       loading={loading}

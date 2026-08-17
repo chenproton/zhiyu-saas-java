@@ -40,6 +40,7 @@ import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 import { coverGradientFor } from '@/lib/cover-gradients'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
+import { ClassifySelects, type ClassifyValue } from './classify-selects'
 import { AIStatusBadge } from '../studio/components/ai-status-badge'
 
 /** 卡片封面横幅：有封面图用图，无则渐变 + 居中图标（对齐 ExamCenterCard） */
@@ -88,6 +89,8 @@ export function StudioSection() {
   const [newDesc, setNewDesc] = useState('')
   const [newTags, setNewTags] = useState('')
   const [newCover, setNewCover] = useState('')
+  // 分类字段（v2.4 大厅筛选）
+  const [newClassify, setNewClassify] = useState<ClassifyValue>({ majorId: '', departmentId: '', kbType: '' })
   const [coverUploading, setCoverUploading] = useState(false)
   const [creating, setCreating] = useState(false)
 
@@ -180,6 +183,9 @@ export function StudioSection() {
         description: newDesc.trim(),
         tags,
         coverImage: newCover || undefined,
+        majorId: newClassify.majorId || undefined,
+        departmentId: newClassify.departmentId || undefined,
+        kbType: (newClassify.kbType || undefined) as import('@/lib/api').AIKBType | undefined,
       })
       toast({ title: t('创建成功') })
       setCreateOpen(false)
@@ -187,6 +193,7 @@ export function StudioSection() {
       setNewDesc('')
       setNewTags('')
       setNewCover('')
+      setNewClassify({ majorId: '', departmentId: '', kbType: '' })
       loadKbs()
     } catch (err) {
       toast({
@@ -581,6 +588,7 @@ export function StudioSection() {
                 placeholder={t('多个标签用逗号分隔')}
               />
             </div>
+            <ClassifySelects value={newClassify} onChange={setNewClassify} withKbType />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>

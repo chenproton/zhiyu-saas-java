@@ -5,7 +5,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -67,21 +69,33 @@ func (svc *AICenterService) getKBWithRole(ctx context.Context, tenantID, kbID, u
 
 // CreateKBInput 创建知识库输入。
 type CreateKBInput struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
-	CoverImage  string   `json:"coverImage"` // /uploads 相对路径，可空
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Tags         []string `json:"tags"`
+	CoverImage   string   `json:"coverImage"`   // /uploads 相对路径，可空
+	MajorID      string   `json:"majorId"`      // 系统专业字典，可空=不限
+	DepartmentID string   `json:"departmentId"` // 系统院系字典（organizations 二级学院），可空=不限
+	KBType       string   `json:"kbType"`       // course_resource/research/teaching_case/qa，可空
 }
+
+// 知识库类型枚举（大厅筛选项，空=不限）
+var AIKBTypes = map[string]bool{"": true, "course_resource": true, "research": true, "teaching_case": true, "qa": true}
 
 // CreateKB 创建知识库（任何登录用户；创建即私有）。
 func (svc *AICenterService) CreateKB(ctx context.Context, tenantID, ownerID string, in CreateKBInput) (*domain.AIKnowledgeBase, error) {
 	kb := &domain.AIKnowledgeBase{
-		TenantID:    tenantID,
-		OwnerID:     ownerID,
-		Name:        strings.TrimSpace(in.Name),
-		Description: strings.TrimSpace(in.Description),
-		Tags:        normalizeTags(in.Tags),
-		CoverImage:  strings.TrimSpace(in.CoverImage),
+		TenantID:     tenantID,
+		OwnerID:      ownerID,
+		Name:         strings.TrimSpace(in.Name),
+		Description:  strings.TrimSpace(in.Description),
+		Tags:         normalizeTags(in.Tags),
+		CoverImage:   strings.TrimSpace(in.CoverImage),
+		MajorID:      strOrNil(in.MajorID),
+		DepartmentID: strOrNil(in.DepartmentID),
+		KBType:       strOrNil(in.KBType),
+	}
+	if !AIKBTypes[in.KBType] {
+		return nil, fmt.Errorf("invalid kb type: %s", in.KBType)
 	}
 	if err := svc.s.Store().AICenter().CreateKB(ctx, kb); err != nil {
 		return nil, err
@@ -164,6 +178,12 @@ func (svc *AICenterService) UpdateKB(ctx context.Context, tenantID, kbID, userID
 	kb.Description = strings.TrimSpace(in.Description)
 	kb.Tags = normalizeTags(in.Tags)
 	kb.CoverImage = strings.TrimSpace(in.CoverImage)
+	if !AIKBTypes[in.KBType] {
+		return fmt.Errorf("invalid kb type: %s", in.KBType)
+	}
+	kb.MajorID = strOrNil(in.MajorID)
+	kb.DepartmentID = strOrNil(in.DepartmentID)
+	kb.KBType = strOrNil(in.KBType)
 	return svc.s.Store().AICenter().UpdateKB(ctx, kb)
 }
 
@@ -273,8 +293,11 @@ func (svc *AICenterService) RemoveCollaborator(ctx context.Context, tenantID, kb
 // ==================== 广场 ====================
 
 // ListSquareKBs 广场知识库列表（仅 published）。
-func (svc *AICenterService) ListSquareKBs(ctx context.Context, tenantID, q, tag, sort string, page, pageSize int) ([]domain.AIKnowledgeBase, int, error) {
-	return svc.s.Store().AICenter().ListSquareKBs(ctx, tenantID, q, tag, sort, page, pageSize)
+func (svc *AICenterService) ListSquareKBs(ctx context.Context, tenantID, q, tag, sort string, page, pageSize int, majorID, departmentID, kbType string, updatedAfter *time.Time) ([]domain.AIKnowledgeBase, int, error) {
+	if !AIKBTypes[kbType] {
+		return nil, 0, fmt.Errorf("invalid kb type: %s", kbType)
+	}
+	return svc.s.Store().AICenter().ListSquareKBs(ctx, tenantID, q, tag, sort, page, pageSize, majorID, departmentID, kbType, updatedAfter)
 }
 
 // ListDocuments 文档列表（可见者）。
@@ -283,4 +306,13 @@ func (svc *AICenterService) ListDocuments(ctx context.Context, tenantID, kbID, u
 		return nil, err
 	}
 	return svc.s.Store().AICenter().ListDocuments(ctx, tenantID, kbID)
+}
+
+// strOrNil 空串归一为 nil（可空外键列）。
+func strOrNil(v string) *string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	return &v
 }

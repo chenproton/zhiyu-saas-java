@@ -13,6 +13,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 // ==================== 类型（与后端 domain/ai_center.go 对齐） ====================
 
 export type AIContentStatus = 'private' | 'pending' | 'published' | 'rejected'
+export type AIKBType = 'course_resource' | 'research' | 'teaching_case' | 'qa'
+export const AI_KB_TYPE_LABELS: Record<AIKBType, string> = {
+  course_resource: '课程资源库',
+  research: '科研成果库',
+  teaching_case: '教学案例库',
+  qa: '问答知识库',
+}
 export type AIKBOwnerRole = 'owner' | 'editor' | 'viewer' | 'member' | 'collaborator'
 
 export interface AIKnowledgeBase {
@@ -27,6 +34,12 @@ export interface AIKnowledgeBase {
   askCount: number
   viewCount: number
   ownerId: string
+  // 分类（大厅筛选；空=不限）
+  majorId?: string
+  departmentId?: string
+  majorName?: string
+  departmentName?: string
+  kbType?: AIKBType
   ownerName?: string
   myRole?: AIKBOwnerRole
   createdAt: string
@@ -67,6 +80,10 @@ export interface AIAgent {
   reviewComment?: string
   chatCount: number
   viewCount: number
+  majorId?: string
+  departmentId?: string
+  majorName?: string
+  departmentName?: string
   ownerId: string
   ownerName?: string
   kbIds?: string[]
@@ -126,18 +143,28 @@ export interface ListResult<T> {
   total: number
 }
 
+export interface AIKBInput {
+  name: string
+  description?: string
+  tags?: string[]
+  coverImage?: string
+  majorId?: string
+  departmentId?: string
+  kbType?: AIKBType
+}
+
 // ==================== 知识库 ====================
 
 export const aiCenterKbApi = {
   listMine: (params: { scope?: string; q?: string; page?: number; pageSize?: number } = {}) =>
     portalRequest<ListResult<AIKnowledgeBase>>(`/ai/kb${buildQuery({ ...params })}`),
 
-  create: (body: { name: string; description?: string; tags?: string[]; coverImage?: string }) =>
+  create: (body: AIKBInput) =>
     portalRequest<AIKnowledgeBase>('/ai/kb', { method: 'POST', body: JSON.stringify(body) }),
 
   get: (id: string) => portalRequest<AIKnowledgeBase>(`/ai/kb/${id}`),
 
-  update: (id: string, body: { name: string; description?: string; tags?: string[]; coverImage?: string }) =>
+  update: (id: string, body: AIKBInput) =>
     portalRequest<{ status: string }>(`/ai/kb/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
 
   remove: (id: string) => portalRequest<{ status: string }>(`/ai/kb/${id}`, { method: 'DELETE' }),
@@ -198,6 +225,8 @@ export interface AIAgentInput {
   greeting?: string
   systemPrompt: string
   kbIds?: string[]
+  majorId?: string
+  departmentId?: string
 }
 
 export const aiCenterAgentApi = {
@@ -235,10 +264,10 @@ export const aiCenterAgentApi = {
 // ==================== 广场 / 挂接展示 ====================
 
 export const aiCenterSquareApi = {
-  kbs: (params: { q?: string; tag?: string; sort?: 'hot' | 'new' | 'updated' | 'docs' | 'views'; page?: number; pageSize?: number } = {}) =>
+  kbs: (params: { q?: string; tag?: string; sort?: 'hot' | 'new' | 'updated' | 'docs' | 'views'; page?: number; pageSize?: number; majorId?: string; departmentId?: string; kbType?: AIKBType; updated?: '7d' | '30d' | '180d' } = {}) =>
     portalRequest<ListResult<AIKnowledgeBase>>(`/ai/square/kbs${buildQuery({ ...params })}`),
 
-  agents: (params: { q?: string; sort?: 'hot' | 'new' | 'views'; page?: number; pageSize?: number } = {}) =>
+  agents: (params: { q?: string; sort?: 'hot' | 'new' | 'views'; page?: number; pageSize?: number; majorId?: string; departmentId?: string; updated?: '7d' | '30d' | '180d' } = {}) =>
     portalRequest<ListResult<AIAgent>>(`/ai/square/agents${buildQuery({ ...params })}`),
 
   integrations: (kind?: 'agent' | 'app') =>

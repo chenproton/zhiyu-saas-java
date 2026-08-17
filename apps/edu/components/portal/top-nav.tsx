@@ -120,6 +120,10 @@ export function TopNav() {
     if (href === '/portal') {
       return pathname === '/portal'
     }
+    // 应用服务中心仅在其主页高亮：平台页（/portal/apps/ai 等）有独立定位，不高亮入口（对齐 /job/landing 等惯例）
+    if (href === '/portal/apps') {
+      return pathname === '/portal/apps'
+    }
     return pathname.startsWith(href)
   }
 

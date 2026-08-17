@@ -1,8 +1,8 @@
 'use client'
 
 // AI 大厅页共享骨架（智能体大厅/知识库大厅共用，spec §2.1 大厅页）：
-// 返回首页条 → 标题+统计 → 标签筛选 chips → 工具栏（计数/排序/搜索）→ 内容网格 → 加载更多。
-// 视觉对齐 docs/demo 大厅原型，配色走系统 primary 主题。
+// 返回首页条 → 标题 → 分类筛选行（filters 插槽）→ 标签 chips → 工具栏（计数/排序/搜索）→ 内容网格。
+// 页头对齐 /evaluation/landing/exam-center 模式（同宽容器内左对齐，v2.4）；统计条已按用户要求移除。
 import Link from 'next/link'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,7 @@ interface HallShellProps {
   title: string
   subtitle?: string
   headerIcon?: React.ReactNode
-  stats?: { value: number | string; label: string }[]
+  filters?: React.ReactNode
   tags?: string[]
   activeTag?: string
   onTagChange?: (tag: string) => void
@@ -41,7 +41,7 @@ export function HallShell({
   title,
   subtitle,
   headerIcon,
-  stats,
+  filters,
   tags,
   activeTag,
   onTagChange,
@@ -63,7 +63,7 @@ export function HallShell({
     <div className="max-w-[1400px] mx-auto space-y-5 px-4 sm:px-8 py-6">
       {/* 渐变页头（对齐 exam-center 页头模式，负边距全幅出血） */}
       <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40 -mx-4 sm:-mx-8 -mt-6 px-4 sm:px-8 py-7 rounded-b-2xl shadow-[0_8px_24px_rgba(22,119,255,0.18)]">
-        <div className="max-w-6xl mx-auto">
+        <div>
           <Link
             href="/portal/apps/ai/landing"
             className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-white transition-colors mb-3"
@@ -83,23 +83,9 @@ export function HallShell({
         </div>
       </div>
 
-      {/* 统计条 */}
-      {stats && stats.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl border border-border bg-background px-4 py-3 shadow-sm"
-            >
-              <div className="text-xl font-bold text-primary">{s.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 筛选工具面板 */}
+      {/* 筛选工具面板（分类筛选行 + 标签 chips + 排序/搜索） */}
       <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_6px_rgba(0,0,0,0.04)] p-4 space-y-3">
+      {filters}
       {/* 标签筛选 */}
       {tags && tags.length > 0 && onTagChange && (
         <div className="flex flex-wrap items-center gap-2">

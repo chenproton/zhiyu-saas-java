@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/zhiyu-saas/backend/internal/ai"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -31,6 +32,8 @@ type AgentInput struct {
 	Greeting     string   `json:"greeting"`
 	SystemPrompt string   `json:"systemPrompt"`
 	KbIDs        []string `json:"kbIds"`
+	MajorID      string   `json:"majorId"`      // 系统专业字典，可空=不限
+	DepartmentID string   `json:"departmentId"` // 系统院系字典，可空=不限
 }
 
 // CreateAgent 创建智能体（任何登录用户；创建即私有）。
@@ -44,6 +47,8 @@ func (svc *AICenterService) CreateAgent(ctx context.Context, tenantID, ownerID s
 		CoverImage:   strings.TrimSpace(in.CoverImage),
 		Greeting:     strings.TrimSpace(in.Greeting),
 		SystemPrompt: strings.TrimSpace(in.SystemPrompt),
+		MajorID:      strOrNil(in.MajorID),
+		DepartmentID: strOrNil(in.DepartmentID),
 	}
 	if err := svc.validateAgentKBLinks(ctx, tenantID, ownerID, in.KbIDs); err != nil {
 		return nil, err
@@ -117,8 +122,8 @@ func (svc *AICenterService) ListMyAgents(ctx context.Context, tenantID, userID s
 }
 
 // ListSquareAgents 广场智能体。
-func (svc *AICenterService) ListSquareAgents(ctx context.Context, tenantID, q, sort string, page, pageSize int) ([]domain.AIAgent, int, error) {
-	return svc.s.Store().AICenter().ListSquareAgents(ctx, tenantID, q, sort, page, pageSize)
+func (svc *AICenterService) ListSquareAgents(ctx context.Context, tenantID, q, sort string, page, pageSize int, majorID, departmentID string, updatedAfter *time.Time) ([]domain.AIAgent, int, error) {
+	return svc.s.Store().AICenter().ListSquareAgents(ctx, tenantID, q, sort, page, pageSize, majorID, departmentID, updatedAfter)
 }
 
 // UpdateAgent 编辑智能体（仅 owner；published 可直接编辑，状态不变——spec §9.2）。
@@ -139,6 +144,8 @@ func (svc *AICenterService) UpdateAgent(ctx context.Context, tenantID, agentID, 
 	a.CoverImage = strings.TrimSpace(in.CoverImage)
 	a.Greeting = strings.TrimSpace(in.Greeting)
 	a.SystemPrompt = strings.TrimSpace(in.SystemPrompt)
+	a.MajorID = strOrNil(in.MajorID)
+	a.DepartmentID = strOrNil(in.DepartmentID)
 	if err := svc.s.Store().AICenter().UpdateAgent(ctx, a); err != nil {
 		return err
 	}
