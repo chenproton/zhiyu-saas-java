@@ -70,46 +70,31 @@ export default function AILandingPage() {
     <LandingShell
       hero={{
         badge: t('AI 智能服务平台'),
-        title: (
-          <>
-            YIKnow <span className="text-yellow-300">{t('你问，我懂')}</span>
-          </>
-        ),
+        title: <>{t('AI 赋能培养宽技能数智化人才，适应复合型岗位新需求')}</>,
         description: t(
-          'YIKnow 是面向全体师生的全局 AI 助手，开箱即用；你也可以创建自己的知识库与智能体，经审核后发布到广场与全校共享。',
+          '融合场景化数智教学模式，为职业教育提供智能化教学辅助、岗位能力评估、个性化学习路径规划等全方位AI服务，助力培养适应产业需求的高素质技术技能人才。',
         ),
         ctaLabel: t('立即体验 YIKnow'),
         ctaHref: '/portal/apps/ai/chat',
         secondaryCtaLabel: t('逛逛 AI 广场'),
         right: (
-          <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md p-5 shadow-xl space-y-3">
-            <div className="flex items-center gap-2 text-white/90 text-sm font-medium">
+          // v2.3：hero 右侧改为 YIKnow 品牌展示卡（去对话示例/输入框/待上线清单）
+          <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md p-8 shadow-xl">
+            <div className="flex items-center gap-2 text-white/90 text-sm font-medium mb-5">
               <Sparkles className="w-4 h-4 text-yellow-300" />
-              {t('YIKnow 智能对话')}
+              {t('AI 智能服务平台')}
             </div>
-            <div className="space-y-2.5">
-              <div className="flex justify-end">
-                <div className="rounded-2xl rounded-tr-sm bg-white text-slate-700 px-3.5 py-2 text-xs shadow max-w-[85%]">
-                  {t('帮我总结一下这周实训报告的写作要点')}
-                </div>
-              </div>
-              <div className="flex justify-start">
-                <div className="rounded-2xl rounded-tl-sm bg-white/15 border border-white/20 text-white/90 px-3.5 py-2 text-xs max-w-[85%] leading-relaxed">
-                  {t('好的！实训报告一般包含：目的、内容、步骤、结果与反思。建议按「任务→操作→收获」三段式展开……')}
-                </div>
-              </div>
+            <div className="text-4xl font-bold text-white tracking-wide">YIKnow</div>
+            <div className="text-sm text-white/70 mt-2">
+              You Ask · I Know · {t('你问，我懂')}
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-3.5 py-2">
-              <span className="text-xs text-white/50 flex-1">{t('输入消息，Enter 发送')}</span>
-              <span className="w-6 h-6 rounded-full bg-white text-primary flex items-center justify-center text-xs">➤</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {['我的方案', '岗位库', '场景库', '知识库', '设置'].map((label) => (
-                <span key={label} className="rounded-full border border-white/25 text-white/60 px-2.5 py-0.5 text-[10px]">
-                  {t(label)} · {t('待上线')}
-                </span>
-              ))}
-            </div>
+            <a
+              href="/portal/apps/ai/chat"
+              className="inline-flex items-center gap-1.5 mt-6 rounded-full bg-white text-primary px-6 h-10 text-sm font-semibold leading-10 hover:bg-yellow-300 hover:text-slate-800 transition-colors"
+            >
+              {t('立即体验')}
+              <span aria-hidden>→</span>
+            </a>
           </div>
         ),
       }}
