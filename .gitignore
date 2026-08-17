@@ -88,3 +88,6 @@ plus-ui/yarn.lock
 plus-ui/auto-imports.d.ts
 plus-ui/components.d.ts
 deploy/docker/build-context/
+
+# Go 构建二进制（go build 输出）
+backend/server
