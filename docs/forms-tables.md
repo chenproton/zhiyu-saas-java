@@ -1,6 +1,6 @@
 # 表单与表格架构盘点与复用规范
 
-> 更新日期：2026-08-02
+> 更新日期：2026-08-17
 > 范围：`apps/edu`（portal / job / scene / lesson / evaluation / affairs / library / superadmin）
 > `apps/marketplace` 已移除，无表单表格；`packages/ui` 提供全部原语与共享组件。
 
@@ -23,6 +23,8 @@
 
 `packages/ui/src/components/ui/table.tsx`：外层 `overflow-x-auto`，`th/td` 默认 `whitespace-nowrap`。
 移动端"最好"的页面全部基于它，**所有新表格必须用它**，禁止手写 `<table>`。
+
+**列宽自定义（resizable，2026-08 新增）**：`<Table resizable storageKey="唯一标识">` + 各 `<TableHead columnKey="..." defaultWidth={n} minWidth={n}>` 即开启用户拖拽调整列宽，宽度按当前浏览器 localStorage 持久化（刷新不变）；开启后表格为 `table-layout: fixed` 且宽度 = 注册列宽之和（所见即所得，窄屏横向滚动；宽屏表右侧留白属预期），`resizable={false}` 的列（如全选框）只注册宽度不出拖拽手柄。实现见 `table.tsx`，交互规范见 `docs/spec/05-prototype-interaction.md` §2.4。
 
 ### 2. 通用表格壳组件（按场景选型）
 
@@ -102,5 +104,6 @@
 
 1. 简单 CRUD → `PortalCrudPage`；带组织树筛选 → `PortalSidebarCrudPage`；带状态/审批/批次/导入导出的内容管理 → `ContentListPage`；归档 → `ArchiveListPage`；日志 → `LogTableShell`
 2. 特殊业务列表（无法用壳组件时）：直接用 `<Table>`，**必须** `min-w-[900px]`（多列）保证移动端横向滚动，列多时给关键列设 `w-*` 固定宽度
-3. 行操作 → `<TableRowActions>`；批量操作按钮 + 选中态 → 参照壳组件内置模式，不手写
-4. 移动端：多列网格 `grid-cols-1 md:grid-cols-2` 起步；课表类宽网格外层 `overflow-x-auto` + `min-w-[760px]`；操作栏拥挤时折叠为 DropdownMenu（参照 `editor-shell.tsx` 的移动端菜单）
+3. 需要用户自定义列宽（拖拽 + 浏览器持久化）的表格：`<Table resizable storageKey="...">` + 每列 `<TableHead columnKey defaultWidth minWidth>`；文本可能超长的列（名称/长文本）在 `td` 上加 `truncate` 或内层 `line-clamp`，防止列宽收窄后溢出相邻列；`resizable` 模式下表格宽度 = 列宽之和（`w-max`），无需再设 `min-w-*`
+4. 行操作 → `<TableRowActions>`；批量操作按钮 + 选中态 → 参照壳组件内置模式，不手写
+5. 移动端：多列网格 `grid-cols-1 md:grid-cols-2` 起步；课表类宽网格外层 `overflow-x-auto` + `min-w-[760px]`；操作栏拥挤时折叠为 DropdownMenu（参照 `editor-shell.tsx` 的移动端菜单）

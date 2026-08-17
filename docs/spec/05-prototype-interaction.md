@@ -76,6 +76,7 @@
 岗位/场景/课程/题库/试卷/人培方案等统一模式：
 
 - **区域划分**：顶部 PageHeaderCard（标题 + 描述 + 新建按钮）→ 筛选区（搜索框 + 批次/专业/状态筛选）→ 列表区（表格：封面+名称、类型/分类、状态徽章、时间、操作列）
+- **列宽自定义**（2026-08 新增）：内容列表表格支持用户拖拽调整列宽（拖拽列头右缘手柄），列宽按**当前浏览器**持久化（localStorage，key 前缀 `zhiyu:table-widths:`），刷新/重新进入保持不变；能力内置于通用 Table 原语（`<Table resizable storageKey>` + `<TableHead columnKey/defaultWidth/minWidth>`），开启后表格为 `table-layout: fixed` 且宽度 = 注册列宽之和（所见即所得，窄屏横向滚动），未注册 columnKey 的列自动分摊剩余宽度；各列表页按需开启，`/job/positions` 已启用（storageKey `job.positions.list`），同页签内同 key 多表格实例（分组视图每批次一张表）宽度自动同步
 - **状态动作条**（status-action-bar）：按状态机呈现可用操作——draft：编辑/删除/提交审批；pending：撤回/审批；approved：发布/编辑；published：取消发布/归档；archived：恢复/删除
 - **行内操作**：编辑 / 克隆 / 删除（ConfirmDialog 二次确认）
 - **空态**：Empty 组件（插画 + 引导文案 + 新建按钮）

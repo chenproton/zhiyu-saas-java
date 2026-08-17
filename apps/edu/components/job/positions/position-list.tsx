@@ -83,34 +83,102 @@ export function PositionList({
   return (
     <div className={cn('rounded-lg border border-slate-200 bg-white overflow-hidden', className)}>
       <div className="overflow-x-auto">
-        <Table className="min-w-[900px]">
+        <Table resizable storageKey="job.positions.list">
           <TableHeader>
             <TableRow className="bg-slate-50 border-b border-slate-100 hover:bg-slate-50">
-              <TableHead className="w-10 px-3">
+              <TableHead
+                columnKey="select"
+                defaultWidth={40}
+                minWidth={40}
+                resizable={false}
+                className="px-3"
+              >
                 <Checkbox
                   checked={someSelected ? 'indeterminate' : allSelected}
                   onCheckedChange={(checked) => onSelectAll?.(checked === true)}
                   aria-label={t('全选')}
                 />
               </TableHead>
-              <TableHead className="w-40 text-xs font-medium text-slate-500">{t('岗位名称')}</TableHead>
-              <TableHead className="w-24 text-xs font-medium text-slate-500">{t('岗位编码')}</TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">{t('所属行业')}</TableHead>
-              <TableHead className="w-32 text-xs font-medium text-slate-500">{t('所属专业')}</TableHead>
-              <TableHead className="w-32 text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="name"
+                defaultWidth={160}
+                minWidth={96}
+                className="text-xs font-medium text-slate-500"
+              >
+                {t('岗位名称')}
+              </TableHead>
+              <TableHead
+                columnKey="code"
+                defaultWidth={96}
+                minWidth={64}
+                className="text-xs font-medium text-slate-500"
+              >
+                {t('岗位编码')}
+              </TableHead>
+              <TableHead
+                columnKey="industry"
+                defaultWidth={112}
+                minWidth={72}
+                className="text-xs font-medium text-slate-500"
+              >
+                {t('所属行业')}
+              </TableHead>
+              <TableHead
+                columnKey="majors"
+                defaultWidth={128}
+                minWidth={96}
+                className="text-xs font-medium text-slate-500"
+              >
+                {t('所属专业')}
+              </TableHead>
+              <TableHead
+                columnKey="batch"
+                defaultWidth={128}
+                minWidth={96}
+                className="text-xs font-medium text-slate-500"
+              >
                 {t('所属批次分组')}
               </TableHead>
-              <TableHead className="w-20 text-xs font-medium text-slate-500">{t('共建人员')}</TableHead>
-              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="collaborators"
+                defaultWidth={80}
+                minWidth={56}
+                className="text-xs font-medium text-slate-500"
+              >
+                {t('共建人员')}
+              </TableHead>
+              <TableHead
+                columnKey="responsibilities"
+                defaultWidth={64}
+                minWidth={48}
+                className="text-center text-xs font-medium text-slate-500"
+              >
                 {t('职责数')}
               </TableHead>
-              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="abilityBindings"
+                defaultWidth={64}
+                minWidth={48}
+                className="text-center text-xs font-medium text-slate-500"
+              >
                 {t('能力绑定')}
               </TableHead>
-              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="favoriteCount"
+                defaultWidth={64}
+                minWidth={48}
+                className="text-center text-xs font-medium text-slate-500"
+              >
                 {t('收藏')}
               </TableHead>
-              <TableHead className="text-right text-xs font-medium text-slate-500">{t('操作')}</TableHead>
+              <TableHead
+                columnKey="actions"
+                defaultWidth={64}
+                minWidth={40}
+                className="text-right text-xs font-medium text-slate-500"
+              >
+                {t('操作')}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -134,11 +202,11 @@ export function PositionList({
                   </TableCell>
                   <TableCell>
                     <Link href={`${basePath}/${position.id}/edit`} className="block">
-                      <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-40 hover:text-primary">
+                      <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-full hover:text-primary">
                         {position.name}
                       </p>
                     </Link>
-                    <div className="flex items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       <StatusBadge status={position.status} />
                       {position.sourceType === 'enterprise' && (
                         <Badge variant="secondary">{t('企业共建')}</Badge>
@@ -146,16 +214,16 @@ export function PositionList({
                       <span className="text-xs text-slate-400">{position.version}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
+                  <TableCell className="truncate text-sm text-slate-600">
                     {position.code || position.id.slice(0, 8)}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
+                  <TableCell className="truncate text-sm text-slate-600">
                     {getIndustryName(position.industry)}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
+                  <TableCell className="truncate text-sm text-slate-600">
                     {getMajorNames(position.majors)}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
+                  <TableCell className="truncate text-sm text-slate-600">
                     {batchMap?.get(position.batchId) || position.batchId || '-'}
                   </TableCell>
                   <TableCell className="text-xs text-slate-500">
