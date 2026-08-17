@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bot, BookOpen, Blocks, ArrowRight, Sparkles } from 'lucide-react'
 import { LandingShell } from '@/components/shared/landing-shell'
+import { YIKnowChatDialog, useYIKnowChatDialog } from '../_components/yi-know-chat-dialog'
 import { aiCenterSquareApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase, AIIntegration } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -28,6 +29,7 @@ interface LandingData {
 
 export default function AILandingPage() {
   const t = useT()
+  const { openChat, dialogProps } = useYIKnowChatDialog()
   const [data, setData] = useState<LandingData | null>(null)
   const squareRef = useRef<HTMLDivElement>(null)
 
@@ -67,6 +69,7 @@ export default function AILandingPage() {
   }, [])
 
   return (
+    <>
     <LandingShell
       hero={{
         badge: t('AI 智能服务平台'),
@@ -99,13 +102,13 @@ export default function AILandingPage() {
             <p className="text-xs text-white/60 leading-relaxed mt-4">
               {t('集成多元大模型能力，以知识库与智能体全面赋能职业教育场景化教学')}
             </p>
-            <a
-              href="/portal/apps/ai/chat"
+            <button
+              onClick={openChat}
               className="inline-flex items-center gap-1.5 mt-6 rounded-full bg-white text-primary px-6 h-10 text-sm font-semibold leading-10 hover:bg-yellow-300 hover:text-slate-800 transition-colors"
             >
               {t('立即体验')}
               <span aria-hidden>→</span>
-            </a>
+            </button>
           </div>
         ),
       }}
@@ -206,6 +209,9 @@ export default function AILandingPage() {
         </section>
       </div>
     </LandingShell>
+      {/* v2.7：YIKnow 聊天统一弹窗入口 */}
+      <YIKnowChatDialog {...dialogProps} />
+    </>
   )
 }
 

@@ -35,7 +35,8 @@ func NewAICenterService(s *Service, aiSvc *AIService, uploadDir string) *AICente
 }
 
 // KB 可见角色：owner / editor / viewer / member（已发布全员）；不可见返回 ErrNotFound（隐藏存在性）。
-func (svc *AICenterService) resolveKBRole(ctx context.Context, kb *domain.AIKnowledgeBase, userID string) (string, error) {
+// isAdmin（school_admin）：本租户审核管理只读体验，返回 viewer（写路径仍按角色拒绝）。
+func (svc *AICenterService) resolveKBRole(ctx context.Context, kb *domain.AIKnowledgeBase, userID string, isAdmin bool) (string, error) {
 	if kb.OwnerID == userID {
 		return "owner", nil
 	}
@@ -49,16 +50,19 @@ func (svc *AICenterService) resolveKBRole(ctx context.Context, kb *domain.AIKnow
 	if kb.Status == domain.AIContentStatusPublished {
 		return "member", nil
 	}
+	if isAdmin {
+		return "viewer", nil // 审核管理：school_admin 只读体验待审核/已驳回内容
+	}
 	return "", store.ErrNotFound
 }
 
 // getKBWithRole 取知识库并判定请求者角色；不可见/不存在返回 (nil, "", ErrNotFound)。
-func (svc *AICenterService) getKBWithRole(ctx context.Context, tenantID, kbID, userID string) (*domain.AIKnowledgeBase, string, error) {
+func (svc *AICenterService) getKBWithRole(ctx context.Context, tenantID, kbID, userID string, isAdmin bool) (*domain.AIKnowledgeBase, string, error) {
 	kb, err := svc.s.Store().AICenter().GetKB(ctx, tenantID, kbID)
 	if err != nil {
 		return nil, "", err
 	}
-	role, err := svc.resolveKBRole(ctx, kb, userID)
+	role, err := svc.resolveKBRole(ctx, kb, userID, isAdmin)
 	if err != nil {
 		return nil, "", err
 	}
@@ -152,8 +156,8 @@ func (svc *AICenterService) ListMyKBs(ctx context.Context, tenantID, userID, sco
 }
 
 // GetKB 知识库详情（可见者；附我的角色）。
-func (svc *AICenterService) GetKB(ctx context.Context, tenantID, kbID, userID string) (*domain.AIKnowledgeBase, error) {
-	kb, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+func (svc *AICenterService) GetKB(ctx context.Context, tenantID, kbID, userID string, isAdmin bool) (*domain.AIKnowledgeBase, error) {
+	kb, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, isAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +170,7 @@ func (svc *AICenterService) GetKB(ctx context.Context, tenantID, kbID, userID st
 
 // UpdateKB 编辑基础信息（仅 owner）。
 func (svc *AICenterService) UpdateKB(ctx context.Context, tenantID, kbID, userID string, in CreateKBInput) error {
-	kb, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+	kb, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false)
 	if err != nil {
 		return err
 	}
@@ -189,7 +193,7 @@ func (svc *AICenterService) UpdateKB(ctx context.Context, tenantID, kbID, userID
 
 // DeleteKB 删除知识库（仅 owner，且仅 private/rejected；文件清理由 handler/service 协调：先取文档路径）。
 func (svc *AICenterService) DeleteKB(ctx context.Context, tenantID, kbID, userID string) ([]string, error) {
-	kb, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+	kb, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +230,7 @@ func (svc *AICenterService) UnpublishKB(ctx context.Context, tenantID, kbID, use
 }
 
 func (svc *AICenterService) transitionKB(ctx context.Context, tenantID, kbID, userID, to, action, comment string, from ...string) error {
-	_, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+	_, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false)
 	if err != nil {
 		return err
 	}
@@ -248,7 +252,7 @@ func (svc *AICenterService) transitionKB(ctx context.Context, tenantID, kbID, us
 
 // ListCollaborators 协作者列表（可见者可看）。
 func (svc *AICenterService) ListCollaborators(ctx context.Context, tenantID, kbID, userID string) ([]domain.AIKBCollaborator, error) {
-	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID); err != nil {
+	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false); err != nil {
 		return nil, err
 	}
 	return svc.s.Store().AICenter().ListCollaborators(ctx, tenantID, kbID)
@@ -256,7 +260,7 @@ func (svc *AICenterService) ListCollaborators(ctx context.Context, tenantID, kbI
 
 // AddCollaborator 邀请协作者（仅 owner；被邀请人须同租户且非 owner）。
 func (svc *AICenterService) AddCollaborator(ctx context.Context, tenantID, kbID, ownerID, targetUserID, role string) error {
-	kb, myRole, err := svc.getKBWithRole(ctx, tenantID, kbID, ownerID)
+	kb, myRole, err := svc.getKBWithRole(ctx, tenantID, kbID, ownerID, false)
 	if err != nil {
 		return err
 	}
@@ -280,7 +284,7 @@ func (svc *AICenterService) AddCollaborator(ctx context.Context, tenantID, kbID,
 
 // RemoveCollaborator 移除协作者（仅 owner）。
 func (svc *AICenterService) RemoveCollaborator(ctx context.Context, tenantID, kbID, ownerID, targetUserID string) error {
-	_, myRole, err := svc.getKBWithRole(ctx, tenantID, kbID, ownerID)
+	_, myRole, err := svc.getKBWithRole(ctx, tenantID, kbID, ownerID, false)
 	if err != nil {
 		return err
 	}
@@ -301,8 +305,8 @@ func (svc *AICenterService) ListSquareKBs(ctx context.Context, tenantID, q, tag,
 }
 
 // ListDocuments 文档列表（可见者）。
-func (svc *AICenterService) ListDocuments(ctx context.Context, tenantID, kbID, userID string) ([]domain.AIKBDocument, error) {
-	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID); err != nil {
+func (svc *AICenterService) ListDocuments(ctx context.Context, tenantID, kbID, userID string, isAdmin bool) ([]domain.AIKBDocument, error) {
+	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, isAdmin); err != nil {
 		return nil, err
 	}
 	return svc.s.Store().AICenter().ListDocuments(ctx, tenantID, kbID)

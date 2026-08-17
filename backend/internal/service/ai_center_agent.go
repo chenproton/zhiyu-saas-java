@@ -84,20 +84,20 @@ func (svc *AICenterService) validateAgentKBLinks(ctx context.Context, tenantID, 
 		if err != nil {
 			return err
 		}
-		if _, err := svc.resolveKBRole(ctx, kb, ownerID); err != nil {
+		if _, err := svc.resolveKBRole(ctx, kb, ownerID, false); err != nil {
 			return store.ErrForbidden // 关联了不可见库
 		}
 	}
 	return nil
 }
 
-// GetAgent 智能体详情（published 或 owner；附关联库）。
-func (svc *AICenterService) GetAgent(ctx context.Context, tenantID, agentID, userID string) (*domain.AIAgent, error) {
+// GetAgent 智能体详情（published 或 owner 或 school_admin 只读体验；附关联库）。
+func (svc *AICenterService) GetAgent(ctx context.Context, tenantID, agentID, userID string, isAdmin bool) (*domain.AIAgent, error) {
 	a, err := svc.s.Store().AICenter().GetAgent(ctx, tenantID, agentID)
 	if err != nil {
 		return nil, err
 	}
-	if a.OwnerID != userID && a.Status != domain.AIContentStatusPublished {
+	if a.OwnerID != userID && a.Status != domain.AIContentStatusPublished && !isAdmin {
 		return nil, store.ErrNotFound
 	}
 	// 浏览量（v2.2.1 统一）：浏览详情即 +1（全局 view_counters 机制，不排 owner）
@@ -230,12 +230,12 @@ type ChatEmit func(event string, payload any) error
 // AgentChat 智能体流式对话（spec §3.2 时序）。
 // 开始前错误（未配置/越权/非法会话）直接返回 error 由 handler 映射 HTTP；
 // 流启动后错误经 emit("error") 下发。
-func (svc *AICenterService) AgentChat(ctx context.Context, tenantID, agentID, userID, conversationID, message string, emit ChatEmit) error {
+func (svc *AICenterService) AgentChat(ctx context.Context, tenantID, agentID, userID string, isAdmin bool, conversationID, message string, emit ChatEmit) error {
 	a, err := svc.s.Store().AICenter().GetAgent(ctx, tenantID, agentID)
 	if err != nil {
 		return err
 	}
-	if a.OwnerID != userID && a.Status != domain.AIContentStatusPublished {
+	if a.OwnerID != userID && a.Status != domain.AIContentStatusPublished && !isAdmin {
 		return store.ErrNotFound // 不可见即不存在
 	}
 
@@ -342,8 +342,8 @@ func (svc *AICenterService) AgentChat(ctx context.Context, tenantID, agentID, us
 }
 
 // KBAsk 知识库库内问答/效果预览（SSE；不写会话，仅计数；可见者可用）。
-func (svc *AICenterService) KBAsk(ctx context.Context, tenantID, kbID, userID, message string, emit ChatEmit) error {
-	kb, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+func (svc *AICenterService) KBAsk(ctx context.Context, tenantID, kbID, userID string, isAdmin bool, message string, emit ChatEmit) error {
+	kb, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, isAdmin)
 	if err != nil {
 		return err
 	}

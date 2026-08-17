@@ -156,6 +156,23 @@ func TestAICenter_KBLifecycleAndVisibility(t *testing.T) {
 		t.Fatalf("student review should 403, got %d", w.Code)
 	}
 
+	// v2.7 审核管理只读体验：school_admin 可见 pending KB（viewer），普通成员不可见；写操作仍被拒
+	w = env.DoWithToken("GET", "/api/v1/ai/kb/"+kb.ID, nil, admin)
+	if w.Code != http.StatusOK {
+		t.Fatalf("admin view pending kb: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	admKb, _ := testhelper.Unmarshal[domain.AIKnowledgeBase](w)
+	if admKb.MyRole != "viewer" {
+		t.Fatalf("admin on pending kb should be viewer, got %q", admKb.MyRole)
+	}
+	if w := env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/kb/%s/documents", kb.ID), nil, admin); w.Code != http.StatusOK {
+		t.Fatalf("admin list pending kb docs: %d", w.Code)
+	}
+	// 写路径不放行：admin 对他人 pending KB 的写操作仍按资源角色判定（viewer 无权写 → 403/404 存在性隐藏皆可）
+	if w := env.DoWithToken("PUT", "/api/v1/ai/kb/"+kb.ID, map[string]string{"name": "管理员篡改"}, admin); w.Code != http.StatusForbidden && w.Code != http.StatusNotFound {
+		t.Fatalf("admin write others' kb should 403/404 (read-only), got %d", w.Code)
+	}
+
 	// 管理员驳回（无理由 → 400；有理由 → rejected）
 	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/admin/reviews/kb/%s/reject", kb.ID), map[string]string{"comment": ""}, admin); w.Code != http.StatusBadRequest {
 		t.Fatalf("reject without comment should 400, got %d", w.Code)
@@ -278,6 +295,10 @@ func TestAICenter_AgentChatStream(t *testing.T) {
 	// other 不可见私有智能体
 	if w := env.DoWithToken("GET", "/api/v1/ai/agents/"+agent.ID, nil, other); w.Code != http.StatusNotFound {
 		t.Fatalf("private agent should 404 for other, got %d", w.Code)
+	}
+	// v2.7 审核管理只读体验：school_admin 可见私有智能体（预览试聊断言在 TestAICenter_V22 双模 mock 下覆盖）
+	if w := env.DoWithToken("GET", "/api/v1/ai/agents/"+agent.ID, nil, admin); w.Code != http.StatusOK {
+		t.Fatalf("admin view private agent: %d %s", w.Code, testhelper.ErrMsg(w))
 	}
 	// 存在性探测防线：私有智能体的会话列表对非 owner 也是 404（不是 200 空列表）
 	if w := env.DoWithToken("GET", fmt.Sprintf("/api/v1/ai/agents/%s/conversations", agent.ID), nil, other); w.Code != http.StatusNotFound {
@@ -729,6 +750,14 @@ func TestAICenter_V22(t *testing.T) {
 	}, owner)
 	if w.Code != http.StatusOK {
 		t.Fatalf("preview: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/agents/%s/preview", agent.ID),
+		map[string]string{"systemPrompt": "", "message": "审核体验"}, admin); w.Code != http.StatusOK {
+		t.Fatalf("admin preview agent: %d %s", w.Code, testhelper.ErrMsg(w))
+	}
+	if w := env.DoWithToken("POST", fmt.Sprintf("/api/v1/ai/agents/%s/preview", agent.ID),
+		map[string]string{"message": "hi"}, other); w.Code != http.StatusForbidden {
+		t.Fatalf("member preview others' agent should 403, got %d", w.Code)
 	}
 	pv, _ := testhelper.Unmarshal[struct {
 		Reply string `json:"reply"`

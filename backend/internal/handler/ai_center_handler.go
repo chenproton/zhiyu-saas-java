@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zhiyu-saas/backend/internal/ai"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -75,6 +76,12 @@ func aiCenterPage(r *http.Request) (page, pageSize int) {
 		pageSize = 20
 	}
 	return page, pageSize
+}
+
+// aiIsSchoolAdmin 判定 school_admin（审核管理只读体验放行，写路径仍按资源角色拒绝）。
+func aiIsSchoolAdmin(r *http.Request) bool {
+	claims := middleware.CurrentUser(r)
+	return claims != nil && middleware.HasRole(claims, domain.RoleSchoolAdmin)
 }
 
 func aiCenterUser(r *http.Request) (tenantID, userID string, ok bool) {
@@ -136,7 +143,7 @@ func (h *AICenterHandler) GetKB(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	kb, err := h.Service.GetKB(r.Context(), tenantID, chi.URLParam(r, "id"), userID)
+	kb, err := h.Service.GetKB(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r))
 	if aiCenterError(w, r, err, "查询知识库失败"); err != nil {
 		return
 	}
@@ -223,7 +230,7 @@ func (h *AICenterHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	docs, err := h.Service.ListDocuments(r.Context(), tenantID, chi.URLParam(r, "id"), userID)
+	docs, err := h.Service.ListDocuments(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r))
 	if aiCenterError(w, r, err, "查询文档失败"); err != nil {
 		return
 	}
@@ -446,7 +453,7 @@ func (h *AICenterHandler) GetAgent(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	a, err := h.Service.GetAgent(r.Context(), tenantID, chi.URLParam(r, "id"), userID)
+	a, err := h.Service.GetAgent(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r))
 	if aiCenterError(w, r, err, "查询智能体失败"); err != nil {
 		return
 	}
@@ -573,7 +580,7 @@ func (h *AICenterHandler) AgentChat(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "当前环境不支持流式输出")
 		return
 	}
-	err = h.Service.AgentChat(r.Context(), tenantID, chi.URLParam(r, "id"), userID, req.ConversationID, req.Message, emit)
+	err = h.Service.AgentChat(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r), req.ConversationID, req.Message, emit)
 	if err != nil && !started() {
 		aiCenterError(w, r, err, "对话失败")
 		return
@@ -604,7 +611,7 @@ func (h *AICenterHandler) KBAsk(w http.ResponseWriter, r *http.Request) {
 		respondServerError(w, r, err, "当前环境不支持流式输出")
 		return
 	}
-	err = h.Service.KBAsk(r.Context(), tenantID, chi.URLParam(r, "id"), userID, req.Message, emit)
+	err = h.Service.KBAsk(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r), req.Message, emit)
 	if err != nil && !started() {
 		aiCenterError(w, r, err, "问答失败")
 		return
@@ -719,7 +726,7 @@ func (h *AICenterHandler) ListMyKBAsks(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	items, err := h.Service.ListMyKBAsks(r.Context(), tenantID, chi.URLParam(r, "id"), userID)
+	items, err := h.Service.ListMyKBAsks(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r))
 	if aiCenterError(w, r, err, "查询问答记录失败"); err != nil {
 		return
 	}
@@ -790,7 +797,7 @@ func (h *AICenterHandler) PreviewAgent(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "消息必填且不超过 2000 字")
 		return
 	}
-	reply, err := h.Service.PreviewAgent(r.Context(), tenantID, chi.URLParam(r, "id"), userID, req.SystemPrompt, req.Message)
+	reply, err := h.Service.PreviewAgent(r.Context(), tenantID, chi.URLParam(r, "id"), userID, aiIsSchoolAdmin(r), req.SystemPrompt, req.Message)
 	if aiCenterError(w, r, err, "预览对话失败"); err != nil {
 		return
 	}

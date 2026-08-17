@@ -39,7 +39,7 @@ func AISupportedDocExt(ext string) bool { return aiSupportedExts[strings.ToLower
 
 // RegisterDocument 文档落库并触发异步解析（文件已由 handler 落盘）。
 func (svc *AICenterService) RegisterDocument(ctx context.Context, tenantID, kbID, userID, filename, savedPath string, fileSize int64, mime string) (*domain.AIKBDocument, error) {
-	_, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+	_, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (svc *AICenterService) RegisterDocument(ctx context.Context, tenantID, kbID
 
 // DeleteDocument 删除文档（owner/editor；返回文件路径供清理）。
 func (svc *AICenterService) DeleteDocument(ctx context.Context, tenantID, kbID, docID, userID string) (string, error) {
-	_, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID)
+	_, role, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false)
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +79,7 @@ func (svc *AICenterService) DeleteDocument(ctx context.Context, tenantID, kbID, 
 
 // GetDocument 文档状态（轮询用，可见者）。
 func (svc *AICenterService) GetDocument(ctx context.Context, tenantID, kbID, docID, userID string) (*domain.AIKBDocument, error) {
-	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID); err != nil {
+	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, false); err != nil {
 		return nil, err
 	}
 	return svc.s.Store().AICenter().GetDocument(ctx, tenantID, kbID, docID)
