@@ -417,8 +417,18 @@ function PointRows({
             <div className="space-y-1.5">
               {visibleTasks.map((task) => (
                 <div key={task.taskId} className="flex items-center gap-1.5 text-sm">
-                  <span className="truncate" title={task.taskName}>
-                    {task.taskName}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate" title={task.taskName}>
+                      {task.taskName}
+                    </span>
+                    {task.scenarioName && (
+                      <span
+                        className="block truncate text-xs text-muted-foreground"
+                        title={task.scenarioName}
+                      >
+                        {task.scenarioName}
+                      </span>
+                    )}
                   </span>
                   <span
                     className={cn(

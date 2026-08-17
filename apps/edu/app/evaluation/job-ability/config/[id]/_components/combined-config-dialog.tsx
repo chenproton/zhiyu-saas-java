@@ -220,6 +220,14 @@ function CombinedConfigForm({
                           <span className="block truncate" title={task.taskName}>
                             {task.taskName}
                           </span>
+                          {task.scenarioName && (
+                            <span
+                              className="block truncate text-xs text-muted-foreground"
+                              title={task.scenarioName}
+                            >
+                              {task.scenarioName}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Input
