@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zhiyu-saas/backend/internal/domain"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -54,9 +53,12 @@ func registerAICenterRoutes(r chi.Router, h *Handlers, aiLimiter, uploadLimiter 
 	r.Get("/ai/square/agents", h.aiCenterHandler.SquareAgents)
 	r.Get("/ai/integrations", h.aiCenterHandler.ListIntegrations)
 
-	// ---- 管理端（school_admin）：审核 + 挂接维护 ----
+	// ---- 管理端：审核 + 挂接维护（菜单驱动 RBAC，ADR-0008）----
+	// 授权面为 AI 管理菜单（/portal/apps/ai/admin/reviews、/portal/apps/ai/admin/
+	// integrations）：角色在 roles 页勾选即获得管理权限，不再限 school_admin 角色；
+	// teacher/student 默认种子不含管理菜单（仅前台菜单，见 migration 166）。
 	r.Group(func(r chi.Router) {
-		r.Use(authmw.RequireRole(domain.RoleSchoolAdmin))
+		r.Use(authmw.RequireMenu("/portal/apps/ai/admin/reviews", "/portal/apps/ai/admin/integrations"))
 		r.Get("/ai/admin/reviews", h.aiCenterAdminHandler.ListReviews)
 		r.Post("/ai/admin/reviews/{type}/{id}/{action}", h.aiCenterAdminHandler.ReviewAction)
 		r.Get("/ai/admin/overview", h.aiCenterAdminHandler.Overview)
