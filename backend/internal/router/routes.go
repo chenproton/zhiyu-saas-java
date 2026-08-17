@@ -159,16 +159,29 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Post("/favorites/{targetType}/{id}", h.favoritesHandler.ToggleFavorite)
 			})
 
-			// 跨模块只读引用（课程/知识点列表）：岗位/场景详情页知识图谱等前台页面
-			// 引用 lesson 模块数据做图谱节点，属 jobViewer 只读语义（ADR-0008：
-			// 落地页菜单隐含映射其只读 API 面）。任一业务管理/落地页菜单即可读；
-			// 写操作仍在 lesson 管理面，不在此组。
+			// 跨模块只读引用（课程/知识点/能力点/资源库列表）：岗位/场景详情页知识图谱、
+			// 场景学习页、编辑页数据选择器等前台页面跨模块引用其他模块数据，属
+			// jobViewer 只读语义（ADR-0008：落地页菜单隐含映射其只读 API 面）。
+			// 任一业务管理/落地页菜单即可读；写操作仍在各模块管理面，不在此组。
 			r.Group(func(r chi.Router) {
 				r.Use(authmw.RequireMenu(append(allManageMenus(),
 					"/job/landing", "/lesson/landing", "/scene/landing",
 					"/evaluation/landing", "/library/landing")...))
+				// lesson 模块
 				r.Get("/lesson/courses", h.courseHandler.List)
+				r.Get("/lesson/courses/{id}", h.courseHandler.Get)
 				r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
+				r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
+				// job 模块（能力点，scene/lesson/library 编辑页引用）
+				r.Get("/job/abilities", h.abilityHandler.List)
+				r.Get("/job/abilities/{id}", h.abilityHandler.Get)
+				// library 模块（资源库，scene 学习页/lesson 编辑页引用）
+				r.Get("/library/resources", h.resourceLibraryHandler.List)
+				r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
+				r.Get("/library/resources/stats", h.resourceLibraryHandler.Stats)
+				// scene 模块（场景任务列表，job 落地页实践场景/学习路径引用）
+				r.Get("/scene/tasks", h.scenarioTaskHandler.List)
+				r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
 			})
 
 			// 系统管理（关键写白名单 + 系统菜单）：school_admin/platform_admin 角色兜底
@@ -240,10 +253,10 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Use(authmw.RequireMenu(append(append([]string{}, jobManageMenus...), "/job/landing")...))
 				r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
 				r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
-				r.Get("/job/abilities", h.abilityHandler.List)
+				// abilities List/Get 已移至跨模块只读引用组（scene/lesson/library 编辑页引用）；
+				// 统计接口仅管理面可用，保留在 job 只读面
 				r.Get("/job/abilities/citation-stats", h.abilityHandler.CitationStats)
 				r.Get("/job/abilities/uncited", h.abilityHandler.UncitedList)
-				r.Get("/job/abilities/{id}", h.abilityHandler.Get)
 				r.Get("/job/position-responsibilities", h.positionResponsibilityHandler.List)
 				r.Get("/job/position-responsibilities/{id}", h.positionResponsibilityHandler.Get)
 				r.Get("/job/position-abilities", h.positionAbilityHandler.ListBindings)
@@ -262,8 +275,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Get("/scene/scenarios/{id}", h.scenarioHandler.Get)
 				// 快照 bundle 只读（学生角色在 handler 内剥离答案字段，文档 5.2）
 				r.Get("/scene/scenarios/{id}/snapshot", h.snapshotHandler.GetScenarioSnapshot)
-				r.Get("/scene/tasks", h.scenarioTaskHandler.List)
-				r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
+				// tasks List/Get 已移至跨模块只读引用组（job 落地页实践场景/学习路径引用）
 				r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
 			})
 
@@ -272,12 +284,10 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Use(authmw.RequireMenu(append(append([]string{}, lessonManageMenus...), "/lesson/landing")...))
 				r.Get("/lesson/knowledge-points/citation-stats", h.knowledgePointHandler.CitationStats)
 				r.Get("/lesson/knowledge-points/uncited", h.knowledgePointHandler.UncitedList)
-				r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
 				r.Get("/lesson/nodes", h.courseNodeHandler.List)
 				r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
 				r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
 				r.Post("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.Submit)
-				r.Get("/lesson/courses/{id}", h.courseHandler.Get)
 				r.Get("/lesson/courses/{id}/snapshot", h.snapshotHandler.GetCourseSnapshot)
 			})
 
@@ -305,9 +315,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				r.Use(authmw.RequireMenu(append(append([]string{}, libraryManageMenus...), "/library/landing")...))
 				// 资源标签批量查询为库浏览必需（列表页标签展示）
 				r.Post("/library/resource-tags/query", h.tagHandler.QueryBindings)
-				r.Get("/library/resources", h.resourceLibraryHandler.List)
-				r.Get("/library/resources/stats", h.resourceLibraryHandler.Stats)
-				r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
+				// resources List/Get/Stats 已移至跨模块只读引用组（scene/lesson 落地页引用）
 				r.Get("/library/on-site-questions", h.onSiteQuestionLibraryHandler.List)
 				r.Get("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Get)
 			})

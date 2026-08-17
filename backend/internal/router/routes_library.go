@@ -3,11 +3,12 @@ package router
 import "github.com/go-chi/chi/v5"
 
 func registerLibraryRoutes(r chi.Router, h *Handlers) {
-	r.Get("/library/resources", h.resourceLibraryHandler.List)
-	r.Get("/library/resources/stats", h.resourceLibraryHandler.Stats)
+	// 只读接口（List/Stats/Get）由跨模块只读引用组与 library 只读面提供
+	// （任一业务管理/落地页菜单可读，scene/lesson 落地页引用资源库）。
+	// 管理面只注册写操作，避免 chi 同路径后注册顶替宽授权（曾致
+	// lesson/courses 宽授权 List 被管理面顶替 → 岗位知识图谱 403）。
 	r.Get("/library/resources/citation-stats", h.resourceLibraryHandler.CitationStats)
 	r.Get("/library/resources/uncited", h.resourceLibraryHandler.UncitedList)
-	r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
 	r.Post("/library/resources", h.resourceLibraryHandler.Create)
 	r.Post("/library/resources/import/preview", h.resourceLibraryHandler.PreviewImport)
 	r.Put("/library/resources/{id}", h.resourceLibraryHandler.Update)

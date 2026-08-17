@@ -113,17 +113,22 @@ func TestRequireMenu_CrossModuleReadGrant(t *testing.T) {
 	build := func() *chi.Mux {
 		r := chi.NewRouter()
 		r.Use(MenuContext(nil, nil))
-		r.With(RequireMenu(
+		// 跨模块只读引用组授权面（与 routes.go 实际一致：allManageMenus ∪ 全部 landing）
+		menuSet := []string{
 			"/job/landing", "/lesson/landing", "/scene/landing",
 			"/evaluation/landing", "/library/landing",
 			"/job/positions", "/job/batches",
-			"/lesson/admin/granular",
-		)).Get("/api/v1/lesson/courses", okMenuHandler)
-		r.With(RequireMenu(
-			"/job/landing", "/lesson/landing", "/scene/landing",
-			"/evaluation/landing", "/library/landing",
-			"/lesson/admin/granular",
-		)).Get("/api/v1/lesson/knowledge-points", okMenuHandler)
+			"/lesson/admin/granular", "/library/knowledge",
+		}
+		for _, path := range []string{
+			"/api/v1/lesson/courses",
+			"/api/v1/lesson/knowledge-points",
+			"/api/v1/job/abilities",
+			"/api/v1/library/resources",
+			"/api/v1/scene/tasks",
+		} {
+			r.With(RequireMenu(menuSet...)).Get(path, okMenuHandler)
+		}
 		return r
 	}
 	req := func(r *chi.Mux, path string, perms domain.JSONMap) int {
@@ -149,6 +154,30 @@ func TestRequireMenu_CrossModuleReadGrant(t *testing.T) {
 		perms := domain.JSONMap{"menus": map[string]interface{}{"/scene/landing": true}}
 		if c := req(build(), "/api/v1/lesson/courses", perms); c != http.StatusOK {
 			t.Fatalf("scene landing 用户读课程列表: got %d, want 200", c)
+		}
+	})
+	t.Run("仅勾选 /job/landing 可读能力点列表（场景/课程编辑页引用）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/job/landing": true}}
+		if c := req(build(), "/api/v1/job/abilities", perms); c != http.StatusOK {
+			t.Fatalf("job landing 用户读能力点: got %d, want 200", c)
+		}
+	})
+	t.Run("仅勾选 /scene/landing 可读资源库列表（场景学习页引用）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/scene/landing": true}}
+		if c := req(build(), "/api/v1/library/resources", perms); c != http.StatusOK {
+			t.Fatalf("scene landing 用户读资源库: got %d, want 200", c)
+		}
+	})
+	t.Run("仅勾选 /job/landing 可读场景任务列表（岗位实践场景 tab 引用）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/job/landing": true}}
+		if c := req(build(), "/api/v1/scene/tasks", perms); c != http.StatusOK {
+			t.Fatalf("job landing 用户读场景任务: got %d, want 200", c)
+		}
+	})
+	t.Run("仅勾选 /library/landing 可读课程列表（资源库关联课程引用）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/library/landing": true}}
+		if c := req(build(), "/api/v1/lesson/courses", perms); c != http.StatusOK {
+			t.Fatalf("library landing 用户读课程列表: got %d, want 200", c)
 		}
 	})
 	t.Run("未勾选任何业务菜单拒绝 403", func(t *testing.T) {
