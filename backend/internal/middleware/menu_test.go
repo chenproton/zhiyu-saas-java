@@ -126,6 +126,7 @@ func TestRequireMenu_CrossModuleReadGrant(t *testing.T) {
 			"/api/v1/job/abilities",
 			"/api/v1/library/resources",
 			"/api/v1/scene/tasks",
+			"/api/v1/alliance/dictionaries/project_type",
 		} {
 			r.With(RequireMenu(menuSet...)).Get(path, okMenuHandler)
 		}
@@ -172,6 +173,18 @@ func TestRequireMenu_CrossModuleReadGrant(t *testing.T) {
 		perms := domain.JSONMap{"menus": map[string]interface{}{"/job/landing": true}}
 		if c := req(build(), "/api/v1/scene/tasks", perms); c != http.StatusOK {
 			t.Fatalf("job landing 用户读场景任务: got %d, want 200", c)
+		}
+	})
+	t.Run("仅勾选 /evaluation/landing 可读联盟字典列表（登录后全局注册字典标签）", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/evaluation/landing": true}}
+		if c := req(build(), "/api/v1/alliance/dictionaries/project_type", perms); c != http.StatusOK {
+			t.Fatalf("evaluation landing 用户读联盟字典: got %d, want 200", c)
+		}
+	})
+	t.Run("未勾选任何业务菜单读联盟字典拒绝 403", func(t *testing.T) {
+		perms := domain.JSONMap{"menus": map[string]interface{}{"/portal/workspace": true}}
+		if c := req(build(), "/api/v1/alliance/dictionaries/project_type", perms); c != http.StatusForbidden {
+			t.Fatalf("无业务菜单读联盟字典: got %d, want 403", c)
 		}
 	})
 	t.Run("仅勾选 /library/landing 可读课程列表（资源库关联课程引用）", func(t *testing.T) {

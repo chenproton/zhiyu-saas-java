@@ -182,6 +182,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 				// scene 模块（场景任务列表，job 落地页实践场景/学习路径引用）
 				r.Get("/scene/tasks", h.scenarioTaskHandler.List)
 				r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
+				// alliance 模块（字典：静态参考/标签端，登录后 auth-provider 全局注册
+				// + 联盟页面表单/展示下拉选项；仅租户内读，写仍在联盟管理面）
+				r.Get("/alliance/dictionaries/{dictType}", h.allianceHandler.ListDictionaryItems)
 			})
 
 			// 系统管理（关键写白名单 + 系统菜单）：school_admin/platform_admin 角色兜底
@@ -497,7 +500,8 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Get("/agreements/{id}", h.allianceHandler.GetAgreement)
 		r.Get("/permissions", h.allianceHandler.ListPermissions)
 		r.Get("/permissions/{id}", h.allianceHandler.GetPermission)
-		r.Get("/dictionaries/{dictType}", h.allianceHandler.ListDictionaryItems)
+		// GET /dictionaries/{dictType} 已移至跨模块只读引用组（登录态全局注册字典标签；
+		// 联盟管理面只保留 POST/PUT/DELETE 写操作，避免窄权限 GET 顶替宽权限组）
 		r.Get("/brands", h.allianceHandler.ListBrands)
 		r.Get("/brands/talent-ranking", h.allianceHandler.ListTalentRanking)
 		r.Get("/brands/rank-configs", h.allianceHandler.ListBrandMajorRankConfigs)

@@ -25,7 +25,7 @@
 >
 > 旧权限列标记（`systemAdmin`/`businessUser`/`jobViewer`/`RequireAllianceManager`）在 2026-08-17 重构后由对应菜单组替代，语义映射：`businessUser` ≈ 对应模块管理菜单；`jobViewer` ≈ 模块管理菜单 ∪ 落地页菜单（只读面）；`systemAdmin` ≈ `/portal/apps/system` 菜单 + school_admin 角色兜底；`RequireAllianceManager` ≈ 联盟管理菜单。
 >
-> **跨模块只读引用面**：落地页/编辑页之间互相引用其他模块数据（如岗位知识图谱引用课程/知识点、场景学习页引用资源库、岗位实践场景引用场景任务、课程编辑引用能力点），这些只读 List/Get 接口统一挂「任一业务管理/落地页菜单」授权面（与收藏接口同宽），保证学生/企业导师等仅勾选部分落地页菜单的角色可读，避免逐模块补授权。写操作仍在各模块管理面。
+> **跨模块只读引用面**：落地页/编辑页之间互相引用其他模块数据（如岗位知识图谱引用课程/知识点、场景学习页引用资源库、岗位实践场景引用场景任务、课程编辑引用能力点），以及登录后全局消费的联盟字典标签（`/alliance/dictionaries/{dictType}`，auth-provider 登录时全局注册展示文案），这些只读 List/Get 接口统一挂「任一业务管理/落地页菜单」授权面（与收藏接口同宽），保证学生/企业导师等仅勾选部分落地页菜单的角色可读，避免逐模块补授权。写操作仍在各模块管理面。
 
 ### 1.0 全局 / 文件 / 认证 / 公共配置
 
@@ -195,7 +195,7 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | `/alliance/school-info`、`/enterprises`、`/enterprises/search`、`/enterprises/{id}`、`/grants`、`/grants/resource-options`、`/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/achievements/{id}`、`/experts`、`/experts/mentor-options`、`/experts/{id}`、`/agreements`、`/agreements/{id}`、`/permissions`、`/permissions/{id}`、`/dictionaries/{dictType}`、`/brands`、`/brands/talent-ranking`、`/brands/rank-configs`、`/brands/{id}` | 联盟管理菜单（/portal/apps/alliance 或 /portal/alliance 任一） | 联盟只读视图（含全局企业搜索、授权、导师选项、品牌排行） |
+| GET | `/alliance/school-info`、`/enterprises`、`/enterprises/search`、`/enterprises/{id}`、`/grants`、`/grants/resource-options`、`/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/achievements/{id}`、`/experts`、`/experts/mentor-options`、`/experts/{id}`、`/agreements`、`/agreements/{id}`、`/permissions`、`/permissions/{id}`、`/brands`、`/brands/talent-ranking`、`/brands/rank-configs`、`/brands/{id}` | 联盟管理菜单（/portal/apps/alliance 或 /portal/alliance 任一） | 联盟只读视图（含全局企业搜索、授权、导师选项、品牌排行）｜GET `/alliance/dictionaries/{dictType}` 已移至跨模块只读引用面（任一业务/落地页菜单，见上文 §0 说明） |
 | PUT | `/alliance/school-info` | 联盟管理菜单 | 学校信息 |
 | POST | `/alliance/enterprises/register` | 联盟管理菜单 | 学校代企业注册 |
 | PUT/DELETE | `/alliance/enterprises/{id}`、`/enterprises/{id}/link` | 联盟管理菜单 | 企业更新/引入/解除引入（DELETE 语义=unlink） |
