@@ -21,7 +21,7 @@
 > - **school_admin「无 menus = 全量」**：未显式配置 menus 时全量放行（与 roles 页回显全选一致）；显式配置后按菜单判定；
 > - **学生**：默认种子仅落地页 5 个 + 服务台菜单，落地页菜单隐含授权对应只读 API 面；
 > - **B13 配置化**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（原代码级收窄取消，配置可覆盖）；
-> - **AI 中心**：用户端登录公开（可见性 service 层判定），管理端（审核/挂接）限 `school_admin`。
+> - **AI 中心**：用户端登录公开（可见性 service 层判定）；管理端（审核/挂接）由 AI 管理菜单（`/portal/apps/ai/admin/reviews`、`/portal/apps/ai/admin/integrations`）控制，不再限 `school_admin` 角色（2026-08-17 修订）。
 >
 > 旧权限列标记（`systemAdmin`/`businessUser`/`jobViewer`/`RequireAllianceManager`）在 2026-08-17 重构后由对应菜单组替代，语义映射：`businessUser` ≈ 对应模块管理菜单；`jobViewer` ≈ 模块管理菜单 ∪ 落地页菜单（只读面）；`systemAdmin` ≈ `/portal/apps/system` 菜单 + school_admin 角色兜底；`RequireAllianceManager` ≈ 联盟管理菜单。
 
@@ -417,7 +417,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 - 广场：`GET /ai/square/kbs|agents`（q/tag/sort=hot|new + 分页）、`GET /ai/integrations?kind=`。
 - 收藏：复用通用收藏 `GET/POST /favorites/{targetType}/{id}`，targetType 扩展 `ai_kb`/`ai_agent`，仅 published 对象可收藏（其余 404）。
 
-**管理端（school_admin 角色组）**
+**管理端（AI 管理菜单，菜单驱动 RBAC）**
 
 - `GET /ai/admin/reviews?type=kb|agent&status=`、`POST /ai/admin/reviews/{type}/{id}/{action}`（action=approve/reject/takedown，reject 必须 comment）
 - `GET /ai/admin/overview`
@@ -451,7 +451,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | GET | /ai/square/kbs | 广场知识库（q/tag/sort/分页） |
 | GET | /ai/square/agents | 广场智能体 |
 | GET | /ai/integrations | 第三方挂接展示（上架中） |
-| GET | /ai/admin/reviews | 审核列表（school_admin） |
+| GET | /ai/admin/reviews | 审核列表（AI 管理菜单） |
 | POST | /ai/admin/reviews/{type}/{id}/{action} | 审核操作（type=kb/agent；action=approve/reject/takedown） |
 | GET | /ai/admin/overview | 管理概览统计 |
 | GET/POST | /ai/admin/integrations | 挂接列表（含下架）/ 新增 |

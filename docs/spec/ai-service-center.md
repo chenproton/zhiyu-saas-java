@@ -14,7 +14,7 @@
 面向租户内全体师生（teacher/student/school_admin）的轻量 AI 服务中心：
 
 - **人人可建**：任何登录用户可创建知识库（上传文档）与智能体（提示词 + 关联知识库）
-- **审核上架**：知识库/智能体默认私有，提交审核（school_admin）通过后发布到**租户内广场**
+- **审核上架**：知识库/智能体默认私有，提交审核（勾选 AI 管理菜单的管理角色，2026-08-17 起不再限 school_admin）通过后发布到**租户内广场**
 - **第三方挂接**：school_admin 维护第三方智能体/应用的链接卡片，在广场展示
 
 ### 1.3 已确认决策（2026-02 与用户逐条确认）
@@ -27,7 +27,7 @@
 | D4 | 智能体形态 | 名称/头像/欢迎语 + 角色提示词 + 关联知识库（多选）+ 自研对话界面；模型统一用租户 AI 配置（复用 AIService） |
 | D5 | 对话输出 | 流式 SSE（按 `docs/ai-development.md` §6 扩展 `ai.Client.ChatCompletionStream`） |
 | D6 | 第三方挂接 | 纯链接卡片（名称/图标/描述/URL/分类/排序/上下架），新窗口打开 |
-| D7 | 审核后台 | school_admin 审核知识库/智能体上架（通过/驳回+理由）并维护第三方挂接；SaaS 超管不参与 |
+| D7 | 审核后台 | 配置 AI 管理菜单的角色审核知识库/智能体上架（通过/驳回+理由）并维护第三方挂接（菜单驱动 RBAC，ADR-0008；默认仅 school_admin 因「无 menus=全量」获得，SaaS 超管不参与） |
 | D8 | 互动统计 | 使用次数统计（知识库检索次数、智能体对话轮数）+ 收藏（复用通用收藏机制，扩展类型） |
 | D9 | 协作共建 | 知识库支持邀请协作者（编辑者/查看者） |
 
@@ -54,7 +54,7 @@
 | 前端落位 | 扩展现有 `apps/edu/app/portal/apps/ai/`（广场/工坊/对话/后台审核），不动现有 `/chat` 通用助手 | ai 模块已存在于应用中心 |
 | 前台主页（落地页） | `/portal/apps/ai/landing` **单页集成前台全部功能**（v1.2，用户拍板"广场/工坊都集成在落地页，不二次跳转"）：LandingShell 骨架 hero + 统计条 → 「我的工坊」区块（#studio，知识库/智能体表格+新建+行内审核操作）→「AI 广场」区块（#square，三 Tab+搜索+排序+收藏）；两区块抽为共享组件 `_components/studio-section.tsx`/`square-section.tsx` 单一事实源。旧路由 `/square`、`/studio` 重定向至本页锚点（#square/#studio 平滑滚动）；侧边栏对齐其他平台惯例只列业务功能（AI 助手/平台管理，无「首页」项——落地页由卡片主入口进入）。对话页、库详情、智能体编辑器保持独立路由（创作/消费全屏页）；门户卡片与 INTERNAL_ROUTES 入口均指向本页 | 与六平台 landing 等地位且更进一步：落地页即工作台，师生一跳内完成创建与管理 |
 | v1.3 前台视觉重构 | **对齐 docs/demo 原型（拍板：YIKnow 改造现有 chat 页/字段现有近似不动后端表/工坊留首页/本期只做大厅列表页）**：① 落地页 hero 主推 YIKnow（「立即体验 YIKnow」跳 /chat + 「逛逛 AI 广场」滚动 + 能力版图卡片标注待上线）；② /chat 改造为 YIKnow 对话页（全宽自渲染进 FULL_WIDTH_PAGES，左侧功能轨：智能对话 active，我的方案/岗位库/场景库/知识库/设置占位 toast；对话主区复用 sendAIChat）；③ 广场取消 Tab 三区平铺（智能体/知识库/第三方服务各配专属卡片，卡片族 `_components/hall-cards.tsx`，删 SquareSection）；④ 新大厅页 /hall/agents（搜索+最热/最新+加载更多）、/hall/kbs（统计条+tag chips+综合/最新/最近更新/资源最多排序+加载更多），共享骨架 `_components/hall-shell.tsx`；字段近似=对话数/提问数/创建者姓名，「新上线」徽标=创建≤7天前端推导 | 原型含模型广场/前沿动态/技能大厅/会员/需求收集/视图切换/内嵌详情——明确不做 |
-| 菜单权限 | **纳入 menus 权限树，前台合并为单一开关**：权限树 ai 平台组 = 「AI 智能服务中心」(href=`/portal/apps/ai`，由 checkMenuPermission 前缀回溯覆盖助手/广场/工坊/落地页全部前台子路径）+「平台管理」组（内容审核/第三方挂接独立勾选）；`/portal/apps/ai` 挂订阅模块门禁（key=ai）。存量回填：166 授 chat/square/studio → 168 收敛为 `/portal/apps/ai` 一键并清理旧键（teacher/student/有 menus 的 school_admin 默认授予）；后端 `RequireRole(school_admin)` 仍为接口防线（非管理员一律 403） | 用户明确要求：前台都在门户内，一个菜单一起授权；管理功能需单独管控 |
+| 菜单权限 | **纳入 menus 权限树，前台合并为单一开关**：权限树 ai 平台组 = 「AI 智能服务中心」(href=`/portal/apps/ai`，由 checkMenuPermission 前缀回溯覆盖助手/广场/工坊/落地页全部前台子路径）+「平台管理」组（内容审核/第三方挂接独立勾选）；`/portal/apps/ai` 挂订阅模块门禁（key=ai）。存量回填：166 授 chat/square/studio → 168 收敛为 `/portal/apps/ai` 一键并清理旧键（teacher/student/有 menus 的 school_admin 默认授予）；后端 `RequireMenu(/portal/apps/ai/admin/reviews, /portal/apps/ai/admin/integrations)` 为接口防线（未勾选 AI 管理菜单一律 403，2026-08-17 起由角色收窄改为菜单驱动） | 用户明确要求：前台都在门户内，一个菜单一起授权；管理功能需单独管控 |
 
 ### 2.2 安全锚点（检索越权防线）
 
@@ -259,7 +259,13 @@ id/tenant_id/target_type(kb|agent)/target_id/action(submit|approve|reject|unpubl
 | GET | `/ai/square/agents?q=&sort=hot\|new&page=&pageSize=` | 已发布智能体（hot=chat_count） |
 | GET | `/ai/integrations?kind=` | active 挂接卡片（按 sort） |
 
-### 5.4 管理端（`RequireRole(school_admin)`）
+### 5.4 管理端（AI 管理菜单，菜单驱动 RBAC）
+
+> 2026-08-17 修订：原 `RequireRole(school_admin)` 角色收窄改为菜单驱动（ADR-0008）——
+> 在 roles 页勾选 `/portal/apps/ai/admin/reviews`（内容审核）与
+> `/portal/apps/ai/admin/integrations`（第三方挂接）即获得管理权限；
+> teacher/student 默认种子不含管理菜单（仅前台菜单，见 migration 166），
+> school_admin「无 menus=全量」默认拥有。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
