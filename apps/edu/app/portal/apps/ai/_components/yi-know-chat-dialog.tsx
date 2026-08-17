@@ -22,7 +22,7 @@ export function YIKnowChatDialog({
   const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] w-[1600px] h-[92vh] p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent size="full" className="h-[92vh] rounded-2xl">
         <DialogTitle className="sr-only">{t('YI Know 助手')}</DialogTitle>
         {/* 打开期间保持会话状态；关闭即销毁（回到来源页后重新打开为新会话视图） */}
         {open && <YIKnowChat variant="modal" />}
