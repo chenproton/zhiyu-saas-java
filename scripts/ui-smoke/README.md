@@ -86,7 +86,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 
 ## 验收流程（flows）
 
-业务流程以机器可读 YAML 写在 [`docs/spec/06-acceptance-flows.md`](../../docs/spec/06-acceptance-flows.md)（DSL 规范见该文件 §1）：每条流程是一串跨角色步骤（goto/click/clickRow/fill/select/submit/confirm/expectApi/expectText），巡检器按序执行并断言接口响应与页面文字。逐页巡检发现「点哪儿坏了」，验收流程发现「业务链路断了」，两者互补。流程产生的数据同样以 `SMOKE_` 前缀创建并参与统一清理；`optional` 步骤失败仅警告（用于幂等前置）。失败步骤自动截图到 `/tmp/zhiyu-ui-smoke/flow-*.png`。
+业务流程以机器可读 YAML 写在 [`docs/spec/06-acceptance-flows.md`](../../docs/spec/06-acceptance-flows.md)（DSL 规范见该文件 §1）：每条流程是一串跨角色步骤（goto/click/clickRow/fill/select/submit/confirm/expectApi/expectText），巡检器按序执行并断言接口响应与页面文字。逐页巡检发现「点哪儿坏了」，验收流程发现「业务链路断了」，两者互补。流程产生的数据同样以 `SMOKE_` 前缀创建并参与统一清理；`optional` 步骤（幂等前置）中「未找到目标/按钮已禁用」记 `skip` 静默跳过，其余失败记 `warn` 不判失败。失败步骤自动截图到 `/tmp/zhiyu-ui-smoke/flow-*.png`。
 
 ## 报告说明
 

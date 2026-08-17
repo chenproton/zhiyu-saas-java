@@ -3,7 +3,8 @@
  * 按步骤顺序驱动浏览器执行跨角色业务链路（DSL 规范见该文件 §1）。
  *
  * 设计原则：线性步骤、最小步骤类型、复用 clicker/forms 既有基建（waitSettled/
- * closeOverlays/submit 词表），SMOKE_ 前缀数据走统一清理；optional 步骤失败仅警告。
+ * closeOverlays/submit 词表），SMOKE_ 前缀数据走统一清理；optional 步骤
+ * 「未找到/已禁用」记 skip 静默跳过（幂等前置已完成），其余失败仅警告。
  */
 import { load as yamlLoad } from 'js-yaml'
 import { promises as fs } from 'fs'
@@ -81,14 +82,29 @@ async function waitFirstVisible(locator, ms = 6000) {
 // 精确文字点击按钮/链接；找不到退回任意可点击元素
 async function clickExact(page, text) {
   const btn = page.getByRole('button', { name: text, exact: true })
-  if (await waitFirstVisible(btn, 4000)) { await btn.first().click(); return }
+  if (await waitFirstVisible(btn, 4000)) {
+    if (!await btn.first().isEnabled().catch(() => true)) throw new Error(`元素「${text}」已禁用（幂等前置已完成）`)
+    await btn.first().click(); return
+  }
   const link = page.getByRole('link', { name: text, exact: true })
   if (await waitFirstVisible(link, 1500)) { await link.first().click(); return }
   // Radix Select/下拉的选项（role=option）：需先点击触发器让下拉展开（flow 里在点击前先点触发器文本）
   const opt = page.getByRole('option', { name: text, exact: true })
   if (await waitFirstVisible(opt, 1500)) { await opt.first().click(); return }
+  // 模糊兜底：排除被遮挡/禁用的候选（如弹窗遮罩后同文字页头按钮），
+  // 全部不可点击视为幂等无操作（目标不存在/前置已完成）
   const any = page.locator(`button:has-text("${cssEscape(text)}"), a:has-text("${cssEscape(text)}")`)
-  if (await waitFirstVisible(any, 1500)) { await any.first().click(); return }
+  if (await waitFirstVisible(any, 1500)) {
+    const candidates = await any.all()
+    for (const c of candidates) {
+      try {
+        await c.click({ trial: true, timeout: 1500 }) // 可点击性探测：visible/enabled/不被遮挡
+        await c.click()
+        return
+      } catch { /* 该候选不可点击，试下一个 */ }
+    }
+    throw new Error(`元素「${text}」不可点击（已禁用或被遮挡）`)
+  }
   throw new Error(`未找到可点击元素「${text}」`)
 }
 
@@ -258,8 +274,10 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           const cardText = render(rawVal.text, vars, rand)
           const cardAction = render(rawVal.action, vars, rand)
           const card = page.locator('[data-smoke-card]').filter({ hasText: cardText }).first()
-          await card.scrollIntoViewIfNeeded()
-          await card.getByRole('button', { name: cardAction, exact: false }).first().click()
+          if (!await waitFirstVisible(card, 8000)) throw new Error(`未找到包含「${cardText}」的卡片`)
+          const cardBtn = card.getByRole('button', { name: cardAction, exact: false }).first()
+          if (!await cardBtn.count()) throw new Error(`卡片「${cardText}」内未找到操作「${cardAction}」`)
+          await cardBtn.click()
           await waitSettled(page, cfg)
           actions.push(`clickCard ${cardText}→${cardAction}`)
           break
@@ -365,15 +383,21 @@ export async function runFlows(flows, cfg, deps) {
         ])
         console.log(`  [flow:${flow.flow}] ${i + 1}/${flow.steps.length} ok   [${step.role}] ${rec.desc}`)
       } catch (e) {
-        rec.status = step.optional ? 'warn' : 'fail'
-        rec.reason = (e.message || String(e)).slice(0, 300)
-        try {
-          const { page } = await deps.ensureContext(step.role)
-          rec.pageUrl = page.url()
-          const shot = `/tmp/zhiyu-ui-smoke/flow-${flow.flow}-step${i + 1}.png`
-          await page.screenshot({ path: shot, fullPage: false })
-          rec.screenshot = shot
-        } catch { /* 截图失败忽略 */ }
+        const msg = (e.message || String(e)).slice(0, 300)
+        // 幂等前置的「正常无操作」：目标未找到（无可清理）/按钮已禁用（前置已完成）→ 记 skip 静默跳过，
+        // 不截图不算 warn；其余失败按 optional 记 warn（真实信号：残留无法清理/页面回归）
+        const noop = /未找到|已禁用/.test(msg)
+        rec.status = !step.optional ? 'fail' : noop ? 'skip' : 'warn'
+        rec.reason = msg
+        if (rec.status !== 'skip') {
+          try {
+            const { page } = await deps.ensureContext(step.role)
+            rec.pageUrl = page.url()
+            const shot = `/tmp/zhiyu-ui-smoke/flow-${flow.flow}-step${i + 1}.png`
+            await page.screenshot({ path: shot, fullPage: false })
+            rec.screenshot = shot
+          } catch { /* 截图失败忽略 */ }
+        }
         console.log(`  [flow:${flow.flow}] ${i + 1}/${flow.steps.length} ${rec.status.toUpperCase()} [${step.role}] ${rec.desc} — ${rec.reason}`)
         if (!step.optional) {
           fr.status = 'fail'
