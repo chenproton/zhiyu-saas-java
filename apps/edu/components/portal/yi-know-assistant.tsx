@@ -1,12 +1,14 @@
 'use client'
 
 // 全局右下角 YI KNOW 浮动机器人（portal 全站挂载，app/portal/layout.tsx）。
-// v2.7：面板内容由 demo 替换为真实 YIKnow 聊天体验（_components/yi-know-chat，modal 变体），
-// 含智能对话/历史会话/我的知识库/我的智能体；条目点击跳详情页并自动收起面板。
+// v2.7.2：面板升级为全站统一居中弹窗（YIKnowChatDialog，含遮罩+毛玻璃质感），
+// 内含智能对话/历史会话/我的知识库/我的智能体；条目点击跳详情页并自动关闭弹窗。
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
-import { YIKnowChat } from '@/app/portal/apps/ai/_components/yi-know-chat'
+import {
+  YIKnowChatDialog,
+} from '@/app/portal/apps/ai/_components/yi-know-chat-dialog'
 
 export function YiKnowAssistant() {
   const t = useT()
@@ -248,18 +250,8 @@ export function YiKnowAssistant() {
         </button>
       </div>
 
-      {/* 真实 YIKnow 聊天面板（~960px 宽，底部弹出） */}
-      {open && (
-        <div
-          className="fixed bottom-[120px] right-6 z-[100] w-[960px] max-w-[calc(100vw-2rem)] h-[680px] max-h-[calc(100vh-9rem)] flex flex-col overflow-hidden rounded-2xl border shadow-2xl bg-background animate-in slide-in-from-bottom-4 fade-in duration-300"
-          style={{
-            boxShadow:
-              '0 25px 60px -12px oklch(0 0 0 / 0.25), 0 8px 24px -6px oklch(0 0 0 / 0.08)',
-          }}
-        >
-          <YIKnowChat variant="modal" onNavigate={() => setOpen(false)} />
-        </div>
-      )}
+      {/* 真实 YIKnow 聊天：全站统一居中弹窗（与 /portal/apps 入口同一组件） */}
+      <YIKnowChatDialog open={open} onOpenChange={setOpen} />
     </>
   )
 }
