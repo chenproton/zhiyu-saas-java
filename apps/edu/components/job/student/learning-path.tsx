@@ -62,7 +62,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
   const road = roads[0]
 
   // 排序规则统一收敛在 orderScenariosByLearnRoad（与岗位落地页「实践场景」tab 共用，
-  // 两页均受 /job/learn-roads 管理，见 docs/spec/05-prototype-interaction.md §2.2）
+  // 两页均受 /job/learn-roads 管理，见 docs/spec/05-prototype-interaction.md §2.6）
   const orderedScenarios = useMemo(
     () => orderScenariosByLearnRoad(roads, scenarios),
     [roads, scenarios],

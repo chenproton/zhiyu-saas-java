@@ -6,7 +6,7 @@ import type { Scenario } from '@/lib/types/scene'
  *
  * 岗位落地页「实践场景」tab 与学习页（/job/landing/[id]/learn）共用本函数，
  * 保证两页场景排列顺序一致、统一受 /job/learn-roads 管理（见
- * docs/spec/05-prototype-interaction.md §2.2 与 docs/系统功能清单.md 职业岗位学习平台）。
+ * docs/spec/05-prototype-interaction.md §2.6 与 docs/系统功能清单.md 职业岗位学习平台）。
  *
  * 规则：
  *   1. 取该岗位关联的第一条学习路径（roads[0]）；
