@@ -282,7 +282,7 @@ export function YIKnowChat({ variant = 'page' }: { variant?: 'page' | 'modal' })
 
       {/* 对话主区 */}
       <main className="flex-1 min-w-0 flex flex-col">
-        <div className="flex-1 flex flex-col min-h-0 max-w-3xl w-full mx-auto px-4 sm:px-6 py-4">
+        <div className="flex-1 flex flex-col min-h-0 max-w-4xl w-full mx-auto px-4 sm:px-8 py-5">
           <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
             {loadingConv ? (
               <div className="flex items-center justify-center h-full">
@@ -314,7 +314,7 @@ export function YIKnowChat({ variant = 'page' }: { variant?: 'page' | 'modal' })
               messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap break-words ${
+                    className={`max-w-[75%] rounded-lg px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                       m.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-background border border-border'
