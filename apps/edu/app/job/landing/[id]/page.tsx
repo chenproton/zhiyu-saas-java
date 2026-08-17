@@ -10,13 +10,16 @@ import {
   positionCertificateApi,
   scenarioApi,
   taskApi,
+  learnRoadApi,
 } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
 import { useIndustryMap } from '@/lib/use-resource-maps'
 import { reportError } from '@/lib/error-handling'
+import { orderScenariosByLearnRoad } from '@/lib/learn-road-order'
 import { useToast, EmptyState } from '@zhiyu/ui'
 import type {
   CareerPosition,
+  LearnRoad,
   PositionResponsibility,
   PositionCertificate,
   AbilityPoint,
@@ -85,6 +88,9 @@ export default function JobStudentDetailPage() {
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenarioTasks, setScenarioTasks] = useState<ScenarioTask[]>([])
+  // 本岗位关联的学习路径（/job/learn-roads）：「实践场景」tab 排序与 learn 页统一走
+  // orderScenariosByLearnRoad（无关联路径/加载失败时回退 API 原顺序）
+  const [roads, setRoads] = useState<LearnRoad[]>([])
   // 岗位详情加载请求序号：快速切换 id 时丢弃过期响应
   const loadSeqRef = useRef(0)
   // 详情加载使用独立序号：与关联数据加载（loadSeqRef）互不抢占，
@@ -151,6 +157,19 @@ export default function JobStudentDetailPage() {
 
     if (!user) return
 
+    // 学习路径仅登录用户可读（/job/learn-roads 菜单授权）；加载失败只记错误，
+    // 排序回退 API 原顺序，不影响「实践场景」tab 展示
+    learnRoadApi
+      .list({ limit: 100 })
+      .then((roadRes) => {
+        if (seq !== loadSeqRef.current) return
+        setRoads((roadRes.items || []).filter((r: LearnRoad) => r.positionIds?.includes(id)))
+      })
+      .catch((err) => {
+        if (seq !== loadSeqRef.current) return
+        reportError(err, '加载学习路径数据')
+      })
+
     // 复用上方 seq：再次递增会让前两个请求的响应被判为过期而丢弃
     Promise.all([
       positionResponsibilityApi.list({ careerPositionId: id }),
@@ -180,6 +199,11 @@ export default function JobStudentDetailPage() {
 
   const scenarioCount = scenarios.length
   const taskCount = scenarioTasks.length
+  // 「实践场景」tab 排序与 learn 页统一：按 /job/learn-roads 第一条关联路径的步骤顺序
+  const orderedScenarios = useMemo(
+    () => orderScenariosByLearnRoad(roads, scenarios),
+    [roads, scenarios],
+  )
   const abilityPointCount = useMemo(
     () => new Set(bindings.map((b) => b.abilityPointId).filter(Boolean)).size,
     [bindings],
@@ -266,7 +290,7 @@ export default function JobStudentDetailPage() {
           <LoginPrompt text={t('知识图谱需登录后查看')} desc={t('登录账号后可查看岗位知识图谱')} />
         )
       case 'scenes':
-        return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
+        return <SceneList scenarios={orderedScenarios} tasks={scenarioTasks} />
       default:
         return null
     }
