@@ -30,7 +30,7 @@ import type { AIKBCollaborator, AIKBDocument, AIKnowledgeBase } from '@/lib/api'
 import { formatDateTime, formatSize } from '@/lib/format-utils'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AIStatusBadge } from '../../components/ai-status-badge'
-import { ClassifySelects, type ClassifyValue } from '../../_components/classify-selects'
+import { ClassifySelects, type ClassifyValue } from '../../../_components/classify-selects'
 
 const ACCEPT = '.pdf,.docx,.txt,.md'
 const POLL_INTERVAL = 2500
