@@ -23,17 +23,18 @@ import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 import { resolveActiveRole } from '@/lib/active-role'
+import { withPrefix } from '@/lib/path-prefix'
 import CaptchaInput from '@/components/shared/captcha-input'
 
 function getPostLoginPath(roleCode?: string): string {
   switch (roleCode) {
     case 'school_admin':
-      return '/portal/apps'
+      return withPrefix('/portal/apps')
     case 'teacher':
     case 'student':
-      return '/portal/workspace'
+      return withPrefix('/portal/workspace')
     default:
-      return '/portal'
+      return withPrefix('/portal')
   }
 }
 
