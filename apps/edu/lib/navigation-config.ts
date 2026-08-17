@@ -620,7 +620,7 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
   sideNavItems: [
     {
       id: 'chat',
-      label: 'AI 助手',
+      label: 'YI Know 助手',
       icon: 'sparkles',
       href: '/portal/apps/ai/chat',
       matchers: [
@@ -632,17 +632,17 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
     },
     {
       id: 'admin',
-      label: '平台管理',
+      label: 'AI 广场管理',
       icon: 'settings',
       children: [
         {
           id: 'admin-reviews',
-          label: '内容审核',
+          label: '知识库/智能体审核',
           href: '/portal/apps/ai/admin/reviews',
         },
         {
           id: 'admin-integrations',
-          label: '第三方挂接',
+          label: '外部 AI 服务上架',
           href: '/portal/apps/ai/admin/integrations',
         },
       ],
@@ -1336,9 +1336,9 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   'affairs-teaching-approval': '维护审批流程与批次管理',
   'alliance-cooperation': '管理校企合作项目与成果',
   'alliance-brand': '管理六大品牌资源',
-  'ai-chat': '基于租户自有 AI 服务的智能对话助手',
-  'ai-admin-reviews': '审核知识库与智能体的上架申请',
-  'ai-admin-integrations': '维护第三方智能体与应用链接卡片',
+  // /portal/apps 卡片粒度为顶层菜单（admin 组聚合为一张卡，落点=首个子项）
+  'ai-chat': 'YI Know 智能问答：基于租户自有知识库与多元大模型的场景化教学对话助手',
+  'ai-admin': '审核知识库/智能体的上架申请，并维护外部 AI 服务的挂接卡片',
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {

@@ -158,7 +158,7 @@ export default function AIAdminReviewsPage() {
         { label: t('智能体总数'), value: overview.agentTotal, icon: Bot },
         { label: t('待审智能体'), value: overview.agentPending, icon: ShieldCheck },
         { label: t('已发布智能体'), value: overview.agentPublished, icon: Bot },
-        { label: t('第三方挂接'), value: overview.integrations, icon: Link2 },
+        { label: t('外部 AI 服务'), value: overview.integrations, icon: Link2 },
       ]
     : []
 
@@ -169,7 +169,7 @@ export default function AIAdminReviewsPage() {
           <ShieldCheck className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h1 className="text-base font-semibold">{t('内容审核')}</h1>
+          <h1 className="text-base font-semibold">{t('知识库/智能体审核')}</h1>
           <p className="text-xs text-muted-foreground">
             {t('审核知识库与智能体的上架申请，管控 AI 广场内容')}
           </p>

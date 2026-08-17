@@ -1,6 +1,6 @@
 'use client'
 
-// AI 智能服务中心 · 第三方挂接管理（school_admin，spec: docs/spec/ai-service-center.md §4.8/§5.4）
+// AI 智能服务中心 · 外部 AI 服务上架管理（school_admin，spec: docs/spec/ai-service-center.md §4.8/§5.4）
 // 挂接 = 纯链接卡片（D6）；可见性由后端 RequireRole(school_admin) 保证。
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -199,7 +199,7 @@ export default function AIAdminIntegrationsPage() {
             <Link2 className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h1 className="text-base font-semibold">{t('第三方挂接')}</h1>
+            <h1 className="text-base font-semibold">{t('外部 AI 服务上架')}</h1>
             <p className="text-xs text-muted-foreground">
               {t('维护第三方智能体与应用的链接卡片，上架后展示在 AI 广场')}
             </p>

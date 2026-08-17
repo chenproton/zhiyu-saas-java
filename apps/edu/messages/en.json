@@ -4663,5 +4663,12 @@
   "基本信息与协作者": "Basic Info & Collaborators",
   "名称、描述与分类决定大厅展示与筛选；协作者可共同维护文档": "Name, description and classification drive hall display & filtering; collaborators co-maintain documents",
   "在左侧填写并保存后，即可在这里用当前配置实时试聊效果": "Fill in the form on the left and save, then live-test the current configuration here",
-  "创建成功，现在可以在右侧试聊了": "Created — try it in the preview on the right"
+  "创建成功，现在可以在右侧试聊了": "Created — try it in the preview on the right",
+  "YI Know 助手": "YI Know Assistant",
+  "AI 广场管理": "AI Square Management",
+  "知识库/智能体审核": "KB / Agent Review",
+  "外部 AI 服务上架": "External AI Service Listing",
+  "外部 AI 服务": "External AI Services",
+  "YI Know 智能问答：基于租户自有知识库与多元大模型的场景化教学对话助手": "YI Know Q&A: scenario-based teaching assistant grounded in your knowledge bases and multiple LLMs",
+  "审核知识库/智能体的上架申请，并维护外部 AI 服务的挂接卡片": "Review KB/agent listing requests and manage external AI service cards"
 }

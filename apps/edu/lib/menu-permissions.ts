@@ -63,7 +63,7 @@ export function buildMenuTree(): MenuTreeItem[] {
 
   // AI 平台菜单树：前台功能（助手/广场/工坊/落地页）合并为单一开关，
   // href=/portal/apps/ai 由前缀继承机制覆盖全部前台子路径（checkMenuPermission 向上回溯）；
-  // 管理功能（内容审核/第三方挂接）保持独立勾选，不随前台开关授权。
+  // 管理功能（知识库/智能体审核、外部 AI 服务上架）保持独立勾选，不随前台开关授权。
   const ai: MenuTreeItem = {
     id: 'ai',
     label: 'AI 智能服务平台',
@@ -71,12 +71,12 @@ export function buildMenuTree(): MenuTreeItem[] {
       { id: 'ai-main', label: 'AI 智能服务中心', href: '/portal/apps/ai' },
       {
         id: 'ai-admin',
-        label: '平台管理',
+        label: 'AI 广场管理',
         children: [
-          { id: 'ai-admin-reviews', label: '内容审核', href: '/portal/apps/ai/admin/reviews' },
+          { id: 'ai-admin-reviews', label: '知识库/智能体审核', href: '/portal/apps/ai/admin/reviews' },
           {
             id: 'ai-admin-integrations',
-            label: '第三方挂接',
+            label: '外部 AI 服务上架',
             href: '/portal/apps/ai/admin/integrations',
           },
         ],
