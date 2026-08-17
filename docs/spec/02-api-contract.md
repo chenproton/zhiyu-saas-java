@@ -157,7 +157,7 @@
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET/PUT | `/tenants`、`/tenants/{id}` | 列表 `GET /tenants` 与写 `PUT /tenants/{id}`：systemAdmin / 本租户 portal 管理员（归属校验）；详情 `GET /tenants/{id}`：jobViewer 本租户业务角色（教师/学生/企业导师等）可读（handler 强制本租户，跨租户 403） | 租户信息（当前租户）；详情只读面向联盟前台落地页（`/portal/alliance/landing` hero 学校卡）与学校信息页（`/portal/apps/alliance/school`）读取本租户展示信息；**有效期 `valid_from`/`valid_until` 仅平台管理员可修改**，本租户管理员（portal）更新时自动剥离有效期字段（防止自行延长订阅） |
-| GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流） |
+| GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流）；本租户 portal 管理员经系统管理菜单调用（handler 强制本租户，归属校验在位）；**租户自助新增暂不开放**（产品决策：前端隐藏「新增」入口，`POST /admins` 仍保留供平台侧使用，见 `docs/系统功能清单.md`「十一、1 租户信息」；恢复方式为 `school-admin-manager.tsx` 顶部 `SHOW_ADD_BUTTON` 改为 true） |
 | GET/POST/PUT/DELETE | `/organizations`、`/organizations/tree`、`/org-types` | systemAdmin | 组织/组织类型 |
 | GET/POST/PUT/DELETE | `/users`（12 个写动作 + List） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/批量创建/毕业/删除/改密/绑定角色等） |
 | GET/POST/PUT/DELETE | `/staff-titles`、`/user-extension-fields`、`/user-relations` | systemAdmin | 职称/扩展字段/用户关系 |
