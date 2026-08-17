@@ -72,27 +72,62 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
   }
 
   return (
-    <Table>
+    <Table resizable storageKey={isBank ? 'evaluation.question-banks.list' : 'evaluation.exams.list'}>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[40px] text-center">
+          <TableHead
+            columnKey="select"
+            defaultWidth={40}
+            minWidth={40}
+            resizable={false}
+            className="text-center"
+          >
             <Checkbox
               checked={someSelected ? 'indeterminate' : allSelected}
               onCheckedChange={(checked) => handleHeaderCheckbox(checked === true)}
               aria-label={t('全选')}
             />
           </TableHead>
-          <TableHead className="w-[160px]">{isBank ? t('题库名称') : t('试卷名称')}</TableHead>
-          <TableHead className="w-[120px]">{isBank ? t('题库编码') : t('试卷编码')}</TableHead>
-          <TableHead className="w-[120px]">{isBank ? t('题库简介') : t('试卷简介')}</TableHead>
-          <TableHead className="w-[80px]">{t('题目数量')}</TableHead>
-          {!isBank && <TableHead className="w-[80px]">{t('总分')}</TableHead>}
-          <TableHead className="w-[120px]">{t('所属批次')}</TableHead>
-          <TableHead className="w-[100px]">{t('创建人')}</TableHead>
-          <TableHead className="w-[100px]">{t('共建人')}</TableHead>
-          <TableHead className="w-[70px]">{t('状态')}</TableHead>
-          <TableHead className="w-[100px]">{t('更新时间')}</TableHead>
-          <TableHead className="sticky right-0 w-[80px] bg-white text-right">{t('操作')}</TableHead>
+          <TableHead columnKey="name" defaultWidth={160} minWidth={96}>
+            {isBank ? t('题库名称') : t('试卷名称')}
+          </TableHead>
+          <TableHead columnKey="code" defaultWidth={120} minWidth={72}>
+            {isBank ? t('题库编码') : t('试卷编码')}
+          </TableHead>
+          <TableHead columnKey="description" defaultWidth={120} minWidth={72}>
+            {isBank ? t('题库简介') : t('试卷简介')}
+          </TableHead>
+          <TableHead columnKey="questionCount" defaultWidth={80} minWidth={56}>
+            {t('题目数量')}
+          </TableHead>
+          {!isBank && (
+            <TableHead columnKey="totalScore" defaultWidth={80} minWidth={56}>
+              {t('总分')}
+            </TableHead>
+          )}
+          <TableHead columnKey="batch" defaultWidth={120} minWidth={72}>
+            {t('所属批次')}
+          </TableHead>
+          <TableHead columnKey="creator" defaultWidth={100} minWidth={64}>
+            {t('创建人')}
+          </TableHead>
+          <TableHead columnKey="collaborators" defaultWidth={100} minWidth={64}>
+            {t('共建人')}
+          </TableHead>
+          <TableHead columnKey="status" defaultWidth={70} minWidth={48}>
+            {t('状态')}
+          </TableHead>
+          <TableHead columnKey="updatedAt" defaultWidth={100} minWidth={72}>
+            {t('更新时间')}
+          </TableHead>
+          <TableHead
+            columnKey="actions"
+            defaultWidth={80}
+            minWidth={56}
+            className="sticky right-0 bg-white text-right"
+          >
+            {t('操作')}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -135,7 +170,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
               </TableCell>
               <TableCell>{t('{n} 题', { n: Number(item.questionCount) })}</TableCell>
               {!isBank && <TableCell>{t('{n} 分', { n: Number(item.totalScore ?? 0) })}</TableCell>}
-              <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
+              <TableCell className="truncate text-sm text-muted-foreground">{batchName}</TableCell>
               <TableCell className="text-sm text-muted-foreground truncate">
                 {item.creatorName || item.creatorId || '-'}
               </TableCell>

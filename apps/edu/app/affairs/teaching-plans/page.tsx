@@ -109,34 +109,80 @@ export default function TeachingPlansPage() {
         } = props
         return (
           <div className="rounded-lg border bg-white px-4 py-3">
-            <Table className="min-w-[900px]">
+            <Table resizable storageKey="affairs.teaching-plans.list">
               <TableHeader>
                 <TableRow className="border-b">
-                  <TableHead className="w-8 px-2 py-2">
+                  <TableHead
+                    columnKey="select"
+                    defaultWidth={32}
+                    minWidth={32}
+                    resizable={false}
+                    className="px-2 py-2"
+                  >
                     <input type="checkbox" onChange={(e) => onSelectAll(e.target.checked)} />
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="program"
+                    defaultWidth={180}
+                    minWidth={120}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('人培方案')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="term"
+                    defaultWidth={120}
+                    minWidth={80}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('学期')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="major"
+                    defaultWidth={120}
+                    minWidth={80}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('专业')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="entryYear"
+                    defaultWidth={80}
+                    minWidth={56}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('年级')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="entryCount"
+                    defaultWidth={80}
+                    minWidth={56}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('条目数')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="batch"
+                    defaultWidth={120}
+                    minWidth={80}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('批次')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="status"
+                    defaultWidth={80}
+                    minWidth={56}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('状态')}
                   </TableHead>
-                  <TableHead className="sticky right-0 w-[260px] bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="actions"
+                    defaultWidth={260}
+                    minWidth={160}
+                    className="sticky right-0 bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground"
+                  >
                     {t('操作')}
                   </TableHead>
                 </TableRow>
@@ -155,17 +201,19 @@ export default function TeachingPlansPage() {
                         />
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        <div className="font-medium text-sm">{item.programName || '-'}</div>
+                        <div className="font-medium text-sm truncate">{item.programName || '-'}</div>
                       </TableCell>
-                      <TableCell className="px-2 py-2 text-sm">{item.termName || '-'}</TableCell>
-                      <TableCell className="px-2 py-2 text-sm text-muted-foreground">
+                      <TableCell className="px-2 py-2 text-sm truncate">
+                        {item.termName || '-'}
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-sm text-muted-foreground truncate">
                         {item.majorName || '-'}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-sm">
                         {t('{n}级', { n: item.entryYear })}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-sm">{item.entryCount}</TableCell>
-                      <TableCell className="px-2 py-2 text-sm text-muted-foreground">
+                      <TableCell className="px-2 py-2 text-sm text-muted-foreground truncate">
                         {item.batchId ? batchMap?.get(item.batchId) || '-' : '-'}
                       </TableCell>
                       <TableCell className="px-2 py-2">

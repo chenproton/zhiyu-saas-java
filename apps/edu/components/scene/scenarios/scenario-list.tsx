@@ -83,39 +83,92 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
   return (
     <div className={cn('rounded-lg border border-slate-200 bg-white overflow-hidden', className)}>
       <div className="overflow-x-auto">
-        <Table className="min-w-[900px]">
+        <Table resizable storageKey="scene.list">
           <TableHeader>
             <TableRow className="bg-slate-50 border-b border-slate-100 hover:bg-slate-50">
-              <TableHead className="w-10 px-3">
+              <TableHead
+                columnKey="select"
+                defaultWidth={40}
+                minWidth={40}
+                resizable={false}
+                className="px-3"
+              >
                 <Checkbox
                   checked={someSelected ? 'indeterminate' : allSelected}
                   onCheckedChange={(checked) => onSelectAll?.(checked === true)}
                   aria-label={t('全选')}
                 />
               </TableHead>
-              <TableHead className="w-40 text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="name"
+                defaultWidth={160}
+                minWidth={96}
+                className="text-xs font-medium text-slate-500"
+              >
                 {t('场景名称')}
               </TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="code"
+                defaultWidth={112}
+                minWidth={72}
+                className="text-xs font-medium text-slate-500"
+              >
                 {t('场景编码')}
               </TableHead>
-              <TableHead className="w-16 text-center text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="version"
+                defaultWidth={64}
+                minWidth={48}
+                className="text-center text-xs font-medium text-slate-500"
+              >
                 {t('版本')}
               </TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="position"
+                defaultWidth={112}
+                minWidth={72}
+                className="text-xs font-medium text-slate-500"
+              >
                 {t('所属岗位')}
               </TableHead>
-              <TableHead className="w-32 text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="batch"
+                defaultWidth={128}
+                minWidth={96}
+                className="text-xs font-medium text-slate-500"
+              >
                 {t('所属批次分组')}
               </TableHead>
-              <TableHead className="w-24 text-xs font-medium text-slate-500">{t('创建人')}</TableHead>
-              <TableHead className="w-28 text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="creator"
+                defaultWidth={96}
+                minWidth={64}
+                className="text-xs font-medium text-slate-500"
+              >
+                {t('创建人')}
+              </TableHead>
+              <TableHead
+                columnKey="publishTime"
+                defaultWidth={130}
+                minWidth={88}
+                className="text-xs font-medium text-slate-500"
+              >
                 {t('发布时间')}
               </TableHead>
-              <TableHead className="w-20 text-center text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="taskCount"
+                defaultWidth={80}
+                minWidth={56}
+                className="text-center text-xs font-medium text-slate-500"
+              >
                 {t('任务数')}
               </TableHead>
-              <TableHead className="text-right text-xs font-medium text-slate-500">
+              <TableHead
+                columnKey="actions"
+                defaultWidth={64}
+                minWidth={40}
+                className="text-right text-xs font-medium text-slate-500"
+              >
                 {t('操作')}
               </TableHead>
             </TableRow>
@@ -141,29 +194,31 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                   </TableCell>
                   <TableCell>
                     <Link href={`${basePath}/${scenario.id}/edit`} className="block">
-                      <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-40 hover:text-primary">
+                      <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-full hover:text-primary">
                         {scenario.name}
                       </p>
                     </Link>
-                    <div className="flex items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       <StatusBadge status={scenario.status} />
                       {scenario.sourceType === 'enterprise' && (
                         <Badge variant="secondary">{t('企业共建')}</Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">{scenario.code}</TableCell>
+                  <TableCell className="truncate text-sm text-slate-600">{scenario.code}</TableCell>
                   <TableCell className="text-center text-sm text-slate-600">
                     {scenario.version}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
+                  <TableCell className="truncate text-sm text-slate-600">
                     {scenario.positionName || '-'}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
+                  <TableCell className="truncate text-sm text-slate-600">
                     {scenario.batchName || '-'}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-500">{scenario.creatorName}</TableCell>
-                  <TableCell className="text-xs text-slate-500">
+                  <TableCell className="truncate text-xs text-slate-500">
+                    {scenario.creatorName}
+                  </TableCell>
+                  <TableCell className="truncate text-xs text-slate-500">
                     {scenario.publishTime || '-'}
                   </TableCell>
                   <TableCell className="text-center">

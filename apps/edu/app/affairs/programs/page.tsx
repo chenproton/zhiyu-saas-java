@@ -81,31 +81,72 @@ export default function ProgramsPage() {
         } = props
         return (
           <div className="rounded-lg border bg-white px-4 py-3">
-            <Table className="min-w-[900px]">
+            <Table resizable storageKey="affairs.programs.list">
               <TableHeader>
                 <TableRow className="border-b">
-                  <TableHead className="w-8 px-2 py-2">
+                  <TableHead
+                    columnKey="select"
+                    defaultWidth={32}
+                    minWidth={32}
+                    resizable={false}
+                    className="px-2 py-2"
+                  >
                     <input type="checkbox" onChange={(e) => onSelectAll(e.target.checked)} />
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="name"
+                    defaultWidth={180}
+                    minWidth={120}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('方案名称')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="major"
+                    defaultWidth={120}
+                    minWidth={80}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('专业')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="entryYear"
+                    defaultWidth={80}
+                    minWidth={56}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('年级')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="courseCount"
+                    defaultWidth={80}
+                    minWidth={56}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('课程数')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="batch"
+                    defaultWidth={120}
+                    minWidth={80}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('批次')}
                   </TableHead>
-                  <TableHead className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="status"
+                    defaultWidth={80}
+                    minWidth={56}
+                    className="px-2 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {t('状态')}
                   </TableHead>
-                  <TableHead className="sticky right-0 w-[180px] bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground">
+                  <TableHead
+                    columnKey="actions"
+                    defaultWidth={180}
+                    minWidth={120}
+                    className="sticky right-0 bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground"
+                  >
                     {t('操作')}
                   </TableHead>
                 </TableRow>
@@ -124,19 +165,19 @@ export default function ProgramsPage() {
                         />
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        <div className="font-medium text-sm">{item.name}</div>
+                        <div className="font-medium text-sm truncate">{item.name}</div>
                         {item.code && (
-                          <div className="text-xs text-muted-foreground">{item.code}</div>
+                          <div className="text-xs text-muted-foreground truncate">{item.code}</div>
                         )}
                       </TableCell>
-                      <TableCell className="px-2 py-2 text-sm text-muted-foreground">
+                      <TableCell className="px-2 py-2 text-sm text-muted-foreground truncate">
                         {item.majorName || '-'}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-sm">
                         {t('{n}级', { n: item.entryYear })}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-sm">{item.courseCount}</TableCell>
-                      <TableCell className="px-2 py-2 text-sm text-muted-foreground">
+                      <TableCell className="px-2 py-2 text-sm text-muted-foreground truncate">
                         {item.batchName || '-'}
                       </TableCell>
                       <TableCell className="px-2 py-2">

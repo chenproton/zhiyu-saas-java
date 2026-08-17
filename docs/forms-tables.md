@@ -104,6 +104,6 @@
 
 1. 简单 CRUD → `PortalCrudPage`；带组织树筛选 → `PortalSidebarCrudPage`；带状态/审批/批次/导入导出的内容管理 → `ContentListPage`；归档 → `ArchiveListPage`；日志 → `LogTableShell`
 2. 特殊业务列表（无法用壳组件时）：直接用 `<Table>`，**必须** `min-w-[900px]`（多列）保证移动端横向滚动，列多时给关键列设 `w-*` 固定宽度
-3. 需要用户自定义列宽（拖拽 + 浏览器持久化）的表格：`<Table resizable storageKey="...">` + 每列 `<TableHead columnKey defaultWidth minWidth>`；文本可能超长的列（名称/长文本）在 `td` 上加 `truncate` 或内层 `line-clamp`，防止列宽收窄后溢出相邻列；`resizable` 模式下表格宽度 = 列宽之和（`w-max`），无需再设 `min-w-*`
+3. 需要用户自定义列宽（拖拽 + 浏览器持久化）的表格：`<Table resizable storageKey="...">` + 每列 `<TableHead columnKey defaultWidth minWidth>`；文本可能超长的列（名称/长文本）在 `td` 上加 `truncate` 或内层 `line-clamp`，防止列宽收窄后溢出相邻列；`resizable` 模式下表格宽度 = 列宽之和（`w-max`），无需再设 `min-w-*`。**ContentListPage 全部 7 个列表页已启用**（岗位/场景/课程/题库/试卷/人培方案/教学计划，storageKey 清单见 `docs/spec/05-prototype-interaction.md` §2.4）
 4. 行操作 → `<TableRowActions>`；批量操作按钮 + 选中态 → 参照壳组件内置模式，不手写
 5. 移动端：多列网格 `grid-cols-1 md:grid-cols-2` 起步；课表类宽网格外层 `overflow-x-auto` + `min-w-[760px]`；操作栏拥挤时折叠为 DropdownMenu（参照 `editor-shell.tsx` 的移动端菜单）
