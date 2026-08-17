@@ -1,12 +1,14 @@
 'use client'
 
-// YIKnow 全局智能助手（/portal/apps/ai/chat）：公司主推产品入口（spec §2.1 YIKnow）。
+// YIKnow 全局智能助手（spec §2.1 YIKnow）：公司主推产品入口。
 // 布局：左侧功能轨（智能对话/我的知识库/我的智能体 + 历史会话）+ 主区。
+// v2.8：独立对话页 /portal/apps/ai/chat 已下线，AI 对话统一走弹窗
+// （YIKnowChatDialog variant="modal"；page 变体保留仅供未来页面化复用）。
 // v2.7.3 体验打磨（对齐对话类产品最佳实践）：
 //   智能跟随滚动（上翻时不拽回）/ 停止生成 / 气泡 hover 复制 + 末条重新生成 /
 //   Textarea 自适应输入（Enter 发送、Shift+Enter 换行）/ 会话重命名（双击）+ 历史按日期分组 /
 //   流式失败气泡内「重试」/ 代码块一键复制 / 移动端左轨抽屉。
-// v2.7：聊天体验抽为共享组件（variant page/modal），前台入口统一弹窗，/chat 路由直达。
+// v2.7：聊天体验抽为共享组件（variant page/modal），前台入口统一弹窗。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {

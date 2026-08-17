@@ -605,7 +605,7 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
   brandTitle: 'AI 智能服务平台',
   currentPlatformId: 'ai',
   currentPlatformLabel: 'AI 智能服务平台',
-  brandHref: '/portal/apps/ai/chat',
+  brandHref: '/portal/apps/ai/landing',
   brandIcon: 'sparkles',
   platformIcon: 'sparkles',
   sideBackHref: '/portal/apps',
@@ -614,22 +614,10 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
   showCurrentTime: true,
   showUserMenu: true,
   userMenuItems: COMMON_USER_MENU_ITEMS,
-  // v1.2：广场/工坊已并入落地页区块（landing#square / #studio）。
-  // 侧边栏对齐其他平台惯例只列业务功能（无「首页」项——落地页由平台卡片主入口进入，
-  // 页内返回走侧边栏顶部「返回应用中心」按钮）；对话页/库详情高亮归 AI 助手
+  // v2.8：移除「YI Know 助手」侧栏项与独立对话页（/portal/apps/ai/chat 已下线），
+  // AI 对话统一走弹窗（YIKnowChatDialog：/portal/apps 卡片、落地页「立即体验」、右下角浮动机器人）。
+  // 侧边栏对齐其他平台惯例只列业务功能；库详情/智能体详情/创作页高亮归「AI 广场管理」。
   sideNavItems: [
-    {
-      id: 'chat',
-      label: 'YI Know 助手',
-      icon: 'sparkles',
-      href: '/portal/apps/ai/chat',
-      matchers: [
-        '/portal/apps/ai/chat',
-        '/portal/apps/ai/kb',
-        '/portal/apps/ai/agents',
-        '/portal/apps/ai/studio',
-      ],
-    },
     {
       id: 'admin',
       label: 'AI 广场管理',
@@ -1297,7 +1285,12 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     // 菜单权限：AI 中心已纳入权限树（menu-permissions.ts buildMenuTree），
     // 角色勾选控制可见性；管理组（内容审核/第三方挂接）不回填 teacher/student，
     // 仅 school_admin（超级管理员角色全量放行）默认可见；后端 RequireRole(school_admin) 兜底。
-    subModules: subModulesFromNavConfig(aiNavigationConfig),
+    // v2.8：「YI Know 助手」卡片保留为弹窗入口（href 指向已下线 chat 路由仅作标识，
+    // /portal/apps/page.tsx 据此 href 打开 YIKnowChatDialog 弹窗，不跳转）；管理组仍从导航配置派生
+    subModules: [
+      { id: 'chat', label: 'YI Know 助手', href: '/portal/apps/ai/chat' },
+      ...subModulesFromNavConfig(aiNavigationConfig),
+    ],
   },
   opc: {
     id: 'opc',

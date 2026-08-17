@@ -18,7 +18,7 @@
 | 系统管理 | `/portal/apps/system/*`（tenant/resource/org-user/logs 4 组 15+ 页） | portal | P0 |
 | 产教融合管理 | `/portal/apps/alliance/*`（school/enterprises/projects/achievements/experts/agreements/permissions/dictionaries/brands） | portal | P0 |
 | 联盟公开落地页 | `/portal/alliance/landing`（入口，`/portal/alliance` 无 page 仅子页路由）、`/portal/alliance/brands` 等 | portal | P1 |
-| AI 助手对话页 | `/portal/apps/ai/chat`（右下角 YiKnowAssistant 悬浮球入口） | portal | P1 |
+| AI 智能服务 | `/portal/apps/ai`（落地页 `landing` 单页集成 + 大厅/详情/创作页/后台管理；AI 对话统一走 **YIKnowChatDialog 弹窗**——右下角 YiKnowAssistant 悬浮球、应用中心「YI Know 助手」卡片、落地页「立即体验」三入口共用，v2.8 起独立对话页 `/portal/apps/ai/chat` 已下线） | portal | P1 |
 | AI 服务配置 | `/portal/apps/system/tenant` 租户信息页内 AI 配置区 | portal | P0 |
 | 超管控制台 | `/superadmin` | saas | P0 |
 
