@@ -254,6 +254,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret, jwtSecretPrevious stri
 			r.Group(func(r chi.Router) {
 				r.Use(jobViewer)
 
+				// 本租户信息只读：联盟公开落地页（/portal/alliance/landing）hero 学校卡
+				// 与学校信息页（/portal/apps/alliance/school）均读取 GET /tenants/{id}；
+				// handler 层强制本租户归属（跨租户 403），此处仅放行业务角色读本租户，
+				// PUT/POST/DELETE 仍留在 systemAdmin 组（同 /organizations 只读覆盖模式）。
+				r.Get("/tenants/{id}", h.tenantHandler.Get)
+
 				// 课程前台落地页只读接口
 				registerContentReadRoutes(r, "/lesson/courses", h.courseHandler)
 				r.Get("/lesson/courses/{id}/snapshot", h.snapshotHandler.GetCourseSnapshot)

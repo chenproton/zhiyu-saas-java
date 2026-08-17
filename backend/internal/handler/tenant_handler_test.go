@@ -178,6 +178,49 @@ func TestTenant_Get_NotFound(t *testing.T) {
 	}
 }
 
+// TestTenant_Get_OwnTenant_BusinessRole 本租户信息读取对业务角色开放：
+// 联盟公开落地页（/portal/alliance/landing）hero 学校卡与学校信息页
+// （/portal/apps/alliance/school）均读取本租户展示信息（GET /tenants/{id}），
+// 教师/学生角色应可读取本租户（handler 层归属校验兜底），跨租户仍 403。
+// 回归：fd6774bd 起 landing hero 卡片改调 /tenants/{id}，此前路由挂 systemAdmin
+// 中间件致教师 403「权限不足」（全局错误 toast）。
+func TestTenant_Get_OwnTenant_BusinessRole(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	teacherToken := env.NewTokenWithIdentity("tenant-get-teacher", testhelper.TestTenantID, domain.UserRoleSchool, nil, domain.RoleTeacher)
+	studentToken := env.NewTokenWithIdentity("tenant-get-student", testhelper.TestTenantID, domain.UserRoleSchool, nil, domain.RoleStudent)
+
+	// 另一租户：跨租户读取必须仍被拒绝（租户隔离红线）
+	otherTenantID := uuid.NewString()
+	if _, err := env.DB.Exec(ctx,
+		`INSERT INTO tenants (id, name, code, status) VALUES ($1, 'Other Tenant', 'other-get', 'active') ON CONFLICT DO NOTHING`,
+		otherTenantID); err != nil {
+		t.Fatalf("seed other tenant: %v", err)
+	}
+	defer env.DB.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, otherTenantID)
+
+	t.Run("teacher reads own tenant", func(t *testing.T) {
+		w := env.DoWithToken("GET", "/api/v1/tenants/"+testhelper.TestTenantID, nil, teacherToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+	t.Run("student reads own tenant", func(t *testing.T) {
+		w := env.DoWithToken("GET", "/api/v1/tenants/"+testhelper.TestTenantID, nil, studentToken)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+	t.Run("cross-tenant read forbidden", func(t *testing.T) {
+		w := env.DoWithToken("GET", "/api/v1/tenants/"+otherTenantID, nil, teacherToken)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+}
+
 func TestTenant_Update(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
