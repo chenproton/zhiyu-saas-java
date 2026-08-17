@@ -1123,7 +1123,9 @@ for svc in backend frontend nginx; do
   for i in $(seq 1 45); do
     S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
     [[ "$S" == "healthy" ]] && { log "  $svc healthy"; found=true; break; }
-    [[ "$S" == "running" ]] && { log "  $svc running（无 healthcheck，视为就绪）"; found=true; break; }
+    # 无 healthcheck 的服务（如 nginx 容器）Health 为空，用容器状态判断
+    STATUS=$(compose ps "$svc" --format '{{.Status}}' 2>/dev/null || echo "")
+    [[ "$STATUS" == Up* ]] && { log "  $svc running（无 healthcheck，视为就绪）"; found=true; break; }
     sleep 2
   done
   $found || { warn "$svc 未就绪"; OK=false; }
