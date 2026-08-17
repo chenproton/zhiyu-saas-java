@@ -81,8 +81,7 @@ services:
     image: zhiyu-backend:${IMAGE_TAG:-latest}
     container_name: zhiyu-backend
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    # 业务容器不暴露宿主端口：统一由 nginx 容器（服务网关）在容器网络内代理
     logging:
       driver: json-file
       options:
@@ -118,8 +117,7 @@ services:
     image: zhiyu-edu:${IMAGE_TAG:-latest}
     container_name: zhiyu-edu
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:${EDU_PORT:-3020}:3020"
+    # 业务容器不暴露宿主端口：统一由 nginx 容器（服务网关）在容器网络内代理
     logging:
       driver: json-file
       options:
@@ -169,6 +167,27 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    networks:
+      - zhiyu
+
+  # 服务网关：容器网络内按容器名路由到 backend/frontend，
+  # 仅暴露一个宿主端口（127.0.0.1:${GO_NGINX_PORT:-8084}）给系统 nginx（边缘网关）
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: zhiyu-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GO_NGINX_PORT:-8084}:80"
+    volumes:
+      - ./nginx-container/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - backend
+      - frontend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - zhiyu
 

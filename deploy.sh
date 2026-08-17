@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── 常量 ──
-BACKEND_PORT=8080; EDU_PORT=3020
+BACKEND_PORT=8080; EDU_PORT=3020; GO_NGINX_PORT=8084
 DEPLOY_DIR="/opt/zhiyu-saas"
 NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
 OFFLINE_DIR="${OFFLINE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/offline}"
@@ -576,6 +576,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "NGINX_SSL_CERT_KEY=${NGINX_SSL_CERT_KEY:-}"
       echo "BACKEND_PORT=${BACKEND_PORT:-8080}"
       echo "EDU_PORT=${EDU_PORT:-3020}"
+      echo "GO_NGINX_PORT=${GO_NGINX_PORT:-8084}"
       echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5433}"
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-true}"
@@ -632,12 +633,14 @@ fi
 NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026" "true")
 BACKEND_PORT=$(resolve_port "BACKEND_PORT" "${BACKEND_PORT:-8080}" "8081")
 EDU_PORT=$(resolve_port "EDU_PORT" "${EDU_PORT:-3020}" "3021")
+GO_NGINX_PORT=$(resolve_port "GO_NGINX_PORT" "${GO_NGINX_PORT:-8084}" "8085")
 POSTGRES_HOST_PORT=$(resolve_port "POSTGRES_HOST_PORT" "${POSTGRES_HOST_PORT:-5433}" "5434")
 KKFILEVIEW_HOST_PORT=$(resolve_port "KKFILEVIEW_HOST_PORT" "${KKFILEVIEW_HOST_PORT:-8012}" "8013")
 
 update_env_var "$ENV_FILE" "NGINX_PORT" "$NGINX_PORT"
 update_env_var "$ENV_FILE" "BACKEND_PORT" "$BACKEND_PORT"
 update_env_var "$ENV_FILE" "EDU_PORT" "$EDU_PORT"
+update_env_var "$ENV_FILE" "GO_NGINX_PORT" "$GO_NGINX_PORT"
 update_env_var "$ENV_FILE" "POSTGRES_HOST_PORT" "$POSTGRES_HOST_PORT"
 update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
 
@@ -724,7 +727,7 @@ DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
 MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/${DB_NAME}?sslmode=disable"
-export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET KK_MEDIA_CONVERT_DISABLE
+export IMAGE_TAG BACKEND_PORT EDU_PORT GO_NGINX_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET KK_MEDIA_CONVERT_DISABLE
 
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
@@ -1048,6 +1051,9 @@ fi
 log "部署到 Docker"
 
 cp "$BUILD_ROOT/deploy/docker-compose.yml" "$DEPLOY_COMPOSE"
+# 复制服务网关 nginx 容器配置（compose 中以相对路径 ./nginx-container/conf.d 挂载）
+mkdir -p "$DEPLOY_DIR/nginx-container"
+rsync -a --delete "$BUILD_ROOT/deploy/nginx-container/" "$DEPLOY_DIR/nginx-container/"
 cp -f "$BUILD_ROOT/.env" "$DEPLOY_DIR/.env" 2>/dev/null || cp -f "$PROJECT_ROOT/.env" "$DEPLOY_DIR/.env"
 chmod 600 "$DEPLOY_DIR/.env"
 
@@ -1112,11 +1118,12 @@ fi
 # 健康检查
 log "等待服务就绪..."
 OK=true
-for svc in backend frontend; do
+for svc in backend frontend nginx; do
   found=false
   for i in $(seq 1 45); do
     S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
     [[ "$S" == "healthy" ]] && { log "  $svc healthy"; found=true; break; }
+    [[ "$S" == "running" ]] && { log "  $svc running（无 healthcheck，视为就绪）"; found=true; break; }
     sleep 2
   done
   $found || { warn "$svc 未就绪"; OK=false; }
@@ -1199,8 +1206,9 @@ if [[ -f "$NGINX_CONF" ]]; then
   NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
   NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-}"
   NGINX_PORT="${NGINX_PORT:-80}"
+  GO_NGINX_PORT="${GO_NGINX_PORT:-8084}"
   KKFILEVIEW_HOST_PORT="${KKFILEVIEW_HOST_PORT:-8012}"
-  export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT BACKEND_PORT EDU_PORT KKFILEVIEW_HOST_PORT
+  export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT GO_NGINX_PORT KKFILEVIEW_HOST_PORT
 
   # 将模板中的 ${VAR:-default} → ${VAR}，再用 envsubst 替换
   if [[ -f "$NGINX_DST" ]]; then
@@ -1209,7 +1217,7 @@ if [[ -f "$NGINX_CONF" ]]; then
     # 配置备份仅保留最近 5 份，避免累积占用磁盘
     ls -t "$NGINX_DST".bak.* 2>/dev/null | tail -n +6 | xargs -r rm -f
   fi
-  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
+  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
   # 若配置了 SSL 域名和证书，生成 HTTPS 网关配置
   NGINX_SSL_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas-ssl.conf"
@@ -1217,7 +1225,7 @@ if [[ -f "$NGINX_CONF" ]]; then
   if [[ -f "$NGINX_SSL_CONF" && -n "${NGINX_SSL_DOMAIN:-}" && -n "${NGINX_SSL_CERT:-}" && -n "${NGINX_SSL_CERT_KEY:-}" ]]; then
     if [[ -f "$NGINX_SSL_CERT" && -f "$NGINX_SSL_CERT_KEY" ]]; then
       export NGINX_SSL_DOMAIN NGINX_SSL_CERT NGINX_SSL_CERT_KEY
-      sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_SSL_CONF" | envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_SSL_DST"
+      sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_SSL_CONF" | envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $GO_NGINX_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_SSL_DST"
       log "已生成 HTTPS nginx 配置: $NGINX_SSL_DST"
     else
       warn "NGINX_SSL_DOMAIN 已设置但证书文件不存在，跳过 HTTPS 配置"
@@ -1322,8 +1330,7 @@ fi
 log "✨ 部署完成！"
 echo "   外部入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
 echo "   nginx 端口: ${NGINX_PORT}"
-echo "   后端容器: http://localhost:${BACKEND_PORT}"
-echo "   前端容器: http://localhost:${EDU_PORT}"
+echo "   服务网关容器: http://localhost:${GO_NGINX_PORT}（zhiyu-nginx，业务容器不暴露宿主端口）"
 echo "   管理: admin / ${SEED_ADMIN_PASSWORD:-admin123}  (SaaS 登录)"
 echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
 
