@@ -3,10 +3,27 @@
 // YIKnow 聊天统一弹窗（v2.7.2）：全站唯一入口组件——
 // /portal/apps 卡片与常用服务、落地页「立即体验」、右下角浮动机器人共用。
 // 居中 + 遮罩（Dialog 自带）+ 原 demo 面板质感（毛玻璃/顶部渐变装饰线/深阴影）。
-import { useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { YIKnowChat } from './yi-know-chat'
 import { useT } from '@/lib/i18n/locale-provider'
+
+// 全局打开计数：任意入口的弹窗打开时，右下角浮动机器人隐藏（v2.7.4）
+let openCount = 0
+const listeners = new Set<() => void>()
+const notify = () => listeners.forEach((l) => l())
+export function subscribeYIKnowDialog(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+export function isYIKnowDialogOpen() {
+  return openCount > 0
+}
+export function useYIKnowDialogOpen() {
+  return useSyncExternalStore(subscribeYIKnowDialog, isYIKnowDialogOpen, () => false)
+}
 
 export function useYIKnowChatDialog() {
   const [open, setOpen] = useState(false)
@@ -24,6 +41,16 @@ export function YIKnowChatDialog({
   onNavigate?: () => void
 }) {
   const t = useT()
+  // 打开期间登记全局计数（机器人隐藏）
+  useEffect(() => {
+    if (!open) return
+    openCount += 1
+    notify()
+    return () => {
+      openCount -= 1
+      notify()
+    }
+  }, [open])
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent

@@ -4,31 +4,23 @@
 // v2.7.2：面板升级为全站统一居中弹窗（YIKnowChatDialog，含遮罩+毛玻璃质感），
 // 内含智能对话/历史会话/我的知识库/我的智能体；条目点击跳详情页并自动关闭弹窗。
 import { useState } from 'react'
-import { X } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
 import {
   YIKnowChatDialog,
+  useYIKnowDialogOpen,
 } from '@/app/portal/apps/ai/_components/yi-know-chat-dialog'
 
 export function YiKnowAssistant() {
   const t = useT()
   const [open, setOpen] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
-
-  if (dismissed) return null
+  // 任意入口的 YIKnow 弹窗打开时机器人隐藏（含本机器人自己的弹窗）
+  const anyDialogOpen = useYIKnowDialogOpen()
 
   return (
     <>
-      {/* Floating robot button */}
+      {/* 浮动机器人按钮：任意 YIKnow 弹窗打开时整体隐藏 */}
+      {!anyDialogOpen && (
       <div className="fixed bottom-6 right-5 z-[100] yi-robot-wrap flex items-end gap-3 group">
-        {/* Close button — appears on hover */}
-        <button
-          onClick={() => setDismissed(true)}
-          className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-muted-foreground/50 hover:bg-muted-foreground/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          aria-label={t('关闭 YI KNOW')}
-        >
-          <X className="w-3 h-3 text-white" />
-        </button>
         {/* Speech bubble */}
         {!open && (
           <div
@@ -242,13 +234,10 @@ export function YiKnowAssistant() {
               </g>
             </svg>
           </div>
-          {open && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <X className="w-8 h-8 text-white drop-shadow-lg" />
-            </div>
-          )}
         </button>
       </div>
+
+      )}
 
       {/* 真实 YIKnow 聊天：全站统一居中弹窗（与 /portal/apps 入口同一组件） */}
       <YIKnowChatDialog open={open} onOpenChange={setOpen} />
