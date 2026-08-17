@@ -132,8 +132,7 @@ func (h *AllianceEmploymentHandler) ListEmploymentJobs(w http.ResponseWriter, r 
 
 // AdminSetEmploymentJobStatus 学校端治理：下架（closed）/恢复（published）岗位。
 func (h *AllianceEmploymentHandler) AdminSetEmploymentJobStatus(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

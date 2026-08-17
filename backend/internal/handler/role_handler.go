@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -48,7 +47,7 @@ func (h *RoleHandler) crud() crudConfig[CreateRoleRequest, domain.Role] {
 		CreateErrMsg:       "创建角色失败",
 		UpdateErrMsg:       "更新角色失败",
 		DeleteErrMsg:       "删除角色失败",
-		Permit:             func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		Permit:             func(r *http.Request) bool { return canManagePortal(r) },
 		UniqueViolationMsg: "角色代码已存在，请使用其他代码",
 		CheckOwnership:     true,
 		GetOwnership:       true,
@@ -110,8 +109,7 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

@@ -39,7 +39,7 @@ type exportFillFunc func(ctx context.Context, f *excelize.File, tenantID string,
 
 func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Request, entity string, fill exportFillFunc) {
 	claims := middleware.CurrentUser(r)
-	if claims == nil || !canManagePortal(claims) {
+	if claims == nil || !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

@@ -11,6 +11,20 @@
 
 所有接口前缀 `/api/v1`。权限列标记三档：`公开` = 无需 JWT（匿名）；`登录公开` = 任意已登录用户可见（如 `/alliance/public/*`、`/job/public/*`，仍需 JWT）；其余为 JWT 校验后的角色/菜单组。只读接口（List/Get）普遍同时在更宽角色组（jobViewer 含学生）注册。
 
+### 授权模型（2026-08-17 起，ADR-0008「菜单驱动的 API 授权」）
+
+> 角色差异收敛为**菜单权限配置差异**：所有角色的页面与 API 访问权限均由 `/portal/apps/system/org-user/roles` 的菜单勾选驱动（`roles.permissions.menus`），配置一致则权限一致。后端 API 按「模块菜单」声明授权（`RequireMenu`，见 `backend/internal/router/menu_grants.go`），写操作与只读操作均由菜单决定。保留的少量角色特判：
+>
+> - **平台隔离**（`RequirePlatform` portal/saas/partner）与**租户归属校验**（handler 层，ADR-0003）不变；
+> - **关键写白名单**（`RequireSystemPermission`）：密码/租户状态/有效期/审批终审等关键写操作仍限 `school_admin`/`platform_admin` 角色（纵深防御）；
+> - **服务台**（`portalWorkspace`）：工作台/社区/个人中心按角色聚合（PRD P-1）；
+> - **school_admin「无 menus = 全量」**：未显式配置 menus 时全量放行（与 roles 页回显全选一致）；显式配置后按菜单判定；
+> - **学生**：默认种子仅落地页 5 个 + 服务台菜单，落地页菜单隐含授权对应只读 API 面；
+> - **B13 配置化**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（原代码级收窄取消，配置可覆盖）；
+> - **AI 中心**：用户端登录公开（可见性 service 层判定），管理端（审核/挂接）限 `school_admin`。
+>
+> 旧权限列标记（`systemAdmin`/`businessUser`/`jobViewer`/`RequireAllianceManager`）在 2026-08-17 重构后由对应菜单组替代，语义映射：`businessUser` ≈ 对应模块管理菜单；`jobViewer` ≈ 模块管理菜单 ∪ 落地页菜单（只读面）；`systemAdmin` ≈ `/portal/apps/system` 菜单 + school_admin 角色兜底；`RequireAllianceManager` ≈ 联盟管理菜单。
+
 ### 1.0 全局 / 文件 / 认证 / 公共配置
 
 | 方法 | 路径 | 权限 | 说明 |
@@ -179,16 +193,16 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | `/alliance/school-info`、`/enterprises`、`/enterprises/search`、`/enterprises/{id}`、`/grants`、`/grants/resource-options`、`/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/achievements/{id}`、`/experts`、`/experts/mentor-options`、`/experts/{id}`、`/agreements`、`/agreements/{id}`、`/permissions`、`/permissions/{id}`、`/dictionaries/{dictType}`、`/brands`、`/brands/talent-ranking`、`/brands/rank-configs`、`/brands/{id}` | businessUser（联盟管理角色） | 联盟只读视图（含全局企业搜索、授权、导师选项、品牌排行） |
-| PUT | `/alliance/school-info` | RequireAllianceManager | 学校信息 |
-| POST | `/alliance/enterprises/register` | RequireAllianceManager | 学校代企业注册 |
-| PUT/DELETE | `/alliance/enterprises/{id}`、`/enterprises/{id}/link` | RequireAllianceManager | 企业更新/引入/解除引入（DELETE 语义=unlink） |
-| PUT | `/alliance/grants` | RequireAllianceManager | 学校-企业资源授权保存 |
-| GET/POST/PUT/DELETE | `/alliance/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/experts`、`/experts/{id}/display`、`/agreements`、`/permissions`、`/dictionaries/{dictType}`、`/brands`、`/brands/rank-configs` | RequireAllianceManager | 联盟写操作（项目/成果/专家/协议/权限/字典/品牌） |
+| GET | `/alliance/school-info`、`/enterprises`、`/enterprises/search`、`/enterprises/{id}`、`/grants`、`/grants/resource-options`、`/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/achievements/{id}`、`/experts`、`/experts/mentor-options`、`/experts/{id}`、`/agreements`、`/agreements/{id}`、`/permissions`、`/permissions/{id}`、`/dictionaries/{dictType}`、`/brands`、`/brands/talent-ranking`、`/brands/rank-configs`、`/brands/{id}` | 联盟管理菜单（/portal/apps/alliance 或 /portal/alliance 任一） | 联盟只读视图（含全局企业搜索、授权、导师选项、品牌排行） |
+| PUT | `/alliance/school-info` | 联盟管理菜单 | 学校信息 |
+| POST | `/alliance/enterprises/register` | 联盟管理菜单 | 学校代企业注册 |
+| PUT/DELETE | `/alliance/enterprises/{id}`、`/enterprises/{id}/link` | 联盟管理菜单 | 企业更新/引入/解除引入（DELETE 语义=unlink） |
+| PUT | `/alliance/grants` | 联盟管理菜单 | 学校-企业资源授权保存 |
+| GET/POST/PUT/DELETE | `/alliance/projects`、`/projects/{id}`、`/projects/{pid}/milestones`、`/achievements`、`/experts`、`/experts/{id}/display`、`/agreements`、`/permissions`、`/dictionaries/{dictType}`、`/brands`、`/brands/rank-configs` | 联盟管理菜单 | 联盟写操作（项目/成果/专家/协议/权限/字典/品牌） |
 | GET | `/alliance/public/school-info`、`/enterprises`、`/projects`、`/achievements`、`/experts`、`/agreements`、`/brands`、`/brands/talent-ranking`、`/stats`（List+Get 共 15 个） | 登录公开（限流 120/min/IP） | 联盟公开前台（全局企业主体 + links 双控过滤）；`/experts` 的 `includeNonPublic=true` 查询参数仅同租户 `canManageAlliance` 角色可用，其余登录用户与匿名访客强制 `is_public` 过滤 |
-| GET/POST/PUT/DELETE | `/alliance/employment-projects`、`/alliance/employment-projects/{id}` | canManageAlliance（注册于 businessUser 组，handler 层仅 teacher/school_admin/platform_admin/系统菜单权限放行，企业导师排除） | 就业项目 CRUD（L-4；target_groups 面向学生群体，enterprise_ids 参与企业，coverImage 封面图） |
-| GET | `/alliance/employment-jobs`、`/alliance/employment-applications` | canManageAlliance（同上） | 岗位总览 / 投递总览（筛选 projectId/enterpriseId/status/jobId） |
-| PUT | `/alliance/employment-jobs/{id}/status` | RequireAllianceManager | 学校端治理：下架(closed)/恢复(published)岗位 |
+| GET/POST/PUT/DELETE | `/alliance/employment-projects`、`/alliance/employment-projects/{id}` | 联盟管理菜单（企业导师默认不勾联盟菜单即无权限，B13 配置化） | 就业项目 CRUD（L-4；target_groups 面向学生群体，enterprise_ids 参与企业，coverImage 封面图） |
+| GET | `/alliance/employment-jobs`、`/alliance/employment-applications` | 联盟管理菜单 | 岗位总览 / 投递总览（筛选 projectId/enterpriseId/status/jobId） |
+| PUT | `/alliance/employment-jobs/{id}/status` | 联盟管理菜单 | 学校端治理：下架(closed)/恢复(published)岗位 |
 | GET | `/alliance/public/employment-projects`、`/alliance/public/employment-projects/{id}`、`/alliance/public/employment-projects/{id}/jobs`、`/alliance/public/employment-jobs/{id}` | 登录公开（同上限流） | 供需大厅：仅 published；浏览全量可见（不分角色），target_groups 仅在投递时校验资格；项目列表附带 jobCount（在招岗位数）与 coverImage |
 | POST/GET | `/alliance/public/employment-jobs/{id}/apply`、`/alliance/public/employment-applications/mine` | 登录公开（仅学生） | 学生投递（档案快照+求职信，唯一约束防重 409；不在岗位 target_groups 面向群体内 403「暂不可投递」）/ 我的投递 |
 

@@ -36,8 +36,7 @@ func tenantIDRequired(w http.ResponseWriter, r *http.Request) string {
 
 // GetConfig GET /ai/config：查看当前租户 AI 配置（脱敏）。
 func (h *AIHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -55,8 +54,7 @@ func (h *AIHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 
 // GetUsage GET /ai/usage：租户 AI 用量统计（全量合计 + 近 30 天每日序列），鉴权同 GetConfig。
 func (h *AIHandler) GetUsage(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -80,8 +78,7 @@ type saveAIConfigRequest struct {
 
 // SaveConfig PUT /ai/config：保存当前租户 AI 配置；apiKey 留空表示不修改。
 func (h *AIHandler) SaveConfig(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -110,8 +107,7 @@ func (h *AIHandler) SaveConfig(w http.ResponseWriter, r *http.Request) {
 
 // DeleteConfig DELETE /ai/config：清除当前租户 AI 配置。
 func (h *AIHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
+	if !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

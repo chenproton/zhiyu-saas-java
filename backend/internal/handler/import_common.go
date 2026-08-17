@@ -336,7 +336,7 @@ type importRequestContext struct {
 // Writes error response and returns nil on any failure.
 func parseMultiImportRequest(w http.ResponseWriter, r *http.Request, requirePortalAdmin bool) *importRequestContext {
 	claims := middleware.CurrentUser(r)
-	if claims == nil || (requirePortalAdmin && !canManagePortal(claims)) {
+	if claims == nil || (requirePortalAdmin && !canManagePortal(r)) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return nil
 	}

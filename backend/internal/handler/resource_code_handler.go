@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -48,7 +47,7 @@ func (h *ResourceCodeHandler) crud() crudConfig[ResourceCodeRequest, domain.Reso
 		DeleteErrMsg:       "删除资源编码失败",
 		UniqueViolationMsg: "资源编码代码已存在，请使用其他代码",
 		Permit: func(r *http.Request) bool {
-			return canManagePortal(middleware.CurrentUser(r))
+			return canManagePortal(r)
 		},
 		// 读仅需登录，租户归属由 GetOwnership 校验。
 		PermitGet:      nil,

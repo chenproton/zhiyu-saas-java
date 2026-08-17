@@ -277,15 +277,20 @@ func (e *TestEnv) NewTokenWithIdentity(userID, tenantID string, role domain.User
 	if _, err := uuid.Parse(userID); err != nil {
 		realID = uuid.NewSHA1(uuid.NameSpaceOID, []byte("testaux:"+userID)).String()
 	}
-	e.seedAuxUser(realID, tenantID, role)
+	e.seedAuxUser(realID, tenantID, role, roleCode)
 	u := &domain.User{ID: realID, TenantID: &tenantID, Role: role, Platform: domain.UserPlatformPortal, Username: "aux-user", InstitutionID: institutionID}
 	token, _ := middleware.GenerateToken(TestJWTSecret, middleware.TokenInput{User: u, RoleCodes: []string{roleCode}})
 	return token
 }
 
 // seedAuxUser 幂等补种辅助用户（与种子 operator 一致：password_changed_at 早于 token 签发，
-// 避免被「改密后旧 token 失效」误判）。
-func (e *TestEnv) seedAuxUser(userID, tenantID string, role domain.UserRole) {
+// 避免被「改密后旧 token 失效」误判），并按角色绑定菜单授权角色：
+//   - 学生（roleCode=student）：绑定学生菜单角色（落地页 + 服务台），路由层仅放行
+//     只读面（RequireMenu 管理菜单 ∪ landing），管理写 API 403——与生产菜单驱动语义一致；
+//   - 其余角色：绑定 permissions.admin=true 的测试角色，RequireMenu 路由层全量放行
+//     （路由层授权矩阵由 middleware/menu_test.go 单测覆盖，集成测试聚焦 handler 层
+//     业务校验：越权/归属/状态机）。
+func (e *TestEnv) seedAuxUser(userID, tenantID string, role domain.UserRole, roleCode string) {
 	ctx := context.Background()
 	// code 有全局唯一约束：按租户 ID 派生，避免多 aux 租户互撞
 	code := tenantID
@@ -309,6 +314,43 @@ func (e *TestEnv) seedAuxUser(userID, tenantID string, role domain.UserRole) {
 		ON CONFLICT (id) DO NOTHING
 	`, userID, tenantID, string(role), platform, "aux-"+userID); err != nil {
 		fmt.Printf("SEED-USER-ERR: %v\n", err)
+	}
+	// 菜单驱动 RBAC（ADR-0008）：MenuContext 查库合并角色菜单授权。
+	// 学生角色绑定学生菜单（落地页 + 服务台），路由层只放行只读面；
+	// 其余角色绑定 admin 测试角色全量放行（见 seedAuxUser 注释）。
+	// 按角色类型派生 roleID（admin/student 互斥），并解除旧的辅助角色绑定，
+	// 避免角色类型变更（测试改 roleCode）后 admin/student 双绑定叠加成全量。
+	perms := `{"admin": true}`
+	roleCodeName := "aux_admin_" + userID
+	roleNS := "auxadmin-role:"
+	if roleCode == domain.RoleStudent {
+		perms = `{"menus":{"/job/landing":true,"/lesson/landing":true,"/scene/landing":true,` +
+			`"/evaluation/landing":true,"/library/landing":true,"/portal/workspace":true}}`
+		roleCodeName = "aux_student_" + userID
+		roleNS = "auxstudent-role:"
+	}
+	otherNS := "auxstudent-role:"
+	if roleCode == domain.RoleStudent {
+		otherNS = "auxadmin-role:"
+	}
+	roleID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(roleNS+userID)).String()
+	otherRoleID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(otherNS+userID)).String()
+	if _, err := e.DB.Exec(ctx, `
+		DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2
+	`, userID, otherRoleID); err != nil {
+		fmt.Printf("SEED-ROLEUNBIND-ERR: %v\n", err)
+	}
+	if _, err := e.DB.Exec(ctx, `
+		INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status)
+		VALUES ($1, $2, $3, '测试辅助角色', '', $4, 0, 'active')
+		ON CONFLICT (id) DO UPDATE SET permissions = EXCLUDED.permissions
+	`, roleID, tenantID, roleCodeName, perms); err != nil {
+		fmt.Printf("SEED-ROLE-ERR: %v\n", err)
+	}
+	if _, err := e.DB.Exec(ctx, `
+		INSERT INTO user_roles (role_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+	`, roleID, userID); err != nil {
+		fmt.Printf("SEED-ROLEBIND-ERR: %v\n", err)
 	}
 }
 

@@ -20,12 +20,30 @@ import (
 )
 
 // claimsWithRoles 构造指定角色 codes 的 claims（无系统菜单权限）。
+// 菜单驱动 RBAC（ADR-0008）后，handler 层权限判断读菜单授权（MenuGrant，
+// 回退 claims.Permissions 完整权限 map）：按角色注入对应菜单——
+// teacher/school_admin 给联盟管理菜单（放行联盟管理），enterprise_mentor 只给
+// 共建菜单（无联盟菜单 → B13 配置级收窄生效），student 只给落地页菜单。
 func claimsWithRoles(userID string, roleCodes ...string) *middleware.Claims {
 	tenantID := testhelper.TestTenantID
+	menus := map[string]interface{}{}
+	for _, code := range roleCodes {
+		switch code {
+		case domain.RoleTeacher, domain.RoleSchoolAdmin:
+			menus["/portal/apps/alliance/brands"] = true
+			menus["/portal/apps/alliance/projects"] = true
+		case domain.RoleEnterpriseMentor:
+			menus["/job/positions"] = true
+			menus["/scene/"] = true
+		case domain.RoleStudent:
+			menus["/evaluation/landing"] = true
+		}
+	}
 	return &middleware.Claims{
-		UserID:    userID,
-		TenantID:  &tenantID,
-		RoleCodes: roleCodes,
+		UserID:      userID,
+		TenantID:    &tenantID,
+		RoleCodes:   roleCodes,
+		Permissions: domain.JSONMap{"menus": menus},
 	}
 }
 

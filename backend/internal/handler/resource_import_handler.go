@@ -118,9 +118,9 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 	claims := middleware.CurrentUser(r)
 	// alliance-* 导入面向业务角色（教师等，与 alliance 模块权限一致），
 	// 组织架构/师生/专业行业等基础数据导入仍限门户系统管理员
-	permit := canManageAlliance(claims)
+	permit := canManageAlliance(r)
 	if !strings.HasPrefix(entity, "alliance-") {
-		permit = canManagePortal(claims)
+		permit = canManagePortal(r)
 	}
 	if claims == nil || !permit {
 		respondError(w, http.StatusForbidden, "权限不足")

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -45,7 +44,7 @@ func (h *MajorHandler) crud() crudConfig[MajorRequest, domain.Major] {
 		UpdateErrMsg:      "更新专业失败",
 		DeleteErrMsg:      "删除专业失败",
 		DeleteCheckErrMsg: "检查专业引用失败",
-		Permit:            func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		Permit:            func(r *http.Request) bool { return canManagePortal(r) },
 		// 专业详情为业务模块共用参考数据，对业务角色开放只读（路由层已限定业务角色）
 		PermitGet:          func(r *http.Request) bool { return true },
 		UniqueViolationMsg: "专业代码已存在，请使用其他代码",

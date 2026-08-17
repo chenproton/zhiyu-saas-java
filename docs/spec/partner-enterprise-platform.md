@@ -115,7 +115,7 @@
 4. 企业导师用自己的企业账号参与共建（岗位/场景编辑）、被排课（teacher_type=企业导师）
 5. 毕业设计课题正式选择企业导师（复用选择器，修复悬空引用）
 
-**权限收窄（重要）**：移除 `enterprise_mentor` 的 `canManageAlliance` 全量权限，联盟管理归 `school_admin`/`teacher`；保留共建（job/scene 写）+ 测评打分。
+**权限收窄（重要，2026-08-17 起为配置级，ADR-0008）**：移除 `enterprise_mentor` 的 `canManageAlliance` 全量权限，联盟管理归 `school_admin`/`teacher`；保留共建（job/scene 写）+ 测评打分。菜单驱动 RBAC 后，`enterprise_mentor` 默认种子不勾联盟菜单即无联盟权限（配置可覆盖），代码级收窄取消。
 **一期范围**：共建人选择器支持"企业专家"来源（直接绑定企业账号）+ 毕业设计导师选择 + 权限收窄。
 **演进**：partner 平台待评分入口（跨租户评分）。
 
@@ -144,7 +144,7 @@
 |---|------|------|------|
 | 1 | 专家档案归属学校租户，学校手工创建 | 企业租户维护，学校只读 | §3.1 |
 | 2 | 岗位/场景共建人仅能选学校租户 users | 支持从已引入企业专家（绑定企业账号）中选择 | §3.3 |
-| 3 | enterprise_mentor 拥有联盟全量 CRUD 与全部业务写权限 | 收窄为共建 + 打分 | §3.3 |
+| 3 | enterprise_mentor 拥有联盟全量 CRUD 与全部业务写权限 | 收窄为共建 + 打分（菜单驱动后为配置级：默认种子不勾联盟菜单） | §3.3 |
 | 4 | 测评 enterprise_mentor 主体仅有声明式配置 | 任务级分配 + 评分菜单授权，形成打分闭环 | §3.4 |
 | 5 | `graduation_project_topics.enterprise_mentor_id` 悬空 | 正式选择器 + 绑定 | §3.3 |
 | 6 | public 接口跨租户汇聚学校数据 | 全局企业主体 + links 双控过滤 | §3.2 |
@@ -331,7 +331,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 - 企业端：`enterprise_admin` 可写（主体/专家/成员），`enterprise_member` 只读；JWT claims 携带 RoleCodes，handler 校验
 - 学校端：沿用 `canManageAlliance` + `requireTenant`；专家跨租户读取必须校验企业 ID ∈ 本校 links（防越权）
-- **角色收窄（互动流程二）**：`enterprise_mentor` 移除 `canManageAlliance` 权限，联盟管理归 `school_admin`/`teacher`；保留业务共建（job/scene 写）+ 测评打分；影响范围：`handler/common.go:205-217` 与种子角色权限（`store/tenants.go:490-497`）
+- **角色收窄（互动流程二，2026-08-17 起配置级）**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（菜单驱动 RBAC，ADR-0008；配置可覆盖）；保留业务共建（job/scene 写）+ 测评打分。影响范围：种子角色权限（`store/tenants.go`）与联盟菜单授权（`router/menu_grants.go`、handler `canManageAlliance` 读菜单授权）
 - 企业专家参与共建/打分直接经企业账号（`alliance_experts.user_id`），无学校侧账号创建
 
 ---

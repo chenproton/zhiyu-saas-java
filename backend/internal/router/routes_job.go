@@ -6,8 +6,8 @@ func registerJobRoutes(r chi.Router, h *Handlers) {
 	registerContentRoutes(r, "/job/positions", h.positionHandler)
 	r.Post("/job/positions/{id}/clone", h.positionCloneHandler.Clone)
 	r.Put("/job/positions/{id}/save-full", h.positionHandler.SaveFull)
-	r.Get("/job/positions/{id}/favorite", h.positionHandler.GetFavorite)
-	r.Post("/job/positions/{id}/favorite", h.positionHandler.ToggleFavorite)
+	// 收藏接口（favorite GET/POST、favorites 列表）在 routes.go 收藏组统一注册
+	// （RequireMenu 全菜单 ∪ 落地页，学生落地页可用），此处不再重复注册
 
 	// 能力点只读接口挂在 jobViewer 角色组（routes.go，含学生），供学生场景学习页使用
 	r.Post("/job/abilities", h.abilityHandler.Create)

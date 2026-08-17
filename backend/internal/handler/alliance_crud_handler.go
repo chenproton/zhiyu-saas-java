@@ -9,14 +9,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // allianceList 统一 "claims 检查 → executeListQuery → {items,total}" 的列表流程。
 func allianceList[T any](w http.ResponseWriter, r *http.Request, db store.ListQueryDB, cfg store.ListQueryConfig[T], errMsg string) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -69,7 +67,7 @@ func alliancePublicGet[T any](w http.ResponseWriter, r *http.Request, getFn func
 // allianceCRUD 组装联盟实体 CRUD 公共差异：业务角色权限 + requireTenant 租户过滤。
 func allianceCRUD[T any, V any]() crudConfig[T, V] {
 	return crudConfig[T, V]{
-		Permit: func(r *http.Request) bool { return canManageAlliance(middleware.CurrentUser(r)) },
+		Permit: func(r *http.Request) bool { return canManageAlliance(r) },
 		CreateTenantFn: func(w http.ResponseWriter, r *http.Request, t *T) (string, bool) {
 			return requireTenant(w, r)
 		},

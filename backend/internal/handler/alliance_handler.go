@@ -49,8 +49,7 @@ func (h *AllianceHandler) GetSchoolInfo(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -82,8 +81,7 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 
 // ListEnterprises 本校已引入企业列表（link 合并视图：全局主体 + 学校侧管理字段）。
 func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -106,8 +104,7 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 
 // GetEnterprise 单企业合并视图（主体只读 + link 管理字段）。
 func (h *AllianceHandler) GetEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -125,8 +122,7 @@ func (h *AllianceHandler) GetEnterprise(w http.ResponseWriter, r *http.Request) 
 
 // SearchEnterprises 全局企业池搜索（跨租户只读，排除已引入企业），供"引入企业"选择。
 func (h *AllianceHandler) SearchEnterprises(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -157,7 +153,7 @@ type registerEnterpriseRequest struct {
 // 本校-企业合作关联（status=active）。企业已存在时由前端改走"引入企业"流程。
 func (h *AllianceHandler) RegisterEnterprise(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -229,7 +225,7 @@ type linkEnterpriseRequest struct {
 // LinkEnterprise 引入企业（创建学校-企业合作关联）。
 func (h *AllianceHandler) LinkEnterprise(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -274,8 +270,7 @@ func (h *AllianceHandler) LinkEnterprise(w http.ResponseWriter, r *http.Request)
 
 // ListGrants 学校查看某企业的资源授权（position/scene 两行）。
 func (h *AllianceHandler) ListGrants(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -309,7 +304,7 @@ type saveGrantsRequest struct {
 // SaveGrants 保存某企业对某类型资源的编辑授权（空数组 = 清空授权）。
 func (h *AllianceHandler) SaveGrants(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -360,8 +355,7 @@ func (h *AllianceHandler) SaveGrants(w http.ResponseWriter, r *http.Request) {
 
 // ListGrantResourceOptions 学校可授权资源候选（该企业共建 + 学校自建已发布）。
 func (h *AllianceHandler) ListGrantResourceOptions(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -384,8 +378,7 @@ func (h *AllianceHandler) ListGrantResourceOptions(w http.ResponseWriter, r *htt
 
 // UnlinkEnterprise 解除引入（删除 link；历史协议/项目/成果引用保留，页面不再展示）。
 func (h *AllianceHandler) UnlinkEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -412,8 +405,7 @@ type updateEnterpriseLinkRequest struct {
 
 // UpdateEnterprise 仅更新 link 学校侧管理字段（rating/status/enterprise_type/is_public/secondary_colleges）。
 func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -497,8 +489,7 @@ func (h *AllianceHandler) DeleteProject(w http.ResponseWriter, r *http.Request) 
 // ===== 里程碑 =====
 
 func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -520,8 +511,7 @@ func (h *AllianceHandler) ListMilestones(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -551,8 +541,7 @@ func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -612,8 +601,7 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) DeleteMilestone(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -656,8 +644,7 @@ func (h *AllianceHandler) DeleteAchievement(w http.ResponseWriter, r *http.Reque
 // ListExperts 本校已引入企业的专家列表（跨租户只读）。
 // query 指定 enterpriseId 时必须在已引入企业集合内，否则 403。
 func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -699,8 +686,7 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 
 // GetExpert 专家详情（跨租户只读；专家所属企业必须已引入本校）。
 func (h *AllianceHandler) GetExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -733,8 +719,7 @@ func (h *AllianceHandler) GetExpert(w http.ResponseWriter, r *http.Request) {
 // CreateSchoolExpert 学校侧创建专家档案（用于校本师资品牌资料补充：复制教师为无企业关联的专家档案，
 // 与 /partner/experts 共用 alliance_experts 表，不单独建表）。
 func (h *AllianceHandler) CreateSchoolExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -780,8 +765,7 @@ func (h *AllianceHandler) CreateSchoolExpert(w http.ResponseWriter, r *http.Requ
 
 // UpdateSchoolExpert 学校侧更新专家档案（仅限本校创建的无企业关联档案，即校本教师资料副本）。
 func (h *AllianceHandler) UpdateSchoolExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -826,8 +810,7 @@ func (h *AllianceHandler) UpdateSchoolExpert(w http.ResponseWriter, r *http.Requ
 
 // DeleteSchoolExpert 学校侧删除专家档案（仅限本校创建的无企业关联档案，即校本教师资料副本）。
 func (h *AllianceHandler) DeleteSchoolExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -877,8 +860,7 @@ func (h *AllianceHandler) DeleteAgreement(w http.ResponseWriter, r *http.Request
 // ===== 权限 =====
 
 func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -897,8 +879,7 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -916,8 +897,7 @@ func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -945,8 +925,7 @@ func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1005,8 +984,7 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *AllianceHandler) DeletePermission(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1040,8 +1018,7 @@ func (h *AllianceHandler) ListDictionaryItems(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1083,8 +1060,7 @@ func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Re
 }
 
 func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1127,8 +1103,7 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 }
 
 func (h *AllianceHandler) DeleteDictionaryItem(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1161,7 +1136,7 @@ func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
 // listJobBrands 岗位品牌列表（含关联岗位资料，支持名称搜索与分页）。
 func (h *AllianceHandler) listJobBrands(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1183,7 +1158,7 @@ func (h *AllianceHandler) listJobBrands(w http.ResponseWriter, r *http.Request) 
 // listEmployerBrands 雇主品牌列表（含引用企业资料，支持名称搜索与分页）。
 func (h *AllianceHandler) listEmployerBrands(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1203,7 +1178,7 @@ func (h *AllianceHandler) listEmployerBrands(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *AllianceHandler) GetBrand(w http.ResponseWriter, r *http.Request) {
-	if !crudCheckPermit(w, r, func(r *http.Request) bool { return canManageAlliance(middleware.CurrentUser(r)) }) {
+	if !crudCheckPermit(w, r, func(r *http.Request) bool { return canManageAlliance(r) }) {
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -1250,8 +1225,7 @@ func (h *AllianceHandler) DeleteBrand(w http.ResponseWriter, r *http.Request) {
 // ===== 人才画像排名 =====
 
 func (h *AllianceHandler) ListTalentRanking(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1268,8 +1242,7 @@ func (h *AllianceHandler) ListTalentRanking(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *AllianceHandler) ListBrandMajorRankConfigs(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1288,7 +1261,7 @@ func (h *AllianceHandler) ListBrandMajorRankConfigs(w http.ResponseWriter, r *ht
 // SaveBrandMajorRankConfigs 批量保存专业排名启用配置（路由挂 RequireAllianceManager）。
 func (h *AllianceHandler) SaveBrandMajorRankConfigs(w http.ResponseWriter, r *http.Request) {
 	// 与同文件其余写接口一致：handler 内补权限校验（纵深防御，不依赖路由中间件）
-	if !canManageAlliance(middleware.CurrentUser(r)) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
@@ -1466,7 +1439,7 @@ func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Reque
 	limit, offset := publicListParams(r)
 	includeNonPublic := false
 	if claims := middleware.CurrentUser(r); claims != nil &&
-		claims.TenantID != nil && *claims.TenantID == tenantID && canManageAlliance(claims) {
+		claims.TenantID != nil && *claims.TenantID == tenantID && canManageAlliance(r) {
 		includeNonPublic = r.URL.Query().Get("includeNonPublic") == "true"
 	}
 	alliancePublicList(w, r, func(ctx context.Context) ([]domain.AllianceExpert, error) {
@@ -1479,7 +1452,7 @@ func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Reque
 // 越权防线与 GetExpert 一致：专家所属企业必须已引入本校。
 func (h *AllianceHandler) ToggleExpertDisplay(w http.ResponseWriter, r *http.Request) {
 	// 与同文件其余写接口一致：handler 内补权限校验（纵深防御，不依赖路由中间件）
-	if !canManageAlliance(middleware.CurrentUser(r)) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

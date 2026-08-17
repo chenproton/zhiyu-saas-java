@@ -231,16 +231,27 @@ func platformAdminOnly(claims *middleware.Claims) bool {
 }
 
 // schoolAdminOnly returns true if the caller is a school admin.
+// 保留角色判断：school_admin 是「无 menus=全量」与关键写白名单（密码/租户状态/
+// 有效期/审批终审）的兜底主体（ADR-0008 决策 5）。
 func schoolAdminOnly(claims *middleware.Claims) bool {
 	return middleware.HasRole(claims, domain.RoleSchoolAdmin)
 }
 
 // canManagePortal returns true for portal system management.
-// It prefers the permission-based system menu check so that custom roles
-// granted system settings menus also work, while keeping school_admin and
-// platform_admin as fallbacks for backward compatibility.
-func canManagePortal(claims *middleware.Claims) bool {
-	return middleware.HasSystemPermission(claims) || schoolAdminOnly(claims) || canManagePlatform(claims)
+// 菜单驱动（ADR-0008）：自定义角色配置任一 /portal/apps/system 菜单即可管理；
+// school_admin/platform_admin 角色与系统菜单授权（HasSystemPermission）兜底。
+func canManagePortal(r *http.Request) bool {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		return false
+	}
+	if middleware.HasSystemPermission(claims) || schoolAdminOnly(claims) || platformAdminOnly(claims) {
+		return true
+	}
+	if g := menuGrantFor(r); g != nil {
+		return g.CoversPrefix("/portal/apps/system")
+	}
+	return false
 }
 
 // canManagePlatform returns true for platform-level configuration/operation.
@@ -251,7 +262,7 @@ func canManagePlatform(claims *middleware.Claims) bool {
 // canManageUsers reports whether the caller may manage portal users
 // (staff titles, extension fields, user CRUD).
 func canManageUsers(r *http.Request) bool {
-	return canManagePortal(middleware.CurrentUser(r))
+	return canManagePortal(r)
 }
 
 // forcePublishedForStudent 学生角色强制 status=published（防枚举未发布资源：
@@ -269,21 +280,37 @@ func forcePublishedForStudent(r *http.Request, params *store.ListParams) bool {
 }
 
 // canManageAlliance reports whether the caller may manage the alliance
-// (产教融合) module. 产教融合平台面向教师/学校管理员/平台管理员开放；
-// 企业导师（enterprise_mentor）仅保留岗位/场景共建与测评打分，不再有联盟管理权限（B13 角色收窄）。
-// 有系统设置菜单权限的角色亦放行。
-func canManageAlliance(claims *middleware.Claims) bool {
+// (产教融合) module. 菜单驱动（ADR-0008）：配置任一联盟菜单（管理面或前台
+// /portal/apps/alliance、/portal/alliance）即视为联盟管理权限；B13 企业导师
+// 默认不勾联盟菜单即无权限（配置可覆盖）；系统菜单授权兜底。
+func canManageAlliance(r *http.Request) bool {
+	claims := middleware.CurrentUser(r)
 	if claims == nil {
 		return false
 	}
-	for _, code := range []string{
-		domain.RoleTeacher, domain.RoleSchoolAdmin, domain.RolePlatformAdmin,
-	} {
-		if middleware.HasRole(claims, code) {
-			return true
-		}
+	if middleware.HasSystemPermission(claims) {
+		return true
 	}
-	return middleware.HasSystemPermission(claims)
+	if g := menuGrantFor(r); g != nil {
+		return g.CoversPrefix("/portal/apps/alliance") || g.CoversPrefix("/portal/alliance")
+	}
+	return false
+}
+
+// menuGrantFor 解析请求的菜单授权视图：优先 MenuContext 装载的 grant；
+// 无 grant 时回退旧令牌/测试直调场景的完整权限 map（claims.Permissions），
+// 与 middleware.loadMenuGrant 的旧令牌回退一致。
+func menuGrantFor(r *http.Request) *domain.MenuGrant {
+	if g := middleware.CurrentMenuGrant(r); g != nil {
+		return g
+	}
+	claims := middleware.CurrentUser(r)
+	if claims == nil || len(claims.Permissions) == 0 {
+		return nil
+	}
+	g := &domain.MenuGrant{GrantedPaths: map[string]bool{}}
+	g.Merge(claims.Permissions)
+	return g
 }
 
 // canReadTenantScoped returns true if the caller has a tenant to scope reads to.

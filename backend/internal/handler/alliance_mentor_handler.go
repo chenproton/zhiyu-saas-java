@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 )
 
@@ -15,8 +14,7 @@ type AllianceMentorHandler struct {
 
 // ListMentorOptions 共建导师选择器数据源（GET /alliance/experts/mentor-options）。
 func (h *AllianceMentorHandler) ListMentorOptions(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManageAlliance(claims) {
+	if !canManageAlliance(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

@@ -137,7 +137,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 与 Excel 导入路径一致的权限门槛：基础实体导入限学校管理员（企业导师无导入权）
-	if !canManagePortal(claims) {
+	if !canManagePortal(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}

@@ -182,10 +182,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasMenuPermission = useCallback(
     (path: string) => {
-      // 超级管理员（学校/平台管理员）显式全量放行：与后端 RequireSystemPermission
-      // 的角色兜底一致，不再依赖「无 menus = 全部可见」的隐式约定（checkMenuPermission 已 fail-closed）
+      // 菜单驱动 RBAC（ADR-0008）语义与后端菜单中间件对齐：
+      // school_admin/platform_admin 在「未显式配置 menus」时全量放行（与后端
+      // 「无 menus=全量」兜底一致，roles 页对超管回显全选）；一旦显式配置了 menus
+      // 则按菜单判定（配置成与教师一致则权限一致）。
       const code = activeRole?.code
-      if (code === 'school_admin' || code === 'platform_admin') return true
+      const menus = permissions?.menus
+      const hasExplicitMenus =
+        menus != null && typeof menus === 'object' && Object.keys(menus as object).length > 0
+      if ((code === 'school_admin' || code === 'platform_admin') && !hasExplicitMenus) return true
       return checkMenuPermission(permissions?.menus, path, subscriptionModules ?? undefined)
     },
     [permissions, subscriptionModules, activeRole?.code],

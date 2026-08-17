@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -44,7 +43,7 @@ func (h *OrgTypeHandler) crud() crudConfig[OrgTypeRequest, domain.OrgType] {
 		UpdateErrMsg:      "更新组织类型失败",
 		DeleteErrMsg:      "删除组织类型失败",
 		DeleteCheckErrMsg: "检查组织类型引用失败",
-		Permit:            func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		Permit:            func(r *http.Request) bool { return canManagePortal(r) },
 		// 组织类型详情为业务模块共用参考数据（审批流配置等），对业务角色开放只读（路由层已限定业务角色）
 		PermitGet:          func(r *http.Request) bool { return true },
 		UniqueViolationMsg: "组织类型名称已存在，请使用其他名称",

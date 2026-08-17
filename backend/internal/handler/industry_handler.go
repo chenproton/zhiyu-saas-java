@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -46,7 +45,7 @@ func (h *IndustryHandler) crud() crudConfig[IndustryRequest, domain.Industry] {
 		UpdateErrMsg:      "更新行业失败",
 		DeleteErrMsg:      "删除行业失败",
 		DeleteCheckErrMsg: "检查子行业失败",
-		Permit:            func(r *http.Request) bool { return canManagePortal(middleware.CurrentUser(r)) },
+		Permit:            func(r *http.Request) bool { return canManagePortal(r) },
 		// 行业详情为业务模块共用参考数据，对业务角色开放只读（路由层已限定业务角色）
 		PermitGet:          func(r *http.Request) bool { return true },
 		UniqueViolationMsg: "行业代码已存在，请使用其他代码",
