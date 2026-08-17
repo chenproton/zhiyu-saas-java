@@ -345,7 +345,7 @@ function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'
   Promise.all([
     fetch('/api/v1/evaluation/portraits?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
     fetch('/api/v1/evaluation/job-ability/results?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
-    fetch('/api/v1/evaluation/job-ability/course-scores?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null}),
+    fetch(SHOW_COURSE_SCORES?'/api/v1/evaluation/job-ability/course-scores?userId='+encodeURIComponent(userId):null,{headers:headers}).then(function(r){return r&&r.ok?r.json():null}),
     fetch('/api/v1/evaluation/portraits/student-dashboard?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null}),
     fetch('/api/v1/portal/workspace/honors?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null})
   ]).then(function(results){
