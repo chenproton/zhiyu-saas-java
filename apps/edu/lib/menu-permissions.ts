@@ -74,6 +74,8 @@ export function buildMenuTree(): MenuTreeItem[] {
         label: 'AI 广场管理',
         children: [
           { id: 'ai-admin-reviews', label: '知识库/智能体审核', href: '/portal/apps/ai/admin/reviews' },
+          { id: 'ai-admin-kbs', label: '知识库管理', href: '/portal/apps/ai/admin/kbs' },
+          { id: 'ai-admin-agents', label: '智能体管理', href: '/portal/apps/ai/admin/agents' },
           {
             id: 'ai-admin-integrations',
             label: '外部 AI 服务上架',

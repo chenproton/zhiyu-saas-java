@@ -13,8 +13,8 @@ import (
 // ==================== B6 知识库问答记录 ====================
 
 // ListMyKBAsks 我在该库下的提问历史（可见性与 GetKB 一致）。
-func (svc *AICenterService) ListMyKBAsks(ctx context.Context, tenantID, kbID, userID string) ([]domain.AIKBAsk, error) {
-	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID); err != nil {
+func (svc *AICenterService) ListMyKBAsks(ctx context.Context, tenantID, kbID, userID string, isAdmin bool) ([]domain.AIKBAsk, error) {
+	if _, _, err := svc.getKBWithRole(ctx, tenantID, kbID, userID, isAdmin); err != nil {
 		return nil, err
 	}
 	return svc.s.Store().AICenter().ListMyKBAsks(ctx, tenantID, kbID, userID)
@@ -94,13 +94,13 @@ func (svc *AICenterService) YIKnowChat(ctx context.Context, tenantID, userID, co
 // ==================== B7 智能体预览（owner 专属，不落库/不计数） ====================
 
 // PreviewAgent 编辑器内实时试聊：用表单中的最新提示词（未保存也可预览）。
-// 仅 owner；不持久化消息、不增对话数；关联库检索用当前已保存的关联（提示词预览为主）。
-func (svc *AICenterService) PreviewAgent(ctx context.Context, tenantID, agentID, userID, systemPrompt, message string) (string, error) {
+// 仅 owner 与 school_admin（审核体验）；不持久化消息、不增对话数；关联库检索用当前已保存的关联。
+func (svc *AICenterService) PreviewAgent(ctx context.Context, tenantID, agentID, userID string, isAdmin bool, systemPrompt, message string) (string, error) {
 	a, err := svc.s.Store().AICenter().GetAgent(ctx, tenantID, agentID)
 	if err != nil {
 		return "", err
 	}
-	if a.OwnerID != userID {
+	if a.OwnerID != userID && !isAdmin {
 		return "", store.ErrForbidden
 	}
 	prompt := strings.TrimSpace(systemPrompt)

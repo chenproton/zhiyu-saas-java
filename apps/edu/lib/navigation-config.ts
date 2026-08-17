@@ -641,6 +641,16 @@ export const aiNavigationConfig: PlatformNavigationConfig = {
           href: '/portal/apps/ai/admin/reviews',
         },
         {
+          id: 'admin-kbs',
+          label: '知识库管理',
+          href: '/portal/apps/ai/admin/kbs',
+        },
+        {
+          id: 'admin-agents',
+          label: '智能体管理',
+          href: '/portal/apps/ai/admin/agents',
+        },
+        {
           id: 'admin-integrations',
           label: '外部 AI 服务上架',
           href: '/portal/apps/ai/admin/integrations',

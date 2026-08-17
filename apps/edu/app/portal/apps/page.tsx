@@ -21,6 +21,10 @@ import {
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
+import {
+  YIKnowChatDialog,
+  useYIKnowChatDialog,
+} from '@/app/portal/apps/ai/_components/yi-know-chat-dialog'
 import { getPlatformCardModules, platformModuleDefs } from '@/lib/navigation-config'
 import { getServiceClickCounts, recordServiceClick } from '@/lib/frequent-services'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -90,7 +94,7 @@ interface ModuleSection {
   modules: ModuleItem[]
 }
 
-function ModuleCard({ module }: { module: ModuleItem }) {
+function ModuleCard({ module, onOpenChat }: { module: ModuleItem; onOpenChat?: () => void }) {
   const t = useT()
   const isExternal = module.href.startsWith('http')
   const href = module.href
@@ -138,6 +142,22 @@ function ModuleCard({ module }: { module: ModuleItem }) {
     )
   }
 
+  // v2.7：YI Know 助手卡片就地弹窗开聊（避免跳转后「返回首页」错导航），其余卡片保持路由跳转
+  if (module.href === '/portal/apps/ai/chat' && onOpenChat) {
+    return (
+      <button
+        key={module.id}
+        onClick={() => {
+          recordServiceClick(module.href)
+          onOpenChat()
+        }}
+        className={`${className} text-left w-full`}
+      >
+        {cardContent}
+      </button>
+    )
+  }
+
   return (
     <Link
       key={module.id}
@@ -154,6 +174,7 @@ export default function AppsPage() {
   const t = useT()
   const { hasMenuPermission, subscriptionModules } = usePortalAuth()
   const [activeMenu, setActiveMenu] = useState(menuItems[0].id)
+  const { openChat, dialogProps } = useYIKnowChatDialog()
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const contentRef = useRef<HTMLDivElement>(null)
   const subscriptionLoading = subscriptionModules === null
@@ -252,7 +273,22 @@ export default function AppsPage() {
               <span className="font-medium">{t('常用服务')}</span>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto">
-              {visibleQuickAccess.map((item) => (
+              {visibleQuickAccess.map((item) =>
+                item.href === '/portal/apps/ai/chat' ? (
+                  <button
+                    key={item.href}
+                    onClick={() => {
+                      recordServiceClick(item.href)
+                      openChat()
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg hover:bg-primary/5 hover:text-primary transition-all shrink-0 group border border-border"
+                  >
+                    <item.icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
+                      {t(item.label)}
+                    </span>
+                  </button>
+                ) : (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -264,7 +300,8 @@ export default function AppsPage() {
                     {t(item.label)}
                   </span>
                 </Link>
-              ))}
+                ),
+              )}
             </div>
           </div>
 
@@ -377,7 +414,7 @@ export default function AppsPage() {
                     {/* Module Cards Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                       {section.modules.map((module) => (
-                        <ModuleCard key={module.id} module={module} />
+                        <ModuleCard key={module.id} module={module} onOpenChat={openChat} />
                       ))}
                     </div>
                   </div>
@@ -387,6 +424,8 @@ export default function AppsPage() {
           </main>
         </div>
       </div>
+      {/* v2.7：YI Know 助手聊天弹窗 */}
+      <YIKnowChatDialog {...dialogProps} />
     </TooltipProvider>
   )
 }

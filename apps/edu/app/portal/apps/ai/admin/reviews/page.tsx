@@ -28,13 +28,14 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { BookOpen, Bot, Check, ChevronLeft, ChevronRight, Link2, ShieldCheck, X } from 'lucide-react'
+import { BookOpen, Bot, Check, ChevronLeft, ChevronRight, Link2, ShieldCheck, X, ExternalLink } from 'lucide-react'
 import { useToast, ConfirmDialog, EmptyState } from '@zhiyu/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Spinner } from '@/components/ui/spinner'
 import { aiCenterAdminApi } from '@/lib/api'
 import type { AIAdminOverview, AIAgent, AIKnowledgeBase, ListResult } from '@/lib/api'
 import { formatDateTime } from '@/lib/format-utils'
+import { useRouter } from 'next/navigation'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const PAGE_SIZE = 20
@@ -56,6 +57,7 @@ interface ReviewRow {
 
 export default function AIAdminReviewsPage() {
   const t = useT()
+  const router = useRouter()
   const { toast } = useToast()
 
   const [type, setType] = useState<ReviewType>('kb')
@@ -262,6 +264,22 @@ export default function AIAdminReviewsPage() {
                       )}
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {/* v2.7 前往使用：跳详情/对话页真实体验（后端对 school_admin 只读放行） */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-primary"
+                            onClick={() =>
+                              router.push(
+                                type === 'kb'
+                                  ? `/portal/apps/ai/kb/${row.id}`
+                                  : `/portal/apps/ai/agents/${row.id}`,
+                              )
+                            }
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                            {t('前往使用')}
+                          </Button>
                           {row.status === 'pending' && (
                             <>
                               <Button size="sm" variant="outline" onClick={() => setApproveTarget(row)}>
