@@ -5,34 +5,33 @@ import { useRouter, usePathname } from 'next/navigation'
 import { TopNav } from '@/components/portal/top-nav'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { YiKnowAssistant } from '@/components/portal/yi-know-assistant'
-import { withPrefix } from '@/lib/path-prefix'
 
 function PortalAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, activeRoleCode, loading } = usePortalAuth()
 
-  const isLoginPage = pathname === withPrefix('/portal/login')
+  const isLoginPage = pathname === '/portal/login'
 
   useEffect(() => {
     if (loading || isLoginPage) return
     if (!user) {
-      router.replace(withPrefix('/portal/login'))
+      router.replace('/portal/login')
       return
     }
     if (user.platform !== 'portal') {
-      router.replace(withPrefix('/portal/login'))
+      router.replace('/portal/login')
       return
     }
 
     // 我的服务台只对教师、学生、学校管理员角色开放
     if (
-      (pathname === withPrefix('/portal/workspace') || pathname.startsWith(withPrefix('/portal/workspace/'))) &&
+      (pathname === '/portal/workspace' || pathname.startsWith('/portal/workspace/')) &&
       activeRoleCode !== 'teacher' &&
       activeRoleCode !== 'student' &&
       activeRoleCode !== 'school_admin'
     ) {
-      router.replace(withPrefix('/portal'))
+      router.replace('/portal')
       return
     }
   }, [loading, user, activeRoleCode, router, pathname, isLoginPage])
@@ -44,7 +43,7 @@ function PortalAuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isLoginPage = pathname === withPrefix('/portal/login')
+  const isLoginPage = pathname === '/portal/login'
 
   return (
     <PortalAuthGuard>

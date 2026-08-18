@@ -2,6 +2,8 @@
 const nextConfig = {
   output: 'standalone',
   distDir: '.next',
+  // 支持 Go/Java 双栈：Java 通过环境变量 NEXT_PUBLIC_BASE_PATH=/java 设置前缀
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   typescript: {
     // 部署时跳过类型检查，由 pnpm typecheck 在提交前/CI 中保证；可节省 ~30s 构建时间
     ignoreBuildErrors: true,

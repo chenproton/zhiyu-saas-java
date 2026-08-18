@@ -52,6 +52,8 @@ services:
       HOSTNAME: 0.0.0.0
       PORT: "3020"
       API_PROXY_URL: "http://java-backend:8080"
+      # Java 前端通过 /java/ 路径前缀访问
+      NEXT_PUBLIC_BASE_PATH: "/java"
     networks:
       - zhiyu-java
     logging:

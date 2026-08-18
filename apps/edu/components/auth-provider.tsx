@@ -10,7 +10,6 @@ import { persistActiveRole, resolveActiveRole } from '@/lib/active-role'
 import { useRegisterAllianceDicts } from '@/lib/alliance-dicts'
 import { isPublicPage } from '@/lib/public-routes'
 import { useT } from '@/lib/i18n/locale-provider'
-import { withPrefix } from '@/lib/path-prefix'
 
 export type UserRole = 'school' | 'enterprise' | 'operator'
 
@@ -112,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     removeToken('portal')
     setState({ me: undefined, loading: false })
     if (typeof window !== 'undefined') {
-      window.location.href = withPrefix('/portal/login')
+      window.location.href = '/portal/login'
     }
   }, [])
 
