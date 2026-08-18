@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { FormDialogFooter } from '@zhiyu/ui'
 import { useT } from '@/lib/i18n/locale-provider'
+import { splitWeightEvenly } from '@/lib/weight-distribute'
 
 export interface WeightConfigItem {
   id: string
@@ -82,8 +83,11 @@ function WeightConfigForm({
   const isValid = total === 100
 
   const handleChange = (id: string, value: string) => {
-    const num = parseInt(value, 10)
-    setLocalWeights((prev) => ({ ...prev, [id]: Number.isNaN(num) ? 0 : num }))
+    const num = parseFloat(value)
+    setLocalWeights((prev) => ({
+      ...prev,
+      [id]: Number.isNaN(num) ? 0 : Math.round(num * 100) / 100,
+    }))
   }
 
   const toggleLock = (id: string) => {
@@ -96,12 +100,12 @@ function WeightConfigForm({
     const lockedWeight = items
       .filter((item) => locked[item.id])
       .reduce((sum, item) => sum + (localWeights[item.id] ?? 0), 0)
-    const remaining = 100 - lockedWeight
-    const each = Math.floor(remaining / unlocked.length)
+    // 用「分」级均分，支持 33.33/12.50 这类小数权重，确保合计精确等于 100%
+    const weights = splitWeightEvenly(100 - lockedWeight, unlocked.length)
     setLocalWeights((prev) => {
       const next = { ...prev }
       unlocked.forEach((item, i) => {
-        next[item.id] = each + (i < remaining % unlocked.length ? 1 : 0)
+        next[item.id] = weights[i]
       })
       return next
     })
@@ -149,6 +153,7 @@ function WeightConfigForm({
                       type="number"
                       min={0}
                       max={100}
+                      step={0.01}
                       value={localWeights[item.id] ?? item.weight}
                       onChange={(e) => handleChange(item.id, e.target.value)}
                       disabled={locked[item.id]}
