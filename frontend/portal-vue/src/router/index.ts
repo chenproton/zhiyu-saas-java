@@ -10,6 +10,13 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    // 企业服务台登录（对齐 React /partner/login，独立于门户布局；partner token 独立存储）
+    path: '/partner/login',
+    name: 'PartnerLogin',
+    component: () => import('@/views/partner/login.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/job/landing',
     name: 'JobLanding',
     component: () => import('@/views/landing/job.vue'),
@@ -33,6 +40,20 @@ const routes: RouteRecordRaw[] = [
     path: '/scene/landing',
     name: 'SceneLanding',
     component: () => import('@/views/landing/scene.vue'),
+    meta: { public: true }
+  },
+  {
+    // 场景详情（公开 landing 子页，对齐 React /scene/landing/[id]）
+    path: '/scene/landing/:id',
+    name: 'SceneLandingDetail',
+    component: () => import('@/views/landing/scene-detail.vue'),
+    meta: { public: true }
+  },
+  {
+    // 场景学习页（公开 landing 子页，对齐 React /scene/landing/[id]/learn）
+    path: '/scene/landing/:id/learn',
+    name: 'SceneLandingLearn',
+    component: () => import('@/views/landing/scene-learn.vue'),
     meta: { public: true }
   },
   {
@@ -192,6 +213,12 @@ const routes: RouteRecordRaw[] = [
         path: 'scene/scenarios/:id/edit',
         name: 'SceneScenarioEdit',
         component: () => import('@/views/scene/scenario-edit.vue')
+      },
+      {
+        // 场景任务编排（对齐 React /scene/scenarios/[id]/edit/tasks）
+        path: 'scene/scenarios/:id/edit/tasks',
+        name: 'SceneScenarioTasks',
+        component: () => import('@/views/scene/scenario-tasks.vue')
       },
       {
         path: 'scene/batches',
@@ -485,6 +512,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/partner/experts.vue')
       },
       {
+        // 专家详情（对齐 React /partner/experts/:id）
+        path: 'partner/experts/:id',
+        name: 'PartnerExpertDetail',
+        component: () => import('@/views/partner/expert-detail.vue')
+      },
+      {
+        // 专家编辑（对齐 React /partner/experts/:id/edit）
+        path: 'partner/experts/:id/edit',
+        name: 'PartnerExpertEdit',
+        component: () => import('@/views/partner/expert-edit.vue')
+      },
+      {
         path: 'partner/enterprise',
         name: 'PartnerEnterprise',
         component: () => import('@/views/partner/enterprise.vue')
@@ -505,14 +544,50 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/partner/co-build-scenarios.vue')
       },
       {
+        // 共建岗位编辑页（对齐 React /partner/co-build/positions/:id/edit）
+        path: 'partner/co-build/positions/:id/edit',
+        name: 'PartnerCobuildPositionEdit',
+        component: () => import('@/views/partner/co-build-position-edit.vue')
+      },
+      {
+        // 共建场景编辑页（对齐 React /partner/co-build/scenes/:id/edit）
+        path: 'partner/co-build/scenes/:id/edit',
+        name: 'PartnerCobuildScenarioEdit',
+        component: () => import('@/views/partner/co-build-scenario-edit.vue')
+      },
+      {
+        // 共建场景任务编排页（对齐 React /partner/co-build/scenes/[id]/edit/tasks）
+        path: 'partner/co-build/scenes/:id/edit/tasks',
+        name: 'PartnerCobuildSceneTasks',
+        component: () => import('@/views/partner/co-build-scene-tasks.vue')
+      },
+      {
         path: 'partner/employment-projects',
         name: 'PartnerEmploymentProjects',
         component: () => import('@/views/partner/employment-projects.vue')
       },
       {
+        // 就业项目详情（对齐 React /partner/employment-projects/:id）
+        path: 'partner/employment-projects/:id',
+        name: 'PartnerEmploymentProjectDetail',
+        component: () => import('@/views/partner/employment-project-detail.vue')
+      },
+      {
         path: 'partner/employment-jobs',
         name: 'PartnerEmploymentJobs',
         component: () => import('@/views/partner/employment-jobs.vue')
+      },
+      {
+        // 就业岗位详情（对齐 React /partner/employment-jobs/:id）
+        path: 'partner/employment-jobs/:id',
+        name: 'PartnerEmploymentJobDetail',
+        component: () => import('@/views/partner/employment-job-detail.vue')
+      },
+      {
+        // 就业岗位编辑（对齐 React /partner/employment-jobs/:id/edit）
+        path: 'partner/employment-jobs/:id/edit',
+        name: 'PartnerEmploymentJobEdit',
+        component: () => import('@/views/partner/employment-job-edit.vue')
       },
       {
         path: 'partner/cooperation',
