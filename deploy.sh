@@ -818,6 +818,9 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
     git -C "$BUILD_TREE" checkout --detach --force origin/master 2>/dev/null || true
   else
     [[ -d "$BUILD_TREE" ]] && rm -rf "$BUILD_TREE"
+    # 清理失效的 worktree 注册（目录被手动删除但 .git/worktrees 仍登记时 add 会报
+    # "missing but already registered worktree"），保证全新/被清理服务器可重建
+    git -C "$ORIGINAL_ROOT" worktree prune 2>/dev/null || true
     git -C "$ORIGINAL_ROOT" worktree add --detach "$BUILD_TREE" origin/master || die "无法创建 worktree"
   fi
 
