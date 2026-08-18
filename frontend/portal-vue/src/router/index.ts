@@ -102,6 +102,11 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    // 对齐 React：/evaluation/landing/exams 重定向到考试中心（React 为 <Navigate>）
+    path: '/evaluation/landing/exams',
+    redirect: '/evaluation/landing/exam-center'
+  },
+  {
     path: '/evaluation/landing/banks/:id',
     name: 'EvaluationLandingBankDetail',
     component: () => import('@/views/landing/bank-detail.vue'),
@@ -149,6 +154,12 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'library/resources',
         name: 'LibraryResources',
+        component: () => import('@/views/library/resources.vue')
+      },
+      {
+        // React 路径别名（对齐 /library/resources/:type；resources.vue 从 route.query.type 读取）
+        path: 'library/resources/:type',
+        name: 'LibraryResourcesType',
         component: () => import('@/views/library/resources.vue')
       },
       {
@@ -908,8 +919,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/partner/co-build-positions.vue')
       },
       {
+        // React 路径别名（对齐 /partner/co-build/positions）
+        path: 'partner/co-build/positions',
+        name: 'PartnerCobuildPositionsReact',
+        component: () => import('@/views/partner/co-build-positions.vue')
+      },
+      {
         path: 'partner/co-build-scenarios',
         name: 'PartnerCobuildScenarios',
+        component: () => import('@/views/partner/co-build-scenarios.vue')
+      },
+      {
+        // React 路径别名（对齐 /partner/co-build/scenes）
+        path: 'partner/co-build/scenes',
+        name: 'PartnerCobuildScenesReact',
         component: () => import('@/views/partner/co-build-scenarios.vue')
       },
       {
