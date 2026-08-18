@@ -150,6 +150,26 @@ health_check() {
   fi
 }
 
+# ---------- 1.5 数据库框架表初始化（全新服务器共享库无 RuoYi sys_* 表，后端启动即报 relation 不存在）----------
+init_db_schema() {
+  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'zhiyu-postgres'; then
+    warn "未检测到 zhiyu-postgres（Go 栈未部署？），跳过框架表初始化——java-backend 启动将依赖该库"
+    return 0
+  fi
+  if docker exec zhiyu-postgres psql -U zhiyu_saas -d zhiyu-saas -tAc \
+      "SELECT to_regclass('public.sys_oss_config')" 2>/dev/null | grep -q sys_oss_config; then
+    log "数据库框架表已存在，跳过初始化"
+    return 0
+  fi
+  log "初始化 RuoYi 框架表（postgres_ry_vue/job/workflow/ai）..."
+  local sql_dir="$REPO_DIR/backend/java/script/sql/postgres"
+  for f in postgres_ry_vue postgres_ry_job postgres_ry_workflow postgres_ry_ai; do
+    docker exec -i zhiyu-postgres psql -U zhiyu_saas -d zhiyu-saas -v ON_ERROR_STOP=1 \
+      < "$sql_dir/$f.sql" 2>/dev/null || warn "初始化 $f.sql 失败（部分表可能已存在，不影响）"
+  done
+  log "框架表初始化完成"
+}
+
 # ---------- 主流程 ----------
 main() {
   if [[ "$MODE" == "--down" ]]; then
@@ -159,6 +179,7 @@ main() {
 
   log "开始部署 zhiyu-saas Java 版（Docker）"
   resolve_db_password
+  init_db_schema
   build
   stop_old
   compose_up
