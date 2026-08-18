@@ -39,13 +39,13 @@ offline/
 └── file-viewer/                # file-viewer 预览服务的运行时离线资产（typst 默认字体）
     └── typst-fonts/            # 17 个开源字体（DejaVuSansMono / LibertinusSerif / NewCM / NewCMMath，~8.4MB）
                                 # 下载: https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/
-                                # prebuild 脚本复制到 apps/edu/public/wasm/typst/fonts/（typst 预览，无 CDN 依赖）
+                                # prebuild 脚本复制到 frontend/edu/public/wasm/typst/fonts/（typst 预览，无 CDN 依赖）
 ```
 
 > file-viewer 其余运行时资产（CAD/archive/ppt/model/typst 的 worker/wasm、pdf 的 cmaps/标准字体/CJK 字体兜底）
 > 均来自 npm 依赖包（`@flyfish-dev/cad-viewer`、`libarchive.js`、`@file-viewer/ppt`、`occt-import-js`、
 > `@myriaddreamin/typst-ts-*`、`pdfjs-dist`、`@fontsource-variable/noto-sans-sc`），由
-> `apps/edu/scripts/copy-file-viewer-assets.mjs` 在 `next build` 前自动复制到 `apps/edu/public/`，
+> `frontend/edu/scripts/copy-file-viewer-assets.mjs` 在 `next build` 前自动复制到 `frontend/edu/public/`，
 > 无需额外离线下载。唯一需要从 CDN 预置的是 `file-viewer/typst-fonts/`（上方）。
 
 ## 使用方式
@@ -74,7 +74,7 @@ Ubuntu 24.04 x86_64）复制目录后执行 `./install.sh` 即可全离线启动
 ## 图片编辑器（unlayer）离线说明
 
 - 资产位于 `offline/image-editor/`，随代码提交；`deploy.sh` 构建前端时自动同步到
-  `apps/edu/public/image-editor/`（`apps/edu/public/image-editor` 是指向仓库
+  `frontend/edu/public/image-editor/`（`frontend/edu/public/image-editor` 是指向仓库
   `offline/image-editor` 的符号链接，供本地 `next dev/build` 直接使用）。
 - 前端通过 `scriptUrl="/image-editor/embed.js"` + `env.IMAGE_EDITOR_BASE_URL` +
   `offline: true` 使用本地资产，全程无外部请求（Google Fonts 的 UI 字体请求会失败，
