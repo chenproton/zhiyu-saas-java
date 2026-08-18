@@ -4,8 +4,7 @@
 #
 # 部署形态（Docker，与 Go 版对齐）：
 #   - java-backend 容器：ruoyi-admin.jar（Spring Boot 4 prod，容器内 8080）
-#   - java-edu 容器：Next.js standalone（容器内 3020，/api 反代 → java-backend）
-#   - java-nginx 容器：统一入口（宿主端口 8083 → 容器 80）
+#   - java-nginx 容器：统一入口（宿主端口 8083 → 容器 80），静态服务 Vue 门户（frontend/portal-vue）
 #   - PG/Redis 复用宿主机现有实例（host.docker.internal，零干扰线上 Go 版）
 #
 # 用法：
@@ -61,34 +60,22 @@ build() {
   ./mvnw clean package -P prod -DskipTests -q
   log "后端 jar 构建完成"
 
-  cd "$REPO_DIR/frontend/edu"
-  log "构建前端（production，standalone 模式，basePath=/java）..."
-  NEXT_PUBLIC_BASE_PATH=/java pnpm build > "$LOG_DIR/edu-build.log" 2>&1
-  # standalone 产物需手动补齐静态资源与 public 目录（Next.js standalone 约定）
-  cp -r .next/static .next/standalone/frontend/edu/.next/static
-  cp -r public .next/standalone/frontend/edu/public
-  log "前端构建完成"
+  cd "$REPO_DIR/frontend/portal-vue"
+  log "构建 Vue 业务门户（production，basePath=/java/portal/）..."
+  pnpm install --silent > "$LOG_DIR/portal-vue-install.log" 2>&1 || true
+  pnpm build > "$LOG_DIR/portal-vue-build.log" 2>&1
+  log "Vue 门户构建完成"
 
-  log "构建 Docker 镜像（backend + edu）..."
-  rm -rf "$DOCKER_DIR/build-context/backend" "$DOCKER_DIR/build-context/edu"
-  mkdir -p "$DOCKER_DIR/build-context/backend" "$DOCKER_DIR/build-context/edu"
+  log "构建 Docker 镜像（backend）..."
+  rm -rf "$DOCKER_DIR/build-context/backend"
+  mkdir -p "$DOCKER_DIR/build-context/backend"
   cp "$REPO_DIR/backend/java/ruoyi-admin/target/ruoyi-admin.jar" "$DOCKER_DIR/build-context/backend/ruoyi-admin.jar"
   # JDK 21 从宿主机拷贝（离线构建；-L 跟随 conf 等符号链接）
   rsync -aL --exclude='lib/src.zip' --exclude='demo' --exclude='sample' \
     /usr/lib/jvm/java-21-openjdk-amd64/ "$DOCKER_DIR/build-context/backend/jdk/"
-  # standalone 保持原始相对结构（符号链接依赖布局：根 node_modules/.pnpm + frontend/edu/node_modules 顶层链接）
-  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/node_modules/" "$DOCKER_DIR/build-context/edu/node_modules/"
-  mkdir -p "$DOCKER_DIR/build-context/edu/frontend/edu"
-  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/node_modules/" "$DOCKER_DIR/build-context/edu/frontend/edu/node_modules/"
-  cp "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/server.js" \
-     "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/package.json" "$DOCKER_DIR/build-context/edu/frontend/edu/"
-  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/.next/" "$DOCKER_DIR/build-context/edu/frontend/edu/.next/"
-  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/public/" "$DOCKER_DIR/build-context/edu/frontend/edu/public/"
 
   docker build -t zhiyu-java-backend:$IMAGE_TAG \
     -f "$DOCKER_DIR/java-backend.Dockerfile" "$DOCKER_DIR/build-context/backend"
-  docker build -t zhiyu-java-edu:$IMAGE_TAG \
-    -f "$DOCKER_DIR/java-edu.Dockerfile" "$DOCKER_DIR/build-context/edu"
   log "镜像构建完成"
 }
 
@@ -108,8 +95,8 @@ compose_up() {
   cd "$DOCKER_DIR"
   # 先移除旧容器（镜像更新时强制重建），再拉起
   docker compose -f docker-compose-java.yml up -d --remove-orphans \
-    --force-recreate java-backend java-edu java-nginx
-  log "容器已启动（java-backend / java-edu / java-nginx）"
+    --force-recreate java-backend java-nginx
+  log "容器已启动（java-backend / java-nginx）"
 }
 
 compose_down() {
@@ -131,11 +118,11 @@ health_check() {
 
   log "等待前端就绪..."
   for i in $(seq 1 30); do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/java/portal" || true)
+    code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/java/portal/" || true)
     [[ "$code" == "200" ]] && break
     sleep 3
   done
-  log "前端 /java/portal HTTP $code"
+  log "前端 /java/portal/ HTTP $code"
 
   # 登录冒烟（zhiyu admin 账号，密码从 zhiyu-saas/.env 解析）
   local seed_pw login
@@ -170,7 +157,7 @@ main() {
   echo " 部署完成（Docker 容器），访问地址："
   echo "   演示站（统一入口）: http://111.170.170.202:$WEB_PORT/java/portal"
   echo "   后端接口:           http://111.170.170.202:$WEB_PORT/api/v1/"
-  echo "   容器:               zhiyu-java-backend / zhiyu-java-edu / zhiyu-java-nginx"
+  echo "   容器:               zhiyu-java-backend / zhiyu-java-nginx"
   echo "   运维:               docker compose -f deploy/docker/docker-compose-java.yml ps"
   echo "=============================================="
 }

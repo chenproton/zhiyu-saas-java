@@ -43,25 +43,6 @@ services:
         max-size: "20m"
         max-file: "3"
 
-  java-edu:
-    image: zhiyu-java-edu:${IMAGE_TAG:-latest}
-    container_name: zhiyu-java-edu
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      HOSTNAME: 0.0.0.0
-      PORT: "3020"
-      API_PROXY_URL: "http://java-backend:8080"
-      # Java 前端通过 /java/ 路径前缀访问
-      NEXT_PUBLIC_BASE_PATH: "/java"
-    networks:
-      - zhiyu-java
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
-
   java-nginx:
     image: nginx:1.27-alpine
     container_name: zhiyu-java-nginx
@@ -70,9 +51,10 @@ services:
       - "${ZHIYU_JAVA_WEB_PORT:-8083}:80"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Vue 业务门户构建产物（deploy-java.sh 构建 frontend/portal-vue 后挂载）
+      - ../../frontend/portal-vue/dist:/usr/share/nginx/html/java/portal:ro
     depends_on:
       - java-backend
-      - java-edu
     networks:
       - zhiyu-java
     logging:
