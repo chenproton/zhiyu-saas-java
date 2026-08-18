@@ -369,8 +369,8 @@ function JobAbilityResultsContent() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm font-medium">
-                          {result.totalAbilityPoints > 0
-                            ? `${((result.achievedAbilityPoints / result.totalAbilityPoints) * 100).toFixed(0)}%`
+                          {result.achievementRate != null
+                            ? `${result.achievementRate.toFixed(1)}%`
                             : '-'}
                         </span>
                       </TableCell>

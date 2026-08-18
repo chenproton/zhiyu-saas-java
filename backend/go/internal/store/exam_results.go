@@ -174,10 +174,11 @@ type examSnapshotGradingDoc struct {
 		TotalScore float64 `json:"total_score"`
 	} `json:"exam"`
 	ExamQuestions []struct {
-		ID     string          `json:"id"`
-		Type   string          `json:"type"`
-		Answer json.RawMessage `json:"answer"`
-		Score  float64         `json:"score"`
+		ID      string          `json:"id"`
+		Type    string          `json:"type"`
+		Answer  json.RawMessage `json:"answer"`
+		Options json.RawMessage `json:"options"`
+		Score   float64         `json:"score"`
 	} `json:"exam_questions"`
 }
 
@@ -190,10 +191,11 @@ func parseExamSnapshotGradingData(data json.RawMessage) ([]ExamQuestionAnswer, f
 	questions := make([]ExamQuestionAnswer, 0, len(doc.ExamQuestions))
 	for _, q := range doc.ExamQuestions {
 		questions = append(questions, ExamQuestionAnswer{
-			ID:     q.ID,
-			Type:   q.Type,
-			Answer: parseSnapshotAnswer(q.Answer),
-			Score:  q.Score,
+			ID:      q.ID,
+			Type:    q.Type,
+			Answer:  parseSnapshotAnswer(q.Answer),
+			Options: parseSnapshotOptions(q.Options),
+			Score:   q.Score,
 		})
 	}
 	total := doc.Exam.TotalScore
@@ -222,12 +224,30 @@ func parseSnapshotAnswer(raw json.RawMessage) []string {
 	return out
 }
 
+// parseSnapshotOptions 解析快照内题目选项：options 列是 text 存 JSON 字符串数组，
+// to_jsonb 后为 JSON 字符串字面量；兼容直接是 JSON 数组的情况。
+func parseSnapshotOptions(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		var out []string
+		_ = json.Unmarshal([]byte(s), &out)
+		return out
+	}
+	var out []string
+	_ = json.Unmarshal(raw, &out)
+	return out
+}
+
 // ExamQuestionAnswer 考试题目答案行。
 type ExamQuestionAnswer struct {
-	ID     string
-	Type   string
-	Answer []string
-	Score  float64
+	ID      string
+	Type    string
+	Answer  []string
+	Options []string
+	Score   float64
 }
 
 // UsageGradedByUser 查询该考试安排对应的场景评价是否已由教师评分（重交保护）。
@@ -315,10 +335,10 @@ func (s *ExamResultStore) UsageAllowRetake(ctx context.Context, usageID string) 
 	return allow, nil
 }
 
-// FetchExamQuestions 查询考试题目答案与分数。
+// FetchExamQuestions 查询考试题目答案、选项与分数。
 func (s *ExamResultStore) FetchExamQuestions(ctx context.Context, examID string) ([]ExamQuestionAnswer, error) {
 	rows, err := s.q.Query(ctx, `
-		SELECT id, type, answer, score FROM exam_questions WHERE exam_id = $1 ORDER BY sort_order
+		SELECT id, type, answer, score, COALESCE(options, '[]') FROM exam_questions WHERE exam_id = $1 ORDER BY sort_order
 	`, examID)
 	if err != nil {
 		return nil, err
@@ -327,12 +347,15 @@ func (s *ExamResultStore) FetchExamQuestions(ctx context.Context, examID string)
 	var questions []ExamQuestionAnswer
 	for rows.Next() {
 		var q ExamQuestionAnswer
-		var answerStr string
-		if err := rows.Scan(&q.ID, &q.Type, &answerStr, &q.Score); err != nil {
+		var answerStr, optionsStr string
+		if err := rows.Scan(&q.ID, &q.Type, &answerStr, &q.Score, &optionsStr); err != nil {
 			return nil, err
 		}
 		if answerStr != "" {
 			_ = json.Unmarshal([]byte(answerStr), &q.Answer)
+		}
+		if optionsStr != "" {
+			_ = json.Unmarshal([]byte(optionsStr), &q.Options)
 		}
 		questions = append(questions, q)
 	}

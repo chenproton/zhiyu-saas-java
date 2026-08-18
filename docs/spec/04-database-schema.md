@@ -254,7 +254,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 
 | 表 | 关键字段 |
 |----|---------|
-| job_ability_results | (position_id,user_id) 唯一、achievement_rate、grade、ability_point_details jsonb |
+| job_ability_results | (position_id,user_id) 唯一、achievement_rate（岗位能力加权平均分 0-100）、ability_cognition_score（认知得分 0-100）、position_competency（胜任度%，比值法，分母仅含 requiredLevel≠understand 的有门槛能力点）、position_competency_v2（胜任度新%，等级距离法）、grade、ability_point_details jsonb |
 | job_ability_aggregate_logs | 聚合任务日志 running/finished |
 | student_ability_portraits | user_id、content jsonb、version |
 | student_ability_archives | (user_id,position_id) 唯一、audit_status、direction(positive/negative)、converted_credit |

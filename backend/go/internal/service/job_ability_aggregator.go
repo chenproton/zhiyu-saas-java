@@ -267,7 +267,7 @@ func (a *JobAbilityAggregator) aggregateStudentBatch(ctx context.Context, tenant
 		for _, studentID := range studentIDs {
 			details := make([]pointDetail, 0, len(points))
 			pointValid := make([]bool, 0, len(points))
-			var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum, competencyV2WeightedSum, competencyV2WeightSum float64
+			var posWeightedSum, posWeightSum, cognitionSum, cognitionWeight, competencySum, competencyWeight, competencyV2WeightedSum, competencyV2WeightSum float64
 			achieved := 0
 			for _, p := range points {
 				var weightedSum, weightSum float64
@@ -294,12 +294,16 @@ func (a *JobAbilityAggregator) aggregateStudentBatch(ctx context.Context, tenant
 					competencyV2WeightedSum += compV2 * p.weight
 					competencyV2WeightSum += p.weight
 				}
-				// 认知得分/胜任度：与读取时回退口径一致，全部权重>0 的点参与（无效点按 0 分计入）
+				// 认知得分：全部权重>0 的点参与（无效点按 0 分计入）。
+				// 胜任度（比值法）：分母仅统计「有门槛（need>0）」的能力点权重，
+				// 要求等级为「了解」(need=0) 的点不参与胜任度（不稀释），
+				// 与读取回退 computeAbilityIndicators 口径一致。
 				if p.weight > 0 {
 					cognitionSum += pointScore * p.weight
 					cognitionWeight += p.weight
 					need := pointCompetencyNeed(p.levels, p.requiredLevel)
 					if need > 0 {
+						competencyWeight += p.weight
 						if c := (pointScore - need) / need; c > 0 {
 							competencySum += c * p.weight
 						}
@@ -349,9 +353,11 @@ func (a *JobAbilityAggregator) aggregateStudentBatch(ctx context.Context, tenant
 			competency := 0.0
 			if cognitionWeight > 0 {
 				cognition = math.Round(cognitionSum/cognitionWeight*100) / 100
-				// competencySum 为比值加权和（c=(score-need)/need），转百分比需 ×100；
-				// round(×10000)/100 即四舍五入到两位百分数（与认知得分/v2 的 round(×100)/100 同构）
-				competency = math.Round(competencySum/cognitionWeight*10000) / 100
+			}
+			if competencyWeight > 0 {
+				// competencySum 为比值加权和（c=(score-need)/need），分母仅含 need>0 的点权重，
+				// 转百分比需 ×100；round(×10000)/100 即四舍五入到两位百分数
+				competency = math.Round(competencySum/competencyWeight*10000) / 100
 			}
 
 			// 岗位胜任度（新，%）：有效能力点胜任度（新）加权平均

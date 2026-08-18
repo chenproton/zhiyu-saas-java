@@ -153,8 +153,9 @@ func computeCompetencyV2(details domain.JSONSlice) float64 {
 }
 
 // computeAbilityIndicators 由能力点明细计算岗位胜任度（%）与能力认知得分（0-100）。
+// 胜任度分母仅统计「有门槛（need>0）」的能力点权重；「了解」(need=0) 的点不稀释胜任度。
 func computeAbilityIndicators(details domain.JSONSlice) (competency, cognition float64) {
-	var weightSum float64
+	var weightSum, competencyWeightSum float64
 	for _, raw := range details {
 		m, ok := raw.(map[string]interface{})
 		if !ok {
@@ -168,20 +169,24 @@ func computeAbilityIndicators(details domain.JSONSlice) (competency, cognition f
 		}
 		weightSum += weight
 		need := needScoreByLevel[requiredLevel]
-		competencyI := 0.0
 		if need > 0 {
-			competencyI = (score - need) / need
+			competencyWeightSum += weight
+			competencyI := (score - need) / need
 			if competencyI < 0 {
 				competencyI = 0
 			}
+			competency += competencyI * weight
 		}
-		competency += competencyI * weight
 		cognition += score * weight
 	}
 	if weightSum <= 0 {
 		return 0, 0
 	}
-	return competency / weightSum * 100, cognition / weightSum
+	cognition = cognition / weightSum
+	if competencyWeightSum <= 0 {
+		return 0, cognition
+	}
+	return competency / competencyWeightSum * 100, cognition
 }
 
 type JobAbilitySummaryItem struct {

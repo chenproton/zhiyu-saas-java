@@ -107,7 +107,7 @@ func (s *EvaluationService) SubmitExamResult(ctx context.Context, tenantID, user
 		if !ok {
 			continue
 		}
-		if isCorrect(qq.Type, qq.Answer, raw) {
+		if isCorrect(qq.Type, qq.Answer, qq.Options, raw) {
 			score += qq.Score
 		}
 	}
@@ -200,7 +200,7 @@ func (s *EvaluationService) GradeExamResult(ctx context.Context, tenantID, id, g
 		if !ok {
 			continue
 		}
-		if isCorrect(qq.Type, qq.Answer, raw) {
+		if isCorrect(qq.Type, qq.Answer, qq.Options, raw) {
 			objective += qq.Score
 		}
 	}
@@ -326,23 +326,26 @@ func (s *EvaluationService) syncExamResultScoreTx(ctx context.Context, txStore *
 }
 
 // isCorrect 判断客观题答案是否正确。
-func isCorrect(qType string, correct []string, raw interface{}) bool {
+// options 用于把「单字母选项（A-H）」与「选项文字」两种答案口径归一后再比较，
+// 兼容 Vue 门户题库编辑器存字母答案、学生提交选项文字的判分场景。
+func isCorrect(qType string, correct []string, options []string, raw interface{}) bool {
 	switch qType {
-	case string(domain.QuestionTypeSingle), string(domain.QuestionTypeJudge):
-		s, _ := raw.(string)
+	case string(domain.QuestionTypeJudge):
 		if len(correct) == 0 {
 			return false
 		}
-		s = strings.TrimSpace(s)
-		c := correct[0]
-		if strings.EqualFold(s, c) {
-			return true
+		s, _ := raw.(string)
+		sVal, sOK := normalizeJudgeAnswer(s)
+		cVal, cOK := normalizeJudgeAnswer(correct[0])
+		return sOK && cOK && sVal == cVal
+	case string(domain.QuestionTypeSingle):
+		if len(correct) == 0 {
+			return false
 		}
-		// 与前端判分一致：判断题支持“正确/错误”与 true/false 互认
-		if (s == "正确" && strings.EqualFold(c, "true")) || (s == "错误" && strings.EqualFold(c, "false")) {
-			return true
-		}
-		return false
+		s, _ := raw.(string)
+		s = mapAnswerOption(strings.TrimSpace(s), options)
+		c := mapAnswerOption(strings.TrimSpace(correct[0]), options)
+		return strings.EqualFold(s, c)
 	case string(domain.QuestionTypeMultiple):
 		var given []string
 		switch v := raw.(type) {
@@ -360,9 +363,10 @@ func isCorrect(qType string, correct []string, raw interface{}) bool {
 		}
 		m := make(map[string]int)
 		for _, c := range correct {
-			m[c]++
+			m[mapAnswerOption(strings.TrimSpace(c), options)]++
 		}
 		for _, g := range given {
+			g = mapAnswerOption(strings.TrimSpace(g), options)
 			if m[g] == 0 {
 				return false
 			}
@@ -371,6 +375,36 @@ func isCorrect(qType string, correct []string, raw interface{}) bool {
 		return true
 	}
 	return false
+}
+
+// normalizeJudgeAnswer 判断题答案归一：兼容 正确/错误/对/错/T/F/true/false/1/0/是/否。
+// 返回（真值, 是否可识别）；无法识别的写法返回 ok=false（判错）。
+func normalizeJudgeAnswer(v string) (bool, bool) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "正确", "对", "t", "true", "1", "是":
+		return true, true
+	case "错误", "错", "f", "false", "0", "否":
+		return false, true
+	}
+	return false, false
+}
+
+// mapAnswerOption 将单字母选项（A-H）映射为选项文字；非字母或超出选项范围时原样返回。
+func mapAnswerOption(v string, options []string) string {
+	if len(v) != 1 {
+		return v
+	}
+	idx := -1
+	switch c := v[0]; {
+	case c >= 'A' && c <= 'H':
+		idx = int(c - 'A')
+	case c >= 'a' && c <= 'h':
+		idx = int(c - 'a')
+	}
+	if idx >= 0 && idx < len(options) && options[idx] != "" {
+		return options[idx]
+	}
+	return v
 }
 
 // RoundScore 分数取整到 1 位小数。
