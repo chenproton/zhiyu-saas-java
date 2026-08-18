@@ -1026,9 +1026,10 @@ if $BUILD_FRONTEND; then
   # 由 nginx 容器托管；API 走边缘 nginx 反代，容器内无需代理（原 Next rewrites 已废弃）。
   # 内存说明：该应用 Vite build 峰值需 ~5GB；若部署环境进程被 cgroup 限内存（如
   # dsh-web.service 4GB 限制），直接用 pnpm 构建会被 OOM 击杀。systemd 可用时用
-  # systemd-run 瞬态 scope 提额（MemoryMax=8G）再执行；无 systemd 时回退直接构建。
+  # systemd-run 瞬态 scope 提额（MemoryMax=8G）再执行（必须 --wait，否则立即返回、
+  # dist 未就绪即进入 docker 构建）；无 systemd 时回退直接构建。
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
-    systemd-run --collect --property=MemoryMax=8G -- bash -c \
+    systemd-run --collect --wait --property=MemoryMax=8G -- bash -c \
       "cd '$BUILD_ROOT' && NODE_ENV=production pnpm --filter @zhiyu/edu build" \
       >"$DEPLOY_DIR/.build-frontend-pnpm.log" 2>&1 || die "前端构建失败（日志: .build-frontend-pnpm.log）"
   else
