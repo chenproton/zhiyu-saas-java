@@ -1107,14 +1107,6 @@ if ! compose up -d --remove-orphans >"$COMPOSE_UP_LOG" 2>&1; then
 fi
 tail -n 5 "$COMPOSE_UP_LOG"
 
-# backend/frontend 容器重建后 IP 可能变化，而 zhiyu-nginx 网关在启动时缓存了其旧 IP，
-# 会导致转发到旧 IP 产生 502（Nginx hostname 解析缓存问题）。重建后显式重启网关容器
-# 让其重新解析上游容器名，确保路由到最新 IP。
-if [[ "$BUILD_BACKEND" == "true" || "$BUILD_FRONTEND" == "true" ]]; then
-  log "重启服务网关容器以刷新上游 IP 解析..."
-  docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（可能尚未创建，忽略）"
-fi
-
 # 等待 PG
 for i in $(seq 1 30); do
   compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
@@ -1166,6 +1158,25 @@ done
 
 if ! $OK; then
   rollback_deploy "健康检查未通过"
+fi
+
+# backend/frontend 容器重建后 IP 可能变化，而 zhiyu-nginx 网关在启动时缓存了其旧 IP，
+# 会导致转发到旧 IP 产生 502（Nginx hostname 解析缓存问题）。必须在服务「已就绪」之后
+# 再重启网关容器，让它重新解析到最新 IP（过早重启会拿到旧 IP / DNS 尚未传播，仍 502）。
+# 重启后自检 / 是否仍 502，最多重试一次，确保部署后网关可用。
+if [[ "$BUILD_BACKEND" == "true" || "$BUILD_FRONTEND" == "true" ]]; then
+  log "服务就绪后重启服务网关容器以刷新上游 IP 解析..."
+  for attempt in 1 2; do
+    # 留出 Docker 内置 DNS 传播时间，避免重启瞬间仍解析到旧 IP
+    sleep 3
+    docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（可能尚未创建，忽略）"
+    sleep 2
+    if curl -sf --max-time 5 "http://127.0.0.1:${GO_NGINX_PORT:-8084}/" >/dev/null 2>&1; then
+      log "  网关上游 IP 解析已刷新（前端 200）"
+      break
+    fi
+    warn "  网关自检未通过（第 ${attempt} 次），重试重启 zhiyu-nginx..."
+  done
 fi
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）。
