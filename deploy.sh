@@ -191,13 +191,23 @@ load_offline_images() {
   for tar in "$OFFLINE_DIR"/docker-images/*.tar; do
     [[ -f "$tar" ]] || continue
     local img
+    # 取 manifest 中第一个完整 RepoTag（保留 :tag），用于精确判断该镜像是否已存在。
+    # 不能用 docker images -q <repo>（剥 tag 后 1panel 等自带的同名异 tag 镜像会误判已存在，
+    # 导致离线加载被跳过、compose 去拉被墙的 docker hub）；也不能只看退出码
+    # （docker images -q 无匹配时仍返回 0），须用 docker image inspect 判存在。
     img=$(tar xfO "$tar" manifest.json 2>/dev/null | python3 -c "
 import json,sys
-for m in json.load(sys.stdin):
-    if 'RepoTags' in m:
-        for t in m['RepoTags']:
-            if t: print(t.split(':')[0])" 2>/dev/null | head -1)
-    if [[ -n "$img" ]] && docker images -q "$img" &>/dev/null; then
+try:
+    ms = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+for m in ms:
+    for t in (m.get('RepoTags') or []):
+        if t:
+            print(t)
+            break
+" 2>/dev/null | head -1)
+    if [[ -n "$img" ]] && docker image inspect "$img" >/dev/null 2>&1; then
       continue
     fi
     to_load+=("$tar")
