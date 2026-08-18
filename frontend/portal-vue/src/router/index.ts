@@ -923,6 +923,32 @@ const routes: RouteRecordRaw[] = [
         name: 'Workflows',
         component: () => import('@/views/workflows/index.vue')
       },
+      // ---- 各域 workflows（对齐 React 按域拆分，复用统一流程配置页）----
+      {
+        path: 'affairs/workflows',
+        name: 'AffairsWorkflows',
+        component: () => import('@/views/workflows/index.vue')
+      },
+      {
+        path: 'evaluation/workflows',
+        name: 'EvaluationWorkflows',
+        component: () => import('@/views/workflows/index.vue')
+      },
+      {
+        path: 'job/workflows',
+        name: 'JobWorkflows',
+        component: () => import('@/views/workflows/index.vue')
+      },
+      {
+        path: 'scene/workflows',
+        name: 'SceneWorkflows',
+        component: () => import('@/views/workflows/index.vue')
+      },
+      {
+        path: 'lesson/admin/workflows',
+        name: 'LessonAdminWorkflows',
+        component: () => import('@/views/workflows/index.vue')
+      },
       {
         path: 'import-export',
         name: 'ImportExport',
