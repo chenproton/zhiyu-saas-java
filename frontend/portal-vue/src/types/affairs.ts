@@ -85,6 +85,46 @@ export interface TeachingPlanDetail extends TeachingPlan {
   entries: TeachingPlanEntry[];
 }
 
+export interface TrainingProgramCourse {
+  id: string;
+  programId: string;
+  name: string;
+  code?: string;
+  credits: number;
+  hours: number;
+  semester: number;
+  nature: string;
+  assessment?: string;
+  positionId?: string;
+  positionName?: string;
+  courseId?: string;
+  courseName?: string;
+  sortOrder: number;
+}
+
+export interface TrainingProgramCoursePayload {
+  name: string;
+  code?: string;
+  credits: number;
+  hours: number;
+  semester: number;
+  nature: string;
+  assessment?: string;
+  positionId?: string;
+  courseId?: string;
+  sortOrder: number;
+}
+
+export interface TeachingPlanEntryUpdatePayload {
+  startWeek: number;
+  endWeek: number;
+  credits?: number;
+  totalHours?: number;
+  venueType?: string;
+  classNodeIds?: string[];
+  teacherId?: string;
+}
+
 export interface Venue {
   id: string;
   name: string;

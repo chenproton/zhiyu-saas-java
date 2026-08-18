@@ -40,6 +40,24 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    path: '/evaluation/landing/exam-center',
+    name: 'EvaluationLandingExamCenter',
+    component: () => import('@/views/landing/exam-center.vue'),
+    meta: { public: true }
+  },
+  {
+    path: '/evaluation/landing/banks/:id',
+    name: 'EvaluationLandingBankDetail',
+    component: () => import('@/views/landing/bank-detail.vue'),
+    meta: { public: true }
+  },
+  {
+    path: '/evaluation/landing/exams/:id',
+    name: 'EvaluationLandingExamDetail',
+    component: () => import('@/views/landing/exam-detail.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/',
     component: () => import('@/layouts/PortalLayout.vue'),
     children: [
@@ -213,6 +231,23 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/affairs/teaching-plans.vue')
       },
       {
+        path: 'affairs/teaching-plans/:id',
+        name: 'TeachingPlanDetail',
+        component: () => import('@/views/affairs/teaching-plan-detail.vue')
+      },
+      {
+        // React /affairs/majors 转发到 portal/apps/system/resource/majors，Vue 复用 system/majors.vue
+        path: 'affairs/majors',
+        name: 'AffairsMajors',
+        component: () => import('@/views/system/majors.vue')
+      },
+      {
+        // React /affairs/org-structure 转发到 portal/apps/system/org-user/org-structure，Vue 复用 system/organizations.vue
+        path: 'affairs/org-structure',
+        name: 'AffairsOrgStructure',
+        component: () => import('@/views/system/organizations.vue')
+      },
+      {
         path: 'affairs/students',
         name: 'AffairsStudents',
         component: () => import('@/views/affairs/students.vue')
@@ -306,6 +341,17 @@ const routes: RouteRecordRaw[] = [
         path: 'evaluation/lesson-results/:id',
         name: 'LessonResultDetail',
         component: () => import('@/views/evaluation/lesson-result-detail.vue')
+      },
+      {
+        // 日常考试（React /evaluation/lesson-results/daily-exams 对齐）
+        path: 'evaluation/lesson-results/daily-exams',
+        name: 'DailyExams',
+        component: () => import('@/views/evaluation/daily-exams.vue')
+      },
+      {
+        path: 'evaluation/lesson-results/daily-exams/:resultId',
+        name: 'DailyExamDetail',
+        component: () => import('@/views/evaluation/daily-exam-detail.vue')
       },
       {
         path: 'evaluation/scene-results',

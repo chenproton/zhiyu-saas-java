@@ -74,6 +74,17 @@
 | 4 | 权限：`RequireMenu`/按钮级显隐 | Vue 权限指令 `v-hasPermi`（plus-ui 已有） | 权限点字符串照抄 |
 | 5 | 路由：Next.js 文件路由 | Vue Router 静态路由（按域分模块） | 路径保持与 Next.js 一致（去掉 `/java` 由 base 处理） |
 
+#### 3.2.1 对齐实践要点（2026-08-19 M1 沉淀，React SPA 为基准）
+
+| # | 场景 | 做法 |
+|---|---|---|
+| a | Vue `@/api/*` 缺 React api-client 的方法 | 按 React 端点路径补（如 `PUT /affairs/teaching-plans/entries/{id}` → `teachingPlanApi.updateEntry`）；类型同步补进 `@/types/*`。Java 端点已全覆盖，补方法即可 |
+| b | 分组表格（如教学计划按 startWeek 分组） | 数据拍平（分组行 + 条目行）+ `el-table :span-method` 跨列 |
+| c | 行内批量编辑保存 | `Promise.allSettled` 并行提交（React 同款），失败条目保留编辑态供重试并提示失败项 |
+| d | 状态操作（提交审批/撤回/发布） | 复用 `createContentApi` 的 `submit/withdraw/publish` + `approvalApi.create({targetType,targetId,workflowId})`（从批次取 workflowId） |
+| e | 别名转发页（React `export {default} from ...` 复用他域页面） | Vue 用**同一组件注册多条路由**（如 `/affairs/majors` 与 `/system/majors` 共用 `system/majors.vue`） |
+| f | 聚合页 vs 分域页（approvals/workflows/import-export） | Vue 聚合页保留，M9 统一核对补名称映射/详情跳转；导入导出实体选项按 React 使用面补齐（如 `affairs-config`） |
+
 ### 3.3 域清单（迁移顺序）
 `library → job → scene → lesson → alliance → evaluation → affairs → partner → superadmin → portal/ai`（试点 library 后按此批推进；依赖关系见 §9）。
 
