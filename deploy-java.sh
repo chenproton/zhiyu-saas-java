@@ -102,10 +102,12 @@ stop_old() {
 # ---------- 3. Docker Compose 部署 ----------
 compose_up() {
   cd "$DOCKER_DIR"
-  # 先移除旧容器（镜像更新时强制重建），再拉起
+  # 先移除旧容器（镜像更新时强制重建），再拉起。
+  # 注意必须包含 java-redis：全新服务器上若不显式拉起，java-backend 启动时
+  # DNS 解析 java-redis 失败 → UnknownHostException 崩溃循环（本机因历史遗留已运行未暴露）。
   docker compose -f docker-compose-java.yml up -d --remove-orphans \
-    --force-recreate java-backend java-nginx
-  log "容器已启动（java-backend / java-nginx）"
+    --force-recreate java-redis java-backend java-nginx
+  log "容器已启动（java-redis / java-backend / java-nginx）"
 }
 
 compose_down() {
