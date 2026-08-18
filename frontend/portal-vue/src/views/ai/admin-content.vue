@@ -1,34 +1,40 @@
 <template>
   <div class="admin-page">
     <div class="page-header">
+      <div class="header-icon"><el-icon><component :is="Icon" /></el-icon></div>
       <div>
-        <h2 class="page-title">{{ isKb ? '知识库管理' : '智能体管理' }}</h2>
-        <p class="page-sub">{{ isKb ? '查看本租户全部待审核/已发布/已驳回知识库，可前往体验或下架' : '查看本租户全部待审核/已发布/已驳回智能体，可前往体验或下架' }}</p>
+        <h2>{{ isKb ? '知识库管理' : '智能体管理' }}</h2>
+        <p>{{ isKb ? '查看本租户全部待审核/已发布/已驳回知识库，可前往体验或下架' : '查看本租户全部待审核/已发布/已驳回智能体，可前往体验或下架' }}</p>
       </div>
     </div>
 
     <el-card shadow="never">
       <div class="filter-bar">
-        <el-radio-group v-model="status" @change="onFilter">
-          <el-radio-button value="">全部</el-radio-button>
-          <el-radio-button value="pending">待审核</el-radio-button>
-          <el-radio-button value="published">已发布</el-radio-button>
-          <el-radio-button value="rejected">已驳回</el-radio-button>
-        </el-radio-group>
+        <el-button
+          v-for="s in STATUS_OPTIONS"
+          :key="s || 'all'"
+          size="small"
+          :type="status === s ? 'primary' : 'default'"
+          :plain="status !== s"
+          round
+          @click="onStatus(s)"
+        >{{ s === '' ? '全部' : statusLabel(s) }}</el-button>
         <span class="total">共 {{ total }} 条</span>
       </div>
 
       <el-table v-loading="loading" :data="items" stripe>
         <el-table-column label="名称" prop="name" min-width="200" show-overflow-tooltip />
-        <el-table-column v-if="isKb" label="类型" width="110">
-          <template #default="{ row }">{{ row.kbType ? kbTypeLabels[row.kbType] || row.kbType : '-' }}</template>
+        <el-table-column v-if="isKb" label="类型" width="120">
+          <template #default="{ row }">{{ row.kbType ? AI_KB_TYPE_LABELS[row.kbType as AIKBType] || row.kbType : '-' }}</template>
         </el-table-column>
-        <el-table-column label="创建者" prop="ownerName" width="120">
+        <el-table-column label="创建者" width="120">
           <template #default="{ row }">{{ row.ownerName || '-' }}</template>
         </el-table-column>
-        <el-table-column label="浏览量" prop="viewCount" width="90" />
+        <el-table-column label="浏览量" width="90">
+          <template #default="{ row }">{{ row.viewCount ?? 0 }}</template>
+        </el-table-column>
         <el-table-column label="更新时间" width="150">
-          <template #default="{ row }">{{ fmt(row.updatedAt || row.createdAt) }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.updatedAt || row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -37,7 +43,7 @@
         </el-table-column>
         <el-table-column label="操作" width="160" align="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="goUse(row)">前往使用</el-button>
+            <el-button size="small" text type="primary" @click="goUse(row)">前往使用</el-button>
             <el-button v-if="row.status === 'published'" size="small" @click="confirmTakedown(row)">下架</el-button>
           </template>
         </el-table-column>
@@ -68,16 +74,20 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { Collection, Cpu } from '@element-plus/icons-vue';
 import { aiCenterAdminApi } from '@/api/ai';
-import { AI_KB_TYPE_LABELS } from '@/types/ai';
+import type { AIKBType } from '@/types/ai';
+import { AI_KB_TYPE_LABELS, formatDateTime } from './ai-api';
+
+const PAGE_SIZE = 20;
+const STATUS_OPTIONS = ['', 'pending', 'published', 'rejected'] as const;
 
 const route = useRoute();
 const router = useRouter();
-const PAGE_SIZE = 20;
-const kbTypeLabels = AI_KB_TYPE_LABELS as Record<string, string>;
 
 const type = computed<'kb' | 'agent'>(() => (route.meta.aiAdminType as 'kb' | 'agent') || 'agent');
 const isKb = computed(() => type.value === 'kb');
+const Icon = computed(() => (isKb.value ? Collection : Cpu));
 
 const status = ref('');
 const page = ref(1);
@@ -101,9 +111,6 @@ function statusType(s: string) {
   if (s === 'rejected') return 'danger';
   return 'warning';
 }
-function fmt(d?: string) {
-  return d ? new Date(d).toLocaleString() : '-';
-}
 
 async function load() {
   loading.value = true;
@@ -125,7 +132,8 @@ async function load() {
   }
 }
 
-function onFilter() {
+function onStatus(s: string) {
+  status.value = s;
   page.value = 1;
   load();
 }
@@ -134,11 +142,7 @@ function onPage(p: number) {
   load();
 }
 function goUse(row: any) {
-  if (isKb.value) {
-    ElMessage.info('知识库详情页待迁移');
-  } else {
-    router.push('/ai/chat');
-  }
+  router.push(isKb.value ? `/portal/apps/ai/kb/${row.id}` : `/portal/apps/ai/agents/${row.id}`);
 }
 function confirmTakedown(row: any) {
   takedownTarget.value = row;
@@ -164,11 +168,51 @@ onMounted(load);
 </script>
 
 <style scoped>
-.admin-page { padding: 16px; }
-.page-header { margin-bottom: 16px; }
-.page-title { font-size: 20px; font-weight: 700; margin: 0; }
-.page-sub { color: #909399; margin: 8px 0 0; }
-.filter-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
-.total { color: #909399; font-size: 13px; }
-.pager { margin-top: 12px; justify-content: flex-end; }
+.admin-page {
+  max-width: 1152px;
+  margin: 0 auto;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.page-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.page-header p {
+  color: #909399;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.total {
+  margin-left: auto;
+  color: #909399;
+  font-size: 13px;
+}
+.pager {
+  margin-top: 12px;
+  justify-content: flex-end;
+}
 </style>

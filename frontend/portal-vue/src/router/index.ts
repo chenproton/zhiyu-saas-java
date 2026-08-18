@@ -328,6 +328,82 @@ const routes: RouteRecordRaw[] = [
         name: 'AllianceBrands',
         component: () => import('@/views/alliance/brands.vue')
       },
+      // ---- 产教联盟前台（对齐 React /portal/alliance/* 公开门户）----
+      {
+        path: 'portal/alliance/landing',
+        name: 'AllianceLanding',
+        component: () => import('@/views/portal/alliance/landing.vue')
+      },
+      {
+        path: 'portal/alliance/enterprises',
+        name: 'AllianceEnterprises',
+        component: () => import('@/views/portal/alliance/enterprises.vue')
+      },
+      {
+        path: 'portal/alliance/enterprises/:id',
+        name: 'AllianceEnterpriseDetail',
+        component: () => import('@/views/portal/alliance/enterprise-detail.vue')
+      },
+      {
+        path: 'portal/alliance/experts',
+        name: 'AllianceExperts',
+        component: () => import('@/views/portal/alliance/experts.vue')
+      },
+      {
+        path: 'portal/alliance/experts/:id',
+        name: 'AllianceExpertDetail',
+        component: () => import('@/views/portal/alliance/expert-detail.vue')
+      },
+      {
+        path: 'portal/alliance/projects',
+        name: 'AllianceProjectsPublic',
+        component: () => import('@/views/portal/alliance/projects.vue')
+      },
+      {
+        path: 'portal/alliance/projects/:id',
+        name: 'AllianceProjectDetail',
+        component: () => import('@/views/portal/alliance/project-detail.vue')
+      },
+      {
+        path: 'portal/alliance/achievements',
+        name: 'AllianceAchievementsPublic',
+        component: () => import('@/views/portal/alliance/achievements.vue')
+      },
+      {
+        path: 'portal/alliance/achievements/:id',
+        name: 'AllianceAchievementDetail',
+        component: () => import('@/views/portal/alliance/achievement-detail.vue')
+      },
+      {
+        path: 'portal/alliance/brands',
+        name: 'AllianceBrandsPublic',
+        component: () => import('@/views/portal/alliance/brands.vue')
+      },
+      {
+        path: 'portal/alliance/brands/:id',
+        name: 'AllianceBrandDetail',
+        component: () => import('@/views/portal/alliance/brand-detail.vue')
+      },
+      {
+        path: 'portal/alliance/employment',
+        name: 'AllianceEmployment',
+        component: () => import('@/views/portal/alliance/employment.vue')
+      },
+      {
+        path: 'portal/alliance/employment/mine',
+        name: 'AllianceEmploymentMine',
+        component: () => import('@/views/portal/alliance/employment-mine.vue')
+      },
+      {
+        path: 'portal/alliance/employment/job/:id',
+        name: 'AllianceEmploymentJobDetail',
+        component: () => import('@/views/portal/alliance/employment-job-detail.vue')
+      },
+      {
+        path: 'portal/alliance/employment/:id',
+        name: 'AllianceEmploymentDetail',
+        component: () => import('@/views/portal/alliance/employment-detail.vue')
+      },
       {
         path: 'affairs/programs',
         name: 'AffairsPrograms',
@@ -501,6 +577,57 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemOrgTypes',
         component: () => import('@/views/system/org-types.vue')
       },
+      // ---- 门户系统应用 · 组织用户（对齐 React /portal/apps/system/org-user/*）----
+      {
+        path: 'portal/apps/system/org-user/org-structure',
+        name: 'OrgUserOrgStructure',
+        component: () => import('@/views/system/organizations.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/org-types',
+        name: 'OrgUserOrgTypes',
+        component: () => import('@/views/system/org-types.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/positions',
+        name: 'OrgUserPositions',
+        component: () => import('@/views/system/positions.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/relations',
+        name: 'OrgUserRelations',
+        component: () => import('@/views/system/relations.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/roles',
+        name: 'OrgUserRoles',
+        component: () => import('@/views/system/roles.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/accounts',
+        name: 'OrgUserAccounts',
+        component: () => import('@/views/system/accounts.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/fields',
+        name: 'OrgUserFields',
+        component: () => import('@/views/system/fields.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/graduates',
+        name: 'OrgUserGraduates',
+        component: () => import('@/views/system/graduates.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/students',
+        name: 'OrgUserStudents',
+        component: () => import('@/views/system/students.vue')
+      },
+      {
+        path: 'portal/apps/system/org-user/teachers',
+        name: 'OrgUserTeachers',
+        component: () => import('@/views/system/teachers.vue')
+      },
       {
         path: 'users',
         name: 'UserManagement',
@@ -609,47 +736,133 @@ const routes: RouteRecordRaw[] = [
         name: 'PartnerSettings',
         component: () => import('@/views/partner/settings.vue')
       },
+      // ---- AI 智能服务中心（对齐 React /portal/apps/ai/* 路径）----
       {
-        path: 'ai/agents',
-        name: 'AiAgents',
-        component: () => import('@/views/ai/agents.vue')
+        path: 'portal/apps/ai',
+        redirect: '/portal/apps/ai/landing'
       },
       {
-        path: 'ai/kbs',
-        name: 'AiKbs',
-        component: () => import('@/views/ai/kbs.vue')
+        // 落地页（hero + 我的工坊 + AI 广场平铺 + YIKnow 弹窗）
+        path: 'portal/apps/ai/landing',
+        name: 'AiLanding',
+        component: () => import('@/views/ai/landing.vue')
       },
       {
-        path: 'ai/chat',
-        name: 'AiChat',
-        component: () => import('@/views/ai/chat.vue')
+        // 旧 /square 重定向到落地页 #square（对齐 React）
+        path: 'portal/apps/ai/square',
+        redirect: { path: '/portal/apps/ai/landing', hash: '#square' }
       },
       {
-        path: 'ai/square',
-        name: 'AiSquare',
-        component: () => import('@/views/ai/square.vue')
+        // 旧 /studio 重定向到落地页 #studio（对齐 React）
+        path: 'portal/apps/ai/studio',
+        redirect: { path: '/portal/apps/ai/landing', hash: '#studio' }
       },
       {
-        path: 'ai/admin/agents',
+        // 智能体大厅
+        path: 'portal/apps/ai/hall/agents',
+        name: 'AiHallAgents',
+        component: () => import('@/views/ai/hall/agents.vue')
+      },
+      {
+        // 知识库大厅
+        path: 'portal/apps/ai/hall/kbs',
+        name: 'AiHallKbs',
+        component: () => import('@/views/ai/hall/kbs.vue')
+      },
+      {
+        // 智能体对话页
+        path: 'portal/apps/ai/agents/:id',
+        name: 'AiAgentChat',
+        component: () => import('@/views/ai/agent-chat.vue')
+      },
+      {
+        // 知识库详情 + 库内问答
+        path: 'portal/apps/ai/kb/:id',
+        name: 'AiKbDetail',
+        component: () => import('@/views/ai/kb-detail.vue')
+      },
+      {
+        // 新建智能体
+        path: 'portal/apps/ai/studio/agents/new',
+        name: 'AiStudioAgentNew',
+        component: () => import('@/views/ai/studio/agent-new.vue')
+      },
+      {
+        // 智能体编辑器
+        path: 'portal/apps/ai/studio/agents/:id',
+        name: 'AiStudioAgentEdit',
+        component: () => import('@/views/ai/studio/agent-edit.vue')
+      },
+      {
+        // 新建知识库
+        path: 'portal/apps/ai/studio/kb/new',
+        name: 'AiStudioKbNew',
+        component: () => import('@/views/ai/studio/kb-new.vue')
+      },
+      {
+        // 知识库管理（文档/协作者）
+        path: 'portal/apps/ai/studio/kb/:id',
+        name: 'AiStudioKbEdit',
+        component: () => import('@/views/ai/studio/kb-edit.vue')
+      },
+      {
+        // 智能体内容管理
+        path: 'portal/apps/ai/admin/agents',
         name: 'AiAdminAgents',
         component: () => import('@/views/ai/admin-content.vue'),
         meta: { aiAdminType: 'agent' }
       },
       {
-        path: 'ai/admin/kbs',
+        // 知识库内容管理
+        path: 'portal/apps/ai/admin/kbs',
         name: 'AiAdminKbs',
         component: () => import('@/views/ai/admin-content.vue'),
         meta: { aiAdminType: 'kb' }
       },
       {
-        path: 'ai/admin/reviews',
+        // 审核工作台
+        path: 'portal/apps/ai/admin/reviews',
         name: 'AiAdminReviews',
         component: () => import('@/views/ai/admin-reviews.vue')
       },
       {
-        path: 'ai/admin/integrations',
+        // 外部 AI 服务上架
+        path: 'portal/apps/ai/admin/integrations',
         name: 'AiAdminIntegrations',
         component: () => import('@/views/ai/admin-integrations.vue')
+      },
+      // ---- 旧 /ai/* 短路径：保留为重定向到新路径（portal/apps.vue、portal/index.vue、workspace.vue 导航在用）----
+      {
+        path: 'ai/agents',
+        redirect: '/portal/apps/ai/hall/agents'
+      },
+      {
+        path: 'ai/kbs',
+        redirect: '/portal/apps/ai/hall/kbs'
+      },
+      {
+        path: 'ai/chat',
+        redirect: '/portal/apps/ai/landing'
+      },
+      {
+        path: 'ai/square',
+        redirect: { path: '/portal/apps/ai/landing', hash: '#square' }
+      },
+      {
+        path: 'ai/admin/agents',
+        redirect: '/portal/apps/ai/admin/agents'
+      },
+      {
+        path: 'ai/admin/kbs',
+        redirect: '/portal/apps/ai/admin/kbs'
+      },
+      {
+        path: 'ai/admin/reviews',
+        redirect: '/portal/apps/ai/admin/reviews'
+      },
+      {
+        path: 'ai/admin/integrations',
+        redirect: '/portal/apps/ai/admin/integrations'
       },
       {
         path: 'approvals',

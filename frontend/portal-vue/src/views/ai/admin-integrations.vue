@@ -2,8 +2,8 @@
   <div class="integrations-page">
     <div class="page-header">
       <div>
-        <h2 class="page-title">外部 AI 服务上架</h2>
-        <p class="page-sub">维护第三方智能体与应用的链接卡片，上架后展示在 AI 广场</p>
+        <h2>外部 AI 服务上架</h2>
+        <p>维护第三方智能体与应用的链接卡片，上架后展示在 AI 广场</p>
       </div>
       <el-button type="primary" @click="openCreate">新增</el-button>
     </div>
@@ -49,7 +49,10 @@
         <el-form-item label="图标"><el-input v-model="form.icon" placeholder="🤖（emoji）" /></el-form-item>
         <el-form-item label="分类"><el-input v-model="form.category" placeholder="例如：效率工具" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" placeholder="一句话介绍" /></el-form-item>
-        <el-form-item label="排序"><el-input-number v-model="form.sort" :min="0" /><div class="hint">数字越小越靠前</div></el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="form.sort" :min="0" />
+          <div class="hint">数字越小越靠前</div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
@@ -73,6 +76,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { aiCenterAdminApi } from '@/api/ai';
 import type { AIIntegration } from '@/types/ai';
+import { isSafeExternalUrl } from './ai-api';
 
 const kind = ref<'agent' | 'app'>('agent');
 const items = ref<AIIntegration[]>([]);
@@ -125,8 +129,14 @@ function openEdit(item: AIIntegration) {
 async function submit() {
   const name = form.name.trim();
   const url = form.url.trim();
-  if (!name) { ElMessage.warning('请填写名称'); return; }
-  if (!/^https?:\/\//.test(url)) { ElMessage.warning('请输入合法的 http(s) 链接'); return; }
+  if (!name) {
+    ElMessage.warning('请填写名称');
+    return;
+  }
+  if (!/^https?:\/\//.test(url) || !isSafeExternalUrl(url)) {
+    ElMessage.warning('请输入合法的 http(s) 链接');
+    return;
+  }
   const body = {
     kind: kind.value,
     name,
@@ -134,7 +144,7 @@ async function submit() {
     icon: form.icon.trim(),
     description: form.description.trim(),
     category: form.category.trim(),
-    sort: form.sort || 0
+    sort: Number(form.sort) || 0
   };
   saving.value = true;
   try {
@@ -185,11 +195,35 @@ onMounted(load);
 </script>
 
 <style scoped>
-.integrations-page { padding: 16px; }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.page-title { font-size: 20px; font-weight: 700; margin: 0; }
-.page-sub { color: #909399; margin: 8px 0 0; }
-.kind-tabs { margin-bottom: 12px; }
-.icon { font-size: 20px; }
-.hint { color: #909399; font-size: 12px; margin-left: 8px; }
+.integrations-page {
+  max-width: 1152px;
+  margin: 0 auto;
+}
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.page-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.page-header p {
+  color: #909399;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+.kind-tabs {
+  margin-bottom: 12px;
+}
+.icon {
+  font-size: 20px;
+}
+.hint {
+  color: #909399;
+  font-size: 12px;
+  margin-left: 8px;
+}
 </style>
