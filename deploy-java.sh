@@ -62,8 +62,8 @@ build() {
   log "后端 jar 构建完成"
 
   cd "$REPO_DIR/frontend/edu"
-  log "构建前端（production，standalone 模式）..."
-  pnpm build > "$LOG_DIR/edu-build.log" 2>&1
+  log "构建前端（production，standalone 模式，basePath=/java）..."
+  NEXT_PUBLIC_BASE_PATH=/java pnpm build > "$LOG_DIR/edu-build.log" 2>&1
   # standalone 产物需手动补齐静态资源与 public 目录（Next.js standalone 约定）
   cp -r .next/static .next/standalone/frontend/edu/.next/static
   cp -r public .next/standalone/frontend/edu/public
