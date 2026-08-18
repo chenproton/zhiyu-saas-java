@@ -131,11 +131,11 @@ health_check() {
 
   log "等待前端就绪..."
   for i in $(seq 1 30); do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/portal" || true)
+    code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/java/portal" || true)
     [[ "$code" == "200" ]] && break
     sleep 3
   done
-  log "前端 /portal HTTP $code"
+  log "前端 /java/portal HTTP $code"
 
   # 登录冒烟（zhiyu admin 账号，密码从 zhiyu-saas/.env 解析）
   local seed_pw login
@@ -168,7 +168,7 @@ main() {
   echo
   echo "=============================================="
   echo " 部署完成（Docker 容器），访问地址："
-  echo "   演示站（统一入口）: http://111.170.170.202:$WEB_PORT/portal"
+  echo "   演示站（统一入口）: http://111.170.170.202:$WEB_PORT/java/portal"
   echo "   后端接口:           http://111.170.170.202:$WEB_PORT/api/v1/"
   echo "   容器:               zhiyu-java-backend / zhiyu-java-edu / zhiyu-java-nginx"
   echo "   运维:               docker compose -f deploy/docker/docker-compose-java.yml ps"
