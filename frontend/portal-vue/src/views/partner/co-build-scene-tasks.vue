@@ -918,6 +918,11 @@ watch(
   }
 );
 
+// 对齐 React WeightConfigDialog.onOpenChange(false)：权重弹窗关闭（保存/X/ESC 均走此）时持久化权重
+watch(isWeightConfigOpen, (open) => {
+  if (!open) void persistWeights(tasks.value, taskStates.value);
+});
+
 /* ============ 保存测评方式（409 重试一次） ============ */
 
 async function saveMethodsWithRetry(tid: string, version: number, methods: any[]): Promise<number> {
@@ -1250,25 +1255,20 @@ async function handleCardSave() {
       if (mk === 'outcome') updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] };
       if (mk === 'homework') updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] };
     });
+    // 对齐 React：先落内存（资源配置 + 评审步骤），保存失败时也保留本次编辑，供用户重试不丢失
+    updateState(taskId, { methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps });
     const methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC });
     if (methodsInput.length > 0) {
       isSavingCard.value = true;
       try {
         const newVersion = await saveMethodsWithRetry(taskId, state.evalMethodVersion, methodsInput);
-        updateState(taskId, {
-          methodResourceConfigs: updatedRC,
-          reviewSteps: enabledReviewSteps,
-          evalMethodVersion: newVersion
-        });
+        updateState(taskId, { evalMethodVersion: newVersion });
       } catch (err) {
         ElMessage.error((err as Error).message || '评价规则保存失败');
-        isSavingCard.value = false;
         return;
       } finally {
         isSavingCard.value = false;
       }
-    } else {
-      updateState(taskId, { methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps });
     }
   }
 
@@ -1383,12 +1383,16 @@ function distributeWeights() {
 }
 
 function openWeight() {
+  // 对齐 React「配置权重」按钮：打开前先快照持久化当前权重，避免未保存的权重编辑被带入弹窗
+  if (!isWeightConfigOpen.value) {
+    void persistWeights(tasks.value, taskStates.value);
+  }
   isWeightConfigOpen.value = true;
 }
 
 function closeWeight() {
+  // 持久化由 watch(isWeightConfigOpen) 统一处理，避免重复提交
   isWeightConfigOpen.value = false;
-  persistWeights(tasks.value, taskStates.value);
 }
 </script>
 
