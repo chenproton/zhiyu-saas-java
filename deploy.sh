@@ -39,6 +39,9 @@ done
 # ── 常量 ──
 BACKEND_PORT=8080; EDU_PORT=3020; GO_NGINX_PORT=8084
 DEPLOY_DIR="/opt/zhiyu-saas"
+# 全新服务器上 install_offline_debs 等前置步骤会先写 $DEPLOY_DIR 下的标记文件，
+# 必须先建目录，否则 "touch ... No such file or directory" 中断部署
+mkdir -p "$DEPLOY_DIR" 2>/dev/null || true
 NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
 OFFLINE_DIR="${OFFLINE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/offline}"
 NODE_VERSION="${NODE_VERSION:-22.12.0}"
