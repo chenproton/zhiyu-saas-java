@@ -437,6 +437,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/system/organizations.vue')
       },
       {
+        // React /affairs/positions 转发到 portal/apps/system/org-user/positions，Vue 复用 system/positions.vue
+        path: 'affairs/positions',
+        name: 'AffairsPositions',
+        component: () => import('@/views/system/positions.vue')
+      },
+      {
+        // React /affairs/relations 转发到 portal/apps/system/org-user/relations，Vue 复用 system/relations.vue
+        path: 'affairs/relations',
+        name: 'AffairsRelations',
+        component: () => import('@/views/system/relations.vue')
+      },
+      {
+        // React /affairs/config（教务配置=场地节次），Vue 复用 scheduling-config.vue
+        path: 'affairs/config',
+        name: 'AffairsConfig',
+        component: () => import('@/views/affairs/scheduling-config.vue')
+      },
+      {
         path: 'affairs/students',
         name: 'AffairsStudents',
         component: () => import('@/views/affairs/students.vue')
