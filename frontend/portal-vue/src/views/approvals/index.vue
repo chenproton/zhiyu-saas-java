@@ -20,22 +20,28 @@
 
       <el-table v-loading="loading" :data="items" stripe @selection-change="onSelectionChange">
         <el-table-column type="selection" width="50" />
-        <el-table-column label="目标类型" width="140">
+        <el-table-column label="目标类型" width="120">
           <template #default="{ row }">{{ targetTypeLabel(row.targetType) }}</template>
         </el-table-column>
-        <el-table-column prop="targetId" label="目标ID" width="200" show-overflow-tooltip />
+        <el-table-column label="目标" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="target-name">{{ targetName(row) }}</span>
+            <span v-if="targetName(row) !== row.targetId" class="target-id">#{{ row.targetId.slice(0, 8) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="currentStepIdx" label="步骤" width="70" />
-        <el-table-column prop="createdAt" label="提交时间" width="180" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="createdAt" label="提交时间" width="170" />
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
+            <el-button size="small" link @click="goDetail(row)">详情</el-button>
             <template v-if="row.status === 'pending'">
-              <el-button size="small" type="success" @click="review(row, 'approved')">通过</el-button>
-              <el-button size="small" type="danger" @click="review(row, 'rejected')">驳回</el-button>
+              <el-button size="small" type="success" link @click="review(row, 'approved')">通过</el-button>
+              <el-button size="small" type="danger" link @click="review(row, 'rejected')">驳回</el-button>
             </template>
             <span v-else>-</span>
           </template>
@@ -58,9 +64,17 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { approvalApi } from '@/api/approval';
+import { programApi, teachingPlanApi } from '@/api/affairs';
+import { positionApi } from '@/api/job';
+import { scenarioApi } from '@/api/scene';
+import { courseApi } from '@/api/lesson';
+import { examApi, questionBankApi } from '@/api/evaluation';
 import type { ApprovalRecord } from '@/types/approval';
+
+const router = useRouter();
 
 const PAGE_SIZE = 100;
 const items = ref<ApprovalRecord[]>([]);
@@ -75,6 +89,67 @@ const reviewing = ref(false);
 const reviewAction = ref<'approved' | 'rejected'>('approved');
 const comment = ref('');
 let reviewTarget: ApprovalRecord | null = null;
+
+// 目标名称映射（对齐 React 各域 approvals：预取资源列表建 Map 显示 targetName）
+const nameMaps = ref<Record<string, Map<string, string>>>({});
+const DETAIL_PATHS: Record<string, (id: string) => string> = {
+  training_program: (id) => `/affairs/programs/${id}`,
+  teaching_plan: (id) => `/affairs/teaching-plans/${id}`,
+  career_position: (id) => `/job/positions`,
+  scenario: () => `/scene/scenarios`,
+  course: () => `/lesson/courses`,
+  exam: (id) => `/evaluation/exams/${id}`,
+  question_bank: (id) => `/evaluation/question-banks/${id}`
+};
+
+const NAME_SELECTORS: Record<string, (row: any) => string> = {
+  training_program: (r) => r.name || '',
+  teaching_plan: (r) => `${r.programName || ''} ${r.termName || ''}`.trim(),
+  career_position: (r) => r.name || '',
+  scenario: (r) => r.name || '',
+  course: (r) => r.name || '',
+  exam: (r) => r.name || '',
+  question_bank: (r) => r.name || ''
+};
+
+async function loadNameMaps() {
+  try {
+    const [programs, plans, positions, scenarios, courses, exams, banks] = await Promise.allSettled([
+      programApi.list({ limit: 500 }),
+      teachingPlanApi.list({ limit: 500 }),
+      positionApi.list({ limit: 500 }),
+      scenarioApi.list({ limit: 500 }),
+      courseApi.list({ limit: 500 }),
+      examApi.list({ limit: 500 }),
+      questionBankApi.list({ limit: 500 })
+    ]);
+    const maps: Record<string, Map<string, string>> = {};
+    const set = (type: string, res: any) => {
+      const m = new Map<string, string>();
+      (res?.items || []).forEach((it: any) => m.set(it.id, NAME_SELECTORS[type]?.(it) || it.name || it.id));
+      maps[type] = m;
+    };
+    if (programs.status === 'fulfilled') set('training_program', programs.value);
+    if (plans.status === 'fulfilled') set('teaching_plan', plans.value);
+    if (positions.status === 'fulfilled') set('career_position', positions.value);
+    if (scenarios.status === 'fulfilled') set('scenario', scenarios.value);
+    if (courses.status === 'fulfilled') set('course', courses.value);
+    if (exams.status === 'fulfilled') set('exam', exams.value);
+    if (banks.status === 'fulfilled') set('question_bank', banks.value);
+    nameMaps.value = maps;
+  } catch {
+    /* 名称映射失败不阻断列表 */
+  }
+}
+
+function targetName(row: ApprovalRecord): string {
+  return nameMaps.value[row.targetType]?.get(row.targetId) || row.targetId;
+}
+
+function goDetail(row: ApprovalRecord) {
+  const build = DETAIL_PATHS[row.targetType];
+  if (build) router.push(build(row.targetId));
+}
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
   career_position: '岗位',
@@ -153,7 +228,10 @@ async function batchReview(action: 'approved' | 'rejected') {
   loadItems();
 }
 
-onMounted(loadItems);
+onMounted(() => {
+  loadItems();
+  loadNameMaps();
+});
 </script>
 
 <style scoped>
@@ -162,4 +240,6 @@ onMounted(loadItems);
 .card-title { font-size: 16px; font-weight: 600; }
 .filter-bar { margin-bottom: 12px; }
 .pagination { margin-top: 16px; justify-content: flex-end; }
+.target-name { font-weight: 500; }
+.target-id { margin-left: 6px; font-size: 12px; color: #909399; }
 </style>

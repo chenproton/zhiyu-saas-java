@@ -507,8 +507,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/evaluation/job-ability-config.vue')
       },
       {
+        // React 路径别名（对齐 /evaluation/job-ability/config/:id）
+        path: 'evaluation/job-ability/config/:id',
+        name: 'JobAbilityConfigReact',
+        component: () => import('@/views/evaluation/job-ability-config.vue')
+      },
+      {
         path: 'evaluation/job-ability-results',
         name: 'JobAbilityResults',
+        component: () => import('@/views/evaluation/job-ability-results.vue')
+      },
+      {
+        // React 路径别名（对齐 /evaluation/job-ability/results）
+        path: 'evaluation/job-ability/results',
+        name: 'JobAbilityResultsReact',
         component: () => import('@/views/evaluation/job-ability-results.vue')
       },
       {
@@ -519,6 +531,12 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'evaluation/exam-usage-results',
         name: 'ExamUsageResults',
+        component: () => import('@/views/evaluation/exam-usage-results.vue')
+      },
+      {
+        // React 路径别名（对齐 /evaluation/exam-usage/results，React 用 path 段传 usageId 参数）
+        path: 'evaluation/exam-usage/results',
+        name: 'ExamUsageResultsReact',
         component: () => import('@/views/evaluation/exam-usage-results.vue')
       },
       {
