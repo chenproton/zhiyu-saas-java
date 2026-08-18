@@ -42,6 +42,20 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    // 课程详情（公开 landing 子页，对齐 React /lesson/landing/[id]）
+    path: '/lesson/landing/:id',
+    name: 'LessonLandingDetail',
+    component: () => import('@/views/landing/lesson-detail.vue'),
+    meta: { public: true }
+  },
+  {
+    // 课程学习页（公开 landing 子页，对齐 React /lesson/landing/[id]/learn）
+    path: '/lesson/landing/:id/learn',
+    name: 'LessonLandingLearn',
+    component: () => import('@/views/landing/lesson-learn.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/library/landing',
     name: 'LibraryLanding',
     component: () => import('@/views/landing/library.vue'),
@@ -195,9 +209,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/lesson/courses.vue')
       },
       {
+        // 颗粒课程编辑页（对齐 React /lesson/admin/granular/add）
+        path: 'lesson/admin/granular/add',
+        name: 'LessonGranularAdd',
+        component: () => import('@/views/lesson/course-granular-edit.vue')
+      },
+      {
         path: 'lesson/courses/:id/edit',
         name: 'LessonCourseEdit',
         component: () => import('@/views/lesson/course-edit.vue')
+      },
+      {
+        // 混合课程编辑页（新建/编辑共用，?id= 编辑模式；对齐 React /lesson/admin/hybrid/add）
+        path: 'lesson/courses/hybrid/add',
+        name: 'LessonHybridCourseAdd',
+        component: () => import('@/views/lesson/course-hybrid-edit.vue')
       },
       {
         path: 'lesson/batches',
