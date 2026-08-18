@@ -1082,6 +1082,14 @@ if ! compose up -d --remove-orphans >"$COMPOSE_UP_LOG" 2>&1; then
 fi
 tail -n 5 "$COMPOSE_UP_LOG"
 
+# backend/frontend 容器重建后 IP 可能变化，而 zhiyu-nginx 网关在启动时缓存了其旧 IP，
+# 会导致转发到旧 IP 产生 502（Nginx hostname 解析缓存问题）。重建后显式重启网关容器
+# 让其重新解析上游容器名，确保路由到最新 IP。
+if [[ "$BUILD_BACKEND" == "true" || "$BUILD_FRONTEND" == "true" ]]; then
+  log "重启服务网关容器以刷新上游 IP 解析..."
+  docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（可能尚未创建，忽略）"
+fi
+
 # 等待 PG
 for i in $(seq 1 30); do
   compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
