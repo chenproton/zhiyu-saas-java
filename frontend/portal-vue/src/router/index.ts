@@ -887,6 +887,37 @@ const routes: RouteRecordRaw[] = [
         name: 'Approvals',
         component: () => import('@/views/approvals/index.vue')
       },
+      // ---- 各域 approvals（对齐 React 按域拆分：/affairs/approvals 等，复用聚合页按类型过滤）----
+      {
+        path: 'affairs/approvals',
+        name: 'AffairsApprovals',
+        component: () => import('@/views/approvals/index.vue'),
+        props: { targetTypes: ['training_program', 'teaching_plan'] }
+      },
+      {
+        path: 'evaluation/approvals',
+        name: 'EvaluationApprovals',
+        component: () => import('@/views/approvals/index.vue'),
+        props: { targetTypes: ['exam', 'question_bank'] }
+      },
+      {
+        path: 'job/approvals',
+        name: 'JobApprovals',
+        component: () => import('@/views/approvals/index.vue'),
+        props: { targetTypes: ['career_position'] }
+      },
+      {
+        path: 'scene/approvals',
+        name: 'SceneApprovals',
+        component: () => import('@/views/approvals/index.vue'),
+        props: { targetTypes: ['scenario'] }
+      },
+      {
+        path: 'lesson/admin/approvals',
+        name: 'LessonAdminApprovals',
+        component: () => import('@/views/approvals/index.vue'),
+        props: { targetTypes: ['course'] }
+      },
       {
         path: 'workflows',
         name: 'Workflows',

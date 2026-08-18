@@ -76,6 +76,9 @@ import type { ApprovalRecord } from '@/types/approval';
 
 const router = useRouter();
 
+// 对齐 React 各域 approvals：路由通过 props 传入 targetTypes（如 ['training_program','teaching_plan']）时只显示该类型
+const props = defineProps<{ targetTypes?: string[] }>();
+
 const PAGE_SIZE = 100;
 const items = ref<ApprovalRecord[]>([]);
 const loading = ref(false);
@@ -182,7 +185,9 @@ async function loadItems() {
       limit: PAGE_SIZE,
       offset: (page.value - 1) * PAGE_SIZE
     });
-    items.value = res.items;
+    items.value = props.targetTypes?.length
+      ? res.items.filter((it) => props.targetTypes!.includes(it.targetType))
+      : res.items;
     total.value = res.total ?? 0;
     selection.value = [];
   } catch (e) {
