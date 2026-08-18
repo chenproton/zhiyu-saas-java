@@ -94,12 +94,13 @@ build() {
 
 # ---------- 2. 停止旧裸进程与旧容器 ----------
 stop_old() {
-  # 停旧的裸进程部署（历史版本：java -jar 8081 / next 3021）
+  # 停旧的裸进程部署（历史版本：java -jar 8081 / next 3021）；无可停进程时也应返回 0，避免 set -e 误中断
   local pid
   pid=$(ss -tlnp 2>/dev/null | grep ':8081' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
-  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null && log "已停旧后端进程 $pid"
+  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null && log "已停旧后端进程 $pid" || true
   pid=$(ss -tlnp 2>/dev/null | grep ':3021' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
-  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null && log "已停旧前端进程 $pid"
+  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null && log "已停旧前端进程 $pid" || true
+  return 0
 }
 
 # ---------- 3. Docker Compose 部署 ----------
