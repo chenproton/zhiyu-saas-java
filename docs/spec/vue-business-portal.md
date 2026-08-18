@@ -2,6 +2,7 @@
 
 > 状态：实施完成（2026-08-18）：Phase 0 基建 + 部署接线完成，Vue 门户上线于 java-nginx `http://<host>:8083/java/portal/`，`/java/portal` 301 收敛到 Vue。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/AI/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ AI（广场/智能体/知识库/对话/内容管理/审核/外部服务）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**Java 部署 100% Vue**（deploy-java.sh 不再构建 Next.js，java-edu 容器与 Dockerfile 已移除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
 > 状态（2026-08-19）：**启动「Vue 门户与 React 基线功能对齐」**。`frontend/edu` 已由 Next.js 迁移为 React SPA（见 `docs/decisions/0009`）并持续演进，Vue 门户停留在迁移时快照，两侧差距随时间扩大。经逐路由对比（`docs/前端对齐差异表.md`）：React ~139 页面路由 vs Vue 89 条，**React 有而 Vue 缺失 ~128 页**（portal 域 76 页为主：alliance 43 + apps/ai 15 + apps/system 17 + login 1），另有 46 条 Vue 特有路由待分类。用户决策：仅对齐 portal-vue 业务门户（不含 superadmin/changelog/plus-ui）、视觉沿用 Element Plus（功能与交互以 React 为唯一基准）、按 React 路由顺序推进。详见 §11。
+> 状态（2026-08-19 完成）：**对齐实施完成**。M1-M8 全部模块翻译/核对完成，M9 特有页分类落地，M10 验收通过：路由差距清零（React 174 vs Vue 226，缺失仅 changelog 已按决策排除）、`pnpm typecheck` + `vite build` 通过、`spec-check.sh` 12 项硬约束全部通过。共 16 个 commit、~93,000 行新增（分支 feat/portal-vue-react-alignment）。详见 §11 与 `docs/前端对齐差异表.md`。
 > 范围：仅把 **Java 后端配套的业务门户前端**从 Next.js 迁移到 Vue 3.5 / TypeScript / Vite；**Go 后端 + Next.js 前端（`backend/go`、`frontend/edu`、`frontend/packages`、Go 部署路径）一律不改**，作为生产基线持续运行。
 
 ## 1. 背景与目标
