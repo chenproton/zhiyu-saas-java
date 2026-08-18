@@ -144,7 +144,9 @@ prune_old_images() {
   local repo="$1" keep="${2:-1}"
   local used ids id
   used=$(docker ps -a --format '{{.Image}}' 2>/dev/null | grep -E "^${repo}:" | \
-           while read -r img; do docker images -q "$img" 2>/dev/null; done | sort -u)
+           while read -r img; do docker images -q "$img" 2>/dev/null; done | sort -u) || true
+  # 注：set -euo pipefail 下，全新服务器没有 ${repo} 容器时 grep 无匹配退出码 1，
+  # 会令整条管道非零并杀死部署——必须 || true 兜底（本机因有存量容器从未暴露）。
   # 按创建时间倒序，再用 awk 按 ID 去重（保留首次出现=最新记录），保持行序即新旧顺序。
   # 注意：不能用 sort -u -k1,1 去重——它会按 ID 重新排序，破坏时间序，
   # 导致"保留最新 keep 个"实际变成"保留 ID 最小 keep 个"，旧镜像漏删
