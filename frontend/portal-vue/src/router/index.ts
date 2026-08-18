@@ -208,6 +208,52 @@ const routes: RouteRecordRaw[] = [
         name: 'LessonCourses',
         component: () => import('@/views/lesson/courses.vue')
       },
+      // ---- lesson admin（对齐 React /lesson/admin/* 路径）----
+      {
+        // 颗粒课管理列表（对齐 React /lesson/admin/granular，按 type 筛选）
+        path: 'lesson/admin/granular',
+        name: 'LessonAdminGranular',
+        component: () => import('@/views/lesson/courses.vue'),
+        props: { routeQueryType: 'granular' }
+      },
+      {
+        // 混合课管理列表（对齐 React /lesson/admin/hybrid）
+        path: 'lesson/admin/hybrid',
+        name: 'LessonAdminHybrid',
+        component: () => import('@/views/lesson/courses.vue'),
+        props: { routeQueryType: 'hybrid' }
+      },
+      {
+        // 体系课管理列表（对齐 React /lesson/admin/system）
+        path: 'lesson/admin/system',
+        name: 'LessonAdminSystem',
+        component: () => import('@/views/lesson/courses.vue'),
+        props: { routeQueryType: 'system' }
+      },
+      {
+        // 体系课编辑页（对齐 React /lesson/admin/system/add；?id= 编辑模式）
+        path: 'lesson/admin/system/add',
+        name: 'LessonAdminSystemAdd',
+        component: () => import('@/views/lesson/course-edit.vue')
+      },
+      {
+        // 混合课编辑页 React 路径别名（对齐 React /lesson/admin/hybrid/add）
+        path: 'lesson/admin/hybrid/add',
+        name: 'LessonAdminHybridAdd',
+        component: () => import('@/views/lesson/course-hybrid-edit.vue')
+      },
+      {
+        // 课程归档（对齐 React /lesson/admin/archive）
+        path: 'lesson/admin/archive',
+        name: 'LessonAdminArchive',
+        component: () => import('@/views/lesson/archive.vue')
+      },
+      {
+        // 课程批次（对齐 React /lesson/admin/batches）
+        path: 'lesson/admin/batches',
+        name: 'LessonAdminBatches',
+        component: () => import('@/views/lesson/batches.vue')
+      },
       {
         // 颗粒课程编辑页（对齐 React /lesson/admin/granular/add）
         path: 'lesson/admin/granular/add',
