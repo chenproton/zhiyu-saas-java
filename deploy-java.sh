@@ -20,7 +20,8 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$REPO_DIR/deploy/docker"
 LOG_DIR="$REPO_DIR/logs"
-ZHIYU_ENV_FILE=/root/projects/zhiyu-saas/.env
+# .env 与代码同目录（不再硬编码 /root/projects/...，支持任意路径部署/全新服务器）
+ZHIYU_ENV_FILE="${ZHIYU_ENV_FILE:-$REPO_DIR/.env}"
 WEB_PORT="${ZHIYU_JAVA_WEB_PORT:-8083}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 MODE="${1:-}"
