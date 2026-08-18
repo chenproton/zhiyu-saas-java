@@ -3,7 +3,7 @@
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">课程管理</span>
+          <span class="card-title">{{ pageTitle }}</span>
           <el-button type="primary" @click="openAdd">新建课程</el-button>
         </div>
       </template>
@@ -83,8 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { courseApi } from '@/api/lesson';
 import { COURSE_TYPE_LABELS } from '@/types/lesson';
@@ -93,6 +93,24 @@ import { contentStatusLabel } from '@/types/content-status';
 import { useContentWorkflow } from '@/composables/useContentWorkflow';
 
 const PAGE_SIZE = 200;
+
+const route = useRoute();
+
+// 对齐 React CourseAdminPage：/lesson/admin/{granular|hybrid|system} 按课程类型筛选
+// （路由通过 props 传入 routeQueryType，或 URL query ?type= 指定）
+const props = defineProps<{ routeQueryType?: string }>();
+
+const courseType = computed<CourseType | undefined>(() => {
+  const t = props.routeQueryType || (route.query.type as string | undefined);
+  return t && (t === 'granular' || t === 'hybrid' || t === 'system') ? (t as CourseType) : undefined;
+});
+
+const pageTitle = computed(() => {
+  if (courseType.value === 'granular') return '颗粒课管理';
+  if (courseType.value === 'hybrid') return '混合课管理';
+  if (courseType.value === 'system') return '体系课管理';
+  return '课程管理';
+});
 
 function courseTypeLabel(kind: string): string {
   return COURSE_TYPE_LABELS[kind as CourseType] || kind;
@@ -119,6 +137,7 @@ async function loadItems() {
   loading.value = true;
   try {
     const res = await courseApi.list({
+      ...(courseType.value ? { type: courseType.value } : {}),
       ...(searchQuery.value ? { search: searchQuery.value } : {}),
       limit: PAGE_SIZE,
       offset: (page.value - 1) * PAGE_SIZE

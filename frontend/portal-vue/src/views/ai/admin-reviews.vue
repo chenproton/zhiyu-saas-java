@@ -1,19 +1,20 @@
 <template>
   <div class="reviews-page">
     <div class="page-header">
-      <h2 class="page-title">知识库/智能体审核</h2>
-      <p class="page-sub">审核知识库与智能体的上架申请，管控 AI 广场内容</p>
+      <div class="header-icon"><el-icon><Select /></el-icon></div>
+      <div>
+        <h2>知识库/智能体审核</h2>
+        <p>审核知识库与智能体的上架申请，管控 AI 广场内容</p>
+      </div>
     </div>
 
     <!-- 概览卡片 -->
-    <el-row v-if="overview" :gutter="12" class="stats-row">
-      <el-col v-for="c in overviewCards" :key="c.label" :span="3">
-        <div class="stat">
-          <div class="stat-label">{{ c.label }}</div>
-          <div class="stat-value">{{ c.value }}</div>
-        </div>
-      </el-col>
-    </el-row>
+    <div v-if="overview" class="stats-grid">
+      <div v-for="c in overviewCards" :key="c.label" class="stat">
+        <div class="stat-label">{{ c.label }}</div>
+        <div class="stat-value">{{ c.value }}</div>
+      </div>
+    </div>
 
     <el-card shadow="never">
       <div class="filter-bar">
@@ -21,7 +22,7 @@
           <el-radio-button value="kb">知识库审核</el-radio-button>
           <el-radio-button value="agent">智能体审核</el-radio-button>
         </el-radio-group>
-        <el-select v-model="status" style="width: 120px" @change="onFilter">
+        <el-select v-model="status" style="width: 128px" @change="onFilter">
           <el-option label="待审核" value="pending" />
           <el-option label="已发布" value="published" />
           <el-option label="已驳回" value="rejected" />
@@ -30,11 +31,11 @@
 
       <el-table v-loading="loading" :data="items" stripe>
         <el-table-column label="名称" prop="name" min-width="180" show-overflow-tooltip />
-        <el-table-column label="提交人" prop="ownerName" width="110">
+        <el-table-column label="提交人" width="110">
           <template #default="{ row }">{{ row.ownerName || '-' }}</template>
         </el-table-column>
         <el-table-column label="提交时间" width="150">
-          <template #default="{ row }">{{ fmt(row.updatedAt || row.createdAt) }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.updatedAt || row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
@@ -46,7 +47,7 @@
         </el-table-column>
         <el-table-column label="操作" width="220" align="right">
           <template #default="{ row }">
-            <el-button size="small" @click="goUse(row)">前往使用</el-button>
+            <el-button size="small" text type="primary" @click="goUse(row)">前往使用</el-button>
             <template v-if="row.status === 'pending'">
               <el-button size="small" type="success" @click="confirmApprove(row)">通过</el-button>
               <el-button size="small" type="danger" @click="openComment(row, 'reject')">驳回</el-button>
@@ -98,11 +99,13 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { Select } from '@element-plus/icons-vue';
 import { aiCenterAdminApi } from '@/api/ai';
 import type { AIAdminOverview } from '@/types/ai';
+import { formatDateTime } from './ai-api';
 
-const router = useRouter();
 const PAGE_SIZE = 20;
+const router = useRouter();
 
 const type = ref<'kb' | 'agent'>('kb');
 const status = ref<'pending' | 'published' | 'rejected'>('pending');
@@ -146,9 +149,6 @@ function statusType(s: string) {
   if (s === 'rejected') return 'danger';
   return 'warning';
 }
-function fmt(d?: string) {
-  return d ? new Date(d).toLocaleString() : '-';
-}
 
 async function load() {
   loading.value = true;
@@ -186,8 +186,7 @@ function onPage(p: number) {
   load();
 }
 function goUse(row: any) {
-  if (type.value === 'kb') ElMessage.info('知识库详情页待迁移');
-  else router.push('/ai/chat');
+  router.push(type.value === 'kb' ? `/portal/apps/ai/kb/${row.id}` : `/portal/apps/ai/agents/${row.id}`);
 }
 
 function confirmApprove(row: any) {
@@ -246,15 +245,71 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.reviews-page { padding: 16px; }
-.page-header { margin-bottom: 16px; }
-.page-title { font-size: 20px; font-weight: 700; margin: 0; }
-.page-sub { color: #909399; margin: 8px 0 0; }
-.stats-row { margin-bottom: 16px; }
-.stat { background: #fff; border-radius: 8px; padding: 12px; text-align: center; }
-.stat-label { color: #909399; font-size: 12px; }
-.stat-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
-.filter-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
-.pager { margin-top: 12px; justify-content: flex-end; }
-.target-name { font-weight: 600; margin: 8px 0; }
+.reviews-page {
+  max-width: 1152px;
+  margin: 0 auto;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.page-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.page-header p {
+  color: #909399;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 12px;
+}
+.stat-label {
+  color: #909399;
+  font-size: 12px;
+}
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.pager {
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+.target-name {
+  font-weight: 600;
+  margin: 8px 0;
+}
 </style>

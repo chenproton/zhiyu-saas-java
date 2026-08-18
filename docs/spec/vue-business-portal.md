@@ -1,6 +1,8 @@
 # Vue 业务门户（Java 配套）规格文档 — 知与 SaaS
 
 > 状态：实施完成（2026-08-18）：Phase 0 基建 + 部署接线完成，Vue 门户上线于 java-nginx `http://<host>:8083/java/portal/`，`/java/portal` 301 收敛到 Vue。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/AI/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ AI（广场/智能体/知识库/对话/内容管理/审核/外部服务）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**Java 部署 100% Vue**（deploy-java.sh 不再构建 Next.js，java-edu 容器与 Dockerfile 已移除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
+> 状态（2026-08-19）：**启动「Vue 门户与 React 基线功能对齐」**。`frontend/edu` 已由 Next.js 迁移为 React SPA（见 `docs/decisions/0009`）并持续演进，Vue 门户停留在迁移时快照，两侧差距随时间扩大。经逐路由对比（`docs/前端对齐差异表.md`）：React ~139 页面路由 vs Vue 89 条，**React 有而 Vue 缺失 ~128 页**（portal 域 76 页为主：alliance 43 + apps/ai 15 + apps/system 17 + login 1），另有 46 条 Vue 特有路由待分类。用户决策：仅对齐 portal-vue 业务门户（不含 superadmin/changelog/plus-ui）、视觉沿用 Element Plus（功能与交互以 React 为唯一基准）、按 React 路由顺序推进。详见 §11。
+> 状态（2026-08-19 完成）：**对齐实施完成**。M1-M8 全部模块翻译/核对完成，M9 特有页分类落地，M10 验收通过：路由差距清零（React 174 vs Vue 226，缺失仅 changelog 已按决策排除）、`pnpm typecheck` + `vite build` 通过、`spec-check.sh` 12 项硬约束全部通过。共 16 个 commit、~93,000 行新增（分支 feat/portal-vue-react-alignment）。详见 §11 与 `docs/前端对齐差异表.md`。
 > 范围：仅把 **Java 后端配套的业务门户前端**从 Next.js 迁移到 Vue 3.5 / TypeScript / Vite；**Go 后端 + Next.js 前端（`backend/go`、`frontend/edu`、`frontend/packages`、Go 部署路径）一律不改**，作为生产基线持续运行。
 
 ## 1. 背景与目标
@@ -72,6 +74,17 @@
 | 3 | 表单：自定义 Form/Dialog | `el-form` + `el-dialog` | 字段/校验规则照抄 shared-types |
 | 4 | 权限：`RequireMenu`/按钮级显隐 | Vue 权限指令 `v-hasPermi`（plus-ui 已有） | 权限点字符串照抄 |
 | 5 | 路由：Next.js 文件路由 | Vue Router 静态路由（按域分模块） | 路径保持与 Next.js 一致（去掉 `/java` 由 base 处理） |
+
+#### 3.2.1 对齐实践要点（2026-08-19 M1 沉淀，React SPA 为基准）
+
+| # | 场景 | 做法 |
+|---|---|---|
+| a | Vue `@/api/*` 缺 React api-client 的方法 | 按 React 端点路径补（如 `PUT /affairs/teaching-plans/entries/{id}` → `teachingPlanApi.updateEntry`）；类型同步补进 `@/types/*`。Java 端点已全覆盖，补方法即可 |
+| b | 分组表格（如教学计划按 startWeek 分组） | 数据拍平（分组行 + 条目行）+ `el-table :span-method` 跨列 |
+| c | 行内批量编辑保存 | `Promise.allSettled` 并行提交（React 同款），失败条目保留编辑态供重试并提示失败项 |
+| d | 状态操作（提交审批/撤回/发布） | 复用 `createContentApi` 的 `submit/withdraw/publish` + `approvalApi.create({targetType,targetId,workflowId})`（从批次取 workflowId） |
+| e | 别名转发页（React `export {default} from ...` 复用他域页面） | Vue 用**同一组件注册多条路由**（如 `/affairs/majors` 与 `/system/majors` 共用 `system/majors.vue`） |
+| f | 聚合页 vs 分域页（approvals/workflows/import-export） | Vue 聚合页保留，M9 统一核对补名称映射/详情跳转；导入导出实体选项按 React 使用面补齐（如 `affairs-config`） |
 
 ### 3.3 域清单（迁移顺序）
 `library → job → scene → lesson → alliance → evaluation → affairs → partner → superadmin → portal/ai`（试点 library 后按此批推进；依赖关系见 §9）。
@@ -164,3 +177,62 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 - **不做统一登录/SSO 改造**：沿用现有 token 隔离（`-java` 后缀）与 Sa-Token 会话。
 - **不做 Go 切 Vue**：本期只做 Java 配套门户；Go 是否切 Vue 留待后续独立决策。
 - **不引入新 UI 库**（如 Ant Design Vue）：统一 Element Plus。
+
+## 11. 与 React 基线（frontend/edu）功能对齐计划
+
+> 背景：`frontend/edu` 已从 Next.js 迁移为 React SPA（`docs/decisions/0009`，行为不变重构），并新增/演进页面；Vue 门户（§1-§10 迁移成果）以旧 Next.js 快照为基准，与 React 现况存在差距。本计划以 **React 为唯一功能/交互基准**，逐页对齐 Vue 门户。
+
+### 11.1 决策（用户 2026-08-19 拍板）
+
+| 决策点 | 结论 |
+|---|---|
+| 对齐范围 | **仅 portal-vue 业务门户**；superadmin / changelog / plus-ui 不纳入 |
+| 视觉一致性 | **功能 + 交互逻辑与 React 一致，视觉沿用 Element Plus 原生风格**（不逐像素对齐） |
+| 推进顺序 | **按 React 路由顺序**：affairs → evaluation → job → lesson → library → partner → portal → scene |
+| 后端 | Java 端点已对齐（729 vs Go 666，无缺失），纯前端工作量；偶发缺口按 R3 记录 |
+
+### 11.2 差距基线
+
+- 机器化路由对比明细见 `docs/前端对齐差异表.md`（含缺失 128 条清单、Vue 特有 46 条分类、每页六项核对标准）。
+- 缺口集中：portal 域 76 条（alliance 前台 15 + apps/ai 15 + apps/alliance 28 + apps/system 17 + login 1）；affairs 9 / evaluation 10 / lesson 12 / partner 11 / job 4 / scene 5 / library 1。
+
+### 11.3 批次计划（每模块一个 commit，可并行 [P]）
+
+| 批次 | 模块 | 内容 | 依赖 |
+|---|---|---|---|
+| M1 | affairs | 9 页重写 + 已有 6 页核对 | 无 |
+| M2 | evaluation | 10 页重写 + 已有页核对 | 无 [P] |
+| M3 | job | 4 页重写 + 已有页核对 | 无 [P] |
+| M4 | lesson | 12 页重写 + 已有页核对 | 无 [P] |
+| M5 | library | 1 页核对（resources/:type） | 无 [P] |
+| M6 | partner | 11 页重写 + 已有页核对 | 无 [P] |
+| M7 | portal | 76 页重写（4 子批：alliance 前台 / apps-ai / apps-alliance / apps-system） | 无 |
+| M8 | scene | 5 页重写 + 已有页核对 | 无 [P] |
+| M9 | 特有页处理 | 46 条分类落地（路径归一化/等价核对/删除决策） | M1-M8 |
+| M10 | 验收收敛 | 路由 diff 清零 + vue-tsc/lint/build + spec_check + spec_analyze + 更新差异表/本 spec | M9 |
+
+### 11.4 每页对齐核对标准（六项）
+
+1. **路由**：路径与 React 一致（含动态段），嵌套 layout 等价；
+2. **字段**：表单字段、列表列、筛选条件与 React 完全一致（字段名/标签/顺序）；
+3. **校验**：必填、格式、长度、唯一性校验规则一致；
+4. **分页**：`limit/offset` 参数、`{items,total}` 返回、空态/加载态一致；
+5. **错误分支**：失败提示、401 跳转、403 权限提示与 React 一致；
+6. **权限点**：按钮级显隐权限字符串与 React（`RequireMenu`/菜单权限）一致。
+
+### 11.5 验收标准（DoD）
+
+1. `docs/前端对齐差异表.md` 缺失清单清零（changelog/superadmin 除外），Vue 特有 46 条全部分类落地；
+2. 每模块：`pnpm --filter portal-vue build` + `vue-tsc` 类型检查通过；`./scripts/spec-check.sh` 通过；
+3. 抽样页人工核对六项标准（字段/校验/分页/错误分支/权限点）；
+4. 全程不修改 `frontend/edu`、`frontend/packages`、`backend/go`（git diff 校验）；
+5. 每模块 commit 同步本 spec §11 进度与差异表状态。
+
+### 11.6 风险
+
+| # | 风险 | 影响 | 缓解 |
+|---|---|---|---|
+| A1 | React 页面复杂（studio/品牌多 Tab 编辑等）翻译量大 | 进度 | 按页拆分 commit；子代理并行；复用 §3.2 模板 |
+| A2 | Vue 特有页（community/favorites/ai-chat）React 无对应 | 范围争议 | §3.3 逐条与用户确认：删除或保留 |
+| A3 | 路径归一化误删 Vue 有用入口 | 功能丢失 | 归一化前核对 React 等价入口，记录迁移映射 |
+| A4 | Java 端点缺口（React 新页调用新端点） | 卡页 | 按 R3 记录缺口另立 Java 任务，不擅自改契约 |

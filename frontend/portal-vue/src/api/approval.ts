@@ -11,6 +11,8 @@ export const approvalApi = {
     limit?: number;
     offset?: number;
   }) => request<ListResponse<ApprovalRecord>>(`/approvals${buildQuery(params || {})}`),
+  create: (req: { targetType: string; targetId: string; workflowId?: string }) =>
+    request<ApprovalRecord>('/approvals', { method: 'POST', body: JSON.stringify(req) }),
   review: (id: string, req: { status: 'approved' | 'rejected'; comment?: string; stepIdx?: number }) =>
     request<ApprovalRecord>(`/approvals/${id}/review`, {
       method: 'POST',

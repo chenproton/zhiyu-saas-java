@@ -14,13 +14,18 @@
         <el-table-column prop="majorName" label="专业" min-width="120" show-overflow-tooltip />
         <el-table-column prop="entryYear" label="入学年份" width="100" />
         <el-table-column prop="entryCount" label="课程数" width="90" />
+        <el-table-column label="所属批次" min-width="130" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.batchName || '-' }}</template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">{{ contentStatusLabel(row.status) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'draft'" size="small" type="success" @click="confirm(row)">确认</el-button>
-            <el-button size="small" type="danger" @click="confirmDelete(row)">删除</el-button>
+            <el-button size="small" type="primary" link @click="router.push(`/affairs/teaching-plans/${row.id}`)">详情</el-button>
+            <el-button v-if="row.status === 'draft'" size="small" type="success" link @click="confirm(row)">确认</el-button>
+            <el-button size="small" link @click="exportExcel(row)">导出</el-button>
+            <el-button size="small" type="danger" link @click="confirmDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -50,11 +55,13 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { teachingPlanApi, programApi, termApi } from '@/api/affairs';
 import type { TeachingPlan, TrainingProgram, AffairsTerm } from '@/types/affairs';
 import { contentStatusLabel } from '@/types/content-status';
 
+const router = useRouter();
 const items = ref<TeachingPlan[]>([]);
 const programs = ref<TrainingProgram[]>([]);
 const terms = ref<AffairsTerm[]>([]);
@@ -126,6 +133,14 @@ async function confirmDelete(row: TeachingPlan) {
     loadItems();
   } catch (e) {
     ElMessage.error((e as Error).message || '删除失败');
+  }
+}
+async function exportExcel(row: TeachingPlan) {
+  try {
+    await teachingPlanApi.exportExcel(row.id);
+    ElMessage.success(`导出成功：${row.programName || '教学计划'}`);
+  } catch (e) {
+    ElMessage.error((e as Error).message || '导出失败');
   }
 }
 onMounted(() => {

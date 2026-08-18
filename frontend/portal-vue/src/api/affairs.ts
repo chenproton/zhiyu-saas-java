@@ -5,20 +5,31 @@ import type {
   AffairsTerm,
   TeachingPlan,
   TeachingPlanDetail,
+  TeachingPlanEntry,
+  TeachingPlanEntryUpdatePayload,
   Venue,
   PeriodSlot,
   ScheduleEntry,
   ScheduleEntryPayload,
   ScheduleConflict,
-  TimetableResponse
+  TimetableResponse,
+  TrainingProgramCourse,
+  TrainingProgramCoursePayload
 } from '@/types/affairs';
 
 type ProgramCreate = Partial<Omit<TrainingProgram, 'id' | 'createdAt' | 'updatedAt'>>;
 type ProgramUpdate = Partial<Omit<TrainingProgram, 'id' | 'createdAt' | 'updatedAt'>>;
 
-export const programApi = createContentApi<TrainingProgram, ProgramCreate, ProgramUpdate>(
-  '/affairs/programs'
-);
+export const programApi = {
+  ...createContentApi<TrainingProgram, ProgramCreate, ProgramUpdate>('/affairs/programs'),
+  listCourses: (id: string) =>
+    request<ListResponse<TrainingProgramCourse>>(`/affairs/programs/${id}/courses`),
+  saveCourses: (id: string, courses: TrainingProgramCoursePayload[]) =>
+    request<ListResponse<TrainingProgramCourse>>(`/affairs/programs/${id}/courses`, {
+      method: 'PUT',
+      body: JSON.stringify({ courses })
+    })
+};
 
 export const affairsBatchApi = createCrudApi<any, Record<string, unknown>, Record<string, unknown>>(
   '/affairs/batches'
@@ -36,7 +47,26 @@ export const teachingPlanApi = {
   ),
   generate: (req: { programId: string; termId: string }) =>
     request<TeachingPlanDetail>('/affairs/teaching-plans', { method: 'POST', body: JSON.stringify(req) }),
-  confirm: (id: string) => request<TeachingPlan>(`/affairs/teaching-plans/${id}/confirm`, { method: 'POST' })
+  confirm: (id: string) => request<TeachingPlan>(`/affairs/teaching-plans/${id}/confirm`, { method: 'POST' }),
+  updateEntry: (id: string, req: TeachingPlanEntryUpdatePayload) =>
+    request<TeachingPlanEntry>(`/affairs/teaching-plans/entries/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(req)
+    }),
+  exportExcel: async (id: string) => {
+    const res = await authedFetch(`/affairs/teaching-plans/${encodeURIComponent(id)}/export`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '教学计划导出.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 };
 
 export const venueApi = createCrudApi<

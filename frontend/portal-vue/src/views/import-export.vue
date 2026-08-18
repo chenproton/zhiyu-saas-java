@@ -35,7 +35,8 @@ const ENTITIES = [
   { key: 'majors', label: '专业' },
   { key: 'organizations', label: '组织' },
   { key: 'students', label: '学生' },
-  { key: 'teachers', label: '教师' }
+  { key: 'teachers', label: '教师' },
+  { key: 'affairs-config', label: '教务配置（场地与节次）' }
 ];
 
 const entity = ref('positions');
