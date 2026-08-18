@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -73,7 +73,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
   className,
   basePath = '/scenarios',
 }: ScenarioListProps<T>) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
   if (scenarios.length === 0) return null
 
@@ -193,7 +193,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                     />
                   </TableCell>
                   <TableCell>
-                    <Link href={`${basePath}/${scenario.id}/edit`} className="block">
+                    <Link to={`${basePath}/${scenario.id}/edit`} className="block">
                       <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-full hover:text-primary">
                         {scenario.name}
                       </p>
@@ -223,7 +223,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                   </TableCell>
                   <TableCell className="text-center">
                     <Link
-                      href={`${basePath}/${scenario.id}/edit/tasks`}
+                      to={`${basePath}/${scenario.id}/edit/tasks`}
                       className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
                     >
                       {scenario.taskCount ?? scenario.tasks?.length ?? 0}
@@ -233,8 +233,8 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                     <StatusActionBar
                       status={scenario.status}
                       isPublicPool={activeTab === 'public'}
-                      onView={() => router.push(`/scene/landing/${scenario.id}`)}
-                      onEdit={() => router.push(`${basePath}/${scenario.id}/edit`)}
+                      onView={() => navigate(`/scene/landing/${scenario.id}`)}
+                      onEdit={() => navigate(`${basePath}/${scenario.id}/edit`)}
                       onClone={onClone ? () => onClone(scenario) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(scenario) : undefined}
                       onWithdraw={
@@ -250,7 +250,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       }
                       extraActions={
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                          <Link href={`${basePath}/${scenario.id}/edit/tasks`}>
+                          <Link to={`${basePath}/${scenario.id}/edit/tasks`}>
                             <GitBranch className="mr-1 h-3 w-3" />
                             {t('编排任务')}
                           </Link>

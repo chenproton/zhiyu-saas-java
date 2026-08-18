@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, FolderKanban, Pencil, Plus, Power, RotateCcw, Trash2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -483,8 +483,8 @@ export function BatchGroupPage({
                       <TableCell className="font-medium">
                         {detailHref ? (
                           <Link
-                            href={detailHref(batch.id)}
-                            prefetch={false}
+                            to={detailHref(batch.id)}
+                            prefetch="none"
                             className="hover:text-primary"
                           >
                             {batch.name}

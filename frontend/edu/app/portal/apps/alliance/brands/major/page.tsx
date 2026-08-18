@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { ExternalLink, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
@@ -148,7 +148,7 @@ export default function AllianceMajorBrandPage() {
           </TableCell>
           <TableRowActions>
             {row.brand ? (
-              <Link href={`/portal/apps/alliance/brands/${row.brand.id}`}>
+              <Link to={`/portal/apps/alliance/brands/${row.brand.id}`}>
                 <span className="inline-flex items-center text-sm text-primary hover:underline">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   {t('管理品牌内容')}

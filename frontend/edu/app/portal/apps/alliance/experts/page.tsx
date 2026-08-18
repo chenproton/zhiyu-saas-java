@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ExternalLink } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceExpertApi, allianceEnterpriseApi } from '@/lib/api'
 import { useAsync, useToast } from '@zhiyu/ui'
@@ -105,7 +105,7 @@ export default function AllianceExpertsPage() {
       renderTableRow={(e: AllianceExpert, actions: any) => (
         <>
           <TableCell className="font-medium">
-            <Link href={`/portal/apps/alliance/experts/${e.id}`} className="hover:underline">
+            <Link to={`/portal/apps/alliance/experts/${e.id}`} className="hover:underline">
               {e.name}
             </Link>
           </TableCell>
@@ -127,7 +127,7 @@ export default function AllianceExpertsPage() {
           <TableCell>{e.industry || '-'}</TableCell>
           <TableCell>{allianceLabel('expertStatus', e.status)}</TableCell>
           <TableRowActions>
-            <Link href={`/portal/apps/alliance/experts/${e.id}`}>
+            <Link to={`/portal/apps/alliance/experts/${e.id}`}>
               <Button variant="ghost" size="sm">
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
                 {t('查看')}

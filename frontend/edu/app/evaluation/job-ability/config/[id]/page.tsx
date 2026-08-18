@@ -1,10 +1,7 @@
+import { useParams } from 'react-router'
 import { PositionWeightConfig } from './_components/position-weight-config'
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
-
-export default async function JobAbilityConfigPage({ params }: PageProps) {
-  const { id } = await params
-  return <PositionWeightConfig positionId={id} />
+export default function JobAbilityConfigPage() {
+  const { id } = useParams() as { id: string }
+  return <PositionWeightConfig positionId={id!} />
 }

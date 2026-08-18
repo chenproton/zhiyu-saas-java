@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { Link } from 'react-router'
+import { useParams } from 'react-router'
 import { publicPositionApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 import { useAuth } from '@/components/auth-provider'
 import { reportError } from '@/lib/error-handling'
@@ -122,7 +122,7 @@ export default function JobStudentLearnPage() {
           title={t('岗位不存在或暂未公开')}
           titleClassName="text-lg font-semibold text-[#475569]"
           action={
-            <Link href="/job/landing" className="text-primary hover:underline">
+            <Link to="/job/landing" className="text-primary hover:underline">
               {t('返回岗位列表')}
             </Link>
           }
@@ -137,7 +137,7 @@ export default function JobStudentLearnPage() {
       <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-8 py-6 w-full">
         <Link
           replace
-          href={`/job/landing/${id}`}
+          to={`/job/landing/${id}`}
           className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-primary mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> {t('返回岗位详情')}

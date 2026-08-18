@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -233,7 +232,7 @@ export function EmployerBrandDetail({ id }: EmployerBrandDetailProps) {
             </div>
             <div className="flex items-center gap-3">
               {enterprise?.logoUrl && (
-                <Image
+                <img
                   src={enterprise.logoUrl}
                   alt={brand?.name || ''}
                   width={48}

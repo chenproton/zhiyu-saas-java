@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   Briefcase,
   Heart,
@@ -82,7 +82,7 @@ function CourseCoverCard({
   const t = useT()
   return (
     <div className="relative group">
-      <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
+      <Link to={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
         <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
           <div
             className="h-[110px] flex items-center justify-center shrink-0 relative bg-cover bg-center"
@@ -151,7 +151,7 @@ function BankCard({
   return (
     <div className="relative group">
       <Link
-        href={`/evaluation/landing/banks/${bank.id}`}
+        to={`/evaluation/landing/banks/${bank.id}`}
         className="group block no-underline text-inherit"
       >
         <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-primary/25 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
@@ -214,7 +214,7 @@ function ExamCard({
   return (
     <div className="relative group">
       <Link
-        href={`/evaluation/landing/exams/${exam.id}`}
+        to={`/evaluation/landing/exams/${exam.id}`}
         className="group block no-underline text-inherit"
       >
         <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.1)] hover:border-primary/25 hover:-translate-y-1 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
@@ -390,17 +390,17 @@ export function CareerTab() {
               {t('浏览岗位、场景、课程或测评资源时，点击“收藏”即可在这里查看')}
             </div>
             <div className="flex items-center justify-center gap-4 mt-4 text-xs text-rose-500">
-              <Link href="/job/landing" className="hover:underline flex items-center gap-0.5">
+              <Link to="/job/landing" className="hover:underline flex items-center gap-0.5">
                 {t('去收藏岗位')} <ChevronRight className="w-3 h-3" />
               </Link>
-              <Link href="/scene/landing" className="hover:underline flex items-center gap-0.5">
+              <Link to="/scene/landing" className="hover:underline flex items-center gap-0.5">
                 {t('去收藏场景')} <ChevronRight className="w-3 h-3" />
               </Link>
-              <Link href="/lesson/landing" className="hover:underline flex items-center gap-0.5">
+              <Link to="/lesson/landing" className="hover:underline flex items-center gap-0.5">
                 {t('去收藏课程')} <ChevronRight className="w-3 h-3" />
               </Link>
               <Link
-                href="/evaluation/landing"
+                to="/evaluation/landing"
                 className="hover:underline flex items-center gap-0.5"
               >
                 {t('去收藏测评')} <ChevronRight className="w-3 h-3" />
@@ -549,7 +549,7 @@ export function CareerTab() {
                   {favorites.aiKbs.map((kb) => (
                     <div key={kb.id} className="relative group">
                       <Link
-                        href={`/portal/apps/ai/kb/${kb.id}`}
+                        to={`/portal/apps/ai/kb/${kb.id}`}
                         className="block rounded-xl border border-gray-100 bg-white p-4 hover:shadow-md transition-shadow"
                       >
                         <div className="text-sm font-medium text-gray-900 truncate">{kb.name}</div>
@@ -585,7 +585,7 @@ export function CareerTab() {
                   {favorites.aiAgents.map((a) => (
                     <div key={a.id} className="relative group">
                       <Link
-                        href={`/portal/apps/ai/agents/${a.id}`}
+                        to={`/portal/apps/ai/agents/${a.id}`}
                         className="block rounded-xl border border-gray-100 bg-white p-4 hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-center gap-2">

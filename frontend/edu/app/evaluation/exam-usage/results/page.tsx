@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useSearchParams, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import {
   GraduationCap,
   User,
@@ -54,8 +54,8 @@ const PAGE_SIZE = 20
 
 function ExamResultsContent() {
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const usageId = searchParams.get('usageId') || ''
   const [usage, setUsage] = useState<ExamUsage | null>(null)
   const [results, setResults] = useState<ExamStudentResult[]>([])
@@ -179,7 +179,7 @@ function ExamResultsContent() {
         description={t('该考试记录可能已被删除')}
         action={
           <Button asChild>
-            <Link href="/evaluation/exam-usage">{t('返回考试管理')}</Link>
+            <Link to="/evaluation/exam-usage">{t('返回考试管理')}</Link>
           </Button>
         }
       />
@@ -410,7 +410,7 @@ function ExamResultsContent() {
                         size="sm"
                         className="h-7 gap-1 text-xs"
                         onClick={() =>
-                          router.push(`/evaluation/lesson-results/daily-exams/${result.id}`)
+                          navigate(`/evaluation/lesson-results/daily-exams/${result.id}`)
                         }
                       >
                         <Eye className="size-3.5" />

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import {
   BookOpen,
   Calendar,
@@ -640,7 +640,7 @@ export function TeacherCoursesTab({
   prepAssociations = {},
   onAssociate,
 }: TeacherCoursesTabProps = {}) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
   const [selectedTerm, setSelectedTerm] = useState('')
@@ -1044,7 +1044,7 @@ export function TeacherCoursesTab({
                                           disabled={!accentColors.learnUrl}
                                           onClick={() => {
                                             if (accentColors.learnUrl)
-                                              router.push(accentColors.learnUrl)
+                                              navigate(accentColors.learnUrl)
                                           }}
                                         >
                                           <PlayCircle className="h-3 w-3 mr-0.5" />
@@ -1057,7 +1057,7 @@ export function TeacherCoursesTab({
                                           onClick={async () => {
                                             // 场景 plan → 场景任务评价
                                             if (!plan.courseId && plan.scenarioId) {
-                                              router.push('/evaluation/scene-results')
+                                              navigate('/evaluation/scene-results')
                                               return
                                             }
                                             // 有课程 id：混合课保留考勤评分，体系课/颗粒课进课程节点测评评分
@@ -1081,7 +1081,7 @@ export function TeacherCoursesTab({
                                                 /* 课程查询失败按非混合课处理 */
                                               }
                                             }
-                                            router.push(
+                                            navigate(
                                               plan.courseId
                                                 ? `/evaluation/lesson-results?courseId=${plan.courseId}`
                                                 : '/evaluation/lesson-results',

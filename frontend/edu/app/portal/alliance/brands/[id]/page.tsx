@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import {
   AllianceDetailShell,
   DetailEmpty,
@@ -66,7 +66,7 @@ interface HiredStudent {
 
 export default function AlliancePublicBrandDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const [brand, setBrand] = useState<AlliancePublicBrand | null>(null)
   const [loading, setLoading] = useState(true)

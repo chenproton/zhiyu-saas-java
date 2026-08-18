@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, Suspense, useMemo, useCallback, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useNavigate } from 'react-router'
 import {
   BookOpen,
   GraduationCap,
@@ -92,8 +92,8 @@ interface GrainCourseOption {
 /* ---------- main component ---------- */
 
 function AddSystemPageInner() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const t = useT()
   const editId = searchParams.get('id')
   const isEdit = !!editId
@@ -832,8 +832,8 @@ function AddSystemPageInner() {
   const handleFinish = useCallback(async () => {
     await handleSave()
     if (!hasSavedRef.current) return
-    router.push('/lesson/admin/system')
-  }, [handleSave, router])
+    navigate('/lesson/admin/system')
+  }, [handleSave, navigate])
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
     if (!selectedNodeId) return undefined
@@ -917,7 +917,7 @@ function AddSystemPageInner() {
             reportError(err, '删除未保存的课程草稿')
           }
         }
-        router.push('/lesson/admin/system')
+        navigate('/lesson/admin/system')
       }}
       onSaveDraft={handleSave}
       isSaving={saving}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, type ReactNode } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -307,7 +307,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           {!hideCreate && (createHref || createButtonLabel) && (
             <>
               {createHref ? (
-                <Link href={createHref}>
+                <Link to={createHref}>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-1" />
                     {createButtonLabel}

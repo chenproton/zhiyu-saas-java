@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { ContentListPage } from '@/components/shared/content-list-page'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { StatusActionBar } from '@/components/shared/status-action-bar'
@@ -31,7 +31,7 @@ function mapBatch(backend: any) {
 
 export default function ProgramsPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   return (
     <ContentListPage<
       TrainingProgram & { creatorId: string; coCreatorIds: string[] },
@@ -187,7 +187,7 @@ export default function ProgramsPage() {
                         <StatusActionBar
                           status={item.status}
                           isPublicPool={activeTab === 'public'}
-                          onEdit={() => router.push(`/affairs/programs/${item.id}`)}
+                          onEdit={() => navigate(`/affairs/programs/${item.id}`)}
                           onSubmit={onSubmitApproval ? () => onSubmitApproval(item) : undefined}
                           onWithdraw={
                             onWithdrawApproval ? () => onWithdrawApproval(item) : undefined

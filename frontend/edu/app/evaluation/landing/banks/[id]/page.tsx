@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { Link } from 'react-router'
+import { useParams, useNavigate } from 'react-router'
 import {
   Library,
   FileText,
@@ -101,7 +101,7 @@ export default function BankDetailPage() {
   const t = useT()
   const params = useParams()
   const id = params.id as string
-  const router = useRouter()
+  const navigate = useNavigate()
   const { activeRoleCode, loading: authLoading } = useAuth()
   // 教师/管理员预览 draft 走 live（原路径）；学生等角色走题库快照 bundle
   const isEditorPreview = !!activeRoleCode && EDITOR_PREVIEW_ROLES.includes(activeRoleCode)
@@ -257,7 +257,7 @@ export default function BankDetailPage() {
                 {t('重试')}
               </Button>
               <Link
-                href="/evaluation/landing"
+                to="/evaluation/landing"
                 className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium"
               >
                 {t('返回测评首页')}
@@ -270,7 +270,7 @@ export default function BankDetailPage() {
               </div>
               <div className="text-lg font-semibold text-slate-600">{t('题库不存在或暂未公开')}</div>
               <Link
-                href="/evaluation/landing"
+                to="/evaluation/landing"
                 className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium"
               >
                 {t('返回测评首页')}
@@ -299,7 +299,7 @@ export default function BankDetailPage() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
-              onClick={() => router.back()}
+              onClick={() => navigate(-1)}
               className="hover:text-blue-600 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">
@@ -309,7 +309,7 @@ export default function BankDetailPage() {
             </button>
             <span className="text-slate-300 shrink-0">/</span>
             <Link
-              href="/evaluation/landing"
+              to="/evaluation/landing"
               className="hover:text-blue-600 transition-colors hidden sm:inline"
             >
               {t('测评首页')}

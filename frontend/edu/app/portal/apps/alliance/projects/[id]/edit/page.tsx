@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -27,11 +27,11 @@ import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 import type { AllianceProject } from '@/lib/types'
 
 export default function AllianceProjectEditPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
   const { items: projectTypeItems } = useAllianceDictionary('project_type', tenantId)
   const [item, setItem] = useState<AllianceProject | null>(null)
@@ -65,7 +65,7 @@ export default function AllianceProjectEditPage() {
     try {
       await allianceProjectApi.update(id, item)
       toast({ title: t('项目已保存') })
-      router.push(`/portal/apps/alliance/projects/${id}`)
+      navigate(`/portal/apps/alliance/projects/${id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -121,7 +121,7 @@ export default function AllianceProjectEditPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('保存')}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+              <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
                 {t('取消')}
               </Button>
             </CardContent>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { ContentListPage } from '@/components/shared/content-list-page'
 import { EvaluationListTable } from '@/components/evaluation/evaluation-list-table'
 import { BankFormDialog } from '@/components/evaluation/bank-form-dialog'
@@ -57,7 +57,7 @@ export default function QuestionBanksPage() {
   const t = useT()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -77,7 +77,7 @@ export default function QuestionBanksPage() {
           version: 'V1.0',
         })
         setRefreshKey((k) => k + 1)
-        router.push(`/evaluation/question-banks/${newItem.id}?new=true`)
+        navigate(`/evaluation/question-banks/${newItem.id}?new=true`)
       } catch (err: any) {
         toast({
           variant: 'destructive',
@@ -86,7 +86,7 @@ export default function QuestionBanksPage() {
         })
       }
     },
-    [router, toast, t],
+    [navigate, toast, t],
   )
 
   return (

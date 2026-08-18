@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
+import { useParams, useNavigate, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   GripVertical,
@@ -59,8 +58,8 @@ import { useT } from '@/lib/i18n/locale-provider'
 export default function ExamComposerPage() {
   const t = useT()
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const examId = params.id as string
   const isPreview = searchParams.get('mode') === 'preview'
   const {
@@ -237,7 +236,7 @@ export default function ExamComposerPage() {
           <h2 className="text-lg font-semibold">{t('试卷不存在')}</h2>
           <p className="mb-4 text-muted-foreground">{t('该试卷可能已被删除')}</p>
           <Button asChild>
-            <Link href="/evaluation/exams">{t('返回组卷列表')}</Link>
+            <Link to="/evaluation/exams">{t('返回组卷列表')}</Link>
           </Button>
         </div>
       </div>
@@ -404,9 +403,9 @@ export default function ExamComposerPage() {
           size="sm"
           onClick={() => {
             if (isPreview) {
-              router.back()
+              navigate(-1)
             } else {
-              router.push('/evaluation/exams')
+              navigate('/evaluation/exams')
             }
           }}
         >
@@ -423,7 +422,7 @@ export default function ExamComposerPage() {
               <div className="flex gap-4">
                 {exam.coverImage ? (
                   <div className="relative shrink-0 size-24 overflow-hidden rounded-lg">
-                    <Image src={exam.coverImage} alt={exam.name} fill className="object-cover" />
+                    <img src={exam.coverImage} alt={exam.name} className="absolute inset-0 h-full w-full object-cover" />
                   </div>
                 ) : (
                   <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">

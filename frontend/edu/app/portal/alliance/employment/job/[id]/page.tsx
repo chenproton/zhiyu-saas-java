@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   Briefcase,
   FileText,
@@ -52,7 +52,7 @@ function ReadonlyField({ label, value }: { label: string; value?: string | null 
 
 export default function AllianceEmploymentJobDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId, user, major, orgNode, activeRoleCode } = usePortalAuth()
   const { toast } = useToast()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -222,7 +222,7 @@ export default function AllianceEmploymentJobDetailPage() {
                         </Button>
                       )}
                       <Link
-                        href="/portal/alliance/employment/mine"
+                        to="/portal/alliance/employment/mine"
                         className="mt-3 flex items-center justify-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
                       >
                         {t('我的投递')}

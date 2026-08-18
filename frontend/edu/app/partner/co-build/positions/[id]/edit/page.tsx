@@ -10,8 +10,8 @@
 // - 行业/专业字典、证书库、能力点编辑删除均无 partner 端点：StepBasicInfo 传 showIndustryMajor/certificateLibraryEnabled=false，
 //   StepAbilityModeling 注入 abilityPoolSource（学校能力只读）
 // - 授权即可编辑：本企业共建或学校授权资源均可编辑，保存后状态回写草稿，发布由学校端进行
-import { Suspense, useState, useEffect, use, useRef, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
@@ -41,15 +41,12 @@ import { useT } from '@/lib/i18n/locale-provider'
 // 共建岗位主表：get 端点返回岗位主表字段（tenantId 为学校租户）；详情子表走 list* 端点单独加载
 type CoBuildPositionDetail = CoBuildPosition & { tenantId?: string }
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
 
-function PartnerPositionEditPageContent({ params }: PageProps) {
+function PartnerPositionEditPageContent() {
   const t = useT()
-  const { id } = use(params)
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const { id } = useParams() as { id: string }
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = usePartnerAuth()
   const currentUser = user
     ? { id: user.id, name: user.name || user.username || user.id }
@@ -246,7 +243,7 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
   const handleFinish = async () => {
     const ok = await handleSave()
     if (ok) {
-      router.push('/partner/co-build/positions')
+      navigate('/partner/co-build/positions')
     }
   }
 
@@ -302,7 +299,7 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
             reportError(err, '删除未保存的岗位草稿')
           }
         }
-        router.push('/partner/co-build/positions')
+        navigate('/partner/co-build/positions')
       }}
       step={currentStepIndex + 1}
       stepLabel={currentStep.label}
@@ -407,7 +404,7 @@ function PartnerPositionEditPageContent({ params }: PageProps) {
   )
 }
 
-export default function PartnerPositionEditPage(props: PageProps) {
+export default function PartnerPositionEditPage() {
   return (
     <Suspense
       fallback={
@@ -416,7 +413,7 @@ export default function PartnerPositionEditPage(props: PageProps) {
         </div>
       }
     >
-      <PartnerPositionEditPageContent {...props} />
+      <PartnerPositionEditPageContent />
     </Suspense>
   )
 }

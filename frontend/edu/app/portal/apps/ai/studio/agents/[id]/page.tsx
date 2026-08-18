@@ -3,7 +3,7 @@
 // 智能体编辑器（spec docs/spec/ai-service-center.md §7 F5/F6）：
 // v2.6 全宽双栏 builder（对齐 zhiyu-ai builder 模式）：左表单分卡片，右栏 sticky 实时试聊。
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -27,7 +27,7 @@ export default function AgentEditPage() {
   const params = useParams()
   const agentId = String(params.id)
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   const [agent, setAgent] = useState<AIAgent | null>(null)
@@ -132,7 +132,7 @@ export default function AgentEditPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => router.push(`/portal/apps/ai/agents/${agent.id}`)}
+            onClick={() => navigate(`/portal/apps/ai/agents/${agent.id}`)}
           >
             <MessageSquare className="w-4 h-4 mr-1" />
             {agent.status === 'published' ? t('去对话') : t('预览对话')}

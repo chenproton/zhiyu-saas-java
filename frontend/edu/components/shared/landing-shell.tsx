@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { ChevronRight, Filter, Search, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -79,7 +79,7 @@ export function LandingShell({
   children,
 }: LandingShellProps) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const innerRef = useRef<HTMLDivElement>(null)
   const targetRef = listRef ?? innerRef
 
@@ -121,7 +121,7 @@ export function LandingShell({
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 className="inline-flex items-center gap-2 bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 px-6 sm:px-7 h-11 sm:h-12 rounded-full text-sm font-semibold shadow-lg transition-all w-full sm:w-auto justify-center"
-                onClick={hero.ctaHref ? () => router.push(hero.ctaHref!) : scrollToList}
+                onClick={hero.ctaHref ? () => navigate(hero.ctaHref!) : scrollToList}
               >
                 {hero.ctaLabel} <ChevronRight className="w-4 h-4" />
               </Button>

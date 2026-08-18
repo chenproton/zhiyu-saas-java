@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { useToast, useAsync } from '@zhiyu/ui'
@@ -121,7 +121,7 @@ export default function AllianceProjectsPage() {
         return (
           <>
             <TableCell className="font-medium">
-              <Link href={`/portal/apps/alliance/projects/${p.id}`} className="hover:underline">
+              <Link to={`/portal/apps/alliance/projects/${p.id}`} className="hover:underline">
                 {p.name}
               </Link>
             </TableCell>
@@ -144,13 +144,13 @@ export default function AllianceProjectsPage() {
             <TableCell>{allianceLabel('projectPhase', p.phase)}</TableCell>
             <TableCell>{formatDate(p.updatedAt)}</TableCell>
             <TableRowActions>
-              <Link href={`/portal/apps/alliance/projects/${p.id}`}>
+              <Link to={`/portal/apps/alliance/projects/${p.id}`}>
                 <Button variant="ghost" size="sm">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   {t('查看')}
                 </Button>
               </Link>
-              <Link href={`/portal/apps/alliance/projects/${p.id}/edit`}>
+              <Link to={`/portal/apps/alliance/projects/${p.id}/edit`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t('编辑')}

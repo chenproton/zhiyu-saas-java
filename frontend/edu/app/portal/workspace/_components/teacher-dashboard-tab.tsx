@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
 import {
   Bell,
@@ -317,7 +317,7 @@ function CourseScheduleTable({
   onPrepRequest,
   onGradeRequest,
 }: CourseScheduleTableProps = {}) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
 
   const scheduleTypeConfig: Record<
@@ -664,7 +664,7 @@ function CourseScheduleTable({
                             className={`flex-1 justify-center text-[11px] h-7 px-2 ${urls.isHybrid ? 'border-primary/15 text-primary hover:bg-primary/5' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
                             disabled={!urls.learnUrl}
                             onClick={() => {
-                              if (urls.learnUrl) router.push(urls.learnUrl)
+                              if (urls.learnUrl) navigate(urls.learnUrl)
                             }}
                           >
                             <PlayCircle className="h-3.5 w-3.5 mr-1" />
@@ -677,7 +677,7 @@ function CourseScheduleTable({
                             onClick={async () => {
                               // 场景事件 → 场景任务评价
                               if (event.type === 'scene') {
-                                router.push('/evaluation/scene-results')
+                                navigate('/evaluation/scene-results')
                                 return
                               }
                               // 课程类事件（体系课/颗粒课/混合课）：混合课保留考勤评分，其余进课程节点测评评分
@@ -698,7 +698,7 @@ function CourseScheduleTable({
                                   /* 课程查询失败按非混合课处理 */
                                 }
                               }
-                              router.push(
+                              navigate(
                                 event.courseId
                                   ? `/evaluation/lesson-results?courseId=${event.courseId}`
                                   : '/evaluation/lesson-results',

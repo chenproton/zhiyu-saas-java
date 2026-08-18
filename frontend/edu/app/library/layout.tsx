@@ -1,23 +1,23 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useLocation, useNavigate } from 'react-router'
 import { PlatformShell } from '@/components/platform-shell'
 import { PermissionGuard } from '@/components/shared/permission-guard'
 import { libraryNavigationConfig } from '@/lib/navigation-config'
 import { useAuth } from '@/components/auth-provider'
 
 export default function LibraryLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, loading, hasMenuPermission } = useAuth()
   const isLanding = pathname.startsWith('/library/landing')
 
   useEffect(() => {
     if (!loading && !user && !isLanding) {
-      router.replace('/portal/login')
+      navigate('/portal/login', { replace: true })
     }
-  }, [loading, user, isLanding, router])
+  }, [loading, user, isLanding, navigate])
 
   const allowed = !loading && !!user && hasMenuPermission(pathname)
 

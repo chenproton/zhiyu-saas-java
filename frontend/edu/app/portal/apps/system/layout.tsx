@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { Link } from 'react-router'
+import { useLocation } from 'react-router'
 import { ChevronDown, ChevronRight, ChevronLeft, Settings, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -15,7 +15,7 @@ const menuItems = systemNavigationConfig.sideNavItems
 
 export default function SystemLayout({ children }: { children: React.ReactNode }) {
   const t = useT()
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const { hasMenuPermission, loading } = usePortalAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>(() =>
@@ -58,7 +58,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-3">
           <Link
-            href="/portal/apps"
+            to="/portal/apps"
             className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted hover:bg-primary/10 hover:text-primary transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -103,7 +103,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                 </button>
               ) : (
                 <Link
-                  href={item.href!}
+                  to={item.href!}
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors',
                     isActive(item.href!)
@@ -122,7 +122,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                   {(item.children || []).map((child: any) => (
                     <Link
                       key={child.id}
-                      href={child.href}
+                      to={child.href}
                       className={cn(
                         'block px-3 py-2 rounded-lg text-sm transition-colors',
                         isActive(child.href)

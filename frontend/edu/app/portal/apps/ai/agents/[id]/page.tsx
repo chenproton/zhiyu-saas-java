@@ -3,7 +3,7 @@
 // 智能体对话页（spec §5.2/§5.5 / WBS F7）：
 // 左侧会话列表（桌面端）+ SSE 流式对话（meta 记 conversationId、sources 溯源、delta 打字机）。
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {

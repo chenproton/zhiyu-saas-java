@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Layers, MapPin } from 'lucide-react'
 import type { Scenario } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
@@ -45,7 +45,7 @@ export function SceneCard({
   const creatorName = scenario.creatorName || scenario.creatorId?.slice(0, 8) || '-'
 
   return (
-    <Link href={`/scene/landing/${scenario.id}`}>
+    <Link to={`/scene/landing/${scenario.id}`}>
       <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4"

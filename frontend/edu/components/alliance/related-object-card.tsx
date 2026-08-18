@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Briefcase, Layers, BookOpen, Building2, Trophy, Sparkles } from 'lucide-react'
 import type { AllianceRelatedRef } from '@zhiyu/shared-types'
 import { coverGradientFor } from '@/lib/cover-gradients'
@@ -53,7 +53,7 @@ export function RelatedObjectCard({
 
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)] hover:border-primary/30 flex flex-col">
-      <Link href={meta.href(item.id)} className="block">
+      <Link to={meta.href(item.id)} className="block">
         <div
           className="h-28 relative bg-cover bg-center flex flex-col justify-end p-3"
           style={coverStyle}

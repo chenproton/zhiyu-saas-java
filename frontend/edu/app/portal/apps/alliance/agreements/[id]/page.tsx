@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
@@ -13,7 +13,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 import type { AllianceAgreement, AllianceEnterprise, AllianceProject } from '@/lib/types'
 
 export default function AllianceAgreementDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()

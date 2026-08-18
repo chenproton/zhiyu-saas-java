@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,11 +32,11 @@ import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 export default function AllianceAgreementNewPage() {
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { tenantId } = usePortalAuth()
   const { items: typeItems } = useAllianceDictionary('agreement_type', tenantId)
   const { items: statusItems } = useAllianceDictionary('agreement_status', tenantId)
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const linkEnterpriseId = searchParams.get('enterpriseId')
   const linkProjectId = searchParams.get('projectId')
   const [saving, setSaving] = useState(false)
@@ -107,11 +107,11 @@ export default function AllianceAgreementNewPage() {
         // 协议已创建成功，仅关联同步失败：单独提示，避免误报"保存失败"诱导重复创建
         reportError(syncErr, '同步协议-项目关联')
         toast({ title: t('协议已创建，但项目关联同步失败'), variant: 'destructive' })
-        router.push(`/portal/apps/alliance/agreements/${data.id}`)
+        navigate(`/portal/apps/alliance/agreements/${data.id}`)
         return
       }
       toast({ title: t('协议已创建') })
-      router.push(`/portal/apps/alliance/agreements/${data.id}`)
+      navigate(`/portal/apps/alliance/agreements/${data.id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -159,7 +159,7 @@ export default function AllianceAgreementNewPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('创建')}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+              <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
                 {t('取消')}
               </Button>
             </CardContent>

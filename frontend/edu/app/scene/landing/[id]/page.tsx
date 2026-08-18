@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { Link } from 'react-router'
+import { useParams, useNavigate, useSearchParams } from 'react-router'
 import {
   PlayCircle,
   ListChecks,
@@ -363,8 +363,8 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
 export default function SceneDetailPage() {
   const params = useParams()
   const id = params.id as string
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const versionParam = searchParams.get('v') || undefined
   const { activeRoleCode, loading: authLoading } = useAuth()
   const { toast } = useToast()
@@ -561,7 +561,7 @@ export default function SceneDetailPage() {
           </div>
           <div className="text-lg font-semibold text-slate-600">{t('场景不存在或暂未公开')}</div>
           <Link
-            href="/scene/landing"
+            to="/scene/landing"
             className="text-primary hover:text-primary mt-3 text-sm font-medium"
           >
             {t('返回场景列表')}
@@ -674,7 +674,7 @@ export default function SceneDetailPage() {
                           )}
                         </div>
                         <Link
-                          href={sceneLearnHref(id, { taskId: task.id, version: pageVersion })}
+                          to={sceneLearnHref(id, { taskId: task.id, version: pageVersion })}
                           className="shrink-0 sm:ml-auto"
                         >
                           <Button
@@ -805,7 +805,7 @@ export default function SceneDetailPage() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
-              onClick={() => router.back()}
+              onClick={() => navigate(-1)}
               className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
@@ -900,7 +900,7 @@ export default function SceneDetailPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
-                      <Link href={sceneLearnHref(id, { version: pageVersion })}>
+                      <Link to={sceneLearnHref(id, { version: pageVersion })}>
                         <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
                           <PlayCircle className="w-4 h-4 mr-1.5" /> {t('开始学习')}
                         </Button>

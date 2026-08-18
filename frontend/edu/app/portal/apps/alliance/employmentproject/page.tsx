@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Pencil, Trash2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceEmploymentProjectApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
@@ -131,7 +131,7 @@ export default function EmploymentProjectListPage() {
           <>
             <TableCell className="font-medium">
               <Link
-                href={`/portal/apps/alliance/employmentproject/${p.id}`}
+                to={`/portal/apps/alliance/employmentproject/${p.id}`}
                 className="hover:underline"
               >
                 {p.name}
@@ -151,7 +151,7 @@ export default function EmploymentProjectListPage() {
               </Badge>
             </TableCell>
             <TableRowActions>
-              <Link href={`/portal/apps/alliance/employmentproject/${p.id}`}>
+              <Link to={`/portal/apps/alliance/employmentproject/${p.id}`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t('编辑')}

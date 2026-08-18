@@ -2,7 +2,7 @@
 
 // 创作页共享骨架（v2.6，对齐 zhiyu-ai builder 模式）：studio 编辑器全宽直出，
 // 自带 sticky 顶栏（返回 + 图标 + 标题 + 状态徽标 + 操作区），内容区统一容器。
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -31,7 +31,7 @@ export function StudioEditorShell({
           className={`${wide ? 'max-w-[1400px]' : 'max-w-5xl'} mx-auto px-4 sm:px-8 h-14 flex items-center gap-3`}
         >
           <Link
-            href="/portal/apps/ai/landing#studio"
+            to="/portal/apps/ai/landing#studio"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />

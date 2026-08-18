@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { TableCell, TableHead } from '@/components/ui/table'
@@ -187,7 +187,7 @@ export default function PartnerEmploymentJobsPage() {
           <>
             <TableCell className="font-medium">
               <Link
-                href={`/partner/employment-jobs/${job.id}`}
+                to={`/partner/employment-jobs/${job.id}`}
                 className="text-foreground hover:text-indigo-600 hover:underline"
               >
                 {job.title}
@@ -203,7 +203,7 @@ export default function PartnerEmploymentJobsPage() {
             <TableCell>{job.applicationCount}</TableCell>
             <TableCell className="text-muted-foreground">{formatDateTime(job.createdAt)}</TableCell>
             <TableRowActions>
-              <Link href={`/partner/employment-jobs/${job.id}/edit`}>
+              <Link to={`/partner/employment-jobs/${job.id}/edit`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t('编辑')}

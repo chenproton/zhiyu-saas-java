@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   ClipboardList,
@@ -61,7 +61,7 @@ export default function ExamCenterPage() {
       <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
           <Link
-            href="/evaluation/landing"
+            to="/evaluation/landing"
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

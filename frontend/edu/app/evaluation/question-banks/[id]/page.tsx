@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
+import { useParams, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   Plus,
@@ -67,7 +66,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
   const bankId = params.id as string
   const { toast } = useToast()
@@ -171,7 +170,7 @@ export default function QuestionBankDetailPage() {
         description={t('该题库可能已被删除')}
         action={
           <Button asChild>
-            <Link href="/evaluation/question-banks">{t('返回题库列表')}</Link>
+            <Link to="/evaluation/question-banks">{t('返回题库列表')}</Link>
           </Button>
         }
       />
@@ -451,7 +450,7 @@ export default function QuestionBankDetailPage() {
     <div className="p-6">
       {/* 返回按钮 */}
       <div className="mb-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/evaluation/question-banks')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/evaluation/question-banks')}>
           <ArrowLeft />
           {t('返回题库列表')}
         </Button>
@@ -465,7 +464,7 @@ export default function QuestionBankDetailPage() {
               {/* 封面 */}
               {bank.coverImage ? (
                 <div className="relative shrink-0 size-24 overflow-hidden rounded-lg">
-                  <Image src={bank.coverImage} alt={bank.name} fill className="object-cover" />
+                  <img src={bank.coverImage} alt={bank.name} className="absolute inset-0 h-full w-full object-cover" />
                 </div>
               ) : (
                 <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">

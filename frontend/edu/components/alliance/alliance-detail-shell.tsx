@@ -4,7 +4,7 @@
 // 与 components/shared/alliance-detail-shell.tsx（「门户视角」壳：notFound/loading/URL Tab 同步）并存，
 // 两者 props 形态刻意不同（视觉 vs 行为），改动前先确认目标页面组归属，避免双向漂移。
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
@@ -155,7 +155,7 @@ export function AllianceDetailShell({
                     {idx > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" />}
                     {crumb.href && !last ? (
                       <Link
-                        href={crumb.href}
+                        to={crumb.href}
                         className="hover:text-primary transition-colors whitespace-nowrap"
                       >
                         {crumb.label}

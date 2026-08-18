@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { Link, useLocation } from 'react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import type { PlatformNavigationConfig, SideNavChild, SideNavItem } from './config'
@@ -69,7 +68,7 @@ export function PlatformSideNav({
   config: PlatformNavigationConfig
   hasMenuPermission: (path: string) => boolean
 }) {
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const visibleSideNavItems = useMemo(
     () => getVisibleSideNavItems(config.sideNavItems, hasMenuPermission),
     [config.sideNavItems, hasMenuPermission],
@@ -115,7 +114,7 @@ export function PlatformSideNav({
       <div className="border-b border-gray-100 p-4">
         <div className="flex items-center gap-3">
           <Link
-            href={config.sideBackHref}
+            to={config.sideBackHref}
             aria-label={config.currentPlatformLabel ? `返回${config.currentPlatformLabel}` : '返回'}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 transition-colors hover:bg-primary/10 hover:text-primary"
           >
@@ -160,7 +159,7 @@ export function PlatformSideNav({
                 </button>
               ) : (
                 <Link
-                  href={item.href || '/'}
+                  to={item.href || '/'}
                   className={cn(
                     'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
                     active ? 'bg-primary text-white font-medium' : 'text-gray-600 hover:bg-gray-50',
@@ -178,7 +177,7 @@ export function PlatformSideNav({
                     return item.children?.map((child) => (
                       <Link
                         key={child.id}
-                        href={child.href}
+                        to={child.href}
                         className={cn(
                           'block rounded-lg px-3 py-2 text-sm transition-colors',
                           activeChildId === child.id
@@ -207,7 +206,7 @@ export function PlatformSideNav({
               return (
                 <Link
                   key={item.id}
-                  href={item.href}
+                  to={item.href}
                   className={cn(
                     'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
                     active

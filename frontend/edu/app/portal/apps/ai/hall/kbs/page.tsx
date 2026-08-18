@@ -5,7 +5,7 @@
 // 综合排序=hot(提问数) / 最新创建=new / 最近更新=updated / 资源最多=docs / 浏览最多=views(v2.2)。
 // v2.2 A3：搜索/标签/排序/页码全部同步到 URL query，刷新/分享不丢状态；加载更多 → 页码分页。
 import { Suspense, useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavigate, useSearchParams } from 'react-router'
 import { BookOpen } from 'lucide-react'
 import { aiCenterSquareApi, type AIKnowledgeBase } from '@/lib/api'
 import { useToast, EmptyState } from '@zhiyu/ui'
@@ -25,8 +25,8 @@ const SORTS: KbSort[] = ['hot', 'new', 'updated', 'docs', 'views']
 function KbHallInner() {
   const t = useT()
   const { toast } = useToast()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // URL 为唯一事实源（A3）
   const appliedQ = searchParams.get('q') || ''
@@ -54,9 +54,9 @@ function KbHallInner() {
         if (v) params.set(k, v)
         else params.delete(k)
       }
-      router.replace(`?${params.toString()}`, { scroll: false })
+      navigate(`?${params.toString()}`, { replace: true, preventScrollReset: true })
     },
-    [router, searchParams],
+    [navigate, searchParams],
   )
 
   useEffect(() => {

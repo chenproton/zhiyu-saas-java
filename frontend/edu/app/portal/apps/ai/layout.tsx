@@ -3,8 +3,8 @@
 // AI 智能服务中心布局：侧边栏（aiNavigationConfig）+ 菜单权限门（与系统设置布局同模式）。
 // 权限语义见 lib/menu-permissions.ts：权限树内页面按角色勾选控制，子路径继承最近已授权父菜单。
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { Link } from 'react-router'
+import { useLocation } from 'react-router'
 import { ChevronDown, ChevronRight, ChevronLeft, Sparkles, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
@@ -28,7 +28,7 @@ const FULL_WIDTH_PAGES = [
 
 export default function AICenterLayout({ children }: { children: React.ReactNode }) {
   const t = useT()
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const isFullWidth = FULL_WIDTH_PAGES.some(
     (p) => pathname === p || pathname.startsWith(p + '/'),
   )
@@ -77,7 +77,7 @@ export default function AICenterLayout({ children }: { children: React.ReactNode
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-3">
           <Link
-            href="/portal/apps"
+            to="/portal/apps"
             className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted hover:bg-primary/10 hover:text-primary transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -122,7 +122,7 @@ export default function AICenterLayout({ children }: { children: React.ReactNode
                 </button>
               ) : (
                 <Link
-                  href={item.href!}
+                  to={item.href!}
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors',
                     isActive(item.href!)
@@ -140,7 +140,7 @@ export default function AICenterLayout({ children }: { children: React.ReactNode
                   {(item.children || []).map((child: any) => (
                     <Link
                       key={child.id}
-                      href={child.href}
+                      to={child.href}
                       className={cn(
                         'block px-3 py-2 rounded-lg text-sm transition-colors',
                         isActive(child.href)

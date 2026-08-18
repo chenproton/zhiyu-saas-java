@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 
 import {
   BookOpen,
@@ -289,7 +289,7 @@ export function LearnPage({
           </div>
           <div className="text-lg font-semibold text-gray-600">{labels.notFoundText}</div>
           <Link
-            href={backHref}
+            to={backHref}
             className="text-primary hover:text-primary mt-2 text-sm font-medium transition-colors"
           >
             {labels.backText}
@@ -322,7 +322,7 @@ export function LearnPage({
             <div className="flex items-center gap-4">
               <Link
                 replace
-                href={detailHref}
+                to={detailHref}
                 className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-primary transition-all duration-200"
               >
                 <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-primary/5 group-hover:border-primary/30 group-hover:text-primary transition-all duration-200">
@@ -810,7 +810,7 @@ export function LearnPage({
                     {activeKnowledgePointCourses.map((c) => (
                       <Link
                         key={c.id}
-                        href={`/lesson/landing/${c.id}`}
+                        to={`/lesson/landing/${c.id}`}
                         className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
                       >
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shrink-0">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   ChevronDown,
@@ -231,7 +231,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/evaluation/job-ability">
+        <Link to="/evaluation/job-ability">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="size-4" />
             {t('返回岗位列表')}

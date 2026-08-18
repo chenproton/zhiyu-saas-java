@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -45,8 +45,8 @@ interface AgreementFormState {
 export default function AllianceAgreementEditPage() {
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
-  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const { items: typeItems } = useAllianceDictionary('agreement_type', tenantId)
   const { items: statusItems } = useAllianceDictionary('agreement_status', tenantId)
@@ -109,11 +109,11 @@ export default function AllianceAgreementEditPage() {
         // 协议已更新成功，仅关联同步失败：单独提示，避免误报"保存失败"诱导重复提交
         reportError(syncErr, '同步协议-项目关联')
         toast({ title: t('协议已保存，但项目关联同步失败'), variant: 'destructive' })
-        router.push(`/portal/apps/alliance/agreements/${id}`)
+        navigate(`/portal/apps/alliance/agreements/${id}`)
         return
       }
       toast({ title: t('协议已更新') })
-      router.push(`/portal/apps/alliance/agreements/${id}`)
+      navigate(`/portal/apps/alliance/agreements/${id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -167,7 +167,7 @@ export default function AllianceAgreementEditPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('保存')}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+              <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
                 {t('取消')}
               </Button>
             </CardContent>

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -64,7 +64,7 @@ export function EnterpriseCard({ enterprise }: { enterprise: AllianceEnterprise 
   const t = useT()
   const img = enterprise.coverImage
   return (
-    <Link href={`/portal/alliance/enterprises/${enterprise.id}`}>
+    <Link to={`/portal/alliance/enterprises/${enterprise.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/9] overflow-hidden bg-slate-800">
           {img ? (
@@ -138,7 +138,7 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
   const t = useT()
   const progress = project.progress ?? 0
   return (
-    <Link href={`/portal/alliance/projects/${project.id}`}>
+    <Link to={`/portal/alliance/projects/${project.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/10] overflow-hidden">
           {project.coverImage ? (
@@ -196,7 +196,7 @@ export function ProjectCard({ project }: { project: AllianceProject }) {
 export function AchievementCard({ achievement }: { achievement: AllianceAchievement }) {
   const t = useT()
   return (
-    <Link href={`/portal/alliance/achievements/${achievement.id}`}>
+    <Link to={`/portal/alliance/achievements/${achievement.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/10] overflow-hidden">
           {achievement.coverImage ? (
@@ -302,13 +302,13 @@ export function ExpertCard({ expert }: { expert: AllianceExpert }) {
       </div>
     )
   }
-  return <Link href={`/portal/alliance/experts/${expert.id}`}>{content}</Link>
+  return <Link to={`/portal/alliance/experts/${expert.id}`}>{content}</Link>
 }
 
 export function BrandCard({ brand }: { brand: AllianceBrand }) {
   const t = useT()
   return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
+    <Link to={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/10] overflow-hidden">
           {brand.coverImage ? (
@@ -370,7 +370,7 @@ export function TalentBrandCard({ brand }: { brand: AllianceBrand }) {
   const t = useT()
   const tags = brandTags(brand)
   return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
+    <Link to={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full p-0 gap-0">
         <div className="flex flex-col sm:flex-row h-full">
           <div className="relative sm:w-[42%] aspect-[16/9] sm:aspect-auto overflow-hidden shrink-0">
@@ -460,7 +460,7 @@ export function EmployerBrandRow({ brand }: { brand: AlliancePublicBrand }) {
   const tags = brandTags(brand)
   return (
     <Link
-      href={`/portal/alliance/brands/${brand.id}`}
+      to={`/portal/alliance/brands/${brand.id}`}
       className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/[0.03]"
     >
       <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 shadow-sm border border-slate-100 bg-slate-50">
@@ -522,7 +522,7 @@ export function JobBrandRow({ brand }: { brand: AlliancePublicBrand }) {
   const salary = salaryText(brand)
   return (
     <Link
-      href={`/portal/alliance/brands/${brand.id}`}
+      to={`/portal/alliance/brands/${brand.id}`}
       className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/[0.03]"
     >
       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
@@ -569,7 +569,7 @@ export function MajorBrandCard({ brand }: { brand: AllianceBrand }) {
   const t = useT()
   const tags = brandTags(brand)
   return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
+    <Link to={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/9] overflow-hidden">
           {brand.coverImage ? (
@@ -624,7 +624,7 @@ export function TeacherBrandCard({ brand }: { brand: AlliancePublicBrand }) {
   const organization = brand.personOrganization
   const industry = brand.personIndustry
   return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
+    <Link to={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white text-center h-full flex flex-col p-0 gap-0">
         <div className="h-16 relative">
           <GradientPlaceholder seed={brand.personIndustry || brand.name} className="w-full h-full" />
@@ -692,7 +692,7 @@ export function CultureBrandCard({ brand }: { brand: AllianceBrand }) {
   const t = useT()
   const tags = brandTags(brand)
   return (
-    <Link href={`/portal/alliance/brands/${brand.id}`}>
+    <Link to={`/portal/alliance/brands/${brand.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/9] overflow-hidden">
           {brand.coverImage ? (

@@ -8,7 +8,7 @@ import {
   type ApiErrorWithCode,
 } from '../api-helpers'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
 // ==================== 类型（与后端 domain/ai_center.go 对齐） ====================
 

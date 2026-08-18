@@ -1,36 +1,27 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
-import dynamic from 'next/dynamic'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { Network, GitBranch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GraphNode, GraphEdge } from './types'
 import { ChunkErrorBoundary } from '@/components/chunk-error-handler'
 import { useT } from '@/lib/i18n/locale-provider'
 
-const KnowledgeGraphView = dynamic(
-  () => import('./knowledge-graph-view').then((mod) => mod.KnowledgeGraphView),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
-        图谱加载中…
-      </div>
-    ),
-  },
+const KnowledgeGraphView = lazy(() =>
+  import('./knowledge-graph-view').then((mod) => ({ default: mod.KnowledgeGraphView })),
 )
 
-const KnowledgeGraphD3View = dynamic(
-  () => import('./knowledge-graph-d3-view').then((mod) => mod.KnowledgeGraphD3View),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
-        图谱加载中…
-      </div>
-    ),
-  },
+const KnowledgeGraphD3View = lazy(() =>
+  import('./knowledge-graph-d3-view').then((mod) => ({ default: mod.KnowledgeGraphD3View })),
 )
+
+function GraphLoading() {
+  return (
+    <div className="flex h-96 items-center justify-center text-sm text-muted-foreground">
+      图谱加载中…
+    </div>
+  )
+}
 
 function ViewToggle({
   mode,
@@ -110,11 +101,13 @@ export function KnowledgeGraphShell({
 
   return (
     <div className={cn('flex flex-col', className || 'h-[600px]')}>
-      {viewMode === 'static' ? (
-        <ChunkErrorBoundary Component={KnowledgeGraphView} componentProps={sharedProps} />
-      ) : (
-        <ChunkErrorBoundary Component={KnowledgeGraphD3View} componentProps={sharedProps} />
-      )}
+      <Suspense fallback={<GraphLoading />}>
+        {viewMode === 'static' ? (
+          <ChunkErrorBoundary Component={KnowledgeGraphView} componentProps={sharedProps} />
+        ) : (
+          <ChunkErrorBoundary Component={KnowledgeGraphD3View} componentProps={sharedProps} />
+        )}
+      </Suspense>
     </div>
   )
 }

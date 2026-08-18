@@ -29,7 +29,7 @@ import {
   Building2,
   PlusCircle,
 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import {
   allianceEnterpriseApi,
@@ -269,7 +269,7 @@ export default function AllianceEnterprisesPage() {
           <>
             <TableCell className="font-medium max-w-[180px] truncate">
               <Link
-                href={`/portal/apps/alliance/enterprises/${enterprise.id}`}
+                to={`/portal/apps/alliance/enterprises/${enterprise.id}`}
                 className="hover:underline"
               >
                 {enterprise.name}
@@ -287,7 +287,7 @@ export default function AllianceEnterprisesPage() {
             </TableCell>
             <TableCell>
               <Link
-                href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`}
+                to={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=agreements`}
                 className="text-primary hover:underline"
               >
                 {
@@ -299,7 +299,7 @@ export default function AllianceEnterprisesPage() {
             </TableCell>
             <TableCell>
               <Link
-                href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=projects`}
+                to={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=projects`}
                 className="text-primary hover:underline"
               >
                 {countBy(projects ?? [], 'enterpriseIds', enterprise.id)}
@@ -307,7 +307,7 @@ export default function AllianceEnterprisesPage() {
             </TableCell>
             <TableCell>
               <Link
-                href={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=achievements`}
+                to={`/portal/apps/alliance/enterprises/${enterprise.id}?tab=achievements`}
                 className="text-primary hover:underline"
               >
                 {countBy(achievements ?? [], 'enterpriseIds', enterprise.id)}
@@ -315,7 +315,7 @@ export default function AllianceEnterprisesPage() {
             </TableCell>
             <TableCell className="whitespace-nowrap">{formatDate(enterprise.updatedAt)}</TableCell>
             <TableRowActions>
-              <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
+              <Link to={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
                 <Button variant="ghost" size="sm">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   {t('查看')}

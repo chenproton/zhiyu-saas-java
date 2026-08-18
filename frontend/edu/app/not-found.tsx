@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -11,7 +11,7 @@ export default function NotFound() {
       <p className="text-5xl">404</p>
       <p className="text-sm text-muted-foreground">{t('页面不存在或已被移除')}</p>
       <Button asChild variant="outline">
-        <Link href="/portal/workspace">{t('返回工作台')}</Link>
+        <Link to="/portal/workspace">{t('返回工作台')}</Link>
       </Button>
     </div>
   )

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +23,7 @@ import CaptchaInput from '@/components/shared/captcha-input'
 
 export default function PartnerLoginPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { refresh } = usePartnerAuth()
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [error, setError] = useState('')
@@ -67,7 +66,7 @@ export default function PartnerLoginPage() {
   const doLogin = async (token: string) => {
     setToken(token, 'partner')
     await refresh()
-    router.replace('/partner/workspace')
+    navigate('/partner/workspace', { replace: true })
   }
 
   const handleSelectTenant = async (tenantId: string) => {
@@ -171,7 +170,7 @@ export default function PartnerLoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="relative mb-8 flex flex-col items-center gap-4">
-          <Image
+          <img
             src="/logo.png?v=2"
             alt="知育"
             width={369}

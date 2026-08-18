@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { partnerExpertApi, type PartnerExpert } from '@/lib/api'
@@ -12,7 +12,7 @@ import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export default function PartnerExpertDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { user, isAdmin, loading: authLoading } = usePartnerAuth()
   const { toast } = useToast()
   const t = useT()

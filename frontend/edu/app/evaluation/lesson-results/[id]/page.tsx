@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { Link } from 'react-router'
+import { useParams, useNavigate } from 'react-router'
 import {
   CheckCircle2,
   Clock,
@@ -31,7 +31,7 @@ const methodLabel = (key: string, label: (k: string) => string) =>
 
 export default function LessonResultDetailPage() {
   const params = useParams()
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
   const id = params.id as string
 
@@ -116,7 +116,7 @@ export default function LessonResultDetailPage() {
         comment: comment.trim() || undefined,
       })
       toast({ title: t('评分成功') })
-      router.push(`/evaluation/lesson-results${courseId ? `?courseId=${courseId}` : ''}`)
+      navigate(`/evaluation/lesson-results${courseId ? `?courseId=${courseId}` : ''}`)
     } catch {
       toast({ variant: 'destructive', title: t('评分失败'), description: t('请稍后重试') })
     } finally {
@@ -138,7 +138,7 @@ export default function LessonResultDetailPage() {
         title={t('测评结果不存在')}
         titleClassName="text-gray-400"
         action={
-          <Link href="/evaluation/lesson-results" className="text-primary text-sm">
+          <Link to="/evaluation/lesson-results" className="text-primary text-sm">
             {t('返回评分列表')}
           </Link>
         }
@@ -311,7 +311,7 @@ export default function LessonResultDetailPage() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => router.back()}>
+                <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
                   {t('取消')}
                 </Button>
                 <Button size="sm" disabled={saving || !isValidScore()} onClick={handleSave}>

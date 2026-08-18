@@ -1,8 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import { useNavigate } from 'react-router'
 import {
   Route,
   ChevronLeft,
@@ -50,7 +49,7 @@ const COLORS = [
 
 export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPathProps) {
   const t = useT()
-  const router = useRouter()
+  const routeNavigate = useNavigate()
   const defaultSteps = Object.entries(DEFAULT_STEP_DESCRIPTIONS).map(([name, desc]) => ({
     name: t(name),
     description: t(desc),
@@ -220,11 +219,10 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                           : '0 4px 16px rgba(0,0,0,0.2)',
                       }}
                     >
-                      <Image
+                      <img
                         src={scenario.coverImage}
                         alt={scenario.name}
-                        fill
-                        className="object-cover"
+                        className="absolute inset-0 h-full w-full object-cover"
                       />
                     </div>
                   ) : (
@@ -313,7 +311,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                     className="text-xs px-3 py-1.5 rounded-md bg-primary text-white hover:bg-purple-600 flex items-center gap-1"
                     onClick={() =>
                       activeScenarioId &&
-                      router.push(`/scene/landing/${activeScenarioId}/learn?task=${task.id}`)
+                      routeNavigate(`/scene/landing/${activeScenarioId}/learn?task=${task.id}`)
                     }
                   >
                     <Play className="w-3 h-3" /> {t('去学习')}
@@ -325,7 +323,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           height: 6px;
         }

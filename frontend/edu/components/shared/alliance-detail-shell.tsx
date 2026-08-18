@@ -5,7 +5,7 @@
 // 两者职责不同（行为 vs 视觉），改动前先确认目标页面组归属，避免双向漂移。
 
 import { type ReactNode, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { DetailPageHeader } from '@/components/shared/detail-page-header'
@@ -47,8 +47,8 @@ export function AllianceDetailShell<T extends string = string>({
   notFoundMessage,
 }: AllianceDetailShellProps<T>) {
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
 
   // 首帧即按 URL 深链 ?tab=xxx 校验取值，避免深链在首次渲染不生效
@@ -75,7 +75,7 @@ export function AllianceDetailShell<T extends string = string>({
         className="py-12"
         action={
           backHref && (
-            <Button variant="outline" size="sm" onClick={() => router.push(backHref)}>
+            <Button variant="outline" size="sm" onClick={() => navigate(backHref)}>
               <ArrowLeft className="h-4 w-4 mr-1" />
               {t('返回列表')}
             </Button>

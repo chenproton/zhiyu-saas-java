@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -29,8 +29,8 @@ import { useAllianceDictionary, mergeDictOptions } from '@/lib/alliance-dicts'
 export default function AllianceProjectNewPage() {
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const linkEnterpriseId = searchParams.get('enterpriseId')
   const { tenantId } = usePortalAuth()
   const { colleges: secondaryCollegeOptions } = useSecondaryColleges(tenantId)
@@ -83,7 +83,7 @@ export default function AllianceProjectNewPage() {
     try {
       const data = await allianceProjectApi.create(item)
       toast({ title: t('项目已创建') })
-      router.push(`/portal/apps/alliance/projects/${data.id}`)
+      navigate(`/portal/apps/alliance/projects/${data.id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -131,7 +131,7 @@ export default function AllianceProjectNewPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('创建')}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+              <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
                 {t('取消')}
               </Button>
             </CardContent>

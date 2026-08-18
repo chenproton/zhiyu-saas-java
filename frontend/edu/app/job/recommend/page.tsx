@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { useAuth } from '@/components/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -259,7 +259,7 @@ export default function PostRecommendPage() {
                           <Briefcase className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">{selectedPosition.name}</span>
                         </div>
-                        <Link href={`/explore/${selectedPosition.id}`} target="_blank">
+                        <Link to={`/explore/${selectedPosition.id}`} target="_blank">
                           <Button variant="ghost" size="sm" className="h-7 gap-1 text-primary">
                             <ExternalLink className="h-3.5 w-3.5" />
                             {t('查看岗位')}

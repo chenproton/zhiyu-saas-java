@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Award, Eye, FileCheck, GraduationCap } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -281,7 +281,7 @@ export function AssessmentTab() {
                       <TableCell className="text-right">
                         <Button size="sm" variant="ghost" className="text-[10px] h-7 px-2" asChild>
                           <Link
-                            href={
+                            to={
                               // 试卷版本由作答页按 usage.examVersion 服务端解析，链接只带 usage
                               exam.examId ? examHref(exam.examId, { usage: exam.id }) : '#'
                             }

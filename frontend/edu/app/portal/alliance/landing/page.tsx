@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   Building2,
   FolderKanban,
@@ -177,7 +177,7 @@ function ViewAllLink({ href }: { href: string }) {
   const t = useT()
   return (
     <Link
-      href={href}
+      to={href}
       className="group inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
     >
       {t('查看全部')}
@@ -203,7 +203,7 @@ function EmploymentProjectCard({
     .map((eid) => enterprises.find((e) => e.id === eid)?.name)
     .filter(Boolean) as string[]
   return (
-    <Link href={`/portal/alliance/employment/${project.id}`}>
+    <Link to={`/portal/alliance/employment/${project.id}`}>
       <Card className="group border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative h-44 overflow-hidden">
           {project.coverImage ? (
@@ -886,7 +886,7 @@ export default function AllianceLandingPage() {
             const Icon = cat.icon
             const count = brandCountByType[cat.id] ?? 0
             return (
-              <Link key={cat.id} href={cat.href}>
+              <Link key={cat.id} to={cat.href}>
                 <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-all duration-300 hover:-translate-y-0.5">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
                     <Icon className="h-[18px] w-[18px] text-primary" />
@@ -996,7 +996,7 @@ export default function AllianceLandingPage() {
               asChild
               className="rounded-full px-7 py-5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-200 transition-all hover:shadow-xl hover:-translate-y-0.5"
             >
-              <Link href="/portal/alliance/employment">{t('查看全部岗位')}</Link>
+              <Link to="/portal/alliance/employment">{t('查看全部岗位')}</Link>
             </Button>
           </div>
         </div>
@@ -1025,7 +1025,7 @@ export default function AllianceLandingPage() {
             asChild
             className="rounded-full px-8 py-5 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/15 hover:-translate-y-0.5 w-full sm:w-auto"
           >
-            <Link href="/partner">{t('企业/专家服务台')}</Link>
+            <Link to="/partner">{t('企业/专家服务台')}</Link>
           </Button>
         </div>
       </section>

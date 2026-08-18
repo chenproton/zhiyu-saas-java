@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useLocation, useNavigate } from 'react-router'
 import { PlatformShell } from '@/components/platform-shell'
 import { PermissionGuard } from '@/components/shared/permission-guard'
 import { adminNavigationConfig } from '@/lib/navigation-config'
@@ -14,15 +14,15 @@ const config: PlatformNavigationConfig = {
 }
 
 export default function LessonAdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, loading, hasMenuPermission } = useAuth()
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/portal/login')
+      navigate('/portal/login', { replace: true })
     }
-  }, [loading, user, router])
+  }, [loading, user, navigate])
 
   const allowed = !loading && !!user && hasMenuPermission(pathname)
 

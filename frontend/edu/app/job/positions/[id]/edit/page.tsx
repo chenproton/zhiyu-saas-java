@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useState, useEffect, use, useRef, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { CoverImageUpload } from '@/components/shared/cover-image-upload'
@@ -36,15 +36,12 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { reportError } from '@/lib/error-handling'
 import { useT } from '@/lib/i18n/locale-provider'
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
 
-function PositionEditPageContent({ params }: PageProps) {
+function PositionEditPageContent() {
   const t = useT()
-  const { id } = use(params)
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, tenantId } = useAuth()
   const currentUser = user
     ? { id: user.id, name: user.name || user.username || user.id }
@@ -230,7 +227,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const handleFinish = async () => {
     const ok = await handleSave()
     if (ok) {
-      router.push('/job/positions')
+      navigate('/job/positions')
     }
   }
 
@@ -286,7 +283,7 @@ function PositionEditPageContent({ params }: PageProps) {
             reportError(err, '删除未保存的岗位草稿')
           }
         }
-        router.push('/job/positions')
+        navigate('/job/positions')
       }}
       step={currentStepIndex + 1}
       stepLabel={currentStep.label}
@@ -376,13 +373,13 @@ function PositionEditPageContent({ params }: PageProps) {
         description={t('请确认是否已经保存数据')}
         confirmText={t('跳转预览')}
         cancelText={t('取消')}
-        onConfirm={() => router.push(`/job/landing/${id}`)}
+        onConfirm={() => navigate(`/job/landing/${id}`)}
       />
     </EditorShell>
   )
 }
 
-export default function PositionEditPage(props: PageProps) {
+export default function PositionEditPage() {
   return (
     <Suspense
       fallback={
@@ -391,7 +388,7 @@ export default function PositionEditPage(props: PageProps) {
         </div>
       }
     >
-      <PositionEditPageContent {...props} />
+      <PositionEditPageContent />
     </Suspense>
   )
 }

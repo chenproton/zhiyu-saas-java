@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -43,7 +43,7 @@ export function AiNotConfiguredDialog({
             {t('取消')}
           </Button>
           <Button asChild onClick={() => onOpenChange(false)}>
-            <Link href="/portal/apps/system/tenant">{t('前往配置')}</Link>
+            <Link to="/portal/apps/system/tenant">{t('前往配置')}</Link>
           </Button>
         </DialogFooter>
       </DialogContent>

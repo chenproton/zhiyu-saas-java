@@ -5,7 +5,7 @@
 // 操作 = 前往使用（详情/对话页只读体验）+ 下架（published→private，二次确认）。
 // 审核动作（通过/驳回）仍归审核工作台，职责不混。
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -41,7 +41,7 @@ interface ContentRow {
 
 export function AdminContentPage({ type }: { type: 'kb' | 'agent' }) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const isKb = type === 'kb'
 
@@ -87,7 +87,7 @@ export function AdminContentPage({ type }: { type: 'kb' | 'agent' }) {
     s === 'pending' ? t('待审核') : s === 'published' ? t('已发布') : s === 'rejected' ? t('已驳回') : s
 
   const goUse = (row: ContentRow) =>
-    router.push(isKb ? `/portal/apps/ai/kb/${row.id}` : `/portal/apps/ai/agents/${row.id}`)
+    navigate(isKb ? `/portal/apps/ai/kb/${row.id}` : `/portal/apps/ai/agents/${row.id}`)
 
   const handleTakedown = async () => {
     if (!takedownTarget) return

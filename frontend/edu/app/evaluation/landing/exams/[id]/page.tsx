@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'react-router'
 import {
   ArrowLeft,
   Clock,
@@ -52,7 +52,7 @@ function getTargetAudience(t: (key: string) => string): { type: string; detail: 
 export default function ExamDetailPage() {
   const t = useT()
   const params = useParams()
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const examId = params.id as string
   const taskId = searchParams.get('task') || ''
   const sceneId = searchParams.get('scene') || ''
@@ -305,7 +305,7 @@ export default function ExamDetailPage() {
         <div style={{ textAlign: 'center', padding: '80px 0', color: '#8f959e' }}>
           <AlertCircle style={{ width: 48, height: 48, margin: '0 auto 12px', opacity: 0.3 }} />
           <p>{t('考试不存在或已删除')}</p>
-          <Link href="/evaluation/landing/exam-center">
+          <Link to="/evaluation/landing/exam-center">
             <Button variant="outline" size="sm" style={{ marginTop: 16 }}>
               {t('返回考试中心')}
             </Button>
@@ -354,7 +354,7 @@ export default function ExamDetailPage() {
     return (
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: 24 }}>
         <div style={{ marginBottom: 24 }}>
-          <Link href="/evaluation/landing/exam-center">
+          <Link to="/evaluation/landing/exam-center">
             <Button variant="ghost" size="sm" style={{ gap: 6 }}>
               <ArrowLeft style={{ width: 16, height: 16 }} /> {t('返回考试中心')}
             </Button>
@@ -386,16 +386,16 @@ export default function ExamDetailPage() {
             }}
           >
             {isSceneTask && sceneId && (
-              <Link href={`/scene/landing/${sceneId}/learn?task=${taskId}`}>
+              <Link to={`/scene/landing/${sceneId}/learn?task=${taskId}`}>
                 <Button variant="outline">{t('返回学习页')}</Button>
               </Link>
             )}
             {isCourseTask && courseId && (
-              <Link href={`/lesson/landing/${courseId}?node=${nodeId}`}>
+              <Link to={`/lesson/landing/${courseId}?node=${nodeId}`}>
                 <Button variant="outline">{t('返回课程学习页')}</Button>
               </Link>
             )}
-            <Link href="/evaluation/landing/exam-center">
+            <Link to="/evaluation/landing/exam-center">
               <Button variant="outline">{t('返回考试中心')}</Button>
             </Link>
           </div>
@@ -736,7 +736,7 @@ export default function ExamDetailPage() {
   return (
     <div className="max-w-[1400px] mx-auto p-4 sm:p-6">
       <div style={{ marginBottom: 24 }}>
-        <Link href="/evaluation/landing/exam-center">
+        <Link to="/evaluation/landing/exam-center">
           <Button variant="ghost" size="sm" style={{ gap: 6 }}>
             <ArrowLeft style={{ width: 16, height: 16 }} /> {t('返回考试中心')}
           </Button>

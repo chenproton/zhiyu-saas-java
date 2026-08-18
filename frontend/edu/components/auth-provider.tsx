@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { usePathname } from 'next/navigation'
+import { useLocation } from 'react-router'
 import { authApi, getToken, removeToken, type MeResponse } from '@/lib/api'
 import type { Organization, Major, Role } from '@/lib/types/backend'
 import { checkMenuPermission } from '@/lib/menu-permissions'
@@ -55,7 +55,7 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const t = useT()
   // 登录态请求序号
   const meSeqRef = useRef(0)

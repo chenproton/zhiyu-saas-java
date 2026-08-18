@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -186,7 +186,7 @@ export default function DailyExamGradingPage() {
         {/* 顶部导航 */}
         <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="sm" asChild className="h-8">
-            <Link href="/evaluation/lesson-results/daily-exams">
+            <Link to="/evaluation/lesson-results/daily-exams">
               <ArrowLeft className="mr-1 h-4 w-4" />
               {t('返回')}
             </Link>
@@ -397,7 +397,7 @@ export default function DailyExamGradingPage() {
             />
           </div>
           <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
-            <Link href="/evaluation/lesson-results/daily-exams">{t('取消')}</Link>
+            <Link to="/evaluation/lesson-results/daily-exams">{t('取消')}</Link>
           </Button>
           {!saved && (
             <Button

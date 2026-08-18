@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
@@ -18,8 +18,8 @@ function NewEmploymentJobPageContent() {
   const { loading: authLoading } = usePartnerAuth()
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const projectId = searchParams.get('projectId') ?? undefined
   const schoolTenantId = searchParams.get('schoolTenantId') ?? undefined
   const [submitting, setSubmitting] = useState(false)
@@ -37,7 +37,7 @@ function NewEmploymentJobPageContent() {
     try {
       const created = await partnerEmploymentApi.createJob(values)
       toast({ title: t('已创建') })
-      router.push(`/partner/employment-jobs/${created.id}`)
+      navigate(`/partner/employment-jobs/${created.id}`)
     } catch (err) {
       toast({
         variant: 'destructive',

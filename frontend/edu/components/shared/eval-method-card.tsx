@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   FileText,
   Clock,
@@ -223,7 +223,7 @@ export function EvalMethodCard({ method, result, examHref, onAction }: EvalMetho
               onClick={isExamMethod ? undefined : onAction}
             >
               {isExamMethod ? (
-                <Link href={examHref || '#'}>
+                <Link to={examHref || '#'}>
                   <Play className="w-3.5 h-3.5 fill-current" />
                   {examHref && examHref !== '#'
                     ? t(methodActionText[method.methodKey] || '开始测评')

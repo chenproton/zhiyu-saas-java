@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Trophy, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CareerPosition } from '@/lib/types'
@@ -81,7 +81,7 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
     const count = pos.favoriteCount ?? 0
     const palette = cardPalette
     return (
-      <Link key={pos.id} href={`/job/landing/${pos.id}`}>
+      <Link key={pos.id} to={`/job/landing/${pos.id}`}>
         <div
           className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}
         >

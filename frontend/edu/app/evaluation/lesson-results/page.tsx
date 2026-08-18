@@ -1,8 +1,8 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useState, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import { useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   BookOpen,
   CheckCircle2,
@@ -60,7 +60,7 @@ export default function LessonResultsPage() {
 }
 
 function LessonResultsPageContent() {
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const t = useT()
   const urlCourseId = searchParams.get('courseId')
   const [searchQuery, setSearchQuery] = useState('')
@@ -498,7 +498,7 @@ function LessonResultsPageContent() {
                                                       asChild
                                                     >
                                                       <Link
-                                                        href={`/evaluation/lesson-results/${item.result.id}`}
+                                                        to={`/evaluation/lesson-results/${item.result.id}`}
                                                       >
                                                         <Eye className="mr-1 h-3 w-3" />
                                                         {t('查看')}
@@ -511,7 +511,7 @@ function LessonResultsPageContent() {
                                                         asChild
                                                       >
                                                         <Link
-                                                          href={`/evaluation/lesson-results/${item.result.id}`}
+                                                          to={`/evaluation/lesson-results/${item.result.id}`}
                                                         >
                                                           <PenLine className="mr-1 h-3 w-3" />
                                                           {t('评分')}

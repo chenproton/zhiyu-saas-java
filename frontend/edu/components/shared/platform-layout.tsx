@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useLocation, useNavigate } from 'react-router'
 import { PlatformShell } from '@/components/platform-shell'
 import { PermissionGuard } from '@/components/shared/permission-guard'
 import { useAuth } from '@/components/auth-provider'
@@ -14,16 +14,16 @@ interface PlatformLayoutProps {
 }
 
 export function PlatformLayout({ navigationConfig, landingPath, children }: PlatformLayoutProps) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, loading, hasMenuPermission } = useAuth()
   const isLanding = pathname.startsWith(landingPath)
 
   useEffect(() => {
     if (!loading && !user && !isLanding) {
-      router.replace('/portal/login')
+      navigate('/portal/login', { replace: true })
     }
-  }, [loading, user, router, isLanding])
+  }, [loading, user, navigate, isLanding])
 
   const allowed = !loading && !!user && hasMenuPermission(pathname)
 

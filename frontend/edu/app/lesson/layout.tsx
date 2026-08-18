@@ -1,21 +1,21 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useLocation, useNavigate } from 'react-router'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/components/auth-provider'
 
 export default function LessonLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const router = useRouter()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { user, loading } = useAuth()
   const isLanding = pathname.startsWith('/lesson/landing')
 
   useEffect(() => {
     if (!loading && !user && !isLanding) {
-      router.replace('/portal/login')
+      navigate('/portal/login', { replace: true })
     }
-  }, [loading, user, isLanding, router])
+  }, [loading, user, isLanding, navigate])
 
   if (isLanding) {
     return <>{children}</>

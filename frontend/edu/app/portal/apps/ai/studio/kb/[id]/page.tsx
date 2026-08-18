@@ -3,7 +3,7 @@
 // 知识库管理（spec docs/spec/ai-service-center.md §7 F2/F3）：基本信息 / 文档管理 / 协作者。
 // v2.6：全宽创作页（无侧边栏）+ 共享编辑器骨架 + 卡片化视觉（对齐 zhiyu-ai/landing 设计语言）。
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAgreementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { listAll } from '@zhiyu/api-client'
@@ -116,7 +116,7 @@ export default function AllianceAgreementsPage() {
           <>
             <TableCell className="font-medium">
               <Link
-                href={`/portal/apps/alliance/agreements/${item.id}`}
+                to={`/portal/apps/alliance/agreements/${item.id}`}
                 className="hover:underline"
               >
                 {item.name}
@@ -136,13 +136,13 @@ export default function AllianceAgreementsPage() {
               {expiring && <span className="ml-1 text-xs">{t('（即将到期）')}</span>}
             </TableCell>
             <TableRowActions>
-              <Link href={`/portal/apps/alliance/agreements/${item.id}`}>
+              <Link to={`/portal/apps/alliance/agreements/${item.id}`}>
                 <Button variant="ghost" size="sm">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   {t('查看')}
                 </Button>
               </Link>
-              <Link href={`/portal/apps/alliance/agreements/${item.id}/edit`}>
+              <Link to={`/portal/apps/alliance/agreements/${item.id}/edit`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t('编辑')}

@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'react-router'
 import { Sparkles } from 'lucide-react'
 import { portalRequest } from '@/lib/api'
 import { allianceLabel } from '@zhiyu/shared-types'
@@ -45,7 +45,7 @@ function BrandPreviewCard({ item }: { item: AlliancePublicBrand }) {
 function AlliancePublicBrandsList() {
   const t = useT()
   const { tenantId } = usePortalAuth()
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [items, setItems] = useState<AlliancePublicBrand[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<string>(() => {

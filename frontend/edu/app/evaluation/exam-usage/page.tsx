@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Plus, Clock, PlayCircle, CheckCircle2, Trash2, Eye, Send, PencilLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,7 +71,7 @@ type FilterStatus = ExamUsage['status'] | 'all'
 
 export default function ExamUsagePage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { exams } = useData()
   const { user } = useAuth()
 
@@ -461,7 +461,7 @@ export default function ExamUsagePage() {
                             size="sm"
                             className="h-7 px-2 text-xs"
                             onClick={() =>
-                              router.push(`/evaluation/exam-usage/results?usageId=${usage.id}`)
+                              navigate(`/evaluation/exam-usage/results?usageId=${usage.id}`)
                             }
                           >
                             <Eye className="mr-1 h-3 w-3" />

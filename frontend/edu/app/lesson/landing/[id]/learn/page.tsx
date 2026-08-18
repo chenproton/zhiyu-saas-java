@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'react-router'
 
 import { evalRuleConfigToMethods } from '@/lib/types'
 import { reportError } from '@/lib/error-handling'
@@ -51,7 +51,7 @@ const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 export default function LessonLearnPage() {
   const params = useParams()
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const id = params.id as string
   const targetNodeId = searchParams.get('node')
   const versionParam = searchParams.get('v') || undefined

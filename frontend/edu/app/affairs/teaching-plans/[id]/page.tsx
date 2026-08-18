@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback, Fragment } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { ArrowLeft, CalendarRange, CheckCircle2, FileEdit, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,8 +45,8 @@ interface EditState {
 }
 
 export default function TeachingPlanDetailPage() {
-  const params = useParams<{ id: string }>()
-  const router = useRouter()
+  const params = useParams() as { id: string }
+  const navigate = useNavigate()
   const { toast } = useToast()
   const t = useT()
   const { tenantId } = usePortalAuth()
@@ -286,7 +286,7 @@ export default function TeachingPlanDetailPage() {
                 </Button>
               </>
             )}
-            <Button variant="outline" onClick={() => router.push('/affairs/teaching-plans')}>
+            <Button variant="outline" onClick={() => navigate('/affairs/teaching-plans')}>
               <ArrowLeft className="mr-2 size-4" />
               {t('返回列表')}
             </Button>
@@ -482,7 +482,7 @@ export default function TeachingPlanDetailPage() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => router.push(`/affairs/scheduling?planId=${id}`)}>
+        <Button onClick={() => navigate(`/affairs/scheduling?planId=${id}`)}>
           <CalendarRange className="mr-2 size-4" />
           {t('前往排课')}
         </Button>

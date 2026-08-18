@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ContentListPage } from '@/components/shared/content-list-page'
@@ -37,7 +37,7 @@ function mapBatch(backend: any) {
 }
 
 export default function TeachingPlansPage() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const t = useT()
   const [generateOpen, setGenerateOpen] = useState(false)
@@ -224,8 +224,8 @@ export default function TeachingPlansPage() {
                           <StatusActionBar
                             status={item.status}
                             isPublicPool={activeTab === 'public'}
-                            onView={() => router.push(`/affairs/teaching-plans/${item.id}`)}
-                            onEdit={() => router.push(`/affairs/teaching-plans/${item.id}`)}
+                            onView={() => navigate(`/affairs/teaching-plans/${item.id}`)}
+                            onEdit={() => navigate(`/affairs/teaching-plans/${item.id}`)}
                             onSubmit={onSubmitApproval ? () => onSubmitApproval(item) : undefined}
                             onWithdraw={
                               onWithdrawApproval ? () => onWithdrawApproval(item) : undefined
@@ -270,7 +270,7 @@ export default function TeachingPlansPage() {
         onOpenChange={setGenerateOpen}
         onGenerated={(plan) => {
           setGenerateOpen(false)
-          router.push(`/affairs/teaching-plans/${plan.id}?new=true`)
+          navigate(`/affairs/teaching-plans/${plan.id}?new=true`)
         }}
       />
     </ContentListPage>

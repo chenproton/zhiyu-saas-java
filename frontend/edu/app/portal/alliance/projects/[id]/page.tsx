@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -42,7 +42,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AlliancePublicProjectDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const [project, setProject] = useState<AllianceProject | null>(null)
   const [partners, setPartners] = useState<AllianceEnterprise[]>([])
@@ -186,7 +186,7 @@ export default function AlliancePublicProjectDetailPage() {
                           {partners.map((p) => (
                             <Link
                               key={p.id}
-                              href={`/portal/alliance/enterprises/${p.id}`}
+                              to={`/portal/alliance/enterprises/${p.id}`}
                               className="font-medium text-slate-900 hover:text-indigo-600 transition-colors text-sm inline-flex items-center gap-0.5"
                             >
                               {p.name} <ArrowUpRight className="h-3 w-3" />

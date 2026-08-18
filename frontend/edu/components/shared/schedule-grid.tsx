@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { MapPin, User, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -185,7 +185,7 @@ export function ScheduleGrid({
     )
     if (href) {
       return (
-        <Link key={entry.id} href={href} className="block">
+        <Link key={entry.id} to={href} className="block">
           {card}
         </Link>
       )

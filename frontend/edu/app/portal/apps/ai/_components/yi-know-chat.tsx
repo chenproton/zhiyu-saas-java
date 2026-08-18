@@ -10,7 +10,7 @@
 //   流式失败气泡内「重试」/ 代码块一键复制 / 移动端左轨抽屉。
 // v2.7：聊天体验抽为共享组件（variant page/modal），前台入口统一弹窗。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   Bot,
@@ -505,7 +505,7 @@ export function YIKnowChat({
         <div className="p-4 border-b border-border">
           {variant === 'page' && (
             <Link
-              href="/portal/apps/ai/landing"
+              to="/portal/apps/ai/landing"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-3"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -541,7 +541,7 @@ export function YIKnowChat({
           <Menu className="w-4 h-4" />
         </button>
         {variant === 'page' && (
-          <Link href="/portal/apps/ai/landing" className="text-muted-foreground">
+          <Link to="/portal/apps/ai/landing" className="text-muted-foreground">
             <ArrowLeft className="w-4 h-4" />
           </Link>
         )}

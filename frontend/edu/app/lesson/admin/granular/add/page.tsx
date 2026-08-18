@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, Suspense, useMemo } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useNavigate } from 'react-router'
 import { BookOpen, GraduationCap, Plus, X } from 'lucide-react'
 import { toast } from '@zhiyu/ui'
 import { Badge } from '@/components/ui/badge'
@@ -53,8 +53,8 @@ function AddGranularPageInner() {
     () => new Set(),
   )
   const [courseResourcePool, setCourseResourcePool] = useState<ResourceItem[]>([])
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const editId = searchParams.get('id')
   const hasSavedRef = useRef(false)
   const isNewCourse = searchParams.get('new') === 'true'
@@ -384,7 +384,7 @@ function AddGranularPageInner() {
           await courseApi.update(c.id, { resourceIds: realIds })
         }
         hasSavedRef.current = true
-        router.replace(`/lesson/admin/granular/add?id=${c.id}`)
+        navigate(`/lesson/admin/granular/add?id=${c.id}`, { replace: true })
         toast({ title: t('草稿已保存') })
       }
     } catch (err: any) {
@@ -397,7 +397,7 @@ function AddGranularPageInner() {
   const handleFinish = async () => {
     await handleSave()
     if (!hasSavedRef.current) return
-    router.push('/lesson/admin/granular')
+    navigate('/lesson/admin/granular')
   }
 
   if (loading) {
@@ -420,7 +420,7 @@ function AddGranularPageInner() {
             reportError(err, '删除未保存的课程草稿')
           }
         }
-        router.push('/lesson/admin/granular')
+        navigate('/lesson/admin/granular')
       }}
       onSaveDraft={handleSave}
       isSaving={saving}

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Layers, FileText, GraduationCap } from 'lucide-react'
 import { courseApi } from '@/lib/api'
@@ -28,7 +28,7 @@ function CourseCard({ course }: { course: Course; index: number }) {
     : { background: coverGradientFor(course.id) }
 
   return (
-    <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
+    <Link to={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
       <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4"

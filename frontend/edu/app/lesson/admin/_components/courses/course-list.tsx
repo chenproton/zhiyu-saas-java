@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -57,7 +57,7 @@ export function CourseList({
   viewHref,
 }: CourseListProps) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   if (courses.length === 0) return null
 
   const allSelected = courses.length > 0 && courses.every((c) => selectedIds.includes(c.id))
@@ -183,7 +183,7 @@ export function CourseList({
                     />
                   </TableCell>
                   <TableCell>
-                    <Link href={editPath(course.id)} className="block">
+                    <Link to={editPath(course.id)} className="block">
                       <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-full hover:text-primary">
                         {course.name}
                       </p>
@@ -217,8 +217,8 @@ export function CourseList({
                     <StatusActionBar
                       status={course.status}
                       isPublicPool={activeTab === 'public'}
-                      onView={() => router.push(viewHref?.(course) || editPath(course.id))}
-                      onEdit={() => router.push(editPath(course.id))}
+                      onView={() => navigate(viewHref?.(course) || editPath(course.id))}
+                      onEdit={() => navigate(editPath(course.id))}
                       onClone={onClone ? () => onClone(course) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(course) : undefined}
                       onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(course) : undefined}

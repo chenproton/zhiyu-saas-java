@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1182,7 +1181,7 @@ export function StepBasicInfo({
                   </Button>
                   {isValidImageUrl(cert.image) ? (
                     <div className="relative aspect-video w-full overflow-hidden bg-gray-50">
-                      <Image src={cert.image || ''} alt={cert.name} fill className="object-cover" />
+                      <img src={cert.image || ''} alt={cert.name} className="absolute inset-0 h-full w-full object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-video w-full bg-primary/10 flex items-center justify-center">
@@ -1269,11 +1268,10 @@ export function StepBasicInfo({
                         />
                         {isValidImageUrl(cert.image) ? (
                           <div className="relative aspect-video w-full overflow-hidden bg-gray-50">
-                            <Image
+                            <img
                               src={cert.image || ''}
                               alt={cert.name}
-                              fill
-                              className="object-cover"
+                              className="absolute inset-0 h-full w-full object-cover"
                             />
                           </div>
                         ) : (
@@ -1400,11 +1398,10 @@ export function StepBasicInfo({
                 }}
               >
                 {newCert.image ? (
-                  <Image
+                  <img
                     src={newCert.image}
                     alt={t('证书预览')}
-                    fill
-                    className="rounded-lg object-contain"
+                    className="absolute inset-0 h-full w-full rounded-lg object-contain"
                   />
                 ) : (
                   <>

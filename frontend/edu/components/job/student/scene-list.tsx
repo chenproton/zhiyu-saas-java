@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { ChevronDown, Play, Expand, Shrink, Layers, Clock, Target, BookOpen } from 'lucide-react'
 import { EmptyState } from '@zhiyu/ui'
 import type { Scenario, ScenarioTask } from '@/lib/types'
@@ -24,7 +24,7 @@ const SCENE_COLORS = [
 
 export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [expanded, setExpanded] = useState<Record<number, boolean>>({ 0: true })
 
   const taskMap = useMemo(() => {
@@ -118,7 +118,7 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
                 <div className="flex items-center gap-3">
                   <button
                     className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1"
-                    onClick={() => router.push(`/scene/landing/${scene.id}`)}
+                    onClick={() => navigate(`/scene/landing/${scene.id}`)}
                   >
                     <Play className="w-3 h-3" /> {t('去学习')}
                   </button>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi } from '@/lib/api'
 import { useToast } from '@zhiyu/ui'
@@ -95,7 +95,7 @@ export default function AllianceCultureBrandPage() {
             />
           </TableCell>
           <TableRowActions>
-            <Link href={`/portal/apps/alliance/brands/${item.id}`}>
+            <Link to={`/portal/apps/alliance/brands/${item.id}`}>
               <Button variant="ghost" size="sm">
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
                 {t('查看')}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import {
   Heart,
   ArrowLeft,
@@ -45,7 +45,7 @@ function formatSalary(
 export function PositionHeader({ position, industryName, onStartLearning }: PositionHeaderProps) {
   const t = useT()
   const { user } = useAuth()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const [isHeart, setIsHeart] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(position.favoriteCount ?? 0)
@@ -108,7 +108,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
             variant="ghost"
             size="sm"
             className="text-[#64748b] hover:text-primary pl-0"
-            onClick={() => router.back()}
+            onClick={() => navigate(-1)}
           >
             <ArrowLeft className="w-4 h-4 mr-1" /> {t('返回上一页')}
           </Button>

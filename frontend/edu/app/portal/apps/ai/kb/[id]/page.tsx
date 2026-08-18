@@ -3,7 +3,7 @@
 // 知识库详情 + 库内问答（spec §5.1 / WBS F6）：
 // 详情与文档目录只读展示；「问一问」走 SSE 流式（meta 可忽略，delta 追加，sources 溯源）。
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -44,7 +44,7 @@ function docStatusBadge(status: AIKBDocument['status'], t: (k: string) => string
 
 export default function AIKbDetailPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const params = useParams()
   const kbId = String(params.id)
@@ -167,7 +167,7 @@ export default function AIKbDetailPage() {
         icon={<BookOpen className="h-10 w-10" />}
         title={t('知识库不存在或无权访问')}
         action={
-          <Button variant="outline" onClick={() => router.push('/portal/apps/ai/landing#square')}>
+          <Button variant="outline" onClick={() => navigate('/portal/apps/ai/landing#square')}>
             {t('返回广场')}
           </Button>
         }
@@ -177,7 +177,7 @@ export default function AIKbDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 px-4 sm:px-8 py-6">
-      <Button variant="ghost" size="sm" onClick={() => router.push('/portal/apps/ai/landing#square')}>
+      <Button variant="ghost" size="sm" onClick={() => navigate('/portal/apps/ai/landing#square')}>
         <ArrowLeft className="h-4 w-4 mr-1" />
         {t('返回广场')}
       </Button>

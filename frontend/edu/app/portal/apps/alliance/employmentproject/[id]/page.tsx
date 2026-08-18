@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -257,7 +257,7 @@ function Field({ label, value }: { label: string; value?: string }) {
 }
 
 export default function EmploymentProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()

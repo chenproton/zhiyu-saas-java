@@ -9,7 +9,7 @@
 // - 目标岗位收窄为本企业共建岗位（partnerCobuildPositionApi.list({ schoolTenantId })）
 // - 授权即可编辑：本企业共建或学校授权场景均可编辑，保存后状态回写草稿，发布由学校端进行
 import { Star, X } from 'lucide-react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useNavigate, useSearchParams } from 'react-router'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -44,8 +44,8 @@ type CoBuildScenarioDetail = CoBuildScenario & { tenantId?: string }
 export default function PartnerScenarioEditPage() {
   const t = useT()
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const scenarioId = params.id as string
   const hasSavedRef = useRef(false)
   const isNewScenario = searchParams.get('new') === 'true'
@@ -134,7 +134,7 @@ export default function PartnerScenarioEditPage() {
       await partnerCobuildScenarioApi.update(scenarioId, buildPayload() as any)
       hasSavedRef.current = true
       toast({ title: t('保存成功') })
-      router.push(`/partner/co-build/scenes/${scenarioId}/edit/tasks`)
+      navigate(`/partner/co-build/scenes/${scenarioId}/edit/tasks`)
     } catch (err: any) {
       toast({ title: err.message || t('请稍后重试'), variant: 'destructive' })
     } finally {
@@ -185,7 +185,7 @@ export default function PartnerScenarioEditPage() {
             reportError(err, '删除未保存的场景草稿')
           }
         }
-        router.push('/partner/co-build/scenes')
+        navigate('/partner/co-build/scenes')
       }}
       step={1}
       stepLabel={t('基础信息编辑')}

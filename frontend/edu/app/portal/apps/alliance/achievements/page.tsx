@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Pencil, Trash2, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceAchievementApi, allianceEnterpriseApi, allianceProjectApi } from '@/lib/api'
 import { listAll } from '@zhiyu/api-client'
@@ -109,7 +109,7 @@ export default function AllianceAchievementsPage() {
           <>
             <TableCell className="font-medium">
               <Link
-                href={`/portal/apps/alliance/achievements/${item.id}`}
+                to={`/portal/apps/alliance/achievements/${item.id}`}
                 className="hover:underline"
               >
                 {item.title}
@@ -124,13 +124,13 @@ export default function AllianceAchievementsPage() {
             <TableCell>{project?.name || '-'}</TableCell>
             <TableCell>{allianceLabel('achievementType', item.type)}</TableCell>
             <TableRowActions>
-              <Link href={`/portal/apps/alliance/achievements/${item.id}`}>
+              <Link to={`/portal/apps/alliance/achievements/${item.id}`}>
                 <Button variant="ghost" size="sm">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   {t('查看')}
                 </Button>
               </Link>
-              <Link href={`/portal/apps/alliance/achievements/${item.id}/edit`}>
+              <Link to={`/portal/apps/alliance/achievements/${item.id}/edit`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t('编辑')}

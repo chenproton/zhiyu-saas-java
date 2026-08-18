@@ -288,7 +288,7 @@ source_hash() {
 }
 frontend_hash() {
   find "$1/frontend/edu" "$1/frontend/packages" -type f \
-    -not -path '*/node_modules/*' -not -path '*/.next/*' \
+    -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/dist/*' \
     -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
@@ -583,7 +583,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
       echo "KK_MEDIA_CONVERT_DISABLE=${KK_MEDIA_CONVERT_DISABLE:-true}"  # true：允许远程视频(mov/avi/mkv 等)转码预览，false 会拒绝
       echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
-      echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
+      echo "VITE_SITE_URL=${VITE_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
       echo "GO_CACHE_LIMIT_MB=${GO_CACHE_LIMIT_MB:-8192}"
@@ -662,7 +662,7 @@ fi
 update_env_var "$ENV_FILE" "KK_BASE_URL" "$KK_BASE_URL"
 
 # 移动端访问二维码站点地址：未手动设置时，根据 nginx 配置自动推导协议、域名和端口
-if [[ -z "${NEXT_PUBLIC_SITE_URL:-}" ]]; then
+if [[ -z "${VITE_SITE_URL:-}" ]]; then
   site_scheme="http"
   site_host=""
   if [[ -n "${NGINX_SSL_DOMAIN:-}" ]]; then
@@ -684,16 +684,16 @@ if [[ -z "${NEXT_PUBLIC_SITE_URL:-}" ]]; then
     site_port=":${NGINX_PORT}"
   fi
   # 未推导出域名时留空，前端回退使用当前访问地址（window.location.origin）
-  [[ -n "$site_host" ]] && NEXT_PUBLIC_SITE_URL="${site_scheme}://${site_host}${site_port}"
+  [[ -n "$site_host" ]] && VITE_SITE_URL="${site_scheme}://${site_host}${site_port}"
 fi
-update_env_var "$ENV_FILE" "NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_SITE_URL"
+update_env_var "$ENV_FILE" "VITE_SITE_URL" "$VITE_SITE_URL"
 
 # 生产 https 部署下，外部平台链接若未显式配置会回退到 http 演示地址，
 # 浏览器会因混合内容拦截导致跨平台跳转/评分 iframe 静默失效，这里仅告警不阻断。
-if [[ "${NEXT_PUBLIC_SITE_URL:-}" == https://* ]]; then
-  for _var in NEXT_PUBLIC_CAREER_PLATFORM_URL NEXT_PUBLIC_SCENE_PLATFORM_URL \
-             NEXT_PUBLIC_ALLIANCE_PLATFORM_URL NEXT_PUBLIC_ABILITY_PLATFORM_URL \
-             NEXT_PUBLIC_COURSE_LEARN_URL NEXT_PUBLIC_MALL_URL NEXT_PUBLIC_AI_ASSISTANT_URL; do
+if [[ "${VITE_SITE_URL:-}" == https://* ]]; then
+  for _var in VITE_CAREER_PLATFORM_URL VITE_SCENE_PLATFORM_URL \
+             VITE_ALLIANCE_PLATFORM_URL VITE_ABILITY_PLATFORM_URL \
+             VITE_COURSE_LEARN_URL VITE_MALL_URL VITE_AI_ASSISTANT_URL; do
     _val=""
     # shellcheck disable=SC2154
     if [[ -n "${!_var:-}" ]]; then
@@ -816,7 +816,7 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
     git -C "$ORIGINAL_ROOT" worktree add --detach "$BUILD_TREE" origin/master || die "无法创建 worktree"
   fi
 
-  # 保留 frontend/edu/.next 以复用 Next.js 增量产物；仅清理后端编译产物
+  # 保留 frontend/edu/dist 以复用 Vite 增量产物；仅清理后端编译产物
   rm -rf "$BUILD_TREE/backend/go/bin" 2>/dev/null || true
   if [[ -n "$BRANCH_NAME" ]]; then
     git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
@@ -1009,7 +1009,7 @@ if $BUILD_FRONTEND; then
     log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
   fi
 
-  [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
+  [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/dist"
 
   # 离线图片编辑器资产：从 offline/image-editor 同步到前端 public（完全离线，不依赖 CDN）
   # public/image-editor 在仓库中是符号链接（指向仓库 offline/image-editor），
@@ -1022,21 +1022,22 @@ if $BUILD_FRONTEND; then
     rsync -a --delete "$BUILD_ROOT/offline/image-editor/" "$EDU_DIR/public/image-editor/"
   fi
 
-  # Next.js standalone 会把 rewrites 目标在构建期序列化进 required-server-files.json，
-  # 运行时改 API_PROXY_URL 无效，必须构建时注入（容器网络内直连 backend；
-  # 生产 nginx 直连 backend 不受影响，此值服务于直连 3020/开发场景）
-  FRONTEND_API_PROXY_URL="${API_PROXY_URL:-http://zhiyu-backend:8080}"
-  (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-    API_PROXY_URL="$FRONTEND_API_PROXY_URL" \
-    pnpm --filter @zhiyu/edu build) || die "前端构建失败"
-
-  SD="$EDU_DIR/.next/standalone/frontend/edu"
-  [[ -d "$EDU_DIR/.next/server" ]] && { mkdir -p "$SD/.next/server"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"; }
-  [[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
-  [[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
+  # Vite 纯静态 SPA：build 产出 dist/（index.html + 构建资产 + public 静态资源），
+  # 由 nginx 容器托管；API 走边缘 nginx 反代，容器内无需代理（原 Next rewrites 已废弃）。
+  # 内存说明：该应用 Vite build 峰值需 ~5GB；若部署环境进程被 cgroup 限内存（如
+  # dsh-web.service 4GB 限制），直接用 pnpm 构建会被 OOM 击杀。systemd 可用时用
+  # systemd-run 瞬态 scope 提额（MemoryMax=8G）再执行；无 systemd 时回退直接构建。
+  if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+    systemd-run --collect --property=MemoryMax=8G -- bash -c \
+      "cd '$BUILD_ROOT' && NODE_ENV=production pnpm --filter @zhiyu/edu build" \
+      >"$DEPLOY_DIR/.build-frontend-pnpm.log" 2>&1 || die "前端构建失败（日志: .build-frontend-pnpm.log）"
+  else
+    (cd "$BUILD_ROOT" && NODE_ENV=production \
+      pnpm --filter @zhiyu/edu build) || die "前端构建失败"
+  fi
 
   BUILD_LOG="$DEPLOY_DIR/.build-frontend.log"
-  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" >"$BUILD_LOG" 2>&1
+  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR" >"$BUILD_LOG" 2>&1
   tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-edu:$IMAGE_TAG" "zhiyu-edu:$FRONTEND_HASH"
   echo "$FRONTEND_HASH" > "$BUILD_CACHE/frontend-hash"

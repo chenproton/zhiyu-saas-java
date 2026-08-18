@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useNavigate, useLocation } from 'react-router'
 import { TopNav } from '@/components/portal/top-nav'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { YiKnowAssistant } from '@/components/portal/yi-know-assistant'
 
 function PortalAuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, activeRoleCode, loading } = usePortalAuth()
 
   const isLoginPage = pathname === '/portal/login'
@@ -16,11 +16,11 @@ function PortalAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading || isLoginPage) return
     if (!user) {
-      router.replace('/portal/login')
+      navigate('/portal/login', { replace: true })
       return
     }
     if (user.platform !== 'portal') {
-      router.replace('/portal/login')
+      navigate('/portal/login', { replace: true })
       return
     }
 
@@ -31,10 +31,10 @@ function PortalAuthGuard({ children }: { children: React.ReactNode }) {
       activeRoleCode !== 'student' &&
       activeRoleCode !== 'school_admin'
     ) {
-      router.replace('/portal')
+      navigate('/portal', { replace: true })
       return
     }
-  }, [loading, user, activeRoleCode, router, pathname, isLoginPage])
+  }, [loading, user, activeRoleCode, navigate, pathname, isLoginPage])
 
   // 认证状态确认前始终渲染 children，避免 SSR/客户端因返回 loading/null 触发 404；
   // useEffect 会在未登录或平台不符时重定向到登录页。
@@ -42,7 +42,7 @@ function PortalAuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const isLoginPage = pathname === '/portal/login'
 
   return (

@@ -40,7 +40,7 @@ import {
   AreaChart,
 } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useNavigate } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { portalApi } from '@/lib/api'
 import type { WorkspaceDashboard } from '@/lib/types'
@@ -97,8 +97,8 @@ const roleIcons = {
 
 function StudentWorkspace({ userId }: { userId?: string }) {
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
   // 学生工作台 Tab 配置
   const studentTabs = [
@@ -112,7 +112,7 @@ function StudentWorkspace({ userId }: { userId?: string }) {
     { id: 'profile', label: t('个人中心'), icon: User },
   ]
   const activeTab = urlTab && studentTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
-  const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
+  const goTab = (id: string) => navigate(`/portal/workspace?tab=${id}`, { replace: true })
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -173,8 +173,8 @@ function StudentWorkspace({ userId }: { userId?: string }) {
 
 function TeacherWorkspace() {
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
   // 教师工作台 Tab 配置
   const teacherTabs = [
@@ -185,7 +185,7 @@ function TeacherWorkspace() {
     { id: 'profile', label: t('个人中心'), icon: User },
   ]
   const activeTab = urlTab && teacherTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
-  const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
+  const goTab = (id: string) => navigate(`/portal/workspace?tab=${id}`, { replace: true })
   const [prepAssociations, setPrepAssociations] = useState<Record<string, PrepAssociationRecord>>(
     {},
   )
@@ -260,8 +260,8 @@ function TeacherWorkspace() {
 
 function SchoolAdminWorkspace() {
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
   // 学校管理员工作台 Tab 配置
   const schoolAdminTabs = [
@@ -272,7 +272,7 @@ function SchoolAdminWorkspace() {
     { id: 'profile', label: t('个人中心'), icon: User },
   ]
   const activeTab = urlTab && schoolAdminTabs.some((x) => x.id === urlTab) ? urlTab : 'dashboard'
-  const goTab = (id: string) => router.replace(`/portal/workspace?tab=${id}`)
+  const goTab = (id: string) => navigate(`/portal/workspace?tab=${id}`, { replace: true })
 
   const renderTabContent = () => {
     switch (activeTab) {

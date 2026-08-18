@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'react-router'
 import { CalendarRange, CalendarCheck2 } from 'lucide-react'
 import {
   Select,
@@ -28,7 +28,7 @@ const STEPS = [
 type StepId = (typeof STEPS)[number]['id']
 
 function SchedulingPageInner() {
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const planIdParam = searchParams.get('planId') || undefined
   const { toast } = useToast()
   const t = useT()

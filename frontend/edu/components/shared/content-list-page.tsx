@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { listAll } from '@zhiyu/api-client'
 import {Check,
   ChevronDown,
@@ -272,7 +272,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
     enableBatchExport = true,
   } = config
 
-  const router = useRouter()
+  const navigate = useNavigate()
   const { hasPermission, user, tenantId, activeRoleCode } = useAuth()
   const currentUserId = user?.id ?? ''
   const { toast } = useToast()
@@ -1233,7 +1233,7 @@ export function ContentListPage<T extends ContentListItem, B extends { id: strin
       const url = createRedirectUrl
         ? createRedirectUrl(newItem.id)
         : `${addHref}?id=${newItem.id}&new=true`
-      router.push(url)
+      navigate(url)
     } catch (err: any) {
       toast({
         variant: 'destructive',

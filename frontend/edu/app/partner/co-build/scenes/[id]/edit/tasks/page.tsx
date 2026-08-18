@@ -26,7 +26,7 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -436,7 +436,7 @@ function useCoBuildDatasets(schoolTenantId: string, positionId?: string) {
 
 export default function PartnerTasksEditPage() {
   const params = useParams()
-  const router = useRouter()
+  const navigate = useNavigate()
   const scenarioId = params.id as string
   const { toast } = useToast()
   const t = useT()
@@ -968,7 +968,7 @@ export default function PartnerTasksEditPage() {
     try {
       await saveTasksToBackend()
       toast({ title: t('配置已保存') })
-      router.push('/partner/co-build/scenes')
+      navigate('/partner/co-build/scenes')
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     } finally {
@@ -980,13 +980,13 @@ export default function PartnerTasksEditPage() {
     <EditorShell
       mode="inline"
       backText={t('返回')}
-      onBack={() => router.push('/partner/co-build/scenes')}
+      onBack={() => navigate('/partner/co-build/scenes')}
       step={2}
       stepLabel={t('任务链配置')}
       onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
       saveText={t('保存')}
-      onPrev={() => router.push(`/partner/co-build/scenes/${scenarioId}/edit`)}
+      onPrev={() => navigate(`/partner/co-build/scenes/${scenarioId}/edit`)}
       onSubmit={handleFinish}
       submitText={t('完成配置')}
       contentMaxWidth="max-w-[1400px]"

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,7 @@ import {
 export default function PartnerExpertNewPage() {
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { isAdmin, loading: authLoading } = usePartnerAuth()
   const [saving, setSaving] = useState(false)
   const [item, setItem] = useState<PartnerExpertFormState>({
@@ -33,8 +33,8 @@ export default function PartnerExpertNewPage() {
 
   // 写操作仅 enterprise_admin
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/partner/experts')
-  }, [authLoading, isAdmin, router])
+    if (!authLoading && !isAdmin) navigate('/partner/experts', { replace: true })
+  }, [authLoading, isAdmin, navigate])
 
   const handleSave = async () => {
     if (!item.name) {
@@ -56,7 +56,7 @@ export default function PartnerExpertNewPage() {
           pwd: data.initialPassword,
         }),
       })
-      router.push('/partner/experts')
+      navigate('/partner/experts')
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -103,7 +103,7 @@ export default function PartnerExpertNewPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('创建')}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+              <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
                 {t('取消')}
               </Button>
             </CardContent>

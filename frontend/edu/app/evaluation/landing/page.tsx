@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight, Library, ClipboardList, FileText, Clock, PlayCircle, BarChart3, Lock } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
@@ -26,7 +26,7 @@ function BankCard({ bank }: { bank: QuestionBank; index: number }) {
   const t = useT()
   return (
     <Link
-      href={`/evaluation/landing/banks/${bank.id}`}
+      to={`/evaluation/landing/banks/${bank.id}`}
       className="group block no-underline text-inherit"
     >
       <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
@@ -128,7 +128,7 @@ function ExamCard({ exam, previewOnly = false }: { exam: Exam; index: number; pr
   }
   return (
     <Link
-      href={`/evaluation/landing/exams/${exam.id}`}
+      to={`/evaluation/landing/exams/${exam.id}`}
       className="group block no-underline text-inherit"
     >
       <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
@@ -405,7 +405,7 @@ export default function LandingHomePage() {
                 asChild
                 className="bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-primary/20 transition-all shrink-0"
               >
-                <Link href="/evaluation/landing/exam-center">
+                <Link to="/evaluation/landing/exam-center">
                   {t('进入考试中心')} <ChevronRight className="w-4 h-4" />
                 </Link>
               </Button>
@@ -495,7 +495,7 @@ export default function LandingHomePage() {
                 asChild
                 className="bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-primary/20 transition-all shrink-0"
               >
-                <Link href="/evaluation/landing/exam-center">
+                <Link to="/evaluation/landing/exam-center">
                   {t('进入考试中心')} <ChevronRight className="w-4 h-4" />
                 </Link>
               </Button>
@@ -590,7 +590,7 @@ export default function LandingHomePage() {
                 asChild
                 className="bg-white text-primary hover:bg-primary/5 hover:-translate-y-0.5 rounded-full px-6 h-10 text-sm font-semibold shadow-lg transition-all shrink-0"
               >
-                <Link href="/evaluation/landing/exam-center">
+                <Link to="/evaluation/landing/exam-center">
                   {t('进入考试中心')} <ChevronRight className="w-4 h-4" />
                 </Link>
               </Button>

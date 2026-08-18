@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Briefcase, FileWarning, Target, Lightbulb, BookOpen, X, ArrowRight, Map, ClipboardList } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useGraphData } from './graph-data-context'
@@ -237,7 +237,7 @@ export function GraphNodeDetail({
       return (
         <div className="space-y-4">
           <Link
-            href={`/lesson/landing/${node.id}`}
+            to={`/lesson/landing/${node.id}`}
             className="flex items-center justify-center gap-1.5 rounded-lg bg-[#06b6d4] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#06b6d4]/90"
           >
             {t('进入课程详情')}
@@ -440,7 +440,7 @@ export function GraphNodeDetail({
     return (
       <div className="space-y-4">
         <Link
-          href={`/lesson/landing/${node.id}`}
+          to={`/lesson/landing/${node.id}`}
           className="flex items-center justify-center gap-1.5 rounded-lg bg-[#06b6d4] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#06b6d4]/90"
         >
           {t('进入课程详情')}

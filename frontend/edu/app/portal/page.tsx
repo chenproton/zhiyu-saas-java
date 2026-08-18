@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Footer } from '@/components/portal/footer'
 import { useAuth } from '@/components/auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'

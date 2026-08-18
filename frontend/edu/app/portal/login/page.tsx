@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,7 +38,7 @@ function getPostLoginPath(roleCode?: string): string {
 
 export default function PortalLoginPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { refresh } = usePortalAuth()
   const { refresh: refreshRootAuth } = useAuth()
   const [username, setUsername] = useState('')
@@ -70,7 +69,7 @@ export default function PortalLoginPage() {
       await Promise.all([refresh(), refreshRootAuth()])
       const me = await authApi.portalMe()
       const activeRole = resolveActiveRole(me.user?.id, me.roles)
-      router.replace(getPostLoginPath(activeRole?.code))
+      navigate(getPostLoginPath(activeRole?.code), { replace: true })
     } catch (err) {
       // 会话校验失败：清除刚写入的 token，避免"已登录但停在登录页"的中间态
       removeToken('portal')
@@ -163,7 +162,7 @@ export default function PortalLoginPage() {
         <div className="relative mb-8 flex flex-col items-center gap-4">
           <div className="absolute right-0 top-0">
             <Link
-              href="/changelog"
+              to="/changelog"
               title={t('查看平台更新记录')}
               className="group flex items-center gap-0 rounded-full border border-[#e6ebf3] bg-white/80 px-2.5 py-1.5 text-xs text-[#8a94a6] shadow-sm backdrop-blur transition-all hover:gap-1 hover:border-primary/30 hover:bg-white hover:text-primary"
             >
@@ -173,7 +172,7 @@ export default function PortalLoginPage() {
               </span>
             </Link>
           </div>
-          <Image
+          <img
             src="/logo.png?v=2"
             alt="知育"
             width={369}

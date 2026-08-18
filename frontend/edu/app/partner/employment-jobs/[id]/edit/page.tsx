@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 import { useAsync, useToast } from '@zhiyu/ui'
@@ -15,11 +15,11 @@ import { usePartnerAuth } from '@/components/partner-auth-provider'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export default function EditEmploymentJobPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { loading: authLoading } = usePartnerAuth()
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
 
   const { data: job, loading } = useAsync(
@@ -66,7 +66,7 @@ export default function EditEmploymentJobPage() {
         deadline: values.deadline,
       })
       toast({ title: t('已保存') })
-      router.push(`/partner/employment-jobs/${id}`)
+      navigate(`/partner/employment-jobs/${id}`)
     } catch (err) {
       toast({
         variant: 'destructive',

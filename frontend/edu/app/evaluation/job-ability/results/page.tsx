@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'react-router'
 import { Eye, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,7 +38,7 @@ const AGGREGATE_POLL_MAX_ATTEMPTS = 15
 
 function JobAbilityResultsContent() {
   const t = useT()
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const positionIdParam = searchParams.get('positionId')
   const { toast } = useToast()
 

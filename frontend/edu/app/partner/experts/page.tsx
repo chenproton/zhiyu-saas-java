@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Pencil, Trash2, ExternalLink, Save } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { partnerExpertApi } from '@/lib/api'
 import { useToast, useAsync, LoadingView } from '@zhiyu/ui'
 import { allianceLabel } from '@zhiyu/shared-types'
@@ -164,7 +164,7 @@ export default function PartnerExpertsPage() {
       renderTableRow={(e: PartnerExpert, actions) => (
         <>
           <TableCell className="font-medium">
-            <Link href={`/partner/experts/${e.id}`} className="hover:underline">
+            <Link to={`/partner/experts/${e.id}`} className="hover:underline">
               {e.name}
             </Link>
           </TableCell>
@@ -174,7 +174,7 @@ export default function PartnerExpertsPage() {
           <TableCell>{e.city || '-'}</TableCell>
           <TableCell>{allianceLabel('expertStatus', e.status)}</TableCell>
           <TableRowActions>
-            <Link href={`/partner/experts/${e.id}`}>
+            <Link to={`/partner/experts/${e.id}`}>
               <Button variant="ghost" size="sm">
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
                 {t('查看')}
@@ -182,7 +182,7 @@ export default function PartnerExpertsPage() {
             </Link>
             {isAdmin && (
               <>
-                <Link href={`/partner/experts/${e.id}/edit`}>
+                <Link to={`/partner/experts/${e.id}/edit`}>
                   <Button variant="ghost" size="sm">
                     <Pencil className="h-3.5 w-3.5 mr-1" />
                     {t('编辑')}

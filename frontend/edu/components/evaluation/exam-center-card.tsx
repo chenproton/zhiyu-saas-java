@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   CalendarClock,
   CheckCircle2,
@@ -106,7 +106,7 @@ export function ExamCenterCard({
                 asChild
                 className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-md shadow-primary/20"
               >
-                <Link href={entryHref}>
+                <Link to={entryHref}>
                   <PlayCircle className="w-3.5 h-3.5 mr-1" /> {t('开始考试')}
                 </Link>
               </Button>
@@ -116,7 +116,7 @@ export function ExamCenterCard({
                 variant="outline"
                 className="w-full rounded-[10px] h-9 text-xs text-green-600 border-green-200 hover:bg-green-50"
               >
-                <Link href={entryHref}>
+                <Link to={entryHref}>
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {t('查看结果')}
                 </Link>
               </Button>

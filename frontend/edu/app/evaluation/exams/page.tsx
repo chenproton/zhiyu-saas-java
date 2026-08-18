@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { ContentListPage } from '@/components/shared/content-list-page'
 import { EvaluationListTable } from '@/components/evaluation/evaluation-list-table'
 import { ExamFormDialog } from '@/components/evaluation/exam-form-dialog'
@@ -60,7 +60,7 @@ export default function ExamsPage() {
   const t = useT()
   const { user } = useAuth()
   const currentUserId = user?.id ?? ''
-  const router = useRouter()
+  const navigate = useNavigate()
   const [refreshKey, setRefreshKey] = useState(0)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const { toast } = useToast()
@@ -82,7 +82,7 @@ export default function ExamsPage() {
           questions: [],
         })
         setRefreshKey((k) => k + 1)
-        router.push(`/evaluation/exams/${newItem.id}?new=true`)
+        navigate(`/evaluation/exams/${newItem.id}?new=true`)
       } catch (err) {
         toast({
           variant: 'destructive',
@@ -91,7 +91,7 @@ export default function ExamsPage() {
         })
       }
     },
-    [router, toast, t],
+    [navigate, toast, t],
   )
 
   const handleReview = useCallback(

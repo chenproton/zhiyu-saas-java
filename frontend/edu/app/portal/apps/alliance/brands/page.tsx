@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from 'lucide-react'
@@ -98,7 +98,7 @@ export default function AllianceBrandsPage() {
           const Icon = card.icon
           const count = counts[card.type] || 0
           return (
-            <Link key={card.type} href={pageMap[card.type]}>
+            <Link key={card.type} to={pageMap[card.type]}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                 <CardHeader className="flex flex-row items-center gap-3 pb-2">
                   <div className={`p-2 rounded-lg ${card.color}`}>

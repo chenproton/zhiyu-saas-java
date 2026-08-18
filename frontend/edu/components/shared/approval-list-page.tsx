@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -221,7 +221,7 @@ export function ApprovalListPage<
                   <TableRowActions className="sticky right-0 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
                     {detailHref ? (
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={detailHref(item)}>
+                        <Link to={detailHref(item)}>
                           <Eye className="mr-1 h-3 w-3" />
                           {t('查看')}
                         </Link>

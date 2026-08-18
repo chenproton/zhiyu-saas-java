@@ -4,7 +4,7 @@
 // 三类内容三种卡片样式——智能体（封面横幅 + emoji + 立即体验按钮）、
 // 知识库（封面横幅 + BookOpen + tags + 文档/提问数）、第三方服务（链接卡片）。
 // 封面：coverImage 优先，无则 coverGradientFor 渐变 + 居中图标（对齐考试中心卡片模式）。
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { BookOpen, ExternalLink, Eye, FileText, HelpCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -61,7 +61,7 @@ function CardBanner({
 /** 智能体卡片：封面横幅 + 名称/创建者 + 描述 + 对话数 + 立即体验 */
 export function AgentHallCard({ agent }: { agent: AIAgent }) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   return (
     <div className={cardClass}>
       <CardBanner
@@ -97,7 +97,7 @@ export function AgentHallCard({ agent }: { agent: AIAgent }) {
           <Button
             size="sm"
             className="gap-1"
-            onClick={() => router.push(`/portal/apps/ai/agents/${agent.id}`)}
+            onClick={() => navigate(`/portal/apps/ai/agents/${agent.id}`)}
           >
             <Sparkles className="h-3.5 w-3.5" />
             {t('立即体验')}
@@ -111,11 +111,11 @@ export function AgentHallCard({ agent }: { agent: AIAgent }) {
 /** 知识库卡片：封面横幅 + 名称/创建者 + 描述 + tags + 文档/提问数，整卡进详情 */
 export function KbHallCard({ kb }: { kb: AIKnowledgeBase }) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   return (
     <div
       className={`${cardClass} cursor-pointer`}
-      onClick={() => router.push(`/portal/apps/ai/kb/${kb.id}`)}
+      onClick={() => navigate(`/portal/apps/ai/kb/${kb.id}`)}
     >
       <CardBanner
         cover={kb.coverImage}

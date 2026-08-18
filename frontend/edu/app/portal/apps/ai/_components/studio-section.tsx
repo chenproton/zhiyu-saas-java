@@ -7,7 +7,7 @@
 // v2.0 面板化（对标考试中心大面板）：图标头部 + 胶囊 CTA + 左侧状态环图 + 右侧分组卡片，
 // 取消 Tabs（一个面板全看到）。
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -73,7 +73,7 @@ const cardClass =
 
 export function StudioSection() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   // ---------- 知识库 ----------
@@ -249,7 +249,7 @@ export function StudioSection() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/portal/apps/ai/studio/kb/${kb.id}`)}
+                onClick={() => navigate(`/portal/apps/ai/studio/kb/${kb.id}`)}
               >
                 <Pencil className="w-3.5 h-3.5 mr-1" />
                 {t('编辑')}
@@ -312,7 +312,7 @@ export function StudioSection() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/portal/apps/ai/studio/agents/${agent.id}`)}
+            onClick={() => navigate(`/portal/apps/ai/studio/agents/${agent.id}`)}
           >
             <Pencil className="w-3.5 h-3.5 mr-1" />
             {t('编辑')}
@@ -332,7 +332,7 @@ export function StudioSection() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/portal/apps/ai/agents/${agent.id}`)}
+                onClick={() => navigate(`/portal/apps/ai/agents/${agent.id}`)}
               >
                 <MessageSquare className="w-3.5 h-3.5 mr-1" />
                 {t('对话')}
@@ -399,7 +399,7 @@ export function StudioSection() {
           <div className="flex gap-2.5 shrink-0">
             <Button
               className="rounded-full px-5 h-10 text-sm font-semibold bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all"
-              onClick={() => router.push('/portal/apps/ai/studio/kb/new')}
+              onClick={() => navigate('/portal/apps/ai/studio/kb/new')}
             >
               <Plus className="w-4 h-4 mr-1" />
               {t('新建知识库')}
@@ -407,7 +407,7 @@ export function StudioSection() {
             <Button
               variant="outline"
               className="rounded-full px-5 h-10 text-sm font-semibold hover:-translate-y-0.5 transition-all"
-              onClick={() => router.push('/portal/apps/ai/studio/agents/new')}
+              onClick={() => navigate('/portal/apps/ai/studio/agents/new')}
             >
               <Plus className="w-4 h-4 mr-1" />
               {t('新建智能体')}

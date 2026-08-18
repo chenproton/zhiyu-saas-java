@@ -4,7 +4,7 @@
 // 样式对齐 docs/demo 智能体大厅原型；热度=对话数、浏览量=v2.2 B5 新增，无评分/专业维度（spec §2.1 Q2-a）。
 // v2.2 A3：搜索/排序/页码同步到 URL query；加载更多 → 页码分页。
 import { Suspense, useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Bot } from 'lucide-react'
 import { aiCenterSquareApi, type AIAgent } from '@/lib/api'
 import { useToast, EmptyState } from '@zhiyu/ui'
@@ -23,8 +23,8 @@ const SORTS: AgentSort[] = ['hot', 'new', 'views']
 function AgentHallInner() {
   const t = useT()
   const { toast } = useToast()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // URL 为唯一事实源（A3）
   const appliedQ = searchParams.get('q') || ''
@@ -49,9 +49,9 @@ function AgentHallInner() {
         if (v) params.set(k, v)
         else params.delete(k)
       }
-      router.replace(`?${params.toString()}`, { scroll: false })
+      navigate(`?${params.toString()}`, { replace: true, preventScrollReset: true })
     },
-    [router, searchParams],
+    [navigate, searchParams],
   )
 
   useEffect(() => {

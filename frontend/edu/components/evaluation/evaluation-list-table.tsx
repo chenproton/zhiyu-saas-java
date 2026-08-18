@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -52,7 +52,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
   } = props
 
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const allSelectable = items.filter((b) => !b.isDraftPool)
   const allSelected =
@@ -148,7 +148,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
               <TableCell className="truncate">
                 <button
                   className="text-left text-sm font-medium hover:text-primary truncate w-full"
-                  onClick={() => router.push(detailHref(item.id))}
+                  onClick={() => navigate(detailHref(item.id))}
                 >
                   {item.name}
                   {isDraftPool && (
@@ -191,7 +191,7 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    onClick={() => router.push(detailHref(item.id))}
+                    onClick={() => navigate(detailHref(item.id))}
                   >
                     <Eye className="mr-1 h-3 w-3" />
                     {t('查看')}
@@ -200,8 +200,8 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                   <StatusActionBar
                     status={item.status as Status}
                     isPublicPool={activeTab === 'public'}
-                    onView={() => router.push(detailHref(item.id))}
-                    onEdit={() => router.push(detailHref(item.id))}
+                    onView={() => navigate(detailHref(item.id))}
+                    onEdit={() => navigate(detailHref(item.id))}
                     onClone={() => onClone(item)}
                     onSubmit={() => onSubmitApproval(item)}
                     onWithdraw={() => onWithdrawApproval(item)}

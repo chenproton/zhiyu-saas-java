@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -32,7 +32,7 @@ import { allianceLabel } from '@zhiyu/shared-types'
 import { useT } from '@/lib/i18n/locale-provider'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { Link2, Plus } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import type {
   AllianceEnterprise,
   AllianceAgreement,
@@ -41,7 +41,7 @@ import type {
 } from '@/lib/types'
 
 export default function AllianceEnterpriseDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
@@ -443,7 +443,7 @@ export default function AllianceEnterpriseDetailPage() {
               {t('关联已有协议')}
             </Button>
             <Button size="sm" asChild>
-              <Link href={`/portal/apps/alliance/agreements/new?enterpriseId=${id}`}>
+              <Link to={`/portal/apps/alliance/agreements/new?enterpriseId=${id}`}>
                 <Plus className="h-4 w-4 mr-1" />
                 {t('新增协议')}
               </Link>
@@ -527,7 +527,7 @@ export default function AllianceEnterpriseDetailPage() {
               {t('关联已有项目')}
             </Button>
             <Button size="sm" asChild>
-              <Link href={`/portal/apps/alliance/projects/new?enterpriseId=${id}`}>
+              <Link to={`/portal/apps/alliance/projects/new?enterpriseId=${id}`}>
                 <Plus className="h-4 w-4 mr-1" />
                 {t('新增项目')}
               </Link>
@@ -596,7 +596,7 @@ export default function AllianceEnterpriseDetailPage() {
               {t('关联已有成果')}
             </Button>
             <Button size="sm" asChild>
-              <Link href={`/portal/apps/alliance/achievements/new?enterpriseId=${id}`}>
+              <Link to={`/portal/apps/alliance/achievements/new?enterpriseId=${id}`}>
                 <Plus className="h-4 w-4 mr-1" />
                 {t('新增成果')}
               </Link>

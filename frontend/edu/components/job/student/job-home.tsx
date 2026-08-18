@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Flag, Heart, Layers, ListChecks, Factory, Building2, Briefcase, GraduationCap } from 'lucide-react'
 import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi, targetPositionApi } from '@/lib/api'
 import { EmptyState } from '@zhiyu/ui'
@@ -95,7 +95,7 @@ function PositionSideLists({
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-thin flex flex-col gap-1">
           {positions.map((pos) => (
-            <Link key={pos.id} href={linkToLearn ? `/job/landing/${pos.id}/learn` : `/job/landing/${pos.id}`}>
+            <Link key={pos.id} to={linkToLearn ? `/job/landing/${pos.id}/learn` : `/job/landing/${pos.id}`}>
               <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#f8fafc] cursor-pointer transition-all group">
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <span
@@ -117,7 +117,7 @@ function PositionSideLists({
           ))}
         </div>
       )}
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar-thin::-webkit-scrollbar {
           width: 4px;
         }

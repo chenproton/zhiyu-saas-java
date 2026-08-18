@@ -1,7 +1,7 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useParams, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import {
   Table,
   TableBody,
@@ -49,8 +49,8 @@ function InfoItem({
 }
 
 export default function PartnerEmploymentProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const router = useRouter()
+  const { id } = useParams() as { id: string }
+  const navigate = useNavigate()
   const { user, loading: authLoading } = usePartnerAuth()
   const t = useT()
 
@@ -119,7 +119,7 @@ export default function PartnerEmploymentProjectDetailPage() {
             <Button
               size="sm"
               onClick={() =>
-                router.push(
+                navigate(
                   `/partner/employment-jobs/new?projectId=${id}&schoolTenantId=${project?.tenantId ?? ''}`,
                 )
               }
@@ -153,13 +153,13 @@ export default function PartnerEmploymentProjectDetailPage() {
                     <TableCell>{j.applicationCount}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Link href={`/partner/employment-jobs/${j.id}`}>
+                        <Link to={`/partner/employment-jobs/${j.id}`}>
                           <Button variant="ghost" size="sm">
                             <Eye className="h-3.5 w-3.5 mr-1" />
                             {t('查看')}
                           </Button>
                         </Link>
-                        <Link href={`/partner/employment-jobs/${j.id}/edit`}>
+                        <Link to={`/partner/employment-jobs/${j.id}/edit`}>
                           <Button variant="ghost" size="sm">
                             <Pencil className="h-3.5 w-3.5 mr-1" />
                             {t('编辑')}

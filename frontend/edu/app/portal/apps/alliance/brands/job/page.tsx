@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { TableCell, TableHead } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { Pencil, Trash2, ExternalLink, Link2, Plus } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, portalRequest } from '@/lib/api'
 import { listAll } from '@zhiyu/api-client'
@@ -149,7 +149,7 @@ export default function AllianceJobBrandPage() {
                 {item.majorNames?.join('、') || '-'}
               </TableCell>
               <TableRowActions>
-                <Link href={`/portal/apps/alliance/brands/${item.id}`}>
+                <Link to={`/portal/apps/alliance/brands/${item.id}`}>
                   <Button variant="ghost" size="sm">
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
                     {t('查看')}

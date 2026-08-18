@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Briefcase, Calendar } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,7 +38,7 @@ function EmploymentProjectCard({ project }: { project: EmploymentProject }) {
   const phase = deriveEmploymentProjectPhase(project)
   const typeLabel = EMPLOYMENT_PROJECT_TYPE_LABELS[project.type] ?? project.type
   return (
-    <Link href={`/portal/alliance/employment/${project.id}`}>
+    <Link to={`/portal/alliance/employment/${project.id}`}>
       <Card className="group border border-[#e7e5e4] shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 rounded-2xl overflow-hidden bg-white h-full flex flex-col p-0 gap-0">
         <div className="relative aspect-[16/9] overflow-hidden">
           {project.coverImage ? (

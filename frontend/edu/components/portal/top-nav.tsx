@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { Link } from 'react-router'
+import { useLocation } from 'react-router'
 import {
   Home,
   Briefcase,
@@ -43,7 +42,7 @@ const navItems = [
 ]
 
 export function TopNav() {
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const { user, tenant, roles, activeRole, setActiveRole, logout, hasMenuPermission } = useAuth()
   const { level, maxLevel, increase, decrease, reset } = useFontScale()
   const { locale, setLocale } = useI18n()
@@ -138,8 +137,8 @@ export function TopNav() {
         className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm font-sans"
       >
         <div className="flex items-center gap-4 md:gap-8">
-          <Link href="/portal" className="flex items-center gap-2">
-            <Image
+          <Link to="/portal" className="flex items-center gap-2">
+            <img
               src="/logo.png?v=2"
               alt="知育"
               width={369}
@@ -168,7 +167,7 @@ export function TopNav() {
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     title={label}
                     className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm rounded-md transition-colors relative whitespace-nowrap ${
                       active
@@ -244,13 +243,13 @@ export function TopNav() {
                 {hasMenuPermission('/portal/workspace') && (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/portal/workspace">
+                      <Link to="/portal/workspace">
                         <User className="w-4 h-4" />
                         {t('个人中心')}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/portal/workspace?tab=profile">
+                      <Link to="/portal/workspace?tab=profile">
                         <Settings className="w-4 h-4" />
                         {t('账号设置')}
                       </Link>
@@ -334,7 +333,7 @@ export function TopNav() {
               className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5"
               asChild
             >
-              <Link href="/portal/login" title={t('登录')}>
+              <Link to="/portal/login" title={t('登录')}>
                 <LogIn className="w-5 h-5 md:w-4 md:h-4" />
                 <span className="hidden sm:inline">{t('登录')}</span>
               </Link>

@@ -3,7 +3,7 @@
 // AI 大厅页共享骨架（智能体大厅/知识库大厅共用，spec §2.1 大厅页）：
 // 返回首页条 → 标题 → 分类筛选行（filters 插槽）→ 标签 chips → 工具栏（计数/排序/搜索）→ 内容网格。
 // 页头对齐 /evaluation/landing/exam-center 模式（同宽容器内左对齐，v2.4）；统计条已按用户要求移除。
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -65,7 +65,7 @@ export function HallShell({
       <div className="bg-gradient-to-br from-primary via-primary/75 to-primary/40 -mx-4 sm:-mx-8 -mt-6 px-4 sm:px-8 py-7 rounded-b-2xl shadow-[0_8px_24px_rgba(22,119,255,0.18)]">
         <div>
           <Link
-            href="/portal/apps/ai/landing"
+            to="/portal/apps/ai/landing"
             className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-white transition-colors mb-3"
           >
             <ArrowLeft className="w-4 h-4" />

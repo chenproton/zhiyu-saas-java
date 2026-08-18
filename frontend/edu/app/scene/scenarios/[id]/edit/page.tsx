@@ -1,7 +1,7 @@
 'use client'
 
 import { Star, X, Sparkles, Undo2, Loader2 } from 'lucide-react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useNavigate, useSearchParams } from 'react-router'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -79,8 +79,8 @@ interface ScenarioDraft {
 export default function ScenarioEditPage() {
   const t = useT()
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const scenarioId = params.id as string
   const hasSavedRef = useRef(false)
   const isNewScenario = searchParams.get('new') === 'true'
@@ -280,7 +280,7 @@ export default function ScenarioEditPage() {
       await scenarioApi.update(scenarioId, buildPayload() as any)
       hasSavedRef.current = true
       toast({ title: t('保存成功') })
-      router.push(`/scene/scenarios/${scenarioId}/edit/tasks`)
+      navigate(`/scene/scenarios/${scenarioId}/edit/tasks`)
     } catch (err: any) {
       toast({ title: err.message || t('请稍后重试'), variant: 'destructive' })
     } finally {
@@ -522,7 +522,7 @@ export default function ScenarioEditPage() {
             reportError(err, '删除未保存的场景草稿')
           }
         }
-        router.push('/scene')
+        navigate('/scene')
       }}
       step={1}
       stepLabel={t('基础信息编辑')}
@@ -949,7 +949,7 @@ export default function ScenarioEditPage() {
         description={t('请确认是否已经保存数据')}
         confirmText={t('跳转预览')}
         cancelText={t('取消')}
-        onConfirm={() => router.push(`/scene/landing/${scenarioId}`)}
+        onConfirm={() => navigate(`/scene/landing/${scenarioId}`)}
       />
     </EditorShell>
   )

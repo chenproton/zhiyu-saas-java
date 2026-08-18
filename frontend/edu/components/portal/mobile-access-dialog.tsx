@@ -21,7 +21,7 @@ export function MobileAccessDialog({ open, onOpenChange }: MobileAccessDialogPro
   const qrValue =
     typeof window !== 'undefined' && open
       ? buildMobileAccessUrl(
-          process.env.NEXT_PUBLIC_SITE_URL || window.location.origin,
+          import.meta.env.VITE_SITE_URL || window.location.origin,
           window.location.pathname,
           window.location.search,
         )

@@ -4,7 +4,7 @@
 // v2.6.1 双栏 builder（对齐 zhiyu-ai 智能体开发页）：左侧全部表单，右侧预览对话——
 // 保存前为占位卡（预览端点需已有 agent）；保存创建成功后自动进入编辑形态，右栏试聊激活。
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Bot, MessageSquare } from 'lucide-react'
 import { useToast } from '@zhiyu/ui'
 import { aiCenterAgentApi } from '@/lib/api'
@@ -15,14 +15,14 @@ import { StudioEditorShell } from '../../../_components/studio-editor-shell'
 
 export default function NewAgentPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const [live, setLive] = useState({ prompt: '', name: '', avatar: '' })
 
   const handleCreate = async (input: AIAgentInput) => {
     const agent = await aiCenterAgentApi.create(input)
     toast({ title: t('创建成功，现在可以在右侧试聊了') })
-    router.replace(`/portal/apps/ai/studio/agents/${agent.id}`)
+    navigate(`/portal/apps/ai/studio/agents/${agent.id}`, { replace: true })
   }
 
   return (

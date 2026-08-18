@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import {
   MapPin,
   User,
@@ -276,7 +276,7 @@ export function WorkspaceScheduleGrid({ events }: ScheduleGridProps) {
 
 function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; children: ReactNode }) {
   const action = getStudentActionUrls(event)
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
 
   if (!action.isActionable) {
@@ -332,7 +332,7 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
                 size="sm"
                 variant="outline"
                 className={`flex-1 justify-center text-[11px] h-7 px-2 ${borderColor} ${textColor} ${hoverBg}`}
-                onClick={() => router.push(action.learnUrl)}
+                onClick={() => navigate(action.learnUrl)}
               >
                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
                 {t('前往学习')}

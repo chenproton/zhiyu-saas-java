@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { Link } from 'react-router'
+import { useParams, useNavigate } from 'react-router'
 import {
   publicPositionApi,
   positionResponsibilityApi,
@@ -65,7 +65,7 @@ const TABS = [
 export default function JobStudentDetailPage() {
   const params = useParams()
   const id = params.id as string
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const t = useT()
   const { user } = useAuth()
@@ -77,7 +77,7 @@ export default function JobStudentDetailPage() {
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const handleStartLearning = () => {
-    router.push(`/job/landing/${id}/learn`)
+    navigate(`/job/landing/${id}/learn`)
   }
 
   const [responsibilities, setResponsibilities] = useState<PositionResponsibility[]>([])
@@ -231,7 +231,7 @@ export default function JobStudentDetailPage() {
           title={t('岗位不存在或暂未公开')}
           titleClassName="text-lg font-semibold text-[#475569]"
           action={
-            <Link href="/job/landing" className="text-primary hover:underline">
+            <Link to="/job/landing" className="text-primary hover:underline">
               {t('返回岗位列表')}
             </Link>
           }

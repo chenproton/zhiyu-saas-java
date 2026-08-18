@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Briefcase, MapPin, Flame } from 'lucide-react'
 import type { CareerPosition } from '@/lib/types'
 import { formatDate } from '@/lib/format-utils'
@@ -35,7 +35,7 @@ export function JobCard({
   const creatorName = position.createdByName || position.createdBy?.slice(0, 8) || '-'
 
   return (
-    <Link href={`/job/landing/${position.id}`}>
+    <Link to={`/job/landing/${position.id}`}>
       <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-primary/30 cursor-pointer h-full flex flex-col">
         <div
           className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4"

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import {
   Briefcase,
   CheckCircle2,
@@ -35,7 +35,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 
 export default function JobAbilityPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
@@ -248,7 +248,7 @@ export default function JobAbilityPage() {
                           size="sm"
                           className="h-7 px-2 text-xs"
                           onClick={() =>
-                            router.push(`/evaluation/job-ability/config/${position.id}`)
+                            navigate(`/evaluation/job-ability/config/${position.id}`)
                           }
                         >
                           <Settings2 className="mr-1 h-3 w-3" />
@@ -259,7 +259,7 @@ export default function JobAbilityPage() {
                           size="sm"
                           className="h-7 px-2 text-xs"
                           onClick={() =>
-                            router.push(`/evaluation/job-ability/results?positionId=${position.id}`)
+                            navigate(`/evaluation/job-ability/results?positionId=${position.id}`)
                           }
                         >
                           <Eye className="mr-1 h-3 w-3" />

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { ArrowLeft, Save, Plus, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,8 +28,8 @@ const LEVEL_OPTIONS = ['中专', '大专', '本科']
 
 export default function ProgramEditPage() {
   const t = useT()
-  const params = useParams<{ id: string }>()
-  const router = useRouter()
+  const params = useParams() as { id: string }
+  const navigate = useNavigate()
   const { toast } = useToast()
   const id = params.id
   const isNew = id === 'new'
@@ -51,7 +51,7 @@ export default function ProgramEditPage() {
   const [description, setDescription] = useState('')
 
   const loadProgram = useCallback(async () => {
-    // id 变化（含新建保存后 router.replace 到真实 id）时重置加载态，
+    // id 变化（含新建保存后 navigate.replace 到真实 id）时重置加载态，
     // 否则 isNew 翻转后 loading 仍停留在旧值，跳转后短暂渲染空表单
     setLoading(true)
     if (isNew) {
@@ -104,7 +104,7 @@ export default function ProgramEditPage() {
       if (isNew) {
         const created = await programApi.create(payload)
         toast({ title: t('方案已创建'), description: t('可继续维护课程设置') })
-        router.replace(`/affairs/programs/${created.id}`)
+        navigate(`/affairs/programs/${created.id}`, { replace: true })
       } else {
         const updated = await programApi.update(id, payload)
         setProgram(updated)
@@ -129,7 +129,7 @@ export default function ProgramEditPage() {
         actions={
           <div className="flex items-center gap-2">
             {program && <StatusBadge status={program.status} />}
-            <Button variant="outline" onClick={() => router.push('/affairs/programs')}>
+            <Button variant="outline" onClick={() => navigate('/affairs/programs')}>
               <ArrowLeft className="mr-2 size-4" />
               {t('返回列表')}
             </Button>
@@ -252,7 +252,7 @@ export default function ProgramEditPage() {
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => router.push('/affairs/programs')}
+                    onClick={() => navigate('/affairs/programs')}
                     disabled={saving}
                   >
                     {t('取消')}

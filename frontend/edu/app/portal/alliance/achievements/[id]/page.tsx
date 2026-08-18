@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -79,7 +79,7 @@ function RelatedRow({
         <p className="text-xs text-slate-400 mb-0.5">{label}</p>
         {href ? (
           <Link
-            href={href}
+            to={href}
             className="font-medium text-slate-900 hover:text-emerald-600 transition-colors text-sm inline-flex items-center gap-0.5"
           >
             {value} <ArrowUpRight className="h-3 w-3" />
@@ -94,7 +94,7 @@ function RelatedRow({
 
 export default function AlliancePublicAchievementDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const [achievement, setAchievement] = useState<AllianceAchievement | null>(null)
   const [partners, setPartners] = useState<AllianceEnterprise[]>([])

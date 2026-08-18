@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   BookOpen,
   CheckCircle2,
@@ -334,7 +334,7 @@ export function HybridGradingDialog({
                       titleClassName="text-gray-400"
                       action={
                         <Link
-                          href={
+                          to={
                             courseId
                               ? `/evaluation/lesson-results?courseId=${courseId}`
                               : '/evaluation/lesson-results'
@@ -441,7 +441,7 @@ export function HybridGradingDialog({
                                                 return (
                                                   <Link
                                                     key={r.id}
-                                                    href={`/evaluation/lesson-results/${r.id}`}
+                                                    to={`/evaluation/lesson-results/${r.id}`}
                                                     className={cn(
                                                       'inline-flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border font-medium transition-colors',
                                                       pending
@@ -471,7 +471,7 @@ export function HybridGradingDialog({
                                                 asChild
                                               >
                                                 <Link
-                                                  href={`/evaluation/lesson-results/${group.results[0].id}`}
+                                                  to={`/evaluation/lesson-results/${group.results[0].id}`}
                                                 >
                                                   <Eye className="mr-1 h-3 w-3" />
                                                   {t('查看')}

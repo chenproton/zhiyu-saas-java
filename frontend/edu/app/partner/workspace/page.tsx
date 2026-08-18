@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -63,7 +63,7 @@ function StatCard({
   href: string
 }) {
   return (
-    <Link href={href}>
+    <Link to={href}>
       <Card className="bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-xl">
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
@@ -114,7 +114,7 @@ function SectionCard({
             </CardTitle>
             {action && (
               <Link
-                href={action.href}
+                to={action.href}
                 className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-auto py-1.5 px-2 rounded-md font-medium"
               >
                 {action.label}
@@ -149,7 +149,7 @@ function CoBuildEmptyState() {
       <p className="text-xs text-gray-400 mt-1 mb-4">
         {t('与学校共建岗位与场景，展示合作成果')}
       </p>
-      <Link href="/partner/co-build/positions">
+      <Link to="/partner/co-build/positions">
         <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
           {t('前往共建资源')}
         </Button>
@@ -458,7 +458,7 @@ export default function PartnerWorkspacePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {todos.map((todo) => (
-          <Link key={todo.href} href={todo.href}>
+          <Link key={todo.href} to={todo.href}>
             <Card
               className={`h-full bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-xl ${
                 todo.active ? 'border-amber-200' : ''

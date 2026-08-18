@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import {
   Dialog,
   DialogContent,
@@ -58,7 +58,7 @@ function salaryText(job: { salaryMin?: number; salaryMax?: number }): string | u
 }
 
 export default function PartnerEmploymentJobDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { user, loading: authLoading } = usePartnerAuth()
   const t = useT()
   const [selectedApp, setSelectedApp] = useState<EmploymentApplication | null>(null)

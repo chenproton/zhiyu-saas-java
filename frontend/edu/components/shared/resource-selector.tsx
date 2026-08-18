@@ -13,7 +13,6 @@ import {
   Users,
 } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from '@/lib/api'
 import { fetchAllPages } from '@zhiyu/api-client'
@@ -475,7 +474,7 @@ export function ResourceSelector({
                     >
                       <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
                         {r.thumbnail && r.type === 'image' ? (
-                          <Image src={r.thumbnail} alt={r.name} fill className="object-cover" />
+                          <img src={r.thumbnail} alt={r.name} className="absolute inset-0 h-full w-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <div

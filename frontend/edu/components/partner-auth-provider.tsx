@@ -3,7 +3,7 @@
 // Partner（企业平台）独立登录态：使用 partner token + /auth/partner/me，
 // 与 portal 的 auth-provider 完全隔离（后者硬编码 portal token，勿复用）。
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { usePathname } from 'next/navigation'
+import { useLocation } from 'react-router'
 import { partnerAuthApi, getToken, removeToken, type PartnerMeResponse } from '@/lib/api'
 import { useT } from '@/lib/i18n/locale-provider'
 
@@ -32,7 +32,7 @@ export function usePartnerAuth() {
 }
 
 export function PartnerAuthProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const t = useT()
   const meSeqRef = useRef(0)
   const [state, setState] = useState<{

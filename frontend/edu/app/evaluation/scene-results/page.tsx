@@ -1,8 +1,8 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import { useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   BookOpen,
   CheckCircle2,
@@ -207,14 +207,14 @@ function TaskMethodTabs({ task }: { task: TaskGroup }) {
                               className="h-7 text-xs px-2"
                               asChild
                             >
-                              <Link href={`/evaluation/scene-results/${item.result.id}`}>
+                              <Link to={`/evaluation/scene-results/${item.result.id}`}>
                                 <Eye className="mr-1 h-3 w-3" />
                                 {t('查看')}
                               </Link>
                             </Button>
                             {item.result.status === 'pending' ? (
                               <Button size="sm" className="h-7 text-xs px-2" asChild>
-                                <Link href={`/evaluation/scene-results/${item.result.id}`}>
+                                <Link to={`/evaluation/scene-results/${item.result.id}`}>
                                   <PenLine className="mr-1 h-3 w-3" />
                                   {t('评分')}
                                 </Link>
@@ -253,7 +253,7 @@ export default function GradingPage() {
 }
 
 function GradingPageContent() {
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const t = useT()
   const urlSceneId = searchParams.get('sceneId')
   const [searchQuery, setSearchQuery] = useState('')

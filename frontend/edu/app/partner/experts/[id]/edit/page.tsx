@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PasswordInput } from '@zhiyu/ui'
@@ -22,8 +22,8 @@ import {
 export default function PartnerExpertEditPage() {
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
-  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { id } = useParams() as { id: string }
   const { isAdmin, loading: authLoading } = usePartnerAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -32,8 +32,8 @@ export default function PartnerExpertEditPage() {
 
   // 写操作仅 enterprise_admin
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace(`/partner/experts/${id}`)
-  }, [authLoading, isAdmin, router, id])
+    if (!authLoading && !isAdmin) navigate(`/partner/experts/${id}`, { replace: true })
+  }, [authLoading, isAdmin, navigate, id])
 
   useEffect(() => {
     if (authLoading || !isAdmin || !id) return
@@ -73,7 +73,7 @@ export default function PartnerExpertEditPage() {
     try {
       await partnerExpertApi.update(id, { ...item, password: newPassword || undefined })
       toast({ title: t('专家已更新') })
-      router.push(`/partner/experts/${id}`)
+      navigate(`/partner/experts/${id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -109,7 +109,7 @@ export default function PartnerExpertEditPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {t('保存')}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
+              <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
                 {t('取消')}
               </Button>
             </CardContent>

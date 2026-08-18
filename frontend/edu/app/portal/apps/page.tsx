@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   Settings,
   Users,
@@ -161,7 +161,7 @@ function ModuleCard({ module, onOpenChat }: { module: ModuleItem; onOpenChat?: (
   return (
     <Link
       key={module.id}
-      href={href}
+      to={href}
       onClick={() => recordServiceClick(module.href)}
       className={className}
     >
@@ -291,7 +291,7 @@ export default function AppsPage() {
                 ) : (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  to={item.href}
                   onClick={() => recordServiceClick(item.href)}
                   className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg hover:bg-primary/5 hover:text-primary transition-all shrink-0 group border border-border"
                 >
@@ -398,7 +398,7 @@ export default function AppsPage() {
                       </div>
                       {section.href && section.href !== '#' ? (
                         <Link
-                          href={section.href}
+                          to={section.href}
                           className="text-base font-semibold text-foreground hover:text-primary transition-colors"
                         >
                           {t(section.label)}

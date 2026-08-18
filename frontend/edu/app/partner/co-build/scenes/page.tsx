@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { TableCell, TableHead } from '@/components/ui/table'
@@ -29,7 +29,7 @@ export default function PartnerCoBuildScenesPage() {
   const { user, loading: authLoading } = usePartnerAuth()
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [schoolFilter, setSchoolFilter] = useState('')
 
   // 已确认合作（active）的学校：用于顶部筛选与"新建"弹窗选学校
@@ -102,7 +102,7 @@ export default function PartnerCoBuildScenesPage() {
         activeSchools.length === 0 ? (
           <div className="py-4">
             <p>{t('暂无已确认合作的学校，无法共建场景。')}</p>
-            <Link href="/partner/schools" className="text-primary hover:underline">
+            <Link to="/partner/schools" className="text-primary hover:underline">
               {t('前往合作学校页确认合作')}
             </Link>
           </div>
@@ -134,7 +134,7 @@ export default function PartnerCoBuildScenesPage() {
           schoolTenantId: item.schoolTenantId,
           name: t('未命名场景'),
         })
-        router.push(`/partner/co-build/scenes/${created.id}/edit?new=true`)
+        navigate(`/partner/co-build/scenes/${created.id}/edit?new=true`)
       }}
       renderTableHeader={() => (
         <>
@@ -163,7 +163,7 @@ export default function PartnerCoBuildScenesPage() {
           </TableCell>
           <TableCell>{formatDateTime(s.updatedAt)}</TableCell>
           <TableRowActions>
-            <Link href={`/partner/co-build/scenes/${s.id}/edit`}>
+            <Link to={`/partner/co-build/scenes/${s.id}/edit`}>
               <Button variant="ghost" size="sm">
                 <Pencil className="h-3.5 w-3.5 mr-1" />
                 {t('编辑')}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 export default function PartnerEmploymentProjectsPage() {
   const { user, loading: authLoading } = usePartnerAuth()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [schoolFilter, setSchoolFilter] = useState('')
   const [search, setSearch] = useState('')
 
@@ -104,7 +104,7 @@ export default function PartnerEmploymentProjectsPage() {
                   <TableCell>
                     <button
                       type="button"
-                      onClick={() => router.push(`/partner/employment-projects/${p.id}`)}
+                      onClick={() => navigate(`/partner/employment-projects/${p.id}`)}
                       className="text-left font-medium text-indigo-600 transition-colors hover:text-indigo-800 hover:underline"
                     >
                       {p.name}

@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -1258,7 +1258,7 @@ export default function GradingDetailPage() {
         <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="sm" asChild className="h-8">
             <Link
-              href={
+              to={
                 result?.sceneId
                   ? `/evaluation/scene-results?sceneId=${result.sceneId}`
                   : '/evaluation/scene-results'
@@ -1449,7 +1449,7 @@ export default function GradingDetailPage() {
           )}
           <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
             <Link
-              href={
+              to={
                 result?.sceneId
                   ? `/evaluation/scene-results?sceneId=${result.sceneId}`
                   : '/evaluation/scene-results'

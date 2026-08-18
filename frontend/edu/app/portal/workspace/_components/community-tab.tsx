@@ -16,7 +16,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import Image from 'next/image'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -279,7 +278,7 @@ export function CommunityTab() {
                   <div className="flex items-start gap-3">
                     <Avatar className="w-10 h-10 shrink-0">
                       {detail.avatarUrl ? (
-                        <Image
+                        <img
                           src={detail.avatarUrl}
                           alt={detail.authorName}
                           width={40}
@@ -338,7 +337,7 @@ export function CommunityTab() {
                       <div key={reply.id} className="flex items-start gap-3">
                         <Avatar className="w-8 h-8 shrink-0">
                           {reply.avatarUrl ? (
-                            <Image
+                            <img
                               src={reply.avatarUrl}
                               alt={reply.authorName}
                               width={32}
@@ -473,7 +472,7 @@ export function CommunityTab() {
                         <div className="flex items-start gap-3">
                           <Avatar className="w-10 h-10 shrink-0">
                             {topic.avatarUrl ? (
-                              <Image
+                              <img
                                 src={topic.avatarUrl}
                                 alt={topic.authorName}
                                 width={40}

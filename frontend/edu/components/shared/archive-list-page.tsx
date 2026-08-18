@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -352,7 +352,7 @@ export function ArchiveListPage<T extends { id: string; name: string; status: st
                           </TableCell>
                           <TableRowActions className="px-3">
                             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                              <Link href={detailHref(item)}>
+                              <Link to={detailHref(item)}>
                                 <Eye className="mr-1 h-3 w-3" />
                                 {t('查看')}
                               </Link>

@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-provider'
@@ -24,17 +24,17 @@ export function FormPageShell({
   footer,
 }: FormPageShellProps) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 flex-wrap">
         {backHref ? (
-          <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
+          <Button variant="ghost" size="sm" onClick={() => navigate(backHref)}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             {t('返回')}
           </Button>
         ) : (
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             {t('返回')}
           </Button>

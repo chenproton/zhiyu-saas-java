@@ -35,7 +35,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { aiCenterAdminApi } from '@/lib/api'
 import type { AIAdminOverview, AIAgent, AIKnowledgeBase, ListResult } from '@/lib/api'
 import { formatDateTime } from '@/lib/format-utils'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { useT } from '@/lib/i18n/locale-provider'
 
 const PAGE_SIZE = 20
@@ -57,7 +57,7 @@ interface ReviewRow {
 
 export default function AIAdminReviewsPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   const [type, setType] = useState<ReviewType>('kb')
@@ -270,7 +270,7 @@ export default function AIAdminReviewsPage() {
                             variant="ghost"
                             className="text-primary"
                             onClick={() =>
-                              router.push(
+                              navigate(
                                 type === 'kb'
                                   ? `/portal/apps/ai/kb/${row.id}`
                                   : `/portal/apps/ai/agents/${row.id}`,

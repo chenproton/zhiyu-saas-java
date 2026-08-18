@@ -1,7 +1,7 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import { Briefcase, Calendar, Building2, Users, ArrowUpRight, MapPin } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -30,7 +30,7 @@ function JobRow({ job }: { job: EmploymentJob }) {
   const salary = formatSalaryRange(job)
   return (
     <Link
-      href={`/portal/alliance/employment/job/${job.id}`}
+      to={`/portal/alliance/employment/job/${job.id}`}
       className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/[0.03] border-b border-slate-100 last:border-0"
     >
       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/15 group-hover:to-primary/10 transition-colors">
@@ -71,7 +71,7 @@ function JobRow({ job }: { job: EmploymentJob }) {
 
 export default function AllianceEmploymentProjectDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
 
   const { data, loading, error, refresh } = useAsync(

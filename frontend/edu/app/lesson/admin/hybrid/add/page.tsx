@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -87,8 +87,8 @@ function MockRichEditor({
 }
 
 function HybridCourseAddForm() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const t = useT()
   const editId = searchParams.get('id')
   const hasSavedRef = useRef(false)
@@ -862,7 +862,7 @@ function HybridCourseAddForm() {
 
       toast({ title: t('草稿已保存') })
       if (!editId && effectiveCourseId) {
-        router.replace(`/lesson/admin/hybrid/add?id=${effectiveCourseId}`)
+        navigate(`/lesson/admin/hybrid/add?id=${effectiveCourseId}`, { replace: true })
       }
       return true
     } catch (e: any) {
@@ -876,7 +876,7 @@ function HybridCourseAddForm() {
   const handleFinish = async () => {
     const ok = await handleSave()
     if (ok) {
-      router.push('/lesson/admin/hybrid')
+      navigate('/lesson/admin/hybrid')
     }
   }
 
@@ -916,7 +916,7 @@ function HybridCourseAddForm() {
             reportError(err, '删除未保存的课程草稿')
           }
         }
-        router.push('/lesson/admin/hybrid')
+        navigate('/lesson/admin/hybrid')
       }}
       onSaveDraft={handleSave}
       isSaving={saving}

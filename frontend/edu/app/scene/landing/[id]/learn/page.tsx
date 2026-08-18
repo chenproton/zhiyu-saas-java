@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'react-router'
 
 import { Target } from 'lucide-react'
 
@@ -56,7 +56,7 @@ const EDITOR_PREVIEW_ROLES = ['teacher', 'school_admin', 'platform_admin']
 
 export default function SceneLearnPage() {
   const params = useParams()
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const id = params.id as string
   const targetTaskId = searchParams.get('task')
   const versionParam = searchParams.get('v') || undefined

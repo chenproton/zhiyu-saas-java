@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import Image from 'next/image'
+import { useNavigate, useLocation } from 'react-router'
 import { LogOut } from 'lucide-react'
 import { PlatformSideNav } from '@zhiyu/ui'
 import { partnerNavigationConfig } from '@/lib/navigation-config'
@@ -10,8 +9,8 @@ import { PartnerAuthProvider, usePartnerAuth } from '@/components/partner-auth-p
 import { useT } from '@/lib/i18n/locale-provider'
 
 function PartnerAuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, loading } = usePartnerAuth()
 
   const isLoginPage = pathname === '/partner/login'
@@ -19,9 +18,9 @@ function PartnerAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading || isLoginPage) return
     if (!user || user.platform !== 'partner') {
-      router.replace('/partner/login')
+      navigate('/partner/login', { replace: true })
     }
-  }, [loading, user, router, isLoginPage])
+  }, [loading, user, navigate, isLoginPage])
 
   // 认证状态确认前始终渲染 children，避免 SSR/客户端因返回 loading/null 触发 404；
   // useEffect 会在未登录或平台不符时重定向到登录页。
@@ -64,7 +63,7 @@ function PartnerShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen overflow-x-clip bg-[#f5f7fa]">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <Image src="/logo.png?v=2" alt="知育" width={369} height={139} className="h-7 w-auto" />
+          <img src="/logo.png?v=2" alt="知育" width={369} height={139} className="h-7 w-auto" />
           <span className="text-sm font-medium text-gray-800">{t('企业服务台')}</span>
           {enterprise?.name && (
             <span className="hidden sm:inline text-xs text-muted-foreground">
@@ -95,7 +94,7 @@ function PartnerShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const isLoginPage = pathname === '/partner/login'
 
   return (

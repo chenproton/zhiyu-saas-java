@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { BarChart3, BookOpen, Clock, Layers, Play } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import { lessonLandingHref, sceneLandingHref } from '@/lib/learn-links'
 import { useT } from '@/lib/i18n/locale-provider'
 
 export function LearningTab() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
   const [courses, setCourses] = useState<WorkspaceCourse[]>([])
   const [sceneTasks, setSceneTasks] = useState<WorkspaceSceneTask[]>([])
@@ -224,7 +224,7 @@ export function LearningTab() {
                   <Button
                     size="sm"
                     className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
-                    onClick={() => router.push(sceneLandingHref(task.scenarioId, task.resourceVersion))}
+                    onClick={() => navigate(sceneLandingHref(task.scenarioId, task.resourceVersion))}
                   >
                     <Play className="w-3.5 h-3.5 mr-1" />
                     {task.status === '已完成' ? t('查看') : t('继续')}
@@ -322,7 +322,7 @@ export function LearningTab() {
                   <Button
                     size="sm"
                     className="shrink-0 bg-primary hover:bg-primary/90"
-                    onClick={() => router.push(lessonLandingHref(course.id, course.resourceVersion))}
+                    onClick={() => navigate(lessonLandingHref(course.id, course.resourceVersion))}
                   >
                     <Play className="w-3.5 h-3.5 mr-1" />
                     {course.status === '已完成' ? t('复习') : t('学习')}

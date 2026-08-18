@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>场景化数智教学服务平台</title>
+    <meta name="description" content="面向职业院校的产业岗位、场景实践、数字课程与能力评价管理平台" />
+    <meta name="generator" content="v0.app" />
+    <link rel="icon" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%favicon.png" />
+    <script>
+      // 浏览器端 process 垫片：file-viewer 部分依赖用 process.versions.node 守卫 Node 分支
+      // （Next 客户端自动注入 process，Vite 不注入，故手动补齐；空实现使守卫恒为 false）
+      window.process = window.process || { env: {}, versions: {} }
+    </script>
+    <script>
+      // 防闪烁：主题预应用（等价原 next-themes attribute="class" + defaultTheme="system"）
+      try{var t=localStorage.getItem('theme');var d=t==='dark'||((!t||t==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.add(d?'dark':'light');document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}
+    </script>
+    <script>
+      // 防闪烁：字体缩放（挂载前应用 localStorage 缓存的字号倍率）
+      try{var l=parseInt(localStorage.getItem('zhiyu-font-scale')||'0',10);l=Number.isFinite(l)?Math.min(5,Math.max(0,Math.round(l))):0;if(l>0)document.documentElement.style.fontSize=(16*Math.pow(1.0625,l))+'px'}catch(e){}
+    </script>
+    <script>
+      // 防闪烁：语言（挂载前应用 locale，供全局错误页读取）
+      try{var l=localStorage.getItem('zhiyu-lang');if(l==='zh'||l==='en')document.documentElement.dataset.locale=l}catch(e){}
+    </script>
+    <script>
+      // 防闪烁：品牌主题色（挂载前应用缓存色，避免首帧用默认蓝闪变）
+      try{var c=localStorage.getItem('zhiyu-brand-color');if(c&&/^#[0-9a-fA-F]{6}$/.test(c))document.documentElement.style.setProperty('--brand',c)}catch(e){}
+    </script>
+  </head>
+  <body class="font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

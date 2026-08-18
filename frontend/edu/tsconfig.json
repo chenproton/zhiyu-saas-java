@@ -1,11 +1,6 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
       "@/*": ["./*"],
       "@/components/ui/*": ["../packages/ui/src/components/ui/*"],
@@ -21,13 +16,7 @@
       "@zhiyu/shared-types/*": ["../packages/shared-types/src/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
-  ],
-  "exclude": ["node_modules", ".next"],
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist", ".next"],
   "extends": "../../tsconfig.base.json"
 }

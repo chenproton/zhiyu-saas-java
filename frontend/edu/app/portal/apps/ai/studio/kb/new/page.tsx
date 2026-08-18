@@ -3,7 +3,7 @@
 // 新建知识库（v2.6.1，用户拍板：不弹窗，与 agents/new 一致直接进入编辑页操作）。
 // 保存创建成功后自动跳到管理页（/studio/kb/{id}）继续上传文档/邀请协作者。
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { BookOpen, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,7 @@ import { StudioEditorShell, EditorCard } from '../../../_components/studio-edito
 
 export default function NewKbPage() {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   const [name, setName] = useState('')
@@ -70,7 +70,7 @@ export default function NewKbPage() {
         kbType: (classify.kbType || undefined) as AIKBType | undefined,
       })
       toast({ title: t('创建成功，继续上传文档吧') })
-      router.replace(`/portal/apps/ai/studio/kb/${kb.id}`)
+      navigate(`/portal/apps/ai/studio/kb/${kb.id}`, { replace: true })
     } catch (err) {
       toast({
         title: t('创建失败'),

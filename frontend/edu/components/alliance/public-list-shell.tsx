@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MobileTabDropdown } from '@/components/shared/mobile-tab-dropdown'
@@ -64,7 +64,7 @@ export function PublicListShell({
         <div className="absolute bottom-[-100px] left-[10%] w-[300px] h-[300px] rounded-full bg-black/10 blur-[100px] pointer-events-none" />
         <div className="relative max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
           <Link
-            href={backHref}
+            to={backHref}
             className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

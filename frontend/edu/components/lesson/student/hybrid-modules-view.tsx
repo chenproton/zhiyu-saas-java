@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   BookOpen,
   FileText,
@@ -660,7 +660,7 @@ export function HybridModulesView({
       </Card>
 
       <Link
-        href={`/lesson/landing/${courseId}`}
+        to={`/lesson/landing/${courseId}`}
         className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
       >
         {t('返回课程详情')}

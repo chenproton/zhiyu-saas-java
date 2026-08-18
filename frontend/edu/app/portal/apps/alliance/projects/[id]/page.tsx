@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -37,7 +37,7 @@ import { useToast, EmptyState, TableEmptyRow, FormDialogFooter } from '@zhiyu/ui
 import { allianceLabel } from '@zhiyu/shared-types'
 import { AllianceDetailShell } from '@/components/shared/alliance-detail-shell'
 import { Plus, Pencil, Trash2, Link2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Checkbox } from '@/components/ui/checkbox'
 import type {
   AllianceProject,
@@ -48,7 +48,7 @@ import type {
 import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AllianceProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const t = useT()
@@ -436,7 +436,7 @@ export default function AllianceProjectDetailPage() {
               {t('关联已有协议')}
             </Button>
             <Button size="sm" asChild>
-              <Link href={`/portal/apps/alliance/agreements/new?projectId=${id}`}>
+              <Link to={`/portal/apps/alliance/agreements/new?projectId=${id}`}>
                 <Plus className="h-4 w-4 mr-1" />
                 {t('新增协议')}
               </Link>
@@ -505,7 +505,7 @@ export default function AllianceProjectDetailPage() {
               {t('关联已有成果')}
             </Button>
             <Button size="sm" asChild>
-              <Link href={`/portal/apps/alliance/achievements/new?projectId=${id}`}>
+              <Link to={`/portal/apps/alliance/achievements/new?projectId=${id}`}>
                 <Plus className="h-4 w-4 mr-1" />
                 {t('新增成果')}
               </Link>
@@ -531,7 +531,7 @@ export default function AllianceProjectDetailPage() {
                     <TableRow key={a.id} className="border-b">
                       <TableCell className="font-medium">
                         <Link
-                          href={`/portal/apps/alliance/achievements/${a.id}`}
+                          to={`/portal/apps/alliance/achievements/${a.id}`}
                           className="hover:underline"
                         >
                           {a.title}
@@ -541,7 +541,7 @@ export default function AllianceProjectDetailPage() {
                       <TableCell>{allianceLabel('achievementStatus', a.status)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Link href={`/portal/apps/alliance/achievements/${a.id}/edit`}>
+                          <Link to={`/portal/apps/alliance/achievements/${a.id}/edit`}>
                             <Button variant="ghost" size="sm">
                               <Pencil className="h-3 w-3 mr-1" />
                               {t('编辑')}

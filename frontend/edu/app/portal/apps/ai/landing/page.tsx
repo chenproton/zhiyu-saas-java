@@ -6,7 +6,7 @@
 // 「查看更多」进大厅页 hall/agents、hall/kbs）。
 // 旧路由 /square、/studio 重定向至本页对应锚点；大厅页路由 /hall/* 独立存在。
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { Bot, BookOpen, Blocks, ArrowRight, Sparkles } from 'lucide-react'
 import { LandingShell } from '@/components/shared/landing-shell'
 import { YIKnowChatDialog, useYIKnowChatDialog } from '../_components/yi-know-chat-dialog'
@@ -258,7 +258,7 @@ function FlatBlock({
         </div>
         {moreHref && (
           <Link
-            href={moreHref}
+            to={moreHref}
             className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline shrink-0"
           >
             {moreLabel}

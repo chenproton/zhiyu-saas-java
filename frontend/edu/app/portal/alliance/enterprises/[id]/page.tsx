@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import { portalRequest } from '@/lib/api'
 import { fetchAllPages } from '@zhiyu/api-client'
 import type {
@@ -45,7 +45,7 @@ function toShowcase(e: AllianceEnterprise): ShowcaseEnterprise {
 
 export default function AlliancePublicEnterpriseDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const [enterprise, setEnterprise] = useState<ShowcaseEnterprise | null>(null)
   const [experts, setExperts] = useState<AllianceExpert[]>([])

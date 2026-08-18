@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import {
   BookOpen,
   CheckCircle2,
@@ -269,7 +269,7 @@ export default function DailyExamsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="outline" size="sm" className="h-7 text-xs px-2" asChild>
-                            <Link href={`/evaluation/lesson-results/daily-exams/${r.id}`}>
+                            <Link to={`/evaluation/lesson-results/daily-exams/${r.id}`}>
                               <Eye className="mr-1 h-3 w-3" />
                               {t('查看')}
                             </Link>
@@ -286,7 +286,7 @@ export default function DailyExamsPage() {
                             </Button>
                           ) : (
                             <Button size="sm" className="h-7 text-xs px-2" asChild>
-                              <Link href={`/evaluation/lesson-results/daily-exams/${r.id}`}>
+                              <Link to={`/evaluation/lesson-results/daily-exams/${r.id}`}>
                                 <PenLine className="mr-1 h-3 w-3" />
                                 {t('评分')}
                               </Link>

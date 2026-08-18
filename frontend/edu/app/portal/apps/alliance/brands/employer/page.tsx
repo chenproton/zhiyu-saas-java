@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Pencil, Trash2, ExternalLink, Link2, Building2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'react-router'
 import { usePortalAuth } from '@/contexts/portal-auth-context'
 import { allianceBrandApi, allianceEnterpriseApi } from '@/lib/api'
 import { listAll } from '@zhiyu/api-client'
@@ -267,7 +267,7 @@ export default function AllianceEmployerBrandPage() {
               <TableCell>{positionsOf(item).length}</TableCell>
               <TableCell>{hiredStudentsOf(item).length}</TableCell>
               <TableRowActions>
-                <Link href={`/portal/apps/alliance/brands/${item.id}`}>
+                <Link to={`/portal/apps/alliance/brands/${item.id}`}>
                   <Button variant="ghost" size="sm">
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
                     {t('查看')}

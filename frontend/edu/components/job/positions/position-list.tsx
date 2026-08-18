@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -65,7 +65,7 @@ export function PositionList({
   majorMap,
   batchMap,
 }: PositionListProps) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const t = useT()
   const getIndustryName = (id?: string) => {
     if (!id) return '-'
@@ -201,7 +201,7 @@ export function PositionList({
                     />
                   </TableCell>
                   <TableCell>
-                    <Link href={`${basePath}/${position.id}/edit`} className="block">
+                    <Link to={`${basePath}/${position.id}/edit`} className="block">
                       <p className="text-sm font-medium text-slate-900 line-clamp-1 max-w-full hover:text-primary">
                         {position.name}
                       </p>
@@ -249,9 +249,9 @@ export function PositionList({
                       status={position.status}
                       isPublicPool={activeTab === 'public'}
                       onView={() =>
-                        router.push(`${basePath.replace(/\/positions$/, '')}/landing/${position.id}`)
+                        navigate(`${basePath.replace(/\/positions$/, '')}/landing/${position.id}`)
                       }
-                      onEdit={() => router.push(`${basePath}/${position.id}/edit`)}
+                      onEdit={() => navigate(`${basePath}/${position.id}/edit`)}
                       onClone={onClone ? () => onClone(position) : undefined}
                       onSubmit={onSubmitApproval ? () => onSubmitApproval(position) : undefined}
                       onWithdraw={
@@ -267,7 +267,7 @@ export function PositionList({
                       }
                       extraActions={
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                          <Link href={`${basePath}/${position.id}/edit?step=${configureStepParam}`}>
+                          <Link to={`${basePath}/${position.id}/edit?step=${configureStepParam}`}>
                             <GitBranch className="mr-1 h-3 w-3" />
                             {t('配置能力')}
                           </Link>

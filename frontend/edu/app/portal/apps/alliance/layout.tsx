@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { usePathname } from 'next/navigation'
+import { useLocation } from 'react-router'
 import { PlatformSideNav } from '@zhiyu/ui'
 import { allianceNavigationConfig } from '@/lib/navigation-config'
 import { useAuth } from '@/components/auth-provider'
@@ -10,7 +10,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 export default function AllianceAdminLayout({ children }: { children: React.ReactNode }) {
   const { hasMenuPermission, loading } = useAuth()
   const t = useT()
-  const pathname = usePathname()
+  const { pathname } = useLocation()
   const permitted = hasMenuPermission(pathname)
 
   // 导航配置中的 label 为中文 key，在此统一翻译后再传给 PlatformSideNav

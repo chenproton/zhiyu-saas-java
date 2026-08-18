@@ -1,0 +1,7 @@
+# 仅放行静态托管所需的 dist/ 与 nginx.conf 进入 Docker 构建上下文，
+# 排除 node_modules/src/app/components 等源码与依赖，避免巨大上下文。
+*
+!dist
+!dist/**
+!nginx.conf
+!Dockerfile

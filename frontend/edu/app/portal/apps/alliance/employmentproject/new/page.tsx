@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -36,7 +36,7 @@ const PROJECT_TYPES = ['spring', 'autumn', 'directed', 'order']
 export default function EmploymentProjectNewPage() {
   const { toast } = useToast()
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const { tenantId } = usePortalAuth()
   const { orgMap } = useOrgTree(tenantId)
 
@@ -119,7 +119,7 @@ export default function EmploymentProjectNewPage() {
       }
       const data = await allianceEmploymentProjectApi.create(payload)
       toast({ title: t('项目已创建') })
-      router.push(`/portal/apps/alliance/employmentproject/${data.id}`)
+      navigate(`/portal/apps/alliance/employmentproject/${data.id}`)
     } catch (e: any) {
       toast({ title: t('保存失败'), description: e.message, variant: 'destructive' })
     } finally {
@@ -176,7 +176,7 @@ export default function EmploymentProjectNewPage() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => router.push('/portal/apps/alliance/employmentproject')}
+                onClick={() => navigate('/portal/apps/alliance/employmentproject')}
               >
                 {t('取消')}
               </Button>

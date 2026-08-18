@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { Link } from 'react-router'
+import { useParams, useNavigate, useSearchParams } from 'react-router'
 import {
   ListChecks,
   FolderOpen,
@@ -113,8 +113,8 @@ function buildTree(nodes: SystemCourseNode[]): TreeItem[] {
 export default function CourseDetailPage() {
   const params = useParams()
   const id = params.id as string
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const t = useT()
   const highlightNodeId = searchParams.get('node')
   const versionParam = searchParams.get('v') || undefined
@@ -323,7 +323,7 @@ export default function CourseDetailPage() {
           </div>
           <div className="text-lg font-semibold text-slate-600">{t('课程不存在或暂未公开')}</div>
           <Link
-            href="/lesson/landing"
+            to="/lesson/landing"
             className="text-primary hover:text-primary mt-3 text-sm font-medium"
           >
             {t('返回课程列表')}
@@ -650,7 +650,7 @@ export default function CourseDetailPage() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
             <button
-              onClick={() => router.back()}
+              onClick={() => navigate(-1)}
               className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary/5 hover:text-primary transition-colors">
@@ -659,7 +659,7 @@ export default function CourseDetailPage() {
               {t('返回上一页')}
             </button>
             <span className="text-slate-300 shrink-0">/</span>
-            <Link href="/lesson/landing" className="hover:text-primary transition-colors hidden sm:inline">
+            <Link to="/lesson/landing" className="hover:text-primary transition-colors hidden sm:inline">
               {t('课程列表')}
             </Link>
             <span className="text-slate-300 shrink-0 hidden sm:inline">/</span>
@@ -745,7 +745,7 @@ export default function CourseDetailPage() {
 
                     <div className="flex flex-wrap gap-3 mt-auto pt-5">
                       {!isGranular && (
-                        <Link href={lessonLearnHref(id, { version: pageVersion })}>
+                        <Link to={lessonLearnHref(id, { version: pageVersion })}>
                           <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
                             <PlayCircle className="w-4 h-4 mr-1.5" /> {t('开始学习')}
                           </Button>

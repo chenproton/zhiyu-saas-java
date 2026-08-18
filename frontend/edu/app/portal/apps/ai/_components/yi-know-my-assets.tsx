@@ -4,7 +4,7 @@
 // 两个分段上下排——我创建的（listMine owned / agents listMine）、我收藏的（favoriteApi.list 的 ai_kb/ai_agent）。
 // 点击条目跳详情/对话页（知识库→/portal/apps/ai/kb/{id}，智能体→/portal/apps/ai/agents/{id}）。
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router'
 import { BookOpen, Bot, Eye, FileText, Heart, Loader2 } from 'lucide-react'
 import { aiCenterAgentApi, aiCenterKbApi, favoriteApi } from '@/lib/api'
 import type { AIAgent, AIKnowledgeBase } from '@/lib/api'
@@ -28,7 +28,7 @@ export function YIKnowMyAssets({
   onNavigate?: () => void
 }) {
   const t = useT()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [mine, setMine] = useState<AssetRow[]>([])
   const [favs, setFavs] = useState<AssetRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,7 +71,7 @@ export function YIKnowMyAssets({
   }, [isKb])
 
   const openItem = (id: string) => {
-    router.push(isKb ? `/portal/apps/ai/kb/${id}` : `/portal/apps/ai/agents/${id}`)
+    navigate(isKb ? `/portal/apps/ai/kb/${id}` : `/portal/apps/ai/agents/${id}`)
     onNavigate?.()
   }
 

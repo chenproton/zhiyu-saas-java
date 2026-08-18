@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams } from 'react-router'
 import type { ResourceKind } from '@/lib/types/library'
 import { ResourcesPage } from '../_components/resources-page'
 

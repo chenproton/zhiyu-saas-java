@@ -29,7 +29,7 @@ import {
   Undo2,
   Loader2,
 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useNavigate } from 'react-router'
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -197,7 +197,7 @@ const AI_FIELD_LABELS: Record<TaskAiFieldKey, string> = {
 
 export default function TasksEditPage() {
   const params = useParams()
-  const router = useRouter()
+  const navigate = useNavigate()
   const scenarioId = params.id as string
   const { toast } = useToast()
   const { user } = useAuth()
@@ -1353,7 +1353,7 @@ export default function TasksEditPage() {
       } else {
         toast({ title: t('配置已保存') })
       }
-      router.push('/scene')
+      navigate('/scene')
     } catch (err: any) {
       toast({ variant: 'destructive', title: t('保存失败'), description: err.message })
     } finally {
@@ -1365,12 +1365,12 @@ export default function TasksEditPage() {
     <EditorShell
       mode="fullscreen"
       backText={t('取消')}
-      onBack={() => router.push('/scene')}
+      onBack={() => navigate('/scene')}
       step={2}
       stepLabel={t('任务链配置')}
       onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
-      onPrev={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}
+      onPrev={() => navigate(`/scene/scenarios/${scenarioId}/edit`)}
       onSubmit={handleFinish}
       submitText={t('完成配置')}
       contentMaxWidth="max-w-[1400px]"

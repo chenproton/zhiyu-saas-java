@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useParams } from 'react-router'
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -27,7 +27,7 @@ import { useT } from '@/lib/i18n/locale-provider'
 
 export default function AlliancePublicExpertDetailPage() {
   const t = useT()
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
   const { tenantId } = usePortalAuth()
   const [expert, setExpert] = useState<AllianceExpert | null>(null)
   const [loading, setLoading] = useState(true)
@@ -114,7 +114,7 @@ export default function AlliancePublicExpertDetailPage() {
                     <p className="text-sm text-slate-500 mb-2.5">{t('归属企业')}</p>
                     {expert.enterpriseId && enterpriseVisible ? (
                       <Link
-                        href={`/portal/alliance/enterprises/${expert.enterpriseId}`}
+                        to={`/portal/alliance/enterprises/${expert.enterpriseId}`}
                         className="inline-flex items-center gap-1 font-medium text-slate-900 hover:text-blue-600 transition-colors"
                       >
                         <Building2 className="h-4 w-4" />
