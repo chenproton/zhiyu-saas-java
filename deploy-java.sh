@@ -5,7 +5,12 @@
 # 部署形态（Docker，与 Go 版对齐）：
 #   - java-backend 容器：ruoyi-admin.jar（Spring Boot 4 prod，容器内 8080）
 #   - java-nginx 容器：统一入口（宿主端口 8083 → 容器 80），静态服务 Vue 门户（frontend/portal-vue）
-#   - PG/Redis 复用宿主机现有实例（host.docker.internal，零干扰线上 Go 版）
+#   - java-redis 容器：自带 Redis（无状态缓存，密码 ruoyi123）
+#   - 数据库：共用 Go 栈的 zhiyu-postgres（同一网络 zhiyu-saas_zhiyu、同一库 zhiyu-saas），
+#     Go/Java 表名零冲突（Go 55 表 + Java 81 表不相交）；框架表由 init_db_schema 幂等初始化
+#
+# 客户现场部署顺序（双栈）：先 ./deploy.sh（建库 + Go 栈），再 ./deploy-java.sh（Java 栈）。
+# Java+Vue 独立运行的前提是共享 postgres 已就绪（deploy.sh 提供或单独提供同名库/账号）。
 #
 # 用法：
 #   ./deploy.sh                 # 全量构建 + 部署
