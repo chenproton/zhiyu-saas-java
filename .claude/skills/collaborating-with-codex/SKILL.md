@@ -250,7 +250,7 @@ python .claude/skills/collaborating-with-codex/scripts/codex_bridge.py \
 # 分析 Service 层实现
 python .claude/skills/collaborating-with-codex/scripts/codex_bridge.py \
   --cd . \
-  --PROMPT "Analyze the standard three-layer structure (Controller -> Service -> Mapper extends BaseMapperPlus) in ruoyi-modules/ruoyi-system. Focus on how QueryBuilder.lambda builds queries in the service layer."
+  --PROMPT "Analyze the standard three-layer structure (Controller -> Service -> Mapper extends BaseMapperPlus) in backend/java/ruoyi-modules/ruoyi-system. Focus on how QueryBuilder.lambda builds queries in the service layer."
 ```
 
 ### 典型用例：代码审查

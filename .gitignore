@@ -18,8 +18,8 @@ node_modules
 .vercel
 
 # Backend build artifacts
-backend/tmp/
-backend/bin/
+backend/go/tmp/
+backend/go/bin/
 *.exe
 
 # Uploaded files
@@ -32,7 +32,7 @@ backups/
 # Runtime artifacts
 /logs/
 .rollback/
-backend/main
+backend/go/main
 tsconfig.tsbuildinfo
 *.log
 
@@ -50,12 +50,12 @@ offline/debs/*.deb
 
 # Image editor assets: 仓库中是指向 offline/image-editor 的符号链接，
 # deploy.sh 构建时会替换为实体文件；禁止把实体文件提交入库
-/apps/edu/public/image-editor/
+/frontend/edu/public/image-editor/
 
 # file-viewer 运行时资产（CAD/archive/ppt/model/typst/pdf 的 worker/wasm/字体）：
 # 由 prebuild 脚本从 node_modules 复制生成，不提交入库
-/apps/edu/public/wasm/
-/apps/edu/public/vendor/
+/frontend/edu/public/wasm/
+/frontend/edu/public/vendor/
 
 ### Java 框架（base-dev-framework6，同步自 saas-framework6-java-vue）###
 target/
@@ -65,29 +65,29 @@ target/
 .settings
 .flattened-pom.xml
 # Frontend - plus-ui
-plus-ui/.history/
-plus-ui/node_modules/
-plus-ui/dist/
-plus-ui/npm-debug.log*
-plus-ui/yarn-debug.log*
-plus-ui/yarn-error.log*
-plus-ui/**/*.log
-plus-ui/tests/**/coverage/
-plus-ui/tests/e2e/reports/
-plus-ui/selenium-debug.log
-plus-ui/.idea/
-plus-ui/.vscode/
-plus-ui/*.iml
-plus-ui/*.suo
-plus-ui/*.ntvs*
-plus-ui/*.njsproj
-plus-ui/*.sln
-plus-ui/*.local
-plus-ui/package-lock.json
-plus-ui/yarn.lock
-plus-ui/auto-imports.d.ts
-plus-ui/components.d.ts
+frontend/plus-ui/.history/
+frontend/plus-ui/node_modules/
+frontend/plus-ui/dist/
+frontend/plus-ui/npm-debug.log*
+frontend/plus-ui/yarn-debug.log*
+frontend/plus-ui/yarn-error.log*
+frontend/plus-ui/**/*.log
+frontend/plus-ui/tests/**/coverage/
+frontend/plus-ui/tests/e2e/reports/
+frontend/plus-ui/selenium-debug.log
+frontend/plus-ui/.idea/
+frontend/plus-ui/.vscode/
+frontend/plus-ui/*.iml
+frontend/plus-ui/*.suo
+frontend/plus-ui/*.ntvs*
+frontend/plus-ui/*.njsproj
+frontend/plus-ui/*.sln
+frontend/plus-ui/*.local
+frontend/plus-ui/package-lock.json
+frontend/plus-ui/yarn.lock
+frontend/plus-ui/auto-imports.d.ts
+frontend/plus-ui/components.d.ts
 deploy/docker/build-context/
 
 # Go 构建二进制（go build 输出）
-backend/server
+backend/go/server

@@ -21,9 +21,9 @@ description: |
 # log-audit · 操作日志 / 登录日志 / 审计追踪（base-dev-framework6-java）
 
 > 本技能所有类名、注解成员、枚举值、事件字段、表名均核对自真实源码：
-> `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/`
-> 与 `ruoyi-modules/ruoyi-system/.../service/impl/SysOperLogServiceImpl.java`、`SysLoginInfoServiceImpl.java`、
-> `ruoyi-admin/.../web/service/SysLoginService.java`。**不要凭 5.x / 其他版本记忆编造成员名。**
+> `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/`
+> 与 `backend/java/ruoyi-modules/ruoyi-system/.../service/impl/SysOperLogServiceImpl.java`、`SysLoginInfoServiceImpl.java`、
+> `backend/java/ruoyi-admin/.../web/service/SysLoginService.java`。**不要凭 5.x / 其他版本记忆编造成员名。**
 
 ---
 
@@ -429,17 +429,17 @@ String sql = "select * from sys_logininfor";   // 表不存在
 
 ## 引用源文件（均已逐字核对）
 
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/annotation/Log.java`
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/aspect/LogAspect.java`
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/enums/BusinessType.java`
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/enums/OperatorType.java`
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/enums/BusinessStatus.java`
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/event/OperLogEvent.java`
-- `ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/event/LoginInfoEvent.java`
-- `ruoyi-modules/ruoyi-system/.../service/impl/SysOperLogServiceImpl.java`
-- `ruoyi-modules/ruoyi-system/.../service/impl/SysLoginInfoServiceImpl.java`
-- `ruoyi-modules/ruoyi-system/.../controller/monitor/SysOperlogController.java`
-- `ruoyi-modules/ruoyi-system/.../controller/system/SysUserController.java`（@Log 真实用法）
-- `ruoyi-modules/ruoyi-system/.../domain/SysOperLog.java`（@TableName("sys_oper_log")）
-- `ruoyi-modules/ruoyi-system/.../domain/SysLoginInfo.java`（@TableName("sys_login_info")）
-- `ruoyi-admin/.../web/service/SysLoginService.java`（recordLoginInfo 发 LoginInfoEvent）
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/annotation/Log.java`
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/aspect/LogAspect.java`
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/enums/BusinessType.java`
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/enums/OperatorType.java`
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/enums/BusinessStatus.java`
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/event/OperLogEvent.java`
+- `backend/java/ruoyi-common/ruoyi-common-log/src/main/java/org/dromara/common/log/event/LoginInfoEvent.java`
+- `backend/java/ruoyi-modules/ruoyi-system/.../service/impl/SysOperLogServiceImpl.java`
+- `backend/java/ruoyi-modules/ruoyi-system/.../service/impl/SysLoginInfoServiceImpl.java`
+- `backend/java/ruoyi-modules/ruoyi-system/.../controller/monitor/SysOperlogController.java`
+- `backend/java/ruoyi-modules/ruoyi-system/.../controller/system/SysUserController.java`（@Log 真实用法）
+- `backend/java/ruoyi-modules/ruoyi-system/.../domain/SysOperLog.java`（@TableName("sys_oper_log")）
+- `backend/java/ruoyi-modules/ruoyi-system/.../domain/SysLoginInfo.java`（@TableName("sys_login_info")）
+- `backend/java/ruoyi-admin/.../web/service/SysLoginService.java`（recordLoginInfo 发 LoginInfoEvent）

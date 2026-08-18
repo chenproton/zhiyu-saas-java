@@ -73,7 +73,7 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 
 新增或修改数据表时，按以下闭环执行，确保「数据库 Schema 单一事实源」（`docs/spec/04-database-schema.md`）不漂移：
 
-1. **分配迁移号**：在 `backend/migrations/` 取当前最大编号 +1，命名 `NNN_<slug>.up.sql` / `.down.sql`（DoD 第 4 条已要求配对）。
+1. **分配迁移号**：在 `backend/go/migrations/` 取当前最大编号 +1，命名 `NNN_<slug>.up.sql` / `.down.sql`（DoD 第 4 条已要求配对）。
 2. **down 可逆性标注**：up 若物理不可逆（删表/清数据），down 必须能写则写、不能写则在文件头注释声明 `-- 不可逆：<原因>`（`TRUNCATE/DROP 数据` 类操作必须声明），供审查与回滚预案评估。
 3. **同步 schema 文档**：同一次提交内回写 `04-database-schema.md`：
    - §5 变更记录追加一行 `| NNN | slug | 内容 |`；

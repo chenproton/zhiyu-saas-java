@@ -62,7 +62,7 @@
 ## 四、写/审文字的标准动作
 
 1. **先明确 scope**：审哪些文件、哪种语言（Go/TS/Markdown）、哪些目录。不默认全仓。
-2. **排除项**：`backend/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`、`offline/`、`apps/edu/public/image-editor`（符号链接），见 `AGENTS.md`「五、AI 协作者约定」第 4 条。generated 产物（生成器产出）不改手，改生成器源 + 重新生成。
+2. **排除项**：`backend/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`、`offline/`、`frontend/edu/public/image-editor`（符号链接），见 `AGENTS.md`「五、AI 协作者约定」第 4 条。generated 产物（生成器产出）不改手，改生成器源 + 重新生成。
 3. **每段保留完整命题**：改文字前先识别其「演员、动作、条件、时序、情态（must/may/never）、负向保证、所有权、副作用、失败模式、后果」，删精简时确保每个真实条款都存活。
 4. **一个解释一个家**：同一「为什么」只在拥有它的地方写全，别处链接。
 5. **review/audit 只报告不 edit**：审文字时输出 findings；只有明确被要求「写/改/砍」时才改。

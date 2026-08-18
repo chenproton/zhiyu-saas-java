@@ -51,7 +51,7 @@
 | 文档解析 | 纯 Go：PDF 用 `github.com/ledongthuc/pdf`（纯 Go，goproxy 可达）；DOCX 用 archive/zip + encoding/xml 自解析 `document.xml`；TXT/MD 直读 | 运行镜像（alpine）无 LibreOffice，不能依赖外部命令 |
 | 审核 | 自建轻量审核（状态字段 + `ai_review_logs` 留痕），**不接入** workflows/approval_records 重审批流 | 审核语义简单（单级通过/驳回），重审批流过度设计 |
 | 收藏 | 扩展 `FavoritesStore` 类型 `ai_kb`/`ai_agent`（`user_favorites.target_type` 为 varchar 无枚举约束，无需迁移）；**仅 published 对象可收藏**（FavoriteTargetTenant 对非 published 返回 404，私有内容不暴露存在性） | D8 复用优先 |
-| 前端落位 | 扩展现有 `apps/edu/app/portal/apps/ai/`（广场/工坊/后台审核；对话 v2.8 起全弹窗，无独立页），不动现有 `/chat` 通用助手 | ai 模块已存在于应用中心 |
+| 前端落位 | 扩展现有 `frontend/edu/app/portal/apps/ai/`（广场/工坊/后台审核；对话 v2.8 起全弹窗，无独立页），不动现有 `/chat` 通用助手 | ai 模块已存在于应用中心 |
 | 前台主页（落地页） | `/portal/apps/ai/landing` **单页集成前台全部功能**（v1.2，用户拍板"广场/工坊都集成在落地页，不二次跳转"）：LandingShell 骨架 hero + 统计条 → 「我的工坊」区块（#studio，知识库/智能体表格+新建+行内审核操作）→「AI 广场」区块（#square，三 Tab+搜索+排序+收藏）；两区块抽为共享组件 `_components/studio-section.tsx`/`square-section.tsx` 单一事实源。旧路由 `/square`、`/studio` 重定向至本页锚点（#square/#studio 平滑滚动）；侧边栏对齐其他平台惯例只列业务功能（AI 助手/平台管理，无「首页」项——落地页由卡片主入口进入）。对话页、库详情、智能体编辑器保持独立路由（创作/消费全屏页）；门户卡片与 INTERNAL_ROUTES 入口均指向本页 | 与六平台 landing 等地位且更进一步：落地页即工作台，师生一跳内完成创建与管理 |
 | v1.3 前台视觉重构 | **对齐 docs/demo 原型（拍板：YIKnow 改造现有 chat 页/字段现有近似不动后端表/工坊留首页/本期只做大厅列表页）**：① 落地页 hero 主推 YIKnow（「立即体验 YIKnow」跳 /chat + 「逛逛 AI 广场」滚动 + 能力版图卡片标注待上线）；② /chat 改造为 YIKnow 对话页（全宽自渲染进 FULL_WIDTH_PAGES，左侧功能轨：智能对话 active，我的方案/岗位库/场景库/知识库/设置占位 toast；对话主区复用 sendAIChat）；③ 广场取消 Tab 三区平铺（智能体/知识库/第三方服务各配专属卡片，卡片族 `_components/hall-cards.tsx`，删 SquareSection）；④ 新大厅页 /hall/agents（搜索+最热/最新+加载更多）、/hall/kbs（统计条+tag chips+综合/最新/最近更新/资源最多排序+加载更多），共享骨架 `_components/hall-shell.tsx`；字段近似=对话数/提问数/创建者姓名，「新上线」徽标=创建≤7天前端推导 | 原型含模型广场/前沿动态/技能大厅/会员/需求收集/视图切换/内嵌详情——明确不做 |
 | 菜单权限 | **纳入 menus 权限树，前台合并为单一开关**：权限树 ai 平台组 = 「AI 智能服务中心」(href=`/portal/apps/ai`，由 checkMenuPermission 前缀回溯覆盖助手/广场/工坊/落地页全部前台子路径）+「平台管理」组（内容审核/第三方挂接独立勾选）；`/portal/apps/ai` 挂订阅模块门禁（key=ai）。存量回填：166 授 chat/square/studio → 168 收敛为 `/portal/apps/ai` 一键并清理旧键（teacher/student/有 menus 的 school_admin 默认授予）；后端 `RequireMenu(/portal/apps/ai/admin/reviews, /portal/apps/ai/admin/integrations)` 为接口防线（未勾选 AI 管理菜单一律 403，2026-08-17 起由角色收窄改为菜单驱动） | 用户明确要求：前台都在门户内，一个菜单一起授权；管理功能需单独管控 |
@@ -314,7 +314,7 @@ id/tenant_id/target_type(kb|agent)/target_id/action(submit|approve|reject|unpubl
 
 ## 7. 前端开发计划（WBS）
 
-> 均在 `apps/edu/app/portal/apps/ai/`；API 走 `packages/api-client/src/api/ai-center.ts`；SSE 用 fetch + ReadableStream（portalRequest 不支持流式，自封装带 token）。
+> 均在 `frontend/edu/app/portal/apps/ai/`；API 走 `frontend/packages/api-client/src/api/ai-center.ts`；SSE 用 fetch + ReadableStream（portalRequest 不支持流式，自封装带 token）。
 
 | # | 任务 | 依赖 |
 |---|------|------|

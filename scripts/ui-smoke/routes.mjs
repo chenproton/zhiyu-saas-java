@@ -202,19 +202,19 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
       return routes
     }
   }
-  // 共享包（packages/ui、api-client 等）影响全站，圈定无意义，直接全量
-  if (files.some(f => f.startsWith('packages/'))) {
-    console.warn('  [git-diff] 改动涉及 packages/ 共享包，影响面全站，回退为全量巡检')
+  // 共享包（frontend/packages/ui、api-client 等）影响全站，圈定无意义，直接全量
+  if (files.some(f => f.startsWith('frontend/packages/'))) {
+    console.warn('  [git-diff] 改动涉及 frontend/packages/ 共享包，影响面全站，回退为全量巡检')
     return routes
   }
-  files = files.filter(l => l.includes('apps/edu') && /\.(tsx?|ts)$/.test(l))
+  files = files.filter(l => l.includes('frontend/edu') && /\.(tsx?|ts)$/.test(l))
   if (!files.length) {
-    console.warn('  [git-diff] 未发现 apps/edu 下的改动文件，回退为全量巡检')
+    console.warn('  [git-diff] 未发现 frontend/edu 下的改动文件，回退为全量巡检')
     return routes
   }
 
-  const changed = new Set(files.map(f => f.replace('apps/edu/', '')))
-  const appFiles = new Set(files.filter(f => f.startsWith('apps/edu/app/')).map(f => f.replace('apps/edu/app/', '')))
+  const changed = new Set(files.map(f => f.replace('frontend/edu/', '')))
+  const appFiles = new Set(files.filter(f => f.startsWith('frontend/edu/app/')).map(f => f.replace('frontend/edu/app/', '')))
   const compFiles = [...changed].filter(f => !f.startsWith('app/'))
 
   // 组件 → 页面依赖映射（静态扫描 import，深度受限）

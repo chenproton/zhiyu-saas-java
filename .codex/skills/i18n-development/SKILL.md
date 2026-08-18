@@ -120,10 +120,10 @@ return R.fail(MessageUtils.message("auth.grant.type.error"));
 
 ## 三、资源文件：messages*.properties
 
-资源文件位于 `ruoyi-admin/src/main/resources/i18n/`，由 `application.yml` 的 `basename` 指定：
+资源文件位于 `backend/java/ruoyi-admin/src/main/resources/i18n/`，由 `application.yml` 的 `basename` 指定：
 
 ```yaml
-# ruoyi-admin/src/main/resources/application.yml
+# backend/java/ruoyi-admin/src/main/resources/application.yml
 spring:
   messages:
     # 国际化资源文件路径（basename = i18n/messages）
@@ -266,7 +266,7 @@ public class I18nLocaleResolver implements LocaleResolver {
 前端（plus-ui / 移动端）在 axios/请求封装的拦截器里，把当前选择的语言塞进 `content-language` 请求头即可。
 例如把用户在界面上切换的语言（`zh_CN` / `en_US`）作为该头的值发出，后端就会用对应语言包翻译返回的提示。
 
-> 一句话带过前端：**plus-ui 在仓库内 `plus-ui/` 目录**，PC 端界面文案用 Vue i18n（`$t()` / `useI18n`）做前端翻译，
+> 一句话带过前端：**plus-ui 在仓库内 `frontend/plus-ui/` 目录**，PC 端界面文案用 Vue i18n（`$t()` / `useI18n`）做前端翻译，
 > 与后端 properties 各管一段——前端管"按钮、表头、菜单"等界面静态文案，后端管"接口返回的提示/错误消息"。
 > 移动端国际化不在本技能范围，**不展开**。
 
@@ -545,14 +545,14 @@ order.cancel.fail=Failed to cancel order
 
 | 文件 | 路径（相对本项目根） | 说明 |
 |------|----------------------------------|------|
-| MessageUtils | `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/utils/MessageUtils.java` | 翻译入口 `message(code, args)` |
-| I18nConfig | `ruoyi-common/ruoyi-common-web/src/main/java/org/dromara/common/web/config/I18nConfig.java` | 注册 LocaleResolver Bean |
-| I18nLocaleResolver | `ruoyi-common/ruoyi-common-web/src/main/java/org/dromara/common/web/core/I18nLocaleResolver.java` | 按 `content-language` 头解析 Locale |
-| ValidatorConfig | `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/config/ValidatorConfig.java` | 校验器绑定 MessageSource + 快速失败 |
-| BaseException | `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/base/BaseException.java` | 异常 `getMessage()` 走国际化 |
-| RepeatSubmitAspect | `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/aspectj/RepeatSubmitAspect.java` | `{code}` 花括号判断 → 翻译 |
-| TestI18nController | `ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/controller/TestI18nController.java` | 官方国际化示例（message=`{code}`） |
-| application.yml | `ruoyi-admin/src/main/resources/application.yml`（`spring.messages.basename=i18n/messages`） | 资源包前缀配置 |
-| messages.properties | `ruoyi-admin/src/main/resources/i18n/messages.properties` | 默认/兜底语言包 |
-| messages_zh_CN.properties | `ruoyi-admin/src/main/resources/i18n/messages_zh_CN.properties` | 中文语言包 |
-| messages_en_US.properties | `ruoyi-admin/src/main/resources/i18n/messages_en_US.properties` | 英文语言包 |
+| MessageUtils | `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/utils/MessageUtils.java` | 翻译入口 `message(code, args)` |
+| I18nConfig | `backend/java/ruoyi-common/ruoyi-common-web/src/main/java/org/dromara/common/web/config/I18nConfig.java` | 注册 LocaleResolver Bean |
+| I18nLocaleResolver | `backend/java/ruoyi-common/ruoyi-common-web/src/main/java/org/dromara/common/web/core/I18nLocaleResolver.java` | 按 `content-language` 头解析 Locale |
+| ValidatorConfig | `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/config/ValidatorConfig.java` | 校验器绑定 MessageSource + 快速失败 |
+| BaseException | `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/base/BaseException.java` | 异常 `getMessage()` 走国际化 |
+| RepeatSubmitAspect | `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/aspectj/RepeatSubmitAspect.java` | `{code}` 花括号判断 → 翻译 |
+| TestI18nController | `backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/controller/TestI18nController.java` | 官方国际化示例（message=`{code}`） |
+| application.yml | `backend/java/ruoyi-admin/src/main/resources/application.yml`（`spring.messages.basename=i18n/messages`） | 资源包前缀配置 |
+| messages.properties | `backend/java/ruoyi-admin/src/main/resources/i18n/messages.properties` | 默认/兜底语言包 |
+| messages_zh_CN.properties | `backend/java/ruoyi-admin/src/main/resources/i18n/messages_zh_CN.properties` | 中文语言包 |
+| messages_en_US.properties | `backend/java/ruoyi-admin/src/main/resources/i18n/messages_en_US.properties` | 英文语言包 |

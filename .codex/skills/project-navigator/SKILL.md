@@ -35,7 +35,7 @@ description: |
 > 6.x 铁律（导航时务必牢记）：
 > - 根包是 **`org.dromara`**，**不是** `com.ruoyi`、**不是** `plus.ruoyi`。
 > - 后端是 **三层（Controller / Service+Impl / Mapper）**，**没有 DAO 层**，不存在 `buildQueryWrapper()` 那套 DAO 写法。
-> - 前端在**仓库内 `plus-ui/` 目录**（Vue3 + Element Plus）。本项目含 Java 后端 + 仓库内前端 + 代码生成器内置的前端模板（`ruoyi-gen/.../fm/vue|react`）。
+> - 前端在**仓库内 `frontend/plus-ui/` 目录**（Vue3 + Element Plus）。本项目含 Java 后端 + 仓库内前端 + 代码生成器内置的前端模板（`ruoyi-gen/.../fm/vue|react`）。
 
 ## 二、模块拓扑（每个模块"放什么"）
 
@@ -100,36 +100,36 @@ base-dev-framework6-java (root pom)
 
 | 我要找 / 我要改 | 去哪个模块 / 目录 | 真实路径示例（相对工程根） |
 |----------------|-------------------|----------------------------|
-| **通用工具类**（字符串/日期/集合/对象转换/树） | `ruoyi-common-core` → `utils/` | `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/utils/` |
-| **统一响应 `R<T>`** | `ruoyi-common-core` → `core/domain/` | `ruoyi-common/ruoyi-common-core/.../core/domain/` |
-| **分页 `PageQuery`** | `ruoyi-common-mybatis` → `core/page/` | `ruoyi-common/ruoyi-common-mybatis/.../core/page/` |
-| **业务异常 `ServiceException`** | `ruoyi-common-core` → `exception/` | `ruoyi-common/ruoyi-common-core/.../core/exception/` |
-| **缓存 / 分布式锁 / 限流注解** | `ruoyi-common-redis` | `ruoyi-common/ruoyi-common-redis/.../RedisUtils.java`、`CacheUtils.java`、`RateLimiter.java` |
-| **认证 / 登录用户 / Sa-Token** | `ruoyi-common-satoken` | `ruoyi-common/ruoyi-common-satoken/.../LoginHelper.java`、`SaTokenConfig.java` |
-| **数据权限 / BaseEntity / QueryBuilder / 分页结果** | `ruoyi-common-mybatis` | `ruoyi-common/ruoyi-common-mybatis/.../core/` |
-| **全局异常处理 / Web 拦截器 / 过滤器** | `ruoyi-common-web` → `advice/` `interceptor/` `filter/` | `ruoyi-common/ruoyi-common-web/.../common/web/advice/` |
-| **操作日志 `@Log` / 切面** | `ruoyi-common-log` | `ruoyi-common/ruoyi-common-log/...` |
-| **翻译 `@Translation`（ID→名称）** | `ruoyi-common-translation` | `ruoyi-common/ruoyi-common-translation/...` |
-| **脱敏 `@Sensitive` / 加密 `@EncryptField`** | `ruoyi-common-sensitive` / `ruoyi-common-encrypt` | `ruoyi-common/ruoyi-common-sensitive/...` |
-| **Excel 导入导出** | `ruoyi-common-excel` | `ruoyi-common/ruoyi-common-excel/...` |
-| **文件 / 对象存储 OSS** | `ruoyi-common-oss` | `ruoyi-common/ruoyi-common-oss/...` |
-| **短信 / 邮件 / 消息推送** | `ruoyi-common-sms` / `-mail` / `-push` | `ruoyi-common/ruoyi-common-sms/...` |
-| **某业务功能**（用户/角色/菜单/字典/配置等） | `ruoyi-modules/ruoyi-system` | `ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/` |
-| **AI 对话功能** | `ruoyi-modules/ruoyi-ai`（+ `ruoyi-common-ai`） | `ruoyi-modules/ruoyi-ai/...` |
-| **工作流 / 审批流** | `ruoyi-modules/ruoyi-workflow` | `ruoyi-modules/ruoyi-workflow/...` |
-| **定时 / 业务任务** | `ruoyi-modules/ruoyi-job`（+ `ruoyi-common-job`） | `ruoyi-modules/ruoyi-job/...` |
-| **代码生成器逻辑** | `ruoyi-modules/ruoyi-gen` → `gen/` | `ruoyi-modules/ruoyi-gen/src/main/java/org/dromara/gen/` |
-| **代码生成器模板（FreeMarker）** | `ruoyi-gen/.../resources/fm/` | `ruoyi-modules/ruoyi-gen/src/main/resources/fm/{java,vue,react,sql,xml}/*.ftl` |
-| **跨模块对外接口 / DTO / Event** | `ruoyi-api` | `ruoyi-api/src/main/java/org/dromara/system/api/`、`.../workflow/api/` |
-| **SQL 初始化脚本** | `script/sql` | `script/sql/ry_vue.sql`、`ry_job.sql`、`ry_workflow.sql`、`ry_ai.sql` |
-| **运行配置 / 多环境 / 日志配置** | `ruoyi-admin/src/main/resources` | `ruoyi-admin/src/main/resources/application.yml`、`application-dev.yml`、`logback-plus.xml` |
-| **登录 / 认证 Web 入口** | `ruoyi-admin` → `web/` | `ruoyi-admin/src/main/java/org/dromara/web/controller/` |
-| **Mapper XML（自定义 SQL）** | 对应模块 `resources/mapper/{模块}/` | `ruoyi-modules/ruoyi-system/src/main/resources/mapper/system/`、`.../demo/TestDemoMapper.xml` |
-| **监控 / 调度 / AI 服务端** | `ruoyi-extend` | `ruoyi-extend/ruoyi-monitor-admin`、`ruoyi-snailjob-server`、`ruoyi-snailai-server` |
-| **Docker / Nginx / Redis 部署文件** | `script/docker` | `script/docker/docker-compose.yml`、`nginx/conf/nginx.conf` |
+| **通用工具类**（字符串/日期/集合/对象转换/树） | `ruoyi-common-core` → `utils/` | `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/utils/` |
+| **统一响应 `R<T>`** | `ruoyi-common-core` → `core/domain/` | `backend/java/ruoyi-common/ruoyi-common-core/.../core/domain/` |
+| **分页 `PageQuery`** | `ruoyi-common-mybatis` → `core/page/` | `backend/java/ruoyi-common/ruoyi-common-mybatis/.../core/page/` |
+| **业务异常 `ServiceException`** | `ruoyi-common-core` → `exception/` | `backend/java/ruoyi-common/ruoyi-common-core/.../core/exception/` |
+| **缓存 / 分布式锁 / 限流注解** | `ruoyi-common-redis` | `backend/java/ruoyi-common/ruoyi-common-redis/.../RedisUtils.java`、`CacheUtils.java`、`RateLimiter.java` |
+| **认证 / 登录用户 / Sa-Token** | `ruoyi-common-satoken` | `backend/java/ruoyi-common/ruoyi-common-satoken/.../LoginHelper.java`、`SaTokenConfig.java` |
+| **数据权限 / BaseEntity / QueryBuilder / 分页结果** | `ruoyi-common-mybatis` | `backend/java/ruoyi-common/ruoyi-common-mybatis/.../core/` |
+| **全局异常处理 / Web 拦截器 / 过滤器** | `ruoyi-common-web` → `advice/` `interceptor/` `filter/` | `backend/java/ruoyi-common/ruoyi-common-web/.../common/web/advice/` |
+| **操作日志 `@Log` / 切面** | `ruoyi-common-log` | `backend/java/ruoyi-common/ruoyi-common-log/...` |
+| **翻译 `@Translation`（ID→名称）** | `ruoyi-common-translation` | `backend/java/ruoyi-common/ruoyi-common-translation/...` |
+| **脱敏 `@Sensitive` / 加密 `@EncryptField`** | `ruoyi-common-sensitive` / `ruoyi-common-encrypt` | `backend/java/ruoyi-common/ruoyi-common-sensitive/...` |
+| **Excel 导入导出** | `ruoyi-common-excel` | `backend/java/ruoyi-common/ruoyi-common-excel/...` |
+| **文件 / 对象存储 OSS** | `ruoyi-common-oss` | `backend/java/ruoyi-common/ruoyi-common-oss/...` |
+| **短信 / 邮件 / 消息推送** | `ruoyi-common-sms` / `-mail` / `-push` | `backend/java/ruoyi-common/ruoyi-common-sms/...` |
+| **某业务功能**（用户/角色/菜单/字典/配置等） | `backend/java/ruoyi-modules/ruoyi-system` | `backend/java/ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/` |
+| **AI 对话功能** | `backend/java/ruoyi-modules/ruoyi-ai`（+ `ruoyi-common-ai`） | `backend/java/ruoyi-modules/ruoyi-ai/...` |
+| **工作流 / 审批流** | `backend/java/ruoyi-modules/ruoyi-workflow` | `backend/java/ruoyi-modules/ruoyi-workflow/...` |
+| **定时 / 业务任务** | `backend/java/ruoyi-modules/ruoyi-job`（+ `ruoyi-common-job`） | `backend/java/ruoyi-modules/ruoyi-job/...` |
+| **代码生成器逻辑** | `backend/java/ruoyi-modules/ruoyi-gen` → `gen/` | `backend/java/ruoyi-modules/ruoyi-gen/src/main/java/org/dromara/gen/` |
+| **代码生成器模板（FreeMarker）** | `ruoyi-gen/.../resources/fm/` | `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/{java,vue,react,sql,xml}/*.ftl` |
+| **跨模块对外接口 / DTO / Event** | `ruoyi-api` | `backend/java/ruoyi-api/src/main/java/org/dromara/system/api/`、`.../workflow/api/` |
+| **SQL 初始化脚本** | `backend/java/script/sql` | `backend/java/script/sql/ry_vue.sql`、`ry_job.sql`、`ry_workflow.sql`、`ry_ai.sql` |
+| **运行配置 / 多环境 / 日志配置** | `backend/java/ruoyi-admin/src/main/resources` | `backend/java/ruoyi-admin/src/main/resources/application.yml`、`application-dev.yml`、`logback-plus.xml` |
+| **登录 / 认证 Web 入口** | `ruoyi-admin` → `web/` | `backend/java/ruoyi-admin/src/main/java/org/dromara/web/controller/` |
+| **Mapper XML（自定义 SQL）** | 对应模块 `resources/mapper/{模块}/` | `backend/java/ruoyi-modules/ruoyi-system/src/main/resources/mapper/system/`、`.../demo/TestDemoMapper.xml` |
+| **监控 / 调度 / AI 服务端** | `ruoyi-extend` | `backend/java/ruoyi-extend/ruoyi-monitor-admin`、`ruoyi-snailjob-server`、`ruoyi-snailai-server` |
+| **Docker / Nginx / Redis 部署文件** | `backend/java/script/docker` | `backend/java/script/docker/docker-compose.yml`、`nginx/conf/nginx.conf` |
 
 > 拿不准时的定位口诀：**"是能力（横切）还是业务？"** —— 能跨业务复用的 → `ruoyi-common-*`；
-> 跟具体业务表强绑定的 → `ruoyi-modules/ruoyi-xxx`；要被别的模块调用的接口 → `ruoyi-api`。
+> 跟具体业务表强绑定的 → `backend/java/ruoyi-modules/ruoyi-xxx`；要被别的模块调用的接口 → `ruoyi-api`。
 
 ## 四、标准 CRUD 模块内部结构
 
@@ -167,7 +167,7 @@ org/dromara/{module}/
 ### 1. 标准单表 CRUD —— `ruoyi-demo` 的 TestDemo（最干净的范本）
 
 ```
-ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/
+backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/
 ├── domain/TestDemo.java                       # 实体：extends BaseEntity，含 @Version + @TableLogic + @OrderBy
 ├── domain/bo/TestDemoBo.java                  # BO（入参 + 分组校验）
 ├── domain/vo/TestDemoVo.java                  # VO（出参）
@@ -176,7 +176,7 @@ ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/
 ├── service/ITestDemoService.java              # Service 接口
 ├── service/impl/TestDemoServiceImpl.java      # Service 实现
 └── controller/TestDemoController.java         # Controller
-ruoyi-modules/ruoyi-demo/src/main/resources/mapper/demo/TestDemoMapper.xml   # 配套 XML
+backend/java/ruoyi-modules/ruoyi-demo/src/main/resources/mapper/demo/TestDemoMapper.xml   # 配套 XML
 ```
 
 `TestDemo.java` 关键骨架（真实代码节选，注意包名 `org.dromara` 与 `BaseEntity`）：
@@ -202,7 +202,7 @@ public class TestDemo extends BaseEntity {
 ### 2. 带事件/缓存/配置的进阶范本 —— `ruoyi-system` 的 SysConfig
 
 ```
-ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/
+backend/java/ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/
 ├── domain/SysConfig.java
 ├── domain/bo/SysConfigBo.java
 ├── domain/vo/SysConfigVo.java
@@ -219,11 +219,11 @@ ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/
 要给别的模块暴露能力时，**先在 `ruoyi-api` 定接口与 DTO，再回业务模块写实现**：
 
 ```
-ruoyi-api/src/main/java/org/dromara/system/api/
+backend/java/ruoyi-api/src/main/java/org/dromara/system/api/
 ├── ConfigService.java / DeptService.java / UserService.java …   # 对外接口
 ├── domain/                                                      # 传输用 DTO
 └── model/LoginUser.java / *LoginBody.java                       # 登录模型
-ruoyi-api/src/main/java/org/dromara/workflow/api/
+backend/java/ruoyi-api/src/main/java/org/dromara/workflow/api/
 ├── WorkflowService.java
 ├── domain/StartProcessDTO.java …
 └── event/ProcessEvent.java
@@ -234,7 +234,7 @@ ruoyi-api/src/main/java/org/dromara/workflow/api/
 改生成产物的样子，就改这里的 FreeMarker 模板：
 
 ```
-ruoyi-modules/ruoyi-gen/src/main/resources/fm/
+backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/
 ├── java/{domain,bo,vo,mapper,service,serviceImpl,controller}.java.ftl
 ├── xml/mapper.xml.ftl
 ├── sql/{mysql,oracle,postgres,sqlserver}.sql.ftl
@@ -246,27 +246,27 @@ ruoyi-modules/ruoyi-gen/src/main/resources/fm/
 
 判断顺序：
 
-1. **属于既有业务域** → 直接进对应模块。比如新增"系统通告""字典扩展"这类 → 进 `ruoyi-modules/ruoyi-system`，按第四节七类结构补文件即可。
-2. **是一块独立业务域**（与 system/ai/workflow 都不沾边，是一个新领域，如"商城""IoT 设备"） → 在 `ruoyi-modules/` 下**新建 `ruoyi-xxx` 子模块**：
-   - 在根 `pom.xml` 与 `ruoyi-modules/pom.xml` 注册 `<module>ruoyi-xxx</module>`；
+1. **属于既有业务域** → 直接进对应模块。比如新增"系统通告""字典扩展"这类 → 进 `backend/java/ruoyi-modules/ruoyi-system`，按第四节七类结构补文件即可。
+2. **是一块独立业务域**（与 system/ai/workflow 都不沾边，是一个新领域，如"商城""IoT 设备"） → 在 `backend/java/ruoyi-modules/` 下**新建 `ruoyi-xxx` 子模块**：
+   - 在根 `pom.xml` 与 `backend/java/ruoyi-modules/pom.xml` 注册 `<module>ruoyi-xxx</module>`；
    - 新模块 `pom.xml` 按需引入 `ruoyi-common-*` 依赖（用到缓存就引 `ruoyi-common-redis`，要数据权限就引 `ruoyi-common-mybatis`）；
    - 让 `ruoyi-admin` 依赖该新模块（否则启动时不会被装配）；
    - 代码包根仍是 `org.dromara.xxx`，内部按第四节标准结构组织。
-3. **是横切能力**（缓存策略、统一加解密、新中间件封装，多个业务模块都要复用） → 进 `ruoyi-common/` 下**新建 `ruoyi-common-xxx`**，并在 `ruoyi-common-bom` 登记版本。
+3. **是横切能力**（缓存策略、统一加解密、新中间件封装，多个业务模块都要复用） → 进 `backend/java/ruoyi-common/` 下**新建 `ruoyi-common-xxx`**，并在 `ruoyi-common-bom` 登记版本。
 4. **需要被其它业务模块调用** → 接口与 DTO 先放 `ruoyi-api`，新模块只写实现，调用方依赖 `ruoyi-api`（**绝不**直接 import 新模块的实现类）。
-5. **是要独立部署的 Server**（不随主应用一起跑） → 进 `ruoyi-extend/`。
+5. **是要独立部署的 Server**（不随主应用一起跑） → 进 `backend/java/ruoyi-extend/`。
 
-SQL 与数据库初始化脚本统一放 `script/sql/`（主库脚本写进 `ry_vue.sql` 或按域拆分），别散落在各模块里。
+SQL 与数据库初始化脚本统一放 `backend/java/script/sql/`（主库脚本写进 `ry_vue.sql` 或按域拆分），别散落在各模块里。
 
 ## 七、常见错误对比（导航/定位易踩坑）
 
 | ❌ 错误做法 | ✅ 正确做法 | 原因 |
 |------------|-----------|------|
-| 在 `ruoyi-modules/ruoyi-system/.../dao/` 里找/建 DAO 层 | 直接用 `mapper/` 下的 `Mapper`（extends `BaseMapperPlus`），查询用 `QueryBuilder` | 6.x 是三层架构，**根本没有 DAO 层**，也没有 `buildQueryWrapper()` |
+| 在 `backend/java/ruoyi-modules/ruoyi-system/.../dao/` 里找/建 DAO 层 | 直接用 `mapper/` 下的 `Mapper`（extends `BaseMapperPlus`），查询用 `QueryBuilder` | 6.x 是三层架构，**根本没有 DAO 层**，也没有 `buildQueryWrapper()` |
 | 把包名写成 `com.ruoyi.xxx` 或 `plus.ruoyi.xxx` 去搜文件 | 一律按 `org.dromara.xxx` 搜 | 框架约定根包是 **`org.dromara`** |
 | A 业务模块直接 `import org.dromara.system.service.impl.XxxServiceImpl` | 调 `ruoyi-api` 里的 `XxxService` 接口 | 跨模块只认 `ruoyi-api` 契约，直接依赖实现会破坏模块边界 |
-| 在本仓库里找 `plus-ui` / 前端 Vue 页面源码 | 前端在**仓库内 `plus-ui/`**（`src/views`、`src/api`） | 本项目前后端一体化 |
-| 把全局 `application.yml` 当作放在某个 common 模块里 | 运行配置只在 **`ruoyi-admin/src/main/resources`** | `ruoyi-admin` 是唯一可执行入口，配置与启动都在这 |
+| 在本仓库里找 `plus-ui` / 前端 Vue 页面源码 | 前端在**仓库内 `frontend/plus-ui/`**（`src/views`、`src/api`） | 本项目前后端一体化 |
+| 把全局 `application.yml` 当作放在某个 common 模块里 | 运行配置只在 **`backend/java/ruoyi-admin/src/main/resources`** | `ruoyi-admin` 是唯一可执行入口，配置与启动都在这 |
 | 改代码生成产物时去改 `ruoyi-gen` 的 Java 业务代码 | 改 `ruoyi-gen/src/main/resources/fm/**/*.ftl` 模板 | 生成的样子由 FreeMarker 模板决定，不是 Java 逻辑 |
 | 缓存工具去 `ruoyi-common-core` 找 | 缓存在 `ruoyi-common-redis`（`RedisUtils`/`CacheUtils`） | core 只放最基础的 utils/异常/domain，中间件能力各有专属 common 子模块 |
 
@@ -274,9 +274,9 @@ SQL 与数据库初始化脚本统一放 `script/sql/`（主库脚本写进 `ry_
 
 1. **先定位再动手**：任何"加功能/改代码"前，先用本技能确认目标文件所在模块与目录，避免在错误的层（如臆想的 DAO 层）瞎找。
 2. **照真实文件抄**：新建 CRUD 优先打开 `TestDemo`（最干净）或 `SysConfig`（带事件/缓存）作为模板，逐文件对照，比凭记忆更可靠。
-3. **横切 vs 业务 的判断**：写之前问自己"这能跨业务复用吗？"——能就进 `ruoyi-common-*`，不能就进 `ruoyi-modules/ruoyi-xxx`。
+3. **横切 vs 业务 的判断**：写之前问自己"这能跨业务复用吗？"——能就进 `ruoyi-common-*`，不能就进 `backend/java/ruoyi-modules/ruoyi-xxx`。
 4. **跨模块走契约**：任何模块间调用，先看 `ruoyi-api` 有没有现成接口；没有就先在 `ruoyi-api` 加接口+DTO，再回模块写实现。
 5. **配置集中在 admin**：环境差异（端口、数据源、Redis 地址）只改 `ruoyi-admin` 的 `application-{dev,prod}.yml`，不要散落到子模块。
-6. **SQL 集中在 script**：建表/初始化脚本统一 `script/sql/`，与模块 Java 代码分离，方便部署同步。
+6. **SQL 集中在 script**：建表/初始化脚本统一 `backend/java/script/sql/`，与模块 Java 代码分离，方便部署同步。
 7. **6.x 三铁律常驻脑中**：包根 `org.dromara`、三层无 DAO、前端在独立 `plus-ui` 仓库——定位与写代码时反复自检，杜绝 `com.ruoyi`/`plus.ruoyi`/DAO/`buildQueryWrapper` 的旧习惯。
 8. **善用专项技能接力**：本技能定位到位后，写实现请激活 crud-development（写 CRUD）、redis-cache（缓存）、security-guard（权限）、database-ops（SQL/表）等专项技能，各司其职。

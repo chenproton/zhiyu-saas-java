@@ -7,7 +7,7 @@
 
 系统中的核心资源（岗位、场景、课程、题库、试卷）发布后，学生即可学习/测评，教师进行打分。现状存在以下问题：
 
-- `version` 仅是展示字符串，发布时 +0.1（`backend/internal/store/content_actions.go` `NextVersion`），发布 = **原地覆盖同一行数据**，编辑后旧内容彻底丢失。
+- `version` 仅是展示字符串，发布时 +0.1（`backend/go/internal/store/content_actions.go` `NextVersion`），发布 = **原地覆盖同一行数据**，编辑后旧内容彻底丢失。
 - 学习/成绩记录**裸引用资源 id**：`scene_evaluation_results.task_id`（软引用）、`node_evaluation_results.node_id`、`course_evaluation_results.course_id`、`exam_results → exam_usages → exam_id`。资源改版后，历史成绩的上下文随之漂移。
 - 排课（`schedule_entries`）只过滤工作台列表，与内容读取完全解耦；学生直接访问 URL 可读**任何同租户内容（含 draft）**。
 - 仅有的快照先例：
@@ -91,20 +91,20 @@ ALTER TABLE exam_questions ADD CONSTRAINT exam_questions_question_id_fkey
 
 ### 5.1 快照写入
 
-- 新 `backend/internal/store/snapshots.go`：`SaveSnapshot`（upsert）/ `GetSnapshot` / `LatestVersion`。
-- 新 `backend/internal/store/snapshot_builders.go`：5 个 builder，字段清单复用 `position_clone.go` / `scenario_clone.go` / `course_clone.go`（**优先复用其列常量，降低 schema 字段漂移风险**；注意仅 `scenario_clone.go:165` 有 `TaskInsertColumns` 常量，`position_clone.go` / `course_clone.go` 为内联列字面量，实施前需先提取为常量）：
+- 新 `backend/go/internal/store/snapshots.go`：`SaveSnapshot`（upsert）/ `GetSnapshot` / `LatestVersion`。
+- 新 `backend/go/internal/store/snapshot_builders.go`：5 个 builder，字段清单复用 `position_clone.go` / `scenario_clone.go` / `course_clone.go`（**优先复用其列常量，降低 schema 字段漂移风险**；注意仅 `scenario_clone.go:165` 有 `TaskInsertColumns` 常量，`position_clone.go` / `course_clone.go` 为内联列字面量，实施前需先提取为常量）：
   - `BuildScenarioSnapshot`：scenarios + scenario_tasks + task_evaluation_methods / task_eval_points / task_eval_score_rules / task_review_steps / task_deliverables + scenario_weight_configs / scenario_grade_mappings + 三张绑定表 + 连带 SELECT 知识点/能力点/资源库条目 + 关联岗位树（职责、能力绑定、领域、证书）。
   - `BuildCourseSnapshot`：courses + system_course_nodes + node_quizzes / node_quiz_questions + hybrid_node_modules + 节点绑定 + 连带知识点/资源 + 节点引用的颗粒课（**主表+节点+节点测验+混合模块，一层**，防递归；**system_course_nodes 字段清单须显式含 `eval_data`**——lesson 系测评配置不发 API、内联在节点 JSON（`lesson/landing/[id]/page.tsx:197-236`），漏掉则测评标准仍漂移）。
   - `BuildExamSnapshot`：exams + exam_questions。
   - `BuildQuestionBankSnapshot`：bank + 已发布 questions。
   - `BuildPositionSnapshot`：岗位全树（**补上 clone 缺失的 certification_rules 链**）。
-- 挂载点：`backend/internal/store/content_actions.go` `Transition`（L127-184）——CAS 状态更新 → 发布时版本 bump → 用户 hook（课程 `GenerateCourseAssessments`）→ **统一写快照**。五类资源 publish 零 handler 改动，同事务保证一致性；**快照构建失败 → 发布事务回滚，无半成品快照、无"已发布但无快照"状态**。
+- 挂载点：`backend/go/internal/store/content_actions.go` `Transition`（L127-184）——CAS 状态更新 → 发布时版本 bump → 用户 hook（课程 `GenerateCourseAssessments`）→ **统一写快照**。五类资源 publish 零 handler 改动，同事务保证一致性；**快照构建失败 → 发布事务回滚，无半成品快照、无"已发布但无快照"状态**。
 - **审批通过路径不走 Transition**：`ApprovalService.ReviewApproval`（`service/approval.go:27-64`）只做 `SyncEntityStatus(approved)` + `MergeSourceEditDraft`（approval.go:53），不 bump 版本、不触发 hook；须与 5.5 联盟 `Merge*DraftToSource` 一并盘点"内容覆盖但不走 Transition"的入口，统一在覆盖事务内补 bump + 快照。
 - **临时考试兜底**：node/task 级 temp exam 不走 Transition（`CreateTempExam` 直接 published）；在 `task_evaluation.go` `EnsureExamUsageForMethod`、`lesson_content.go` / `course_assessments.go` 的 ensure* 与 `SyncExamQuestions` 调用点，每次触碰时补写 temp exam 快照并刷新 `exam_usages.exam_version`（防课程再版 SyncExamQuestions 覆盖旧安排题目内容）。
 
 ### 5.2 快照读取（bundle 接口）
 
-- 新 `backend/internal/service/snapshot.go` + `backend/internal/handler/snapshot_handler.go`：
+- 新 `backend/go/internal/service/snapshot.go` + `backend/go/internal/handler/snapshot_handler.go`：
   - `GET /scene/scenarios/{id}/snapshot?version=`
   - `GET /lesson/courses/{id}/snapshot?version=`
   - `GET /evaluation/exams/{id}/snapshot?version=`
@@ -120,22 +120,22 @@ ALTER TABLE exam_questions ADD CONSTRAINT exam_questions_question_id_fkey
 
 ### 5.3 绑定与提交固化
 
-- `backend/internal/store/scheduling.go` `PublishScheduleEntries`（L689-717）：复制 draft 为 published 行时打 `resource_version`（以快照表最新版本为准；快照缺档回退 live version）。
-- `backend/internal/store/exam_usages.go` Create / Publish / Update：打 `exam_version`；**examId 不可变**（`Update` SQL 不含 exam_id 列，handler 注释明示"更新流程忽略 examId"，`exam_usage_handler.go:18`），换绑试卷 = 删旧建新，受删除保护约束。
-- `backend/internal/store/evaluation_results.go` Submit、`backend/internal/store/node_evaluation_results.go` Submit、`backend/internal/service/evaluation_result.go` SubmitExamResult + SyncCourse/Node/SceneEvaluation：服务端解析版本盖章；INSERT 带 version；`ON CONFLICT DO UPDATE SET version=excluded.version`（未评分重交时更新为新版本，与现有 `WHERE graded_at IS NULL` 子句兼容）。
+- `backend/go/internal/store/scheduling.go` `PublishScheduleEntries`（L689-717）：复制 draft 为 published 行时打 `resource_version`（以快照表最新版本为准；快照缺档回退 live version）。
+- `backend/go/internal/store/exam_usages.go` Create / Publish / Update：打 `exam_version`；**examId 不可变**（`Update` SQL 不含 exam_id 列，handler 注释明示"更新流程忽略 examId"，`exam_usage_handler.go:18`），换绑试卷 = 删旧建新，受删除保护约束。
+- `backend/go/internal/store/evaluation_results.go` Submit、`backend/go/internal/store/node_evaluation_results.go` Submit、`backend/go/internal/service/evaluation_result.go` SubmitExamResult + SyncCourse/Node/SceneEvaluation：服务端解析版本盖章；INSERT 带 version；`ON CONFLICT DO UPDATE SET version=excluded.version`（未评分重交时更新为新版本，与现有 `WHERE graded_at IS NULL` 子句兼容）。
   - 三个 Sync 函数（`SyncSceneEvaluation` / `SyncCourseEvaluation` / `SyncNodeEvaluation`，`store/exam_results.go:329-471`）的 UPSERT 用 CASE 保护已评分行、**无** `WHERE graded_at IS NULL` 子句，其 version 更新语义须明确：**已评分行 version 不动，未评分行随 EXCLUDED 更新**，与两个 Submit 对齐。
 - **并发窗口消除**：前端提交时携带"页面加载时的版本"提示；服务端校验该版本快照存在则采纳，否则回退最新。注意这是"版本无效回退最新"的**降级语义**，与 `TaskEvaluationMethod.version` 乐观锁模式（advisory 锁 + 单调版本 + **冲突即拒绝 409**，`service/task_evaluation.go:34-50`）语义相反，**勿照乐观锁实现成拒绝式**。
-- `backend/internal/store/portal.go` StudentScheduleRow / StudentCourseRow / SceneTaskRow + dashboard 事件：下发 `resource_version`。
+- `backend/go/internal/store/portal.go` StudentScheduleRow / StudentCourseRow / SceneTaskRow + dashboard 事件：下发 `resource_version`。
 
 ### 5.4 判分快照化
 
-- `backend/internal/service/evaluation_result.go` SubmitExamResult（L79-86 读题判分）与 GradeExamResult：改从 `exam_usages.exam_version` 对应快照读题，不再读活 `exam_questions`。
+- `backend/go/internal/service/evaluation_result.go` SubmitExamResult（L79-86 读题判分）与 GradeExamResult：改从 `exam_usages.exam_version` 对应快照读题，不再读活 `exam_questions`。
 - **总分/及格线同须快照化**：`UsageExamInfo`（`store/exam_results.go:126-138`）现从 live `exams.total_score`（缺省回退 `SUM(exam_questions.score)`）取总分、`is_pass` 按 60% 判定；试卷再版改题目分值后，历史卷总分与及格判定仍会漂移 → total_score 及及格线口径改从快照 jsonb 取。
 - **反向回写链**：教师场景评分 `GradeEvaluationResult` / `BatchGradeEvaluationResults` → `syncExamResultScoreTx` → `FindLatestExamResult`（`store/evaluation_results.go:151-177`，live JOIN `task_evaluation_methods.resource_config`）回写 exam_results；资源改版后该 JOIN 可能找不到/找错对应考试记录 → 改按 `exam_usages.exam_version` / `result.version` 定位，纳入本方案改造范围。
 
 ### 5.5 修复既有债
 
-- 联盟共建 `backend/internal/store/alliance_source_edit_store.go` `MergePositionDraftToSource` / `MergeScenarioDraftToSource`：合并覆盖后未走 Transition（无版本 bump、无快照）→ 合并事务内补 bump + 快照。
+- 联盟共建 `backend/go/internal/store/alliance_source_edit_store.go` `MergePositionDraftToSource` / `MergeScenarioDraftToSource`：合并覆盖后未走 Transition（无版本 bump、无快照）→ 合并事务内补 bump + 快照。
 - **删除保护**（存在成绩记录或活跃绑定时拒绝物理删除，返回明确错误码）：
   - exams：存在 exam_results → 拒删
   - exam_usages：存在 exam_results → 拒删
@@ -153,11 +153,11 @@ ALTER TABLE exam_questions ADD CONSTRAINT exam_questions_question_id_fkey
 
 ## 6. 前端改造
 
-- `packages/api-client` + `packages/shared-types`：新增 `getSnapshot(id, {version})` ×5 与 bundle 类型；结果类型加 `version?`、ScheduleEntry 加 `resourceVersion`。
-- 学习页走 bundle：`apps/edu/app/scene/landing/[id]/page.tsx`、`scene/landing/[id]/learn/page.tsx`、`lesson/landing/[id]/page.tsx`、`lesson/landing/[id]/learn/page.tsx`（URL `?v=` 或默认最新；替换 5-6 次多接口组装，知识点/能力点/资源映射从 bundle 取）。
-- 题库浏览 `apps/edu/app/evaluation/landing/banks/[id]/page.tsx`：走 bank bundle。
-- 考试作答 `apps/edu/app/evaluation/landing/exams/[id]/page.tsx`：按 `currentUsage.examVersion` 取 exam bundle；**绕开 data-provider 缓存是必修前置而非风险项**——命中缓存即不请求（`page.tsx:74-76`），不绕开则版本切换不生效。
-- 打分详情按 `result.version` 取 bundle：`apps/edu/app/evaluation/scene-results/[id]/page.tsx`、`lesson-results/[id]/page.tsx`、`lesson-results/daily-exams/[resultId]/page.tsx`，替换 `taskApi.get` / `listMethods` / `examApi.get` 活读；random_draw 题目**优先用 `scene_evaluation_results.drawn_questions` 内快照**（jsonb 已存抽题结果，`evaluation_results.go:86-104`），bundle 兜底（见 8.2）。
+- `frontend/packages/api-client` + `frontend/packages/shared-types`：新增 `getSnapshot(id, {version})` ×5 与 bundle 类型；结果类型加 `version?`、ScheduleEntry 加 `resourceVersion`。
+- 学习页走 bundle：`frontend/edu/app/scene/landing/[id]/page.tsx`、`scene/landing/[id]/learn/page.tsx`、`lesson/landing/[id]/page.tsx`、`lesson/landing/[id]/learn/page.tsx`（URL `?v=` 或默认最新；替换 5-6 次多接口组装，知识点/能力点/资源映射从 bundle 取）。
+- 题库浏览 `frontend/edu/app/evaluation/landing/banks/[id]/page.tsx`：走 bank bundle。
+- 考试作答 `frontend/edu/app/evaluation/landing/exams/[id]/page.tsx`：按 `currentUsage.examVersion` 取 exam bundle；**绕开 data-provider 缓存是必修前置而非风险项**——命中缓存即不请求（`page.tsx:74-76`），不绕开则版本切换不生效。
+- 打分详情按 `result.version` 取 bundle：`frontend/edu/app/evaluation/scene-results/[id]/page.tsx`、`lesson-results/[id]/page.tsx`、`lesson-results/daily-exams/[resultId]/page.tsx`，替换 `taskApi.get` / `listMethods` / `examApi.get` 活读；random_draw 题目**优先用 `scene_evaluation_results.drawn_questions` 内快照**（jsonb 已存抽题结果，`evaluation_results.go:86-104`），bundle 兜底（见 8.2）。
 - **顺带收益**：scene 学习页现拉**全站** resourceLibrary / knowledge / ability 全表再按 id 过滤（`scene/landing/[id]/page.tsx:381-454`），bundle 按场景裁剪后天然修复该性能隐患。
 - 提交 payload 携带页面加载时的版本提示。
 - 工作台/入口链接带 `?v=resourceVersion`：`?v=` 链接共 **9 处**——除 `my-schedule-tab.tsx`、`learning-tab.tsx`、`workspace-schedule-grid.tsx`、`teacher-*-tab.tsx` 外，还有 `assessment-tab.tsx:277-282`、`exam-center-card.tsx:42`、`scene/landing/[id]/learn/page.tsx:221-228`、`lesson/landing/[id]/learn/page.tsx:224-231`、`hybrid-modules-view.tsx:265`；现状 9 处均为模板字符串内联拼接，建议新增 `lib/learn-links.ts` 统一拼链接。

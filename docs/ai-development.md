@@ -13,11 +13,11 @@
 
 关键文件：
 
-- 网关客户端：`backend/internal/ai/client.go`（`ChatCompletion`，支持 `temperature`/`max_tokens`/`response_format` 透传，返回 `Usage`）
-- 业务编排：`backend/internal/service/ai.go`（`AIService`：配置管理 + `Chat`，缓存与加解密都在这层）
-- 存储：`backend/internal/store/ai_config.go`、`backend/internal/store/ai_usage.go`（用量记录）；加密：`backend/internal/crypto/aes.go`
-- 现有端点：`GET/PUT/DELETE /ai/config`、`POST /ai/chat`、`GET /ai/usage`（用量统计：`backend/internal/handler/ai_handler.go`）
-- 前端 API：`packages/api-client/src/api/ai.ts`；对话页：`apps/edu/app/portal/apps/ai/chat/page.tsx`
+- 网关客户端：`backend/go/internal/ai/client.go`（`ChatCompletion`，支持 `temperature`/`max_tokens`/`response_format` 透传，返回 `Usage`）
+- 业务编排：`backend/go/internal/service/ai.go`（`AIService`：配置管理 + `Chat`，缓存与加解密都在这层）
+- 存储：`backend/go/internal/store/ai_config.go`、`backend/go/internal/store/ai_usage.go`（用量记录）；加密：`backend/go/internal/crypto/aes.go`
+- 现有端点：`GET/PUT/DELETE /ai/config`、`POST /ai/chat`、`GET /ai/usage`（用量统计：`backend/go/internal/handler/ai_handler.go`）
+- 前端 API：`frontend/packages/api-client/src/api/ai.ts`；对话页：`frontend/edu/app/portal/apps/ai/chat/page.tsx`
 
 ## 新增 AI 功能的开发约定
 
@@ -30,7 +30,7 @@
 5. **不自动重试**：chat completions 非幂等且按 token 计费，失败返回前端由用户重发
 6. **流式扩展**：需要流式对话时，在 `ai.Client` 增加 `ChatCompletionStream`（解析 SSE + `http.Flusher` 透传）并新增端点，不得绕过 client 直接手写 SSE 调用上游
 7. **用量落库**：LLM 调用产生的 token 用量已由 `AIService.Chat` 自动写入 `ai_usage_logs`（上游成功后 best-effort，失败不影响响应），复用 Chat 的新 AI 功能无需额外处理；若有绕过 Chat 的新调用路径，也必须自行记录用量
-8. 前端调用经 `packages/api-client` 新增方法（`portalRequest` 等）；收到 412 统一引导到 `/portal/apps/system/tenant` 完成配置
+8. 前端调用经 `frontend/packages/api-client` 新增方法（`portalRequest` 等）；收到 412 统一引导到 `/portal/apps/system/tenant` 完成配置
 9. **修复重试（仅限解析失败）**：上游**成功返回**但输出不是合法 JSON 时，允许追加一次修复指令重试（"只输出 JSON，不要代码块/注释"），仅一次。这不算"对上游失败的重试"（约定 5 禁止的是对 4xx/5xx/超时等失败的无脑重试）；修复重试同样要记录两次调用各自的用量
 
 > **豁免说明**：`chatWithJSONModeFallback` 对上游 400/422（`response_format` 参数不被上游支持）去掉参数重试一次，属既有豁免——这是参数降级而非对上游失败的盲目重试，与约定 5 不冲突；后续审查勿误判为违规。
@@ -43,7 +43,7 @@
 
 ```
 前端 hooks（lib/ai/use-ai-assist.ts）
-  → positionAiAssist(field, position, signal)（packages/api-client/src/api/ai.ts，支持 AbortSignal 取消）
+  → positionAiAssist(field, position, signal)（frontend/packages/api-client/src/api/ai.ts，支持 AbortSignal 取消）
   → POST /ai/position-assist（handler: ai_handler.go PositionAssist；校验 field 枚举、职责/要求 ≤ 50 条、单条 ≤ 8000 字符）
   → service.AIService.PositionAssist（ai_position.go）：
        positionAssistPrompt 纯函数构造提示词（系统提示 + 岗位上下文 + 任务 + JSON schema）
@@ -53,11 +53,11 @@
        → best-effort recordUsage
 ```
 
-### 前端三件套（`apps/edu/lib/ai/use-ai-assist.ts`）
+### 前端三件套（`frontend/edu/lib/ai/use-ai-assist.ts`）
 
 三个 hook 独立可组合，岗位三步流程均已接入：
 
-1. **`useAiNotConfigured`**：`markNotConfigured(err)` 命中 412（`err.message === 'ai_not_configured'`）返回 true 并打开配置引导弹窗（配合共享组件 `apps/edu/components/shared/ai-not-configured-dialog.tsx` 渲染，引导到 `/portal/apps/system/tenant`）。多任务流水线中命中一次即中止后续任务，避免重复弹窗。
+1. **`useAiNotConfigured`**：`markNotConfigured(err)` 命中 412（`err.message === 'ai_not_configured'`）返回 true 并打开配置引导弹窗（配合共享组件 `frontend/edu/components/shared/ai-not-configured-dialog.tsx` 渲染，引导到 `/portal/apps/system/tenant`）。多任务流水线中命中一次即中止后续任务，避免重复弹窗。
 2. **`useAiFieldWriter(keys, onUpdate, snapshotField)`**：字段级 AI 直接写入保护。每个字段在被 AI 首次覆盖前记录 1 级快照，提供 `writeField` / `restoreField`（逐字段恢复上版）/ `restoreAll`（全部撤销）/ `updatedCount` / `flashKey`（写入高亮，短暂紫色闪烁提示改动位置）。多次覆盖不更新历史，保证「恢复上版」回到 AI 介入前的原值。
 3. **`useAiPipeline({ steps, request, onError })`**：串行 AI 任务流水线。`run(tasks, { showDialog })` 按顺序执行任务（`{ id, meta, onStart, apply }`），维护进度弹窗状态（`open/phase/progress/runningId/isRunning`）；**`request` 必须透传 `signal`**（AbortController），关闭弹窗即取消（`handleOpenChange`），取消/关闭 UI 后请求不再继续写字段；`onError` 返回 true 中止后续任务、false 继续；返回 `{ completedAll, success }` 供部分成功提示。
 
@@ -75,7 +75,7 @@
 ### 交互模式硬约束（所有 AI 辅助编写统一）
 
 - **字段内容**（表单已有字段的润色/生成）→ 一律「直接写入 + 恢复上版」：`useAiFieldWriter` 快照/高亮/逐字段恢复/全部撤销、`useAiPipeline` 进度弹窗（关闭即取消）、一键前"快速补全/确认覆盖"弹窗、412 引导。**禁止另立交互方式**（如预览-确认、inline 建议卡+采纳）。
-- **新实体清单**（AI 生成后需创建实体的内容，如任务链）→ 「建议面板 + 勾选采纳 + 限时撤销」：采纳后创建实体并给 10 秒撤销 toast（参考 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/ai-task-chain-suggestion.tsx`）；视觉语言（紫色 Sparkles/面板）与错误体系（`useAiPipeline`/`useAiNotConfigured`/取消/护栏）必须与字段级一致。
+- **新实体清单**（AI 生成后需创建实体的内容，如任务链）→ 「建议面板 + 勾选采纳 + 限时撤销」：采纳后创建实体并给 10 秒撤销 toast（参考 `frontend/edu/app/scene/scenarios/[id]/edit/tasks/_components/ai-task-chain-suggestion.tsx`）；视觉语言（紫色 Sparkles/面板）与错误体系（`useAiPipeline`/`useAiNotConfigured`/取消/护栏）必须与字段级一致。
 - **实体推荐引用优先**：AI 推荐实体类内容（知识点/能力点/资源/行业/专业）时，由服务端按名精确匹配现有对象（store `FindByNames`，租户域 `name = ANY($N)`），命中回填 `matchedId` 直接引用；未命中由前端引导走既有新建流程（预填名称），**AI 结果不得直接创建实体**。
 
 ### 消费方清单

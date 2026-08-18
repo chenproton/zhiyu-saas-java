@@ -18,7 +18,7 @@ description: |
 
 1. **激活** `crud-development`（必）+ 按需 `database-ops`。
 2. **读表结构**：确认主键（雪花 BIGINT）、`del_flag`(@TableLogic)、审计字段、`tenant_id`（多租户表）、是否树表。
-3. **优先用代码生成器约定**（`ruoyi-modules/ruoyi-gen`，FreeMarker `fm/`）：
+3. **优先用代码生成器约定**（`backend/java/ruoyi-modules/ruoyi-gen`，FreeMarker `fm/`）：
    - 后端七件套：`domain/Entity`、`domain/bo/EntityBo`、`domain/vo/EntityVo`、`mapper/EntityMapper`、`service/IEntityService`、`service/impl/EntityServiceImpl`、`controller/EntityController`
    - 模板对应：`fm/java/{domain,bo,vo,mapper,service,serviceImpl,controller}.java.ftl`
    - 前端：`fm/<frontend_type>/{api.ts,types.ts,index.*}.ftl`（vue=Element Plus / react=Ant Design Pro）

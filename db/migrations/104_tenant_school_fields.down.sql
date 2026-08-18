@@ -1,8 +1,0 @@
-ALTER TABLE tenants DROP COLUMN IF EXISTS short_name;
-ALTER TABLE tenants DROP COLUMN IF EXISTS school_type;
-ALTER TABLE tenants DROP COLUMN IF EXISTS province;
-ALTER TABLE tenants DROP COLUMN IF EXISTS city;
-ALTER TABLE tenants DROP COLUMN IF EXISTS website;
-ALTER TABLE tenants DROP COLUMN IF EXISTS contact_phone;
-ALTER TABLE tenants DROP COLUMN IF EXISTS scale_data;
-ALTER TABLE tenants DROP COLUMN IF EXISTS secondary_colleges;

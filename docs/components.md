@@ -4,18 +4,18 @@
 > 1. **复用优先**：接到需求先判断能否复用现有组件/函数/模式（见下方速查表与 `forms-tables.md` 架构盘点）；能复用直接使用，不重复造轮子
 > 2. **抽象公共组件需确认**：若现有组件无法满足、但该模式可能在系统中反复出现，先向用户提出抽象方案，经确认后再实施
 > 3. **同场景一并改造**：实施抽象时，将系统中类似场景统一切换到新公共组件，最大化复用价值
-> 4. 新增页面时先查阅下方速查表，复用 `apps/edu/components/shared/` 与 `packages/ui`（`@zhiyu/ui`）中的公共组件
+> 4. 新增页面时先查阅下方速查表，复用 `frontend/edu/components/shared/` 与 `frontend/packages/ui`（`@zhiyu/ui`）中的公共组件
 
 > **表格/表单架构盘点与开发规范见 [`docs/forms-tables.md`](forms-tables.md)**（系统模块划分、表格壳组件选型、表单字段封装规范、复用评估结论）。
 
-> **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`。
-> **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。仅部分在 `apps/edu/components/shared/` 保留 re-export 薄封装（`ComboboxSelect`/`ConfirmDialog`/`ErrorState`/`HoverActionBar`/`ImportWizardDialog`/`ImportConfirmDialog`/`SearchInput`/`StatusBadge`/`TableRowActions`）；其余 `EmptyState`/`TableEmptyRow`/`FormDialogFooter`/`UnderlineTabs`/`MixedTagEditor`/`LoadingView` 无本地 re-export，消费方直接 `from '@zhiyu/ui'`。
+> **页面级共享壳**与**业务组件**位于 `frontend/edu/components/shared/`。
+> **通用 UI/交互组件**位于 `frontend/packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。仅部分在 `frontend/edu/components/shared/` 保留 re-export 薄封装（`ComboboxSelect`/`ConfirmDialog`/`ErrorState`/`HoverActionBar`/`ImportWizardDialog`/`ImportConfirmDialog`/`SearchInput`/`StatusBadge`/`TableRowActions`）；其余 `EmptyState`/`TableEmptyRow`/`FormDialogFooter`/`UnderlineTabs`/`MixedTagEditor`/`LoadingView` 无本地 re-export，消费方直接 `from '@zhiyu/ui'`。
 > **通用 Hooks**（`@zhiyu/ui`）：`useToast`/`useAsync`/`useDebouncedValue`/`useClickOutside`/`useImportFlow`。
-> **评测配置组件**位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`）与 `apps/edu/components/evaluation-rules/`（`evaluation-rules-editor.tsx`、`bank-question-selector-panel.tsx`），仅课程编辑器使用；任务编辑器经 `components/evaluation-rules/` 内的测评面板组件复用共享组件。
-> **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
-> **评测专用组件**位于 `apps/edu/components/evaluation/`。
-> **通用 Hooks** 位于 `@/hooks/`（`apps/edu/hooks/`）和 `packages/ui/src/hooks/`。
-> **错误处理工具**：`apps/edu/lib/error-handling.ts`（`reportError`），关键路径异步失败统一改用它记录。
+> **评测配置组件**位于 `frontend/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`）与 `frontend/edu/components/evaluation-rules/`（`evaluation-rules-editor.tsx`、`bank-question-selector-panel.tsx`），仅课程编辑器使用；任务编辑器经 `components/evaluation-rules/` 内的测评面板组件复用共享组件。
+> **任务步骤卡片**位于 `frontend/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
+> **评测专用组件**位于 `frontend/edu/components/evaluation/`。
+> **通用 Hooks** 位于 `@/hooks/`（`frontend/edu/hooks/`）和 `frontend/packages/ui/src/hooks/`。
+> **错误处理工具**：`frontend/edu/lib/error-handling.ts`（`reportError`），关键路径异步失败统一改用它记录。
 
 ## 页面级组件
 
@@ -46,24 +46,24 @@
 
 ## 表单/交互组件
 
-> 位于 `apps/edu/components/shared/`。
+> 位于 `frontend/edu/components/shared/`。
 
 | 组件 | 文件 | 适用场景 | 关键 Props |
 |------|------|---------|-----------|
-| `StatusBadge` | `packages/ui` re-export | 状态标签（统一颜色体系） | `status` |
-| `ConfirmDialog` | `packages/ui` re-export | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
-| `TableRowActions` | `packages/ui` re-export | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
-| `HoverActionBar` | `packages/ui` re-export | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
-| `ComboboxSelect` | `packages/ui` re-export | 可搜索下拉选择（单选/多选），内置搜索/清空/全选（`showSelectAll`）/已选徽章（`showSelectedBadges`）；旧 `MultiSelect`/`MultiSelectSearch` 已删除，统一用它 | `options`, `value`, `onChange`, `multiple`, `loading`, `renderOption`, `showSelectAll`, `showSelectedBadges` |
-| `SearchInput` | `packages/ui` re-export | 统一搜索框（放大镜图标 + 输入框，内置 `type="search"`/`autoComplete="off"` 防浏览器自动填充），替换各页面手写的 Search 图标 + Input 样板 | `value`, `onChange`, `placeholder`, `onSearch?`, `searchButton?`, `icon?`, `wrapperClassName?`, `iconClassName?`, `inputClassName?` |
-| `PasswordInput` | `packages/ui` re-export | 统一密码输入框（右侧小眼睛按钮，明文/掩码切换，`onMouseDown` 阻止失焦），**全局所有密码输入框必须使用**（登录/注册/重置密码/AI Key 等，13 文件 25 处已替换）；其他 input props 全部透传 | `className?`（作用于内部 input）, `defaultVisible?`, 及 `Input` 全部 props |
-| `EmptyState` / `TableEmptyRow` | `packages/ui` re-export | 列表/详情空态（居中图标+文案，可带 action）与表格空行，替换手写 `text-center py-8` 样板 | `icon?`, `title?`, `description?`, `action?`, `className?`, `compact?`；`TableEmptyRow`: `colSpan`, `children`, `className` |
-| `FormDialogFooter` | `packages/ui` re-export | 弹窗表单底部「取消 + 保存/确定」统一组件，内置 loading spinner | `onCancel`, `confirmText?`, `confirmDisabled?`, `loading?`, `variant?`, `extra?` |
-| `UnderlineTabs` | `packages/ui` re-export | 下划线式 Tab 栏（border-b-2 激活态，可配 accent 色），与 shadcn Tabs 并存 | `items`, `activeKey`, `onSelect`, `accentClassName?`, `badge` |
-| `Button`（`loading` prop） | `packages/ui` | Button 内置 `loading` prop（自动禁用 + spinner），不要再手写「Loader2 + 加载中」 | `loading?: boolean` |
-| `MixedTagEditor` | `packages/ui` re-export | contentEditable 输入框，纯文本与知识点/能力点标签混排（评价维度名/量规指标） | `text`, `knowledgePointIds`, `abilityPointIds`, `onChange`, `compact` |
-| `ImportWizardDialog` | `packages/ui` re-export | Excel 导入两步向导（下载模板→上传→导入），支持受控模式与 `useImportFlow` 组合 | `title`, `guideItems`, `onDownload`, `onImport`, `files?` 等 |
-| `ImportConfirmDialog` | `packages/ui` re-export | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
+| `StatusBadge` | `frontend/packages/ui` re-export | 状态标签（统一颜色体系） | `status` |
+| `ConfirmDialog` | `frontend/packages/ui` re-export | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
+| `TableRowActions` | `frontend/packages/ui` re-export | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
+| `HoverActionBar` | `frontend/packages/ui` re-export | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
+| `ComboboxSelect` | `frontend/packages/ui` re-export | 可搜索下拉选择（单选/多选），内置搜索/清空/全选（`showSelectAll`）/已选徽章（`showSelectedBadges`）；旧 `MultiSelect`/`MultiSelectSearch` 已删除，统一用它 | `options`, `value`, `onChange`, `multiple`, `loading`, `renderOption`, `showSelectAll`, `showSelectedBadges` |
+| `SearchInput` | `frontend/packages/ui` re-export | 统一搜索框（放大镜图标 + 输入框，内置 `type="search"`/`autoComplete="off"` 防浏览器自动填充），替换各页面手写的 Search 图标 + Input 样板 | `value`, `onChange`, `placeholder`, `onSearch?`, `searchButton?`, `icon?`, `wrapperClassName?`, `iconClassName?`, `inputClassName?` |
+| `PasswordInput` | `frontend/packages/ui` re-export | 统一密码输入框（右侧小眼睛按钮，明文/掩码切换，`onMouseDown` 阻止失焦），**全局所有密码输入框必须使用**（登录/注册/重置密码/AI Key 等，13 文件 25 处已替换）；其他 input props 全部透传 | `className?`（作用于内部 input）, `defaultVisible?`, 及 `Input` 全部 props |
+| `EmptyState` / `TableEmptyRow` | `frontend/packages/ui` re-export | 列表/详情空态（居中图标+文案，可带 action）与表格空行，替换手写 `text-center py-8` 样板 | `icon?`, `title?`, `description?`, `action?`, `className?`, `compact?`；`TableEmptyRow`: `colSpan`, `children`, `className` |
+| `FormDialogFooter` | `frontend/packages/ui` re-export | 弹窗表单底部「取消 + 保存/确定」统一组件，内置 loading spinner | `onCancel`, `confirmText?`, `confirmDisabled?`, `loading?`, `variant?`, `extra?` |
+| `UnderlineTabs` | `frontend/packages/ui` re-export | 下划线式 Tab 栏（border-b-2 激活态，可配 accent 色），与 shadcn Tabs 并存 | `items`, `activeKey`, `onSelect`, `accentClassName?`, `badge` |
+| `Button`（`loading` prop） | `frontend/packages/ui` | Button 内置 `loading` prop（自动禁用 + spinner），不要再手写「Loader2 + 加载中」 | `loading?: boolean` |
+| `MixedTagEditor` | `frontend/packages/ui` re-export | contentEditable 输入框，纯文本与知识点/能力点标签混排（评价维度名/量规指标） | `text`, `knowledgePointIds`, `abilityPointIds`, `onChange`, `compact` |
+| `ImportWizardDialog` | `frontend/packages/ui` re-export | Excel 导入两步向导（下载模板→上传→导入），支持受控模式与 `useImportFlow` 组合 | `title`, `guideItems`, `onDownload`, `onImport`, `files?` 等 |
+| `ImportConfirmDialog` | `frontend/packages/ui` re-export | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
 | `ResourcePreviewModal` | `resource-preview-modal.tsx` | 文件预览弹窗 | `resource`, `open`, `onOpenChange` |
 | `ResetPasswordDialog` | `reset-password-dialog.tsx` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
 | `CoverImageUpload` | `cover-image-upload.tsx` | 封面上传（预览/替换/删除） | `imageUrl`, `uploading`, `label`, `alt`, `onUpload`, `onRemove` |
@@ -75,8 +75,8 @@
 | `ImageListUpload` | `image-list-upload.tsx` | 图片列表上传（多图、预览、删除、排序） | `files`, `onChange`, `uploading` |
 | `StatusActionBar` | `status-action-bar.tsx` | 详情页状态操作栏（当前状态标签 + 可用操作按钮组） | `status`, `actions` |
 | `PaginationBar` | `pagination-bar.tsx` | 表格分页条（总数 + 上一页/下一页 + 页码），供 `PortalCrudPage`/`LogTableShell` 等壳组件使用 | `page`, `totalPages`, `total`, `onPageChange` |
-| `ErrorState` | `packages/ui` re-export | 列表/详情加载失败重试态 | `message`, `onRetry` |
-| `LoadingView` | `packages/ui`（无 re-export，直接 `@zhiyu/ui`） | 居中加载占位（spinner + 文案），16 个文件使用 | `label` |
+| `ErrorState` | `frontend/packages/ui` re-export | 列表/详情加载失败重试态 | `message`, `onRetry` |
+| `LoadingView` | `frontend/packages/ui`（无 re-export，直接 `@zhiyu/ui`） | 居中加载占位（spinner + 文案），16 个文件使用 | `label` |
 | `DateInput` | `shared/date-input.tsx` | 统一日期输入（13 个文件复用），替代手写日期控件 | `value`, `onChange`, `placeholder?` |
 | `TagBadge` | `shared/tag-badge.tsx` | 标签徽章 | `tag` |
 | `LearnPage` | `learn-page.tsx` | 三类资源学习落地页（岗位/课程/场景 landing 共用：内容浏览 + 进度 + 导航） | `resourceType`, `params`, `entries`, `onProgress` 等（以组件签名为准） |
@@ -93,7 +93,7 @@
 
 ## 选择器组件
 
-> 位于 `apps/edu/components/shared/`。
+> 位于 `frontend/edu/components/shared/`。
 
 | 组件 | 文件 | 用途 | 关键 Props |
 |------|------|------|-----------|
@@ -110,7 +110,7 @@
 
 ## 布局组件
 
-> 位于 `apps/edu/components/shared/` 及 `apps/edu/components/platform-shell/`。
+> 位于 `frontend/edu/components/shared/` 及 `frontend/edu/components/platform-shell/`。
 
 | 组件 | 位置 | 用途 | 关键 Props |
 |------|------|------|-----------|
@@ -158,7 +158,7 @@
 
 ## DataProvider（评测数据上下文）
 
-> 位于 `apps/edu/components/providers/data-provider.tsx`：用 `createContext()` + `useContext()` 提供题库、题目、试卷、审批等评测数据上下文。
+> 位于 `frontend/edu/components/providers/data-provider.tsx`：用 `createContext()` + `useContext()` 提供题库、题目、试卷、审批等评测数据上下文。
 
 | 数据域 | 方法 |
 |--------|------|
@@ -177,7 +177,7 @@
 
 ## 评测配置组件（课程编辑器使用）
 
-> 组件位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`），
+> 组件位于 `frontend/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`），
 > 当前仅被课程编辑器（`lesson/admin/system/add`）使用；任务编辑器经 `components/evaluation-rules/` 复用 `MixedTagEditor`、`BankQuestionSelectorPanel` 等共享组件。
 > 架构分两层：
 
@@ -196,7 +196,7 @@
 
 ### 第二层：测评方式面板（每种一个独立组件）
 
-> 位于 `apps/edu/components/evaluation-rules/`
+> 位于 `frontend/edu/components/evaluation-rules/`
 
 | 组件 | 文件 | 对应测评方式 |
 |------|------|-----------|
@@ -207,7 +207,7 @@
 
 ## 任务步骤卡片（任务编辑器专用）
 
-> 位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`
+> 位于 `frontend/edu/app/scene/scenarios/[id]/edit/tasks/_components/`
 
 | 组件 | 文件 | 功能 |
 |------|------|------|
@@ -217,7 +217,7 @@
 
 ## 评测专用组件
 
-> 位于 `apps/edu/components/evaluation/`。
+> 位于 `frontend/edu/components/evaluation/`。
 
 | 组件 | 文件 | 用途 |
 |------|------|------|
@@ -246,7 +246,7 @@
 
 ## 注意事项
 
-1. **状态标签**：不要定义本地 `STATUS_CONFIG`，使用 `getStatusConfig()`（`packages/shared-types/src/status.ts`）+ `<StatusBadge>`
+1. **状态标签**：不要定义本地 `STATUS_CONFIG`，使用 `getStatusConfig()`（`frontend/packages/shared-types/src/status.ts`）+ `<StatusBadge>`
 2. **表格操作**：使用 `<TableRowActions>` 和 `<HoverActionBar>`，不要手写 `group-hover:opacity-100`
 3. **删除确认**：使用 `<ConfirmDialog>`，禁止 `window.confirm()`
 4. **导入流程**：使用 `useImportFlow` hook + `ImportWizardDialog`/`ImportConfirmDialog`，统一下载模板、预览、去重确认
@@ -254,9 +254,9 @@
 6. **新增测评方式**：在 `EVALUATION_METHOD_OPTIONS` 数组加一行 + 创建对应的面板组件即可
 7. **错误处理**：关键路径异步失败用 `reportError(err, source)`（`lib/error-handling.ts`）记录，不再静默吞掉
 8. **可搜索下拉**：一律 `ComboboxSelect`（内置 Command 搜索/多选/清空/全选/已选徽章）；旧 `MultiSelect`/`MultiSelectSearch` 已删除，不要手写 inline 搜索 + Select/Popover，也不要新造多选组件
-9. **页面搜索框**：一律使用 `SearchInput`（`apps/edu/components/shared/search-input`），禁止手写「Search 图标 + Input」样板；特殊图标形态用 `iconClassName`/`icon` 覆盖
+9. **页面搜索框**：一律使用 `SearchInput`（`frontend/edu/components/shared/search-input`），禁止手写「Search 图标 + Input」样板；特殊图标形态用 `iconClassName`/`icon` 覆盖
 10. **空态与加载态**：空态一律 `<EmptyState>`/`<TableEmptyRow>`（`@zhiyu/ui`），加载态用 `<LoadingView>`，禁止手写 `text-center py-8` 样板；「加载中」占位不要误用空态组件
 11. **弹窗底部按钮**：表单弹窗底部一律 `<FormDialogFooter>`，禁止手写「取消 + 保存」DialogFooter 样板；按钮 loading 用 Button 的 `loading` prop
 12. **数据加载规范**：新页面一律 `useAsync`（或业务 hook），禁止手写 `const [loading, setLoading] = useState` + try/catch/finally 首载样板；存量 84 处手写样板按模块顺手迁移，不安排一次性重构
-13. **域类型单一来源**：域类型以 `apps/edu/lib/types/*.ts` 为主源（与后端对齐）；`job-source.ts`/`lesson-source.ts` 为历史遗留双份定义，新代码禁止引用，引用处按模块逐个收敛后删除（专项治理，见 `docs/forms-tables.md` 复用评估结论）
-14. **useToast 模块级单例**：`packages/ui/src/hooks/use-toast.ts` 采用 shadcn 标准模块级单例模式（`memoryState`/`listeners`/`count`），为刻意保留；若日后需要多实例独立 toast 状态再评估改 React Context
+13. **域类型单一来源**：域类型以 `frontend/edu/lib/types/*.ts` 为主源（与后端对齐）；`job-source.ts`/`lesson-source.ts` 为历史遗留双份定义，新代码禁止引用，引用处按模块逐个收敛后删除（专项治理，见 `docs/forms-tables.md` 复用评估结论）
+14. **useToast 模块级单例**：`frontend/packages/ui/src/hooks/use-toast.ts` 采用 shadcn 标准模块级单例模式（`memoryState`/`listeners`/`count`），为刻意保留；若日后需要多实例独立 toast 状态再评估改 React Context

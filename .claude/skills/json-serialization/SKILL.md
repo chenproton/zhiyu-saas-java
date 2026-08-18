@@ -23,7 +23,7 @@ description: |
 
 ## 一、概述（统一用 Jackson，本仓库无 Fastjson）
 
-本技能对应模块 `ruoyi-common/ruoyi-common-json`，**全项目 JSON 序列化与反序列化统一使用 Jackson**。
+本技能对应模块 `backend/java/ruoyi-common/ruoyi-common-json`，**全项目 JSON 序列化与反序列化统一使用 Jackson**。
 
 > 🔴 **关键事实（已逐项核对源码）**：
 > 1. `ruoyi-common-json/pom.xml` **只依赖** `spring-boot-starter-jackson` 与 `ruoyi-common-core`，**没有任何 Fastjson / Fastjson2 依赖**。全项目搜不到 `com.alibaba.fastjson`。要做 JSON 一律走 Jackson，不要引入 Fastjson。

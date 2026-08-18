@@ -28,7 +28,7 @@ base-dev-framework6-java（`org.dromara` 包路径）的部署区别于旧版本
 | 入口模块 | `ruoyi-admin` | `spring-boot-maven-plugin` `repackage` 出可执行 jar `ruoyi-admin.jar` |
 | GC | **ZGC** | 所有 Dockerfile 用 `-XX:+UseZGC` |
 
-> 铁律：包名是 `org.dromara`，**禁止**出现 `plus.ruoyi` / `com.ruoyi` 路径；容器是 **Jetty 非 Tomcat**；前端（plus-ui）在**仓库内 plus-ui/ 目录**，本指南只泛述前端构建产物如何交给 Nginx，不展开前端代码。
+> 铁律：包名是 `org.dromara`，**禁止**出现 `plus.ruoyi` / `com.ruoyi` 路径；容器是 **Jetty 非 Tomcat**；前端（plus-ui）在**仓库内 frontend/plus-ui/ 目录**，本指南只泛述前端构建产物如何交给 Nginx，不展开前端代码。
 
 部署拓扑（生产典型）：
 
@@ -73,13 +73,13 @@ mvn -P prod,gen -DskipTests clean package
 产物（`repackage` 后的**可执行 fat jar**）：
 
 ```
-ruoyi-admin/target/ruoyi-admin.jar                              # 主应用入口
-ruoyi-extend/ruoyi-monitor-admin/target/ruoyi-monitor-admin.jar  # 监控中心
-ruoyi-extend/ruoyi-snailjob-server/target/ruoyi-snailjob-server.jar # 调度中心
-ruoyi-extend/ruoyi-snailai-server/target/ruoyi-snailai-server.jar   # AI server
+backend/java/ruoyi-admin/target/ruoyi-admin.jar                              # 主应用入口
+backend/java/ruoyi-extend/ruoyi-monitor-admin/target/ruoyi-monitor-admin.jar  # 监控中心
+backend/java/ruoyi-extend/ruoyi-snailjob-server/target/ruoyi-snailjob-server.jar # 调度中心
+backend/java/ruoyi-extend/ruoyi-snailai-server/target/ruoyi-snailai-server.jar   # AI server
 ```
 
-> 关键：`ruoyi-admin/pom.xml` 配了 `spring-boot-maven-plugin` 的 `repackage` goal，`<finalName>ruoyi-admin</finalName>`，所以产物固定叫 `ruoyi-admin.jar`，Dockerfile 的 `ADD ./target/ruoyi-admin.jar` 正是依赖这个固定名。三个外置 server 同理（各自模块的 `repackage`）。
+> 关键：`backend/java/ruoyi-admin/pom.xml` 配了 `spring-boot-maven-plugin` 的 `repackage` goal，`<finalName>ruoyi-admin</finalName>`，所以产物固定叫 `ruoyi-admin.jar`，Dockerfile 的 `ADD ./target/ruoyi-admin.jar` 正是依赖这个固定名。三个外置 server 同理（各自模块的 `repackage`）。
 
 ### 2.3 profile 与配置过滤
 
@@ -151,7 +151,7 @@ journalctl -u ruoyi-admin -f   # 看日志
 mvn -P prod -DskipTests clean package
 
 cd ruoyi-admin && docker build -t ruoyi/ruoyi-server:5.5.3 .
-cd ../ruoyi-extend/ruoyi-monitor-admin   && docker build -t ruoyi/ruoyi-monitor-admin:5.5.3 .
+cd ../backend/java/ruoyi-extend/ruoyi-monitor-admin   && docker build -t ruoyi/ruoyi-monitor-admin:5.5.3 .
 cd ../ruoyi-snailjob-server              && docker build -t ruoyi/ruoyi-snailjob-server:5.5.3 .
 cd ../ruoyi-snailai-server               && docker build -t ruoyi/ruoyi-snailai-server:5.5.3 .
 ```
@@ -178,7 +178,7 @@ ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -Dserver.port=${SERVER_P
 
 要点：① 临时目录 `/basic/server/temp` 对应 `application-prod.yml` 的 `spring.servlet.multipart.location`，避免上传临时文件被系统清理；② SkyWalking 探针段默认注释，需要 APM 时取消注释 `-javaagent`；③ `${JAVA_OPTS}` 留给 compose 注入堆参数。
 
-### 4.3 docker-compose 编排（核对 script/docker/docker-compose.yml）
+### 4.3 docker-compose 编排（核对 backend/java/script/docker/docker-compose.yml）
 
 真实 compose 用 **`network_mode: "host"`**（所有服务走宿主机网络，端口即宿主机端口，无需 `-p` 映射），核心服务清单：
 
@@ -214,7 +214,7 @@ ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -Dserver.port=${SERVER_P
 启动：
 
 ```bash
-cd script/docker
+cd backend/java/script/docker
 # 先建好挂载目录并放好 redis.conf / nginx.conf / 前端 html / SQL 初始化
 docker compose up -d mysql redis nginx-web minio   # 先起基础设施
 docker compose up -d ruoyi-snailjob-server ruoyi-snailai-server ruoyi-monitor-admin
@@ -223,11 +223,11 @@ docker compose ps
 docker compose logs -f ruoyi-server1
 ```
 
-> 数据库初始化：`script/docker/database.yml` 是**仅供测试**的 Oracle / SQLServer / PostgreSQL 镜像（生产请自建数据库）。MySQL 初始库由 compose `MYSQL_DATABASE: ry-vue` 创建，建表 SQL 在 `script/sql/`（含 `ry_vue` 业务表、`ry_job.sql` SnailJob 表等），需手动导入。
+> 数据库初始化：`backend/java/script/docker/database.yml` 是**仅供测试**的 Oracle / SQLServer / PostgreSQL 镜像（生产请自建数据库）。MySQL 初始库由 compose `MYSQL_DATABASE: ry-vue` 创建，建表 SQL 在 `backend/java/script/sql/`（含 `ry_vue` 业务表、`ry_job.sql` SnailJob 表等），需手动导入。
 
 ## 五、外置 server 独立部署
 
-三个外置 server 位于 `ruoyi-extend/`，**与主应用解耦、各自独立打包独立部署**。主应用作为它们的"客户端"通过 application-prod.yml 里的开关与地址接入。
+三个外置 server 位于 `backend/java/ruoyi-extend/`，**与主应用解耦、各自独立打包独立部署**。主应用作为它们的"客户端"通过 application-prod.yml 里的开关与地址接入。
 
 ### 5.1 ruoyi-monitor-admin（监控中心 · Spring Boot Admin）
 
@@ -239,7 +239,7 @@ docker compose logs -f ruoyi-server1
 
 - Dockerfile：`WORKDIR /ruoyi/snailjob`，`EXPOSE 8800`（控制台 HTTP）+ `EXPOSE 17888`（与客户端通信端口）。
 - 主应用接入：`snail-job.enabled`（默认 false）、`group: ruoyi_group`、`token`（与 `sj_group_config` 表一致）、`server.host/port: 127.0.0.1:17888`、`namespace`（与 `sj_namespace.unique_id` 一致）。
-- 需导入 `script/sql/ry_job.sql` 初始化 SnailJob 元数据表。
+- 需导入 `backend/java/script/sql/ry_job.sql` 初始化 SnailJob 元数据表。
 
 ### 5.3 ruoyi-snailai-server（SnailAI server · 注意双端口）
 
@@ -396,11 +396,11 @@ java -jar ruoyi-admin.jar --spring.profiles.active=prod
 ## 十、参考源文件
 
 - 根 `pom.xml`：JDK 21、Spring Boot 4.1.0、`revision=5.5.3`、profiles（local/dev/prod）、packaging=pom
-- `ruoyi-common/ruoyi-common-web/pom.xml`：排除 Tomcat、引入 Jetty
-- `ruoyi-admin/pom.xml`：`spring-boot-maven-plugin` repackage、`finalName=ruoyi-admin`
-- `ruoyi-admin/Dockerfile`：JDK 21 镜像、三端口、ZGC、`ruoyi-admin.jar`
-- `ruoyi-extend/ruoyi-monitor-admin|ruoyi-snailjob-server|ruoyi-snailai-server/Dockerfile`：各外置 server 端口（9090 / 8800+17888 / 8900+18888）
-- `script/docker/docker-compose.yml`：MySQL/Redis/Nginx/MinIO + 双主应用 + 三外置 server 编排
-- `script/docker/nginx/conf/nginx.conf`：反向代理 /prod-api、/admin、/snail-job、/snail-ai
-- `ruoyi-admin/src/main/resources/application-prod.yml`：数据源、Redis、SnailJob、SnailAI 生产配置
-- `ruoyi-admin/src/main/resources/application.yml`：Sa-Token JWT 密钥、API/MyBatis 加密 RSA 公私钥
+- `backend/java/ruoyi-common/ruoyi-common-web/pom.xml`：排除 Tomcat、引入 Jetty
+- `backend/java/ruoyi-admin/pom.xml`：`spring-boot-maven-plugin` repackage、`finalName=ruoyi-admin`
+- `backend/java/ruoyi-admin/Dockerfile`：JDK 21 镜像、三端口、ZGC、`ruoyi-admin.jar`
+- `backend/java/ruoyi-extend/ruoyi-monitor-admin|ruoyi-snailjob-server|ruoyi-snailai-server/Dockerfile`：各外置 server 端口（9090 / 8800+17888 / 8900+18888）
+- `backend/java/script/docker/docker-compose.yml`：MySQL/Redis/Nginx/MinIO + 双主应用 + 三外置 server 编排
+- `backend/java/script/docker/nginx/conf/nginx.conf`：反向代理 /prod-api、/admin、/snail-job、/snail-ai
+- `backend/java/ruoyi-admin/src/main/resources/application-prod.yml`：数据源、Redis、SnailJob、SnailAI 生产配置
+- `backend/java/ruoyi-admin/src/main/resources/application.yml`：Sa-Token JWT 密钥、API/MyBatis 加密 RSA 公私钥

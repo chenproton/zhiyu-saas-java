@@ -9,13 +9,13 @@
   "scripts": {
     "dev:edu": "pnpm --filter @zhiyu/edu dev",
     "build:edu": "pnpm --filter @zhiyu/edu build",
-    "build:backend": "cd backend && go build -o bin/server ./cmd/server/main.go",
+    "build:backend": "cd backend/go && go build -o bin/server ./cmd/server/main.go",
     "build:all": "pnpm build:backend && pnpm build:edu",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\""
+    "format": "prettier --write \"frontend/edu/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"frontend/packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\"",
+    "format:check": "prettier --check \"frontend/edu/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"frontend/packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\""
   },
   "devDependencies": {
     "prettier": "^3.9.6"

@@ -1,6 +1,6 @@
 # 接口契约文档 — 知与 SaaS
 
-> 基于后端源码（`backend/internal/router/`、`backend/internal/handler/`）回溯整理。
+> 基于后端源码（`backend/go/internal/router/`、`backend/go/internal/handler/`）回溯整理。
 > 全量接口约 **700+ 个**（实测 623 条静态注册 + 约 81 条模板展开，含按角色组重复注册的只读接口），本文档以「公共规范 + 通用模式 + 模块清单 + 代表性详写」方式记录，未逐接口展开的遵循同名通用模式。
 > 企业平台（Partner）的接口（`/partner/*`、`/auth/partner/*`）在子平台 spec [`partner-enterprise-platform.md`](partner-enterprise-platform.md) §5 单独记载，本文档不重复（§1.11 仅列 SaaS 运营端跨平台管理入口）。
 > 2026-08-14 全量审计修订：补齐 AI/快照 bundle/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员等漏登记端点；删除毕业设计/微证书/作业模块等无路由僵尸条目；修正认证规则与机器码词汇表。
@@ -13,7 +13,7 @@
 
 ### 授权模型（2026-08-17 起，ADR-0008「菜单驱动的 API 授权」）
 
-> 角色差异收敛为**菜单权限配置差异**：所有角色的页面与 API 访问权限均由 `/portal/apps/system/org-user/roles` 的菜单勾选驱动（`roles.permissions.menus`），配置一致则权限一致。后端 API 按「模块菜单」声明授权（`RequireMenu`，见 `backend/internal/router/menu_grants.go`），写操作与只读操作均由菜单决定。保留的少量角色特判：
+> 角色差异收敛为**菜单权限配置差异**：所有角色的页面与 API 访问权限均由 `/portal/apps/system/org-user/roles` 的菜单勾选驱动（`roles.permissions.menus`），配置一致则权限一致。后端 API 按「模块菜单」声明授权（`RequireMenu`，见 `backend/go/internal/router/menu_grants.go`），写操作与只读操作均由菜单决定。保留的少量角色特判：
 >
 > - **平台隔离**（`RequirePlatform` portal/saas/partner）与**租户归属校验**（handler 层，ADR-0003）不变；
 > - **关键写白名单**（`RequireSystemPermission`）：密码/租户状态/有效期/审批终审等关键写操作仍限 `school_admin`/`platform_admin` 角色（纵深防御）；
@@ -484,7 +484,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | 成功（列表） | `{"items": [...], "total": <count>}` |
 | 错误 | `{"error": "<消息>", "code": "<机器码>?"}`——`error` 为面向用户的消息（中文），`code` 为可选机器码，仅在需前端按码分支时出现 |
 
-机器码词汇表（`backend/internal/handler/error_codes.go` 为唯一事实源；前端按 `code` 分支，不解析 `error` 文案）：
+机器码词汇表（`backend/go/internal/handler/error_codes.go` 为唯一事实源；前端按 `code` 分支，不解析 `error` 文案）：
 
 | code | 状态码 | 场景 |
 |------|--------|------|

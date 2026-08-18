@@ -17,7 +17,7 @@ description: |
 
 ## 概述
 
-本项目 的工作流能力由 **Warm-Flow**（国产开源工作流引擎，本项目锁定版本 **1.8.8**）提供，全部实现集中在 `ruoyi-modules/ruoyi-workflow` 模块。
+本项目 的工作流能力由 **Warm-Flow**（国产开源工作流引擎，本项目锁定版本 **1.8.8**）提供，全部实现集中在 `backend/java/ruoyi-modules/ruoyi-workflow` 模块。
 
 核心事实（务必先记住，否则会写出错误代码）：
 
@@ -55,7 +55,7 @@ description: |
 1. **注入 `WorkflowService`**（ruoyi-api 契约）发起 / 办理 / 删除流程；
 2. **用 `@EventListener` 监听流程事件** 回写业务状态。
 
-`WorkflowService` 契约的全部方法（来自 `ruoyi-api/.../workflow/api/WorkflowService.java`，照抄方法名，勿臆造）：
+`WorkflowService` 契约的全部方法（来自 `backend/java/ruoyi-api/.../workflow/api/WorkflowService.java`，照抄方法名，勿臆造）：
 
 | 方法 | 说明 |
 |------|------|
@@ -69,7 +69,7 @@ description: |
 | `Long getInstanceIdByBusinessId(String businessId)` | 业务 id → 流程实例 id |
 | `void setVariable(Long instanceId, Map)` / `Map instanceVariable(Long instanceId)` | 读写流程变量 |
 
-`StartProcessDTO` 关键字段（`ruoyi-api/.../workflow/api/domain/StartProcessDTO.java`）：
+`StartProcessDTO` 关键字段（`backend/java/ruoyi-api/.../workflow/api/domain/StartProcessDTO.java`）：
 
 - `businessId`：业务唯一值（一般是业务单据主键 `.toString()`）
 - `flowCode`：流程定义编码（在流程设计器里配，如 `leave1`）
@@ -115,7 +115,7 @@ description: |
 
 Warm-Flow 节点流转由全局监听器 `WorkflowGlobalListener implements GlobalListener`（`org.dromara.warm.flow.core.listener.GlobalListener`）拦截 `create/start/assignment/finish` 四个生命周期钩子，并在 `finish` 中通过 `FlowProcessEventHandler` 发布 Spring 事件。**业务模块不直接对接监听器，只监听事件**。
 
-三类事件（均在 `ruoyi-api/.../workflow/api/event/`，跨模块可见）：
+三类事件（均在 `backend/java/ruoyi-api/.../workflow/api/event/`，跨模块可见）：
 
 | 事件 | 触发时机 | 关键字段 |
 |------|----------|----------|

@@ -77,10 +77,10 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 2. `docs/brainstorm-*.md` —— 已确定的方案（若有）
 3. `CLAUDE.md` / `AGENTS.md` —— 框架模块 vs 业务模块边界（**别动框架公共模块**）
 4. 参考代码（真实存在的标准模块）：
-   - 后端三层：`ruoyi-modules/ruoyi-system`（带数据权限/MPJ 的复杂样板）、`ruoyi-modules/ruoyi-demo`（标准单表样板）
-   - 公共能力：`ruoyi-common/ruoyi-common-mybatis`（QueryBuilder/BaseMapperPlus）等 24 个子模块
-   - 生成器模板：`ruoyi-modules/ruoyi-gen/src/main/resources/fm/`（`fm/java/*.ftl`、`fm/vue/*.ftl`、`fm/react/*.ftl`）
-   - 前端工程 plus-ui 在**仓库内 `plus-ui/` 目录**——计划里前端步骤写"按 generator 模板/约定产出 api.ts/types.ts/index.vue|tsx 放入 `plus-ui/src` 对应目录"
+   - 后端三层：`backend/java/ruoyi-modules/ruoyi-system`（带数据权限/MPJ 的复杂样板）、`backend/java/ruoyi-modules/ruoyi-demo`（标准单表样板）
+   - 公共能力：`backend/java/ruoyi-common/ruoyi-common-mybatis`（QueryBuilder/BaseMapperPlus）等 24 个子模块
+   - 生成器模板：`backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/`（`fm/java/*.ftl`、`fm/vue/*.ftl`、`fm/react/*.ftl`）
+   - 前端工程 plus-ui 在**仓库内 `frontend/plus-ui/` 目录**——计划里前端步骤写"按 generator 模板/约定产出 api.ts/types.ts/index.vue|tsx 放入 `frontend/plus-ui/src` 对应目录"
 
 ### 输出
 - 写入 `docs/tasks/active/task-{YYYYMMDD-HHMMSS}-{业务简称}.md`
@@ -100,16 +100,16 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 - **目标**：{一句话}
 - **架构**：{2-3 句：模块归属、三层落点、关键技术}
 - **技术栈**：{涉及的 common 模块 / 框架能力}
-- **模块归属**：ruoyi-modules/ruoyi-{module}（包 org.dromara.{module}）
+- **模块归属**：backend/java/ruoyi-modules/ruoyi-{module}（包 org.dromara.{module}）
 - **跨模块契约**：{若需被其它模块调用，先在 ruoyi-api 定接口；否则填"无"}
-- **端支持**：PC 后台（plus-ui，仓库内 `plus-ui/`；Vue=Element Plus / React=Ant Design Pro）
+- **端支持**：PC 后台（plus-ui，仓库内 `frontend/plus-ui/`；Vue=Element Plus / React=Ant Design Pro）
 - **文件清单表**：
 
 | 文件 | 操作 | 负责什么 |
 |------|------|---------|
-| `ruoyi-modules/ruoyi-{module}/.../domain/Xxx.java` | 新增 | 实体（extends BaseEntity） |
-| `ruoyi-modules/ruoyi-{module}/.../controller/XxxController.java` | 新增 | 接口入口（标准 REST） |
-| `（仓库内 plus-ui/）按 fm/vue 约定的 api/xxx.ts` | 新增 | 前端 API（写入 `plus-ui/src/api`） |
+| `backend/java/ruoyi-modules/ruoyi-{module}/.../domain/Xxx.java` | 新增 | 实体（extends BaseEntity） |
+| `backend/java/ruoyi-modules/ruoyi-{module}/.../controller/XxxController.java` | 新增 | 接口入口（标准 REST） |
+| `（仓库内 frontend/plus-ui/）按 fm/vue 约定的 api/xxx.ts` | 新增 | 前端 API（写入 `frontend/plus-ui/src/api`） |
 | ... | | |
 ```
 
@@ -122,7 +122,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
   - 文件：{精确路径，只落业务目录；前端用"按 fm/ 约定产出"描述，不硬编码 plus-ui 路径}
   - 框架约束：{该任务相关的 框架规约提醒}
   - 步骤：{2-5 分钟勾选粒度}
-  - 验证：{mvn -pl ruoyi-modules/ruoyi-{module} -am -DskipTests compile（Java 21）；前端如需则"在 plus-ui 前端仓库 type-check/build"}
+  - 验证：{mvn -pl backend/java/ruoyi-modules/ruoyi-{module} -am -DskipTests compile（Java 21）；前端如需则"在 plus-ui 前端仓库 type-check/build"}
   - 提交：{feat/fix(scope): ...}
   - 依赖：{前置任务编号}
 ```
@@ -150,7 +150,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 - 业务异常 `ServiceException`
 - 跨模块调用走 `ruoyi-api` 暴露的接口契约（如 `UserService`/`WorkflowService`），**不直接 import 另一个业务模块的实现类**
 
-### 前端 PC（plus-ui，仓库内 `plus-ui/`，代码生成器产物）
+### 前端 PC（plus-ui，仓库内 `frontend/plus-ui/`，代码生成器产物）
 - 前端栈由 `gen_table.frontend_type` 决定，对应 `fm/<type>/` 模板目录：`vue`（Element Plus）/ `react`（Ant Design Pro）
 - **Vue**：`<script setup lang="ts">` + Element Plus `el-*` 原生组件；新版生成器用 hooks（`useLoading`/`useSearchToggle`/`useFormDialog`/`useDateRangeQuery`）；字典 `toRefs<any>(useDict(...))`；权限指令 `v-hasPermi=['module:business:add']`；复用 `right-toolbar/pagination/dict-tag` 等（**禁 reference 定制版的 `A*` 封装组件如 AFormInput/AModal/ASearchForm**）
 - **React**：`antd` + `@ant-design/pro-components`（ProTable/ModalForm/PageContainer）+ `ahooks`
@@ -161,7 +161,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 > 🔴 **本框架不含移动端**（用户选择不含 uniapp）：计划里**禁出现** plus-uniapp / plus-app / `@/wd` / `wd-*` / `wot-design` / `uni.showToast` / `rpx` 等移动端约定。
 
 ### 通用
-- 文件只落业务目录：`ruoyi-modules/ruoyi-{module}/`（业务模块）；**不动框架公共模块**（`ruoyi-common/*`、`ruoyi-admin`、`ruoyi-api`(契约层除外)、`ruoyi-system`、`ruoyi-gen`、`ruoyi-extend/*`）
+- 文件只落业务目录：`backend/java/ruoyi-modules/ruoyi-{module}/`（业务模块）；**不动框架公共模块**（`backend/java/ruoyi-common/*`、`ruoyi-admin`、`ruoyi-api`(契约层除外)、`ruoyi-system`、`ruoyi-gen`、`backend/java/ruoyi-extend/*`）
 - UTF-8 无 BOM；LF；Java 4 空格、JSON/YAML 2 空格；东八区时间；不按名杀宿主进程；规范 commit `feat/fix(scope)`
 
 ---
@@ -177,9 +177,9 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 
 ## 验证门（复用 /dev、/check，不自定义）
 
-- 后端编译（受影响模块）：`mvn -pl ruoyi-modules/ruoyi-{module} -am -DskipTests compile`（**Java 21**）
+- 后端编译（受影响模块）：`mvn -pl backend/java/ruoyi-modules/ruoyi-{module} -am -DskipTests compile`（**Java 21**）
 - 后端全量编译（必要时）：`mvn -DskipTests compile`
-- 前端：plus-ui 在**仓库内 `plus-ui/` 目录**，可写 **`pnpm -C plus-ui install` / `pnpm -C plus-ui build`** 等前端命令进行构建验证。
+- 前端：plus-ui 在**仓库内 `frontend/plus-ui/` 目录**，可写 **`pnpm -C plus-ui install` / `pnpm -C plus-ui build`** 等前端命令进行构建验证。
 - UI 任务额外过「e2e 截图保真闭环」（复用 `e2e-test-pc`）
 
 ---
@@ -192,7 +192,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 
 ```markdown
 - [ ] 1. 建表 + 字典（类型：配置）
-  - 文件：`script/sql/` 下建表脚本（或交给生成器导入）
+  - 文件：`backend/java/script/sql/` 下建表脚本（或交给生成器导入）
   - 框架约束：雪花ID、审计字段（create_by/create_time/update_by/update_time）、del_flag 逻辑删除、如启用多租户加 tenant_id
   - 步骤：写 coupon_template 建表 SQL；加字典 coupon_type（满减/折扣）
   - 验证：SQL 在本地库执行通过
@@ -200,15 +200,15 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
   - 依赖：无
 
 - [ ] 2. 后端三层 CRUD（类型：CRUD编排）
-  - 文件：`ruoyi-modules/ruoyi-mall/src/main/java/org/dromara/mall/.../couponTemplate/*`（生成器产出）
+  - 文件：`backend/java/ruoyi-modules/ruoyi-mall/src/main/java/org/dromara/mall/.../couponTemplate/*`（生成器产出）
   - 框架约束：包名 org.dromara.mall、Entity extends BaseEntity、Mapper extends BaseMapperPlus<Entity,Vo>、Service implements IXxxService（不继承 ServiceImpl、无 DAO）、查询在 Service 用 QueryBuilder.lambda、标准 REST 路径
   - 步骤：在 gen 配置 coupon_template 表 → 调 `/crud` 或代码生成器（FreeMarker fm/java）生成 Entity/BO/VO/Mapper/IService/ServiceImpl/Controller → 校验三层完整、无 DAO、路径为 GET /list 等标准 REST
-  - 验证：`mvn -pl ruoyi-modules/ruoyi-mall -am -DskipTests compile`
+  - 验证：`mvn -pl backend/java/ruoyi-modules/ruoyi-mall -am -DskipTests compile`
   - 提交：feat(mall): 优惠券模板后端 CRUD
   - 依赖：1
 
 - [ ] 3. PC 前端页面（类型：CRUD编排）
-  - 文件：（仓库内 plus-ui/）按 generator fm/vue（或 fm/react）模板/约定产出 couponTemplate 的 api.ts / types.ts / index.vue|tsx
+  - 文件：（仓库内 frontend/plus-ui/）按 generator fm/vue（或 fm/react）模板/约定产出 couponTemplate 的 api.ts / types.ts / index.vue|tsx
   - 框架约束：Vue 用 Element Plus el-* + hooks（useFormDialog/useDateRangeQuery）、v-hasPermi；API 命名 listXxx/getXxx/addXxx/updateXxx/delXxx；types 含 VO/Form/Query
   - 步骤：代码生成器一并产出 api/types/index → 列表页 + 表单弹窗 → 与后端标准 REST 联调
   - 验证：在 plus-ui 前端仓库执行 type-check / build（本后端仓库无前端命令）
@@ -222,7 +222,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 
 ```markdown
 - [ ] 4. 领券服务（类型：非CRUD骨架）
-  - 文件：`ruoyi-modules/ruoyi-mall/src/main/java/org/dromara/mall/service/impl/CouponReceiveServiceImpl.java`
+  - 文件：`backend/java/ruoyi-modules/ruoyi-mall/src/main/java/org/dromara/mall/service/impl/CouponReceiveServiceImpl.java`
   - 框架约束：org.dromara.mall、implements ICouponReceiveService（无 DAO）、复用 ruoyi-common-redis(RedisUtils/RLock)、MapstructUtils.convert、ServiceException、先 import 再短类名
   - 步骤（骨架）：
     ```
@@ -235,7 +235,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
         // 3. MapstructUtils.convert 写 coupon_record（雪花ID、BaseEntity 审计字段自动填充）
     } finally { if (lock.isHeldByCurrentThread()) lock.unlock(); }  // 必须 finally 释放
     ```
-  - 验证：`mvn -pl ruoyi-modules/ruoyi-mall -am -DskipTests compile`；并发测试
+  - 验证：`mvn -pl backend/java/ruoyi-modules/ruoyi-mall -am -DskipTests compile`；并发测试
   - 提交：feat(mall): 用户领券防超发与防重复
   - 依赖：1,2
 ```
@@ -246,7 +246,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 
 ```markdown
 - [ ] 5. 营销看板页（类型：UI转码）
-  - 文件：（仓库内 plus-ui/）按约定产出 marketing/dashboard 页（Vue=Element Plus / React=AntD Pro）
+  - 文件：（仓库内 frontend/plus-ui/）按约定产出 marketing/dashboard 页（Vue=Element Plus / React=AntD Pro）
   - 前置：原型 `docs/prototypes/marketing/dashboard.html`（若缺 → 先走 brainstorm/工作站 ui-studio 补，本任务挂起）
   - 框架约束：Vue 用 el-* 原生组件（禁 A* 封装）；API 命名 listXxx/getXxx；请求走 @/utils/request
   - 步骤：html-to-code 转 dashboard.html → 套 Element Plus 图表/卡片布局 → 接后端统计 API
@@ -261,10 +261,10 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 
 ```markdown
 - [ ] 6. 跨模块用户校验契约（类型：跨模块契约）
-  - 文件：`ruoyi-api/.../system/api/`（接口契约，若已有 UserService 则直接复用）
+  - 文件：`backend/java/ruoyi-api/.../system/api/`（接口契约，若已有 UserService 则直接复用）
   - 框架约束：跨模块走 ruoyi-api 接口契约（接口 + DTO/Model），不直接 import ruoyi-system 实现类
   - 步骤：确认 ruoyi-api 是否已暴露所需用户查询接口 → 缺则在 ruoyi-api 定接口 + DTO，ruoyi-system 实现 → mall 注入接口调用
-  - 验证：`mvn -pl ruoyi-modules/ruoyi-mall -am -DskipTests compile`
+  - 验证：`mvn -pl backend/java/ruoyi-modules/ruoyi-mall -am -DskipTests compile`
   - 提交：feat(mall): 下单用户状态校验（经 ruoyi-api 契约）
   - 依赖：2
 ```
@@ -311,7 +311,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 ✅ **正确**：照"颗粒度判定表"——反比于框架自动生成程度。
 
 ### ❌ 错误 6：写本仓库不存在的前端命令/路径
-计划里写移动端（plus-uniapp/plus-app）步骤 → 本项目**不含移动端**。plus-ui 在仓库内 `plus-ui/` 目录，可正常写 `pnpm -C plus-ui build` 等命令。
+计划里写移动端（plus-uniapp/plus-app）步骤 → 本项目**不含移动端**。plus-ui 在仓库内 `frontend/plus-ui/` 目录，可正常写 `pnpm -C plus-ui build` 等命令。
 ✅ **正确**：前端步骤写"按 fm/vue|fm/react 约定产出 api.ts/types.ts/index.vue|tsx"，验证写"在 plus-ui 前端仓库 type-check/build"，不出现任何移动端约定。
 
 ---

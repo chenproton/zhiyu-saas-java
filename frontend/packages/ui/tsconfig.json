@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@zhiyu/shared-types": ["../shared-types/src/index.ts"],
+      "@zhiyu/shared-types/*": ["../shared-types/src/*"],
+      "@/lib/utils": ["./src/lib/utils.ts"],
+      "@/hooks/use-mobile": ["./src/hooks/use-mobile.ts"],
+      "@/hooks/use-toast": ["./src/hooks/use-toast.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"],
+  "extends": "../../../tsconfig.base.json"
+}

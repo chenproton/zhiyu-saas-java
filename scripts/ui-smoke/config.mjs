@@ -7,7 +7,7 @@ import path from 'path'
 
 export const SCRIPT_DIR = path.dirname(new URL(import.meta.url).pathname)
 export const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..', '..')
-export const APP_DIR = path.join(PROJECT_ROOT, 'apps', 'edu', 'app')
+export const APP_DIR = path.join(PROJECT_ROOT, 'frontend', 'edu', 'app')
 export const STATE_DIR = '/tmp/zhiyu-ui-smoke'
 export const DEFAULT_REPORT = path.join(STATE_DIR, 'report.json')
 

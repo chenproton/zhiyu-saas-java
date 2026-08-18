@@ -36,7 +36,7 @@ description: |
 | 前缀 | 说明 | 目录判断 |
 |------|------|---------|
 | `后端` | 只修改后端代码 | `ruoyi-*/**` |
-| `前端` | 只修改 PC 前端 | `plus-ui/**` |
+| `前端` | 只修改 PC 前端 | `frontend/plus-ui/**` |
 | `移动端` | 只修改移动端 | `plus-uniapp/**`、`plus-app/**` |
 | `后端&前端` | 同时修改后端和前端 | 两者都有改动 |
 | `后端&移动端` | 同时修改后端和移动端 | 两者都有改动 |
@@ -72,8 +72,8 @@ description: |
 git status
 
 # 2. 只添加当前会话修改的业务文件（排除配置）
-git add ruoyi-modules/ruoyi-business/src/main/java/plus/ruoyi/business/xxx/
-git add plus-ui/src/views/business/xxx/
+git add backend/java/ruoyi-modules/ruoyi-business/src/main/java/plus/ruoyi/business/xxx/
+git add frontend/plus-ui/src/views/business/xxx/
 # 或者添加具体文件
 git add path/to/file1.java path/to/file2.vue
 
@@ -88,12 +88,12 @@ git commit -m "后端&前端 feat(xxx): 新增xxx功能"
 
 ```bash
 # ❌ 配置文件（绝对不提交）
-plus-ui/env/.env.*
+frontend/plus-ui/env/.env.*
 plus-uniapp/env/.env.*
 plus-app/env/.env.*
-ruoyi-admin/src/main/resources/application.yml
-ruoyi-admin/src/main/resources/application-*.yml
-ruoyi-common/**/resources/*.yml
+backend/java/ruoyi-admin/src/main/resources/application.yml
+backend/java/ruoyi-admin/src/main/resources/application-*.yml
+backend/java/ruoyi-common/**/resources/*.yml
 
 # ❌ IDE 配置
 .idea/
@@ -114,8 +114,8 @@ dist/
 git status --short
 
 # 根据路径判断平台：
-# M ruoyi-modules/...        → 后端
-# M plus-ui/...              → 前端
+# M backend/java/ruoyi-modules/...        → 后端
+# M frontend/plus-ui/...              → 前端
 # M plus-uniapp/...          → 移动端
 # M plus-app/...             → 移动端
 ```
@@ -265,7 +265,7 @@ git pull
 git checkout -b feat/<禅道ID_描述_代号>
 
 # 2. 开发并提交（只提交当前会话改动的业务文件）
-git add ruoyi-modules/ruoyi-business/src/main/java/org/dromara/business/feedback/
+git add backend/java/ruoyi-modules/ruoyi-business/src/main/java/org/dromara/business/feedback/
 git commit -m "后端 feat(business): 新增用户反馈功能 [Bug 1111]"
 
 # 3. 用户明确要求时才推送到远程

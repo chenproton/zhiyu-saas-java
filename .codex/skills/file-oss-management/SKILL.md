@@ -14,7 +14,7 @@ description: |
 # 文件 / 对象存储管理（file-oss-management）
 
 > 适用框架：base-dev-framework6-java
-> 核心模块：`ruoyi-common/ruoyi-common-oss`（底层 S3 客户端） + `ruoyi-modules/ruoyi-system`（SysOss 业务）
+> 核心模块：`backend/java/ruoyi-common/ruoyi-common-oss`（底层 S3 客户端） + `backend/java/ruoyi-modules/ruoyi-system`（SysOss 业务）
 > 包名根：`org.dromara`，三层结构无 DAO，禁用 `plus.ruoyi`/`com.ruoyi`/`buildQueryWrapper`/`PlusLambdaQuery`/`likeCast`/默认 `TenantEntity`/`is_deleted`。
 
 ## 一、概述：统一 S3 协议，无独立厂商 SDK

@@ -23,7 +23,7 @@
 
 ## 3. 国际化（i18n）
 
-- **机制**：`apps/edu/lib/i18n/locale-provider.tsx` 的 `translate(key, locale)`；中文即 key 原样直出（默认），英文走字典；占位符 `{n}` 插值。
+- **机制**：`frontend/edu/lib/i18n/locale-provider.tsx` 的 `translate(key, locale)`；中文即 key 原样直出（默认），英文走字典；占位符 `{n}` 插值。
 - **要求**：
   1. 新增用户可见文案一律经 `translate()`（或既有 `t()` 包装），禁止新增硬编码中文字符串绕过翻译层；
   2. 新文案提交时同步补 `en` 字典条目；`zh` 保持 key 直出无需条目；

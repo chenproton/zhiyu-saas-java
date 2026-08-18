@@ -1,1 +1,0 @@
-ALTER TABLE courses DROP COLUMN IF EXISTS eval_data;

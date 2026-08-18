@@ -1,6 +1,6 @@
 # 数据库 Schema 设计 — 知与 SaaS
 
-> 基于 `backend/migrations/`（001_baseline + 091~160 增量）回溯整理。
+> 基于 `backend/go/migrations/`（001_baseline + 091~160 增量）回溯整理。
 > 当前共 **166 张表**（169 定义 − 迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
 > 124~160 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
 > 约定：主键统一 `uuid DEFAULT gen_random_uuid()`；`created_at/updated_at timestamptz DEFAULT now()`；业务枚举用 `varchar + CHECK`，仅 7 个原生 PG ENUM。
@@ -487,4 +487,4 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 173 | ai_view_counters_unify | AI 浏览量并入全局 view_counters/view_logs（v2.2.1：搬存量、删两表 view_count 列） |
 | 174 | ai_kb_agent_classify | AI 知识库/智能体分类字段（major_id/department_id/kb_type + 4 索引，大厅筛选） |
 
-> 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/migrations/`。
+> 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `backend/go/migrations/`。

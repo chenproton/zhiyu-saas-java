@@ -345,10 +345,10 @@ log.error("用户{}处理失败", userId, e);
 
 ## 引用的真实源文件
 
-- `ruoyi-common/ruoyi-common-web/src/main/java/org/dromara/common/web/handler/GlobalExceptionHandler.java`
-- `ruoyi-common/ruoyi-common-satoken/src/main/java/org/dromara/common/satoken/handler/SaTokenExceptionHandler.java`
-- `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/ServiceException.java`
-- `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/base/BaseException.java`
-- `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/user/UserException.java`
-- `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/domain/R.java`
-- `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/constant/HttpStatus.java`
+- `backend/java/ruoyi-common/ruoyi-common-web/src/main/java/org/dromara/common/web/handler/GlobalExceptionHandler.java`
+- `backend/java/ruoyi-common/ruoyi-common-satoken/src/main/java/org/dromara/common/satoken/handler/SaTokenExceptionHandler.java`
+- `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/ServiceException.java`
+- `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/base/BaseException.java`
+- `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/exception/user/UserException.java`
+- `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/domain/R.java`
+- `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/constant/HttpStatus.java`

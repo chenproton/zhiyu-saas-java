@@ -1,8 +1,8 @@
 # 表单与表格架构盘点与复用规范
 
 > 更新日期：2026-08-17
-> 范围：`apps/edu`（portal / job / scene / lesson / evaluation / affairs / library / superadmin）
-> `apps/marketplace` 已移除，无表单表格；`packages/ui` 提供全部原语与共享组件。
+> 范围：`frontend/edu`（portal / job / scene / lesson / evaluation / affairs / library / superadmin）
+> `apps/marketplace` 已移除，无表单表格；`frontend/packages/ui` 提供全部原语与共享组件。
 
 ## 一、系统/模块划分
 
@@ -21,7 +21,7 @@
 
 ### 1. 标准 Table 原语（唯一底层，自带横向滚动 + 列不换行）
 
-`packages/ui/src/components/ui/table.tsx`：外层 `overflow-x-auto`，`th/td` 默认 `whitespace-nowrap`。
+`frontend/packages/ui/src/components/ui/table.tsx`：外层 `overflow-x-auto`，`th/td` 默认 `whitespace-nowrap`。
 移动端"最好"的页面全部基于它，**所有新表格必须用它**，禁止手写 `<table>`。
 
 **列宽自定义（resizable，2026-08 新增）**：`<Table resizable storageKey="唯一标识">` + 各 `<TableHead columnKey="..." defaultWidth={n} minWidth={n}>` 即开启用户拖拽调整列宽，宽度按当前浏览器 localStorage 持久化（刷新不变）；开启后表格为 `table-layout: fixed` 且宽度 = 注册列宽之和（所见即所得，窄屏横向滚动；宽屏表右侧留白属预期），`resizable={false}` 的列（如全选框）只注册宽度不出拖拽手柄。实现见 `table.tsx`，交互规范见 `docs/spec/05-prototype-interaction.md` §2.4。
@@ -92,7 +92,7 @@
 
 ## 五、表单开发规范（新增/修改表单时）
 
-1. **字段行**：一律 `<FormFieldRow label=… required=… htmlFor=… hint=…>`（`apps/edu/components/shared/form-field-row.tsx`），禁止手写 `<div className="grid gap-2"><Label>…</Label><控件/></div>`
+1. **字段行**：一律 `<FormFieldRow label=… required=… htmlFor=… hint=…>`（`frontend/edu/components/shared/form-field-row.tsx`），禁止手写 `<div className="grid gap-2"><Label>…</Label><控件/></div>`
 2. **多列字段容器**：一律 `<FormFieldGrid cols={2|3}>`（移动端自动收敛一列），禁止写死 `grid-cols-2`
 3. **必填星号**：用 `required` prop，禁止在 label 文本里手写 `*`
 4. **说明文字**：用 `hint` prop；**错误提示**：用 `error` prop

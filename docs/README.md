@@ -1,8 +1,8 @@
 # 文档索引（AI 协作者导航入口）
 
-> 本目录是知与 SaaS 的**制度性框架**：spec、规范、决策记录都集中在这里。AI 协作者接到任何任务，先按「任务类型」查下表定位要读哪份规范。
+> 本目录是知与 SaaS 的**制度性框架**：spec、规范、决策记录都集中在这里（**Go + Java 双后端合并**）。AI 协作者接到任何任务，先按「任务类型」查下表定位要读哪份规范。
 >
-> **第一入口永远是根目录的 [`AGENTS.md`](../AGENTS.md)**（开发契约 + 全流程）；本目录是契约引用的细则。
+> **第一入口永远是根目录的 [`AGENTS.md`](../AGENTS.md)**（Go + Java 双后端契约 + 全流程）；本目录是契约引用的细则。
 
 ## 按任务类型定位
 
@@ -10,8 +10,10 @@
 |---|---|
 | 任何开发任务的**第一步** | [`../AGENTS.md`](../AGENTS.md)（契约 + spec-first 硬约束） |
 | **新增/变更功能** | [`spec-standards.md`](spec-standards.md)（spec 分级/模板/DoD + 7 节点闭环）→ 对应 [`spec/`](spec/) |
-| **写/改后端代码** | [`refactor-layering.md`](refactor-layering.md)（分层红线）+ [`backend-reuse.md`](backend-reuse.md)（后端复用速查） |
-| **写/改前端页面组件** | [`components.md`](components.md)（组件复用速查）+ [`forms-tables.md`](forms-tables.md)（表单/表格盘点） |
+| **写/改后端代码** | [`refactor-layering.md`](refactor-layering.md)（Go 分层红线）+ [`backend-reuse.md`](backend-reuse.md)（Go 后端复用速查）；Java 后端见根 `AGENTS.md` 第二部分 + [`初始化与部署指南.md`](初始化与部署指南.md) |
+| **Java 后端初始化/部署/多租户** | [`初始化与部署指南.md`](初始化与部署指南.md)（Java 框架环境/启动/构建/Docker）+ [`多租户功能扩展规范.md`](多租户功能扩展规范.md)（Java 多租户扩展）+ [`Git Flow 开发协作简易指南.md`](Git Flow 开发协作简易指南.md)（Java 分支/提交/MR） |
+| **Go→Java 迁移进度/差异** | [`backend-go-to-java-migration.md`](backend-go-to-java-migration.md)（迁移方案+进度）+ [`后端功能对齐差异表.md`](后端功能对齐差异表.md)（双后端功能对齐差异） |
+| **写/改前端页面组件** | [`components.md`](components.md)（React 组件复用速查）+ [`forms-tables.md`](forms-tables.md)（表单/表格盘点） |
 | **写/改 AI 功能** | [`ai-development.md`](ai-development.md)（AIService 统一底座） |
 | **安全非功能（密码/会话/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
 | **性能/可观测/国际化/测试** | [`non-functional-standards.md`](non-functional-standards.md) |
@@ -34,7 +36,7 @@
 
 ### 教程型（按顺序做完一件事）
 
-- （暂缺，见 `documentation-standards.md`「三、当前缺口」）
+- [`初始化与部署指南.md`](初始化与部署指南.md)：Java 框架从零初始化 → 数据库 → 本地启动 → 生产构建 → Docker 部署（按顺序走）
 
 ## 目录结构速览
 
@@ -58,14 +60,21 @@ docs/
 ├── components.md                # 组件复用速查
 ├── forms-tables.md              # 表单/表格架构盘点
 ├── resource-snapshot-versioning.md  # 快照版本机制
-└── 系统功能清单.md               # 全平台能力盘点（人类/AI 对照用）
+├── 系统功能清单.md               # 全平台能力盘点（人类/AI 对照用）
+├── backend-go-to-java-migration.md  # Go→Java 迁移方案 + 实时进度
+├── 后端功能对齐差异表.md            # 双后端功能对齐差异
+├── 初始化与部署指南.md              # Java 框架初始化/启动/构建/Docker（教程型）
+├── 多租户功能扩展规范.md            # Java 多租户扩展规范
+├── Git Flow 开发协作简易指南.md     # Java 分支/提交/MR 规范
+└── demo/                        # AI 服务中心原型 HTML（被 spec/ai-service-center.md 引用）
 ```
 
 ## scripts/ 工具清单
 
 | 脚本 | 用途 |
 |---|---|
-| `deploy.sh`（仓库根目录） | 分支部署 + 质量门禁 + 自动合并 |
+| `deploy.sh`（仓库根目录） | **Go 版**分支部署 + 质量门禁 + 自动合并 |
+| `deploy-java.sh`（仓库根目录） | **Java 版** Docker 部署（jar + Next.js standalone + nginx） |
 | `scripts/spec-check.sh` | spec 硬约束自动校验（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向/spec 耦合） |
 | `scripts/package-release.sh` | 离线实施包打包 |
 | `scripts/migrate_uploads.sh` | 上传文件迁移 |

@@ -1,7 +1,23 @@
 # 知与 SaaS 双后端仓库开发契约（Go + Java）
 
-> 本仓库同时维护两套后端：**Go 后端**（`backend/`，线上运行）与 **Java 后端**（`ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名），共用同一 PostgreSQL 与同一套 React 前端（`apps/edu`）。
+> 本仓库同时维护两套后端：**Go 后端**（`backend/go/`，线上运行）与 **Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名），共用同一 PostgreSQL，配套两套前端：React/Next.js（`frontend/edu`，Go 与 Java 共用）+ Vue3/Element Plus（`frontend/plus-ui`，Java 配套）。
 > 开发契约分两部分：第一部分为 Go 后端契约，第二部分为 Java 后端框架契约。按所改后端选择对应契约执行。
+
+### 顶层目录结构
+
+```
+├── backend/
+│   ├── go/          # Go 后端（cmd/internal/migrations/vendor/go.mod）
+│   └── java/        # Java 后端（ruoyi-*/ + pom.xml + mvnw + script/，多模块 Maven）
+├── frontend/
+│   ├── edu/         # React/Next.js 前端（原 apps/edu，Go 与 Java 共用）
+│   ├── packages/    # React 共享包（api-client/shared-types/ui）
+│   └── plus-ui/     # Vue3/Element Plus 前端（Java 配套）
+├── docs/            # 全量文档（Go+Java 合并、spec、ADR、规范）
+├── deploy/          # docker-compose / nginx / Dockerfile（Go+Java 两套编排）
+├── scripts/         # spec-check / ui-smoke / package-release 等工具
+└── AGENTS.md        # 本文件：全局开发契约（唯一根级描述文档）
+```
 
 ---
 
@@ -94,7 +110,7 @@ deploy.sh 自动：源码 hash 比对只构建变更部分；DB 首次 baseline�
 ### 4.2 提交前必跑（代码改动）
 
 ```bash
-cd backend && go vet ./... && go build ./... && gofmt -l .
+cd backend/go && go vet ./... && go build ./... && gofmt -l .
 pnpm typecheck && pnpm lint && pnpm test
 ./scripts/spec-check.sh   # spec 校验：阻断级（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向）+ 提示级（spec 耦合/XSS/路由契约），详见 spec-standards.md §九
 ```
@@ -112,7 +128,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖。
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
-4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`apps/edu/public/image-editor`（符号链接）、`backend/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`。
+4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`frontend/edu/public/image-editor`（符号链接）、`backend/go/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`。
 
 ## 六、规范索引（细则去哪找）
 
@@ -162,7 +178,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 
 ## 项目定位
 
-本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：根目录为后端多模块 Maven 工程，前端 plus-ui（Vue3 + Element Plus + pnpm）位于仓库内 `plus-ui/` 目录，代码生成器内置模板产出前端骨架。
+本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于 `backend/java/`，前端 plus-ui（Vue3 + Element Plus + pnpm）位于 `frontend/plus-ui/` 目录，代码生成器内置模板产出前端骨架。
 
 > 🔴 **本项目遵循框架约定**：包名 `org.dromara`，**三层架构无 DAO 层**（Controller→Service→Mapper，直接用 `BaseMapperPlus`），Entity 继承 `BaseEntity`，查询用 `QueryBuilder.lambda`，标准 REST 路径（`/list`、`/{id}`）。不要套用 `plus.ruoyi` / DAO 层 / `PlusLambdaQuery` / `/pageXxx` 等其它衍生版约定。
 
@@ -274,7 +290,7 @@ org.dromara.{module}/
 
 生成器默认方法集合：`queryById` / `queryPageList` / `queryList` / `insertByBo` / `updateByBo` / `deleteWithValidByIds`，再叠加唯一校验、数据权限、MPJ、缓存、Excel 导入导出、关联维护。
 
-### 模块拓扑
+### 模块拓扑（均位于 `backend/java/` 下）
 
 ```
 ruoyi-admin          # 唯一可执行入口
@@ -290,21 +306,22 @@ ruoyi-extend/*       # monitor-admin / snailjob-server / snailai-server（独立
 | 维度 | 技术 | 版本 |
 |------|------|------|
 | 运行 | Java / Spring Boot / 容器 | 21 / 4.1.0 / Jetty |
-| 持久 | MyBatis-Plus(boot4) / MPJ / dynamic-datasource | 3.5.16 / 1.5.7 / 4.5.0 |
+| 持久 | MyBatis-Plus(boot4) / MPJ / dynamic-datasource | 3.5.17 / 1.5.9 / 4.5.0 |
 | 认证 | Sa-Token(boot4) | 1.45.0 |
-| 缓存 | Redisson / 序列化 Apache Fory | 4.6.1 / 1.2.0 |
-| 任务 | SnailJob | 2.0.0 |
-| 存储 | AWS SDK v2 S3（适配 MinIO/OSS/COS） | 2.42.9 |
-| Excel | Apache FESOD | 2.0.2 |
-| AI | Snail AI / Spring AI + MCP | 0.0.5 / 2.0.0 |
+| 缓存 | Redisson / 序列化 Apache Fory | 4.6.1 / 1.3.0 |
+| 任务 | SnailJob（含延迟队列、MapReduce） | 2.0.2 |
+| 存储 | AWS SDK v2 S3（适配 MinIO/OSS/COS） | 2.48.1 |
+| Excel | Apache Fesod（原 EasyExcel） | 2.0.2-incubating |
+| 工作流 | Warm-Flow（另含 LiteFlow 编排） | 1.8.9 / 2.16.1.2 |
+| AI | Snail AI（gRPC/OpenAPI）/ Spring AI + MCP | 1.1.1 / 2.0.0 |
 | 搜索 | Easy-Es / ES Client | 3.0.2 / 7.17.28 |
-| 其它 | mica-mqtt / SMS4J / JustAuth / Warm-Flow / SpringDoc | 2.6.6 / 3.3.5 / 1.16.7 / 1.8.8 / 3.0.3 |
+| 其它 | mica-mqtt / SMS4J / JustAuth / SpringDoc / Hutool / MapStruct-Plus | 2.6.8 / 3.3.5 / 3.0.1 / 3.0.3 / 5.8.47 / 1.5.1 |
 
 > 实证辟谣：无 `langchain4j`（AI 走 Snail AI + Spring AI/MCP）；无 `Fastjson2`（JSON 用 Jackson）；无 `Knife4j`（SpringDoc 原生）。
 
 ## 代码生成器（ruoyi-gen，6.x 重构）
 
-- 模板引擎 **FreeMarker(.ftl)**（已由 Velocity 迁移），模板在 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/`。
+- 模板引擎 **FreeMarker(.ftl)**（已由 Velocity 迁移），模板在 `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/`。
 - **多前端栈**：`gen_table.frontend_type` → `fm/<type>/`：`vue`（Element Plus）/ `react`（Ant Design Pro）。新增前端栈只加 `fm/<type>/` 目录 + 4 个 FTL，不在 Java 里加硬编码分支。
 - 上下文变量大幅扩充（needXxx 列开关、enableExport/Status/Unique/Sort、树字面量），写 `.ftl` 直接用已算好的值，别在模板里再扫列。
 

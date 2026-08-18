@@ -69,7 +69,7 @@
 | 门户首页/应用中心（12 模块卡片）+ TopNav | A1 | 2 | 登录 | ✅ |
 | 各模块 wire 真实 API（移除 localStorage mock） | A2/A3 并行 | 6 | M1 接口 | ✅ |
 | 学生落地页（job/scene/lesson/evaluation landing 四套） | A2 | 3 | 公开接口 | ✅ |
-| 共享组件下沉 packages/ui（StatusBadge/ConfirmDialog/ImportWizard 等） | A3 | 3 | — | ✅ |
+| 共享组件下沉 frontend/packages/ui（StatusBadge/ConfirmDialog/ImportWizard 等） | A3 | 3 | — | ✅ |
 | api-client 工厂（createCrudApi/createContentApi）+ shared-types | A3 | 3 | — | ✅ |
 
 ### M3 流程与治理（07-18 ~ 07-28）

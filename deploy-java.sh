@@ -56,34 +56,34 @@ build() {
     return 0
   fi
 
-  cd "$REPO_DIR"
+  cd "$REPO_DIR/backend/java"
   log "构建后端 jar（prod profile）..."
   ./mvnw clean package -P prod -DskipTests -q
   log "后端 jar 构建完成"
 
-  cd "$REPO_DIR/apps/edu"
+  cd "$REPO_DIR/frontend/edu"
   log "构建前端（production，standalone 模式）..."
   pnpm build > "$LOG_DIR/edu-build.log" 2>&1
   # standalone 产物需手动补齐静态资源与 public 目录（Next.js standalone 约定）
-  cp -r .next/static .next/standalone/apps/edu/.next/static
-  cp -r public .next/standalone/apps/edu/public
+  cp -r .next/static .next/standalone/frontend/edu/.next/static
+  cp -r public .next/standalone/frontend/edu/public
   log "前端构建完成"
 
   log "构建 Docker 镜像（backend + edu）..."
   rm -rf "$DOCKER_DIR/build-context/backend" "$DOCKER_DIR/build-context/edu"
   mkdir -p "$DOCKER_DIR/build-context/backend" "$DOCKER_DIR/build-context/edu"
-  cp "$REPO_DIR/ruoyi-admin/target/ruoyi-admin.jar" "$DOCKER_DIR/build-context/backend/ruoyi-admin.jar"
+  cp "$REPO_DIR/backend/java/ruoyi-admin/target/ruoyi-admin.jar" "$DOCKER_DIR/build-context/backend/ruoyi-admin.jar"
   # JDK 21 从宿主机拷贝（离线构建；-L 跟随 conf 等符号链接）
   rsync -aL --exclude='lib/src.zip' --exclude='demo' --exclude='sample' \
     /usr/lib/jvm/java-21-openjdk-amd64/ "$DOCKER_DIR/build-context/backend/jdk/"
-  # standalone 保持原始相对结构（符号链接依赖布局：根 node_modules/.pnpm + apps/edu/node_modules 顶层链接）
-  rsync -a "$REPO_DIR/apps/edu/.next/standalone/node_modules/" "$DOCKER_DIR/build-context/edu/node_modules/"
-  mkdir -p "$DOCKER_DIR/build-context/edu/apps/edu"
-  rsync -a "$REPO_DIR/apps/edu/.next/standalone/apps/edu/node_modules/" "$DOCKER_DIR/build-context/edu/apps/edu/node_modules/"
-  cp "$REPO_DIR/apps/edu/.next/standalone/apps/edu/server.js" \
-     "$REPO_DIR/apps/edu/.next/standalone/apps/edu/package.json" "$DOCKER_DIR/build-context/edu/apps/edu/"
-  rsync -a "$REPO_DIR/apps/edu/.next/standalone/apps/edu/.next/" "$DOCKER_DIR/build-context/edu/apps/edu/.next/"
-  rsync -a "$REPO_DIR/apps/edu/.next/standalone/apps/edu/public/" "$DOCKER_DIR/build-context/edu/apps/edu/public/"
+  # standalone 保持原始相对结构（符号链接依赖布局：根 node_modules/.pnpm + frontend/edu/node_modules 顶层链接）
+  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/node_modules/" "$DOCKER_DIR/build-context/edu/node_modules/"
+  mkdir -p "$DOCKER_DIR/build-context/edu/frontend/edu"
+  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/node_modules/" "$DOCKER_DIR/build-context/edu/frontend/edu/node_modules/"
+  cp "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/server.js" \
+     "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/package.json" "$DOCKER_DIR/build-context/edu/frontend/edu/"
+  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/.next/" "$DOCKER_DIR/build-context/edu/frontend/edu/.next/"
+  rsync -a "$REPO_DIR/frontend/edu/.next/standalone/frontend/edu/public/" "$DOCKER_DIR/build-context/edu/frontend/edu/public/"
 
   docker build -t zhiyu-java-backend:$IMAGE_TAG \
     -f "$DOCKER_DIR/java-backend.Dockerfile" "$DOCKER_DIR/build-context/backend"

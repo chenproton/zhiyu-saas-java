@@ -1,10 +1,10 @@
 # zhiyu-saas Java 版前端镜像（React/Next.js，代码与 Go 版同一套）
-# 构建上下文：apps/edu/.next/standalone（Next.js standalone 输出目录）
+# 构建上下文：frontend/edu/.next/standalone（Next.js standalone 输出目录）
 FROM node:22-alpine
 
 COPY --chown=node:node . /app
 
-WORKDIR /app/apps/edu
+WORKDIR /app/frontend/edu
 USER node
 EXPOSE 3020
 ENV NODE_ENV=production

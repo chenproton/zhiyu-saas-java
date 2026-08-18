@@ -420,7 +420,7 @@ XxxVo vo = MapstructUtils.convert(entity, XxxVo.class);
 ### 步骤 1：读取数据库配置
 
 ```
-Read ruoyi-admin/src/main/resources/application-dev.yml
+Read backend/java/ruoyi-admin/src/main/resources/application-dev.yml
 ```
 解析：数据库类型（MySQL/PostgreSQL/Oracle/SQL Server）、host（`${DB_HOST:127.0.0.1}`）、端口、库名、用户名/密码。
 

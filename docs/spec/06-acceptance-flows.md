@@ -63,7 +63,7 @@ steps:
 | ai-agent-publish-loop | AG-1/AD-1 | teacher→school→student→school→teacher | 教师建智能体→提交审核→管理员通过→学生广场可见→管理员下架→教师清理 |
 | ai-integration-loop | AD-2 | school→student→school | 管理员挂接第三方应用→学生广场应用区可见→管理员下架 |
 
-> AI 智能服务中心的对话链路（SSE 流式问答、私有库泄露防线 ST-1）涉及真实 LLM 调用，按 DSL 约束不进本文件，由后端集成测试覆盖（`backend/internal/handler/ai_center_flow_test.go`：TestAICenter_AgentChatStream 含泄露防线断言、TestAICenter_KBAsk 含溯源断言）。
+> AI 智能服务中心的对话链路（SSE 流式问答、私有库泄露防线 ST-1）涉及真实 LLM 调用，按 DSL 约束不进本文件，由后端集成测试覆盖（`backend/go/internal/handler/ai_center_flow_test.go`：TestAICenter_AgentChatStream 含泄露防线断言、TestAICenter_KBAsk 含溯源断言）。
 
 ---
 

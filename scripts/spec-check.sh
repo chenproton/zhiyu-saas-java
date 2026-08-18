@@ -42,7 +42,7 @@ strip_trailing_comments() { sed -E 's#//.*$##' "$1"; }
 #    （2026-08-14 增强：handler/service/store 扫描改为递归 find，排除 *_test.go 与 testhelper）
 # ---------------------------------------------------------------
 echo "-- 1. 后端分层红线（handler 无裸 SQL / 直调 db.*） --"
-HANDLER_DIR="backend/internal/handler"
+HANDLER_DIR="backend/go/internal/handler"
 SQL_KEYWORDS=("SELECT" "INSERT" "UPDATE" "DELETE" "ALTER TABLE" "CREATE TABLE")
 
 found_sql=0
@@ -66,7 +66,7 @@ done < <(find "$HANDLER_DIR" -name '*.go' -not -name '*_test.go' -not -path '*/t
 [ "$found_sql" -eq 0 ] && pass "handler 层无裸 SQL / 直调 db.* / 持仓字段"
 
 found_sql=0
-SERVICE_DIR="backend/internal/service"
+SERVICE_DIR="backend/go/internal/service"
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   if [ -n "$(strip_trailing_comments "$f" | grep -vE '^[[:space:]]*$' | grep -E '\b(SELECT|INSERT|UPDATE|DELETE|ALTER TABLE|CREATE TABLE)\b')" ]; then
@@ -77,7 +77,7 @@ done < <(find "$SERVICE_DIR" -name '*.go' -not -name '*_test.go' -not -path '*/t
 [ "$found_sql" -eq 0 ] && pass "service 层无拼接 SQL"
 
 found=0
-STORE_DIR="backend/internal/store"
+STORE_DIR="backend/go/internal/store"
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   if grep -qE '\*http\.Request|middleware\.CurrentUser|middleware\.Claims' "$f" 2>/dev/null; then
@@ -115,14 +115,14 @@ done < <(find "$SERVICE_DIR" -name '*.go' -not -name '*_test.go' -not -path '*/t
 # ---------------------------------------------------------------
 echo "-- 3. migration 配对 --"
 found=0
-for up in backend/migrations/*.up.sql; do
+for up in backend/go/migrations/*.up.sql; do
   base="${up%.up.sql}"
   if [ ! -f "${base}.down.sql" ]; then
     violation "migration 缺 down: $(basename "$up")"
     found=1
   fi
 done
-for down in backend/migrations/*.down.sql; do
+for down in backend/go/migrations/*.down.sql; do
   base="${down%.down.sql}"
   if [ ! -f "${base}.up.sql" ]; then
     violation "migration 缺 up: $(basename "$down")"
@@ -133,7 +133,7 @@ done
 
 # down 不可逆标注（spec-standards.md 六.2）：up 若物理不可逆（TRUNCATE/DROP TABLE/DELETE FROM 清数据），
 # 其 down（或 up）须声明「不可逆/不可恢复」；仅提示，不阻断（DROP TABLE 回滚建表可部分恢复结构，数据仍需人工评估）。
-_dn_hits=$(for u in backend/migrations/*.up.sql; do
+_dn_hits=$(for u in backend/go/migrations/*.up.sql; do
   if grep -qE '\b(TRUNCATE|DROP TABLE|DELETE FROM)\b' "$u"; then
     d="${u%.up.sql}.down.sql"
     if ! { grep -qE '不可逆|不可恢复' "$u" 2>/dev/null || grep -qE '不可逆|不可恢复' "$d" 2>/dev/null; }; then basename "$u"; fi
@@ -256,11 +256,11 @@ fi
 [ "$found" -eq 0 ] && pass "ADR-0003 关键写 SQL 租户条件齐备"
 
 # XSS 扫描（2026-08-14 增强：同时覆盖 packages/，排除 node_modules/.next/dist；提示级）
-_xss_hits=$(grep -rl 'dangerouslySetInnerHTML' apps/edu packages --include='*.tsx' --include='*.ts' 2>/dev/null | grep -vE 'node_modules|\.next|/dist/')
+_xss_hits=$(grep -rl 'dangerouslySetInnerHTML' frontend/edu frontend/packages --include='*.tsx' --include='*.ts' 2>/dev/null | grep -vE 'node_modules|\.next|/dist/')
 if [ -n "$_xss_hits" ]; then
   echo "  [提示] 前端使用 dangerouslySetInnerHTML 的文件（请确认渲染的是否为用户/LLM 内容、是否已消毒）："
   for h in $_xss_hits; do
-    echo "         ${h#apps/edu/}"
+    echo "         ${h#frontend/edu/}"
   done
 fi
 
@@ -273,7 +273,7 @@ if [ -f docs/spec/04-database-schema.md ]; then
   doc_nums=$(sed -n "/^## 5\. 变更记录/,/^## /p" docs/spec/04-database-schema.md \
     | grep -oE '^\| [0-9]{3}(/[0-9]{3})?[[:alnum:]_]* \|' \
     | grep -oE '[0-9]{3}' | sort -u | tr '\n' ' ')
-  mig_nums=$(ls backend/migrations/*.up.sql | sed -E 's#.*/([0-9]{3})_.*#\1#' | sort -u | tr '\n' ' ')
+  mig_nums=$(ls backend/go/migrations/*.up.sql | sed -E 's#.*/([0-9]{3})_.*#\1#' | sort -u | tr '\n' ' ')
   for n in $mig_nums; do
     case " $doc_nums " in *" $n "*) ;; *) violation "migration ${n} 未登记进 04-database-schema.md §5 变更记录"; found=1 ;; esac
   done
@@ -293,8 +293,8 @@ fi
 # ---------------------------------------------------------------
 echo "-- 8. 表数机械校验（migrations CREATE−DROP ↔ 04-database-schema.md 头部） --"
 found=0
-_create=$(grep -o 'CREATE TABLE' backend/migrations/*.up.sql 2>/dev/null | wc -l)
-_drop=$(grep -o 'DROP TABLE' backend/migrations/*.up.sql 2>/dev/null | wc -l)
+_create=$(grep -o 'CREATE TABLE' backend/go/migrations/*.up.sql 2>/dev/null | wc -l)
+_drop=$(grep -o 'DROP TABLE' backend/go/migrations/*.up.sql 2>/dev/null | wc -l)
 _actual=$((_create - _drop))
 _doc=$(grep -oE '当前共 \*\*[0-9]+ 张表\*\*' docs/spec/04-database-schema.md 2>/dev/null | head -1 | grep -oE '[0-9]+')
 if [ -n "$_doc" ]; then
@@ -319,7 +319,7 @@ fi
 echo "-- 9. 机器码词汇表校验（02-api-contract.md §4.2 ↔ error_codes.go） --"
 found=0
 MC_DOC="docs/spec/02-api-contract.md"
-MC_CODE="backend/internal/handler/error_codes.go"
+MC_CODE="backend/go/internal/handler/error_codes.go"
 mc_doc_codes=$(sed -n '/^### 4\.2 /,/^### 4\.3 /p' "$MC_DOC" 2>/dev/null \
   | grep -E '^\| *`[a-z_0-9]+` *\|' | sed -E 's#^\| *`([a-z_0-9]+)`.*#\1#' | sort -u)
 mc_code_codes=$(grep -oE 'Code[A-Za-z0-9_]+[[:space:]]*=[[:space:]]*"[^"]+"' "$MC_CODE" 2>/dev/null | sed -E 's#.*"([^"]+)"#\1#' | sort -u)
@@ -342,7 +342,7 @@ fi
 # 10. 路由↔契约双向覆盖检查（新增 2026-08-14，提示级不阻断）
 #     目标：拦「新增路由不写文档」（代码有、文档无）与「文档僵尸条目」（文档有、代码无）。
 #     实现：
-#       - 代码侧：从 backend/internal/router/*.go 提取 .Get/.Post/.Put/.Delete/.Patch("...")
+#       - 代码侧：从 backend/go/internal/router/*.go 提取 .Get/.Post/.Put/.Delete/.Patch("...")
 #         注册路径，并展开 chi 子路由挂载前缀（r.Route("/alliance", ...) 内相对路径补前缀）；
 #         registerContent/Batch/Write/ReadRoutes(r, "/base", ...) 的 base 也计入。
 #       - 文档侧：解析 02-api-contract.md 与 partner-enterprise-platform.md 表格行
@@ -364,7 +364,7 @@ EXEMPT_FILE="scripts/spec-check-data/contract-exemptions.txt"
 
 extract_route_paths() {
   local f
-  for f in backend/internal/router/*.go; do
+  for f in backend/go/internal/router/*.go; do
     [[ "$f" == *_test.go ]] && continue
     awk '
       function join(stack, n, rel,   i, out) {
@@ -520,7 +520,7 @@ fi
 # ---------------------------------------------------------------
 echo "-- 11. spec 随代码变更（代码↔spec 耦合） --"
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse HEAD >/dev/null 2>&1; then
-  code_changes=$(git diff --name-only HEAD -- backend/internal/router backend/internal/handler backend/migrations 2>/dev/null | grep -vE '_test\.go$' | head -50)
+  code_changes=$(git diff --name-only HEAD -- backend/go/internal/router backend/go/internal/handler backend/go/migrations 2>/dev/null | grep -vE '_test\.go$' | head -50)
   spec_changes=$(git diff --name-only HEAD -- docs/spec docs/系统功能清单.md 2>/dev/null)
   if [[ -n "$code_changes" ]]; then
     if [[ -z "$spec_changes" ]]; then

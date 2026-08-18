@@ -429,9 +429,9 @@ public R<Void> add(@Validated @RequestBody SysDictDataBo bo) { ... }
 ---
 
 > 关联源码：
-> - `ruoyi-common/ruoyi-common-satoken/`：`LoginHelper`、`SaPermissionImpl`、`SaTokenConfig`、`SaTokenExceptionHandler`
-> - `ruoyi-common/ruoyi-common-security/`：`SecurityConfig`、`SecurityProperties`、`AllUrlHandler`
-> - `ruoyi-common/ruoyi-common-encrypt/`：`@EncryptField`、`@ApiEncrypt`、`AlgorithmType`、`CryptoFilter`、`Mybatis*Interceptor`
-> - `ruoyi-common/ruoyi-common-redis/`：`@RateLimiter`、`@RepeatSubmit`、`LimitType`
-> - `ruoyi-common/ruoyi-common-core/xss/`：`@Xss`、`XssValidator`
-> - 真实用法参考：`ruoyi-modules/ruoyi-system` 各 Controller、`ruoyi-modules/ruoyi-demo/SaTokenTestController` / `TestDemoEncrypt` / `RedisRateLimiterController`
+> - `backend/java/ruoyi-common/ruoyi-common-satoken/`：`LoginHelper`、`SaPermissionImpl`、`SaTokenConfig`、`SaTokenExceptionHandler`
+> - `backend/java/ruoyi-common/ruoyi-common-security/`：`SecurityConfig`、`SecurityProperties`、`AllUrlHandler`
+> - `backend/java/ruoyi-common/ruoyi-common-encrypt/`：`@EncryptField`、`@ApiEncrypt`、`AlgorithmType`、`CryptoFilter`、`Mybatis*Interceptor`
+> - `backend/java/ruoyi-common/ruoyi-common-redis/`：`@RateLimiter`、`@RepeatSubmit`、`LimitType`
+> - `backend/java/ruoyi-common/ruoyi-common-core/xss/`：`@Xss`、`XssValidator`
+> - 真实用法参考：`backend/java/ruoyi-modules/ruoyi-system` 各 Controller、`backend/java/ruoyi-modules/ruoyi-demo/SaTokenTestController` / `TestDemoEncrypt` / `RedisRateLimiterController`

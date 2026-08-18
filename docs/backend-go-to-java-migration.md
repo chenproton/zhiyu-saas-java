@@ -1,6 +1,8 @@
 # zhiyu-saas 后端 Go → Java 迁移方案（基于 RuoYi-Vue-Plus 6.x 框架）
 
-- 状态：提议
+> 本文档记录 zhiyu-saas 后端从 Go（chi + pgx）迁移到 Java（base-dev-framework6-java，`org.dromara`）的方案与实时进度；Go 与 Java 双后端在本仓库并存，迁移进度见 §7。
+
+- 状态：已基本完成（业务域 13/13、前端零改动对接；专项能力部分收尾中，见 §7）
 - 日期：2026-08-17
 - 范围：仅后端语言与框架迁移；数据库、前端保持不动
 - 目标框架：`saas-framework6-java-vue`（org.dromara · Java 21 / Spring Boot 4.1.0 / MyBatis-Plus 3.5.17 / Sa-Token 1.45.0）
@@ -10,7 +12,7 @@
 本次迁移的目标是把 zhiyu-saas 后端从 Go（chi + pgx）替换为公司统一研发基础框架（RuoYi-Vue-Plus 6.x，Java），**业务行为等价迁移**。三条硬约束：
 
 1. **数据库保留 PostgreSQL**：现有 172 张业务表、表结构、存量数据不动（演示系统以交互流程达标为准）。
-2. **前端 React 代码不动**：Next.js 16 / React 19 页面、组件、路由全部保留；仅 `packages/api-client` 的请求封装层做最小适配（见 §4.6）。
+2. **前端 React 代码不动**：Next.js 16 / React 19 页面、组件、路由全部保留；仅 `frontend/packages/api-client` 的请求封装层做最小适配（见 §4.6）。
 3. **后端换 Java**：分层结构 Controller → Service → Mapper（框架约定，无 DAO 层），包名 `org.dromara.*`。
 
 > 演示系统定位：不需要考虑真实数据流转，mock 数据与交互流程达到预期即可；但安全边界（跨租户、越权）与分层红线仍必须遵守。
@@ -43,8 +45,8 @@
 
 | 能力 | 框架实现 | 结论 |
 |---|---|---|
-| PostgreSQL 支持 | 官方脚本 `script/sql/postgres/postgres_ry_{vue,workflow,job,ai}.sql`；`DataBaseType.POSTGRE_SQL` 方言；`PaginationInnerInterceptor` 自动识别库类型 | ✅ 可直接用 |
-| PG 驱动 | `ruoyi-admin/pom.xml` 中 `postgresql` 依赖**默认注释** | ⚠️ 需取消注释启用 |
+| PostgreSQL 支持 | 官方脚本 `backend/java/script/sql/postgres/postgres_ry_{vue,workflow,job,ai}.sql`；`DataBaseType.POSTGRE_SQL` 方言；`PaginationInnerInterceptor` 自动识别库类型 | ✅ 可直接用 |
+| PG 驱动 | `backend/java/ruoyi-admin/pom.xml` 中 `postgresql` 依赖**默认注释** | ⚠️ 需取消注释启用 |
 | 主键策略 | 全局 `idType: ASSIGN_ID`（雪花），可配置 `ASSIGN_UUID` / `INPUT` | ✅ 可保留 UUID |
 | 多租户 | `TenantLineInnerInterceptor` 仅注释提及，**未默认启用** | ⚠️ 需自研翻译现有租户逻辑 |
 | 代码生成器 | FreeMarker 模板，`gen_table.frontend_type` 支持 `vue` / `react` 双前端栈（`fm/react/` 为 Ant Design Pro 风格） | ✅ 可用于生成后端 CRUD 骨架 |
@@ -53,9 +55,9 @@
 
 ### 2.1 数据库引擎：保留 PostgreSQL ✅（已确认）
 
-- 启用 `ruoyi-admin/pom.xml` 中的 `org.postgresql:postgresql` 依赖（取消注释）。
+- 启用 `backend/java/ruoyi-admin/pom.xml` 中的 `org.postgresql:postgresql` 依赖（取消注释）。
 - `application-dev.yml` 数据源改为 PG：`jdbc:postgresql://localhost:5432/<库名>`，驱动 `org.postgresql.Driver`。
-- 框架系统表（sys_user / sys_role / sys_menu / sys_dict / sys_tenant / sys_login_info / sys_oper_log 等）通过 `script/sql/postgres/postgres_ry_vue.sql` 导入**同一 PG 库**（业务表与框架系统表共存；也可独立 schema，推荐同库异前缀隔离）。
+- 框架系统表（sys_user / sys_role / sys_menu / sys_dict / sys_tenant / sys_login_info / sys_oper_log 等）通过 `backend/java/script/sql/postgres/postgres_ry_vue.sql` 导入**同一 PG 库**（业务表与框架系统表共存；也可独立 schema，推荐同库异前缀隔离）。
 - 分页无需改代码：`PaginationInnerInterceptor` 自动识别 PostgreSQL 方言。
 
 ### 2.2 主键策略：保留 UUID ✅（推荐）
@@ -144,7 +146,7 @@
 - ✅ 验收：AI 对话、任务调度、文件预览三条链路可用。
 
 ### 阶段 5：前端适配与切换（0.5~1 周）
-- `packages/api-client` 最小适配：base URL 指向 Java 服务；响应包装对齐 `R<T>`（code/msg/data）；401 拦截与 token 存取逻辑保持现有形态。
+- `frontend/packages/api-client` 最小适配：base URL 指向 Java 服务；响应包装对齐 `R<T>`（code/msg/data）；401 拦截与 token 存取逻辑保持现有形态。
 - 全量回归（复用 `docs/spec/06-acceptance-flows.md` 验收流程）；部署切换。
 - ✅ 验收：React 前端零页面改动跑通全部演示流程。
 
@@ -183,19 +185,32 @@
 | 框架默认关闭的外置服务（SnailJob/SnailAI/Monitor）被误启用 | 部署复杂化 | 本期全部关闭，仅用框架核心（web/mybatis/redis/satoken/log） |
 | 生成器产物与现有业务逻辑冲突（覆盖手写代码） | 进度损失 | 生成器只产出骨架目录，业务逻辑统一放 service 实现层，遵循框架分层 |
 
-## 7. 迁移进度（2026-08-17 启动，实时更新）
+## 7. 迁移进度（实时更新）
 
-> 实施分支：目标仓库 `feat/go-to-java-migration-zhiyu`。前端 React 与 PG migrations 已直接复制进目标仓库（零改动）。
+> 分支：`feat/go-to-java-migration-zhiyu`。进度以 Java 仓库 commit 为准，2026-08-17 启动。
 
 | 阶段 | 状态 | 说明 |
 |---|---|---|
-| 阶段 0 环境 | ✅ | PG 驱动、框架系统表导入 zhiyu-saas 库、Sa-Token 登录跑通 |
-| 阶段 2 认证横切 | ✅ | 多平台登录/选租户/Me + Bearer 鉴权 + 租户上下文（契约形状与 Go 一致） |
-| 阶段 3 业务域 | 🔄 7/13 | 已翻译 auth/portal/favorites/library/scene/job/evaluation ≈ 257 端点；待 affairs/lesson/partner/alliance/system/superadmin/ai/import-export |
-| 阶段 4 专项 | ⏳ | AI SSE / 定时任务 / 文件 / Excel |
-| 阶段 5 适配 | 🔄 | 前端 dev 跑通（/portal 等路由 200），api-client 零改动对接 /api/v1 |
+| 阶段 0 环境 | ✅ 完成 | PG 驱动启用、框架 20 张 sys_ 表导入 zhiyu-saas 库、Sa-Token admin 登录跑通、Redis 就绪 |
+| 阶段 1 数据层 | ✅ 完成（骨架方式） | 未走生成器；按域直译 Go store SQL 为 Entity/Mapper（UUID 主键 ASSIGN_UUID，PG 数组/jsonb TypeHandler） |
+| 阶段 2 认证横切 | ✅ 完成 | Sa-Token Bearer + ZhiyuAuthFilter（401 形状对齐）、多平台登录/选租户/Me、bcrypt 校验、租户上下文、裸 JSON 响应体系 |
+| 阶段 3 业务域 | ✅ 完成（13/13 域） | auth(12)、portal+favorites(16)、library(20)、scene(41)、job(70)、evaluation(98)、affairs(63)、lesson(49)、partner(72)、alliance(71)、system(67)、superadmin(23)、ai(53) ≈ **635+ 端点**；全域冒烟通过 |
+| 阶段 4 专项 | 🔄 部分完成 | AI SSE 已实现（SseEmitter 对齐 Go 事件协议）；文件上传/Excel 导入导出（import-export 18 端点）待补；定时任务未迁移 |
+| 阶段 5 适配切换 | ✅ 完成 | 前端零改动对接 /api/v1；dev 跑通（/portal 等路由 200）；后端 8081 + 前端 3021 联通验证 |
 
-实施中确认的关键适配决策（与 §2 预判的差异详见目标仓库文档）：zhiyu 接口返回裸 JSON（不用 R<T>）；分页 {items,total}+limit/offset；/api/v1/** 排除框架拦截器走自有 Filter；Mapper 用原生 selectList（同型 Vo 无 converter）；PG `stringtype=unspecified`；租户过滤按 Go 语义显式翻译（框架租户插件副本已裁剪）。
+**关键适配决策记录**（实施中确认，与方案 §2 的差异）：
+- 响应包装：zhiyu 接口返回**裸 JSON**（不用框架 R<T>），错误 `{code,error,message?}` —— 前端 `request<T>` 直接 `res.json()`，框架包装不兼容（**有意偏离**）
+- 分页：`{items,total}` + `limit/offset`（maxPageSize 200），不用框架 PageQuery/PageResult（**有意偏离**）
+- 鉴权：`/api/v1/**` 从框架 SaInterceptor 排除，zhiyu 自有 Filter（Sa-Token Bearer token + 会话上下文 + 逐请求用户/租户状态校验 fail-closed，401 文本对齐 Go 中间件）（**有意偏离**：Go 的菜单 RBAC 由前端 menu-permissions 消费 me.roles.permissions 实现，后端菜单中间件未迁移，见差异表 P2）
+- 数据访问：Mapper 用原生 selectList/selectById + 注解 SQL（翻译 Go store 手写 SQL；框架 selectVoXxx 依赖 MapStruct 同型 converter，Entity=Vo 场景不可用）（**有意偏离**）
+- PG 适配：JDBC URL `stringtype=unspecified`（String↔uuid 自动推断）；接口加密 api-decrypt 关闭（前端明文契约）
+- 租户：翻译 Go 显式过滤语义（查询统一带 tenant_id 条件），未启用框架租户插件（副本已裁剪）（**有意偏离**）
+
+### 代码标准性审查结论（2026-08-18，592 文件）
+
+- **框架字面硬红线全部通过**：包名 `org.dromara.zhiyu`、三层无 DAO、不 extends ServiceImpl、无 PlusLambdaQuery/likeCast/BeanUtil、无 /pageXxxs 非标路径、实体 camelCase。
+- **与框架原生模块的系统性差异为「行为等价迁移」的有意设计**（上表已标注），已修复的真问题：401 响应体对齐 Go、停用即时失效（RequireActiveUser 语义）、ErrorBody 空 message 省略、token 日志脱敏、登录验证码防爆破、改密踢出会话。
+- 遗留建议项（非阻断）：魔法角色码统一常量、DTO 迁出 Mapper 包、手写 SQL 逐步收敛 QueryBuilder —— 列为后续重构清单，不影响功能与安全。
 
 ## 8. 附录
 
@@ -203,4 +218,4 @@
 - 现有库表设计：`docs/spec/04-database-schema.md`（490 行）
 - 验收流程：`docs/spec/06-acceptance-flows.md`
 - 框架约定（分层/红线/禁止写法）：目标仓库根目录 `AGENTS.md` / `CLAUDE.md`
-- 框架 PG 支持证据：`script/sql/postgres/*.sql`、`DataBaseType.POSTGRE_SQL`、`PaginationInnerInterceptor` 自动识别
+- 框架 PG 支持证据：`backend/java/script/sql/postgres/*.sql`、`DataBaseType.POSTGRE_SQL`、`PaginationInnerInterceptor` 自动识别

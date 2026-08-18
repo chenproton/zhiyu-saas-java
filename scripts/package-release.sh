@@ -77,8 +77,8 @@ TMPCTX=$(mktemp -d)
 trap 'rm -rf "$BUILD_DIR" "$TMPCTX"' EXIT
 (cd "$ROOT/backend" && CGO_ENABLED=0 go build -mod=vendor -ldflags="-s -w" -o "$TMPCTX/server" ./cmd/server/main.go)
 mkdir -p "$TMPCTX/migrations"
-rsync -a --delete "$ROOT/backend/migrations/" "$TMPCTX/migrations/"
-cp "$ROOT/backend/Dockerfile" "$TMPCTX/Dockerfile"
+rsync -a --delete "$ROOT/backend/go/migrations/" "$TMPCTX/migrations/"
+cp "$ROOT/backend/go/Dockerfile" "$TMPCTX/Dockerfile"
 DOCKER_BUILD_ARGS=()
 docker images alpine:3.21 --format ok 2>/dev/null | grep -q ok && DOCKER_BUILD_ARGS+=(--build-arg SKIP_APK_ADD=true)
 docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$VERSION" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
@@ -86,21 +86,21 @@ docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$VERSION" -f "$TMPCTX/D
 # ── 3. 构建前端镜像（在临时副本中构建，不污染仓库工作树）──
 log "构建前端镜像 zhiyu-edu:$VERSION ..."
 rsync -a --exclude=.git --exclude=node_modules --exclude=.next \
-  --exclude='*.tsbuildinfo' --exclude=backend/bin "$ROOT/" "$BUILD_DIR/"
+  --exclude='*.tsbuildinfo' --exclude=backend/go/bin "$ROOT/" "$BUILD_DIR/"
 (cd "$BUILD_DIR" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
 (cd "$BUILD_DIR" && pnpm install --frozen-lockfile 2>/dev/null) || \
 (cd "$BUILD_DIR" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
 
 # 离线图片编辑器资产同步到 public（构建镜像时打包进去，客户机无需单独携带）
-rm -rf "$BUILD_DIR/apps/edu/public/image-editor"
-mkdir -p "$BUILD_DIR/apps/edu/public/image-editor"
-rsync -a --delete "$OFFLINE_DIR/image-editor/" "$BUILD_DIR/apps/edu/public/image-editor/"
+rm -rf "$BUILD_DIR/frontend/edu/public/image-editor"
+mkdir -p "$BUILD_DIR/frontend/edu/public/image-editor"
+rsync -a --delete "$OFFLINE_DIR/image-editor/" "$BUILD_DIR/frontend/edu/public/image-editor/"
 
 (cd "$BUILD_DIR" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
   pnpm --filter @zhiyu/edu build) || die "前端构建失败"
 
-EDU_DIR="$BUILD_DIR/apps/edu"
-SD="$EDU_DIR/.next/standalone/apps/edu"
+EDU_DIR="$BUILD_DIR/frontend/edu"
+SD="$EDU_DIR/.next/standalone/frontend/edu"
 [[ -d "$EDU_DIR/.next/server" ]] && { mkdir -p "$SD/.next/server"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"; }
 [[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
 [[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
@@ -116,7 +116,7 @@ cp "$OFFLINE_DIR"/docker-images/*.tar "$PKG_DIR/images/" 2>/dev/null || true
 # ── 5. 组装交付目录 ──
 log "组装交付目录..."
 cp "$OFFLINE_DIR"/debs/*.deb "$PKG_DIR/debs/" 2>/dev/null || true
-rsync -a "$ROOT/backend/migrations/" "$PKG_DIR/migrations/"
+rsync -a "$ROOT/backend/go/migrations/" "$PKG_DIR/migrations/"
 cp "$ROOT/deploy/docker-compose.yml" "$PKG_DIR/deploy/"
 cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
 cp "$ROOT/deploy/release/install.sh" "$ROOT/deploy/release/start.sh" \

@@ -287,7 +287,7 @@ source_hash() {
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
 frontend_hash() {
-  find "$1/apps/edu" "$1/packages" -type f \
+  find "$1/frontend/edu" "$1/frontend/packages" -type f \
     -not -path '*/node_modules/*' -not -path '*/.next/*' \
     -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
@@ -816,8 +816,8 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
     git -C "$ORIGINAL_ROOT" worktree add --detach "$BUILD_TREE" origin/master || die "无法创建 worktree"
   fi
 
-  # 保留 apps/edu/.next 以复用 Next.js 增量产物；仅清理后端编译产物
-  rm -rf "$BUILD_TREE/backend/bin" 2>/dev/null || true
+  # 保留 frontend/edu/.next 以复用 Next.js 增量产物；仅清理后端编译产物
+  rm -rf "$BUILD_TREE/backend/go/bin" 2>/dev/null || true
   if [[ -n "$BRANCH_NAME" ]]; then
     git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
   fi
@@ -825,8 +825,8 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   BUILD_ROOT="$BUILD_TREE"
 fi
 
-BACKEND_DIR="$BUILD_ROOT/backend"
-EDU_DIR="$BUILD_ROOT/apps/edu"
+BACKEND_DIR="$BUILD_ROOT/backend/go"
+EDU_DIR="$BUILD_ROOT/frontend/edu"
 
 # 优先使用 vendor/ 目录（如果存在），否则用 GOPROXY 下载
 if [[ -d "$BACKEND_DIR/vendor" ]]; then
@@ -1030,7 +1030,7 @@ if $BUILD_FRONTEND; then
     API_PROXY_URL="$FRONTEND_API_PROXY_URL" \
     pnpm --filter @zhiyu/edu build) || die "前端构建失败"
 
-  SD="$EDU_DIR/.next/standalone/apps/edu"
+  SD="$EDU_DIR/.next/standalone/frontend/edu"
   [[ -d "$EDU_DIR/.next/server" ]] && { mkdir -p "$SD/.next/server"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"; }
   [[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
   [[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }

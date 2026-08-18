@@ -47,7 +47,7 @@ description: |
 | `@AutoMapper` | mapstruct-plus（三方） | BO / VO 类 | 声明与 Entity 的映射目标，生成转换代码 | **本 Skill 速查** |
 | `AddGroup` / `EditGroup` / `QueryGroup` | ruoyi-common-core | 校验注解 `groups` | 分组校验（新增 / 编辑 / 查询用不同规则） | **本 Skill 速查** |
 
-> 真实路径：翻译注解在 `ruoyi-common/ruoyi-common-translation/.../annotation/`；限流 / 防重在 `ruoyi-common-redis/.../annotation/`；脱敏在 `ruoyi-common-sensitive`；数据权限在 `ruoyi-common-mybatis/.../annotation/`；操作日志在 `ruoyi-common-log/.../annotation/`；加密在 `ruoyi-common-encrypt/.../annotation/`。
+> 真实路径：翻译注解在 `backend/java/ruoyi-common/ruoyi-common-translation/.../annotation/`；限流 / 防重在 `ruoyi-common-redis/.../annotation/`；脱敏在 `ruoyi-common-sensitive`；数据权限在 `ruoyi-common-mybatis/.../annotation/`；操作日志在 `ruoyi-common-log/.../annotation/`；加密在 `ruoyi-common-encrypt/.../annotation/`。
 
 ---
 

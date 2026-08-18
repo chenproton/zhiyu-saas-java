@@ -54,7 +54,7 @@
 3. **专家数据存企业侧**：企业服务台维护，学校端只读、按已引入企业自动加载
    > **ADR-0007 决策 2 措辞澄清（本节为准）**：ADR-0007 原文「学校侧按授权（alliance_resource_grants，146）读取」中，`alliance_resource_grants`（迁移 146 `expert_account_grant` 内建表）实际是**资源编辑授权**（`resource_type: position|scene`，授权企业编辑学校自建资源），并非专家档案读取授权；专家档案的学校侧可见性由「已引入企业 links 关联 + 企业 `enable_public` 开关」双控（见 §5.6 权限与越权校验）。
 4. **账号体系**：注册时创建企业管理员账号（`enterprise_admin`），管理员可在服务台添加成员账号（`enterprise_member`）
-5. **前端形态**：同一 Next.js 应用（apps/edu）内新增 `/partner` 路由段，复用现有组件与 api-client
+5. **前端形态**：同一 Next.js 应用（frontend/edu）内新增 `/partner` 路由段，复用现有组件与 api-client
 6. **存量数据**：不迁移，联盟开发数据整体重置
 
 ---
@@ -363,11 +363,11 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 | # | 任务 | 文件/位置 |
 |---|------|----------|
-| F1 | api-client：AuthPlatform 加 `partner`、token key `zhiyu-partner-token`、`isPartnerPath`、`partnerRequest`、401 跳 `/partner/login` | `packages/api-client/src/api-helpers.ts` |
+| F1 | api-client：AuthPlatform 加 `partner`、token key `zhiyu-partner-token`、`isPartnerPath`、`partnerRequest`、401 跳 `/partner/login` | `frontend/packages/api-client/src/api-helpers.ts` |
 | F2 | 新增 `api/partner.ts`（auth/profile/experts/members/dashboard/schools） | 新文件 |
 | F3 | `api/alliance.ts` 改造：enterpriseApi 改 list/search/link/unlink/update（移除 create）；expertApi 仅 list/get；新增 mentor-link/mentor-options | 改造 |
-| F4 | `/partner/login`：登录 + 注册双 Tab（参考 portal/login 风格） | `apps/edu/app/partner/login/page.tsx` |
-| F5 | `/partner/layout`：PartnerAuthGuard（token + platform=partner）+ 独立侧栏 | `apps/edu/app/partner/layout.tsx` |
+| F4 | `/partner/login`：登录 + 注册双 Tab（参考 portal/login 风格） | `frontend/edu/app/partner/login/page.tsx` |
+| F5 | `/partner/layout`：PartnerAuthGuard（token + platform=partner）+ 独立侧栏 | `frontend/edu/app/partner/layout.tsx` |
 | F6 | `/partner/workspace`：企业服务台首页（统计卡 + 入口卡片，参考 portal/workspace 兜底布局） | 新页面 |
 | F7 | `/partner/enterprise`：主体信息维护（改造自 enterprises/new 表单，去掉学校管理字段，含 enable_public 开关） | 新页面 |
 | F8 | `/partner/experts/*`：列表 + 详情 + 新建/编辑（改造自现有专家页面，含 is_public 开关） | 新页面 |
