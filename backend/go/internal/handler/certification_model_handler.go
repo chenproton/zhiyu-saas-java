@@ -42,6 +42,63 @@ type putCertificationPointLevelsRequest struct {
 	LevelMapping []domain.LevelMapping `json:"levelMapping"`
 }
 
+type putCertificationPointTaskWeightsRequest struct {
+	TaskWeights []certificationTaskWeight `json:"taskWeights"`
+}
+
+// PutPointTaskWeights 保存单个能力点下的任务权重（胜任配置弹窗保存）：只校验并保存当前
+// 能力点，不影响其它能力点与能力点占岗位总分的权重。
+func (h *CertificationModelHandler) PutPointTaskWeights(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	positionID := chi.URLParam(r, "positionId")
+	abilityPointID := chi.URLParam(r, "abilityPointId")
+
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), positionID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "岗位不存在")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
+		return
+	}
+	if abilityPointID == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	var req putCertificationPointTaskWeightsRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	sum := 0.0
+	for _, tw := range req.TaskWeights {
+		if tw.TaskID == "" {
+			respondError(w, http.StatusBadRequest, "缺少必填字段")
+			return
+		}
+		sum += tw.Weight
+	}
+	if math.Abs(sum-100) > 0.01 {
+		respondError(w, http.StatusBadRequest, "关联任务权重之和必须等于 100")
+		return
+	}
+
+	taskWeights := make([]store.CertificationWeightItem, 0, len(req.TaskWeights))
+	for _, tw := range req.TaskWeights {
+		taskWeights = append(taskWeights, store.CertificationWeightItem{AbilityPointID: abilityPointID, TaskID: store.StrPtrIfNonEmpty(tw.TaskID), Weight: tw.Weight})
+	}
+
+	err = h.Service.PutCertificationPointTaskWeights(r.Context(), tenantID, positionID, abilityPointID, taskWeights)
+	if err != nil {
+		respondServerError(w, r, err, "保存任务权重失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"positionId": positionID, "abilityPointId": abilityPointID})
+}
+
 func (h *CertificationModelHandler) PutPointLevels(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {

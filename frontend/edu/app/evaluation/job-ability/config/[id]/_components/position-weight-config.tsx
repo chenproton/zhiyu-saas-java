@@ -179,35 +179,40 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
     pointTaskWeights: Record<string, number>,
     mapping: LevelMapping[],
   ): Promise<boolean> => {
-    const errors = validateWeights({
-      abilityPointId: point.abilityPointId,
-      weights: pointTaskWeights,
-    })
-    if (errors.length > 0) {
-      toast({ title: t('权重校验未通过'), description: errors.join('；'), variant: 'destructive' })
+    // 只校验当前能力点的任务权重（胜任配置弹窗保存单点，不校验其它能力点，
+    // 避免被其它能力点因关联链漂移产生的历史权重问题拦截）
+    const pointSum = point.tasks.reduce(
+      (s, task) => s + (pointTaskWeights[task.taskId] ?? task.weight ?? 0),
+      0,
+    )
+    if (point.tasks.length > 0 && Math.abs(pointSum - 100) > 0.01) {
+      toast({
+        title: t('权重校验未通过'),
+        description: t('能力点「{name}」下任务权重合计为 {sum}%，应为 100%', {
+          name: point.name,
+          sum: pointSum,
+        }),
+        variant: 'destructive',
+      })
       return false
     }
     setSaving(true)
     try {
       await certApi.putPointLevels(positionId, point.abilityPointId, mapping)
+      // 只保存当前能力点的任务权重（不影响其它能力点与能力点占岗位总评的权重）
+      await certApi.putPointTaskWeights(
+        positionId,
+        point.abilityPointId,
+        point.tasks.map((task) => ({
+          taskId: task.taskId,
+          weight: pointTaskWeights[task.taskId] ?? task.weight ?? 0,
+        })),
+      )
       const tw: Record<string, number> = { ...taskWeights }
       Object.entries(pointTaskWeights).forEach(([taskId, weight]) => {
         tw[taskKey(point.abilityPointId, taskId)] = weight
       })
       setTaskWeights(tw)
-      await certApi.putPositionWeights(positionId, {
-        pointWeights: allPoints.map((p) => ({
-          abilityPointId: p.abilityPointId,
-          weight: pointWeights[p.abilityPointId] ?? p.weight,
-        })),
-        taskWeights: allPoints.flatMap((p) =>
-          p.tasks.map((task) => ({
-            abilityPointId: p.abilityPointId,
-            taskId: task.taskId,
-            weight: tw[taskKey(p.abilityPointId, task.taskId)] ?? task.weight,
-          })),
-        ),
-      })
       toast({ title: t('保存成功'), description: t('胜任配置已保存') })
       setLoading(true)
       setReloadKey((k) => k + 1)

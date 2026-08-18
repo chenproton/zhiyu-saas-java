@@ -133,6 +133,7 @@
 | GET/POST/PUT/DELETE | `/evaluation/certifications`、`/{id}` | businessUser | 认证规则（见 §3.4，实际端点以 `/evaluation/certifications` 为前缀） |
 | GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：`certifications.go` `certificationSceneTasksOnly` 开关过滤体系课/混合课课程任务，恢复课程置 false） |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | businessUser | 能力点五档分数线 |
+| PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights` | businessUser | 单个能力点下任务权重（单点保存，不影响其它能力点） |
 | GET/POST | `/evaluation/certifications/{id}/items`、`/items/{id}/points`、`/{id}/full` | businessUser | 能力项/能力点/全量规则 |
 | POST | `/evaluation/certifications/points/{pointId}/tasks`、`/{id}/status` | businessUser | 关联任务/启用停用 |
 | PUT/DELETE | `/evaluation/certifications/items/{id}`、`/points/{id}`、`/tasks/{id}` | businessUser | 能力项/能力点/任务更新删除 |
@@ -369,6 +370,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | GET/PUT | `/evaluation/certifications/{id}/full` | 全量规则读/写 |
 | GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：`certifications.go` `certificationSceneTasksOnly` 过滤体系课/混合课课程任务，恢复置 false，见 §1.4 同端点注） |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | 能力点五档分数线 |
+| PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights` | 单个能力点下任务权重（胜任配置弹窗保存：只校验并保存当前能力点，不影响其它能力点） |
 
 业务规则：每岗位唯一规则（`(tenant, position)` 唯一）；能力项可 inherit（继承岗位绑定）或 custom；权重两级（能力点占任务分 0-100 / 任务占岗位分）。
 

@@ -56,6 +56,7 @@ func registerEvaluationRoutes(r chi.Router, db *pgxpool.Pool, h *Handlers) {
 	r.Get("/evaluation/certifications/positions/{positionId}/model", h.certificationModelHandler.GetModel)
 	r.Put("/evaluation/certifications/positions/{positionId}/weights", h.certificationModelHandler.PutWeights)
 	r.Put("/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels", h.certificationModelHandler.PutPointLevels)
+	r.Put("/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights", h.certificationModelHandler.PutPointTaskWeights)
 	r.Get("/evaluation/certifications/{id}", h.certificationHandler.GetRule)
 	r.Post("/evaluation/certifications", h.certificationHandler.CreateRule)
 	r.Put("/evaluation/certifications/{id}", h.certificationHandler.UpdateRule)
