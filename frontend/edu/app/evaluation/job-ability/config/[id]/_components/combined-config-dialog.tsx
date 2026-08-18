@@ -23,6 +23,7 @@ import { FormDialogFooter } from '@zhiyu/ui'
 import type { CertificationModelPoint, LevelMapping } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/locale-provider'
+import { splitWeightEvenly } from '@/lib/weight-distribute'
 
 /** 掌握程度五档（代码、标签、系统默认最低分 50/60/70/80/90） */
 const LEVEL_ORDER: { level: string; label: string; defaultMin: number }[] = [
@@ -131,8 +132,11 @@ function CombinedConfigForm({
   }, [levelRows])
 
   const handleTaskWeightChange = (taskId: string, value: string) => {
-    const num = parseInt(value, 10)
-    setTaskWeights((prev) => ({ ...prev, [taskId]: Number.isNaN(num) ? 0 : num }))
+    const num = parseFloat(value)
+    setTaskWeights((prev) => ({
+      ...prev,
+      [taskId]: Number.isNaN(num) ? 0 : Math.round(num * 100) / 100,
+    }))
   }
 
   const toggleLock = (taskId: string) => {
@@ -145,12 +149,12 @@ function CombinedConfigForm({
     const lockedWeight = point.tasks
       .filter((task) => locked[task.taskId])
       .reduce((sum, task) => sum + (taskWeights[task.taskId] ?? 0), 0)
-    const remaining = 100 - lockedWeight
-    const each = Math.floor(remaining / unlocked.length)
+    // 用「分」级均分，支持 33.33/12.50 这类小数权重，确保合计精确等于 100%
+    const weights = splitWeightEvenly(100 - lockedWeight, unlocked.length)
     setTaskWeights((prev) => {
       const next = { ...prev }
       unlocked.forEach((task, i) => {
-        next[task.taskId] = each + (i < remaining % unlocked.length ? 1 : 0)
+        next[task.taskId] = weights[i]
       })
       return next
     })
@@ -234,6 +238,7 @@ function CombinedConfigForm({
                             type="number"
                             min={0}
                             max={100}
+                            step={0.01}
                             value={taskWeights[task.taskId] ?? task.weight}
                             onChange={(e) => handleTaskWeightChange(task.taskId, e.target.value)}
                             disabled={locked[task.taskId]}

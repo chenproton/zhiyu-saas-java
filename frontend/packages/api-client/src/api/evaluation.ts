@@ -325,6 +325,19 @@ export const certApi = {
         body: JSON.stringify({ levelMapping }),
       },
     ),
+  /** 保存单个能力点下的任务权重（胜任配置弹窗保存：只影响当前能力点） */
+  putPointTaskWeights: (
+    positionId: string,
+    abilityPointId: string,
+    taskWeights: { taskId: string; weight: number }[],
+  ) =>
+    request<{ positionId: string; abilityPointId: string }>(
+      `/evaluation/certifications/positions/${positionId}/points/${abilityPointId}/task-weights`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ taskWeights }),
+      },
+    ),
 }
 
 export const jobAbilityResultApi = {

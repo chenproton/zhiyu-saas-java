@@ -651,8 +651,8 @@ func (s *CertificationStore) FindPositionRule(ctx context.Context, q Queryer, po
 	return &rule, nil
 }
 
-// PutWeights 保存权重（事务：自动建规则+整删整插）。
-func (s *CertificationStore) PutWeights(ctx context.Context, tx Queryer, tenantID, positionID string, pointWeights, taskWeights []CertificationWeightItem) (string, error) {
+// ensureRuleID 查找岗位最新规则，无则创建（草稿/custom），返回 ruleID。
+func (s *CertificationStore) ensureRuleID(ctx context.Context, tx Queryer, tenantID, positionID string) (string, error) {
 	var ruleID string
 	err := tx.QueryRow(ctx, `
 		SELECT id FROM certification_rules
@@ -661,13 +661,48 @@ func (s *CertificationStore) PutWeights(ctx context.Context, tx Queryer, tenantI
 	`, tenantID, positionID).Scan(&ruleID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		ruleID = uuid.NewString()
-		if _, err = tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			INSERT INTO certification_rules (id, tenant_id, career_position_id, status, rule_source)
 			VALUES ($1, $2, $3, 'draft', 'custom')
 		`, ruleID, tenantID, positionID); err != nil {
 			return "", err
 		}
-	} else if err != nil {
+		return ruleID, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return ruleID, nil
+}
+
+// PutPointTaskWeights 保存单个能力点下的任务权重（事务）：只删该能力点的任务权重再插入，
+// 不影响其它能力点与能力点占岗位总分的权重（解决胜任配置弹窗保存被其它能力点漂移数据拦截的问题）。
+func (s *CertificationStore) PutPointTaskWeights(ctx context.Context, tx Queryer, tenantID, positionID, abilityPointID string, taskWeights []CertificationWeightItem) (string, error) {
+	ruleID, err := s.ensureRuleID(ctx, tx, tenantID, positionID)
+	if err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM certification_weights
+		WHERE rule_id = $1 AND ability_point_id = $2 AND task_id IS NOT NULL
+	`, ruleID, abilityPointID); err != nil {
+		return "", err
+	}
+	for _, tw := range taskWeights {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO certification_weights (id, rule_id, ability_point_id, task_id, weight, tenant_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, uuid.NewString(), ruleID, abilityPointID, tw.TaskID, tw.Weight, tenantID); err != nil {
+			return "", err
+		}
+	}
+	return ruleID, nil
+}
+
+// PutWeights 保存权重（事务：自动建规则+整删整插）。
+func (s *CertificationStore) PutWeights(ctx context.Context, tx Queryer, tenantID, positionID string, pointWeights, taskWeights []CertificationWeightItem) (string, error) {
+	ruleID, err := s.ensureRuleID(ctx, tx, tenantID, positionID)
+	if err != nil {
 		return "", err
 	}
 

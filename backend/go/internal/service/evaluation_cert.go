@@ -209,6 +209,14 @@ func (s *EvaluationService) PutCertificationWeights(ctx context.Context, tenantI
 	})
 }
 
+// PutCertificationPointTaskWeights 保存单个能力点下的任务权重（事务），不影响其它能力点。
+func (s *EvaluationService) PutCertificationPointTaskWeights(ctx context.Context, tenantID, positionID, abilityPointID string, taskWeights []store.CertificationWeightItem) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		_, err := txStore.Certifications().PutPointTaskWeights(ctx, txStore.Q(), tenantID, positionID, abilityPointID, taskWeights)
+		return err
+	})
+}
+
 // PutCertificationPointLevels 保存能力点自定义五档分数线（事务，校验后落库）。
 func (s *EvaluationService) PutCertificationPointLevels(ctx context.Context, tenantID, positionID, abilityPointID string, mapping []domain.LevelMapping) error {
 	if err := validateLevelMapping(mapping); err != nil {

@@ -4322,6 +4322,7 @@ export function EvaluationRulesEditor({
         <div className="space-y-5 p-1">
           <div className="flex items-center gap-3">
             <Button
+              type="button"
               variant="outline"
               size="sm"
               className="text-xs h-9"
@@ -4331,6 +4332,7 @@ export function EvaluationRulesEditor({
               {t('配置评价顺序')}
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               className="text-xs h-9"
