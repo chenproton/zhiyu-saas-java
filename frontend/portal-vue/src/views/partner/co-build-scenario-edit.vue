@@ -10,8 +10,11 @@
           <div class="header-actions">
             <el-tag v-if="!dataLoading" :type="statusTagType(scenarioStatus)">{{ contentStatusLabel(scenarioStatus) }}</el-tag>
             <el-button @click="onBack">返回</el-button>
-            <el-button type="primary" :loading="saving" :disabled="!scenarioName.trim()" @click="onSaveDraft">
+            <el-button :loading="saving" :disabled="!scenarioName.trim()" @click="onSaveDraft">
               {{ saving ? '保存中...' : '保存' }}
+            </el-button>
+            <el-button type="primary" :loading="saving" :disabled="!scenarioName.trim()" @click="onNext">
+              {{ saving ? '保存中...' : '下一步' }}
             </el-button>
           </div>
         </div>
@@ -261,6 +264,20 @@ async function onFileChange(e: Event) {
   }
 }
 
+// 行业/专业/批次无 partner 数据源：更新时不携带这些字段，后端保留原值；
+// 目标岗位/场景介绍/封面为空时显式传 null 让后端清空（对齐 React buildPayload 的 null 语义）。
+function buildPayload() {
+  return {
+    name: scenarioName.value.trim(),
+    careerPositionId: positionId.value || null,
+    difficulty: difficulty.value,
+    background: background.value || null,
+    version: version.value,
+    coverImage: coverImage.value || null,
+    coBuilderIds: coBuilderIds.value
+  };
+}
+
 async function onSaveDraft() {
   if (!scenarioName.value.trim()) {
     ElMessage.warning('场景名称不能为空');
@@ -268,15 +285,10 @@ async function onSaveDraft() {
   }
   saving.value = true;
   try {
-    const updated = await partnerCobuildScenarioApi.update(id, {
-      name: scenarioName.value.trim(),
-      careerPositionId: positionId.value || undefined,
-      difficulty: difficulty.value,
-      background: background.value || undefined,
-      version: version.value,
-      coverImage: coverImage.value || undefined,
-      coBuilderIds: coBuilderIds.value
-    });
+    const updated = await partnerCobuildScenarioApi.update(
+      id,
+      buildPayload() as unknown as Partial<CoBuildScenario>
+    );
     hasSaved.value = true;
     if (updated.status && updated.status !== scenarioStatus.value) {
       scenarioStatus.value = updated.status;
@@ -284,6 +296,25 @@ async function onSaveDraft() {
     ElMessage.success('已保存');
   } catch (e) {
     ElMessage.error((e as Error).message || '保存失败');
+  } finally {
+    saving.value = false;
+  }
+}
+
+// 「下一步」：保存后进入任务链配置（对齐 React handleProceed）
+async function onNext() {
+  if (!scenarioName.value.trim()) return;
+  saving.value = true;
+  try {
+    await partnerCobuildScenarioApi.update(
+      id,
+      buildPayload() as unknown as Partial<CoBuildScenario>
+    );
+    hasSaved.value = true;
+    ElMessage.success('保存成功');
+    router.push(`/partner/co-build/scenes/${id}/edit/tasks`);
+  } catch (e) {
+    ElMessage.error((e as Error).message || '请稍后重试');
   } finally {
     saving.value = false;
   }
