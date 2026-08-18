@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@source '../../../packages/ui/src/**/*';
+@source '../../packages/ui/src/**/*';
 
 :root {
   /* Base palette: cool light background with business blue accents */
