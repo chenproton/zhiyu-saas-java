@@ -435,7 +435,7 @@ if ! command -v go >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Go"
   log "安装 Go..."
   ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"; [[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
-  GO_VERSION="${GO_VERSION:-1.23.7}"
+  GO_VERSION="${GO_VERSION:-1.25.0}"
   GO_TARBALL="go${GO_VERSION}.linux-${ARCH}.tar.gz"
   GO_DOWNLOADED=false
   if local_go=$(offline_file "$GO_TARBALL"); then
@@ -571,7 +571,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
     {
       echo ""
       echo "# 部署配置（由 deploy.sh 首次生成）"
-      echo "GO_VERSION=${GO_VERSION:-1.23.7}"
+      echo "GO_VERSION=${GO_VERSION:-1.25.0}"
       echo "PNPM_VERSION=${PNPM_VERSION:-9.15.9}"
       echo "NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}"
       echo "NGINX_DEFAULT_SERVER=${NGINX_DEFAULT_SERVER:-default_server}"
