@@ -54,6 +54,8 @@ export interface AllianceAchievement {
   projectIds?: string[];
   status: string;
   viewCount: number;
+  createdBy?: string;
+  isPublic?: boolean;
   createdAt: string;
   updatedAt: string;
 }

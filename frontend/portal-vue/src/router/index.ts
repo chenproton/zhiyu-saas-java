@@ -6,7 +6,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/login.vue'),
+    component: () => import('@/views/portal/login.vue'),
+    meta: { public: true }
+  },
+  {
+    // 门户登录（对齐 React /portal/login；api/http.ts 401 处理跳转此路径）
+    path: '/portal/login',
+    name: 'PortalLogin',
+    component: () => import('@/views/portal/login.vue'),
     meta: { public: true }
   },
   {
@@ -328,6 +335,67 @@ const routes: RouteRecordRaw[] = [
         name: 'AllianceBrands',
         component: () => import('@/views/alliance/brands.vue')
       },
+      // ---- 联盟管理应用（对齐 React /portal/apps/alliance/* 管理页）----
+      {
+        path: 'portal/apps/alliance/achievements',
+        name: 'AllianceAdminAchievements',
+        component: () => import('@/views/portal/apps/alliance/achievements.vue')
+      },
+      {
+        path: 'portal/apps/alliance/achievements/new',
+        name: 'AllianceAdminAchievementNew',
+        component: () => import('@/views/portal/apps/alliance/achievement-edit.vue')
+      },
+      {
+        path: 'portal/apps/alliance/achievements/:id',
+        name: 'AllianceAdminAchievementDetail',
+        component: () => import('@/views/portal/apps/alliance/achievement-detail.vue')
+      },
+      {
+        path: 'portal/apps/alliance/achievements/:id/edit',
+        name: 'AllianceAdminAchievementEdit',
+        component: () => import('@/views/portal/apps/alliance/achievement-edit.vue')
+      },
+      {
+        path: 'portal/apps/alliance/agreements',
+        name: 'AllianceAdminAgreements',
+        component: () => import('@/views/portal/apps/alliance/agreements.vue')
+      },
+      {
+        path: 'portal/apps/alliance/agreements/new',
+        name: 'AllianceAdminAgreementNew',
+        component: () => import('@/views/portal/apps/alliance/agreement-edit.vue')
+      },
+      {
+        path: 'portal/apps/alliance/agreements/:id',
+        name: 'AllianceAdminAgreementDetail',
+        component: () => import('@/views/portal/apps/alliance/agreement-detail.vue')
+      },
+      {
+        path: 'portal/apps/alliance/agreements/:id/edit',
+        name: 'AllianceAdminAgreementEdit',
+        component: () => import('@/views/portal/apps/alliance/agreement-edit.vue')
+      },
+      {
+        path: 'portal/apps/alliance/projects',
+        name: 'AllianceAdminProjects',
+        component: () => import('@/views/portal/apps/alliance/projects.vue')
+      },
+      {
+        path: 'portal/apps/alliance/projects/new',
+        name: 'AllianceAdminProjectNew',
+        component: () => import('@/views/portal/apps/alliance/project-edit.vue')
+      },
+      {
+        path: 'portal/apps/alliance/projects/:id',
+        name: 'AllianceAdminProjectDetail',
+        component: () => import('@/views/portal/apps/alliance/project-detail.vue')
+      },
+      {
+        path: 'portal/apps/alliance/projects/:id/edit',
+        name: 'AllianceAdminProjectEdit',
+        component: () => import('@/views/portal/apps/alliance/project-edit.vue')
+      },
       // ---- 产教联盟前台（对齐 React /portal/alliance/* 公开门户）----
       {
         path: 'portal/alliance/landing',
@@ -404,6 +472,102 @@ const routes: RouteRecordRaw[] = [
         name: 'AllianceEmploymentDetail',
         component: () => import('@/views/portal/alliance/employment-detail.vue')
       },
+      // ---- 联盟管理应用（对齐 React /portal/apps/alliance/* 管理端）----
+      {
+        path: 'portal/apps/alliance/brands',
+        name: 'AllianceAppsBrands',
+        component: () => import('@/views/portal/apps/alliance/brands.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/culture',
+        name: 'AllianceAppsBrandCulture',
+        component: () => import('@/views/portal/apps/alliance/brand-culture.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/employer',
+        name: 'AllianceAppsBrandEmployer',
+        component: () => import('@/views/portal/apps/alliance/brand-employer.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/job',
+        name: 'AllianceAppsBrandJob',
+        component: () => import('@/views/portal/apps/alliance/brand-job.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/major',
+        name: 'AllianceAppsBrandMajor',
+        component: () => import('@/views/portal/apps/alliance/brand-major.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/talent',
+        name: 'AllianceAppsBrandTalent',
+        component: () => import('@/views/portal/apps/alliance/brand-talent.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/teacher',
+        name: 'AllianceAppsBrandTeacher',
+        component: () => import('@/views/portal/apps/alliance/brand-teacher.vue')
+      },
+      {
+        path: 'portal/apps/alliance/brands/:id',
+        name: 'AllianceAppsBrandDetail',
+        component: () => import('@/views/portal/apps/alliance/brand-detail.vue')
+      },
+      {
+        path: 'portal/apps/alliance/dictionaries',
+        name: 'AllianceAppsDictionaries',
+        component: () => import('@/views/portal/apps/alliance/dictionaries.vue')
+      },
+      {
+        path: 'portal/apps/alliance/school',
+        name: 'AllianceAppsSchool',
+        component: () => import('@/views/portal/apps/alliance/school.vue')
+      },
+      {
+        path: 'portal/apps/alliance/enterprises',
+        name: 'AllianceAppsEnterprises',
+        component: () => import('@/views/portal/apps/alliance/enterprises.vue')
+      },
+      {
+        path: 'portal/apps/alliance/enterprises/:id',
+        name: 'AllianceAppsEnterpriseDetail',
+        component: () => import('@/views/portal/apps/alliance/enterprise-detail.vue')
+      },
+      {
+        path: 'portal/apps/alliance/experts',
+        name: 'AllianceAppsExperts',
+        component: () => import('@/views/portal/apps/alliance/experts.vue')
+      },
+      {
+        path: 'portal/apps/alliance/experts/:id',
+        name: 'AllianceAppsExpertDetail',
+        component: () => import('@/views/portal/apps/alliance/expert-detail.vue')
+      },
+      {
+        path: 'portal/apps/alliance/permissions',
+        name: 'AllianceAppsPermissions',
+        component: () => import('@/views/portal/apps/alliance/permissions.vue')
+      },
+      {
+        path: 'portal/apps/alliance/employmentjob',
+        name: 'AllianceAppsEmploymentJob',
+        component: () => import('@/views/portal/apps/alliance/employmentjob.vue')
+      },
+      {
+        path: 'portal/apps/alliance/employmentproject',
+        name: 'AllianceAppsEmploymentProject',
+        component: () => import('@/views/portal/apps/alliance/employmentproject.vue')
+      },
+      {
+        path: 'portal/apps/alliance/employmentproject/new',
+        name: 'AllianceAppsEmploymentProjectNew',
+        component: () => import('@/views/portal/apps/alliance/employmentproject-edit.vue')
+      },
+      {
+        path: 'portal/apps/alliance/employmentproject/:id',
+        name: 'AllianceAppsEmploymentProjectDetail',
+        component: () => import('@/views/portal/apps/alliance/employmentproject-detail.vue')
+      },
       {
         path: 'affairs/programs',
         name: 'AffairsPrograms',
@@ -458,6 +622,12 @@ const routes: RouteRecordRaw[] = [
         path: 'affairs/students',
         name: 'AffairsStudents',
         component: () => import('@/views/affairs/students.vue')
+      },
+      {
+        // 学生画像（对齐 React /affairs/student-portraits）
+        path: 'affairs/student-portraits',
+        name: 'AffairsStudentPortraits',
+        component: () => import('@/views/affairs/student-portraits.vue')
       },
       {
         path: 'affairs/teachers',
@@ -612,6 +782,42 @@ const routes: RouteRecordRaw[] = [
         path: 'system/org-types',
         name: 'SystemOrgTypes',
         component: () => import('@/views/system/org-types.vue')
+      },
+      // ---- 门户系统应用 · 租户/资源/日志（对齐 React /portal/apps/system/*）----
+      {
+        path: 'portal/apps/system/tenant',
+        name: 'SystemTenant',
+        component: () => import('@/views/system/tenant.vue')
+      },
+      {
+        path: 'portal/apps/system/resource/package',
+        name: 'SystemResourcePackage',
+        component: () => import('@/views/system/resource-package.vue')
+      },
+      {
+        path: 'portal/apps/system/resource/codes',
+        name: 'SystemResourceCodes',
+        component: () => import('@/views/system/resource-codes.vue')
+      },
+      {
+        path: 'portal/apps/system/resource/industries',
+        name: 'SystemResourceIndustries',
+        component: () => import('@/views/system/industries.vue')
+      },
+      {
+        path: 'portal/apps/system/resource/majors',
+        name: 'SystemResourceMajors',
+        component: () => import('@/views/system/majors.vue')
+      },
+      {
+        path: 'portal/apps/system/logs/login',
+        name: 'SystemLogsLogin',
+        component: () => import('@/views/system/logs-login.vue')
+      },
+      {
+        path: 'portal/apps/system/logs/operation',
+        name: 'SystemLogsOperation',
+        component: () => import('@/views/system/logs-operation.vue')
       },
       // ---- 门户系统应用 · 组织用户（对齐 React /portal/apps/system/org-user/*）----
       {

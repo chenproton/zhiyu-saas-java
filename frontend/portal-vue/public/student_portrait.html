@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学生能力画像详情</title>
+<style>
+:root{
+  --pri:#5b76e8;--pri2:#8c6ff0;--cyan:#39b3c8;
+  --grad:linear-gradient(135deg,#5b76e8,#8c6ff0);
+  --ink:#2b3550;--ink2:#5d6883;--ink3:#8a93ab;--ink4:#aab2c6;
+  --line:#edf0f7;--line2:#f4f6fb;
+  --exceed:#27b08a; --exceed2:#5fd3a8;
+  --meet:#5b76e8;   --meet2:#8c6ff0;
+  --below:#e89b3a;  --below2:#f3c069;
+  --g-exceed:linear-gradient(90deg,#27b08a,#54cf9d);
+  --g-meet:linear-gradient(90deg,#5b76e8,#8c6ff0);
+  --g-below:linear-gradient(90deg,#e89b3a,#f3c069);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  background:transparent;
+  color:var(--ink);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  zoom:0.8;}
+.panel{background:#f7f9fd;overflow:hidden;}
+
+.wrap{display:grid;grid-template-columns:352px 1fr 366px;gap:16px;padding:16px;}
+@media(max-width:1560px){.wrap{grid-template-columns:330px 1fr 340px;}}
+@media(max-width:1280px){.wrap{grid-template-columns:1fr;}}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 2px 10px -6px rgba(40,52,90,.12);}
+.card + .card{margin-top:14px;}
+.chd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 11px;}
+.title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.title .mk{width:4px;height:14px;border-radius:3px;background:var(--grad);box-shadow:0 2px 5px rgba(91,118,232,.45);}
+.chd .ex{font-size:11px;color:var(--ink4);font-weight:600;}
+.cbd{padding:0 16px 16px;}
+
+.profile{position:relative;border-radius:15px;overflow:hidden;border:1px solid #dfe6fb;background:linear-gradient(130deg,#e9eeff,#eef1ff 50%,#f3edff);padding:20px 18px;}
+.profile .deco{position:absolute;right:-10px;bottom:-6px;opacity:.55;}
+.p-top{display:flex;align-items:center;gap:14px;position:relative;}
+.p-av{width:62px;height:62px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#5b76e8,#8c6ff0);display:flex;align-items:center;justify-content:center;color:#fff;font-size:25px;font-weight:800;border:3px solid #fff;box-shadow:0 10px 22px -8px rgba(91,118,232,.6);}
+.p-name{font-size:18px;font-weight:800;display:flex;align-items:center;gap:7px;}
+.p-name .sx{font-size:13px;color:var(--pri);}
+.p-id{font-size:11.5px;color:var(--ink3);margin-top:4px;}
+.p-tags{display:flex;gap:7px;margin-top:14px;position:relative;}
+.ptag{font-size:11px;padding:4px 12px;border-radius:30px;font-weight:600;}
+.ptag.a{background:linear-gradient(135deg,#5b76e8,#7b91f2);color:#fff;box-shadow:0 5px 11px -4px rgba(91,118,232,.55);}
+.ptag.b{background:rgba(140,111,240,.13);color:var(--pri2);}
+.il .r{display:flex;justify-content:space-between;align-items:center;padding:9.5px 0;border-bottom:1px solid var(--line2);font-size:12.5px;}
+.il .r:last-child{border:none;}
+.il .k{color:var(--ink3);}
+.il .v{font-weight:600;}
+.pill{font-size:10.5px;padding:3px 10px;border-radius:20px;font-weight:600;}
+.pill.g{background:rgba(39,176,138,.13);color:var(--exceed);}
+.pill.a{background:rgba(232,155,58,.13);color:var(--below);}
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.sc{padding:13px 4px;border-radius:12px;text-align:center;border:1px solid var(--line2);}
+.sc.b{background:linear-gradient(165deg,#eef2ff,#f6f8ff);}
+.sc.o{background:linear-gradient(165deg,#fff5e9,#fffaf2);}
+.sc .n{font-size:20px;font-weight:800;line-height:1;}
+.sc .l{font-size:10.5px;color:var(--ink3);margin-top:6px;}
+.sc.b .n{color:var(--pri);}
+.sc.o .n{color:var(--below);}
+
+.tabs{display:flex;gap:7px;padding:0 16px 12px;flex-wrap:wrap;}
+.tab{font-size:12.5px;padding:7px 16px;border-radius:9px;cursor:pointer;color:var(--ink2);background:#f4f6fb;font-weight:500;transition:.16s;border:1px solid transparent;}
+.tab:hover{color:var(--pri);}
+.tab.on{background:rgba(91,118,232,.1);color:var(--pri);font-weight:700;border-color:rgba(91,118,232,.28);}
+
+.hero{display:grid;grid-template-columns:0.92fr 1.08fr;gap:18px;padding:0 16px 6px;align-items:stretch;}
+.radar-box{position:relative;border-radius:15px;padding:14px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(120% 110% at 30% 10%,#eef2ff 0%,#f4f1ff 55%,#fbfcff 100%);border:1px solid #e7ebfb;}
+.radar-box::before{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(140,111,240,.16),transparent 70%);}
+.radar-wrap{position:relative;}
+.radar-center{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+.radar-center .big{font-size:30px;font-weight:900;line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.radar-center .sub{font-size:10.5px;color:var(--ink3);margin-top:3px;font-weight:600;letter-spacing:.5px;}
+
+.right-stack{display:flex;flex-direction:column;gap:12px;}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat{position:relative;border-radius:13px;padding:15px 12px;overflow:hidden;border:1px solid;}
+.stat .v{font-size:25px;font-weight:900;line-height:1;}
+.stat .l{font-size:10.5px;color:var(--ink2);margin-top:7px;font-weight:500;}
+.stat .glow{position:absolute;right:-14px;top:-14px;width:56px;height:56px;border-radius:50%;opacity:.5;}
+.stat.s1{background:linear-gradient(160deg,#eafaf4,#f4fdf9);border-color:#cdeede;}
+.stat.s1 .v{color:var(--exceed);}.stat.s1 .glow{background:radial-gradient(circle,#7adcb6,transparent 70%);}
+.stat.s2{background:linear-gradient(160deg,#f3f0ff,#f9f7ff);border-color:#e2dbf8;}
+.stat.s2 .v{color:var(--pri2);}.stat.s2 .glow{background:radial-gradient(circle,#b6a3f5,transparent 70%);}
+.stat.s3{background:linear-gradient(160deg,#ecf0ff,#f6f8ff);border-color:#d4ddfb;}
+.stat.s3 .v{color:var(--pri);}.stat.s3 .glow{background:radial-gradient(circle,#9fb2f6,transparent 70%);}
+.stat.s4{background:linear-gradient(160deg,#fff4e6,#fffaf1);border-color:#f4e0c0;}
+.stat.s4 .v{color:var(--below);}.stat.s4 .glow{background:radial-gradient(circle,#f6cf8e,transparent 70%);}
+
+.eval{margin:14px 16px 16px;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.eval-top{display:flex;align-items:center;gap:8px;padding:13px 16px;background:linear-gradient(120deg,#f4f7ff,#f7f4ff);border-bottom:1px solid var(--line);}
+.eval-top .mk{width:4px;height:14px;border-radius:3px;background:var(--grad);}
+.eval-top h3{font-size:13.5px;font-weight:700;}
+.lg{margin-left:auto;display:flex;gap:14px;font-size:10.5px;color:var(--ink2);font-weight:600;align-items:center;}
+.lg span{display:flex;align-items:center;gap:5px;}
+.lg i{width:13px;height:5px;border-radius:3px;display:inline-block;}
+
+.ev-table{width:100%;border-collapse:collapse;}
+.ev-table th,.ev-table td{padding:10px 14px;font-size:11.5px;}
+.ev-table thead th{background:#f6f8fc;color:var(--ink2);font-weight:700;text-align:left;border-bottom:1px solid var(--line);}
+.ev-table thead th.c{text-align:center;}
+.ev-table tbody td{border-bottom:1px solid var(--line2);}
+.ev-table tbody tr:hover{background:#fafbff;}
+.ev-table .dn{font-size:12px;font-weight:700;}
+.ev-table .ds{font-size:14px;font-weight:800;}
+.ev-table .ds.exceed{color:var(--pri2);}.ev-table .ds.meet{color:var(--exceed);}.ev-table .ds.below{color:var(--below);}
+.ev-table .dl{font-size:11px;color:var(--ink3);}
+
+.ev-bar{height:18px;border-radius:6px;background:#eef1f8;overflow:hidden;}
+.ev-fill{height:100%;border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:10px;font-weight:700;color:#fff;transition:width 0.8s ease;}
+.ev-fill.exceed{background:linear-gradient(90deg,#8c6ff0,#b49df6);}
+.ev-fill.meet{background:var(--g-exceed);}
+.ev-fill.below{background:var(--g-below);}
+
+.lv{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;white-space:nowrap;}
+.lv .dot{width:6px;height:6px;border-radius:50%;}
+.lv.gray{background:#f0f2f8;color:var(--ink2);}
+.lv.gray .dot{background:#aab2c8;}
+.lv.exceed{background:rgba(140,111,240,.13);color:var(--pri2);}
+.lv.exceed .dot{background:var(--pri2);}
+.lv.meet{background:rgba(39,176,138,.13);color:var(--exceed);}
+.lv.meet .dot{background:var(--exceed);}
+.lv.below{background:rgba(232,155,58,.13);color:var(--below);}
+.lv.below .dot{background:var(--below);}
+
+.jc{border-radius:13px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--line);background:#fff;transition:.18s;}
+.jc:hover{transform:translateY(-2px);box-shadow:0 12px 24px -14px rgba(91,118,232,.4);}
+.jc.acc{background:linear-gradient(120deg,#edfaf4,#f5fcf9);border-color:#cdeede;}
+.jc.acc2{background:linear-gradient(120deg,#f4f1ff,#f8f6ff);border-color:#e3ddf8;}
+.jtp{display:flex;justify-content:space-between;align-items:center;}
+.jn{font-size:13px;font-weight:700;}
+.mt2{font-size:10.5px;padding:3px 10px;border-radius:7px;color:#fff;font-weight:700;}
+.mt2.g{background:linear-gradient(120deg,#27b08a,#54cf9d);}
+.mt2.b{background:var(--grad);}
+.mt2.a{background:linear-gradient(120deg,#e89b3a,#f3c069);}
+.jbar{height:6px;border-radius:6px;background:#eceff6;margin:10px 0 8px;overflow:hidden;}
+.jbar i{display:block;height:100%;border-radius:6px;}
+.jbar i.g{background:linear-gradient(90deg,#27b08a,#54cf9d);}
+.jbar i.b{background:var(--grad);}
+.jdsc{font-size:11px;color:var(--ink3);}
+.jdsc b{font-weight:700;}
+.rsub{font-size:11.5px;font-weight:700;color:var(--ink3);margin:2px 0 10px;}
+
+.empty-state{text-align:center;padding:32px 16px;color:var(--ink3);font-size:12px;}
+.loading-state{text-align:center;padding:48px 16px;}
+
+/* 能力提升建议 */
+.adv{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;}
+.adv .t{font-size:11px;padding:5px 12px;border-radius:8px;background:#fff;border:1px solid var(--line);color:var(--pri);font-weight:500;}
+
+/* 能力域列背景强调（轮换渐变 + 左侧竖线） */
+.ev-table td.dn{position:relative;border-left:3px solid;}
+.ev-table td.dn .ds{margin-top:6px;}
+.ev-table tr.d1 td.dn{background:linear-gradient(160deg,#f1f5ff,#fbfcff);border-left-color:#5b76e8;}
+.ev-table tr.d2 td.dn{background:linear-gradient(160deg,#f4f1ff,#fdfcff);border-left-color:#8c6ff0;}
+.ev-table tr.d3 td.dn{background:linear-gradient(160deg,#edfaf5,#fbfefd);border-left-color:#27b08a;}
+
+/* 右侧滚动容器与课程成绩表格 */
+.scroll{max-height:340px;overflow-y:auto;scrollbar-width:thin;}
+.gt table{width:100%;border-collapse:separate;border-spacing:0;}
+.gt th,.gt td{padding:9px 7px;font-size:11px;}
+.gt thead th{background:#f5f7fc;color:var(--ink2);font-weight:700;text-align:left;}
+.gt thead th:first-child{border-radius:8px 0 0 8px;}
+.gt thead th:last-child{border-radius:0 8px 8px 0;}
+.gt tbody td{border-bottom:1px solid var(--line2);}
+.gt .gn{font-weight:500;color:var(--ink2);}
+.gt .gs{font-weight:800;color:var(--pri);}
+.gt .gs.muted{color:var(--ink4);font-weight:600;}
+.gt .rk{color:var(--ink3);}
+
+/* 获得荣誉 */
+.hg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;}
+.hn .ic{width:46px;height:46px;border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 8px 15px -6px rgba(0,0,0,.25);}
+.hn .nm{font-size:10.5px;color:var(--ink2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.h1{background:linear-gradient(135deg,#27b08a,#5fd3a8);}
+.h2{background:linear-gradient(135deg,#e89b3a,#f3c069);}
+.h3{background:linear-gradient(135deg,#8c6ff0,#aa93f3);}
+.h4{background:linear-gradient(135deg,#e8748a,#f29aaa);}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="wrap">
+
+    <!-- ===== LEFT ===== -->
+    <div>
+      <div class="profile">
+        <svg class="deco" width="150" height="110" viewBox="0 0 150 110"><g fill="#ffffff" opacity="0.55"><rect x="8" y="55" width="20" height="55" rx="2"/><rect x="34" y="35" width="22" height="75" rx="2"/><rect x="62" y="65" width="18" height="45" rx="2"/><rect x="86" y="25" width="24" height="85" rx="2"/><rect x="116" y="50" width="22" height="60" rx="2"/></g></svg>
+        <div class="p-top">
+          <div class="p-av" id="profileAvatar">--</div>
+          <div><div class="p-name" id="profileName">--</div><div class="p-id" id="profileSno">学号：--</div></div>
+        </div>
+        <div class="p-tags" id="profileTags"><span class="ptag a">--</span><span class="ptag b">--</span></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>基础信息</span></div>
+        <div class="cbd il" id="basicInfo">
+          <div class="r"><span class="k">所属院系</span><span class="v" id="biMajor">--</span></div>
+          <div class="r"><span class="k">所属班级</span><span class="v" id="biClass">--</span></div>
+          <div class="r"><span class="k">班级排名</span><span class="v" id="biClassRank" style="color:#e8748a">--</span></div>
+          <div class="r"><span class="k">专业排名</span><span class="v" id="biMajorRank" style="color:#e8748a">--</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>学业概况</span></div>
+        <div class="cbd"><div class="sg" id="academicSummary">
+          <div class="sc b"><div class="n" id="asCredits">--</div><div class="l">毕业学分</div></div>
+          <div class="sc b"><div class="n" id="asCourses">--</div><div class="l">学习课程</div></div>
+          <div class="sc o"><div class="n" id="asScenes">--</div><div class="l">实践场景</div></div>
+          <div class="sc b"><div class="n" id="asArchives">--</div><div class="l">岗位档案</div></div>
+          <div class="sc o"><div class="n" id="asPoints">--</div><div class="l">总能力点</div></div>
+          <div class="sc o"><div class="n" id="asAchieved">--</div><div class="l">已达成</div></div>
+        </div></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>获得荣誉</span><span class="ex" id="honorCount">--</span></div>
+        <div class="cbd">
+          <div class="hg" id="honorList"><div class="empty-state" style="grid-column:1/-1;padding:18px 8px;">暂无荣誉</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CENTER ===== -->
+    <div>
+      <div class="card" id="mainCard">
+        <div class="chd"><span class="title"><span class="mk"></span>岗位能力画像</span><span class="ex" id="imgUpdated"></span></div>
+
+        <!-- Position tabs (dynamic) -->
+        <div class="tabs" id="positionTabs">
+          <span class="tab on">--</span>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero">
+          <div class="radar-box">
+            <div class="radar-wrap">
+              <svg id="radar" width="318" height="290" viewBox="0 0 340 320"></svg>
+              <div class="radar-center"><div class="big" id="radarCenter">--%</div><div class="sub">综合达成率</div></div>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="stat-row">
+              <div class="stat s1"><span class="glow"></span><div class="v" id="statRate">--%</div><div class="l">岗位能力达成率</div></div>
+              <div class="stat s2"><span class="glow"></span><div class="v" id="statCompetency">--%</div><div class="l">岗位胜任度</div></div>
+              <div class="stat s4"><span class="glow"></span><div class="v" id="statCompetencyV2">--%</div><div class="l">岗位胜任度（新）</div></div>
+              <div class="stat s3"><span class="glow"></span><div class="v" id="statCognition">--</div><div class="l">能力认证得分</div></div>
+            </div>
+            <div class="note" id="infoNote" style="border-radius:13px;padding:14px 15px;background:linear-gradient(120deg,#f6f8ff,#f9f7ff);border:1px solid var(--line);">
+              <div class="nt" style="font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;">
+                <span class="d" style="width:17px;height:17px;border-radius:6px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;">i</span>能力说明
+              </div>
+              <p id="infoDesc" style="font-size:12px;color:var(--ink2);line-height:1.8;margin-top:8px;">请选择岗位查看能力画像详情。</p>
+              <div class="nt" style="font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;margin-top:11px;">
+                <span class="d" style="width:17px;height:17px;border-radius:6px;background:linear-gradient(135deg,#e89b3a,#f3c069);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;">↑</span>能力提升建议
+              </div>
+              <div class="adv" id="adviceTags"><span class="t">暂无待提升能力点</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EVAL MATRIX: 能力域 + 能力点合并表格 -->
+        <div class="eval" id="evalMatrix">
+          <div class="eval-top">
+            <span class="mk"></span><h3>能力域达成分析</h3>
+            <div class="lg">
+              <span><i style="background:linear-gradient(90deg,#8c6ff0,#b49df6)"></i>已超越</span>
+              <span><i style="background:var(--g-exceed)"></i>已达标</span>
+              <span><i style="background:var(--g-below)"></i>未达标</span>
+            </div>
+          </div>
+          <table class="ev-table">
+            <thead>
+              <tr>
+                <th style="width:130px">能力域</th>
+                <th>能力点</th>
+                <th class="c" style="width:120px">测评来源</th>
+                <th class="c" style="width:70px">得分</th>
+                <th>能力掌握度</th>
+                <th class="c" style="width:90px">认定结果</th>
+              </tr>
+            </thead>
+            <tbody id="evalTableBody">
+              <tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT ===== -->
+    <div>
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>推荐就业方向</span></div>
+        <div class="cbd">
+          <div class="rsub">推荐岗位</div>
+          <div id="recommendJobs" class="scroll"><div class="empty-state">暂无推荐数据</div></div>
+        </div>
+      </div>
+
+      <div class="card" id="courseCard">
+        <div class="chd"><span class="title"><span class="mk"></span>课程成绩</span></div>
+        <div class="cbd gt">
+          <div id="courseScores" class="scroll"><div class="empty-state">暂无课程成绩数据</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var NS='http://www.w3.org/2000/svg';
+var cx=170,cy=160,R=98;
+// 临时开关（产品决策，后续可能恢复）：学生画像只展示场景任务相关（岗位能力/实践场景），
+// 隐藏「课程成绩」块与「学习课程」计数（体系课/混合课课程）；恢复时置 true 即可。
+var SHOW_COURSE_SCORES=false;
+
+function levelCls(s){return s>=80?'exceed':s>=60?'meet':'below';}
+function colorByCls(cls){return cls==='exceed'?'#27b08a':cls==='meet'?'#5b76e8':'#e89b3a';}
+function gradByCls(cls){return cls==='exceed'?'#54cf9d':cls==='meet'?'#8c6ff0':'#f3c069';}
+
+(function(){
+  var q=new URLSearchParams(location.search);
+  var userId=q.get('userId');
+  if(!userId)return;
+  // 临时隐藏「课程成绩」块（体系课/混合课），恢复见顶部 SHOW_COURSE_SCORES 开关
+  if(!SHOW_COURSE_SCORES){var cc=document.getElementById('courseCard');if(cc)cc.style.display='none';}
+  var token=localStorage.getItem('zhiyu-portal-token')||localStorage.getItem('zhiyu-token');
+  if(!token)return;
+  var headers={'Authorization':'Bearer '+token};
+
+  var portraits=[], jobResults=[], courseScores=[], dashData=null, honors=[], activeIdx=0, allPositionIds=[];
+  var posModelMap={}; // positionId -> {domains:[{name,points:[{abilityPointId,name,weight,tasks:[{taskId,scenarioName,weight}]}]}]}
+  var posMap={};
+
+  Promise.all([
+    fetch('/api/v1/evaluation/portraits?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
+    fetch('/api/v1/evaluation/job-ability/results?userId='+encodeURIComponent(userId)+'&limit=50',{headers:headers}).then(function(r){return r.ok?r.json():null}),
+    fetch(SHOW_COURSE_SCORES?'/api/v1/evaluation/job-ability/course-scores?userId='+encodeURIComponent(userId):null,{headers:headers}).then(function(r){return r&&r.ok?r.json():null}),
+    fetch('/api/v1/evaluation/portraits/student-dashboard?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null}),
+    fetch('/api/v1/portal/workspace/honors?userId='+encodeURIComponent(userId),{headers:headers}).then(function(r){return r.ok?r.json():null})
+  ]).then(function(results){
+    var pData=results[0], jData=results[1], cData=results[2], dData=results[3], hData=results[4];
+    portraits=(pData&&pData.items)||[];
+    jobResults=(jData&&jData.items)||[];
+    courseScores=(cData&&cData.items)||[];
+    dashData=dData;
+    honors=(hData&&hData.items)||[];
+    renderHonors();
+    updateSummaryStats();
+    renderCourseScores();
+    renderRecommendations();
+
+    if(!portraits.length&&!jobResults.length){
+      document.getElementById('positionTabs').innerHTML='<span class="empty-state">暂无岗位能力测评数据，请先完成场景任务测评。</span>';
+      document.getElementById('evalTableBody').innerHTML='<tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>';
+      return;
+    }
+
+    // Build position map
+    jobResults.forEach(function(jr){
+      if(!posMap[jr.positionId]) posMap[jr.positionId]={name:jr.positionName};
+    });
+    portraits.forEach(function(p){
+      if(!posMap[p.careerPositionId]) posMap[p.careerPositionId]={name:p.careerPositionId};
+    });
+
+    allPositionIds=Object.keys(posMap);
+    if(!allPositionIds.length) return;
+
+    // Update left panel from first job result
+    if(jobResults.length){
+      var u=jobResults[0];
+      updateLeftPanel(u);
+    }
+
+    // Default selection
+    var pid=q.get('careerPositionId');
+    activeIdx=pid?allPositionIds.indexOf(pid):0;
+    if(activeIdx<0) activeIdx=0;
+
+    renderTabs();
+    selectPosition(allPositionIds[activeIdx]);
+  }).catch(function(){});
+
+  function updateLeftPanel(u){
+    document.getElementById('profileAvatar').textContent=(u.studentName||'?').charAt(0);
+    document.getElementById('profileName').innerHTML=(u.studentName||'--')+' <span class="sx">&#9794;</span>';
+    document.getElementById('profileSno').textContent='学号：'+(u.studentId||'--');
+    document.getElementById('profileTags').innerHTML=
+      '<span class="ptag a">'+(u.department||u.majorName||'--')+'</span>'+
+      '<span class="ptag b">'+(u.className||'--')+'</span>';
+    document.getElementById('biMajor').textContent=u.department||u.majorName||'--';
+    document.getElementById('biClass').textContent=u.className||'--';
+    document.getElementById('asPoints').textContent=u.totalAbilityPoints||0;
+    document.getElementById('asAchieved').textContent=u.achievedAbilityPoints||0;
+  }
+
+  // 获得荣誉：名称首字符为图标，颜色轮换
+  function renderHonors(){
+    var el=document.getElementById('honorList');
+    document.getElementById('honorCount').textContent=(honors.length||0)+' 项';
+    if(!honors.length){
+      el.innerHTML='<div class="empty-state" style="grid-column:1/-1;padding:18px 8px;">暂无荣誉</div>';
+      return;
+    }
+    el.innerHTML=honors.map(function(h,i){
+      var ch=(h.name||'?').charAt(0);
+      return '<div class="hn"><div class="ic h'+(i%4+1)+'">'+ch+'</div><div class="nm" title="'+(h.name||'')+'">'+(h.name||'')+'</div></div>';
+    }).join('');
+  }
+
+  // 学业概况：学习课程=有成绩课程数、实践场景=有评分场景数、岗位档案=认定结果数
+  function updateSummaryStats(){
+    document.getElementById('asCourses').textContent=SHOW_COURSE_SCORES?(courseScores.length||0):0;
+    document.getElementById('asScenes').textContent=(dashData&&dashData.sceneCount!=null?dashData.sceneCount:0)||0;
+    document.getElementById('asArchives').textContent=jobResults.length||0;
+  }
+
+  function updateLeftFromPortrait(p,jr){
+    if(!p)return;
+    if(p.classRank) document.getElementById('biClassRank').textContent='第 '+p.classRank+' / '+(p.classTotal||'-')+' 名';
+    else document.getElementById('biClassRank').textContent='--';
+    if(p.majorRank) document.getElementById('biMajorRank').textContent='第 '+p.majorRank+' / '+(p.majorTotal||'-')+' 名';
+    else document.getElementById('biMajorRank').textContent='--';
+    document.getElementById('asCredits').textContent=p.totalCredits||0;
+    if(jr){
+      document.getElementById('asPoints').textContent=jr.totalAbilityPoints||0;
+      document.getElementById('asAchieved').textContent=jr.achievedAbilityPoints||0;
+    }
+    var updated=p.updatedAt?new Date(p.updatedAt):null;
+    document.getElementById('imgUpdated').textContent=updated?
+      '更新于 '+updated.getFullYear()+'-'+String(updated.getMonth()+1).padStart(2,'0'):'';
+  }
+
+  function renderTabs(){
+    var el=document.getElementById('positionTabs');
+    el.innerHTML=allPositionIds.map(function(pid,i){
+      return '<span class="tab'+(i===activeIdx?' on':'')+'" data-idx="'+i+'" data-pid="'+pid+'">'
+        +(posMap[pid]&&posMap[pid].name||pid)+'</span>';
+    }).join('');
+    var tabs=el.querySelectorAll('.tab');
+    tabs.forEach(function(t){
+      t.onclick=function(){
+        tabs.forEach(function(x){x.classList.remove('on')});
+        this.classList.add('on');
+        selectPosition(this.dataset.pid);
+      };
+    });
+  }
+
+  function selectPosition(positionId){
+    var portrait=null;
+    for(var i=0;i<portraits.length;i++){if(portraits[i].careerPositionId===positionId){portrait=portraits[i];break;}}
+    var jobResult=null;
+    for(var j=0;j<jobResults.length;j++){if(jobResults[j].positionId===positionId){jobResult=jobResults[j];break;}}
+    var domainScores=(portrait&&portrait.domainScores)||[];
+    var abilityPoints=(jobResult&&jobResult.abilityPointDetails)||[];
+
+    updateLeftFromPortrait(portrait,jobResult);
+    renderRadar(domainScores,jobResult);
+    renderHeroStats(jobResult,portrait);
+    renderInfoNote(jobResult,domainScores);
+    renderSuggestions(abilityPoints);
+    renderCourseScores();
+    renderRecommendations();
+
+    // 能力域+能力点合并表格：岗位模型（含任务来源权重）按需加载后渲染
+    if(posModelMap[positionId]){
+      renderCombinedTable(domainScores,abilityPoints,posModelMap[positionId]);
+      return;
+    }
+    document.getElementById('evalTableBody').innerHTML='<tr><td colspan="6" class="empty-state">正在加载能力模型...</td></tr>';
+    fetch('/api/v1/evaluation/certifications/positions/'+encodeURIComponent(positionId)+'/model',{headers:headers})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(model){
+        posModelMap[positionId]=model;
+        renderCombinedTable(domainScores,abilityPoints,model);
+      })
+      .catch(function(){renderCombinedTable(domainScores,abilityPoints,null);});
+  }
+
+  // 能力点来源比例：任务权重中场景任务（scenarioName 非空）vs 课程任务占比
+  function calcSourceRatio(point){
+    if(!point||!point.tasks||!point.tasks.length) return '';
+    var sceneW=0, courseW=0;
+    point.tasks.forEach(function(t){
+      if(t.scenarioName) sceneW+=t.weight||0; else courseW+=t.weight||0;
+    });
+    var total=sceneW+courseW;
+    if(total<=0) return '';
+    var parts=[];
+    if(sceneW>0) parts.push('场景 '+Math.round(sceneW/total*100)+'%');
+    if(courseW>0) parts.push('课程 '+Math.round(courseW/total*100)+'%');
+    return parts.join(' · ');
+  }
+
+  // 系统五档掌握程度（level_mapping 为空时使用）
+  var SYS_LEVELS=[{level:'understand',min:0},{level:'comprehend',min:60},{level:'master',min:70},{level:'proficient',min:80},{level:'expert',min:90}];
+
+  // 分数落档（0-4）：按分档配置（自定义 levelMapping 或系统五档）的 min 阈值
+  function rankOfScore(score,levels){
+    var arr=(levels&&levels.length)?levels:SYS_LEVELS;
+    var rank=-1;
+    for(var i=0;i<arr.length;i++){ if(score>=(arr[i].min!=null?arr[i].min:0)) rank=i; }
+    return rank;
+  }
+
+  // 等级代码→档位（0-4），未命中返回 -1
+  function rankOfCode(code,levels){
+    var arr=(levels&&levels.length)?levels:SYS_LEVELS;
+    for(var i=0;i<arr.length;i++){ if(arr[i].level===code) return i; }
+    return -1;
+  }
+
+  // 认定结果：能力点任务加权得分落档，与岗位预设掌握程度对比
+  // 档位低于岗位所需→未达标；等于→已达标；高于→已超越
+  function resultStatus(ap,point){
+    if(!ap) return {cls:'below',label:'未达标'};
+    var levels=(point&&point.levelMapping&&point.levelMapping.length)?point.levelMapping:null;
+    var sr=rankOfScore(ap.score||0,levels);
+    var rr=rankOfCode(ap.requiredLevel,levels);
+    if(rr<0) rr=rankOfCode(ap.requiredLevel,null);
+    if(sr<0||rr<0) return {cls:ap.achieved?'meet':'below',label:ap.achieved?'已达标':'未达标'};
+    if(sr>rr) return {cls:'exceed',label:'已超越'};
+    if(sr===rr) return {cls:'meet',label:'已达标'};
+    return {cls:'below',label:'未达标'};
+  }
+
+  // 能力域 + 能力点合并表格：能力域合并单元格（得分直接数字），能力点行（得分进度条 + 来源比例）
+  function renderCombinedTable(domainScores,abilityPoints,model){
+    var tbody=document.getElementById('evalTableBody');
+    if((!domainScores||!domainScores.length)&&(!abilityPoints||!abilityPoints.length)){
+      tbody.innerHTML='<tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>';
+      return;
+    }
+    var apMap={};
+    (abilityPoints||[]).forEach(function(ap){apMap[ap.abilityPointId||ap.id]=ap;});
+    var domainScoreMap={};
+    (domainScores||[]).forEach(function(d){domainScoreMap[d.domainLabel||d.domain]=d;});
+
+    var html='';
+    if(model&&model.domains&&model.domains.length){
+      model.domains.forEach(function(domain,di){
+        var pts=domain.points||[];
+        var domainScore=domainScoreMap[domain.name];
+        var ds=domainScore?domainScore.score:0;
+        var dCls=levelCls(ds);
+        var domCell='<td rowspan="'+(pts.length||1)+'" class="dn">'
+          +'<div>'+(domain.name||'')+'</div>'
+          +'<div class="ds '+dCls+'" style="margin-top:6px">'+ds.toFixed(0)+'</div>'
+          +'</td>';
+        if(!pts.length){
+          html+='<tr class="d'+(di%3+1)+'">'+domCell+'<td colspan="5" style="color:var(--ink3);font-size:11px;">暂无能力点</td></tr>';
+          return;
+        }
+        pts.forEach(function(point,idx){
+          var ap=apMap[point.abilityPointId];
+          var s=ap?ap.score||0:0;
+          var cls=levelCls(s);
+          var source=calcSourceRatio(point);
+          var st=resultStatus(ap,point);
+          html+='<tr class="d'+(di%3+1)+'">'
+            +(idx===0?domCell:'')
+            +'<td style="font-weight:600">'+(point.name||'')+'</td>'
+            +'<td class="c" style="color:var(--ink2);font-size:10.5px;">'+(source||'-')+'</td>'
+            +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
+            +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
+            +'<td class="c"><span class="lv '+st.cls+'"><span class="dot"></span>'+st.label+'</span></td>'
+            +'</tr>';
+        });
+      });
+    } else if(abilityPoints&&abilityPoints.length){
+      // 无岗位模型时按能力点平铺
+      html=abilityPoints.map(function(ap){
+        var s=ap.score||0, cls=levelCls(s);
+        var st=resultStatus(ap,null);
+        return '<tr><td class="dn"></td>'
+          +'<td style="font-weight:600">'+(ap.abilityPointName||ap.name||'')+'</td>'
+          +'<td class="c">-</td>'
+          +'<td class="c"><span class="ds '+cls+'">'+s.toFixed(0)+'</span></td>'
+          +'<td><div class="ev-bar"><div class="ev-fill '+cls+'" style="width:'+Math.min(s,100)+'%">'+s.toFixed(0)+'</div></div></td>'
+          +'<td class="c"><span class="lv '+st.cls+'"><span class="dot"></span>'+st.label+'</span></td>'
+          +'</tr>';
+      }).join('');
+    } else {
+      html='<tr><td colspan="6" class="empty-state">暂无能力域认定数据</td></tr>';
+    }
+    tbody.innerHTML=html;
+  }
+
+  // 能力提升建议：未达标能力点名称标签
+  function renderSuggestions(abilityPoints){
+    var el=document.getElementById('adviceTags');
+    var unachieved=(abilityPoints||[]).filter(function(ap){return !ap.achieved;});
+    if(!unachieved.length){
+      el.innerHTML='<span class="t">暂无待提升能力点</span>';
+      return;
+    }
+    el.innerHTML=unachieved.map(function(ap){
+      return '<span class="t">'+(ap.abilityPointName||ap.name||'')+'</span>';
+    }).join('');
+  }
+
+  // 课程成绩表格：租户课程 + 学生成绩（有成绩的课程优先展示，无成绩的分数/排名显示 --），最多 5 条滚动
+  function renderCourseScores(){
+    if(!SHOW_COURSE_SCORES)return; // 临时隐藏（顶部 SHOW_COURSE_SCORES 开关）
+    var el=document.getElementById('courseScores');
+    var courses=(dashData&&dashData.courses)||[];
+    if(!courses.length){
+      el.innerHTML='<div class="empty-state">暂无课程成绩数据</div>';
+      return;
+    }
+    var sorted=courses.slice().sort(function(a,b){
+      var as=a.score!=null?1:0, bs=b.score!=null?1:0;
+      if(as!==bs) return bs-as;
+      return 0;
+    });
+    el.innerHTML='<table>'
+      +'<thead><tr><th>课程名称</th><th class="c">排名</th><th class="c">分数</th></tr></thead><tbody>'
+      +sorted.slice(0,5).map(function(c){
+        var has=c.score!=null;
+        return '<tr><td class="gn">'+(c.courseName||'')+'</td>'
+          +'<td class="rk c">'+(has&&c.rank!=null?(c.rank+'/'+c.total):'--')+'</td>'
+          +'<td class="'+(has?'gs':'gs muted')+' c">'+(has?Number(c.score).toFixed(1):'--')+'</td></tr>';
+      }).join('')
+      +'</tbody></table>';
+  }
+
+  function renderRadar(domainScores,jobResult){
+    var svg=document.getElementById('radar');
+    svg.innerHTML='';
+    var N=domainScores.length||1;
+    var defs=document.createElementNS(NS,'defs');
+    defs.innerHTML='<linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b76e8"/><stop offset="1" stop-color="#8c6ff0"/></linearGradient>';
+    svg.appendChild(defs);
+
+    function pt(i,r){var a=-Math.PI/2+i*2*Math.PI/N;return[cx+R*r*Math.cos(a),cy+R*r*Math.sin(a)];}
+
+    [0.25,0.5,0.75,1].forEach(function(l){
+      var pts=[];for(var i=0;i<N;i++) pts.push(pt(i,l));
+      var p=document.createElementNS(NS,'polygon');
+      p.setAttribute('points',pts.map(function(d){return d.join(',')}).join(' '));
+      p.setAttribute('fill','none');p.setAttribute('stroke','#e6e9f4');p.setAttribute('stroke-width','1');
+      svg.appendChild(p);
+    });
+    for(var i=0;i<N;i++){
+      var ep=pt(i,1);var ln=document.createElementNS(NS,'line');
+      ln.setAttribute('x1',cx);ln.setAttribute('y1',cy);ln.setAttribute('x2',ep[0]);ln.setAttribute('y2',ep[1]);
+      ln.setAttribute('stroke','#e6e9f4');svg.appendChild(ln);
+    }
+
+    var stuVals=domainScores.map(function(d){return (d.score||0)/100;});
+    var stuPts=stuVals.map(function(v,i){return pt(i,v);});
+    var poly=document.createElementNS(NS,'polygon');
+    poly.setAttribute('points',stuPts.map(function(d){return d.join(',')}).join(' '));
+    poly.setAttribute('fill','url(#rg)');poly.setAttribute('stroke','#5b76e8');
+    poly.setAttribute('stroke-width','2.2');poly.setAttribute('fill-opacity','0.26');
+    svg.appendChild(poly);
+    stuVals.forEach(function(v,i){
+      var ep=pt(i,v);var c=document.createElementNS(NS,'circle');
+      c.setAttribute('cx',ep[0]);c.setAttribute('cy',ep[1]);c.setAttribute('r','3.4');
+      c.setAttribute('fill','#fff');c.setAttribute('stroke','#5b76e8');c.setAttribute('stroke-width','2');
+      svg.appendChild(c);
+    });
+
+    domainScores.forEach(function(d,i){
+      var ep=pt(i,1.22);var tx=document.createElementNS(NS,'text');
+      tx.setAttribute('x',ep[0]);tx.setAttribute('y',ep[1]+4);
+      tx.setAttribute('font-size','11');tx.setAttribute('font-weight','600');tx.setAttribute('fill','#5d6883');
+      var anc='middle';if(ep[0]<cx-8)anc='end';if(ep[0]>cx+8)anc='start';
+      tx.setAttribute('text-anchor',anc);
+      tx.textContent=(d.domainLabel||d.domain||'').substring(0,6);
+      svg.appendChild(tx);
+    });
+
+    var rate=jobResult&&jobResult.totalAbilityPoints>0?(jobResult.achievedAbilityPoints/jobResult.totalAbilityPoints*100):0;
+    document.getElementById('radarCenter').textContent=(rate||0).toFixed(0)+'%';
+  }
+
+  function renderHeroStats(jr,p){
+    // 岗位能力达成率 = 达标能力点数量 / 岗位所有能力点数量（百分比）
+    var rate=jr&&jr.totalAbilityPoints>0?(jr.achievedAbilityPoints/jr.totalAbilityPoints*100):0;
+    document.getElementById('statRate').textContent=(jr?rate.toFixed(0):'--')+'%';
+    document.getElementById('statCompetency').textContent=(jr&&jr.positionCompetency!=null?jr.positionCompetency.toFixed(1):'--')+'%';
+    document.getElementById('statCompetencyV2').textContent=(jr&&jr.positionCompetencyV2!=null?jr.positionCompetencyV2.toFixed(1):'--')+'%';
+    document.getElementById('statCognition').textContent=jr&&jr.abilityCognitionScore!=null?jr.abilityCognitionScore.toFixed(1):'--';
+  }
+
+  function renderInfoNote(jr,domainScores){
+    var posName=jr?jr.positionName:'';
+    var rate=jr&&jr.totalAbilityPoints>0?(jr.achievedAbilityPoints/jr.totalAbilityPoints*100):0;
+    var achieved=jr?jr.achievedAbilityPoints:0, total=jr?jr.totalAbilityPoints:0;
+    var exceedNames=[], belowNames=[];
+    domainScores.forEach(function(d){
+      var s=d.score||0;
+      if(s>=80) exceedNames.push(d.domainLabel||d.domain||'');
+      else if(s<60) belowNames.push(d.domainLabel||d.domain||'');
+    });
+    var desc='<b style="color:var(--pri)">'+posName+'</b> 岗位能力达成率 <b style="color:var(--exceed)">'+rate.toFixed(0)+'%</b>（'+achieved+'/'+total+' 个能力点达标），';
+    if(exceedNames.length) desc+='<b style="color:var(--exceed)">'+exceedNames.join('、')+'</b> 表现突出；';
+    if(belowNames.length) desc+='<b style="color:var(--below)">'+belowNames.join('、')+'</b> 尚未达标。';
+    document.getElementById('infoDesc').innerHTML=desc;
+  }
+
+  // 推荐就业方向：已发布场景关联岗位（最多 5 个滚动）；
+  // 学生在该岗位有测评结果（job-ability/results）时按达成率显示匹配度与进度条，否则显示 --
+  function renderRecommendations(){
+    var el=document.getElementById('recommendJobs');
+    var positions=(dashData&&dashData.positions)||[];
+    if(!positions.length){
+      el.innerHTML='<div class="empty-state">暂无推荐数据</div>';
+      return;
+    }
+    var jrMap={};
+    jobResults.forEach(function(jr){ if(jr.positionId) jrMap[jr.positionId]=jr; });
+    el.innerHTML=positions.slice(0,5).map(function(p,i){
+      var jr=jrMap[p.positionId];
+      var bgCls=i%2===0?'acc':'acc2';
+      if(jr){
+        var rate=jr.achievementRate||0;
+        var cls=rate>=80?'g':rate>=60?'b':'a';
+        var label=rate>=80?'优秀':rate>=60?'良好':'待提升';
+        var levelColor=rate>=80?'var(--exceed)':rate>=60?'var(--pri2)':'var(--below)';
+        return '<div class="jc '+bgCls+'">'
+          +'<div class="jtp"><span class="jn">'+(p.positionName||'')+'</span><span class="mt2 '+cls+'">匹配 '+Number(rate).toFixed(0)+'%</span></div>'
+          +'<div class="jbar"><i class="'+cls+'" style="width:'+Math.min(rate,100)+'%"></i></div>'
+          +'<div class="jdsc"><b style="color:'+levelColor+'">'+label+'</b></div>'
+          +'</div>';
+      }
+      return '<div class="jc '+bgCls+'">'
+        +'<div class="jtp"><span class="jn">'+(p.positionName||'')+'</span><span class="mt2 a">匹配 --</span></div>'
+        +'<div class="jbar"><i class="a" style="width:0%"></i></div>'
+        +'<div class="jdsc"><b style="color:var(--ink3)">暂未测评</b></div>'
+        +'</div>';
+    }).join('');
+  }
+})();
+</script>
+</body>
+</html>

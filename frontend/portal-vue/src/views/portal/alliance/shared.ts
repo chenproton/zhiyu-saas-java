@@ -101,6 +101,7 @@ export interface AllianceAchievement {
   viewCount: number;
   secondaryColleges?: string[];
   isPublic: boolean;
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 }
