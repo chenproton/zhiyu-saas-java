@@ -17,6 +17,7 @@
 | **写/改 AI 功能** | [`ai-development.md`](ai-development.md)（AIService 统一底座） |
 | **安全非功能（密码/会话/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
 | **性能/可观测/国际化/测试** | [`non-functional-standards.md`](non-functional-standards.md) |
+| **跑 / 扩展自动化测试（UI 冒烟 + 单测）** | [`testing-guide.md`](testing-guide.md)（全量点击测试 + 自定义页面流程 flow 书写 + 后端/前端单测门禁） |
 | **写/审任何文档** | [`documentation-standards.md`](documentation-standards.md)（分层 + 砍废话）+ [`prose-standards.md`](prose-standards.md)（文字品控） |
 | **做架构取舍/技术选型** | [`decisions/README.md`](decisions/README.md)（ADR：先看有没有既有决策） |
 | **审 PR / 审改动** | [`code-review-checklist.md`](code-review-checklist.md)（语义检查） |
@@ -37,6 +38,7 @@
 ### 教程型（按顺序做完一件事）
 
 - [`初始化与部署指南.md`](初始化与部署指南.md)：Java 框架从零初始化 → 数据库 → 本地启动 → 生产构建 → Docker 部署（按顺序走）
+- [`testing-guide.md`](testing-guide.md)：UI 冒烟测试怎么用（全量点击 + 自定义页面流程 flow 书写）+ 后端/前端单测快速门禁
 
 ## 目录结构速览
 
@@ -61,6 +63,7 @@ docs/
 ├── components.md                # 组件复用速查
 ├── forms-tables.md              # 表单/表格架构盘点
 ├── resource-snapshot-versioning.md  # 快照版本机制
+├── testing-guide.md                # 自动化测试使用指南（UI 冒烟 + flow + 单测门禁）
 ├── 系统功能清单.md               # 全平台能力盘点（人类/AI 对照用）
 ├── backend-go-to-java-migration.md  # Go→Java 迁移方案 + 实时进度
 ├── 后端功能对齐差异表.md            # 双后端功能对齐差异
