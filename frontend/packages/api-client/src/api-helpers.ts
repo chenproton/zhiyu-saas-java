@@ -141,6 +141,20 @@ const TOKEN_KEYS: Record<AuthPlatform, string> = {
   partner: 'zhiyu-partner-token',
 }
 
+// Go/Java 双栈共用同一域名（ai.zhiyu.com.cn）与同一套前端代码，仅 basePath 不同
+// （Go：/portal，Java：/java/portal）。localStorage 按域名隔离、不按路径隔离，
+// 若两版共用同一 token key 会导致登录态互相覆盖（一个退出另一个也退出）。
+// 这里按当前路径是否以 /java/ 开头区分 Go/Java，各自维护独立登录态。
+function isJavaPath(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname.startsWith('/java/')
+}
+
+function getTokenKey(platform: AuthPlatform): string {
+  const base = TOKEN_KEYS[platform]
+  return isJavaPath() ? `${base}-java` : base
+}
+
 function getDefaultPlatform(): AuthPlatform {
   if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEFAULT_PLATFORM) {
     return process.env.NEXT_PUBLIC_DEFAULT_PLATFORM as AuthPlatform
@@ -153,17 +167,19 @@ function getDefaultPlatform(): AuthPlatform {
 export function getToken(platform?: AuthPlatform): string | null {
   if (typeof window === 'undefined') return null
   const p = platform ?? getDefaultPlatform()
-  return localStorage.getItem(TOKEN_KEYS[p])
+  return localStorage.getItem(getTokenKey(p))
 }
 
 // handleUnauthorized 统一处理 401：清除对应平台 token 并跳转登录页。
 // requestWithPlatform / authedFetch / SSE 流式调用共用，避免登录跳转逻辑双份维护漂移。
 export function handleUnauthorized(platform: AuthPlatform): void {
-  localStorage.removeItem(TOKEN_KEYS[platform])
+  localStorage.removeItem(getTokenKey(platform))
   const loginPath =
     platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login'
-  if (!window.location.pathname.startsWith(loginPath)) {
-    window.location.href = loginPath
+  // Java 版（basePath=/java）401 时应跳回 /java/portal/login，而非 Go 版登录页
+  const prefix = isJavaPath() ? '/java' : ''
+  if (!window.location.pathname.startsWith(prefix + loginPath)) {
+    window.location.href = prefix + loginPath
   }
 }
 
@@ -292,13 +308,13 @@ export { authedFetch }
 export function setToken(token: string, platform?: AuthPlatform) {
   if (typeof window !== 'undefined') {
     const p = platform ?? getDefaultPlatform()
-    localStorage.setItem(TOKEN_KEYS[p], token)
+    localStorage.setItem(getTokenKey(p), token)
   }
 }
 
 export function removeToken(platform?: AuthPlatform) {
   if (typeof window !== 'undefined') {
     const p = platform ?? getDefaultPlatform()
-    localStorage.removeItem(TOKEN_KEYS[p])
+    localStorage.removeItem(getTokenKey(p))
   }
 }

@@ -82,6 +82,20 @@ describe('request 401 处理', () => {
     expect(location.href).toBe('/portal/login')
   })
 
+  it('Java 版（/java/ 前缀）401 清除独立 java token，不影响 Go 版 token，跳转 /java/portal/login', async () => {
+    const location = fakeWindow('/java/portal/workspace')
+    const store = fakeLocalStorage()
+    store.set('zhiyu-portal-token-java', 'stale-java-token')
+    store.set('zhiyu-portal-token', 'go-token')
+    globalThis.fetch = vi.fn(async () => fakeResponse(401, { error: 'token expired' }))
+
+    await expect(request('/some/api')).rejects.toThrow('token expired')
+    // Java 版只清除自己的 token，Go 版 token 保留
+    expect(store.get('zhiyu-portal-token-java')).toBeUndefined()
+    expect(store.get('zhiyu-portal-token')).toBe('go-token')
+    expect(location.href).toBe('/java/portal/login')
+  })
+
   it('已在登录页时 401 不跳转（避免死循环），错误仍抛出', async () => {
     const location = fakeWindow('/portal/login')
     fakeLocalStorage()
