@@ -264,3 +264,49 @@ export interface SceneEvaluationResult {
   createdAt?: string;
   updatedAt?: string;
 }
+
+/** 测评中心条目（landing 考试中心，GET /evaluation/exam-center，对齐 shared-types ExamCenterItem） */
+export interface ExamCenterItem {
+  id: string;
+  examId: string;
+  usageName: string;
+  examName: string;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  duration?: number;
+  status: 'published' | 'in_progress' | 'finished';
+  questionCount: number;
+  totalScore: number;
+  participatable: boolean;
+  submitted: boolean;
+  score?: number;
+  studentView: boolean;
+}
+
+/** 试卷快照（对齐 React lib/exam-snapshot.ts 与 shared-types snapshot.ts） */
+export interface ExamSnapshotQuestion {
+  id: string;
+  exam_id: string;
+  question_id?: string;
+  type?: string;
+  content: string;
+  options?: string[];
+  answer?: string | string[];
+  analysis?: string;
+  score?: number;
+  sort_order?: number;
+}
+
+export interface ExamSnapshot {
+  exam: {
+    id: string;
+    name: string;
+    description?: string;
+    status?: string;
+    total_score?: number;
+    duration?: number;
+    version?: string;
+  };
+  exam_questions: ExamSnapshotQuestion[];
+}

@@ -16,6 +16,20 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    // 岗位详情（公开 landing 子页，对齐 React /job/landing/[id]）
+    path: '/job/landing/:id',
+    name: 'JobLandingDetail',
+    component: () => import('@/views/landing/job-detail.vue'),
+    meta: { public: true }
+  },
+  {
+    // 岗位学习页（公开 landing 子页，对齐 React /job/landing/[id]/learn）
+    path: '/job/landing/:id/learn',
+    name: 'JobLandingLearn',
+    component: () => import('@/views/landing/job-learn.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/scene/landing',
     name: 'SceneLanding',
     component: () => import('@/views/landing/scene.vue'),
