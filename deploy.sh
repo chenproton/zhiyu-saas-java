@@ -431,7 +431,10 @@ systemctl enable --now nginx 2>/dev/null || true
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/zhiyu-saas /etc/nginx/sites-available/zhiyu-saas
 
 # Go
-if ! command -v go >/dev/null 2>&1; then
+# 校验存在且版本匹配（GO_VERSION）：已装旧版本（如 offline 曾提供 1.23.7）而 go.mod 要求
+# 1.25.0 时，只查 command -v 会跳过安装，导致 go build 自动下载 toolchain 在无网环境失败
+GO_VERSION="${GO_VERSION:-1.25.0}"
+if ! { command -v go >/dev/null 2>&1 && go version 2>/dev/null | grep -qF "go${GO_VERSION}"; }; then
   is_root || die "需要 root 安装 Go"
   log "安装 Go..."
   ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"; [[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
