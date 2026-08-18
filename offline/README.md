@@ -6,17 +6,19 @@
 
 ```
 offline/
-├── get-docker.sh                # Docker 官方安装脚本（可选）
-│                                 # 下载: https://get.docker.com
-├── go1.23.7.linux-amd64.tar.gz  # Go 安装包（可选）
-│                                 # 下载: https://mirrors.aliyun.com/golang/go1.23.7.linux-amd64.tar.gz
+├── get-docker.sh                # Docker 官方安装脚本（可选，debs 优先）
+├── go1.25.0.linux-amd64.tar.gz  # Go 安装包（必须与 go.mod 的 go 版本一致）
+│                                 # 下载: https://mirrors.aliyun.com/golang/go1.25.0.linux-amd64.tar.gz
 ├── node-v22.12.0-linux-x64.tar.xz  # Node.js 二进制包（可选）
 │                                    # 下载: https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz
-├── pnpm-11.18.0.tgz             # pnpm npm 包（可选）
-│                                 # 下载: npm pack pnpm@11.18.0
-└── docker-images/               # Docker 镜像离线包（可选）
+├── pnpm-9.15.9.tgz             # pnpm npm 包（必须与 PNPM_VERSION/pnpm-lock.yaml 一致）
+│                                 # 下载: npm pack pnpm@9.15.9
+└── docker-images/               # Docker 镜像离线包（可选，缺省时才 docker pull）
     ├── postgres-15-alpine.tar   # docker pull postgres:15-alpine && docker save -o postgres-15-alpine.tar postgres:15-alpine
     ├── redis-7-alpine.tar       # docker pull redis:7-alpine && docker save -o redis-7-alpine.tar redis:7-alpine
+    ├── nginx-1.27-alpine.tar    # 网关 zhiyu-nginx + 前端容器 zhiyu-edu 基础镜像
+    ├── alpine-3.21.tar          # Go 后端容器基础镜像（backend/go/Dockerfile）
+    ├── ubuntu-24.04.tar         # Java 后端容器基础镜像（deploy/docker/java-backend.Dockerfile）
     └── kkfileview-4.4.0.tar     # docker pull fangzhengjin/kkfileview:4.4.0 && docker save -o kkfileview-4.4.0.tar fangzhengjin/kkfileview:4.4.0
 └── image-editor/               # 图片编辑器（unlayer）完整离线资产（必需）
     ├── embed.js                # 加载器（base 已改写为同源 /image-editor）
@@ -32,10 +34,13 @@ offline/
 └── ip2region_v4.xdb            # ip2region v2.2 IPv4 数据文件（必需，~11MB，登录日志 IP 归属地）
                                 # 下载: https://github.com/lionsoul2014/ip2region/raw/master/data/ip2region_v4.xdb
                                 # deploy.sh 构建后端镜像时自动打包进容器 /app/data/
-├── node_modules.tar.gz          # 前端 npm 依赖离线包（可选，~370MB，完全离线安装 npm 依赖用）
-│                                 # 生成（联网开发机，装好依赖后）:
-│                                 #   tar --hard-dereference -czf offline/node_modules.tar.gz node_modules
-│                                 # deploy.sh 检测到本包时解压到构建树、跳过 pnpm install（无需 npm registry / pnpm store）
+├── node_modules.tar.gz          # 前端 npm 依赖离线包（可选，完全离线安装 npm 依赖用）
+│                                 # 生成（联网开发机，装好全部依赖后，覆盖 React(edu) + Vue(portal-vue) 两个 workspace）:
+│                                 #   tar --hard-dereference -czf offline/node_modules.tar.gz \
+│                                 #     node_modules frontend/edu/node_modules \
+│                                 #     frontend/packages/{ui,api-client,shared-types}/node_modules \
+│                                 #     frontend/portal-vue/node_modules
+│                                 # deploy.sh/deploy-java.sh 检测到本包时解压到构建树、跳过 pnpm install（无需 npm registry / pnpm store）
 └── file-viewer/                # file-viewer 预览服务的运行时离线资产（typst 默认字体）
     └── typst-fonts/            # 17 个开源字体（DejaVuSansMono / LibertinusSerif / NewCM / NewCMMath，~8.4MB）
                                 # 下载: https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/
@@ -45,7 +50,7 @@ offline/
 > file-viewer 其余运行时资产（CAD/archive/ppt/model/typst 的 worker/wasm、pdf 的 cmaps/标准字体/CJK 字体兜底）
 > 均来自 npm 依赖包（`@flyfish-dev/cad-viewer`、`libarchive.js`、`@file-viewer/ppt`、`occt-import-js`、
 > `@myriaddreamin/typst-ts-*`、`pdfjs-dist`、`@fontsource-variable/noto-sans-sc`），由
-> `frontend/edu/scripts/copy-file-viewer-assets.mjs` 在 `next build` 前自动复制到 `frontend/edu/public/`，
+> `frontend/edu/scripts/copy-file-viewer-assets.mjs` 在 `vite build` 前自动复制到 `frontend/edu/public/`，
 > 无需额外离线下载。唯一需要从 CDN 预置的是 `file-viewer/typst-fonts/`（上方）。
 
 ## 使用方式
@@ -75,7 +80,7 @@ Ubuntu 24.04 x86_64）复制目录后执行 `./install.sh` 即可全离线启动
 
 - 资产位于 `offline/image-editor/`，随代码提交；`deploy.sh` 构建前端时自动同步到
   `frontend/edu/public/image-editor/`（`frontend/edu/public/image-editor` 是指向仓库
-  `offline/image-editor` 的符号链接，供本地 `next dev/build` 直接使用）。
+  `offline/image-editor` 的符号链接，供本地 `vite dev/build` 直接使用）。
 - 前端通过 `scriptUrl="/image-editor/embed.js"` + `env.IMAGE_EDITOR_BASE_URL` +
   `offline: true` 使用本地资产，全程无外部请求（Google Fonts 的 UI 字体请求会失败，
   自动回退系统字体，仅外观微差）。

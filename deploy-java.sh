@@ -62,7 +62,15 @@ build() {
 
   cd "$REPO_DIR/frontend/portal-vue"
   log "构建 Vue 业务门户（production，basePath=/java/portal/）..."
-  pnpm install --silent > "$LOG_DIR/portal-vue-install.log" 2>&1 || true
+  # 局域网/离线部署：offline/node_modules.tar.gz 命中则解压 portal-vue 依赖，跳过联网 pnpm install
+  local offline_tar="$REPO_DIR/offline/node_modules.tar.gz"
+  if [[ -f "$offline_tar" ]] && [[ ! -d node_modules ]]; then
+    log "  离线依赖包命中，解压 portal-vue node_modules..."
+    tar -xzf "$offline_tar" -C "$REPO_DIR" frontend/portal-vue/node_modules 2>/dev/null \
+      || tar -xzf "$offline_tar" -C "$REPO_DIR" 2>/dev/null || true
+  fi
+  pnpm install --offline --silent > "$LOG_DIR/portal-vue-install.log" 2>&1 || \
+    pnpm install --silent > "$LOG_DIR/portal-vue-install.log" 2>&1 || true
   pnpm build > "$LOG_DIR/portal-vue-build.log" 2>&1
   log "Vue 门户构建完成"
 
