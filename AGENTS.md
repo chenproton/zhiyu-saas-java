@@ -1,6 +1,6 @@
 # 知与 SaaS 双后端仓库开发契约（Go + Java）
 
-> 本仓库同时维护两套后端：**Go 后端**（`backend/go/`，线上运行）与 **Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名），共用同一 PostgreSQL，配套两套前端：React/Next.js（`frontend/edu`，Go 与 Java 共用）+ Vue3/Element Plus（`frontend/plus-ui`，Java 配套）。
+> 本仓库同时维护两套后端：**Go 后端**（`backend/go/`，线上运行）与 **Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名），共用同一 PostgreSQL，配套三套前端：**React SPA**（`frontend/edu`，Vite 7 + React Router，Go 配套）+ **Vue 业务门户**（`frontend/portal-vue`，Java 配套）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架，Java 配套）。
 > 开发契约分两部分：第一部分为 Go 后端契约，第二部分为 Java 后端框架契约。按所改后端选择对应契约执行。
 
 ### 顶层目录结构
@@ -10,9 +10,10 @@
 │   ├── go/          # Go 后端（cmd/internal/migrations/vendor/go.mod）
 │   └── java/        # Java 后端（ruoyi-*/ + pom.xml + mvnw + script/，多模块 Maven）
 ├── frontend/
-│   ├── edu/         # React/Next.js 前端（原 apps/edu，Go 与 Java 共用）
+│   ├── edu/         # React SPA（Vite 7 + React Router，Go 配套，原 apps/edu）
 │   ├── packages/    # React 共享包（api-client/shared-types/ui）
-│   └── plus-ui/     # Vue3/Element Plus 前端（Java 配套）
+│   ├── portal-vue/  # Vue 业务门户（Element Plus + Pinia，Java 配套）
+│   └── plus-ui/     # Vue 管理端（RuoYi 框架，Java 配套）
 ├── docs/            # 全量文档（Go+Java 合并、spec、ADR、规范）
 ├── deploy/          # docker-compose / nginx / Dockerfile（Go+Java 两套编排）
 ├── scripts/         # spec-check / ui-smoke / package-release 等工具
@@ -128,7 +129,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖。
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
-4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`frontend/edu/public/image-editor`（符号链接）、`backend/go/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`。
+4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`frontend/edu/public/image-editor`（符号链接）、`backend/go/vendor/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`。
 
 ## 六、规范索引（细则去哪找）
 
@@ -178,7 +179,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 
 ## 项目定位
 
-本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于 `backend/java/`，前端 plus-ui（Vue3 + Element Plus + pnpm）位于 `frontend/plus-ui/` 目录，代码生成器内置模板产出前端骨架。
+本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于 `backend/java/`，配套前端为 Vue 业务门户 `frontend/portal-vue`（Element Plus + Pinia）与 Vue 管理端 `frontend/plus-ui`（RuoYi 框架），代码生成器内置模板产出前端骨架。
 
 > 🔴 **本项目遵循框架约定**：包名 `org.dromara`，**三层架构无 DAO 层**（Controller→Service→Mapper，直接用 `BaseMapperPlus`），Entity 继承 `BaseEntity`，查询用 `QueryBuilder.lambda`，标准 REST 路径（`/list`、`/{id}`）。不要套用 `plus.ruoyi` / DAO 层 / `PlusLambdaQuery` / `/pageXxx` 等其它衍生版约定。
 

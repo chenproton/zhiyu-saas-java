@@ -49,7 +49,7 @@ resolve_db_password() {
   export ZHIYU_DB_PASSWORD="change-me"
 }
 
-# ---------- 1. 构建（宿主机构建 jar 与前端 standalone，再打进镜像） ----------
+# ---------- 1. 构建（宿主机构建 jar 与 Vue 门户静态产物，再打进镜像） ----------
 build() {
   if [[ "$MODE" == "--skip-build" ]]; then
     log "跳过构建（--skip-build）"

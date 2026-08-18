@@ -1,5 +1,5 @@
 // 业务门户请求层 —— 逐字移植 frontend/packages/api-client/src/api-helpers.ts
-// 与 Go/Next.js 业务门户共用同一套契约（裸 JSON、{items,total}、/api/v1、Bearer token）。
+// 与 Go/React 业务门户共用同一套契约（裸 JSON、{items,total}、/api/v1、Bearer token）。
 
 export interface ListResponse<T> {
   items: T[];

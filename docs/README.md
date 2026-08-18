@@ -13,7 +13,7 @@
 | **写/改后端代码** | [`refactor-layering.md`](refactor-layering.md)（Go 分层红线）+ [`backend-reuse.md`](backend-reuse.md)（Go 后端复用速查）；Java 后端见根 `AGENTS.md` 第二部分 + [`初始化与部署指南.md`](初始化与部署指南.md) |
 | **Java 后端初始化/部署/多租户** | [`初始化与部署指南.md`](初始化与部署指南.md)（Java 框架环境/启动/构建/Docker）+ [`多租户功能扩展规范.md`](多租户功能扩展规范.md)（Java 多租户扩展）+ [`Git Flow 开发协作简易指南.md`](Git Flow 开发协作简易指南.md)（Java 分支/提交/MR） |
 | **Go→Java 迁移进度/差异** | [`backend-go-to-java-migration.md`](backend-go-to-java-migration.md)（迁移方案+进度）+ [`后端功能对齐差异表.md`](后端功能对齐差异表.md)（双后端功能对齐差异） |
-| **写/改前端页面组件** | [`components.md`](components.md)（React 组件复用速查）+ [`forms-tables.md`](forms-tables.md)（表单/表格盘点） |
+| **写/改前端页面组件** | React SPA（`frontend/edu`）：[`components.md`](components.md) + [`forms-tables.md`](forms-tables.md)；Vue 门户/管理端（`frontend/portal-vue`、`frontend/plus-ui`）：[`vue-business-portal.md`](spec/vue-business-portal.md) + 根 `AGENTS.md` 第二部分 |
 | **写/改 AI 功能** | [`ai-development.md`](ai-development.md)（AIService 统一底座） |
 | **安全非功能（密码/会话/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
 | **性能/可观测/国际化/测试** | [`non-functional-standards.md`](non-functional-standards.md) |
@@ -44,7 +44,8 @@
 docs/
 ├── spec/                        # 功能规格（单一事实源）
 │   ├── 01-prd.md ~ 05-prototype-interaction.md   # 全平台五层
-│   └── partner-enterprise-platform.md            # 子平台示例
+│   ├── partner-enterprise-platform.md            # 子平台示例
+│   └── vue-business-portal.md                    # Vue 业务门户（Java 配套）
 ├── decisions/                   # ADR 决策记录（为什么这么做）
 │   ├── README.md                # 索引 + 何时写
 │   └── 0000-template.md         # 模板
@@ -74,7 +75,7 @@ docs/
 | 脚本 | 用途 |
 |---|---|
 | `deploy.sh`（仓库根目录） | **Go 版**分支部署 + 质量门禁 + 自动合并 |
-| `deploy-java.sh`（仓库根目录） | **Java 版** Docker 部署（jar + Next.js standalone + nginx） |
+| `deploy-java.sh`（仓库根目录） | **Java 版** Docker 部署（jar + Vue 门户静态产物 + nginx） |
 | `scripts/spec-check.sh` | spec 硬约束自动校验（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向/spec 耦合） |
 | `scripts/package-release.sh` | 离线实施包打包 |
 | `scripts/migrate_uploads.sh` | 上传文件迁移 |

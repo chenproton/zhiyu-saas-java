@@ -1,6 +1,6 @@
 # 原型 / 交互说明 — 知与 SaaS
 
-> 基于 `frontend/edu`（Next.js 16 App Router + shadcn/ui + Tailwind 4）回溯整理。
+> 基于 `frontend/edu`（React SPA（Vite 7 + React Router + shadcn/ui + Tailwind 4））回溯整理。
 > 亮色主题；视觉规范即 shadcn new-york 风格组件库（`frontend/packages/ui`），无独立设计稿。
 
 ---

@@ -86,4 +86,4 @@ deploy.sh 自动做：源码 hash 增量构建、质量门禁（gofmt/vet + type
 | 6/7 校验与收敛 | `spec_check`（机器硬约束）+ `spec_analyze`（子代理语义复查）+ `goal`（长任务跨轮驱动）；业务链路用 `node scripts/ui-smoke/ui-smoke.mjs --flows`（spec 06 驱动，部署后跑） |
 
 - 长任务（多轮、多文件）：用 `create_goal` 建目标持续驱动，每轮对照 spec 汇报进度。
-- 扫描/统计只覆盖自有代码，排除 `offline/`、符号链接 `apps/edu/public/image-editor`、`backend/vendor/`、`node_modules/`、`.next/`、`dist/`、`*.tsbuildinfo`、`logs/`。
+- 扫描/统计只覆盖自有代码，排除 `offline/`、符号链接 `frontend/edu/public/image-editor`、`backend/go/vendor/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`。

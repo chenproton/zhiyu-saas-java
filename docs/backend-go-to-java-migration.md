@@ -2,9 +2,9 @@
 
 > 本文档记录 zhiyu-saas 后端从 Go（chi + pgx）迁移到 Java（base-dev-framework6-java，`org.dromara`）的方案与实时进度；Go 与 Java 双后端在本仓库并存，迁移进度见 §7。
 
-- 状态：已基本完成（业务域 13/13、前端零改动对接；专项能力部分收尾中，见 §7）
+- 状态：后端已基本完成（业务域 13/13，见 §7）；前端后续独立迁移——Go 前端 Next.js→React SPA（见 ADR-0009）、Java 前端 Next.js→Vue 业务门户（见 `spec/vue-business-portal.md`）
 - 日期：2026-08-17
-- 范围：仅后端语言与框架迁移；数据库、前端保持不动
+- 范围：本方案仅覆盖后端语言与框架迁移；前端在当时保持不动，其后另行迁移（见上方状态）
 - 目标框架：`saas-framework6-java-vue`（org.dromara · Java 21 / Spring Boot 4.1.0 / MyBatis-Plus 3.5.17 / Sa-Token 1.45.0）
 
 ## 0. 决策背景与硬约束
