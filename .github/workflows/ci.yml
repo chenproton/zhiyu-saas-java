@@ -93,3 +93,26 @@ jobs:
 
       - name: spec 硬约束校验
         run: ./scripts/spec-check.sh
+
+  shell:
+    name: Shell (bash -n / shellcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 部署脚本此前完全无门禁：历史上出现过「local 用在函数外」「set -u 未定义变量」
+      # 「warn 函数未定义」「pipefail 下 ls 无匹配静默中止」等问题，均可被静态检查拦下。
+      - name: 语法检查（bash -n）
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            bash -n "$f" || { echo "语法错误: $f"; fail=1; }
+          done < <(git ls-files '*.sh')
+          exit $fail
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          # SC1091(source 外部文件)/SC2086(未加引号，存量较多) 暂降级为提示，其余按错误拦截
+          shellcheck --severity=warning --exclude=SC1091,SC2086,SC1090 \
+            deploy.sh deploy-java.sh scripts/*.sh

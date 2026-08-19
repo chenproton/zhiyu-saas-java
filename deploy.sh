@@ -97,7 +97,14 @@ resolve_port() {
 update_env_var() {
   local file="$1" key="$2" value="$3"
   if grep -q "^${key}=" "$file" 2>/dev/null; then
-    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+    # 用 python 精确替换：sed "s|...|...|" 在 value 含 | & \ 时会被破坏（人工填的口令常踩）
+    KEY="$key" VALUE="$value" python3 - "$file" <<'PYEOF'
+import os, sys
+path, key, value = sys.argv[1], os.environ["KEY"], os.environ["VALUE"]
+lines = open(path).read().splitlines()
+out = [f"{key}={value}" if l.startswith(f"{key}=") else l for l in lines]
+open(path, "w").write("\n".join(out) + "\n")
+PYEOF
   else
     echo "${key}=${value}" >> "$file"
   fi
@@ -235,7 +242,7 @@ for m in ms:
 normalize_migration_versions() {
   local backend_dir="$1" migrate_url="$2"
   local sql="" bare full all_full files=()
-  for bare in $(psql "$migrate_url" -Atc "SELECT version FROM schema_migrations WHERE version ~ '^[0-9]+\$';" 2>/dev/null || true); do
+  for bare in $(psql_db -Atc "SELECT version FROM schema_migrations WHERE version ~ '^[0-9]+\$';" 2>/dev/null || true); do
     files=()
     for f in "$backend_dir"/migrations/${bare}_*.up.sql; do
       [[ -f "$f" ]] || continue
@@ -244,7 +251,7 @@ normalize_migration_versions() {
     [[ ${#files[@]} -gt 0 ]] || continue
     all_full=true
     for full in "${files[@]}"; do
-      if [[ -z "$(psql "$migrate_url" -Atc "SELECT 1 FROM schema_migrations WHERE version='$full'" 2>/dev/null || true)" ]]; then
+      if [[ -z "$(psql_db -Atc "SELECT 1 FROM schema_migrations WHERE version='$full'" 2>/dev/null || true)" ]]; then
         all_full=false
       fi
     done
@@ -257,7 +264,7 @@ normalize_migration_versions() {
     fi
   done
   [[ -n "$sql" ]] || return 0
-  if psql "$migrate_url" -v ON_ERROR_STOP=1 -c "$sql" >/dev/null 2>&1; then
+  if psql_db -v ON_ERROR_STOP=1 -c "$sql" >/dev/null 2>&1; then
     log "  迁移版本表已规范化（裸数字版本对齐全名）"
   else
     warn "迁移版本表规范化失败，继续尝试 migrate 工具"
@@ -274,7 +281,7 @@ run_migrations() {
 
   warn "migrate 工具执行失败，尝试使用 psql 兜底执行未应用迁移..."
   local applied_versions
-  applied_versions=$(psql "$migrate_url" -Atc "SELECT version FROM schema_migrations;" 2>/dev/null || true)
+  applied_versions=$(psql_db -Atc "SELECT version FROM schema_migrations;" 2>/dev/null || true)
 
   local failed=false
   for f in "$backend_dir"/migrations/*.up.sql; do
@@ -285,8 +292,8 @@ run_migrations() {
       continue
     fi
     log "  兜底执行: $(basename "$f")"
-    if psql "$migrate_url" -v ON_ERROR_STOP=1 -f "$f" 2>&1 | tail -5; then
-      psql "$migrate_url" -c "INSERT INTO schema_migrations (version) VALUES ('$version') ON CONFLICT DO NOTHING;" >/dev/null || true
+    if psql_db -v ON_ERROR_STOP=1 -f "$f" 2>&1 | tail -5; then
+      psql_db -c "INSERT INTO schema_migrations (version) VALUES ('$version') ON CONFLICT DO NOTHING;" >/dev/null || true
     else
       failed=true
       # 立即停止：继续应用后续 migration 会在半应用的 schema 上叠加 DDL，之后必然卡住
@@ -438,6 +445,9 @@ PY
   fi
 
   [[ -f "$daemon_file" ]] && cp -f "$daemon_file" "${daemon_file}.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+  # 备份仅保留最近 3 份（历史上无清理，本机曾累积 34 份）
+  find /etc/docker -maxdepth 1 -name 'daemon.json.bak.*' -printf '%T@ %p\n' 2>/dev/null \
+    | sort -rn | tail -n +4 | cut -d' ' -f2- | xargs -r rm -f || true
   mv -f "$tmp_file" "$daemon_file"
 
   if [[ -n "$mirrors" ]]; then
@@ -782,6 +792,9 @@ DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
 MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/${DB_NAME}?sslmode=disable"
+# psql 统一包装：口令走 PGPASSWORD 环境变量，不进 argv（argv 在 ps 里对同机任意用户可见）。
+# MIGRATE_URL 仍保留给 go run ./cmd/migrate（经环境变量传递，不落 argv）。
+psql_db() { PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -p "${POSTGRES_HOST_PORT:-5433}" -U "$DB_USER" -d "$DB_NAME" "$@"; }
 export IMAGE_TAG BACKEND_PORT EDU_PORT GO_NGINX_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET KK_MEDIA_CONVERT_DISABLE
 
 # ── 分支校验 ──
@@ -822,11 +835,16 @@ if command -v flock >/dev/null 2>&1; then
   cleanup() {
     # 清理构建残留（docker build 中途失败时 TMPCTX 会残留）
     [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
+    # 构建树里的 .env 是密钥副本（位于 /tmp），部署结束即删，不长期留存
+    [[ -n "${BUILD_TREE:-}" && -f "${BUILD_TREE:-}/.env" ]] && rm -f "$BUILD_TREE/.env"
+    # 回滚用的临时标签用完即清，避免下次部署把 :rollback 当成「上一版镜像」（等于没回滚）
+    docker rmi "zhiyu-backend:rollback" "zhiyu-edu:rollback" >/dev/null 2>&1 || true
     exec {LOCK_FD}>&- 2>/dev/null || true
   }
   trap cleanup EXIT
 else
-  warn "flock 不可用，跳过部署锁（建议安装 util-linux）"
+  # 多 Agent 并行开发的仓库里没有锁 = 并发部署互相踩构建树/容器/迁移，必须硬失败
+  die "flock 不可用，拒绝无锁部署（请安装 util-linux）"
 fi
 
 # 持锁后重新拉取 origin/master：锁等待期间可能有其他 Agent 已完成部署并合并推送，
@@ -902,8 +920,8 @@ else
   export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 fi
 
-mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" \
-  "$DEPLOY_DIR/logs" "$DEPLOY_DIR/.rollback" "$BUILD_CACHE"
+# 注意：不再创建 $DEPLOY_DIR/{logs,.rollback}——全脚本从无写入，空目录只会误导排障
+mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" "$BUILD_CACHE"
 
 # 记录当前镜像（用于回滚）
 PREV_BACKEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-backend 2>/dev/null || true)"
@@ -935,7 +953,7 @@ rollback_deploy() {
   fi
   for svc in backend frontend; do
     found=false
-    for i in $(seq 1 45); do
+    for _ in $(seq 1 45); do
       S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
       [[ "$S" == "healthy" ]] && { log "  $svc 回滚后 healthy"; found=true; break; }
       sleep 2
@@ -1026,11 +1044,14 @@ if $BUILD_BACKEND; then
   tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
   rm -rf "$TMPCTX"
-  echo "$BACKEND_HASH" > "$BUILD_CACHE/backend-hash"
+  # 指纹延后落盘（见部署末尾）：提前写会让被中断的部署在下次运行时误判「无变更跳过构建」
+  PENDING_BACKEND_HASH="$BACKEND_HASH"
 else
   log "后端: 无变更，跳过"
   # 当前 commit 标签也要指向同一镜像，compose 才能正常拉起
-  docker tag "zhiyu-backend:$BACKEND_HASH" "zhiyu-backend:$IMAGE_TAG" 2>/dev/null || true
+  # 失败不能吞：hash 镜像被并发清理后 compose 会去 registry 拉不存在的 tag，最终走回滚
+  docker tag "zhiyu-backend:$BACKEND_HASH" "zhiyu-backend:$IMAGE_TAG" 2>/dev/null \
+    || die "标记后端镜像失败：zhiyu-backend:$BACKEND_HASH 不存在（可用 --clean 强制重建）"
 fi
 
 # ════════════════════════════════════════════
@@ -1063,9 +1084,16 @@ if $BUILD_FRONTEND; then
     else
       log "  安装依赖..."
       # 先试离线安装（需要 node_modules 或 pnpm store 已就绪）
+      # 第三档 --no-frozen-lockfile 会改写 lockfile → 构建出与 CI 不同的依赖树，必须显式告警
       (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
       (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
-      (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+      { warn "frozen-lockfile 安装失败，降级 --no-frozen-lockfile（会改写 lockfile）"
+        (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+        if ! git -C "$BUILD_ROOT" diff --quiet -- pnpm-lock.yaml 2>/dev/null; then
+          warn "  lockfile 已被改写，与仓库不一致（CI 依赖树可能不同）："
+          git -C "$BUILD_ROOT" diff --stat -- pnpm-lock.yaml 2>/dev/null | tail -3 || true
+        fi
+      }
     fi
     echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
   fi
@@ -1146,10 +1174,11 @@ if $BUILD_FRONTEND; then
   }
   tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-edu:$IMAGE_TAG" "zhiyu-edu:$FRONTEND_HASH"
-  echo "$FRONTEND_HASH" > "$BUILD_CACHE/frontend-hash"
+  PENDING_FRONTEND_HASH="$FRONTEND_HASH"
 else
   log "前端: 无变更，跳过"
-  docker tag "zhiyu-edu:$FRONTEND_HASH" "zhiyu-edu:$IMAGE_TAG" 2>/dev/null || true
+  docker tag "zhiyu-edu:$FRONTEND_HASH" "zhiyu-edu:$IMAGE_TAG" 2>/dev/null \
+    || die "标记前端镜像失败：zhiyu-edu:$FRONTEND_HASH 不存在（可用 --clean 强制重建）"
 fi
 
 # ════════════════════════════════════════════
@@ -1190,14 +1219,14 @@ fi
 tail -n 5 "$COMPOSE_UP_LOG"
 
 # 等待 PG
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
   sleep 2
 done
 
 # 数据库迁移
 log "数据库迁移..."
-for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 1 15); do psql_db -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
 
 # 迁移前备份（失败仅警告，不阻断部署）
 BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
@@ -1212,14 +1241,14 @@ find "$DEPLOY_DIR/backups" -maxdepth 1 -name 'zhiyu-saas-*.sql' -printf '%T@ %p\
   | sort -rn | tail -n +8 | cut -d' ' -f2- | xargs -r rm -f || true
 
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
-  psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
+  psql_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
   # 必须 ON_ERROR_STOP + 单事务：psql 默认遇错继续且退出码为 0，
   # 否则 baseline 半途失败也会被判成功并写入 schema_migrations/.migration-done，
   # 此后所有部署都跳过 baseline，只能人工修库。
-  psql "$MIGRATE_URL" -v ON_ERROR_STOP=1 --single-transaction \
+  psql_db -v ON_ERROR_STOP=1 --single-transaction \
     -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 \
     || rollback_deploy "baseline 迁移失败（已整体回滚事务）"
-  psql "$MIGRATE_URL" -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
+  psql_db -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
 
   # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
@@ -1240,7 +1269,7 @@ log "等待服务就绪..."
 OK=true
 for svc in backend frontend nginx; do
   found=false
-  for i in $(seq 1 45); do
+  for _ in $(seq 1 45); do
     S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
     [[ "$S" == "healthy" ]] && { log "  $svc healthy"; found=true; break; }
     STATUS=$(compose ps "$svc" --format '{{.Status}}' 2>/dev/null || echo "")
@@ -1275,6 +1304,8 @@ for attempt in 1 2; do
     break
   fi
   warn "  网关自检未通过（第 ${attempt} 次），重试重启 zhiyu-nginx..."
+  # 两次都失败即认定部署未成功：否则站点 502 仍会被判成功并自动合并 master
+  [[ "$attempt" == "2" ]] && rollback_deploy "服务网关自检未通过（前端经 zhiyu-nginx 不可访问）"
 done
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）。
@@ -1282,7 +1313,7 @@ done
 # 探测用 curl 而非 wget：宿主机 wget 可能被安全策略禁用（Permission denied），curl 为 deploy.sh 必装依赖
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
   KK_READY=false
-  for i in $(seq 1 90); do
+  for _ in $(seq 1 90); do
     curl -sf --max-time 10 "http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview" >/dev/null 2>&1 && { log "  kkfileview ready"; KK_READY=true; break; }
     sleep 2
   done
@@ -1291,6 +1322,10 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
     compose logs kkfileview --tail 30 2>/dev/null | tail -15 || true
   fi
 fi
+
+# 健康检查 + 网关自检 + kkfileview 都过了，才把本次构建指纹落盘（提前写会在中断后产生假状态）
+{ [[ -n "${PENDING_BACKEND_HASH:-}" ]] && echo "$PENDING_BACKEND_HASH" > "$BUILD_CACHE/backend-hash"; } || true
+{ [[ -n "${PENDING_FRONTEND_HASH:-}" ]] && echo "$PENDING_FRONTEND_HASH" > "$BUILD_CACHE/frontend-hash"; } || true
 
 compose ps
 if [[ "$CLEAN_BUILD" == "true" ]]; then
@@ -1360,14 +1395,30 @@ if [[ -f "$NGINX_CONF" ]]; then
   KKFILEVIEW_HOST_PORT="${KKFILEVIEW_HOST_PORT:-8012}"
   export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT GO_NGINX_PORT KKFILEVIEW_HOST_PORT
 
-  # 将模板中的 ${VAR:-default} → ${VAR}，再用 envsubst 替换
-  if [[ -f "$NGINX_DST" ]]; then
-    cp -a "$NGINX_DST" "$NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
-    log "已备份原 nginx 配置: $NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
-    # 配置备份仅保留最近 5 份，避免累积占用磁盘
-    ls -t "$NGINX_DST".bak.* 2>/dev/null | tail -n +6 | xargs -r rm -f
+  # 生成生产入口配置：先写临时文件，内容一致则跳过（避免每次部署产生完全相同的 .bak），
+  # 不一致才备份 + 原子 mv。原写法直接重定向到生产配置：管道任一环失败（envsubst 缺失/磁盘满）
+  # 会留下被截断的生产配置，nginx 下次 reload/重启即整站 502。
+  NGINX_BAK=""
+  NGINX_TS="$(date +%Y%m%d%H%M%S)"
+  NGINX_TMP="${NGINX_DST}.new.$$"
+  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" \
+    | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $KKFILEVIEW_HOST_PORT' \
+    > "$NGINX_TMP" || { rm -f "$NGINX_TMP"; die "生成 nginx 配置失败（原配置未改动）"; }
+  [[ -s "$NGINX_TMP" ]] || { rm -f "$NGINX_TMP"; die "生成的 nginx 配置为空（原配置未改动）"; }
+  if [[ -f "$NGINX_DST" ]] && cmp -s "$NGINX_TMP" "$NGINX_DST"; then
+    rm -f "$NGINX_TMP"
+    log "nginx 配置无变化，跳过备份与写入"
+  else
+    if [[ -f "$NGINX_DST" ]]; then
+      NGINX_BAK="$NGINX_DST.bak.$NGINX_TS"
+      cp -a "$NGINX_DST" "$NGINX_BAK"
+      log "已备份原 nginx 配置: $NGINX_BAK"
+      # 备份仅保留最近 5 份（用 find 而非 ls|tail：无匹配时 ls 退出 2 + pipefail 会中止部署）
+      find "$(dirname "$NGINX_DST")" -maxdepth 1 -name "$(basename "$NGINX_DST").bak.*" -printf '%T@ %p\n' 2>/dev/null \
+        | sort -rn | tail -n +6 | cut -d' ' -f2- | xargs -r rm -f || true
+    fi
+    mv -f "$NGINX_TMP" "$NGINX_DST"
   fi
-  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
   # 若配置了 SSL 域名和证书，生成 HTTPS 网关配置
   NGINX_SSL_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas-ssl.conf"
@@ -1384,11 +1435,13 @@ if [[ -f "$NGINX_CONF" ]]; then
     fi
   fi
 
-  if ! nginx -t 2>/dev/null; then
-    warn "nginx 配置测试失败，常见原因："
-    warn "  1. ${NGINX_PORT} 端口已被其他进程占用"
-    warn "  2. 系统中存在其他 nginx 配置语法冲突"
-    warn "可手动检查：nginx -t"
+  if ! nginx -t 2>&1 | tail -20; then
+    # 复位到本次备份，避免把坏配置留在生产入口目录（下次 reload/重启会整站 502）
+    if [[ -n "$NGINX_BAK" && -f "$NGINX_BAK" ]]; then
+      mv -f "$NGINX_BAK" "$NGINX_DST"
+      warn "已把 nginx 配置复位到部署前版本"
+    fi
+    warn "常见原因：${NGINX_PORT} 端口被占用 / 其他 conf 语法冲突（上方为 nginx -t 原始输出）"
     die "Nginx 配置测试失败"
   fi
 
@@ -1486,7 +1539,9 @@ echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
 
 # 旧布局上传文件检测：新版 /uploads/{tenantID}/{filename} 要求文件位于租户子目录。
 # 若 uploads 卷根目录存在单段文件名（旧布局），提醒执行迁移脚本，否则旧图片全部 404。
-UPLOAD_VOLUME=$(docker volume inspect "$(docker volume ls -q | grep -i upload | head -1)" --format '{{.Mountpoint}}' 2>/dev/null || true)
+# 固定卷名：原 `docker volume ls -q | grep -i upload | head -1` 会在其他栈也有 uploads 卷时指错，
+# 从而给出针对别的项目数据的迁移命令
+UPLOAD_VOLUME=$(docker volume inspect "${COMPOSE_PROJECT}_uploads_data" --format '{{.Mountpoint}}' 2>/dev/null || true)
 if [[ -n "$UPLOAD_VOLUME" ]] && [[ -d "$UPLOAD_VOLUME" ]]; then
   LEGACY_COUNT=$( { find "$UPLOAD_VOLUME" -maxdepth 1 -type f 2>/dev/null | wc -l; } || echo 0 )
   if [[ "$LEGACY_COUNT" -gt 0 ]]; then

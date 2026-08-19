@@ -183,6 +183,14 @@ services:
     depends_on:
       - backend
       - frontend
+    # 网关也要有 healthcheck：否则 deploy.sh 的就绪判断只能看容器 Up，
+    # 上游解析错误/配置坏掉时仍会被判「就绪」（配合就绪门禁修复形成闭环）
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     logging:
       driver: json-file
       options:

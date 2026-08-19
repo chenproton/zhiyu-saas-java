@@ -155,7 +155,7 @@ compose_down() {
 health_check() {
   log "等待后端就绪..."
   local code=000
-  for i in $(seq 1 40); do
+  for _ in $(seq 1 40); do
     code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/api/v1/auth/me" || true)
     [[ "$code" == "401" || "$code" == "200" ]] && break
     sleep 3
@@ -165,7 +165,7 @@ health_check() {
   log "后端（经入口）HTTP $code（401=已鉴权拦截，服务正常）"
 
   log "等待前端就绪..."
-  for i in $(seq 1 30); do
+  for _ in $(seq 1 30); do
     code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/java/portal/" || true)
     [[ "$code" == "200" ]] && break
     sleep 3
