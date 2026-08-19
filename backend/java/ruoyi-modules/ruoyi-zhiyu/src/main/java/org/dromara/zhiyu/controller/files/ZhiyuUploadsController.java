@@ -36,8 +36,8 @@ public class ZhiyuUploadsController {
     /**
      * 直出上传文件（/uploads/{tenantId}/{filename}）。
      *
-     * <p>联盟公开文件（Go IsPublicAllianceFile）的跨租户放行语义暂未实现（演示环境），
-     * 仅支持签名与同租户两种放行。</p>
+     * <p>有效 HMAC 签名、同租户登录态、联盟公开文件（Go IsPublicAllianceFile，仅限
+     * 公开展示引用的文件）三种方式均可放行；无凭据返回 401、跨租户无签名返回 403。</p>
      */
     @GetMapping("/uploads/{tenantId}/{filename}")
     public void serve(@PathVariable String tenantId,

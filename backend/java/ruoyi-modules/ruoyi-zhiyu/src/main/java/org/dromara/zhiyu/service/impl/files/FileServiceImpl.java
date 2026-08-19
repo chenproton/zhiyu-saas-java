@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.dto.files.FileDtos.SignUrlResponse;
+import org.dromara.zhiyu.mapper.alliance.AlliancePublicFileMapper;
 import org.dromara.zhiyu.domain.dto.files.FileDtos.UploadResponse;
 import org.dromara.zhiyu.service.files.IFileService;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,6 +49,9 @@ public class FileServiceImpl implements IFileService {
     /** 签名密钥（对齐 Go JWTSecret；默认取 Sa-Token jwt-secret-key） */
     @Value("${sa-token.jwt-secret-key:zhiyu-file-sign-secret}")
     private String signSecret;
+
+    /** 联盟公开前台文件判定（对齐 Go IsPublicAllianceFile）。 */
+    private final AlliancePublicFileMapper alliancePublicFileMapper;
 
     /** 单文件上限 10MB（对齐 Go MaxUploadSize） */
     private static final long MAX_UPLOAD_SIZE = 10L * 1024 * 1024;
@@ -172,7 +176,7 @@ public class FileServiceImpl implements IFileService {
         }
 
         boolean signed = verifySig(name, exp, sig);
-        if (!signed) {
+        if (!signed && !isPublicAllianceFile(tenantId, name)) {
             String cur = TenantContext.getTenantId();
             if (cur == null || !cur.equals(tenantId)) {
                 throw new ApiException(403, "forbidden", "无权访问该文件");
@@ -218,6 +222,20 @@ public class FileServiceImpl implements IFileService {
     private void validateExt(String filename) {
         if (!ALLOWED_EXTS.contains(extensionOf(filename))) {
             throw new ApiException(403, "forbidden", "文件类型不允许访问");
+        }
+    }
+
+    /**
+     * 联盟公开前台文件判定（对齐 Go IsPublicAllianceFile）：仅当文件被公开联盟数据
+     * （enable_public 企业 logo/封面、其名下专家头像/封面/照片、is_public 成果封面/图集、
+     * 项目/品牌封面）引用时放行；查询失败保守返回 false，不扩大为任意跨租户读。
+     */
+    private boolean isPublicAllianceFile(String tenantId, String url) {
+        try {
+            return alliancePublicFileMapper.isPublicAllianceFile(tenantId, url);
+        } catch (Exception e) {
+            log.warn("isPublicAllianceFile query failed, tenantId={}", tenantId, e);
+            return false;
         }
     }
 

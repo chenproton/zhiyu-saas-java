@@ -465,25 +465,27 @@ public class AiCenterServiceImpl implements IAiCenterService {
         List<Map<String, Object>> sources = chunksToSources(chunks);
         String systemPrompt = "你是知识库「" + kb.getName() + "」的问答助手，基于提供的知识库资料回答用户问题。";
         List<ChatMessage> messages = buildChatMessages(systemPrompt, chunks, null, message);
-        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
-
-        try {
-            kbMapper.incrementAskCount(tenantId, List.of(kbId));
-        } catch (Exception e) {
-            log.warn("increment kb ask count failed, kbId={}", kbId, e);
-        }
-        AiKbAsk ask = new AiKbAsk();
-        ask.setTenantId(tenantId);
-        ask.setKbId(kbId);
-        ask.setUserId(userId);
-        ask.setQuestion(message);
-        ask.setAnswer(reply);
-        try {
-            kbAskMapper.insert(ask);
-        } catch (Exception e) {
-            log.warn("insert kb ask failed, kbId={}", kbId, e);
-        }
-        return new ChatStreamResult(null, null, reply, null, true, sources);
+        ChatStreamResult.StreamSource stream = onDelta -> {
+            String reply = aiService.chatStream(tenantId, userId, chatRequest(messages), onDelta);
+            try {
+                kbMapper.incrementAskCount(tenantId, List.of(kbId));
+            } catch (Exception e) {
+                log.warn("increment kb ask count failed, kbId={}", kbId, e);
+            }
+            AiKbAsk ask = new AiKbAsk();
+            ask.setTenantId(tenantId);
+            ask.setKbId(kbId);
+            ask.setUserId(userId);
+            ask.setQuestion(message);
+            ask.setAnswer(reply);
+            try {
+                kbAskMapper.insert(ask);
+            } catch (Exception e) {
+                log.warn("insert kb ask failed, kbId={}", kbId, e);
+            }
+            return new ChatStreamResult.StreamDone(reply, null);
+        };
+        return new ChatStreamResult(null, null, null, null, true, sources, stream);
     }
 
     // ==================== 智能体 ====================
@@ -657,37 +659,40 @@ public class AiCenterServiceImpl implements IAiCenterService {
         convMapper.touch(tenantId, cv.getId(), truncate(message, 30));
 
         List<ChatMessage> messages = buildChatMessages(a.getSystemPrompt(), chunks, history, message);
-        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
+        ChatStreamResult.StreamSource stream = onDelta -> {
+            String reply = aiService.chatStream(tenantId, userId, chatRequest(messages), onDelta);
 
-        AiMessage assistantMsg = new AiMessage();
-        assistantMsg.setTenantId(tenantId);
-        assistantMsg.setConversationId(cv.getId());
-        assistantMsg.setRole("assistant");
-        assistantMsg.setContent(reply);
-        assistantMsg.setSources(sourcesJson(sources));
-        msgMapper.insert(assistantMsg);
-        convMapper.touch(tenantId, cv.getId(), "");
-        try {
-            agentMapper.incrementChatCount(tenantId, agentId);
-        } catch (Exception e) {
-            log.warn("increment agent chat count failed, agentId={}", agentId, e);
-        }
-        if (!chunks.isEmpty()) {
-            Set<String> hitKbs = new LinkedHashSet<>();
-            for (AiKbChunk c : chunks) {
-                if (c.getKbId() != null) {
-                    hitKbs.add(c.getKbId());
+            AiMessage assistantMsg = new AiMessage();
+            assistantMsg.setTenantId(tenantId);
+            assistantMsg.setConversationId(cv.getId());
+            assistantMsg.setRole("assistant");
+            assistantMsg.setContent(reply);
+            assistantMsg.setSources(sourcesJson(sources));
+            msgMapper.insert(assistantMsg);
+            convMapper.touch(tenantId, cv.getId(), "");
+            try {
+                agentMapper.incrementChatCount(tenantId, agentId);
+            } catch (Exception e) {
+                log.warn("increment agent chat count failed, agentId={}", agentId, e);
+            }
+            if (!chunks.isEmpty()) {
+                Set<String> hitKbs = new LinkedHashSet<>();
+                for (AiKbChunk c : chunks) {
+                    if (c.getKbId() != null) {
+                        hitKbs.add(c.getKbId());
+                    }
+                }
+                if (!hitKbs.isEmpty()) {
+                    try {
+                        kbMapper.incrementAskCount(tenantId, new ArrayList<>(hitKbs));
+                    } catch (Exception e) {
+                        log.warn("increment hit kb ask count failed, agentId={}", agentId, e);
+                    }
                 }
             }
-            if (!hitKbs.isEmpty()) {
-                try {
-                    kbMapper.incrementAskCount(tenantId, new ArrayList<>(hitKbs));
-                } catch (Exception e) {
-                    log.warn("increment hit kb ask count failed, agentId={}", agentId, e);
-                }
-            }
-        }
-        return new ChatStreamResult(cv.getId(), userMsg.getId(), reply, assistantMsg.getId(), false, sources);
+            return new ChatStreamResult.StreamDone(reply, assistantMsg.getId());
+        };
+        return new ChatStreamResult(cv.getId(), userMsg.getId(), null, null, false, sources, stream);
     }
 
     @Override
@@ -901,17 +906,20 @@ public class AiCenterServiceImpl implements IAiCenterService {
 
         List<ChatMessage> messages = buildChatMessages(
             "你是 YIKnow 智能助手，面向职业院校师生提供学习、教学与办公辅助。", null, history, message);
-        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
+        ChatStreamResult.StreamSource stream = onDelta -> {
+            String reply = aiService.chatStream(tenantId, userId, chatRequest(messages), onDelta);
 
-        AiMessage assistantMsg = new AiMessage();
-        assistantMsg.setTenantId(tenantId);
-        assistantMsg.setConversationId(cv.getId());
-        assistantMsg.setRole("assistant");
-        assistantMsg.setContent(reply);
-        assistantMsg.setSources("[]");
-        msgMapper.insert(assistantMsg);
-        convMapper.touch(tenantId, cv.getId(), "");
-        return new ChatStreamResult(cv.getId(), userMsg.getId(), reply, null, true, List.of());
+            AiMessage assistantMsg = new AiMessage();
+            assistantMsg.setTenantId(tenantId);
+            assistantMsg.setConversationId(cv.getId());
+            assistantMsg.setRole("assistant");
+            assistantMsg.setContent(reply);
+            assistantMsg.setSources("[]");
+            msgMapper.insert(assistantMsg);
+            convMapper.touch(tenantId, cv.getId(), "");
+            return new ChatStreamResult.StreamDone(reply, null);
+        };
+        return new ChatStreamResult(cv.getId(), userMsg.getId(), null, null, true, List.of(), stream);
     }
 
     // ==================== 管理端 ====================

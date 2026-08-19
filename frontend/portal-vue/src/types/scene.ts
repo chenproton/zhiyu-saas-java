@@ -51,3 +51,25 @@ export interface ScenarioTask {
   resourceIds?: string[];
   evalData?: Record<string, unknown>;
 }
+
+// 场景任务资源（上传/引用的文档、附件等），对齐 React shared-types scene.ts TaskResource
+export interface TaskResource {
+  id: string;
+  name: string;
+  type: string;
+  url?: string;
+  description?: string;
+  thumbnail?: string;
+  size?: string;
+  knowledgePointIds?: string[];
+  extraData?: Record<string, unknown>;
+  uploadedBy?: string;
+  uploadedAt: string;
+}
+
+// 任务资源绑定（task-resources），对齐 React shared-types scene.ts TaskResourceBinding
+export interface TaskResourceBinding {
+  id: string;
+  taskId: string;
+  resourceId: string;
+}

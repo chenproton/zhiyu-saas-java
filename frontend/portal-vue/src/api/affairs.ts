@@ -75,11 +75,19 @@ export const venueApi = createCrudApi<
   Partial<Omit<Venue, 'id' | 'createdAt'>>
 >('/affairs/venues');
 
-export const periodSlotApi = createCrudApi<
-  PeriodSlot,
-  Partial<Omit<PeriodSlot, 'id'>>,
-  Partial<Omit<PeriodSlot, 'id'>>
->('/affairs/period-slots');
+export const periodSlotApi = {
+  ...createCrudApi<
+    PeriodSlot,
+    Partial<Omit<PeriodSlot, 'id'>>,
+    Partial<Omit<PeriodSlot, 'id'>>
+  >('/affairs/period-slots'),
+  /** 按名称整体替换节次（事务内原子落库），返回替换后的完整列表（对齐 React PUT /affairs/period-slots/replace） */
+  replace: (items: Omit<PeriodSlot, 'id'>[]) =>
+    request<ListResponse<PeriodSlot>>('/affairs/period-slots/replace', {
+      method: 'PUT',
+      body: JSON.stringify({ items })
+    })
+};
 
 async function scheduleRequest<T>(path: string, options: RequestInit): Promise<T> {
   const res = await authedFetch(path, options);

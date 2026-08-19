@@ -39,6 +39,9 @@ import org.dromara.zhiyu.service.ai.IAiService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -51,11 +54,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
- * 租户 AI 配置/用量/统一对话服务实现（对齐 Go service/ai.go）。
+ * 租户 AI 配置/用量/统一对话服务实现（对齐 Go service/ai.go + ai/stream.go）。
  *
- * <p>演示环境：LLM 调用不做真实上游请求，配置存在即返回 mock 回复；
+ * <p>LLM 调用统一经本服务发起（流式经 chatStream，非流式经 chat）；
  * api_key 永不下发前端、不打日志（红线）。</p>
  *
  * @author zhiyu
@@ -164,7 +168,7 @@ public class AiServiceImpl implements IAiService {
         return stats;
     }
 
-    // ---------- 对话 / 辅助（mock） ----------
+    // ---------- 对话 / 辅助 ----------
 
     @Override
     public AIChatResponse chat(String tenantId, String userId, AIChatRequest req) {
@@ -181,6 +185,21 @@ public class AiServiceImpl implements IAiService {
         resp.setReply(result.reply());
         resp.setUsage(usage);
         return resp;
+    }
+
+    @Override
+    public String chatStream(String tenantId, String userId, AIChatRequest req, Consumer<String> onDelta) {
+        TenantAiConfig cfg = requireConfigured(tenantId);
+        List<ChatMessage> messages = req == null ? List.of()
+            : (req.getMessages() == null ? List.of() : req.getMessages());
+        ChatResult result = chatCompletionStream(cfg, messages,
+            req == null ? null : req.getTemperature(), req == null ? null : req.getMaxTokens(), onDelta);
+        Usage usage = new Usage();
+        usage.setPromptTokens(result.promptTokens());
+        usage.setCompletionTokens(result.completionTokens());
+        usage.setTotalTokens(result.totalTokens());
+        recordUsage(tenantId, userId, cfg.getModel(), usage);
+        return result.reply();
     }
 
     @Override
@@ -597,6 +616,112 @@ public class AiServiceImpl implements IAiService {
         }
     }
 
+    /**
+     * 真实 OpenAI 兼容流式对话调用（对齐 Go ai.Client.ChatCompletionStream）：
+     * stream=true + stream_options.include_usage，逐 data: 行解析 SSE 增量并经 onDelta 回调，
+     * 聚合全文返回。非 2xx 映射 502 ai_upstream_error 且脱敏；api_key 仅入 Authorization 头，不落日志。
+     */
+    private ChatResult chatCompletionStream(TenantAiConfig cfg, List<ChatMessage> messages, Double temperature,
+                                            Integer maxTokens, Consumer<String> onDelta) {
+        String apiKey = decryptKeyOrPlaintext(cfg.getApiKeyEncrypted());
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", cfg.getModel());
+            List<Map<String, String>> msgs = new ArrayList<>();
+            for (ChatMessage m : messages) {
+                Map<String, String> mm = new LinkedHashMap<>();
+                mm.put("role", m.getRole());
+                mm.put("content", m.getContent());
+                msgs.add(mm);
+            }
+            body.put("messages", msgs);
+            if (temperature != null) {
+                body.put("temperature", temperature);
+            }
+            if (maxTokens != null) {
+                body.put("max_tokens", maxTokens);
+            }
+            body.put("stream", true);
+            Map<String, Object> streamOptions = new LinkedHashMap<>();
+            streamOptions.put("include_usage", true);
+            body.put("stream_options", streamOptions);
+
+            String url = cfg.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Accept", "text/event-stream")
+                .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body), StandardCharsets.UTF_8))
+                .build();
+            HttpResponse<InputStream> resp = HTTP.send(req, HttpResponse.BodyHandlers.ofInputStream());
+
+            if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+                String msg = "upstream returned status " + resp.statusCode();
+                try {
+                    String bodyStr = new String(resp.body().readAllBytes(), StandardCharsets.UTF_8);
+                    JsonNode em = JSON.readTree(bodyStr).path("error").path("message");
+                    if (!em.isMissingNode() && !em.asText().isEmpty()) {
+                        msg = em.asText();
+                    }
+                } catch (Exception ignored) {
+                    // keep default message
+                }
+                throw new ApiException(502, "ai_upstream_error", sanitizeUpstream(msg));
+            }
+
+            StringBuilder full = new StringBuilder();
+            int prompt = 0;
+            int completion = 0;
+            int total = 0;
+            try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resp.body(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("data:")) {
+                        continue;
+                    }
+                    String data = line.substring("data:".length()).trim();
+                    if ("[DONE]".equals(data)) {
+                        break;
+                    }
+                    if (data.isEmpty()) {
+                        continue;
+                    }
+                    try {
+                        JsonNode chunk = JSON.readTree(data);
+                        JsonNode usageNode = chunk.path("usage");
+                        if (!usageNode.isMissingNode()) {
+                            prompt = usageNode.path("prompt_tokens").asInt(0);
+                            completion = usageNode.path("completion_tokens").asInt(0);
+                            total = usageNode.path("total_tokens").asInt(0);
+                        }
+                        JsonNode choices = chunk.path("choices");
+                        if (choices.isArray()) {
+                            for (JsonNode choice : choices) {
+                                String delta = choice.path("delta").path("content").asText("");
+                                if (delta.isEmpty()) {
+                                    continue;
+                                }
+                                full.append(delta);
+                                if (onDelta != null) {
+                                    onDelta.accept(delta);
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // 容忍噪声行（注释/心跳），不中断整流
+                    }
+                }
+            }
+            return new ChatResult(full.toString(), prompt, completion, total);
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "ai upstream error" : e.getMessage();
+            throw new ApiException(502, "ai_upstream_error", sanitizeUpstream(msg));
+        }
+    }
+
     private String decryptKeyOrPlaintext(String encrypted) {
         if (encrypted == null || encrypted.isEmpty()) {
             return "";
@@ -640,27 +765,6 @@ public class AiServiceImpl implements IAiService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private String mockReply(List<ChatMessage> messages) {
-        String question = "您的问题";
-        if (messages != null) {
-            for (ChatMessage m : messages) {
-                if ("user".equals(m.getRole()) && !isBlank(m.getContent())) {
-                    question = m.getContent();
-                    break;
-                }
-            }
-        }
-        return "演示回复：已收到「" + truncate(question, 40) + "」";
-    }
-
-    private Usage mockUsage() {
-        Usage u = new Usage();
-        u.setPromptTokens(12);
-        u.setCompletionTokens(8);
-        u.setTotalTokens(20);
-        return u;
     }
 
     private void recordUsage(String tenantId, String userId, String model, Usage usage) {

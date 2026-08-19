@@ -37,6 +37,32 @@ export interface ImportResult {
   errors?: string[];
 }
 
+/** Excel 导入预览条目（对齐 React ImportPreviewItem） */
+export interface ImportExcelPreviewItem {
+  rowNum: number;
+  key: string;
+  name: string;
+}
+
+/** Excel 导入预览结果（对齐 React ImportPreviewResult：题目/方案课程等 Excel 实体） */
+export interface ImportExcelPreviewResult {
+  created: number;
+  duplicates: number;
+  failed: number;
+  duplicateItems: ImportExcelPreviewItem[];
+  errors: string[];
+}
+
+/** Excel 导入落库结果（对齐 React importExcel 返回结构） */
+export interface ImportExcelResult {
+  created: number;
+  failed: number;
+  skipped: number;
+  permissionSkipped?: number;
+  entity: string;
+  errors?: string[];
+}
+
 export const importExportApi = {
   export: async (entity: string): Promise<Blob> => {
     const res = await authedFetch(`/export/${entity}`);
@@ -70,5 +96,49 @@ export const importExportApi = {
       throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
     }
     return res.json();
-  }
+  },
+  /** Excel 导入落库（POST /import/{entity}/excel，对齐 React importExportApi.importExcel） */
+  importExcel: async (
+    entity: string,
+    files: File | File[],
+    overwrite = false,
+    rename = false
+  ): Promise<ImportExcelResult> => {
+    const form = new FormData();
+    const arr = Array.isArray(files) ? files : [files];
+    arr.forEach((f) => form.append('file', f));
+    const res = await authedFetch(`/import/${entity}/excel?overwrite=${overwrite}&rename=${rename}`, {
+      method: 'POST',
+      body: form
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  /** Excel 导入预览（POST /import/{entity}/preview，对齐 React importExportApi.importExcelPreview） */
+  importExcelPreview: async (
+    entity: string,
+    files: File | File[]
+  ): Promise<ImportExcelPreviewResult> => {
+    const form = new FormData();
+    const arr = Array.isArray(files) ? files : [files];
+    arr.forEach((f) => form.append('file', f));
+    const res = await authedFetch(`/import/${entity}/preview`, { method: 'POST', body: form });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  /** 题目批量导入模板下载（GET /templates/question-banks/{bankId}/questions） */
+  downloadQuestionTemplate: (bankId: string): Promise<Response> =>
+    authedFetch(`/templates/question-banks/${bankId}/questions`),
+  /** 题目批量导出（POST /export/question-banks/{bankId}/questions/excel） */
+  exportQuestionsExcel: (bankId: string, ids: string[]): Promise<Response> =>
+    authedFetch(`/export/question-banks/${bankId}/questions/excel`, {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    })
 };

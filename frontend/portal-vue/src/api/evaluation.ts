@@ -36,6 +36,12 @@ export const examApi = {
       method: 'PUT',
       body: JSON.stringify({ score })
     }),
+  /** 试卷批量分值（对齐 React examApi.updateQuestionScores） */
+  updateQuestionScores: (examId: string, scores: Record<string, number>) =>
+    request<Exam>(`/evaluation/exams/${examId}/questions/scores`, {
+      method: 'PUT',
+      body: JSON.stringify(scores)
+    }),
   publish: (id: string) => request<Exam>(`/evaluation/exams/${id}/publish`, { method: 'POST' })
 };
 
@@ -45,11 +51,19 @@ export const questionBankApi = createContentApi<
   Partial<Omit<QuestionBank, 'id' | 'createdAt' | 'updatedAt'>>
 >('/evaluation/question-banks');
 
-export const questionApi = createCrudApi<
-  Question,
-  Partial<Omit<Question, 'id' | 'createdAt'>>,
-  Partial<Omit<Question, 'id' | 'createdAt'>>
->('/evaluation/questions');
+export const questionApi = {
+  ...createCrudApi<
+    Question,
+    Partial<Omit<Question, 'id' | 'createdAt'>>,
+    Partial<Omit<Question, 'id' | 'createdAt'>>
+  >('/evaluation/questions'),
+  /** 题目批量创建（对齐 React questionApi.batchCreate） */
+  batchCreate: (bankId: string, items: Partial<Omit<Question, 'id' | 'bankId' | 'createdAt'>>[]) =>
+    request<{ count: number }>('/evaluation/questions/batch', {
+      method: 'POST',
+      body: JSON.stringify({ bankId, items })
+    })
+};
 
 export const evaluationBatchApi = createCrudApi<any, Record<string, unknown>, Record<string, unknown>>(
   '/evaluation/batches'
@@ -147,7 +161,15 @@ export const evaluationResultApi = {
   ) => request<SceneEvaluationResult>(`/evaluation/results/${id}/grade`, {
     method: 'POST',
     body: JSON.stringify(req)
-  })
+  }),
+  /** 批量评分（对齐 React evaluationResultApi.batchGrade） */
+  batchGrade: (
+    items: { id: string; score: number; evalPointScores?: Record<string, unknown>; comment?: string }[]
+  ) =>
+    request<{ count: number }>('/evaluation/results/batch-grade', {
+      method: 'POST',
+      body: JSON.stringify({ items })
+    })
 };
 
 export const jobAbilityResultApi = {

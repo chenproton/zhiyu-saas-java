@@ -27,6 +27,8 @@ import org.dromara.zhiyu.mapper.alliance.AllianceBrandMapper;
 import org.dromara.zhiyu.mapper.alliance.AllianceExpertMapper;
 import org.dromara.zhiyu.mapper.affairs.TrainingProgramCourseMapper;
 import org.dromara.zhiyu.mapper.importexport.ImportExportMapper;
+import org.dromara.zhiyu.mapper.importexport.QuestionImportMapper;
+import org.dromara.zhiyu.mapper.importexport.ScenarioImportMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionImportMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseImportMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonGranularCourseImportMapper;
@@ -40,6 +42,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -130,6 +133,8 @@ public class ImportExportServiceImpl implements IImportExportService {
         "organizations", "组织架构导出.xlsx", "students", "学生导出.xlsx", "teachers", "教师导出.xlsx");
 
     private final ImportExportMapper mapper;
+    private final ScenarioImportMapper scenarioImportMapper;
+    private final QuestionImportMapper questionImportMapper;
     private final JobPositionImportMapper positionImportMapper;
     private final AffairsScheduleImportMapper scheduleImportMapper;
     private final LessonGranularCourseImportMapper granularImportMapper;
@@ -836,11 +841,11 @@ public class ImportExportServiceImpl implements IImportExportService {
                 case "alliance-permissions" -> importPermissions(wb, tenantId, preview);
                 case "alliance-brands" -> importBrands(wb, tenantId, userId, preview, overwrite, rename, brandType);
                 case "positions" -> importPositions(wb, tenantId, userId, preview, overwrite, rename);
-                case "scenarios" -> parseCount(wb, "场景基本信息", "场景", preview);
+                case "scenarios" -> importScenarios(wb, tenantId, userId, preview, overwrite, rename);
                 case "courses" -> importCourses(wb, tenantId, userId, preview, overwrite, rename);
                 case "granular-courses" -> importGranularCourses(wb, tenantId, userId, preview, overwrite, rename);
                 case "question-banks" -> importQuestionBanks(wb, tenantId, userId, preview, overwrite, rename);
-                case "questions" -> parseCount(wb, "题目明细", "题目", preview);
+                case "questions" -> importQuestions(wb, tenantId, userId, bankId, preview, overwrite, rename);
                 case "exams" -> importExams(wb, tenantId, userId, preview, overwrite, rename);
                 case "schedules" -> importSchedules(wb, tenantId, termId, preview);
                 case "affairs-config" -> affairsConfigImport(wb, tenantId, preview);
@@ -3272,28 +3277,556 @@ public class ImportExportServiceImpl implements IImportExportService {
                                  String courseId) {
     }
 
-    private Map<String, Object> parseCount(Workbook wb, String sheetName, String entity, boolean preview) {
-        List<List<String>> rows = readRows(wb, sheetName);
+    // ==================== 场景 Excel 导入（对齐 Go scenario_import.go） ====================
+
+    private Map<String, Object> importScenarios(Workbook wb, String tenantId, String userId, boolean preview,
+                                                boolean overwrite, boolean rename) {
         List<String> errors = new ArrayList<>();
-        int created = 0;
-        int failed = 0;
+        List<ImportPreviewItem> duplicateItems = new ArrayList<>();
+        int created = 0, failed = 0, skipped = 0, permissionSkipped = 0;
+        int scenarioCreated = 0, taskCreated = 0;
+        Map<String, String> scenarioMap = new LinkedHashMap<>();
+
+        // ---------- 场景基本信息 ----------
+        List<List<String>> rows = readRows(wb, "场景基本信息");
         for (int i = 2; i < rows.size(); i++) {
             List<String> row = rows.get(i);
-            int rowNum = i + 1;
-            String first = cell(row, 0);
-            String second = cell(row, 1);
-            if (first.isEmpty() && second.isEmpty()) {
+            String name = cell(row, 0).trim();
+            if (name.isEmpty()) {
                 continue;
             }
-            if (first.isEmpty()) {
-                errors.add("第" + rowNum + "行名称不能为空");
-                failed++;
-            } else {
+            String positionName = cell(row, 1);
+            List<String> industryNames = splitTrim(cell(row, 2), ",");
+            List<String> professionNames = splitTrim(cell(row, 3), ",");
+            int difficulty = parseScenarioDifficulty(cell(row, 4));
+            String background = nullableStr(cell(row, 5));
+            String batchName = cell(row, 6);
+
+            String careerPositionId = positionName.isEmpty() ? null
+                : mapper.selectCareerPositionIdByName(tenantId, positionName);
+            List<String> industryIds = new ArrayList<>();
+            for (String in : industryNames) {
+                String id = mapper.selectIndustryIdByName(tenantId, in);
+                if (id != null && !id.isEmpty()) {
+                    industryIds.add(id);
+                }
+            }
+            List<String> professionIds = new ArrayList<>();
+            for (String pn : professionNames) {
+                String id = scenarioImportMapper.selectMajorIdByNameNfkc(tenantId, pn);
+                if (id != null && !id.isEmpty()) {
+                    professionIds.add(id);
+                }
+            }
+            String batchId = batchName.isEmpty() ? null
+                : scenarioImportMapper.selectSceneBatchIdByName(tenantId, batchName);
+
+            Map<String, Object> ident = scenarioImportMapper.selectScenarioIdentity(tenantId, name);
+            String existingId = ident == null ? null : str(ident.get("id"));
+            String existingCreator = ident == null ? null : str(ident.get("creator_id"));
+            String existingBuilders = ident == null ? null : str(ident.get("co_builder_ids"));
+            boolean exists = existingId != null && !existingId.isEmpty();
+
+            String origName = "";
+            if (exists) {
+                if (preview) {
+                    if (duplicateItems.size() < 100) {
+                        duplicateItems.add(new ImportPreviewItem(i + 1, name, name));
+                    }
+                    skipped++;
+                    continue;
+                }
+                if (!overwrite && !rename) {
+                    skipped++;
+                    continue;
+                }
+                if (overwrite) {
+                    if (!canOverwriteContent(existingCreator, parsePgArrayText(existingBuilders), userId)) {
+                        permissionSkipped++;
+                        continue;
+                    }
+                    try {
+                        scenarioImportMapper.updateScenarioImport(existingId, tenantId, name, careerPositionId,
+                            industryIds, professionIds, batchId, difficulty, background);
+                        scenarioImportMapper.deleteTaskEvalMethodsByScenario(existingId);
+                        scenarioImportMapper.deleteScenarioTasks(existingId);
+                    } catch (Exception e) {
+                        failed++;
+                        errors.add("场景[" + name + "]更新失败: " + e.getMessage());
+                        continue;
+                    }
+                    scenarioMap.put(name, existingId);
+                    continue;
+                }
+                origName = name;
+                name = uniqueSuffixed(name, c -> scenarioImportMapper.selectScenarioIdByName(tenantId, c) != null);
+            }
+
+            if (preview) {
                 created++;
+                continue;
+            }
+
+            String scenarioId = UUID.randomUUID().toString();
+            String code = randomCode("CJ");
+            try {
+                scenarioImportMapper.insertScenario(scenarioId, tenantId, name, code, careerPositionId, industryIds,
+                    professionIds, batchId, difficulty, background, userId);
+            } catch (Exception e) {
+                failed++;
+                errors.add("场景[" + name + "]创建失败: " + e.getMessage());
+                continue;
+            }
+            scenarioMap.put(name, scenarioId);
+            if (!origName.isEmpty()) {
+                scenarioMap.put(origName, scenarioId);
+            }
+            scenarioCreated++;
+            created++;
+        }
+
+        // ---------- 任务配置（preview 不解析） ----------
+        if (!preview && !scenarioMap.isEmpty()) {
+            Map<String, Integer> taskCounter = new LinkedHashMap<>();
+            List<List<String>> taskRows = readRows(wb, "任务配置");
+            for (int i = 2; i < taskRows.size(); i++) {
+                List<String> row = taskRows.get(i);
+                String scenarioName = cell(row, 0).trim();
+                String taskName = cell(row, 1).trim();
+                if (scenarioName.isEmpty() || taskName.isEmpty()) {
+                    continue;
+                }
+                String scenarioId = scenarioMap.get(scenarioName);
+                if (scenarioId == null) {
+                    skipped++;
+                    errors.add("任务[" + scenarioName + "/" + taskName + "]找不到场景,已跳过");
+                    continue;
+                }
+                String taskType = mapScenarioTaskType(cell(row, 2));
+                int difficulty = parseScenarioDifficulty(cell(row, 3));
+                BigDecimal estimatedHours = BigDecimal.valueOf(parseDoubleSafe(cell(row, 4), 0));
+                String background = nullableStr(cell(row, 5));
+                String detailedDescription = nullableStr(cell(row, 6));
+                List<String> knowledgeNames = splitTrim(cell(row, 7), ",");
+                List<String> abilityNames = splitTrim(cell(row, 8), ",");
+                List<String> resourceNames = splitTrim(cell(row, 9), ",");
+                List<String> evalMethodNames = splitTrim(cell(row, 10), ",");
+
+                int seq = taskCounter.merge(scenarioId, 1, Integer::sum);
+                String taskCode = "TSK-" + scenarioId.substring(0, 8) + "-" + String.format("%03d", seq);
+
+                List<String> knowledgePointIds = new ArrayList<>();
+                for (String kn : knowledgeNames) {
+                    String kpId = findOrCreateKnowledgePoint(tenantId, kn);
+                    if (kpId != null && !kpId.isEmpty()) {
+                        knowledgePointIds.add(kpId);
+                    }
+                }
+                List<String> abilityPointIds = new ArrayList<>();
+                for (String an : abilityNames) {
+                    String aid = positionImportMapper.findAbilityPointId(tenantId, an);
+                    if (aid != null && !aid.isEmpty()) {
+                        abilityPointIds.add(aid);
+                    }
+                }
+                List<String> resourceIds = new ArrayList<>();
+                for (String rn : resourceNames) {
+                    String rid = findOrCreateScenarioResource(tenantId, rn, userId);
+                    if (rid != null && !rid.isEmpty()) {
+                        resourceIds.add(rid);
+                    }
+                }
+
+                String taskId = UUID.randomUUID().toString();
+                try {
+                    scenarioImportMapper.insertScenarioTask(taskId, tenantId, scenarioId, taskName, taskCode, seq,
+                        background, detailedDescription, estimatedHours, taskType, difficulty,
+                        knowledgePointIds, abilityPointIds, resourceIds);
+                } catch (Exception e) {
+                    failed++;
+                    errors.add("任务[" + scenarioName + "/" + taskName + "]创建失败: " + e.getMessage());
+                    continue;
+                }
+                taskCreated++;
+                created++;
+
+                if (!evalMethodNames.isEmpty()) {
+                    List<String> validMethods = new ArrayList<>();
+                    for (String en : evalMethodNames) {
+                        String mk = mapScenarioEvalMethod(en);
+                        if (!mk.isEmpty()) {
+                            validMethods.add(mk);
+                        }
+                    }
+                    if (validMethods.isEmpty()) {
+                        errors.add("任务[" + scenarioName + "/" + taskName + "]测评方式均未识别，跳过写入");
+                        continue;
+                    }
+                    BigDecimal weight = BigDecimal.valueOf(100.0 / validMethods.size());
+                    for (String mk : validMethods) {
+                        try {
+                            scenarioImportMapper.upsertTaskEvalMethod(UUID.randomUUID().toString(), tenantId, taskId,
+                                mk, weight);
+                        } catch (Exception e) {
+                            errors.add("任务[" + scenarioName + "/" + taskName + "]测评方式[" + mk + "]写入失败: "
+                                + e.getMessage());
+                        }
+                    }
+                }
             }
         }
-        return preview ? previewResult(created, 0, failed, List.of(), errors)
-            : executeResult(created, failed, 0, entity, errors);
+
+        if (preview) {
+            return previewResult(created, duplicateItems.size(), failed, duplicateItems, errors);
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("created", created);
+        m.put("failed", failed);
+        m.put("skipped", skipped);
+        m.put("permissionSkipped", permissionSkipped);
+        m.put("entity", "场景");
+        m.put("scenarioCreated", scenarioCreated);
+        m.put("taskCreated", taskCreated);
+        m.put("errors", errors);
+        m.put("sheets", sheetNames(wb));
+        return m;
+    }
+
+    private String mapScenarioTaskType(String t) {
+        String v = t.trim();
+        return switch (v) {
+            case "考核" -> "assessment";
+            case "训练" -> "training";
+            default -> ("assessment".equals(v) || "training".equals(v)) ? v : "assessment";
+        };
+    }
+
+    private int parseScenarioDifficulty(String s) {
+        String t = s == null ? "" : s.trim();
+        if (t.isEmpty()) {
+            return 1;
+        }
+        int v;
+        try {
+            v = Integer.parseInt(t);
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+        return (v < 1 || v > 5) ? 1 : v;
+    }
+
+    private String mapScenarioEvalMethod(String t) {
+        return switch (t.trim()) {
+            case "题库" -> "question_bank";
+            case "试卷" -> "paper";
+            case "随堂测" -> "quiz";
+            case "现场问答" -> "random_draw";
+            case "现场评审" -> "review";
+            case "成果评价" -> "outcome";
+            case "作业" -> "homework";
+            default -> "";
+        };
+    }
+
+    private String findOrCreateScenarioResource(String tenantId, String name, String userId) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        String id = granularImportMapper.selectResourceIdByName(tenantId, name);
+        if (id != null && !id.isEmpty()) {
+            return id;
+        }
+        id = UUID.randomUUID().toString();
+        granularImportMapper.insertResource(id, tenantId, name, scenarioResourceTypeByExt(name), userId);
+        String existing = granularImportMapper.selectResourceIdByName(tenantId, name);
+        return existing != null && !existing.isEmpty() ? existing : id;
+    }
+
+    /** 资源按后缀推断类型（对齐 Go ResourceTypeByExt 完整清单），无法识别归入 other。 */
+    private String scenarioResourceTypeByExt(String name) {
+        String ext = "";
+        int dot = name.lastIndexOf('.');
+        if (dot >= 0) {
+            ext = name.substring(dot + 1).toLowerCase();
+        }
+        if (Set.of("pdf", "doc", "docx", "docm", "dot", "dotx", "dotm", "wps", "wpt", "rtf", "odt", "ott",
+            "fodt", "pages", "ppt", "pptx", "dps", "odp", "otp", "sxi", "vsd", "vsdx", "txt", "md", "log",
+            "json", "properties", "yaml", "yml", "gitignore", "xml", "xbrl", "html", "htm", "java", "py", "c",
+            "cpp", "h", "php", "go", "js", "css", "lua", "sh", "rb", "sql", "bat", "m", "bas", "prg", "cmd",
+            "cs", "ftl", "asp", "jsp", "aspx", "ofd", "epub", "eml", "xmind", "drawio", "bpmn", "dcm", "dwg",
+            "dxf", "dwf", "dwfx", "dwt", "dng", "cf2", "plt", "stl", "obj", "3ds", "ply", "off", "3dm", "fbx",
+            "dae", "wrl", "3mf", "glb", "gltf", "o3dv", "stp", "step", "iges", "igs", "brep", "bim", "fcstd",
+            "ifc").contains(ext)) {
+            return "document";
+        }
+        if (Set.of("xls", "xlsx", "xlsm", "xlt", "xltx", "xltm", "xlam", "xla", "et", "ett", "ods", "ots",
+            "csv", "tsv").contains(ext)) {
+            return "spreadsheet";
+        }
+        if (Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp", "ico", "jfif", "svg", "tif", "tiff", "tga",
+            "psd", "eps", "wmf", "emf").contains(ext)) {
+            return "image";
+        }
+        if (Set.of("mp3", "wav", "m4a", "flac", "aac", "ogg").contains(ext)) {
+            return "audio";
+        }
+        if (Set.of("mp4", "webm", "mov", "avi", "mkv", "flv", "wmv", "mpeg", "3gp", "rm", "mpd", "m3u8",
+            "ts").contains(ext)) {
+            return "video";
+        }
+        if (Set.of("zip", "rar", "7z", "tar", "gz", "bz2", "jar", "gzip").contains(ext)) {
+            return "archive";
+        }
+        if (Set.of("exe", "dmg", "pkg", "deb", "rpm", "msi", "apk").contains(ext)) {
+            return "software";
+        }
+        return "other";
+    }
+
+    // ==================== 题目 Excel 导入（对齐 Go question_import.go） ====================
+
+    private Map<String, Object> importQuestions(Workbook wb, String tenantId, String userId, String bankId,
+                                                boolean preview, boolean overwrite, boolean rename) {
+        if (bankId == null || bankId.isBlank()) {
+            throw new ApiException(400, "bad_request", "缺少题库ID");
+        }
+        if (questionImportMapper.selectQuestionBankIdScoped(bankId, tenantId) == null) {
+            throw new ApiException(400, "bad_request", "题库不存在");
+        }
+
+        List<String> errors = new ArrayList<>();
+        List<ImportPreviewItem> duplicateItems = new ArrayList<>();
+        int created = 0, failed = 0, skipped = 0, permissionSkipped = 0, duplicates = 0;
+        Set<String> seen = new java.util.HashSet<>();
+
+        List<List<String>> rows = readRows(wb, "题目明细");
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            String typeRaw = cell(row, 0).trim();
+            String content = cell(row, 1).trim();
+            if (typeRaw.isEmpty() || content.isEmpty()) {
+                continue;
+            }
+            String qType = mapQuestionType(typeRaw);
+            if (qType.isEmpty()) {
+                failed++;
+                errors.add("第" + (i + 1) + "行题型无法识别: \"" + typeRaw + "\"");
+                continue;
+            }
+
+            List<String> options = new ArrayList<>();
+            for (int idx = 2; idx <= 5; idx++) {
+                String opt = cell(row, idx).trim();
+                if (!opt.isEmpty()) {
+                    options.add(opt);
+                }
+            }
+            for (int idx = 12; idx <= 15; idx++) {
+                String opt = cell(row, idx).trim();
+                if (!opt.isEmpty()) {
+                    options.add(opt);
+                }
+            }
+            String answerRaw = cell(row, 6);
+            String analysis = nullableStr(cell(row, 7));
+            String difficulty = mapQuestionDifficulty(cell(row, 8));
+            List<String> knowledgeNames = splitTrim(cell(row, 9), ",");
+            BigDecimal score = BigDecimal.valueOf(parseDoubleSafe(cell(row, 10), 0));
+            String source = cell(row, 11).trim();
+            if (source.isEmpty()) {
+                source = "Excel导入";
+            }
+
+            List<String> answer = buildQuestionAnswer(qType, answerRaw, options);
+            String answerJson = jsonArray(answer);
+            String optionsJson = jsonArray(options);
+
+            String key = bankId + "|" + content;
+            if (!seen.add(key)) {
+                if (preview) {
+                    duplicates++;
+                    if (duplicateItems.size() < 100) {
+                        duplicateItems.add(new ImportPreviewItem(i + 1, content, content));
+                    }
+                } else {
+                    skipped++;
+                }
+                continue;
+            }
+
+            Map<String, Object> ident = questionImportMapper.selectQuestionIdentity(tenantId, bankId, content);
+            String existingId = ident == null ? null : str(ident.get("id"));
+            String existingCreator = ident == null ? null : str(ident.get("creator_id"));
+            boolean found = existingId != null && !existingId.isEmpty();
+
+            if (preview) {
+                if (found) {
+                    duplicates++;
+                    if (duplicateItems.size() < 100) {
+                        duplicateItems.add(new ImportPreviewItem(i + 1, content, content));
+                    }
+                } else {
+                    created++;
+                }
+                continue;
+            }
+
+            if (found) {
+                if (overwrite) {
+                    if (!canOverwriteContent(existingCreator, List.of(), userId)) {
+                        permissionSkipped++;
+                        continue;
+                    }
+                    List<String> knowledgePointIds = new ArrayList<>();
+                    for (String kn : knowledgeNames) {
+                        String kpId = findOrCreateKnowledgePoint(tenantId, kn);
+                        if (kpId != null && !kpId.isEmpty()) {
+                            knowledgePointIds.add(kpId);
+                        }
+                    }
+                    try {
+                        questionImportMapper.updateQuestionImport(existingId, tenantId, qType, optionsJson, answerJson,
+                            analysis, score, difficulty, knowledgePointIds);
+                    } catch (Exception e) {
+                        failed++;
+                        errors.add("第" + (i + 1) + "行题目更新失败: " + e.getMessage());
+                        continue;
+                    }
+                    created++;
+                    continue;
+                }
+                if (rename) {
+                    content = uniqueSuffixed(content,
+                        c -> questionImportMapper.selectQuestionIdByContent(tenantId, bankId, c) != null);
+                } else {
+                    skipped++;
+                    continue;
+                }
+            }
+
+            List<String> knowledgePointIds = new ArrayList<>();
+            for (String kn : knowledgeNames) {
+                String kpId = findOrCreateKnowledgePoint(tenantId, kn);
+                if (kpId != null && !kpId.isEmpty()) {
+                    knowledgePointIds.add(kpId);
+                }
+            }
+            String questionId = UUID.randomUUID().toString();
+            String code = randomCode("TM");
+            try {
+                questionImportMapper.insertQuestionImport(questionId, tenantId, code, bankId, qType, content,
+                    optionsJson, answerJson, analysis, score, difficulty, knowledgePointIds, userId, source);
+            } catch (Exception e) {
+                failed++;
+                errors.add("第" + (i + 1) + "行题目创建失败: " + e.getMessage());
+                continue;
+            }
+            created++;
+        }
+
+        if (preview) {
+            return previewResult(created, duplicates, failed, duplicateItems, errors);
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("created", created);
+        m.put("failed", failed);
+        m.put("skipped", skipped);
+        m.put("permissionSkipped", permissionSkipped);
+        m.put("entity", "题目");
+        m.put("errors", errors);
+        return m;
+    }
+
+    private String mapQuestionType(String t) {
+        String v = t.trim();
+        String mapped = switch (v) {
+            case "单选题" -> "single";
+            case "多选题" -> "multiple";
+            case "判断题" -> "judge";
+            case "填空题" -> "fill";
+            case "问答题" -> "essay";
+            case "简答题" -> "short_answer";
+            default -> "";
+        };
+        if (!mapped.isEmpty()) {
+            return mapped;
+        }
+        String lower = v.toLowerCase();
+        return switch (lower) {
+            case "single", "multiple", "judge", "fill", "essay", "short_answer" -> lower;
+            default -> "";
+        };
+    }
+
+    private String mapQuestionDifficulty(String d) {
+        return switch (d.trim()) {
+            case "简单", "easy" -> "easy";
+            case "中等", "medium" -> "medium";
+            case "困难", "hard" -> "hard";
+            default -> null;
+        };
+    }
+
+    private List<String> buildQuestionAnswer(String qType, String answerRaw, List<String> options) {
+        String a = answerRaw.trim();
+        if (a.isEmpty()) {
+            return List.of();
+        }
+        return switch (qType) {
+            case "single" -> {
+                String ans = mapOptionLetter(a, options);
+                yield List.of(ans.isEmpty() ? a : ans);
+            }
+            case "multiple" -> {
+                List<String> result = new ArrayList<>();
+                for (String p : splitTrim(a, ",")) {
+                    String mapped = mapOptionLetter(p, options);
+                    result.add(mapped.isEmpty() ? p : mapped);
+                }
+                yield result.isEmpty() ? List.of(a) : result;
+            }
+            case "judge" -> {
+                String lower = a.toLowerCase();
+                yield switch (lower) {
+                    case "正确", "对", "true", "1", "是" -> List.of("true");
+                    case "错误", "错", "false", "0", "否" -> List.of("false");
+                    default -> List.of(a);
+                };
+            }
+            case "fill" -> splitTrim(a, ",");
+            default -> List.of(a);
+        };
+    }
+
+    private String mapOptionLetter(String val, List<String> options) {
+        String v = val.trim();
+        if (v.length() != 1) {
+            return "";
+        }
+        int idx = switch (v) {
+            case "A", "a" -> 0;
+            case "B", "b" -> 1;
+            case "C", "c" -> 2;
+            case "D", "d" -> 3;
+            default -> -1;
+        };
+        return idx >= 0 && idx < options.size() ? options.get(idx) : "";
+    }
+
+    private String jsonArray(List<String> list) {
+        try {
+            return JSON_MAPPER.writeValueAsString(list);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private List<String> sheetNames(Workbook wb) {
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+            out.add(wb.getSheetName(i));
+        }
+        return out;
     }
 
     private Map<String, Object> affairsConfigImport(Workbook wb, String tenantId, boolean preview) {

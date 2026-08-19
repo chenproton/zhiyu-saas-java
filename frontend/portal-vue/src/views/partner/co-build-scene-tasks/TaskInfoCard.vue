@@ -1,7 +1,10 @@
 <template>
   <div class="task-info-card">
     <el-form label-position="top">
-      <el-form-item label="任务名称">
+      <el-form-item>
+        <template #label>
+          <span class="label-row">任务名称<slot name="name-ai" /></span>
+        </template>
         <el-input v-model="nameModel" placeholder="输入任务名称" />
       </el-form-item>
       <el-form-item label="任务类型">
@@ -16,10 +19,16 @@
         </template>
         <el-input-number v-model="hoursModel" :min="0" :max="999" style="width: 100%" />
       </el-form-item>
-      <el-form-item label="难度">
+      <el-form-item>
+        <template #label>
+          <span class="label-row">难度<slot name="difficulty-ai" /></span>
+        </template>
         <el-rate v-model="difficultyModel" :max="5" />
       </el-form-item>
-      <el-form-item label="背景介绍">
+      <el-form-item>
+        <template #label>
+          <span class="label-row">背景介绍<slot name="background-ai" /></span>
+        </template>
         <el-input v-model="backgroundModel" type="textarea" :rows="3" placeholder="简述任务背景" />
       </el-form-item>
     </el-form>
@@ -62,6 +71,11 @@ const backgroundModel = computed({
 </script>
 
 <style scoped>
+.label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .tip {
   color: #999;
   font-size: 12px;

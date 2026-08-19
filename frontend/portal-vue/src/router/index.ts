@@ -24,6 +24,13 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    // 更新日志（对齐 React /changelog，公共页无布局，无需登录）
+    path: '/changelog',
+    name: 'Changelog',
+    component: () => import('@/views/changelog.vue'),
+    meta: { public: true }
+  },
+  {
     // 超管控制台（对齐 React /superadmin，SaaS 平台登录态；页面内部自行鉴权，不走门户 token 守卫）
     path: '/superadmin',
     name: 'Superadmin',

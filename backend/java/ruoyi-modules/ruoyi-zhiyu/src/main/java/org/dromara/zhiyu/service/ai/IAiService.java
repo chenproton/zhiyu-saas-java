@@ -10,6 +10,8 @@ import org.dromara.zhiyu.domain.dto.ai.AiDtos.SaveAIConfigRequest;
 import org.dromara.zhiyu.domain.dto.ai.AiDtos.ScenarioAssistInput;
 import org.dromara.zhiyu.domain.dto.ai.AiDtos.ScenarioAssistResponse;
 
+import java.util.function.Consumer;
+
 /**
  * 租户 AI 配置/用量/统一对话服务（对齐 Go AIService）。
  *
@@ -31,6 +33,12 @@ public interface IAiService {
 
     /** 统一对话（非流式；未配置 → 412 ai_not_configured） */
     AIChatResponse chat(String tenantId, String userId, AIChatRequest req);
+
+    /**
+     * 统一流式对话：调用上游 OpenAI 兼容接口 stream=true，逐 delta 经 onDelta 实时回调，
+     * 返回聚合全文。未配置 → 412 ai_not_configured；上游错误 → 502 ai_upstream_error。
+     */
+    String chatStream(String tenantId, String userId, AIChatRequest req, Consumer<String> onDelta);
 
     /** 岗位 AI 辅助编写（mock 建议，不落库） */
     PositionAssistResponse positionAssist(String tenantId, String userId, String field, PositionAssistInput input);

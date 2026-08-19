@@ -10,6 +10,7 @@ export interface Exam {
   questions?: ExamQuestion[];
   coverImage?: string;
   collaboratorIds?: string[];
+  collaboratorDeptIds?: string[];
   batchId?: string;
   version?: string;
   ownerType: 'mine' | 'collaborate' | 'public';
@@ -45,6 +46,8 @@ export interface QuestionBank {
   creatorId?: string;
   creatorName?: string;
   collaboratorIds?: string[];
+  collaboratorNames?: string[];
+  collaboratorDeptIds?: string[];
   batchId?: string;
   version?: string;
   ownerType: 'mine' | 'collaborate' | 'public';
@@ -56,13 +59,43 @@ export interface QuestionBank {
 
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'fill' | 'essay' | 'short_answer';
 
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
+/** 规范题型键列表（对齐 React QUESTION_TYPES 权威顺序，UI 遍历统一使用） */
+export const QUESTION_TYPES: QuestionType[] = [
+  'single',
+  'multiple',
+  'judge',
+  'fill',
+  'essay',
+  'short_answer'
+];
+
+/** 题目类型中文映射（对齐 React shared-types QUESTION_TYPE_LABELS：essay=问答题、short_answer=简答题） */
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   single: '单选题',
   multiple: '多选题',
   judge: '判断题',
   fill: '填空题',
-  essay: '简答题',
-  short_answer: '问答题'
+  essay: '问答题',
+  short_answer: '简答题'
+};
+
+/** 题目类型配色（el-tag :color 用，对齐 React QUESTION_TYPE_BADGE_CLASSES 语义） */
+export const QUESTION_TYPE_COLORS: Record<string, string> = {
+  single: '#409eff',
+  multiple: '#8b5cf6',
+  judge: '#67c23a',
+  fill: '#e6a23c',
+  essay: '#13c2c2',
+  short_answer: '#f56c6c'
+};
+
+/** 难度等级中文映射（对齐 React DIFFICULTY_LABELS） */
+export const DIFFICULTY_LABELS: Record<string, string> = {
+  easy: '简单',
+  medium: '中等',
+  hard: '困难'
 };
 
 export interface Question {
@@ -75,13 +108,72 @@ export interface Question {
   answer: string | string[];
   analysis?: string;
   score: number;
-  difficulty?: string;
+  difficulty?: Difficulty;
   knowledgePoints?: string[];
   shuffleOptions?: boolean;
   creatorId?: string;
   source?: string;
   status: string;
   createdAt: string;
+}
+
+// ==================== 题目/题库/试卷表单与抽题 ====================
+
+/** 创建/编辑题目表单数据（对齐 React QuestionFormData） */
+export interface QuestionFormData {
+  type: QuestionType;
+  content: string;
+  options?: string[];
+  answer: string | string[];
+  analysis?: string;
+  score: number;
+  difficulty?: Difficulty;
+  knowledgePoints?: string[];
+  shuffleOptions?: boolean;
+}
+
+/** 创建/编辑题库表单数据（对齐 React QuestionBankFormData） */
+export interface QuestionBankFormData {
+  name: string;
+  description?: string;
+  coverImage?: string;
+  collaboratorIds?: string[];
+  collaboratorDeptIds?: string[];
+  batchId?: string;
+}
+
+/** 创建/编辑试卷表单数据（对齐 React ExamFormData） */
+export interface ExamFormData {
+  name: string;
+  description?: string;
+  duration: number;
+  coverImage?: string;
+  collaboratorIds?: string[];
+  collaboratorDeptIds?: string[];
+  batchId?: string;
+}
+
+/** 随机抽题筛选条件（对齐 React RandomQuestionFilter） */
+export interface RandomQuestionFilter {
+  bankIds: string[];
+  types: QuestionType[];
+  difficulties: Difficulty[];
+  knowledgePoints: string[];
+  count: number;
+}
+
+/** 评价批次（对齐 React EvaluationBatch） */
+export interface EvaluationBatch {
+  id: string;
+  tenantId?: string;
+  name: string;
+  code?: string;
+  orgNodeId?: string;
+  majorId?: string;
+  workflowId?: string;
+  status: 'open' | 'closed';
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ==================== 岗位能力认定规则 ====================

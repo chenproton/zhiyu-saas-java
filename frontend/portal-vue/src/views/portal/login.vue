@@ -7,6 +7,11 @@
     </div>
 
     <div class="login-panel">
+      <router-link to="/changelog" class="changelog-link" title="查看平台更新记录">
+        <el-icon><Clock /></el-icon>
+        <span>更新记录</span>
+      </router-link>
+
       <div class="brand-area">
         <h1 class="brand-title">场景化数智教学服务平台</h1>
       </div>
@@ -284,6 +289,27 @@ async function handleSubmit() {
 .blob-2 { width: 420px; height: 420px; bottom: -120px; right: -120px; }
 .blob-3 { width: 220px; height: 220px; top: 40%; left: 55%; background: rgba(64, 158, 255, 0.08); }
 .login-panel { position: relative; width: 100%; max-width: 440px; }
+.changelog-link {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid #e6ebf3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  color: #8a94a6;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s;
+}
+.changelog-link:hover {
+  border-color: rgba(64, 158, 255, 0.4);
+  color: #409eff;
+}
 .brand-area {
   display: flex;
   flex-direction: column;

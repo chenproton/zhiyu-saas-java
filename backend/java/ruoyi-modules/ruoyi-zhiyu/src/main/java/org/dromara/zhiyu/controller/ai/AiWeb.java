@@ -6,16 +6,14 @@ import org.dromara.zhiyu.service.ai.ChatStreamResult;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * AI 控制器 Web 层辅助（租户/用户上下文 + SSE 流式发射）。
  *
- * <p>SSE 事件协议对齐 Go（meta/sources/delta/done/error）；演示环境 LLM 为 mock，
- * 仅按分片发射「演示回复」文本保持流式形状。</p>
+ * <p>SSE 事件协议对齐 Go（meta/sources/delta/done）；上游 stream=true 的增量经
+ * {@link ChatStreamResult.StreamSource} 逐 delta 实时下发（真流式）。</p>
  *
  * @author zhiyu
  */
@@ -51,7 +49,7 @@ final class AiWeb {
         return m;
     }
 
-    /** 将流式对话结果转换为 SSE 响应（meta → delta* → done） */
+    /** 将流式对话结果转换为 SSE 响应（meta → sources → delta* → done） */
     static SseEmitter chat(ChatStreamResult r) {
         SseEmitter emitter = new SseEmitter(60_000L);
         CompletableFuture.runAsync(() -> {
@@ -62,13 +60,18 @@ final class AiWeb {
                 if (r.sources() != null && !r.sources().isEmpty()) {
                     send(emitter, "sources", r.sources());
                 }
-                for (String chunk : chunks(r.reply())) {
-                    send(emitter, "delta", Map.of("text", chunk));
-                }
+                // 真流式：上游 stream=true 逐 delta 实时下发
+                ChatStreamResult.StreamDone done = r.stream().execute(delta -> {
+                    try {
+                        send(emitter, "delta", Map.of("text", delta));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
                 if (r.doneWithAnswer()) {
-                    send(emitter, "done", Map.of("answer", r.reply()));
+                    send(emitter, "done", Map.of("answer", done.reply()));
                 } else {
-                    send(emitter, "done", Map.of("messageId", r.assistantMessageId()));
+                    send(emitter, "done", Map.of("messageId", done.assistantMessageId()));
                 }
                 emitter.complete();
             } catch (Exception e) {
@@ -80,17 +83,5 @@ final class AiWeb {
 
     private static void send(SseEmitter emitter, String event, Object data) throws IOException {
         emitter.send(SseEmitter.event().name(event).data(data));
-    }
-
-    private static List<String> chunks(String text) {
-        if (text == null || text.isEmpty()) {
-            return List.of("演示回复");
-        }
-        List<String> out = new ArrayList<>();
-        int step = 4;
-        for (int i = 0; i < text.length(); i += step) {
-            out.add(text.substring(i, Math.min(i + step, text.length())));
-        }
-        return out;
     }
 }
