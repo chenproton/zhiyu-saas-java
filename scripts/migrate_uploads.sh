@@ -16,10 +16,32 @@ UPLOAD_DIR="${UPLOAD_DIR:-../public/uploads}"
 [[ -z "$DB_URL" ]] && { echo "错误：请设置 DATABASE_URL" >&2; exit 1; }
 [[ -d "$UPLOAD_DIR" ]] || { echo "错误：UPLOAD_DIR 不存在：$UPLOAD_DIR" >&2; exit 1; }
 
-PSQL=(psql "$DB_URL" -X -q -v ON_ERROR_STOP=1)
+# 口令不进 argv：原来把含口令的完整 DB_URL 放进 psql 参数，同机任意用户 ps 可见。
+# 从 URL 解析出各字段，口令经 PGPASSWORD 环境变量传递。
+PG_USER=$(printf '%s' "$DB_URL" | sed -nE 's|^[a-z]+://([^:@/]+).*|\1|p')
+PG_PASS=$(printf '%s' "$DB_URL" | sed -nE 's|^[a-z]+://[^:@/]+:([^@]*)@.*|\1|p' \
+  | python3 -c 'import sys,urllib.parse;print(urllib.parse.unquote(sys.stdin.read().strip()))')
+PG_HOST=$(printf '%s' "$DB_URL" | sed -nE 's|^[a-z]+://[^@]*@([^:/]+).*|\1|p')
+PG_PORT=$(printf '%s' "$DB_URL" | sed -nE 's|^[a-z]+://[^@]*@[^:/]+:([0-9]+).*|\1|p')
+PG_DB=$(printf '%s' "$DB_URL" | sed -nE 's|^[a-z]+://[^@]*@[^/]+/([^?]+).*|\1|p')
+[[ -n "$PG_USER" && -n "$PG_HOST" && -n "$PG_DB" ]] \
+  || { echo "错误：无法从 DATABASE_URL 解析连接信息" >&2; exit 1; }
+export PGPASSWORD="$PG_PASS"
+PSQL=(psql -h "$PG_HOST" -p "${PG_PORT:-5432}" -U "$PG_USER" -d "$PG_DB" -X -q -v ON_ERROR_STOP=1)
 
 # jsonb/数组等结构化字段中的平铺引用模式：/uploads/<36位uuid>.<ext>
 FLAT_PATTERN='/uploads/([0-9a-f-]{36}\.[A-Za-z0-9]+)'
+
+# dry-run：只统计将要移动/改写的量，不动文件也不改库（DRY_RUN=1 或 --dry-run）
+DRY_RUN=false
+[[ "${DRY_RUN:-0}" == "1" || "${1:-}" == "--dry-run" ]] && DRY_RUN=true
+$DRY_RUN && echo "== DRY RUN：只统计，不移动文件、不改数据库 =="
+
+# 强烈建议先备份：本脚本会移动文件并改写 DB 引用，无事务保护（跨文件系统与库两侧）
+if ! $DRY_RUN; then
+  echo "提示：本脚本会移动文件并改写 DB 引用，建议先执行全库备份："
+  echo "  docker exec -T zhiyu-postgres pg_dump -U $PG_USER $PG_DB > /opt/zhiyu-saas/backups/pre-uploads-migrate.sql"
+fi
 
 # 所有被 DB 引用的文件名（含已按租户前缀引用的），供最后孤儿隔离过滤
 REF_NAMES=$(mktemp)
@@ -55,6 +77,11 @@ move_file() {
     fi
     return 0
   fi
+  if $DRY_RUN; then
+    echo "  [dry-run] 将移动 $name -> $tenant/$name"
+    moved=$((moved + 1))
+    return 1   # 返回非 0 → 调用方跳过 DB 更新（dry-run 不改库）
+  fi
   mkdir -p "$UPLOAD_DIR/$tenant"
   if mv "$src" "$dst"; then
     echo "  [ok] $name -> $tenant/$name"
@@ -82,7 +109,7 @@ while IFS='|' read -r tbl col; do
     record_ref "$tenant" "$name"
     # 移动失败就不改库：否则 DB 指向不存在的新路径（前端 404，且旧路径也从库里消失）
     if ! move_file "$tenant" "$name"; then
-      echo "  [skip-db] 因文件移动失败，跳过 DB 更新：$tbl.$col $name" >&2
+      $DRY_RUN || echo "  [skip-db] 因文件移动失败，跳过 DB 更新：$tbl.$col $name" >&2
       continue
     fi
     "${PSQL[@]}" -c "UPDATE \"$tbl\" SET \"$col\" = '/uploads/$tenant/$name' WHERE \"$col\" = '/uploads/$name' AND tenant_id = '$tenant'"
@@ -111,7 +138,7 @@ while IFS='|' read -r tbl col; do
     [[ -z "$id" || -z "$tenant" || -z "$name" ]] && continue
     record_ref "$tenant" "$name"
     if ! move_file "$tenant" "$name"; then
-      echo "  [skip-db] 因文件移动失败，跳过 DB 更新：${tbl}.${col} id=${id} ${name}" >&2
+      $DRY_RUN || echo "  [skip-db] 因文件移动失败，跳过 DB 更新：${tbl}.${col} id=${id} ${name}" >&2
       continue
     fi
     "${PSQL[@]}" -c "UPDATE \"$tbl\" SET \"$col\" = array_replace(\"$col\", '/uploads/$name', '/uploads/$tenant/$name') WHERE id = '$id'"
@@ -143,6 +170,11 @@ while IFS='|' read -r tbl col; do
           FROM \"$tbl\" WHERE \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+') x")
   # 必须排除 tenant_id IS NULL：'/uploads/' || NULL::text = NULL → regexp_replace 返回 NULL
   # → 整个 jsonb 列被写成 NULL（原实现会直接清空这些行的业务数据）
+  if $DRY_RUN; then
+    cnt=$("${PSQL[@]}" -Atc "SELECT count(*) FROM \"$tbl\" WHERE tenant_id IS NOT NULL AND \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+'" 2>/dev/null || echo 0)
+    [[ "$cnt" =~ ^[0-9]+$ && "$cnt" -gt 0 ]] && echo "  [dry-run] $tbl.$col 将改写 $cnt 行"
+    continue
+  fi
   updated=$("${PSQL[@]}" -Atc "WITH upd AS (UPDATE \"$tbl\" SET \"$col\" = regexp_replace(\"$col\"::text, '$FLAT_PATTERN', '/uploads/' || tenant_id::text || '/\1', 'g')::jsonb WHERE tenant_id IS NOT NULL AND \"$col\" IS NOT NULL AND \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+' RETURNING 1) SELECT count(*) FROM upd")
   # tenant_id 为空的残留行单独提示，交人工处理，不擅自改写
   orphan=$("${PSQL[@]}" -Atc "SELECT count(*) FROM \"$tbl\" WHERE tenant_id IS NULL AND \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+'" 2>/dev/null || echo 0)
@@ -167,6 +199,7 @@ for f in "$UPLOAD_DIR"/*; do
     echo "  [warn] 仍被 DB 引用但滞留根目录：$name（请检查归属）" >&2
     continue
   fi
+  if $DRY_RUN; then echo "  [dry-run] 将隔离孤儿文件 $name"; continue; fi
   mv "$f" "$QUARANTINE/$name"
   echo "  [quarantine] $name -> _legacy_unreferenced/"
 done

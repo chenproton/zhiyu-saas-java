@@ -26,9 +26,13 @@ set -E
 trap 'rc=$?; [[ $rc -ne 0 ]] && echo "  错误：deploy.sh 第 ${LINENO} 行失败（命令: ${BASH_COMMAND}，退出码 ${rc}）" >&2' ERR
 
 # ── 参数 ──
-BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; FORCE_FLAG=false; GATES_FLAG=false
+BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; FORCE_FLAG=false
+# 质量门禁默认开启：CI 触发条件是 push:[master]，而本脚本部署成功即直推 master，
+# 只靠 CI 等于「事后报警」——红了也拦不住已被写入的 master。--skip-gates 可应急跳过。
+GATES_FLAG=true
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --skip-gates) GATES_FLAG=false; shift ;;
     --branch)
       [[ -z "${2:-}" || "${2:-}" == -* ]] && { echo "  错误：--branch 需要分支名" >&2; exit 1; }
       BRANCH_NAME="$2"; shift 2 ;;
@@ -37,7 +41,8 @@ while [[ $# -gt 0 ]]; do
     --gates) GATES_FLAG=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
-      echo "用法: $0 --branch <分支名> [--clean] [--force] [--gates] [--skip-merge]"
+      echo "用法: $0 --branch <分支名> [--clean] [--force] [--skip-gates] [--skip-merge]"
+      echo "  门禁默认开启（gofmt/vet/go test + typecheck/lint/test + spec-check），--skip-gates 应急跳过"
       echo "  --force 仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
@@ -1028,7 +1033,7 @@ if $BUILD_BACKEND; then
     # spec 硬约束（分层红线/AI 底座/migration 配对/spec 制品/ADR 索引/安全）
     (cd "$BUILD_ROOT" && ./scripts/spec-check.sh) || die "spec-check.sh 硬约束校验失败"
   else
-    log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
+    log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
   fi
   mkdir -p "$BUILD_CACHE/go-cache"
   if [[ -d "$BACKEND_DIR/vendor" ]]; then
@@ -1126,7 +1131,7 @@ if $BUILD_FRONTEND; then
     # vitest 单测与 AGENTS.md「二、交付要求」本地检查清单对齐（此前缺跑，仅 CI 覆盖）
     (cd "$BUILD_ROOT" && pnpm test) || die "pnpm test 失败"
   else
-    log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
+    log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
   fi
 
   [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/dist"
