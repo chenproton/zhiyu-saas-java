@@ -367,6 +367,32 @@ install_offline_debs() {
   touch "$marker"
 }
 
+# ── 部署锁（必须在任何系统级动作之前）──
+# 历史问题：锁在脚本后半段才获取，而此前已经做了 apt 安装、解压 Go/Node 到 /usr/local、
+# 装并启用 nginx、重启 docker 等全局动作 —— 两个并发部署会互相踩（例如一边 rm -rf /usr/local/go
+# 重装，另一边正在 go build）。故把锁提前到系统依赖检查之前。
+# 锁文件放 /run（root 专属、非世界可写）：/tmp 路径可预测，非 root 用户可预置同名符号链接，
+# root 的 exec {LOCK_FD}>"$LOCK_FILE" 会跟随并截断目标文件。/run 不可写时回退 /tmp。
+if [[ -d /run && -w /run ]]; then LOCK_FILE="/run/zhiyu-deploy.lock"; else LOCK_FILE="/tmp/zhiyu-deploy.lock"; fi
+if command -v flock >/dev/null 2>&1; then
+  exec {LOCK_FD}>"$LOCK_FILE"
+  # 先非阻塞探测一次：锁空闲立即持有；被占用则打印提示后阻塞排队（串行部署）
+  flock -n "$LOCK_FD" || { log "等待部署锁（其他 Agent 部署进行中，自动排队）..."; flock "$LOCK_FD"; log "已获得部署锁"; }
+  cleanup() {
+    # 清理构建残留（docker build 中途失败时 TMPCTX 会残留）
+    [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
+    # 构建树里的 .env 是密钥副本（位于 /tmp），部署结束即删，不长期留存
+    [[ -n "${BUILD_TREE:-}" && -f "${BUILD_TREE:-}/.env" ]] && rm -f "$BUILD_TREE/.env"
+    # 回滚用的临时标签用完即清，避免下次部署把 :rollback 当成「上一版镜像」（等于没回滚）
+    docker rmi "zhiyu-backend:rollback" "zhiyu-edu:rollback" >/dev/null 2>&1 || true
+    exec {LOCK_FD}>&- 2>/dev/null || true
+  }
+  trap cleanup EXIT
+else
+  # 多 Agent 并行开发的仓库里没有锁 = 并发部署互相踩构建树/容器/迁移，必须硬失败
+  die "flock 不可用，拒绝无锁部署（请安装 util-linux）"
+fi
+
 log "检查系统依赖..."
 # 优先从本地 deb 安装，再校验关键命令，缺失则尝试 apt 安装
 install_offline_debs
@@ -826,26 +852,7 @@ if [[ -z "$BRANCH_NAME" ]] && [[ "$ORIGINAL_ROOT" == "$PROJECT_ROOT" ]] && \
   log "处于 master 分支且无未推送提交，自动同步并部署 origin/master 最新代码"
 fi
 
-# ── 部署锁 ──
-LOCK_FILE="/tmp/zhiyu-deploy.lock"
-if command -v flock >/dev/null 2>&1; then
-  exec {LOCK_FD}>"$LOCK_FILE"
-  # 先非阻塞探测一次：锁空闲立即持有；被占用则打印提示后阻塞排队（串行部署）
-  flock -n "$LOCK_FD" || { log "等待部署锁（其他 Agent 部署进行中，自动排队）..."; flock "$LOCK_FD"; log "已获得部署锁"; }
-  cleanup() {
-    # 清理构建残留（docker build 中途失败时 TMPCTX 会残留）
-    [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
-    # 构建树里的 .env 是密钥副本（位于 /tmp），部署结束即删，不长期留存
-    [[ -n "${BUILD_TREE:-}" && -f "${BUILD_TREE:-}/.env" ]] && rm -f "$BUILD_TREE/.env"
-    # 回滚用的临时标签用完即清，避免下次部署把 :rollback 当成「上一版镜像」（等于没回滚）
-    docker rmi "zhiyu-backend:rollback" "zhiyu-edu:rollback" >/dev/null 2>&1 || true
-    exec {LOCK_FD}>&- 2>/dev/null || true
-  }
-  trap cleanup EXIT
-else
-  # 多 Agent 并行开发的仓库里没有锁 = 并发部署互相踩构建树/容器/迁移，必须硬失败
-  die "flock 不可用，拒绝无锁部署（请安装 util-linux）"
-fi
+# 部署锁已在「检查系统依赖」之前获取（见脚本上方），此处不再重复加锁。
 
 # 持锁后重新拉取 origin/master：锁等待期间可能有其他 Agent 已完成部署并合并推送，
 # 必须基于全量最新 master 构建（后部署者自动继承先部署者已合并的代码），
@@ -1211,12 +1218,16 @@ fi
 
 COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
 rm -f "$COMPOSE_UP_LOG"
-if ! compose up -d --remove-orphans >"$COMPOSE_UP_LOG" 2>&1; then
-  echo "docker compose up 失败日志：" >&2
+# 分两段启动（顺序即契约，见 docs/spec/03-development-plan.md「部署与回滚」）：
+#   第一段只起数据层 postgres/redis → 备份 + 迁移 → 第二段才起业务容器。
+# 原来一次性 up 全部：新版本 backend 会在「旧 schema」上对外服务数十秒（500 或写坏数据），
+# 而且备份是在新代码已经写过库之后取的，回滚时参考点不干净。
+if ! compose up -d postgres redis >"$COMPOSE_UP_LOG" 2>&1; then
+  echo "docker compose up（数据层）失败日志：" >&2
   tail -n 50 "$COMPOSE_UP_LOG" >&2 || true
-  rollback_deploy "docker compose up 失败"
+  rollback_deploy "docker compose up 数据层失败"
 fi
-tail -n 5 "$COMPOSE_UP_LOG"
+tail -n 3 "$COMPOSE_UP_LOG"
 
 # 等待 PG
 for _ in $(seq 1 30); do
@@ -1264,6 +1275,15 @@ else
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
 fi
 
+# 第二段：schema 已就绪，再拉起业务容器（backend/frontend/nginx/kkfileview）
+log "数据层与迁移完成，启动业务容器..."
+if ! compose up -d --remove-orphans >>"$COMPOSE_UP_LOG" 2>&1; then
+  echo "docker compose up（业务容器）失败日志：" >&2
+  tail -n 50 "$COMPOSE_UP_LOG" >&2 || true
+  rollback_deploy "docker compose up 业务容器失败"
+fi
+tail -n 5 "$COMPOSE_UP_LOG"
+
 # 健康检查
 log "等待服务就绪..."
 OK=true
@@ -1307,6 +1327,44 @@ for attempt in 1 2; do
   # 两次都失败即认定部署未成功：否则站点 502 仍会被判成功并自动合并 master
   [[ "$attempt" == "2" ]] && rollback_deploy "服务网关自检未通过（前端经 zhiyu-nginx 不可访问）"
 done
+
+# ── 部署后业务冒烟 ──
+# 只验「容器 healthy + 首页 200」不足以证明系统可用（历史上没有任何业务链路校验）。
+# 这里用四个不需要账号口令、也不受登录验证码影响的探针，覆盖：
+#   静态产物 → 后端存活 → API+Redis（验证码生成）→ DB 读（主题配置）→ 鉴权中间件（未带 token 必须 401）
+# 全部通过才算部署成功；任一失败即回滚，避免把 502/白屏/鉴权失效的版本合并进 master。
+smoke_test() {
+  local base rc=0
+  # 优先走生产入口（宿主 nginx，覆盖完整链路），不可用时退到网关容器端口
+  if curl -sf -o /dev/null --max-time 5 "http://127.0.0.1:${NGINX_PORT:-80}/portal/login"; then
+    base="http://127.0.0.1:${NGINX_PORT:-80}"
+  else
+    base="http://127.0.0.1:${GO_NGINX_PORT:-8084}"
+  fi
+  log "  冒烟基址: $base"
+
+  check() {
+    local path="$1" want="$2" desc="$3" code
+    code=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' "$base$path" || echo 000)
+    if [[ "$code" == "$want" ]]; then
+      log "    ✓ $desc（$path → $code）"
+    else
+      warn "    ✗ $desc（$path 期望 $want，实际 $code）"
+      rc=1
+    fi
+  }
+
+  check "/portal/login"          200 "前端 SPA 产物"
+  check "/health"                200 "后端存活"
+  check "/api/v1/auth/captcha"   200 "API + Redis（验证码生成）"
+  check "/api/v1/settings/theme" 200 "API + DB 读（主题配置）"
+  check "/api/v1/tenants"        401 "鉴权中间件生效（未带 token 必须 401）"
+  return $rc
+}
+
+log "部署后业务冒烟..."
+smoke_test || rollback_deploy "业务冒烟未通过（详见上方探针结果）"
+log "  业务冒烟通过"
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）。
 # 首次启动需初始化 LibreOffice 与加载 javacv 转码库，低配机器可能超过 2 分钟，等待上限放宽到 3 分钟。

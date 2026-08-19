@@ -148,9 +148,42 @@
 |------|------|------|------|
 | Spec 评审 | 每里程碑开工前 | 本文档 + PRD/接口契约/Schema 四份规格对齐 | 里程碑任务清单 |
 | 代码评审 | 每批次合并前 | CI 门禁 + 人工 review（审查记录） | `docs/code-review-checklist.md` 审查清单 |
-| 部署验证 | 每次代码修改后 | `./deploy.sh --branch` 隔离部署 + 健康检查 | 自动合并回 master |
+| 部署验证 | 每次代码修改后 | `./deploy.sh --branch` 隔离部署 + 健康检查 + 业务冒烟（见 §5） | 自动合并回 master |
 | UAT 验收 | 每里程碑结束 | 学生端/管理端全流程走查 | 里程碑完成状态（见 §1） |
 | 五轮审查 | 08-03 ~ 08-04 | P1 数据正确性 → P2 精选 → P3 清理 | `docs/code-review-checklist.md`（含各批次修复明细） |
+
+## 5. 部署契约（deploy.sh 行为约定）
+
+> 与实现同源：`deploy.sh`（Go+React 栈）/ `deploy-java.sh`（Java+Vue 栈）。两栈分开部署，仅共享 `zhiyu-postgres` 与 docker 网络。
+
+### 5.1 执行顺序（顺序即契约）
+
+1. **取部署锁**（`/run/zhiyu-deploy.lock`，flock 不可用即拒绝部署）——先于任何系统级动作（apt / 解压 Go·Node / 装 nginx / 配 docker mirror），避免并发部署互踩
+2. 校验分支 → 在隔离 worktree（`/tmp/zhiyu-build-cache`）上以 `origin/master` 为基座合并目标分支
+3. 增量构建：后端/前端各自按源码指纹判断，未变更则跳过；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
+4. **第一段启动**：只起数据层 `postgres` / `redis`
+5. **全库备份**（`/opt/zhiyu-saas/backups`，目录 700 / 文件 600，保留最近 7 份）
+6. **执行迁移**：优先 `cmd/migrate`，失败回落 psql（`ON_ERROR_STOP=1`，遇错立即停止，不叠加半应用 DDL）
+7. **第二段启动**：再起业务容器 `backend` / `frontend` / `nginx` / `kkfileview`
+8. **健康门禁**：带 healthcheck 的服务必须 `healthy`（`Up (health: starting)` / `Up (unhealthy)` 不算就绪）；网关容器重启后自检两次失败即回滚
+9. **业务冒烟**：`/portal/login` 200、`/health` 200、`/api/v1/auth/captcha` 200（API+Redis）、`/api/v1/settings/theme` 200（API+DB 读）、`/api/v1/tenants` 401（鉴权中间件生效）；任一失败即回滚
+10. 写入构建指纹 → 生成生产 nginx 配置（临时文件 + `cmp` 去重 + 原子 mv，`nginx -t` 失败自动复位）→ 合并分支到 master
+
+任一环节失败统一走 `rollback_deploy`：回到上一版镜像并重新做健康检查，失败则报错退出，**不会**把未通过验证的版本合并进 master。
+
+### 5.2 密钥注入边界
+
+| 容器 | 可见密钥 | 理由 |
+|---|---|---|
+| `backend` | `DATABASE_URL` / `JWT_SECRET` / `AI_CONFIG_SECRET` 等（`env_file: .env`） | 业务本体需要 |
+| `postgres` | 仅 `POSTGRES_*` | 建库账号 |
+| `frontend` / `nginx` / `redis` / `kkfileview` | **无** | 静态产物与第三方组件不得持有可伪造 token 的 `JWT_SECRET` |
+
+密钥另有三条硬约束：`.env` 权限 600（含构建树内副本）、口令不进进程 argv（psql 走 `PGPASSWORD`）、部署输出与日志不回显任何口令。
+
+### 5.3 质量门禁
+
+CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format、后端 gofmt/vet/build/test + `spec-check.sh`、**shell（`bash -n` 全量 + shellcheck）**。`deploy.sh --gates` 可在部署前本地复跑前后端门禁（默认跳过，CI 已覆盖）。
 
 ### 后续迭代建议
 
