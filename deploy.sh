@@ -20,12 +20,17 @@
 #                回滚场景（git checkout <tag> 后 detached）仍基于本地 HEAD 构建
 #
 set -euo pipefail
+# 失败可定位：管道/命令替换里的静默失败会带出行号与具体命令（历史上多次"无任何输出就退出"）
+set -E
+trap 'rc=$?; [[ $rc -ne 0 ]] && echo "  错误：deploy.sh 第 ${LINENO} 行失败（命令: ${BASH_COMMAND}，退出码 ${rc}）" >&2' ERR
 
 # ── 参数 ──
 BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; FORCE_FLAG=false; GATES_FLAG=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --branch) BRANCH_NAME="$2"; shift 2 ;;
+    --branch)
+      [[ -z "${2:-}" || "${2:-}" == -* ]] && { echo "  错误：--branch 需要分支名" >&2; exit 1; }
+      BRANCH_NAME="$2"; shift 2 ;;
     --clean) CLEAN_BUILD=true; shift ;;
     --force) FORCE_FLAG=true; shift ;;
     --gates) GATES_FLAG=true; shift ;;
@@ -284,7 +289,9 @@ run_migrations() {
       psql "$migrate_url" -c "INSERT INTO schema_migrations (version) VALUES ('$version') ON CONFLICT DO NOTHING;" >/dev/null || true
     else
       failed=true
-      warn "兜底迁移失败: $(basename "$f")"
+      # 立即停止：继续应用后续 migration 会在半应用的 schema 上叠加 DDL，之后必然卡住
+      warn "兜底迁移失败: $(basename "$f")（停止后续迁移，避免半应用 DDL 叠加）"
+      break
     fi
   done
 
@@ -302,9 +309,17 @@ source_hash() {
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
 frontend_hash() {
-  find "$1/frontend/edu" "$1/frontend/packages" -type f \
-    -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/dist/*' \
-    -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
+  # 排除构建期生成物（public/image-editor 687 文件、wasm/vendor 由 prebuild 生成）：
+  # 它们一变就白烧一次「3.4GB 峰值 + 1 分钟」的前端构建。
+  # 纳入根级配置：根 package.json / pnpm-workspace.yaml / tsconfig.base.json / .npmrc 变更
+  # 会影响产物，原来不在指纹内 → 会被误判「无变更跳过」而部署陈旧 dist。
+  {
+    find "$1/frontend/edu" "$1/frontend/packages" -type f \
+      -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/dist/*' \
+      -not -path '*/public/image-editor/*' -not -path '*/public/wasm/*' -not -path '*/public/vendor/*' \
+      -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null
+    printf '%s\0' "$1/package.json" "$1/pnpm-workspace.yaml" "$1/tsconfig.base.json" "$1/.npmrc"
+  } | sort -z | xargs -0 -r md5sum 2>/dev/null | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
 lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
@@ -389,6 +404,15 @@ configure_docker_mirrors() {
         break
       fi
     done
+    # 探测失败但现有配置已有 mirror → 保留原配置直接返回。
+    # 否则网络抖一次就把 daemon.json 写成 {} 并 restart docker，
+    # 重启会中断宿主上所有容器（含 Java 栈与其他 Agent 正在构建的容器），
+    # 下次探测成功又写回去，形成 64B/2B 交替的备份churn（本机已累积 30+ 份）。
+    if [[ -z "$mirrors" ]] && [[ -s "$daemon_file" ]] && \
+       python3 -c "import json,sys; sys.exit(0 if json.load(open('$daemon_file')).get('registry-mirrors') else 1)" 2>/dev/null; then
+      log "镜像加速探测失败，保留现有 daemon.json（不重启 docker）"
+      return 0
+    fi
   fi
 
   mkdir -p /etc/docker
@@ -428,6 +452,9 @@ if [[ -z "$DOCKER_COMPOSE" ]]; then
   [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
 compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
+# 本栈 compose 项目名（取自 compose 文件的 name:，供按 label 精准清理本栈资源用，避免误伤其他栈）
+COMPOSE_PROJECT="$(awk '/^name:[[:space:]]*/{print $2; exit}' "$DEPLOY_COMPOSE" 2>/dev/null || true)"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-zhiyu-saas}"
 
 # Nginx（宿主标准 nginx，作为统一网关）
 if ! command -v nginx >/dev/null 2>&1; then
@@ -753,10 +780,13 @@ export IMAGE_TAG BACKEND_PORT EDU_PORT GO_NGINX_PORT POSTGRES_HOST_PORT KKFILEVI
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
   git -C "$ORIGINAL_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
-  lc=$(git -C "$ORIGINAL_ROOT" rev-parse "$BRANCH_NAME" 2>/dev/null || true)
   oc=$(git -C "$ORIGINAL_ROOT" rev-parse "origin/$BRANCH_NAME" 2>/dev/null || true)
   [[ -z "$oc" ]] && die "origin/$BRANCH_NAME 不存在，请先 git push"
-  [[ "$lc" != "$oc" ]] && die "本地 $BRANCH_NAME 与 origin 不一致，请先 git push"
+  # 仅当本地确实有同名分支时才比对：分支由其他 clone/worktree 推送时本地无该 ref，
+  # 原写法会把「本地无引用」当成「与 origin 不一致」而拒绝部署（多 Agent 并行常态）
+  if lc=$(git -C "$ORIGINAL_ROOT" rev-parse --verify -q "refs/heads/$BRANCH_NAME"); then
+    [[ "$lc" != "$oc" ]] && die "本地 $BRANCH_NAME 与 origin 不一致，请先 git push"
+  fi
 else
   # 非分支模式：先同步 origin/master 引用，供下方自动同步判定与构建使用
   git -C "$ORIGINAL_ROOT" fetch origin master 2>/dev/null || true
@@ -845,7 +875,10 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   # 保留 frontend/edu/dist 以复用 Vite 增量产物；仅清理后端编译产物
   rm -rf "$BUILD_TREE/backend/go/bin" 2>/dev/null || true
   if [[ -n "$BRANCH_NAME" ]]; then
-    git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
+    # merge --abort 必须带 || true：merge 因本地改动被拒（尚未开始合并）时它会失败，
+    # 在 { } 里失败会让 errexit 抢先退出，die 的提示根本打不出来
+    git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit \
+      || { git -C "$BUILD_TREE" merge --abort 2>/dev/null || true; die "合并冲突，请先把 $BRANCH_NAME rebase 到最新 master"; }
   fi
   # 构建树在 /tmp（世界可读目录），密钥文件必须 600，故用 install -m 而非裸 cp
   [[ -f "$ORIGINAL_ROOT/.env" ]] && install -m 600 "$ORIGINAL_ROOT/.env" "$BUILD_TREE/.env"
@@ -905,7 +938,8 @@ rollback_deploy() {
   compose logs backend --tail 30 2>/dev/null || true
   # 迁移环节失败时数据库可能处于中间状态（仅 psql 兜底部分应用场景），提示人工恢复路径
   if [[ -s "${BACKUP_FILE:-}" ]]; then
-    warn "如需恢复数据库，可执行: psql \"$MIGRATE_URL\" -f \"$BACKUP_FILE\"（请先人工确认库状态）"
+    # 不打印 MIGRATE_URL：内含 DB 口令，会落到部署日志/CI/会话记录
+    warn "如需恢复数据库: PGPASSWORD=<见 $ENV_FILE 的 DATABASE_URL> psql -h 127.0.0.1 -p ${POSTGRES_HOST_PORT:-5433} -U ${DB_USER} -d ${DB_NAME} -f \"$BACKUP_FILE\"（请先人工确认库状态）"
   fi
   die "部署失败，已回滚到旧镜像"
 }
@@ -946,7 +980,7 @@ if $BUILD_BACKEND; then
       warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
     fi
     # spec 硬约束（分层红线/AI 底座/migration 配对/spec 制品/ADR 索引/安全）
-    "$PROJECT_ROOT/scripts/spec-check.sh" || die "spec-check.sh 硬约束校验失败"
+    (cd "$BUILD_ROOT" && ./scripts/spec-check.sh) || die "spec-check.sh 硬约束校验失败"
   else
     log "  质量门禁已跳过（GitHub Actions 已覆盖，--gates 可手动开启）"
   fi
@@ -978,7 +1012,10 @@ if $BUILD_BACKEND; then
   fi
 
   BUILD_LOG="$DEPLOY_DIR/.build-backend.log"
-  docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" >"$BUILD_LOG" 2>&1
+  if ! docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" >"$BUILD_LOG" 2>&1; then
+    tail -n 40 "$BUILD_LOG" >&2 || true
+    die "后端镜像构建失败（完整日志: $BUILD_LOG）"
+  fi
   tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
   rm -rf "$TMPCTX"
@@ -1044,7 +1081,9 @@ if $BUILD_FRONTEND; then
   # 保证 vite build 时是实际文件而非断链。
   if [[ -d "$BUILD_ROOT/offline/image-editor" ]]; then
     log "  同步离线图片编辑器资产..."
-    rm -rf "$EDU_DIR/public/image-editor"
+    # 只在它是符号链接时删除（仓库里是链接，vite build 需要实体文件）；
+    # 已是实体目录则交给 rsync --delete 增量同步（17MB/687 文件，避免每次全量重拷）
+    [[ -L "$EDU_DIR/public/image-editor" ]] && rm -f "$EDU_DIR/public/image-editor"
     mkdir -p "$EDU_DIR/public/image-editor"
     rsync -a --delete "$BUILD_ROOT/offline/image-editor/" "$EDU_DIR/public/image-editor/"
   fi
@@ -1058,17 +1097,36 @@ if $BUILD_FRONTEND; then
   #    不限堆时 V8 会推迟 GC 把峰值顶到 3.4GB，与并发构建/门禁叠加即触发内核 global OOM
   #    （dmesg: constraint=CONSTRAINT_NONE, global_oom；连 dsh-web.service 一起被杀过）。
   #    需要更快构建可用 EDU_BUILD_HEAP_MB 调大（内存充足的机器上如 4096）。
+  # ③ systemd-run 起的是 transient service（PID1 拉起），**不继承本脚本环境**，
+  #    因此 .env 里的 VITE_* 必须显式 --setenv 传入，否则 Vite 读不到（Vite 的 envDir 是
+  #    frontend/edu，也读不到仓库根 .env）→ 产物静默退化：移动端二维码回落 window.location.origin、
+  #    跨平台链接回落演示地址，且脚本还在警告"请在 .env 填 https 地址"（配了也不生效）。
   # 注意：此处在顶层 if 块内（非函数），不能用 local
   EDU_BUILD_HEAP="${EDU_BUILD_HEAP_MB:-2560}"
+  FE_LOG="$DEPLOY_DIR/.build-frontend-pnpm.log"
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
-    systemd-run --collect --wait --slice=system.slice --property=MemoryMax=8G \
-      --setenv="NODE_OPTIONS=--max-old-space-size=$EDU_BUILD_HEAP" -- bash -c \
-      "cd '$BUILD_ROOT' && NODE_ENV=production pnpm --filter @zhiyu/edu build" \
-      >"$DEPLOY_DIR/.build-frontend-pnpm.log" 2>&1 || {
-        tail -n 20 "$DEPLOY_DIR/.build-frontend-pnpm.log" >&2 || true
-        die "前端构建失败（日志: $DEPLOY_DIR/.build-frontend-pnpm.log；若为 oom-kill 见上方 Memory peak，可调小 EDU_BUILD_HEAP_MB 或错峰构建）"
-      }
+    # 把 .env 中所有 VITE_* 透传进构建单元（值可能含空格，用数组避免二次分词）
+    VITE_SETENV=()
+    while IFS= read -r kv; do
+      [[ -n "$kv" ]] && VITE_SETENV+=(--setenv="$kv")
+    done < <(grep -E '^VITE_[A-Za-z0-9_]+=' "$ENV_FILE" 2>/dev/null || true)
+    log "  透传 ${#VITE_SETENV[@]} 个 VITE_* 变量到构建单元"
+    # --pipe：不加则构建输出只进 journal，日志文件里只有 systemd 状态行（历史上 die 提示指向空日志）
+    if ! systemd-run --collect --wait --pipe --slice=system.slice \
+         --property=MemoryAccounting=yes --property=MemoryHigh=3500M \
+         --property=MemoryMax=5G --property=MemorySwapMax=1G \
+         --setenv=NODE_ENV=production \
+         --setenv="NODE_OPTIONS=--max-old-space-size=$EDU_BUILD_HEAP" \
+         "${VITE_SETENV[@]}" -- bash -c "cd '$BUILD_ROOT' && pnpm --filter @zhiyu/edu build" \
+         >"$FE_LOG" 2>&1; then
+      rc=$?
+      tail -n 40 "$FE_LOG" >&2 || true
+      # MemoryMax=5G(<整机 7.9G) 让超限只杀构建单元，而不是让内核 global OOM 随机杀 postgres/dsh-web
+      [[ $rc -eq 137 || $rc -eq 143 ]] && warn "疑似内存超限（退出码 $rc）：可调小 EDU_BUILD_HEAP_MB 或错峰构建"
+      die "前端构建失败（完整日志: $FE_LOG）"
+    fi
   else
+    # 直连回退路径：本脚本已 set -a source .env，VITE_* 已在环境中，无需额外透传
     (cd "$BUILD_ROOT" && NODE_ENV=production \
       NODE_OPTIONS="--max-old-space-size=$EDU_BUILD_HEAP" \
       pnpm --filter @zhiyu/edu build) || die "前端构建失败"
@@ -1137,19 +1195,31 @@ for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && br
 
 # 迁移前备份（失败仅警告，不阻断部署）
 BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
-compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null \
+# 全库明文 dump（含用户表/密码 hash/租户数据）：目录 700 + 文件 600，默认 755/644 不可接受
+chmod 700 "$DEPLOY_DIR/backups" 2>/dev/null || true
+( umask 077; compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null ) \
   || { warn "数据库备份失败，已跳过"; rm -f "$BACKUP_FILE"; }
-# 备份仅保留最近 7 份，避免每次部署累积旧备份占用磁盘
-ls -t "$DEPLOY_DIR"/backups/zhiyu-saas-*.sql 2>/dev/null | tail -n +8 | xargs -r rm -f
+# 备份仅保留最近 7 份，避免每次部署累积旧备份占用磁盘。
+# 不能用 `ls glob | tail`：无匹配时 ls 退出码 2，配合 pipefail + set -e 会让部署静默中止
+# （全新服务器首次部署、备份失败后 backups 为空时必现）。
+find "$DEPLOY_DIR/backups" -maxdepth 1 -name 'zhiyu-saas-*.sql' -printf '%T@ %p\n' 2>/dev/null \
+  | sort -rn | tail -n +8 | cut -d' ' -f2- | xargs -r rm -f || true
 
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
-  psql "$MIGRATE_URL" -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 || rollback_deploy "baseline 迁移失败"
+  # 必须 ON_ERROR_STOP + 单事务：psql 默认遇错继续且退出码为 0，
+  # 否则 baseline 半途失败也会被判成功并写入 schema_migrations/.migration-done，
+  # 此后所有部署都跳过 baseline，只能人工修库。
+  psql "$MIGRATE_URL" -v ON_ERROR_STOP=1 --single-transaction \
+    -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 \
+    || rollback_deploy "baseline 迁移失败（已整体回滚事务）"
   psql "$MIGRATE_URL" -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
-  touch "$DEPLOY_DIR/.migration-done"
 
   # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
+  # marker 落在「baseline + 增量迁移都成功」之后：提前 touch 会让被 OOM/SIGKILL 打断的部署
+  # 在下次运行时跳过 baseline
+  touch "$DEPLOY_DIR/.migration-done"
 
   log "初始化种子数据..."
   (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" go run ./cmd/seed/main.go) || warn "种子初始化失败"
@@ -1229,8 +1299,12 @@ fi
 # buildx 新版参数为 --max-used-space（旧版 --keep-storage 已废弃移除），
 # 探测失败再退化为按时间的 --filter until=72h 兜底。
 # 阈值可用 BUILD_CACHE_LIMIT_GB 配置（默认 10GB）；缓存未超限时 prune 快速返回，不影响部署速度。
-# 先移除已停止容器（compose 重建后旧容器若未及时删除，会拖住其引用的旧镜像/标签清理）
-docker rm -f $(docker ps -aq --filter status=exited) >/dev/null 2>&1 || true
+# 先移除已停止容器（compose 重建后旧容器若未及时删除，会拖住其引用的旧镜像/标签清理）。
+# 必须限定在本 compose 项目内：裸 `docker ps -aq --filter status=exited` 是全宿主范围，
+# 会连带删除 Java 栈与其他项目/其他 Agent 已停止的容器（跨栈误伤）。
+EXITED_OWN=$(docker ps -aq --filter status=exited \
+  --filter "label=com.docker.compose.project=${COMPOSE_PROJECT:-zhiyu-saas}" 2>/dev/null || true)
+[[ -n "$EXITED_OWN" ]] && docker rm -f $EXITED_OWN >/dev/null 2>&1 || true
 BUILD_CACHE_LIMIT="${BUILD_CACHE_LIMIT_GB:-10}GB"
 if docker builder prune --help 2>/dev/null | grep -q -- '--max-used-space'; then
   docker builder prune -f --max-used-space "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || true
@@ -1239,8 +1313,10 @@ elif docker builder prune --help 2>/dev/null | grep -q -- '--keep-storage'; then
 else
   docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
 fi
-# 清理悬空镜像（<none>），不影响在用镜像
-docker image prune -f >/dev/null 2>&1 || true
+# 清理悬空镜像（<none>），不影响在用镜像。加 until 过滤：裸 prune 是全宿主范围，
+# 会把其他栈（如 Java 栈 zhiyu-java-backend:latest 重建后变悬空的上一版）立刻清掉，
+# 导致那些栈失去回滚镜像；只清 24h 前的悬空层，既释放磁盘又保住刚构建的版本。
+docker image prune -f --filter "until=24h" >/dev/null 2>&1 || true
 
 # 清理过旧的镜像标签，每侧仅保留最新 1 个（当前在用）
 prune_old_images "zhiyu-backend" 1
@@ -1406,7 +1482,7 @@ echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
 # 若 uploads 卷根目录存在单段文件名（旧布局），提醒执行迁移脚本，否则旧图片全部 404。
 UPLOAD_VOLUME=$(docker volume inspect "$(docker volume ls -q | grep -i upload | head -1)" --format '{{.Mountpoint}}' 2>/dev/null || true)
 if [[ -n "$UPLOAD_VOLUME" ]] && [[ -d "$UPLOAD_VOLUME" ]]; then
-  LEGACY_COUNT=$(find "$UPLOAD_VOLUME" -maxdepth 1 -type f | wc -l)
+  LEGACY_COUNT=$( { find "$UPLOAD_VOLUME" -maxdepth 1 -type f 2>/dev/null | wc -l; } || echo 0 )
   if [[ "$LEGACY_COUNT" -gt 0 ]]; then
     warn "检测到 uploads 卷根目录有 $LEGACY_COUNT 个旧布局文件（未按租户分目录），部署后旧图片将 404！"
     warn "请立即执行文件迁移（宿主环境，脚本会移动文件+回写 DB URL+修正属主）："

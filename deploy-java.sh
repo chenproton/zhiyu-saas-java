@@ -54,7 +54,8 @@ resolve_db_password() {
     url=$(grep -E '^DATABASE_URL=' "$ZHIYU_ENV_FILE" | head -1 | cut -d= -f2-)
     if [[ -n "$url" ]]; then
       raw=$(echo "$url" | sed -E 's|postgresql://[^:]+:([^@]+)@.*|\1|')
-      decoded=$(python3 -c "import urllib.parse,sys; print(urllib.parse.unquote(sys.argv[1]))" "$raw")
+      # 口令经环境变量传给 python，不放进 argv：argv 在 ps/审计日志里对同机任意用户可见
+      decoded=$(RAW_PW="$raw" python3 -c 'import os,urllib.parse; print(urllib.parse.unquote(os.environ["RAW_PW"]))')
       export ZHIYU_DB_PASSWORD="$decoded"
       log "PG 密码已从 zhiyu-saas/.env 解析（长度 ${#decoded}，不回显）"
       return 0
@@ -100,9 +101,13 @@ build() {
   rsync -aL --exclude='lib/src.zip' --exclude='demo' --exclude='sample' \
     /usr/lib/jvm/java-21-openjdk-amd64/ "$DOCKER_DIR/build-context/backend/jdk/"
 
-  docker build -t zhiyu-java-backend:$IMAGE_TAG \
+  # 除 latest 外再打一个 git 短 sha tag：latest 被重建后旧镜像会变悬空并被清理，
+  # 导致 Java 栈完全没有可回滚的历史版本（Go 栈是按 hash 打 tag 的）
+  local git_sha
+  git_sha=$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo "nogit")
+  docker build -t "zhiyu-java-backend:$IMAGE_TAG" -t "zhiyu-java-backend:$git_sha" \
     -f "$DOCKER_DIR/java-backend.Dockerfile" "$DOCKER_DIR/build-context/backend"
-  log "镜像构建完成"
+  log "镜像构建完成（tag: $IMAGE_TAG + $git_sha，回滚可用 IMAGE_TAG=<sha> ./deploy-java.sh --skip-build）"
 }
 
 # ---------- 2. 停止旧裸进程与旧容器 ----------
