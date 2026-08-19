@@ -130,6 +130,8 @@ node scripts/ui-smoke/ui-smoke.mjs --flows-spec /tmp/my-page-flow.md
 | 下拉选择 | `select: { 字段label: 选项文字或first }` | 下拉/Combobox 选择；`first` = 第一个选项 |
 | 提交 | `submit: 按钮文字或true` | 点击提交按钮；`true` = 自动识别「保存/创建/确认」等提交词 |
 | 确认 | `confirm: true` | 点击弹窗中的确认类按钮（确认/删除/发布/下架） |
+| 开关 | `toggle: { label: true或false }` | Radix Switch 按 label 定位邻近 `[role=switch]`，确保目标状态（已满足则不动，幂等）；用于「前台展示」类开关 |
+| 复选 | `check: { label: true或false }` | Radix Checkbox 按 label 定位邻近 `[role=checkbox]`，确保目标勾选状态（已满足则不动，幂等）；用于组织树选择器等「名字是 span、勾选在 Checkbox」的布局 |
 | 接口断言 | `expectApi: { method: POST, url: /路径片段, status: 201 }` | 断言本步执行期间出现匹配的接口响应 |
 | 文字断言 | `expectText: 文字` | 断言页面可见该文字（支持 `{{var}}`） |
 | 存变量 | `saveAs: { 变量名: 字段label }` | 把本步 `fill` 的值存入流程上下文 |

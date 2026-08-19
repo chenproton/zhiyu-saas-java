@@ -96,6 +96,10 @@ async function clickExact(page, text) {
   // Radix Select/下拉的选项（role=option）：需先点击触发器让下拉展开（flow 里在点击前先点触发器文本）
   const opt = page.getByRole('option', { name: text, exact: true })
   if (await waitFirstVisible(opt, 1500)) { await opt.first().click(); return }
+  // Radix DropdownMenu 的菜单项（role=menuitem）：触发器（Button+ChevronDown）点开后，
+  // 菜单项随菜单打开才挂载（如考试「新增题目」题型菜单、题库「添加题目」题型菜单）
+  const item = page.getByRole('menuitem', { name: text, exact: true })
+  if (await waitFirstVisible(item, 1500)) { await item.first().click(); return }
   // 模糊兜底：排除被遮挡/禁用的候选（如弹窗遮罩后同文字页头按钮），
   // 全部不可点击视为幂等无操作（目标不存在/前置已完成）
   const any = page.locator(`button:has-text("${cssEscape(text)}"), a:has-text("${cssEscape(text)}")`)
@@ -155,6 +159,13 @@ async function selectOption(page, label, option) {
   if (!trigger) throw new Error(`未找到「${label}」的下拉控件`)
   await trigger.click()
   await sleep(250)
+  // 选项面板仍打开时（多选 Combobox 选完不关）才按 Escape 收拢；单选 Radix Select 选完自动关，
+  // 此时再按 Escape 会把宿主 Dialog 一并关掉（条件触发避免误关）
+  const dismissIfOpen = async () => {
+    await sleep(150)
+    const open = await page.locator('[role="listbox"]:visible, [cmdk-list]:visible').count()
+    if (open) await page.keyboard.press('Escape')
+  }
   // Combobox 搜索框：输入过滤（选项文字非 first 时）；cmdk Command 输入框为 [cmdk-input]
   if (option !== 'first') {
     const search = page.locator('[cmdk-input], [data-slot="command-input"], [role="listbox"] input, [role="dialog"] [role="combobox"] input, [role="dialog"]:visible input[type="text"]')
@@ -163,20 +174,17 @@ async function selectOption(page, label, option) {
       await sleep(300)
     }
   }
+  const panelSel = '[data-state="open"] [role="option"]:visible:not([aria-disabled="true"]), [data-state="open"] [cmdk-item]:visible:not([aria-disabled="true"])'
   const opt = option === 'first'
-    ? page.getByRole('option').first()
-    : page.getByRole('option').filter({ hasText: option }).first()
-  // 选项面板仍打开时（多选 Combobox 选完不关）才按 Escape 收拢；单选 Radix Select 选完自动关，
-  // 此时再按 Escape 会把宿主 Dialog 一并关掉（条件触发避免误关）
-  const dismissIfOpen = async () => {
-    await sleep(150)
-    const open = await page.locator('[role="listbox"]:visible, [cmdk-list]:visible').count()
-    if (open) await page.keyboard.press('Escape')
-  }
+    ? page.locator(panelSel).first()
+    : page.locator(panelSel).filter({ hasText: option }).first()
+  // 选项限定在「当前打开的面板」内：无差别 getByRole('option') 会命中已关闭 Select 残留的 portal
+  // 选项（如人培方案课程行的行类型 Select），导致点错；禁用项（占位/空态）跳过（2026-08-20 实测）
   if (await opt.count()) { await opt.click(); await dismissIfOpen(); return }
+  // 兜底：仍限定「当前打开面板」（data-state=open）内的可见非禁用选项；无状态面板（旧实现）才放宽
   const item = option === 'first'
-    ? page.locator('[role="listbox"] [role="option"], [role="menu"] [role="menuitem"], [cmdk-item]').first()
-    : page.locator('[role="listbox"] [role="option"], [role="menu"] [role="menuitem"], [cmdk-item]').filter({ hasText: option }).first()
+    ? page.locator(panelSel + ', [cmdk-list] [cmdk-item]:visible:not([aria-disabled="true"])').first()
+    : page.locator(panelSel + ', [cmdk-list] [cmdk-item]:visible:not([aria-disabled="true"])').filter({ hasText: option }).first()
   if (await item.count()) { await item.click(); await dismissIfOpen(); return }
   throw new Error(`「${label}」下拉中未找到选项「${option}」`)
 }
@@ -328,6 +336,77 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           actions.push('confirm')
           break
         }
+        case 'toggle': {
+          // 开关切换（Radix Switch，[role="switch"]）：按 label 文案定位其邻近开关，
+          // 确保其达到目标状态——已满足则不动（幂等），避免线性流程把已开的开关关掉。
+          // 写法：toggle: { 前台展示: true } / { 前台展示: false }
+          for (const [label, raw] of Object.entries(rawVal)) {
+            mark(`toggle ${label}`)
+            const target = raw === true || String(raw).toLowerCase() === 'true'
+            let sw = null
+            // 1) label htmlFor/id 关联（getByLabel 直接命中开关）
+            const byLabel = page.getByLabel(label, { exact: false })
+            if (await byLabel.count() && (await byLabel.first().getAttribute('role')) === 'switch') {
+              sw = byLabel.first()
+            }
+            // 2) label 文本的邻近容器内找 [role=switch]（shadcn Switch + 兄弟 Label 布局）
+            if (!sw) {
+              const texts = page.locator(`xpath=//*[normalize-space(text())=${JSON.stringify(label)}]`)
+              const tn = Math.min(await texts.count(), 5)
+              for (let i = 0; i < tn && !sw; i++) {
+                for (const depth of [1, 2, 3]) {
+                  const box = texts.nth(i).locator(`xpath=ancestor::*[self::div or self::label][${depth}]`)
+                  const s = box.locator('[role="switch"]:visible')
+                  if (await s.count()) { sw = s.first(); break }
+                }
+              }
+            }
+            // 3) 兜底：页面唯一开关
+            if (!sw) {
+              const all = page.locator('[role="switch"]:visible')
+              if (await all.count() !== 1) throw new Error(`未找到「${label}」对应的开关`)
+              sw = all.first()
+            }
+            const checked = (await sw.getAttribute('aria-checked')) === 'true'
+            if (checked !== target) {
+              await sw.click()
+              await sleep(250)
+            }
+            actions.push(`toggle ${label}=${target}${checked === target ? '（已满足）' : ''}`)
+          }
+          break
+        }
+        case 'check': {
+          // 复选勾选（Radix Checkbox，[role="checkbox"]）：按 label 文案定位其邻近复选框，
+          // 确保目标勾选状态（已满足则不动，幂等）。用于组织树选择器等「名字是 span、勾选在 Checkbox」的布局。
+          // 写法：check: { 软件技术2401: true }
+          for (const [label, raw] of Object.entries(rawVal)) {
+            mark(`check ${label}`)
+            const target = raw === true || String(raw).toLowerCase() === 'true'
+            let cb = null
+            const texts = page.locator(`xpath=//*[normalize-space(text())=${JSON.stringify(label)}]`)
+            const tn = Math.min(await texts.count(), 5)
+            for (let i = 0; i < tn && !cb; i++) {
+              for (const depth of [1, 2, 3]) {
+                const box = texts.nth(i).locator(`xpath=ancestor::*[self::div or self::label][${depth}]`)
+                const c = box.locator('[role="checkbox"]:visible')
+                if (await c.count()) { cb = c.first(); break }
+              }
+            }
+            if (!cb) {
+              const all = page.locator('[role="checkbox"]:visible')
+              if (await all.count() !== 1) throw new Error(`未找到「${label}」对应的复选框`)
+              cb = all.first()
+            }
+            const checked = (await cb.getAttribute('aria-checked')) === 'true'
+            if (checked !== target) {
+              await cb.click()
+              await sleep(250)
+            }
+            actions.push(`check ${label}=${target}${checked === target ? '（已满足）' : ''}`)
+          }
+          break
+        }
         case 'expectText': {
           mark(`expectText ${rawVal}`)
           const text = render(String(rawVal), vars, rand)
@@ -336,7 +415,7 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           break
         }
         default:
-          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/clickCard/fill/select/submit/confirm/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
+          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/clickCard/fill/select/submit/confirm/toggle/check/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
       }
     }
     if (step.expectApi) {

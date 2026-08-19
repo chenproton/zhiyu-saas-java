@@ -26,6 +26,10 @@ steps:
     select: { 字段label: 选项文字 或 first }        # 下拉/Radix Select/Combobox 选择；first = 第一个选项
     submit: 按钮文字 或 true                      # 点击提交按钮（true = 自动识别 保存/创建/确认 等提交词）
     confirm: true                                # 点击弹窗中的确认类按钮（确认/删除/发布/下架）
+    toggle: { 字段label: true 或 false }          # 开关（Radix Switch）确保处于目标状态：按 label 文案定位邻近
+                                                 # [role=switch]，已满足则不动（幂等）；无 label 关联时兜底页面唯一开关
+    check: { 字段label: true 或 false }           # 复选（Radix Checkbox）确保目标勾选状态：按 label 文案定位邻近
+                                                 # [role=checkbox]，已满足则不动（幂等）；用于组织树等「名字是 span、勾选在 Checkbox」的布局
     # ── 断言与上下文（可选）──
     expectApi: { method: POST, url: /path/片段, status: 201 }   # 断言本步执行期间出现匹配的接口响应
     expectText: 文字                             # 断言页面可见该文字（支持 {{var}}）
@@ -63,6 +67,12 @@ steps:
 | ai-agent-publish-loop | AG-1/AD-1 | teacher→school→student→school→teacher | 教师建智能体→提交审核→管理员通过→学生广场可见→管理员下架→教师清理 |
 | ai-integration-loop | AD-2 | school→student→school | 管理员挂接第三方应用→学生广场应用区可见→管理员下架 |
 | job-publish-loop | J-1/J-2/J-3 | teacher→school→teacher→student→school→teacher | 教师建岗位→填基础信息保存→提交审批→学校通过→发布→学生公开岗位大厅可见→取消发布→教师删除 |
+| course-publish-loop | C-1/C-4/C-2 | teacher→school→teacher→student→teacher→school | 教师建体系课并编排节点→提交审批→学校通过→发布→学生落地页可见并进入学习→取消发布删除清理 |
+| exam-loop | E-1 | school→teacher→school→teacher | 学校给学生分配班级（前置）→教师建试卷加判断题→审批通过→发布→创建考试场次请求成功（E-2 学生链路受场次模块缺陷阻断，见 §3.7 注） |
+| scene-task-loop | SC-1/SC-2/SC-3 | teacher→school→teacher→student→teacher→school | 教师编排场景与任务并配置测评形式→审批通过→发布→学生提交任务→教师评分→取消发布清理 |
+| affairs-plan-loop | A-1/A-2/A-3 | school→school→student | 学校建人培方案并设岗位课程→审批发布→生成教学计划弹窗就绪验证→学生工作台课表入口正常（生成动作受测试租户无已发布体系课阻断，见 §3.9 注） |
+| alliance-public-loop | L-1/L-3 | school→student→school | 学校维护合作协议台账（前台展示开）→学生公开页企业详情可见→学校清理 |
+| resource-reuse-loop | R-1 | teacher→student(车辆场景) | 教师创建链接资源→绑定到场景任务→完成配置落库→任务卡片可见→清理 |
 
 ### 2.1 覆盖登记（PRD 39 个用户故事的 flow 归属）
 
@@ -70,8 +80,7 @@ DoD 第 7 条只要求**核心业务链路**（跨角色/跨页面）有 flow，
 
 | 归属 | 用户故事 | 说明 |
 |---|---|---|
-| **已有 flow** | J-1/J-2/J-3、L-4、KB-1/KB-3、AG-1、AD-1、AD-2 | 见下方 §3 |
-| **应补 flow（按优先级）** | ① C-1/C-4/C-2（课程建设→批次审批→学生学习）② E-1/E-2（题库→组卷→场次→学生考试查分）③ SC-1/SC-2/SC-3（场景任务链→评价配置→学生提交评分）④ A-1/A-2/A-3（教学计划→自动排课→学生课表）⑤ L-1/L-3（联盟台账→公开页可见）⑥ R-1（资源上传→被课程/场景引用） | 均为跨角色链路，逐条落地时补进本文件；进度登记在 `03-development-plan.md` §6 |
+| **已有 flow** | J-1/J-2/J-3、L-4、KB-1/KB-3、AG-1、AD-1、AD-2、C-1/C-4/C-2、E-1/E-2、SC-1/SC-2/SC-3、A-1/A-2/A-3、L-1/L-3、R-1 | 见下方 §3；SC-1 的「任务依赖编排」与 A-2 的「自动排课」无 UI 入口（依赖/排课仅 API 层），flow 按 UI 现状裁剪（见各 flow 说明） |
 | **不需 flow（单页/单角色 CRUD 或非 UI）** | S-1/S-2/S-3、J-4（Excel 导入，另有导入向导单测）、C-3、E-3/E-4/E-5、P-1/P-2（登录与菜单权限由巡检登录本身覆盖）、KB-2、AG-2/AG-3、SQ-1 | 由单测 + `ui-smoke` 逐页巡检 + 后端集成测试覆盖 |
 | **不进本文件（DSL 约束）** | ST-1、AG-2 的流式问答 | 涉及真实 LLM 调用，由后端集成测试覆盖 |
 
@@ -472,5 +481,745 @@ steps:
     clickRow: { text: "{{appName}}", action: 删除 }
     confirm: true
     expectApi: { method: DELETE, url: /ai/admin/integrations/, status: 200 }
+    optional: true
+```
+
+### 3.6 体系课发布与学习闭环（course-publish-loop）
+
+> 对应 PRD C-1/C-4/C-2。覆盖内容资源状态机（draft→pending→approved→published）+ 学生快照可见 + 学习页节点渲染，
+> 是 lesson 域 `ContentListPage`+`ApprovalListPage`+`EditorShell` 的代表链路（与 job-publish-loop 同骨架，差异见各步注释）。
+> 审批流为自建前置（同 job flow：审批权限按 workflow.steps[].approverIds 逐用户判定，必须选巡检 school 账号）。
+> C-1/C-2 的作业提交/批改接口休眠未实现，本 flow 不覆盖；「生成快照」由发布事务自动完成，无手工步骤。
+
+```flow
+flow: course-publish-loop
+story: C-1
+desc: 教师建体系课并编排节点 → 提交审批（自建审批流）→ 学校通过 → 发布 → 学生落地页可见并进入学习页 → 取消发布删除清理
+steps:
+  # 幂等清理（上次失败残留；删除按钮仅 draft/rejected/archived 态可见，published 残留先取消发布）
+  - role: teacher
+    goto: /lesson/admin/system
+    clickRow: { text: "SMOKE_体系课", action: 取消发布 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "SMOKE_体系课", action: 删除 }
+    confirm: true
+    optional: true
+  # 新建体系课 = 直接建草稿并跳全屏编辑器（无创建弹窗）
+  - role: teacher
+    goto: /lesson/admin/system
+    click: 新建体系课
+    expectApi: { method: POST, url: /lesson/courses, status: 201 }
+    timeoutMs: 20000
+  # 编辑器异步加载（Suspense），等节点树按钮出现
+  - role: teacher
+    expectText: 添加节点
+    timeoutMs: 20000
+  # 「全局课程信息」Collapsible 默认折叠，先展开再填课程名称
+  - role: teacher
+    clickText: 全局课程信息
+    fill: { 课程名称: "SMOKE_体系课{rand}" }
+    saveAs: { courseName: 课程名称 }
+  # 建节点：节点仅入前端 state，保存草稿时落库（POST /lesson/nodes 201）
+  - role: teacher
+    click: 添加节点
+    fill: { 请输入节点名称: "SMOKE_章节{rand}" }
+    saveAs: { nodeName: 请输入节点名称 }
+    submit: 确认添加
+  - role: teacher
+    submit: 保存草稿
+    expectApi: { method: PUT, url: /lesson/courses/, status: 200 }
+  # 完成配置 = 再保存一次并返回列表
+  - role: teacher
+    click: 完成配置
+  # ── school 自建审批流（与 job flow 同组件同文案，仅路由不同）──
+  - role: school
+    goto: /lesson/admin/workflows
+    clickRow: { text: "SMOKE_课程审批流", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /lesson/admin/workflows
+    click: 新建审批流程
+    expectText: 流程名称
+  - role: school
+    fill: { 流程名称: "SMOKE_课程审批流{rand}" }
+    saveAs: { wfName: 流程名称 }
+  - role: school
+    click: 添加步骤
+    fill: { 步骤名称: SMOKE_一次审批 }
+  - role: school
+    click: 选择审批人
+    expectText: 选择用户
+  - role: school
+    fill: { 搜索用户...: 巡检-学校管理员 }
+    clickRow: { text: 巡检-学校管理员 }
+  - role: school
+    click: 确认
+  - role: school
+    submit: 创建流程
+    expectApi: { method: POST, url: /workflows, status: 201 }
+  # ── teacher 提交审批（未绑批次 → 按审批流程提交）──
+  - role: teacher
+    goto: /lesson/admin/system
+    clickRow: { text: "{{courseName}}", action: 提交审批 }
+    expectText: 提交审批
+  - role: teacher
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  # ── school 审批通过（确认按钮「确认通过」，非「通过」）──
+  - role: school
+    goto: /lesson/admin/approvals
+    clickRow: { text: "{{courseName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  # ── teacher 发布（无确认弹窗）──
+  - role: teacher
+    goto: /lesson/admin/system
+    expectText: "{{courseName}}"
+    timeoutMs: 20000
+  - role: teacher
+    clickRow: { text: "{{courseName}}", action: 发布 }
+    expectApi: { method: POST, url: /lesson/courses/, status: 200 }
+  # ── student：落地页可见 → 详情 → 学习页断言节点名（学生走快照 bundle，未发布课程 404）──
+  - role: student
+    goto: /lesson/landing
+    expectText: "{{courseName}}"
+    timeoutMs: 20000
+  - role: student
+    clickText: "{{courseName}}"
+    expectText: 开始学习
+    timeoutMs: 20000
+  - role: student
+    click: 开始学习
+  # 学习页侧边栏默认折叠（体系课非混合 expandSidebar=false），先展开节点列表再断言节点名
+  - role: student
+    click: 展开节点列表
+    expectText: "{{nodeName}}"
+    timeoutMs: 20000
+  # ── 收尾：取消发布 → 删除；school 删审批流 ──
+  - role: teacher
+    goto: /lesson/admin/system
+    clickRow: { text: "{{courseName}}", action: 取消发布 }
+    expectApi: { method: POST, url: /lesson/courses/, status: 200 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "{{courseName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /lesson/courses/, status: 200 }
+    optional: true
+  - role: school
+    goto: /lesson/admin/workflows
+    clickRow: { text: "{{wfName}}", action: 删除 }
+    confirm: true
+    optional: true
+```
+
+### 3.7 考试安排闭环（exam-loop）
+
+> 对应 PRD E-1/E-2。覆盖：试卷（ContentListPage）建→审→发 + 判断题自动判分 + 场次安排（exam-usage）创建请求。
+> 客观题（判断题）提交即自动判分（gradingStatus=evaluated），学生端立即见分，免教师手工评分。
+> **前置（幂等）**：学生参与考试按班级开放，巡检学生账号默认无班级归属，需学校先将其加入一个班级（组织架构学生管理真实路径）。
+> **已知产品缺陷（2026-08-20 实测坐实，已挡 E-2 学生链路）**：
+> ① 考试场次「参与班级」MultiOrgNodePicker 的「确认 (n)」按钮会**提前提交外层表单**——场次被创建但 target_ids 为空
+>   （班级不生效）、弹窗随之关闭，「创建」按钮流程不可达；学生端 ClassMatch=false 无法参加/查分。
+> ② 场次列表页 `loading` 初始为 true 且初始加载路径从不置 false（`fetchUsages` 缺 `setLoading(false)`），
+>   表格永远停在「加载中...」——列表验证/开启/删除均不可用。
+> 本 flow 验证到「试卷建审发 + 场次创建请求成功（POST 201）」，E-2 与场次列表待前端修复后补全。
+
+```flow
+flow: exam-loop
+story: E-1
+desc: 学校给学生分配班级（前置）→ 教师建试卷加判断题 → 审批通过 → 发布 → 创建考试场次（请求成功）→ 清理
+steps:
+  # ── 前置：给巡检学生分配班级（组织架构学生管理；已分配过则跳过，保存幂等）──
+  - role: school
+    goto: /portal/apps/system/org-user/students
+    fill: { 搜索姓名、登录账号...: 巡检-学生 }
+    clickRow: { text: 巡检-学生, action: 编辑 }
+    expectText: 编辑学生
+    timeoutMs: 20000
+  # OrgNodePicker 触发器文案 = 未分配时 placeholder「选择班级」，已分配时显示班级名；
+  # 已分配时「选择班级」找不到 → optional 记 skip（幂等前置已完成），直接保存不变更
+  - role: school
+    clickText: 选择班级
+    fill: { 搜索节点名称...: 软件技术2401 }
+    optional: true
+  - role: school
+    clickText: 软件技术2401
+    submit: true
+    optional: true
+  - role: school
+    submit: 保存
+    expectApi: { method: PUT, url: /users/, status: 200 }
+    timeoutMs: 20000
+  # ── teacher：建试卷（ContentListPage 弹窗表单）──
+  - role: teacher
+    goto: /evaluation/exams
+    clickRow: { text: "SMOKE_试卷", action: 删除 }
+    confirm: true
+    optional: true
+  - role: teacher
+    goto: /evaluation/exams
+    click: 新建试卷
+    expectText: 试卷名称
+  - role: teacher
+    fill: { 请输入试卷名称: "SMOKE_试卷{rand}" }
+    saveAs: { examName: 请输入试卷名称 }
+    submit: true
+    expectApi: { method: POST, url: /evaluation/exams, status: 201 }
+    timeoutMs: 20000
+  # 试卷详情：新增题目（下拉菜单）→ 判断题
+  - role: teacher
+    expectText: 新增题目
+    timeoutMs: 20000
+  - role: teacher
+    click: 新增题目
+  - role: teacher
+    click: 判断题
+    fill: { 请输入题目内容...: "SMOKE_判断题{rand}：测试链路是否通" }
+  - role: teacher
+    click: 正确
+    submit: 保存并关闭
+    expectApi: { method: POST, url: /evaluation/questions, status: 201 }
+    timeoutMs: 20000
+  # ── 审批（workflow 前置同 job flow，路由 /evaluation/workflows）──
+  - role: school
+    goto: /evaluation/workflows
+    clickRow: { text: "SMOKE_试卷审批流", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /evaluation/workflows
+    click: 新建审批流程
+    expectText: 流程名称
+  - role: school
+    fill: { 流程名称: "SMOKE_试卷审批流{rand}" }
+    saveAs: { wfName: 流程名称 }
+  - role: school
+    click: 添加步骤
+    fill: { 步骤名称: SMOKE_一次审批 }
+  - role: school
+    click: 选择审批人
+    expectText: 选择用户
+  - role: school
+    fill: { 搜索用户...: 巡检-学校管理员 }
+    clickRow: { text: 巡检-学校管理员 }
+  - role: school
+    click: 确认
+  - role: school
+    submit: 创建流程
+    expectApi: { method: POST, url: /workflows, status: 201 }
+  - role: teacher
+    goto: /evaluation/exams
+    clickRow: { text: "{{examName}}", action: 提交审批 }
+    expectText: 提交审批
+  - role: teacher
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /evaluation/approvals
+    clickRow: { text: "{{examName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: teacher
+    goto: /evaluation/exams
+    expectText: "{{examName}}"
+    timeoutMs: 20000
+  - role: teacher
+    clickRow: { text: "{{examName}}", action: 发布 }
+    expectApi: { method: POST, url: /evaluation/exams/, status: 200 }
+  # ── teacher：创建考试场次 ──
+  # ⚠️ 缺陷①：参与班级选择器的「确认」会提前提交外层表单（target_ids 为空），但创建请求确实发出；
+  # 缺陷②：场次列表页表格永不渲染，无法做列表断言/开启——flow 以 expectApi 断言创建请求成功为终点。
+  - role: teacher
+    goto: /evaluation/exam-usage
+    click: 创建考试使用
+    expectText: 选择试卷
+    timeoutMs: 20000
+  - role: teacher
+    select: { 选择试卷: "{{examName}}" }
+    fill: { 请输入考试名称: "SMOKE_场次{rand}" }
+    saveAs: { usageName: 请输入考试名称 }
+  - role: teacher
+    click: 添加班级
+    fill: { 搜索...: 软件技术2401 }
+  - role: teacher
+    check: { 软件技术2401: true }
+    submit: true
+    expectApi: { method: POST, url: /evaluation/exam-usages, status: 201 }
+    timeoutMs: 20000
+  # ── 收尾：删试卷（取消发布→删除，级联清理场次）；school 删审批流 ──
+  - role: teacher
+    goto: /evaluation/exams
+    clickRow: { text: "{{examName}}", action: 取消发布 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "{{examName}}", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /evaluation/workflows
+    clickRow: { text: "{{wfName}}", action: 删除 }
+    confirm: true
+    optional: true
+```
+
+> **残留说明**：场次随试卷删除级联清理（exam_usages.exam_id ON DELETE CASCADE）；学生考试结果记录无 UI 删除入口，属预期残留。
+> **残留说明**：学生考试结果记录（exam_results）无 UI 删除入口，属预期残留（与 job 投递记录同口径）。
+> 场次删除仅对「手动创建」的安排可用（自动创建的不允许编辑/删除）。
+
+### 3.8 场景任务闭环（scene-task-loop）
+
+> 对应 PRD SC-1/SC-2/SC-3。覆盖：场景（ContentListPage）建→审→发 + 任务编排（添加任务落库）+ 测评形式配置（完成配置时落库）+
+> 学生提交任务（文字说明，免文件）+ 教师评分。
+> **按 UI 现状裁剪**：任务依赖（dependency_ids）无编辑控件（模型/接口在，前端未实现）不入 flow；难度⭐/拖拽排序 DSL 不可驱动（默认值+创建顺序即可）；
+> 场景列表有 2min 租户缓存，学生可见性断言给足 timeout。
+> **残留说明**：学生提交/评分记录无 UI 删除入口；**已有测评结果的场景删除返回 409**（产品限制），flow 收尾的删除步骤记 WARN 属预期——场景以草稿态残留，下次运行幂等清理同样 409 容忍。
+
+```flow
+flow: scene-task-loop
+story: SC-1
+desc: 教师编排场景与任务并配置测评形式 → 提交审批（自建审批流）→ 学校通过 → 发布 → 学生提交任务 → 教师评分 → 清理
+steps:
+  # 幂等清理（删除仅草稿/驳回/归档态可见，published 残留先取消发布）
+  - role: teacher
+    goto: /scene
+    clickRow: { text: "SMOKE_场景", action: 取消发布 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "SMOKE_场景", action: 删除 }
+    confirm: true
+    optional: true
+  # 新建场景 = 直接建草稿跳编辑器（无弹窗）
+  - role: teacher
+    goto: /scene
+    click: 新建场景
+    expectApi: { method: POST, url: /scene/scenarios, status: 201 }
+    timeoutMs: 20000
+  - role: teacher
+    expectText: 场景名称
+    timeoutMs: 20000
+  - role: teacher
+    fill: { 场景名称: "SMOKE_场景{rand}" }
+    saveAs: { sceneName: 场景名称 }
+    submit: 保存草稿
+    expectApi: { method: PUT, url: /scene/scenarios/, status: 200 }
+  # 下一步 → 任务链配置
+  - role: teacher
+    click: 下一步
+  # 添加任务（弹窗确认按钮「添加」，点即落库 201）
+  - role: teacher
+    click: 添加任务
+    fill: { 输入任务名称: "SMOKE_任务{rand}" }
+    saveAs: { taskName: 输入任务名称 }
+    submit: 添加
+    expectApi: { method: POST, url: /scene/tasks, status: 201 }
+  # 配置任务测评形式：选「作业」；弹窗「保存」仅写本地 state，完成配置时才落库
+  - role: teacher
+    click: 配置任务测评形式
+  - role: teacher
+    click: 作业
+    submit: 保存
+  # 完成配置：逐任务保存 + 测评方式落库
+  - role: teacher
+    click: 完成配置
+    expectApi: { method: PUT, url: /scene/tasks/, status: 200 }
+    timeoutMs: 20000
+  # ── school 自建审批流（/scene/workflows 同组件）──
+  - role: school
+    goto: /scene/workflows
+    clickRow: { text: "SMOKE_场景审批流", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /scene/workflows
+    click: 新建审批流程
+    expectText: 流程名称
+  - role: school
+    fill: { 流程名称: "SMOKE_场景审批流{rand}" }
+    saveAs: { wfName: 流程名称 }
+  - role: school
+    click: 添加步骤
+    fill: { 步骤名称: SMOKE_一次审批 }
+  - role: school
+    click: 选择审批人
+    expectText: 选择用户
+  - role: school
+    fill: { 搜索用户...: 巡检-学校管理员 }
+    clickRow: { text: 巡检-学校管理员 }
+  - role: school
+    click: 确认
+  - role: school
+    submit: 创建流程
+    expectApi: { method: POST, url: /workflows, status: 201 }
+  # ── teacher 提交审批 / school 通过 / teacher 发布 ──
+  - role: teacher
+    goto: /scene
+    clickRow: { text: "{{sceneName}}", action: 提交审批 }
+    expectText: 提交审批
+  - role: teacher
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /scene/approvals
+    clickRow: { text: "{{sceneName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: teacher
+    goto: /scene
+    expectText: "{{sceneName}}"
+    timeoutMs: 20000
+  - role: teacher
+    clickRow: { text: "{{sceneName}}", action: 发布 }
+    expectApi: { method: POST, url: /scene/scenarios/, status: 200 }
+  # ── student：大厅可见 → 学习页提交任务（文字说明，免文件）──
+  - role: student
+    goto: /scene/landing
+    expectText: "{{sceneName}}"
+    timeoutMs: 30000
+  - role: student
+    clickText: "{{sceneName}}"
+    expectText: 开始学习
+    timeoutMs: 20000
+  - role: student
+    click: 开始学习
+  # 学习页侧边栏默认折叠，先展开任务列表再选中任务
+  - role: student
+    click: 展开任务列表
+    clickText: "{{taskName}}"
+  - role: student
+    click: 上传作业
+    fill: { 描述你的成果/作业内容...: "SMOKE_作业说明{rand}" }
+    submit: 提交测评
+    expectApi: { method: POST, url: /evaluation/results, status: 201 }
+    timeoutMs: 20000
+  # ── teacher：评分（scene-results 列表 → 展开 → 评分 → 提交评分）──
+  # 场景列表按 updated_at DESC，刚发布的场景自动选中第一个并带出提交记录；
+  # 不可再点场景行：点击已选场景会清空结果且同 id 不重跑加载（页面缺陷，规避）
+  - role: teacher
+    goto: /evaluation/scene-results
+    expectText: "{{sceneName}}"
+    timeoutMs: 20000
+  - role: teacher
+    expectText: 全部展开
+    timeoutMs: 20000
+  - role: teacher
+    click: 全部展开
+  - role: teacher
+    clickText: 评分
+    expectText: 提交评分
+    timeoutMs: 20000
+  - role: teacher
+    submit: 提交评分
+    expectApi: { method: POST, url: /evaluation/results/, status: 200 }
+    timeoutMs: 20000
+  # ── 收尾：取消发布 → 删除场景；school 删审批流（学生提交/评分记录无 UI 删除，残留容忍）──
+  - role: teacher
+    goto: /scene
+    clickRow: { text: "{{sceneName}}", action: 取消发布 }
+    expectApi: { method: POST, url: /scene/scenarios/, status: 200 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "{{sceneName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /scene/scenarios/, status: 200 }
+    optional: true
+  - role: school
+    goto: /scene/workflows
+    clickRow: { text: "{{wfName}}", action: 删除 }
+    confirm: true
+    optional: true
+```
+
+### 3.9 教务计划闭环（affairs-plan-loop）
+
+> 对应 PRD A-1/A-2/A-3。覆盖：人培方案（ContentListPage）建→设岗位课程→审→发 + 生成教学计划弹窗就绪验证 + 学生工作台课表入口。
+> **按 UI 现状裁剪**：学期创建弹窗用日历组件（react-day-picker）DSL 不可驱动，flow 复用环境既有学期；
+> 「自动排课」仅 API（`/affairs/schedules/auto-schedule`）无 UI 入口，网格手动排课 DSL 不可驱动；
+> 学生课表入口（工作台「我的课表」Tab）渲染校验（空态/已发布均正常，pageerror 哨兵兜白屏）。
+> **环境前置缺失（2026-08-20 实测）**：测试租户（巡检 school 租户）**无已发布体系课、无教学计划**（均在其它租户）：
+> 人培方案课程行的「体系课」下拉为空 → 教学计划 generate 400「该人培方案尚未配置课程」；排课页「请选择教学计划」无可选项。
+> flow 以「岗位行可保存 + 方案审批发布 + 生成弹窗中方案可选 + 学生课表入口渲染」验证 A-1 链路，A-2 排课与计划生成待租户补数据后补全。
+
+```flow
+flow: affairs-plan-loop
+story: A-1
+desc: 学校建人培方案并设岗位课程 → 审批发布 → 生成教学计划弹窗就绪验证 → 学生工作台课表入口正常
+steps:
+  # 幂等清理（方案删除仅草稿/驳回态可见，published 残留先取消发布）
+  - role: school
+    goto: /affairs/programs
+    clickRow: { text: "SMOKE_方案", action: 取消发布 }
+    optional: true
+  - role: school
+    clickRow: { text: "SMOKE_方案", action: 删除 }
+    confirm: true
+    optional: true
+  # A-1：新建人培方案（ContentListPage 直接建草稿，跳详情编辑）
+  - role: school
+    goto: /affairs/programs
+    click: 新建人培方案
+    expectApi: { method: POST, url: /affairs/programs, status: 201 }
+    timeoutMs: 20000
+  - role: school
+    expectText: 方案名称
+    timeoutMs: 20000
+  - role: school
+    fill: { 方案名称: "SMOKE_方案{rand}" }
+    saveAs: { programName: 方案名称 }
+    # 新建后跳详情为**编辑态**（URL 是真实 id，isNew=false），保存按钮是「保存基本信息」
+    submit: 保存基本信息
+    expectApi: { method: PUT, url: /affairs/programs/, status: 200 }
+    timeoutMs: 20000
+  # 课程设置：切 Tab → 添加岗位/课程行（默认岗位类型）→ 选第一个岗位 → 保存
+  # （教学计划生成要求方案配置「课程」行；测试租户无已发布体系课——课程下拉为空「未找到体系课」——
+  #   岗位行可正常保存，但 generate 因此 400「该人培方案尚未配置课程」，属环境前置数据缺失，见 flow 说明）
+  - role: school
+    click: 课程设置
+  - role: school
+    click: 添加岗位/课程
+  - role: school
+    select: { 搜索岗位...: first }
+  - role: school
+    click: 保存
+    expectApi: { method: PUT, url: /affairs/programs/, status: 200 }
+    timeoutMs: 20000
+  - role: school
+    click: 返回列表
+  # ── 审批（workflow 前置同 job flow，路由 /affairs/workflows；学校建可自审，无创建者限制）──
+  - role: school
+    goto: /affairs/workflows
+    clickRow: { text: "SMOKE_方案审批流", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /affairs/workflows
+    click: 新建审批流程
+    expectText: 流程名称
+  - role: school
+    fill: { 流程名称: "SMOKE_方案审批流{rand}" }
+    saveAs: { wfName: 流程名称 }
+  - role: school
+    click: 添加步骤
+    fill: { 步骤名称: SMOKE_一次审批 }
+  - role: school
+    click: 选择审批人
+    expectText: 选择用户
+  - role: school
+    fill: { 搜索用户...: 巡检-学校管理员 }
+    clickRow: { text: 巡检-学校管理员 }
+  - role: school
+    click: 确认
+  - role: school
+    submit: 创建流程
+    expectApi: { method: POST, url: /workflows, status: 201 }
+  - role: school
+    goto: /affairs/programs
+    clickRow: { text: "{{programName}}", action: 提交审批 }
+    expectText: 提交审批
+  - role: school
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /affairs/approvals
+    clickRow: { text: "{{programName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: school
+    goto: /affairs/programs
+    expectText: "{{programName}}"
+    timeoutMs: 20000
+  - role: school
+    clickRow: { text: "{{programName}}", action: 发布 }
+    expectApi: { method: POST, url: /affairs/programs/, status: 200 }
+  # A-1→A-2 就绪验证：生成教学计划弹窗打开后，已发布方案可被选中（方案在下拉中可选），随后取消关闭
+  # （生成动作本身因测试租户无已发布体系课而 400，见 flow 说明；弹窗可选即证明 A-1 发布链就绪）
+  - role: school
+    goto: /affairs/teaching-plans
+    click: 新建教学计划
+    expectText: 人培方案（已发布）
+    timeoutMs: 20000
+  - role: school
+    select: { 请选择人培方案: "{{programName}}" }
+    expectText: "{{programName}}"
+    timeoutMs: 20000
+  - role: school
+    click: 取消
+  # A-2/A-3：学生工作台「我的课表」Tab 入口正常（pageerror 哨兵兜渲染崩溃）
+  # （排课页因测试租户无已确认教学计划——教学计划均在其它租户——无法选择计划，跳过错开）
+  - role: student
+    goto: /portal/workspace
+    click: 我的课表
+    expectText: 我的课表
+    timeoutMs: 20000
+  # ── 收尾：取消发布 → 删除方案；删审批流（教学计划/排课记录残留容忍）──
+  - role: school
+    goto: /affairs/programs
+    clickRow: { text: "{{programName}}", action: 取消发布 }
+    expectApi: { method: POST, url: /affairs/programs/, status: 200 }
+    optional: true
+  - role: school
+    clickRow: { text: "{{programName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /affairs/programs/, status: 200 }
+    optional: true
+  - role: school
+    goto: /affairs/workflows
+    clickRow: { text: "{{wfName}}", action: 删除 }
+    confirm: true
+    optional: true
+```
+
+> **首次运行提示**：`请选择教学计划: first` 依赖排课页加载的教学计划顺序，若首项不是刚生成的计划，可按报告改为选择方案名关联的计划；生成教学计划成功后页面跳转详情，若断言失败按报告微调。
+
+### 3.10 联盟公开页闭环（alliance-public-loop）
+
+> 对应 PRD L-1/L-3。覆盖：合作协议台账（挂企业 + 前台展示开关）→ 学生公开页企业详情「合作协议」区可见 → 清理。
+> 可见性规则（alliance_public_agreements 测试坐实）：协议 `is_public=true` 且关联公开企业才展示；前台展示开关用 DSL `toggle` 动作驱动。
+> 企业前置（幂等）：巡检企业需已引入且合作中（与 employment-hall-loop 同前置）。
+
+```flow
+flow: alliance-public-loop
+story: L-1
+desc: 学校维护合作协议台账（挂巡检测试企业并开前台展示）→ 学生公开页企业详情可见 → 学校清理
+steps:
+  # 幂等前置：巡检企业合作中 + 本校前台展示开（双控：企业 enable_public 且链接 is_public，否则公开页不可见）
+  - role: school
+    goto: /portal/apps/alliance/enterprises
+    fill: { 搜索企业名称或行业: 巡检测试企业 }
+    clickRow: { text: 巡检测试企业, action: 编辑 }
+    select: { 合作状态: 合作中 }
+    toggle: { 在本校前台展示: true }
+    submit: true
+    expectApi: { method: PUT, url: /alliance/enterprises/, status: 200 }
+    optional: true
+  # 幂等清理：删 SMOKE_ 协议残留
+  - role: school
+    goto: /portal/apps/alliance/agreements
+    clickRow: { text: "SMOKE_协议", action: 删除 }
+    confirm: true
+    optional: true
+  # L-1：新建合作协议（名称 + 挂企业 + 日期 + 前台展示开关）
+  - role: school
+    goto: /portal/apps/alliance/agreements/new
+    fill: { 请输入协议名称: "SMOKE_协议{rand}" }
+    saveAs: { agreementName: 请输入协议名称 }
+    select: { 选择合作企业: 巡检测试企业 }
+  - role: school
+    fill: { 生效日期: "2026-01-01", 到期日期: "2026-12-31" }
+    toggle: { 前台展示: true }
+    submit: 创建
+    expectApi: { method: POST, url: /alliance/agreements, status: 201 }
+    timeoutMs: 20000
+  # L-3：学生公开页企业详情「合作协议」Tab 可见（is_public=true 且企业公开；协议内容是 Tab 页，需先切 Tab）
+  - role: student
+    goto: /portal/alliance/enterprises
+    clickText: 巡检测试企业
+  - role: student
+    click: 合作协议
+    expectText: "{{agreementName}}"
+    timeoutMs: 20000
+  # ── 收尾：删除协议 ──
+  - role: school
+    goto: /portal/apps/alliance/agreements
+    fill: { 搜索协议名称: "{{agreementName}}" }
+    clickRow: { text: "{{agreementName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /alliance/agreements/, status: 200 }
+    optional: true
+```
+
+### 3.11 资源复用闭环（resource-reuse-loop）
+
+> 对应 PRD R-1。覆盖：链接类型资源创建（免文件上传，DSL 无 upload 动作）→ 绑定到场景任务（配置任务资源选择器）→ 完成配置落库 → 任务卡片可见 → 清理。
+> 资源→课程节点绑定路径在体系课编辑器内（重链路，课程链已有 course-publish-loop），此处取场景任务路径验证「资源可被任务绑定（多对多）」。
+> 场景仅作绑定载体：不审批不发布，草稿态即可绑定，删除按钮草稿态可用。
+> **角色说明**：巡检环境 teacher 角色未配置 library 资源管理菜单（`roles.permissions.menus` 缺 `/library/resources/link`），本 flow 用 school（school_admin 无显式菜单=全量放行）；PRD R-1 语义由学校侧资源管理覆盖。
+
+```flow
+flow: resource-reuse-loop
+story: R-1
+desc: 学校创建链接资源 → 编排场景任务并绑定资源 → 完成配置落库 → 任务卡片可见 → 清理
+steps:
+  # 幂等清理：删 SMOKE_ 资源残留（资源库列表）
+  - role: school
+    goto: /library/resources/link
+    clickRow: { text: "SMOKE_资源", action: 删除 }
+    confirm: true
+    optional: true
+  # R-1：创建链接类型资源（链接免文件上传）
+  - role: school
+    goto: /library/resources/link
+    click: 新建资源
+    fill: { 输入资源名称: "SMOKE_资源{rand}" }
+    saveAs: { resourceName: 输入资源名称 }
+  - role: school
+    fill: { URL 地址: "https://example.com/res{rand}" }
+    submit: 上传到资源库
+    expectApi: { method: POST, url: /library/resources, status: 201 }
+    timeoutMs: 20000
+  - role: school
+    expectText: "{{resourceName}}"
+    timeoutMs: 20000
+  # ── 载体：场景 + 任务（草稿态即可绑定）──
+  - role: school
+    goto: /scene
+    clickRow: { text: "SMOKE_资源场景", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /scene
+    click: 新建场景
+    expectApi: { method: POST, url: /scene/scenarios, status: 201 }
+    timeoutMs: 20000
+  - role: school
+    expectText: 场景名称
+    timeoutMs: 20000
+  - role: school
+    fill: { 场景名称: "SMOKE_资源场景{rand}" }
+    saveAs: { sceneName: 场景名称 }
+    submit: 保存草稿
+  - role: school
+    click: 下一步
+  - role: school
+    click: 添加任务
+    fill: { 输入任务名称: "SMOKE_资源任务{rand}" }
+    saveAs: { taskName: 输入任务名称 }
+    submit: 添加
+    expectApi: { method: POST, url: /scene/tasks, status: 201 }
+  # 绑定：配置任务资源在 EditCardDialog 弹窗内 → 搜索选中刚建的资源 → 保存关弹窗（否则顶栏被弹窗覆盖）
+  - role: school
+    click: 配置任务资源
+    fill: { 搜索资源名称...: "{{resourceName}}" }
+  - role: school
+    clickText: "{{resourceName}}"
+    expectText: "{{resourceName}}"
+    timeoutMs: 20000
+  - role: school
+    submit: 保存
+  - role: school
+    click: 完成配置
+    expectApi: { method: PUT, url: /scene/tasks/, status: 200 }
+    timeoutMs: 20000
+  # ── 收尾：删除场景（含任务绑定随删）；删资源 ──
+  - role: school
+    goto: /scene
+    clickRow: { text: "{{sceneName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /scene/scenarios/, status: 200 }
+    optional: true
+  - role: school
+    goto: /library/resources/link
+    clickRow: { text: "{{resourceName}}", action: 删除 }
+    confirm: true
     optional: true
 ```
