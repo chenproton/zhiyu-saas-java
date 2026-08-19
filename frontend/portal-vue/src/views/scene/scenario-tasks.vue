@@ -151,7 +151,7 @@
     >
       <template v-if="editingCard && currentTask">
         <div class="card-dialog-sub">任务：{{ currentTask.name }}</div>
-        <div class="card-dialog-body">
+        <div class="card-dialog-body" :style="cardDialogBodyStyle">
           <!-- info -->
           <TaskInfoCard
             v-if="editingCard.type === 'info'"
@@ -217,11 +217,13 @@
           />
 
           <!-- evaluationRules -->
-          <EvalMethodConfig
+          <EvaluationRulesEditor
             v-else-if="editingCard.type === 'evaluationRules'"
             :value="taskStateToEvalRuleConfig(currentState)"
+            :evaluation-methods="currentState.evaluationMethods"
             :knowledge-points="knowledgePoints"
             :ability-points="abilityPoints"
+            :persist-standard="handlePersistStandard"
             @change="(cfg) => updateState(editingCard!.taskId, evalRuleConfigToTaskStateUpdates(cfg))"
           />
 
@@ -392,7 +394,7 @@ import KnowledgeSelector from '../partner/co-build-scene-tasks/KnowledgeSelector
 import AbilitySelector from '../partner/co-build-scene-tasks/AbilitySelector.vue';
 import ResourceSelector from '../partner/co-build-scene-tasks/ResourceSelector.vue';
 import DescriptionEditor from '../lesson/description-editor.vue';
-import EvalMethodConfig from '../lesson/eval-method-config.vue';
+import EvaluationRulesEditor from './evaluation-rules/EvaluationRulesEditor.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -524,6 +526,13 @@ const cardDialogTop = computed(() => {
   if (t === 'evaluationRules' || t === 'knowledge' || t === 'ability' || t === 'resources') return '2vh';
   return '8vh';
 });
+
+// 评价规则编辑器与 React 一致：95vw 宽 + 内容区固定高度独立滚动，整体约 95vh
+const cardDialogBodyStyle = computed(() =>
+  editingCard.value?.type === 'evaluationRules'
+    ? { height: 'calc(95vh - 172px)', maxHeight: 'none' }
+    : undefined
+);
 
 const deleteConfirmOpen = computed({
   get: () => !!deleteConfirmTask.value,
@@ -920,6 +929,8 @@ watch(
       if (type === 'knowledge') keys.push('knowledge');
       else if (type === 'ability') keys.push('ability');
       else if (type === 'resources') keys.push('resources');
+      // 评价规则编辑器的量规需要知识点/能力点池（关联考查知识点/能力点、标签名展示）
+      else if (type === 'evaluationRules') keys.push('knowledge', 'ability');
       if (keys.length) loadDatasets(keys);
     }
   }
@@ -949,6 +960,22 @@ async function saveMethodsWithRetry(tid: string, version: number, methods: any[]
     }
     throw err;
   }
+}
+
+/**
+ * 评价标准表单「保存」：把当前方法的评价标准立即落库到当前任务 × 当前测评方式。
+ * 与 React tasks/page.tsx handlePersistStandard 等价（先把配置合入任务状态，再走
+ * saveMethodsWithRetry 保存全量测评方式，最后回写乐观锁版本号）。
+ */
+async function handlePersistStandard(_methodKey: string, next: EvalRuleConfig) {
+  const taskId = editingCard.value?.taskId;
+  if (!taskId) return;
+  const state = getState(taskId);
+  const updates = evalRuleConfigToTaskStateUpdates(next);
+  const methodsInput = taskStateToMethodsInput({ ...state, ...updates } as TaskState);
+  if (methodsInput.length === 0) return;
+  const newVersion = await saveMethodsWithRetry(taskId, state.evalMethodVersion, methodsInput);
+  updateState(taskId, { ...updates, evalMethodVersion: newVersion });
 }
 
 /* ============ 任务 CRUD ============ */
