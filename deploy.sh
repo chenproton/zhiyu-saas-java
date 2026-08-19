@@ -318,7 +318,13 @@ frontend_hash() {
       -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/dist/*' \
       -not -path '*/public/image-editor/*' -not -path '*/public/wasm/*' -not -path '*/public/vendor/*' \
       -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null
-    printf '%s\0' "$1/package.json" "$1/pnpm-workspace.yaml" "$1/tsconfig.base.json" "$1/.npmrc"
+    # 只喂存在的文件：不存在的路径（如本仓库当前没有 .npmrc）会让 md5sum 失败，
+    # xargs 返回 123 + pipefail 直接中止部署
+    for root_cfg in "$1/package.json" "$1/pnpm-workspace.yaml" "$1/tsconfig.base.json" "$1/.npmrc"; do
+      [[ -f "$root_cfg" ]] && printf '%s\0' "$root_cfg"
+    done
+    # 收尾 true：最后一个文件不存在时循环退出码为 1，会让 { } 组失败并被 pipefail 传播成中止
+    true
   } | sort -z | xargs -0 -r md5sum 2>/dev/null | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
