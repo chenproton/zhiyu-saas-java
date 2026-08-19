@@ -1353,23 +1353,23 @@ fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
     log "合并 $BRANCH_NAME → master"
-  # ORIGINAL_ROOT 可能是特性 worktree（master 一般已被主工作树检出，直接 checkout 会失败），
-  # 通过 worktree list 定位真正检出 master 的工作树执行合并
-  MERGE_ROOT="$ORIGINAL_ROOT"
-  main_wt=$(git -C "$ORIGINAL_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{wt=$2} /^branch refs\/heads\/master$/{print wt}')
-  [[ -n "$main_wt" ]] && MERGE_ROOT="$main_wt"
-  if git -C "$MERGE_ROOT" checkout master 2>&1 && \
-     git -C "$MERGE_ROOT" pull origin master --ff-only 2>&1 && \
-     git -C "$MERGE_ROOT" merge "origin/$BRANCH_NAME" --no-edit 2>&1 && \
-     git -C "$MERGE_ROOT" push origin master 2>&1; then
+  # 复用构建 worktree 的合并结果（HEAD = origin/master + BRANCH_NAME）直接推回 origin/master，
+  # 不再 checkout/pull 本地 master。本地 master 可能被其他 worktree 检出、或含他人未推送提交，
+  # checkout/pull 会失败甚至误带他人工作（多 Agent 并行开发时必现，故合并必须与本地 master 解耦）。
+  MERGE_TREE="${BUILD_TREE:-$PROJECT_ROOT}"
+  # 推送前重新拉取 origin/master：构建期间可能有其他 Agent 已推进 master，
+  # 需以最新 master 为基座，否则 push 会 non-fast-forward。
+  git -C "$ORIGINAL_ROOT" fetch origin master 2>/dev/null || true
+  if git -C "$MERGE_TREE" push origin "HEAD:refs/heads/master" 2>&1; then
     log "✅ 已合并"
+  elif git -C "$MERGE_TREE" merge origin/master --no-edit 2>&1 && \
+       git -C "$MERGE_TREE" push origin "HEAD:refs/heads/master" 2>&1; then
+    # origin/master 在构建期间被其他 Agent 推进 → 并入最新 master 后重推
+    log "✅ 已合并（并入构建期间他人推进的 master）"
   else
-    # 合并失败（多为分支与 master 冲突，或本地 master 有未推送提交/脏文件）。
-    # 先中止可能残留的合并状态，避免主工作树卡在冲突中影响后续部署，再提示人工处理
-    git -C "$MERGE_ROOT" merge --abort 2>/dev/null || true
-    warn "自动合并失败，分支代码已部署但未合并。请先解决与 master 的冲突："
-    warn "  git fetch origin && git rebase origin/master   （修复冲突后重新 git push，再重跑部署）"
-    warn "  或手动合并：git checkout master && git pull origin master && git merge origin/$BRANCH_NAME && git push origin master"
+    git -C "$MERGE_TREE" merge --abort 2>/dev/null || true
+    warn "自动合并失败，分支代码已部署但未合并。请人工处理："
+    warn "  git fetch origin && git checkout master && git pull origin master --ff-only && git merge origin/$BRANCH_NAME && git push origin master"
   fi
 fi
 

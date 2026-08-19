@@ -101,7 +101,8 @@
 
 ### 4.1 分支隔离工作流
 
-1. `git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> master && cd /tmp/<agent>`
+1. `git fetch origin master && git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> origin/master && cd /tmp/<agent>`
+   > 分支必须基于 `origin/master`（先 fetch），**禁止基于本地 `master`**：本地 master 可能含他人未推送提交，直接 `worktree add … master` 会把他人工作误带进分支（多 Agent 并行时必现）。
 2. `git add -A && git commit -m "feat: 任务描述" && git push -u origin <分支>`
 3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge` / `--gates`）
 4. `cd / && git worktree remove /tmp/<agent>`
