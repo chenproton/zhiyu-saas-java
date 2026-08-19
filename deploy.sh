@@ -1242,6 +1242,12 @@ cp "$BUILD_ROOT/deploy/docker-compose.yml" "$DEPLOY_COMPOSE"
 # 复制服务网关 nginx 容器配置（compose 中以相对路径 ./nginx-container/conf.d 挂载）
 mkdir -p "$DEPLOY_DIR/nginx-container"
 rsync -a --delete "$BUILD_ROOT/deploy/nginx-container/" "$DEPLOY_DIR/nginx-container/"
+# 镜像此刻已就绪（本次构建或复用已有 hash 镜像并重新打标签），先把 IMAGE_TAG 写进两侧 .env，
+# 再复制到 $DEPLOY_DIR —— compose 做变量插值读的是 $DEPLOY_DIR/.env（与 compose 文件同级）。
+# 若晚于这次复制写入，$DEPLOY_DIR/.env 会保留**上一次部署**的 tag：本次部署因 IMAGE_TAG 同时
+# 被 export 而不受影响，但之后任何人工 `docker compose up` 都会去拉一个已被清理的旧镜像。
+update_env_var "$ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
+[[ -f "$BUILD_ROOT/.env" ]] && update_env_var "$BUILD_ROOT/.env" "IMAGE_TAG" "$IMAGE_TAG"
 cp -f "$BUILD_ROOT/.env" "$DEPLOY_DIR/.env" 2>/dev/null || cp -f "$PROJECT_ROOT/.env" "$DEPLOY_DIR/.env"
 chmod 600 "$DEPLOY_DIR/.env"
 
@@ -1261,9 +1267,13 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" != "true" ]]; then
   fi
 fi
 
-# 镜像已就绪（本次构建或复用已有 hash 镜像并重新打标签），此时才把 IMAGE_TAG 写入 .env，
-# 保证 .env 里的标签始终对应**实际存在的镜像**（构建失败时 .env 不被污染）。
+# 镜像此刻已就绪（本次构建或复用已有 hash 镜像并重新打标签），先把 IMAGE_TAG 写进两侧 .env，
+# 再复制到 $DEPLOY_DIR —— compose 做变量插值读的是 $DEPLOY_DIR/.env（与 compose 文件同级）。
+# 若晚于这次复制写入，$DEPLOY_DIR/.env 会保留**上一次部署**的 tag：本次部署因 IMAGE_TAG 同时
+# 被 export 而不受影响，但之后任何人工 `docker compose up` 都会去拉一个已被清理的旧镜像。
 update_env_var "$ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
+[[ -f "$BUILD_ROOT/.env" ]] && update_env_var "$BUILD_ROOT/.env" "IMAGE_TAG" "$IMAGE_TAG"
+cp -f "$BUILD_ROOT/.env" "$DEPLOY_DIR/.env" 2>/dev/null || cp -f "$PROJECT_ROOT/.env" "$DEPLOY_DIR/.env"
 
 COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
 rm -f "$COMPOSE_UP_LOG"
@@ -1740,6 +1750,13 @@ if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
     warn "自动合并失败，分支代码已部署但未合并。请人工处理："
     warn "  git fetch origin && git checkout master && git pull origin master --ff-only && git merge origin/$BRANCH_NAME && git push origin master"
   fi
+fi
+
+# 一致性自检：$DEPLOY_DIR/.env 的 IMAGE_TAG 必须对应真实存在的镜像，
+# 否则人工 `docker compose up` 会拉不到镜像（历史上因写入时机早于/晚于复制而两次踩到）
+DEPLOY_TAG=$(grep '^IMAGE_TAG=' "$DEPLOY_DIR/.env" 2>/dev/null | cut -d= -f2 || true)
+if [[ -n "$DEPLOY_TAG" ]] && [[ -z "$(docker images -q "zhiyu-backend:$DEPLOY_TAG" 2>/dev/null)" ]]; then
+  warn "$DEPLOY_DIR/.env 的 IMAGE_TAG=$DEPLOY_TAG 没有对应镜像，人工 compose up 会失败（请复查写入时机）"
 fi
 
 log "✨ 部署完成！"
