@@ -88,6 +88,11 @@ async function clickExact(page, text) {
   }
   const link = page.getByRole('link', { name: text, exact: true })
   if (await waitFirstVisible(link, 1500)) { await link.first().click(); return }
+  // Radix Tabs 的 TabsTrigger 是 role="tab"（不是 button）：getByRole('button') 匹配不到，
+  // 兜底的 button:has-text 也可能被同文字的页头/面包屑抢先 → Tab 实际没切换、列表仍是上一个 Tab 的数据，
+  // 表现为后续 expectText/clickRow 找不到目标（2026-08-19 实测：AI「智能体审核」Tab 踩到）
+  const tab = page.getByRole('tab', { name: text, exact: true })
+  if (await waitFirstVisible(tab, 1500)) { await tab.first().click(); return }
   // Radix Select/下拉的选项（role=option）：需先点击触发器让下拉展开（flow 里在点击前先点触发器文本）
   const opt = page.getByRole('option', { name: text, exact: true })
   if (await waitFirstVisible(opt, 1500)) { await opt.first().click(); return }

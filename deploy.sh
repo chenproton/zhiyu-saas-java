@@ -1074,6 +1074,10 @@ if $BUILD_BACKEND; then
     fi
   else
     log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
+    # 审计痕迹：记录谁在何时跳过门禁（多 Agent 环境事后可追责/回查）
+    mkdir -p "$DEPLOY_DIR/.audit"
+    printf '%s  skip-gates  IMAGE_TAG=%s  user=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$IMAGE_TAG" "${SUDO_USER:-${USER:-unknown}}" \
+      >> "$DEPLOY_DIR/.audit/gates-skip.log" 2>/dev/null || true
   fi
   mkdir -p "$BUILD_CACHE/go-cache"
   if [[ -d "$BACKEND_DIR/vendor" ]]; then

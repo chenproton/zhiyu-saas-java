@@ -15,10 +15,13 @@
 #   - 本脚本开启 set -o pipefail，而「producer | grep -q」在 grep 提前退出时会让 producer 收到
 #     SIGPIPE 退出 141，导致 if 恒为假（检测死代码）。因此所有「文件内容过滤后再判断」的检查
 #     一律改为命令替换形态 [ -n "$(producer | grep -E pattern)" ]，不再使用管道尾端 grep -q。
-#   - 检查项 8~11 为 2026-08-14 补强新增：8 表数机械校验、9 机器码词汇表校验、
+#   - 检查项 8~12 为 2026-08-14 起补强：8 表数机械校验、9 机器码词汇表校验、
 #     10 路由↔契约双向覆盖（提示级，豁免清单 scripts/spec-check-data/contract-exemptions.txt）、
-#     11 spec 随代码变更（提示级，原第 8 项顺延）、
-#     12 验收流程一致性（提示级，06-acceptance-flows.md flow id 唯一 + story↔01-prd 双向）。
+#     11 spec 随代码变更（**阻断级**，代码结构变更未回写 spec 即失败）、12 验收流程一致性（提示级）。
+#     2026-08-19 新增：13 新端点租户归属校验（阻断）、14 新端点必须带测试（阻断，DoD 3）。
+#     基线：本脚本在干净树（deploy 构建 worktree / CI checkout）运行，`git diff HEAD` 恒为空 →
+#     diff 类检查会全部失效。故统一用 BASELINE（合并提交取 HEAD^1 = 整 PR 净变更），
+#     并叠加「未提交工作区 + 已暂存 + 未跟踪」以兼容本地手跑。
 #
 set -uo pipefail
 
@@ -31,6 +34,18 @@ violation() { echo "  [违反] $*" >&2; FAILED=$((FAILED + 1)); }
 pass()      { echo "  [通过] $*"; }
 
 echo "== spec 硬约束校验 =="
+
+# 统一 diff 基线：合并提交取 HEAD^1（整 PR 净变更），普通提交取 HEAD^
+BASELINE=""
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+  if git rev-parse -q --verify HEAD^1 >/dev/null 2>&1; then
+    if git rev-parse -q --verify HEAD^2 >/dev/null 2>&1; then
+      BASELINE="$(git rev-parse HEAD^1)"
+    else
+      BASELINE="$(git rev-parse HEAD^)"
+    fi
+  fi
+fi
 
 # 行尾注释剥离：grep -vE '^[[:space:]]*//' 只能排除「整行注释」；行尾 `//...`（含
 # `https://` 等 URL 字符串内的 `//`）需先剥掉再查关键字。URL 字符串影响可忽略——
@@ -518,20 +533,83 @@ fi
 # ---------------------------------------------------------------
 # 11. spec 随代码变更（提示级）
 # ---------------------------------------------------------------
-echo "-- 11. spec 随代码变更（代码↔spec 耦合） --"
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse HEAD >/dev/null 2>&1; then
-  code_changes=$(git diff --name-only HEAD -- backend/go/internal/router backend/go/internal/handler backend/go/migrations 2>/dev/null | grep -vE '_test\.go$' | head -50)
-  spec_changes=$(git diff --name-only HEAD -- docs/spec docs/系统功能清单.md 2>/dev/null)
+echo "-- 11. spec 随代码变更（代码↔spec 耦合，阻断级） --"
+if [[ -n "$BASELINE" ]]; then
+  code_changes=$(git diff --name-only "$BASELINE" HEAD -- backend/go/internal/router backend/go/internal/handler backend/go/migrations 2>/dev/null | grep -vE '_test\.go$')
+  code_changes+=$'\n'"$(git diff --name-only HEAD -- backend/go/internal/router backend/go/internal/handler backend/go/migrations 2>/dev/null | grep -vE '_test\.go$')"
+  spec_changes=$(git diff --name-only "$BASELINE" HEAD -- docs/spec docs/系统功能清单.md 2>/dev/null)
+  spec_changes+=$'\n'"$(git diff --name-only HEAD -- docs/spec docs/系统功能清单.md 2>/dev/null)"
+  code_changes=$(printf '%s' "$code_changes" | grep -vE '^[[:space:]]*$' | sort -u | head -50)
+  spec_changes=$(printf '%s' "$spec_changes" | grep -vE '^[[:space:]]*$' | sort -u)
   if [[ -n "$code_changes" ]]; then
     if [[ -z "$spec_changes" ]]; then
       if ! git log -1 --pretty=%B 2>/dev/null | grep -qE 'spec:nochange|spec\.skip'; then
-        echo "  [提示] 检测到代码结构变更但 docs/spec/ 未同步，请确认是否需回写 spec："
-        echo "$code_changes" | sed 's/^/         /' | head -10
-        echo "         （纯重构/纯修复可在 commit message 加 spec:nochange 声明豁免）"
+        violation "代码结构变更但 docs/spec/ 未同步回写（spec-first 硬约束）："
+        echo "$code_changes" | sed 's/^/         /'
+        echo "         （纯重构/纯修复在 commit message 写 spec:nochange 声明豁免）"
+      else
+        pass "代码结构变更已声明 spec:nochange 豁免"
+      fi
+    else
+      pass "代码结构变更已同步回写 spec"
+    fi
+  else
+    pass "无代码结构变更，无需回写 spec"
+  fi
+else
+  pass "（非 git 仓库或无可比基线，跳过）"
+fi
+
+# ---------------------------------------------------------------
+# 13. 新端点租户归属校验（阻断级）：AGENTS.md 3.3「每个新端点必须做归属校验」
+#     判据（文件级、保守）：本次变更集里的 handler 文件，若定义了 handler 方法且读路径参数
+#     （chi.URLParam / r.PathValue），却整文件没有 verifyTenantOwnership / CheckOwnership → 违规。
+#     公开/列表/平台端点不读 {id}，天然不命中，避免误伤。
+# ---------------------------------------------------------------
+echo "-- 13. 新端点租户归属校验（阻断级） --"
+OWNERSHIP_OK=1
+if [[ -n "$BASELINE" ]]; then
+  changed_go=$(git diff --name-only "$BASELINE" HEAD -- backend/go/internal/handler backend/go/internal/router 2>/dev/null | grep '\.go$' | grep -v '_test\.go$')
+  changed_go+=$'\n'"$(git diff --name-only HEAD -- backend/go/internal/handler backend/go/internal/router 2>/dev/null | grep '\.go$' | grep -v '_test\.go$')"
+  changed_go+=$'\n'"$(git diff --cached --name-only -- backend/go/internal/handler backend/go/internal/router 2>/dev/null | grep '\.go$' | grep -v '_test\.go$')"
+  changed_go+=$'\n'"$(git ls-files --others --exclude-standard -- backend/go/internal/handler backend/go/internal/router 2>/dev/null | grep '\.go$' | grep -v '_test\.go$')"
+  changed_go=$(printf '%s' "$changed_go" | grep -vE '^[[:space:]]*$' | sort -u)
+  for f in $changed_go; do
+    [[ -f "$f" ]] || continue
+    grep -qE '^func \([^)]*\) [A-Za-z0-9_]+\(' "$f" || continue
+    grep -qE 'verifyTenantOwnership|CheckOwnership' "$f" && continue
+    if grep -qE 'chi\.URLParam\(r,|r\.PathValue\(' "$f"; then
+      violation "本次变更的 handler 读取路径参数但无租户归属校验: $f（AGENTS.md 3.3）"
+      OWNERSHIP_OK=0
+    fi
+  done
+  [[ "$OWNERSHIP_OK" == "1" ]] && pass "本次变更的 handler 均通过租户归属校验（或无需校验）"
+else
+  pass "（非 git 仓库或无可比基线，跳过）"
+fi
+
+# ---------------------------------------------------------------
+# 14. 新端点/新 handler 必须带测试（阻断级，DoD 3）
+# ---------------------------------------------------------------
+echo "-- 14. 新端点/新 handler 必须带测试（阻断级） --"
+TEST_OK=1
+if [[ -n "$BASELINE" ]]; then
+  new_impl=$(git diff --name-status "$BASELINE" HEAD -- backend/go/internal 2>/dev/null | grep -E '^A\s' | grep '\.go$' | grep -v '_test\.go$' | awk '{print $2}')
+  new_impl+=$'\n'"$(git diff --cached --name-status -- backend/go/internal 2>/dev/null | grep -E '^A\s' | grep '\.go$' | grep -v '_test\.go$' | awk '{print $2}')"
+  new_impl+=$'\n'"$(git ls-files --others --exclude-standard -- backend/go/internal 2>/dev/null | grep '\.go$' | grep -v '_test\.go$')"
+  new_impl=$(printf '%s' "$new_impl" | grep -vE '^[[:space:]]*$' | sort -u)
+  for f in $new_impl; do
+    base="${f%.go}"
+    test_cov=$(git diff --name-only "$BASELINE" HEAD -- backend/go/internal 2>/dev/null | grep -E "${base}_test\.go$")
+    test_cov+=$'\n'"$(git ls-files --others --exclude-standard -- backend/go/internal 2>/dev/null | grep -E "${base}_test\.go$")"
+    if [[ -z "$(printf '%s' "$test_cov" | grep -vE '^[[:space:]]*$')" ]]; then
+      if [[ "$f" == */handler/* || "$f" == */service/* || "$f" == */store/* ]]; then
+        violation "新增实现文件但无同次测试覆盖: $f（DoD 3：新接口必须附测试）"
+        TEST_OK=0
       fi
     fi
-  fi
-  pass "spec↔代码耦合检查完成（仅提示，不阻断）"
+  done
+  [[ "$TEST_OK" == "1" ]] && pass "本次新增的实现文件均带测试（或非 handler/service/store 层）"
 else
   pass "（非 git 仓库或无可比基线，跳过）"
 fi

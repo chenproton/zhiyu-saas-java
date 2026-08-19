@@ -116,7 +116,7 @@ deploy.sh 自动：源码 hash 比对只构建变更部分；分两段启动（�
 ```bash
 cd backend/go && go vet ./... && go build ./... && gofmt -l .
 pnpm typecheck && pnpm lint && pnpm test
-./scripts/spec-check.sh   # spec 校验共 12 项：阻断级 1–9（分层/AI 底座/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数机械校验/机器码词汇表）+ 提示级 10–12（路由↔契约覆盖/spec↔代码耦合/验收流程一致性；另含 down 不可逆标注、XSS 清单），详见 spec-standards.md §九
+./scripts/spec-check.sh   # spec 校验共 14 项：阻断级 1–9、11、13、14（分层/AI 底座/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码 + **spec 随代码变更** + **新端点租户归属校验** + **新端点必须带测试**）；提示级 10、12（路由↔契约覆盖/验收流程一致性；另含 down 不可逆标注、XSS 清单），详见 spec-standards.md §九
 ```
 
 migration 需配对 `.down.sql`；单次 commit 只含当次变更。

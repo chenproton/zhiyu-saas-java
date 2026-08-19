@@ -123,8 +123,8 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 
 | 类型 | 手段 | 负责什么 |
 |---|---|---|
-| **硬约束（可自动，硬拦）**<br>（共 12 项中的 1–9） | `scripts/spec-check.sh` | ①分层红线 ②AI 底座 ③migration 配对（`.up.sql` 必须有 `.down.sql`；**down 不可逆标注本身是提示级**，见下一行）④spec 五层齐备 ⑤ADR 索引双向一致 ⑥安全红线（ADR-0003 关键写租户条件，点名函数级）⑦schema 文档↔migrations 编号一致 ⑧表数机械校验（migrations CREATE−DROP ↔ 04 头部）⑨机器码词汇表（02 §4.2 ↔ error_codes.go） |
-| **温和提示（可自动，不拦）**<br>（10–12 项 + down 不可逆/XSS） | `scripts/spec-check.sh` | ⑩路由↔契约双向覆盖 ⑪spec↔代码耦合（代码结构变更未同步 spec 时提示，含 `docs/系统功能清单.md`）⑫验收流程一致性（06 flow ↔ PRD 用户故事）；另含 **down 不可逆标注**与 XSS（dangerouslySetInnerHTML 清单），两者均为提示级、不阻断 |
+| **硬约束（可自动，硬拦）**<br>（共 14 项中的 1–9、11、13、14） | `scripts/spec-check.sh` | ①分层红线 ②AI 底座 ③migration 配对（`.up.sql` 必须有 `.down.sql`；**down 不可逆标注本身是提示级**，见下一行）④spec 五层齐备 ⑤ADR 索引双向一致 ⑥安全红线（ADR-0003 关键写租户条件，点名函数级）⑦schema 文档↔migrations 编号一致 ⑧表数机械校验（migrations CREATE−DROP ↔ 04 头部）⑨机器码词汇表（02 §4.2 ↔ error_codes.go）⑪**spec 随代码变更**（改 handler/router/migrations 必须同次回写 spec，纯重构写 `spec:nochange` 豁免）⑬**新端点租户归属校验**（读路径参数的 handler 必须调 verifyTenantOwnership/CheckOwnership，AGENTS.md 3.3）⑭**新端点必须带测试**（新增 handler/service/store 实现文件须同次带 `_test.go`，DoD 3） |
+| **温和提示（可自动，不拦）**<br>（10、12 项 + down 不可逆/XSS） | `scripts/spec-check.sh` | ⑩路由↔契约双向覆盖 ⑫验收流程一致性（06 flow ↔ PRD 用户故事）；另含 **down 不可逆标注**与 XSS（dangerouslySetInnerHTML 清单），两者均为提示级、不阻断 |
 | **语义一致性（需 AI）** | analyze 节点 | spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试 |
 | **业务链路（可自动，真实环境）** | `scripts/ui-smoke` `--flows` | 按 06 的 flow 定义驱动浏览器跨角色走核心链路，断言接口响应与关键文案；逐页巡检保覆盖面、流程巡检保链路不断 |
 

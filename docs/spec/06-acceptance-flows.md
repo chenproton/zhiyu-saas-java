@@ -127,15 +127,27 @@ steps:
     clickRow: { text: "{{projectName}}", action: 发布 }
     expectApi: { method: PUT, url: /alliance/employment-projects/, status: 200 }
   # ── 企业：录入岗位并挂项目发布 ──
+  # partner 端 /partner/employment-jobs/new 在 usePartnerAuth 的 authLoading 期间只渲染 spinner，
+  # goto 后立刻 fill 会「未找到字段」。故先单独一步等表单字段出现，再填。
   - role: partner
     goto: /partner/employment-jobs/new
+    expectText: 岗位名称
+    timeoutMs: 20000
+  - role: partner
     fill: { 岗位名称: "SMOKE_装配工程师{rand}", 工作地点: 苏州, 招聘人数: "5" }
     select: { 合作学校: first, 岗位类型: 全职, 所属就业项目: "{{projectName}}" }
     saveAs: { jobName: 岗位名称 }
     submit: true
     expectApi: { method: POST, url: /partner/employment-jobs, status: 201 }
+  # 与 /new 页同理：partner 端页面在 usePartnerAuth 的 authLoading 期间只有 spinner，
+  # goto 后需先等列表渲染（搜索框出现）再操作，否则「未找到字段」
   - role: partner
     goto: /partner/employment-jobs
+    # 注意不能等 placeholder 文案（「搜索岗位名称...」是 placeholder，非可见文本，expectText 等不到）；
+    # 等刚创建的岗位出现即代表列表已渲染
+    expectText: "{{jobName}}"
+    timeoutMs: 20000
+  - role: partner
     fill: { 搜索岗位名称: "{{jobName}}" }
     clickRow: { text: "{{jobName}}", action: 发布 }
     submit: 发布
@@ -259,20 +271,32 @@ steps:
   - role: teacher
     goto: /portal/apps/ai/studio
     click: 新建智能体
-    fill: { 名称: "SMOKE_AI助手{rand}", 角色提示词: "你是 SMOKE 测试助手" }
-    saveAs: { agentName: 名称 }
+    # 「新建智能体」是**跳转**到独立构建页 /portal/apps/ai/studio/agents/new（不再是弹窗），
+    # 页面需等 majors/kbs/organizations 等数据加载完才渲染表单，故本步只确认构建页就绪
+    expectText: 角色提示词
+    timeoutMs: 20000
+  - role: teacher
+    # 字段 label 取自 agent-form.tsx：输入框 placeholder「智能体名称」、Label「角色提示词」
+    # 角色提示词必须按 **placeholder** 定位：其 Label 与 Textarea 不在同一父容器
+    # （agent-form.tsx:242 Label 在 flex 行内），按 label 找会回退并填到别的输入框 →
+    # systemPrompt 为空 → 前端校验拦下、连请求都不发（2026-08-19 实测踩到）
+    fill: { 智能体名称: "SMOKE_AI助手{rand}", 定义智能体的角色设定与回答规则: "SMOKE 巡检用提示词，仅测链路" }
+    saveAs: { agentName: 智能体名称 }
     submit: 创建智能体
     expectApi: { method: POST, url: /ai/agents, status: 201 }
-    # 创建成功自动进入编辑器：断言编辑器渲染（动态路由参数回归护栏）
-    expectText: 角色提示词
     timeoutMs: 20000
   - role: teacher
     goto: /portal/apps/ai/studio
     clickCard: { text: "{{agentName}}", action: 提交审核 }
     expectApi: { method: POST, url: /ai/agents/, status: 200 }
+  # 审核列表切 Tab 后需等接口回数据再定位行（同一步内 clickRow 只有 8s 窗口，
+  # 智能体审核 Tab 首次加载常超过该窗口 → 拆成「切 Tab 并等行出现」+「点通过」两步）
   - role: school
     goto: /portal/apps/ai/admin/reviews
     click: 智能体审核
+    expectText: "{{agentName}}"
+    timeoutMs: 25000
+  - role: school
     clickRow: { text: "{{agentName}}", action: 通过 }
     confirm: true
     expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
@@ -330,34 +354,86 @@ steps:
     saveAs: { jobName: 岗位名称 }
     submit: 保存草稿
     expectApi: { method: PUT, url: /job/positions/, status: 200 }
+  # 前置：自建一条「审批人 = 巡检 school 账号」的审批流。
+  # 不能用 select first 随便挑已有审批流：审批权限按 workflow.steps[].approverIds **逐用户**判定
+  # （backend `isUserApproverForStep`），挑到别人的流程 → 审批必然 403。
+  # 也不依赖批次分组：产品支持提交审批时直接关联审批流（本 flow 走该路径）。
+  - role: school
+    goto: /job/workflows
+    clickRow: { text: "SMOKE_岗位审批流", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /job/workflows
+    click: 新建审批流程
+    expectText: 流程名称
+  - role: school
+    fill: { 流程名称: "SMOKE_岗位审批流{rand}" }
+    saveAs: { wfName: 流程名称 }
+  - role: school
+    # 步骤名称必填：buildWorkflowSteps 会 filter 掉 name 为空的步骤，
+    # 名称空 → built.length===0 → 前端报「请至少配置一个审批步骤」且不发请求
+    click: 添加步骤
+    fill: { 步骤名称: SMOKE_一次审批 }
+  - role: school
+    # UserSelector 为弹窗式：点占位按钮开弹窗（动作按 YAML 书写顺序执行）
+    click: 选择审批人
+    expectText: 选择用户
+  - role: school
+    # 用户列表是表格：clickRow 省略 action 时点击整行，正好触发 toggleUser 勾选
+    # （不用 clickText：getByText 可能先命中隐藏节点导致点击超时）
+    fill: { 搜索用户...: 巡检-学校管理员 }
+    clickRow: { text: 巡检-学校管理员 }
+  - role: school
+    click: 确认
+  - role: school
+    submit: 创建流程
+    expectApi: { method: POST, url: /workflows, status: 201 }
+  # 提交审批：切到「按审批流程提交」并选中刚建的流程（confirmDisabled 在选中后解除）
   - role: teacher
     goto: /job/positions
     clickRow: { text: "{{jobName}}", action: 提交审批 }
-    confirm: true
+    expectText: 提交审批
+  - role: teacher
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
     expectApi: { method: POST, url: /approvals, status: 201 }
   - role: school
     goto: /job/approvals
     clickRow: { text: "{{jobName}}", action: 通过 }
     submit: 通过
     expectApi: { method: POST, url: /approvals/, status: 200 }
-  - role: school
+  # 发布/取消发布由**所有者 teacher** 执行：/job/positions 按归属与状态筛选，
+  # school 账号打开该列表看不到 teacher 名下的岗位行（审批在 /job/approvals 才可见）
+  - role: teacher
     goto: /job/positions
+    expectText: "{{jobName}}"
+    timeoutMs: 20000
+  - role: teacher
+    # 「发布」直接生效、无确认弹窗（与删除/取消发布不同），故不加 confirm
     clickRow: { text: "{{jobName}}", action: 发布 }
-    confirm: true
+    expectApi: { method: POST, url: /job/positions/, status: 200 }
   # 学生侧公开岗位大厅可见（J-3）
   - role: student
     goto: /job/landing
     expectText: "{{jobName}}"
     timeoutMs: 20000
-  - role: school
+  - role: teacher
+    # 「取消发布」同样直接生效、无确认弹窗
     goto: /job/positions
     clickRow: { text: "{{jobName}}", action: 取消发布 }
-    confirm: true
+    expectApi: { method: POST, url: /job/positions/, status: 200 }
   - role: teacher
     goto: /job/positions
     clickRow: { text: "{{jobName}}", action: 删除 }
     confirm: true
     expectApi: { method: DELETE, url: /job/positions/, status: 200 }
+  - role: school
+    goto: /job/workflows
+    clickRow: { text: "{{wfName}}", action: 删除 }
+    confirm: true
+    optional: true
 ```
 
 > **首次运行提示**：本 flow 的路由与按钮文案均来自代码静态核对，但审批弹窗（`通过` 是否需要填意见后再点 `通过`）

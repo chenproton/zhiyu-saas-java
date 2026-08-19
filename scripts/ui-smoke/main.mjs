@@ -28,13 +28,27 @@ const SMOKE_DEVICE_ID = 'smoke-device-portal'
  */
 function captchaAnswer(captchaId) {
   if (!captchaId) return null
-  const container = process.env.SMOKE_REDIS_CONTAINER || 'zhiyu-java-redis-compose'
-  try {
+  // 默认必须是 Go 栈的 zhiyu-redis：验证码答案 key（zhiyu:captcha:answer:*）由 **Go 后端** 写入，
+  // 它连的是 zhiyu-redis。此前默认写成 zhiyu-java-redis-compose，Java 栈一停（容器被移除）
+  // 就读不到答案 → 登录卡在验证码重试 → 所有 flow 静默挂死到超时（2026-08-19 实测踩到）。
+  // Go redis 无口令，Java redis 需 -a；按容器名选择参数，避免无口令实例上的多余告警。
+  const container = process.env.SMOKE_REDIS_CONTAINER || 'zhiyu-redis'
+  const authArgs = container.includes('java') ? ['-a', 'ruoyi123'] : []
+  const tryGet = (c, extra) => {
     const out = execFileSync(
-      'docker', ['exec', container, 'redis-cli', '-a', 'ruoyi123', 'GET', `zhiyu:captcha:answer:${captchaId}`],
+      'docker', ['exec', c, 'redis-cli', ...extra, 'GET', `zhiyu:captcha:answer:${captchaId}`],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
     )
     return (out || '').trim() || null
+  }
+  try {
+    const v = tryGet(container, authArgs)
+    if (v) return v
+  } catch { /* 容器不存在或无该 key，继续兜底 */ }
+  // 兜底：另一个栈的 redis（双栈共存时答案可能落在对侧）
+  const fallback = container === 'zhiyu-redis' ? 'zhiyu-java-redis-compose' : 'zhiyu-redis'
+  try {
+    return tryGet(fallback, fallback.includes('java') ? ['-a', 'ruoyi123'] : [])
   } catch {
     return null
   }
