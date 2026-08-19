@@ -30,6 +30,7 @@ record_ref() {
 }
 
 moved=0
+conflicts=0
 skipped=0
 failed=0
 
@@ -42,8 +43,16 @@ move_file() {
     return 0
   fi
   if [[ -f "$dst" ]]; then
-    # 目标已存在（此前迁移过），删除孤儿源文件
-    rm -f "$src"
+    # 目标已存在：必须先比对内容再决定。原实现无条件 rm 源文件，
+    # 同名不同内容（UUID 极小概率碰撞、或人工放入的同名文件）会永久丢数据。
+    if cmp -s "$src" "$dst"; then
+      rm -f "$src"   # 内容一致 = 上次已迁移成功，删孤儿源文件
+    else
+      mkdir -p "$UPLOAD_DIR/.conflict"
+      mv "$src" "$UPLOAD_DIR/.conflict/$name" 2>/dev/null || true
+      echo "  [warn] 目标已存在且内容不同，源文件移入 .conflict/ 待人工处理：$name" >&2
+      conflicts=$((conflicts + 1))
+    fi
     return 0
   fi
   mkdir -p "$UPLOAD_DIR/$tenant"
@@ -53,6 +62,9 @@ move_file() {
   else
     echo "  [error] 移动失败：$src -> $dst" >&2
     failed=$((failed + 1))
+    # 返回非 0：调用方据此跳过该条的 DB 更新。
+    # 原实现移动失败仍继续改库，DB 会指向不存在的新路径（前端 404、且源文件路径也已从库里消失）
+    return 1
   fi
 }
 
@@ -68,7 +80,11 @@ while IFS='|' read -r tbl col; do
   while IFS='|' read -r tenant name; do
     [[ -z "$tenant" || -z "$name" ]] && continue
     record_ref "$tenant" "$name"
-    move_file "$tenant" "$name"
+    # 移动失败就不改库：否则 DB 指向不存在的新路径（前端 404，且旧路径也从库里消失）
+    if ! move_file "$tenant" "$name"; then
+      echo "  [skip-db] 因文件移动失败，跳过 DB 更新：$tbl.$col $name" >&2
+      continue
+    fi
     "${PSQL[@]}" -c "UPDATE \"$tbl\" SET \"$col\" = '/uploads/$tenant/$name' WHERE \"$col\" = '/uploads/$name' AND tenant_id = '$tenant'"
     skipped=$((skipped + 1))
   done < <("${PSQL[@]}" -At -F'|' -c "
@@ -94,7 +110,10 @@ while IFS='|' read -r tbl col; do
   while IFS='|' read -r id tenant name; do
     [[ -z "$id" || -z "$tenant" || -z "$name" ]] && continue
     record_ref "$tenant" "$name"
-    move_file "$tenant" "$name"
+    if ! move_file "$tenant" "$name"; then
+      echo "  [skip-db] 因文件移动失败，跳过 DB 更新：${tbl}.${col} id=${id} ${name}" >&2
+      continue
+    fi
     "${PSQL[@]}" -c "UPDATE \"$tbl\" SET \"$col\" = array_replace(\"$col\", '/uploads/$name', '/uploads/$tenant/$name') WHERE id = '$id'"
   done < <("${PSQL[@]}" -At -F'|' -c "
     SELECT x.id::text, x.tenant_id::text, e
@@ -122,7 +141,13 @@ while IFS='|' read -r tbl col; do
     SELECT DISTINCT x.tenant_id::text, m[1]
     FROM (SELECT tenant_id, regexp_matches(\"$col\"::text, '$FLAT_PATTERN', 'g') AS m
           FROM \"$tbl\" WHERE \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+') x")
-  updated=$("${PSQL[@]}" -Atc "WITH upd AS (UPDATE \"$tbl\" SET \"$col\" = regexp_replace(\"$col\"::text, '$FLAT_PATTERN', '/uploads/' || tenant_id::text || '/\1', 'g')::jsonb WHERE \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+' RETURNING 1) SELECT count(*) FROM upd")
+  # 必须排除 tenant_id IS NULL：'/uploads/' || NULL::text = NULL → regexp_replace 返回 NULL
+  # → 整个 jsonb 列被写成 NULL（原实现会直接清空这些行的业务数据）
+  updated=$("${PSQL[@]}" -Atc "WITH upd AS (UPDATE \"$tbl\" SET \"$col\" = regexp_replace(\"$col\"::text, '$FLAT_PATTERN', '/uploads/' || tenant_id::text || '/\1', 'g')::jsonb WHERE tenant_id IS NOT NULL AND \"$col\" IS NOT NULL AND \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+' RETURNING 1) SELECT count(*) FROM upd")
+  # tenant_id 为空的残留行单独提示，交人工处理，不擅自改写
+  orphan=$("${PSQL[@]}" -Atc "SELECT count(*) FROM \"$tbl\" WHERE tenant_id IS NULL AND \"$col\"::text ~ '/uploads/[0-9a-f-]{36}\.[A-Za-z0-9]+'" 2>/dev/null || echo 0)
+  [[ "$orphan" =~ ^[0-9]+$ && "$orphan" -gt 0 ]] && \
+    echo "  [warn] $tbl.$col 有 $orphan 行 tenant_id 为空、含平铺上传引用，已跳过（需人工确认租户归属）" >&2
   [[ "$updated" =~ ^[0-9]+$ ]] && skipped=$((skipped + updated))
 done < <("${PSQL[@]}" -At -F'|' -c "
   SELECT table_name, column_name
@@ -146,7 +171,9 @@ for f in "$UPLOAD_DIR"/*; do
   echo "  [quarantine] $name -> _legacy_unreferenced/"
 done
 
-echo "完成：移动 $moved 个文件，更新/跳过 $skipped 条记录，失败 $failed 个，隔离孤儿 $((leftover)) 个"
+echo "完成：移动 $moved 个文件，更新/跳过 $skipped 条记录，失败 $failed 个，冲突隔离 $conflicts 个，隔离孤儿 $((leftover)) 个"
+[[ "$conflicts" -gt 0 ]] && echo "  注意：$conflicts 个同名不同内容的源文件已移入 $UPLOAD_DIR/.conflict/，需人工确认后处理" >&2
+[[ "$failed" -gt 0 ]] && echo "  注意：$failed 个文件移动失败，其 DB 记录未改动（可修复权限/磁盘后重跑本脚本，脚本幂等）" >&2
 [[ "$failed" -gt 0 ]] && exit 1
 
 # 容器内应用以 appuser(uid=1000) 运行：宿主以 root 执行迁移创建的租户目录属主为 root，

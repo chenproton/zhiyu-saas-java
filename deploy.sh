@@ -22,6 +22,7 @@
 set -euo pipefail
 # 失败可定位：管道/命令替换里的静默失败会带出行号与具体命令（历史上多次"无任何输出就退出"）
 set -E
+# shellcheck disable=SC2154  # rc/BASH_COMMAND 由 trap 运行时注入
 trap 'rc=$?; [[ $rc -ne 0 ]] && echo "  错误：deploy.sh 第 ${LINENO} 行失败（命令: ${BASH_COMMAND}，退出码 ${rc}）" >&2' ERR
 
 # ── 参数 ──

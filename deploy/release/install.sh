@@ -12,6 +12,10 @@
 #   - 无需源代码、无需网络、无需 Go/Node 工具链
 #
 set -euo pipefail
+# 与 deploy.sh 同源：1400 行脚本里管道/命令替换的静默失败必须能定位到行号
+set -E
+# shellcheck disable=SC2154  # rc/BASH_COMMAND 由 trap 运行时注入
+trap 'rc=$?; [[ $rc -ne 0 ]] && echo "  错误：install.sh 第 ${LINENO} 行失败（命令: ${BASH_COMMAND}，退出码 ${rc}）" >&2' ERR
 
 # ── 常量 ──
 PKG_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -184,9 +188,12 @@ ENV_FILE="$DEPLOY_DIR/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
   db_pass=$(rand_str 24)
   jwt_secret=$(rand_str 64)
+  ai_secret=$(rand_str 64)
   {
     echo "DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:${POSTGRES_HOST_PORT}/zhiyu-saas?sslmode=disable"
     echo "JWT_SECRET=${jwt_secret}"
+    # AI_CONFIG_SECRET 必须生成：后端用它解密租户 AI 配置，缺失会导致启动/AI 功能直接失败
+    echo "AI_CONFIG_SECRET=${ai_secret}"
     echo "DB_USER=zhiyu_saas"
     echo "DB_PASSWORD=${db_pass}"
     echo "DB_NAME=zhiyu-saas"
@@ -194,6 +201,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
     echo "NGINX_SERVER_NAME=_"
     echo "NGINX_DEFAULT_SERVER=default_server"
     echo "NGINX_PORT=80"
+    # 容器网关端口：nginx 模板里 /api、/uploads 等 location 都指向它
+    echo "GO_NGINX_PORT=8084"
     echo "NGINX_SSL_DOMAIN="
     echo "NGINX_SSL_CERT="
     echo "NGINX_SSL_CERT_KEY="
@@ -208,7 +217,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
     echo "PORT=8080"
   } > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
-  log "已生成 .env（管理员: admin / admin123）"
+  log "已生成 .env（权限 600；管理员账号 admin，密码见其中 SEED_ADMIN_PASSWORD）"
 else
   log "复用已有 .env"
   update_env_var "$ENV_FILE" "IMAGE_TAG" "$VERSION"
@@ -258,11 +267,21 @@ DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
 MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:${POSTGRES_HOST_PORT}/${DB_NAME}?sslmode=disable"
+# psql 统一包装：口令走 PGPASSWORD，不进 argv（同机任意用户 ps 可见）
+psql_db() { PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -p "${POSTGRES_HOST_PORT}" -U "$DB_USER" -d "$DB_NAME" "$@"; }
 export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET
 
 # ── 4. Docker 部署 ──
 log "部署服务（${MODE}）..."
 cp "$PKG_DIR/deploy/docker-compose.yml" "$DEPLOY_DIR/docker-compose.yml"
+# 容器网关配置必须落到 compose 同级目录：compose 的 nginx 服务挂载 ./nginx-container/conf.d，
+# 缺失时容器启动即失败（表现为「安装成功但站点打不开」）
+if [[ -d "$PKG_DIR/deploy/nginx-container" ]]; then
+  rm -rf "$DEPLOY_DIR/nginx-container"
+  cp -r "$PKG_DIR/deploy/nginx-container" "$DEPLOY_DIR/nginx-container"
+else
+  die "交付包缺少 deploy/nginx-container（服务网关配置），无法部署：请用新版 package-release.sh 重新打包"
+fi
 chmod 600 "$DEPLOY_DIR/.env"
 
 # 若显式禁用 kkFileView，移除其容器
@@ -277,13 +296,17 @@ for _ in $(seq 1 30); do
   compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
   sleep 2
 done
-for _ in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 1 15); do psql_db -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
 
 # 迁移前备份（仅数据库已存在时有效，失败仅警告）
 BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
-compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null \
+# 全库明文 dump：目录 700 + 文件 600（默认 755/644 不可接受）
+chmod 700 "$DEPLOY_DIR/backups" 2>/dev/null || true
+( umask 077; compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null ) \
   || { warn "数据库备份失败（首次安装可忽略），已跳过"; rm -f "$BACKUP_FILE"; }
-ls -t "$DEPLOY_DIR"/backups/zhiyu-saas-*.sql 2>/dev/null | tail -n +8 | xargs -r rm -f
+# 不能用 `ls glob | tail`：无匹配时 ls 退出 2 + pipefail 会让安装静默中止（首次安装 backups 为空必现）
+find "$DEPLOY_DIR/backups" -maxdepth 1 -name 'zhiyu-saas-*.sql' -printf '%T@ %p\n' 2>/dev/null \
+  | sort -rn | tail -n +8 | cut -d' ' -f2- | xargs -r rm -f || true
 
 # ── 5. 数据库迁移 + 种子数据（包内静态二进制，无需 Go/源码）──
 log "数据库迁移..."
@@ -293,7 +316,7 @@ log "数据库迁移..."
 log "初始化种子数据..."
 (cd "$PKG_DIR" && DATABASE_URL="$MIGRATE_URL" JWT_SECRET="$JWT_SECRET" \
   SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" ./bin/seed) || warn "种子初始化失败"
-log "  运营方租户: platform / 管理员: admin / ${SEED_ADMIN_PASSWORD:-admin123}"
+log "  运营方租户: platform / 管理员: admin（密码见 $ENV_FILE 的 SEED_ADMIN_PASSWORD）"
 
 # ── 6. Nginx 网关 ──
 NGINX_CONF="$PKG_DIR/deploy/nginx/conf.d/zhiyu-saas.conf"
@@ -308,12 +331,25 @@ if [[ -f "$NGINX_CONF" ]]; then
   NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
   NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-}"
   export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT BACKEND_PORT EDU_PORT KKFILEVIEW_HOST_PORT
-  if [[ -f "$NGINX_DST" ]]; then
-    cp -a "$NGINX_DST" "$NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
-    ls -t "$NGINX_DST".bak.* 2>/dev/null | tail -n +6 | xargs -r rm -f
+  # 原子写 + cmp 去重 + 失败复位（与 deploy.sh 同源）：直接重定向到生产配置时，
+  # 管道任一环失败会留下截断的配置，下次 reload 即整站 502
+  NGINX_BAK=""
+  NGINX_TMP="${NGINX_DST}.new.$$"
+  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" \
+    | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' \
+    > "$NGINX_TMP" || { rm -f "$NGINX_TMP"; die "生成 nginx 配置失败（原配置未改动）"; }
+  [[ -s "$NGINX_TMP" ]] || { rm -f "$NGINX_TMP"; die "生成的 nginx 配置为空（原配置未改动）"; }
+  if [[ -f "$NGINX_DST" ]] && cmp -s "$NGINX_TMP" "$NGINX_DST"; then
+    rm -f "$NGINX_TMP"; log "  nginx 配置无变化，跳过写入"
+  else
+    if [[ -f "$NGINX_DST" ]]; then
+      NGINX_BAK="$NGINX_DST.bak.$(date +%Y%m%d%H%M%S)"
+      cp -a "$NGINX_DST" "$NGINX_BAK"
+      find "$(dirname "$NGINX_DST")" -maxdepth 1 -name "$(basename "$NGINX_DST").bak.*" -printf '%T@ %p\n' 2>/dev/null \
+        | sort -rn | tail -n +6 | cut -d' ' -f2- | xargs -r rm -f || true
+    fi
+    mv -f "$NGINX_TMP" "$NGINX_DST"
   fi
-  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | \
-    envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
   if [[ -f "$PKG_DIR/deploy/nginx/conf.d/zhiyu-saas-ssl.conf" && -n "${NGINX_SSL_DOMAIN:-}" && -n "${NGINX_SSL_CERT:-}" && -n "${NGINX_SSL_CERT_KEY:-}" ]]; then
     if [[ -f "$NGINX_SSL_CERT" && -f "$NGINX_SSL_CERT_KEY" ]]; then
@@ -337,14 +373,19 @@ fi
 # ── 7. 健康检查 ──
 log "等待服务就绪..."
 OK=true
-for svc in backend frontend; do
+for svc in backend frontend nginx; do
   found=false
   for _ in $(seq 1 45); do
-    S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
+    S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "")
     [[ "$S" == "healthy" ]] && { log "  $svc healthy"; found=true; break; }
+    STATUS=$(compose ps "$svc" --format '{{.Status}}' 2>/dev/null || echo "")
+    # 兜底仅适用于确实没有 healthcheck 的服务（与 deploy.sh 同源判断）
+    if [[ -z "$S" && "$STATUS" == Up* && "$STATUS" != *health* ]]; then
+      log "  $svc running（无 healthcheck，视为就绪）"; found=true; break
+    fi
     sleep 2
   done
-  $found || { warn "$svc 未就绪"; OK=false; }
+  $found || { warn "$svc 未就绪（$(compose ps "$svc" --format '{{.Status}}' 2>/dev/null)）"; OK=false; }
 done
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
   for _ in $(seq 1 60); do
