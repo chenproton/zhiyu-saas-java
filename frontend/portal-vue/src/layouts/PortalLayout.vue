@@ -74,7 +74,7 @@
     </header>
 
     <div class="portal-body">
-      <PlatformSideNav v-if="sideNavConfig" :config="sideNavConfig" />
+      <PlatformSideNav v-if="sideNavConfig && !sideNavConfig.hideSideNav" :config="sideNavConfig" />
       <main class="portal-main">
         <router-view />
       </main>

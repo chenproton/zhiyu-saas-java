@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowLeft, Fold } from '@element-plus/icons-vue';
 import type { MenuInstance } from 'element-plus';
@@ -102,7 +102,8 @@ const props = defineProps<{ config: PlatformNavigationConfig }>();
 const route = useRoute();
 const menuRef = useTemplateRef<MenuInstance>('menuRef');
 const mobileOpen = ref(false);
-const isMobile = ref(false);
+// 初值直接取 matchMedia（纯客户端 SPA，无 SSR），避免手机端首帧先按桌面侧栏渲染再切抽屉
+const isMobile = ref(window.matchMedia('(max-width: 767px)').matches);
 
 const resolveIcon = (icon?: PlatformIconKey) => resolvePlatformIcon(icon);
 const platformIcon = computed(() => resolvePlatformIcon(props.config.platformIcon));
@@ -160,8 +161,11 @@ const activeParentIds = computed(() =>
 
 watch(
   () => route.path,
-  () => {
+  async () => {
     mobileOpen.value = false;
+    // 等待本轮渲染完成：跨域切换时 el-menu 会按 currentPlatformId 重挂载，
+    // 直接在 pre-flush 阶段调用旧实例的 open(id) 会命中不存在的分组（Element Plus open 无空值守卫）
+    await nextTick();
     // 仅追加活跃分组，不关闭用户手动折叠的其他分组（对齐 React expandedItems 语义）
     activeParentIds.value.forEach((id) => menuRef.value?.open(id));
   }
@@ -177,6 +181,8 @@ onMounted(() => {
   mediaQuery = window.matchMedia('(max-width: 767px)');
   syncIsMobile(mediaQuery);
   mediaQuery.addEventListener('change', syncIsMobile);
+  // 首屏兜底：活跃分组未列入 defaultExpandedSideNavIds 时也展开（对齐 React 活跃父项必展开）
+  activeParentIds.value.forEach((id) => menuRef.value?.open(id));
 });
 
 onBeforeUnmount(() => {
@@ -263,6 +269,13 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   font-size: 14px;
   color: #606266;
+}
+/* 图标尺寸与间距对齐 React（h-4 w-4 + gap-2.5） */
+.side-nav-menu :deep(.el-menu-item > .el-icon),
+.side-nav-menu :deep(.el-sub-menu__title > .el-icon) {
+  width: 16px;
+  margin-right: 10px;
+  font-size: 16px;
 }
 .side-nav-menu :deep(.el-menu-item:hover),
 .side-nav-menu :deep(.el-sub-menu__title:hover) {
@@ -367,7 +380,8 @@ onBeforeUnmount(() => {
   left: 0;
   top: 56px;
   z-index: 1002;
-  width: 264px;
+  /* 对齐 React Sheet 抽屉 w-72 = 288px */
+  width: 288px;
   height: calc(100vh - 56px);
   transform: translateX(-100%);
   transition: transform 0.2s ease;

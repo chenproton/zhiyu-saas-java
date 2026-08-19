@@ -236,3 +236,35 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 | A2 | Vue 特有页（community/favorites/ai-chat）React 无对应 | 范围争议 | §3.3 逐条与用户确认：删除或保留 |
 | A3 | 路径归一化误删 Vue 有用入口 | 功能丢失 | 归一化前核对 React 等价入口，记录迁移映射 |
 | A4 | Java 端点缺口（React 新页调用新端点） | 卡页 | 按 R3 记录缺口另立 Java 任务，不擅自改契约 |
+
+### 11.7 全局布局体系复刻（M11，2026-08-19）
+
+> 背景：M1-M10 逐页对齐后，Vue 门户仍缺 React 的**全局布局体系**——顶部导航项与 React 不一致（多「学习社区/我的收藏」），且各管理后台域**无左侧导航**。本节记录布局框架复刻结论（阶段 1：框架先行，不改页面/路由）。
+
+**实现（只新增/修改 `frontend/portal-vue/src/layouts/`）**
+
+| 文件 | 职责 | React 对应 |
+|---|---|---|
+| `layouts/navigation-config.ts` | 11 个域的 `PlatformNavigationConfig`（brandTitle / currentPlatformLabel / sideNavItems 分组与子项 / href / matchers / 图标键）+ 图标映射 + 路径匹配函数 + 路径→域解析 | `frontend/edu/lib/navigation-config.ts` + `packages/ui/.../platform-shell/{config,icons,utils}.ts` |
+| `layouts/PlatformSideNav.vue` | 左侧域导航（品牌区 + 分组折叠 + matchers 高亮 + 平台切换区 + 移动端抽屉） | `packages/ui/src/components/platform-shell/PlatformSideNav.tsx` |
+| `layouts/PortalLayout.vue` | 顶栏（品牌 + 3 项导航 + 当前时间 + 用户区/登录入口）+「左侧导航 + 右侧内容」布局壳 | `components/portal/top-nav.tsx` + `components/platform-shell/PlatformShell.tsx` + `components/shared/platform-layout.tsx` |
+
+**行为约定**
+
+1. 顶部导航固定 3 项：门户首页 `/portal`（精确高亮）、我的服务台 `/portal/workspace`（前缀高亮）、应用服务中心 `/portal/apps`（仅主页高亮，平台页不高亮入口）；**「学习社区/我的收藏」入口移除**（路由保留，入口归 workspace，对齐 React）。未登录只显示登录入口（跳 `/portal/login`）。
+2. 左侧导航按当前路径解析域：`/job`、`/scene`、`/lesson`、`/evaluation`、`/library`、`/affairs`、`/partner`、`/portal/apps/system`、`/portal/apps/ai`、`/portal/apps/alliance`（另含 Vue 旧短路径 `/system/*`、`/users`、`/alliance/*`）；`/portal/*` 门户页、AI 前台全宽页（landing/hall/agents/kb/studio）、`/portal/alliance/*` 前台页、顶层 landing 与聚合页（`/approvals`、`/workflows`、`/import-export`）**无侧栏**——与 React 各域 `layout.tsx` 挂载范围等价。
+3. React 中 Vue 路由不存在的落点做等价替换并注释：场景管理 `/scene/` → `/scene/scenarios`；Vue 别名路径（如 `/evaluation/job-ability-results`、`/partner/co-build-scenarios`、`/lesson/courses`）以**追加 matcher** 方式保证高亮，不改 React 原有 matcher 语义。
+
+**未复刻项（依赖缺失能力，后续阶段接入）**：菜单权限过滤（Vue 无 `hasMenuPermission` 数据源，侧栏仅过滤 `hidden`）、国际化切换 / 字号缩放 / 移动端扫码 / 多角色切换（React 顶栏依赖 i18n 与角色接口）、顶层 landing 公开页的顶栏（landing 为 `PortalLayout` 之外的顶层路由，接入需改 `router/index.ts`，本阶段禁止）。
+
+**与 React 的已知差异（阶段 1 有意保留，接入页面/路由时再处理）**：
+
+| # | 差异 | 说明 |
+|---|---|---|
+| 1 | `/partner/*` 复用门户顶栏 | React `app/partner/layout.tsx` 是独立企业服务台 header（logo + 企业名 + 退出）；Vue partner 路由挂在 `PortalLayout` children 下，改挂载需动 `router/index.ts`，本阶段禁止 |
+| 2 | 顶栏品牌区为文字 | React 为 logo 图片 + 平台名「场景化数智教学服务平台」；Vue 门户 `public/` 无 logo 资源，按任务约定用文字「知与 SaaS」 |
+| 3 | 顶栏溢出降级简化 | React 用 `ResizeObserver` 实测溢出后按优先级逐级隐藏文字；Vue 改为媒体查询（<768px 隐藏时间/用户副信息/导航文字），效果等价、实现更轻 |
+| 4 | 顶栏定位 `sticky` 而非 `fixed` | React `fixed` + 内容 `pt-14`；Vue 用 `sticky` 免去内容偏移补偿，视觉一致 |
+| 5 | `/job/positions/:id/edit` 无侧栏高亮 | React matchers `['/job/positions$','/job/positions/']` 对子路径实际不生效，Vue 保持同源行为（如需高亮属 React 侧缺陷修复，另立任务） |
+| 6 | 顶栏「我的服务台」项无权限过滤 | React 对该项做 `hasMenuPermission('/portal/workspace')` 过滤；Vue 无权限数据源，登录后无条件显示（同「菜单权限过滤」未复刻项） |
+| 7 | 侧栏同一时刻只高亮一项 | React 各分组独立判活（理论上可双高亮），Vue 受 `el-menu` 单 activeIndex 限制取全局最长匹配；已核对 11 域 matchers 前缀互不重叠，当前不可复现 |
