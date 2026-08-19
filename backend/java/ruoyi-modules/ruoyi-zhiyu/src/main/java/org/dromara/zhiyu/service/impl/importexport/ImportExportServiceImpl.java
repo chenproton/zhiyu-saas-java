@@ -17,8 +17,17 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
+import org.dromara.zhiyu.domain.affairs.TrainingProgramCourse;
 import org.dromara.zhiyu.domain.dto.importexport.ImportExportDtos.ImportPreviewItem;
+import org.dromara.zhiyu.mapper.affairs.AffairsScheduleImportMapper;
+import org.dromara.zhiyu.mapper.affairs.TrainingProgramCourseMapper;
 import org.dromara.zhiyu.mapper.importexport.ImportExportMapper;
+import org.dromara.zhiyu.mapper.job.JobPositionImportMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseImportMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonGranularCourseImportMapper;
+import org.dromara.zhiyu.mapper.portal.PortalPeriodSlotMapper;
+import org.dromara.zhiyu.mapper.portal.PortalTermMapper;
+import org.dromara.zhiyu.mapper.portal.PortalVenueMapper;
 import org.dromara.zhiyu.service.importexport.IImportExportService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,7 +37,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -113,6 +124,14 @@ public class ImportExportServiceImpl implements IImportExportService {
         "organizations", "组织架构导出.xlsx", "students", "学生导出.xlsx", "teachers", "教师导出.xlsx");
 
     private final ImportExportMapper mapper;
+    private final JobPositionImportMapper positionImportMapper;
+    private final AffairsScheduleImportMapper scheduleImportMapper;
+    private final LessonGranularCourseImportMapper granularImportMapper;
+    private final LessonCourseImportMapper courseImportMapper;
+    private final TrainingProgramCourseMapper programCourseMapper;
+    private final PortalTermMapper termMapper;
+    private final PortalVenueMapper venueMapper;
+    private final PortalPeriodSlotMapper periodSlotMapper;
 
     // ==================== 模板 ====================
 
@@ -483,16 +502,83 @@ public class ImportExportServiceImpl implements IImportExportService {
     private void fillPositions(Workbook wb, String tenantId, List<String> ids) {
         Sheet s = wb.getSheet("岗位基本信息");
         int r = 2;
+        Map<String, String> nameById = new LinkedHashMap<>();
         for (Map<String, Object> m : mapper.listPositionsForExport(tenantId, ids)) {
+            String id = str(m.get("id"));
+            String name = str(m.get("name"));
+            nameById.putIfAbsent(id, name);
+            String industryName = "";
+            String industryId = str(m.get("industry_id"));
+            if (!industryId.isEmpty()) {
+                String n = mapper.selectIndustryNameById(tenantId, industryId);
+                industryName = n == null ? "" : n;
+            }
+            String majorNames = String.join(",", mapper.listPositionMajorNames(tenantId, id));
+            String certNames = String.join(",", mapper.listPositionCertNames(tenantId, id));
+            String batchName = "";
+            String batchId = str(m.get("batch_id"));
+            if (!batchId.isEmpty()) {
+                String n = mapper.selectBatchNameById(tenantId, batchId);
+                batchName = n == null ? "" : n;
+            }
+            String requirements = String.join("\n", parsePgArrayText(str(m.get("requirements"))));
             Row row = s.createRow(r);
-            row.createCell(0).setCellValue(str(m.get("name")));
+            row.createCell(0).setCellValue(name);
             row.createCell(1).setCellValue(str(m.get("short_name")));
-            row.createCell(2).setCellValue(str(m.get("position_type")));
+            row.createCell(2).setCellValue(mapPositionTypeToChinese(str(m.get("position_type"))));
+            row.createCell(3).setCellValue(industryName);
+            row.createCell(4).setCellValue(majorNames);
             row.createCell(5).setCellValue(str(m.get("salary_min")));
             row.createCell(6).setCellValue(str(m.get("salary_max")));
             row.createCell(7).setCellValue(str(m.get("description")));
+            row.createCell(8).setCellValue(requirements);
+            row.createCell(9).setCellValue(str(m.get("career_path")));
+            row.createCell(10).setCellValue(certNames);
+            row.createCell(11).setCellValue(batchName);
             r++;
         }
+        // 第二 Sheet：工作职责与能力点
+        Sheet b = wb.getSheet("工作职责与能力点");
+        int br = 2;
+        for (String pid : ids) {
+            String positionName = nameById.get(pid);
+            if (positionName == null) {
+                positionName = "";
+            }
+            for (Map<String, Object> bind : mapper.listPositionAbilityBindings(tenantId, pid)) {
+                String bindingAttrs = String.join(",", parsePgArrayText(str(bind.get("binding_attributes"))));
+                String abilityAttrs = String.join(",", parsePgArrayText(str(bind.get("ability_attributes"))));
+                String attrStr = bindingAttrs.isEmpty() ? abilityAttrs : bindingAttrs;
+                Row row = b.createRow(br);
+                row.createCell(0).setCellValue(positionName);
+                row.createCell(1).setCellValue(str(bind.get("responsibility_name")));
+                row.createCell(2).setCellValue(str(bind.get("ability_name")));
+                row.createCell(3).setCellValue(attrStr);
+                row.createCell(4).setCellValue(str(bind.get("domain")));
+                row.createCell(5).setCellValue(mapRequiredLevelToChinese(str(bind.get("required_level"))));
+                row.createCell(6).setCellValue(str(bind.get("rubric_description")));
+                br++;
+            }
+        }
+    }
+
+    private String mapPositionTypeToChinese(String t) {
+        return switch (t) {
+            case "enterprise" -> "企业岗位";
+            case "teaching" -> "教学岗位";
+            default -> "其他";
+        };
+    }
+
+    private String mapRequiredLevelToChinese(String l) {
+        return switch (l.trim().toLowerCase()) {
+            case "understand", "了解", "l1" -> "了解";
+            case "comprehend", "理解", "l2" -> "理解";
+            case "master", "掌握", "l3" -> "掌握";
+            case "proficient", "熟练" -> "熟练";
+            case "expert", "精通" -> "精通";
+            default -> l;
+        };
     }
 
     private void fillScenarios(Workbook wb, String tenantId, List<String> ids) {
@@ -510,23 +596,125 @@ public class ImportExportServiceImpl implements IImportExportService {
     private void fillSystemCourses(Workbook wb, String tenantId, List<String> ids) {
         Sheet s = wb.getSheet("课程基本信息");
         int r = 2;
+        Map<String, String> nameById = new LinkedHashMap<>();
         for (Map<String, Object> m : mapper.listSystemCoursesForExport(tenantId, ids)) {
+            String id = str(m.get("id"));
+            String name = str(m.get("name"));
+            nameById.putIfAbsent(id, name);
+            String majorName = "";
+            String majorId = str(m.get("major_id"));
+            if (!majorId.isEmpty()) {
+                String n = mapper.selectMajorNameById(tenantId, majorId);
+                majorName = n == null ? "" : n;
+            }
+            String batchName = "";
+            String batchId = str(m.get("batch_id"));
+            if (!batchId.isEmpty()) {
+                String n = mapper.selectLessonBatchNameById(tenantId, batchId);
+                batchName = n == null ? "" : n;
+            }
+            String abilityPointNames = courseImportMapper.selectCourseAbilityPointNames(id);
             Row row = s.createRow(r);
-            row.createCell(0).setCellValue(str(m.get("name")));
+            row.createCell(0).setCellValue(name);
+            row.createCell(1).setCellValue(majorName);
             row.createCell(2).setCellValue(str(m.get("description")));
+            row.createCell(3).setCellValue(batchName);
+            row.createCell(4).setCellValue(abilityPointNames == null ? "" : abilityPointNames);
             r++;
         }
+        // 第二 Sheet：节点配置
+        Sheet b = wb.getSheet("节点配置");
+        int br = 2;
+        for (String cid : ids) {
+            String courseName = nameById.get(cid);
+            if (courseName == null) {
+                continue;
+            }
+            List<Map<String, Object>> nodes = courseImportMapper.listCourseNodes(tenantId, cid);
+            Map<String, String> nodeNameById = new LinkedHashMap<>();
+            for (Map<String, Object> n : nodes) {
+                nodeNameById.put(str(n.get("id")), str(n.get("name")));
+            }
+            for (Map<String, Object> n : nodes) {
+                String parentName = "";
+                String parentId = str(n.get("parent_id"));
+                if (!parentId.isEmpty()) {
+                    parentName = nodeNameById.getOrDefault(parentId, "");
+                }
+                String refTypeName = "original".equals(str(n.get("ref_type"))) ? "颗粒课" : "";
+                String knowledgeNames = String.join(",", courseImportMapper.listNodeKnowledgePointNames(str(n.get("id"))));
+                String resourceNames = String.join(",", courseImportMapper.listNodeResourceNames(str(n.get("id"))));
+                List<String> evalChinese = new ArrayList<>();
+                for (String mk : courseImportMapper.listNodeEvalMethods(tenantId, str(n.get("id")))) {
+                    String ch = mapCourseEvalMethodToChinese(mk);
+                    if (!ch.isEmpty()) {
+                        evalChinese.add(ch);
+                    }
+                }
+                Row row = b.createRow(br);
+                row.createCell(0).setCellValue(courseName);
+                row.createCell(1).setCellValue(str(n.get("name")));
+                row.createCell(2).setCellValue(parentName);
+                row.createCell(3).setCellValue(refTypeName);
+                row.createCell(4).setCellValue(str(n.get("sort_order")));
+                row.createCell(5).setCellValue(str(n.get("teaching_goals")));
+                row.createCell(6).setCellValue(str(n.get("duration")));
+                row.createCell(7).setCellValue(str(n.get("difficulty")));
+                row.createCell(8).setCellValue(knowledgeNames);
+                row.createCell(9).setCellValue(resourceNames);
+                row.createCell(10).setCellValue(String.join(",", evalChinese));
+                br++;
+            }
+        }
+    }
+
+    private String mapCourseEvalMethodToChinese(String mk) {
+        return switch (mk) {
+            case "question_bank" -> "题库";
+            case "paper" -> "试卷";
+            case "quiz" -> "随堂测";
+            default -> "";
+        };
     }
 
     private void fillGranularCourses(Workbook wb, String tenantId, List<String> ids) {
         Sheet s = wb.getSheet("课程基本信息");
         int r = 2;
         for (Map<String, Object> m : mapper.listGranularCoursesForExport(tenantId, ids)) {
+            String id = str(m.get("id"));
+            String majorName = "";
+            String majorId = str(m.get("major_id"));
+            if (!majorId.isEmpty()) {
+                String n = mapper.selectMajorNameById(tenantId, majorId);
+                majorName = n == null ? "" : n;
+            }
+            String batchName = "";
+            String batchId = str(m.get("batch_id"));
+            if (!batchId.isEmpty()) {
+                String n = mapper.selectLessonBatchNameById(tenantId, batchId);
+                batchName = n == null ? "" : n;
+            }
+            String diffStr = "";
+            Object diff = m.get("difficulty");
+            if (diff != null && !"0".equals(String.valueOf(diff))) {
+                diffStr = String.valueOf(diff);
+            }
+            String durationStr = "";
+            Object dur = m.get("online_hours");
+            if (dur != null && !"0".equals(String.valueOf(dur)) && !"0.0".equals(String.valueOf(dur))) {
+                durationStr = String.valueOf(dur);
+            }
+            String knowledgeNames = String.join(",", granularImportMapper.listCourseKnowledgePointNamesForExport(id, tenantId));
+            String resourceNames = String.join(",", granularImportMapper.listCourseResourceNamesForExport(id, tenantId));
             Row row = s.createRow(r);
             row.createCell(0).setCellValue(str(m.get("name")));
-            row.createCell(2).setCellValue(str(m.get("difficulty")));
-            row.createCell(3).setCellValue(str(m.get("online_hours")));
+            row.createCell(1).setCellValue(majorName);
+            row.createCell(2).setCellValue(diffStr);
+            row.createCell(3).setCellValue(durationStr);
             row.createCell(4).setCellValue(str(m.get("description")));
+            row.createCell(5).setCellValue(knowledgeNames);
+            row.createCell(6).setCellValue(resourceNames);
+            row.createCell(7).setCellValue(batchName);
             r++;
         }
     }
@@ -639,16 +827,16 @@ public class ImportExportServiceImpl implements IImportExportService {
                 case "alliance-agreements" -> importAgreements(wb, tenantId, userId, preview);
                 case "alliance-permissions" -> importPermissions(wb, tenantId, preview);
                 case "alliance-brands" -> importBrands(wb, tenantId, preview, brandType);
-                case "positions" -> parseCount(wb, "岗位基本信息", "岗位", preview);
+                case "positions" -> importPositions(wb, tenantId, userId, preview, overwrite, rename);
                 case "scenarios" -> parseCount(wb, "场景基本信息", "场景", preview);
-                case "courses" -> parseCount(wb, "课程基本信息", "体系课", preview);
-                case "granular-courses" -> parseCount(wb, "课程基本信息", "颗粒课", preview);
+                case "courses" -> importCourses(wb, tenantId, userId, preview, overwrite, rename);
+                case "granular-courses" -> importGranularCourses(wb, tenantId, userId, preview, overwrite, rename);
                 case "question-banks" -> importQuestionBanks(wb, tenantId, userId, preview, overwrite, rename);
                 case "questions" -> parseCount(wb, "题目明细", "题目", preview);
                 case "exams" -> importExams(wb, tenantId, userId, preview, overwrite, rename);
-                case "schedules" -> parseCount(wb, "课程列表", "排课", preview);
+                case "schedules" -> importSchedules(wb, tenantId, termId, preview);
                 case "affairs-config" -> affairsConfigImport(wb, tenantId, preview);
-                case "program-courses" -> parseCount(wb, "导入", "方案课程", preview);
+                case "program-courses" -> importProgramCourses(wb, tenantId, programId, preview);
                 default -> throw new ApiException(400, "bad_request", "不支持的实体");
             };
         } catch (ApiException e) {
@@ -879,6 +1067,12 @@ public class ImportExportServiceImpl implements IImportExportService {
                 if (!preview) {
                     if (overwrite) {
                         mapper.updateOrganizationParent(existing, parentId, sortOrder);
+                        created++;
+                    } else if (rename) {
+                        String newName = name + suffix();
+                        String id = UUID.randomUUID().toString();
+                        mapper.insertOrganization(id, tenantId, newName, typeId, parentId, sortOrder);
+                        nameToId.put(name, id);
                         created++;
                     } else {
                         skipped++;
@@ -1149,6 +1343,1221 @@ public class ImportExportServiceImpl implements IImportExportService {
     }
 
     /** 解析 + 逐行校验 + 计数（复杂实体演示简化：不落深层关系）。 */
+    // ==================== 岗位 Excel 导入（对齐 Go position_import.go） ====================
+
+    private Map<String, Object> importPositions(Workbook wb, String tenantId, String userId, boolean preview,
+                                                boolean overwrite, boolean rename) {
+        Map<String, String> positionMap = new LinkedHashMap<>();
+        PositionImportAccum acc = new PositionImportAccum();
+        importPositionsSheet(wb, tenantId, userId, preview, overwrite, rename, positionMap, acc);
+        importResponsibilitiesSheet(wb, tenantId, preview, positionMap, acc);
+        if (preview) {
+            return previewResult(acc.created, acc.duplicates, acc.failed, acc.duplicateItems, acc.errors);
+        }
+        return executeResult(acc.created, acc.failed, acc.skipped, "岗位", acc.errors);
+    }
+
+    private void importPositionsSheet(Workbook wb, String tenantId, String userId, boolean preview,
+                                      boolean overwrite, boolean rename, Map<String, String> positionMap,
+                                      PositionImportAccum acc) {
+        List<List<String>> rows = readRows(wb, "岗位基本信息");
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            String name = cell(row, 0).trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            String shortName = cell(row, 1);
+            String positionType = "teaching";
+            String industryName = cell(row, 3);
+            List<String> majorNames = splitTrim(cell(row, 4), ",");
+            Integer salaryMin = parseNullableInt(cell(row, 5));
+            Integer salaryMax = parseNullableInt(cell(row, 6));
+            String description = nullableStr(cell(row, 7));
+            List<String> requirements = parseRequirements(cell(row, 8));
+            String careerPath = nullableStr(cell(row, 9));
+            List<String> certNames = splitTrim(cell(row, 10), ",");
+            String batchName = cell(row, 11);
+
+            String industryId = lookupIndustry(tenantId, industryName);
+            String batchId = batchName.isEmpty() ? null : positionImportMapper.findBatchIdByName(tenantId, batchName);
+            List<String> majorIds = lookupMajors(tenantId, majorNames);
+
+            Map<String, Object> dup = positionImportMapper.findPositionByTenantAndName(tenantId, name);
+            String existingId = dup == null ? null : str(dup.get("id"));
+            String existingCreator = dup == null ? null : str(dup.get("created_by"));
+            String existingCollaborators = dup == null ? null : str(dup.get("collaborators"));
+            boolean exists = existingId != null && !existingId.isEmpty();
+
+            String origName = "";
+            if (exists) {
+                if (preview) {
+                    if (acc.duplicateItems.size() < 100) {
+                        acc.duplicateItems.add(new ImportPreviewItem(i + 1, name, name));
+                    }
+                    acc.duplicates++;
+                    acc.skipped++;
+                    continue;
+                }
+                if (!overwrite && !rename) {
+                    acc.skipped++;
+                    continue;
+                }
+                if (overwrite) {
+                    if (!canOverwriteContent(existingCreator, parsePgArrayText(existingCollaborators), userId)) {
+                        acc.skipped++;
+                        continue;
+                    }
+                    try {
+                        positionImportMapper.updatePositionImportFields(existingId, tenantId, name, shortName,
+                            industryId, positionType, salaryMin, salaryMax, description, toPgArray(requirements),
+                            careerPath, batchId);
+                        positionImportMapper.deletePositionMajors(existingId);
+                        positionImportMapper.deletePositionCertificates(existingId);
+                        positionImportMapper.deletePositionResponsibilities(existingId);
+                        positionImportMapper.deletePositionAbilityBindings(existingId);
+                        positionImportMapper.deleteAbilityDomains(existingId);
+                        for (String mid : majorIds) {
+                            positionImportMapper.insertPositionMajor(UUID.randomUUID().toString(), existingId, mid);
+                        }
+                        for (String certName : certNames) {
+                            if (certName.isEmpty()) {
+                                continue;
+                            }
+                            positionImportMapper.insertPositionCertificate(UUID.randomUUID().toString(), tenantId,
+                                existingId, findOrCreateCert(tenantId, certName));
+                        }
+                    } catch (Exception e) {
+                        acc.failed++;
+                        acc.errors.add("岗位[" + name + "]关联数据写入失败");
+                        continue;
+                    }
+                    positionMap.put(name, existingId);
+                    continue;
+                }
+                // rename 模式
+                origName = name;
+                name = uniqueSuffixed(name, c -> positionImportMapper.findPositionIdByTenantAndName(tenantId, c) != null);
+            }
+
+            if (preview) {
+                acc.created++;
+                continue;
+            }
+
+            String positionId = UUID.randomUUID().toString();
+            String code = generatePositionCode(tenantId);
+            try {
+                positionImportMapper.insertImportPosition(positionId, tenantId, code, name, shortName, industryId,
+                    positionType, salaryMin, salaryMax, description, toPgArray(requirements), careerPath, userId);
+                if (batchId != null) {
+                    positionImportMapper.updatePositionBatchId(batchId, positionId);
+                }
+                for (String mid : majorIds) {
+                    positionImportMapper.insertPositionMajor(UUID.randomUUID().toString(), positionId, mid);
+                }
+                for (String certName : certNames) {
+                    if (certName.isEmpty()) {
+                        continue;
+                    }
+                    positionImportMapper.insertPositionCertificate(UUID.randomUUID().toString(), tenantId, positionId,
+                        findOrCreateCert(tenantId, certName));
+                }
+            } catch (Exception e) {
+                acc.failed++;
+                acc.errors.add("岗位[" + name + "]创建失败: " + e.getMessage());
+                continue;
+            }
+            positionMap.put(name, positionId);
+            if (!origName.isEmpty()) {
+                positionMap.put(origName, positionId);
+            }
+            acc.created++;
+        }
+    }
+
+    private void importResponsibilitiesSheet(Workbook wb, String tenantId, boolean preview,
+                                             Map<String, String> positionMap, PositionImportAccum acc) {
+        if (preview) {
+            return;
+        }
+        List<List<String>> rows = readRows(wb, "工作职责与能力点");
+        Map<String, Integer> sortCounter = new LinkedHashMap<>();
+        Map<String, String> seenResp = new LinkedHashMap<>();
+        Map<String, String> seenAbility = new LinkedHashMap<>();
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            String positionName = cell(row, 0).trim();
+            String respName = cell(row, 1).trim();
+            if (positionName.isEmpty() || respName.isEmpty()) {
+                continue;
+            }
+            String abilityName = cell(row, 2).trim();
+            List<String> attributes = splitTrim(cell(row, 3), ",");
+            String domainName = cell(row, 4);
+            String requiredLevel = mapRequiredLevel(cell(row, 5));
+            String rubricDescription = nullableStr(cell(row, 6));
+
+            String positionId = positionMap.get(positionName);
+            if (positionId == null) {
+                acc.skipped++;
+                acc.errors.add("工作职责行[" + positionName + "/" + respName + "]找不到岗位,已跳过");
+                continue;
+            }
+            String respKey = positionId + "|" + respName;
+            String respId = seenResp.get(respKey);
+            if (respId == null) {
+                sortCounter.merge(positionId, 1, Integer::sum);
+                respId = UUID.randomUUID().toString();
+                try {
+                    positionImportMapper.insertPositionResponsibility(respId, tenantId, positionId, respName,
+                        sortCounter.get(positionId));
+                } catch (Exception e) {
+                    respId = positionImportMapper.findResponsibilityIdByPositionAndName(positionId, respName);
+                }
+                if (respId == null || respId.isEmpty()) {
+                    acc.failed++;
+                    acc.errors.add("职责[" + positionName + "/" + respName + "]创建后仍未获取到ID,跳过能力绑定");
+                    continue;
+                }
+                seenResp.put(respKey, respId);
+                acc.created++;
+            }
+            if (abilityName.isEmpty()) {
+                continue;
+            }
+            String abilityKey = tenantId + "|" + abilityName;
+            String abilityId = seenAbility.get(abilityKey);
+            if (abilityId == null) {
+                abilityId = findOrCreateAbilityPoint(tenantId, abilityName, attributes);
+                seenAbility.put(abilityKey, abilityId);
+            }
+            String bindingId = UUID.randomUUID().toString();
+            try {
+                positionImportMapper.insertPositionAbilityBinding(bindingId, tenantId, positionId, respId, abilityId,
+                    domainName, requiredLevel, rubricDescription, toPgArray(attributes));
+            } catch (Exception e) {
+                acc.failed++;
+                acc.errors.add("能力点绑定[" + positionName + "/" + respName + "/" + abilityName + "]失败: "
+                    + e.getMessage());
+                continue;
+            }
+            acc.created++;
+            if (!domainName.isEmpty()) {
+                ensureAbilityDomain(tenantId, positionId, domainName, bindingId);
+            }
+        }
+    }
+
+    private String lookupIndustry(String tenantId, String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        return positionImportMapper.findIndustryIdByTenantAndName(tenantId, name);
+    }
+
+    private List<String> lookupMajors(String tenantId, List<String> names) {
+        List<String> ids = new ArrayList<>();
+        for (String name : names) {
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            String id = mapper.selectMajorIdByName(tenantId, name);
+            if (id != null && !id.isEmpty()) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    private String findOrCreateCert(String tenantId, String name) {
+        String id = positionImportMapper.findCertificateLibraryId(tenantId, name);
+        if (id != null && !id.isEmpty()) {
+            return id;
+        }
+        id = UUID.randomUUID().toString();
+        positionImportMapper.insertCertificateLibrary(id, tenantId, name);
+        String existing = positionImportMapper.findCertificateLibraryId(tenantId, name);
+        return existing != null && !existing.isEmpty() ? existing : id;
+    }
+
+    private String findOrCreateAbilityPoint(String tenantId, String name, List<String> attributes) {
+        String id = positionImportMapper.findAbilityPointId(tenantId, name);
+        if (id != null && !id.isEmpty()) {
+            if (attributes != null && !attributes.isEmpty()) {
+                positionImportMapper.updateAbilityPointAttributesIfEmpty(id, toPgArray(attributes));
+            }
+            return id;
+        }
+        id = UUID.randomUUID().toString();
+        String code = generateAbilityPointCode(tenantId);
+        positionImportMapper.insertAbilityPoint(id, tenantId, name, toPgArray(attributes), code);
+        String existing = positionImportMapper.findAbilityPointId(tenantId, name);
+        return existing != null && !existing.isEmpty() ? existing : id;
+    }
+
+    private void ensureAbilityDomain(String tenantId, String positionId, String domainName, String bindingId) {
+        String domainId = positionImportMapper.findAbilityDomainId(tenantId, positionId, domainName);
+        if (domainId != null && !domainId.isEmpty()) {
+            positionImportMapper.appendAbilityDomainBinding(domainId, bindingId);
+            return;
+        }
+        positionImportMapper.insertAbilityDomain(UUID.randomUUID().toString(), tenantId, positionId, domainName, bindingId);
+    }
+
+    private String generatePositionCode(String tenantId) {
+        for (int i = 0; i < 10; i++) {
+            String code = randomCode("GW");
+            if (!positionImportMapper.existsPositionCode(tenantId, code)) {
+                return code;
+            }
+        }
+        return randomCode("GW");
+    }
+
+    private String generateAbilityPointCode(String tenantId) {
+        for (int i = 0; i < 10; i++) {
+            String code = randomCode("NL");
+            if (!positionImportMapper.existsAbilityPointCode(tenantId, code)) {
+                return code;
+            }
+        }
+        return randomCode("NL");
+    }
+
+    private String randomCode(String prefix) {
+        StringBuilder sb = new StringBuilder(prefix).append('-');
+        for (int j = 0; j < 8; j++) {
+            sb.append(CODE_ALPHABET.charAt(ThreadLocalRandom.current().nextInt(CODE_ALPHABET.length())));
+        }
+        return sb.toString();
+    }
+
+    private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    private String mapRequiredLevel(String l) {
+        return switch (l.trim()) {
+            case "了解" -> "understand";
+            case "理解" -> "comprehend";
+            case "掌握" -> "master";
+            case "熟练" -> "proficient";
+            case "精通" -> "expert";
+            default -> l.trim();
+        };
+    }
+
+    private List<String> parseRequirements(String s) {
+        if (s == null || s.isEmpty()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (String line : s.split("\n")) {
+            String t = line.trim();
+            if (!t.isEmpty()) {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+
+    private List<String> splitTrim(String s, String sep) {
+        if (s == null || s.isEmpty()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (String p : s.split(sep)) {
+            String t = p.trim();
+            if (!t.isEmpty()) {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+
+    private Integer parseNullableInt(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        if (t.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(t);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String nullableStr(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private boolean canOverwriteContent(String creatorId, List<String> collaboratorIds, String userId) {
+        if (creatorId != null && creatorId.equals(userId)) {
+            return true;
+        }
+        if (collaboratorIds != null) {
+            for (String id : collaboratorIds) {
+                if (id.equals(userId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String uniqueSuffixed(String base, java.util.function.Predicate<String> exists) {
+        for (int i = 0; i < 20; i++) {
+            String candidate = base + "-" + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
+            if (!exists.test(candidate)) {
+                return candidate;
+            }
+        }
+        return base + "-" + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
+    }
+
+    private String toPgArray(List<String> list) {
+        if (list == null || list.isEmpty()) {
+            return "{}";
+        }
+        StringBuilder sb = new StringBuilder("{");
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            String s = list.get(i) == null ? "" : list.get(i);
+            s = s.replace("\\", "\\\\").replace("\"", "\\\"");
+            sb.append('"').append(s).append('"');
+        }
+        return sb.append('}').toString();
+    }
+
+    private List<String> parsePgArrayText(String s) {
+        if (s == null || s.isEmpty() || "{}".equals(s)) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (String item : s.substring(1, s.length() - 1).split(",")) {
+            String t = item.trim();
+            if (t.startsWith("\"")) {
+                t = t.substring(1, t.length() - 1);
+            }
+            if (!t.isEmpty()) {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+
+    /** 岗位导入累计器（对齐 Go PositionImportResult）。 */
+    private static final class PositionImportAccum {
+        int created;
+        int failed;
+        int skipped;
+        int duplicates;
+        final List<String> errors = new ArrayList<>();
+        final List<ImportPreviewItem> duplicateItems = new ArrayList<>();
+    }
+
+    // ==================== 方案课程 Excel 导入（对齐 Go program_course_import.go） ====================
+
+    private Map<String, Object> importProgramCourses(Workbook wb, String tenantId, String programId, boolean preview) {
+        List<List<String>> rows = readRows(wb, "导入");
+        List<TrainingProgramCourse> courses = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        int created = 0;
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            int rowNum = i + 1;
+            String positionName = cell(row, 0).trim();
+            String courseName = cell(row, 1).trim();
+            String creditsStr = cell(row, 2).trim();
+            String hoursStr = cell(row, 3).trim();
+            String nature = cell(row, 4).trim();
+            if (positionName.isEmpty() && courseName.isEmpty()) {
+                errors.add("第" + rowNum + "行：关联岗位和关联体系课至少填写一项");
+                continue;
+            }
+            java.math.BigDecimal credits = java.math.BigDecimal.ZERO;
+            if (!creditsStr.isEmpty()) {
+                try {
+                    credits = new java.math.BigDecimal(creditsStr);
+                } catch (NumberFormatException e) {
+                    errors.add("第" + rowNum + "行：学分格式无效");
+                    continue;
+                }
+            }
+            int hours = 0;
+            if (!hoursStr.isEmpty()) {
+                try {
+                    hours = Integer.parseInt(hoursStr);
+                } catch (NumberFormatException e) {
+                    errors.add("第" + rowNum + "行：学时格式无效");
+                    continue;
+                }
+            }
+            if (nature.isEmpty()) {
+                nature = "必修";
+            }
+            TrainingProgramCourse c = new TrainingProgramCourse();
+            c.setId(UUID.randomUUID().toString());
+            c.setCredits(credits);
+            c.setHours(hours);
+            c.setNature(nature);
+            c.setSemester(1);
+            c.setSortOrder(courses.size());
+            if (!positionName.isEmpty()) {
+                String pid = mapper.selectCareerPositionIdByName(tenantId, positionName);
+                if (pid != null && !pid.isEmpty()) {
+                    c.setPositionId(pid);
+                    c.setName(positionName);
+                }
+            }
+            if (c.getPositionId() == null && !courseName.isEmpty()) {
+                Map<String, Object> sc = mapper.selectSystemCourseIdAndName(tenantId, courseName);
+                if (sc != null) {
+                    String id = str(sc.get("id"));
+                    String n = str(sc.get("name"));
+                    c.setName(n.isEmpty() ? courseName : n);
+                    c.setCourseId(id);
+                }
+            }
+            if (c.getPositionId() == null && c.getCourseId() == null) {
+                errors.add("第" + rowNum + "行：岗位/课程名称均未匹配到现有数据");
+                continue;
+            }
+            courses.add(c);
+            created++;
+        }
+        if (preview) {
+            return previewResult(created, 0, 0, List.of(), errors);
+        }
+        if (programId == null || programId.isEmpty()) {
+            throw new ApiException(400, "bad_request", "缺少方案ID");
+        }
+        programCourseMapper.deleteByProgram(programId);
+        for (TrainingProgramCourse c : courses) {
+            programCourseMapper.insert(c);
+        }
+        return executeResult(created, 0, 0, "方案课程", errors);
+    }
+
+    // ==================== 排课 Excel 导入（对齐 Go schedule_import.go） ====================
+
+    private Map<String, Object> importSchedules(Workbook wb, String tenantId, String termId, boolean preview) {
+        List<String> errors = new ArrayList<>();
+        List<List<String>> rows = readRows(wb, "课程列表");
+        if (rows.isEmpty()) {
+            errors.add("读取「课程列表」Sheet 失败");
+            return preview ? previewResult(0, 0, 1, List.of(), errors) : executeResult(0, 1, 0, "排课", errors);
+        }
+
+        List<ScheduleItem> items = new ArrayList<>();
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            if (cell(row, 0).trim().isEmpty()) {
+                continue;
+            }
+            String courseName = cell(row, 0).trim();
+            String entryType = cell(row, 1).trim();
+            entryType = switch (entryType) {
+                case "场景" -> "scene";
+                case "课程", "" -> "traditional";
+                default -> entryType;
+            };
+            int startWeek;
+            int endWeek;
+            try {
+                startWeek = Integer.parseInt(cell(row, 2).trim());
+                endWeek = Integer.parseInt(cell(row, 3).trim());
+            } catch (NumberFormatException e) {
+                errors.add("第" + (i + 1) + "行: 周次区间无效（" + cell(row, 2).trim() + " - " + cell(row, 3).trim() + "）");
+                continue;
+            }
+            if (startWeek <= 0 || endWeek < startWeek) {
+                errors.add("第" + (i + 1) + "行: 周次区间无效");
+                continue;
+            }
+            String weekPattern = cell(row, 4).trim();
+            if (weekPattern.isEmpty()) {
+                weekPattern = "all";
+            }
+            weekPattern = switch (weekPattern) {
+                case "全部" -> "all";
+                case "单周" -> "odd";
+                case "双周" -> "even";
+                default -> weekPattern;
+            };
+            String teacherName = cell(row, 6).trim();
+            String venueName = cell(row, 7).trim();
+            String classes = cell(row, 8).trim();
+
+            if (preview) {
+                // 预览：统计整周矩阵可拆分的排课条数（day 字段暂存 slot 计数）
+                items.add(new ScheduleItem(courseName, entryType, startWeek, endWeek, weekPattern,
+                    parseWeekMatrix(cell(row, 5)).size(), List.of(), teacherName, venueName, classes));
+                continue;
+            }
+            List<WeekSlot> slots = parseWeekMatrix(cell(row, 5));
+            if (slots.isEmpty()) {
+                continue;
+            }
+            for (WeekSlot slot : slots) {
+                items.add(new ScheduleItem(courseName, entryType, startWeek, endWeek, weekPattern,
+                    slot.day, slot.periods, teacherName, venueName, classes));
+            }
+        }
+
+        if (preview) {
+            int total = items.stream().mapToInt(ScheduleItem::day).sum();
+            return previewResult(total, 0, 0, List.of(), errors);
+        }
+
+        if (items.isEmpty()) {
+            errors.add("课程列表无有效的排课数据（节次列需填写整周矩阵，如 周一:上午1、上午2）");
+            return executeResult(0, 1, 0, "排课", errors);
+        }
+
+        // 确定目标学期：优先请求携带，其次从第一个有效课程匹配教学计划推断
+        if (termId == null || termId.isEmpty()) {
+            termId = scheduleImportMapper.inferTermByCourseName(tenantId, items.get(0).courseName);
+        } else if (!scheduleImportMapper.termExists(tenantId, termId)) {
+            errors.add("学期不存在或不属于当前租户");
+            return executeResult(0, 1, 0, "排课", errors);
+        }
+        if (termId == null || termId.isEmpty()) {
+            errors.add("无法识别所属学期，请先选择目标学期再导入");
+            return executeResult(0, 1, 0, "排课", errors);
+        }
+
+        int created = 0;
+        int failed = 0;
+        scheduleImportMapper.clearDraftScheduleEntries(tenantId, termId);
+        scheduleImportMapper.resetPlanEntriesToPlanned(tenantId, termId);
+
+        Map<String, Map<String, Object>> planEntryCache = new LinkedHashMap<>();
+        Map<String, String> classCache = new LinkedHashMap<>();
+        Map<String, String> teacherCache = new LinkedHashMap<>();
+        Map<String, String> venueCache = new LinkedHashMap<>();
+
+        for (ScheduleItem it : items) {
+            Map<String, Object> pe = planEntryCache.get(it.courseName);
+            if (pe == null) {
+                pe = scheduleImportMapper.findPlanEntryByCourse(tenantId, termId, it.courseName);
+                if (pe == null || str(pe.get("id")).isEmpty()) {
+                    failed++;
+                    errors.add("课程[" + it.courseName + "]未匹配到教学计划条目");
+                    continue;
+                }
+                planEntryCache.put(it.courseName, pe);
+            }
+            // 解析班级
+            List<String> classIds = new ArrayList<>();
+            boolean parseOk = true;
+            for (String cn : it.classes.replace(",", "，").split("，")) {
+                cn = cn.trim();
+                if (cn.isEmpty()) {
+                    continue;
+                }
+                String cid = classCache.get(cn);
+                if (cid == null) {
+                    cid = scheduleImportMapper.findOrgIdByName(tenantId, cn);
+                    if (cid == null) {
+                        failed++;
+                        errors.add("课程[" + it.courseName + "]班级[" + cn + "]不存在");
+                        parseOk = false;
+                        break;
+                    }
+                    classCache.put(cn, cid);
+                }
+                classIds.add(cid);
+            }
+            if (!parseOk || classIds.isEmpty()) {
+                continue;
+            }
+            String teacherId = null;
+            if (!it.teacherName.isEmpty()) {
+                teacherId = teacherCache.get(it.teacherName);
+                if (teacherId == null) {
+                    teacherId = scheduleImportMapper.findTeacherIdByName(tenantId, it.teacherName);
+                    if (teacherId == null) {
+                        failed++;
+                        errors.add("课程[" + it.courseName + "]教师[" + it.teacherName + "]不存在");
+                        continue;
+                    }
+                    teacherCache.put(it.teacherName, teacherId);
+                }
+            }
+            String venueId = null;
+            if (!it.venueName.isEmpty()) {
+                venueId = venueCache.get(it.venueName);
+                if (venueId == null) {
+                    venueId = scheduleImportMapper.findVenueIdByName(tenantId, it.venueName);
+                    if (venueId == null) {
+                        failed++;
+                        errors.add("课程[" + it.courseName + "]场地[" + it.venueName + "]不存在");
+                        continue;
+                    }
+                    venueCache.put(it.venueName, venueId);
+                }
+            }
+            try {
+                scheduleImportMapper.insertScheduleEntry(UUID.randomUUID().toString(), tenantId, termId,
+                    str(pe.get("id")), it.courseName, str(pe.get("course_code")), str(pe.get("course_id")),
+                    it.entryType, classIds.get(0), toPgArray(classIds), teacherId, it.day, toPgArray(it.periods),
+                    it.startWeek, it.endWeek, it.weekPattern, venueId, str(pe.get("scenario_id")));
+                scheduleImportMapper.markPlanEntryScheduled(str(pe.get("id")));
+                created++;
+            } catch (Exception e) {
+                failed++;
+                errors.add("课程[" + it.courseName + "]导入失败: " + e.getMessage());
+            }
+        }
+        return executeResult(created, failed, 0, "排课", errors);
+    }
+
+    private List<WeekSlot> parseWeekMatrix(String s) {
+        List<WeekSlot> slots = new ArrayList<>();
+        if (s == null) {
+            return slots;
+        }
+        for (String line : s.split("\n")) {
+            line = line.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            int idx = line.indexOf(':');
+            if (idx < 0) {
+                continue;
+            }
+            int day = parseDayOfWeek(line.substring(0, idx).trim());
+            if (day == 0) {
+                continue;
+            }
+            List<String> periods = normalizePeriods(splitTrim(line.substring(idx + 1).replace("、", ","), ","));
+            if (periods.isEmpty()) {
+                continue;
+            }
+            slots.add(new WeekSlot(day, periods));
+        }
+        return slots;
+    }
+
+    private int parseDayOfWeek(String s) {
+        return switch (s.trim()) {
+            case "周一", "星期一", "1" -> 1;
+            case "周二", "星期二", "2" -> 2;
+            case "周三", "星期三", "3" -> 3;
+            case "周四", "星期四", "4" -> 4;
+            case "周五", "星期五", "5" -> 5;
+            case "周六", "星期六", "6" -> 6;
+            case "周日", "星期日", "周天", "星期天", "7" -> 7;
+            default -> 0;
+        };
+    }
+
+    private List<String> normalizePeriods(List<String> periods) {
+        List<String> out = new ArrayList<>();
+        for (String p : periods) {
+            out.add(switch (p) {
+                case "上午1" -> "上午第一节课";
+                case "上午2" -> "上午第二节课";
+                case "上午3" -> "上午第三节课";
+                case "上午4" -> "上午第四节课";
+                case "下午1" -> "下午第一节课";
+                case "下午2" -> "下午第二节课";
+                case "下午3" -> "下午第三节课";
+                case "下午4" -> "下午第四节课";
+                case "晚上1" -> "晚上第一节课";
+                case "晚上2" -> "晚上第二节课";
+                default -> p;
+            });
+        }
+        return out;
+    }
+
+    private record WeekSlot(int day, List<String> periods) {
+    }
+
+    private record ScheduleItem(String courseName, String entryType, int startWeek, int endWeek,
+                                String weekPattern, int day, List<String> periods, String teacherName,
+                                String venueName, String classes) {
+    }
+
+    // ==================== 颗粒课 Excel 导入（对齐 Go granular_course_import.go） ====================
+
+    private Map<String, Object> importGranularCourses(Workbook wb, String tenantId, String userId, boolean preview,
+                                                      boolean overwrite, boolean rename) {
+        List<String> errors = new ArrayList<>();
+        List<ImportPreviewItem> duplicateItems = new ArrayList<>();
+        int created = 0, failed = 0, skipped = 0, duplicates = 0;
+        List<List<String>> rows = readRows(wb, "课程基本信息");
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            String name = cell(row, 0).trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            String majorName = cell(row, 1);
+            int difficulty = parseIntSafe(cell(row, 2), 0);
+            double duration = parseDoubleSafe(cell(row, 3), 0);
+            String learningGoal = cell(row, 4);
+            List<String> knowledgeNames = splitTrim(cell(row, 5), ",");
+            List<String> resourceNames = splitTrim(cell(row, 6), ",");
+            String batchName = cell(row, 7);
+
+            String majorId = majorName.isEmpty() ? null : mapper.selectMajorIdByName(tenantId, majorName);
+            String batchId = batchName.isEmpty() ? null : granularImportMapper.selectLessonBatchIdByName(tenantId, batchName);
+            String description = learningGoal.isEmpty() ? null : learningGoal;
+            Integer difficultyPtr = difficulty > 0 ? difficulty : null;
+            Double durationPtr = duration > 0 ? duration : null;
+
+            Map<String, Object> ident = granularImportMapper.selectGranularCourseIdentity(tenantId, name);
+            String existingId = ident == null ? null : str(ident.get("id"));
+            String existingCreator = ident == null ? null : str(ident.get("creator_id"));
+            String existingCoCreators = ident == null ? null : str(ident.get("co_creator_ids"));
+            boolean exists = existingId != null && !existingId.isEmpty();
+
+            if (exists) {
+                if (preview) {
+                    if (duplicateItems.size() < 100) {
+                        duplicateItems.add(new ImportPreviewItem(i + 1, name, name));
+                    }
+                    duplicates++;
+                    skipped++;
+                    continue;
+                }
+                if (!overwrite && !rename) {
+                    skipped++;
+                    continue;
+                }
+                if (overwrite && !canOverwriteContent(existingCreator, parsePgArrayText(existingCoCreators), userId)) {
+                    skipped++;
+                    continue;
+                }
+            }
+
+            // 覆盖权限判定通过后才创建知识点（preview 与权限不足路径均无写副作用）
+            List<String> knowledgePointIds = new ArrayList<>();
+            for (String kn : knowledgeNames) {
+                String kpId = findOrCreateKnowledgePoint(tenantId, kn);
+                if (kpId != null && !kpId.isEmpty()) {
+                    knowledgePointIds.add(kpId);
+                }
+            }
+            List<String> resourceIds = new ArrayList<>();
+            for (String rn : resourceNames) {
+                String rid = findOrCreateResource(tenantId, rn, userId);
+                if (rid != null && !rid.isEmpty()) {
+                    resourceIds.add(rid);
+                }
+            }
+
+            if (exists && overwrite) {
+                try {
+                    granularImportMapper.updateGranularCourse(existingId, tenantId, majorId, batchId, difficultyPtr,
+                        description, durationPtr, toPgArray(knowledgePointIds), toPgArray(resourceIds));
+                    replaceCourseBindings(existingId, tenantId, knowledgePointIds, resourceIds);
+                } catch (Exception e) {
+                    failed++;
+                    errors.add("颗粒课[" + name + "]更新失败: " + e.getMessage());
+                }
+                continue;
+            }
+            if (exists) {
+                // rename 模式
+                name = uniqueSuffixed(name, c -> granularImportMapper.selectGranularCourseIdByName(tenantId, c) != null);
+            }
+            if (preview) {
+                created++;
+                continue;
+            }
+            String courseId = UUID.randomUUID().toString();
+            String code = generateGranularCourseCode(tenantId);
+            try {
+                granularImportMapper.insertGranularCourse(courseId, tenantId, code, name, majorId, durationPtr,
+                    difficultyPtr, description, userId, batchId, toPgArray(knowledgePointIds), toPgArray(resourceIds));
+                replaceCourseBindings(courseId, tenantId, knowledgePointIds, resourceIds);
+                created++;
+            } catch (Exception e) {
+                failed++;
+                errors.add("颗粒课[" + name + "]创建失败: " + e.getMessage());
+            }
+        }
+        if (preview) {
+            return previewResult(created, duplicates, failed, duplicateItems, errors);
+        }
+        return executeResult(created, failed, skipped, "颗粒课", errors);
+    }
+
+    private void replaceCourseBindings(String courseId, String tenantId, List<String> knowledgePointIds,
+                                       List<String> resourceIds) {
+        granularImportMapper.deleteCourseKnowledgeBindings(courseId);
+        granularImportMapper.deleteCourseResourceBindings(courseId);
+        for (String kpId : knowledgePointIds) {
+            granularImportMapper.insertCourseKnowledgeBinding(UUID.randomUUID().toString(), tenantId, courseId, kpId);
+        }
+        for (String resId : resourceIds) {
+            granularImportMapper.insertCourseResourceBinding(UUID.randomUUID().toString(), tenantId, courseId, resId);
+        }
+    }
+
+    private String findOrCreateKnowledgePoint(String tenantId, String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        String id = granularImportMapper.selectKnowledgePointIdByName(tenantId, name);
+        if (id != null && !id.isEmpty()) {
+            return id;
+        }
+        id = UUID.randomUUID().toString();
+        granularImportMapper.insertKnowledgePoint(id, tenantId, name, randomCode("KP"));
+        String existing = granularImportMapper.selectKnowledgePointIdByName(tenantId, name);
+        return existing != null && !existing.isEmpty() ? existing : id;
+    }
+
+    private String generateGranularCourseCode(String tenantId) {
+        String year = String.valueOf(java.time.Year.now().getValue());
+        int maxNum = granularImportMapper.selectMaxGranularCourseCodeNum(tenantId, year);
+        return String.format("GRA-%s-%04d", year, maxNum + 1);
+    }
+
+    /** 资源按名称 find-or-create（按后缀推断类型，默认 other），对齐 Go FindOrCreateResources。 */
+    private String findOrCreateResource(String tenantId, String name, String userId) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        String id = granularImportMapper.selectResourceIdByName(tenantId, name);
+        if (id != null && !id.isEmpty()) {
+            return id;
+        }
+        id = UUID.randomUUID().toString();
+        granularImportMapper.insertResource(id, tenantId, name, resourceTypeByExt(name), userId);
+        String existing = granularImportMapper.selectResourceIdByName(tenantId, name);
+        return existing != null && !existing.isEmpty() ? existing : id;
+    }
+
+    private String resourceTypeByExt(String name) {
+        String ext = "";
+        int dot = name.lastIndexOf('.');
+        if (dot >= 0) {
+            ext = name.substring(dot + 1).toLowerCase();
+        }
+        if (Set.of("pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "xls", "xlsx", "csv").contains(ext)) {
+            return "document";
+        }
+        if (Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp", "svg").contains(ext)) {
+            return "image";
+        }
+        if (Set.of("mp3", "wav", "m4a", "flac").contains(ext)) {
+            return "audio";
+        }
+        if (Set.of("mp4", "webm", "mov", "avi", "mkv").contains(ext)) {
+            return "video";
+        }
+        if (Set.of("zip", "rar", "7z", "tar", "gz").contains(ext)) {
+            return "archive";
+        }
+        return "other";
+    }
+
+    private double parseDoubleSafe(String s, double def) {
+        if (s == null || s.isEmpty()) {
+            return def;
+        }
+        try {
+            return Double.parseDouble(s.trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
+    // ==================== 体系课 Excel 导入（对齐 Go course_import.go） ====================
+
+    private Map<String, Object> importCourses(Workbook wb, String tenantId, String userId, boolean preview,
+                                              boolean overwrite, boolean rename) {
+        List<String> errors = new ArrayList<>();
+        List<ImportPreviewItem> duplicateItems = new ArrayList<>();
+        int created = 0, failed = 0, skipped = 0, duplicates = 0;
+        Map<String, String> courseMap = new LinkedHashMap<>();
+
+        // ---------- 课程基本信息 ----------
+        List<List<String>> rows = readRows(wb, "课程基本信息");
+        Map<String, String> abilityCache = new LinkedHashMap<>();
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            String name = cell(row, 0).trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            String majorName = cell(row, 1);
+            String courseIntro = cell(row, 2);
+            String batchName = cell(row, 3);
+            List<String> abilityPointNames = splitTrim(cell(row, 4), ",");
+
+            String majorId = majorName.isEmpty() ? null : mapper.selectMajorIdByName(tenantId, majorName);
+            String batchId = batchName.isEmpty() ? null : granularImportMapper.selectLessonBatchIdByName(tenantId, batchName);
+            List<String> abilityPointIds = new ArrayList<>();
+            for (String an : abilityPointNames) {
+                String id = abilityCache.get(an);
+                if (id == null) {
+                    id = courseImportMapper.selectAbilityPointIdByName(tenantId, an);
+                    abilityCache.put(an, id == null ? "" : id);
+                }
+                if (id != null && !id.isEmpty()) {
+                    abilityPointIds.add(id);
+                }
+            }
+            String description = courseIntro.isEmpty() ? null : courseIntro;
+
+            Map<String, Object> ident = courseImportMapper.selectSystemCourseIdentity(tenantId, name);
+            String existingId = ident == null ? null : str(ident.get("id"));
+            String existingCreator = ident == null ? null : str(ident.get("creator_id"));
+            String existingCoCreators = ident == null ? null : str(ident.get("co_creator_ids"));
+            boolean exists = existingId != null && !existingId.isEmpty();
+
+            String origName = "";
+            if (exists) {
+                if (preview) {
+                    if (duplicateItems.size() < 100) {
+                        duplicateItems.add(new ImportPreviewItem(i + 1, name, name));
+                    }
+                    duplicates++;
+                    skipped++;
+                    continue;
+                }
+                if (!overwrite && !rename) {
+                    skipped++;
+                    continue;
+                }
+                if (overwrite) {
+                    if (!canOverwriteContent(existingCreator, parsePgArrayText(existingCoCreators), userId)) {
+                        skipped++;
+                        continue;
+                    }
+                    try {
+                        courseImportMapper.updateSystemCourseOverwrite(existingId, tenantId, majorId, batchId,
+                            description, toPgArray(abilityPointIds));
+                        courseImportMapper.deleteNodeQuizzesByCourse(existingId);
+                        courseImportMapper.deleteCourseNodes(existingId);
+                    } catch (Exception e) {
+                        failed++;
+                        errors.add("课程[" + name + "]更新失败: " + e.getMessage());
+                        continue;
+                    }
+                    courseMap.put(name, existingId);
+                    continue;
+                }
+                origName = name;
+                name = uniqueSuffixed(name, c -> courseImportMapper.selectSystemCourseIdByName(tenantId, c) != null);
+            }
+
+            if (preview) {
+                created++;
+                continue;
+            }
+            String courseId = UUID.randomUUID().toString();
+            try {
+                courseImportMapper.insertSystemCourse(courseId, tenantId, randomCode("XT"), name, majorId, description,
+                    userId, batchId, toPgArray(abilityPointIds));
+            } catch (Exception e) {
+                failed++;
+                errors.add("课程[" + name + "]创建失败: " + e.getMessage());
+                continue;
+            }
+            courseMap.put(name, courseId);
+            if (!origName.isEmpty()) {
+                courseMap.put(origName, courseId);
+            }
+            created++;
+        }
+
+        // ---------- 节点配置 ----------
+        if (!preview && !courseMap.isEmpty()) {
+            importCourseNodes(wb, tenantId, userId, courseMap, errors);
+        }
+
+        if (preview) {
+            return previewResult(created, duplicates, failed, duplicateItems, errors);
+        }
+        return executeResult(created, failed, skipped, "体系课", errors);
+    }
+
+    private void importCourseNodes(Workbook wb, String tenantId, String userId, Map<String, String> courseMap,
+                                   List<String> errors) {
+        List<List<String>> rows = readRows(wb, "节点配置");
+        List<CourseNodeRow> pending = new ArrayList<>();
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            String courseName = cell(row, 0).trim();
+            String nodeName = cell(row, 1).trim();
+            if (courseName.isEmpty() || nodeName.isEmpty()) {
+                continue;
+            }
+            String courseId = courseMap.get(courseName);
+            if (courseId == null) {
+                continue;
+            }
+            pending.add(new CourseNodeRow(i + 1, courseName, nodeName, cell(row, 2).trim(),
+                mapCourseRefType(cell(row, 3)), parseIntSafe(cell(row, 4), 0), nullableStr(cell(row, 5)),
+                parseDoubleSafe(cell(row, 6), 0), parseIntSafe(cell(row, 7), 0), splitTrim(cell(row, 8), ","),
+                splitTrim(cell(row, 9), ","), splitTrim(cell(row, 10).replace("，", ","), ","), courseId));
+        }
+
+        Map<String, Map<String, String>> nodeNameMap = new LinkedHashMap<>();
+        while (!pending.isEmpty()) {
+            boolean progressed = false;
+            List<CourseNodeRow> remaining = new ArrayList<>();
+            for (CourseNodeRow nr : pending) {
+                nodeNameMap.computeIfAbsent(nr.courseName, k -> new LinkedHashMap<>());
+                String parentId = null;
+                if (!nr.parentName.isEmpty()) {
+                    Map<String, String> m = nodeNameMap.get(nr.courseName);
+                    if (m.containsKey(nr.parentName)) {
+                        parentId = m.get(nr.parentName);
+                    } else {
+                        remaining.add(nr);
+                        continue;
+                    }
+                }
+                if (createSystemCourseNode(tenantId, userId, nr, parentId, nodeNameMap, errors)) {
+                    progressed = true;
+                }
+            }
+            if (!progressed) {
+                for (CourseNodeRow nr : remaining) {
+                    errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]父节点[" + nr.parentName + "]未找到或存在循环依赖,已跳过");
+                }
+                break;
+            }
+            pending = remaining;
+        }
+    }
+
+    private boolean createSystemCourseNode(String tenantId, String userId, CourseNodeRow nr, String parentId,
+                                           Map<String, Map<String, String>> nodeNameMap, List<String> errors) {
+        String sourceId = null;
+        String sourceName = null;
+        String teachingGoals = nr.manualTeachingGoals;
+        double duration = nr.manualDuration;
+        int difficulty = nr.manualDifficulty;
+        List<String> baseKnowledgeIds = List.of();
+        List<String> baseResourceIds = List.of();
+
+        if ("original".equals(nr.refType)) {
+            Map<String, Object> g = courseImportMapper.selectGranularCourseByName(tenantId, nr.nodeName);
+            if (g == null) {
+                errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]未找到同名颗粒课,已跳过");
+                return false;
+            }
+            sourceId = str(g.get("id"));
+            sourceName = str(g.get("name"));
+            if (teachingGoals == null || teachingGoals.isEmpty()) {
+                teachingGoals = str(g.get("description"));
+            }
+            if (duration == 0 && g.get("online_hours") != null) {
+                duration = Double.parseDouble(String.valueOf(g.get("online_hours")));
+            }
+            if (difficulty == 0 && g.get("difficulty") != null) {
+                difficulty = Integer.parseInt(String.valueOf(g.get("difficulty")));
+            }
+            baseKnowledgeIds = courseImportMapper.selectGranularCourseKnowledgePointIds(sourceId);
+            baseResourceIds = courseImportMapper.selectGranularCourseResourceIds(sourceId);
+        }
+
+        String nodeId = UUID.randomUUID().toString();
+        try {
+            courseImportMapper.insertCourseNode(nodeId, tenantId, nr.courseId, parentId, nr.nodeName, nr.sortOrder,
+                nr.refType, sourceId, sourceName, teachingGoals, (int) duration, difficulty);
+        } catch (Exception e) {
+            errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]创建失败: " + e.getMessage());
+            return false;
+        }
+        nodeNameMap.get(nr.courseName).put(nr.nodeName, nodeId);
+
+        // 知识点（Excel 填写 + 颗粒课回退合并）
+        List<String> knowledgePointIds = new ArrayList<>();
+        for (String kn : nr.knowledgeNames) {
+            String kpId = findOrCreateKnowledgePoint(tenantId, kn);
+            if (kpId != null && !kpId.isEmpty()) {
+                knowledgePointIds.add(kpId);
+            }
+        }
+        for (String kpId : baseKnowledgeIds) {
+            if (!knowledgePointIds.contains(kpId)) {
+                knowledgePointIds.add(kpId);
+            }
+        }
+        for (String kpId : knowledgePointIds) {
+            courseImportMapper.insertNodeKnowledgeBinding(UUID.randomUUID().toString(), nodeId, kpId);
+        }
+
+        // 资源（Excel 填写 find-only + 颗粒课回退合并）
+        List<String> resourceIds = new ArrayList<>();
+        for (String rn : nr.resourceNames) {
+            String rid = findOrCreateResource(tenantId, rn, userId);
+            if (rid != null && !rid.isEmpty()) {
+                resourceIds.add(rid);
+            }
+        }
+        for (String rid : baseResourceIds) {
+            if (!resourceIds.contains(rid)) {
+                resourceIds.add(rid);
+            }
+        }
+        for (String rid : resourceIds) {
+            courseImportMapper.insertNodeResourceBinding(UUID.randomUUID().toString(), tenantId, nodeId, rid);
+        }
+
+        if (!knowledgePointIds.isEmpty() || !resourceIds.isEmpty()) {
+            courseImportMapper.updateNodeBindingArrays(nodeId, toPgArray(knowledgePointIds), toPgArray(resourceIds));
+        }
+
+        for (String evalName : nr.evalMethodNames) {
+            String methodKey = mapCourseEvalMethod(evalName);
+            if (methodKey.isEmpty() || "homework".equals(methodKey)) {
+                continue;
+            }
+            String title = "题库测验";
+            if ("paper".equals(methodKey)) {
+                title = "试卷测验";
+            } else if ("quiz".equals(methodKey)) {
+                title = "随堂测";
+            }
+            try {
+                courseImportMapper.insertNodeQuiz(UUID.randomUUID().toString(), tenantId, nodeId, title, methodKey);
+            } catch (Exception e) {
+                errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]测评[" + evalName + "]创建失败: " + e.getMessage());
+            }
+        }
+        return true;
+    }
+
+    private String mapCourseRefType(String t) {
+        return "颗粒课".equals(t.trim()) ? "original" : "normal";
+    }
+
+    private String mapCourseEvalMethod(String t) {
+        return switch (t.trim()) {
+            case "题库" -> "question_bank";
+            case "试卷" -> "paper";
+            case "随堂测" -> "quiz";
+            case "作业" -> "homework";
+            default -> "";
+        };
+    }
+
+    private record CourseNodeRow(int rowNum, String courseName, String nodeName, String parentName, String refType,
+                                 int sortOrder, String manualTeachingGoals, double manualDuration, int manualDifficulty,
+                                 List<String> knowledgeNames, List<String> resourceNames, List<String> evalMethodNames,
+                                 String courseId) {
+    }
+
     private Map<String, Object> parseCount(Workbook wb, String sheetName, String entity, boolean preview) {
         List<List<String>> rows = readRows(wb, sheetName);
         List<String> errors = new ArrayList<>();
@@ -1174,23 +2583,193 @@ public class ImportExportServiceImpl implements IImportExportService {
     }
 
     private Map<String, Object> affairsConfigImport(Workbook wb, String tenantId, boolean preview) {
-        int created = 0;
-        int failed = 0;
-        List<String> errors = new ArrayList<>();
         if (preview) {
             // affairs-config 仅 excel 路径（无 preview），此处兜底返回空
-            return previewResult(0, 0, 0, List.of(), errors);
+            return previewResult(0, 0, 0, List.of(), List.of());
         }
-        for (String sheetName : new String[]{"学期", "场地", "节次"}) {
-            List<List<String>> rows = readRows(wb, sheetName);
-            for (int i = 2; i < rows.size(); i++) {
-                List<String> row = rows.get(i);
-                if (!cell(row, 0).isEmpty()) {
-                    created++;
+        Map<String, Object> result = new LinkedHashMap<>();
+        int termsCreated = 0, termsSkipped = 0, termsFailed = 0;
+        int venuesCreated = 0, venuesSkipped = 0, venuesFailed = 0;
+        int slotsCreated = 0, slotsSkipped = 0, slotsFailed = 0;
+
+        // 学期
+        List<List<String>> termRows = readRows(wb, "学期");
+        for (int i = 2; i < termRows.size(); i++) {
+            List<String> row = termRows.get(i);
+            String name = cell(row, 0).trim();
+            LocalDate startDate = parseDateLenient(cell(row, 1));
+            LocalDate endDate = parseDateLenient(cell(row, 2));
+            String weeksStr = cell(row, 3).trim();
+            if (name.isEmpty() || startDate == null || endDate == null) {
+                termsSkipped++;
+                continue;
+            }
+            int weeks = parseIntSafe(weeksStr, 16);
+            try {
+                if (termMapper.selectIdByName(tenantId, name) != null) {
+                    termsSkipped++;
+                } else {
+                    termMapper.insertTerm(UUID.randomUUID().toString(), tenantId, name, startDate, endDate, weeks);
+                    termsCreated++;
                 }
+            } catch (Exception e) {
+                termsFailed++;
             }
         }
-        return executeResult(created, failed, 0, "教务配置", errors);
+        result.put("termsCreated", termsCreated);
+        result.put("termsSkipped", termsSkipped);
+        result.put("termsFailed", termsFailed);
+
+        // 场地
+        List<List<String>> venueRows = readRows(wb, "场地");
+        for (int i = 2; i < venueRows.size(); i++) {
+            List<String> row = venueRows.get(i);
+            String name = cell(row, 0).trim();
+            String type = cell(row, 1).trim();
+            String capacityStr = cell(row, 2).trim();
+            if (name.isEmpty() || type.isEmpty()) {
+                venuesSkipped++;
+                continue;
+            }
+            int capacity = parseIntSafe(capacityStr, 0);
+            Integer cap = capacity > 0 ? capacity : null;
+            try {
+                if (venueMapper.selectIdByName(tenantId, name) != null) {
+                    venuesSkipped++;
+                } else {
+                    venueMapper.insertVenue(UUID.randomUUID().toString(), tenantId, name, type, cap);
+                    venuesCreated++;
+                }
+            } catch (Exception e) {
+                venuesFailed++;
+            }
+        }
+        result.put("venuesCreated", venuesCreated);
+        result.put("venuesSkipped", venuesSkipped);
+        result.put("venuesFailed", venuesFailed);
+
+        // 节次
+        List<List<String>> slotRows = readRows(wb, "节次");
+        for (int i = 2; i < slotRows.size(); i++) {
+            List<String> row = slotRows.get(i);
+            String name = cell(row, 0).trim();
+            String startTimeStr = cell(row, 1).trim();
+            String endTimeStr = cell(row, 2).trim();
+            String sortStr = cell(row, 3).trim();
+            if (name.isEmpty()) {
+                slotsSkipped++;
+                continue;
+            }
+            int sortOrder = parseIntSafe(sortStr, 0);
+            String slotType = parseSlotTypeName(cell(row, 4));
+            if (slotType == null) {
+                slotType = "morning";
+                if (sortOrder >= 4 && sortOrder < 8) {
+                    slotType = "afternoon";
+                } else if (sortOrder >= 8) {
+                    slotType = "evening";
+                }
+            }
+            LocalTime startTime = parseTimeLenient(startTimeStr);
+            LocalTime endTime = parseTimeLenient(endTimeStr);
+            try {
+                if (periodSlotMapper.selectIdByName(tenantId, name) != null) {
+                    slotsSkipped++;
+                } else {
+                    periodSlotMapper.insertPeriodSlot(UUID.randomUUID().toString(), tenantId, name, slotType,
+                        startTime, endTime, sortOrder);
+                    slotsCreated++;
+                }
+            } catch (Exception e) {
+                slotsFailed++;
+            }
+        }
+        result.put("periodSlotsCreated", slotsCreated);
+        result.put("periodSlotsSkipped", slotsSkipped);
+        result.put("periodSlotsFailed", slotsFailed);
+
+        int totalCreated = termsCreated + venuesCreated + slotsCreated;
+        int totalFailed = termsFailed + venuesFailed + slotsFailed;
+        result.put("created", totalCreated);
+        result.put("failed", totalFailed);
+        result.put("skipped", termsSkipped + venuesSkipped + slotsSkipped);
+        result.put("permissionSkipped", 0);
+        result.put("errors", List.of());
+        return result;
+    }
+
+    /** 时段类型中文名 → 英文 code（对齐 Go parseSlotTypeName）。 */
+    private String parseSlotTypeName(String s) {
+        return switch (s.trim()) {
+            case "早自习" -> "morning_self";
+            case "上午" -> "morning";
+            case "下午" -> "afternoon";
+            case "晚自习" -> "evening";
+            default -> null;
+        };
+    }
+
+    private int parseIntSafe(String s, int def) {
+        if (s == null || s.isEmpty()) {
+            return def;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
+    private LocalDate parseDateLenient(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        if (t.isEmpty()) {
+            return null;
+        }
+        for (DateTimeFormatter f : new DateTimeFormatter[]{
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("yyyy/M/d"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            DateTimeFormatter.ofPattern("yyyy年M月d日")
+        }) {
+            try {
+                return LocalDate.parse(t, f);
+            } catch (DateTimeParseException ignored) {
+                // try next
+            }
+        }
+        // Excel 日期序列号（1899-12-30 起）
+        try {
+            double serial = Double.parseDouble(t);
+            return LocalDate.of(1899, 12, 30).plusDays((long) serial);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private LocalTime parseTimeLenient(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        if (t.isEmpty()) {
+            return null;
+        }
+        for (DateTimeFormatter f : new DateTimeFormatter[]{
+            DateTimeFormatter.ISO_LOCAL_TIME,
+            DateTimeFormatter.ofPattern("H:mm"),
+            DateTimeFormatter.ofPattern("HH:mm"),
+            DateTimeFormatter.ofPattern("H:mm:ss")
+        }) {
+            try {
+                return LocalTime.parse(t, f);
+            } catch (DateTimeParseException ignored) {
+                // try next
+            }
+        }
+        return null;
     }
 
     // ==================== 通用 CSV 持久化 ====================

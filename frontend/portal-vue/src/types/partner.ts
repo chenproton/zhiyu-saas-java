@@ -123,6 +123,27 @@ export interface EmploymentJob {
   status: string;
 }
 
+export interface EmploymentApplication {
+  id: string;
+  tenantId: string;
+  jobId: string;
+  enterpriseId: string;
+  studentId: string;
+  studentName?: string;
+  studentNo?: string;
+  majorName?: string;
+  className?: string;
+  phone?: string;
+  email?: string;
+  coverLetter?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  jobTitle?: string;
+  enterpriseName?: string;
+  projectName?: string;
+}
+
 export interface PartnerSchool {
   linkId: string;
   tenantId: string;

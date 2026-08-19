@@ -14,6 +14,7 @@ import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CreateCertificatio
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CreateCertificationRuleRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutFullCertificationRuleRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutPointLevelsRequest;
+import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutPointTaskWeightsRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.StatusRequest;
 
 import java.util.Map;
@@ -70,4 +71,6 @@ public interface IEvaluationCertificationService {
     CertificationRuleDto putWeights(String positionId, CertificationWeightsPayload req);
 
     Map<String, String> putPointLevels(String positionId, String abilityPointId, PutPointLevelsRequest req);
+
+    Map<String, String> putPointTaskWeights(String positionId, String abilityPointId, PutPointTaskWeightsRequest req);
 }

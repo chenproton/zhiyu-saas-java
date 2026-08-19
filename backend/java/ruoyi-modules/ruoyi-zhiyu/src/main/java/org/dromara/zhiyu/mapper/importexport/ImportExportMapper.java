@@ -206,6 +206,11 @@ public interface ImportExportMapper {
     @Select("SELECT id FROM scenarios WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
     String selectScenarioIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
+    /** 方案课程导入：按租户+名称查体系课 id+name（对齐 Go CourseImportFindSystemCourseIDAndName）。 */
+    @Select("SELECT id::text AS id, name FROM courses WHERE name = #{name} AND type = 'system'"
+        + " AND tenant_id = #{tenantId}::uuid LIMIT 1")
+    Map<String, Object> selectSystemCourseIdAndName(@Param("tenantId") String tenantId, @Param("name") String name);
+
     @Insert("INSERT INTO scenarios (id, tenant_id, name, code, status, created_by, collaborators, version)"
         + " VALUES (#{id}::uuid, #{tenantId}::uuid, #{name}, #{code}, 'draft', #{createdBy}::uuid, '{}', 'V1.0')")
     int insertScenario(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
@@ -274,12 +279,40 @@ public interface ImportExportMapper {
         + ") b ORDER BY batch_name")
     List<String> listBatchNames(@Param("tenantId") String tenantId);
 
-    @Select("<script>SELECT cp.name, cp.short_name, cp.position_type::text AS position_type, cp.salary_min,"
-        + " cp.salary_max, COALESCE(cp.description, '') AS description, cp.code"
+    @Select("<script>SELECT cp.id::text AS id, cp.name, COALESCE(cp.short_name,'') AS short_name, cp.position_type::text AS position_type,"
+        + " cp.salary_min, cp.salary_max, COALESCE(cp.description, '') AS description,"
+        + " COALESCE(cp.career_path, '') AS career_path, cp.industry_id::text AS industry_id,"
+        + " cp.batch_id::text AS batch_id, cp.requirements::text AS requirements"
         + " FROM career_positions cp WHERE cp.tenant_id = #{tenantId}::uuid"
         + " <if test=\"ids != null and ids.size() > 0\">AND cp.id IN <foreach collection=\"ids\" item=\"i\" open=\"(\" separator=\",\" close=\")\">#{i}::uuid</foreach></if>"
         + " ORDER BY cp.name</script>")
     List<Map<String, Object>> listPositionsForExport(@Param("tenantId") String tenantId, @Param("ids") List<String> ids);
+
+    @Select("SELECT name FROM industries WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    String selectIndustryNameById(@Param("tenantId") String tenantId, @Param("id") String id);
+
+    @Select("SELECT name FROM batches WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    String selectBatchNameById(@Param("tenantId") String tenantId, @Param("id") String id);
+
+    @Select("SELECT m.name FROM majors m JOIN career_position_majors cpm ON cpm.major_id = m.id"
+        + " JOIN career_positions cp ON cp.id = cpm.career_position_id"
+        + " WHERE cpm.career_position_id = #{positionId}::uuid AND cp.tenant_id = #{tenantId}::uuid")
+    List<String> listPositionMajorNames(@Param("tenantId") String tenantId, @Param("positionId") String positionId);
+
+    @Select("SELECT cl.name FROM certificate_library cl JOIN position_certificates pc ON pc.certificate_library_id = cl.id"
+        + " WHERE pc.career_position_id = #{positionId}::uuid AND pc.tenant_id = #{tenantId}::uuid")
+    List<String> listPositionCertNames(@Param("tenantId") String tenantId, @Param("positionId") String positionId);
+
+    @Select("SELECT pr.name AS responsibility_name, ap.name AS ability_name,"
+        + " ap.attributes::text AS ability_attributes, pab.attributes::text AS binding_attributes,"
+        + " COALESCE(pab.domain, '') AS domain, pab.required_level, COALESCE(pab.rubric_description, '') AS rubric_description"
+        + " FROM position_ability_bindings pab"
+        + " JOIN position_responsibilities pr ON pr.id = pab.responsibility_id"
+        + " JOIN ability_points ap ON ap.id = pab.ability_point_id"
+        + " WHERE pab.career_position_id = #{positionId}::uuid AND pab.tenant_id = #{tenantId}::uuid"
+        + " ORDER BY pr.sort_order")
+    List<Map<String, Object>> listPositionAbilityBindings(@Param("tenantId") String tenantId,
+                                                           @Param("positionId") String positionId);
 
     @Select("<script>SELECT s.name, s.difficulty, COALESCE(s.background, '') AS background, s.code"
         + " FROM scenarios s WHERE s.tenant_id = #{tenantId}::uuid"
@@ -287,13 +320,21 @@ public interface ImportExportMapper {
         + " ORDER BY s.name</script>")
     List<Map<String, Object>> listScenariosForExport(@Param("tenantId") String tenantId, @Param("ids") List<String> ids);
 
-    @Select("<script>SELECT c.name, COALESCE(c.description, '') AS description, c.type::text AS type, c.code"
+    @Select("<script>SELECT c.id::text AS id, c.name, COALESCE(c.description, '') AS description,"
+        + " c.major_id::text AS major_id, c.batch_id::text AS batch_id, c.type::text AS type, c.code"
         + " FROM courses c WHERE c.tenant_id = #{tenantId}::uuid AND c.type = 'system'"
         + " <if test=\"ids != null and ids.size() > 0\">AND c.id IN <foreach collection=\"ids\" item=\"i\" open=\"(\" separator=\",\" close=\")\">#{i}::uuid</foreach></if>"
         + " ORDER BY c.name</script>")
     List<Map<String, Object>> listSystemCoursesForExport(@Param("tenantId") String tenantId, @Param("ids") List<String> ids);
 
-    @Select("<script>SELECT c.name, COALESCE(c.description, '') AS description, c.difficulty, c.online_hours"
+    @Select("SELECT name FROM majors WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    String selectMajorNameById(@Param("tenantId") String tenantId, @Param("id") String id);
+
+    @Select("SELECT name FROM lesson_batches WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    String selectLessonBatchNameById(@Param("tenantId") String tenantId, @Param("id") String id);
+
+    @Select("<script>SELECT c.id::text AS id, c.name, COALESCE(c.description, '') AS description, c.difficulty,"
+        + " c.online_hours, c.major_id::text AS major_id, c.batch_id::text AS batch_id"
         + " FROM courses c WHERE c.tenant_id = #{tenantId}::uuid AND c.type = 'granular'"
         + " <if test=\"ids != null and ids.size() > 0\">AND c.id IN <foreach collection=\"ids\" item=\"i\" open=\"(\" separator=\",\" close=\")\">#{i}::uuid</foreach></if>"
         + " ORDER BY c.name</script>")

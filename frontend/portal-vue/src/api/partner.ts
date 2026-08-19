@@ -8,6 +8,7 @@ import type {
   CoBuildScenario,
   EmploymentProject,
   EmploymentJob,
+  EmploymentApplication,
   PartnerSchool,
   PartnerSchoolStatus,
   PartnerCooperationOverview,
@@ -29,7 +30,13 @@ export const partnerEmploymentApi = {
   updateJob: (id: string, req: Partial<EmploymentJob>) =>
     partnerRequest<EmploymentJob>(`/partner/employment-jobs/${id}`, { method: 'PUT', body: JSON.stringify(req) }),
   deleteJob: (id: string) =>
-    partnerRequest<{ id: string }>(`/partner/employment-jobs/${id}`, { method: 'DELETE' })
+    partnerRequest<{ id: string }>(`/partner/employment-jobs/${id}`, { method: 'DELETE' }),
+  listApplications: (jobId: string) =>
+    partnerRequest<ListResponse<EmploymentApplication>>(
+      `/partner/employment-jobs/${jobId}/applications`
+    ),
+  getApplication: (id: string) =>
+    partnerRequest<EmploymentApplication>(`/partner/employment-applications/${id}`)
 };
 
 export const partnerCobuildScenarioApi = {

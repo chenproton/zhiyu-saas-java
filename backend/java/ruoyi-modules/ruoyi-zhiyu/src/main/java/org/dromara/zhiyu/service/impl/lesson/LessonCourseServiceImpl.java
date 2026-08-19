@@ -380,6 +380,8 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
             return;
         }
         String courseId = course.getId();
+        // 发布前清理课程级旧测评（对齐 Go CleanupCourseLevelAssessments）
+        examUsageMapper.cleanupCourseLevelAssessments(courseId);
         List<SystemCourseNode> nodes = nodeMapper.selectList(
             QueryBuilder.lambda(SystemCourseNode.class)
                 .eq(SystemCourseNode::getCourseId, courseId)
@@ -493,7 +495,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
                 examUsageMapper.insertNodeUsage(usageId, course.getTenantId(), paperId,
                     autoUsageName(course.getName(), node.getName(), "试卷"), startTime, endTime, duration,
                     "node", List.of(node.getId()), statusFor(activationMode), activationMode,
-                    course.getCreatorId(), null);
+                    course.getCreatorId(), resolveExamVersion(course.getTenantId(), paperId));
                 rc.put("usageId", usageId);
             } else if (startTime != null || endTime != null || duration != null || rc.get("activationMode") != null) {
                 examUsageMapper.updateUsageWindow(usageId, course.getTenantId(), startTime, endTime, duration,
@@ -544,7 +546,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
             examUsageMapper.insertNodeUsage(usageId, course.getTenantId(), examId,
                 autoUsageName(course.getName(), node.getName(), label), startTime, endTime, duration,
                 "node", List.of(node.getId()), statusFor(activationMode), activationMode,
-                course.getCreatorId(), null);
+                course.getCreatorId(), resolveExamVersion(course.getTenantId(), examId));
             rc.put("usageId", usageId);
         } else if (startTime != null || endTime != null || duration != null || rc.get("activationMode") != null) {
             examUsageMapper.updateUsageWindow(usageId, course.getTenantId(), startTime, endTime, duration,
@@ -577,6 +579,16 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     }
 
     // ---------- 测评生成辅助（JSON 提取 / 命名） ----------
+
+    /** 解析试卷版本（快照最新为准，缺档回退 live version），对齐 Go ResolveResourceVersion。 */
+    private String resolveExamVersion(String tenantId, String examId) {
+        String v = snapshotMapper.selectLatestVersion(tenantId, "exams", examId);
+        if (v != null && !v.isEmpty()) {
+            return v;
+        }
+        String live = examMapper.selectVersion(tenantId, examId);
+        return live == null ? "" : live;
+    }
 
     private String generateExamCode(String tenantId) {
         SecureRandom random = new SecureRandom();

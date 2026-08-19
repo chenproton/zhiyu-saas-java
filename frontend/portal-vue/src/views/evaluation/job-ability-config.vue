@@ -242,12 +242,17 @@ async function saveConfig() {
     point.tasks.forEach((t) => {
       taskWeights[taskKey(point.abilityPointId, t.taskId)] = configTaskWeights[t.taskId];
     });
-    await certApi.putPositionWeights(positionId, {
-      pointWeights: allPoints.value.map((p) => ({ abilityPointId: p.abilityPointId, weight: pointWeights[p.abilityPointId] ?? p.weight })),
-      taskWeights: allPoints.value.flatMap((p) =>
-        p.tasks.map((t) => ({ abilityPointId: p.abilityPointId, taskId: t.taskId, weight: taskWeights[taskKey(p.abilityPointId, t.taskId)] ?? t.weight }))
-      )
-    });
+    // 只保存当前能力点的任务权重（对齐 Go/React putPointTaskWeights 契约），
+    // 不再把全部点权重+任务权重塞进 putPositionWeights，避免污染其它能力点
+    await certApi.putPointTaskWeights(
+      positionId,
+      point.abilityPointId,
+      point.tasks.map((t) => ({
+        abilityPointId: point.abilityPointId,
+        taskId: t.taskId,
+        weight: configTaskWeights[t.taskId] ?? t.weight
+      }))
+    );
     configDialog.value = false;
     ElMessage.success('胜任配置已保存');
   } catch (e) {

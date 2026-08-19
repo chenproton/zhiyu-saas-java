@@ -15,6 +15,7 @@ import org.dromara.zhiyu.domain.job.JobApprovalRecord;
 import org.dromara.zhiyu.domain.job.JobWorkflow;
 import org.dromara.zhiyu.mapper.job.JobApprovalMapper;
 import org.dromara.zhiyu.mapper.job.JobWorkflowMapper;
+import org.dromara.zhiyu.mapper.partner.PartnerSourceMergeMapper;
 import org.dromara.zhiyu.service.job.IJobApprovalService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,7 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
 
     private final JobApprovalMapper approvalMapper;
     private final JobWorkflowMapper workflowMapper;
+    private final PartnerSourceMergeMapper sourceMergeMapper;
 
     @Override
     public ListResponse<ApprovalRecordDto> list(String status, String targetType, String submitterId,
@@ -204,6 +206,11 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             }
             // 终态（通过/驳回）才同步实体状态；非终态推进只改步骤
             if (!"pending".equals(newStatus)) {
+                // 学校自建资源编辑稿审批通过 → 合并覆盖原资源（仅通过时合并，合并后不再同步实体状态）
+                if ("approved".equals(newStatus)
+                    && mergeSourceEditDraft(record.getTargetType(), record.getTargetId(), tenantId)) {
+                    return get(id);
+                }
                 syncEntityStatus(record.getTargetType(), newStatus, record.getTargetId(), tenantId);
             }
         }
@@ -327,6 +334,76 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             throw new ApiException(500, "internal_error", "无效的审批对象类型");
         }
         approvalMapper.syncEntityStatus(table, status, targetId, tenantId);
+    }
+
+    /**
+     * 学校自建资源编辑稿审批通过 → 合并覆盖原资源（对齐 Go MergeSourceEditDraft）。
+     * 返回 true 表示已合并（draft 已删除，无需再走 syncEntityStatus）。
+     */
+    private boolean mergeSourceEditDraft(String targetType, String targetId, String tenantId) {
+        if ("career_position".equals(targetType)) {
+            Map<String, Object> d = sourceMergeMapper.selectPositionDraft(targetId, tenantId);
+            if (d == null) {
+                return false;
+            }
+            String srcId = str(d.get("source_resource_id"));
+            if (srcId.isEmpty()) {
+                return false;
+            }
+            mergePositionDraftToSource(targetId, tenantId, str(d.get("name")));
+            return true;
+        }
+        if ("scenario".equals(targetType)) {
+            Map<String, Object> d = sourceMergeMapper.selectScenarioDraft(targetId, tenantId);
+            if (d == null) {
+                return false;
+            }
+            String srcId = str(d.get("source_resource_id"));
+            if (srcId.isEmpty()) {
+                return false;
+            }
+            mergeScenarioDraftToSource(targetId, tenantId, str(d.get("name")));
+            return true;
+        }
+        return false;
+    }
+
+    private void mergePositionDraftToSource(String draftId, String tenantId, String draftName) {
+        String finalName = draftName == null ? "" : draftName.replaceAll("（编辑稿）$", "");
+        sourceMergeMapper.renamePositionDraft(draftId);
+        int rows = sourceMergeMapper.overwritePositionFromDraft(draftId, tenantId, finalName);
+        if (rows == 0) {
+            throw new ApiException(500, "internal_error", "覆盖原岗位失败：目标资源不存在");
+        }
+        sourceMergeMapper.deleteSourcePositionMajors(draftId);
+        sourceMergeMapper.movePositionMajorsToSource(draftId);
+        sourceMergeMapper.deleteSourcePositionAbilityBindings(draftId);
+        sourceMergeMapper.movePositionAbilityBindingsToSource(draftId);
+        sourceMergeMapper.deleteSourcePositionCertificates(draftId);
+        sourceMergeMapper.movePositionCertificatesToSource(draftId);
+        sourceMergeMapper.deleteSourcePositionResponsibilities(draftId);
+        sourceMergeMapper.movePositionResponsibilitiesToSource(draftId);
+        sourceMergeMapper.deletePositionDraft(draftId, tenantId);
+    }
+
+    private void mergeScenarioDraftToSource(String draftId, String tenantId, String draftName) {
+        String finalName = draftName == null ? "" : draftName.replaceAll("（编辑稿）$", "");
+        sourceMergeMapper.renameScenarioDraft(draftId, tenantId);
+        sourceMergeMapper.deleteSourceTaskEvaluationMethods(draftId);
+        sourceMergeMapper.deleteSourceTaskKnowledgeBindings(draftId);
+        sourceMergeMapper.deleteSourceTaskResourceBindings(draftId);
+        sourceMergeMapper.deleteSourceScenarioWeightConfigs(draftId);
+        sourceMergeMapper.deleteSourceScenarioTasks(draftId);
+        int rows = sourceMergeMapper.overwriteScenarioFromDraft(draftId, tenantId, finalName);
+        if (rows == 0) {
+            throw new ApiException(500, "internal_error", "覆盖原场景失败：目标场景不存在");
+        }
+        sourceMergeMapper.moveScenarioTasksToSource(draftId);
+        sourceMergeMapper.deleteScenarioDraft(draftId, tenantId);
+    }
+
+    private String str(Object o) {
+        return o == null ? "" : String.valueOf(o);
     }
 
     // ---------- 工具 ----------

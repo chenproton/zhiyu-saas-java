@@ -44,6 +44,10 @@ public interface EvaluationExamMapper extends BaseMapperPlus<PortalExam, PortalE
     @Select("SELECT EXISTS(SELECT 1 FROM exams WHERE tenant_id = #{tenantId}::uuid AND code = #{code})")
     boolean existsCode(@Param("tenantId") String tenantId, @Param("code") String code);
 
+    /** live 当前版本（快照缺档回退用，对齐 Go ResolveResourceVersion） */
+    @Select("SELECT COALESCE(version, '') FROM exams WHERE tenant_id = #{tenantId}::uuid AND id = #{id}::uuid")
+    String selectVersion(@Param("tenantId") String tenantId, @Param("id") String id);
+
     /** 按名称复用已有临时卷（发布测评重新生成时避免唯一键冲突，对齐 Go CreateTempExam）。 */
     @Select("SELECT id::text FROM exams WHERE tenant_id = #{tenantId}::uuid AND name = #{name} AND is_temp = TRUE LIMIT 1")
     String selectTempExamId(@Param("tenantId") String tenantId, @Param("name") String name);

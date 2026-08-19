@@ -15,6 +15,7 @@ import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CreateCertificatio
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CreateCertificationRuleRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutFullCertificationRuleRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutPointLevelsRequest;
+import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutPointTaskWeightsRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.StatusRequest;
 import org.dromara.zhiyu.service.evaluation.IEvaluationCertificationService;
 import org.springframework.validation.annotation.Validated;
@@ -163,5 +164,12 @@ public class EvaluationCertificationController {
                                               @PathVariable String abilityPointId,
                                               @RequestBody PutPointLevelsRequest req) {
         return certificationService.putPointLevels(positionId, abilityPointId, req);
+    }
+
+    @PutMapping("/positions/{positionId}/points/{abilityPointId}/task-weights")
+    public Map<String, String> putPointTaskWeights(@PathVariable String positionId,
+                                                   @PathVariable String abilityPointId,
+                                                   @RequestBody PutPointTaskWeightsRequest req) {
+        return certificationService.putPointTaskWeights(positionId, abilityPointId, req);
     }
 }

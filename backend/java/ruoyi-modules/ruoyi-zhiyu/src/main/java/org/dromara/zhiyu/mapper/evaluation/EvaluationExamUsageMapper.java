@@ -1,5 +1,6 @@
 package org.dromara.zhiyu.mapper.evaluation;
 
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -127,6 +128,11 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     /** 查询试卷租户（考试安排创建校验用） */
     @Select("SELECT tenant_id FROM exams WHERE id = #{examId}")
     String examTenantId(@Param("examId") String examId);
+
+    /** 清理课程级旧测评（无结果的 exam_usages，对齐 Go CleanupCourseLevelAssessments） */
+    @Delete("DELETE FROM exam_usages eu WHERE eu.target_type = 'course' AND #{courseId}::uuid = ANY(eu.target_ids)"
+        + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)")
+    int cleanupCourseLevelAssessments(@Param("courseId") String courseId);
 
     /** 查询试卷（租户限定，供 exam_version 解析） */
     @Select("SELECT COALESCE(version, '') FROM exams WHERE id = #{examId} AND tenant_id = #{tenantId}")

@@ -139,6 +139,11 @@ public interface EvaluationCertificationMapper extends BaseMapperPlus<Evaluation
     @org.apache.ibatis.annotations.Delete("DELETE FROM certification_weights WHERE rule_id = #{ruleId}::uuid")
     int deleteWeightsByRule(@Param("ruleId") String ruleId);
 
+    /** 只删单个能力点的任务权重（task_id IS NOT NULL），不影响其它能力点与能力点级权重 */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM certification_weights"
+        + " WHERE rule_id = #{ruleId}::uuid AND ability_point_id = #{abilityPointId}::uuid AND task_id IS NOT NULL")
+    int deleteTaskWeightsByPoint(@Param("ruleId") String ruleId, @Param("abilityPointId") String abilityPointId);
+
     @Insert("INSERT INTO certification_weights (id, rule_id, ability_point_id, task_id, weight, tenant_id)"
         + " VALUES (#{id}, #{ruleId}, #{abilityPointId}, #{taskId}, #{weight}, #{tenantId})")
     int insertWeight(@Param("id") String id, @Param("ruleId") String ruleId,

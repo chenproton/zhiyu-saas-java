@@ -598,6 +598,12 @@ public class EvaluationDtos {
         private List<LevelMappingDto> levelMapping;
     }
 
+    /** PUT /certifications/positions/{positionId}/points/{abilityPointId}/task-weights 请求 */
+    @Data
+    public static class PutPointTaskWeightsRequest {
+        private List<CertificationTaskWeightDto> taskWeights;
+    }
+
     // ==================== 岗位能力结果 job-ability ====================
 
     /** 岗位能力结果条目（JobAbilityResultItem） */

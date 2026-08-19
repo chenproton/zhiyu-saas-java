@@ -20,6 +20,7 @@ import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CertificationPosit
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CertificationRelatedTaskDto;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CertificationRuleDto;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CertificationTaskRequest;
+import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CertificationTaskWeightDto;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CertificationWeightsPayload;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CreateCertificationItemRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.CreateCertificationPointRequest;
@@ -29,6 +30,7 @@ import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutFullCertificati
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutFullCertificationPointRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutFullCertificationRuleRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutPointLevelsRequest;
+import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.PutPointTaskWeightsRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.RuleRefDto;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.StatusRequest;
 import org.dromara.zhiyu.domain.evaluation.EvaluationCertificationItem;
@@ -508,6 +510,45 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
         List<LevelMappingDto> mapping = coalesceLevels(req.getLevelMapping());
         validateLevelMapping(mapping);
         certMapper.upsertPointLevels(tenantId, positionId, abilityPointId, toJson(mapping));
+        Map<String, String> resp = new LinkedHashMap<>();
+        resp.put("positionId", positionId);
+        resp.put("abilityPointId", abilityPointId);
+        return resp;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, String> putPointTaskWeights(String positionId, String abilityPointId,
+                                                   PutPointTaskWeightsRequest req) {
+        String tenantId = requireTenant();
+        requireUser();
+        checkPositionTenant(tenantId, positionId);
+        if (abilityPointId == null || abilityPointId.isEmpty()) {
+            throw new ApiException(400, "bad_request", "缺少必填字段");
+        }
+        List<CertificationTaskWeightDto> taskWeights = coalesceTaskWeights(
+            req == null ? null : req.getTaskWeights());
+        BigDecimal sum = BigDecimal.ZERO;
+        for (var tw : taskWeights) {
+            if (tw.getTaskId() == null || tw.getTaskId().isEmpty()) {
+                throw new ApiException(400, "bad_request", "缺少必填字段");
+            }
+            sum = sum.add(tw.getWeight() == null ? BigDecimal.ZERO : tw.getWeight());
+        }
+        if (sum.compareTo(new BigDecimal("100")) != 0) {
+            throw new ApiException(400, "bad_request", "关联任务权重之和必须等于 100");
+        }
+        // 查规则（无则自动建 draft custom 规则），只删当前能力点的任务权重再插入，不影响其它能力点
+        String ruleId = certMapper.ruleIdByPosition(tenantId, positionId);
+        if (ruleId == null) {
+            ruleId = UUID.randomUUID().toString();
+            certMapper.insertRule(ruleId, tenantId, positionId, "custom");
+        }
+        certMapper.deleteTaskWeightsByPoint(ruleId, abilityPointId);
+        for (var tw : taskWeights) {
+            certMapper.insertWeight(UUID.randomUUID().toString(), ruleId, abilityPointId, tw.getTaskId(),
+                tw.getWeight() == null ? BigDecimal.ZERO : tw.getWeight(), tenantId);
+        }
         Map<String, String> resp = new LinkedHashMap<>();
         resp.put("positionId", positionId);
         resp.put("abilityPointId", abilityPointId);

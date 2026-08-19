@@ -917,6 +917,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/partner/experts.vue')
       },
       {
+        // React 深链 /partner/experts/new → Vue 的 :id/edit + new=true
+        path: 'partner/experts/new',
+        redirect: { path: '/partner/experts/new/edit', query: { new: 'true' } }
+      },
+      {
         // 专家详情（对齐 React /partner/experts/:id）
         path: 'partner/experts/:id',
         name: 'PartnerExpertDetail',
@@ -993,6 +998,11 @@ const routes: RouteRecordRaw[] = [
         path: 'partner/employment-jobs',
         name: 'PartnerEmploymentJobs',
         component: () => import('@/views/partner/employment-jobs.vue')
+      },
+      {
+        // React 深链 /partner/employment-jobs/new → Vue 的 :id/edit + new=true
+        path: 'partner/employment-jobs/new',
+        redirect: { path: '/partner/employment-jobs/new/edit', query: { new: 'true' } }
       },
       {
         // 就业岗位详情（对齐 React /partner/employment-jobs/:id）

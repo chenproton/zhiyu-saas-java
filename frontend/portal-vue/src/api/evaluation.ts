@@ -35,7 +35,8 @@ export const examApi = {
     request<Exam>(`/evaluation/exams/${examId}/questions/${questionId}`, {
       method: 'PUT',
       body: JSON.stringify({ score })
-    })
+    }),
+  publish: (id: string) => request<Exam>(`/evaluation/exams/${id}/publish`, { method: 'POST' })
 };
 
 export const questionBankApi = createContentApi<
@@ -87,6 +88,15 @@ export const certApi = {
     request<{ positionId: string; abilityPointId: string }>(
       `/evaluation/certifications/positions/${positionId}/points/${abilityPointId}/levels`,
       { method: 'PUT', body: JSON.stringify({ levelMapping }) }
+    ),
+  putPointTaskWeights: (
+    positionId: string,
+    abilityPointId: string,
+    taskWeights: { abilityPointId: string; taskId: string; weight: number }[]
+  ) =>
+    request<{ positionId: string; abilityPointId: string }>(
+      `/evaluation/certifications/positions/${positionId}/points/${abilityPointId}/task-weights`,
+      { method: 'PUT', body: JSON.stringify({ taskWeights }) }
     )
 };
 
