@@ -516,7 +516,21 @@ if [[ -z "$DOCKER_COMPOSE" ]]; then
   DOCKER_COMPOSE=$(detect_docker_compose)
   [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
-compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
+# compose 包装：显式指定 --env-file 与 --project-directory。
+# docker compose 的 .env 取自**当前工作目录**（不是 compose 文件所在目录），而本脚本里有 16 处 cd，
+# 任何一次在别处调用 compose 都会读不到 .env → DB_PASSWORD/JWT_SECRET 插值为空串
+# （实测部署日志里出现过 `env file /tmp/.env not found` 与 "DB_PASSWORD is not set"）。
+# 一旦这种调用恰好是 up/recreate，容器就会带着空口令启动。显式传参后与 cwd 无关。
+compose() {
+  # 首次部署时 $DEPLOY_DIR/.env 还不存在（在 compose up 之前才复制过去），
+  # --env-file 指向不存在的文件会直接报错，故存在才传。
+  if [[ -f "$DEPLOY_DIR/.env" ]]; then
+    $DOCKER_COMPOSE --project-directory "$DEPLOY_DIR" --env-file "$DEPLOY_DIR/.env" \
+      -f "$DEPLOY_COMPOSE" "$@"
+  else
+    $DOCKER_COMPOSE --project-directory "$DEPLOY_DIR" -f "$DEPLOY_COMPOSE" "$@"
+  fi
+}
 
 # Nginx（宿主标准 nginx，作为统一网关）
 if ! command -v nginx >/dev/null 2>&1; then
@@ -1267,13 +1281,6 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" != "true" ]]; then
   fi
 fi
 
-# 镜像此刻已就绪（本次构建或复用已有 hash 镜像并重新打标签），先把 IMAGE_TAG 写进两侧 .env，
-# 再复制到 $DEPLOY_DIR —— compose 做变量插值读的是 $DEPLOY_DIR/.env（与 compose 文件同级）。
-# 若晚于这次复制写入，$DEPLOY_DIR/.env 会保留**上一次部署**的 tag：本次部署因 IMAGE_TAG 同时
-# 被 export 而不受影响，但之后任何人工 `docker compose up` 都会去拉一个已被清理的旧镜像。
-update_env_var "$ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
-[[ -f "$BUILD_ROOT/.env" ]] && update_env_var "$BUILD_ROOT/.env" "IMAGE_TAG" "$IMAGE_TAG"
-cp -f "$BUILD_ROOT/.env" "$DEPLOY_DIR/.env" 2>/dev/null || cp -f "$PROJECT_ROOT/.env" "$DEPLOY_DIR/.env"
 
 COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
 rm -f "$COMPOSE_UP_LOG"
