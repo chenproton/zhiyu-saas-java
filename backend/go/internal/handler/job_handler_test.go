@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -355,6 +356,19 @@ func TestPosition_SaveFull(t *testing.T) {
 		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/positions/%s/save-full", createdID), body)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		// 契约：save-full 响应包装为 {"position": {...}}（对齐前端 api-client 与 Java 端）
+		var resp struct {
+			Position domain.CareerPosition `json:"position"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal save-full response: %v", err)
+		}
+		if resp.Position.ID != createdID {
+			t.Errorf("response position.id = %q, want %q", resp.Position.ID, createdID)
+		}
+		if resp.Position.Name != "Updated Full Position" {
+			t.Errorf("response position.name = %q, want %q", resp.Position.Name, "Updated Full Position")
 		}
 	})
 
