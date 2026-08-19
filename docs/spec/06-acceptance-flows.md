@@ -62,6 +62,18 @@ steps:
 | ai-kb-publish-loop | KB-1/KB-3/AD-1 | teacher→school→student→school→teacher | 教师建知识库→提交审核→学校管理员通过→学生广场可见→管理员下架→教师清理 |
 | ai-agent-publish-loop | AG-1/AD-1 | teacher→school→student→school→teacher | 教师建智能体→提交审核→管理员通过→学生广场可见→管理员下架→教师清理 |
 | ai-integration-loop | AD-2 | school→student→school | 管理员挂接第三方应用→学生广场应用区可见→管理员下架 |
+| job-publish-loop | J-1/J-2/J-3 | teacher→school→teacher→student→school→teacher | 教师建岗位→填基础信息保存→提交审批→学校通过→发布→学生公开岗位大厅可见→取消发布→教师删除 |
+
+### 2.1 覆盖登记（PRD 39 个用户故事的 flow 归属）
+
+DoD 第 7 条只要求**核心业务链路**（跨角色/跨页面）有 flow，单页 CRUD 由 handler/service 单测 + 逐页巡检覆盖。据此三分类：
+
+| 归属 | 用户故事 | 说明 |
+|---|---|---|
+| **已有 flow** | J-1/J-2/J-3、L-4、KB-1/KB-3、AG-1、AD-1、AD-2 | 见下方 §3 |
+| **应补 flow（按优先级）** | ① C-1/C-4/C-2（课程建设→批次审批→学生学习）② E-1/E-2（题库→组卷→场次→学生考试查分）③ SC-1/SC-2/SC-3（场景任务链→评价配置→学生提交评分）④ A-1/A-2/A-3（教学计划→自动排课→学生课表）⑤ L-1/L-3（联盟台账→公开页可见）⑥ R-1（资源上传→被课程/场景引用） | 均为跨角色链路，逐条落地时补进本文件；进度登记在 `03-development-plan.md` §6 |
+| **不需 flow（单页/单角色 CRUD 或非 UI）** | S-1/S-2/S-3、J-4（Excel 导入，另有导入向导单测）、C-3、E-3/E-4/E-5、P-1/P-2（登录与菜单权限由巡检登录本身覆盖）、KB-2、AG-2/AG-3、SQ-1 | 由单测 + `ui-smoke` 逐页巡检 + 后端集成测试覆盖 |
+| **不进本文件（DSL 约束）** | ST-1、AG-2 的流式问答 | 涉及真实 LLM 调用，由后端集成测试覆盖 |
 
 > AI 智能服务中心的对话链路（SSE 流式问答、私有库泄露防线 ST-1）涉及真实 LLM 调用，按 DSL 约束不进本文件，由后端集成测试覆盖（`backend/go/internal/handler/ai_center_flow_test.go`：TestAICenter_AgentChatStream 含泄露防线断言、TestAICenter_KBAsk 含溯源断言）。
 
@@ -286,7 +298,73 @@ steps:
     expectApi: { method: DELETE, url: /ai/agents/, status: 200 }
 ```
 
-### 3.4 第三方挂接管理闭环（ai-integration-loop）
+### 3.4 岗位发布闭环（job-publish-loop）
+
+> 覆盖内容资源的完整状态机 draft→pending→approved→published→（取消发布）→删除，
+> 是 job/scene/course/evaluation **四域共用** `ContentListPage`+`ApprovalListPage`+`EditorShell` 的代表链路：
+> 这条通了，四域的「建→审→发→学生可见」骨架就都通了。
+> 标签依据（均取自代码，非猜测）：新建按钮 `新建{entityLabel}`（`content-list-page.tsx:1389`）、
+> 行内动作 `提交审批`/`发布`/`取消发布`/`删除`（`status-action-bar.tsx`）、审批动作 `通过`/`驳回`
+> （`_components/approval-dialogs.tsx:299,303`）、编辑器字段 `岗位名称`（`step-basic-info.tsx:856`）、
+> 编辑器按钮 `保存草稿`（`editor-shell.tsx`）、学生入口 `/job/landing`（审批页 detailHref 同源）。
+
+```flow
+flow: job-publish-loop
+story: J-1
+desc: 教师建岗位并填基础信息 → 提交审批 → 学校通过 → 发布 → 学生公开岗位大厅可见 → 取消发布 → 教师删除
+steps:
+  # 幂等清理（上次失败残留）
+  - role: teacher
+    goto: /job/positions
+    clickRow: { text: "SMOKE_岗位", action: 删除 }
+    confirm: true
+    optional: true
+  # 新建 = 直接建草稿并跳编辑器（content-list-page.tsx:handleCreate，无创建弹窗）
+  - role: teacher
+    goto: /job/positions
+    click: 新建岗位
+    expectApi: { method: POST, url: /job/positions, status: 201 }
+    timeoutMs: 20000
+  - role: teacher
+    fill: { 岗位名称: "SMOKE_岗位{rand}" }
+    saveAs: { jobName: 岗位名称 }
+    submit: 保存草稿
+    expectApi: { method: PUT, url: /job/positions/, status: 200 }
+  - role: teacher
+    goto: /job/positions
+    clickRow: { text: "{{jobName}}", action: 提交审批 }
+    confirm: true
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /job/approvals
+    clickRow: { text: "{{jobName}}", action: 通过 }
+    submit: 通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: school
+    goto: /job/positions
+    clickRow: { text: "{{jobName}}", action: 发布 }
+    confirm: true
+  # 学生侧公开岗位大厅可见（J-3）
+  - role: student
+    goto: /job/landing
+    expectText: "{{jobName}}"
+    timeoutMs: 20000
+  - role: school
+    goto: /job/positions
+    clickRow: { text: "{{jobName}}", action: 取消发布 }
+    confirm: true
+  - role: teacher
+    goto: /job/positions
+    clickRow: { text: "{{jobName}}", action: 删除 }
+    confirm: true
+    expectApi: { method: DELETE, url: /job/positions/, status: 200 }
+```
+
+> **首次运行提示**：本 flow 的路由与按钮文案均来自代码静态核对，但审批弹窗（`通过` 是否需要填意见后再点 `通过`）
+> 与发布确认弹窗的按钮词在实机上可能略有差异；首次 `--flows` 运行若在这两步失败，按报告里的实际按钮文案微调即可，
+> 其余步骤无需改动。
+
+### 3.5 第三方挂接管理闭环（ai-integration-loop）
 
 ```flow
 flow: ai-integration-loop

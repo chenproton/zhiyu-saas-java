@@ -1391,13 +1391,13 @@ smoke_test() {
   fi
   log "  冒烟基址: $base"
 
-  # $4 可选：响应体必须包含的子串。只看状态码会被 SPA fallback 骗过
-  # （/health 未显式代理时会返回 index.html 且 200 → 后端全挂也「通过」）。
+  # $4 可选：响应体必须包含的子串；$5 可选：响应体必须**不**包含的子串。
+  # 只看状态码会被 SPA fallback 骗过（未显式代理的路径都会返回 index.html 且 200）。
   check() {
-    local path="$1" want="$2" desc="$3" must="${4:-}" code body tmp
+    local path="$1" want="$2" desc="$3" must="${4:-}" forbid="${5:-}" code body tmp
     tmp=$(mktemp)
     code=$(curl -s -o "$tmp" --max-time 10 -w '%{http_code}' "$base$path" || echo 000)
-    body=$(head -c 200 "$tmp" 2>/dev/null || true)
+    body=$(head -c 300 "$tmp" 2>/dev/null || true)
     rm -f "$tmp"
     if [[ "$code" != "$want" ]]; then
       warn "    ✗ $desc（$path 期望 $want，实际 $code）"; rc=1; return
@@ -1405,14 +1405,77 @@ smoke_test() {
     if [[ -n "$must" && "$body" != *"$must"* ]]; then
       warn "    ✗ $desc（$path 状态码对但响应体不含「$must」，疑似被 SPA fallback 兜住）"; rc=1; return
     fi
+    if [[ -n "$forbid" && "$body" == *"$forbid"* ]]; then
+      warn "    ✗ $desc（$path 响应体含「$forbid」，说明该路径未按预期路由，落到了 SPA）"; rc=1; return
+    fi
     log "    ✓ $desc（$path → $code）"
   }
 
-  check "/portal/login"          200 "前端 SPA 产物"        "<!doctype html"
-  check "/health"                200 "后端存活"              '"status":"ok"'
-  check "/api/v1/auth/captcha"   200 "API + Redis（验证码生成）"
-  check "/api/v1/settings/theme" 200 "API + DB 读（主题配置）" "primary"
-  check "/api/v1/tenants"        401 "鉴权中间件生效（未带 token 必须 401）"
+  # 头部断言：某响应头必须存在且匹配
+  check_header() {
+    local path="$1" header="$2" want="$3" desc="$4" got
+    got=$(curl -sI --max-time 10 "$base$path" | grep -i "^$header:" | head -1 | tr -d '\r' || true)
+    if [[ "$got" == *"$want"* ]]; then
+      log "    ✓ $desc（$header: $want）"
+    else
+      warn "    ✗ $desc（$path 的 $header 期望含「$want」，实际「${got:-缺失}」）"; rc=1
+    fi
+  }
+
+  # ── 1) 静态产物与前端路由 ──
+  check "/portal/login"                 200 "前端 SPA 产物"          "<!doctype html"
+  check "/library/resources/document"   200 "SPA 客户端路由回落"      "<!doctype html"
+  # dist 真产物：从 index.html 取带 hash 的入口 JS，验证资源目录挂载正确（不是又一次 index 回落）
+  ASSET=$(curl -s --max-time 10 "$base/portal/login" | grep -oE '/assets/[A-Za-z0-9_.-]+\.js' | head -1)
+  if [[ -n "$ASSET" ]]; then
+    check "$ASSET"                      200 "构建资产可访问（dist 挂载）" "" "<!doctype html"
+    check_header "$ASSET" "content-type" "javascript" "构建资产 MIME 正确"
+  else
+    warn "    ✗ 未能从 index.html 解析出 /assets/*.js（产物异常）"; rc=1
+  fi
+
+  # ── 2) 后端与依赖 ──
+  check "/health"                       200 "后端存活"                '"status":"ok"'
+  check "/api/v1/auth/captcha"          200 "API + Redis（验证码生成）" "" "<!doctype html"
+  check "/api/v1/settings/theme"        200 "API + DB 读（主题配置）"   "primary"
+
+  # ── 3) 安全边界 ──
+  check "/api/v1/tenants"               401 "鉴权中间件生效（GET 未带 token）"
+  # 写端点同样必须拦：只测 GET 会漏掉「写接口漏挂鉴权」这类越权
+  WRITE_CODE=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d '{}' "$base/api/v1/tenants" || echo 000)
+  if [[ "$WRITE_CODE" == "401" || "$WRITE_CODE" == "403" ]]; then
+    log "    ✓ 写端点鉴权生效（POST /api/v1/tenants → $WRITE_CODE）"
+  else
+    warn "    ✗ 写端点鉴权异常（POST /api/v1/tenants 期望 401/403，实际 $WRITE_CODE）"; rc=1
+  fi
+  check_header "/portal/login" "x-content-type-options" "nosniff" "安全响应头生效"
+
+  # ── 4) 上传件路由（必须落到后端，不能被 SPA 兜住，否则文件预览永远白屏）──
+  UP_CODE=$(curl -s -o /tmp/smoke-up.$$ --max-time 10 -w '%{http_code}' "$base/uploads/__smoke_probe__" || echo 000)
+  UP_BODY=$(head -c 120 /tmp/smoke-up.$$ 2>/dev/null || true); rm -f /tmp/smoke-up.$$
+  if [[ "$UP_BODY" == *"<!doctype html"* ]]; then
+    warn "    ✗ /uploads/ 未路由到后端（返回 SPA 页面，文件访问链路已断）"; rc=1
+  else
+    log "    ✓ 上传件路由指向后端（/uploads/ → $UP_CODE，非 SPA 回落）"
+  fi
+
+  # ── 5) kkfileview（仅在启用时校验）──
+  if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
+    KK_CODE=$(curl -s -o /dev/null --max-time 15 -w '%{http_code}' \
+      "http://127.0.0.1:${KKFILEVIEW_HOST_PORT:-8012}/kkfileview/onlinePreview" || echo 000)
+    if [[ "$KK_CODE" == "200" ]]; then log "    ✓ 文件预览服务存活（kkfileview → 200）"
+    else warn "    ✗ 文件预览服务异常（kkfileview → $KK_CODE）"; rc=1; fi
+  fi
+
+  # ── 6) 数据库迁移状态一致（库里已应用数 = 仓库 up 迁移数）──
+  APPLIED=$(psql_db -tAc "SELECT count(*) FROM schema_migrations" 2>/dev/null | tr -d ' ' || echo "")
+  ONDISK=$(find "$BACKEND_DIR/migrations" -maxdepth 1 -name '*.up.sql' 2>/dev/null | wc -l | tr -d ' ')
+  if [[ -n "$APPLIED" && "$APPLIED" == "$ONDISK" ]]; then
+    log "    ✓ 迁移状态一致（已应用 $APPLIED = 仓库 $ONDISK）"
+  else
+    warn "    ✗ 迁移状态不一致（库内已应用 ${APPLIED:-?}，仓库 $ONDISK）"; rc=1
+  fi
   return $rc
 }
 

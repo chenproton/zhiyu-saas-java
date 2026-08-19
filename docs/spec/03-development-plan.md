@@ -225,6 +225,8 @@ CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format
 
 ## 6. 后续迭代建议
 
+0. **S0（进行中）：验收 flow 覆盖补全**——`06-acceptance-flows.md` §2.1 已把 PRD 39 个故事按「已有 flow / 应补 flow / 不需 flow」三分类登记；当前 5 条 flow 覆盖 AI 三链 + 就业大厅 + 岗位发布，待补 6 条（课程批次审批、考试安排、场景任务、教务排课、联盟公开页、资源复用），按该表优先级逐条落地。
+
 1. **S1（建议）**：补齐 AI 智能服务/OPC 专区/决策中心/教科研四个占位模块的产品定义
 2. **S2（建议）**：商城 marketplace 重启用（表结构已保留）或明确移除归档
 3. **S3（建议）**：学生端数据 mock 替换为真实 API（workspace `_data/` 标注"后续应替换"）
