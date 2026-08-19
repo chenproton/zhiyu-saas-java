@@ -24,7 +24,10 @@ ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -Dfile.encoding=UTF-8"
 # 非 root 运行，且 uid 必须与 Go 后端镜像一致（backend/go/Dockerfile: adduser -u 1000 appuser）：
 # 两栈共享同一个 uploads 卷（zhiyu-saas_uploads_data），Java 以 root 建出的租户目录是 root:root，
 # Go 侧 uid 1000 无法写入 → 上传直接失败。统一 uid 后两侧读写互通。
-RUN useradd -u 1000 -m -s /usr/sbin/nologin appuser \
+# 基础镜像（ubuntu:24.04）某些版本已自带 uid 1000 用户（如 ubuntu 用户），
+# useradd -u 1000 会报 "UID 1000 is not unique"；用 -o 允许 UID 复用（仍保持 uid=1000 与 Go 侧互通），
+# 幂等：用户已存在（含同名/同 uid）则跳过创建。
+RUN (id appuser >/dev/null 2>&1 || useradd -o -u 1000 -m -s /usr/sbin/nologin appuser) \
     && mkdir -p /opt/zhiyu-saas/uploads \
     && chown -R appuser:appuser /app /opt/zhiyu-saas/uploads
 USER appuser
