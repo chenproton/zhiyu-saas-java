@@ -1098,18 +1098,19 @@ if $BUILD_FRONTEND; then
   # Vite 纯静态 SPA：build 产出 dist/（index.html + 构建资产 + public 静态资源），
   # 由 nginx 容器托管；API 走边缘 nginx 反代，容器内无需代理（原 Next rewrites 已废弃）。
   # 内存说明：该应用 Vite build 未限堆时峰值 anon-rss 达 3.1~3.4GB。两层保护：
-  # ① systemd-run 瞬态 scope 提额（MemoryMax=8G）绕开父 cgroup（dsh-web.service 4GB）钳制，
+  # ① systemd-run 瞬态单元绕开父 cgroup（dsh-web.service 4GB）钳制，
   #    必须加 --slice=system.slice 才能逃出父 cgroup，且必须 --wait（否则立即返回、dist 未就绪就进 docker build）；
-  # ② NODE_OPTIONS 限 V8 老生代（默认 2560MB）：整机仅 8GB 且常驻服务已占 2~3GB，
-  #    不限堆时 V8 会推迟 GC 把峰值顶到 3.4GB，与并发构建/门禁叠加即触发内核 global OOM
-  #    （dmesg: constraint=CONSTRAINT_NONE, global_oom；连 dsh-web.service 一起被杀过）。
-  #    需要更快构建可用 EDU_BUILD_HEAP_MB 调大（内存充足的机器上如 4096）。
+  # ② cgroup 上限压到整机（7.9GB）以下：原 MemoryMax=8G 大于物理内存，限额永不触发，
+  #    只能由内核 global OOM 随机挑受害者（实测杀过 dsh-web.service）。设 6G 后超限只杀构建本身。
+  #    切勿设 MemoryHigh≈峰值（曾设 3500M）：V8 老生代由 frontend/edu/package.json 的
+  #    --max-old-space-size=3072 决定，峰值 RSS 约 3.5G，MemoryHigh 一压就疯狂回收，
+  #    加上 vm.swappiness=0 无处可换，实测从 65 秒退化成 23 分钟后 oom-kill。
+  #    要调堆请改 frontend/edu/package.json 的 --max-old-space-size（脚本里的 NODE_OPTIONS 会被它覆盖）。
   # ③ systemd-run 起的是 transient service（PID1 拉起），**不继承本脚本环境**，
   #    因此 .env 里的 VITE_* 必须显式 --setenv 传入，否则 Vite 读不到（Vite 的 envDir 是
   #    frontend/edu，也读不到仓库根 .env）→ 产物静默退化：移动端二维码回落 window.location.origin、
   #    跨平台链接回落演示地址，且脚本还在警告"请在 .env 填 https 地址"（配了也不生效）。
   # 注意：此处在顶层 if 块内（非函数），不能用 local
-  EDU_BUILD_HEAP="${EDU_BUILD_HEAP_MB:-2560}"
   FE_LOG="$DEPLOY_DIR/.build-frontend-pnpm.log"
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
     # 把 .env 中所有 VITE_* 透传进构建单元（值可能含空格，用数组避免二次分词）
@@ -1120,22 +1121,20 @@ if $BUILD_FRONTEND; then
     log "  透传 ${#VITE_SETENV[@]} 个 VITE_* 变量到构建单元"
     # --pipe：不加则构建输出只进 journal，日志文件里只有 systemd 状态行（历史上 die 提示指向空日志）
     if ! systemd-run --collect --wait --pipe --slice=system.slice \
-         --property=MemoryAccounting=yes --property=MemoryHigh=3500M \
-         --property=MemoryMax=5G --property=MemorySwapMax=1G \
+         --property=MemoryAccounting=yes \
+         --property=MemoryMax=6G --property=MemorySwapMax=2G \
          --setenv=NODE_ENV=production \
-         --setenv="NODE_OPTIONS=--max-old-space-size=$EDU_BUILD_HEAP" \
          "${VITE_SETENV[@]}" -- bash -c "cd '$BUILD_ROOT' && pnpm --filter @zhiyu/edu build" \
          >"$FE_LOG" 2>&1; then
       rc=$?
       tail -n 40 "$FE_LOG" >&2 || true
-      # MemoryMax=5G(<整机 7.9G) 让超限只杀构建单元，而不是让内核 global OOM 随机杀 postgres/dsh-web
-      [[ $rc -eq 137 || $rc -eq 143 ]] && warn "疑似内存超限（退出码 $rc）：可调小 EDU_BUILD_HEAP_MB 或错峰构建"
+      [[ $rc -eq 137 || $rc -eq 143 ]] && \
+        warn "疑似内存超限（退出码 $rc）：错峰构建，或调小 frontend/edu/package.json 的 --max-old-space-size"
       die "前端构建失败（完整日志: $FE_LOG）"
     fi
   else
     # 直连回退路径：本脚本已 set -a source .env，VITE_* 已在环境中，无需额外透传
     (cd "$BUILD_ROOT" && NODE_ENV=production \
-      NODE_OPTIONS="--max-old-space-size=$EDU_BUILD_HEAP" \
       pnpm --filter @zhiyu/edu build) || die "前端构建失败"
   fi
 
