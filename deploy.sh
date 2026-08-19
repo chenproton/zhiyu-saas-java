@@ -1163,21 +1163,20 @@ fi
 # backend/frontend 容器重建后 IP 可能变化，而 zhiyu-nginx 网关在启动时缓存了其旧 IP，
 # 会导致转发到旧 IP 产生 502（Nginx hostname 解析缓存问题）。必须在服务「已就绪」之后
 # 再重启网关容器，让它重新解析到最新 IP（过早重启会拿到旧 IP / DNS 尚未传播，仍 502）。
-# 重启后自检 / 是否仍 502，最多重试一次，确保部署后网关可用。
-if [[ "$BUILD_BACKEND" == "true" || "$BUILD_FRONTEND" == "true" ]]; then
-  log "服务就绪后重启服务网关容器以刷新上游 IP 解析..."
-  for attempt in 1 2; do
-    # 留出 Docker 内置 DNS 传播时间，避免重启瞬间仍解析到旧 IP
-    sleep 3
-    docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（可能尚未创建，忽略）"
-    sleep 2
-    if curl -sf --max-time 5 "http://127.0.0.1:${GO_NGINX_PORT:-8084}/" >/dev/null 2>&1; then
-      log "  网关上游 IP 解析已刷新（前端 200）"
-      break
-    fi
-    warn "  网关自检未通过（第 ${attempt} 次），重试重启 zhiyu-nginx..."
-  done
-fi
+# 注意：即使「无变更跳过构建」，只要 IMAGE_TAG 变化（分支部署每次 commit 都不同），
+# compose up 仍会重建容器导致 IP 变化，故网关重启必须无条件执行，不能以「是否构建」为条件。
+log "服务就绪后重启服务网关容器以刷新上游 IP 解析..."
+for attempt in 1 2; do
+  # 留出 Docker 内置 DNS 传播时间，避免重启瞬间仍解析到旧 IP
+  sleep 3
+  docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（可能尚未创建，忽略）"
+  sleep 2
+  if curl -sf --max-time 5 "http://127.0.0.1:${GO_NGINX_PORT:-8084}/" >/dev/null 2>&1; then
+    log "  网关上游 IP 解析已刷新（前端 200）"
+    break
+  fi
+  warn "  网关自检未通过（第 ${attempt} 次），重试重启 zhiyu-nginx..."
+done
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）。
 # 首次启动需初始化 LibreOffice 与加载 javacv 转码库，低配机器可能超过 2 分钟，等待上限放宽到 3 分钟。
