@@ -68,7 +68,14 @@
           </el-tabs>
 
           <div v-loading="loading">
-            <el-empty v-if="!loading && topics.length === 0" :description="sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧'" />
+            <el-empty
+              v-if="!loading && topics.length === 0"
+              :description="sort === 'mine' ? '你还没有发起过提问' : '暂无话题，来发第一帖吧'"
+            >
+              <el-button type="primary" size="small" @click="postOpen = true">
+                {{ sort === 'mine' ? '去提问' : '发起提问' }}
+              </el-button>
+            </el-empty>
             <div v-for="t in topics" :key="t.id" class="topic-item" @click="openDetail(t)">
               <div class="topic-main">
                 <h3 class="topic-title">

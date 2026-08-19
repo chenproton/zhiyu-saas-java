@@ -6,23 +6,38 @@
     </div>
 
     <el-card shadow="never">
-      <!-- 分类筛选 -->
+      <!-- 分类筛选（对齐 React：测评资源=题库+试卷，AI 服务=知识库+智能体） -->
       <el-radio-group v-model="activeCategory" class="cat-tabs">
         <el-radio-button value="all">全部收藏（{{ totalCount }}）</el-radio-button>
-        <el-radio-button v-for="c in categories" :key="c.key" :value="c.key">{{ c.label }}</el-radio-button>
+        <el-radio-button value="jobs">职业岗位</el-radio-button>
+        <el-radio-button value="scenes">实践场景</el-radio-button>
+        <el-radio-button value="courses">数字课程</el-radio-button>
+        <el-radio-button value="exams">测评资源</el-radio-button>
+        <el-radio-button value="ai">AI 服务</el-radio-button>
       </el-radio-group>
 
       <div v-loading="loading" class="content">
-        <el-empty v-if="!loading && totalCount === 0" description="暂无收藏内容" />
+        <el-empty
+          v-if="!loading && totalCount === 0"
+          description="暂无收藏内容"
+          class="fav-empty"
+        >
+          <div class="empty-links">
+            <el-link type="primary" @click="$router.push('/job/landing')">去收藏岗位</el-link>
+            <el-link type="primary" @click="$router.push('/scene/landing')">去收藏场景</el-link>
+            <el-link type="primary" @click="$router.push('/lesson/landing')">去收藏课程</el-link>
+            <el-link type="primary" @click="$router.push('/evaluation/landing')">去收藏测评</el-link>
+          </div>
+        </el-empty>
 
         <template v-else>
-          <div v-for="c in visibleCategories" :key="c.key" class="cat-block">
-            <h4 class="cat-title">{{ c.label }}<span class="cat-count">（{{ c.items.length }}）</span></h4>
+          <div v-for="g in visibleGroups" :key="g.key" class="cat-block">
+            <h4 class="cat-title">{{ g.label }}<span class="cat-count">（{{ g.items.length }}）</span></h4>
             <div class="card-grid">
-              <el-card v-for="item in c.items" :key="item.id" shadow="hover" class="fav-card">
-                <div class="fav-name">{{ item.name }}</div>
+              <el-card v-for="item in g.items" :key="item.id" shadow="hover" class="fav-card">
+                <div class="fav-name" @click="goDetail(item)">{{ item.name }}</div>
                 <div class="fav-desc">{{ item.description || '-' }}</div>
-                <el-button size="small" type="danger" plain @click="unfavorite(c.key, item.id)">取消收藏</el-button>
+                <el-button size="small" type="danger" plain @click="unfavorite(item)">取消收藏</el-button>
               </el-card>
             </div>
           </div>
@@ -34,6 +49,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { favoriteApi } from '@/api/portal';
 import { positionApi } from '@/api/job';
@@ -43,10 +59,14 @@ interface FavItem {
   id: string;
   name: string;
   description?: string;
+  href: string;
+  targetType?: FavoriteTargetType;
 }
 
+const router = useRouter();
 const loading = ref(true);
 const activeCategory = ref('all');
+
 const favorites = reactive<Record<string, FavItem[]>>({
   jobs: [],
   scenes: [],
@@ -57,26 +77,28 @@ const favorites = reactive<Record<string, FavItem[]>>({
   aiAgents: []
 });
 
-const categories = [
-  { key: 'jobs', label: '职业岗位', targetType: undefined as FavoriteTargetType | undefined },
-  { key: 'scenes', label: '实践场景', targetType: 'scene' as FavoriteTargetType },
-  { key: 'courses', label: '课程', targetType: 'course' as FavoriteTargetType },
-  { key: 'banks', label: '测评题库', targetType: 'question_bank' as FavoriteTargetType },
-  { key: 'exams', label: '试卷', targetType: 'exam' as FavoriteTargetType },
-  { key: 'aiKbs', label: '知识库', targetType: 'ai_kb' as FavoriteTargetType },
-  { key: 'aiAgents', label: '智能体', targetType: 'ai_agent' as FavoriteTargetType }
-];
-
 const totalCount = computed(() =>
   Object.values(favorites).reduce((s, arr) => s + arr.length, 0)
 );
-const visibleCategories = computed(() =>
+
+/* 展示分组：测评资源合并题库+试卷；AI 服务合并知识库+智能体 */
+const groups = computed(() => [
+  { key: 'jobs', label: '职业岗位', items: favorites.jobs },
+  { key: 'scenes', label: '实践场景', items: favorites.scenes },
+  { key: 'courses', label: '数字课程', items: favorites.courses },
+  { key: 'exams', label: '测评资源', items: [...favorites.banks, ...favorites.exams] },
+  { key: 'ai', label: 'AI 服务', items: [...favorites.aiKbs, ...favorites.aiAgents] }
+]);
+
+const visibleGroups = computed(() =>
   activeCategory.value === 'all'
-    ? categories.map((c) => ({ ...c, items: favorites[c.key] }))
-    : categories
-        .filter((c) => c.key === activeCategory.value)
-        .map((c) => ({ ...c, items: favorites[c.key] }))
+    ? groups.value.filter((g) => g.items.length > 0)
+    : groups.value.filter((g) => g.key === activeCategory.value)
 );
+
+function goDetail(item: FavItem) {
+  if (item.href) router.push(item.href);
+}
 
 async function load() {
   loading.value = true;
@@ -85,13 +107,54 @@ async function load() {
       positionApi.listFavorites().catch(() => null),
       favoriteApi.list().catch(() => null)
     ]);
-    favorites.jobs = (jobsRes?.items || []).map((p) => ({ id: p.id, name: p.name, description: p.shortName || p.description }));
-    favorites.scenes = (favRes?.scene || []).map((s) => ({ id: s.id, name: s.name, description: (s as any).description || s.background || s.deliveryGoal }));
-    favorites.courses = (favRes?.course || []).map((c) => ({ id: c.id, name: c.name, description: c.description }));
-    favorites.banks = (favRes?.question_bank || []).map((b) => ({ id: b.id, name: b.name, description: b.description }));
-    favorites.exams = (favRes?.exam || []).map((e) => ({ id: e.id, name: e.name, description: e.description }));
-    favorites.aiKbs = (favRes?.ai_kb || []).map((k) => ({ id: k.id, name: k.name, description: k.description }));
-    favorites.aiAgents = (favRes?.ai_agent || []).map((a) => ({ id: a.id, name: a.name, description: a.description }));
+    favorites.jobs = (jobsRes?.items || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.shortName || p.description,
+      href: `/job/landing/${p.id}`
+    }));
+    favorites.scenes = (favRes?.scene || []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: (s as any).description || s.background || s.deliveryGoal,
+      href: `/scene/landing/${s.id}`,
+      targetType: 'scene' as FavoriteTargetType
+    }));
+    favorites.courses = (favRes?.course || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      href: `/lesson/landing/${c.id}`,
+      targetType: 'course' as FavoriteTargetType
+    }));
+    favorites.banks = (favRes?.question_bank || []).map((b) => ({
+      id: b.id,
+      name: b.name,
+      description: b.description,
+      href: `/evaluation/landing/banks/${b.id}`,
+      targetType: 'question_bank' as FavoriteTargetType
+    }));
+    favorites.exams = (favRes?.exam || []).map((e) => ({
+      id: e.id,
+      name: e.name,
+      description: e.description,
+      href: `/evaluation/landing/exams/${e.id}`,
+      targetType: 'exam' as FavoriteTargetType
+    }));
+    favorites.aiKbs = (favRes?.ai_kb || []).map((k) => ({
+      id: k.id,
+      name: k.name,
+      description: k.description,
+      href: `/portal/apps/ai/kb/${k.id}`,
+      targetType: 'ai_kb' as FavoriteTargetType
+    }));
+    favorites.aiAgents = (favRes?.ai_agent || []).map((a) => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      href: `/portal/apps/ai/agents/${a.id}`,
+      targetType: 'ai_agent' as FavoriteTargetType
+    }));
   } catch (e) {
     ElMessage.error((e as Error).message || '加载失败');
   } finally {
@@ -99,15 +162,17 @@ async function load() {
   }
 }
 
-async function unfavorite(key: string, id: string) {
-  const cat = categories.find((c) => c.key === key);
+async function unfavorite(item: FavItem) {
   try {
-    if (cat?.targetType) {
-      await favoriteApi.toggle(cat.targetType, id);
+    if (item.targetType) {
+      await favoriteApi.toggle(item.targetType, item.id);
     } else {
-      await positionApi.favorite(id);
+      await positionApi.favorite(item.id);
     }
-    favorites[key] = favorites[key].filter((i) => i.id !== id);
+    // 从对应内部集合移除
+    for (const key of Object.keys(favorites) as (keyof typeof favorites)[]) {
+      favorites[key] = favorites[key].filter((i) => i.id !== item.id);
+    }
     ElMessage.success('已取消收藏');
   } catch (e) {
     ElMessage.error((e as Error).message || '取消收藏失败');
@@ -129,6 +194,24 @@ onMounted(load);
 .cat-count { color: #909399; font-size: 12px; font-weight: 400; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .fav-card { position: relative; }
-.fav-name { font-weight: 600; margin-bottom: 6px; }
-.fav-desc { color: #909399; font-size: 12px; min-height: 32px; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fav-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+  cursor: pointer;
+  color: #303133;
+}
+.fav-name:hover { color: #409eff; }
+.fav-desc {
+  color: #909399;
+  font-size: 12px;
+  min-height: 32px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.fav-empty { padding: 24px 0; }
+.empty-links { display: flex; justify-content: center; gap: 16px; margin-top: 8px; }
 </style>

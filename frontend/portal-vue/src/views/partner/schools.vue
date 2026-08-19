@@ -23,10 +23,10 @@
         </el-table-column>
         <el-table-column label="操作" width="200" align="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'negotiating'" size="small" @click="updateStatus(row, 'active')">确认合作</el-button>
-            <el-button v-if="row.status === 'active'" size="small" @click="updateStatus(row, 'paused')">暂停合作</el-button>
-            <el-button v-if="row.status === 'paused'" size="small" @click="updateStatus(row, 'active')">恢复合作</el-button>
-            <el-button v-if="row.status !== 'terminated'" size="small" type="danger" @click="confirmTerminate(row)">终止合作</el-button>
+            <el-button v-if="row.status === 'negotiating'" size="small" :disabled="actingId === row.tenantId" @click="updateStatus(row, 'active')">确认合作</el-button>
+            <el-button v-if="row.status === 'active'" size="small" :disabled="actingId === row.tenantId" @click="updateStatus(row, 'paused')">暂停合作</el-button>
+            <el-button v-if="row.status === 'paused'" size="small" :disabled="actingId === row.tenantId" @click="updateStatus(row, 'active')">恢复合作</el-button>
+            <el-button v-if="row.status !== 'terminated'" size="small" type="danger" :disabled="actingId === row.tenantId" @click="confirmTerminate(row)">终止合作</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -36,7 +36,7 @@
       <p>确定要终止与 {{ terminateTarget?.schoolName }} 的合作吗？终止后不可恢复。</p>
       <template #footer>
         <el-button @click="terminateDialog = false">取消</el-button>
-        <el-button type="danger" :loading="acting" @click="doTerminate">终止合作</el-button>
+        <el-button type="danger" :loading="terminating" @click="doTerminate">终止合作</el-button>
       </template>
     </el-dialog>
   </div>
@@ -51,7 +51,8 @@ import type { PartnerSchool } from '@/types/partner';
 const schools = ref<PartnerSchool[]>([]);
 const keyword = ref('');
 const loading = ref(true);
-const acting = ref(false);
+const actingId = ref<string | null>(null);
+const terminating = ref(false);
 const terminateDialog = ref(false);
 const terminateTarget = ref<PartnerSchool | null>(null);
 
@@ -66,8 +67,9 @@ function statusLabel(s: string) {
   return labels[s] || s;
 }
 function ratingLabel(r?: string) {
-  const labels: Record<string, string> = { a: 'A 级', b: 'B 级', c: 'C 级', d: 'D 级' };
-  return r ? labels[r.toLowerCase()] || r : '-';
+  // 合作评级由学校侧维护，取联盟字典 enterpriseRating（战略/深度/一般合作）
+  const labels: Record<string, string> = { strategic: '战略合作', deep: '深度合作', general: '一般合作' };
+  return r ? labels[r] || r : '-';
 }
 function fmt(d?: string) {
   return d ? String(d).slice(0, 10) : '-';
@@ -86,7 +88,7 @@ async function load() {
 }
 
 async function updateStatus(row: PartnerSchool, status: 'active' | 'paused' | 'terminated') {
-  acting.value = true;
+  actingId.value = row.tenantId;
   try {
     await partnerSchoolApi.updateStatus(row.tenantId, status);
     ElMessage.success('合作状态已更新');
@@ -94,7 +96,7 @@ async function updateStatus(row: PartnerSchool, status: 'active' | 'paused' | 't
   } catch (e) {
     ElMessage.error((e as Error).message || '操作失败');
   } finally {
-    acting.value = false;
+    actingId.value = null;
   }
 }
 
@@ -104,7 +106,7 @@ function confirmTerminate(row: PartnerSchool) {
 }
 async function doTerminate() {
   if (!terminateTarget.value) return;
-  acting.value = true;
+  terminating.value = true;
   try {
     await partnerSchoolApi.updateStatus(terminateTarget.value.tenantId, 'terminated');
     ElMessage.success('合作已终止');
@@ -114,7 +116,7 @@ async function doTerminate() {
   } catch (e) {
     ElMessage.error((e as Error).message || '操作失败');
   } finally {
-    acting.value = false;
+    terminating.value = false;
   }
 }
 

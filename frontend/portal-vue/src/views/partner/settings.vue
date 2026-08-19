@@ -2,7 +2,7 @@
   <div class="settings-page">
     <div class="page-header">
       <h2 class="page-title">账号安全</h2>
-      <p class="page-sub">修改登录密码</p>
+      <p class="page-sub">当前登录账号：{{ account }}</p>
     </div>
 
     <el-card shadow="never" class="form-card">
@@ -26,17 +26,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { partnerMeApi } from '@/api/partner';
-import { removeToken } from '@/api/http';
+import { partnerRequest, removeToken } from '@/api/http';
 
 const router = useRouter();
 const oldPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
 const saving = ref(false);
+const account = ref('');
+
+async function loadAccount() {
+  try {
+    const me = await partnerRequest<{ user?: { name?: string; username?: string } }>('/auth/partner/me');
+    account.value = me.user?.username || me.user?.name || '';
+  } catch {
+    account.value = '';
+  }
+}
+
+onMounted(loadAccount);
 
 async function submit() {
   if (!oldPassword.value || !newPassword.value || !confirmPassword.value) {

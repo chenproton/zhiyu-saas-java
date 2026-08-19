@@ -1,199 +1,568 @@
 <template>
   <div class="apps-page">
-    <h2 class="page-title">应用中心</h2>
-    <p class="page-sub">选择平台进入对应管理功能</p>
+    <!-- 常用服务栏 -->
+    <div class="quick-bar">
+      <div class="quick-head">
+        <div class="quick-title">
+          <el-icon :size="16" class="quick-spark"><MagicStick /></el-icon>
+          <span>常用服务</span>
+        </div>
+        <div class="quick-chips">
+          <button
+            v-for="item in visibleQuickAccess"
+            :key="item.href"
+            type="button"
+            class="quick-chip"
+            @click="onServiceClick(item)"
+          >
+            <el-icon :size="16"><component :is="iconOf(item.icon)" /></el-icon>
+            <span>{{ item.label }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
-    <el-row :gutter="16">
-      <el-col v-for="p in platforms" :key="p.id" :xs="24" :sm="12" :md="8" :lg="6">
-        <el-card shadow="hover" class="platform-card">
-          <template #header>
-            <div class="platform-header">
-              <el-icon :color="p.color" :size="20"><component :is="p.icon" /></el-icon>
-              <span class="platform-title">{{ p.label }}</span>
+    <div class="apps-body">
+      <!-- 左侧栏（桌面端） -->
+      <aside class="apps-aside">
+        <nav class="aside-nav">
+          <button
+            v-for="item in visibleMenuItems"
+            :key="item.id"
+            type="button"
+            class="aside-item"
+            :class="{ active: activeMenu === item.id }"
+            @click="scrollToSection(item.id)"
+          >
+            <el-icon :size="16"><component :is="iconOf(item.icon)" /></el-icon>
+            <span class="aside-label">{{ item.label }}</span>
+            <el-icon v-if="activeMenu === item.id" :size="16" class="aside-arrow"><Right /></el-icon>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- 主内容 -->
+      <main ref="contentRef" class="apps-main" @scroll="onScroll">
+        <div v-if="authLoading" class="apps-state">
+          <span>加载中...</span>
+        </div>
+
+        <div v-else-if="allModules.length === 0" class="apps-state">
+          <span>暂无可用应用，请联系管理员开通套餐</span>
+        </div>
+
+        <template v-else>
+          <div
+            v-for="section in allModules"
+            :key="section.id"
+            :ref="(el) => setSectionRef(section.id, el)"
+            class="module-section"
+          >
+            <div class="section-head">
+              <div class="section-icon" :style="{ color: section.color, background: section.bg }">
+                <el-icon :size="20"><component :is="iconOf(section.icon)" /></el-icon>
+              </div>
+              <a
+                v-if="section.href && section.href !== '#'"
+                class="section-title-link"
+                @click="go(section.href)"
+              >
+                {{ section.label }}
+              </a>
+              <h2 v-else class="section-title">{{ section.label }}</h2>
+              <span class="section-count">{{ section.modules.length }} 个模块</span>
             </div>
-          </template>
-          <div class="module-list">
-            <div v-for="m in p.modules" :key="m.href" class="module-item" @click="$router.push(m.href)">
-              <span>{{ m.label }}</span>
-              <el-icon><ArrowRight /></el-icon>
+
+            <div class="module-grid">
+              <div
+                v-for="module in section.modules"
+                :key="module.id"
+                class="module-card"
+                :class="{ 'module-card-disabled': module.href === '#' }"
+                @click="onModuleClick(module)"
+              >
+                <h3 class="module-title">
+                  {{ module.title }}
+                  <el-icon v-if="isExternal(module.href)" :size="12" class="module-ext"><TopRight /></el-icon>
+                </h3>
+                <p class="module-desc">{{ module.desc || '' }}</p>
+                <div class="module-enter">
+                  <el-icon :size="16"><Right /></el-icon>
+                </div>
+              </div>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </template>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ArrowRight, Setting, Briefcase, Grid, Reading, DataAnalysis, Share, UserFilled, Calendar, MagicStick } from '@element-plus/icons-vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import type { Component } from 'vue';
+import {
+  Briefcase,
+  Calendar,
+  CircleCheck,
+  Grid,
+  MagicStick,
+  Promotion,
+  Reading,
+  Right,
+  School,
+  Setting,
+  Share,
+  TopRight,
+  TrendCharts,
+  UserFilled
+} from '@element-plus/icons-vue';
+import {
+  APPS_MENU_ITEMS,
+  APPS_PLATFORM_HREFS,
+  APPS_PLATFORM_MODULES,
+  APPS_PLATFORM_STYLES,
+  APPS_QUICK_ACCESS,
+  getServiceClickCounts,
+  hasMenuPermission,
+  loadPortalAuth,
+  recordServiceClick,
+  resolveActiveRole,
+  type AppsModuleItem
+} from './portal-navigation';
+import type { Role } from '@/types/system';
+import type { User } from '@/types/user';
 
-const platforms = [
-  {
-    id: 'system',
-    label: '系统管理',
-    icon: Setting,
-    color: '#409eff',
-    modules: [
-      { label: '组织机构', href: '/system/organizations' },
-      { label: '组织类型', href: '/system/org-types' },
-      { label: '角色管理', href: '/system/roles' },
-      { label: '用户管理', href: '/users' },
-      { label: '专业管理', href: '/system/majors' },
-      { label: '行业管理', href: '/system/industries' }
-    ]
-  },
-  {
-    id: 'career',
-    label: '职业岗位学习平台',
-    icon: Briefcase,
-    color: '#e6a23c',
-    modules: [
-      { label: '岗位资源管理', href: '/job/positions' },
-      { label: '岗位批次', href: '/job/batches' },
-      { label: '学习路径', href: '/job/learn-roads' },
-      { label: '岗位推荐', href: '/job/recommend' },
-      { label: '岗位归档', href: '/job/archive' }
-    ]
-  },
-  {
-    id: 'scene',
-    label: '实践场景学习平台',
-    icon: Grid,
-    color: '#67c23a',
-    modules: [
-      { label: '场景资源管理', href: '/scene/scenarios' },
-      { label: '场景批次', href: '/scene/batches' },
-      { label: '场景归档', href: '/scene/archive' }
-    ]
-  },
-  {
-    id: 'course',
-    label: '数字课程服务平台',
-    icon: Reading,
-    color: '#409eff',
-    modules: [
-      { label: '课程管理', href: '/lesson/courses' },
-      { label: '课程批次', href: '/lesson/batches' },
-      { label: '课程归档', href: '/lesson/archive' }
-    ]
-  },
-  {
-    id: 'ability',
-    label: '能力评价与测评资源管理平台',
-    icon: DataAnalysis,
-    color: '#f56c6c',
-    modules: [
-      { label: '试卷管理', href: '/evaluation/exams' },
-      { label: '题库管理', href: '/evaluation/question-banks' },
-      { label: '岗位能力认定', href: '/evaluation/job-ability' },
-      { label: '考试使用', href: '/evaluation/exam-usage' },
-      { label: '课程节点评价', href: '/evaluation/lesson-results' },
-      { label: '场景任务评价', href: '/evaluation/scene-results' },
-      { label: '测评批次', href: '/evaluation/batches' },
-      { label: '试卷归档', href: '/evaluation/archive' }
-    ]
-  },
-  {
-    id: 'resource',
-    label: '教学资源共享服务平台',
-    icon: Share,
-    color: '#909399',
-    modules: [
-      { label: '教学资源库', href: '/library/resources' },
-      { label: '标签管理', href: '/library/tags' },
-      { label: '现场问答', href: '/library/questions' },
-      { label: '知识点', href: '/library/knowledge' },
-      { label: '能力点', href: '/library/ability' },
-      { label: '证书库', href: '/library/certificates' },
-      { label: '我的资源', href: '/library/my-resources' }
-    ]
-  },
-  {
-    id: 'alliance',
-    label: '产教协同与人才品牌运营平台',
-    icon: UserFilled,
-    color: '#9c27b0',
-    modules: [
-      { label: '联盟项目', href: '/alliance/projects' },
-      { label: '联盟协议', href: '/alliance/agreements' },
-      { label: '联盟成果', href: '/alliance/achievements' },
-      { label: '联盟品牌', href: '/alliance/brands' }
-    ]
-  },
-  {
-    id: 'affairs',
-    label: '教务服务平台',
-    icon: Calendar,
-    color: '#e6a23c',
-    modules: [
-      { label: '人培方案', href: '/affairs/programs' },
-      { label: '教学计划', href: '/affairs/teaching-plans' },
-      { label: '学生管理', href: '/affairs/students' },
-      { label: '教职工管理', href: '/affairs/teachers' },
-      { label: '排课管理', href: '/affairs/scheduling' },
-      { label: '场地与节次', href: '/affairs/scheduling-config' },
-      { label: '教务批次', href: '/affairs/batches' },
-      { label: '方案归档', href: '/affairs/archive' }
-    ]
-  },
-  {
-    id: 'partner',
-    label: '产教融合合作平台',
-    icon: Share,
-    color: '#409eff',
-    modules: [
-      { label: '共建场景', href: '/partner/co-build-scenarios' },
-      { label: '共建岗位', href: '/partner/co-build-positions' },
-      { label: '就业项目', href: '/partner/employment-projects' },
-      { label: '就业岗位', href: '/partner/employment-jobs' },
-      { label: '专家库', href: '/partner/experts' },
-      { label: '企业信息', href: '/partner/enterprise' },
-      { label: '合作内容', href: '/partner/cooperation' },
-      { label: '合作学校', href: '/partner/schools' },
-      { label: '测评任务', href: '/partner/tasks' },
-      { label: '账号安全', href: '/partner/settings' },
-      { label: '合作工作台', href: '/partner/workspace' }
-    ]
-  },
-  {
-    id: 'ai',
-    label: 'AI 智能服务平台',
-    icon: MagicStick,
-    color: '#8e44ad',
-    modules: [
-      { label: 'AI 广场', href: '/ai/square' },
-      { label: 'AI 智能体', href: '/ai/agents' },
-      { label: 'AI 知识库', href: '/ai/kbs' },
-      { label: 'AI 对话', href: '/ai/chat' },
-      { label: '智能体管理', href: '/ai/admin/agents' },
-      { label: '知识库管理', href: '/ai/admin/kbs' },
-      { label: '内容审核', href: '/ai/admin/reviews' },
-      { label: '外部 AI 服务', href: '/ai/admin/integrations' }
-    ]
+const ICONS: Record<string, Component> = {
+  setting: Setting,
+  briefcase: Briefcase,
+  layers: Grid,
+  book: Reading,
+  'check-circle': CircleCheck,
+  share: Share,
+  users: UserFilled,
+  calendar: Calendar,
+  sparkles: MagicStick,
+  rocket: Promotion,
+  'bar-chart': TrendCharts,
+  'graduation-cap': School
+};
+
+function iconOf(key: string): Component {
+  return ICONS[key] || Grid;
+}
+
+const router = useRouter();
+
+/* ---------- 登录态 + 订阅 + 菜单权限 ---------- */
+const authLoading = ref(true);
+const user = ref<User | null>(null);
+const roles = ref<Role[]>([]);
+const activeRoleCode = ref<string | undefined>(undefined);
+const menus = ref<unknown>(null);
+const subscriptionModules = ref<Record<string, boolean> | null>(null);
+
+function hasMenuPerm(path: string): boolean {
+  return hasMenuPermission(activeRoleCode.value, menus.value, path, subscriptionModules.value);
+}
+
+interface ModuleSection {
+  id: string;
+  label: string;
+  href: string;
+  icon: string;
+  color: string;
+  bg: string;
+  modules: AppsModuleItem[];
+}
+
+const allModules = computed<ModuleSection[]>(() => {
+  return APPS_MENU_ITEMS.filter((item) => subscriptionModules.value?.[item.id] === true)
+    .map((item) => {
+      const modules = (APPS_PLATFORM_MODULES[item.id] || []).filter((m) => hasMenuPerm(m.href));
+      const style = APPS_PLATFORM_STYLES[item.id] || { color: '#2563eb', bg: '#eff6ff' };
+      return {
+        id: item.id,
+        label: item.label,
+        href: APPS_PLATFORM_HREFS[item.id] ?? '#',
+        icon: item.icon,
+        color: style.color,
+        bg: style.bg,
+        modules
+      };
+    })
+    .filter((section) => section.modules.length > 0);
+});
+
+const visibleMenuItems = computed(() =>
+  APPS_MENU_ITEMS.filter((m) => allModules.value.some((s) => s.id === m.id))
+);
+
+/* ---------- 常用服务 ---------- */
+interface ServiceItem {
+  icon: string;
+  label: string;
+  href: string;
+}
+
+const servicePool = computed<ServiceItem[]>(() => {
+  const pool: ServiceItem[] = APPS_QUICK_ACCESS.map((item) => ({ ...item }));
+  for (const section of allModules.value) {
+    for (const m of section.modules) {
+      if (!pool.some((p) => p.href === m.href)) {
+        pool.push({ href: m.href, label: m.title, icon: section.icon });
+      }
+    }
   }
-];
+  return pool;
+});
+
+const serviceClickCounts = ref<Record<string, number>>({});
+
+const visibleQuickAccess = computed<ServiceItem[]>(() => {
+  const visible = servicePool.value.filter((item) => hasMenuPerm(item.href));
+  const hasClicks = visible.some((item) => (serviceClickCounts.value[item.href] || 0) > 0);
+  if (!hasClicks) {
+    return visible.filter((item) => APPS_QUICK_ACCESS.some((q) => q.href === item.href)).slice(0, 6);
+  }
+  return [...visible]
+    .sort((a, b) => (serviceClickCounts.value[b.href] || 0) - (serviceClickCounts.value[a.href] || 0))
+    .slice(0, 6);
+});
+
+/* ---------- 滚动监听 + 侧栏联动 ---------- */
+const contentRef = ref<HTMLElement | null>(null);
+const sectionEls: Record<string, HTMLElement | null> = {};
+const activeMenu = ref(APPS_MENU_ITEMS[0].id);
+
+function setSectionRef(id: string, el: unknown) {
+  sectionEls[id] = (el as HTMLElement) || null;
+}
+
+function onScroll() {
+  const el = contentRef.value;
+  if (!el) return;
+  const scrollTop = el.scrollTop;
+  let current = APPS_MENU_ITEMS[0].id;
+  for (const section of allModules.value) {
+    const node = sectionEls[section.id];
+    if (node) {
+      const offsetTop = node.offsetTop - 100;
+      if (scrollTop >= offsetTop) current = section.id;
+    }
+  }
+  activeMenu.value = current;
+}
+
+function scrollToSection(sectionId: string) {
+  const el = sectionEls[sectionId];
+  const content = contentRef.value;
+  if (el && content) {
+    const offsetTop = el.offsetTop - 20;
+    content.scrollTo({ top: offsetTop, behavior: 'smooth' });
+  }
+  activeMenu.value = sectionId;
+}
+
+/* ---------- 点击 ---------- */
+function isExternal(href: string): boolean {
+  return href.startsWith('http');
+}
+
+function go(href: string) {
+  if (!href || href === '#') return;
+  if (isExternal(href)) {
+    window.open(href, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  router.push(href);
+}
+
+function onServiceClick(item: ServiceItem) {
+  recordServiceClick(item.href);
+  // YI Know 助手卡片（/portal/apps/ai/chat）在 Vue 无对话弹窗，落到 AI 落地页
+  const target = item.href === '/portal/apps/ai/chat' ? '/portal/apps/ai/landing' : item.href;
+  go(target);
+}
+
+function onModuleClick(module: AppsModuleItem) {
+  recordServiceClick(module.href);
+  if (module.href === '#') return;
+  // YI Know 助手卡片（/portal/apps/ai/chat）在 Vue 无对话弹窗，落到 AI 落地页
+  const target = module.href === '/portal/apps/ai/chat' ? '/portal/apps/ai/landing' : module.href;
+  go(target);
+}
+
+onMounted(async () => {
+  serviceClickCounts.value = getServiceClickCounts();
+  try {
+    const { me, subscriptionModules: subs } = await loadPortalAuth();
+    user.value = me?.user ?? null;
+    roles.value = me?.roles ?? [];
+    subscriptionModules.value = subs;
+    const active = resolveActiveRole(user.value?.id, roles.value);
+    activeRoleCode.value = active?.code;
+    const perms = active?.permissions as Record<string, unknown> | undefined;
+    menus.value = perms?.menus ?? null;
+  } finally {
+    authLoading.value = false;
+  }
+});
 </script>
 
 <style scoped>
-.apps-page { padding: 8px; }
-.page-title { font-size: 20px; font-weight: 700; margin: 0; }
-.page-sub { color: #909399; margin: 8px 0 20px; }
-.platform-card { margin-bottom: 16px; }
-.platform-header { display: flex; align-items: center; gap: 8px; }
-.platform-title { font-weight: 600; }
-.module-list { display: flex; flex-direction: column; gap: 4px; }
-.module-item {
+.apps-page {
+  min-height: calc(100vh - 56px);
+  background: #f5f7fa;
+}
+
+/* 常用服务栏 */
+.quick-bar {
+  position: sticky;
+  top: 56px;
+  z-index: 10;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.quick-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #606266;
-  font-size: 13px;
+  gap: 16px;
 }
-.module-item:hover {
-  background: #f5f7fa;
-  color: #409eff;
+.quick-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.quick-spark {
+  color: #f59e0b;
+}
+.quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+}
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f4f4f5;
+  font-size: 14px;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.quick-chip:hover {
+  background: rgba(64, 158, 255, 0.05);
+  color: var(--el-color-primary, #409eff);
+}
+
+/* 主体 */
+.apps-body {
+  display: flex;
+}
+.apps-aside {
+  display: none;
+  width: 224px;
+  flex-shrink: 0;
+  background: #fff;
+  min-height: calc(100vh - 56px - 56px);
+  position: sticky;
+  top: 112px;
+  align-self: flex-start;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+@media (min-width: 768px) {
+  .apps-aside {
+    display: block;
+  }
+}
+.aside-nav {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.aside-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  color: #6b7280;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.2s;
+}
+.aside-item:hover {
+  background: #f4f4f5;
+  color: #111827;
+}
+.aside-item.active {
+  background: var(--el-color-primary, #409eff);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+.aside-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aside-arrow {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 主内容 */
+.apps-main {
+  flex: 1;
+  padding: 16px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 56px - 56px);
+}
+.apps-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 256px;
+  color: #6b7280;
+  font-size: 14px;
+}
+.module-section {
+  margin-bottom: 20px;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.section-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.section-title-link {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+  text-decoration: none;
+}
+.section-title-link:hover {
+  color: var(--el-color-primary, #409eff);
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+.section-count {
+  font-size: 12px;
+  color: #6b7280;
+  background: #f4f4f5;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.module-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .module-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .module-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+@media (min-width: 1280px) {
+  .module-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.module-card {
+  position: relative;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 96px;
+}
+.module-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: rgba(64, 158, 255, 0.2);
+}
+.module-card-disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.module-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.3;
+  padding-right: 8px;
+}
+.module-card:not(.module-card-disabled):hover .module-title {
+  color: var(--el-color-primary, #409eff);
+}
+.module-ext {
+  color: #9ca3af;
+}
+.module-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.module-enter {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  color: var(--el-color-primary, #409eff);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.module-card:not(.module-card-disabled):hover .module-enter {
+  opacity: 1;
 }
 </style>
