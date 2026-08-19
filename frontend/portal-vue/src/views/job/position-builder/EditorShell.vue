@@ -28,8 +28,8 @@
           <el-icon><ArrowLeft /></el-icon>
           上一步
         </el-button>
-        <el-button v-if="canNext" type="primary" @click="emit('next')">
-          下一步
+        <el-button v-if="canNext" type="primary" :disabled="nextDisabled" @click="emit('next')">
+          {{ nextText }}
           <el-icon><ArrowRight /></el-icon>
         </el-button>
         <el-button v-else type="primary" @click="emit('submit')">
@@ -69,6 +69,10 @@ withDefaults(
     saveDisabled?: boolean;
     canPrev?: boolean;
     canNext?: boolean;
+    /** 下一步按钮文案（对齐 React EditorShell nextText，缺省「下一步」） */
+    nextText?: string;
+    /** 下一步按钮禁用（对齐 React EditorShell nextDisabled） */
+    nextDisabled?: boolean;
     submitText?: string;
     loadingText?: string;
     title?: string;
@@ -80,6 +84,8 @@ withDefaults(
     saveDisabled: false,
     canPrev: false,
     canNext: false,
+    nextText: '下一步',
+    nextDisabled: false,
     submitText: '完成配置',
     loadingText: '',
     title: '',
