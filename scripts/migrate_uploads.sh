@@ -211,7 +211,9 @@ echo "完成：移动 $moved 个文件，更新/跳过 $skipped 条记录，失�
 
 # 容器内应用以 appuser(uid=1000) 运行：宿主以 root 执行迁移创建的租户目录属主为 root，
 # 不修正则容器内新建文件失败（只读目录）。幂等：已属主正确的目录 chown 无副作用。
-if command -v chown >/dev/null 2>&1; then
+if $DRY_RUN; then
+  echo "[dry-run] 跳过 chown -R 1000:1000 $UPLOAD_DIR"
+elif command -v chown >/dev/null 2>&1; then
   chown -R 1000:1000 "$UPLOAD_DIR" 2>/dev/null && echo "已修正上传目录属主为 1000:1000（容器 appuser）" \
     || echo "警告：chown 1000:1000 失败，请手动执行：chown -R 1000:1000 $UPLOAD_DIR" >&2
 fi

@@ -1011,6 +1011,16 @@ BUILD_BACKEND=true
   [[ "$BACKEND_HASH" == "$(cat "$BUILD_CACHE/backend-hash")" ]] && \
   [[ -n "$(docker images -q "zhiyu-backend:$BACKEND_HASH" 2>/dev/null)" ]] && BUILD_BACKEND=false
 
+# spec 硬约束校验：与「是否有构建」解耦，无条件执行（秒级）。
+# 分层红线/AI 底座/migration 配对/spec 制品/ADR 索引/安全红线 对纯脚本、纯文档、
+# 纯前端改动同样适用；嵌在后端构建分支里会导致这些场景完全不校验。
+if [[ "$GATES_FLAG" == "true" ]]; then
+  log "spec 硬约束校验..."
+  (cd "$BUILD_ROOT" && ./scripts/spec-check.sh >/tmp/spec-check-deploy.log 2>&1) \
+    || { tail -30 /tmp/spec-check-deploy.log >&2; die "spec-check.sh 硬约束校验失败（完整输出: /tmp/spec-check-deploy.log）"; }
+  log "  spec 硬约束通过"
+fi
+
 if $BUILD_BACKEND; then
   log "构建后端"
   if [[ "$GATES_FLAG" == "true" ]]; then
@@ -1030,8 +1040,6 @@ if $BUILD_BACKEND; then
     else
       warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
     fi
-    # spec 硬约束（分层红线/AI 底座/migration 配对/spec 制品/ADR 索引/安全）
-    (cd "$BUILD_ROOT" && ./scripts/spec-check.sh) || die "spec-check.sh 硬约束校验失败"
   else
     log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
   fi
