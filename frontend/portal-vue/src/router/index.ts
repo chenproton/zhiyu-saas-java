@@ -223,6 +223,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/job/recommend.vue')
       },
       {
+        path: 'scene',
+        name: 'SceneList',
+        redirect: { path: '/scene/scenarios' }
+      },
+      {
         path: 'scene/scenarios',
         name: 'SceneScenarios',
         component: () => import('@/views/scene/scenarios.vue')
@@ -585,6 +590,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/affairs/programs.vue')
       },
       {
+        // React 深链 /affairs/programs/:id（编辑/新建页），Vue 用 /:id/edit；React 新建形态 id='new' 转 Vue 的 ?new=true
+        path: 'affairs/programs/:id',
+        redirect: (to) => {
+          const id = to.params.id as string;
+          const query = { ...(to.query as Record<string, string | null>) };
+          if (id === 'new') query.new = 'true';
+          return { path: `/affairs/programs/${id}/edit`, query };
+        }
+      },
+      {
         path: 'affairs/programs/:id/edit',
         name: 'AffairsProgramEdit',
         component: () => import('@/views/affairs/program-edit.vue')
@@ -671,6 +686,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/evaluation/exams.vue')
       },
       {
+        // React 深链 /evaluation/exams/:id（组卷/编辑页），Vue 用 /:id/edit，补别名互通
+        path: 'evaluation/exams/:id',
+        redirect: (to) => ({ path: `/evaluation/exams/${to.params.id}/edit`, query: to.query })
+      },
+      {
         path: 'evaluation/exams/:id/edit',
         name: 'ExamEdit',
         component: () => import('@/views/evaluation/exam-edit.vue')
@@ -679,6 +699,11 @@ const routes: RouteRecordRaw[] = [
         path: 'evaluation/question-banks',
         name: 'QuestionBanks',
         component: () => import('@/views/evaluation/question-banks.vue')
+      },
+      {
+        // React 深链 /evaluation/question-banks/:id（题库详情），Vue 用 /:id/edit，补别名互通
+        path: 'evaluation/question-banks/:id',
+        redirect: (to) => ({ path: `/evaluation/question-banks/${to.params.id}/edit`, query: to.query })
       },
       {
         path: 'evaluation/question-banks/:id/edit',
@@ -1200,6 +1225,11 @@ const routes: RouteRecordRaw[] = [
         path: 'import-export',
         name: 'ImportExport',
         component: () => import('@/views/import-export.vue')
+      },
+      {
+        // 404 兜底（对齐 React not-found）：未知路径重定向到门户首页
+        path: ':pathMatch(.*)*',
+        redirect: { path: '/portal' }
       }
     ]
   }

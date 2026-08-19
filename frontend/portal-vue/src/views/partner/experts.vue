@@ -138,7 +138,7 @@
           <h2 class="page-title">专家资源</h2>
           <p class="page-sub">维护企业专家档案，档案将共享给引入本企业的合作学校（学校端只读）。</p>
         </div>
-        <el-button type="primary" @click="router.push('/partner/experts/new')">新建专家</el-button>
+        <el-button type="primary" @click="router.push('/partner/experts/new/edit')">新建专家</el-button>
       </div>
     </div>
 

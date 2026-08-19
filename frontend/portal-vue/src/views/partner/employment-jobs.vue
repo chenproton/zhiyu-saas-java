@@ -6,7 +6,7 @@
           <h2 class="page-title">就业岗位</h2>
           <p class="page-sub">录入本企业岗位，可挂靠就业项目或作为独立岗位；仅绑定项目并发布后才会出现在学校供需大厅。</p>
         </div>
-        <el-button type="primary" @click="router.push('/partner/employment-jobs/new')">新建岗位</el-button>
+        <el-button type="primary" @click="router.push('/partner/employment-jobs/new/edit')">新建岗位</el-button>
       </div>
     </div>
 
