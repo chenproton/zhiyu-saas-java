@@ -36,7 +36,8 @@ while [[ $# -gt 0 ]]; do
     --gates) GATES_FLAG=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
-      echo "用法: $0 --branch <分支名> [--clean] [--force] [--gates] [--skip-merge]"; exit 0 ;;
+      echo "用法: $0 --branch <分支名> [--clean] [--force] [--gates] [--skip-merge]"
+      echo "  --force 仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
@@ -132,9 +133,11 @@ pkg_install() {
   is_root || return 0
   $pkg_updated || { apt-get update -qq 2>/dev/null || yum makecache -q 2>/dev/null || true; pkg_updated=true; }
   if command -v apt-get >/dev/null 2>&1; then
-    # 锁定内核元包，避免 apt install 其他包时顺带升级内核导致需要重启
-    apt-mark hold linux-image-generic linux-headers-generic 2>/dev/null || true
+    # 临时锁定内核元包，避免 apt install 其他包时顺带升级内核导致需要重启；
+    # 装完立即解锁——原来只 hold 不 unhold，等于永久冻结内核安全更新
+    apt-mark hold linux-image-generic linux-headers-generic >/dev/null 2>&1 || true
     apt-get install -y -qq "$@" 2>/dev/null || true
+    apt-mark unhold linux-image-generic linux-headers-generic >/dev/null 2>&1 || true
   elif command -v yum >/dev/null 2>&1; then yum install -y "$@" 2>/dev/null || true
   fi
 }
@@ -275,7 +278,9 @@ normalize_migration_versions() {
 run_migrations() {
   local backend_dir="$1" migrate_url="$2"
   normalize_migration_versions "$backend_dir" "$migrate_url"
-  if (cd "$backend_dir" && DATABASE_URL="$migrate_url" go run ./cmd/migrate/main.go up); then
+  # 复用与后端构建同一份 GOCACHE：原来用默认缓存目录，每次部署多两轮全量编译（与前端 3.4G 峰值同机竞争）
+  if (cd "$backend_dir" && GOCACHE="${BUILD_CACHE:-/tmp}/go-cache" \
+      DATABASE_URL="$migrate_url" go run ./cmd/migrate/main.go up); then
     return 0
   fi
 
@@ -718,8 +723,11 @@ fi
 # 端口冲突检测与自动回退
 # ════════════════════════════════════════════
 NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026" "true")
-BACKEND_PORT=$(resolve_port "BACKEND_PORT" "${BACKEND_PORT:-8080}" "8081")
-EDU_PORT=$(resolve_port "EDU_PORT" "${EDU_PORT:-3020}" "3021")
+# BACKEND_PORT / EDU_PORT 不再做宿主端口探测：backend/frontend 容器已不发布宿主端口
+# （deploy/docker-compose.yml 明说），网关容器里是容器名直连 zhiyu-backend:8080 / zhiyu-edu:3020。
+# 继续探测只会在宿主 8080 被占用时把 .env 改成 8081，制造「配置说 8081、实际跑 8080」的假象。
+BACKEND_PORT="${BACKEND_PORT:-8080}"
+EDU_PORT="${EDU_PORT:-3020}"
 GO_NGINX_PORT=$(resolve_port "GO_NGINX_PORT" "${GO_NGINX_PORT:-8084}" "8085")
 POSTGRES_HOST_PORT=$(resolve_port "POSTGRES_HOST_PORT" "${POSTGRES_HOST_PORT:-5433}" "5434")
 KKFILEVIEW_HOST_PORT=$(resolve_port "KKFILEVIEW_HOST_PORT" "${KKFILEVIEW_HOST_PORT:-8012}" "8013")
@@ -1268,7 +1276,9 @@ if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   touch "$DEPLOY_DIR/.migration-done"
 
   log "初始化种子数据..."
-  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" go run ./cmd/seed/main.go) || warn "种子初始化失败"
+  (cd "$BACKEND_DIR" && GOCACHE="${BUILD_CACHE:-/tmp}/go-cache" \
+    DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" \
+    go run ./cmd/seed/main.go) || warn "种子初始化失败"
   # 不回显密码（AGENTS.md 3.2：密钥禁止落日志）
   log "  运营方租户: platform / 管理员: admin（密码见 .env 的 SEED_ADMIN_PASSWORD）"
 else
@@ -1405,13 +1415,18 @@ EXITED_OWN=$(docker ps -aq --filter status=exited \
   --filter "label=com.docker.compose.project=${COMPOSE_PROJECT:-zhiyu-saas}" 2>/dev/null || true)
 [[ -n "$EXITED_OWN" ]] && docker rm -f $EXITED_OWN >/dev/null 2>&1 || true
 BUILD_CACHE_LIMIT="${BUILD_CACHE_LIMIT_GB:-10}GB"
+CACHE_BEFORE=$(docker buildx du 2>/dev/null | tail -1 | awk '{print $2}' || true)
 if docker builder prune --help 2>/dev/null | grep -q -- '--max-used-space'; then
-  docker builder prune -f --max-used-space "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || true
+  docker builder prune -f --max-used-space "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || warn "构建缓存裁剪失败（--max-used-space）"
 elif docker builder prune --help 2>/dev/null | grep -q -- '--keep-storage'; then
-  docker builder prune -f --keep-storage "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || true
+  docker builder prune -f --keep-storage "$BUILD_CACHE_LIMIT" >/dev/null 2>&1 || warn "构建缓存裁剪失败（--keep-storage）"
 else
-  docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
+  docker builder prune -f --filter until=72h >/dev/null 2>&1 || warn "构建缓存裁剪失败（until=72h）"
 fi
+# 打印前后用量：原来结果被完全吞掉，本机实测长期停在 12.77GB（阈值 10GB）也无人知晓
+CACHE_AFTER=$(docker buildx du 2>/dev/null | tail -1 | awk '{print $2}' || true)
+[[ -n "${CACHE_BEFORE:-}" || -n "${CACHE_AFTER:-}" ]] && \
+  log "构建缓存: ${CACHE_BEFORE:-?} → ${CACHE_AFTER:-?}（阈值 $BUILD_CACHE_LIMIT）" || true
 # 清理悬空镜像（<none>），不影响在用镜像。加 until 过滤：裸 prune 是全宿主范围，
 # 会把其他栈（如 Java 栈 zhiyu-java-backend:latest 重建后变悬空的上一版）立刻清掉，
 # 导致那些栈失去回滚镜像；只清 24h 前的悬空层，既释放磁盘又保住刚构建的版本。
@@ -1579,8 +1594,12 @@ if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
     log "✅ 已合并"
   elif git -C "$MERGE_TREE" merge origin/master --no-edit 2>&1 && \
        git -C "$MERGE_TREE" push origin "HEAD:refs/heads/master" 2>&1; then
-    # origin/master 在构建期间被其他 Agent 推进 → 并入最新 master 后重推
+    # origin/master 在构建期间被其他 Agent 推进 → 并入最新 master 后重推。
+    # 注意：这个合并结果**未经本次构建与健康检查**（线上跑的是合并前的镜像），
+    # 因此必须显式提示再跑一次部署，避免 master 与线上长期不一致。
     log "✅ 已合并（并入构建期间他人推进的 master）"
+    warn "master 现含未经本次构建验证的合并提交（线上镜像为合并前版本）"
+    warn "  建议立即再执行一次 ./deploy.sh 以让线上与 master 对齐"
   else
     git -C "$MERGE_TREE" merge --abort 2>/dev/null || true
     warn "自动合并失败，分支代码已部署但未合并。请人工处理："
