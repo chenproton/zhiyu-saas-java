@@ -608,9 +608,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "BUILD_CACHE_LIMIT_GB=${BUILD_CACHE_LIMIT_GB:-10}"
     } >> "$ENV_FILE"
     chmod 600 "$ENV_FILE"
-    log "已生成 .env（管理员: admin / admin123）"
+    log "已生成 .env（权限 600；管理员账号 admin，密码见其中 SEED_ADMIN_PASSWORD）"
   fi
 fi
+# 无条件收紧 .env 权限：含 DATABASE_URL 口令 / JWT_SECRET / AI_CONFIG_SECRET，
+# 历史遗留或人工编辑过的 .env 可能是 0644（全局可读），仅在首次生成分支里 chmod 600 不够。
+chmod 600 "$ENV_FILE" 2>/dev/null || true
 set -a; source "$ENV_FILE"; set +a
 
 # 旧 .env 若未配置 ENABLE_KKFILEVIEW，默认启用（预览功能依赖 kkFileView）
@@ -828,7 +831,9 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   [[ "$CLEAN_BUILD" == "true" ]] && { git -C "$ORIGINAL_ROOT" worktree remove --force "$BUILD_TREE" 2>/dev/null || true; rm -rf "$BUILD_TREE"; }
 
   if [[ -e "$BUILD_TREE/.git" ]]; then
-    git -C "$BUILD_TREE" checkout --detach --force origin/master 2>/dev/null || true
+    # 失败不能吞：否则会在残留的旧 HEAD 上继续构建，却宣称部署了目标分支/最新 master
+    git -C "$BUILD_TREE" checkout --detach --force origin/master 2>/dev/null \
+      || die "构建 worktree 切换到 origin/master 失败（可用 --clean 重建 $BUILD_TREE）"
   else
     [[ -d "$BUILD_TREE" ]] && rm -rf "$BUILD_TREE"
     # 清理失效的 worktree 注册（目录被手动删除但 .git/worktrees 仍登记时 add 会报
@@ -842,7 +847,8 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   if [[ -n "$BRANCH_NAME" ]]; then
     git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
   fi
-  [[ -f "$ORIGINAL_ROOT/.env" ]] && cp "$ORIGINAL_ROOT/.env" "$BUILD_TREE/.env"
+  # 构建树在 /tmp（世界可读目录），密钥文件必须 600，故用 install -m 而非裸 cp
+  [[ -f "$ORIGINAL_ROOT/.env" ]] && install -m 600 "$ORIGINAL_ROOT/.env" "$BUILD_TREE/.env"
   BUILD_ROOT="$BUILD_TREE"
 fi
 
@@ -1045,23 +1051,35 @@ if $BUILD_FRONTEND; then
 
   # Vite 纯静态 SPA：build 产出 dist/（index.html + 构建资产 + public 静态资源），
   # 由 nginx 容器托管；API 走边缘 nginx 反代，容器内无需代理（原 Next rewrites 已废弃）。
-  # 内存说明：该应用 Vite build 峰值需 ~5GB；若部署环境进程被 cgroup 限内存（如
-  # dsh-web.service 4GB 限制），直接用 pnpm 构建会被 OOM 击杀。systemd 可用时用
-  # systemd-run 瞬态 scope 提额（MemoryMax=8G）再执行（必须 --wait，否则立即返回、
-  # dist 未就绪即进入 docker 构建）；无 systemd 时回退直接构建。
-  # 注意：必须加 --slice=system.slice 逃出父 cgroup（dsh-web.service 4GB 上限），
-  # 否则 MemoryMax=8G 被子 cgroup 的 memory.max 钳制，仍然 4GB OOM。
+  # 内存说明：该应用 Vite build 未限堆时峰值 anon-rss 达 3.1~3.4GB。两层保护：
+  # ① systemd-run 瞬态 scope 提额（MemoryMax=8G）绕开父 cgroup（dsh-web.service 4GB）钳制，
+  #    必须加 --slice=system.slice 才能逃出父 cgroup，且必须 --wait（否则立即返回、dist 未就绪就进 docker build）；
+  # ② NODE_OPTIONS 限 V8 老生代（默认 2560MB）：整机仅 8GB 且常驻服务已占 2~3GB，
+  #    不限堆时 V8 会推迟 GC 把峰值顶到 3.4GB，与并发构建/门禁叠加即触发内核 global OOM
+  #    （dmesg: constraint=CONSTRAINT_NONE, global_oom；连 dsh-web.service 一起被杀过）。
+  #    需要更快构建可用 EDU_BUILD_HEAP_MB 调大（内存充足的机器上如 4096）。
+  # 注意：此处在顶层 if 块内（非函数），不能用 local
+  EDU_BUILD_HEAP="${EDU_BUILD_HEAP_MB:-2560}"
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
-    systemd-run --collect --wait --slice=system.slice --property=MemoryMax=8G -- bash -c \
+    systemd-run --collect --wait --slice=system.slice --property=MemoryMax=8G \
+      --setenv="NODE_OPTIONS=--max-old-space-size=$EDU_BUILD_HEAP" -- bash -c \
       "cd '$BUILD_ROOT' && NODE_ENV=production pnpm --filter @zhiyu/edu build" \
-      >"$DEPLOY_DIR/.build-frontend-pnpm.log" 2>&1 || die "前端构建失败（日志: .build-frontend-pnpm.log）"
+      >"$DEPLOY_DIR/.build-frontend-pnpm.log" 2>&1 || {
+        tail -n 20 "$DEPLOY_DIR/.build-frontend-pnpm.log" >&2 || true
+        die "前端构建失败（日志: $DEPLOY_DIR/.build-frontend-pnpm.log；若为 oom-kill 见上方 Memory peak，可调小 EDU_BUILD_HEAP_MB 或错峰构建）"
+      }
   else
     (cd "$BUILD_ROOT" && NODE_ENV=production \
+      NODE_OPTIONS="--max-old-space-size=$EDU_BUILD_HEAP" \
       pnpm --filter @zhiyu/edu build) || die "前端构建失败"
   fi
 
   BUILD_LOG="$DEPLOY_DIR/.build-frontend.log"
-  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR" >"$BUILD_LOG" 2>&1
+  # docker build 失败时先把日志尾巴打出来，否则 set -e 直接退出、终端上看不到任何原因
+  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR" >"$BUILD_LOG" 2>&1 || {
+    tail -n 30 "$BUILD_LOG" >&2 || true
+    die "前端镜像构建失败（日志: $BUILD_LOG）"
+  }
   tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-edu:$IMAGE_TAG" "zhiyu-edu:$FRONTEND_HASH"
   echo "$FRONTEND_HASH" > "$BUILD_CACHE/frontend-hash"
@@ -1135,7 +1153,8 @@ if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
 
   log "初始化种子数据..."
   (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" go run ./cmd/seed/main.go) || warn "种子初始化失败"
-  log "  运营方租户: platform / 管理员: admin / ${SEED_ADMIN_PASSWORD:-admin123}"
+  # 不回显密码（AGENTS.md 3.2：密钥禁止落日志）
+  log "  运营方租户: platform / 管理员: admin（密码见 .env 的 SEED_ADMIN_PASSWORD）"
 else
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
 fi
@@ -1148,12 +1167,16 @@ for svc in backend frontend nginx; do
   for i in $(seq 1 45); do
     S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
     [[ "$S" == "healthy" ]] && { log "  $svc healthy"; found=true; break; }
-    # 无 healthcheck 的服务（如 nginx 容器）Health 为空，用容器状态判断
     STATUS=$(compose ps "$svc" --format '{{.Status}}' 2>/dev/null || echo "")
-    [[ "$STATUS" == Up* ]] && { log "  $svc running（无 healthcheck，视为就绪）"; found=true; break; }
+    # 兜底仅适用于「确实没有 healthcheck」的服务（Health 为空且状态不含 health 字样）：
+    # 否则 "Up 3s (health: starting)" 与 "Up 30s (unhealthy)" 都匹配 Up*，
+    # 带 healthcheck 的 backend/frontend 未健康就被判就绪 → 坏版本会被当成功并合入 master。
+    if [[ -z "$S" && "$STATUS" == Up* && "$STATUS" != *health* ]]; then
+      log "  $svc running（无 healthcheck，视为就绪）"; found=true; break
+    fi
     sleep 2
   done
-  $found || { warn "$svc 未就绪"; OK=false; }
+  $found || { warn "$svc 未就绪（$(compose ps "$svc" --format '{{.Status}}' 2>/dev/null)）"; OK=false; }
 done
 
 if ! $OK; then
@@ -1376,7 +1399,7 @@ log "✨ 部署完成！"
 echo "   外部入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
 echo "   nginx 端口: ${NGINX_PORT}"
 echo "   服务网关容器: http://localhost:${GO_NGINX_PORT}（zhiyu-nginx，业务容器不暴露宿主端口）"
-echo "   管理: admin / ${SEED_ADMIN_PASSWORD:-admin123}  (SaaS 登录)"
+echo "   管理: admin（密码见部署机 .env 的 SEED_ADMIN_PASSWORD）  (SaaS 登录)"
 echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
 
 # 旧布局上传文件检测：新版 /uploads/{tenantID}/{filename} 要求文件位于租户子目录。
