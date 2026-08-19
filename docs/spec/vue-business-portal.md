@@ -136,9 +136,16 @@
 ## 8. 部署与验证
 
 ### 8.1 部署（已确认的 URL 布局）
-- Java 部署**直连 java-nginx 8083**（非边缘网关 `/java/` 剥离路径；实测 `/java/portal`→200、`/api/v1/auth/me`→401）。
+- Java 部署**经宿主 nginx :80 统一入口**：`location /java/` → `127.0.0.1:8083`（java-nginx，不剥离 `/java` 前缀）。
+  直连 `8083` 保留为调试/健康检查通道（java-site.conf 同时保留 `location /api/` 与 `location /java/api/`）。
 - 前端：Vue 门户 base=`/java/portal/`，java-nginx `location /java/portal/` → 静态 `dist/`（挂载 `/usr/share/nginx/html/java/portal`）+ `try_files … /java/portal/index.html` SPA fallback。
-- API：`VITE_API_BASE=/api/v1`（绝对路径），java-nginx `location /api/` → `java-backend:8080`。
+- API：`VITE_API_BASE=/java/api/v1`（统一入口下必须带 `/java` 前缀）。链路：
+  边缘 `location /java/` → java-nginx `location /java/api/` → `java-backend:8080/api/`（最终后端路径 `/api/v1/...`）。
+  **不可用 `/api/v1`**：同域下会被边缘 nginx 路由到 Go 后端（8084），Java 门户请求会整体打错栈。
+- 登录态隔离：同域 localStorage 不按路径隔离，故 `/java/` 下 token key 统一加 `-java` 后缀
+  （`frontend/portal-vue/src/api/http.ts`），与 Go 门户互不干扰。
+- 上传件：两栈共享 `zhiyu-saas_uploads_data` 卷，`/uploads/` 由 Go 网关统一服务；
+  Java 镜像以 uid 1000（与 Go 侧 `appuser` 一致）运行，避免 root 建目录导致对方无法写入。
 - 管理端：`/java/` 其余路径暂回落到旧 Next.js `java-edu`（`location /`），plus-ui 管理端后续接入。
 - `deploy-java.sh`：新增 `frontend/portal-vue` 的 `pnpm install + pnpm build` 步骤；`docker-compose-java.yml` java-nginx 挂载 `../../frontend/portal-vue/dist`。
 - 渐进切换期：`/java/portal`（无斜杠）仍走 Next.js，`/java/portal/`（有斜杠）走 Vue；Phase 3 全量完成后统一重定向并移除 Next.js。

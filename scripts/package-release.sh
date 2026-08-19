@@ -66,16 +66,17 @@ done
 log "编译迁移/种子工具（linux/amd64 静态二进制）..."
 rm -rf "$PKG_DIR"
 mkdir -p "$PKG_DIR"/{images,debs,bin,migrations,deploy}
-(cd "$ROOT/backend" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+# 注意：Go 后端已迁到 backend/go/（脚本此前仍写 $ROOT/backend，离线包必然构建失败）
+(cd "$ROOT/backend/go" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -mod=vendor -ldflags="-s -w" -o "$PKG_DIR/bin/migrate" ./cmd/migrate/main.go)
-(cd "$ROOT/backend" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+(cd "$ROOT/backend/go" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -mod=vendor -ldflags="-s -w" -o "$PKG_DIR/bin/seed" ./cmd/seed/main.go)
 
 # ── 2. 构建后端镜像 ──
 log "构建后端镜像 zhiyu-backend:$VERSION ..."
 TMPCTX=$(mktemp -d)
 trap 'rm -rf "$BUILD_DIR" "$TMPCTX"' EXIT
-(cd "$ROOT/backend" && CGO_ENABLED=0 go build -mod=vendor -ldflags="-s -w" -o "$TMPCTX/server" ./cmd/server/main.go)
+(cd "$ROOT/backend/go" && CGO_ENABLED=0 go build -mod=vendor -ldflags="-s -w" -o "$TMPCTX/server" ./cmd/server/main.go)
 mkdir -p "$TMPCTX/migrations"
 rsync -a --delete "$ROOT/backend/go/migrations/" "$TMPCTX/migrations/"
 cp "$ROOT/backend/go/Dockerfile" "$TMPCTX/Dockerfile"
@@ -96,15 +97,19 @@ rm -rf "$BUILD_DIR/frontend/edu/public/image-editor"
 mkdir -p "$BUILD_DIR/frontend/edu/public/image-editor"
 rsync -a --delete "$OFFLINE_DIR/image-editor/" "$BUILD_DIR/frontend/edu/public/image-editor/"
 
-(cd "$BUILD_DIR" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-  pnpm --filter @zhiyu/edu build) || die "前端构建失败"
+# 前端已是 Vite 纯静态 SPA（Next.js 已下线）：产物在 frontend/edu/dist，
+# 由 nginx 镜像托管；不再有 .next/standalone。.env 里的 VITE_* 必须在构建期注入。
+if [[ -f "$ROOT/.env" ]]; then
+  set -a; . "$ROOT/.env"; set +a
+  log "  已加载 .env 供 VITE_* 注入（离线包产物内固化站点地址/跨平台链接）"
+else
+  warn "未找到 $ROOT/.env：VITE_* 将取默认值（移动端二维码与跨平台链接会回落）"
+fi
+(cd "$BUILD_DIR" && NODE_ENV=production pnpm --filter @zhiyu/edu build) || die "前端构建失败"
 
 EDU_DIR="$BUILD_DIR/frontend/edu"
-SD="$EDU_DIR/.next/standalone/frontend/edu"
-[[ -d "$EDU_DIR/.next/server" ]] && { mkdir -p "$SD/.next/server"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"; }
-[[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
-[[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
-docker build -t "zhiyu-edu:$VERSION" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" 2>&1 | tail -3
+[[ -d "$EDU_DIR/dist" ]] || die "前端产物缺失：$EDU_DIR/dist（Vite build 未生成）"
+docker build -t "zhiyu-edu:$VERSION" -f "$EDU_DIR/Dockerfile" "$EDU_DIR" 2>&1 | tail -3
 rm -rf "$TMPCTX"
 
 # ── 4. 导出镜像 ──
@@ -119,6 +124,8 @@ cp "$OFFLINE_DIR"/debs/*.deb "$PKG_DIR/debs/" 2>/dev/null || true
 rsync -a "$ROOT/backend/go/migrations/" "$PKG_DIR/migrations/"
 cp "$ROOT/deploy/docker-compose.yml" "$PKG_DIR/deploy/"
 cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
+# 容器网关配置必须一起带：compose 的 nginx 服务挂载 ./nginx-container/conf.d，缺失则容器起不来
+cp -r "$ROOT/deploy/nginx-container" "$PKG_DIR/deploy/nginx-container"
 cp "$ROOT/deploy/release/install.sh" "$ROOT/deploy/release/start.sh" \
    "$ROOT/deploy/release/stop.sh" "$ROOT/deploy/release/README.md" "$PKG_DIR/"
 echo "$VERSION" > "$PKG_DIR/VERSION"

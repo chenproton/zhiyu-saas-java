@@ -173,6 +173,18 @@ health_check() {
   [[ "$code" == "200" ]] || die "前端未就绪（/java/portal/ HTTP $code）：docker logs zhiyu-java-nginx --tail 50"
   log "前端 /java/portal/ HTTP $code"
 
+  # 统一入口自检：门户前端 VITE_API_BASE=/java/api/v1，必须经宿主 nginx :80 可达，
+  # 否则「直连 8083 能用、正式入口打不开」的问题只有用户会先发现
+  local entry_code api_code
+  entry_code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1/java/portal/" || echo 000)
+  api_code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1/java/api/v1/auth/me" || echo 000)
+  if [[ "$entry_code" == "200" && ( "$api_code" == "401" || "$api_code" == "200" ) ]]; then
+    log "统一入口自检通过（:80/java/portal/ $entry_code，:80/java/api/v1 $api_code）"
+  else
+    warn "统一入口自检未通过（:80/java/portal/ $entry_code，:80/java/api/v1 $api_code）——"
+    warn "  请检查宿主 nginx 的 location /java/ 是否代理到 127.0.0.1:$WEB_PORT"
+  fi
+
   # 登录冒烟（zhiyu admin 账号，密码从 zhiyu-saas/.env 解析）
   local seed_pw login
   seed_pw=$(grep -E '^SEED_ADMIN_PASSWORD=' "$ZHIYU_ENV_FILE" | head -1 | cut -d= -f2- || true)
@@ -195,19 +207,33 @@ init_db_schema() {
     warn "未检测到 zhiyu-postgres（Go 栈未部署？），跳过框架表初始化——java-backend 启动将依赖该库"
     return 0
   fi
-  if docker exec zhiyu-postgres psql -U zhiyu_saas -d zhiyu-saas -tAc \
-      "SELECT to_regclass('public.sys_oss_config')" 2>/dev/null | grep -q sys_oss_config; then
-    log "数据库框架表已存在，跳过初始化"
-    return 0
-  fi
-  log "初始化 RuoYi 框架表（postgres_ry_vue/job/workflow/ai）..."
+  log "检查 RuoYi 框架表（逐文件幂等初始化）..."
   local sql_dir="$REPO_DIR/backend/java/script/sql/postgres"
-  for f in postgres_ry_vue postgres_ry_job postgres_ry_workflow postgres_ry_ai; do
-    docker exec -i zhiyu-postgres psql -U zhiyu_saas -d zhiyu-saas -v ON_ERROR_STOP=1 \
-      < "$sql_dir/$f.sql" > "$LOG_DIR/java-init-$f.log" 2>&1 \
-      || warn "初始化 $f.sql 失败（多为表已存在，详见 logs/java-init-$f.log）"
+  # 逐文件门闩 + 单事务：这些 SQL 里有裸 CREATE TABLE 与数百条无 ON CONFLICT 的 INSERT，
+  # 重复执行会重复插入字典/菜单数据；用「代表表是否存在」判断该文件是否已应用，
+  # --single-transaction 保证半途失败整体回滚，不会在共享库里留半套表。
+  local applied=0 skipped=0
+  local pair
+  for pair in "postgres_ry_vue:sys_social" "postgres_ry_job:sj_namespace" \
+              "postgres_ry_workflow:flow_definition" "postgres_ry_ai:sai_user"; do
+    local f="${pair%%:*}" probe="${pair##*:}"
+    if docker exec zhiyu-postgres psql -U zhiyu_saas -d zhiyu-saas -tAc \
+        "SELECT to_regclass('public.$probe')" 2>/dev/null | grep -q "$probe"; then
+      skipped=$((skipped + 1))
+      continue
+    fi
+    [[ -f "$sql_dir/$f.sql" ]] || { warn "缺少 $f.sql，跳过"; continue; }
+    log "  应用 $f.sql（代表表 $probe 不存在）..."
+    if docker exec -i zhiyu-postgres psql -U zhiyu_saas -d zhiyu-saas \
+         -v ON_ERROR_STOP=1 --single-transaction \
+         < "$sql_dir/$f.sql" > "$LOG_DIR/java-init-$f.log" 2>&1; then
+      applied=$((applied + 1))
+    else
+      warn "初始化 $f.sql 失败（事务已回滚，详见 logs/java-init-$f.log）"
+      tail -5 "$LOG_DIR/java-init-$f.log" >&2 || true
+    fi
   done
-  log "框架表初始化完成"
+  log "框架表初始化完成（新应用 $applied 个文件，已存在跳过 $skipped 个）"
 }
 
 # ---------- 主流程 ----------

@@ -1,6 +1,6 @@
 # zhiyu-saas Java 版部署编排（Go→Java 迁移）
 # - PostgreSQL：join 线上 Go 版网络 zhiyu-saas_zhiyu，按容器名 zhiyu-postgres:5432 直连（共用同一库）
-# - Redis：自带 java-redis 容器（无状态缓存，密码 ruoyi123）
+# - Redis：自带 java-redis 容器（无状态缓存；口令取 ZHIYU_REDIS_PASSWORD，未设置时回退 ruoyi123）
 # - 独立网络 zhiyu-java，不干扰线上容器
 services:
   java-backend:
@@ -16,7 +16,7 @@ services:
       ZHIYU_DB_PASSWORD: ${ZHIYU_DB_PASSWORD:?请设置 ZHIYU_DB_PASSWORD}
       ZHIYU_REDIS_HOST: java-redis
       ZHIYU_REDIS_PORT: "6379"
-      ZHIYU_REDIS_PASSWORD: ruoyi123
+      ZHIYU_REDIS_PASSWORD: ${ZHIYU_REDIS_PASSWORD:-ruoyi123}
       # 文件资产与 Go 版共享同一上传卷（业务数据对齐）
       ZHIYU_UPLOAD_DIR: /opt/zhiyu-saas/uploads
     volumes:
@@ -34,7 +34,7 @@ services:
     image: redis:7-alpine
     container_name: zhiyu-java-redis-compose
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "ruoyi123"]
+    command: ["redis-server", "--requirepass", "${ZHIYU_REDIS_PASSWORD:-ruoyi123}"]
     networks:
       - zhiyu-java
     logging:
