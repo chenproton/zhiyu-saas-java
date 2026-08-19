@@ -928,7 +928,8 @@ export function ResourceSelector({
             {t('添加课程资源')}
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+        {/* 勾选即时同步给父级表单，关闭不会丢内容 → 不需要未保存守卫 */}
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto" unsavedGuard={false}>
           <DialogHeader>
             <DialogTitle>{t('添加课程资源')}</DialogTitle>
             <DialogDescription>{t('从资源库中选择或上传新资源')}</DialogDescription>
