@@ -9,29 +9,29 @@
         @update:model-value="(v: string) => emit('change', { name: v })"
       />
       <el-tag
-        v-for="kpId in props.knowledgePointIds || []"
-        :key="`kp-${kpId}`"
+        v-for="kp in boundKnowledgePoints"
+        :key="`kp-${kp.id}`"
         size="small"
         closable
         disable-transitions
         class="kp-tag"
-        :title="kpName(kpId)"
-        @close="removeKp(kpId)"
+        :title="kp.name"
+        @close="removeKp(kp.id)"
       >
-        {{ kpName(kpId) }}
+        {{ kp.name }}
       </el-tag>
       <el-tag
-        v-for="abId in props.abilityPointIds || []"
-        :key="`ab-${abId}`"
+        v-for="ab in boundAbilityPoints"
+        :key="`ab-${ab.id}`"
         size="small"
         closable
         disable-transitions
         type="warning"
         class="ab-tag"
-        :title="abName(abId)"
-        @close="removeAb(abId)"
+        :title="ab.name"
+        @close="removeAb(ab.id)"
       >
-        {{ abName(abId) }}
+        {{ ab.name }}
       </el-tag>
     </div>
     <div class="link-row">
@@ -48,6 +48,8 @@
  * 打开知识点/能力点关联弹窗。Vue 侧用 el-input + el-tag 组合替代 contentEditable 富文本混排，
  * 数据结构与回调语义完全一致（name / knowledgePointIds / abilityPointIds）。
  */
+import { computed } from 'vue';
+
 const props = defineProps<{
   text: string;
   knowledgePointIds?: string[];
@@ -73,6 +75,19 @@ function kpName(id: string): string {
 function abName(id: string): string {
   return props.abilityPoints.find((a) => a.id === id)?.name || id;
 }
+
+// 与 React MixedTagEditor 一致：池中查不到的 id 不渲染标签（数据仍保留在配置里）
+const boundKnowledgePoints = computed(() =>
+  (props.knowledgePointIds || [])
+    .map((id) => props.knowledgePoints.find((k) => k.id === id))
+    .filter(Boolean) as { id: string; name: string }[]
+);
+
+const boundAbilityPoints = computed(() =>
+  (props.abilityPointIds || [])
+    .map((id) => props.abilityPoints.find((a) => a.id === id))
+    .filter(Boolean) as { id: string; name: string }[]
+);
 
 function removeKp(id: string) {
   emit('change', { knowledgePointIds: (props.knowledgePointIds || []).filter((x) => x !== id) });
