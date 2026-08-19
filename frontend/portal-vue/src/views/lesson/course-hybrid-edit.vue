@@ -39,15 +39,15 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="课程简介">
-                <el-input v-model="courseForm.detailedDescription" type="textarea" :rows="10" placeholder="请输入课程简介..." />
-                <div class="pdf-row">
-                  <template v-if="courseDescriptionPdf">
-                    <el-tag size="small" type="info" closable @close="courseDescriptionPdf = null">{{ pdfFileName() }}</el-tag>
-                    <el-link type="primary" :href="courseDescriptionPdf" target="_blank" :underline="false" size="small">预览 PDF</el-link>
-                  </template>
-                  <el-button size="small" @click="pdfInputRef?.click()">上传 PDF 附件</el-button>
-                  <input ref="pdfInputRef" type="file" accept="application/pdf" class="hidden-input" @change="onPdfFile" />
-                </div>
+                <!-- 对齐 React RichTextEditor（value/onChange + pdfUrl/onPdfChange），复用门户 description-editor -->
+                <DescriptionEditor
+                  :value="courseForm.detailedDescription"
+                  :pdf-url="courseDescriptionPdf"
+                  :min-height="280"
+                  placeholder="请输入课程简介..."
+                  @update:value="courseForm.detailedDescription = $event"
+                  @update:pdf-url="courseDescriptionPdf = $event"
+                />
               </el-form-item>
             </el-form>
           </div>
@@ -82,13 +82,13 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="关联能力点（用于岗位能力汇聚）">
-                <div class="ability-area">
-                  <div class="ability-tags">
-                    <el-tag v-for="ap in abilityPoints" :key="ap.id" closable @close="removeAbilityPoint(ap.id)">{{ ap.name }}</el-tag>
-                    <span v-if="abilityPoints.length === 0" class="muted">未关联能力点</span>
-                  </div>
-                  <el-button size="small" @click="abilityDialogOpen = true">{{ abilityPoints.length > 0 ? '调整能力点' : '关联能力点' }}</el-button>
-                </div>
+                <!-- 对齐 React AbilityPointSelector（selected/pool/onChange/onAddCustom） -->
+                <AbilityPointSelector
+                  :selected="abilityPoints"
+                  :pool="abilityPool"
+                  @change="abilityPoints = $event"
+                  @add-custom="addCustomAbility"
+                />
               </el-form-item>
             </el-form>
           </div>
@@ -97,54 +97,16 @@
 
       <!-- ========== 双栏布局 ========== -->
       <div class="editor-main">
-        <!-- 左：课程节点目录 -->
-        <aside class="tree-panel">
-          <div class="tree-card">
-            <div class="tree-title">
-              <el-icon color="#409eff"><Reading /></el-icon>
-              <span>目录</span>
-            </div>
-            <div class="tree-list">
-              <div
-                v-for="row in treeRows"
-                :key="row.node.id"
-                class="tree-node"
-                :class="{
-                  active: selectedNodeId === row.node.id,
-                  dragging: draggingId === row.node.id,
-                  'drag-before': dragOverState.nodeId === row.node.id && dragOverState.position === 'before',
-                  'drag-after': dragOverState.nodeId === row.node.id && dragOverState.position === 'after'
-                }"
-                :style="{ paddingLeft: `${8 + row.level * 10}px` }"
-                draggable="true"
-                @dragstart="onDragStart($event, row.node.id)"
-                @dragover="onDragOver($event, row.node.id)"
-                @dragleave="onDragLeave($event, row.node.id)"
-                @drop="onDrop($event, row.node.id)"
-                @click="selectedNodeId = row.node.id"
-              >
-                <el-icon class="grip"><Rank /></el-icon>
-                <span class="seq">{{ row.seq }}</span>
-                <span class="name" :title="row.node.name">{{ row.node.name }}</span>
-                <el-dropdown trigger="click" @command="(cmd: string) => onNodeMenuCommand(cmd, row.node.id)" @click.stop>
-                  <span class="more"><el-icon><MoreFilled /></el-icon></span>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="edit">✏ 编辑名称</el-dropdown-item>
-                      <el-dropdown-item command="add-child">+ 添加子节点</el-dropdown-item>
-                      <el-dropdown-item command="delete" divided>🗑 删除</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
-              <el-empty v-if="treeRows.length === 0" description="暂无节点" :image-size="50" />
-            </div>
-            <el-button class="add-node-btn" size="small" @click="openNodeAdd(null)">
-              <el-icon><Plus /></el-icon> 添加节点
-            </el-button>
-            <p class="tree-hint">💡 拖拽节点可调整顺序</p>
-          </div>
-        </aside>
+        <!-- 左：课程节点目录（复用 system-course-tree，对齐 React CourseNodeTree 的 props/回调） -->
+        <SystemCourseTree
+          :nodes="nodes"
+          :selected-node-id="selectedNodeId"
+          @select="selectedNodeId = $event"
+          @add-node="handleAddNode"
+          @update-node="handleUpdateNode"
+          @delete-node="handleDeleteNode"
+          @reorder-nodes="handleReorderNodes"
+        />
 
         <!-- 右：节点内容 -->
         <div class="content-area">
@@ -185,7 +147,14 @@
                     <el-icon><CopyDocument /></el-icon> 复用教学设计
                   </el-button>
                 </div>
-                <el-input v-model="currentData.teachingDesignContent" type="textarea" :rows="12" placeholder="请输入教学设计内容" />
+                <!-- 教学设计内容改动需同步到同一复用分组的其他节点（对齐 React updateTeachingDesignContent） -->
+                <el-input
+                  :model-value="currentData.teachingDesignContent"
+                  type="textarea"
+                  :rows="12"
+                  placeholder="请输入教学设计内容"
+                  @update:model-value="updateTeachingDesignContent"
+                />
               </div>
             </el-tab-pane>
 

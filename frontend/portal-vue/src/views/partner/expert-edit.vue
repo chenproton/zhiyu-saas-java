@@ -4,8 +4,8 @@
       <template #header>
         <div class="card-header">
           <div>
-            <div class="card-title">编辑专家</div>
-            <div class="card-sub">{{ form.name || '专家信息' }}</div>
+            <div class="card-title">{{ isCreate ? '新建专家' : '编辑专家' }}</div>
+            <div class="card-sub">{{ isCreate ? '创建后自动生成企业服务台登录账号' : form.name || '专家信息' }}</div>
           </div>
           <div class="header-actions">
             <el-button @click="router.push('/partner/experts')">返回列表</el-button>
@@ -181,9 +181,13 @@
           >
             <el-button :loading="attachmentsUploading">上传佐证材料</el-button>
           </el-upload>
+          <div class="attachment-url-row">
+            <el-input v-model="attachmentUrlInput" placeholder="上传附件或输入 URL" @keyup.enter.prevent="addAttachmentUrl" />
+            <el-button @click="addAttachmentUrl">添加</el-button>
+          </div>
         </el-card>
 
-        <el-card shadow="never" class="section-card">
+        <el-card v-if="!isCreate" shadow="never" class="section-card">
           <template #header><span class="section-title">设置</span></template>
           <el-form label-width="80px">
             <el-form-item label="状态">
@@ -195,7 +199,28 @@
           </el-form>
         </el-card>
 
-        <el-card shadow="never" class="section-card">
+        <el-card v-if="isCreate" shadow="never" class="section-card">
+          <template #header><span class="section-title">专家登录账号</span></template>
+          <div class="account-hint">
+            创建专家将自动生成企业服务台登录账号，专家登录后可维护自己的档案并参与学校授权的共建资源
+          </div>
+          <el-form label-width="120px" class="account-form">
+            <el-form-item label="用户名" required>
+              <el-input v-model="username" placeholder="设置登录用户名（同一账号可加入多个企业）" autocomplete="off" />
+            </el-form-item>
+            <el-form-item label="初始密码" required>
+              <el-input
+                v-model="password"
+                type="password"
+                placeholder="至少 8 位，包含字母和数字"
+                autocomplete="new-password"
+                show-password
+              />
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <el-card v-else shadow="never" class="section-card">
           <template #header><span class="section-title">重置登录密码</span></template>
           <el-form label-width="120px">
             <el-form-item label="新密码（选填）">
@@ -211,8 +236,8 @@
         </el-card>
 
         <div class="form-actions">
-          <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
-          <el-button @click="router.push(`/partner/experts/${id}`)">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="handleSave">{{ isCreate ? '创建' : '保存' }}</el-button>
+          <el-button @click="router.back()">取消</el-button>
         </div>
       </template>
     </el-card>
@@ -254,15 +279,33 @@ interface ExpertFormState {
   isPublic: boolean;
 }
 
+// GET /auth/partner/me：角色编码用于「写操作仅 enterprise_admin」判定
+interface PartnerMeResponse {
+  user?: { roleCodes?: string[] };
+  roles?: { code?: string }[];
+}
+
+// POST /partner/experts：档案 + 自动生成的登录账号（返回初始密码，仅创建时下发）
+interface ExpertCreateResponse {
+  expert?: PartnerExpert;
+  username?: string;
+  initialPassword?: string;
+}
+
 const route = useRoute();
 const router = useRouter();
 const id = route.params.id as string;
+// 新建模式：/partner/experts/new/edit（复用 :id/edit 路由，对齐 React /partner/experts/new）
+const isCreate = id === 'new';
 
 const loading = ref(false);
 const loaded = ref(false);
 const saving = ref(false);
 const newPassword = ref('');
+const username = ref('');
+const password = ref('');
 const specialtyInput = ref('');
+const attachmentUrlInput = ref('');
 const avatarUploading = ref(false);
 const coverUploading = ref(false);
 const attachmentsUploading = ref(false);
@@ -284,7 +327,8 @@ const form = reactive<ExpertFormState>({
   coverImage: '',
   attachments: [],
   status: 'active',
-  isPublic: false
+  // 新建默认对外展示（对齐 React new 页 isPublic: true），编辑时由详情回填
+  isPublic: isCreate
 });
 
 function fillForm(expert: ExpertDetail) {
@@ -307,16 +351,24 @@ function fillForm(expert: ExpertDetail) {
   form.isPublic = expert.isPublic || false;
 }
 
+// 写操作仅 enterprise_admin（对齐 React usePartnerAuth().isAdmin：优先 user.roleCodes[0]，回退 roles[0].code）
+async function checkAdmin(): Promise<boolean> {
+  try {
+    const me = await partnerRequest<PartnerMeResponse>('/auth/partner/me');
+    const activeRoleCode = me.user?.roleCodes?.[0] ?? me.roles?.[0]?.code;
+    return activeRoleCode === 'enterprise_admin';
+  } catch {
+    return false;
+  }
+}
+
 async function loadExpert() {
-  loading.value = true;
   try {
     const expert = (await partnerExpertApi.get(id)) as ExpertDetail;
     fillForm(expert);
     loaded.value = true;
   } catch (e) {
     ElMessage.error((e as Error).message || '加载失败');
-  } finally {
-    loading.value = false;
   }
 }
 
@@ -330,6 +382,11 @@ function removeSpecialty(s: string) {
 }
 function removeAttachment(i: number) {
   form.attachments.splice(i, 1);
+}
+function addAttachmentUrl() {
+  const u = attachmentUrlInput.value.trim();
+  if (u) form.attachments.push(u);
+  attachmentUrlInput.value = '';
 }
 
 async function onAvatarChange(uploadFile: UploadFile) {
@@ -381,30 +438,46 @@ async function handleSave() {
     ElMessage.warning('请填写姓名');
     return;
   }
+  if (isCreate && (!username.value || !password.value)) {
+    ElMessage.warning('请填写专家登录用户名和密码');
+    return;
+  }
   saving.value = true;
   try {
+    const payload = {
+      name: form.name.trim(),
+      gender: form.gender,
+      age: form.age,
+      city: form.city,
+      title: form.title,
+      position: form.position,
+      experienceYears: form.experienceYears,
+      education: form.education,
+      industry: form.industry,
+      specialties: form.specialties,
+      introduction: form.introduction,
+      workExperience: form.workExperience,
+      avatarUrl: form.avatarUrl,
+      coverImage: form.coverImage,
+      attachments: form.attachments,
+      status: form.status,
+      isPublic: form.isPublic
+    };
+    if (isCreate) {
+      // 新建：档案 + 登录账号一并提交，成功后把初始密码提示转交专家本人
+      const data = await partnerRequest<ExpertCreateResponse>('/partner/experts', {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, username: username.value, password: password.value })
+      });
+      ElMessage.success(
+        `专家已创建 — 用户名：${data.username || username.value} ｜ 初始密码：${data.initialPassword || password.value}，请转交专家本人`
+      );
+      router.push('/partner/experts');
+      return;
+    }
     await partnerRequest<PartnerExpert>(`/partner/experts/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({
-        name: form.name.trim(),
-        gender: form.gender,
-        age: form.age,
-        city: form.city.trim(),
-        title: form.title.trim(),
-        position: form.position.trim(),
-        experienceYears: form.experienceYears,
-        education: form.education.trim(),
-        industry: form.industry.trim(),
-        specialties: form.specialties,
-        introduction: form.introduction,
-        workExperience: form.workExperience,
-        avatarUrl: form.avatarUrl,
-        coverImage: form.coverImage,
-        attachments: form.attachments,
-        status: form.status,
-        isPublic: form.isPublic,
-        password: newPassword.value || undefined
-      })
+      body: JSON.stringify({ ...payload, password: newPassword.value || undefined })
     });
     ElMessage.success('专家已更新');
     router.push(`/partner/experts/${id}`);
@@ -415,7 +488,22 @@ async function handleSave() {
   }
 }
 
-onMounted(loadExpert);
+onMounted(async () => {
+  loading.value = true;
+  if (!(await checkAdmin())) {
+    ElMessage.warning('仅企业管理员可维护专家档案');
+    // 保持 loading：跳转生效前不渲染表单/空态，避免闪现「专家不存在」
+    router.replace(isCreate ? '/partner/experts' : `/partner/experts/${id}`);
+    return;
+  }
+  if (isCreate) {
+    loaded.value = true;
+    loading.value = false;
+    return;
+  }
+  await loadExpert();
+  loading.value = false;
+});
 </script>
 
 <style scoped>
@@ -427,6 +515,8 @@ onMounted(loadExpert);
 .section-card { margin-top: 16px; }
 .section-title { font-size: 14px; font-weight: 600; }
 .expert-form { max-width: 860px; }
+.account-form { max-width: 520px; }
+.account-hint { font-size: 12px; color: #909399; line-height: 1.6; margin-bottom: 12px; }
 .upload-label { font-size: 13px; color: #606266; margin-bottom: 8px; }
 .cover-wrap { width: 100%; }
 .cover-preview { position: relative; }
@@ -462,6 +552,7 @@ onMounted(loadExpert);
   border: 1px solid #ebeef5;
 }
 .attachment-remove { position: absolute; top: 4px; right: 4px; }
+.attachment-url-row { display: flex; gap: 8px; margin-top: 12px; max-width: 480px; }
 .form-actions { margin-top: 20px; display: flex; gap: 8px; }
 @media (max-width: 768px) {
   .attachment-grid { grid-template-columns: repeat(2, 1fr); }

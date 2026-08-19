@@ -1,11 +1,22 @@
 <template>
   <div class="edit-page">
-    <el-row :gutter="16">
+    <!-- 加载失败禁止以默认值渲染可保存表单（对齐 React EmptyState「项目不存在」），
+         否则用户填写保存会用默认值整条覆盖真实项目，造成数据丢失 -->
+    <el-card v-if="notFound" shadow="never">
+      <el-empty description="项目不存在">
+        <el-button @click="router.push('/portal/apps/alliance/projects')">返回列表</el-button>
+      </el-empty>
+    </el-card>
+
+    <el-row v-else :gutter="16">
       <el-col :span="16">
         <el-card shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">{{ isNew ? '新建合作项目' : '编辑合作项目' }}</span>
+              <div class="card-header-left">
+                <el-button text :icon="ArrowLeft" @click="router.back()">返回</el-button>
+                <span class="card-title">{{ isNew ? '新建合作项目' : '编辑合作项目' }}</span>
+              </div>
             </div>
           </template>
 
@@ -17,7 +28,7 @@
             <el-row :gutter="16">
               <el-col :span="12">
                 <el-form-item label="合作类型">
-                  <el-select v-model="form.type" placeholder="请选择" style="width: 100%">
+                  <el-select v-model="typeValue" placeholder="请选择" style="width: 100%">
                     <el-option v-for="opt in typeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
                   </el-select>
                 </el-form-item>
@@ -89,6 +100,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import {
   allianceProjectApi,
@@ -134,6 +146,7 @@ const id = route.params.id as string | undefined;
 const loaded = ref<AllianceProject | null>(null);
 const loading = ref(false);
 const saving = ref(false);
+const notFound = ref(false);
 const typeItems = ref<AllianceDictItem[]>([]);
 const enterprises = ref<{ label: string; value: string }[]>([]);
 const secondaryColleges = ref<string[]>([]);
@@ -154,9 +167,18 @@ const form = reactive<FormState>({
 const typeOptions = computed(() => mergeDictOptions(typeItems.value, form.type));
 const phaseOptions = PHASE_OPTIONS;
 
+// 合作类型：存量项目 type 为空时退化为字典首项（对齐 React edit 页
+// `item.type || projectTypeItems[0]?.code || ''`）；保存时按展示值提交，避免存空值。
+const typeValue = computed<string>({
+  get: () => form.type || typeItems.value[0]?.code || '',
+  set: (v: string) => {
+    form.type = v;
+  },
+});
+
 function fillForm(p: AllianceProject) {
   form.name = p.name || '';
-  form.type = p.type || 'talent_training';
+  form.type = p.type || '';
   form.phase = p.phase || 'initiation';
   form.startDate = p.startDate || '';
   form.endDate = p.endDate || '';
@@ -188,6 +210,7 @@ async function load() {
       loaded.value = p;
       fillForm(p);
     } catch (e) {
+      notFound.value = true;
       ElMessage.error((e as Error).message || '加载失败');
     } finally {
       loading.value = false;
@@ -204,7 +227,7 @@ async function handleSave() {
   try {
     const common = {
       name: form.name.trim(),
-      type: form.type,
+      type: typeValue.value,
       phase: form.phase,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
@@ -255,6 +278,7 @@ onMounted(async () => {
 <style scoped>
 .edit-page { padding: 16px; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
+.card-header-left { display: flex; align-items: center; gap: 8px; }
 .card-title { font-size: 16px; font-weight: 600; }
 .section-title { font-size: 14px; font-weight: 600; color: #303133; margin: 16px 0 12px; }
 .side-card { margin-top: 16px; }

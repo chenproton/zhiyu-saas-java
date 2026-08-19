@@ -76,7 +76,7 @@
               </div>
               <div class="target-field">
                 <div class="field-label">毕业年份</div>
-                <el-input :model-value="g.graduateYear != null ? String(g.graduateYear) : ''" placeholder="如 2025" @input="(v: any) => onGraduateYear(idx, v)" />
+                <el-input type="number" :model-value="g.graduateYear != null ? String(g.graduateYear) : ''" placeholder="如 2025" @input="(v: any) => onGraduateYear(idx, v)" />
               </div>
               <div class="target-field">
                 <el-button size="small" type="danger" text @click="removeTargetGroup(idx)">删除</el-button>
@@ -264,7 +264,16 @@ async function handleSave() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 直接进页/硬刷新时 auth.user 尚未填充（路由守卫只校验 token），tenantId 为空会导致
+  // 参与企业/专业/组织节点三个下拉全部空白——先补齐用户上下文（对齐 React usePortalAuth）。
+  if (!auth.user) {
+    try {
+      await auth.fetchMe();
+    } catch {
+      // 忽略：拉取失败时下拉为空，不阻断表单填写
+    }
+  }
   loadEnterprises();
   loadMajors();
   loadOrgTree();

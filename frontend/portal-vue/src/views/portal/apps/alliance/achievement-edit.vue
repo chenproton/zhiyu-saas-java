@@ -1,11 +1,22 @@
 <template>
   <div class="edit-page">
-    <el-row :gutter="16">
+    <!-- 加载失败禁止以默认值渲染可保存表单（对齐 React EmptyState「成果不存在」，
+         否则用户填写保存会用默认值整条覆盖真实成果，造成数据丢失） -->
+    <el-card v-if="notFound" shadow="never">
+      <el-empty description="成果不存在">
+        <el-button @click="router.push('/portal/apps/alliance/achievements')">返回列表</el-button>
+      </el-empty>
+    </el-card>
+
+    <el-row v-else :gutter="16">
       <el-col :span="16">
         <el-card shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">{{ isNew ? '新建合作成果' : '编辑合作成果' }}</span>
+              <div class="card-header-left">
+                <el-button text :icon="ArrowLeft" @click="router.back()">返回</el-button>
+                <span class="card-title">{{ isNew ? '新建合作成果' : '编辑合作成果' }}</span>
+              </div>
             </div>
           </template>
 
@@ -47,12 +58,32 @@
               <el-row :gutter="16">
                 <el-col :span="12">
                   <el-form-item label="成果归属人">
-                    <el-select v-model="form.ownerPersons" multiple filterable allow-create default-first-option :reserve-keyword="false" placeholder="输入姓名后回车" style="width: 100%" />
+                    <el-select
+                      :model-value="form.ownerPersons"
+                      multiple
+                      filterable
+                      allow-create
+                      default-first-option
+                      :reserve-keyword="false"
+                      placeholder="输入姓名后回车"
+                      style="width: 100%"
+                      @update:model-value="(v: string[]) => (form.ownerPersons = normalizeTags(v))"
+                    />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
                   <el-form-item label="成果共建人">
-                    <el-select v-model="form.coBuilders" multiple filterable allow-create default-first-option :reserve-keyword="false" placeholder="输入姓名后回车" style="width: 100%" />
+                    <el-select
+                      :model-value="form.coBuilders"
+                      multiple
+                      filterable
+                      allow-create
+                      default-first-option
+                      :reserve-keyword="false"
+                      placeholder="输入姓名后回车"
+                      style="width: 100%"
+                      @update:model-value="(v: string[]) => (form.coBuilders = normalizeTags(v))"
+                    />
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -101,6 +132,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import {
   achievementApi,
@@ -141,6 +173,7 @@ const id = route.params.id as string | undefined;
 const loaded = ref<AllianceAchievement | null>(null);
 const loading = ref(false);
 const saving = ref(false);
+const notFound = ref(false);
 const typeItems = ref<AllianceDictItem[]>([]);
 const enterprises = ref<{ label: string; value: string }[]>([]);
 const projects = ref<{ label: string; value: string }[]>([]);
@@ -163,6 +196,18 @@ const form = reactive<FormState>({
 });
 
 const typeOptions = computed(() => mergeDictOptions(typeItems.value, form.type));
+
+/** 自由标签规范化（对齐 React TagInput：逗号/换行拆分 + 去重 + 去空白） */
+function normalizeTags(list: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of list) {
+    for (const part of String(raw).split(/[,，\n]/)) {
+      const s = part.trim();
+      if (s && !out.includes(s)) out.push(s);
+    }
+  }
+  return out;
+}
 
 function fillForm(a: AllianceAchievement) {
   form.title = a.title || '';
@@ -202,6 +247,7 @@ async function load() {
       loaded.value = a;
       fillForm(a);
     } catch (e) {
+      notFound.value = true;
       ElMessage.error((e as Error).message || '加载失败');
     } finally {
       loading.value = false;
@@ -282,6 +328,7 @@ onMounted(async () => {
 <style scoped>
 .edit-page { padding: 16px; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
+.card-header-left { display: flex; align-items: center; gap: 8px; }
 .card-title { font-size: 16px; font-weight: 600; }
 .section-title { font-size: 14px; font-weight: 600; color: #303133; margin: 16px 0 12px; }
 .side-card { margin-top: 16px; }

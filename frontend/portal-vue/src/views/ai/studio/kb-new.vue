@@ -2,7 +2,7 @@
   <div class="editor-page">
     <div class="top-bar">
       <div class="top-inner">
-        <router-link class="back-link" to="/portal/apps/ai/landing">
+        <router-link class="back-link" to="/portal/apps/ai/landing#studio">
           <el-icon><ArrowLeft /></el-icon>返回工坊
         </router-link>
         <span class="divider" />

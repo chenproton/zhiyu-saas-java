@@ -1,11 +1,22 @@
 <template>
   <div class="edit-page">
-    <el-row :gutter="16">
+    <!-- 加载失败禁止以默认值渲染可保存表单（对齐 React EmptyState「协议不存在」），
+         否则用户填写保存会用默认值整条覆盖真实协议，造成数据丢失 -->
+    <el-card v-if="notFound" shadow="never">
+      <el-empty description="协议不存在">
+        <el-button @click="router.push('/portal/apps/alliance/agreements')">返回列表</el-button>
+      </el-empty>
+    </el-card>
+
+    <el-row v-else :gutter="16">
       <el-col :span="16">
         <el-card shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">{{ isNew ? '新建合作协议' : '编辑合作协议' }}</span>
+              <div class="card-header-left">
+                <el-button text :icon="ArrowLeft" @click="router.back()">返回</el-button>
+                <span class="card-title">{{ isNew ? '新建合作协议' : '编辑合作协议' }}</span>
+              </div>
             </div>
           </template>
 
@@ -89,6 +100,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import {
   allianceAgreementApi,
@@ -123,6 +135,7 @@ const id = route.params.id as string | undefined;
 
 const loading = ref(false);
 const saving = ref(false);
+const notFound = ref(false);
 const typeItems = ref<AllianceDictItem[]>([]);
 const statusItems = ref<AllianceDictItem[]>([]);
 const enterprises = ref<{ label: string; value: string }[]>([]);
@@ -189,6 +202,7 @@ async function load() {
       const a = await allianceAgreementApi.get(id);
       fillForm(a);
     } catch (e) {
+      notFound.value = true;
       ElMessage.error((e as Error).message || '加载失败');
     } finally {
       loading.value = false;
@@ -198,14 +212,16 @@ async function load() {
 
 async function handleSave() {
   if (!form.name.trim()) {
-    ElMessage.warning('协议名称不能为空');
+    // 新建对齐 React new 页文案「协议名称不能为空」，编辑对齐 React edit 页「请填写协议名称」
+    ElMessage.warning(isNew.value ? '协议名称不能为空' : '请填写协议名称');
     return;
   }
-  if (!form.startDate || !form.endDate) {
+  // 日期必填仅在新建校验（对齐 React：new 页拦截，edit 页不拦截，避免存量空日期协议无法保存）
+  if (isNew.value && (!form.startDate || !form.endDate)) {
     ElMessage.warning('生效日期与到期日期必填');
     return;
   }
-  if (form.endDate < form.startDate) {
+  if (form.startDate && form.endDate && form.endDate < form.startDate) {
     ElMessage.warning('到期日期不能早于生效日期');
     return;
   }
@@ -223,23 +239,25 @@ async function handleSave() {
       projectIds: form.projectIds,
       attachments: form.attachments,
     };
+    const isCreate = isNew.value;
     let agreementId: string;
-    if (isNew.value) {
+    if (isCreate) {
       const data = await allianceAgreementApi.create(payload);
       agreementId = data.id;
-      ElMessage.success('协议已创建');
     } else {
       agreementId = id as string;
       await allianceAgreementApi.update(agreementId, payload);
-      ElMessage.success('协议已更新');
     }
     try {
+      // 双向同步：协议.project_ids ↔ 项目.agreement_ids
       await syncAgreementProjectLinks(agreementId, form.projectIds);
-    } catch (syncErr) {
-      ElMessage.error('协议已保存，但项目关联同步失败');
+    } catch {
+      // 协议已保存成功，仅关联同步失败：单独提示，避免误报「保存失败」诱导重复提交
+      ElMessage.error(isCreate ? '协议已创建，但项目关联同步失败' : '协议已保存，但项目关联同步失败');
       router.push(`/portal/apps/alliance/agreements/${agreementId}`);
       return;
     }
+    ElMessage.success(isCreate ? '协议已创建' : '协议已更新');
     router.push(`/portal/apps/alliance/agreements/${agreementId}`);
   } catch (e) {
     ElMessage.error((e as Error).message || '保存失败');
@@ -273,6 +291,7 @@ onMounted(async () => {
 <style scoped>
 .edit-page { padding: 16px; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
+.card-header-left { display: flex; align-items: center; gap: 8px; }
 .card-title { font-size: 16px; font-weight: 600; }
 .section-title { font-size: 14px; font-weight: 600; color: #303133; margin: 16px 0 12px; }
 .side-card { margin-top: 16px; }

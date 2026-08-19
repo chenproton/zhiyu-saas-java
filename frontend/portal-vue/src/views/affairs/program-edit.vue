@@ -30,12 +30,55 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="基本信息" name="basic">
           <el-form v-loading="loading" :model="form" label-width="90px" class="basic-form">
-            <el-form-item label="名称"><el-input v-model="form.name" placeholder="方案名称" /></el-form-item>
-            <el-form-item label="入学年份"><el-input-number v-model="form.entryYear" :min="2000" :max="2100" /></el-form-item>
-            <el-form-item label="层次"><el-input v-model="form.level" placeholder="如 本科/专科" /></el-form-item>
-            <el-form-item label="学制(年)"><el-input-number v-model="form.duration" :min="1" :max="8" /></el-form-item>
-            <el-form-item label="总学分"><el-input-number v-model="form.totalCredits" :min="0" /></el-form-item>
-            <el-form-item label="简介"><el-input v-model="form.description" type="textarea" :rows="3" placeholder="方案简介" /></el-form-item>
+            <el-form-item label="方案名称" required>
+              <el-input v-model="form.name" placeholder="如：计算机应用技术人才培养方案（2025 级）" />
+            </el-form-item>
+
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="所属专业">
+                  <el-select v-model="form.majorId" clearable placeholder="请选择专业" style="width: 100%">
+                    <el-option
+                      v-for="m in majors"
+                      :key="m.id"
+                      :label="m.code ? `${m.name}（${m.code}）` : m.name"
+                      :value="m.id"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="入学年份" required>
+                  <el-input-number v-model="form.entryYear" :min="2000" placeholder="如：2025" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="层次">
+                  <el-select v-model="form.level" placeholder="请选择层次" style="width: 100%">
+                    <el-option label="未设置" value="" />
+                    <el-option v-for="l in LEVEL_OPTIONS" :key="l" :label="l" :value="l" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="学制（年）">
+                  <el-input-number v-model="form.duration" :min="0" placeholder="如：3" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item label="方案描述">
+              <el-input
+                v-model="form.description"
+                type="textarea"
+                :rows="4"
+                placeholder="培养目标、规格要求等（可选）"
+              />
+            </el-form-item>
+
             <div class="form-actions">
               <el-button :disabled="saving" @click="onBack">取消</el-button>
               <el-button type="primary" :loading="saving" :disabled="!isFormValid" @click="onSaveBasic">
@@ -59,13 +102,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { programApi } from '@/api/affairs';
+import { majorApi } from '@/api/system';
 import type { TrainingProgram } from '@/types/affairs';
+import type { Major } from '@/types/system';
 import { contentStatusLabel } from '@/types/content-status';
 import ProgramCoursesTab from './program-courses-tab.vue';
+
+// 与 React 编辑页一致：层次固定三档（LEVEL_OPTIONS = ['中专', '大专', '本科']）
+const LEVEL_OPTIONS = ['中专', '大专', '本科'];
 
 interface CoursesTabExpose {
   handleSave: () => Promise<void>;
@@ -75,8 +123,10 @@ interface CoursesTabExpose {
 
 const route = useRoute();
 const router = useRouter();
-const id = route.params.id as string;
-const isNew = route.query.new === 'true';
+// id / isNew 用 computed 绑定路由：新建保存后 router.replace 到真实 id 时，
+// 组件被复用不会重跑 setup，必须让 id/isNew 响应式更新，课程设置 Tab 才会随之启用。
+const id = computed(() => route.params.id as string);
+const isNew = computed(() => route.query.new === 'true');
 
 const activeTab = ref('basic');
 const program = ref<TrainingProgram | null>(null);
@@ -85,13 +135,14 @@ const loadError = ref(false);
 const saving = ref(false);
 const coursesBusy = reactive({ saving: false, loading: true });
 const coursesRef = ref<CoursesTabExpose | null>(null);
+const majors = ref<Major[]>([]);
 
 const form = reactive({
   name: '',
-  entryYear: new Date().getFullYear(),
+  majorId: undefined as string | undefined,
+  entryYear: undefined as number | undefined,
   level: '',
-  duration: 3,
-  totalCredits: 0,
+  duration: undefined as number | undefined,
   description: ''
 });
 
@@ -108,25 +159,34 @@ function statusTagType(s: string): 'success' | 'warning' | 'danger' | 'info' {
 
 async function load() {
   loading.value = true;
-  if (isNew) {
+  if (isNew.value) {
     loading.value = false;
     return;
   }
   loadError.value = false;
   try {
-    const p = await programApi.get(id);
+    const p = await programApi.get(id.value);
     program.value = p;
     form.name = p.name;
+    form.majorId = p.majorId || undefined;
     form.entryYear = p.entryYear;
     form.level = p.level || '';
-    form.duration = p.duration ?? 3;
-    form.totalCredits = p.totalCredits ?? 0;
+    form.duration = p.duration ?? undefined;
     form.description = p.description || '';
   } catch (e) {
     loadError.value = true;
     ElMessage.error((e as Error).message || '查询人培方案失败');
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadMajors() {
+  try {
+    const res = await majorApi.list({ limit: 500 });
+    majors.value = res.items.filter((m) => m.enabled);
+  } catch {
+    /* 选项加载失败不阻断 */
   }
 }
 
@@ -137,21 +197,22 @@ async function onSaveBasic() {
   }
   saving.value = true;
   try {
+    // 对齐 React payload：majorId 可空、duration 空则不发、不再发 totalCredits
     const payload = {
       name: form.name.trim(),
-      entryYear: form.entryYear,
-      level: form.level.trim() || undefined,
-      duration: form.duration,
-      totalCredits: form.totalCredits,
+      entryYear: Number(form.entryYear),
+      majorId: form.majorId || undefined,
+      level: form.level || undefined,
+      duration: form.duration ?? undefined,
       description: form.description.trim() || undefined
     };
-    if (isNew) {
+    if (isNew.value) {
       // 新建后跳转到真实 id，课程设置 Tab 随之启用
       const created = await programApi.create(payload);
-      ElMessage.success('方案已创建');
+      ElMessage.success('方案已创建，可继续维护课程设置');
       router.replace(`/affairs/programs/${created.id}/edit`);
     } else {
-      const updated = await programApi.update(id, payload);
+      const updated = await programApi.update(id.value, payload);
       program.value = updated;
       ElMessage.success('基本信息已保存');
     }
@@ -171,7 +232,15 @@ function onBack() {
   router.push('/affairs/programs');
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  void loadMajors();
+});
+
+// 新建保存后（或切换方案 id）重新加载方案数据
+watch(id, () => {
+  void load();
+});
 </script>
 
 <style scoped>

@@ -4,8 +4,8 @@
       <template #header>
         <div class="card-header">
           <div>
-            <div class="card-title">编辑就业岗位</div>
-            <div class="card-sub">{{ job ? `岗位名称为「${job.title}」` : '' }}</div>
+            <div class="card-title">{{ isCreate ? '新建就业岗位' : '编辑就业岗位' }}</div>
+            <div class="card-sub">{{ headerSub }}</div>
           </div>
           <div class="header-actions">
             <el-button @click="router.push('/partner/employment-jobs')">返回列表</el-button>
@@ -13,13 +13,9 @@
         </div>
       </template>
 
-      <el-empty v-if="!loading && !job" description="岗位不存在" />
+      <el-empty v-if="!isCreate && !loading && !job" description="岗位不存在" />
 
       <el-form v-else :model="form" label-width="120px" class="job-form" @submit.prevent="handleSave">
-        <el-form-item label="所属就业项目">
-          <el-input :model-value="job?.projectName || '独立岗位'" disabled />
-        </el-form-item>
-
         <el-row :gutter="12">
           <el-col :span="12">
             <el-form-item label="岗位名称" required>
@@ -31,6 +27,46 @@
               <el-select v-model="form.jobType" placeholder="请选择岗位类型" style="width: 100%">
                 <el-option v-for="(label, key) in JOB_TYPE_LABELS" :key="key" :label="label" :value="key" />
               </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="合作学校" :required="isCreate">
+              <div v-if="!isCreate" class="readonly-text">{{ schoolName || job?.tenantId || '-' }}</div>
+              <el-select
+                v-else
+                v-model="form.schoolTenantId"
+                filterable
+                placeholder="请选择合作学校"
+                :disabled="schoolLocked"
+                style="width: 100%"
+                @change="onSchoolChange"
+              >
+                <el-option v-for="s in selectableSchools" :key="s.tenantId" :label="s.schoolName" :value="s.tenantId" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="所属就业项目">
+              <template v-if="!isCreate">
+                <div class="readonly-text">{{ job?.projectName || '独立岗位' }}</div>
+                <div class="field-hint">项目绑定请通过岗位列表的「发布」操作修改</div>
+              </template>
+              <template v-else>
+                <el-select
+                  v-model="form.projectId"
+                  filterable
+                  clearable
+                  placeholder="不绑定项目（独立岗位）"
+                  :disabled="projectLocked || !form.schoolTenantId"
+                  style="width: 100%"
+                >
+                  <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
+                </el-select>
+                <div class="field-hint">不选择则为独立岗位</div>
+              </template>
             </el-form-item>
           </el-col>
         </el-row>
@@ -67,7 +103,8 @@
         </el-row>
 
         <el-form-item label="面向专业">
-          <el-input v-model="form.suitableMajors" placeholder="如：计算机科学与技术、软件工程（多个用逗号或顿号分隔）" />
+          <el-input v-model="form.suitableMajors" placeholder="如：计算机科学与技术、软件工程" />
+          <div class="field-hint">多个专业用逗号或顿号分隔</div>
         </el-form-item>
 
         <el-row :gutter="12">
@@ -106,7 +143,7 @@
 
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="handleSave">保存</el-button>
-          <el-button @click="router.push(`/partner/employment-jobs/${id}`)">取消</el-button>
+          <el-button @click="onCancel">取消</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -114,12 +151,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { partnerRequest } from '@/api/http';
-import { partnerEmploymentApi } from '@/api/partner';
-import type { EmploymentJob } from '@/types/partner';
+import { partnerEmploymentApi, partnerSchoolApi } from '@/api/partner';
+import type { EmploymentJob, EmploymentProject, PartnerSchool } from '@/types/partner';
 
 interface JobDetail extends EmploymentJob {
   projectName?: string;
@@ -144,12 +181,26 @@ const route = useRoute();
 const router = useRouter();
 const id = route.params.id as string;
 
+// 新建模式：/partner/employment-jobs/new/edit（复用 :id/edit 路由，对齐 React /partner/employment-jobs/new）
+const isCreate = id === 'new';
+// 新建时可由 query 预填并锁定（对齐 React new 页的 projectId / schoolTenantId query）
+const fixedProjectId = typeof route.query.projectId === 'string' ? route.query.projectId : '';
+const fixedSchoolTenantId = typeof route.query.schoolTenantId === 'string' ? route.query.schoolTenantId : '';
+// 编辑模式项目只读（改绑走岗位列表「发布」）；新建时随 query 锁定
+const projectLocked = !isCreate || Boolean(fixedProjectId);
+// 挂项目时随项目一并锁定合作学校（项目归属该校，避免换学校后提交校验失败）
+const schoolLocked = Boolean(fixedProjectId);
+
 const job = ref<JobDetail | null>(null);
 const loading = ref(false);
 const submitting = ref(false);
+const schools = ref<PartnerSchool[]>([]);
+const projects = ref<EmploymentProject[]>([]);
 
 const form = reactive({
   title: '',
+  schoolTenantId: '',
+  projectId: '',
   jobType: '',
   location: '',
   salaryMin: undefined as number | undefined,
@@ -165,12 +216,54 @@ const form = reactive({
   deadline: ''
 });
 
+// 合作学校：新建可选（仅 active），编辑只读展示名称
+const selectableSchools = computed(() => schools.value.filter((s) => s.status === 'active'));
+const schoolName = computed(
+  () => schools.value.find((s) => s.tenantId === (isCreate ? form.schoolTenantId : job.value?.tenantId))?.schoolName
+);
+
+const headerSub = computed(() => {
+  if (isCreate) return '保存后岗位为草稿状态，可在岗位列表中发布。';
+  return job.value ? `岗位名称为「${job.value.title}」。` : '';
+});
+
+async function loadSchools() {
+  try {
+    const res = await partnerSchoolApi.list({ limit: 200 });
+    schools.value = res.items || [];
+  } catch {
+    // 仅用于名称展示/下拉选项，失败不阻塞表单（对齐 React onError: () => true）
+    schools.value = [];
+  }
+}
+
+// 所属就业项目：仅随学校过滤（项目须归属同一合作学校）
+async function loadProjects() {
+  if (!form.schoolTenantId) {
+    projects.value = [];
+    return;
+  }
+  try {
+    const res = await partnerEmploymentApi.listProjects(form.schoolTenantId);
+    projects.value = res.items || [];
+  } catch {
+    projects.value = [];
+  }
+}
+
+function onSchoolChange() {
+  form.projectId = '';
+  loadProjects();
+}
+
 async function loadJob() {
   loading.value = true;
   try {
     const data = await partnerRequest<JobDetail>(`/partner/employment-jobs/${id}`);
     job.value = data;
     form.title = data.title || '';
+    form.schoolTenantId = data.tenantId || '';
+    form.projectId = data.projectId || '';
     form.jobType = data.jobType || '';
     form.location = data.location || '';
     form.salaryMin = data.salaryMin;
@@ -193,16 +286,20 @@ async function loadJob() {
 
 async function handleSave() {
   if (!form.title.trim()) {
-    ElMessage.warning('岗位名称不能为空');
+    ElMessage.warning('请填写岗位名称');
     return;
   }
   if (!form.jobType) {
     ElMessage.warning('请选择岗位类型');
     return;
   }
+  if (isCreate && !form.schoolTenantId) {
+    ElMessage.warning('请选择合作学校');
+    return;
+  }
   submitting.value = true;
   try {
-    await partnerEmploymentApi.updateJob(id, {
+    const payload = {
       title: form.title.trim(),
       jobType: form.jobType,
       location: form.location.trim() || undefined,
@@ -217,17 +314,47 @@ async function handleSave() {
       contactPerson: form.contactPerson.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
       deadline: form.deadline || undefined
-    });
+    };
+    if (isCreate) {
+      // 新建：额外携带 schoolTenantId + projectId（后端据此校验归属并落 draft 状态）
+      const created = await partnerEmploymentApi.createJob({
+        ...payload,
+        schoolTenantId: form.schoolTenantId,
+        projectId: form.projectId || undefined
+      });
+      ElMessage.success('已创建');
+      router.push(`/partner/employment-jobs/${created.id}`);
+      return;
+    }
+    // 编辑：不提交 schoolTenantId / projectId（学校不可改绑，项目绑定走列表「发布」）
+    await partnerEmploymentApi.updateJob(id, payload);
     ElMessage.success('已保存');
     router.push(`/partner/employment-jobs/${id}`);
   } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
+    ElMessage.error((e as Error).message || (isCreate ? '创建失败' : '保存失败'));
   } finally {
     submitting.value = false;
   }
 }
 
-onMounted(loadJob);
+function onCancel() {
+  if (isCreate) {
+    router.push('/partner/employment-jobs');
+    return;
+  }
+  router.push(`/partner/employment-jobs/${id}`);
+}
+
+onMounted(() => {
+  loadSchools();
+  if (isCreate) {
+    form.schoolTenantId = fixedSchoolTenantId;
+    form.projectId = fixedProjectId;
+    if (form.schoolTenantId) loadProjects();
+    return;
+  }
+  loadJob();
+});
 </script>
 
 <style scoped>
@@ -237,4 +364,6 @@ onMounted(loadJob);
 .card-sub { margin-top: 4px; font-size: 12px; color: #909399; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 .job-form { max-width: 860px; }
+.readonly-text { flex-basis: 100%; font-size: 14px; color: #303133; line-height: 32px; }
+.field-hint { flex-basis: 100%; margin-top: 4px; font-size: 12px; color: #909399; line-height: 1.4; }
 </style>
