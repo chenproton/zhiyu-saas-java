@@ -28,7 +28,7 @@
         </el-table-column>
         <el-table-column label="关联能力点数" width="110" align="center">
           <template #default="{ row }">
-            {{ ruleOf(row) ? (pointCounts[row.id] ?? '-') : 0 }}
+            {{ pointCountOf(row) }}
           </template>
         </el-table-column>
         <el-table-column label="规则状态" width="100">
@@ -41,8 +41,8 @@
         </el-table-column>
         <el-table-column label="操作" width="230" align="right">
           <template #default="{ row }">
-            <el-button size="small" @click="$router.push(`/evaluation/job-ability-config/${row.id}`)">配置认证规则</el-button>
-            <el-button size="small" @click="$router.push(`/evaluation/job-ability-results?positionId=${row.id}`)">查看结果</el-button>
+            <el-button size="small" @click="$router.push(`/evaluation/job-ability/config/${row.id}`)">配置认证规则</el-button>
+            <el-button size="small" @click="$router.push(`/evaluation/job-ability/results?positionId=${row.id}`)">查看结果</el-button>
             <el-button v-if="ruleOf(row)" size="small" @click="confirmToggle(row)">
               {{ ruleOf(row)?.status === 'published' ? '下线' : '发布' }}
             </el-button>
@@ -101,6 +101,12 @@ const stats = computed(() => {
 
 function ruleOf(row: CareerPosition) {
   return ruleMap.value.get(row.id) || null;
+}
+// 对齐 React：能力点数按「规则 id」取（pointCounts 以 rule.id 为键，非岗位 id）
+function pointCountOf(row: CareerPosition): number | string {
+  const rule = ruleOf(row);
+  if (!rule) return 0;
+  return pointCounts.value[rule.id] ?? '-';
 }
 function statusLabel(s?: string) {
   const labels: Record<string, string> = {

@@ -53,7 +53,7 @@
             <el-button v-if="canEdit(row)" size="small" @click="openEdit(row)">编辑</el-button>
             <el-button v-if="canPublish(row.status)" size="small" type="primary" @click="publish(row.id)">开启</el-button>
             <el-button v-if="canFinish(row.status)" size="small" type="warning" @click="finish(row.id)">停止</el-button>
-            <el-button v-if="row.status === 'finished'" size="small" @click="$router.push(`/evaluation/exam-usage-results?usageId=${row.id}`)">查看考试结果</el-button>
+            <el-button v-if="row.status === 'finished'" size="small" @click="$router.push(`/evaluation/exam-usage/results?usageId=${row.id}`)">查看考试结果</el-button>
             <el-button v-if="canDelete(row)" size="small" type="danger" @click="confirmDelete(row)">删除</el-button>
           </template>
         </el-table-column>
