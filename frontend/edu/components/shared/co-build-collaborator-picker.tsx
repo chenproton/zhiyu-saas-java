@@ -140,7 +140,8 @@ export function CoBuildCollaboratorPicker({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        {/* 勾选即时同步给父级表单，关闭不会丢内容 → 不需要未保存守卫 */}
+        <DialogContent className="sm:max-w-md" unsavedGuard={false}>
           <DialogHeader>
             <DialogTitle>{t('选择共建人')}</DialogTitle>
             <DialogDescription>
