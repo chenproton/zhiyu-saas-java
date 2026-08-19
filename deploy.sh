@@ -305,7 +305,9 @@ run_migrations() {
       continue
     fi
     log "  兜底执行: $(basename "$f")"
-    if psql_db -v ON_ERROR_STOP=1 -f "$f" 2>&1 | tail -5; then
+    # --single-transaction 必须加：否则某个 migration 半途失败会留下「半应用」状态，
+    # 既不会记入 schema_migrations 也无法回退，下次重跑必然二次失败
+    if psql_db -v ON_ERROR_STOP=1 --single-transaction -f "$f" 2>&1 | tail -5; then
       psql_db -c "INSERT INTO schema_migrations (version) VALUES ('$version') ON CONFLICT DO NOTHING;" >/dev/null || true
     else
       failed=true
@@ -895,12 +897,9 @@ else
   IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
 fi
 
-# 将 IMAGE_TAG 写回 .env，确保 docker compose 能读取到实际镜像标签
-if grep -q "^IMAGE_TAG=" "$ENV_FILE" 2>/dev/null; then
-  sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
-else
-  echo "IMAGE_TAG=${IMAGE_TAG}" >> "$ENV_FILE"
-fi
+# 注意：IMAGE_TAG **不在此处写入 .env**。构建可能失败（如前端 OOM → die，不走 rollback），
+# 若提前写入，.env 会长期指向一个并不存在的镜像标签，之后任何人工 `docker compose up`
+# 都会因拉不到镜像而失败。改为在「镜像已构建/已打标签、即将 compose up」处写入（见下方）。
 
 # ════════════════════════════════════════════
 # 3. 分支 worktree
@@ -1262,6 +1261,10 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" != "true" ]]; then
   fi
 fi
 
+# 镜像已就绪（本次构建或复用已有 hash 镜像并重新打标签），此时才把 IMAGE_TAG 写入 .env，
+# 保证 .env 里的标签始终对应**实际存在的镜像**（构建失败时 .env 不被污染）。
+update_env_var "$ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
+
 COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
 rm -f "$COMPOSE_UP_LOG"
 # 分两段启动（顺序即契约，见 docs/spec/03-development-plan.md「部署与回滚」）：
@@ -1297,15 +1300,32 @@ chmod 700 "$DEPLOY_DIR/backups" 2>/dev/null || true
 find "$DEPLOY_DIR/backups" -maxdepth 1 -name 'zhiyu-saas-*.sql' -printf '%T@ %p\n' 2>/dev/null \
   | sort -rn | tail -n +8 | cut -d' ' -f2- | xargs -r rm -f || true
 
+# baseline 判定必须以**数据库真实状态**为准，不能只看 .migration-done 标记文件：
+# 001_baseline.up.sql 的 109 个 CREATE TABLE **均无 IF NOT EXISTS**（不幂等），
+# 而它现在跑在 ON_ERROR_STOP + --single-transaction 下。若「baseline 成功、增量迁移失败」→ 回滚 →
+# marker 未写，下次部署会重跑 baseline → 表已存在 → 整体回滚 → 再次失败 → **部署永久卡死**。
+# 故：marker 只作快路径，真正的判据是「schema_migrations 里是否已记录 001_baseline / 代表表是否存在」。
+NEED_BASELINE=false
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   psql_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
-  # 必须 ON_ERROR_STOP + 单事务：psql 默认遇错继续且退出码为 0，
-  # 否则 baseline 半途失败也会被判成功并写入 schema_migrations/.migration-done，
-  # 此后所有部署都跳过 baseline，只能人工修库。
-  psql_db -v ON_ERROR_STOP=1 --single-transaction \
-    -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 \
-    || rollback_deploy "baseline 迁移失败（已整体回滚事务）"
-  psql_db -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
+  BASE_RECORDED=$(psql_db -tAc "SELECT 1 FROM schema_migrations WHERE version='001_baseline'" 2>/dev/null | tr -d ' ')
+  BASE_TABLE=$(psql_db -tAc "SELECT to_regclass('public.tenants') IS NOT NULL" 2>/dev/null | tr -d ' ')
+  if [[ "$BASE_RECORDED" == "1" || "$BASE_TABLE" == "t" ]]; then
+    log "  baseline 已存在于数据库（记录=${BASE_RECORDED:-无} / 代表表=${BASE_TABLE:-无}），跳过 baseline"
+    psql_db -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
+  else
+    NEED_BASELINE=true
+  fi
+fi
+
+if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
+  if $NEED_BASELINE; then
+    log "  空库，执行 001_baseline（单事务 + ON_ERROR_STOP）..."
+    psql_db -v ON_ERROR_STOP=1 --single-transaction \
+      -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 \
+      || rollback_deploy "baseline 迁移失败（已整体回滚事务，库仍为空，可修复后重试）"
+    psql_db -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
+  fi
 
   # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
