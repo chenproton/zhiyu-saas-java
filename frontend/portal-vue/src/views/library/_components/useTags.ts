@@ -30,8 +30,15 @@ export function useTags() {
     inflight = null;
   }
 
+  // 标签管理页增删改后调用：失效缓存并重拉（对齐 React useTags.reload）
+  async function reload(): Promise<void> {
+    cache = null;
+    inflight = null;
+    await loadTags();
+  }
+
   // 首次实例化即触发加载（单飞保证只发一次请求）
   if (cache === null) void loadTags();
 
-  return { tags, loading, loadTags };
+  return { tags, loading, loadTags, reload };
 }

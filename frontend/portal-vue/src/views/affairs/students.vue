@@ -8,6 +8,8 @@
             <span class="card-sub">管理学生基础信息与学籍数据</span>
           </div>
           <div>
+            <el-button @click="importDialog = true">批量导入</el-button>
+            <el-button @click="exportStudents">导出</el-button>
             <el-button v-if="selectedIds.length" type="danger" @click="confirmBatchDelete">批量删除({{ selectedIds.length }})</el-button>
             <el-button v-if="selectedIds.length" @click="confirmBatchGraduate">批量毕业({{ selectedIds.length }})</el-button>
             <el-button v-if="selectedIds.length" @click="joinDialog = true">批量加入班级({{ selectedIds.length }})</el-button>
@@ -101,6 +103,31 @@
         <el-button type="primary" :loading="saving" @click="saveJoin">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入 -->
+    <el-dialog v-model="importDialog" title="批量导入学生" width="520px" @closed="closeImport">
+      <div class="import-guide">
+        <p>1. 点击下方按钮下载最新的导入模板</p>
+        <p>2. 参照模板填写学生数据</p>
+        <p>3. 选择已填写的 Excel (.xlsx) 文件并开始导入</p>
+      </div>
+      <div class="import-actions">
+        <el-button :loading="importing" @click="downloadStudentTemplate">下载学生批量导入模板</el-button>
+        <el-upload
+          :auto-upload="false"
+          accept=".xlsx"
+          :limit="1"
+          :file-list="importFileList"
+          :on-change="onImportFileChange"
+        >
+          <el-button>选择文件</el-button>
+        </el-upload>
+      </div>
+      <template #footer>
+        <el-button @click="closeImport">取消</el-button>
+        <el-button type="primary" :loading="importing" :disabled="!importFile" @click="doImport">开始导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -109,6 +136,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { userManagementApi } from '@/api/portal';
 import { roleApi, organizationApi, orgTypeApi } from '@/api/system';
+import { authedFetch } from '@/api/http';
+import { downloadBlob } from '@/components/common/content-list-page.types';
 import { useAuthStore } from '@/stores/auth';
 import type { User } from '@/types/user';
 
@@ -145,6 +174,11 @@ const resetPassword = ref('');
 
 const joinDialog = ref(false);
 const joinClassNodeId = ref('');
+
+const importDialog = ref(false);
+const importFile = ref<File | null>(null);
+const importFileList = ref<any[]>([]);
+const importing = ref(false);
 
 const filteredStudents = computed(() =>
   students.value.filter((s) => {
@@ -389,6 +423,74 @@ async function saveJoin() {
   }
 }
 
+function onImportFileChange(file: any) {
+  importFile.value = file.raw || null;
+}
+
+function closeImport() {
+  importDialog.value = false;
+  importFile.value = null;
+  importFileList.value = [];
+}
+
+async function downloadStudentTemplate() {
+  try {
+    const res = await authedFetch('/templates/students');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    downloadBlob(await res.blob(), '学生批量导入模板.xlsx');
+  } catch (e) {
+    ElMessage.error((e as Error).message || '模板下载失败');
+  }
+}
+
+async function doImport() {
+  if (!importFile.value) {
+    ElMessage.warning('请选择文件');
+    return;
+  }
+  importing.value = true;
+  try {
+    const form = new FormData();
+    form.append('file', importFile.value);
+    const res = await authedFetch('/import/students/excel?overwrite=false&rename=false', {
+      method: 'POST',
+      body: form
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    const result = (await res.json()) as { created?: number; failed?: number };
+    ElMessage.success(`导入完成：成功 ${result.created ?? 0} 条，失败 ${result.failed ?? 0} 条`);
+    closeImport();
+    load();
+  } catch (e) {
+    ElMessage.error((e as Error).message || '导入失败');
+  } finally {
+    importing.value = false;
+  }
+}
+
+async function exportStudents() {
+  try {
+    const res = await authedFetch('/export/students/excel', {
+      method: 'POST',
+      body: JSON.stringify({ ids: selectedIds.value })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    downloadBlob(await res.blob(), '学生导出.xlsx');
+    ElMessage.success(selectedIds.value.length > 0 ? `已导出 ${selectedIds.value.length} 名学生` : '导出完成');
+  } catch (e) {
+    ElMessage.error((e as Error).message || '导出失败');
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -398,4 +500,7 @@ onMounted(load);
 .card-title { font-size: 16px; font-weight: 600; }
 .card-sub { color: #909399; font-size: 13px; margin-left: 8px; }
 .filter-row { display: flex; gap: 12px; margin-bottom: 12px; }
+.import-guide { font-size: 13px; color: #606266; margin-bottom: 16px; }
+.import-guide p { margin: 4px 0; }
+.import-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 </style>

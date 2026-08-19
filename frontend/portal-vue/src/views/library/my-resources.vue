@@ -116,12 +116,28 @@ const currentLabel = computed(() => {
   return resourceTypeLabels[activeTab.value.replace('resource:', '') as ResourceKind];
 });
 
+// 后端列表接口上限 maxPageSize=200，分页全量拉取避免静默截断（对齐 React fetchAllPages）
+async function fetchAllPages<T>(
+  fn: (limit: number, offset: number) => Promise<{ items: T[]; total?: number }>
+): Promise<T[]> {
+  const PAGE = 200;
+  const all: T[] = [];
+  for (let p = 0; p < 1000; p++) {
+    const res = await fn(PAGE, p * PAGE);
+    const its = res.items || [];
+    all.push(...its);
+    if (its.length < PAGE) break;
+  }
+  return all;
+}
+
 async function loadKnowledge() {
   if (loaded.knowledge) return;
   loading.knowledge = true;
   try {
-    const res = await knowledgeApi.list({ creatorId: userId.value, limit: 1000 });
-    knowledgeItems.value = res.items;
+    knowledgeItems.value = await fetchAllPages((limit, offset) =>
+      knowledgeApi.list({ creatorId: userId.value, limit, offset })
+    );
     loaded.knowledge = true;
   } catch {
     ElMessage.error('加载知识点失败');
@@ -133,8 +149,9 @@ async function loadAbility() {
   if (loaded.ability) return;
   loading.ability = true;
   try {
-    const res = await abilityApi.list({ creatorId: userId.value, limit: 1000 });
-    abilityItems.value = res.items;
+    abilityItems.value = await fetchAllPages((limit, offset) =>
+      abilityApi.list({ creatorId: userId.value, limit, offset })
+    );
     loaded.ability = true;
   } catch {
     ElMessage.error('加载能力点失败');
@@ -146,8 +163,9 @@ async function loadCertificates() {
   if (loaded.certificates) return;
   loading.certificates = true;
   try {
-    const res = await certificateLibraryApi.list({ creatorId: userId.value, limit: 1000 });
-    certificateItems.value = res.items;
+    certificateItems.value = await fetchAllPages((limit, offset) =>
+      certificateLibraryApi.list({ creatorId: userId.value, limit, offset })
+    );
     loaded.certificates = true;
   } catch {
     ElMessage.error('加载证书失败');
@@ -159,8 +177,9 @@ async function loadQuestions() {
   if (loaded.questions) return;
   loading.questions = true;
   try {
-    const res = await onSiteQuestionLibraryApi.list({ creatorId: userId.value, limit: 1000 });
-    questionItems.value = res.items;
+    questionItems.value = await fetchAllPages((limit, offset) =>
+      onSiteQuestionLibraryApi.list({ creatorId: userId.value, limit, offset })
+    );
     loaded.questions = true;
   } catch {
     ElMessage.error('加载问答题失败');
@@ -173,8 +192,9 @@ async function loadResourceKind(kind: ResourceKind) {
   if (loaded[key]) return;
   loading[key] = true;
   try {
-    const res = await resourceLibraryApi.list({ uploadedBy: userId.value, resourceType: kind, limit: 1000 });
-    resourceItemsMap[kind] = res.items;
+    resourceItemsMap[kind] = await fetchAllPages((limit, offset) =>
+      resourceLibraryApi.list({ uploadedBy: userId.value, resourceType: kind, limit, offset })
+    );
     loaded[key] = true;
   } catch {
     ElMessage.error('加载资源失败');

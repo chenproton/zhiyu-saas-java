@@ -1,160 +1,222 @@
 <template>
-  <div class="list-page">
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">人培方案</span>
-          <el-button type="primary" @click="openAdd">新建方案</el-button>
-        </div>
-      </template>
+  <ContentListPage :config="config">
+    <template #list="slot">
+      <el-card shadow="never" class="programs-table-card">
+        <el-table :data="slot.items" stripe>
+          <el-table-column width="50">
+            <template #header>
+              <el-checkbox
+                :model-value="allSelected(slot)"
+                :indeterminate="someSelected(slot)"
+                @change="slot.handleSelectAll($event as boolean)"
+              />
+            </template>
+            <template #default="{ row }">
+              <el-checkbox
+                :model-value="slot.selectedIds.includes(row.id)"
+                @change="slot.handleSelectId(row.id, $event as boolean)"
+              />
+            </template>
+          </el-table-column>
 
-      <el-input v-model="searchQuery" placeholder="搜索方案名称..." clearable style="max-width: 320px; margin-bottom: 12px" @input="onSearch" @clear="onSearch" />
+          <el-table-column label="方案名称" min-width="200" show-overflow-tooltip>
+            <template #default="{ row }">
+              <div class="prog-name">{{ row.name }}</div>
+              <div v-if="row.code" class="prog-code">{{ row.code }}</div>
+            </template>
+          </el-table-column>
 
-      <el-table v-loading="loading" :data="items" stripe>
-        <el-table-column label="名称" min-width="200" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.name }}</template>
-        </el-table-column>
-        <el-table-column label="专业" width="140" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.majorName || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="入学年份" width="100">
-          <template #default="{ row }">{{ row.entryYear || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="课程数" width="90">
-          <template #default="{ row }">{{ row.courseCount ?? '-' }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">{{ contentStatusLabel(row.status) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="row.status === 'draft'" size="small" type="primary" @click="wf.submit(row.id)">提交审批</el-button>
-            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="wf.publish(row.id)">发布</el-button>
-            <el-button v-if="row.status === 'published'" size="small" @click="wf.archive(row.id)">归档</el-button>
-            <el-button size="small" @click="goEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="confirmDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+          <el-table-column label="专业" width="140" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.majorName || '-' }}</template>
+          </el-table-column>
 
-      <el-pagination v-if="total > pageSize" v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next, total" class="pagination" @current-change="loadItems" />
-    </el-card>
+          <el-table-column label="年级" width="90">
+            <template #default="{ row }">{{ row.entryYear }}级</template>
+          </el-table-column>
 
-    <el-dialog v-model="dialogOpen" :title="editingItem ? '编辑方案' : '新建方案'" width="520px">
-      <el-form :model="form" label-width="90px">
-        <el-form-item label="名称"><el-input v-model="form.name" placeholder="方案名称" /></el-form-item>
-        <el-form-item label="入学年份"><el-input-number v-model="form.entryYear" :min="2000" :max="2100" style="width: 100%" /></el-form-item>
-        <el-form-item label="简介"><el-input v-model="form.description" type="textarea" :rows="2" placeholder="方案简介" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogOpen = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submit">保存</el-button>
-      </template>
-    </el-dialog>
-  </div>
+          <el-table-column label="课程数" width="90">
+            <template #default="{ row }">{{ row.courseCount ?? '-' }}</template>
+          </el-table-column>
+
+          <el-table-column label="批次" width="140" show-overflow-tooltip>
+            <template #default="{ row }">{{ batchName(slot, row) }}</template>
+          </el-table-column>
+
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="statusTagType(row.status)" size="small">
+                {{ contentStatusLabel(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" min-width="300" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                v-if="canEdit(row.status)"
+                link
+                type="primary"
+                size="small"
+                @click="goEdit(row)"
+              >
+                编辑
+              </el-button>
+              <el-button
+                v-for="act in slot.rowActions(row)"
+                :key="act.key"
+                link
+                :type="act.type"
+                size="small"
+                @click="act.handler"
+              >
+                {{ act.label }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </template>
+  </ContentListPage>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { programApi } from '@/api/affairs';
+import ContentListPage from '@/components/common/content-list-page.vue';
+import type {
+  ContentApi,
+  ContentApprovalApi,
+  ContentBatchApi,
+  ContentImportExportApi,
+  ContentListItem,
+  ContentListPageConfig,
+  ListSlotProps
+} from '@/components/common/content-list-page.types';
+import { programApi, affairsBatchApi } from '@/api/affairs';
+import { approvalApi } from '@/api/approval';
+import { importExportApi } from '@/api/import-export';
 import type { TrainingProgram } from '@/types/affairs';
 import { contentStatusLabel } from '@/types/content-status';
-import { useContentWorkflow } from '@/composables/useContentWorkflow';
-
-const PAGE_SIZE = 200;
-const items = ref<TrainingProgram[]>([]);
-const loading = ref(false);
-const searchQuery = ref('');
-const page = ref(1);
-const total = ref(0);
-const pageSize = PAGE_SIZE;
-const dialogOpen = ref(false);
-const editingItem = ref<TrainingProgram | null>(null);
-const submitting = ref(false);
-const form = reactive({ name: '', entryYear: new Date().getFullYear(), description: '' });
-
-async function loadItems() {
-  loading.value = true;
-  try {
-    const res = await programApi.list({
-      ...(searchQuery.value ? { search: searchQuery.value } : {}),
-      limit: PAGE_SIZE,
-      offset: (page.value - 1) * PAGE_SIZE
-    });
-    items.value = res.items;
-    total.value = res.total ?? 0;
-  } catch (e) {
-    ElMessage.error((e as Error).message || '加载失败');
-  } finally {
-    loading.value = false;
-  }
-}
-function onSearch() {
-  page.value = 1;
-  loadItems();
-}
-
-const wf = useContentWorkflow(programApi, loadItems);
 
 const router = useRouter();
-function goEdit(row: TrainingProgram) {
+
+// ─── 状态筛选选项（对齐 React STATUS_FILTER_OPTIONS） ────────────────────────
+const STATUS_FILTER_OPTIONS = [
+  { value: 'draft', label: '草稿' },
+  { value: 'pending', label: '审批中' },
+  { value: 'approved', label: '已通过' },
+  { value: 'rejected', label: '已驳回' },
+  { value: 'published', label: '已发布' },
+  { value: 'archived', label: '已归档' }
+];
+
+// ─── 映射（对齐 React mapProgram / mapBatch） ────────────────────────────────
+function mapProgram(backend: unknown): ContentListItem {
+  const p = backend as TrainingProgram;
+  return {
+    ...p,
+    id: p.id,
+    name: p.name,
+    status: p.status,
+    batchId: p.batchId,
+    creatorId: p.createdBy || '',
+    coCreatorIds: p.collaborators || [],
+    code: p.code,
+    majorName: p.majorName,
+    entryYear: p.entryYear,
+    courseCount: p.courseCount,
+    batchName: p.batchName
+  };
+}
+
+function mapBatch(backend: unknown) {
+  const b = backend as { id: string; name: string; workflowId?: string };
+  return { id: b.id, name: b.name, workflowId: b.workflowId };
+}
+
+function createPayload(): Record<string, unknown> {
+  return {
+    name: '新建人培方案',
+    entryYear: new Date().getFullYear(),
+    level: '本科',
+    duration: 4,
+    totalCredits: 0,
+    status: 'draft',
+    collaborators: []
+  };
+}
+
+const config: ContentListPageConfig = {
+  title: '人才培养方案',
+  subtitle: '维护专业人才培养方案及课程设置，发布后可生成学期教学计划',
+  entityLabel: '人培方案',
+  addHref: '/affairs/programs',
+  permissionModule: 'affairs',
+  permissionResource: 'programs',
+  itemApi: programApi as unknown as ContentApi,
+  batchApi: affairsBatchApi as unknown as ContentBatchApi,
+  approvalApi: approvalApi as unknown as ContentApprovalApi,
+  importExportApi: importExportApi as unknown as ContentImportExportApi,
+  approvalTargetType: 'training_program',
+  coBuilderField: 'collaborators',
+  createRedirectUrl: (id: string) => `/affairs/programs/${id}/edit`,
+  statusFilterOptions: STATUS_FILTER_OPTIONS,
+  mapItem: mapProgram,
+  mapBatch,
+  createPayload
+};
+
+// ─── 行展示辅助 ────────────────────────────────────────────────────────────
+function batchName(slot: ListSlotProps, row: ContentListItem): string {
+  if (!row.batchId) return '-';
+  const name = (row as { batchName?: string }).batchName;
+  return slot.batchMap[row.batchId] || name || row.batchId;
+}
+
+function allSelected(slot: { items: ContentListItem[]; selectedIds: string[] }): boolean {
+  return slot.items.length > 0 && slot.items.every((i) => slot.selectedIds.includes(i.id));
+}
+
+function someSelected(slot: { items: ContentListItem[]; selectedIds: string[] }): boolean {
+  return slot.items.some((i) => slot.selectedIds.includes(i.id)) && !allSelected(slot);
+}
+
+// ─── 行操作可见性（对齐 React StatusActionBar 的 EDITABLE_STATUSES） ─────────
+const EDITABLE_STATUSES = ['draft', 'rejected', 'approved'];
+function canEdit(status: string): boolean {
+  return EDITABLE_STATUSES.includes(status);
+}
+
+function statusTagType(status: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' {
+  switch (status) {
+    case 'published':
+      return 'success';
+    case 'rejected':
+      return 'danger';
+    case 'pending':
+      return 'primary';
+    case 'approved':
+      return 'warning';
+    default:
+      return 'info';
+  }
+}
+
+// ─── 导航（对齐 React：详情跳转；Vue 路由为 /affairs/programs/:id/edit） ────
+function goEdit(row: ContentListItem) {
   router.push(`/affairs/programs/${row.id}/edit`);
 }
-function openAdd() {
-  editingItem.value = null;
-  Object.assign(form, { name: '', entryYear: new Date().getFullYear(), description: '' });
-  dialogOpen.value = true;
-}
-function openEdit(item: TrainingProgram) {
-  editingItem.value = item;
-  Object.assign(form, { name: item.name, entryYear: item.entryYear, description: item.description || '' });
-  dialogOpen.value = true;
-}
-async function submit() {
-  if (!form.name.trim()) {
-    ElMessage.warning('名称不能为空');
-    return;
-  }
-  submitting.value = true;
-  try {
-    const payload = { name: form.name.trim(), entryYear: form.entryYear, description: form.description.trim() || undefined };
-    if (editingItem.value) {
-      await programApi.update(editingItem.value.id, payload);
-      ElMessage.success('更新成功');
-    } else {
-      await programApi.create(payload);
-      ElMessage.success('创建成功');
-    }
-    dialogOpen.value = false;
-    loadItems();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
-  } finally {
-    submitting.value = false;
-  }
-}
-async function confirmDelete(item: TrainingProgram) {
-  try {
-    await ElMessageBox.confirm('确定要删除该方案吗？此操作不可恢复。', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' });
-  } catch {
-    return;
-  }
-  try {
-    await programApi.delete(item.id);
-    ElMessage.success('删除成功');
-    loadItems();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '删除失败');
-  }
-}
-onMounted(loadItems);
 </script>
 
 <style scoped>
-.list-page { padding: 16px; }
-.card-header { display: flex; align-items: center; justify-content: space-between; }
-.card-title { font-size: 16px; font-weight: 600; }
-.pagination { margin-top: 16px; justify-content: flex-end; }
+.programs-table-card :deep(.el-card__body) {
+  padding: 0;
+}
+.prog-name {
+  font-weight: 500;
+  color: #303133;
+}
+.prog-code {
+  font-size: 12px;
+  color: #909399;
+}
 </style>
