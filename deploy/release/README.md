@@ -3,6 +3,7 @@
 本目录为**无源码离线交付包**：将整个目录复制到客户服务器的 U 盘/移动硬盘，
 在服务器上执行一条命令即可完成全部服务的安装与启动。
 全程**无需联网、无需源代码、无需 Go/Node 工具链**。
+> 前提：`debs/` 目录须包含 `curl`、`rsync`、`python3`、`openssl`、`gettext-base`（envsubst）、`docker-compose-plugin`、`nginx` 对应的 .deb；缺失时 install.sh 会退化为联网 `apt-get install`。打包机执行 `package-release.sh` 前请确认 `offline/debs/` 齐备。
 
 ## 环境要求
 

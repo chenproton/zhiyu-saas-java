@@ -75,8 +75,10 @@ services:
       - zhiyu
 
   backend:
-    env_file:
-      - .env
+    # 不用 env_file 全量注入：那会把 .env 里所有键（含仅宿主机需要的 SEED_ADMIN_PASSWORD、
+    # TEST_DATABASE_URL 与全部 VITE_*）灌进运行期容器，无谓扩大密钥暴露面。
+    # 运行期实际需要的仅下列变量（backend/go/internal/config 只读 DATABASE_URL/REDIS_URL/
+    # JWT_SECRET/AI_CONFIG_SECRET，另加 PORT/UPLOAD_DIR，可选 ALERT_WEBHOOK_URL）。
     image: zhiyu-backend:${IMAGE_TAG:-latest}
     container_name: zhiyu-backend
     restart: unless-stopped
@@ -90,6 +92,9 @@ services:
       DATABASE_URL: postgres://${DB_USER:-zhiyu_saas}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-zhiyu-saas}?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET}
+      # 原先靠 env_file 传入，收窄后必须显式声明（缺失会导致租户 AI 配置无法解密）
+      AI_CONFIG_SECRET: ${AI_CONFIG_SECRET}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       PORT: "8080"
       UPLOAD_DIR: /opt/zhiyu-saas/uploads
     volumes:

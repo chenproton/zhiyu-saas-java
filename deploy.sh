@@ -7,9 +7,11 @@
 #   ./deploy.sh                      # 部署 master 最新代码
 #
 # 选项:
-#   --clean      清空构建缓存，全量重建
-#   --gates      构建前执行质量门禁（默认跳过，GitHub Actions 已覆盖；go vet/test、pnpm typecheck/lint）
-#   --skip-merge 部署成功不自动合并到 master
+#   --clean       清空构建缓存，全量重建
+#   --force       仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）
+#   --skip-gates  跳过质量门禁（门禁默认开启：spec-check 无条件跑；有构建时才跑 gofmt/vet/go test
+#                 与 typecheck/lint/test。CI 只在 push 到 master 后触发，故门禁不能只靠 CI）
+#   --skip-merge  部署成功不自动合并到 master
 #
 # 所有行为自动判断:
 #   首次运行 → 安装依赖、生成 .env、初始化数据库+种子数据
@@ -38,7 +40,7 @@ while [[ $# -gt 0 ]]; do
       BRANCH_NAME="$2"; shift 2 ;;
     --clean) CLEAN_BUILD=true; shift ;;
     --force) FORCE_FLAG=true; shift ;;
-    --gates) GATES_FLAG=true; shift ;;
+    --gates) GATES_FLAG=true; shift ;;   # 兼容旧用法：门禁已默认开启，此参数等价于不传
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
       echo "用法: $0 --branch <分支名> [--clean] [--force] [--skip-gates] [--skip-merge]"
@@ -394,8 +396,16 @@ if command -v flock >/dev/null 2>&1; then
     [[ -n "${TMPCTX:-}" ]] && rm -rf "$TMPCTX"
     # 构建树里的 .env 是密钥副本（位于 /tmp），部署结束即删，不长期留存
     [[ -n "${BUILD_TREE:-}" && -f "${BUILD_TREE:-}/.env" ]] && rm -f "$BUILD_TREE/.env"
-    # 回滚用的临时标签用完即清，避免下次部署把 :rollback 当成「上一版镜像」（等于没回滚）
-    docker rmi "zhiyu-backend:rollback" "zhiyu-edu:rollback" >/dev/null 2>&1 || true
+    # 回滚用的临时标签：仅当没有容器在引用时才清理。
+    # 回滚发生后容器正跑 :rollback，此时 docker rmi 必然因 "image is being used" 失败，
+    # 原写法被 || true 吞掉、标签长期残留；这里显式判断引用情况，避免误以为已清理。
+    for img in "zhiyu-backend:rollback" "zhiyu-edu:rollback"; do
+      if docker image inspect "$img" >/dev/null 2>&1; then
+        if [[ -z "$(docker ps -aq --filter "ancestor=$img" 2>/dev/null)" ]]; then
+          docker rmi "$img" >/dev/null 2>&1 || true
+        fi
+      fi
+    done
     exec {LOCK_FD}>&- 2>/dev/null || true
   }
   trap cleanup EXIT
@@ -982,6 +992,13 @@ rollback_deploy() {
     $found || warn "$svc 回滚后未就绪"
   done
   compose logs backend --tail 30 2>/dev/null || true
+  # 复位 .env 的 IMAGE_TAG 到回滚后的镜像标签：构建前已把它写成新 commit，
+  # 若不复位，下次 `docker compose up` 或人工重启会再次拉起刚刚失败的版本（回滚不持久）。
+  PREV_TAG="${PREV_BACKEND##*:}"
+  if [[ -n "$PREV_TAG" && "$PREV_TAG" != "$PREV_BACKEND" ]]; then
+    update_env_var "$ENV_FILE" "IMAGE_TAG" "$PREV_TAG"
+    warn "已把 .env 的 IMAGE_TAG 复位为回滚版本 $PREV_TAG（当前容器实际跑 :rollback 标签，内容同版）"
+  fi
   # 迁移环节失败时数据库可能处于中间状态（仅 psql 兜底部分应用场景），提示人工恢复路径
   if [[ -s "${BACKUP_FILE:-}" ]]; then
     # 不打印 MIGRATE_URL：内含 DB 口令，会落到部署日志/CI/会话记录
@@ -1035,7 +1052,9 @@ if $BUILD_BACKEND; then
     # go test 集成测试会向数据库执行 migration/DELETE，仅允许在 TEST_DATABASE_URL
     # 指定的专用测试库上运行，避免误伤生产数据。
     TEST_DB_URL="${TEST_DATABASE_URL:-}"
-    if [[ -n "$TEST_DB_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready "$TEST_DB_URL" >/dev/null 2>&1; then
+    # pg_isready 必须用 -d 传连接串：直接位置传参会被当成 dbname，导致「设了 TEST_DATABASE_URL
+    # 却仍判定测试库不可用」而静默跳过 go test
+    if [[ -n "$TEST_DB_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready -d "$TEST_DB_URL" >/dev/null 2>&1; then
       (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DB_URL" go test ./...) || die "go test ./... 失败"
     else
       warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
@@ -1372,21 +1391,27 @@ smoke_test() {
   fi
   log "  冒烟基址: $base"
 
+  # $4 可选：响应体必须包含的子串。只看状态码会被 SPA fallback 骗过
+  # （/health 未显式代理时会返回 index.html 且 200 → 后端全挂也「通过」）。
   check() {
-    local path="$1" want="$2" desc="$3" code
-    code=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' "$base$path" || echo 000)
-    if [[ "$code" == "$want" ]]; then
-      log "    ✓ $desc（$path → $code）"
-    else
-      warn "    ✗ $desc（$path 期望 $want，实际 $code）"
-      rc=1
+    local path="$1" want="$2" desc="$3" must="${4:-}" code body tmp
+    tmp=$(mktemp)
+    code=$(curl -s -o "$tmp" --max-time 10 -w '%{http_code}' "$base$path" || echo 000)
+    body=$(head -c 200 "$tmp" 2>/dev/null || true)
+    rm -f "$tmp"
+    if [[ "$code" != "$want" ]]; then
+      warn "    ✗ $desc（$path 期望 $want，实际 $code）"; rc=1; return
     fi
+    if [[ -n "$must" && "$body" != *"$must"* ]]; then
+      warn "    ✗ $desc（$path 状态码对但响应体不含「$must」，疑似被 SPA fallback 兜住）"; rc=1; return
+    fi
+    log "    ✓ $desc（$path → $code）"
   }
 
-  check "/portal/login"          200 "前端 SPA 产物"
-  check "/health"                200 "后端存活"
+  check "/portal/login"          200 "前端 SPA 产物"        "<!doctype html"
+  check "/health"                200 "后端存活"              '"status":"ok"'
   check "/api/v1/auth/captcha"   200 "API + Redis（验证码生成）"
-  check "/api/v1/settings/theme" 200 "API + DB 读（主题配置）"
+  check "/api/v1/settings/theme" 200 "API + DB 读（主题配置）" "primary"
   check "/api/v1/tenants"        401 "鉴权中间件生效（未带 token 必须 401）"
   return $rc
 }
@@ -1433,6 +1458,8 @@ fi
 EXITED_OWN=$(docker ps -aq --filter status=exited \
   --filter "label=com.docker.compose.project=${COMPOSE_PROJECT:-zhiyu-saas}" 2>/dev/null || true)
 [[ -n "$EXITED_OWN" ]] && docker rm -f $EXITED_OWN >/dev/null 2>&1 || true
+# 注意：docker builder prune 是**全宿主范围**，会连带清掉 Java 栈的 buildx 缓存
+# （镜像清理已用 until=24h 保护其他栈，构建缓存无法按项目过滤，只能靠阈值控制频率）。
 BUILD_CACHE_LIMIT="${BUILD_CACHE_LIMIT_GB:-10}GB"
 CACHE_BEFORE=$(docker buildx du 2>/dev/null | tail -1 | awk '{print $2}' || true)
 if docker builder prune --help 2>/dev/null | grep -q -- '--max-used-space'; then

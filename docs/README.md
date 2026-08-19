@@ -77,9 +77,9 @@ docs/
 
 | 脚本 | 用途 |
 |---|---|
-| `deploy.sh`（仓库根目录） | **Go 版**分支部署 + 质量门禁 + 自动合并 |
+| `deploy.sh`（仓库根目录） | **Go 版**分支部署：门禁默认开启 + 分段启动 + 健康门禁 + 业务冒烟 + 失败回滚 + 自动合并（契约见 `spec/03-development-plan.md` §5） |
 | `deploy-java.sh`（仓库根目录） | **Java 版** Docker 部署（jar + Vue 门户静态产物 + nginx） |
-| `scripts/spec-check.sh` | spec 硬约束自动校验（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向/spec 耦合） |
+| `scripts/spec-check.sh` | spec 校验共 12 项：阻断级 1–9（分层/AI 底座/migration 配对+down 不可逆/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数机械校验/机器码词汇表），提示级 10–12（路由↔契约覆盖/spec↔代码耦合/验收流程一致性） |
 | `scripts/package-release.sh` | 离线实施包打包 |
 | `scripts/migrate_uploads.sh` | 上传文件迁移 |
 | `scripts/ui-smoke/` | 全站点击巡检（UI smoke test） |

@@ -1,5 +1,7 @@
 # 知与 SaaS 双后端仓库开发契约（Go + Java）
 
+> 分支模型说明：本仓库**主线只有 `master`**，Go 侧按「分支隔离 + 部署成功自动合并 master」协作（见第四节）；第二部分 Java 契约里的 `main/dev/release` Git Flow 属**框架模板约定**，当前仓库未启用，接入前需先与用户确认。
+>
 > 本仓库同时维护两套后端：**Go 后端**（`backend/go/`，线上运行）与 **Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名），共用同一 PostgreSQL，配套三套前端：**React SPA**（`frontend/edu`，Vite 7 + React Router，Go 配套）+ **Vue 业务门户**（`frontend/portal-vue`，Java 配套）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架，Java 配套）。
 > 开发契约分两部分：第一部分为 Go 后端契约，第二部分为 Java 后端框架契约。按所改后端选择对应契约执行。
 
@@ -107,14 +109,14 @@
 3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge` / `--skip-gates`）
 4. `cd / && git worktree remove /tmp/<agent>`
 
-deploy.sh 自动：源码 hash 比对只构建变更部分；DB 首次 baseline、后续增量 migration；部署锁保证并发串行。**质量门禁默认开启**（后端 gofmt/vet/test + 前端 typecheck/lint/test + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
+deploy.sh 自动：源码 hash 比对只构建变更部分；分两段启动（先数据层→备份→迁移→再业务容器）；健康门禁 + 5 探针业务冒烟，任一失败回滚旧镜像且不合并 master；部署锁保证并发串行。**完整执行顺序、密钥注入边界、备份恢复与两栈共享资源见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。****质量门禁默认开启**（后端 gofmt/vet/test + 前端 typecheck/lint/test + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
 
 ### 4.2 提交前必跑（代码改动）
 
 ```bash
 cd backend/go && go vet ./... && go build ./... && gofmt -l .
 pnpm typecheck && pnpm lint && pnpm test
-./scripts/spec-check.sh   # spec 校验：阻断级（分层/AI 底座/migration 配对+down 不可逆/spec 制品/ADR 索引/安全红线/schema↔migration 双向）+ 提示级（spec 耦合/XSS/路由契约），详见 spec-standards.md §九
+./scripts/spec-check.sh   # spec 校验共 12 项：阻断级 1–9（分层/AI 底座/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数机械校验/机器码词汇表）+ 提示级 10–12（路由↔契约覆盖/spec↔代码耦合/验收流程一致性；另含 down 不可逆标注、XSS 清单），详见 spec-standards.md §九
 ```
 
 migration 需配对 `.down.sql`；单次 commit 只含当次变更。
@@ -130,6 +132,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖。
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
+   > 两个例外（属自动化门禁，不是「主动做 E2E」）：① `deploy.sh` 部署后自带 5 探针业务冒烟（无浏览器、无账号，失败即回滚）；② 涉及核心业务链路的功能，按 DoD 第 7 条需设计 `docs/spec/06-acceptance-flows.md` 的 flow，并在部署后由用户或按需执行 `--flows` 跑通（AI 不主动跑）。
 4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`frontend/edu/public/image-editor`（符号链接）、`backend/go/vendor/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`。
 
 ## 六、规范索引（细则去哪找）
@@ -157,12 +160,13 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 
 | 操作 | 命令 |
 |------|------|
-| 服务状态 | `docker compose ps` |
-| 后端日志 | `docker compose logs backend --tail 100` |
-| 健康检查 | `curl -sf http://127.0.0.1:8080/health` |
+| 服务状态 | `docker compose -f deploy/docker-compose.yml ps`（仓库根无 compose 文件，必须带 -f） |
+| 后端日志 | `docker compose -f deploy/docker-compose.yml logs backend --tail 100` 或 `docker logs zhiyu-backend --tail 100` |
+| 健康检查 | `curl -sf http://127.0.0.1/health`（经生产入口，网关已显式代理到 backend）；容器**不再发布宿主 8080**，容器内自检用 `docker exec zhiyu-backend wget -qO- http://127.0.0.1:8080/health` |
 | 连接数据库 | `psql "$DATABASE_URL"` |
-| 回滚部署 | `git checkout <上一tag>` 后 `./deploy.sh`（禁止手动登服务器改代码） |
-| 离线实施包 | `./scripts/package-release.sh v1.0.0` |
+| 回滚部署 | `git checkout <上一个已上线 commit>` 后 `./deploy.sh`（重新构建；禁止手动登服务器改代码）。仓库当前**未打任何 tag**，故用 commit 而非 tag；部署成功后镜像只保留最新 1 个，无法「不重建直接切回上一版」 |
+| 离线实施包 | `./scripts/package-release.sh v1.0.0`（产出 Go+React 栈离线包；Java 栈需联网构建，不在包内） |
+| Java 栈部署 | `./deploy-java.sh`（入口 `:8083`，经边缘 nginx `/java/` 收编到 80）。**首次现场部署顺序：先 `./deploy.sh` 建库+Go 栈，再 `./deploy-java.sh`**；两栈共享 `zhiyu-postgres`、`zhiyu-saas_uploads_data` 卷与 `zhiyu-saas_zhiyu` 网络 |
 | 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |
 | UI 全站巡检 | `node scripts/ui-smoke/ui-smoke.mjs`（默认不做，见「五.3」） |
 | 业务链路验收 | `node scripts/ui-smoke/ui-smoke.mjs --flows`（spec 06 驱动；新功能核心链路须同步设计 flow，见 `docs/spec-standards.md` DoD 7） |

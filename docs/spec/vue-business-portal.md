@@ -9,7 +9,7 @@
 
 ### 1.1 背景
 - 本仓库为 Go + Java 双后端并存。Java 后端（`backend/java/ruoyi-*`，`org.dromara`）已按 `docs/backend-go-to-java-migration.md` 等价迁移 13 个业务域，共 635+ 端点，API 契约与 Go 版对齐（`/api/v1/**`、裸 JSON、`{items,total}`、`limit/offset`）。
-- 当前 Java 后端**复用** Next.js 业务门户（`frontend/edu`，通过 `NEXT_PUBLIC_BASE_PATH=/java` 在 `/java/portal` 服务），与 Go 共用同一套 React 代码。
+- （**迁移前的历史状态，已不成立**）Java 后端曾复用 Next.js 业务门户（`frontend/edu`，通过 `NEXT_PUBLIC_BASE_PATH=/java` 在 `/java/portal` 服务）；现 Java 侧为独立 Vue 门户，`frontend/edu` 也已迁为 React SPA（见 ADR-0009）。
 - 现有 Vue 工程 `frontend/plus-ui`（RuoYi-Vue-Plus 管理端，Vue 3.5.40 / Vite 8.1.5 / TS 6.0.3 / Element Plus 2.14.3）已随框架合仓进入仓库，但**仅覆盖后台管理控制台**（系统管理/工作流/代码生成/监控），且当前未接线 Java。
 
 ### 1.2 目标
@@ -146,9 +146,10 @@
   （`frontend/portal-vue/src/api/http.ts`），与 Go 门户互不干扰。
 - 上传件：两栈共享 `zhiyu-saas_uploads_data` 卷，`/uploads/` 由 Go 网关统一服务；
   Java 镜像以 uid 1000（与 Go 侧 `appuser` 一致）运行，避免 root 建目录导致对方无法写入。
-- 管理端：`/java/` 其余路径暂回落到旧 Next.js `java-edu`（`location /`），plus-ui 管理端后续接入。
-- `deploy-java.sh`：新增 `frontend/portal-vue` 的 `pnpm install + pnpm build` 步骤；`docker-compose-java.yml` java-nginx 挂载 `../../frontend/portal-vue/dist`。
-- 渐进切换期：`/java/portal`（无斜杠）仍走 Next.js，`/java/portal/`（有斜杠）走 Vue；Phase 3 全量完成后统一重定向并移除 Next.js。
+- 管理端：plus-ui（RuoYi 框架）后续接入，当前未部署。
+- 其余路径：`java-site.conf` 已把根路径与 `/java/portal`（无斜杠）**统一 301 到 `/java/portal/`**（Vue 门户），
+  旧 Next.js `java-edu` 容器与 Dockerfile 已随迁移完成移除，**不再有 Next.js 回落**（与本文档状态头一致）。
+- `deploy-java.sh`：构建 `frontend/portal-vue`（`pnpm install + pnpm build`）；`docker-compose-java.yml` 的 java-nginx 挂载 `../../frontend/portal-vue/dist`。
 
 ### 8.2 质量门禁（每 Phase 提交前）
 - `pnpm --filter portal-vue build`（vite build）通过；`vue-tsc` 类型检查通过。

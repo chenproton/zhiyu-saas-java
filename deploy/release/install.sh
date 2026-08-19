@@ -213,6 +213,11 @@ if [[ ! -f "$ENV_FILE" ]]; then
     echo "ENABLE_KKFILEVIEW=true"
     echo "KKFILEVIEW_IMAGE=fangzhengjin/kkfileview:4.4.0"
     echo "KK_BASE_URL="
+    # 与 deploy.sh 生成的 .env 对齐，避免客户现场缺键（多数有 compose 默认值，但缺了就无法通过 .env 调整）
+    echo "KK_MEDIA_CONVERT_DISABLE=true"   # true 才允许远程 mov/avi/mkv 走 ffmpeg 转码预览
+    echo "VITE_SITE_URL="                  # 移动端访问二维码站点地址（构建期注入，改后需重新打包）
+    echo "DOCKER_REGISTRY_MIRRORS="
+    echo "BUILD_CACHE_LIMIT_GB=10"
     echo "SEED_ADMIN_PASSWORD=admin123"
     echo "PORT=8080"
   } > "$ENV_FILE"

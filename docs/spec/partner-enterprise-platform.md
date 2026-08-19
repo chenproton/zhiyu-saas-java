@@ -386,9 +386,9 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 ## 8. 部署与验证
 
 1. migration 142（配对 `.down.sql`），部署时 `go run ./cmd/migrate/main.go up`
-2. 本地门禁：`cd backend && go vet ./... && go build ./... && gofmt -l .`；`pnpm typecheck && pnpm lint`
+2. 本地门禁：`cd backend/go && go vet ./... && go build ./... && gofmt -l .`；`pnpm typecheck && pnpm lint`
 3. 分支隔离：`git worktree add -b feat/partner-平台 ...` → 开发提交 → 推送 → `./deploy.sh --branch <分支>`
-4. 健康检查：`curl -sf http://127.0.0.1:8080/health`；部署通过后自动合并回 master
+4. 健康检查：`curl -sf http://127.0.0.1/health   # 经生产入口（宿主 nginx→网关→backend）；容器不再发布 8080`；部署通过后自动合并回 master
 
 ---
 

@@ -167,15 +167,25 @@
 7. **第二段启动**：再起业务容器 `backend` / `frontend` / `nginx` / `kkfileview`
 8. **健康门禁**：带 healthcheck 的服务必须 `healthy`（`Up (health: starting)` / `Up (unhealthy)` 不算就绪）；网关容器重启后自检两次失败即回滚
 9. **业务冒烟**：`/portal/login` 200、`/health` 200、`/api/v1/auth/captcha` 200（API+Redis）、`/api/v1/settings/theme` 200（API+DB 读）、`/api/v1/tenants` 401（鉴权中间件生效）；任一失败即回滚
-10. 写入构建指纹 → 生成生产 nginx 配置（临时文件 + `cmp` 去重 + 原子 mv，`nginx -t` 失败自动复位）→ 合并分支到 master
+10. 首次建库时补跑**种子数据**（`cmd/seed`，失败仅 warn 不回滚）
+11. 等待 **kkfileview** 就绪（最长 180s，非核心服务，未就绪仅 warn）
+12. 写入构建指纹 → 生成生产 nginx 配置（临时文件 + `cmp` 去重 + 原子 mv，`nginx -t` 失败自动复位并**不回滚**）→ 合并分支到 master
+13. 收尾清理：本项目已退出容器、构建缓存（超 `BUILD_CACHE_LIMIT_GB` 才裁剪，**全宿主范围**）、悬空镜像（`until=24h`，避免清掉其他栈的回滚镜像）、每仓库只留最新 1 个镜像标签；并检测上传卷根目录旧布局，提示执行 `scripts/migrate_uploads.sh`
 
-任一环节失败统一走 `rollback_deploy`：回到上一版镜像并重新做健康检查，失败则报错退出，**不会**把未通过验证的版本合并进 master。
+**失败处理分三类**（不是所有失败都回滚）：
+- **回滚**（`rollback_deploy` → 回上一版镜像 + 重做健康检查 + 报错退出，**不合并 master**）：数据层/业务容器启动失败、baseline 与增量迁移失败、健康门禁未过、网关自检两次失败、业务冒烟未过；
+- **仅告警继续**：全库备份失败（无备份不该阻断）、种子初始化失败、kkfileview 未就绪；
+- **直接退出但不回滚**（此时新版本已通过冒烟、已在线上）：nginx 配置生成失败 / `nginx -t` 失败（自动复位配置）/ nginx 启动失败。
+
+回滚后会把 `.env` 的 `IMAGE_TAG` 复位到回滚版本，避免下次 `docker compose up` 又拉起失败版本。
+注意「回滚到上一版镜像」只保证**当次部署失败时可回退一步**：部署成功后清理只保留最新 1 个镜像标签，
+之后要回退旧版本须 `git checkout <旧 commit>` 重新构建（见 AGENTS.md 第七节）。
 
 ### 5.2 密钥注入边界
 
 | 容器 | 可见密钥 | 理由 |
 |---|---|---|
-| `backend` | `DATABASE_URL` / `JWT_SECRET` / `AI_CONFIG_SECRET` 等（`env_file: .env`） | 业务本体需要 |
+| `backend` | 显式白名单：`DATABASE_URL` / `REDIS_URL` / `JWT_SECRET` / `AI_CONFIG_SECRET` / `PORT` / `UPLOAD_DIR` / `ALERT_WEBHOOK_URL` | 运行期实际读取的全部变量（`backend/go/internal/config`）。**不再用 `env_file: .env`**：那会把仅宿主机需要的 `SEED_ADMIN_PASSWORD`（`cmd/seed` 用）、`TEST_DATABASE_URL`（门禁 go test 用）与全部 `VITE_*` 一并灌进运行容器 |
 | `postgres` | 仅 `POSTGRES_*` | 建库账号 |
 | `frontend` / `nginx` / `redis` / `kkfileview` | **无** | 静态产物与第三方组件不得持有可伪造 token 的 `JWT_SECRET` |
 
@@ -186,16 +196,34 @@
 - 备份：每次部署迁移前全库 `pg_dump` 到 `/opt/zhiyu-saas/backups`（目录 700 / 文件 600，保留最近 7 份，约 11MB/份）。
 - 恢复：**一律用容器内 psql**（`docker exec -i zhiyu-postgres psql ...`），客户端与 dump 同源；
   pg_dump 15.18+ 输出 `\restrict/\unrestrict` 元命令，宿主旧版 psql（<15.14 / <16.10）会报 `invalid command \restrict`。
-- 恢复演练（2026-08-19 实测）：最新备份恢复到临时库 `restore_drill` 成功，191 张表 / 42 租户 / 93 条 `schema_migrations`，与生产一致；宿主 psql 16.14 亦可恢复。
+- 恢复演练（2026-08-19 实测）：最新备份恢复到临时库 `restore_drill` 成功，**191 张表**（= Go 侧 166 张，见 `04-database-schema.md` 头部；其余为 Java 栈 RuoYi 框架表，两栈共库）/ 42 租户 / 93 条 `schema_migrations`，与生产一致；宿主 psql 16.14 亦可恢复。
 - 约定：覆盖生产前必须先恢复到临时库比对表数与关键表行数。
 
-### 5.4 质量门禁
+### 5.4 两栈部署顺序与共享资源
+
+两套栈**分开部署、互不依赖代码**，但共享三样东西，故首次现场部署必须**先 `./deploy.sh` 再 `./deploy-java.sh`**：
+
+| 共享资源 | 名称 | 说明 |
+|---|---|---|
+| 数据库容器 | `zhiyu-postgres` | 同一库 `zhiyu-saas`，Go 与 Java 表名不相交；Java 栈的框架表由 `deploy-java.sh` 幂等初始化 |
+| 上传卷 | `zhiyu-saas_uploads_data` | 两栈都挂到 `/opt/zhiyu-saas/uploads`；两侧容器均以 uid 1000 运行，避免互相写不进 |
+| docker 网络 | `zhiyu-saas_zhiyu` | Java 栈 join 该网络后按容器名 `zhiyu-postgres:5432` 直连 |
+
+`deploy.sh` 的清理动作已按 compose 项目标签/时间窗限定，不会误删 Java 栈容器与回滚镜像；唯一例外是构建缓存裁剪为全宿主范围。
+另有两份**人工维护、deploy.sh 只读不写**的现网 nginx 配置（现网 HTTPS 入口与其依赖的 Referer 分流 map），版本化快照见 `deploy/nginx/host-live/`。
+
+### 5.5 质量门禁
 
 CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format、后端 gofmt/vet/build/test + `spec-check.sh`、**shell（`bash -n` 全量 + shellcheck，覆盖 deploy/deploy-java/scripts/release 全部脚本）**。
 
-**`deploy.sh` 质量门禁默认开启**（gofmt/vet/go test + typecheck/lint/test + spec-check），`--skip-gates` 仅应急跳过。原因：CI 触发条件是 `push: [master]`，而 deploy.sh 部署成功后直推 master —— 门禁若只靠 CI，等于事后报警，红了也拦不住已写入的 master。
+**`deploy.sh` 质量门禁默认开启**，`--skip-gates` 仅应急跳过。原因：CI 触发条件是 `push: [master]`，而 deploy.sh 部署成功后直推 master —— 门禁若只靠 CI，等于事后报警，红了也拦不住已写入的 master。
 
-### 后续迭代建议
+门禁的两条**边界必须知道**（否则会高估覆盖度）：
+1. **`spec-check.sh` 无条件执行**（秒级），纯文档/纯脚本改动同样校验；
+2. **语言级门禁随构建触发**：`gofmt/vet/go test` 只在后端源码指纹变化时跑，`typecheck/lint/test` 只在前端指纹变化时跑 —— 无源码变更的部署不会重复跑它们（CI 仍会在 master 上全量跑）；
+3. `go test` 需要 `TEST_DATABASE_URL` 指向**专用测试库**（集成测试会写库），未配置或探测不通时**跳过并告警**，不阻断部署。
+
+## 6. 后续迭代建议
 
 1. **S1（建议）**：补齐 AI 智能服务/OPC 专区/决策中心/教科研四个占位模块的产品定义
 2. **S2（建议）**：商城 marketplace 重启用（表结构已保留）或明确移除归档

@@ -37,7 +37,7 @@ whenToUse: 接到「新增功能 / 修复 bug / 重构 / 变更行为」任务�
 ## 3. 提交前必跑（硬约束）
 
 ```bash
-cd backend && go vet ./... && go build ./... && gofmt -l .   # 后端
+cd backend/go && go vet ./... && go build ./... && gofmt -l .   # 后端（go.mod 在 backend/go）
 pnpm typecheck && pnpm lint && pnpm test                      # 前端
 ./scripts/spec-check.sh                                        # spec 硬约束（必须通过）
 ```
@@ -67,13 +67,14 @@ pnpm typecheck && pnpm lint && pnpm test                      # 前端
 ## 6. 分支隔离与部署
 
 ```bash
-git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> master && cd /tmp/<agent>
+git fetch origin master && git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> origin/master && cd /tmp/<agent>
+# 必须基于 origin/master：本地 master 可能含他人未推送提交，基于它会把他人工作误带进分支
 git add -A && git commit -m "feat: 任务描述" && git push -u origin <分支>
-./deploy.sh --branch <分支名>    # 可选 --clean / --force / --skip-merge；全程实时看输出
+./deploy.sh --branch <分支名>    # 可选 --clean / --force / --skip-gates / --skip-merge；全程实时看输出
 cd / && git worktree remove /tmp/<agent>
 ```
 
-deploy.sh 自动做：源码 hash 增量构建、质量门禁（gofmt/vet + typecheck/lint）、DB migration、部署锁串行。代码修改后必须 deploy 验证；纯文档改动直接 commit。
+deploy.sh 自动做：源码 hash 增量构建、**质量门禁默认开启**（spec-check 无条件跑；gofmt/vet/go test 与 typecheck/lint/test 随各自构建触发，`--skip-gates` 应急跳过）、分两段启动（数据层→备份→迁移→业务容器）、健康门禁 + 5 探针业务冒烟（失败回滚且不合并 master）、部署锁串行。代码修改后必须 deploy 验证；纯文档改动直接 commit。完整契约见 `docs/spec/03-development-plan.md` §5。
 
 ## 7. 与 Harness 工具的配合
 
