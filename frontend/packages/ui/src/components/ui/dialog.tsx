@@ -101,7 +101,7 @@ function DialogContent({
     const content = contentRef.current
     if (!content) return
     const selector =
-      'button:not([disabled]), [href]:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([data-slot="dialog-content"])'
+      'button:not([disabled]):not([data-dialog-force-close]), [href]:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([data-slot="dialog-content"])'
     const firstFocusable = content.querySelector<HTMLElement>(selector)
     firstFocusable?.focus({ preventScroll: true })
   }, [contentRef])
@@ -166,16 +166,21 @@ function DialogContent({
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
-      </DialogPrimitive.Content>
-      {guardEnabled && (
-        <>
-          {/* 二次确认后用它触发真正的关闭（走 Radix Close，保持关闭动画与 onOpenChange） */}
+        {/*
+         * 守卫件必须挂在 Content 内部：DialogPortal 对每个子节点做 Presence + Portal asChild，
+         * 需要能接 ref 的单个元素，Fragment 子节点整支不会渲染（确认框会消失）。
+         * ConfirmDialog 自带 portal，位置在这里不影响它渲染到 body。
+         */}
+        {guardEnabled && (
           <DialogPrimitive.Close
             ref={forceCloseRef}
+            data-dialog-force-close=""
             aria-hidden
             tabIndex={-1}
             className="hidden"
           />
+        )}
+        {guardEnabled && (
           <ConfirmDialog
             open={confirmOpen}
             onOpenChange={setConfirmOpen}
@@ -186,8 +191,8 @@ function DialogContent({
             variant="destructive"
             onConfirm={confirmDiscard}
           />
-        </>
-      )}
+        )}
+      </DialogPrimitive.Content>
     </DialogPortal>
   )
 }
