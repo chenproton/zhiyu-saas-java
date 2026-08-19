@@ -191,7 +191,9 @@
 
 ### 5.4 质量门禁
 
-CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format、后端 gofmt/vet/build/test + `spec-check.sh`、**shell（`bash -n` 全量 + shellcheck）**。`deploy.sh --gates` 可在部署前本地复跑前后端门禁（默认跳过，CI 已覆盖）。
+CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format、后端 gofmt/vet/build/test + `spec-check.sh`、**shell（`bash -n` 全量 + shellcheck，覆盖 deploy/deploy-java/scripts/release 全部脚本）**。
+
+**`deploy.sh` 质量门禁默认开启**（gofmt/vet/go test + typecheck/lint/test + spec-check），`--skip-gates` 仅应急跳过。原因：CI 触发条件是 `push: [master]`，而 deploy.sh 部署成功后直推 master —— 门禁若只靠 CI，等于事后报警，红了也拦不住已写入的 master。
 
 ### 后续迭代建议
 

@@ -289,7 +289,10 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" != "true" ]]; then
   docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^zhiyu-kkfileview$' && { docker stop zhiyu-kkfileview >/dev/null 2>&1 || true; docker rm zhiyu-kkfileview >/dev/null 2>&1 || true; }
 fi
 
-compose up -d --remove-orphans 2>&1 | tail -5 || { compose logs --tail 30 >&2 || true; die "docker compose up 失败，请查看上方日志"; }
+# 分两段启动（与 deploy.sh 同源）：先起数据层 → 备份 + 迁移 → 再起业务容器。
+# 单段全量 up（尤其 --update 升级场景）会让新版本 backend 先在旧 schema 上对外服务。
+compose up -d postgres redis 2>&1 | tail -3 \
+  || { compose logs --tail 30 >&2 || true; die "数据层容器启动失败，请查看上方日志"; }
 
 # 等待 PG 就绪
 for _ in $(seq 1 30); do
@@ -317,6 +320,11 @@ log "初始化种子数据..."
 (cd "$PKG_DIR" && DATABASE_URL="$MIGRATE_URL" JWT_SECRET="$JWT_SECRET" \
   SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" ./bin/seed) || warn "种子初始化失败"
 log "  运营方租户: platform / 管理员: admin（密码见 $ENV_FILE 的 SEED_ADMIN_PASSWORD）"
+
+# 第二段：schema 就绪后再拉起业务容器
+log "启动业务容器..."
+compose up -d --remove-orphans 2>&1 | tail -5 \
+  || { compose logs --tail 30 >&2 || true; die "业务容器启动失败，请查看上方日志"; }
 
 # ── 6. Nginx 网关 ──
 NGINX_CONF="$PKG_DIR/deploy/nginx/conf.d/zhiyu-saas.conf"
@@ -393,6 +401,26 @@ if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
     sleep 2
   done
 fi
+
+# 业务容器重建后 IP 变化，网关需重启刷新上游解析，否则 502
+docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（忽略）"
+sleep 3
+
+# 部署后业务冒烟（与 deploy.sh 同源 5 探针，均无需账号口令）
+smoke_ok=true
+smoke_check() {
+  local path="$1" want="$2" desc="$3" code
+  code=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' "http://127.0.0.1:${NGINX_PORT:-80}$path" || echo 000)
+  if [[ "$code" == "$want" ]]; then log "    ✓ $desc（$path → $code）"
+  else warn "    ✗ $desc（$path 期望 $want，实际 $code）"; smoke_ok=false; fi
+}
+log "业务冒烟..."
+smoke_check "/portal/login"          200 "前端 SPA 产物"
+smoke_check "/health"                200 "后端存活"
+smoke_check "/api/v1/auth/captcha"   200 "API + Redis"
+smoke_check "/api/v1/settings/theme" 200 "API + DB 读"
+smoke_check "/api/v1/tenants"        401 "鉴权中间件生效"
+$smoke_ok || warn "业务冒烟未全通过：容器 healthy 不等于站点可用，请按上方探针排查"
 
 compose ps
 if ! $OK; then
