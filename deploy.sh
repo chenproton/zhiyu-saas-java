@@ -1441,13 +1441,19 @@ smoke_test() {
 
   # ── 3) 安全边界 ──
   check "/api/v1/tenants"               401 "鉴权中间件生效（GET 未带 token）"
-  # 写端点同样必须拦：只测 GET 会漏掉「写接口漏挂鉴权」这类越权
+  # 写端点同样必须拦：只测 GET 会漏掉「写接口漏挂鉴权」这类越权。
+  # 选 POST /api/v1/job/positions（内容创建，确实注册了 POST 且在认证组内）——
+  # 用未注册 POST 的路径（如 /api/v1/tenants）会得到 405：405 由路由层在鉴权中间件之前返回，
+  # 断言 405 等于什么都没验证到。
+  WRITE_EP="/api/v1/job/positions"
   WRITE_CODE=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' -X POST \
-    -H 'Content-Type: application/json' -d '{}' "$base/api/v1/tenants" || echo 000)
+    -H 'Content-Type: application/json' -d '{}' "$base$WRITE_EP" || echo 000)
   if [[ "$WRITE_CODE" == "401" || "$WRITE_CODE" == "403" ]]; then
-    log "    ✓ 写端点鉴权生效（POST /api/v1/tenants → $WRITE_CODE）"
+    log "    ✓ 写端点鉴权生效（POST $WRITE_EP → $WRITE_CODE）"
+  elif [[ "$WRITE_CODE" == "405" ]]; then
+    warn "    ✗ 写端点探针失效（POST $WRITE_EP → 405，该路由未注册 POST，探针需换端点）"; rc=1
   else
-    warn "    ✗ 写端点鉴权异常（POST /api/v1/tenants 期望 401/403，实际 $WRITE_CODE）"; rc=1
+    warn "    ✗ 写端点鉴权异常（POST $WRITE_EP 期望 401/403，实际 $WRITE_CODE）"; rc=1
   fi
   check_header "/portal/login" "x-content-type-options" "nosniff" "安全响应头生效"
 
