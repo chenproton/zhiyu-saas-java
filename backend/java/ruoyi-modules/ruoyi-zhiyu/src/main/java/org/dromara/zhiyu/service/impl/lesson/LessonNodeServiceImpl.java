@@ -19,7 +19,7 @@ import org.dromara.zhiyu.domain.lesson.SystemCourseNode;
 import org.dromara.zhiyu.mapper.lesson.KnowledgePointMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonResourceMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.service.lesson.ILessonNodeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +48,7 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
     private final SystemCourseNodeMapper nodeMapper;
     private final KnowledgePointMapper knowledgePointMapper;
     private final LessonResourceMapper resourceMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
 
     @Override
     public ListResponse<SystemCourseNodeDto> list(String courseId, String parentId, String rootOnly) {

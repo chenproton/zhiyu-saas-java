@@ -1,4 +1,4 @@
-package org.dromara.zhiyu.domain.portal;
+package org.dromara.zhiyu.domain.affairs;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -20,7 +20,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @TableName("schedule_entries")
-public class PortalScheduleEntry extends BaseZhiyuEntity {
+public class ScheduleEntry extends BaseZhiyuEntity {
 
     /** 租户 ID */
     private String tenantId;

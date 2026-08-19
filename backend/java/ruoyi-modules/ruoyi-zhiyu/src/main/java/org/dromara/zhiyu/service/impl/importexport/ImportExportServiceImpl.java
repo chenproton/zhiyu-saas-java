@@ -15,19 +15,24 @@ import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.affairs.TrainingProgramCourse;
+import org.dromara.zhiyu.domain.alliance.AllianceBrand;
+import org.dromara.zhiyu.domain.alliance.AllianceExpert;
 import org.dromara.zhiyu.domain.dto.importexport.ImportExportDtos.ImportPreviewItem;
 import org.dromara.zhiyu.mapper.affairs.AffairsScheduleImportMapper;
+import org.dromara.zhiyu.mapper.alliance.AllianceBrandMapper;
+import org.dromara.zhiyu.mapper.alliance.AllianceExpertMapper;
 import org.dromara.zhiyu.mapper.affairs.TrainingProgramCourseMapper;
 import org.dromara.zhiyu.mapper.importexport.ImportExportMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionImportMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseImportMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonGranularCourseImportMapper;
-import org.dromara.zhiyu.mapper.portal.PortalPeriodSlotMapper;
-import org.dromara.zhiyu.mapper.portal.PortalTermMapper;
-import org.dromara.zhiyu.mapper.portal.PortalVenueMapper;
+import org.dromara.zhiyu.mapper.affairs.PeriodSlotMapper;
+import org.dromara.zhiyu.mapper.affairs.TermMapper;
+import org.dromara.zhiyu.mapper.affairs.VenueMapper;
 import org.dromara.zhiyu.service.importexport.IImportExportService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -64,6 +69,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ImportExportServiceImpl implements IImportExportService {
 
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     /** Excel 导入实体（kebab-case URL 段，excel/preview 路径） */
     private static final Set<String> EXCEL_IMPORT_ENTITIES = Set.of(
@@ -129,9 +135,11 @@ public class ImportExportServiceImpl implements IImportExportService {
     private final LessonGranularCourseImportMapper granularImportMapper;
     private final LessonCourseImportMapper courseImportMapper;
     private final TrainingProgramCourseMapper programCourseMapper;
-    private final PortalTermMapper termMapper;
-    private final PortalVenueMapper venueMapper;
-    private final PortalPeriodSlotMapper periodSlotMapper;
+    private final TermMapper termMapper;
+    private final VenueMapper venueMapper;
+    private final PeriodSlotMapper periodSlotMapper;
+    private final AllianceBrandMapper brandMapper;
+    private final AllianceExpertMapper expertMapper;
 
     // ==================== 模板 ====================
 
@@ -826,7 +834,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 case "alliance-achievements" -> importAchievements(wb, tenantId, userId, preview);
                 case "alliance-agreements" -> importAgreements(wb, tenantId, userId, preview);
                 case "alliance-permissions" -> importPermissions(wb, tenantId, preview);
-                case "alliance-brands" -> importBrands(wb, tenantId, preview, brandType);
+                case "alliance-brands" -> importBrands(wb, tenantId, userId, preview, overwrite, rename, brandType);
                 case "positions" -> importPositions(wb, tenantId, userId, preview, overwrite, rename);
                 case "scenarios" -> parseCount(wb, "场景基本信息", "场景", preview);
                 case "courses" -> importCourses(wb, tenantId, userId, preview, overwrite, rename);
@@ -1228,38 +1236,744 @@ public class ImportExportServiceImpl implements IImportExportService {
             : executeResult(created, failed, 0, "合作权限", errors);
     }
 
-    private Map<String, Object> importBrands(Workbook wb, String tenantId, boolean preview, String brandType) {
+    // ==================== 品牌 Excel 导入（对齐 Go DoImportBrandsTyped） ====================
+
+    private Map<String, Object> importBrands(Workbook wb, String tenantId, String userId, boolean preview,
+                                             boolean overwrite, boolean rename, String brandType) {
+        String bt = brandType == null ? "" : brandType.trim();
+        if (bt.isEmpty()) {
+            return importBrandsGeneric(wb, tenantId, preview);
+        }
+        return importBrandsTyped(wb, tenantId, userId, bt, preview, overwrite, rename);
+    }
+
+    /** 通用模板（brandType 为空，向后兼容）：仅 name/type 落库，不做深链。 */
+    private Map<String, Object> importBrandsGeneric(Workbook wb, String tenantId, boolean preview) {
         List<List<String>> rows = readRows(wb, "品牌内容");
         List<String> errors = new ArrayList<>();
         int created = 0;
-        int failed = 0;
-        String bt = brandType == null ? "" : brandType.trim();
         for (int i = 2; i < rows.size(); i++) {
             List<String> row = rows.get(i);
-            String name;
-            String type;
-            if (bt.isEmpty()) {
-                // 通用模板：品牌类型/名称在列 0/1
-                type = mapBrandType(cell(row, 0));
-                name = cell(row, 1);
-            } else {
-                type = bt;
-                name = cell(row, bt.equals("major") ? 0 : 1);
-                if (bt.equals("major") && (name.isEmpty() && cell(row, 1).isEmpty())) {
-                    continue;
-                }
-            }
+            String type = mapBrandType(cell(row, 0));
+            String name = cell(row, 1);
             if (name.isEmpty()) {
                 continue;
             }
             created++;
             if (!preview) {
-                mapper.insertAllianceBrand(UUID.randomUUID().toString(), tenantId, type, name, "draft", false, false,
-                    null, bt.isEmpty() ? cell(row, 2) : null, null, null, null, null, null, null);
+                AllianceBrand b = new AllianceBrand();
+                b.setId(UUID.randomUUID().toString());
+                b.setTenantId(tenantId);
+                b.setBrandType(type);
+                b.setName(name);
+                b.setStatus("draft");
+                b.setIsPublic(false);
+                b.setIsFeatured(false);
+                b.setDescription(nullableStr(cell(row, 2)));
+                b.setData("{}");
+                b.setSortOrder(0);
+                b.setViewCount(0);
+                brandMapper.insertBrand(b);
             }
         }
-        return preview ? previewResult(created, 0, failed, List.of(), errors)
-            : executeResult(created, failed, 0, "品牌内容", errors);
+        return preview ? previewResult(created, 0, 0, List.of(), errors)
+            : executeResult(created, 0, 0, "品牌内容", errors);
+    }
+
+    /** 按品牌类型深链导入（6 种 typed 模板）。 */
+    private Map<String, Object> importBrandsTyped(Workbook wb, String tenantId, String userId, String bt,
+                                                  boolean preview, boolean overwrite, boolean rename) {
+        List<List<String>> rows = readRows(wb, "品牌内容");
+        List<String> errors = new ArrayList<>();
+        List<ImportPreviewItem> duplicates = new ArrayList<>();
+        int created = 0;
+        int failed = 0;
+        int skipped = 0;
+        for (int i = 2; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            int rowNum = i + 1;
+            BrandRow br;
+            try {
+                br = parseBrandRow(tenantId, row, bt);
+            } catch (RowParseException e) {
+                failed++;
+                errors.add("第" + rowNum + "行" + e.getMessage());
+                continue;
+            }
+            if (br == null) {
+                continue; // major 空白行（未开启展示且未填任何内容）
+            }
+            String existingId = brandMapper.selectBrandByName(tenantId, bt, br.name);
+            if (existingId != null && !existingId.isEmpty()) {
+                if (!overwrite && !(rename && !preview)) {
+                    skipped++;
+                    if (duplicates.size() < 100) {
+                        duplicates.add(new ImportPreviewItem(rowNum, bt + "|" + br.name, br.name));
+                    }
+                    continue;
+                }
+                if (overwrite) {
+                    if (!preview) {
+                        try {
+                            AllianceBrand existing = brandMapper.selectById(existingId);
+                            if (existing == null) {
+                                failed++;
+                                errors.add("第" + rowNum + "行品牌[" + br.name + "]读取失败");
+                                continue;
+                            }
+                            applyBrandRefs(tenantId, userId, existing.getPositionId(), br);
+                            applyOverwrite(existing, br);
+                            brandMapper.updateBrand(existing);
+                        } catch (Exception e) {
+                            failed++;
+                            errors.add("第" + rowNum + "行品牌[" + br.name + "]更新失败: " + e.getMessage());
+                            continue;
+                        }
+                    }
+                    created++;
+                    continue;
+                }
+                // rename 模式（仅执行阶段）：追加随机后缀生成新名称，按新对象导入
+                br.name = uniqueSuffixed(br.name, c -> {
+                    String id = brandMapper.selectBrandByName(tenantId, bt, c);
+                    return id != null && !id.isEmpty();
+                });
+            }
+            if (!preview) {
+                try {
+                    applyBrandRefs(tenantId, userId, null, br);
+                    AllianceBrand b = new AllianceBrand();
+                    b.setId(UUID.randomUUID().toString());
+                    b.setTenantId(tenantId);
+                    b.setBrandType(bt);
+                    b.setName(br.name);
+                    b.setStatus(br.status == null || br.status.isEmpty() ? "draft" : br.status);
+                    b.setIsPublic(br.isPublic);
+                    b.setIsFeatured(br.isFeatured);
+                    b.setCoverImage(br.coverImage);
+                    b.setDescription(br.description);
+                    b.setData(br.data != null ? br.data : "{}");
+                    b.setStudentId(br.studentId);
+                    b.setEnterpriseId(br.enterpriseId);
+                    b.setPositionId(br.positionId);
+                    b.setMajorId(br.majorId);
+                    b.setTeacherId(br.teacherId);
+                    b.setExpertId(br.expertId);
+                    b.setSortOrder(0);
+                    b.setViewCount(0);
+                    brandMapper.insertBrand(b);
+                } catch (Exception e) {
+                    failed++;
+                    errors.add("第" + rowNum + "行品牌[" + br.name + "]创建失败: " + e.getMessage());
+                    continue;
+                }
+            }
+            created++;
+        }
+        return preview ? previewResult(created, duplicates.size(), failed, duplicates, errors)
+            : executeResult(created, failed, skipped, "品牌内容", errors);
+    }
+
+    /** 仅执行阶段落库企业岗位 / 校本师资档案，并回填 position_id / data。 */
+    private void applyBrandRefs(String tenantId, String userId, String existingPositionId, BrandRow br) {
+        if (br.enterprisePos != null) {
+            br.positionId = saveEnterprisePosition(tenantId, userId, existingPositionId, br.enterprisePos);
+        }
+        if (br.teacherProfile != null) {
+            String eid = upsertTeacherProfile(tenantId, userId, br.name, br.teacherId, br.teacherProfile);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("teacherExpertId", eid);
+            br.data = json(data);
+        }
+    }
+
+    /** 覆盖更新：未提供字段保留原值（data 仅在导入提供时替换）。 */
+    private void applyOverwrite(AllianceBrand existing, BrandRow br) {
+        existing.setName(br.name);
+        if (br.description != null) {
+            existing.setDescription(br.description);
+        }
+        if (br.coverImage != null) {
+            existing.setCoverImage(br.coverImage);
+        }
+        // 单元格填写才覆盖开关/状态（空单元格保留原值，防覆盖导入静默下架已公开内容）
+        if (br.statusFilled) {
+            existing.setStatus(br.status);
+        }
+        if (br.isPublicFilled) {
+            existing.setIsPublic(br.isPublic);
+        }
+        if (br.isFeaturedFilled) {
+            existing.setIsFeatured(br.isFeatured);
+        }
+        existing.setStudentId(br.studentId);
+        existing.setEnterpriseId(br.enterpriseId);
+        existing.setPositionId(br.positionId);
+        existing.setMajorId(br.majorId);
+        existing.setTeacherId(br.teacherId);
+        existing.setExpertId(br.expertId);
+        if (br.data != null) {
+            existing.setData(br.data);
+        }
+    }
+
+    private BrandRow parseBrandRow(String tenantId, List<String> row, String brandType) {
+        return switch (brandType) {
+            case "talent" -> parseTalentBrandRow(tenantId, row);
+            case "employer" -> parseEmployerBrandRow(tenantId, row);
+            case "job" -> parseJobBrandRow(tenantId, row);
+            case "major" -> parseMajorBrandRow(tenantId, row);
+            case "teacher" -> parseTeacherBrandRow(tenantId, row);
+            case "culture" -> parseCultureBrandRow(tenantId, row);
+            default -> throw new RowParseException("品牌类型无法识别: " + brandType);
+        };
+    }
+
+    private BrandRow parseTalentBrandRow(String tenantId, List<String> row) {
+        String name = cell(row, 0);
+        if (name.isEmpty()) {
+            throw new RowParseException("案例名称不能为空");
+        }
+        BrandRow br = new BrandRow(name);
+        br.description = nullableStr(cell(row, 1));
+        String status = cell(row, 2);
+        if (!status.isEmpty()) {
+            br.status = mapPublishStatus(status);
+            br.statusFilled = true;
+        }
+        br.isPublic = parseBoolDefault(cell(row, 3), false);
+        br.isPublicFilled = !cell(row, 3).isEmpty();
+        br.isFeatured = parseBoolDefault(cell(row, 4), false);
+        br.isFeaturedFilled = !cell(row, 4).isEmpty();
+        br.coverImage = nullableStr(cell(row, 5));
+        String studentName = cell(row, 6);
+        if (!studentName.isEmpty()) {
+            String id = mapper.selectUserIdByNameWithRole(tenantId, studentName, "student");
+            if (id == null || id.isEmpty()) {
+                throw new RowParseException("学生「" + studentName + "」未找到");
+            }
+            br.studentId = id;
+        }
+        String majorName = cell(row, 7);
+        if (!majorName.isEmpty()) {
+            String id = mapper.selectMajorIdByName(tenantId, majorName);
+            if (id == null || id.isEmpty()) {
+                throw new RowParseException("专业「" + majorName + "」未找到");
+            }
+            br.majorId = id;
+        }
+        return br;
+    }
+
+    private BrandRow parseEmployerBrandRow(String tenantId, List<String> row) {
+        String entType = mapEnterpriseType(cell(row, 0));
+        String name = cell(row, 1);
+        if (name.isEmpty()) {
+            throw new RowParseException("企业名称不能为空");
+        }
+        BrandRow br = new BrandRow(name);
+        br.isPublic = parseBoolDefault(cell(row, 2), false);
+        br.isPublicFilled = !cell(row, 2).isEmpty();
+        br.isFeatured = parseBoolDefault(cell(row, 3), false);
+        br.isFeaturedFilled = !cell(row, 3).isEmpty();
+        switch (entType) {
+            case "enterprise" -> {
+                String id = mapper.selectEnterpriseIdByName(tenantId, name);
+                if (id == null || id.isEmpty()) {
+                    throw new RowParseException("合作企业「" + name + "」未找到（需与「合作企业库」名称一致）");
+                }
+                br.enterpriseId = id;
+            }
+            case "independent" -> {
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("enterpriseInfo", buildEnterpriseInfo(row, name));
+                br.data = json(info);
+            }
+            default -> throw new RowParseException("企业类型无法识别: " + cell(row, 0));
+        }
+        return br;
+    }
+
+    /** 组装独立雇主企业资料（字段与前端 EnterpriseInfo 一致）。 */
+    private Map<String, Object> buildEnterpriseInfo(List<String> row, String name) {
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("name", name);
+        info.put("enterpriseType", "third-party");
+        setStr(info, "unifiedSocialCreditCode", cell(row, 4));
+        setStr(info, "industry", cell(row, 5));
+        setStr(info, "region", cell(row, 6));
+        setInt(info, "establishedYear", cell(row, 7));
+        setInt(info, "employeeCount", cell(row, 8));
+        setMulti(info, "secondaryColleges", cell(row, 9));
+        setStr(info, "description", cell(row, 10));
+        setStr(info, "contactPerson", cell(row, 11));
+        setStr(info, "contactPhone", cell(row, 12));
+        setStr(info, "contactEmail", cell(row, 13));
+        setStr(info, "address", cell(row, 14));
+        setStr(info, "logoUrl", cell(row, 15));
+        setStr(info, "coverImage", cell(row, 16));
+        setMulti(info, "coverPhotos", cell(row, 17));
+        setMulti(info, "businessLicensePhotos", cell(row, 18));
+        setMulti(info, "intellectualPropertyPhotos", cell(row, 19));
+        setMulti(info, "qualificationPhotos", cell(row, 20));
+        return info;
+    }
+
+    private BrandRow parseJobBrandRow(String tenantId, List<String> row) {
+        String posType = mapJobPositionType(cell(row, 0));
+        String name = cell(row, 1);
+        if (name.isEmpty()) {
+            throw new RowParseException("岗位名称不能为空");
+        }
+        BrandRow br = new BrandRow(name);
+        br.isPublic = parseBoolDefault(cell(row, 2), false);
+        br.isPublicFilled = !cell(row, 2).isEmpty();
+        br.isFeatured = parseBoolDefault(cell(row, 3), false);
+        br.isFeaturedFilled = !cell(row, 3).isEmpty();
+        switch (posType) {
+            case "teaching" -> {
+                String id = mapper.selectTeachingPositionIdByName(tenantId, name);
+                if (id == null || id.isEmpty()) {
+                    throw new RowParseException("教学岗位「" + name + "」未找到（需与「职业岗位库」名称一致）");
+                }
+                br.positionId = id;
+            }
+            case "enterprise" -> {
+                EnterprisePosition pos = new EnterprisePosition();
+                pos.name = name;
+                pos.salaryMin = parseNullableInt(trimK(cell(row, 4)));
+                pos.salaryMax = parseNullableInt(trimK(cell(row, 5)));
+                String industryName = cell(row, 7);
+                if (!industryName.isEmpty()) {
+                    String id = mapper.selectIndustryIdByName(tenantId, industryName);
+                    if (id != null && !id.isEmpty()) {
+                        pos.industryId = id;
+                    }
+                }
+                pos.description = nullableStr(cell(row, 8));
+                pos.requirements = splitMulti(cell(row, 9));
+                pos.careerPath = nullableStr(cell(row, 10));
+                for (String n : splitMulti(cell(row, 6))) {
+                    String id = mapper.selectMajorIdByName(tenantId, n);
+                    if (id != null && !id.isEmpty()) {
+                        pos.majorIds.add(id);
+                    }
+                }
+                // 岗位职责：每行一条「职责名|职责描述」，多条用换行分隔
+                for (String line : cell(row, 11).split("\n")) {
+                    String t = line.trim();
+                    if (t.isEmpty()) {
+                        continue;
+                    }
+                    String[] parts = t.split("\\|", 2);
+                    if (parts.length == 1) {
+                        parts = t.split("｜", 2);
+                    }
+                    String respName = parts[0].trim();
+                    if (respName.isEmpty()) {
+                        continue;
+                    }
+                    String desc = parts.length == 2 ? nullableStr(parts[1]) : null;
+                    pos.responsibilities.add(new String[]{respName, desc});
+                }
+                br.enterprisePos = pos;
+            }
+            default -> throw new RowParseException("岗位类型无法识别: " + cell(row, 0));
+        }
+        return br;
+    }
+
+    private BrandRow parseMajorBrandRow(String tenantId, List<String> row) {
+        String name = cell(row, 0);
+        if (name.isEmpty()) {
+            throw new RowParseException("专业名称不能为空");
+        }
+        String majorId = mapper.selectMajorIdByName(tenantId, name);
+        if (majorId == null || majorId.isEmpty()) {
+            throw new RowParseException("专业「" + name + "」未找到（以系统专业为基础，不会新增专业）");
+        }
+        BrandRow br = new BrandRow(name);
+        br.majorId = majorId;
+        br.isPublic = parseBoolDefault(cell(row, 2), false);
+        br.isPublicFilled = !cell(row, 2).isEmpty();
+        br.isFeatured = parseBoolDefault(cell(row, 3), false);
+        br.isFeaturedFilled = !cell(row, 3).isEmpty();
+        br.description = nullableStr(cell(row, 4));
+        br.coverImage = nullableStr(cell(row, 5));
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        boolean anyContent = br.isPublic || br.isFeatured || br.description != null || br.coverImage != null;
+        anyContent |= collectMajorRefs(tenantId, data, "employmentDirections", cell(row, 6));
+        anyContent |= collectMajorRefs(tenantId, data, "cooperationEnterprises", cell(row, 7));
+        anyContent |= collectMajorRefs(tenantId, data, "cooperationAchievements", cell(row, 8));
+        anyContent |= collectMajorRefs(tenantId, data, "featuredCourses", cell(row, 9));
+        if (!anyContent) {
+            return null;
+        }
+        br.data = json(data);
+        return br;
+    }
+
+    /** 专业品牌关联列按名称匹配 ID（未命中忽略，能查到的 ID 才加）。 */
+    private boolean collectMajorRefs(String tenantId, Map<String, Object> data, String key, String names) {
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (String n : splitMulti(names)) {
+            String id = lookupMajorRefId(tenantId, key, n);
+            if (id != null && !id.isEmpty()) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", id);
+                item.put("name", n);
+                items.add(item);
+            }
+        }
+        if (!items.isEmpty()) {
+            data.put(key, items);
+            return true;
+        }
+        return false;
+    }
+
+    private String lookupMajorRefId(String tenantId, String key, String name) {
+        switch (key) {
+            case "employmentDirections":
+                return mapper.selectJobBrandIdByName(tenantId, name);
+            case "cooperationEnterprises": {
+                String id = mapper.selectEnterpriseIdByName(tenantId, name);
+                if (id != null && !id.isEmpty()) {
+                    return id;
+                }
+                return mapper.selectIndependentEmployerBrandIdByName(tenantId, name);
+            }
+            case "cooperationAchievements":
+                return mapper.selectAchievementIdByTitle(tenantId, name);
+            case "featuredCourses":
+                return mapper.selectCourseIdByName(tenantId, name);
+            default:
+                return null;
+        }
+    }
+
+    private BrandRow parseTeacherBrandRow(String tenantId, List<String> row) {
+        String teacherType = mapTeacherType(cell(row, 0));
+        BrandRow br = new BrandRow(null);
+        br.isPublic = parseBoolDefault(cell(row, 3), false);
+        br.isPublicFilled = !cell(row, 3).isEmpty();
+        br.isFeatured = parseBoolDefault(cell(row, 4), false);
+        br.isFeaturedFilled = !cell(row, 4).isEmpty();
+        switch (teacherType) {
+            case "school" -> {
+                String teacherName = cell(row, 1);
+                if (teacherName.isEmpty()) {
+                    throw new RowParseException("校本师资需填写「关联教师名称」");
+                }
+                String id = mapper.selectUserIdByNameWithRole(tenantId, teacherName, "teacher");
+                if (id == null || id.isEmpty()) {
+                    throw new RowParseException("教师「" + teacherName + "」未找到");
+                }
+                br.name = teacherName;
+                br.teacherId = id;
+                TeacherProfile p = new TeacherProfile();
+                String gender = cell(row, 5);
+                if ("男".equals(gender)) {
+                    p.gender = "male";
+                } else if ("女".equals(gender)) {
+                    p.gender = "female";
+                }
+                p.age = parseNullableInt(cell(row, 6));
+                p.city = nullableStr(cell(row, 7));
+                p.title = nullableStr(cell(row, 8));
+                p.position = nullableStr(cell(row, 9));
+                p.experienceYears = parseNullableInt(cell(row, 10));
+                p.education = nullableStr(cell(row, 11));
+                p.industry = nullableStr(cell(row, 12));
+                p.specialties = splitMulti(cell(row, 13));
+                p.introduction = nullableStr(cell(row, 14));
+                p.workExperience = nullableStr(cell(row, 15));
+                p.avatarUrl = nullableStr(cell(row, 16));
+                br.teacherProfile = p;
+            }
+            case "expert" -> {
+                String expertName = cell(row, 2);
+                if (expertName.isEmpty()) {
+                    throw new RowParseException("企业专家需填写「关联专家名称」");
+                }
+                String id = mapper.selectExpertIdByName(tenantId, expertName);
+                if (id == null || id.isEmpty()) {
+                    throw new RowParseException("专家「" + expertName + "」未找到");
+                }
+                br.name = expertName;
+                br.expertId = id;
+            }
+            default -> throw new RowParseException("师资类型无法识别: " + cell(row, 0));
+        }
+        return br;
+    }
+
+    private BrandRow parseCultureBrandRow(String tenantId, List<String> row) {
+        String name = cell(row, 0);
+        if (name.isEmpty()) {
+            throw new RowParseException("名称不能为空");
+        }
+        BrandRow br = new BrandRow(name);
+        br.description = nullableStr(cell(row, 1));
+        String status = cell(row, 2);
+        if (!status.isEmpty()) {
+            br.status = mapPublishStatus(status);
+            br.statusFilled = true;
+        }
+        br.isPublic = parseBoolDefault(cell(row, 3), false);
+        br.isPublicFilled = !cell(row, 3).isEmpty();
+        br.isFeatured = parseBoolDefault(cell(row, 4), false);
+        br.isFeaturedFilled = !cell(row, 4).isEmpty();
+        br.coverImage = nullableStr(cell(row, 5));
+        String majorName = cell(row, 6);
+        if (!majorName.isEmpty()) {
+            String id = mapper.selectMajorIdByName(tenantId, majorName);
+            if (id == null || id.isEmpty()) {
+                throw new RowParseException("专业「" + majorName + "」未找到");
+            }
+            br.majorId = id;
+        }
+        return br;
+    }
+
+    /** 企业岗位建草稿岗位（enterprise 类型），已有岗位则更新其内容；回填 position_id。 */
+    private String saveEnterprisePosition(String tenantId, String userId, String existingPositionId,
+                                          EnterprisePosition pos) {
+        boolean create = existingPositionId == null || existingPositionId.isEmpty();
+        String positionId = create ? UUID.randomUUID().toString() : existingPositionId;
+        String requirements = toPgArray(pos.requirements == null ? List.of() : pos.requirements);
+        if (create) {
+            String code = generatePositionCode(tenantId);
+            positionImportMapper.insertImportPosition(positionId, tenantId, code, pos.name, null, pos.industryId,
+                "enterprise", pos.salaryMin, pos.salaryMax, pos.description, requirements, pos.careerPath, userId);
+        } else {
+            positionImportMapper.updatePositionImportFields(positionId, tenantId, pos.name, null, pos.industryId,
+                "enterprise", pos.salaryMin, pos.salaryMax, pos.description, requirements, pos.careerPath, null);
+        }
+        // 面向专业 + 职责全量同步（覆盖复用已有岗位时先清后插）
+        positionImportMapper.deletePositionAbilityBindings(positionId);
+        positionImportMapper.deleteAbilityDomains(positionId);
+        positionImportMapper.deletePositionResponsibilities(positionId);
+        positionImportMapper.deletePositionMajors(positionId);
+        for (String mid : pos.majorIds) {
+            positionImportMapper.insertPositionMajor(UUID.randomUUID().toString(), positionId, mid);
+        }
+        int sort = 0;
+        for (String[] resp : pos.responsibilities) {
+            positionImportMapper.insertPositionResponsibilityFull(UUID.randomUUID().toString(), tenantId, positionId,
+                resp[0], resp[1], ++sort);
+        }
+        return positionId;
+    }
+
+    /** 校本师资档案创建/更新（对齐 Go UpsertTeacherExpertProfile：nil 字段保留原值）。 */
+    private String upsertTeacherProfile(String tenantId, String userId, String name, String teacherId,
+                                        TeacherProfile p) {
+        AllianceExpert existing = expertMapper.selectByUserId(tenantId, teacherId);
+        if (existing == null) {
+            AllianceExpert e = new AllianceExpert();
+            e.setId(UUID.randomUUID().toString());
+            e.setTenantId(tenantId);
+            e.setName(name);
+            e.setGender(p.gender);
+            e.setAge(p.age);
+            e.setTitle(p.title);
+            e.setPosition(p.position);
+            e.setExpertType("teacher");
+            e.setIndustry(p.industry);
+            e.setSpecialties(jsonList(p.specialties));
+            e.setProfessionalFields("[]");
+            e.setPhotos("[]");
+            e.setAttachments("[]");
+            e.setSecondaryColleges("[]");
+            e.setExperienceYears(p.experienceYears);
+            e.setEducation(p.education);
+            e.setIntroduction(p.introduction);
+            e.setWorkExperience(p.workExperience);
+            e.setCity(p.city);
+            e.setAvatarUrl(p.avatarUrl);
+            e.setEnterpriseId(null);
+            e.setStatus("active");
+            e.setIsPublic(false);
+            e.setUserId(teacherId);
+            e.setCreatedBy(userId);
+            expertMapper.insertExpert(e);
+            return e.getId();
+        }
+        // 存在则仅更新导入提供的字段（COALESCE 语义）
+        existing.setName(name);
+        if (p.gender != null) existing.setGender(p.gender);
+        if (p.age != null) existing.setAge(p.age);
+        if (p.title != null) existing.setTitle(p.title);
+        if (p.position != null) existing.setPosition(p.position);
+        if (p.industry != null) existing.setIndustry(p.industry);
+        if (p.specialties != null && !p.specialties.isEmpty()) existing.setSpecialties(jsonList(p.specialties));
+        if (p.experienceYears != null) existing.setExperienceYears(p.experienceYears);
+        if (p.education != null) existing.setEducation(p.education);
+        if (p.introduction != null) existing.setIntroduction(p.introduction);
+        if (p.workExperience != null) existing.setWorkExperience(p.workExperience);
+        if (p.city != null) existing.setCity(p.city);
+        if (p.avatarUrl != null) existing.setAvatarUrl(p.avatarUrl);
+        expertMapper.updateExpert(existing);
+        return existing.getId();
+    }
+
+    // ---- 品牌导入辅助 ----
+
+    private static String json(Object o) {
+        if (o == null) {
+            return null;
+        }
+        try {
+            return JSON_MAPPER.writeValueAsString(o);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String jsonList(List<String> list) {
+        if (list == null || list.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return JSON_MAPPER.writeValueAsString(list);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private static String mapEnterpriseType(String v) {
+        String s = v == null ? "" : v.trim();
+        return switch (s) {
+            case "合作企业", "合作", "企业", "enterprise" -> "enterprise";
+            case "独立雇主企业", "独立雇主", "独立", "independent" -> "independent";
+            default -> s;
+        };
+    }
+
+    private static String mapJobPositionType(String v) {
+        String s = v == null ? "" : v.trim();
+        return switch (s) {
+            case "教学岗位", "教学", "teaching" -> "teaching";
+            case "企业岗位", "企业", "enterprise" -> "enterprise";
+            default -> s;
+        };
+    }
+
+    private static String mapTeacherType(String v) {
+        String s = v == null ? "" : v.trim();
+        return switch (s) {
+            case "校本师资", "校本", "school" -> "school";
+            case "企业专家", "专家", "expert" -> "expert";
+            default -> s;
+        };
+    }
+
+    private static String trimK(String s) {
+        if (s == null) {
+            return "";
+        }
+        String t = s.trim();
+        while (!t.isEmpty() && (t.endsWith("K") || t.endsWith("k"))) {
+            t = t.substring(0, t.length() - 1).trim();
+        }
+        return t;
+    }
+
+    private static List<String> splitMulti(String s) {
+        if (s == null || s.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String p : s.split("[;；,，]")) {
+            String t = p.trim();
+            if (!t.isEmpty()) {
+                out.add(t);
+            }
+        }
+        return out;
+    }
+
+    private static void setStr(Map<String, Object> info, String key, String value) {
+        if (value != null && !value.isEmpty()) {
+            info.put(key, value);
+        }
+    }
+
+    private static void setInt(Map<String, Object> info, String key, String value) {
+        String v = trimK(value);
+        if (!v.isEmpty()) {
+            try {
+                info.put(key, Integer.parseInt(v));
+            } catch (NumberFormatException ignored) {
+                // 忽略非数字
+            }
+        }
+    }
+
+    private static void setMulti(Map<String, Object> info, String key, String value) {
+        List<String> v = splitMulti(value);
+        if (!v.isEmpty()) {
+            info.put(key, v);
+        }
+    }
+
+    private static final class RowParseException extends RuntimeException {
+        RowParseException(String msg) {
+            super(msg);
+        }
+    }
+
+    private static final class BrandRow {
+        BrandRow(String name) {
+            this.name = name;
+        }
+        String name;
+        String description;
+        String status = "draft";
+        boolean statusFilled;
+        boolean isPublic;
+        boolean isPublicFilled;
+        boolean isFeatured;
+        boolean isFeaturedFilled;
+        String coverImage;
+        String studentId;
+        String enterpriseId;
+        String positionId;
+        String majorId;
+        String teacherId;
+        String expertId;
+        String data;
+        EnterprisePosition enterprisePos;
+        TeacherProfile teacherProfile;
+    }
+
+    private static final class EnterprisePosition {
+        String name;
+        Integer salaryMin;
+        Integer salaryMax;
+        String industryId;
+        String description;
+        List<String> requirements = new ArrayList<>();
+        String careerPath;
+        List<String> majorIds = new ArrayList<>();
+        List<String[]> responsibilities = new ArrayList<>();
+    }
+
+    private static final class TeacherProfile {
+        String gender;
+        Integer age;
+        String city;
+        String title;
+        String position;
+        Integer experienceYears;
+        String education;
+        String industry;
+        List<String> specialties = new ArrayList<>();
+        String introduction;
+        String workExperience;
+        String avatarUrl;
     }
 
     private Map<String, Object> importQuestionBanks(Workbook wb, String tenantId, String userId, boolean preview,

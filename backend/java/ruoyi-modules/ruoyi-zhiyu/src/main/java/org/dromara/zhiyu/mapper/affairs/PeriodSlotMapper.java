@@ -1,10 +1,10 @@
-package org.dromara.zhiyu.mapper.portal;
+package org.dromara.zhiyu.mapper.affairs;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.domain.portal.PortalPeriodSlot;
+import org.dromara.zhiyu.domain.affairs.PeriodSlot;
 
 import java.time.LocalTime;
 
@@ -13,7 +13,7 @@ import java.time.LocalTime;
  *
  * @author zhiyu
  */
-public interface PortalPeriodSlotMapper extends BaseMapperPlus<PortalPeriodSlot, PortalPeriodSlot> {
+public interface PeriodSlotMapper extends BaseMapperPlus<PeriodSlot, PeriodSlot> {
 
     /** 节次查重（对齐 Go store/imports.go ImportPeriodSlot）。 */
     @Select("SELECT id FROM period_slots WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")

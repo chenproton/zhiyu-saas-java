@@ -1,4 +1,4 @@
-package org.dromara.zhiyu.domain.portal;
+package org.dromara.zhiyu.domain.affairs;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -17,7 +17,7 @@ import java.time.OffsetDateTime;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @TableName("venues")
-public class PortalVenue {
+public class Venue {
 
     /** 主键 */
     @TableId(value = "id", type = IdType.ASSIGN_UUID)

@@ -17,7 +17,7 @@ import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.StudentBehaviorRowDto;
 import org.dromara.zhiyu.domain.lesson.LessonBehaviorRecord;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonBehaviorRecordMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.service.lesson.ILessonBehaviorService;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +39,7 @@ import java.util.Map;
 public class LessonBehaviorServiceImpl implements ILessonBehaviorService {
 
     private final LessonBehaviorRecordMapper behaviorMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
     private final ZhiyuUserMapper userMapper;
 
     @Override

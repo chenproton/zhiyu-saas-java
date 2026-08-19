@@ -1,5 +1,8 @@
 package org.dromara.zhiyu.service.ai;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * SSE 流式对话结果（由 service 完成预检与落库后返回，controller 负责发射 SSE 事件）。
  *
@@ -8,8 +11,10 @@ package org.dromara.zhiyu.service.ai;
  * @param reply             完整回复文本
  * @param assistantMessageId 助手消息 ID（agent 对话 done 事件携带）
  * @param doneWithAnswer    true 表示 done 事件携带 answer 字段（KB 问答 / YIKnow）
+ * @param sources           召回溯源（可能为空；非空时 controller 发射 sources 事件）
  * @author zhiyu
  */
 public record ChatStreamResult(String conversationId, String messageId, String reply,
-                               String assistantMessageId, boolean doneWithAnswer) {
+                               String assistantMessageId, boolean doneWithAnswer,
+                               List<Map<String, Object>> sources) {
 }

@@ -17,7 +17,7 @@ import org.dromara.zhiyu.domain.job.JobAbilityPoint;
 import org.dromara.zhiyu.domain.job.JobPositionAbilityBinding;
 import org.dromara.zhiyu.domain.job.JobPositionCertificate;
 import org.dromara.zhiyu.domain.job.JobPositionResponsibility;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalExam;
 import org.dromara.zhiyu.domain.portal.PortalScenario;
 import org.dromara.zhiyu.domain.scene.SceneRubricTemplate;
@@ -113,7 +113,7 @@ public interface IPartnerCoBuildService {
 
     ListResponse<KnowledgePointDto> listSchoolKnowledgePoints(String schoolTenantId, String search, long limit, long offset);
 
-    ListResponse<PortalCourse> listSchoolCourses(String schoolTenantId, String search, long limit, long offset);
+    ListResponse<LessonCourse> listSchoolCourses(String schoolTenantId, String search, long limit, long offset);
 
     ListResponse<JobPositionAbilityBinding> listSchoolAbilityBindings(String schoolTenantId, String search, long limit, long offset);
 

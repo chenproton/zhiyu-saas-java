@@ -85,6 +85,13 @@ public interface JobPositionImportMapper {
                                      @Param("positionId") String positionId, @Param("name") String name,
                                      @Param("sortOrder") Integer sortOrder);
 
+    @Insert("INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, description, sort_order)"
+        + " VALUES (#{id}, #{tenantId}::uuid, #{positionId}::uuid, #{name}, #{description}, #{sortOrder})"
+        + " ON CONFLICT DO NOTHING")
+    int insertPositionResponsibilityFull(@Param("id") String id, @Param("tenantId") String tenantId,
+                                         @Param("positionId") String positionId, @Param("name") String name,
+                                         @Param("description") String description, @Param("sortOrder") Integer sortOrder);
+
     @Select("SELECT id::text FROM position_responsibilities WHERE career_position_id = #{positionId}::uuid"
         + " AND name = #{name} LIMIT 1")
     String findResponsibilityIdByPositionAndName(@Param("positionId") String positionId, @Param("name") String name);

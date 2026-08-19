@@ -11,7 +11,7 @@ import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.CreateNodeResourceRequest;
 import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.NodeResourceDto;
 import org.dromara.zhiyu.mapper.lesson.LessonResourceMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.service.lesson.ILessonResourceService;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +29,7 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     private final LessonResourceMapper resourceMapper;
     private final SystemCourseNodeMapper nodeMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
 
     // ---------- 节点资源 ----------
 

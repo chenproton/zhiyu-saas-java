@@ -19,14 +19,14 @@ import org.dromara.zhiyu.domain.dto.affairs.AffairsDtos.TrainingProgramDto;
 import org.dromara.zhiyu.domain.dto.affairs.AffairsDtos.TrainingProgramPayload;
 import org.dromara.zhiyu.domain.job.JobBatch;
 import org.dromara.zhiyu.domain.portal.PortalCareerPosition;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalMajor;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.affairs.TrainingProgramCourseMapper;
 import org.dromara.zhiyu.mapper.affairs.TrainingProgramMapper;
 import org.dromara.zhiyu.mapper.job.JobBatchMapper;
 import org.dromara.zhiyu.mapper.portal.PortalCareerPositionMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
 import org.dromara.zhiyu.service.affairs.ITrainingProgramService;
 import org.springframework.stereotype.Service;
@@ -61,7 +61,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     private final ZhiyuUserMapper userMapper;
     private final JobBatchMapper batchMapper;
     private final PortalCareerPositionMapper positionMapper;
-    private final PortalCourseMapper portalCourseMapper;
+    private final LessonCourseMapper portalCourseMapper;
 
     // ---------- 列表 / 详情 ----------
 
@@ -274,7 +274,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
         Map<String, String> positionNames = positionIds.isEmpty() ? Map.of() : nameMap(positionMapper.selectList(
             QueryBuilder.lambda(PortalCareerPosition.class).in(PortalCareerPosition::getId, new ArrayList<>(positionIds)).build()));
         Map<String, String> courseNames = courseIds.isEmpty() ? Map.of() : nameMap(portalCourseMapper.selectList(
-            QueryBuilder.lambda(PortalCourse.class).in(PortalCourse::getId, new ArrayList<>(courseIds)).build()));
+            QueryBuilder.lambda(LessonCourse.class).in(LessonCourse::getId, new ArrayList<>(courseIds)).build()));
 
         courseMapper.deleteByProgram(id);
         int idx = 0;
@@ -431,7 +431,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
         Map<String, String> positionNames = nameMapOrEmpty(positionIds.isEmpty() ? List.of() : positionMapper.selectList(
             QueryBuilder.lambda(PortalCareerPosition.class).in(PortalCareerPosition::getId, new ArrayList<>(positionIds)).build()));
         Map<String, String> courseNames = nameMapOrEmpty(courseIds.isEmpty() ? List.of() : portalCourseMapper.selectList(
-            QueryBuilder.lambda(PortalCourse.class).in(PortalCourse::getId, new ArrayList<>(courseIds)).build()));
+            QueryBuilder.lambda(LessonCourse.class).in(LessonCourse::getId, new ArrayList<>(courseIds)).build()));
 
         List<TrainingProgramCourseDto> items = new ArrayList<>(rows.size());
         for (TrainingProgramCourse c : rows) {

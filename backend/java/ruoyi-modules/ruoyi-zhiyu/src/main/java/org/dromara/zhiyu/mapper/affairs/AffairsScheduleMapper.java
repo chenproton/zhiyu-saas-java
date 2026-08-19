@@ -5,17 +5,17 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.domain.portal.PortalScheduleEntry;
+import org.dromara.zhiyu.domain.affairs.ScheduleEntry;
 
 import java.util.List;
 
 /**
- * 教务排课 Mapper（复用 PortalScheduleEntry 实体 + schedule_entries 表，
+ * 教务排课 Mapper（复用 ScheduleEntry 实体 + schedule_entries 表，
  * 承载 affairs 域特有的发布/锁/自动排课/导出原始 SQL）。
  *
  * @author zhiyu
  */
-public interface AffairsScheduleMapper extends BaseMapperPlus<PortalScheduleEntry, PortalScheduleEntry> {
+public interface AffairsScheduleMapper extends BaseMapperPlus<ScheduleEntry, ScheduleEntry> {
 
     /** 以租户+学期粒度的 advisory 事务锁串行化排课变更（随事务释放）。 */
     @Select("SELECT pg_advisory_xact_lock(hashtextextended(#{key}, 0))")

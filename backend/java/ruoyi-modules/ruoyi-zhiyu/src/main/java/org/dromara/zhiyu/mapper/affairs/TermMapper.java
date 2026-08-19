@@ -1,11 +1,11 @@
-package org.dromara.zhiyu.mapper.portal;
+package org.dromara.zhiyu.mapper.affairs;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.domain.portal.PortalTerm;
+import org.dromara.zhiyu.domain.affairs.Term;
 
 import java.time.LocalDate;
 
@@ -14,7 +14,7 @@ import java.time.LocalDate;
  *
  * @author zhiyu
  */
-public interface PortalTermMapper extends BaseMapperPlus<PortalTerm, PortalTerm> {
+public interface TermMapper extends BaseMapperPlus<Term, Term> {
 
     /** 清空当前学期标记（置新当前学期前）。 */
     @Update("UPDATE terms SET is_current = false WHERE tenant_id = #{tenantId}")

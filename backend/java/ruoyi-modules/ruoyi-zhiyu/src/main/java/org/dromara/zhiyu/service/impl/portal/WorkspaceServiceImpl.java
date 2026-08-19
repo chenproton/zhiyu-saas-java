@@ -28,46 +28,46 @@ import org.dromara.zhiyu.domain.dto.portal.WorkspaceDtos.WorkspaceTodo;
 import org.dromara.zhiyu.domain.portal.PortalAnnouncement;
 import org.dromara.zhiyu.domain.portal.PortalApprovalRecord;
 import org.dromara.zhiyu.domain.portal.PortalCareerPosition;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalExam;
 import org.dromara.zhiyu.domain.portal.PortalExamResult;
 import org.dromara.zhiyu.domain.portal.PortalExamUsage;
 import org.dromara.zhiyu.domain.portal.PortalLessonBehavior;
 import org.dromara.zhiyu.domain.portal.PortalOrganization;
-import org.dromara.zhiyu.domain.portal.PortalPeriodSlot;
+import org.dromara.zhiyu.domain.affairs.PeriodSlot;
 import org.dromara.zhiyu.domain.portal.PortalPlatformConfig;
 import org.dromara.zhiyu.domain.portal.PortalQuestionBank;
 import org.dromara.zhiyu.domain.portal.PortalResourceSnapshot;
 import org.dromara.zhiyu.domain.portal.PortalRole;
 import org.dromara.zhiyu.domain.portal.PortalScenario;
 import org.dromara.zhiyu.domain.portal.PortalScenarioTask;
-import org.dromara.zhiyu.domain.portal.PortalScheduleEntry;
+import org.dromara.zhiyu.domain.affairs.ScheduleEntry;
 import org.dromara.zhiyu.domain.portal.PortalSceneEvalResult;
-import org.dromara.zhiyu.domain.portal.PortalTerm;
+import org.dromara.zhiyu.domain.affairs.Term;
 import org.dromara.zhiyu.domain.portal.PortalUserRole;
-import org.dromara.zhiyu.domain.portal.PortalVenue;
+import org.dromara.zhiyu.domain.affairs.Venue;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.portal.PortalAnnouncementMapper;
 import org.dromara.zhiyu.mapper.portal.PortalApprovalRecordMapper;
 import org.dromara.zhiyu.mapper.portal.PortalCareerPositionMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.mapper.portal.PortalExamMapper;
 import org.dromara.zhiyu.mapper.portal.PortalExamResultMapper;
 import org.dromara.zhiyu.mapper.portal.PortalExamUsageMapper;
 import org.dromara.zhiyu.mapper.portal.PortalLessonBehaviorMapper;
 import org.dromara.zhiyu.mapper.portal.PortalOrganizationMapper;
-import org.dromara.zhiyu.mapper.portal.PortalPeriodSlotMapper;
+import org.dromara.zhiyu.mapper.affairs.PeriodSlotMapper;
 import org.dromara.zhiyu.mapper.portal.PortalPlatformConfigMapper;
 import org.dromara.zhiyu.mapper.portal.PortalQuestionBankMapper;
 import org.dromara.zhiyu.mapper.portal.PortalResourceSnapshotMapper;
 import org.dromara.zhiyu.mapper.portal.PortalRoleMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioTaskMapper;
-import org.dromara.zhiyu.mapper.portal.PortalScheduleEntryMapper;
+import org.dromara.zhiyu.mapper.affairs.ScheduleEntryMapper;
 import org.dromara.zhiyu.mapper.portal.PortalSceneEvalResultMapper;
-import org.dromara.zhiyu.mapper.portal.PortalTermMapper;
+import org.dromara.zhiyu.mapper.affairs.TermMapper;
 import org.dromara.zhiyu.mapper.portal.PortalUserRoleMapper;
-import org.dromara.zhiyu.mapper.portal.PortalVenueMapper;
+import org.dromara.zhiyu.mapper.affairs.VenueMapper;
 import org.dromara.zhiyu.service.portal.IWorkspaceService;
 import org.springframework.stereotype.Service;
 
@@ -108,16 +108,16 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private final ZhiyuUserMapper userMapper;
     private final PortalAnnouncementMapper announcementMapper;
     private final PortalApprovalRecordMapper approvalRecordMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
     private final PortalScenarioMapper scenarioMapper;
     private final PortalScenarioTaskMapper scenarioTaskMapper;
     private final PortalExamMapper examMapper;
     private final PortalExamUsageMapper examUsageMapper;
     private final PortalExamResultMapper examResultMapper;
-    private final PortalScheduleEntryMapper scheduleEntryMapper;
-    private final PortalVenueMapper venueMapper;
-    private final PortalTermMapper termMapper;
-    private final PortalPeriodSlotMapper periodSlotMapper;
+    private final ScheduleEntryMapper scheduleEntryMapper;
+    private final VenueMapper venueMapper;
+    private final TermMapper termMapper;
+    private final PeriodSlotMapper periodSlotMapper;
     private final PortalOrganizationMapper organizationMapper;
     private final PortalLessonBehaviorMapper lessonBehaviorMapper;
     private final PortalRoleMapper roleMapper;
@@ -290,8 +290,8 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         List<WorkspaceScheduleEvent> events = new ArrayList<>();
         Map<String, String> periodLabel = periodLabelMap(tenantId);
         if ("teacher".equals(role) || "school_admin".equals(role) || "school".equals(role)) {
-            List<PortalScheduleEntry> rows = listTeacherSchedules(userId, tenantId);
-            for (PortalScheduleEntry se : rows) {
+            List<ScheduleEntry> rows = listTeacherSchedules(userId, tenantId);
+            for (ScheduleEntry se : rows) {
                 String eventType = "scene".equals(se.getType()) ? "scene" : "course";
                 List<String> periodNames = se.getPeriods() == null ? List.of() : se.getPeriods();
                 if (periodNames.isEmpty()) {
@@ -314,8 +314,8 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 events.add(ev);
             }
         } else if ("student".equals(role) && !classNodeId.isEmpty()) {
-            List<PortalScheduleEntry> rows = listStudentSchedules(classNodeId, tenantId);
-            for (PortalScheduleEntry se : rows) {
+            List<ScheduleEntry> rows = listStudentSchedules(classNodeId, tenantId);
+            for (ScheduleEntry se : rows) {
                 String eventType = "scene".equals(se.getType()) ? "scene" : "course";
                 List<String> periodNames = se.getPeriods() == null ? List.of() : se.getPeriods();
                 if (periodNames.isEmpty()) {
@@ -464,18 +464,18 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         ZhiyuUser student = userMapper.selectById(userId);
         String orgNodeId = student == null ? null : student.getOrgNodeId();
 
-        List<PortalCourse> rows = new ArrayList<>();
+        List<LessonCourse> rows = new ArrayList<>();
         try {
-            var wrapper = QueryBuilder.lambda(PortalCourse.class)
-                .eq(PortalCourse::getStatus, "published");
+            var wrapper = QueryBuilder.lambda(LessonCourse.class)
+                .eq(LessonCourse::getStatus, "published");
             if (tenantId != null) {
-                wrapper.eq(PortalCourse::getTenantId, tenantId);
+                wrapper.eq(LessonCourse::getTenantId, tenantId);
             }
             if (orgNodeId != null && !orgNodeId.isBlank()) {
                 wrapper.apply("EXISTS (SELECT 1 FROM schedule_entries se WHERE se.course_id = courses.id AND se.status = 'published'"
                     + " AND (se.class_node_id = {0}::uuid OR {0}::uuid = ANY(se.class_node_ids)))", orgNodeId);
             }
-            wrapper.orderByDesc(PortalCourse::getUpdatedAt).last("LIMIT 50");
+            wrapper.orderByDesc(LessonCourse::getUpdatedAt).last("LIMIT 50");
             rows = courseMapper.selectList(wrapper.build());
         } catch (Exception e) {
             log.warn("portal dashboard student courses query failed", e);
@@ -483,16 +483,16 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         List<WorkspaceCourse> items = new ArrayList<>();
         List<String> courseIds = new ArrayList<>();
-        for (PortalCourse c : rows) {
+        for (LessonCourse c : rows) {
             courseIds.add(c.getId());
         }
         // 批量：教师名称 + 资源版本（避免 N+1）
         Map<String, String> teacherMap = userNameMap(rows.stream()
-            .map(PortalCourse::getTeacherId)
+            .map(LessonCourse::getTeacherId)
             .filter(java.util.Objects::nonNull)
             .collect(Collectors.toCollection(LinkedHashSet::new)));
         Map<String, String> versionMap = batchResourceVersions("courses", courseIds, orgNodeId);
-        for (PortalCourse c : rows) {
+        for (LessonCourse c : rows) {
             WorkspaceCourse item = new WorkspaceCourse();
             item.setId(c.getId());
             item.setCode(c.getCode());
@@ -640,15 +640,15 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private List<WorkspaceTeacherCourse> listTeacherCourses(String userId, String tenantId) {
-        List<PortalCourse> rows = new ArrayList<>();
+        List<LessonCourse> rows = new ArrayList<>();
         try {
-            var wrapper = QueryBuilder.lambda(PortalCourse.class)
-                .eq(PortalCourse::getStatus, "published")
+            var wrapper = QueryBuilder.lambda(LessonCourse.class)
+                .eq(LessonCourse::getStatus, "published")
                 .apply("(teacher_id = {0}::uuid OR creator_id = {0}::uuid)", userId);
             if (tenantId != null) {
-                wrapper.eq(PortalCourse::getTenantId, tenantId);
+                wrapper.eq(LessonCourse::getTenantId, tenantId);
             }
-            wrapper.orderByDesc(PortalCourse::getUpdatedAt).last("LIMIT 50");
+            wrapper.orderByDesc(LessonCourse::getUpdatedAt).last("LIMIT 50");
             rows = courseMapper.selectList(wrapper.build());
         } catch (Exception e) {
             log.warn("portal dashboard teacher courses query failed", e);
@@ -656,7 +656,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         List<WorkspaceTeacherCourse> items = new ArrayList<>();
         List<String> courseIds = new ArrayList<>();
-        for (PortalCourse c : rows) {
+        for (LessonCourse c : rows) {
             WorkspaceTeacherCourse item = new WorkspaceTeacherCourse();
             item.setId(c.getId());
             item.setCode(c.getCode());
@@ -683,12 +683,12 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         if (tenantId == null) {
             return bundle;
         }
-        List<PortalScheduleEntry> rows;
+        List<ScheduleEntry> rows;
         try {
             rows = scheduleEntryMapper.selectList(
-                QueryBuilder.lambda(PortalScheduleEntry.class)
-                    .eq(PortalScheduleEntry::getTeacherId, userId)
-                    .eq(PortalScheduleEntry::getTenantId, tenantId)
+                QueryBuilder.lambda(ScheduleEntry.class)
+                    .eq(ScheduleEntry::getTeacherId, userId)
+                    .eq(ScheduleEntry::getTenantId, tenantId)
                     .build());
         } catch (Exception e) {
             log.warn("portal dashboard class plans query failed", e);
@@ -698,13 +698,13 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             return bundle;
         }
         // 学期按 start_date DESC 排序（对齐 Go ORDER BY t.start_date DESC）
-        List<String> termIds = rows.stream().map(PortalScheduleEntry::getTermId).distinct().toList();
-        Map<String, PortalTerm> termMap = termMapper.selectList(
-            QueryBuilder.lambda(PortalTerm.class).in(PortalTerm::getId, termIds).build())
-            .stream().collect(Collectors.toMap(PortalTerm::getId, Function.identity()));
+        List<String> termIds = rows.stream().map(ScheduleEntry::getTermId).distinct().toList();
+        Map<String, Term> termMap = termMapper.selectList(
+            QueryBuilder.lambda(Term.class).in(Term::getId, termIds).build())
+            .stream().collect(Collectors.toMap(Term::getId, Function.identity()));
         rows.sort((a, b) -> {
-            PortalTerm ta = termMap.get(a.getTermId());
-            PortalTerm tb = termMap.get(b.getTermId());
+            Term ta = termMap.get(a.getTermId());
+            Term tb = termMap.get(b.getTermId());
             LocalDate da = ta == null || ta.getStartDate() == null ? LocalDate.MIN : ta.getStartDate();
             LocalDate db = tb == null || tb.getStartDate() == null ? LocalDate.MIN : tb.getStartDate();
             int c = db.compareTo(da);
@@ -724,15 +724,15 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         Map<String, String> periodLabel = periodLabelMap(tenantId);
         // 批量教师/场地名称（避免 N+1）
-        Set<String> teacherIds = rows.stream().map(PortalScheduleEntry::getTeacherId)
+        Set<String> teacherIds = rows.stream().map(ScheduleEntry::getTeacherId)
             .filter(java.util.Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
-        Set<String> venueIds = rows.stream().map(PortalScheduleEntry::getVenueId)
+        Set<String> venueIds = rows.stream().map(ScheduleEntry::getVenueId)
             .filter(java.util.Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
         Map<String, String> teacherMap = userNameMap(teacherIds);
         Map<String, String> venueMap = venueNameMap(venueIds);
         // key: planEntryId + course + term
         Map<String, WorkspaceClassPlan> planIndex = new LinkedHashMap<>();
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             String planEntryId = se.getPlanEntryId() == null || se.getPlanEntryId().isBlank() ? se.getId() : se.getPlanEntryId();
             String termName = termMap.containsKey(se.getTermId()) && termMap.get(se.getTermId()).getName() != null
                 ? termMap.get(se.getTermId()).getName() : "";
@@ -794,11 +794,11 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private int draftCourseCount(String userId, String tenantId) {
-        var wrapper = QueryBuilder.lambda(PortalCourse.class)
-            .eq(PortalCourse::getStatus, "draft")
+        var wrapper = QueryBuilder.lambda(LessonCourse.class)
+            .eq(LessonCourse::getStatus, "draft")
             .apply("(teacher_id = {0}::uuid OR creator_id = {0}::uuid)", userId);
         if (tenantId != null) {
-            wrapper.eq(PortalCourse::getTenantId, tenantId);
+            wrapper.eq(LessonCourse::getTenantId, tenantId);
         }
         return courseMapper.selectCount(wrapper.build()).intValue();
     }
@@ -819,17 +819,17 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         return examUsageMapper.selectCount(wrapper.build()).intValue();
     }
 
-    private List<PortalScheduleEntry> listTeacherSchedules(String userId, String tenantId) {
+    private List<ScheduleEntry> listTeacherSchedules(String userId, String tenantId) {
         try {
-            var wrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-                .eq(PortalScheduleEntry::getStatus, "published")
-                .eq(PortalScheduleEntry::getTeacherId, userId);
+            var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
+                .eq(ScheduleEntry::getStatus, "published")
+                .eq(ScheduleEntry::getTeacherId, userId);
             if (tenantId != null) {
-                wrapper.eq(PortalScheduleEntry::getTenantId, tenantId);
+                wrapper.eq(ScheduleEntry::getTenantId, tenantId);
             }
-            wrapper.orderByAsc(PortalScheduleEntry::getDayOfWeek).orderByAsc(PortalScheduleEntry::getStartWeek)
+            wrapper.orderByAsc(ScheduleEntry::getDayOfWeek).orderByAsc(ScheduleEntry::getStartWeek)
                 .last("LIMIT 50");
-            List<PortalScheduleEntry> rows = scheduleEntryMapper.selectList(wrapper.build());
+            List<ScheduleEntry> rows = scheduleEntryMapper.selectList(wrapper.build());
             attachScheduleNames(rows);
             return rows;
         } catch (Exception e) {
@@ -838,17 +838,17 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         }
     }
 
-    private List<PortalScheduleEntry> listStudentSchedules(String classNodeId, String tenantId) {
+    private List<ScheduleEntry> listStudentSchedules(String classNodeId, String tenantId) {
         try {
-            var wrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-                .eq(PortalScheduleEntry::getStatus, "published")
+            var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
+                .eq(ScheduleEntry::getStatus, "published")
                 .apply("(class_node_id = {0}::uuid OR {0}::uuid = ANY(class_node_ids))", classNodeId);
             if (tenantId != null) {
-                wrapper.eq(PortalScheduleEntry::getTenantId, tenantId);
+                wrapper.eq(ScheduleEntry::getTenantId, tenantId);
             }
-            wrapper.orderByAsc(PortalScheduleEntry::getDayOfWeek).orderByAsc(PortalScheduleEntry::getStartWeek)
+            wrapper.orderByAsc(ScheduleEntry::getDayOfWeek).orderByAsc(ScheduleEntry::getStartWeek)
                 .last("LIMIT 50");
-            List<PortalScheduleEntry> rows = scheduleEntryMapper.selectList(wrapper.build());
+            List<ScheduleEntry> rows = scheduleEntryMapper.selectList(wrapper.build());
             attachScheduleNames(rows);
             return rows;
         } catch (Exception e) {
@@ -858,14 +858,14 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     /** 批量填充排课关联名称（场地/教师/班级，避免 N+1） */
-    private void attachScheduleNames(List<PortalScheduleEntry> rows) {
+    private void attachScheduleNames(List<ScheduleEntry> rows) {
         if (rows.isEmpty()) {
             return;
         }
         Set<String> venueIds = new LinkedHashSet<>();
         Set<String> teacherIds = new LinkedHashSet<>();
         Set<String> orgIds = new LinkedHashSet<>();
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             if (se.getVenueId() != null && !se.getVenueId().isBlank()) {
                 venueIds.add(se.getVenueId());
             }
@@ -882,7 +882,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         Map<String, String> venueMap = venueNameMap(venueIds);
         Map<String, String> orgMap = orgNameMap(orgIds);
         Map<String, String> teacherMap = userNameMap(teacherIds);
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             se.setVenueName(se.getVenueId() == null ? "" : venueMap.getOrDefault(se.getVenueId(), ""));
             se.setTeacherName(se.getTeacherId() == null ? "" : teacherMap.getOrDefault(se.getTeacherId(), ""));
             List<String> names = new ArrayList<>();
@@ -900,7 +900,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         }
     }
 
-    private String joinClassNames(PortalScheduleEntry se) {
+    private String joinClassNames(ScheduleEntry se) {
         if (se.getClassNames() == null || se.getClassNames().isEmpty()) {
             return "";
         }
@@ -948,17 +948,17 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private static final java.util.concurrent.ConcurrentHashMap<String, Long> SYNC_THROTTLE = new java.util.concurrent.ConcurrentHashMap<>();
 
     private int[] teacherStats(String userId, String tenantId) {
-        var wrapper = QueryBuilder.lambda(PortalCourse.class)
-            .eq(PortalCourse::getStatus, "published")
+        var wrapper = QueryBuilder.lambda(LessonCourse.class)
+            .eq(LessonCourse::getStatus, "published")
             .apply("(teacher_id = {0}::uuid OR creator_id = {0}::uuid)", userId);
         if (tenantId != null) {
-            wrapper.eq(PortalCourse::getTenantId, tenantId);
+            wrapper.eq(LessonCourse::getTenantId, tenantId);
         }
-        List<PortalCourse> courses = courseMapper.selectList(wrapper.build());
+        List<LessonCourse> courses = courseMapper.selectList(wrapper.build());
         int courseCount = courses.size();
         int studentCount = 0;
         if (!courses.isEmpty()) {
-            List<String> courseIds = courses.stream().map(PortalCourse::getId).toList();
+            List<String> courseIds = courses.stream().map(LessonCourse::getId).toList();
             List<PortalLessonBehavior> behaviors = lessonBehaviorMapper.selectList(
                 QueryBuilder.lambda(PortalLessonBehavior.class)
                     .in(PortalLessonBehavior::getCourseId, courseIds)
@@ -969,9 +969,9 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private int[] studentStats(String tenantId) {
-        var courseWrapper = QueryBuilder.lambda(PortalCourse.class).eq(PortalCourse::getStatus, "published");
+        var courseWrapper = QueryBuilder.lambda(LessonCourse.class).eq(LessonCourse::getStatus, "published");
         if (tenantId != null) {
-            courseWrapper.eq(PortalCourse::getTenantId, tenantId);
+            courseWrapper.eq(LessonCourse::getTenantId, tenantId);
         }
         int courseCount = courseMapper.selectCount(courseWrapper.build()).intValue();
 
@@ -1012,7 +1012,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private int countCourses(String tenantId) {
-        return selectCountTenant(courseMapper, PortalCourse.class, tenantId).intValue();
+        return selectCountTenant(courseMapper, LessonCourse.class, tenantId).intValue();
     }
 
     private int countScenarios(String tenantId) {
@@ -1062,7 +1062,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         String since = now.minusDays(days).format(DATE_FMT);
 
         countGrowthByDay(tenantId, since, dayIndex, result, (g, v) -> g.setCourses(v),
-            () -> courseMapper.selectMaps(growthWrapper(PortalCourse.class, "created_at", tenantId, since)));
+            () -> courseMapper.selectMaps(growthWrapper(LessonCourse.class, "created_at", tenantId, since)));
         countGrowthByDay(tenantId, since, dayIndex, result, (g, v) -> g.setScenarios(v),
             () -> scenarioMapper.selectMaps(growthWrapper(PortalScenario.class, "created_at", tenantId, since)));
         countGrowthByDay(tenantId, since, dayIndex, result, (g, v) -> g.setCareerPositions(v),
@@ -1218,10 +1218,10 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             return m;
         }
         try {
-            List<PortalPeriodSlot> rows = periodSlotMapper.selectList(
-                QueryBuilder.lambda(PortalPeriodSlot.class)
-                    .eq(PortalPeriodSlot::getTenantId, tenantId)
-                    .orderByAsc(PortalPeriodSlot::getSortOrder)
+            List<PeriodSlot> rows = periodSlotMapper.selectList(
+                QueryBuilder.lambda(PeriodSlot.class)
+                    .eq(PeriodSlot::getTenantId, tenantId)
+                    .orderByAsc(PeriodSlot::getSortOrder)
                     .build());
             Map<String, String> prefixes = Map.of(
                 "morning_self", "早自习",
@@ -1229,7 +1229,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 "afternoon", "下午",
                 "evening", "晚自习");
             Map<String, Integer> index = new HashMap<>();
-            for (PortalPeriodSlot p : rows) {
+            for (PeriodSlot p : rows) {
                 String prefix = prefixes.getOrDefault(p.getSlotType(), "上午");
                 index.merge(p.getSlotType(), 1, Integer::sum);
                 m.put(p.getName(), prefix + " " + index.get(p.getSlotType()));
@@ -1245,8 +1245,8 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private String findTermForSchedule(String tenantId, String userId, String classNodeId) {
         // 对齐 Go：优先当前学期，其次含本人排课最多的学期，最后按开始日期倒序
         try {
-            List<PortalTerm> terms = termMapper.selectList(
-                QueryBuilder.lambda(PortalTerm.class).eq(PortalTerm::getTenantId, tenantId).build());
+            List<Term> terms = termMapper.selectList(
+                QueryBuilder.lambda(Term.class).eq(Term::getTenantId, tenantId).build());
             if (terms.isEmpty()) {
                 return null;
             }
@@ -1260,10 +1260,10 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 scopeArg = userId;
             }
             Map<String, Long> scheduleCounts = new HashMap<>();
-            for (PortalTerm t : terms) {
-                var wrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-                    .eq(PortalScheduleEntry::getTermId, t.getId())
-                    .eq(PortalScheduleEntry::getTenantId, tenantId)
+            for (Term t : terms) {
+                var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
+                    .eq(ScheduleEntry::getTermId, t.getId())
+                    .eq(ScheduleEntry::getTenantId, tenantId)
                     .apply(scopeCond, scopeArg);
                 scheduleCounts.put(t.getId(), scheduleEntryMapper.selectCount(wrapper.build()));
             }
@@ -1281,7 +1281,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                     LocalDate db = b.getStartDate() == null ? LocalDate.MIN : b.getStartDate();
                     return db.compareTo(da);
                 })
-                .map(PortalTerm::getId)
+                .map(Term::getId)
                 .findFirst()
                 .orElse(null);
         } catch (Exception e) {
@@ -1291,10 +1291,10 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private TermDto fetchTermBrief(String termId, String tenantId) {
-        PortalTerm t = termMapper.selectOne(
-            QueryBuilder.lambda(PortalTerm.class)
-                .eq(PortalTerm::getId, termId)
-                .eq(PortalTerm::getTenantId, tenantId)
+        Term t = termMapper.selectOne(
+            QueryBuilder.lambda(Term.class)
+                .eq(Term::getId, termId)
+                .eq(Term::getTenantId, tenantId)
                 .build());
         if (t == null) {
             return null;
@@ -1311,27 +1311,27 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private List<ScheduleEntryDto> listTimetableEntries(String tenantId, String termId, String classNodeId, String teacherId, String status) {
-        var wrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-            .eq(PortalScheduleEntry::getTenantId, tenantId)
-            .eq(PortalScheduleEntry::getTermId, termId);
+        var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
+            .eq(ScheduleEntry::getTenantId, tenantId)
+            .eq(ScheduleEntry::getTermId, termId);
         if (!classNodeId.isEmpty()) {
             wrapper.apply("({0}::uuid = ANY(class_node_ids) OR class_node_id = {0}::uuid)", classNodeId);
         }
         if (!teacherId.isEmpty()) {
-            wrapper.eq(PortalScheduleEntry::getTeacherId, teacherId);
+            wrapper.eq(ScheduleEntry::getTeacherId, teacherId);
         }
         if (status != null && !status.isBlank()) {
-            wrapper.eq(PortalScheduleEntry::getStatus, status);
+            wrapper.eq(ScheduleEntry::getStatus, status);
         }
-        wrapper.orderByAsc(PortalScheduleEntry::getDayOfWeek).orderByAsc(PortalScheduleEntry::getPeriods);
-        List<PortalScheduleEntry> rows = scheduleEntryMapper.selectList(wrapper.build());
+        wrapper.orderByAsc(ScheduleEntry::getDayOfWeek).orderByAsc(ScheduleEntry::getPeriods);
+        List<ScheduleEntry> rows = scheduleEntryMapper.selectList(wrapper.build());
 
         // 批量关联名称（教师/场地/班级/场景）
         Set<String> teacherIds = new LinkedHashSet<>();
         Set<String> venueIds = new LinkedHashSet<>();
         Set<String> orgIds = new LinkedHashSet<>();
         Set<String> scenarioIds = new LinkedHashSet<>();
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             if (se.getTeacherId() != null && !se.getTeacherId().isBlank()) {
                 teacherIds.add(se.getTeacherId());
             }
@@ -1351,7 +1351,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         Map<String, String> scenarioMap = scenarioNameMap(scenarioIds);
 
         List<ScheduleEntryDto> items = new ArrayList<>();
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             ScheduleEntryDto dto = new ScheduleEntryDto();
             dto.setId(se.getId());
             dto.setTermId(se.getTermId());
@@ -1460,10 +1460,10 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             return Map.of();
         }
         try {
-            return venueMapper.selectList(QueryBuilder.lambda(PortalVenue.class).in(PortalVenue::getId, ids).build())
+            return venueMapper.selectList(QueryBuilder.lambda(Venue.class).in(Venue::getId, ids).build())
                 .stream()
                 .filter(v -> v.getName() != null)
-                .collect(Collectors.toMap(PortalVenue::getId, PortalVenue::getName));
+                .collect(Collectors.toMap(Venue::getId, Venue::getName));
         } catch (Exception e) {
             log.warn("batch venue name query failed", e);
             return Map.of();
@@ -1513,23 +1513,23 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         }
         if (orgNodeId != null && !orgNodeId.isBlank()) {
             try {
-                var scheduleWrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-                    .eq(PortalScheduleEntry::getStatus, "published")
+                var scheduleWrapper = QueryBuilder.lambda(ScheduleEntry.class)
+                    .eq(ScheduleEntry::getStatus, "published")
                     .apply("(class_node_id = {0}::uuid OR {0}::uuid = ANY(class_node_ids))", orgNodeId);
                 if ("scenarios".equals(resourceType)) {
-                    scheduleWrapper.eq(PortalScheduleEntry::getType, "scene")
-                        .in(PortalScheduleEntry::getScenarioId, resourceIds);
+                    scheduleWrapper.eq(ScheduleEntry::getType, "scene")
+                        .in(ScheduleEntry::getScenarioId, resourceIds);
                 } else {
-                    scheduleWrapper.in(PortalScheduleEntry::getCourseId, resourceIds);
+                    scheduleWrapper.in(ScheduleEntry::getCourseId, resourceIds);
                 }
-                List<PortalScheduleEntry> schedules = scheduleEntryMapper.selectList(scheduleWrapper.build());
-                Map<String, PortalScheduleEntry> bestByResource = new HashMap<>();
-                for (PortalScheduleEntry s : schedules) {
+                List<ScheduleEntry> schedules = scheduleEntryMapper.selectList(scheduleWrapper.build());
+                Map<String, ScheduleEntry> bestByResource = new HashMap<>();
+                for (ScheduleEntry s : schedules) {
                     if (s.getResourceVersion() == null) {
                         continue;
                     }
                     String rid = "scenarios".equals(resourceType) ? s.getScenarioId() : s.getCourseId();
-                    PortalScheduleEntry existing = bestByResource.get(rid);
+                    ScheduleEntry existing = bestByResource.get(rid);
                     if (existing == null || nz(s.getVersion()) > nz(existing.getVersion())) {
                         bestByResource.put(rid, s);
                     }

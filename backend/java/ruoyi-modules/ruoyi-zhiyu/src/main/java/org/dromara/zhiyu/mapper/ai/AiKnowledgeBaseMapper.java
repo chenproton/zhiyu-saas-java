@@ -42,4 +42,11 @@ public interface AiKnowledgeBaseMapper extends BaseMapperPlus<AiKnowledgeBase, A
     @Update("<script>UPDATE ai_knowledge_bases SET ask_count = ask_count + 1 WHERE tenant_id = #{tenantId}"
         + " AND id IN <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach></script>")
     int incrementAskCount(@Param("tenantId") String tenantId, @Param("ids") List<String> ids);
+
+    /** 重算 ready 文档数冗余列（对齐 Go store.RefreshKBDocCount，best-effort） */
+    @Update("UPDATE ai_knowledge_bases kb SET doc_count = ("
+        + " SELECT COUNT(*) FROM ai_kb_documents d WHERE d.tenant_id = kb.tenant_id AND d.kb_id = kb.id AND d.status = 'ready'"
+        + ") WHERE kb.tenant_id = #{tenantId} AND kb.id = #{kbId}")
+    int refreshDocCount(@Param("tenantId") String tenantId, @Param("kbId") String kbId);
+
 }

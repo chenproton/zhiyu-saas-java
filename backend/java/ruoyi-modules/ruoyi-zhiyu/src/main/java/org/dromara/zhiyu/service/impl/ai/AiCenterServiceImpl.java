@@ -1,7 +1,13 @@
 package org.dromara.zhiyu.service.impl.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -12,12 +18,15 @@ import org.dromara.zhiyu.domain.ai.AiAgentKb;
 import org.dromara.zhiyu.domain.ai.AiConversation;
 import org.dromara.zhiyu.domain.ai.AiIntegration;
 import org.dromara.zhiyu.domain.ai.AiKbAsk;
+import org.dromara.zhiyu.domain.ai.AiKbChunk;
 import org.dromara.zhiyu.domain.ai.AiKbCollaborator;
 import org.dromara.zhiyu.domain.ai.AiKbDocument;
 import org.dromara.zhiyu.domain.ai.AiKnowledgeBase;
 import org.dromara.zhiyu.domain.ai.AiMessage;
 import org.dromara.zhiyu.domain.ai.AiReviewLog;
+import org.dromara.zhiyu.domain.dto.ai.AiDtos.AIChatRequest;
 import org.dromara.zhiyu.domain.dto.ai.AiDtos.AgentInput;
+import org.dromara.zhiyu.domain.dto.ai.AiDtos.ChatMessage;
 import org.dromara.zhiyu.domain.dto.ai.AiDtos.IntegrationInput;
 import org.dromara.zhiyu.domain.dto.ai.AiDtos.KbInput;
 import org.dromara.zhiyu.domain.portal.PortalMajor;
@@ -29,6 +38,7 @@ import org.dromara.zhiyu.mapper.ai.AiAgentMapper;
 import org.dromara.zhiyu.mapper.ai.AiConversationMapper;
 import org.dromara.zhiyu.mapper.ai.AiIntegrationMapper;
 import org.dromara.zhiyu.mapper.ai.AiKbAskMapper;
+import org.dromara.zhiyu.mapper.ai.AiKbChunkMapper;
 import org.dromara.zhiyu.mapper.ai.AiKbCollaboratorMapper;
 import org.dromara.zhiyu.mapper.ai.AiKbDocumentMapper;
 import org.dromara.zhiyu.mapper.ai.AiKnowledgeBaseMapper;
@@ -40,10 +50,13 @@ import org.dromara.zhiyu.mapper.portal.PortalOrganizationMapper;
 import org.dromara.zhiyu.mapper.portal.PortalViewCounterMapper;
 import org.dromara.zhiyu.service.ai.ChatStreamResult;
 import org.dromara.zhiyu.service.ai.IAiCenterService;
+import org.dromara.zhiyu.service.ai.IAiService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,8 +70,8 @@ import java.util.stream.Collectors;
 /**
  * AI 智能服务中心服务实现（对齐 Go ai_center_*.go）。
  *
- * <p>检索/LLM 调用在演示环境为 mock：预检 AI 配置（未配置 → 412），
- * 配置存在即返回「演示回复」文本并分片流式下发；api_key 不触碰。</p>
+ * <p>文档上传走真实解析分块入库；kbAsk/agentChat/yiknowChat/previewAgent 走
+ * pg_trgm 检索 + 真实 ChatCompletion（api_key 解密与错误映射复用 AiServiceImpl）。</p>
  *
  * @author zhiyu
  */
@@ -69,6 +82,20 @@ public class AiCenterServiceImpl implements IAiCenterService {
 
     private static final List<String> KB_TYPES = List.of("course_resource", "research", "teaching_case", "qa");
     private static final List<String> SUPPORTED_DOC_EXTS = List.of(".pdf", ".docx", ".txt", ".md");
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    // 文档解析/分块/召回护栏（对齐 Go ai_center_doc.go / ai_center_retrieval.go）
+    private static final int DOC_MAX_TEXT_RUNES = 200000;
+    private static final int DOC_MAX_CHUNKS = 800;
+    private static final int CHUNK_TARGET_RUNES = 500;
+    private static final int CHUNK_OVERLAP_RUNES = 50;
+    private static final int RETRIEVAL_TOP_N = 6;
+    private static final int RETRIEVAL_MAX_QUERIES = 3;
+    private static final int RETRIEVAL_CLAUSE_LEN = 32;
+    private static final int RETRIEVAL_MIN_CLAUSE = 4;
+    private static final int CONTEXT_HISTORY_LIMIT = 10;
+    private static final int SOURCE_SNIPPET_RUNES = 120;
 
     private final AiKnowledgeBaseMapper kbMapper;
     private final AiAgentMapper agentMapper;
@@ -85,6 +112,8 @@ public class AiCenterServiceImpl implements IAiCenterService {
     private final PortalMajorMapper majorMapper;
     private final PortalOrganizationMapper orgMapper;
     private final PortalViewCounterMapper viewCounterMapper;
+    private final AiKbChunkMapper chunkMapper;
+    private final IAiService aiService;
 
     // ==================== 知识库 ====================
 
@@ -279,20 +308,49 @@ public class AiCenterServiceImpl implements IAiCenterService {
         if (!SUPPORTED_DOC_EXTS.contains(ext)) {
             throw new ApiException(400, "bad_request", "仅支持 PDF/DOCX/TXT/MD（.doc 请另存为 .docx）");
         }
-        // 演示环境：不做真实落盘与解析，直接登记为 ready
+        // 登记为 parsing，随后同步解析分块（对齐 Go RegisterDocument + triggerParse 语义；
+        // Java 版同步解析，简化 Go 的异步 goroutine）
+        String fileName = original == null ? "unnamed" + ext : original;
         AiKbDocument doc = new AiKbDocument();
         doc.setTenantId(tenantId);
         doc.setKbId(kbId);
         doc.setUploaderId(userId);
-        doc.setName(original == null ? "unnamed" + ext : original);
-        doc.setFilePath("/demo/ai-kb/" + kbId + "/" + original);
+        doc.setName(fileName);
+        doc.setFilePath("/demo/ai-kb/" + kbId + "/" + fileName);
         doc.setFileSize(file.getSize());
         doc.setMime(file.getContentType() == null ? "" : file.getContentType());
-        doc.setStatus("ready");
+        doc.setStatus("parsing");
         doc.setError("");
         doc.setChunkCount(0);
         doc.setCharCount(0);
         docMapper.insert(doc);
+
+        try {
+            byte[] bytes = file.getBytes();
+            String text = extractDocText(bytes, ext);
+            List<String> chunks = chunkText(text);
+            if (chunks.isEmpty()) {
+                docMapper.finishParse(tenantId, doc.getId(), "failed",
+                    "未提取到文本内容（可能为扫描件，暂不支持 OCR）", 0, 0);
+            } else {
+                List<AiKbChunk> rows = new ArrayList<>(chunks.size());
+                for (int i = 0; i < chunks.size(); i++) {
+                    AiKbChunk c = new AiKbChunk();
+                    c.setTenantId(tenantId);
+                    c.setDocId(doc.getId());
+                    c.setKbId(kbId);
+                    c.setSeq(i + 1);
+                    c.setContent(chunks.get(i));
+                    rows.add(c);
+                }
+                chunkMapper.insertBatch(rows);
+                docMapper.finishParse(tenantId, doc.getId(), "ready", "", chunks.size(), runes(text));
+                kbMapper.refreshDocCount(tenantId, kbId);
+            }
+        } catch (Exception e) {
+            log.warn("ai doc parse failed, docId={}", doc.getId(), e);
+            docMapper.finishParse(tenantId, doc.getId(), "failed", safeError(e), 0, 0);
+        }
         return docMapper.selectById(doc.getId());
     }
 
@@ -312,6 +370,7 @@ public class AiCenterServiceImpl implements IAiCenterService {
         if (rows == 0) {
             throw new ApiException(404, "not_found", "资源不存在或无权访问");
         }
+        kbMapper.refreshDocCount(tenantId, kbId);
         return ok();
     }
 
@@ -401,7 +460,18 @@ public class AiCenterServiceImpl implements IAiCenterService {
         resolveKbRole(kb, userId, isSchoolAdmin());
         requireConfigured(tenantId);
 
-        String reply = mockReply(message);
+        // RAG 召回 + 真实 ChatCompletion（对齐 Go KBAsk）
+        List<AiKbChunk> chunks = retrieveChunks(tenantId, userId, List.of(kbId), message);
+        List<Map<String, Object>> sources = chunksToSources(chunks);
+        String systemPrompt = "你是知识库「" + kb.getName() + "」的问答助手，基于提供的知识库资料回答用户问题。";
+        List<ChatMessage> messages = buildChatMessages(systemPrompt, chunks, null, message);
+        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
+
+        try {
+            kbMapper.incrementAskCount(tenantId, List.of(kbId));
+        } catch (Exception e) {
+            log.warn("increment kb ask count failed, kbId={}", kbId, e);
+        }
         AiKbAsk ask = new AiKbAsk();
         ask.setTenantId(tenantId);
         ask.setKbId(kbId);
@@ -413,7 +483,7 @@ public class AiCenterServiceImpl implements IAiCenterService {
         } catch (Exception e) {
             log.warn("insert kb ask failed, kbId={}", kbId, e);
         }
-        return new ChatStreamResult(null, null, reply, null, true);
+        return new ChatStreamResult(null, null, reply, null, true, sources);
     }
 
     // ==================== 智能体 ====================
@@ -570,6 +640,13 @@ public class AiCenterServiceImpl implements IAiCenterService {
 
         AiConversation cv = resolveConversation(tenantId, agentId, userId, conversationId);
 
+        // RAG 召回（关联库）+ 历史上下文（近 5 轮），对齐 Go AgentChat
+        List<String> kbIds = agentKbMapper.selectKbIds(tenantId, agentId);
+        List<AiKbChunk> chunks = retrieveChunks(tenantId, userId, kbIds, message);
+        List<Map<String, Object>> sources = chunksToSources(chunks);
+        List<AiMessage> history = conversationId != null && !conversationId.isBlank()
+            ? recentMessages(tenantId, cv.getId()) : List.of();
+
         AiMessage userMsg = new AiMessage();
         userMsg.setTenantId(tenantId);
         userMsg.setConversationId(cv.getId());
@@ -579,13 +656,15 @@ public class AiCenterServiceImpl implements IAiCenterService {
         msgMapper.insert(userMsg);
         convMapper.touch(tenantId, cv.getId(), truncate(message, 30));
 
-        String reply = mockReply(message);
+        List<ChatMessage> messages = buildChatMessages(a.getSystemPrompt(), chunks, history, message);
+        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
+
         AiMessage assistantMsg = new AiMessage();
         assistantMsg.setTenantId(tenantId);
         assistantMsg.setConversationId(cv.getId());
         assistantMsg.setRole("assistant");
         assistantMsg.setContent(reply);
-        assistantMsg.setSources("[]");
+        assistantMsg.setSources(sourcesJson(sources));
         msgMapper.insert(assistantMsg);
         convMapper.touch(tenantId, cv.getId(), "");
         try {
@@ -593,7 +672,22 @@ public class AiCenterServiceImpl implements IAiCenterService {
         } catch (Exception e) {
             log.warn("increment agent chat count failed, agentId={}", agentId, e);
         }
-        return new ChatStreamResult(cv.getId(), userMsg.getId(), reply, assistantMsg.getId(), false);
+        if (!chunks.isEmpty()) {
+            Set<String> hitKbs = new LinkedHashSet<>();
+            for (AiKbChunk c : chunks) {
+                if (c.getKbId() != null) {
+                    hitKbs.add(c.getKbId());
+                }
+            }
+            if (!hitKbs.isEmpty()) {
+                try {
+                    kbMapper.incrementAskCount(tenantId, new ArrayList<>(hitKbs));
+                } catch (Exception e) {
+                    log.warn("increment hit kb ask count failed, agentId={}", agentId, e);
+                }
+            }
+        }
+        return new ChatStreamResult(cv.getId(), userMsg.getId(), reply, assistantMsg.getId(), false, sources);
     }
 
     @Override
@@ -605,8 +699,14 @@ public class AiCenterServiceImpl implements IAiCenterService {
             throw new ApiException(403, "forbidden", "无权操作");
         }
         requireConfigured(tenantId);
+        String prompt = trim(systemPrompt);
+        if (prompt.isEmpty()) {
+            prompt = a.getSystemPrompt();
+        }
+        List<ChatMessage> messages = buildChatMessages(prompt, null, null, message);
+        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
         Map<String, String> result = new LinkedHashMap<>();
-        result.put("reply", mockReply(message));
+        result.put("reply", reply);
         return result;
     }
 
@@ -786,6 +886,10 @@ public class AiCenterServiceImpl implements IAiCenterService {
 
         AiConversation cv = resolveConversation(tenantId, null, userId, conversationId);
 
+        // 历史上下文（近 5 轮）
+        List<AiMessage> history = conversationId != null && !conversationId.isBlank()
+            ? recentMessages(tenantId, cv.getId()) : List.of();
+
         AiMessage userMsg = new AiMessage();
         userMsg.setTenantId(tenantId);
         userMsg.setConversationId(cv.getId());
@@ -795,7 +899,10 @@ public class AiCenterServiceImpl implements IAiCenterService {
         msgMapper.insert(userMsg);
         convMapper.touch(tenantId, cv.getId(), truncate(message, 30));
 
-        String reply = mockReply(message);
+        List<ChatMessage> messages = buildChatMessages(
+            "你是 YIKnow 智能助手，面向职业院校师生提供学习、教学与办公辅助。", null, history, message);
+        String reply = aiService.chat(tenantId, userId, chatRequest(messages)).getReply();
+
         AiMessage assistantMsg = new AiMessage();
         assistantMsg.setTenantId(tenantId);
         assistantMsg.setConversationId(cv.getId());
@@ -804,7 +911,7 @@ public class AiCenterServiceImpl implements IAiCenterService {
         assistantMsg.setSources("[]");
         msgMapper.insert(assistantMsg);
         convMapper.touch(tenantId, cv.getId(), "");
-        return new ChatStreamResult(cv.getId(), userMsg.getId(), reply, null, true);
+        return new ChatStreamResult(cv.getId(), userMsg.getId(), reply, null, true, List.of());
     }
 
     // ==================== 管理端 ====================
@@ -1371,8 +1478,255 @@ public class AiCenterServiceImpl implements IAiCenterService {
         }
     }
 
-    private String mockReply(String message) {
-        return "演示回复：已收到「" + truncate(message == null ? "" : message, 40) + "」";
+    // ==================== 文档解析 / 分块 / 检索 / 装配（对齐 Go ai_center_doc.go / ai_center_retrieval.go） ====================
+
+    private AIChatRequest chatRequest(List<ChatMessage> messages) {
+        AIChatRequest req = new AIChatRequest();
+        req.setMessages(messages);
+        return req;
+    }
+
+    private List<AiKbChunk> retrieveChunks(String tenantId, String userId, List<String> kbIds, String message) {
+        List<String> queries = buildRetrievalQueries(message);
+        if (queries.isEmpty() || kbIds == null || kbIds.isEmpty()) {
+            return List.of();
+        }
+        return chunkMapper.searchChunks(tenantId, userId, kbIds, queries, RETRIEVAL_TOP_N);
+    }
+
+    /** 查询预处理：按标点/空白切分取 Top3 长句；无有效子句时退化为整串前 32 字。 */
+    private List<String> buildRetrievalQueries(String message) {
+        String m = message == null ? "" : message;
+        String[] segments = m.split("[\\p{P}\\s]+");
+        List<String> candidates = new ArrayList<>();
+        for (String s : segments) {
+            String v = s.strip();
+            if (runes(v) >= RETRIEVAL_MIN_CLAUSE) {
+                candidates.add(truncate(v, RETRIEVAL_CLAUSE_LEN));
+            }
+        }
+        candidates.sort((a, b) -> runes(b) - runes(a));
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        List<String> out = new ArrayList<>();
+        for (String c : candidates) {
+            if (seen.add(c)) {
+                out.add(c);
+                if (out.size() >= RETRIEVAL_MAX_QUERIES) {
+                    break;
+                }
+            }
+        }
+        if (out.isEmpty()) {
+            String t = m.strip();
+            boolean hasValid = false;
+            for (int cp : t.codePoints().toArray()) {
+                if (!Character.isWhitespace(cp) && !isPunct(cp)) {
+                    hasValid = true;
+                    break;
+                }
+            }
+            if (hasValid) {
+                out.add(truncate(t, RETRIEVAL_CLAUSE_LEN));
+            }
+        }
+        return out;
+    }
+
+    /** 装配对话消息：system_prompt + 召回资料段 + 引用规则 + 历史 + 用户问题。 */
+    private List<ChatMessage> buildChatMessages(String systemPrompt, List<AiKbChunk> chunks,
+                                                List<AiMessage> history, String question) {
+        StringBuilder sys = new StringBuilder(trim(systemPrompt));
+        if (chunks != null && !chunks.isEmpty()) {
+            sys.append("\n\n以下是与用户问题相关的知识库资料（回答时优先依据这些资料，并在引用处标注【资料N】）：\n");
+            for (int i = 0; i < chunks.size(); i++) {
+                AiKbChunk c = chunks.get(i);
+                sys.append("\n【资料").append(i + 1).append("】《").append(c.getDocName() == null ? "" : c.getDocName())
+                    .append("》第").append(c.getSeq() == null ? 0 : c.getSeq()).append("段：")
+                    .append(c.getContent()).append("\n");
+            }
+            sys.append("\n回答规则：资料不足以回答时明确说明「知识库中未找到完全匹配的资料」，不要编造来源。");
+        } else {
+            sys.append("\n\n（本次未从知识库检索到相关资料。若问题明显依赖知识库内容，请告知用户「知识库中未找到相关资料」；"
+                + "通用知识问题可正常回答，但不得虚构引用来源。）");
+        }
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(msg("system", sys.toString()));
+        if (history != null) {
+            for (AiMessage m : history) {
+                msgs.add(msg(m.getRole(), m.getContent()));
+            }
+        }
+        msgs.add(msg("user", question));
+        return msgs;
+    }
+
+    private static ChatMessage msg(String role, String content) {
+        ChatMessage m = new ChatMessage();
+        m.setRole(role);
+        m.setContent(content);
+        return m;
+    }
+
+    /** 召回分块 → 溯源片段（截断），对齐 Go chunksToSources。 */
+    private List<Map<String, Object>> chunksToSources(List<AiKbChunk> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> out = new ArrayList<>(chunks.size());
+        for (AiKbChunk c : chunks) {
+            Map<String, Object> s = new LinkedHashMap<>();
+            s.put("docId", c.getDocId());
+            s.put("docName", c.getDocName() == null ? "" : c.getDocName());
+            s.put("seq", c.getSeq() == null ? 0 : c.getSeq());
+            s.put("snippet", truncate(trim(c.getContent()), SOURCE_SNIPPET_RUNES));
+            out.add(s);
+        }
+        return out;
+    }
+
+    private String sourcesJson(List<Map<String, Object>> sources) {
+        if (sources == null || sources.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return JSON.writeValueAsString(sources);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    /** 最近 N 条消息（上下文记忆，返回时间升序）。 */
+    private List<AiMessage> recentMessages(String tenantId, String conversationId) {
+        List<AiMessage> recent = msgMapper.selectList(
+            QueryBuilder.lambda(AiMessage.class)
+                .eq(AiMessage::getTenantId, tenantId)
+                .eq(AiMessage::getConversationId, conversationId)
+                .orderByDesc(AiMessage::getCreatedAt)
+                .last("LIMIT " + CONTEXT_HISTORY_LIMIT).build());
+        Collections.reverse(recent);
+        return recent;
+    }
+
+    private String extractDocText(byte[] bytes, String ext) throws Exception {
+        return switch (ext) {
+            case ".txt", ".md" -> truncate(stripBom(new String(bytes, StandardCharsets.UTF_8)), DOC_MAX_TEXT_RUNES);
+            case ".pdf" -> extractPdfText(bytes);
+            case ".docx" -> extractDocxText(bytes);
+            default -> throw new ApiException(400, "bad_request", "不支持的格式 " + ext);
+        };
+    }
+
+    private String extractPdfText(byte[] bytes) {
+        try (PDDocument doc = Loader.loadPDF(bytes)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            return truncate(stripper.getText(doc), DOC_MAX_TEXT_RUNES);
+        } catch (java.io.IOException e) {
+            throw new ApiException(400, "bad_request", "PDF 打开失败（文件可能加密或损坏）");
+        }
+    }
+
+    private String extractDocxText(byte[] bytes) {
+        try (ByteArrayInputStream in = new ByteArrayInputStream(bytes);
+             XWPFDocument doc = new XWPFDocument(in);
+             XWPFWordExtractor extractor = new XWPFWordExtractor(doc)) {
+            return truncate(extractor.getText(), DOC_MAX_TEXT_RUNES);
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ApiException(400, "bad_request", "DOCX 解析失败（文件损坏）");
+        }
+    }
+
+    /** 按段落聚合分块：目标 500 字、重叠 50 字、上限 800 块（对齐 Go chunkText）。 */
+    private static List<String> chunkText(String text) {
+        String t = text == null ? "" : text.replace("\r\n", "\n");
+        String[] paras = t.split("\n", -1);
+        List<String> chunks = new ArrayList<>();
+        List<Integer> cur = new ArrayList<>();
+        for (String p : paras) {
+            int[] pr = codePoints(p.strip());
+            if (pr.length == 0) {
+                continue;
+            }
+            while (pr.length > CHUNK_TARGET_RUNES) {
+                if (!cur.isEmpty()) {
+                    flushChunk(cur, chunks);
+                    cur.clear();
+                }
+                chunks.add(new String(pr, 0, CHUNK_TARGET_RUNES));
+                pr = java.util.Arrays.copyOfRange(pr, CHUNK_TARGET_RUNES - CHUNK_OVERLAP_RUNES, pr.length);
+                if (chunks.size() >= DOC_MAX_CHUNKS) {
+                    return chunks;
+                }
+            }
+            if (cur.size() + pr.length + 1 > CHUNK_TARGET_RUNES) {
+                int[] prev = toIntArray(cur);
+                flushChunk(cur, chunks);
+                cur.clear();
+                if (prev.length > CHUNK_OVERLAP_RUNES) {
+                    for (int i = prev.length - CHUNK_OVERLAP_RUNES; i < prev.length; i++) {
+                        cur.add(prev[i]);
+                    }
+                }
+            }
+            if (!cur.isEmpty()) {
+                cur.add((int) '\n');
+            }
+            for (int cp : pr) {
+                cur.add(cp);
+            }
+        }
+        if (chunks.size() < DOC_MAX_CHUNKS) {
+            flushChunk(cur, chunks);
+        }
+        if (chunks.size() > DOC_MAX_CHUNKS) {
+            return chunks.subList(0, DOC_MAX_CHUNKS);
+        }
+        return chunks;
+    }
+
+    private static void flushChunk(List<Integer> cur, List<String> chunks) {
+        String s = fromCodePoints(cur).strip();
+        if (!s.isEmpty()) {
+            chunks.add(s);
+        }
+    }
+
+    private static int[] codePoints(String s) {
+        return s.codePoints().toArray();
+    }
+
+    private static int[] toIntArray(List<Integer> list) {
+        int[] a = new int[list.size()];
+        for (int i = 0; i < a.length; i++) {
+            a[i] = list.get(i);
+        }
+        return a;
+    }
+
+    private static String fromCodePoints(List<Integer> cps) {
+        StringBuilder sb = new StringBuilder();
+        for (int cp : cps) {
+            sb.appendCodePoint(cp);
+        }
+        return sb.toString();
+    }
+
+    private static String stripBom(String s) {
+        return s.startsWith("\uFEFF") ? s.substring(1) : s;
+    }
+
+    private static String safeError(Exception e) {
+        String m = e.getMessage();
+        return m == null || m.isBlank() ? "解析内部错误" : m;
+    }
+
+    private static boolean isPunct(int cp) {
+        int t = Character.getType(cp);
+        return t == Character.CONNECTOR_PUNCTUATION || t == Character.DASH_PUNCTUATION
+            || t == Character.START_PUNCTUATION || t == Character.END_PUNCTUATION
+            || t == Character.INITIAL_QUOTE_PUNCTUATION || t == Character.FINAL_QUOTE_PUNCTUATION
+            || t == Character.OTHER_PUNCTUATION;
     }
 
     private List<String> normalizeTags(List<String> tags) {

@@ -83,6 +83,13 @@
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
+        <!-- PDF 文本提取（知识库文档分块解析，对齐 Go ledongthuc/pdf） -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.7</version>
+        </dependency>
+
     </dependencies>
 
 </project>

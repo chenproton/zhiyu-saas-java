@@ -42,6 +42,11 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
     @Delete("DELETE FROM alliance_brands WHERE id = #{id} AND tenant_id = #{tenantId}")
     int deleteBrand(@Param("id") String id, @Param("tenantId") String tenantId);
 
+    @Select("SELECT id FROM alliance_brands WHERE tenant_id = #{tenantId} AND brand_type = #{brandType}"
+        + " AND name = #{name} LIMIT 1")
+    String selectBrandByName(@Param("tenantId") String tenantId, @Param("brandType") String brandType,
+                             @Param("name") String name);
+
     @Update("UPDATE alliance_brands SET view_count = view_count + 1, updated_at = NOW() WHERE id = #{id}")
     int incrementView(@Param("id") String id);
 

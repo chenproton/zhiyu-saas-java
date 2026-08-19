@@ -1,4 +1,4 @@
-package org.dromara.zhiyu.mapper.portal;
+package org.dromara.zhiyu.mapper.lesson;
 
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.List;
  *
  * @author zhiyu
  */
-public interface PortalCourseMapper extends BaseMapperPlus<PortalCourse, PortalCourse> {
+public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonCourse> {
 
     /** 查询课程租户（归属校验用）。 */
     @Select("SELECT tenant_id FROM courses WHERE id = #{id}")

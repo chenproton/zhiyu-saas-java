@@ -9,11 +9,11 @@ import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.affairs.TeachingPlan;
 import org.dromara.zhiyu.domain.dto.affairs.AffairsDtos.TermDto;
 import org.dromara.zhiyu.domain.dto.affairs.AffairsDtos.TermPayload;
-import org.dromara.zhiyu.domain.portal.PortalScheduleEntry;
-import org.dromara.zhiyu.domain.portal.PortalTerm;
+import org.dromara.zhiyu.domain.affairs.ScheduleEntry;
+import org.dromara.zhiyu.domain.affairs.Term;
 import org.dromara.zhiyu.mapper.affairs.AffairsScheduleMapper;
 import org.dromara.zhiyu.mapper.affairs.TeachingPlanMapper;
-import org.dromara.zhiyu.mapper.portal.PortalTermMapper;
+import org.dromara.zhiyu.mapper.affairs.TermMapper;
 import org.dromara.zhiyu.service.affairs.ITermService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +32,7 @@ import java.util.List;
 @Service
 public class TermServiceImpl implements ITermService {
 
-    private final PortalTermMapper termMapper;
+    private final TermMapper termMapper;
     private final TeachingPlanMapper teachingPlanMapper;
     private final AffairsScheduleMapper scheduleMapper;
 
@@ -42,16 +42,16 @@ public class TermServiceImpl implements ITermService {
         long safeLimit = clampLimit(limit);
         long safeOffset = Math.max(offset, 0);
 
-        LambdaQueryBuilder<PortalTerm> wrapper = QueryBuilder.lambda(PortalTerm.class)
-            .eq(PortalTerm::getTenantId, tenantId)
-            .likeIfText(PortalTerm::getName, search);
+        LambdaQueryBuilder<Term> wrapper = QueryBuilder.lambda(Term.class)
+            .eq(Term::getTenantId, tenantId)
+            .likeIfText(Term::getName, search);
         if ("true".equals(isCurrent)) {
-            wrapper.eq(PortalTerm::getIsCurrent, true);
+            wrapper.eq(Term::getIsCurrent, true);
         }
         long total = termMapper.selectCount(wrapper.build());
-        wrapper.orderByDesc(PortalTerm::getStartDate)
+        wrapper.orderByDesc(Term::getStartDate)
             .last("LIMIT " + safeLimit + " OFFSET " + safeOffset);
-        List<PortalTerm> rows = termMapper.selectList(wrapper.build());
+        List<Term> rows = termMapper.selectList(wrapper.build());
         return ListResponse.of(rows.stream().map(this::toDto).toList(), total);
     }
 
@@ -70,7 +70,7 @@ public class TermServiceImpl implements ITermService {
         if (isCurrent) {
             termMapper.clearCurrent(tenantId);
         }
-        PortalTerm term = new PortalTerm();
+        Term term = new Term();
         term.setTenantId(tenantId);
         term.setName(p.getName());
         term.setStartDate(parseDate(p.getStartDate()));
@@ -85,7 +85,7 @@ public class TermServiceImpl implements ITermService {
     @Transactional(rollbackFor = Exception.class)
     public TermDto update(String id, TermPayload p) {
         String tenantId = requireTenant();
-        PortalTerm existing = fetchOwned(id);
+        Term existing = fetchOwned(id);
         validate(p);
         int weeks = p.getWeeksCount() == null || p.getWeeksCount() <= 0 ? 16 : p.getWeeksCount();
         boolean isCurrent = p.getIsCurrent() != null ? p.getIsCurrent() : Boolean.TRUE.equals(existing.getIsCurrent());
@@ -109,7 +109,7 @@ public class TermServiceImpl implements ITermService {
         long refs = teachingPlanMapper.selectCount(
                 QueryBuilder.lambda(TeachingPlan.class).eq(TeachingPlan::getTermId, id).build())
             + scheduleMapper.selectCount(
-                QueryBuilder.lambda(PortalScheduleEntry.class).eq(PortalScheduleEntry::getTermId, id).build());
+                QueryBuilder.lambda(ScheduleEntry.class).eq(ScheduleEntry::getTermId, id).build());
         if (refs > 0) {
             throw new ApiException(409, "conflict", "该学期已被教学计划或排课引用，无法删除");
         }
@@ -135,17 +135,17 @@ public class TermServiceImpl implements ITermService {
         }
     }
 
-    private PortalTerm fetchOwned(String id) {
+    private Term fetchOwned(String id) {
         String tenantId = requireTenant();
-        PortalTerm term = termMapper.selectOne(QueryBuilder.lambda(PortalTerm.class)
-            .eq(PortalTerm::getId, id).eq(PortalTerm::getTenantId, tenantId).build());
+        Term term = termMapper.selectOne(QueryBuilder.lambda(Term.class)
+            .eq(Term::getId, id).eq(Term::getTenantId, tenantId).build());
         if (term == null) {
             throw new ApiException(404, "not_found", "学期不存在");
         }
         return term;
     }
 
-    private TermDto toDto(PortalTerm t) {
+    private TermDto toDto(Term t) {
         TermDto dto = new TermDto();
         dto.setId(t.getId());
         dto.setName(t.getName());

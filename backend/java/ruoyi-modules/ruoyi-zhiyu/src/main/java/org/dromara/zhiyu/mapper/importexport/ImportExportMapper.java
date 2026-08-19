@@ -29,8 +29,36 @@ public interface ImportExportMapper {
     @Select("SELECT id FROM organizations WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
     String selectOrgIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
-    @Select("SELECT id FROM alliance_enterprises WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    @Select("SELECT id FROM partner_enterprises WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
     String selectEnterpriseIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
+
+    // ==================== 品牌深链查询（对齐 Go store/alliance_brand_import.go） ====================
+
+    @Select("SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id"
+        + " WHERE u.tenant_id = #{tenantId}::uuid AND u.name = #{name} AND r.code = #{roleCode} LIMIT 1")
+    String selectUserIdByNameWithRole(@Param("tenantId") String tenantId, @Param("name") String name,
+                                      @Param("roleCode") String roleCode);
+
+    @Select("SELECT id FROM career_positions WHERE tenant_id = #{tenantId}::uuid AND name = #{name}"
+        + " AND position_type = 'teaching' LIMIT 1")
+    String selectTeachingPositionIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
+
+    @Select("SELECT id FROM alliance_brands WHERE tenant_id = #{tenantId}::uuid AND brand_type = 'job'"
+        + " AND name = #{name} LIMIT 1")
+    String selectJobBrandIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
+
+    @Select("SELECT id FROM alliance_brands WHERE tenant_id = #{tenantId}::uuid AND brand_type = 'employer'"
+        + " AND enterprise_id IS NULL AND name = #{name} LIMIT 1")
+    String selectIndependentEmployerBrandIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
+
+    @Select("SELECT id FROM alliance_achievements WHERE tenant_id = #{tenantId}::uuid AND title = #{title} LIMIT 1")
+    String selectAchievementIdByTitle(@Param("tenantId") String tenantId, @Param("title") String title);
+
+    @Select("SELECT id FROM courses WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    String selectCourseIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
+
+    @Select("SELECT id FROM alliance_experts WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    String selectExpertIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
     @Select("SELECT id FROM alliance_projects WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
     String selectProjectIdByName(@Param("tenantId") String tenantId, @Param("name") String name);

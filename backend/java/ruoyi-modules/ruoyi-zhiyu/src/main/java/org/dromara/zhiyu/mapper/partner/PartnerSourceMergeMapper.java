@@ -124,4 +124,18 @@ public interface PartnerSourceMergeMapper {
 
     @Delete("DELETE FROM scenarios WHERE id = #{draftId}::uuid AND tenant_id = #{tenantId}::uuid")
     int deleteScenarioDraft(@Param("draftId") String draftId, @Param("tenantId") String tenantId);
+
+    // ==================== 版本 bump（对齐 Go BumpVersionAndSnapshot 的 version 部分，快照另见 P2） ====================
+
+    @Select("SELECT COALESCE(version, '') FROM career_positions WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    String selectPositionVersion(@Param("tenantId") String tenantId, @Param("id") String id);
+
+    @Update("UPDATE career_positions SET version = #{version}, updated_at = NOW() WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    int updatePositionVersion(@Param("tenantId") String tenantId, @Param("id") String id, @Param("version") String version);
+
+    @Select("SELECT COALESCE(version, '') FROM scenarios WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    String selectScenarioVersion(@Param("tenantId") String tenantId, @Param("id") String id);
+
+    @Update("UPDATE scenarios SET version = #{version}, updated_at = NOW() WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    int updateScenarioVersion(@Param("tenantId") String tenantId, @Param("id") String id, @Param("version") String version);
 }

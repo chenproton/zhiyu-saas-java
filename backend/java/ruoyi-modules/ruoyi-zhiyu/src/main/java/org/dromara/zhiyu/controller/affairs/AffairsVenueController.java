@@ -41,11 +41,6 @@ public class AffairsVenueController {
         return schedulingService.listVenues(search, type, limit == null ? 20 : limit, offset == null ? 0 : offset);
     }
 
-    @GetMapping("/{id}")
-    public VenueDto get(@PathVariable String id) {
-        return schedulingService.getVenue(id);
-    }
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public VenueDto create(@RequestBody VenuePayload payload) {

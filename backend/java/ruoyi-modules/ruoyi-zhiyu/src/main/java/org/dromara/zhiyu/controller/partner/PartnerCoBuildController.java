@@ -18,7 +18,7 @@ import org.dromara.zhiyu.domain.job.JobAbilityPoint;
 import org.dromara.zhiyu.domain.job.JobPositionAbilityBinding;
 import org.dromara.zhiyu.domain.job.JobPositionCertificate;
 import org.dromara.zhiyu.domain.job.JobPositionResponsibility;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalExam;
 import org.dromara.zhiyu.domain.portal.PortalScenario;
 import org.dromara.zhiyu.domain.scene.SceneRubricTemplate;
@@ -263,7 +263,7 @@ public class PartnerCoBuildController {
     }
 
     @GetMapping("/schools/{tenantId}/courses")
-    public ListResponse<PortalCourse> listSchoolCourses(@PathVariable String tenantId,
+    public ListResponse<LessonCourse> listSchoolCourses(@PathVariable String tenantId,
         @RequestParam(value = "search", required = false) String search,
         @RequestParam(value = "limit", required = false) Long limit,
         @RequestParam(value = "offset", required = false) Long offset) {

@@ -41,11 +41,6 @@ public class AffairsTermController {
         return termService.list(search, isCurrent, limit == null ? 20 : limit, offset == null ? 0 : offset);
     }
 
-    @GetMapping("/{id}")
-    public TermDto get(@PathVariable String id) {
-        return termService.get(id);
-    }
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TermDto create(@RequestBody TermPayload payload) {

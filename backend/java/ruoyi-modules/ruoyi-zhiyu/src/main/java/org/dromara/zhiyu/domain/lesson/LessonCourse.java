@@ -1,4 +1,4 @@
-package org.dromara.zhiyu.domain.portal;
+package org.dromara.zhiyu.domain.lesson;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -20,7 +20,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @TableName("courses")
-public class PortalCourse extends BaseZhiyuEntity {
+public class LessonCourse extends BaseZhiyuEntity {
 
     /** 课程编码 */
     private String code;

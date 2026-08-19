@@ -30,7 +30,7 @@ import org.dromara.zhiyu.domain.dto.affairs.TeachingPlanDtos.TeachingPlanEntryUp
 import org.dromara.zhiyu.domain.dto.affairs.TeachingPlanDtos.UpdateTeachingPlanRequest;
 import org.dromara.zhiyu.domain.portal.PortalMajor;
 import org.dromara.zhiyu.domain.portal.PortalScenario;
-import org.dromara.zhiyu.domain.portal.PortalTerm;
+import org.dromara.zhiyu.domain.affairs.Term;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.affairs.AffairsBatchMapper;
 import org.dromara.zhiyu.mapper.affairs.TeachingPlanEntryMapper;
@@ -39,7 +39,7 @@ import org.dromara.zhiyu.mapper.affairs.TrainingProgramCourseMapper;
 import org.dromara.zhiyu.mapper.affairs.TrainingProgramMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
-import org.dromara.zhiyu.mapper.portal.PortalTermMapper;
+import org.dromara.zhiyu.mapper.affairs.TermMapper;
 import org.dromara.zhiyu.service.affairs.ITeachingPlanService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,7 +72,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     private final TrainingProgramCourseMapper courseMapper;
     private final PortalScenarioMapper scenarioMapper;
     private final PortalMajorMapper majorMapper;
-    private final PortalTermMapper termMapper;
+    private final TermMapper termMapper;
     private final AffairsBatchMapper batchMapper;
     private final ZhiyuUserMapper userMapper;
 
@@ -500,7 +500,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
         Map<String, String> programNames = nameMap(programMapper.selectList(
             QueryBuilder.lambda(TrainingProgram.class).in(TrainingProgram::getId, new ArrayList<>(programIds)).build()));
         Map<String, String> termNames = nameMap(termMapper.selectList(
-            QueryBuilder.lambda(PortalTerm.class).in(PortalTerm::getId, new ArrayList<>(termIds)).build()));
+            QueryBuilder.lambda(Term.class).in(Term::getId, new ArrayList<>(termIds)).build()));
         Map<String, String> majorNames = nameMapOrEmpty(majorIds.isEmpty() ? List.of() : majorMapper.selectList(
             QueryBuilder.lambda(PortalMajor.class).in(PortalMajor::getId, new ArrayList<>(majorIds)).build()));
         Map<String, String> userNames = nameMapOrEmpty(collaboratorIds.isEmpty() ? List.of() : userMapper.selectList(

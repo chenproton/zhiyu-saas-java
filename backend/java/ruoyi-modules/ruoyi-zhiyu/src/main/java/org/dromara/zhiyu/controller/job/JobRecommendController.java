@@ -41,12 +41,6 @@ public class JobRecommendController {
             limit == null ? 50 : limit, offset == null ? 0 : offset);
     }
 
-    /** 推荐详情 */
-    @GetMapping("/{id}")
-    public PositionRecommendationDto get(@PathVariable String id) {
-        return recommendService.get(id);
-    }
-
     /** 创建推荐 */
     @PostMapping
     public PositionRecommendationDto create(@RequestBody RecommendRequest req) {

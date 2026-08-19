@@ -40,11 +40,6 @@ public class AffairsPeriodSlotController {
         return schedulingService.listPeriodSlots(limit == null ? 20 : limit, offset == null ? 0 : offset);
     }
 
-    @GetMapping("/{id}")
-    public PeriodSlotDto get(@PathVariable String id) {
-        return schedulingService.getPeriodSlot(id);
-    }
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PeriodSlotDto create(@RequestBody PeriodSlotPayload payload) {

@@ -19,7 +19,7 @@ import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.UpdateCourseRequest;
 import org.dromara.zhiyu.domain.evaluation.EvaluationQuestion;
 import org.dromara.zhiyu.domain.lesson.KnowledgePoint;
 import org.dromara.zhiyu.domain.lesson.SystemCourseNode;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalIndustry;
 import org.dromara.zhiyu.domain.portal.PortalLessonBatch;
 import org.dromara.zhiyu.domain.portal.PortalMajor;
@@ -32,7 +32,7 @@ import org.dromara.zhiyu.mapper.evaluation.EvaluationQuestionMapper;
 import org.dromara.zhiyu.mapper.lesson.KnowledgePointMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseCloneMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.mapper.portal.PortalIndustryMapper;
 import org.dromara.zhiyu.mapper.portal.PortalLessonBatchMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
@@ -76,7 +76,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         "archived", Set.of("draft")
     );
 
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
     private final LessonCourseCloneMapper cloneMapper;
     private final PortalResourceSnapshotMapper snapshotMapper;
     private final PortalMajorMapper majorMapper;
@@ -103,17 +103,17 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
             effectiveStatus = "published";
         }
 
-        LambdaQueryBuilder<PortalCourse> wrapper = baseListWrapper(tenantId, search, type, category, effectiveStatus, batchId);
+        LambdaQueryBuilder<LessonCourse> wrapper = baseListWrapper(tenantId, search, type, category, effectiveStatus, batchId);
         long total = courseMapper.selectCount(wrapper.build());
-        wrapper.orderByDesc(PortalCourse::getCreatedAt).last("LIMIT " + safeLimit + " OFFSET " + safeOffset);
-        List<PortalCourse> rows = courseMapper.selectList(wrapper.build());
+        wrapper.orderByDesc(LessonCourse::getCreatedAt).last("LIMIT " + safeLimit + " OFFSET " + safeOffset);
+        List<LessonCourse> rows = courseMapper.selectList(wrapper.build());
         return ListResponse.of(assembleList(rows, tenantId), total);
     }
 
     @Override
     public CourseDto get(String id) {
         requireUser();
-        PortalCourse course = fetchOwned(id);
+        LessonCourse course = fetchOwned(id);
         if (isStudent() && !"published".equals(course.getStatus())) {
             throw new ApiException(404, "not_found", "课程不存在");
         }
@@ -154,7 +154,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Transactional(rollbackFor = Exception.class)
     public CourseDto update(String id, UpdateCourseRequest req) {
         requireUser();
-        PortalCourse existing = fetchOwned(id);
+        LessonCourse existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
 
         String name = empty(req.getName()) ? existing.getName() : req.getName();
@@ -198,7 +198,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
         requireUser();
-        PortalCourse existing = fetchOwned(id);
+        LessonCourse existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
         if (courseMapper.existsEvaluationResults(id)) {
             throw new ApiException(409, "conflict", "该课程已存在测评成绩，无法删除");
@@ -256,7 +256,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
-        PortalCourse course = fetchOwned(id);
+        LessonCourse course = fetchOwned(id);
         int rows = courseMapper.casReview(id, course.getTenantId(), toStatus);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "课程不存在或不在待处理状态");
@@ -267,7 +267,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Override
     public CourseDto invite(String id, InviteRequest req) {
         requireUser();
-        PortalCourse course = fetchOwned(id);
+        LessonCourse course = fetchOwned(id);
         String tenantId = course.getTenantId();
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
@@ -341,7 +341,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Transactional(rollbackFor = Exception.class)
     protected CourseDto transition(String id, String toStatus) {
         requireUser();
-        PortalCourse course = fetchOwned(id);
+        LessonCourse course = fetchOwned(id);
         String tenantId = course.getTenantId();
         String currentStatus = course.getStatus();
         if (!canTransition(currentStatus, toStatus)) {
@@ -374,7 +374,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
      * 未覆盖子步骤：课程级旧测评清理（CleanupCourseLevelAssessments）、临时卷版本/快照固化
      * （SyncTempExamSnapshot/exam_version stamp）、NextAutoUsageName 同日序号命名。
      */
-    private void generateCourseAssessments(PortalCourse course) {
+    private void generateCourseAssessments(LessonCourse course) {
         String type = course.getType();
         if (!"system".equals(type) && !"hybrid".equals(type)) {
             return;
@@ -399,7 +399,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         }
     }
 
-    private boolean generateSystemNodeAssessment(PortalCourse course, SystemCourseNode node,
+    private boolean generateSystemNodeAssessment(LessonCourse course, SystemCourseNode node,
                                                  Map<String, Object> evalData) {
         Map<String, Object> ruleConfig = mapValue(evalData.get("evalRuleConfig"));
         if (ruleConfig == null) {
@@ -412,7 +412,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         return changed;
     }
 
-    private boolean generateHybridNodeAssessments(PortalCourse course, SystemCourseNode node,
+    private boolean generateHybridNodeAssessments(LessonCourse course, SystemCourseNode node,
                                                   Map<String, Object> evalData) {
         Map<String, Object> hybridRules = mapValue(evalData.get("hybridEvalRules"));
         if (hybridRules == null) {
@@ -442,7 +442,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     }
 
     /** 按测评方法（paper/question_bank/quiz）生成对应测评实体，写回 methodResourceConfigs。 */
-    private boolean applyRuleConfig(PortalCourse course, SystemCourseNode node, Map<String, Object> ruleConfig) {
+    private boolean applyRuleConfig(LessonCourse course, SystemCourseNode node, Map<String, Object> ruleConfig) {
         List<String> methods = stringList(ruleConfig.get("evaluationMethods"));
         Map<String, Object> methodResourceConfigs = mapValue(ruleConfig.get("methodResourceConfigs"));
         if (methodResourceConfigs == null) {
@@ -471,7 +471,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     }
 
     /** 生成节点试卷安排（paper 方式引用正式试卷 paperIds）。 */
-    private void ensureNodePaperUsage(PortalCourse course, SystemCourseNode node,
+    private void ensureNodePaperUsage(LessonCourse course, SystemCourseNode node,
                                       Map<String, Object> rc, Map<String, Object> ruleConfig) {
         List<String> paperIds = stringList(ruleConfig.get("paperIds"));
         if (paperIds.isEmpty()) {
@@ -505,7 +505,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     }
 
     /** 生成节点题库/随堂测考试：临时卷 + 题目同步 + 考试安排。 */
-    private void ensureNodeQuestionExam(PortalCourse course, SystemCourseNode node, String methodKey,
+    private void ensureNodeQuestionExam(LessonCourse course, SystemCourseNode node, String methodKey,
                                         Map<String, Object> rc, Map<String, Object> ruleConfig) {
         String field = "question_bank".equals(methodKey) ? "questionBankQuestions" : "quizQuestions";
         List<String> questionIds = stringList(ruleConfig.get(field));
@@ -554,7 +554,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         }
     }
 
-    private String createTempExam(PortalCourse course, String nodeName, String label, int duration) {
+    private String createTempExam(LessonCourse course, String nodeName, String label, int duration) {
         String name = (course.getName() == null ? "" : course.getName()) + "-" + nodeName + "-" + label;
         String existing = examMapper.selectTempExamId(course.getTenantId(), name);
         if (existing != null && !existing.isEmpty()) {
@@ -815,17 +815,17 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     // ---------- 组装 ----------
 
-    private List<CourseDto> assembleList(List<PortalCourse> rows, String tenantId) {
+    private List<CourseDto> assembleList(List<LessonCourse> rows, String tenantId) {
         if (rows.isEmpty()) {
             return new ArrayList<>();
         }
-        List<String> ids = rows.stream().map(PortalCourse::getId).toList();
+        List<String> ids = rows.stream().map(LessonCourse::getId).toList();
         Set<String> majorIds = new LinkedHashSet<>();
         Set<String> industryIds = new LinkedHashSet<>();
         Set<String> batchIds = new LinkedHashSet<>();
         Set<String> creatorIds = new LinkedHashSet<>();
         Set<String> kpIds = new LinkedHashSet<>();
-        for (PortalCourse c : rows) {
+        for (LessonCourse c : rows) {
             if (c.getMajorId() != null) {
                 majorIds.add(c.getMajorId());
             }
@@ -851,7 +851,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         Map<String, Long> viewCounts = viewCountMap(ids);
 
         List<CourseDto> items = new ArrayList<>(rows.size());
-        for (PortalCourse c : rows) {
+        for (LessonCourse c : rows) {
             CourseDto dto = toDto(c);
             dto.setMajorName(c.getMajorId() == null ? null : majorNames.get(c.getMajorId()));
             dto.setIndustryName(c.getIndustryId() == null ? null : industryNames.get(c.getIndustryId()));
@@ -866,7 +866,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         return items;
     }
 
-    private CourseDto assembleDetail(PortalCourse c, String tenantId) {
+    private CourseDto assembleDetail(LessonCourse c, String tenantId) {
         CourseDto dto = toDto(c);
         if (c.getMajorId() != null) {
             dto.setMajorName(majorIdNames(List.of(c.getMajorId())).get(c.getMajorId()));
@@ -889,7 +889,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         return dto;
     }
 
-    private CourseDto toDto(PortalCourse c) {
+    private CourseDto toDto(LessonCourse c) {
         CourseDto dto = new CourseDto();
         dto.setId(c.getId());
         dto.setCode(c.getCode());
@@ -1001,24 +1001,24 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     // ---------- 工具 ----------
 
-    private LambdaQueryBuilder<PortalCourse> baseListWrapper(String tenantId, String search, String type,
+    private LambdaQueryBuilder<LessonCourse> baseListWrapper(String tenantId, String search, String type,
                                                             String category, String status, String batchId) {
-        LambdaQueryBuilder<PortalCourse> wrapper = QueryBuilder.lambda(PortalCourse.class)
-            .eq(PortalCourse::getTenantId, tenantId);
+        LambdaQueryBuilder<LessonCourse> wrapper = QueryBuilder.lambda(LessonCourse.class)
+            .eq(LessonCourse::getTenantId, tenantId);
         if (type != null && !type.isEmpty()) {
-            wrapper.eq(PortalCourse::getType, type);
+            wrapper.eq(LessonCourse::getType, type);
         }
         if (category != null && !category.isEmpty()) {
-            wrapper.eq(PortalCourse::getCategory, category);
+            wrapper.eq(LessonCourse::getCategory, category);
         }
         if (status != null && !status.isEmpty()) {
-            wrapper.eq(PortalCourse::getStatus, status);
+            wrapper.eq(LessonCourse::getStatus, status);
         }
         if (batchId != null && !batchId.isEmpty()) {
-            wrapper.eq(PortalCourse::getBatchId, batchId);
+            wrapper.eq(LessonCourse::getBatchId, batchId);
         }
         if (search != null && !search.isEmpty()) {
-            wrapper.and(w -> w.like(PortalCourse::getName, search).or().like(PortalCourse::getCode, search));
+            wrapper.and(w -> w.like(LessonCourse::getName, search).or().like(LessonCourse::getCode, search));
         }
         return wrapper;
     }
@@ -1028,8 +1028,8 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         return allowed != null && allowed.contains(to);
     }
 
-    private PortalCourse fetchOwned(String id) {
-        PortalCourse course = courseMapper.selectById(id);
+    private LessonCourse fetchOwned(String id) {
+        LessonCourse course = courseMapper.selectById(id);
         if (course == null) {
             throw new ApiException(404, "not_found", "课程不存在");
         }

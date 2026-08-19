@@ -32,25 +32,25 @@ import org.dromara.zhiyu.domain.dto.affairs.AffairsScheduleDtos.ScheduleEntryPay
 import org.dromara.zhiyu.domain.dto.affairs.AffairsScheduleDtos.TimetableResponse;
 import org.dromara.zhiyu.domain.dto.portal.ScheduleDtos.ScheduleEntryDto;
 import org.dromara.zhiyu.domain.portal.PortalOrganization;
-import org.dromara.zhiyu.domain.portal.PortalPeriodSlot;
+import org.dromara.zhiyu.domain.affairs.PeriodSlot;
 import org.dromara.zhiyu.domain.portal.PortalRole;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalScenario;
-import org.dromara.zhiyu.domain.portal.PortalScheduleEntry;
-import org.dromara.zhiyu.domain.portal.PortalTerm;
+import org.dromara.zhiyu.domain.affairs.ScheduleEntry;
+import org.dromara.zhiyu.domain.affairs.Term;
 import org.dromara.zhiyu.domain.portal.PortalUserRole;
-import org.dromara.zhiyu.domain.portal.PortalVenue;
+import org.dromara.zhiyu.domain.affairs.Venue;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.affairs.AffairsScheduleMapper;
 import org.dromara.zhiyu.mapper.affairs.TeachingPlanEntryMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.mapper.portal.PortalOrganizationMapper;
-import org.dromara.zhiyu.mapper.portal.PortalPeriodSlotMapper;
+import org.dromara.zhiyu.mapper.affairs.PeriodSlotMapper;
 import org.dromara.zhiyu.mapper.portal.PortalRoleMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
-import org.dromara.zhiyu.mapper.portal.PortalTermMapper;
+import org.dromara.zhiyu.mapper.affairs.TermMapper;
 import org.dromara.zhiyu.mapper.portal.PortalUserRoleMapper;
-import org.dromara.zhiyu.mapper.portal.PortalVenueMapper;
+import org.dromara.zhiyu.mapper.affairs.VenueMapper;
 import org.dromara.zhiyu.service.affairs.ISchedulingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,15 +81,15 @@ public class SchedulingServiceImpl implements ISchedulingService {
     };
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final PortalVenueMapper venueMapper;
-    private final PortalPeriodSlotMapper periodSlotMapper;
+    private final VenueMapper venueMapper;
+    private final PeriodSlotMapper periodSlotMapper;
     private final AffairsScheduleMapper scheduleMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
     private final TeachingPlanEntryMapper entryMapper;
     private final PortalOrganizationMapper organizationMapper;
     private final ZhiyuUserMapper userMapper;
     private final PortalScenarioMapper scenarioMapper;
-    private final PortalTermMapper termMapper;
+    private final TermMapper termMapper;
     private final PortalRoleMapper roleMapper;
     private final PortalUserRoleMapper userRoleMapper;
 
@@ -100,12 +100,12 @@ public class SchedulingServiceImpl implements ISchedulingService {
         String tenantId = requireTenant();
         long safeLimit = clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
-        LambdaQueryBuilder<PortalVenue> wrapper = QueryBuilder.lambda(PortalVenue.class)
-            .eq(PortalVenue::getTenantId, tenantId)
-            .likeIfText(PortalVenue::getName, search)
-            .eqIfText(PortalVenue::getType, type);
+        LambdaQueryBuilder<Venue> wrapper = QueryBuilder.lambda(Venue.class)
+            .eq(Venue::getTenantId, tenantId)
+            .likeIfText(Venue::getName, search)
+            .eqIfText(Venue::getType, type);
         long total = venueMapper.selectCount(wrapper.build());
-        wrapper.orderByAsc(PortalVenue::getName)
+        wrapper.orderByAsc(Venue::getName)
             .last("LIMIT " + safeLimit + " OFFSET " + safeOffset);
         return ListResponse.of(venueMapper.selectList(wrapper.build()).stream().map(this::toVenueDto).toList(), total);
     }
@@ -121,7 +121,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         if (p.getName() == null || p.getName().isEmpty() || p.getType() == null || p.getType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
-        PortalVenue venue = new PortalVenue();
+        Venue venue = new Venue();
         venue.setTenantId(tenantId);
         venue.setName(p.getName());
         venue.setType(p.getType());
@@ -133,7 +133,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     public VenueDto updateVenue(String id, VenuePayload p) {
         requireTenant();
-        PortalVenue venue = fetchVenue(id);
+        Venue venue = fetchVenue(id);
         if (p.getName() == null || p.getName().isEmpty() || p.getType() == null || p.getType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -160,10 +160,10 @@ public class SchedulingServiceImpl implements ISchedulingService {
         String tenantId = requireTenant();
         long safeLimit = clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
-        LambdaQueryBuilder<PortalPeriodSlot> wrapper = QueryBuilder.lambda(PortalPeriodSlot.class)
-            .eq(PortalPeriodSlot::getTenantId, tenantId);
+        LambdaQueryBuilder<PeriodSlot> wrapper = QueryBuilder.lambda(PeriodSlot.class)
+            .eq(PeriodSlot::getTenantId, tenantId);
         long total = periodSlotMapper.selectCount(wrapper.build());
-        wrapper.orderByAsc(PortalPeriodSlot::getSortOrder)
+        wrapper.orderByAsc(PeriodSlot::getSortOrder)
             .last("LIMIT " + safeLimit + " OFFSET " + safeOffset);
         return ListResponse.of(periodSlotMapper.selectList(wrapper.build()).stream().map(this::toPeriodSlotDto).toList(), total);
     }
@@ -179,7 +179,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         if (p.getName() == null || p.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
-        PortalPeriodSlot slot = new PortalPeriodSlot();
+        PeriodSlot slot = new PeriodSlot();
         slot.setTenantId(tenantId);
         slot.setName(p.getName());
         slot.setSlotType(periodSlotType(p.getType()));
@@ -193,7 +193,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     public PeriodSlotDto updatePeriodSlot(String id, PeriodSlotPayload p) {
         requireTenant();
-        PortalPeriodSlot slot = fetchPeriodSlot(id);
+        PeriodSlot slot = fetchPeriodSlot(id);
         if (p.getName() == null || p.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -228,21 +228,21 @@ public class SchedulingServiceImpl implements ISchedulingService {
                 throw new ApiException(400, "bad_request", "节次名称不能为空");
             }
         }
-        Map<String, PortalPeriodSlot> existing = periodSlotMapper.selectList(
-                QueryBuilder.lambda(PortalPeriodSlot.class).eq(PortalPeriodSlot::getTenantId, tenantId).build())
-            .stream().collect(Collectors.toMap(PortalPeriodSlot::getName, s -> s, (a, b) -> a));
+        Map<String, PeriodSlot> existing = periodSlotMapper.selectList(
+                QueryBuilder.lambda(PeriodSlot.class).eq(PeriodSlot::getTenantId, tenantId).build())
+            .stream().collect(Collectors.toMap(PeriodSlot::getName, s -> s, (a, b) -> a));
         Set<String> kept = new LinkedHashSet<>();
         for (PeriodSlotPayload it : items) {
             kept.add(it.getName());
             if (existing.containsKey(it.getName())) {
-                PortalPeriodSlot slot = existing.get(it.getName());
+                PeriodSlot slot = existing.get(it.getName());
                 slot.setSlotType(periodSlotType(it.getType()));
                 slot.setSortOrder(it.getSortOrder() == null ? 0 : it.getSortOrder());
                 slot.setStartTime(parseTime(it.getStartTime()));
                 slot.setEndTime(parseTime(it.getEndTime()));
                 periodSlotMapper.updateById(slot);
             } else {
-                PortalPeriodSlot slot = new PortalPeriodSlot();
+                PeriodSlot slot = new PeriodSlot();
                 slot.setTenantId(tenantId);
                 slot.setName(it.getName());
                 slot.setSlotType(periodSlotType(it.getType()));
@@ -252,14 +252,14 @@ public class SchedulingServiceImpl implements ISchedulingService {
                 periodSlotMapper.insert(slot);
             }
         }
-        for (PortalPeriodSlot old : existing.values()) {
+        for (PeriodSlot old : existing.values()) {
             if (!kept.contains(old.getName())) {
                 periodSlotMapper.deleteById(old.getId());
             }
         }
-        List<PortalPeriodSlot> result = periodSlotMapper.selectList(
-            QueryBuilder.lambda(PortalPeriodSlot.class).eq(PortalPeriodSlot::getTenantId, tenantId)
-                .orderByAsc(PortalPeriodSlot::getSortOrder).build());
+        List<PeriodSlot> result = periodSlotMapper.selectList(
+            QueryBuilder.lambda(PeriodSlot.class).eq(PeriodSlot::getTenantId, tenantId)
+                .orderByAsc(PeriodSlot::getSortOrder).build());
         return ListResponse.of(result.stream().map(this::toPeriodSlotDto).toList(), result.size());
     }
 
@@ -271,20 +271,20 @@ public class SchedulingServiceImpl implements ISchedulingService {
         String tenantId = requireTenant();
         long safeLimit = clampLimit(limit, 200);
         long safeOffset = Math.max(offset, 0);
-        LambdaQueryBuilder<PortalScheduleEntry> wrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-            .eq(PortalScheduleEntry::getTenantId, tenantId)
-            .eqIfText(PortalScheduleEntry::getTermId, termId)
-            .eqIfText(PortalScheduleEntry::getStatus, status)
-            .eqIfText(PortalScheduleEntry::getTeacherId, teacherId)
-            .eqIfText(PortalScheduleEntry::getType, type);
+        LambdaQueryBuilder<ScheduleEntry> wrapper = QueryBuilder.lambda(ScheduleEntry.class)
+            .eq(ScheduleEntry::getTenantId, tenantId)
+            .eqIfText(ScheduleEntry::getTermId, termId)
+            .eqIfText(ScheduleEntry::getStatus, status)
+            .eqIfText(ScheduleEntry::getTeacherId, teacherId)
+            .eqIfText(ScheduleEntry::getType, type);
         if (notEmpty(classNodeId)) {
-            wrapper.and(w -> w.eq(PortalScheduleEntry::getClassNodeId, classNodeId)
+            wrapper.and(w -> w.eq(ScheduleEntry::getClassNodeId, classNodeId)
                 .or().apply("{0} = ANY(class_node_ids)", classNodeId));
         }
         long total = scheduleMapper.selectCount(wrapper.build());
-        wrapper.orderByAsc(PortalScheduleEntry::getDayOfWeek, PortalScheduleEntry::getStartWeek)
+        wrapper.orderByAsc(ScheduleEntry::getDayOfWeek, ScheduleEntry::getStartWeek)
             .last("LIMIT " + safeLimit + " OFFSET " + safeOffset);
-        List<PortalScheduleEntry> rows = scheduleMapper.selectList(wrapper.build());
+        List<ScheduleEntry> rows = scheduleMapper.selectList(wrapper.build());
         return ListResponse.of(assembleSchedules(rows), total);
     }
 
@@ -313,7 +313,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         if (fetchTermBrief(p.getTermId(), tenantId) == null) {
             throw new ApiException(404, "not_found", "学期不存在");
         }
-        PortalScheduleEntry entry = buildEntry(tenantId, p, "manual");
+        ScheduleEntry entry = buildEntry(tenantId, p, "manual");
         scheduleMapper.advisoryLock(tenantId + ":" + p.getTermId());
         List<ScheduleConflict> conflicts = checkConflicts(tenantId, p.getTermId(), p, null);
         if (!conflicts.isEmpty()) {
@@ -334,7 +334,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             throw new ApiException(404, "not_found", "排课记录不存在");
         }
         validateSchedule(p);
-        PortalScheduleEntry entry = buildEntry(tenantId, p, "manual");
+        ScheduleEntry entry = buildEntry(tenantId, p, "manual");
         entry.setId(id);
         entry.setSource(null);
         entry.setStatus(null);
@@ -353,7 +353,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Transactional(rollbackFor = Exception.class)
     public String deleteSchedule(String id) {
         String tenantId = requireTenant();
-        PortalScheduleEntry entry = fetchSchedule(id);
+        ScheduleEntry entry = fetchSchedule(id);
         if (entry == null) {
             throw new ApiException(404, "not_found", "排课记录不存在");
         }
@@ -393,19 +393,19 @@ public class SchedulingServiceImpl implements ISchedulingService {
         if (status == null || status.isEmpty() || !isSchoolAdmin()) {
             status = "published";
         }
-        LambdaQueryBuilder<PortalScheduleEntry> wrapper = QueryBuilder.lambda(PortalScheduleEntry.class)
-            .eq(PortalScheduleEntry::getTenantId, tenantId)
-            .eq(PortalScheduleEntry::getTermId, termId)
-            .eq(PortalScheduleEntry::getStatus, status);
+        LambdaQueryBuilder<ScheduleEntry> wrapper = QueryBuilder.lambda(ScheduleEntry.class)
+            .eq(ScheduleEntry::getTenantId, tenantId)
+            .eq(ScheduleEntry::getTermId, termId)
+            .eq(ScheduleEntry::getStatus, status);
         if (notEmpty(classNodeId)) {
-            wrapper.and(w -> w.eq(PortalScheduleEntry::getClassNodeId, classNodeId)
+            wrapper.and(w -> w.eq(ScheduleEntry::getClassNodeId, classNodeId)
                 .or().apply("{0} = ANY(class_node_ids)", classNodeId));
         }
         if (notEmpty(teacherId)) {
-            wrapper.eq(PortalScheduleEntry::getTeacherId, teacherId);
+            wrapper.eq(ScheduleEntry::getTeacherId, teacherId);
         }
-        wrapper.orderByAsc(PortalScheduleEntry::getDayOfWeek);
-        List<PortalScheduleEntry> rows = scheduleMapper.selectList(wrapper.build());
+        wrapper.orderByAsc(ScheduleEntry::getDayOfWeek);
+        List<ScheduleEntry> rows = scheduleMapper.selectList(wrapper.build());
         List<ScheduleEntryDto> items = assembleSchedules(rows);
         int version = scheduleMapper.timetableVersion(tenantId, termId, status);
         TimetableResponse resp = new TimetableResponse();
@@ -437,12 +437,12 @@ public class SchedulingServiceImpl implements ISchedulingService {
             tenantId, req.getTermId(), req.getPlanId());
 
         scheduleMapper.advisoryLock(tenantId + ":" + req.getTermId());
-        List<PortalScheduleEntry> existing = scheduleMapper.selectList(
-            QueryBuilder.lambda(PortalScheduleEntry.class)
-                .eq(PortalScheduleEntry::getTenantId, tenantId)
-                .eq(PortalScheduleEntry::getTermId, req.getTermId())
-                .eq(PortalScheduleEntry::getStatus, "draft").build());
-        Set<String> scheduledNow = existing.stream().map(PortalScheduleEntry::getPlanEntryId)
+        List<ScheduleEntry> existing = scheduleMapper.selectList(
+            QueryBuilder.lambda(ScheduleEntry.class)
+                .eq(ScheduleEntry::getTenantId, tenantId)
+                .eq(ScheduleEntry::getTermId, req.getTermId())
+                .eq(ScheduleEntry::getStatus, "draft").build());
+        Set<String> scheduledNow = existing.stream().map(ScheduleEntry::getPlanEntryId)
             .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
         List<AffairsScheduleMapper.PendingPlanEntry> stillPending = pending.stream()
             .filter(e -> !scheduledNow.contains(e.id())).toList();
@@ -450,7 +450,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         int success = 0;
         int failed = 0;
         List<String> failures = new ArrayList<>();
-        List<PortalScheduleEntry> creates = new ArrayList<>();
+        List<ScheduleEntry> creates = new ArrayList<>();
         for (AffairsScheduleMapper.PendingPlanEntry e : stillPending) {
             List<AffairsScheduleMapper.VenueBrief> candidates = venues;
             if (!e.venueType().isEmpty()) {
@@ -467,7 +467,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             for (int day = 1; day <= 7; day++) {
                 for (String periodName : periodNames) {
                     for (AffairsScheduleMapper.VenueBrief venue : candidates) {
-                        List<PortalScheduleEntry> checkSet = new ArrayList<>(existing);
+                        List<ScheduleEntry> checkSet = new ArrayList<>(existing);
                         checkSet.addAll(creates);
                         ScheduleEntryPayload probe = new ScheduleEntryPayload();
                         probe.setPlanEntryId(e.id());
@@ -482,7 +482,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
                         if (!checkConflicts(checkSet, probe, null).isEmpty()) {
                             continue;
                         }
-                        PortalScheduleEntry se = new PortalScheduleEntry();
+                        ScheduleEntry se = new ScheduleEntry();
                         se.setTenantId(tenantId);
                         se.setTermId(req.getTermId());
                         se.setPlanEntryId(e.id());
@@ -515,7 +515,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
                 failures.add(e.courseName() + "：未找到可用时段");
             }
         }
-        for (PortalScheduleEntry se : creates) {
+        for (ScheduleEntry se : creates) {
             scheduleMapper.insert(se);
             if (notEmpty(se.getPlanEntryId())) {
                 entryMapper.markScheduled(se.getPlanEntryId());
@@ -527,15 +527,15 @@ public class SchedulingServiceImpl implements ISchedulingService {
     // ---------- 冲突检测 ----------
 
     private List<ScheduleConflict> checkConflicts(String tenantId, String termId, ScheduleEntryPayload p, String excludeId) {
-        List<PortalScheduleEntry> existing = scheduleMapper.selectList(
-            QueryBuilder.lambda(PortalScheduleEntry.class)
-                .eq(PortalScheduleEntry::getTenantId, tenantId)
-                .eq(PortalScheduleEntry::getTermId, termId)
-                .eq(PortalScheduleEntry::getStatus, "draft").build());
+        List<ScheduleEntry> existing = scheduleMapper.selectList(
+            QueryBuilder.lambda(ScheduleEntry.class)
+                .eq(ScheduleEntry::getTenantId, tenantId)
+                .eq(ScheduleEntry::getTermId, termId)
+                .eq(ScheduleEntry::getStatus, "draft").build());
         return checkConflicts(existing, p, excludeId);
     }
 
-    private List<ScheduleConflict> checkConflicts(List<PortalScheduleEntry> existing, ScheduleEntryPayload p, String excludeId) {
+    private List<ScheduleConflict> checkConflicts(List<ScheduleEntry> existing, ScheduleEntryPayload p, String excludeId) {
         List<String> reqPeriods = p.getPeriods() == null ? List.of() : p.getPeriods();
         String wp = p.getWeekPattern() == null || p.getWeekPattern().isEmpty() ? "all" : p.getWeekPattern();
         List<String> reqClasses = mergedClasses(p.getClassNodeIds(), p.getClassNodeId());
@@ -544,7 +544,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         Map<String, String> venueNames = venueNameMap(collectVenueIds(existing));
 
         List<ScheduleConflict> out = new ArrayList<>();
-        for (PortalScheduleEntry ex : existing) {
+        for (ScheduleEntry ex : existing) {
             if (excludeId != null && excludeId.equals(ex.getId())) {
                 continue;
             }
@@ -578,7 +578,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         return out;
     }
 
-    private ScheduleConflict conflict(PortalScheduleEntry ex, String kind, Map<String, String> orgNames,
+    private ScheduleConflict conflict(ScheduleEntry ex, String kind, Map<String, String> orgNames,
                                       Map<String, String> userNames, Map<String, String> venueNames) {
         ScheduleConflict c = new ScheduleConflict();
         c.setKind(kind);
@@ -633,7 +633,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     // ---------- 组装 ----------
 
-    private List<ScheduleEntryDto> assembleSchedules(List<PortalScheduleEntry> rows) {
+    private List<ScheduleEntryDto> assembleSchedules(List<ScheduleEntry> rows) {
         if (rows.isEmpty()) {
             return new ArrayList<>();
         }
@@ -642,13 +642,13 @@ public class SchedulingServiceImpl implements ISchedulingService {
         Map<String, String> venueNames = venueNameMap(collectVenueIds(rows));
         Map<String, String> scenarioNames = scenarioNameMap(collectScenarioIds(rows));
         List<ScheduleEntryDto> items = new ArrayList<>(rows.size());
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             items.add(assembleSchedule(se, orgNames, userNames, venueNames, scenarioNames));
         }
         return items;
     }
 
-    private ScheduleEntryDto assembleSchedule(PortalScheduleEntry se) {
+    private ScheduleEntryDto assembleSchedule(ScheduleEntry se) {
         Map<String, String> orgNames = orgNameMap(collectOrgIds(List.of(se)));
         Map<String, String> userNames = userNameMap(collectUserIds(List.of(se)));
         Map<String, String> venueNames = venueNameMap(collectVenueIds(List.of(se)));
@@ -656,7 +656,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         return assembleSchedule(se, orgNames, userNames, venueNames, scenarioNames);
     }
 
-    private ScheduleEntryDto assembleSchedule(PortalScheduleEntry se, Map<String, String> orgNames,
+    private ScheduleEntryDto assembleSchedule(ScheduleEntry se, Map<String, String> orgNames,
                                               Map<String, String> userNames, Map<String, String> venueNames,
                                               Map<String, String> scenarioNames) {
         ScheduleEntryDto dto = new ScheduleEntryDto();
@@ -700,7 +700,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         if (termId == null || termId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少 termId 参数");
         }
-        PortalTerm term = fetchTermBrief(termId, tenantId);
+        Term term = fetchTermBrief(termId, tenantId);
         if (term == null) {
             throw new ApiException(404, "not_found", "学期不存在");
         }
@@ -761,9 +761,9 @@ public class SchedulingServiceImpl implements ISchedulingService {
                 "类型", venueBriefs.stream().map(AffairsScheduleMapper.VenueBrief::type).toList());
             addReferenceSheet(wb, hdr, "【参考】班级名单", "班级名称", scheduleMapper.selectClassNames(tenantId), null, null);
 
-            List<PortalPeriodSlot> slots = periodSlotMapper.selectList(
-                QueryBuilder.lambda(PortalPeriodSlot.class).eq(PortalPeriodSlot::getTenantId, tenantId)
-                    .orderByAsc(PortalPeriodSlot::getSortOrder).build());
+            List<PeriodSlot> slots = periodSlotMapper.selectList(
+                QueryBuilder.lambda(PeriodSlot.class).eq(PeriodSlot::getTenantId, tenantId)
+                    .orderByAsc(PeriodSlot::getSortOrder).build());
             Sheet periodSheet = wb.createSheet("【参考】节次表");
             periodSheet.createRow(0).createCell(0).setCellValue("节次名称");
             periodSheet.getRow(0).getCell(0).setCellStyle(hdr);
@@ -772,7 +772,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             periodSheet.getRow(0).createCell(2).setCellValue("结束时间");
             periodSheet.getRow(0).getCell(2).setCellStyle(hdr);
             int pi = 1;
-            for (PortalPeriodSlot ps : slots) {
+            for (PeriodSlot ps : slots) {
                 Row r = periodSheet.createRow(pi);
                 r.createCell(0).setCellValue(ps.getName() == null ? "" : ps.getName());
                 r.createCell(1).setCellValue(ps.getStartTime() == null ? "" : ps.getStartTime().format(TIME_FMT));
@@ -812,9 +812,9 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     // ---------- 名称批量解析 ----------
 
-    private Set<String> collectOrgIds(List<PortalScheduleEntry> rows) {
+    private Set<String> collectOrgIds(List<ScheduleEntry> rows) {
         Set<String> ids = new LinkedHashSet<>();
-        for (PortalScheduleEntry se : rows) {
+        for (ScheduleEntry se : rows) {
             if (se.getClassNodeId() != null) {
                 ids.add(se.getClassNodeId());
             }
@@ -825,18 +825,18 @@ public class SchedulingServiceImpl implements ISchedulingService {
         return ids;
     }
 
-    private Set<String> collectUserIds(List<PortalScheduleEntry> rows) {
-        return rows.stream().map(PortalScheduleEntry::getTeacherId).filter(java.util.Objects::nonNull)
+    private Set<String> collectUserIds(List<ScheduleEntry> rows) {
+        return rows.stream().map(ScheduleEntry::getTeacherId).filter(java.util.Objects::nonNull)
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private Set<String> collectVenueIds(List<PortalScheduleEntry> rows) {
-        return rows.stream().map(PortalScheduleEntry::getVenueId).filter(java.util.Objects::nonNull)
+    private Set<String> collectVenueIds(List<ScheduleEntry> rows) {
+        return rows.stream().map(ScheduleEntry::getVenueId).filter(java.util.Objects::nonNull)
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private Set<String> collectScenarioIds(List<PortalScheduleEntry> rows) {
-        return rows.stream().map(PortalScheduleEntry::getScenarioId).filter(java.util.Objects::nonNull)
+    private Set<String> collectScenarioIds(List<ScheduleEntry> rows) {
+        return rows.stream().map(ScheduleEntry::getScenarioId).filter(java.util.Objects::nonNull)
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -874,9 +874,9 @@ public class SchedulingServiceImpl implements ISchedulingService {
         }
         try {
             return venueMapper.selectList(
-                    QueryBuilder.lambda(PortalVenue.class).in(PortalVenue::getId, new ArrayList<>(ids)).build())
+                    QueryBuilder.lambda(Venue.class).in(Venue::getId, new ArrayList<>(ids)).build())
                 .stream().filter(v -> v.getName() != null)
-                .collect(Collectors.toMap(PortalVenue::getId, PortalVenue::getName));
+                .collect(Collectors.toMap(Venue::getId, Venue::getName));
         } catch (Exception e) {
             return Map.of();
         }
@@ -898,7 +898,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     // ---------- 工具 ----------
 
-    private PortalScheduleEntry buildEntry(String tenantId, ScheduleEntryPayload p, String source) {
+    private ScheduleEntry buildEntry(String tenantId, ScheduleEntryPayload p, String source) {
         String entryType = p.getType() == null || p.getType().isEmpty() ? "traditional" : p.getType();
         String wp = p.getWeekPattern() == null || p.getWeekPattern().isEmpty() ? "all" : p.getWeekPattern();
         String courseId = p.getCourseId();
@@ -916,7 +916,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         if ((primaryClass == null || primaryClass.isEmpty()) && !classIds.isEmpty()) {
             primaryClass = classIds.get(0);
         }
-        PortalScheduleEntry se = new PortalScheduleEntry();
+        ScheduleEntry se = new ScheduleEntry();
         se.setTenantId(tenantId);
         se.setTermId(p.getTermId());
         se.setPlanEntryId(emptyToNull(p.getPlanEntryId()));
@@ -945,8 +945,8 @@ public class SchedulingServiceImpl implements ISchedulingService {
             return null;
         }
         try {
-            PortalCourse c = courseMapper.selectOne(QueryBuilder.lambda(PortalCourse.class)
-                .eq(PortalCourse::getTenantId, tenantId).eq(PortalCourse::getCode, courseCode)
+            LessonCourse c = courseMapper.selectOne(QueryBuilder.lambda(LessonCourse.class)
+                .eq(LessonCourse::getTenantId, tenantId).eq(LessonCourse::getCode, courseCode)
                 .last("LIMIT 1").build());
             return c == null ? null : c.getId();
         } catch (Exception e) {
@@ -983,38 +983,38 @@ public class SchedulingServiceImpl implements ISchedulingService {
         }
     }
 
-    private PortalTerm fetchTermBrief(String id, String tenantId) {
-        return termMapper.selectOne(QueryBuilder.lambda(PortalTerm.class)
-            .eq(PortalTerm::getId, id).eq(PortalTerm::getTenantId, tenantId).build());
+    private Term fetchTermBrief(String id, String tenantId) {
+        return termMapper.selectOne(QueryBuilder.lambda(Term.class)
+            .eq(Term::getId, id).eq(Term::getTenantId, tenantId).build());
     }
 
-    private PortalScheduleEntry fetchSchedule(String id) {
+    private ScheduleEntry fetchSchedule(String id) {
         String tenantId = requireTenant();
-        return scheduleMapper.selectOne(QueryBuilder.lambda(PortalScheduleEntry.class)
-            .eq(PortalScheduleEntry::getId, id).eq(PortalScheduleEntry::getTenantId, tenantId).build());
+        return scheduleMapper.selectOne(QueryBuilder.lambda(ScheduleEntry.class)
+            .eq(ScheduleEntry::getId, id).eq(ScheduleEntry::getTenantId, tenantId).build());
     }
 
-    private PortalVenue fetchVenue(String id) {
+    private Venue fetchVenue(String id) {
         String tenantId = requireTenant();
-        PortalVenue venue = venueMapper.selectOne(QueryBuilder.lambda(PortalVenue.class)
-            .eq(PortalVenue::getId, id).eq(PortalVenue::getTenantId, tenantId).build());
+        Venue venue = venueMapper.selectOne(QueryBuilder.lambda(Venue.class)
+            .eq(Venue::getId, id).eq(Venue::getTenantId, tenantId).build());
         if (venue == null) {
             throw new ApiException(404, "not_found", "场地不存在");
         }
         return venue;
     }
 
-    private PortalPeriodSlot fetchPeriodSlot(String id) {
+    private PeriodSlot fetchPeriodSlot(String id) {
         String tenantId = requireTenant();
-        PortalPeriodSlot slot = periodSlotMapper.selectOne(QueryBuilder.lambda(PortalPeriodSlot.class)
-            .eq(PortalPeriodSlot::getId, id).eq(PortalPeriodSlot::getTenantId, tenantId).build());
+        PeriodSlot slot = periodSlotMapper.selectOne(QueryBuilder.lambda(PeriodSlot.class)
+            .eq(PeriodSlot::getId, id).eq(PeriodSlot::getTenantId, tenantId).build());
         if (slot == null) {
             throw new ApiException(404, "not_found", "节次不存在");
         }
         return slot;
     }
 
-    private VenueDto toVenueDto(PortalVenue v) {
+    private VenueDto toVenueDto(Venue v) {
         VenueDto dto = new VenueDto();
         dto.setId(v.getId());
         dto.setName(v.getName());
@@ -1024,7 +1024,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         return dto;
     }
 
-    private PeriodSlotDto toPeriodSlotDto(PortalPeriodSlot s) {
+    private PeriodSlotDto toPeriodSlotDto(PeriodSlot s) {
         PeriodSlotDto dto = new PeriodSlotDto();
         dto.setId(s.getId());
         dto.setName(s.getName());

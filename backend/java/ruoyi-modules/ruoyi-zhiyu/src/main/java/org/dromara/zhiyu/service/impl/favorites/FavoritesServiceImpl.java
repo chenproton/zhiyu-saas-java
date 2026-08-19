@@ -29,7 +29,7 @@ import org.dromara.zhiyu.domain.portal.PortalOrganization;
 import org.dromara.zhiyu.domain.portal.PortalScenario;
 import org.dromara.zhiyu.domain.portal.PortalScenarioTask;
 import org.dromara.zhiyu.domain.portal.PortalViewCounter;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.favorites.FavAIKBMapper;
 import org.dromara.zhiyu.mapper.favorites.FavAIAgentMapper;
@@ -45,7 +45,7 @@ import org.dromara.zhiyu.mapper.portal.PortalOrganizationMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioTaskMapper;
 import org.dromara.zhiyu.mapper.portal.PortalViewCounterMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.service.favorites.IFavoritesService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -85,7 +85,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
     private final ZhiyuUserFavoriteMapper favoriteMapper;
     private final ZhiyuFavoriteCounterMapper counterMapper;
     private final PortalScenarioMapper scenarioMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
     private final FavQuestionBankMapper questionBankMapper;
     private final PortalExamMapper examMapper;
     private final FavAIKBMapper aiKbMapper;
@@ -269,19 +269,19 @@ public class FavoritesServiceImpl implements IFavoritesService {
         if (ids.isEmpty()) {
             return new ArrayList<>();
         }
-        List<PortalCourse> rows = courseMapper.selectList(
-            QueryBuilder.lambda(PortalCourse.class)
-                .in(PortalCourse::getId, ids)
-                .eq(PortalCourse::getTenantId, tenantId)
-                .eq(PortalCourse::getStatus, "published")
+        List<LessonCourse> rows = courseMapper.selectList(
+            QueryBuilder.lambda(LessonCourse.class)
+                .in(LessonCourse::getId, ids)
+                .eq(LessonCourse::getTenantId, tenantId)
+                .eq(LessonCourse::getStatus, "published")
                 .build());
-        Map<String, PortalCourse> byId = rows.stream()
-            .collect(Collectors.toMap(PortalCourse::getId, Function.identity()));
+        Map<String, LessonCourse> byId = rows.stream()
+            .collect(Collectors.toMap(LessonCourse::getId, Function.identity()));
 
-        Set<String> creatorIds = rows.stream().map(PortalCourse::getCreatorId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
-        Set<String> majorIds = rows.stream().map(PortalCourse::getMajorId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
-        Set<String> industryIds = rows.stream().map(PortalCourse::getIndustryId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
-        Set<String> batchIds = rows.stream().map(PortalCourse::getBatchId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Set<String> creatorIds = rows.stream().map(LessonCourse::getCreatorId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Set<String> majorIds = rows.stream().map(LessonCourse::getMajorId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Set<String> industryIds = rows.stream().map(LessonCourse::getIndustryId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Set<String> batchIds = rows.stream().map(LessonCourse::getBatchId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
 
         Map<String, String> creatorNames = userNameMap(creatorIds);
         Map<String, String> majorNames = nameMapByIds(majorMapper, PortalMajor.class, majorIds);
@@ -291,7 +291,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
 
         List<FavoriteCourseDto> items = new ArrayList<>();
         for (String id : ids) {
-            PortalCourse c = byId.get(id);
+            LessonCourse c = byId.get(id);
             if (c == null) {
                 continue;
             }
@@ -602,8 +602,8 @@ public class FavoritesServiceImpl implements IFavoritesService {
                     yield s == null ? null : s.getTenantId();
                 }
                 case TYPE_COURSE -> {
-                    PortalCourse c = courseMapper.selectOne(
-                        QueryBuilder.lambda(PortalCourse.class).eq(PortalCourse::getId, targetId).build());
+                    LessonCourse c = courseMapper.selectOne(
+                        QueryBuilder.lambda(LessonCourse.class).eq(LessonCourse::getId, targetId).build());
                     yield c == null ? null : c.getTenantId();
                 }
                 case TYPE_QUESTION_BANK -> {

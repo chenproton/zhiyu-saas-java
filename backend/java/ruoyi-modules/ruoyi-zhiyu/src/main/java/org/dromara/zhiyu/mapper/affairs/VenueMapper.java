@@ -1,17 +1,17 @@
-package org.dromara.zhiyu.mapper.portal;
+package org.dromara.zhiyu.mapper.affairs;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.domain.portal.PortalVenue;
+import org.dromara.zhiyu.domain.affairs.Venue;
 
 /**
  * 场地 Mapper（venues 表）。
  *
  * @author zhiyu
  */
-public interface PortalVenueMapper extends BaseMapperPlus<PortalVenue, PortalVenue> {
+public interface VenueMapper extends BaseMapperPlus<Venue, Venue> {
 
     /** 场地查重（对齐 Go store/imports.go ImportVenue）。 */
     @Select("SELECT id FROM venues WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")

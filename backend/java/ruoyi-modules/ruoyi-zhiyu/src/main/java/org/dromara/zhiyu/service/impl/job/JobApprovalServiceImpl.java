@@ -350,7 +350,7 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             if (srcId.isEmpty()) {
                 return false;
             }
-            mergePositionDraftToSource(targetId, tenantId, str(d.get("name")));
+            mergePositionDraftToSource(targetId, tenantId, str(d.get("name")), srcId);
             return true;
         }
         if ("scenario".equals(targetType)) {
@@ -362,13 +362,13 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             if (srcId.isEmpty()) {
                 return false;
             }
-            mergeScenarioDraftToSource(targetId, tenantId, str(d.get("name")));
+            mergeScenarioDraftToSource(targetId, tenantId, str(d.get("name")), srcId);
             return true;
         }
         return false;
     }
 
-    private void mergePositionDraftToSource(String draftId, String tenantId, String draftName) {
+    private void mergePositionDraftToSource(String draftId, String tenantId, String draftName, String srcId) {
         String finalName = draftName == null ? "" : draftName.replaceAll("（编辑稿）$", "");
         sourceMergeMapper.renamePositionDraft(draftId);
         int rows = sourceMergeMapper.overwritePositionFromDraft(draftId, tenantId, finalName);
@@ -383,10 +383,13 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
         sourceMergeMapper.movePositionCertificatesToSource(draftId);
         sourceMergeMapper.deleteSourcePositionResponsibilities(draftId);
         sourceMergeMapper.movePositionResponsibilitiesToSource(draftId);
+        // 合并后源资源版本 bump +0.1（对齐 Go BumpVersionAndSnapshot 的 version 部分；快照重建见 P2）
+        String v = sourceMergeMapper.selectPositionVersion(tenantId, srcId);
+        sourceMergeMapper.updatePositionVersion(tenantId, srcId, nextVersion(v));
         sourceMergeMapper.deletePositionDraft(draftId, tenantId);
     }
 
-    private void mergeScenarioDraftToSource(String draftId, String tenantId, String draftName) {
+    private void mergeScenarioDraftToSource(String draftId, String tenantId, String draftName, String srcId) {
         String finalName = draftName == null ? "" : draftName.replaceAll("（编辑稿）$", "");
         sourceMergeMapper.renameScenarioDraft(draftId, tenantId);
         sourceMergeMapper.deleteSourceTaskEvaluationMethods(draftId);
@@ -399,7 +402,34 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             throw new ApiException(500, "internal_error", "覆盖原场景失败：目标场景不存在");
         }
         sourceMergeMapper.moveScenarioTasksToSource(draftId);
+        // 合并后源资源版本 bump +0.1（对齐 Go BumpVersionAndSnapshot 的 version 部分；快照重建见 P2）
+        String v = sourceMergeMapper.selectScenarioVersion(tenantId, srcId);
+        sourceMergeMapper.updateScenarioVersion(tenantId, srcId, nextVersion(v));
         sourceMergeMapper.deleteScenarioDraft(draftId, tenantId);
+    }
+
+    private String nextVersion(String v) {
+        int major = 1;
+        int minor = 0;
+        String digits = (v == null ? "" : v.trim()).replaceAll("^[vV]", "");
+        String[] parts = digits.split("\\.");
+        try {
+            if (parts.length > 0 && !parts[0].trim().isEmpty()) {
+                major = Integer.parseInt(parts[0].trim());
+            }
+            if (parts.length > 1 && !parts[1].trim().isEmpty()) {
+                minor = Integer.parseInt(parts[1].trim());
+            }
+        } catch (NumberFormatException ignored) {
+            major = 1;
+            minor = 0;
+        }
+        minor++;
+        if (minor >= 10) {
+            major++;
+            minor = 0;
+        }
+        return "V" + major + "." + minor;
     }
 
     private String str(Object o) {

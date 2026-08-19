@@ -29,7 +29,7 @@ import org.dromara.zhiyu.domain.job.JobPositionAbilityBinding;
 import org.dromara.zhiyu.domain.job.JobPositionCertificate;
 import org.dromara.zhiyu.domain.job.JobPositionResponsibility;
 import org.dromara.zhiyu.domain.partner.PartnerEnterprise;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 import org.dromara.zhiyu.domain.portal.PortalExam;
 import org.dromara.zhiyu.domain.portal.PortalIndustry;
 import org.dromara.zhiyu.domain.portal.PortalMajor;
@@ -56,7 +56,7 @@ import org.dromara.zhiyu.mapper.job.JobAbilityPointMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionAbilityBindingMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionCertificateMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionResponsibilityMapper;
-import org.dromara.zhiyu.mapper.portal.PortalCourseMapper;
+import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.mapper.portal.PortalExamMapper;
 import org.dromara.zhiyu.mapper.portal.PortalIndustryMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
@@ -108,7 +108,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     private final JobAbilityDomainMapper abilityDomainMapper;
     private final JobAbilityPointMapper abilityPointMapper;
     private final SceneRubricTemplateMapper rubricTemplateMapper;
-    private final PortalCourseMapper courseMapper;
+    private final LessonCourseMapper courseMapper;
     private final PortalExamMapper examMapper;
     private final PortalScenarioMapper portalScenarioMapper;
     private final PortalIndustryMapper industryMapper;
@@ -887,15 +887,15 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     }
 
     @Override
-    public ListResponse<PortalCourse> listSchoolCourses(String schoolTenantId, String search, long limit, long offset) {
+    public ListResponse<LessonCourse> listSchoolCourses(String schoolTenantId, String search, long limit, long offset) {
         requireSchoolAccess(schoolTenantId);
-        LambdaQueryBuilder<PortalCourse> w = QueryBuilder.lambda(PortalCourse.class)
-            .eq(PortalCourse::getTenantId, schoolTenantId);
+        LambdaQueryBuilder<LessonCourse> w = QueryBuilder.lambda(LessonCourse.class)
+            .eq(LessonCourse::getTenantId, schoolTenantId);
         if (search != null && !search.isEmpty()) {
-            w.like(PortalCourse::getName, search);
+            w.like(LessonCourse::getName, search);
         }
         long total = courseMapper.selectCount(w.build());
-        w.orderByDesc(PortalCourse::getCreatedAt).last("LIMIT " + clampLimit(limit) + " OFFSET " + Math.max(offset, 0));
+        w.orderByDesc(LessonCourse::getCreatedAt).last("LIMIT " + clampLimit(limit) + " OFFSET " + Math.max(offset, 0));
         return ListResponse.of(courseMapper.selectList(w.build()), total);
     }
 

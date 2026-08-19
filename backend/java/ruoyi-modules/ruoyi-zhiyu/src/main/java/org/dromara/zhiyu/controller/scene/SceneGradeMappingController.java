@@ -48,9 +48,4 @@ public class SceneGradeMappingController {
     public GradeMappingDto update(@PathVariable String id, @RequestBody GradeMappingRequest req) {
         return gradeMappingService.upsert(req, id);
     }
-
-    @DeleteMapping("/{id}")
-    public Map<String, String> delete(@PathVariable String id) {
-        return Map.of("id", gradeMappingService.delete(id));
-    }
 }

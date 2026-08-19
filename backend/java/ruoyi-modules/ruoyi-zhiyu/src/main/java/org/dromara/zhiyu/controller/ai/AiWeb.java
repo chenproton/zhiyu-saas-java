@@ -59,6 +59,9 @@ final class AiWeb {
                 if (r.conversationId() != null && r.messageId() != null) {
                     send(emitter, "meta", Map.of("conversationId", r.conversationId(), "messageId", r.messageId()));
                 }
+                if (r.sources() != null && !r.sources().isEmpty()) {
+                    send(emitter, "sources", r.sources());
+                }
                 for (String chunk : chunks(r.reply())) {
                     send(emitter, "delta", Map.of("text", chunk));
                 }

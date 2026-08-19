@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.domain.portal.PortalCourse;
+import org.dromara.zhiyu.domain.lesson.LessonCourse;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.List;
  *
  * @author zhiyu
  */
-public interface LessonCourseCloneMapper extends BaseMapperPlus<PortalCourse, PortalCourse> {
+public interface LessonCourseCloneMapper extends BaseMapperPlus<LessonCourse, LessonCourse> {
 
     /** 克隆源课程行（名称/类型/租户，供编码前缀与归属校验）。 */
     @Data
