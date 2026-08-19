@@ -27,7 +27,10 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">岗位列表</span>
-            <span class="card-sub">共 {{ filteredPositions.length }} 个岗位</span>
+            <span class="card-sub">
+              共 {{ filteredPositions.length }} 个岗位
+              <el-icon v-if="listLoading || dataLoading" class="is-loading" style="vertical-align: middle"><Loading /></el-icon>
+            </span>
           </div>
         </template>
         <el-table v-loading="listLoading" :data="filteredPositions" stripe>
@@ -47,7 +50,7 @@
               <el-tag type="info">{{ sceneStats.get(row.id)?.taskCount ?? 0 }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="140" align="right">
+          <el-table-column label="操作" width="150" align="right">
             <template #default="{ row }">
               <el-button size="small" :disabled="editLoading" @click="handleEdit(row)">编辑学习路径</el-button>
             </template>
@@ -58,34 +61,90 @@
 
     <!-- 编辑视图 -->
     <template v-else>
-      <div class="page-header">
+      <div class="page-header edit-header">
         <div class="header-left">
           <el-button @click="handleBack" :disabled="editLoading">返回岗位列表</el-button>
           <div>
             <h2 class="page-title">{{ editingPosition?.name }}</h2>
-            <p class="page-sub">已加载 {{ scenes.length }} 个场景 · 点击场景查看任务</p>
+            <p class="page-sub">{{ editingBatchName }} · {{ editingPosition?.shortName }}</p>
+            <p class="page-sub-mini">
+              已加载 {{ scenes.length }} 个场景，{{ totalTasks }} 个任务
+            </p>
           </div>
         </div>
-        <el-button type="primary" :loading="saving" @click="handleSave">{{ saved ? '已保存' : '保存顺序' }}</el-button>
+        <el-button type="primary" :loading="saving" :disabled="editLoading" @click="handleSave">
+          {{ saved ? '已保存' : '保存顺序' }}
+        </el-button>
       </div>
 
       <el-card shadow="never" v-loading="editLoading">
         <template #header>
           <div class="card-header">
-            <span class="card-title">场景顺序</span>
-            <span class="card-sub">通过上移/下移调整场景顺序，点击场景查看任务</span>
+            <span class="card-title">{{ editingPosition?.name }}学习路径</span>
+            <span class="card-sub">点击上方阶段图标，查看该阶段的学习任务</span>
           </div>
         </template>
-        <el-empty v-if="scenes.length === 0" description="暂无可排序的场景" />
+
+        <!-- 时间线 -->
+        <div class="timeline">
+          <button class="tl-scroll tl-left" @click="scrollTimeline(-1)"><el-icon><ArrowLeft /></el-icon></button>
+          <button class="tl-scroll tl-right" @click="scrollTimeline(1)"><el-icon><ArrowRight /></el-icon></button>
+          <div ref="timelineRef" class="tl-viewport">
+            <div v-if="scenes.length > 0" class="tl-track">
+              <div class="tl-line"></div>
+              <button
+                v-for="(scene, idx) in scenes"
+                :key="scene.id"
+                class="tl-node"
+                :class="{ selected: selectedSceneId === scene.id }"
+                @click="selectedSceneId = scene.id"
+              >
+                <div class="tl-label">{{ idx === 0 ? 'START · 第1站' : `第${idx + 1}站` }}</div>
+                <div
+                  class="tl-circle"
+                  :style="scene.coverImage ? undefined : { background: nodeColors[idx % nodeColors.length] }"
+                >
+                  <img v-if="scene.coverImage" :src="scene.coverImage" :alt="scene.name" class="tl-img" />
+                  <span v-else class="tl-index">{{ idx + 1 }}</span>
+                </div>
+                <div class="tl-name">{{ scene.name }}</div>
+                <div class="tl-meta">{{ scene.tasks.length }} 任务 · {{ scene.hours }} 课时</div>
+              </button>
+            </div>
+            <el-empty v-else-if="!editLoading" description="该岗位下暂无已发布场景，请先创建并发布场景" :image-size="60" />
+          </div>
+        </div>
+      </el-card>
+
+      <el-card shadow="never" class="order-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">场景顺序</span>
+            <span class="card-sub">拖拽场景卡片可调整顺序，点击场景查看任务</span>
+          </div>
+        </template>
+        <el-empty v-if="scenes.length === 0" description="暂无可排序的场景" :image-size="60" />
         <div v-else class="scene-list">
           <div
             v-for="(scene, index) in scenes"
             :key="scene.id"
             class="scene-item"
-            :class="{ selected: selectedSceneId === scene.id }"
+            :class="{
+              selected: selectedSceneId === scene.id,
+              dragging: draggingIndex === index,
+              'drag-over': dragOverIndex === index && dragOverIndex !== draggingIndex
+            }"
+            draggable="true"
             @click="selectedSceneId = scene.id"
+            @dragstart="handleDragStart(index)"
+            @dragover="handleDragOver($event, index)"
+            @drop="handleDrop($event, index)"
+            @dragleave="dragOverIndex = null"
+            @dragend="handleDragEnd"
           >
-            <span class="scene-index">{{ index + 1 }}</span>
+            <span class="scene-grip">⋮⋮</span>
+            <img v-if="scene.coverImage" :src="scene.coverImage" :alt="scene.name" class="scene-cover" />
+            <span v-else class="scene-index">{{ index + 1 }}</span>
             <div class="scene-info">
               <div class="scene-name">{{ scene.name }}</div>
               <div class="scene-meta">{{ scene.tasks.length }} 任务 · {{ scene.hours }} 课时</div>
@@ -97,39 +156,35 @@
           </div>
         </div>
       </el-card>
-
-      <el-card v-if="selectedScene" shadow="never" class="task-card">
-        <template #header>
-          <span class="card-title">{{ selectedScene.name }} · 任务列表</span>
-        </template>
-        <el-table :data="selectedScene.tasks" stripe>
-          <el-table-column label="任务名称" prop="name" />
-          <el-table-column label="课时" prop="estimatedHours" width="100" />
-        </el-table>
-      </el-card>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue';
 import { positionApi, batchApi, learnRoadApi } from '@/api/job';
 import { scenarioApi, taskApi } from '@/api/scene';
-import type { CareerPosition, LearnRoad, LearnRoadStep } from '@/types/job';
+import type { CareerPosition, JobBatch, LearnRoad, LearnRoadStep } from '@/types/job';
 import type { Scenario, ScenarioTask } from '@/types/scene';
 
 interface SceneItem {
   id: string;
   name: string;
+  coverImage?: string;
   hours: number;
   tasks: { id: string; name: string; estimatedHours?: number }[];
 }
 
+const nodeColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ec4899', '#a855f7', '#6366f1', '#f43f5e'];
+
 const view = ref<'list' | 'edit'>('list');
 const positions = ref<CareerPosition[]>([]);
+const batches = ref<JobBatch[]>([]);
 const allScenarios = ref<Scenario[]>([]);
 const listLoading = ref(false);
+const dataLoading = ref(false);
 const editLoading = ref(false);
 const saving = ref(false);
 const saved = ref(false);
@@ -142,6 +197,15 @@ const scenes = ref<SceneItem[]>([]);
 const selectedSceneId = ref<string | null>(null);
 const learnRoadId = ref<string | null>(null);
 let learnRoadsCache: LearnRoad[] | null = null;
+
+const draggingIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
+const timelineRef = ref<HTMLDivElement | null>(null);
+
+// 保存成功提示 2s 自动消失的定时器句柄（卸载时清理）
+let savedTimer: ReturnType<typeof setTimeout> | null = null;
+// 编辑加载请求序号：快速切换岗位时丢弃过期响应
+let editSeq = 0;
 
 const sceneStats = computed(() => {
   const m = new Map<string, { sceneCount: number; taskCount: number }>();
@@ -167,23 +231,33 @@ const filteredPositions = computed(() => {
   return result;
 });
 
-const selectedScene = computed(() => scenes.value.find((s) => s.id === selectedSceneId.value) || null);
+const editingBatchName = computed(() => {
+  const id = editingPosition.value?.batchId;
+  if (!id) return '未关联批次';
+  return batches.value.find((b) => b.id === id)?.name || '未关联批次';
+});
+
+const totalTasks = computed(() => scenes.value.reduce((sum, s) => sum + s.tasks.length, 0));
 
 async function loadList() {
   listLoading.value = true;
+  dataLoading.value = true;
   try {
-    const [posRes, roadRes, scenarioRes] = await Promise.all([
+    const [posRes, batchRes, roadRes, scenarioRes] = await Promise.all([
       positionApi.list({ limit: 1000 }),
+      batchApi.list({ limit: 1000 }),
       learnRoadApi.list({ limit: 1000 }),
       scenarioApi.list({ limit: 1000 })
     ]);
     positions.value = posRes.items;
+    batches.value = batchRes.items;
     learnRoadsCache = roadRes.items;
     allScenarios.value = scenarioRes.items;
   } catch (e) {
     ElMessage.error((e as Error).message || '加载失败');
   } finally {
     listLoading.value = false;
+    dataLoading.value = false;
   }
 }
 
@@ -195,6 +269,7 @@ function tasksToSceneItems(scenario: Scenario, tasks: ScenarioTask[]): SceneItem
   return {
     id: scenario.id,
     name: scenario.name,
+    coverImage: scenario.coverImage,
     hours: scenarioTasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0),
     tasks: scenarioTasks
   };
@@ -218,33 +293,49 @@ function orderScenesByRoad(roads: LearnRoad[], scenarios: Scenario[]): Scenario[
   return ordered;
 }
 
+async function loadPositionScenes(positionId: string): Promise<{ scenarios: Scenario[]; tasks: ScenarioTask[] }> {
+  const scenarioRes = await scenarioApi.list({ careerPositionId: positionId, limit: 1000 });
+  const scens = (scenarioRes.items || []).filter((s) => s.status && s.status !== 'archived');
+  const taskResults = scens.length
+    ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
+    : [];
+  const allTasks = taskResults.flatMap((r) => r.items || []);
+  return { scenarios: scens, tasks: allTasks };
+}
+
 async function handleEdit(position: CareerPosition) {
+  const seq = ++editSeq;
   view.value = 'edit';
   editingPosition.value = position;
   saved.value = false;
   editLoading.value = true;
   try {
-    const scenarioRes = await scenarioApi.list({ careerPositionId: position.id, limit: 1000 });
-    const scens = (scenarioRes.items || []).filter((s) => s.status && s.status !== 'archived');
-    const taskResults = scens.length
-      ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
-      : [];
-    const allTasks = taskResults.flatMap((r) => r.items || []);
+    const roadsPromise = learnRoadsCache
+      ? Promise.resolve(learnRoadsCache)
+      : learnRoadApi.list({ limit: 1000 }).then((res) => {
+          learnRoadsCache = res.items;
+          return res.items;
+        });
+    const [roads, { scenarios, tasks }] = await Promise.all([
+      roadsPromise,
+      loadPositionScenes(position.id)
+    ]);
+    if (seq !== editSeq) return;
 
-    const roads = learnRoadsCache ?? (await learnRoadApi.list({ limit: 1000 })).items;
-    learnRoadsCache = roads;
     const existing = roads.find((r) => r.positionIds?.includes(position.id));
     learnRoadId.value = existing?.id || null;
 
-    const ordered = existing ? orderScenesByRoad([existing], scens) : scens;
-    scenes.value = ordered.map((s) => tasksToSceneItems(s, allTasks));
+    const ordered = existing ? orderScenesByRoad([existing], scenarios) : scenarios;
+    scenes.value = ordered.map((s) => tasksToSceneItems(s, tasks));
     selectedSceneId.value = scenes.value[0]?.id || null;
   } catch (e) {
+    if (seq !== editSeq) return;
     ElMessage.error((e as Error).message || '加载失败');
     scenes.value = [];
     selectedSceneId.value = null;
+    learnRoadId.value = null;
   } finally {
-    editLoading.value = false;
+    if (seq === editSeq) editLoading.value = false;
   }
 }
 
@@ -267,6 +358,37 @@ function moveScene(index: number, direction: -1 | 1) {
   saved.value = false;
 }
 
+function handleDragStart(index: number) {
+  draggingIndex.value = index;
+}
+function handleDragOver(e: DragEvent, index: number) {
+  e.preventDefault();
+  dragOverIndex.value = index;
+}
+function handleDrop(e: DragEvent, targetIndex: number) {
+  e.preventDefault();
+  if (draggingIndex.value === null || draggingIndex.value === targetIndex) {
+    draggingIndex.value = null;
+    dragOverIndex.value = null;
+    return;
+  }
+  const arr = [...scenes.value];
+  const [moved] = arr.splice(draggingIndex.value, 1);
+  arr.splice(targetIndex, 0, moved);
+  scenes.value = arr;
+  saved.value = false;
+  draggingIndex.value = null;
+  dragOverIndex.value = null;
+}
+function handleDragEnd() {
+  draggingIndex.value = null;
+  dragOverIndex.value = null;
+}
+
+function scrollTimeline(direction: -1 | 1) {
+  timelineRef.value?.scrollBy({ left: direction * 200, behavior: 'smooth' });
+}
+
 async function handleSave() {
   const position = editingPosition.value;
   if (!position) return;
@@ -286,15 +408,19 @@ async function handleSave() {
       });
       id = created.id;
       learnRoadId.value = id;
-      if (learnRoadsCache) learnRoadsCache = [created, ...learnRoadsCache];
-    } else {
-      await learnRoadApi.update(id, {
-        name: `${position.name}学习路径`,
-        positionIds: [position.id],
-        steps
-      });
+      learnRoadsCache = [created, ...(learnRoadsCache ?? [])];
     }
+    const updated = await learnRoadApi.update(id, {
+      name: `${position.name}学习路径`,
+      positionIds: [position.id],
+      steps
+    });
+    learnRoadsCache = (learnRoadsCache ?? []).map((r) => (r.id === updated.id ? updated : r));
     saved.value = true;
+    if (savedTimer) clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => {
+      saved.value = false;
+    }, 2000);
     ElMessage.success('学习路径顺序已更新');
   } catch (e) {
     ElMessage.error((e as Error).message || '保存失败');
@@ -304,14 +430,19 @@ async function handleSave() {
 }
 
 onMounted(loadList);
+onBeforeUnmount(() => {
+  if (savedTimer) clearTimeout(savedTimer);
+});
 </script>
 
 <style scoped>
 .learn-roads { padding: 16px; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.edit-header { align-items: center; }
 .header-left { display: flex; align-items: center; gap: 12px; }
 .page-title { font-size: 20px; font-weight: 700; margin: 0; }
-.page-sub { color: #909399; margin: 8px 0 0; }
+.page-sub { color: #909399; margin: 6px 0 0; }
+.page-sub-mini { color: #c0c4cc; font-size: 12px; margin: 2px 0 0; }
 .filter-card { margin-bottom: 16px; }
 .filter-row { display: flex; gap: 12px; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
@@ -319,6 +450,44 @@ onMounted(loadList);
 .card-sub { color: #909399; font-size: 13px; }
 .pos-name { font-weight: 600; }
 .sub { color: #909399; font-size: 12px; }
+
+/* 时间线 */
+.timeline { position: relative; padding: 8px 0; }
+.tl-scroll {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid #e4e7ed; background: rgba(255,255,255,.85); color: #909399;
+  cursor: pointer;
+}
+.tl-scroll:hover { background: #fff; color: #409eff; }
+.tl-left { left: 0; }
+.tl-right { right: 0; }
+.tl-viewport { overflow-x: auto; padding: 0 40px; }
+.tl-track { position: relative; display: flex; align-items: flex-start; min-width: max-content; padding: 8px 4px 16px; }
+.tl-line {
+  position: absolute; top: 42px; left: 0; right: 0; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #3b82f6, #22c55e, #f59e0b, #ec4899, #a855f7, #f43f5e);
+}
+.tl-node {
+  position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center;
+  min-width: 150px; margin: 0 12px; background: transparent; border: none; cursor: pointer; padding: 0;
+}
+.tl-label { font-size: 12px; color: #c0c4cc; height: 20px; }
+.tl-circle {
+  position: relative; z-index: 2; display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 50%; overflow: hidden; margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12); transition: transform .2s;
+}
+.tl-node.selected .tl-circle { transform: scale(1.1); box-shadow: 0 0 0 4px #fff, 0 0 0 6px #409eff; }
+.tl-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tl-index { color: #fff; font-weight: 700; font-size: 20px; }
+.tl-name { margin-top: 12px; font-size: 14px; font-weight: 600; color: #303133; text-align: center; max-width: 140px; }
+.tl-node.selected .tl-name { color: #409eff; }
+.tl-meta { font-size: 12px; color: #909399; margin-top: 4px; }
+
+/* 场景顺序 */
+.order-card { margin-top: 16px; }
 .scene-list { display: flex; flex-direction: column; gap: 8px; }
 .scene-item {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px;
@@ -326,11 +495,14 @@ onMounted(loadList);
 }
 .scene-item:hover { background: #f5f7fa; }
 .scene-item.selected { border-color: #409eff; background: #ecf5ff; }
-.scene-index { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; background: #e4e7ed; color: #606266; font-weight: 600; }
+.scene-item.dragging { opacity: .4; }
+.scene-item.drag-over { border-color: #409eff; background: #ecf5ff; }
+.scene-grip { color: #c0c4cc; cursor: grab; font-size: 16px; letter-spacing: -2px; }
+.scene-cover { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #e4e7ed; }
+.scene-index { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 50%; background: #e4e7ed; color: #606266; font-weight: 600; flex-shrink: 0; }
 .scene-item.selected .scene-index { background: #409eff; color: #fff; }
-.scene-info { flex: 1; }
+.scene-info { flex: 1; min-width: 0; }
 .scene-name { font-weight: 600; }
 .scene-meta { color: #909399; font-size: 12px; margin-top: 2px; }
-.scene-actions { display: flex; gap: 4px; }
-.task-card { margin-top: 16px; }
+.scene-actions { display: flex; gap: 4px; flex-shrink: 0; }
 </style>
