@@ -281,6 +281,31 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           actions.push(`clickRow ${rowText}→${action || '(行)'}`)
           break
         }
+        case 'clickCell': {
+          // 表格网格单元格（排课周课表等）：按「行文字 × 列头文字」定位交点单元格点击。
+          // 写法：clickCell: { 上午第一节课: 周一 }（key=行内文字，value=列头文字）
+          for (const [rowLabel, colLabel] of Object.entries(rawVal)) {
+            mark(`clickCell ${rowLabel}×${colLabel}`)
+            const rowText = render(rowLabel, vars, rand)
+            const colText = render(String(colLabel), vars, rand)
+            const ths = page.locator('table:visible thead th')
+            const thCount = await ths.count()
+            let colIdx = -1
+            for (let i = 0; i < thCount; i++) {
+              const txt = ((await ths.nth(i).innerText()) || '').trim()
+              if (txt === colText) { colIdx = i; break }
+            }
+            if (colIdx < 0) throw new Error(`未找到表头列「${colText}」`)
+            const row = page.locator('table:visible tbody tr').filter({ hasText: rowText })
+            if (!await waitFirstVisible(row, 6000)) throw new Error(`未找到包含「${rowText}」的表格行`)
+            const cell = row.first().locator('td').nth(colIdx)
+            if (!await waitFirstVisible(cell, 4000)) throw new Error(`单元格「${rowText}×${colText}」不可见`)
+            await cell.click()
+            await waitSettled(page, cfg)
+            actions.push(`clickCell ${rowText}×${colText}`)
+          }
+          break
+        }
         case 'clickCard': {
           // 卡片式列表的行内操作（工坊等卡片网格，卡片需带 data-smoke-card 属性）
           mark(`clickCard ${rawVal.text}→${rawVal.action}`)
@@ -415,7 +440,7 @@ async function execStep(page, cfg, step, vars, rand, progress) {
           break
         }
         default:
-          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/clickCard/fill/select/submit/confirm/toggle/check/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
+          throw new Error(`未知步骤键「${key}」（支持 goto/click/clickText/clickRow/clickCard/clickCell/fill/select/submit/confirm/toggle/check/expectApi/expectText/saveAs/optional/timeoutMs/skipPageErrorCheck）`)
       }
     }
     if (step.expectApi) {

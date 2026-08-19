@@ -68,11 +68,12 @@ steps:
 | ai-integration-loop | AD-2 | school→student→school | 管理员挂接第三方应用→学生广场应用区可见→管理员下架 |
 | job-publish-loop | J-1/J-2/J-3 | teacher→school→teacher→student→school→teacher | 教师建岗位→填基础信息保存→提交审批→学校通过→发布→学生公开岗位大厅可见→取消发布→教师删除 |
 | course-publish-loop | C-1/C-4/C-2 | teacher→school→teacher→student→teacher→school | 教师建体系课并编排节点→提交审批→学校通过→发布→学生落地页可见并进入学习→取消发布删除清理 |
-| exam-loop | E-1 | school→teacher→school→teacher | 学校给学生分配班级（前置）→教师建试卷加判断题→审批通过→发布→创建考试场次请求成功（E-2 学生链路受场次模块缺陷阻断，见 §3.7 注） |
+| exam-loop | E-1/E-2 | school→teacher→school→teacher→student | 学校给学生分配班级（前置）→教师建试卷加判断题→审批通过→发布→创建考试场次并开启→学生考试中心参加答题→查分可见 |
 | scene-task-loop | SC-1/SC-2/SC-3 | teacher→school→teacher→student→teacher→school | 教师编排场景与任务并配置测评形式→审批通过→发布→学生提交任务→教师评分→取消发布清理 |
-| affairs-plan-loop | A-1/A-2/A-3 | school→school→student | 学校建人培方案并设岗位课程→审批发布→生成教学计划弹窗就绪验证→学生工作台课表入口正常（生成动作受测试租户无已发布体系课阻断，见 §3.9 注） |
+| affairs-plan-loop | A-1/A-2/A-3 | school→school→student | 学校建人培方案并设岗位课程→审批发布→生成教学计划弹窗就绪验证→学生工作台课表入口正常（完整计划+排课链路见 teaching-plan-schedule-loop） |
 | alliance-public-loop | L-1/L-3 | school→student→school | 学校维护合作协议台账（前台展示开）→学生公开页企业详情可见→学校清理 |
 | resource-reuse-loop | R-1 | teacher→student(车辆场景) | 教师创建链接资源→绑定到场景任务→完成配置落库→任务卡片可见→清理 |
+| teaching-plan-schedule-loop | A-1/A-2/A-3 | school→teacher→school→student | 建体系课发布→建人培方案挂课程审批发布→生成教学计划审批发布→排课发布课表→学生课表可见（自给课程/计划数据，闭环完整） |
 
 ### 2.1 覆盖登记（PRD 39 个用户故事的 flow 归属）
 
@@ -80,7 +81,7 @@ DoD 第 7 条只要求**核心业务链路**（跨角色/跨页面）有 flow，
 
 | 归属 | 用户故事 | 说明 |
 |---|---|---|
-| **已有 flow** | J-1/J-2/J-3、L-4、KB-1/KB-3、AG-1、AD-1、AD-2、C-1/C-4/C-2、E-1/E-2、SC-1/SC-2/SC-3、A-1/A-2/A-3、L-1/L-3、R-1 | 见下方 §3；SC-1 的「任务依赖编排」与 A-2 的「自动排课」无 UI 入口（依赖/排课仅 API 层），flow 按 UI 现状裁剪（见各 flow 说明） |
+| **已有 flow** | J-1/J-2/J-3、L-4、KB-1/KB-3、AG-1、AD-1、AD-2、C-1/C-4/C-2、E-1/E-2、SC-1/SC-2/SC-3、A-1/A-2/A-3、L-1/L-3、R-1 | 见下方 §3；SC-1 的「任务依赖编排」与 A-2 的「自动排课 API」无 UI 入口，flow 按 UI 现状裁剪（见各 flow 说明）；A-1/A-2/A-3 完整链路由 teaching-plan-schedule-loop 覆盖（网格排课经 DSL clickCell 驱动） |
 | **不需 flow（单页/单角色 CRUD 或非 UI）** | S-1/S-2/S-3、J-4（Excel 导入，另有导入向导单测）、C-3、E-3/E-4/E-5、P-1/P-2（登录与菜单权限由巡检登录本身覆盖）、KB-2、AG-2/AG-3、SQ-1 | 由单测 + `ui-smoke` 逐页巡检 + 后端集成测试覆盖 |
 | **不进本文件（DSL 约束）** | ST-1、AG-2 的流式问答 | 涉及真实 LLM 调用，由后端集成测试覆盖 |
 
@@ -619,15 +620,14 @@ steps:
 
 ### 3.7 考试安排闭环（exam-loop）
 
-> 对应 PRD E-1/E-2。覆盖：试卷（ContentListPage）建→审→发 + 判断题自动判分 + 场次安排（exam-usage）创建请求。
+> 对应 PRD E-1/E-2。覆盖：试卷（ContentListPage）建→审→发 + 判断题自动判分 + 场次安排（exam-usage）创建并开启 + 学生考试中心参加答题并查分。
 > 客观题（判断题）提交即自动判分（gradingStatus=evaluated），学生端立即见分，免教师手工评分。
 > **前置（幂等）**：学生参与考试按班级开放，巡检学生账号默认无班级归属，需学校先将其加入一个班级（组织架构学生管理真实路径）。
-> **已知产品缺陷（2026-08-20 实测坐实，已挡 E-2 学生链路）**：
-> ① 考试场次「参与班级」MultiOrgNodePicker 的「确认 (n)」按钮会**提前提交外层表单**——场次被创建但 target_ids 为空
->   （班级不生效）、弹窗随之关闭，「创建」按钮流程不可达；学生端 ClassMatch=false 无法参加/查分。
-> ② 场次列表页 `loading` 初始为 true 且初始加载路径从不置 false（`fetchUsages` 缺 `setLoading(false)`），
->   表格永远停在「加载中...」——列表验证/开启/删除均不可用。
-> 本 flow 验证到「试卷建审发 + 场次创建请求成功（POST 201）」，E-2 与场次列表待前端修复后补全。
+> **历史缺陷（2026-08-20 实测发现并修复）**：① 场次「参与班级」MultiOrgNodePicker 确认按钮 type=submit，
+> 点击后 submit 事件沿 React 组件树冒泡到外层宿主表单（portal 不隔离）→ 场次被提前创建且 target_ids 为空；
+> 已修复：确认按钮改 confirmType="button"+onConfirm，picker form onSubmit 加 stopPropagation。
+> ② 场次列表页初始加载从不置 loading=false，表格永远「加载中」；已修复（fetchUsages 补 setLoading(false)）。
+> 两处修复后 E-2 学生参加/查分链路恢复，本 flow 全链路验证。
 
 ```flow
 flow: exam-loop
@@ -733,9 +733,7 @@ steps:
   - role: teacher
     clickRow: { text: "{{examName}}", action: 发布 }
     expectApi: { method: POST, url: /evaluation/exams/, status: 200 }
-  # ── teacher：创建考试场次 ──
-  # ⚠️ 缺陷①：参与班级选择器的「确认」会提前提交外层表单（target_ids 为空），但创建请求确实发出；
-  # 缺陷②：场次列表页表格永不渲染，无法做列表断言/开启——flow 以 expectApi 断言创建请求成功为终点。
+  # ── teacher：创建考试场次（修复后正常流程：确认班级 → 创建 → 列表验证 → 开启）──
   - role: teacher
     goto: /evaluation/exam-usage
     click: 创建考试使用
@@ -745,15 +743,50 @@ steps:
     select: { 选择试卷: "{{examName}}" }
     fill: { 请输入考试名称: "SMOKE_场次{rand}" }
     saveAs: { usageName: 请输入考试名称 }
+  # 参与班级：确认按钮已修复为 type=button（不再提前提交外层表单），确认后点「创建」正常创建
   - role: teacher
     click: 添加班级
     fill: { 搜索...: 软件技术2401 }
   - role: teacher
     check: { 软件技术2401: true }
     submit: true
+  - role: teacher
+    submit: 创建
     expectApi: { method: POST, url: /evaluation/exam-usages, status: 201 }
     timeoutMs: 20000
-  # ── 收尾：删试卷（取消发布→删除，级联清理场次）；school 删审批流 ──
+  # 列表验证 + 开启（列表 loading 已修复）
+  - role: teacher
+    goto: /evaluation/exam-usage
+    expectText: "{{usageName}}"
+    timeoutMs: 20000
+  - role: teacher
+    clickRow: { text: "{{usageName}}", action: 开启 }
+    expectApi: { method: POST, url: /evaluation/exam-usages/, status: 200 }
+  # ── student：考试中心参加答题 → 查分（班级已生效，ClassMatch=true）──
+  - role: student
+    goto: /evaluation/landing/exam-center
+    expectText: "{{usageName}}"
+    timeoutMs: 20000
+  - role: student
+    expectText: 开始考试
+    timeoutMs: 20000
+  - role: student
+    click: 开始考试
+  - role: student
+    click: 正确
+    submit: 提交试卷
+    expectApi: { method: POST, url: /evaluation/exam-results, status: 201 }
+    timeoutMs: 30000
+  - role: student
+    goto: /evaluation/landing/exam-center
+    expectText: 已交卷
+    timeoutMs: 20000
+  # ── 收尾：删场次 + 删试卷（取消发布→删除，级联清理场次）；school 删审批流 ──
+  - role: teacher
+    goto: /evaluation/exam-usage
+    clickRow: { text: "{{usageName}}", action: 删除 }
+    confirm: true
+    optional: true
   - role: teacher
     goto: /evaluation/exams
     clickRow: { text: "{{examName}}", action: 取消发布 }
@@ -1220,6 +1253,249 @@ steps:
   - role: school
     goto: /library/resources/link
     clickRow: { text: "{{resourceName}}", action: 删除 }
+    confirm: true
+    optional: true
+```
+
+### 3.12 教学计划与排课全链路（teaching-plan-schedule-loop）
+
+> 对应 PRD A-1/A-2/A-3。覆盖完整链路：建体系课并发布 → 建人培方案（选专业+挂课程行）并审批发布 →
+> 生成教学计划（条目自动挂专业班级）→ 教学计划审批发布 → 排课（网格 cell 排入一节）→ 发布课表 →
+> 学生工作台课表可见。
+> 本条 flow 自给前置数据（课程/方案/计划均在本 flow 创建），解决测试租户无已发布课程/计划的缺口；
+> 排课网格空单元格无文字属性，由 DSL 新增 `clickCell` 动作（行文字×列头文字定位）驱动；
+> 教学计划生成后为 draft，需走内容通用状态机（提交审批→通过→发布）才能被排课页选择（排课页仅列 published）。
+> 课程/方案/教学计划共用一条自建审批流（workflows 全局，审批人=巡检 school 账号）。
+> **收尾残留**：教学计划/排课记录/课表无 UI 删除入口（或受引用限制），以草稿/已发布状态残留（SMOKE_ 前缀，定期 SQL 清理）；
+> flow 收尾 best-effort 清理方案/课程并删除审批流。
+
+```flow
+flow: teaching-plan-schedule-loop
+story: A-1
+desc: 建体系课发布 → 建人培方案挂课程审批发布 → 生成教学计划并审批发布 → 排课发布课表 → 学生课表可见
+steps:
+  # ── 幂等清理（best-effort：方案/课程取消发布→删除；计划/排课残留容忍）──
+  - role: school
+    goto: /affairs/programs
+    clickRow: { text: "SMOKE_计划方案", action: 取消发布 }
+    optional: true
+  - role: school
+    clickRow: { text: "SMOKE_计划方案", action: 删除 }
+    confirm: true
+    optional: true
+  - role: teacher
+    goto: /lesson/admin/system
+    clickRow: { text: "SMOKE_计划课程", action: 取消发布 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "SMOKE_计划课程", action: 删除 }
+    confirm: true
+    optional: true
+  # ── 自建审批流（课程/方案/教学计划共用）──
+  - role: school
+    goto: /lesson/admin/workflows
+    clickRow: { text: "SMOKE_计划审批流", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /lesson/admin/workflows
+    click: 新建审批流程
+    expectText: 流程名称
+  - role: school
+    fill: { 流程名称: "SMOKE_计划审批流{rand}" }
+    saveAs: { wfName: 流程名称 }
+  - role: school
+    click: 添加步骤
+    fill: { 步骤名称: SMOKE_一次审批 }
+  - role: school
+    click: 选择审批人
+    expectText: 选择用户
+  - role: school
+    fill: { 搜索用户...: 巡检-学校管理员 }
+    clickRow: { text: 巡检-学校管理员 }
+  - role: school
+    click: 确认
+  - role: school
+    submit: 创建流程
+    expectApi: { method: POST, url: /workflows, status: 201 }
+  # ── 建体系课并发布（供方案课程行引用）──
+  - role: teacher
+    goto: /lesson/admin/system
+    click: 新建体系课
+    expectApi: { method: POST, url: /lesson/courses, status: 201 }
+    timeoutMs: 20000
+  - role: teacher
+    expectText: 添加节点
+    timeoutMs: 20000
+  - role: teacher
+    clickText: 全局课程信息
+    fill: { 课程名称: "SMOKE_计划课程{rand}" }
+    saveAs: { courseName: 课程名称 }
+  - role: teacher
+    submit: 保存草稿
+    expectApi: { method: PUT, url: /lesson/courses/, status: 200 }
+  - role: teacher
+    click: 完成配置
+  - role: teacher
+    goto: /lesson/admin/system
+    clickRow: { text: "{{courseName}}", action: 提交审批 }
+    expectText: 提交审批
+  - role: teacher
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /lesson/admin/approvals
+    clickRow: { text: "{{courseName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: teacher
+    goto: /lesson/admin/system
+    expectText: "{{courseName}}"
+    timeoutMs: 20000
+  - role: teacher
+    clickRow: { text: "{{courseName}}", action: 发布 }
+    expectApi: { method: POST, url: /lesson/courses/, status: 200 }
+  # ── 建人培方案：选专业（软件技术）+ 挂刚发布的体系课 → 审批发布 ──
+  - role: school
+    goto: /affairs/programs
+    click: 新建人培方案
+    expectApi: { method: POST, url: /affairs/programs, status: 201 }
+    timeoutMs: 20000
+  - role: school
+    expectText: 方案名称
+    timeoutMs: 20000
+  - role: school
+    fill: { 方案名称: "SMOKE_计划方案{rand}" }
+    saveAs: { programName: 方案名称 }
+    select: { 请选择专业: 软件技术 }
+    submit: 保存基本信息
+    expectApi: { method: PUT, url: /affairs/programs/, status: 200 }
+    timeoutMs: 20000
+  - role: school
+    click: 课程设置
+  - role: school
+    click: 添加岗位/课程
+  - role: school
+    select: { 岗位: 体系课 }
+  - role: school
+    select: { 搜索体系课...: "{{courseName}}" }
+  - role: school
+    click: 保存
+    expectApi: { method: PUT, url: /affairs/programs/, status: 200 }
+    timeoutMs: 20000
+  - role: school
+    click: 返回列表
+  - role: school
+    clickRow: { text: "{{programName}}", action: 提交审批 }
+    expectText: 提交审批
+  - role: school
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /affairs/approvals
+    clickRow: { text: "{{programName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: school
+    goto: /affairs/programs
+    expectText: "{{programName}}"
+    timeoutMs: 20000
+  - role: school
+    clickRow: { text: "{{programName}}", action: 发布 }
+    expectApi: { method: POST, url: /affairs/programs/, status: 200 }
+  # ── 生成教学计划（draft）→ 审批 → 发布（排课页仅列 published）──
+  - role: school
+    goto: /affairs/teaching-plans
+    click: 新建教学计划
+    expectText: 人培方案（已发布）
+    timeoutMs: 20000
+  - role: school
+    select: { 请选择人培方案: "{{programName}}" }
+  - role: school
+    select: { 请选择学期: first }
+    submit: 生成教学计划
+    expectApi: { method: POST, url: /affairs/teaching-plans, status: 201 }
+    timeoutMs: 20000
+  - role: school
+    goto: /affairs/teaching-plans
+    clickRow: { text: "{{courseName}}", action: 提交审批 }
+    expectText: 提交审批
+    timeoutMs: 20000
+  - role: school
+    click: 按审批流程提交
+    select: { 选择审批流程: "{{wfName}}" }
+    submit: 确认并提交审批
+    expectApi: { method: POST, url: /approvals, status: 201 }
+  - role: school
+    goto: /affairs/approvals
+    clickRow: { text: "{{courseName}}", action: 通过 }
+    submit: 确认通过
+    expectApi: { method: POST, url: /approvals/, status: 200 }
+  - role: school
+    goto: /affairs/teaching-plans
+    expectText: "{{courseName}}"
+    timeoutMs: 20000
+  - role: school
+    clickRow: { text: "{{courseName}}", action: 发布 }
+    expectApi: { method: POST, url: /affairs/teaching-plans/, status: 200 }
+  # ── 排课：选计划 → 待排条目 → 排入 周一·上午第一节课 ──
+  # 条目自动挂专业（软件技术）班级，弹窗班级预填；场地必选
+  - role: school
+    goto: /affairs/scheduling
+    expectText: 请选择教学计划
+    timeoutMs: 20000
+  - role: school
+    select: { 请选择教学计划: "{{programName}}" }
+    clickText: "{{courseName}}"
+    timeoutMs: 20000
+  - role: school
+    clickCell: { 上午第一节课: 周一 }
+    expectText: 编辑排课
+    timeoutMs: 20000
+  - role: school
+    select: { 选择场地: first }
+    submit: 保存
+    expectApi: { method: POST, url: /affairs/schedules, status: 201 }
+    timeoutMs: 20000
+  # ── 发布课表（课表视图与发布 Tab）──
+  - role: school
+    click: 课表视图与发布
+    expectText: 发布
+    timeoutMs: 20000
+  - role: school
+    click: 发布
+    expectApi: { method: POST, url: /affairs/schedules/publish, status: 200 }
+    timeoutMs: 20000
+  # ── 学生课表可见（学生已属 软件技术2401，排课班级来自专业班级）──
+  - role: student
+    goto: /portal/workspace
+    click: 我的课表
+    expectText: "{{courseName}}"
+    timeoutMs: 20000
+  # ── 收尾：取消发布+删除方案/课程；删审批流（计划/排课/课表残留容忍）──
+  - role: school
+    goto: /affairs/programs
+    clickRow: { text: "{{programName}}", action: 取消发布 }
+    optional: true
+  - role: school
+    clickRow: { text: "{{programName}}", action: 删除 }
+    confirm: true
+    optional: true
+  - role: teacher
+    goto: /lesson/admin/system
+    clickRow: { text: "{{courseName}}", action: 取消发布 }
+    optional: true
+  - role: teacher
+    clickRow: { text: "{{courseName}}", action: 删除 }
+    confirm: true
+    optional: true
+  - role: school
+    goto: /lesson/admin/workflows
+    clickRow: { text: "{{wfName}}", action: 删除 }
     confirm: true
     optional: true
 ```

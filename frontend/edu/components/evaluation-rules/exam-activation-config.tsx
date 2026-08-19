@@ -43,6 +43,7 @@ export function ExamActivationConfig({ value, onChange }: ExamActivationConfigPr
         ].map((m) => (
           <button
             key={m.key}
+            type="button"
             onClick={() => onChange({ activationMode: m.key })}
             className={cn(
               'w-full text-left p-3 rounded-lg border transition-all',

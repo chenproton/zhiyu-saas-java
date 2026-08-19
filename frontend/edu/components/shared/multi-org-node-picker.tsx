@@ -319,7 +319,11 @@ export function MultiOrgNodePicker({
           </DialogHeader>
           <form
             onSubmit={(e) => {
+              // stopPropagation：React 合成事件沿组件树冒泡（portal 不隔离 DOM），
+              // 不拦截时 Enter/确认提交会继续冒泡到外层宿主表单（如考试场次弹窗）触发提前提交，
+              // 场次被创建但 target_ids 为空（2026-08-20 实测坐实）。
               e.preventDefault()
+              e.stopPropagation()
               handleConfirm()
             }}
             className="grid gap-4"
@@ -363,8 +367,13 @@ export function MultiOrgNodePicker({
           </ScrollArea>
           <FormDialogFooter
             onCancel={() => handleOpenChange(false)}
+            onConfirm={handleConfirm}
             confirmText={t('确认 ({count})', { count: pendingIds?.length ?? value.length })}
             cancelText={t('取消')}
+            // type=button + onConfirm：确认仅「应用选择并关闭」，不再触发任何 form submit——
+            // 否则 submit 事件沿 React 组件树冒泡到外层宿主表单（考试场次弹窗）提前提交
+            // （2026-08-20 实测：场次被创建但 target_ids 为空；修复见本组件 form onSubmit 注释）
+            confirmType="button"
           />
           </form>
         </DialogContent>

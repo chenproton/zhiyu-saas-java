@@ -102,6 +102,8 @@ export default function ExamUsagePage() {
   const fetchUsages = useCallback(async () => {
     const res = await examUsageApi.list({ limit: 200 })
     setUsages(res.items)
+    // 修复：初始加载路径此前从不置 loading=false，表格永远停在「加载中...」（2026-08-20 实测坐实）
+    setLoading(false)
   }, [])
 
   // 事件触发的重新加载（带 loading 态）；初始加载走 fetchUsages，避免在 effect 内同步置位 loading
