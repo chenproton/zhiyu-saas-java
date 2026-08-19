@@ -10,6 +10,9 @@
   - Tab 导航：粘顶白底圆角条 + 图标 + 标签 + 激活态（primary 底 + 白字），横向可滚动。
   - `?tab=` 决定激活 Tab；非法/缺省回 dashboard；切换 Tab 用 replace 写回 query（与 React 一致）。
   - 学生 8 个 Tab：工作台首页 / 我的学习 / 我的课表 / 我的收藏 / 测评认证 / 学生画像 / 学习社区 / 个人中心。
+  - 教师 5 个 Tab：工作台首页 / 我的场景·课程 / 我的课表 / 我的学生 / 个人中心。
+  - 学校管理员 5 个 Tab：工作台首页 / 资源运营 / 审批中心 / 教师学生情况 / 个人中心。
+  - 教师备课关联（prepAssociations）在本页持有，供「工作台首页」与「我的场景/课程」共享（对齐 React TeacherWorkspace）。
   - React 顶栏承担的角色切换在 Vue 门户顶栏尚未移植，这里在「当前角色」胶囊上提供下拉切换，
     保证多角色用户三套工作台都可达（写回同一 localStorage key）。
 -->
@@ -103,39 +106,41 @@
 
           <!-- ===== 教师 ===== -->
           <template v-else-if="currentRole === 'teacher'">
-            <DashboardTab
+            <TeacherDashboardTab
               v-if="activeTab === 'dashboard'"
-              :active-role-code="activeRole?.code"
+              :prep-associations="prepAssociations"
               @tab-change="goTab"
+              @associate="setPrepAssociation"
+            />
+            <TeacherCoursesTab
+              v-else-if="activeTab === 'courses'"
+              :prep-associations="prepAssociations"
+              @associate="setPrepAssociation"
             />
             <MyScheduleTab v-else-if="activeTab === 'schedule'" role="teacher" />
-            <ProfileTab
-              v-else-if="activeTab === 'profile'"
-              variant="teacher"
+            <TeacherPortraitsTab v-else-if="activeTab === 'portraits'" />
+            <TeacherProfileTab
+              v-else
               :user="user"
               :major="major"
               :org-node="orgNode"
-              :institution="institution"
             />
-            <PlaceholderTab v-else :title="activeTabLabel" role-name="教师" />
           </template>
 
           <!-- ===== 学校管理员 ===== -->
           <template v-else>
-            <DashboardTab
-              v-if="activeTab === 'dashboard'"
-              :active-role-code="activeRole?.code"
-              @tab-change="goTab"
-            />
+            <SchoolAdminOverviewTab v-if="activeTab === 'dashboard'" @tab-change="goTab" />
+            <SchoolAdminResourcesTab v-else-if="activeTab === 'resources'" />
+            <SchoolAdminApprovalsTab v-else-if="activeTab === 'approvals'" />
+            <SchoolAdminPersonnelTab v-else-if="activeTab === 'personnel'" />
             <ProfileTab
-              v-else-if="activeTab === 'profile'"
+              v-else
               variant="staff"
               :user="user"
               :major="major"
               :org-node="orgNode"
               :institution="institution"
             />
-            <PlaceholderTab v-else :title="activeTabLabel" role-name="学校管理员" />
           </template>
         </div>
       </div>
@@ -179,10 +184,18 @@ import AssessmentTab from './workspace/AssessmentTab.vue';
 import PortraitTab from './workspace/PortraitTab.vue';
 import CommunityTab from './workspace/CommunityTab.vue';
 import ProfileTab from './workspace/ProfileTab.vue';
+import TeacherDashboardTab from './workspace/TeacherDashboardTab.vue';
+import TeacherCoursesTab from './workspace/TeacherCoursesTab.vue';
+import TeacherPortraitsTab from './workspace/TeacherPortraitsTab.vue';
+import TeacherProfileTab from './workspace/TeacherProfileTab.vue';
+import SchoolAdminOverviewTab from './workspace/SchoolAdminOverviewTab.vue';
+import SchoolAdminResourcesTab from './workspace/SchoolAdminResourcesTab.vue';
+import SchoolAdminApprovalsTab from './workspace/SchoolAdminApprovalsTab.vue';
+import SchoolAdminPersonnelTab from './workspace/SchoolAdminPersonnelTab.vue';
 import GenericWorkspace from './workspace/GenericWorkspace.vue';
-import PlaceholderTab from './workspace/PlaceholderTab.vue';
 import { portalMeApi } from './workspace/workspace-api';
 import type { PortalInstitution } from './workspace/workspace-api';
+import type { PrepAssociationRecord } from './workspace/workspace-teacher-types';
 import { persistActiveRole, resolveActiveRole, todayLabel } from './workspace/workspace-utils';
 
 const route = useRoute();
@@ -294,9 +307,15 @@ const activeTab = computed(() => {
   return value && tabs.value.some((t) => t.id === value) ? String(value) : 'dashboard';
 });
 
-const activeTabLabel = computed(
-  () => tabs.value.find((t) => t.id === activeTab.value)?.label || '该模块'
-);
+/**
+ * 教师备课关联（节次/任务）在「工作台首页」与「我的场景/课程」两个 Tab 间共享，
+ * 与 React TeacherWorkspace 的 prepAssociations state 同层级（切 Tab 不丢）。
+ */
+const prepAssociations = ref<Record<string, PrepAssociationRecord>>({});
+
+function setPrepAssociation(sessionId: string, record: PrepAssociationRecord) {
+  prepAssociations.value = { ...prepAssociations.value, [sessionId]: record };
+}
 
 function goTab(id: string) {
   router.replace({ path: '/portal/workspace', query: { tab: id } });

@@ -65,6 +65,55 @@ export interface WorkspaceStats {
   value2: number;
 }
 
+/** 学校管理员：资源存量入口卡（icon 为后端下发的图标 key，href 为跳转路径） */
+export interface WorkspaceResourceStat {
+  label: string;
+  value: number;
+  icon?: string;
+  href?: string;
+}
+
+/** 学校管理员：人员概览（学生/教职工/企业导师/学校管理员计数） */
+export interface WorkspacePersonnelStat {
+  label: string;
+  value: number;
+}
+
+/** 学校管理员：资源增长趋势（按日聚合各资源新增数） */
+export interface WorkspaceResourceGrowth {
+  date: string;
+  courses: number;
+  scenarios: number;
+  careerPositions: number;
+  questionBanks: number;
+  exams: number;
+  examUsages: number;
+}
+
+/** 教师：开课计划（班级 × 课程/场景） */
+export interface WorkspaceClassPlan {
+  id: string;
+  name: string;
+  course: string;
+  term: string;
+  students: number;
+  teacher: string;
+  status: 'pending' | 'active';
+  scenarioId?: string;
+  courseId?: string;
+}
+
+/** 教师：开课计划下的节次（周次/星期/节次/场地） */
+export interface WorkspaceClassSession {
+  id: string;
+  courseId: string;
+  venue: string;
+  week: number;
+  weekday: string;
+  period: string;
+  status: 'pending' | 'associated';
+}
+
 export interface WorkspaceCourse {
   id: string;
   code: string;
@@ -122,10 +171,17 @@ export interface WorkspaceDashboard {
   todos: WorkspaceTodo[];
   schedule: WorkspaceScheduleEvent[];
   stats?: WorkspaceStats;
+  /** 学校管理员专属聚合（其余角色后端不下发） */
+  resourceStats?: WorkspaceResourceStat[];
+  personnelStats?: WorkspacePersonnelStat[];
+  resourceGrowth?: WorkspaceResourceGrowth[];
   courses: WorkspaceCourse[];
   sceneTasks: WorkspaceSceneTask[];
   exams: WorkspaceExam[];
   learningPath: WorkspaceLearningPath[];
+  /** 教师专属聚合（学生角色后端不下发） */
+  classPlans?: WorkspaceClassPlan[];
+  classSessions?: WorkspaceClassSession[];
 }
 
 /* ==================== 学生荣誉 ==================== */
