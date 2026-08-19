@@ -1,8 +1,10 @@
 # Vue 业务门户（Java 配套）规格文档 — 知与 SaaS
 
-> 状态：实施完成（2026-08-18）：Phase 0 基建 + 部署接线完成，Vue 门户上线于 java-nginx `http://<host>:8083/java/portal/`，`/java/portal` 301 收敛到 Vue。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/AI/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ AI（广场/智能体/知识库/对话/内容管理/审核/外部服务）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**Java 部署 100% Vue**（deploy-java.sh 不再构建 Next.js，java-edu 容器与 Dockerfile 已移除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
+> 状态：实施完成（2026-08-18）：Phase 0 基建 + 部署接线完成，Vue 门户上线于 java-nginx `http://<host>:8083/java/portal/`，`/java/portal` 301 收敛到 Vue。（**入口现状（2026-08-19 更新）**：已收编到边缘 nginx 80 统一入口 `/java/portal/`，`VITE_API_BASE=/java/api/v1`；8083 保留为调试/健康检查直连通道，详见 §8.1。）**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/AI/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ AI（广场/智能体/知识库/对话/内容管理/审核/外部服务）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**Java 部署 100% Vue**（deploy-java.sh 不再构建 Next.js，java-edu 容器与 Dockerfile 已移除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
 > 状态（2026-08-19）：**启动「Vue 门户与 React 基线功能对齐」**。`frontend/edu` 已由 Next.js 迁移为 React SPA（见 `docs/decisions/0009`）并持续演进，Vue 门户停留在迁移时快照，两侧差距随时间扩大。经逐路由对比（`docs/前端对齐差异表.md`）：React ~139 页面路由 vs Vue 89 条，**React 有而 Vue 缺失 ~128 页**（portal 域 76 页为主：alliance 43 + apps/ai 15 + apps/system 17 + login 1），另有 46 条 Vue 特有路由待分类。用户决策：仅对齐 portal-vue 业务门户（不含 superadmin/changelog/plus-ui）、视觉沿用 Element Plus（功能与交互以 React 为唯一基准）、按 React 路由顺序推进。详见 §11。
 > 状态（2026-08-19 完成）：**对齐实施完成**。M1-M8 全部模块翻译/核对完成，M9 特有页分类落地，M10 验收通过：路由差距清零（React 174 vs Vue 226，缺失仅 changelog 已按决策排除）、`pnpm typecheck` + `vite build` 通过、`spec-check.sh` 12 项硬约束全部通过。共 16 个 commit、~93,000 行新增（分支 feat/portal-vue-react-alignment）。详见 §11 与 `docs/前端对齐差异表.md`。
+> **阅读约定**：本文档记录一次已完成的迁移专项，§1–§7 多为**迁移执行期的背景与过程叙述**（其中提到的 Next.js / java-edu / 渐进切换均为历史状态，现已不存在）；**当前形态以状态头与 §8「部署与验证」为准**。
+>
 > 范围：仅把 **Java 后端配套的业务门户前端**从 Next.js 迁移到 Vue 3.5 / TypeScript / Vite；**Go 后端 + Next.js 前端（`backend/go`、`frontend/edu`、`frontend/packages`、Go 部署路径）一律不改**，作为生产基线持续运行。
 
 ## 1. 背景与目标
@@ -17,12 +19,12 @@
 
 1. 新建独立 Vue 业务门户应用（暂定 `frontend/portal-vue`），与 plus-ui 管理端并存，均对接 Java 后端。
 2. **复用**：Java 后端（零改动）、plus-ui 工程骨架（构建/依赖/权限/请求封装）、`frontend/packages/shared-types`（TS 类型直接移植）。
-3. **增量迁移**：按业务域逐域翻译，双栈并行、按域渐进切换，任何时刻 Go + Next.js 生产不受影响。
+3. **增量迁移**：按业务域逐域翻译，双栈并行、按域渐进切换，任何时刻 Go 侧生产不受影响。
 4. 明确边界：**不触碰** Go 后端与 Next.js 前端任何文件。
 
 ### 1.3 成功指标
 - 每个已迁移域：核心页面（列表/详情/增删改/审批/导入导出）在 Vue 端可用，接口返回与 Go/Java 契约一致，权限/租户隔离行为等价。
-- 迁移全程 `frontend/edu`（Next.js）与 `backend/go` 无任何 diff；生产（Go + Next.js）健康检查持续通过。
+- 迁移全程 `frontend/edu` 与 `backend/go` 无任何 diff；Go 侧生产健康检查持续通过。（迁移执行期 `frontend/edu` 尚为 Next.js，其后已独立迁为 React SPA，见 ADR-0009。）
 - 最终：Java 具备「Vue 业务门户 + Vue 管理端」双前端，不再依赖 Next.js 构建产物。
 
 ## 2. 平台级架构决策
@@ -159,7 +161,7 @@
 ### 8.3 验收标准（DoD 对齐 `spec-standards.md` §四）
 1. 每域核心链路（列表/详情/写操作 + 权限 + 租户隔离）在 Vue 端可用，行为与 Java 契约一致。
 2. `frontend/edu`、`backend/go`、`frontend/packages` 全程零 diff（`git diff` 无改动）。
-3. Go + Next.js 生产健康检查持续通过（`docker compose ps` 全 healthy、`/health` ok）。
+3. Go 侧生产健康检查持续通过（`docker compose -f deploy/docker-compose.yml ps` 全 healthy、`/health` ok）。
 4. 本 spec §3.2 模板在试点域后回填为可复用标准。
 5. 涉及跨角色/跨页面端到端链路的域，在 `06-acceptance-flows.md` 补对应 flow（复用 Java 侧链路）。
 
@@ -179,7 +181,7 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 
 ## 10. 扩展性预留（明确「暂不做」）
 
-- **不重写、不切换 Go + Next.js**：Go 生产基线保持不动；Java 的 Vue 门户与其并行共存。
+- **不重写、不切换 Go 侧前端**：Go 生产基线保持不动；Java 的 Vue 门户与其并行共存。
 - **不把业务门户塞进 plus-ui 后台布局**：portal-vue 独立成前台风格应用。
 - **不新增/变更后端接口**：迁移只消费现有 Java 端点；发现缺口另立任务。
 - **不做统一登录/SSO 改造**：沿用现有 token 隔离（`-java` 后缀）与 Sa-Token 会话。

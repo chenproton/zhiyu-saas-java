@@ -43,7 +43,7 @@ pnpm typecheck && pnpm lint && pnpm test                      # 前端
 ```
 
 - 优先调用 `spec_check` 工具获得结构化结果（violations 阻断级 / hints 提示级），失败项必须修复后再提交。
-- `spec_check.sh` 覆盖：分层红线（handler 无 SQL/db 调用、service 无拼 SQL、store 不读 HTTP/Claims）、AI 底座（handler/service 不绕过 AIService）、migration 配对、spec 五层制品、ADR 索引双向、ADR-0003 关键写租户条件、schema↔migrations 编号、表数、机器码词汇表；提示级：down 不可逆标注、XSS、路由↔契约、spec 随代码变更。
+- `spec_check.sh` 共 12 项 —— **阻断级 1–9**：①分层红线（handler 无 SQL/db 调用、service 无拼 SQL、store 不读 HTTP/Claims）②AI 底座（不绕过 AIService）③migration 配对 ④spec 五层制品 ⑤ADR 索引双向 ⑥安全红线（ADR-0003 关键写租户条件）⑦schema↔migrations 编号 ⑧表数机械校验 ⑨机器码词汇表；**提示级 10–12**：⑩路由↔契约覆盖 ⑪spec↔代码耦合（含 `docs/系统功能清单.md`）⑫验收流程一致性；另含 down 不可逆标注、XSS 清单（均提示级，不阻断）。三份文档（AGENTS.md 4.2 / spec-standards §九 / 本节）口径必须一致。
 - 功能类 commit message 引用 spec 文件名/章节（如「见 docs/spec/02-api-contract.md §2」）；纯重构/纯修复加 `spec:nochange` 声明豁免。
 
 ## 4. DoD 验收清单（全部满足才算完成）
