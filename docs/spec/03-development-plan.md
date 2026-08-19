@@ -181,7 +181,15 @@
 
 密钥另有三条硬约束：`.env` 权限 600（含构建树内副本）、口令不进进程 argv（psql 走 `PGPASSWORD`）、部署输出与日志不回显任何口令。
 
-### 5.3 质量门禁
+### 5.3 备份与恢复（已实测）
+
+- 备份：每次部署迁移前全库 `pg_dump` 到 `/opt/zhiyu-saas/backups`（目录 700 / 文件 600，保留最近 7 份，约 11MB/份）。
+- 恢复：**一律用容器内 psql**（`docker exec -i zhiyu-postgres psql ...`），客户端与 dump 同源；
+  pg_dump 15.18+ 输出 `\restrict/\unrestrict` 元命令，宿主旧版 psql（<15.14 / <16.10）会报 `invalid command \restrict`。
+- 恢复演练（2026-08-19 实测）：最新备份恢复到临时库 `restore_drill` 成功，191 张表 / 42 租户 / 93 条 `schema_migrations`，与生产一致；宿主 psql 16.14 亦可恢复。
+- 约定：覆盖生产前必须先恢复到临时库比对表数与关键表行数。
+
+### 5.4 质量门禁
 
 CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format、后端 gofmt/vet/build/test + `spec-check.sh`、**shell（`bash -n` 全量 + shellcheck）**。`deploy.sh --gates` 可在部署前本地复跑前后端门禁（默认跳过，CI 已覆盖）。
 

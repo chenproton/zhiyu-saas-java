@@ -979,7 +979,12 @@ rollback_deploy() {
   # 迁移环节失败时数据库可能处于中间状态（仅 psql 兜底部分应用场景），提示人工恢复路径
   if [[ -s "${BACKUP_FILE:-}" ]]; then
     # 不打印 MIGRATE_URL：内含 DB 口令，会落到部署日志/CI/会话记录
-    warn "如需恢复数据库: PGPASSWORD=<见 $ENV_FILE 的 DATABASE_URL> psql -h 127.0.0.1 -p ${POSTGRES_HOST_PORT:-5433} -U ${DB_USER} -d ${DB_NAME} -f \"$BACKUP_FILE\"（请先人工确认库状态）"
+    # 恢复一律走容器内 psql：客户端版本与 dump/服务端同源。
+    # pg_dump 15.18+ 会输出 \restrict/\unrestrict 元命令，宿主上若是旧版 psql（<15.14/16.10）会直接报
+    # "invalid command \restrict"。已实测：容器内 psql 与宿主 psql 16.14 都能恢复（191 表/42 租户）。
+    warn "如需恢复数据库（先人工确认库状态，建议先恢复到临时库演练）："
+    warn "  docker exec -i zhiyu-postgres psql -U ${DB_USER} -d ${DB_NAME} -v ON_ERROR_STOP=1 < \"$BACKUP_FILE\""
+    warn "  演练：CREATE DATABASE restore_drill; 恢复到该库后比对表数/关键表行数，再决定是否覆盖生产"
   fi
   die "部署失败，已回滚到旧镜像"
 }
