@@ -669,7 +669,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             if (raw == null) {
                 continue;
             }
-            if (isCorrect(q.type, q.answer, raw)) {
+            if (isCorrect(q.type, q.answer, q.options, raw)) {
                 score = score.add(q.score);
             }
         }
@@ -735,7 +735,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             if (raw == null) {
                 continue;
             }
-            if (isCorrect(q.type, q.answer, raw)) {
+            if (isCorrect(q.type, q.answer, q.options, raw)) {
                 objective = objective.add(q.score);
             }
         }
@@ -1134,12 +1134,14 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         String id;
         String type;
         List<String> answer;
+        List<String> options;
         BigDecimal score;
 
-        GradingQuestion(String id, String type, List<String> answer, BigDecimal score) {
+        GradingQuestion(String id, String type, List<String> answer, List<String> options, BigDecimal score) {
             this.id = id;
             this.type = type;
             this.answer = answer;
+            this.options = options;
             this.score = score;
         }
     }
@@ -1170,7 +1172,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         List<Map<String, Object>> rows = examResultMapper.fetchExamQuestions(examId);
         for (Map<String, Object> row : rows) {
             questions.add(new GradingQuestion(str(row.get("id")), str(row.get("type")),
-                parseAnswer(str(row.get("answer"))), decOrNull(row.get("score"))));
+                parseAnswer(str(row.get("answer"))), parseStringList(str(row.get("options"))),
+                decOrNull(row.get("score"))));
         }
         BigDecimal total = examResultMapper.liveExamTotalScore(examId);
         return new GradingData(questions, total);
@@ -1193,8 +1196,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
                 String id = str(m.get("id"));
                 String type = str(m.get("type"));
                 List<String> answer = parseSnapshotAnswer(m.get("answer"));
+                List<String> options = parseSnapshotOptions(m.get("options"));
                 BigDecimal score = m.get("score") instanceof Number n ? new BigDecimal(n.toString()) : BigDecimal.ZERO;
-                questions.add(new GradingQuestion(id, type, answer, score));
+                questions.add(new GradingQuestion(id, type, answer, options, score));
             }
         }
         if (total.signum() == 0) {
@@ -1225,21 +1229,43 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         return new ArrayList<>();
     }
 
-    /** 客观题判分（对齐 Go isCorrect：单选/判断字符串匹配；多选多重集合相等） */
-    private boolean isCorrect(String qType, List<String> correct, Object raw) {
-        if ("single".equals(qType) || "judge".equals(qType)) {
+    /** 快照内题目选项：JSON 字符串字面量（to_jsonb 后）或 JSON 数组 */
+    private List<String> parseSnapshotOptions(Object raw) {
+        if (raw instanceof List<?> list) {
+            List<String> out = new ArrayList<>();
+            for (Object x : list) {
+                out.add(String.valueOf(x));
+            }
+            return out;
+        }
+        if (raw instanceof String s) {
+            try {
+                List<String> v = MAPPER.readValue(s, STRING_LIST_REF);
+                return v == null ? new ArrayList<>() : v;
+            } catch (Exception e) {
+                return new ArrayList<>();
+            }
+        }
+        return new ArrayList<>();
+    }
+
+    /** 客观题判分（对齐 Go isCorrect：判断归一化双向互认；单选/多选字母选项映射为文字） */
+    private boolean isCorrect(String qType, List<String> correct, List<String> options, Object raw) {
+        if ("judge".equals(qType)) {
             if (correct == null || correct.isEmpty()) {
                 return false;
             }
-            String s = String.valueOf(raw == null ? "" : raw).trim();
-            String c = correct.get(0);
-            if (s.equalsIgnoreCase(c)) {
-                return true;
+            Boolean s = normalizeJudge(raw == null ? "" : String.valueOf(raw));
+            Boolean c = normalizeJudge(correct.get(0));
+            return s != null && c != null && s.equals(c);
+        }
+        if ("single".equals(qType)) {
+            if (correct == null || correct.isEmpty()) {
+                return false;
             }
-            if (("正确".equals(s) && c.equalsIgnoreCase("true")) || ("错误".equals(s) && c.equalsIgnoreCase("false"))) {
-                return true;
-            }
-            return false;
+            String s = mapAnswerOption(String.valueOf(raw == null ? "" : raw).trim(), options);
+            String c = mapAnswerOption(correct.get(0).trim(), options);
+            return s.equalsIgnoreCase(c);
         }
         if ("multiple".equals(qType)) {
             List<String> given = new ArrayList<>();
@@ -1253,9 +1279,10 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             }
             Map<String, Integer> m = new LinkedHashMap<>();
             for (String c : correct) {
-                m.merge(c, 1, Integer::sum);
+                m.merge(mapAnswerOption(c.trim(), options), 1, Integer::sum);
             }
             for (String g : given) {
+                g = mapAnswerOption(g.trim(), options);
                 Integer cnt = m.get(g);
                 if (cnt == null || cnt == 0) {
                     return false;
@@ -1265,6 +1292,31 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             return true;
         }
         return false;
+    }
+
+    /** 判断题答案归一：兼容 正确/错误/对/错/T/F/true/false/1/0/是/否；无法识别返回 null */
+    private Boolean normalizeJudge(String v) {
+        switch (v.trim().toLowerCase()) {
+            case "正确", "对", "t", "true", "1", "是":
+                return Boolean.TRUE;
+            case "错误", "错", "f", "false", "0", "否":
+                return Boolean.FALSE;
+            default:
+                return null;
+        }
+    }
+
+    /** 单字母选项（A-H）映射为选项文字；非字母或超范围原样返回 */
+    private String mapAnswerOption(String v, List<String> options) {
+        if (v.length() != 1 || options == null || options.isEmpty()) {
+            return v;
+        }
+        char c = v.charAt(0);
+        int idx = (c >= 'A' && c <= 'H') ? (c - 'A') : (c >= 'a' && c <= 'h') ? (c - 'a') : -1;
+        if (idx >= 0 && idx < options.size() && options.get(idx) != null && !options.get(idx).isEmpty()) {
+            return options.get(idx);
+        }
+        return v;
     }
 
     static BigDecimal roundScore(BigDecimal s) {

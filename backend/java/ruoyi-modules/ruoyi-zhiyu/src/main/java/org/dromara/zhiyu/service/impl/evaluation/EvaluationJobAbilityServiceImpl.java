@@ -406,6 +406,7 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
         BigDecimal cognitionSum = BigDecimal.ZERO;
         BigDecimal cognitionWeight = BigDecimal.ZERO;
         BigDecimal competencySum = BigDecimal.ZERO;
+        BigDecimal competencyWeight = BigDecimal.ZERO;
         BigDecimal v2WeightedSum = BigDecimal.ZERO;
         BigDecimal v2WeightSum = BigDecimal.ZERO;
         int achieved = 0;
@@ -438,12 +439,15 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
                 v2WeightedSum = v2WeightedSum.add(compV2.multiply(p.weight));
                 v2WeightSum = v2WeightSum.add(p.weight);
             }
-            // 认知得分/胜任度：全部权重>0 的点参与（无效点按 0 分计入）
+            // 认知得分：全部权重>0 的点参与（无效点按 0 分计入）。
+            // 胜任度（比值法）：分母仅统计「有门槛（need>0）」的能力点权重，
+            // 「了解」(need=0) 的点不参与胜任度（不稀释），与回退 computeAbilityIndicators 口径一致。
             if (p.weight.signum() > 0) {
                 cognitionSum = cognitionSum.add(pointScore.multiply(p.weight));
                 cognitionWeight = cognitionWeight.add(p.weight);
                 BigDecimal need = pointCompetencyNeed(p.levels, p.requiredLevel);
                 if (need.signum() > 0) {
+                    competencyWeight = competencyWeight.add(p.weight);
                     BigDecimal c = pointScore.subtract(need).divide(need, 10, RoundingMode.HALF_UP);
                     if (c.signum() > 0) {
                         competencySum = competencySum.add(c.multiply(p.weight));
@@ -491,7 +495,9 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
         BigDecimal competency = BigDecimal.ZERO;
         if (cognitionWeight.signum() > 0) {
             cognition = round2(cognitionSum.divide(cognitionWeight, 6, RoundingMode.HALF_UP));
-            competency = competencySum.divide(cognitionWeight, 6, RoundingMode.HALF_UP)
+        }
+        if (competencyWeight.signum() > 0) {
+            competency = competencySum.divide(competencyWeight, 6, RoundingMode.HALF_UP)
                 .multiply(new BigDecimal("100")).setScale(2, RoundingMode.HALF_UP);
         }
         BigDecimal competencyV2 = BigDecimal.ZERO;
@@ -543,9 +549,11 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
 
     // ==================== 指标回退计算 ====================
 
-    /** 由能力点明细计算岗位胜任度（%）与能力认知得分（0-100）；对齐 Go computeAbilityIndicators */
+    /** 由能力点明细计算岗位胜任度（%）与能力认知得分（0-100）；对齐 Go computeAbilityIndicators。
+     *  胜任度分母仅统计「有门槛（need>0）」的能力点权重，「了解」(need=0) 的点不稀释胜任度。 */
     private double[] computeAbilityIndicators(List<Object> details) {
         BigDecimal weightSum = BigDecimal.ZERO;
+        BigDecimal competencyWeightSum = BigDecimal.ZERO;
         BigDecimal competency = BigDecimal.ZERO;
         BigDecimal cognition = BigDecimal.ZERO;
         for (Object raw : details) {
@@ -561,6 +569,7 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
             weightSum = weightSum.add(weight);
             BigDecimal need = NEED_SCORE_BY_LEVEL.getOrDefault(requiredLevel, BigDecimal.ZERO);
             if (need.signum() > 0) {
+                competencyWeightSum = competencyWeightSum.add(weight);
                 BigDecimal c = score.subtract(need).divide(need, 10, RoundingMode.HALF_UP);
                 if (c.signum() < 0) {
                     c = BigDecimal.ZERO;
@@ -572,8 +581,11 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
         if (weightSum.signum() <= 0) {
             return new double[]{0, 0};
         }
-        double comp = competency.divide(weightSum, 10, RoundingMode.HALF_UP).doubleValue() * 100;
         double cog = cognition.divide(weightSum, 10, RoundingMode.HALF_UP).doubleValue();
+        if (competencyWeightSum.signum() <= 0) {
+            return new double[]{0, cog};
+        }
+        double comp = competency.divide(competencyWeightSum, 10, RoundingMode.HALF_UP).doubleValue() * 100;
         return new double[]{comp, cog};
     }
 

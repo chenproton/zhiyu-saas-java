@@ -168,8 +168,8 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
                            @Param("objectiveAnswers") String objectiveAnswers, @Param("status") String status,
                            @Param("methodKey") String methodKey);
 
-    /** 考试题目答案与分数（判分数据，按 sort_order） */
-    @Select("SELECT id::text AS id, type, answer, score FROM exam_questions"
+    /** 考试题目答案、选项与分数（判分数据，按 sort_order；选项用于字母答案归一化判分） */
+    @Select("SELECT id::text AS id, type, answer, score, COALESCE(options, '[]') AS options FROM exam_questions"
         + " WHERE exam_id = #{examId}::uuid ORDER BY sort_order")
     java.util.List<java.util.Map<String, Object>> fetchExamQuestions(@Param("examId") String examId);
 }
