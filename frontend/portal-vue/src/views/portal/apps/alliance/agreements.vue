@@ -5,10 +5,13 @@
         <h1 class="page-title">合作协议管理</h1>
         <p class="page-sub">管理校企合作协议的独立记录</p>
       </div>
-      <el-button type="primary" @click="router.push('/portal/apps/alliance/agreements/new')">
-        <el-icon><Plus /></el-icon>
-        新建协议
-      </el-button>
+      <div>
+        <el-button style="margin-right: 8px" @click="importDialog = true">批量导入</el-button>
+        <el-button type="primary" @click="router.push('/portal/apps/alliance/agreements/new')">
+          <el-icon><Plus /></el-icon>
+          新建协议
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="never">
@@ -44,6 +47,11 @@
             <span v-if="isExpiring(row.endDate)" class="expiring-hint">（即将到期）</span>
           </template>
         </el-table-column>
+        <el-table-column label="前台展示" width="100">
+          <template #default="{ row }">
+            <el-switch :model-value="row.isPublic || false" @change="togglePublic(row)" />
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="router.push(`/portal/apps/alliance/agreements/${row.id}`)">查看</el-button>
@@ -63,6 +71,11 @@
         @current-change="loadItems"
       />
     </el-card>
+
+    <!-- 批量导入（对齐 React importConfig：alliance-agreements，走 Java 泛化导入 /import/{entity}/excel） -->
+    <el-dialog v-model="importDialog" title="批量导入合作协议" width="560px">
+      <ImportExport entity="alliance-agreements" :on-imported="loadItems" />
+    </el-dialog>
   </div>
 </template>
 
@@ -72,6 +85,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
+import ImportExport from '@/components/ImportExport.vue';
 import {
   allianceAgreementApi,
   listAllEnterprises,
@@ -92,6 +106,7 @@ const search = ref('');
 const page = ref(1);
 const pageSize = 20;
 const total = ref(0);
+const importDialog = ref(false);
 const enterprises = ref<AllianceEnterprise[]>([]);
 const projects = ref<AllianceProject[]>([]);
 
@@ -145,6 +160,17 @@ async function loadItems() {
 function onSearch() {
   page.value = 1;
   loadItems();
+}
+
+async function togglePublic(row: AllianceAgreement) {
+  const next = !row.isPublic;
+  try {
+    await allianceAgreementApi.update(row.id, { ...row, isPublic: next });
+    row.isPublic = next;
+    ElMessage.success(next ? '已开启前台展示' : '已取消前台展示');
+  } catch (e) {
+    ElMessage.error((e as Error).message || '操作失败');
+  }
 }
 
 async function confirmDelete(row: AllianceAgreement) {

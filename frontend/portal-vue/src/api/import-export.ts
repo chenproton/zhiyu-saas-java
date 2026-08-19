@@ -132,6 +132,8 @@ export const importExportApi = {
     }
     return res.json();
   },
+  /** 导入模板下载（GET /templates/{entity}，Java 泛化模板端点，返回 xlsx 附件） */
+  downloadTemplate: (entity: string): Promise<Response> => authedFetch(`/templates/${entity}`),
   /** 题目批量导入模板下载（GET /templates/question-banks/{bankId}/questions） */
   downloadQuestionTemplate: (bankId: string): Promise<Response> =>
     authedFetch(`/templates/question-banks/${bankId}/questions`),

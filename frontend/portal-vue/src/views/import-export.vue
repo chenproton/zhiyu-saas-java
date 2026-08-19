@@ -36,7 +36,10 @@ const ENTITIES = [
   { key: 'organizations', label: '组织' },
   { key: 'students', label: '学生' },
   { key: 'teachers', label: '教师' },
-  { key: 'affairs-config', label: '教务配置（场地与节次）' }
+  { key: 'affairs-config', label: '教务配置（场地与节次）' },
+  { key: 'alliance-projects', label: '合作项目' },
+  { key: 'alliance-achievements', label: '合作成果' },
+  { key: 'alliance-agreements', label: '合作协议' }
 ];
 
 const entity = ref('positions');
