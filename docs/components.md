@@ -155,7 +155,7 @@
 | `useAsync` | 异步请求统一状态（loading/error/data + 竞态序号 + 失败 toast）；**新页面数据加载一律用它**（或 `useLibraryCrud` 类业务 hook），存量手写样板不再刻意追平 |
 | `useDebouncedValue` | 输入防抖（默认 300ms），替代手写 `setTimeout + clearTimeout` 样板 |
 | `useClickOutside` | 点击容器外部关闭（mousedown + contains），替代手写事件监听样板 |
-| `useUnsavedChangesGuard` | 弹窗未保存内容守卫（`DialogContent` 内部使用，检测逻辑在 `packages/ui/src/lib/unsaved-changes.ts`）；页面级不用直接调，改用 `<DialogContent unsavedGuard>` |
+| `useUnsavedChangesGuard` | 弹窗未保存内容守卫，**内部实现、未从 `@zhiyu/ui` 导出**（`DialogContent` 直接引用，检测逻辑在 `packages/ui/src/lib/unsaved-changes.ts`）；页面侧只用 `<DialogContent unsavedGuard>` |
 
 ## DataProvider（评测数据上下文）
 
@@ -260,5 +260,6 @@
 11. **弹窗底部按钮**：表单弹窗底部一律 `<FormDialogFooter>`，禁止手写「取消 + 保存」DialogFooter 样板；按钮 loading 用 Button 的 `loading` prop
 12. **数据加载规范**：新页面一律 `useAsync`（或业务 hook），禁止手写 `const [loading, setLoading] = useState` + try/catch/finally 首载样板；存量 84 处手写样板按模块顺手迁移，不安排一次性重构
 13. **域类型单一来源**：域类型以 `frontend/edu/lib/types/*.ts` 为主源（与后端对齐）；`job-source.ts`/`lesson-source.ts` 为历史遗留双份定义，新代码禁止引用，引用处按模块逐个收敛后删除（专项治理，见 `docs/forms-tables.md` 复用评估结论）
-14. **弹窗防误关**：`<DialogContent>` 默认（`unsavedGuard="auto"`）守卫「遮罩点击 / ESC / 右上角 X」三条关闭路径——表单被用户改动过才弹二次确认「确认离开？未保存内容将丢失」，空表单/未改动直接关闭。纯展示弹窗、弹窗内即时保存、勾选即时同步父级表单的选择器弹窗（`resource-selector`「添加课程资源」、`co-build-collaborator-picker`）显式传 `unsavedGuard={false}`；画布类自定义编辑器（DOM 检测不到）传 `unsavedGuard={true}`；弹窗内的筛选类输入加 `data-unsaved-ignore` 排除（`SearchInput`/`CommandInput` 已默认排除）。规范见 `docs/spec/05-prototype-interaction.md` §3.2
-15. **useToast 模块级单例**：`frontend/packages/ui/src/hooks/use-toast.ts` 采用 shadcn 标准模块级单例模式（`memoryState`/`listeners`/`count`），为刻意保留；若日后需要多实例独立 toast 状态再评估改 React Context
+14. **弹窗防误关**：`<DialogContent>` 默认（`unsavedGuard="auto"`）守卫「遮罩点击 / ESC / 右上角 X」三条关闭路径——表单被用户改动过才弹二次确认「确认离开？未保存内容将丢失」，空表单/未改动直接关闭。纯展示弹窗、弹窗内即时保存（`superadmin` 企业租户详情）、勾选即时同步父级表单的选择器弹窗（`resource-selector`「添加课程资源」、`co-build-collaborator-picker`）显式传 `unsavedGuard={false}`；iframe/canvas 类自定义编辑器（DOM 检测不到）传 `unsavedGuard={true}`；弹窗内的筛选类输入加 `data-unsaved-ignore` 排除（`SearchInput`/`CommandInput` 已默认排除）；自绘勾选行加 `role="checkbox" aria-checked` 才能被识别。判定为逐字段比对（结构变化不算改动），规范见 `docs/spec/05-prototype-interaction.md` §3.2
+15. **`packages/ui` 文案例外**：`packages/ui` 无 i18n 通道（无 `useI18n`），`ConfirmDialog` 默认按钮文案与弹窗未保存确认文案（`dialog.tsx`）为中文硬编码，属既有例外；需要多语言时由消费方传入文案或后续为 packages/ui 建 i18n 通道
+16. **useToast 模块级单例**：`frontend/packages/ui/src/hooks/use-toast.ts` 采用 shadcn 标准模块级单例模式（`memoryState`/`listeners`/`count`），为刻意保留；若日后需要多实例独立 toast 状态再评估改 React Context

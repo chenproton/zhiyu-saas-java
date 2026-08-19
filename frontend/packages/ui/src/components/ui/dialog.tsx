@@ -6,6 +6,7 @@ import * as DismissableLayerPrimitive from '@radix-ui/react-dismissable-layer'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { shouldBlockClose } from '../../lib/unsaved-changes'
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard'
 import { ConfirmDialog } from '../shared/confirm-dialog'
 
@@ -85,11 +86,10 @@ function DialogContent({
 
   /** 拦截关闭：有未保存内容时弹二次确认，返回 true 表示本次关闭已被拦截 */
   const blockClose = React.useCallback(() => {
-    if (!guardEnabled) return false
-    if (unsavedGuard !== true && !hasUnsavedChanges()) return false
+    if (!shouldBlockClose(unsavedGuard, hasUnsavedChanges)) return false
     setConfirmOpen(true)
     return true
-  }, [guardEnabled, unsavedGuard, hasUnsavedChanges])
+  }, [unsavedGuard, hasUnsavedChanges])
 
   /** 用户确认放弃：先让确认框退场，下一帧再关外层弹窗（避免嵌套 modal 同帧卸载） */
   const confirmDiscard = React.useCallback(() => {
@@ -139,9 +139,10 @@ function DialogContent({
             requestAnimationFrame(focusFirstFocusable)
           }
         }}
-        onPointerDownOutside={(e) => {
-          // 先跑消费方处理器：已 preventDefault（如全屏编辑器禁止点外部关闭）则不再介入
-          props.onPointerDownOutside?.(e)
+        onInteractOutside={(e) => {
+          // Radix 顺序为 onPointerDownOutside/onFocusOutside → onInteractOutside → onDismiss；
+          // 挂在最后一环才能尊重消费方（以及 Radix 自身的右键判定）已 preventDefault 的关闭
+          props.onInteractOutside?.(e)
           if (e.defaultPrevented) return
           if (blockClose()) e.preventDefault()
         }}

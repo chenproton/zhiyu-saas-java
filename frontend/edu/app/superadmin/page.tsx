@@ -1595,9 +1595,9 @@ export default function SuperAdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 企业租户查看：租户信息 + 企业主体信息 */}
+      {/* 企业租户查看：租户信息 + 企业主体信息（只读详情 + 展示开关即时落库 → 无需未保存守卫） */}
       <Dialog open={viewTarget !== null} onOpenChange={(open) => !open && setViewTarget(null)}>
-        <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
+        <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto" unsavedGuard={false}>
           <DialogHeader>
             <DialogTitle>{t('企业租户详情')}</DialogTitle>
             <DialogDescription>

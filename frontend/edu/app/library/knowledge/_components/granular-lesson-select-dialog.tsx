@@ -90,6 +90,9 @@ export function GranularLessonSelectDialog({
                 return (
                   <div
                     key={gl.id}
+                    // role/aria-checked：自绘勾选行需声明语义，弹窗未保存守卫与读屏器都依赖它
+                    role="checkbox"
+                    aria-checked={isSelected}
                     className={cn(
                       'p-3 rounded-lg border cursor-pointer transition-all',
                       isSelected

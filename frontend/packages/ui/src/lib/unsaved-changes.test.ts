@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 
-import { createUnsavedChangesTracker, serializeFormState } from './unsaved-changes'
+import {
+  collectFieldValues,
+  createUnsavedChangesTracker,
+  shouldBlockClose,
+} from './unsaved-changes'
 
 /** 构造一个挂在 document 上的容器（tracker 依赖真实事件传播） */
 function mount(html: string): HTMLDivElement {
@@ -17,18 +21,22 @@ function typeInto(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-describe('serializeFormState', () => {
-  it('收集输入框/勾选框/下拉的当前值', () => {
+/** 模拟用户在弹窗内点一下（抓干净基线，值变化发生在 pointerdown 之后） */
+function pointerDown(el: Element) {
+  el.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+}
+
+describe('collectFieldValues', () => {
+  it('收集输入框/勾选框/下拉/滑块的当前值', () => {
     const root = mount(`
       <input value="张三" />
       <input type="checkbox" checked />
       <textarea>备注</textarea>
       <button role="combobox">已选：语文</button>
+      <span role="slider" aria-valuenow="30"></span>
     `)
-    const snapshot = serializeFormState(root)
-    expect(snapshot).toContain('张三')
-    expect(snapshot).toContain('备注')
-    expect(snapshot).toContain('已选：语文')
+    const values = [...collectFieldValues(root).values()]
+    expect(values).toEqual(['张三', '1', '备注', '已选：语文', '30'])
   })
 
   it('忽略搜索框、cmdk 搜索输入、hidden 与显式标记忽略的控件', () => {
@@ -38,7 +46,7 @@ describe('serializeFormState', () => {
       <input type="hidden" value="隐藏值" />
       <div data-unsaved-ignore><input value="过滤条件" /></div>
     `)
-    expect(serializeFormState(root)).toBe('')
+    expect(collectFieldValues(root).size).toBe(0)
   })
 })
 
@@ -58,7 +66,7 @@ describe('createUnsavedChangesTracker', () => {
     input.value = '接口回填的名称'
     expect(tracker.hasUnsavedChanges()).toBe(false)
     // 用户点进来但什么都没改 → 仍可直接关闭
-    input.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    pointerDown(input)
     expect(tracker.hasUnsavedChanges()).toBe(false)
     tracker.dispose()
   })
@@ -84,12 +92,13 @@ describe('createUnsavedChangesTracker', () => {
 
   it('勾选框与 Radix 开关（aria-checked）改动可被识别', () => {
     const root = mount(`
-      <input type="checkbox" />
+      <label><input type="checkbox" /> 同意</label>
       <button role="switch" aria-checked="false"></button>
     `)
     const tracker = createUnsavedChangesTracker(root)
     const checkbox = root.querySelector('input') as HTMLInputElement
-    checkbox.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    // 点 label 文字触发勾选：pointerdown 在 label 上，基线仍是勾选前状态
+    pointerDown(root.querySelector('label') as HTMLElement)
     checkbox.checked = true
     checkbox.dispatchEvent(new Event('change', { bubbles: true }))
     expect(tracker.hasUnsavedChanges()).toBe(true)
@@ -102,14 +111,45 @@ describe('createUnsavedChangesTracker', () => {
     tracker.dispose()
   })
 
-  it('新增动态行（用户添加的一项）算未保存内容', () => {
-    const root = mount('<div class="rows"><input value="第一项" /></div>')
+  it('Radix 下拉（combobox 显示文案）改动可被识别', () => {
+    const root = mount('<button role="combobox">请选择</button>')
     const tracker = createUnsavedChangesTracker(root)
-    const addTarget = root.querySelector('input') as HTMLInputElement
-    addTarget.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    const added = document.createElement('input')
-    added.value = '第二项'
-    root.querySelector('.rows')?.appendChild(added)
+    const trigger = root.querySelector('[role="combobox"]') as HTMLElement
+    // 用户点触发器 → 抓基线；选项在 portal 中点选，只回写触发器文案
+    pointerDown(trigger)
+    trigger.textContent = '语文'
+    expect(tracker.hasUnsavedChanges()).toBe(true)
+    tracker.dispose()
+  })
+
+  it('搜索筛选导致列表条目减少 → 不算未保存内容', () => {
+    const root = mount(`
+      <input type="search" value="" />
+      <div class="rows">
+        <label><input type="checkbox" /> 甲</label>
+        <label><input type="checkbox" /> 乙</label>
+      </div>
+    `)
+    const tracker = createUnsavedChangesTracker(root)
+    const search = root.querySelector('input[type="search"]') as HTMLInputElement
+    typeInto(search, '甲')
+    // 列表按搜索词重渲染：乙被移除
+    const rows = root.querySelectorAll('.rows label')
+    rows[1].remove()
+    expect(tracker.hasUnsavedChanges()).toBe(false)
+    tracker.dispose()
+  })
+
+  it('切换 Tab 后新出现的字段（无基线）不算未保存内容', () => {
+    const root = mount('<div class="tab"><input value="第一页" /></div>')
+    const tracker = createUnsavedChangesTracker(root)
+    pointerDown(root.querySelector('input') as HTMLInputElement)
+    // 切 Tab：旧字段卸载、新字段挂载且带默认值
+    const tab = root.querySelector('.tab') as HTMLElement
+    tab.innerHTML = '<input value="第二页默认值" />'
+    expect(tracker.hasUnsavedChanges()).toBe(false)
+    // 但用户在新字段里输入后就算改动
+    typeInto(root.querySelector('input') as HTMLInputElement, '第二页改了')
     expect(tracker.hasUnsavedChanges()).toBe(true)
     tracker.dispose()
   })
@@ -120,5 +160,28 @@ describe('createUnsavedChangesTracker', () => {
     tracker.dispose()
     typeInto(root.querySelector('input') as HTMLInputElement, '关闭后输入')
     expect(tracker.hasUnsavedChanges()).toBe(false)
+  })
+})
+
+describe('shouldBlockClose', () => {
+  it('unsavedGuard=false 一律不拦', () => {
+    expect(shouldBlockClose(false, () => true)).toBe(false)
+    expect(shouldBlockClose(false, () => false)).toBe(false)
+  })
+
+  it('unsavedGuard=true 一律拦（不看自动检测）', () => {
+    let called = false
+    expect(
+      shouldBlockClose(true, () => {
+        called = true
+        return false
+      }),
+    ).toBe(true)
+    expect(called).toBe(false)
+  })
+
+  it("unsavedGuard='auto' 按自动检测结果决定", () => {
+    expect(shouldBlockClose('auto', () => true)).toBe(true)
+    expect(shouldBlockClose('auto', () => false)).toBe(false)
   })
 })

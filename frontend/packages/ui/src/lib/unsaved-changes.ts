@@ -2,14 +2,16 @@
  * 弹窗「未保存内容」检测：判断弹窗内的表单是否被用户改动过。
  *
  * 判定口径（见 docs/spec/05-prototype-interaction.md §3.2）：
- * - 以「用户首次交互前」的表单快照为干净基线，之后当前值与基线不同才算有未保存内容；
- * - 弹窗打开后异步回填的初始值不算改动（基线在首次交互时才抓取）；
- * - 改回原值等于没改（快照相同 → 可直接关闭）。
+ * - 以「用户首次交互前」的逐字段基线为准，某个字段的当前值与自己的基线不同才算有未保存内容；
+ * - 逐字段比对（不是整体快照串）：搜索筛选/切 Tab/异步重载列表带来的结构变化不算改动；
+ * - 基线增量补记：首次交互之后才挂载的字段（切 Tab、动态加行）在下一次交互事件时补记基线；
+ * - 弹窗打开后异步回填的初始值不算改动（基线在交互事件时才抓取）；
+ * - 改回原值等于没改（当前值与基线相同 → 可直接关闭）。
  *
- * 快照只存在内存 ref 中，禁止打日志/上报（可能含密码等输入值）。
+ * 基线只存在内存中，禁止打日志/上报（可能含密码等输入值）。
  */
 
-/** 参与快照的控件：原生表单控件 + contenteditable + Radix 勾选/开关/下拉触发器 */
+/** 参与比对的控件：原生表单控件 + contenteditable + Radix 勾选/开关/单选/下拉/滑块 */
 const FIELD_SELECTOR = [
   'input',
   'textarea',
@@ -20,6 +22,7 @@ const FIELD_SELECTOR = [
   '[role="switch"]',
   '[role="radio"]',
   '[role="combobox"]',
+  '[role="slider"]',
 ].join(',')
 
 /** 不算「内容」的控件：搜索框（列表筛选）、cmdk 搜索输入、显式标记忽略的元素 */
@@ -43,22 +46,20 @@ function fieldValue(el: Element): string {
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return el.value
   const ariaChecked = el.getAttribute('aria-checked')
   if (ariaChecked !== null) return ariaChecked
+  const ariaValueNow = el.getAttribute('aria-valuenow')
+  if (ariaValueNow !== null) return ariaValueNow
   if (el.hasAttribute('contenteditable')) return el.textContent ?? ''
   // role=combobox（Radix SelectTrigger）：用显示文案代表选中项
   return (el.textContent ?? '').trim()
 }
 
-/**
- * 序列化容器内所有表单控件的当前值，用于前后比对。
- * 位置索引参与 key：动态增删行（本身就是用户改动）会导致序列化变化，属预期。
- */
-export function serializeFormState(root: HTMLElement): string {
-  const parts: string[] = []
-  root.querySelectorAll(FIELD_SELECTOR).forEach((el, index) => {
-    if (isIgnored(el)) return
-    parts.push(`${index}:${fieldValue(el)}`)
+/** 采集容器内参与比对的字段及当前值，按元素身份索引（不用位置索引，避免结构变化误判） */
+export function collectFieldValues(root: HTMLElement): Map<Element, string> {
+  const values = new Map<Element, string>()
+  root.querySelectorAll(FIELD_SELECTOR).forEach((el) => {
+    if (!isIgnored(el)) values.set(el, fieldValue(el))
   })
-  return parts.join('\u0001')
+  return values
 }
 
 export interface UnsavedChangesTracker {
@@ -72,23 +73,55 @@ export interface UnsavedChangesTracker {
 const BASELINE_EVENTS = ['pointerdown', 'keydown', 'input', 'change', 'paste'] as const
 
 /**
- * 在给定容器上创建未保存内容追踪器：首次用户交互时抓取基线快照，
- * 之后 hasUnsavedChanges() 比对当前快照与基线。
+ * 在给定容器上创建未保存内容追踪器：首次用户交互时逐字段抓取基线，
+ * 之后 hasUnsavedChanges() 比对仍在 DOM 中的字段与自己的基线。
  */
 export function createUnsavedChangesTracker(root: HTMLElement): UnsavedChangesTracker {
-  let baseline: string | null = null
+  const baseline = new Map<Element, string>()
+  let captured = false
 
+  /**
+   * 抓基线：为「尚无基线」的字段补记当前值，已有基线的字段不覆盖。
+   * 事件在值变化之前触发（pointerdown/keydown 先于输入与勾选），故记下的是改动前状态；
+   * 增量补记让首次交互之后才挂载的字段（切 Tab、动态加行）也能被追踪。
+   */
   const captureBaseline = () => {
-    if (baseline === null) baseline = serializeFormState(root)
+    captured = true
+    collectFieldValues(root).forEach((value, el) => {
+      if (!baseline.has(el)) baseline.set(el, value)
+    })
   }
 
   BASELINE_EVENTS.forEach((type) => root.addEventListener(type, captureBaseline, true))
 
   return {
-    hasUnsavedChanges: () => baseline !== null && serializeFormState(root) !== baseline,
+    hasUnsavedChanges: () => {
+      if (!captured) return false
+      for (const [el, original] of baseline) {
+        // 已从 DOM 移除的字段（搜索筛选、切 Tab、列表重载）不算改动
+        if (!root.contains(el)) continue
+        if (fieldValue(el) !== original) return true
+      }
+      return false
+    },
     dispose: () => {
       BASELINE_EVENTS.forEach((type) => root.removeEventListener(type, captureBaseline, true))
-      baseline = null
+      baseline.clear()
+      captured = false
     },
   }
+}
+
+/**
+ * 关闭弹窗时是否需要拦下来做二次确认。
+ * @param unsavedGuard 守卫开关：`'auto'` 自动检测 / `true` 强制视为有未保存内容 / `false` 关闭守卫
+ * @param hasUnsavedChanges 自动检测结果读取器（仅 `'auto'` 时调用）
+ */
+export function shouldBlockClose(
+  unsavedGuard: boolean | 'auto',
+  hasUnsavedChanges: () => boolean,
+): boolean {
+  if (unsavedGuard === false) return false
+  if (unsavedGuard === true) return true
+  return hasUnsavedChanges()
 }
