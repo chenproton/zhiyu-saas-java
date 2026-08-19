@@ -452,9 +452,6 @@ if [[ -z "$DOCKER_COMPOSE" ]]; then
   [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
 compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
-# 本栈 compose 项目名（取自 compose 文件的 name:，供按 label 精准清理本栈资源用，避免误伤其他栈）
-COMPOSE_PROJECT="$(awk '/^name:[[:space:]]*/{print $2; exit}' "$DEPLOY_COMPOSE" 2>/dev/null || true)"
-COMPOSE_PROJECT="${COMPOSE_PROJECT:-zhiyu-saas}"
 
 # Nginx（宿主标准 nginx，作为统一网关）
 if ! command -v nginx >/dev/null 2>&1; then
@@ -767,6 +764,10 @@ log "服务端口配置："
 log "  前端入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
 
 DEPLOY_COMPOSE="$DEPLOY_DIR/docker-compose.yml"
+# 本栈 compose 项目名（取自 compose 文件 name:）：供按 label 精准清理本栈资源，避免误伤其他栈。
+# 必须放在 DEPLOY_COMPOSE 赋值之后——放在 compose() 定义处会因 set -u 报 unbound variable。
+COMPOSE_PROJECT="$(awk '/^name:[[:space:]]*/{print $2; exit}' "$DEPLOY_COMPOSE" 2>/dev/null || true)"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-zhiyu-saas}"
 BUILD_CACHE="$DEPLOY_DIR/.build-cache"
 set -a; source "$ENV_FILE"; set +a
 
