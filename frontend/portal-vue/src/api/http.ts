@@ -110,7 +110,11 @@ async function requestWithPlatform<T>(
     if (res.status === 401 && typeof window !== 'undefined') {
       handleUnauthorized(platform);
     }
-    throw new Error(errorMessage);
+    // 对齐 api-client：错误附带后端统一错误码（如 captcha_required / captcha_wrong），供登录流分支处理。
+    const err = new Error(errorMessage) as Error & { code?: string; status?: number };
+    err.code = (data as { code?: string }).code;
+    err.status = res.status;
+    throw err;
   }
 
   return data as T;

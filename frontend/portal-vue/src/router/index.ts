@@ -24,6 +24,13 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
+    // 超管控制台（对齐 React /superadmin，SaaS 平台登录态；页面内部自行鉴权，不走门户 token 守卫）
+    path: '/superadmin',
+    name: 'Superadmin',
+    component: () => import('@/views/superadmin/index.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/job/landing',
     name: 'JobLanding',
     component: () => import('@/views/landing/job.vue'),
