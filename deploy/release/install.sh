@@ -104,6 +104,7 @@ detect_docker_compose() {
 is_root || die "需要 root 权限（sudo ./install.sh）"
 
 log "检查系统依赖..."
+# shellcheck disable=SC2034  # 兼容旧流程保留的状态位
 pkg_updated=false
 install_deb() {
   local deb_dir="$PKG_DIR/debs"
@@ -272,11 +273,11 @@ fi
 compose up -d --remove-orphans 2>&1 | tail -5 || { compose logs --tail 30 >&2 || true; die "docker compose up 失败，请查看上方日志"; }
 
 # 等待 PG 就绪
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
   sleep 2
 done
-for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
 
 # 迁移前备份（仅数据库已存在时有效，失败仅警告）
 BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
@@ -297,6 +298,8 @@ log "  运营方租户: platform / 管理员: admin / ${SEED_ADMIN_PASSWORD:-adm
 # ── 6. Nginx 网关 ──
 NGINX_CONF="$PKG_DIR/deploy/nginx/conf.d/zhiyu-saas.conf"
 if [[ -f "$NGINX_CONF" ]]; then
+  # 容器网关端口：模板中 /api、/uploads 等 location 均指向它，必须有值并进 envsubst 白名单
+  GO_NGINX_PORT="${GO_NGINX_PORT:-8084}"; export GO_NGINX_PORT
   command -v envsubst >/dev/null 2>&1 || \
     { dpkg -i "$PKG_DIR"/debs/gettext-base_*_amd64.deb >/dev/null 2>&1 || true; }
   command -v envsubst >/dev/null 2>&1 || \
@@ -310,13 +313,13 @@ if [[ -f "$NGINX_CONF" ]]; then
     ls -t "$NGINX_DST".bak.* 2>/dev/null | tail -n +6 | xargs -r rm -f
   fi
   sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | \
-    envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
+    envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
   if [[ -f "$PKG_DIR/deploy/nginx/conf.d/zhiyu-saas-ssl.conf" && -n "${NGINX_SSL_DOMAIN:-}" && -n "${NGINX_SSL_CERT:-}" && -n "${NGINX_SSL_CERT_KEY:-}" ]]; then
     if [[ -f "$NGINX_SSL_CERT" && -f "$NGINX_SSL_CERT_KEY" ]]; then
       export NGINX_SSL_DOMAIN NGINX_SSL_CERT NGINX_SSL_CERT_KEY
       sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$PKG_DIR/deploy/nginx/conf.d/zhiyu-saas-ssl.conf" | \
-        envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > /etc/nginx/conf.d/zhiyu-saas-ssl.conf
+        envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $GO_NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > /etc/nginx/conf.d/zhiyu-saas-ssl.conf
     else
       warn "NGINX_SSL_DOMAIN 已设置但证书文件不存在，跳过 HTTPS 配置"
     fi
@@ -336,7 +339,7 @@ log "等待服务就绪..."
 OK=true
 for svc in backend frontend; do
   found=false
-  for i in $(seq 1 45); do
+  for _ in $(seq 1 45); do
     S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
     [[ "$S" == "healthy" ]] && { log "  $svc healthy"; found=true; break; }
     sleep 2
@@ -344,7 +347,7 @@ for svc in backend frontend; do
   $found || { warn "$svc 未就绪"; OK=false; }
 done
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
-  for i in $(seq 1 60); do
+  for _ in $(seq 1 60); do
     wget -qO- "http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview" >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
     sleep 2
   done
