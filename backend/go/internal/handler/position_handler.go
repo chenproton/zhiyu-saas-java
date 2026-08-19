@@ -503,7 +503,8 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.clearPublicPositionsCache(r)
-	respondJSON(w, http.StatusOK, pos)
+	// 契约对齐前端与 Java 端：save-full 响应包装为 {"position": ...}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"position": pos})
 }
 
 // ===== Favorites =====
