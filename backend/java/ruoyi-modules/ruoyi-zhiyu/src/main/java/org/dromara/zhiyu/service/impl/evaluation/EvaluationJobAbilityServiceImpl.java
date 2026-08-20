@@ -22,7 +22,10 @@ import org.dromara.zhiyu.mapper.evaluation.EvaluationJobAbilityMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationPortraitMapper;
 import org.dromara.zhiyu.service.evaluation.IEvaluationJobAbilityService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -77,6 +80,7 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
     private final EvaluationCertificationMapper certMapper;
     private final EvaluationPortraitMapper portraitMapper;
     private final ZhiyuUserMapper userMapper;
+    private final PlatformTransactionManager txManager;
 
     // ==================== 列表 / 详情 / 汇总 ====================
 
@@ -194,6 +198,53 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
     }
 
     // ==================== 汇聚 ====================
+
+    /**
+     * 汇聚所有已发布认证规则的岗位能力结果（每日定时任务入口；对齐 Go
+     * JobAbilityAggregator.AggregateAllPublished）。
+     *
+     * <p>逐岗位独立汇聚：每岗位一条汇聚日志 + 独立事务（REQUIRES_NEW），
+     * 事务内先 SET LOCAL statement_timeout = 0 解除全局 15s 语句超时
+     * （对齐 Go aggregateAll 专用连接 SET statement_timeout = 0，事务结束自动恢复，
+     * 等效 Go 的 RESET 兜底）；单岗位失败不中断后续岗位，最终抛首个错误供调用方
+     * （定时任务）走重试/告警。</p>
+     */
+    @Override
+    public void aggregateAllPublished() {
+        List<Map<String, Object>> targets = certMapper.listPublishedTargets();
+        TransactionTemplate txTemplate = new TransactionTemplate(txManager);
+        txTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        Exception firstErr = null;
+        for (Map<String, Object> target : targets) {
+            String tenantId = str(target.get("tenant_id"));
+            String positionId = str(target.get("position_id"));
+            String logId = jobMapper.createAggregateLog(tenantId, positionId);
+            try {
+                int[] result = txTemplate.execute(status -> {
+                    jobMapper.disableStatementTimeout();
+                    return aggregatePosition(tenantId, positionId, List.of());
+                });
+                jobMapper.finishAggregateLog(logId, "finished",
+                    result == null ? 0 : result[0], result == null ? 0 : result[1], null);
+            } catch (Exception e) {
+                log.error("岗位能力汇聚失败 tenantId={} careerPositionId={}", tenantId, positionId, e);
+                try {
+                    jobMapper.finishAggregateLog(logId, "failed", 0, 0, e.getMessage());
+                } catch (Exception ex) {
+                    log.error("更新汇聚日志失败 logId={}", logId, ex);
+                }
+                if (firstErr == null) {
+                    firstErr = e;
+                }
+            }
+        }
+        if (firstErr != null) {
+            if (firstErr instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new RuntimeException(firstErr);
+        }
+    }
 
     @Override
     public Map<String, String> aggregate(JobAbilityAggregateRequest req) {

@@ -106,6 +106,11 @@ public interface SceneScenarioTaskMapper extends BaseMapperPlus<SceneScenarioTas
     @Select("SELECT name FROM scenario_tasks WHERE id = #{id}")
     String selectName(@Param("id") String id);
 
+    /** 查询任务所属场景名称（考试安排自动命名前缀用；对齐 Go TaskScenarioName）。 */
+    @Select("SELECT COALESCE(sc.name, '') FROM scenario_tasks st"
+        + " JOIN scenarios sc ON sc.id = st.scenario_id WHERE st.id = #{id}")
+    String selectScenarioName(@Param("id") String id);
+
     /**
      * 清理任务关联的考试安排（target_type='task'，无成绩的安排删除并返回其 exam_id；
      * 对齐 Go CleanupTaskExamUsages 第一步，两条语句不可合并为 CTE 快照语义问题）。

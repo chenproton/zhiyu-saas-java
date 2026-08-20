@@ -30,4 +30,11 @@ public interface IEvaluationJobAbilityService {
     Map<String, String> aggregate(JobAbilityAggregateRequest req);
 
     JobAbilityAggregateLogDto aggregateStatus(String careerPositionId, String logId);
+
+    /**
+     * 汇聚所有已发布认证规则的岗位能力结果（每日定时任务入口，无请求上下文；
+     * 对齐 Go JobAbilityAggregator.AggregateAllPublished：逐岗位独立汇聚，
+     * 单岗位失败不中断后续，最终抛首个错误）。
+     */
+    void aggregateAllPublished();
 }

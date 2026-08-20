@@ -116,6 +116,14 @@ public interface EvaluationJobAbilityMapper extends BaseMapperPlus<EvaluationJob
 
     // ---------- 汇聚日志 ----------
 
+    /**
+     * 解除当前事务的语句超时（汇聚 SQL 可能超过全局 15s；SET LOCAL 仅当前事务有效，
+     * 事务结束自动恢复，对齐 Go aggregateAll 专用连接 SET statement_timeout = 0）。
+     * 必须在事务内调用（无事务时 PG 报 WARNING 且不生效）。
+     */
+    @Update("SET LOCAL statement_timeout = 0")
+    int disableStatementTimeout();
+
     @Insert("INSERT INTO job_ability_aggregate_logs (tenant_id, career_position_id, status)"
         + " VALUES (#{tenantId}, #{careerPositionId}, 'running') RETURNING id")
     String createAggregateLog(@Param("tenantId") String tenantId, @Param("careerPositionId") String careerPositionId);
