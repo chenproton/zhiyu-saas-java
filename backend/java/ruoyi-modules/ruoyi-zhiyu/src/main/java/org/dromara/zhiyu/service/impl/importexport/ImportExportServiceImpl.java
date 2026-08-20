@@ -501,7 +501,14 @@ public class ImportExportServiceImpl implements IImportExportService {
                     organizationTemplate(wb, st, tenantId);
                     fillOrganizations(wb, tenantId, ids);
                 }
-                case "students", "teachers" -> fillUsers(wb, tenantId, entity, ids);
+                case "students" -> { // 导出前必须先建 sheet（模板方法），否则 getSheet 返回 null → NPE 500
+                    studentTemplate(wb, st, tenantId);
+                    fillUsers(wb, tenantId, entity, ids);
+                }
+                case "teachers" -> {
+                    teacherTemplate(wb, st, tenantId);
+                    fillUsers(wb, tenantId, entity, ids);
+                }
                 default -> throw new ApiException(400, "bad_request", "不支持的实体");
             }
             return toBytes(wb);
