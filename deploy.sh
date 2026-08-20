@@ -1102,9 +1102,11 @@ if $BUILD_FRONTEND; then
   # ── portal-vue 业务门户（build 内含 vue-tsc 类型检查）──
   log "  构建 portal-vue（业务门户，根路径 base）..."
   if [[ ! -d "$PORTAL_VUE_DIR/node_modules" ]]; then
-    (cd "$PORTAL_VUE_DIR" && pnpm install --frozen-lockfile 2>/dev/null) || \
+    # env -u NODE_ENV：宿主若全局导出 NODE_ENV=production，pnpm 会跳过 devDependencies
+    # （vue-tsc/typescript 缺失 → vue-tsc --noEmit 找不到命令 → 构建必失败，实测复现）
+    (cd "$PORTAL_VUE_DIR" && env -u NODE_ENV pnpm install --frozen-lockfile 2>/dev/null) || \
     { warn "portal-vue frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
-      (cd "$PORTAL_VUE_DIR" && pnpm install --no-frozen-lockfile) || die "portal-vue 依赖安装失败"; }
+      (cd "$PORTAL_VUE_DIR" && env -u NODE_ENV pnpm install --no-frozen-lockfile) || die "portal-vue 依赖安装失败"; }
   fi
   PORTAL_LOG="$DEPLOY_DIR/.build-portal.log"
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
@@ -1141,9 +1143,10 @@ if $BUILD_FRONTEND; then
     PLUS_PNPM="npx --yes pnpm@10.34.5"
   fi
   if [[ ! -d "$PLUS_UI_DIR/node_modules" ]]; then
-    (cd "$PLUS_UI_DIR" && $PLUS_PNPM install --frozen-lockfile 2>/dev/null) || \
+    # 同 portal-vue：env -u NODE_ENV 避免宿主 NODE_ENV=production 跳过 devDependencies
+    (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --frozen-lockfile 2>/dev/null) || \
     { warn "plus-ui frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
-      (cd "$PLUS_UI_DIR" && $PLUS_PNPM install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
+      (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
   fi
   PLUS_LOG="$DEPLOY_DIR/.build-plus-ui.log"
   (cd "$PLUS_UI_DIR" && NODE_ENV=production $PLUS_PNPM build >"$PLUS_LOG" 2>&1) \
