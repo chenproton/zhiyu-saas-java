@@ -114,32 +114,40 @@ async function login(ctx, page, cfg, role, listeners) {
     const input = page.locator('input[aria-label="验证码"]')
       .or(page.locator('input[placeholder="请输入验证码"]')).first()
     await input.waitFor({ state: 'visible', timeout: 5000 })
-    const captchaIdPromise = new Promise(resolve => {
-      const h = async res => {
-        if (res.url().includes('/auth/captcha') && res.request().method() === 'GET') {
-          page.off('response', h)
-          const body = await res.json().catch(() => null)
-          resolve(body?.captchaId || null)
-        }
+    // 监听所有 GET /auth/captcha，只保留**最新** id（最后一次覆盖）：
+    // 提交 400 后页面会自动 loadCaptcha（GET A，可能仍在途）；点击刷新又触发 GET B。
+    // 若用首次捕获会拿到 A，而页面 captchaId 已是 B → code/id 不匹配 → captcha_wrong。
+    let latestCaptchaId = null
+    const h = async res => {
+      if (res.url().includes('/auth/captcha') && res.request().method() === 'GET') {
+        const body = await res.json().catch(() => null)
+        if (body?.captchaId) latestCaptchaId = body.captchaId
       }
-      page.on('response', h)
-      setTimeout(() => { page.off('response', h); resolve(null) }, 10000)
-    })
-    // 点击验证码图片刷新，触发一次新的 GET /auth/captcha（注册监听后发请求，避免竞态）
-    const imgBtn = page.locator('button[title="点击刷新验证码"]')
-      .or(page.locator('img[title="点击刷新验证码"]')).first()
-    await imgBtn.waitFor({ state: 'visible', timeout: 5000 })
-    const oldSrc = await imgBtn.getAttribute('src').catch(() => null)
-    await imgBtn.click()
-    // 等刷新完成（src 变化 = Vue loadCaptcha 已把新 captchaId 写入页面状态）：
-    // 否则立即填 code 提交时页面还带着旧 captchaId，必 captcha_wrong
-    if (oldSrc) {
-      await page.waitForFunction(
-        prev => { const img = document.querySelector('img.captcha-img'); return img && img.src !== prev },
-        oldSrc, { timeout: 8000 },
-      ).catch(() => {})
     }
-    const captchaId = await captchaIdPromise
+    page.on('response', h)
+    try {
+      // 点击验证码图片刷新，触发一次新的 GET /auth/captcha（注册监听后发请求，避免竞态）
+      const imgBtn = page.locator('button[title="点击刷新验证码"]')
+        .or(page.locator('img[title="点击刷新验证码"]')).first()
+      await imgBtn.waitFor({ state: 'visible', timeout: 5000 })
+      const oldSrc = await imgBtn.getAttribute('src').catch(() => null)
+      await imgBtn.click()
+      // 等刷新完成（src 变化 = Vue loadCaptcha 已把新 captchaId 写入页面状态）：
+      // 否则立即填 code 提交时页面还带着旧 captchaId，必 captcha_wrong
+      if (oldSrc) {
+        await page.waitForFunction(
+          prev => { const img = document.querySelector('img.captcha-img'); return img && img.src !== prev },
+          oldSrc, { timeout: 8000 },
+        ).catch(() => {})
+      }
+      // src 变化后 latestCaptchaId 应已是 B；仍为空则再等响应
+      for (let i = 0; i < 10 && !latestCaptchaId; i++) {
+        await new Promise(r => setTimeout(r, 300))
+      }
+    } finally {
+      page.off('response', h)
+    }
+    const captchaId = latestCaptchaId
     if (!captchaId) throw new Error('验证码自动识别失败: 未获取到 captchaId')
     const code = captchaAnswer(captchaId)
     if (!code) throw new Error(`验证码自动识别失败: Redis 无答案 ${captchaId}`)

@@ -460,5 +460,6 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 166 | ai_center_menu_perms | AI 中心菜单权限回填（历史迁移，随 AI 功能 2026-08 下线不再生效） |
 | 167 | ai_landing_menu_default | AI 前台落地页菜单回填（历史迁移，随 AI 功能下线不再生效） |
 | 168 | ai_menu_single_entry | AI 菜单收敛单一开关（历史迁移，随 AI 功能下线不再生效） |
+| 169 | add_missing_audit_columns | 补齐 10 张表缺失的审计列（questions 补 updated_at；certification_ability_items/points/related_tasks、job_ability_aggregate_logs、job_ability_results、job_run_logs 补 created_at+updated_at；student_ability_archives、resource_snapshots 补 updated_at）——Entity 基类声明审计字段但表缺失导致泛型 SELECT 500（down 不可逆：DROP 审计列） |
 
 > 每份迁移均配对 `.down.sql`（除 001 baseline 为全量重建）。变更脚本位于 `db/migrations/`。
