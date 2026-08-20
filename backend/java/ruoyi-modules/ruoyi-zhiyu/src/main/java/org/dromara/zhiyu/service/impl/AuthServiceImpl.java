@@ -5,9 +5,14 @@ import cn.hutool.captcha.CaptchaUtil;
 import cn.hutool.captcha.LineCaptcha;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.dromara.common.core.utils.ServletUtils;
 import org.dromara.common.redis.utils.RedisUtils;
 import org.dromara.zhiyu.core.web.ApiException;
+import org.dromara.zhiyu.core.web.IpLocationUtils;
+import org.dromara.zhiyu.domain.system.SystemLoginLog;
 import org.dromara.zhiyu.domain.ZhiyuTenant;
 import org.dromara.zhiyu.domain.ZhiyuUser;
 import org.dromara.zhiyu.domain.dto.AuthDtos.CaptchaData;
@@ -51,6 +56,7 @@ import java.util.UUID;
  *
  * @author zhiyu
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class AuthServiceImpl implements IAuthService {
@@ -76,6 +82,7 @@ public class AuthServiceImpl implements IAuthService {
     private final ZhiyuTenantMapper tenantMapper;
     private final org.dromara.zhiyu.mapper.system.SystemRoleMapper systemRoleMapper;
     private final PartnerEnterpriseMapper partnerEnterpriseMapper;
+    private final org.dromara.zhiyu.service.system.ISystemLogService systemLogService;
     private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -554,10 +561,45 @@ public class AuthServiceImpl implements IAuthService {
         // 角色编码快照（等价 Go claims.RoleCodes），服务端授权判定（菜单兜底/角色白名单）用
         StpUtil.getSession().set("roleCodes", roleCodes);
 
+        // 登录日志（对齐 Go auth_handler.go recordLoginLog：login/select-tenant/register 统一入口）
+        recordLoginLog(user);
+
         LoginResponse resp = new LoginResponse();
         resp.setToken(StpUtil.getTokenValue());
         resp.setUser(toUserView(user));
         return resp;
+    }
+
+    /**
+     * 记录登录日志（对齐 Go service/auth.go RecordLoginLog + handler/auth_handler.go recordLoginLog）。
+     *
+     * <p>字段语义：无租户（平台级账号）不记录；user_name 取姓名、空则登录名；
+     * device 为 User-Agent 截断 256；location 为 ip2region 归属地（"省 市"，内网/失败为空）；
+     * status 仅记录 success（Go 端只在签发 token 时记录）。写入失败只告警不影响登录。</p>
+     */
+    private void recordLoginLog(ZhiyuUser user) {
+        try {
+            if (user.getTenantId() == null || user.getTenantId().isBlank()) {
+                return;
+            }
+            HttpServletRequest request = ServletUtils.getRequest();
+            String ip = request == null ? "" : StrUtil.blankToDefault(ServletUtils.getClientIP(request), "");
+            String device = request == null ? "" : StrUtil.blankToDefault(request.getHeader("User-Agent"), "");
+            if (device.length() > 256) {
+                device = device.substring(0, 256);
+            }
+            SystemLoginLog entry = new SystemLoginLog();
+            entry.setTenantId(user.getTenantId());
+            entry.setUserId(user.getId());
+            entry.setUserName(StrUtil.isBlank(user.getName()) ? user.getUsername() : user.getName());
+            entry.setIp(ip);
+            entry.setLocation(IpLocationUtils.location(ip));
+            entry.setDevice(device);
+            entry.setStatus("success");
+            systemLogService.recordLoginLog(entry);
+        } catch (Exception e) {
+            log.warn("zhiyu 登录日志记录失败 userId={} 原因={}", user.getId(), e.getMessage());
+        }
     }
 
     /** 租户有效期判定（对齐 Go isTenantWithinValidity：YYYY-MM-DD，空不限） */

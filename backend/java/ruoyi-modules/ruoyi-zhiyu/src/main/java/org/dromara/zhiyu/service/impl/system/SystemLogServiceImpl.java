@@ -1,6 +1,7 @@
 package org.dromara.zhiyu.service.impl.system;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
 import org.dromara.zhiyu.core.page.ListResponse;
@@ -19,12 +20,14 @@ import java.util.List;
  *
  * @author zhiyu
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class SystemLogServiceImpl implements ISystemLogService {
 
     private final SystemLoginLogMapper loginLogMapper;
     private final SystemOperationLogMapper operationLogMapper;
+    private final OperationLogBuffer operationLogBuffer;
     private final SystemGuard guard;
 
     @Override
@@ -64,6 +67,21 @@ public class SystemLogServiceImpl implements ISystemLogService {
         wrapper.orderByDesc(SystemOperationLog::getCreatedAt).last("LIMIT " + safeLimit + " OFFSET " + Math.max(offset, 0));
         List<SystemOperationLog> items = operationLogMapper.selectList(wrapper.build());
         return ListResponse.of(items, total);
+    }
+
+    @Override
+    public void enqueueOperationLog(SystemOperationLog entry) {
+        operationLogBuffer.enqueue(entry);
+    }
+
+    @Override
+    public void recordLoginLog(SystemLoginLog entry) {
+        try {
+            loginLogMapper.insert(entry);
+        } catch (Exception e) {
+            // 对齐 Go：登录日志写入失败只告警，不影响登录主流程
+            log.warn("zhiyu 登录日志写入失败 userId={} 原因={}", entry.getUserId(), e.getMessage());
+        }
     }
 
     private long clampLimit(long limit, int defaultLimit) {
