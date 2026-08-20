@@ -110,10 +110,12 @@ const emit = defineEmits<{
   z-index: 1000;
   overflow: auto;
   background: #f5f7fa;
+  /* 顶栏下方开始内容（对齐 React fullscreen：sticky top-14 + mt-14，操作栏停在全局导航之下） */
+  padding-top: 56px;
 }
 .shell-header {
   position: sticky;
-  top: 0;
+  top: 56px; /* 门户顶栏高度 56px（PortalLayout .portal-header），操作栏固定在顶栏下方不被遮挡 */
   z-index: 10;
   display: flex;
   align-items: center;
