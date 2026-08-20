@@ -164,7 +164,7 @@
 4. **第一段启动**：只起数据层 `postgres` / `redis`
 5. **全库备份**（`/opt/zhiyu-saas/backups`，目录 700 / 文件 600，保留最近 7 份）
 6. **执行迁移**：`db/migrations/*.up.sql` 纯 psql 执行（`ON_ERROR_STOP=1`，遇错立即停止，不叠加半应用 DDL）+ **Java 框架表初始化**（deploy 幂等初始化）
-7. **第二段启动**：再起业务容器 `java-backend` / `portal-vue` / `plus-ui` / `nginx` / `kkfileview`
+7. **第二段启动**：再起业务容器 `java-backend` / `nginx` / `kkfileview`（前端 portal-vue/plus-ui 为静态产物，rsync 到 `$DEPLOY_DIR/web/` 由 nginx 容器 bind mount，无独立容器）
 8. **健康门禁**：带 healthcheck 的服务必须 `healthy`（`Up (health: starting)` / `Up (unhealthy)` 不算就绪）；网关容器重启后自检两次失败即回滚
 9. **业务冒烟**：`/portal/login` 200、`/health` 200、`/api/v1/auth/captcha` 200（API+Redis）、`/api/v1/settings/theme` 200（API+DB 读）、`/api/v1/tenants` 401（鉴权中间件生效）；任一失败即回滚
 10. 首次建库时补跑**种子数据**（java-backend SeedRunner，失败仅 warn 不回滚）
@@ -185,9 +185,9 @@
 
 | 容器 | 可见密钥 | 理由 |
 |---|---|---|
-| `java-backend` | 显式白名单：`DATABASE_URL` / `REDIS_PASSWORD` / `JWT_SECRET` / `DB_PASSWORD` / `SEED_ADMIN_PASSWORD` | 运行期实际读取的全部变量（Java 配置）。**不再用 `env_file: .env`**：那会把仅宿主机需要的 `SEED_ADMIN_PASSWORD`（SeedRunner 种子用）与全部 `VITE_*` 一并灌进运行容器 |
-| `postgres` | 仅 `POSTGRES_*` | 建库账号 |
-| `frontend` / `nginx` / `redis` / `kkfileview` | **无** | 静态产物与第三方组件不得持有可伪造 token 的 `JWT_SECRET` |
+| `java-backend` | 显式白名单：`ZHIYU_DB_HOST/PORT/USER/PASSWORD`（数据源）、`ZHIYU_REDIS_HOST/PORT/PASSWORD`（Redis 口令）、`JWT_SECRET`（Sa-Token 签名密钥，application.yml `${JWT_SECRET:...}`）、`SEED_ADMIN_PASSWORD`（SeedRunner 种子）、`ZHIYU_UPLOAD_DIR`（上传目录） | 运行期实际读取的全部变量（`application-prod.yml` + application.yml）。**不再用 `env_file: .env`**：那会把仅宿主机需要的 `SEED_ADMIN_PASSWORD` 与全部 `VITE_*` 一并灌进运行容器 |
+| `postgres` | 仅 `POSTGRES_*`（值来自 `DB_USER`/`DB_PASSWORD`/`DB_NAME`） | 建库账号 |
+| `frontend` / `nginx` / `redis` / `kkfileview` | **无**（redis 仅 `--requirepass` 命令行参数，kkfileview 仅 `KK_*` 预览配置） | 静态产物与第三方组件不得持有可伪造 token 的 `JWT_SECRET` / 数据库口令 |
 
 密钥另有三条硬约束：`.env` 权限 600（含构建树内副本）、口令不进进程 argv（psql 走 `PGPASSWORD`）、部署输出与日志不回显任何口令。
 

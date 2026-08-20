@@ -522,6 +522,41 @@ else
   pass "（非 git 仓库或无可比基线，跳过）"
 fi
 
+
+# ---------------------------------------------------------------
+# 12. 验收流程一致性（提示级）：06-acceptance-flows.md 的 flow 定义 ↔ PRD 用户故事
+# ---------------------------------------------------------------
+echo "-- 12. 验收流程一致性（提示级） --"
+FLOWS_FILE="docs/spec/06-acceptance-flows.md"
+if [ -f "$FLOWS_FILE" ]; then
+  # flow id 唯一性
+  dup_flows=$(grep -E '^flow: ' "$FLOWS_FILE" | awk '{print $2}' | sort | uniq -d)
+  if [ -n "$dup_flows" ]; then
+    echo "  [提示] 验收流程 id 重复（需全文件唯一）："
+    echo "$dup_flows" | sed 's/^/         /'
+  fi
+  # story 引用必须存在于 01-prd.md（形如 | L-4 |）
+  missing_stories=""
+  for story in $(grep -E '^story: ' "$FLOWS_FILE" | awk '{print $2}' | grep -v '^<' | sort -u); do
+    grep -qE "\| *${story} *\|" docs/spec/01-prd.md || missing_stories="$missing_stories $story"
+  done
+  if [ -n "$missing_stories" ]; then
+    echo "  [提示] 验收流程引用的用户故事在 01-prd.md 中不存在：$missing_stories"
+  fi
+  # YAML 块可解析性（node 可用时用 js-yaml 粗检；不可用则跳过）
+  if command -v node >/dev/null 2>&1 && [ -d scripts/ui-smoke/node_modules/js-yaml ]; then
+    node -e "
+      const fs=require('fs'),yaml=require('./scripts/ui-smoke/node_modules/js-yaml');
+      const md=fs.readFileSync('docs/spec/06-acceptance-flows.md','utf8');
+      const re=/\`\`\`flow\s*\n([\s\S]*?)\`\`\`/g; let m,bad=0;
+      while((m=re.exec(md))){ try{ const d=yaml.load(m[1]); if(!d.flow||!Array.isArray(d.steps)) { bad=1; console.log('  [提示] flow 块缺 flow id 或 steps'); } }catch(e){ bad=1; console.log('  [提示] flow YAML 解析失败: '+e.message.split('\n')[0]); } }
+      process.exit(bad)
+    " || true
+  fi
+  pass "验收流程一致性检查完成（仅提示，不阻断）"
+else
+  pass "（无 06-acceptance-flows.md，跳过）"
+fi
 # ---------------------------------------------------------------
 # 13. 新端点租户归属校验（提示级，不阻断）：Java 侧租户隔离以 SQL 层 tenant_id 纵深防御为准
 #     （AGENTS.md Java 契约无 controller 级 verifyTenantOwnership 硬要求）。
@@ -590,40 +625,6 @@ else
   pass "（非 git 仓库或无可比基线，跳过）"
 fi
 
-# ---------------------------------------------------------------
-# 12. 验收流程一致性（提示级）：06-acceptance-flows.md 的 flow 定义 ↔ PRD 用户故事
-# ---------------------------------------------------------------
-echo "-- 12. 验收流程一致性（提示级） --"
-FLOWS_FILE="docs/spec/06-acceptance-flows.md"
-if [ -f "$FLOWS_FILE" ]; then
-  # flow id 唯一性
-  dup_flows=$(grep -E '^flow: ' "$FLOWS_FILE" | awk '{print $2}' | sort | uniq -d)
-  if [ -n "$dup_flows" ]; then
-    echo "  [提示] 验收流程 id 重复（需全文件唯一）："
-    echo "$dup_flows" | sed 's/^/         /'
-  fi
-  # story 引用必须存在于 01-prd.md（形如 | L-4 |）
-  missing_stories=""
-  for story in $(grep -E '^story: ' "$FLOWS_FILE" | awk '{print $2}' | grep -v '^<' | sort -u); do
-    grep -qE "\| *${story} *\|" docs/spec/01-prd.md || missing_stories="$missing_stories $story"
-  done
-  if [ -n "$missing_stories" ]; then
-    echo "  [提示] 验收流程引用的用户故事在 01-prd.md 中不存在：$missing_stories"
-  fi
-  # YAML 块可解析性（node 可用时用 js-yaml 粗检；不可用则跳过）
-  if command -v node >/dev/null 2>&1 && [ -d scripts/ui-smoke/node_modules/js-yaml ]; then
-    node -e "
-      const fs=require('fs'),yaml=require('./scripts/ui-smoke/node_modules/js-yaml');
-      const md=fs.readFileSync('docs/spec/06-acceptance-flows.md','utf8');
-      const re=/\`\`\`flow\s*\n([\s\S]*?)\`\`\`/g; let m,bad=0;
-      while((m=re.exec(md))){ try{ const d=yaml.load(m[1]); if(!d.flow||!Array.isArray(d.steps)) { bad=1; console.log('  [提示] flow 块缺 flow id 或 steps'); } }catch(e){ bad=1; console.log('  [提示] flow YAML 解析失败: '+e.message.split('\n')[0]); } }
-      process.exit(bad)
-    " || true
-  fi
-  pass "验收流程一致性检查完成（仅提示，不阻断）"
-else
-  pass "（无 06-acceptance-flows.md，跳过）"
-fi
 
 echo ""
 if [ "$FAILED" -ne 0 ]; then

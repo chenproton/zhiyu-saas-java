@@ -59,7 +59,7 @@
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET/POST | `/job/positions`、`/{id}`、`/`(POST) | businessUser 写 / jobViewer 读 | 岗位内容资源（13 动作，见 §2.1） |
-| PUT | `/job/positions/{id}` + `/save-full` | businessUser | 整单保存（构建器一次提交）；响应 `{"position": CareerPosition}` 包装（对齐前端 api-client 契约与 Java 端） |
+| PUT | `/job/positions/{id}`、`/job/positions/{id}/save-full` | businessUser | 整单保存（构建器一次提交）；响应 `{"position": CareerPosition}` 包装（对齐前端 api-client 契约与 Java 端） |
 | POST | `/job/positions/{id}/clone` | businessUser | 克隆岗位 |
 | GET/POST | `/job/positions/{id}/favorite` | 全部 | 收藏状态/切换收藏 |
 | GET | `/job/positions/favorites` | 任一业务管理/落地页菜单 | 我的收藏列表 |

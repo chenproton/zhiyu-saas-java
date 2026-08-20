@@ -98,6 +98,8 @@ services:
       ZHIYU_REDIS_PORT: "6379"
       ZHIYU_REDIS_PASSWORD: ${REDIS_PASSWORD:-ruoyi123}
       ZHIYU_UPLOAD_DIR: /opt/zhiyu-saas/uploads
+      # JWT 签名密钥（Sa-Token jwt-secret-key 生产值；.env 首次生成随机 64 位，缺失时回退默认仅供本地开发）
+      JWT_SECRET: ${JWT_SECRET:-abcdefghijklmnopqrstuvwxyz}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
     volumes:
       - uploads_data:/opt/zhiyu-saas/uploads

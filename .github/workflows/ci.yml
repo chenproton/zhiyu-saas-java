@@ -16,9 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # portal-vue packageManager pnpm@9.15.9（与 deploy.sh PNPM_VERSION 对齐）；plus-ui 用 pnpm 10（见下）
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 9.15.9
 
       - uses: actions/setup-node@v4
         with:
@@ -36,13 +37,15 @@ jobs:
         working-directory: frontend/portal-vue
         run: pnpm build
 
-      - name: Install plus-ui deps
+      # plus-ui 声明 packageManager pnpm@10.34.5 且 engines.pnpm >=10，全局 pnpm 9 不兼容
+      # （ERR_PNPM_UNSUPPORTED_ENGINE），与 deploy.sh 的 PLUS_PNPM 逻辑保持一致
+      - name: Install plus-ui deps (pnpm 10)
         working-directory: frontend/plus-ui
-        run: pnpm install --frozen-lockfile
+        run: npx --yes pnpm@10.34.5 install --frozen-lockfile
 
-      - name: Build plus-ui
+      - name: Build plus-ui (pnpm 10)
         working-directory: frontend/plus-ui
-        run: pnpm build
+        run: npx --yes pnpm@10.34.5 build
 
   backend:
     name: Backend (Maven compile / test / spec-check)

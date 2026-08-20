@@ -72,7 +72,7 @@ db/migrations/                   # 数据库迁移（up/down 配对 SQL，deploy
 | 脚本 | 用途 |
 |---|---|
 | `deploy.sh`（仓库根目录） | **唯一部署入口**（Java+Vue 单栈）：门禁默认开启 + 分段启动 + 健康门禁 + 业务冒烟 + 失败回滚 + 自动合并（契约见 `spec/03-development-plan.md` §5） |
-| `scripts/spec-check.sh` | spec 校验共 14 项：阻断级（分层红线/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数机械校验/机器码词汇表/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/LLM 直连/down 不可逆标注） |
+| `scripts/spec-check.sh` | spec 校验共 14 项：阻断级（分层红线/LLM 直连/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数机械校验/机器码词汇表/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/down 不可逆标注/XSS） |
 | `scripts/package-release.sh` | 离线实施包打包 |
 | `scripts/migrate_uploads.sh` | 上传文件迁移 |
 | `scripts/ui-smoke/` | 全站点击巡检（UI smoke test） |

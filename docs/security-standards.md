@@ -16,7 +16,7 @@
 
 ## 2. 会话与 JWT 生命周期
 
-- **签名**：HS256，密钥 `JWT_SECRET`（≥ 32 字节随机串，禁止提交仓库）；支持 `JWT_SECRET_PREVIOUS` 旧密钥验签（轮换窗口，见 §3）。
+- **签名**：HS256，密钥 `JWT_SECRET`（≥ 32 字节随机串，禁止提交仓库）；`JWT_SECRET_PREVIOUS` 旧密钥轮换验签**未实现**（Java 栈 Sa-Token `StpLogicJwtForSimple` 单密钥，见 §3），轮换需短时停机或双写过渡，当前不做承诺。
 - **有效期**：7 天。
 - **平台隔离**：portal / saas / partner 三端 token 不可互用（Claims 携带 platform，中间件校验）。
 - **逐请求吊销**（`middleware.RequireActiveUser`，挂载于全部鉴权路由）：
@@ -30,7 +30,7 @@
 
 | 密钥 | 用途 | 要求 | 状态 |
 |------|------|------|------|
-| `JWT_SECRET` | 签发 JWT | ≥ 32 字节随机；每 90 天轮换（`JWT_SECRET_PREVIOUS` 旧验签、新签发）；禁止提交仓库（`.env`） | `[已实施]`（双密钥验签已落地） |
+| `JWT_SECRET` | 签发 JWT | ≥ 32 字节随机；禁止提交仓库（`.env`）。**轮换**：Java 栈 Sa-Token `StpLogicJwtForSimple` 仅单密钥，`JWT_SECRET_PREVIOUS` 双密钥轮换**未实现**（轮换需短时停机切换，当前不做定期轮换承诺） | `[已实施]`（单密钥签发）；轮换 `[未实现]` |
 
 ## 4. 限流与防爆破
 

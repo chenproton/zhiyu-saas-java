@@ -108,7 +108,7 @@ deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal
 cd backend/java && ./mvnw compile -q            # Java 后端编译（JDK 21）
 cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
 cd frontend/plus-ui && pnpm build                # 管理端
-./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/新端点租户校验提示/LLM 直连/down 不可逆标注），详见 spec-standards.md §九
+./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/LLM 直连/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/down 不可逆标注/XSS），详见 spec-standards.md §九
 ```
 
 migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5；单次 commit 只含当次变更。

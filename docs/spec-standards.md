@@ -12,7 +12,7 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 |---|---|---|---|
 | 全平台规格 | `01-prd.md` ~ `05-prototype-interaction.md` | 一期已实现能力的**回溯沉淀**，是「当前系统能力基线」 | 做涉及现有功能的改动前必读；改动后回写 |
 | 子平台/新功能规格 | `partner-enterprise-platform.md` 等 | 单个大模块/新平台的**完整前瞻规格**（PRD + API + 数据 + 计划合一） | 立项新模块时新建；实施期间持续更新 |
-| 全平台能力盘点 | `docs/系统功能清单.md` | **全平台能力的实时索引**（模块级功能点汇总，人类/AI 快速对照「系统有什么」） | 新增/删除/变更能力时同步增删条目；被 `spec-check.sh` **第 11 项（提示级，不阻断）** 监控 |
+| 全平台能力盘点 | `docs/系统功能清单.md` | **全平台能力的实时索引**（模块级功能点汇总，人类/AI 快速对照「系统有什么」） | 新增/删除/变更能力时同步增删条目；被 `spec-check.sh` **第 11 项（阻断级）** 与 docs/spec 一并监控（代码结构变更时二者至少回写其一） |
 
 判断用哪级：**改现有能力 → 回写全平台规格 + 更新功能清单；新增独立大模块 → 新建子平台规格 + 功能清单加一节**。小的 bug 修复、纯重构（行为不变）不需要动 spec，但需在 commit message 说明「行为不变，不影响 spec」。
 
@@ -122,8 +122,8 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 
 | 类型 | 手段 | 负责什么 |
 |---|---|---|
-| **硬约束（可自动，硬拦）**<br>（共 14 项中的 1–9、11、13、14） | `scripts/spec-check.sh` | ①分层红线（controller 无裸 SQL/DB 句柄/MyBatis 注解、service 无拼接 SQL、mapper 不读 HTTP 请求/Sa-Token/租户上下文）②LLM 直连红线（controller/service 禁止直连 LLM 特征）③migration 配对（`.up.sql` 必须有 `.down.sql`；**down 不可逆标注本身是提示级**，见下一行）④spec 五层齐备 ⑤ADR 索引双向一致 ⑥安全红线（ADR-0003 关键写租户条件，点名 mapper 文件级）⑦schema 文档↔migrations 编号一致 ⑧表数机械校验（migrations CREATE−DROP ↔ 04 头部）⑨机器码词汇表（02 §4.2 ↔ ApiException 机器码）⑪**spec 随代码变更**（改 controller/service/mapper/migrations 必须同次回写 spec，纯重构写 `spec:nochange` 豁免）⑬**新端点租户归属校验**（@PathVariable 且无 SystemGuard 的 controller 端点，AGENTS.md 3.2）⑭**新端点必须带测试**（新增 controller/service/mapper 实现文件须同次带测试，DoD 3） |
-| **温和提示（可自动，不拦）**<br>（10、12 项 + down 不可逆/XSS） | `scripts/spec-check.sh` | ⑩路由↔契约双向覆盖 ⑫验收流程一致性（06 已废弃删除，恒跳过）；另含 **down 不可逆标注**与 XSS（v-html 清单），两者均为提示级、不阻断 |
+| **硬约束（可自动，硬拦）**<br>（共 14 项中的 1–9、11、14） | `scripts/spec-check.sh` | ①分层红线（controller 无裸 SQL/DB 句柄/MyBatis 注解、service 无拼接 SQL、mapper 不读 HTTP 请求/Sa-Token/租户上下文）②LLM 直连红线（controller/service 禁止直连 LLM 特征）③migration 配对（`.up.sql` 必须有 `.down.sql`；**down 不可逆标注本身是提示级**，见下一行）④spec 五层齐备 ⑤ADR 索引双向一致 ⑥安全红线（ADR-0003 关键写租户条件，点名 mapper 文件级）⑦schema 文档↔migrations 编号一致 ⑧表数机械校验（migrations CREATE−DROP ↔ 04 头部）⑨机器码词汇表（02 §4.2 ↔ ApiException 机器码）⑪**spec 随代码变更**（改 controller/service/mapper/migrations 必须同次回写 spec，纯重构写 `spec:nochange` 豁免）⑭**新端点必须带测试**（新增 controller/service/mapper 实现文件须同次带测试，DoD 3） |
+| **温和提示（可自动，不拦）**<br>（10、12、13 项 + down 不可逆/XSS） | `scripts/spec-check.sh` | ⑩路由↔契约双向覆盖 ⑫验收流程一致性（06 已废弃删除，恒跳过）⑬新端点租户归属校验（@PathVariable 且无 SystemGuard 的 controller 端点，AGENTS.md 3.2）；另含 **down 不可逆标注**与 XSS（v-html 清单），均为提示级、不阻断 |
 | **语义一致性（需 AI）** | analyze 节点 | spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试 |
 
 `spec-check.sh` 只查「机器能判定的违规」，**不能**判断「spec 与代码语义是否一致」——那必须由 AI 在 analyze/converge 节点做。两者配合：脚本拦截硬红线，AI 补语义。

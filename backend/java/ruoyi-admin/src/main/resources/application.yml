@@ -98,8 +98,8 @@ sa-token:
   is-concurrent: true
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
   is-share: false
-  # jwt秘钥
-  jwt-secret-key: abcdefghijklmnopqrstuvwxyz
+  # jwt秘钥（生产由 JWT_SECRET 环境变量注入，禁止使用默认值；本地开发可保留默认）
+  jwt-secret-key: ${JWT_SECRET:abcdefghijklmnopqrstuvwxyz}
 
 # security配置
 security:

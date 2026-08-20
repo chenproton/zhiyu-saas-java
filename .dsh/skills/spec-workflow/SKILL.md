@@ -44,7 +44,7 @@ cd frontend/plus-ui && pnpm build                # 管理端
 ```
 
 - 优先调用 `spec_check` 工具获得结构化结果（violations 阻断级 / hints 提示级），失败项必须修复后再提交。
-- `spec_check.sh` 共 14 项 —— **阻断级**：①分层红线（controller 无裸 SQL/DB 句柄/MyBatis 注解、service 无拼 SQL、mapper 不读 HTTP 请求/Sa-Token/租户上下文）②LLM 直连红线 ③migration 配对 ④spec 五层制品 ⑤ADR 索引双向 ⑥安全红线（ADR-0003 关键写租户条件）⑦schema↔migrations 编号 ⑧表数机械校验 ⑨机器码词汇表 ⑪spec 随代码变更（纯重构 `spec:nochange` 豁免）⑭新端点带测试；**提示级**：⑩路由↔契约覆盖 ⑫验收流程一致性（含 `docs/系统功能清单.md`）⑬新端点租户归属校验（@PathVariable 且无 SystemGuard）②LLM 直连、down 不可逆标注、XSS 清单（均提示级，不阻断）。三份文档（AGENTS.md 4.2 / spec-standards §九 / 本节）口径必须一致。
+- `spec_check.sh` 共 14 项 —— **阻断级**：①分层红线（controller 无裸 SQL/DB 句柄/MyBatis 注解、service 无拼 SQL、mapper 不读 HTTP 请求/Sa-Token/租户上下文）②LLM 直连红线 ③migration 配对 ④spec 五层制品 ⑤ADR 索引双向 ⑥安全红线（ADR-0003 关键写租户条件）⑦schema↔migrations 编号 ⑧表数机械校验 ⑨机器码词汇表 ⑪spec 随代码变更（含 `docs/系统功能清单.md`，纯重构 `spec:nochange` 豁免）⑭新端点带测试；**提示级**：⑩路由↔契约覆盖 ⑫验收流程一致性（06 已废弃删除，恒跳过）⑬新端点租户归属校验（@PathVariable 且无 SystemGuard）+ down 不可逆标注、XSS 清单（均提示级，不阻断）。三份文档（AGENTS.md 4.2 / spec-standards §九 / 本节）口径必须一致。
 - 功能类 commit message 引用 spec 文件名/章节（如「见 docs/spec/02-api-contract.md §2」）；纯重构/纯修复加 `spec:nochange` 声明豁免。
 
 ## 4. DoD 验收清单（全部满足才算完成）
