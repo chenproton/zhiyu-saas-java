@@ -126,6 +126,7 @@ node scripts/ui-smoke/ui-smoke.mjs --flows-spec /tmp/my-page-flow.md
 | 模糊点击 | `clickText: 文字` | 点击包含该文字的可点击元素（卡片/链接/行标题） |
 | 表格行操作 | `clickRow: { text: 行内文字, action: 按钮文字 }` | 先按文字定位表格行，再点行内按钮 |
 | 卡片操作 | `clickCard: { text: 卡内文字, action: 按钮文字 }` | 先按文字定位卡片（需带 `data-smoke-card`），再点卡内按钮 |
+| 网格单元格 | `clickCell: { 行内文字: 列头文字 }` | 表格网格（排课周课表等）：按「行文字 × 列头文字」定位交点单元格点击（单元格无文字属性时用） |
 | 填表 | `fill: { 字段label: 值 }` | 按 label 填文本/数字/日期字段 |
 | 下拉选择 | `select: { 字段label: 选项文字或first }` | 下拉/Combobox 选择；`first` = 第一个选项 |
 | 提交 | `submit: 按钮文字或true` | 点击提交按钮；`true` = 自动识别「保存/创建/确认」等提交词 |
