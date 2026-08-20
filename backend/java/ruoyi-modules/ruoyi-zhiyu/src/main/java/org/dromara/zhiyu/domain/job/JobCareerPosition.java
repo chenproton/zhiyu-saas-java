@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.util.List;
 
@@ -58,7 +59,7 @@ public class JobCareerPosition extends BaseZhiyuEntity {
     private String description;
 
     /** 任职要求（text[]） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> requirements;
 
     /** 职业发展路径 */
@@ -74,7 +75,7 @@ public class JobCareerPosition extends BaseZhiyuEntity {
     private String createdBy;
 
     /** 协作者 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> collaborators;
 
     /** 浏览量（表列冗余计数） */

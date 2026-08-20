@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.util.List;
 
@@ -43,11 +44,11 @@ public class FavQuestionBank extends BaseZhiyuEntity {
     private String creatorId;
 
     /** 协作人 ID 数组 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> collaboratorIds;
 
     /** 协作部门 ID 数组 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> collaboratorDeptIds;
 
     /** 批次 ID */

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -74,7 +75,7 @@ public class ZhiyuUser extends BaseZhiyuEntity {
     private String idCard;
 
     /** 职称 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> titleIds;
 
     /** OAuth 凭据（jsonb，永不回传前端） */

@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.util.List;
 
@@ -47,7 +48,7 @@ public class ScheduleEntry extends BaseZhiyuEntity {
     private String classNodeId;
 
     /** 班级组织节点 ID 数组（多班合并排课） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> classNodeIds;
 
     /** 授课教师 ID */

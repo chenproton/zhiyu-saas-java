@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class KnowledgePoint extends BaseZhiyuEntity {
     private Boolean linked;
 
     /** 颗粒课 ID 数组 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> granularLessonIds;
 
     /** 创建人 ID */

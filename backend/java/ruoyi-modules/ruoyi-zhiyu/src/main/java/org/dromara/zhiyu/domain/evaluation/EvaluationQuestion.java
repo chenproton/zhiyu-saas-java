@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -53,7 +54,7 @@ public class EvaluationQuestion extends BaseZhiyuEntity {
     private String difficulty;
 
     /** 知识点 ID 数组 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
     /** 创建人 */

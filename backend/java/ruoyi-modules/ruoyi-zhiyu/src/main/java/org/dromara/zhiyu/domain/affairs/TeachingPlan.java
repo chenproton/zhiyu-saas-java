@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -53,7 +54,7 @@ public class TeachingPlan {
     private String batchId;
 
     /** 协作者 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
     private List<String> collaborators;
 
     /** 创建人 */
