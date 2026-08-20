@@ -20,11 +20,11 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
 
     /** 节点资源列表（绑定节点过滤，search 匹配名称/描述）。 */
     @Select("<script>SELECT rl.id, rl.name, rl.resource_type AS type, rl.url, rl.description,"
-        + " COALESCE(rl.file_size, 0)::int AS size, rl.uploaded_by, rl.created_at AS uploaded_at"
+        + " COALESCE(rl.file_size, 0) AS size, rl.uploaded_by, rl.created_at AS uploaded_at"
         + " FROM resource_library rl"
-        + " <if test=\"nodeId != null and nodeId != ''\">JOIN node_resource_bindings tb ON tb.resource_id = rl.id AND tb.node_id = #{nodeId}::uuid</if>"
+        + " <if test=\"nodeId != null and nodeId != ''\">JOIN node_resource_bindings tb ON tb.resource_id = rl.id AND tb.node_id = #{nodeId}</if>"
         + " WHERE rl.tenant_id = #{tenantId}"
-        + " <if test=\"search != null and search != ''\">AND (rl.name ILIKE #{search} OR rl.description ILIKE #{search})</if>"
+        + " <if test=\"search != null and search != ''\">AND (rl.name LIKE #{search} OR rl.description LIKE #{search})</if>"
         + " ORDER BY rl.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<NodeResourceDto> selectNodeResourcePage(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
                                                  @Param("search") String search, @Param("limit") int limit,
@@ -32,20 +32,20 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
 
     /** 节点资源列表总数。 */
     @Select("<script>SELECT COUNT(*) FROM resource_library rl"
-        + " <if test=\"nodeId != null and nodeId != ''\">JOIN node_resource_bindings tb ON tb.resource_id = rl.id AND tb.node_id = #{nodeId}::uuid</if>"
+        + " <if test=\"nodeId != null and nodeId != ''\">JOIN node_resource_bindings tb ON tb.resource_id = rl.id AND tb.node_id = #{nodeId}</if>"
         + " WHERE rl.tenant_id = #{tenantId}"
-        + " <if test=\"search != null and search != ''\">AND (rl.name ILIKE #{search} OR rl.description ILIKE #{search})</if></script>")
+        + " <if test=\"search != null and search != ''\">AND (rl.name LIKE #{search} OR rl.description LIKE #{search})</if></script>")
     long countNodeResourcePage(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
                                @Param("search") String search);
 
     /** 课程资源列表（绑定课程过滤，search 匹配名称/URL）。 */
-    @Select("<script>SELECT rl.id, COALESCE(crb.course_id::text, '') AS node_id, rl.name, rl.resource_type AS type,"
-        + " rl.url, rl.file_size::int AS size, rl.description, rl.uploaded_by, rl.created_at AS uploaded_at"
+    @Select("<script>SELECT rl.id, COALESCE(crb.course_id, '') AS node_id, rl.name, rl.resource_type AS type,"
+        + " rl.url, rl.file_size AS size, rl.description, rl.uploaded_by, rl.created_at AS uploaded_at"
         + " FROM resource_library rl"
-        + " <if test=\"courseId != null and courseId != ''\">JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = #{courseId}::uuid</if>"
+        + " <if test=\"courseId != null and courseId != ''\">JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = #{courseId}</if>"
         + " <if test=\"courseId == null or courseId == ''\">LEFT JOIN course_resource_bindings crb ON crb.resource_id = rl.id</if>"
         + " WHERE rl.tenant_id = #{tenantId}"
-        + " <if test=\"search != null and search != ''\">AND (rl.name ILIKE #{search} OR rl.url ILIKE #{search})</if>"
+        + " <if test=\"search != null and search != ''\">AND (rl.name LIKE #{search} OR rl.url LIKE #{search})</if>"
         + " ORDER BY rl.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<NodeResourceDto> selectCourseResourcePage(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                                                    @Param("search") String search, @Param("limit") int limit,
@@ -53,16 +53,16 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
 
     /** 课程资源列表总数。 */
     @Select("<script>SELECT COUNT(*) FROM resource_library rl"
-        + " <if test=\"courseId != null and courseId != ''\">JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = #{courseId}::uuid</if>"
+        + " <if test=\"courseId != null and courseId != ''\">JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = #{courseId}</if>"
         + " <if test=\"courseId == null or courseId == ''\">LEFT JOIN course_resource_bindings crb ON crb.resource_id = rl.id</if>"
         + " WHERE rl.tenant_id = #{tenantId}"
-        + " <if test=\"search != null and search != ''\">AND (rl.name ILIKE #{search} OR rl.url ILIKE #{search})</if></script>")
+        + " <if test=\"search != null and search != ''\">AND (rl.name LIKE #{search} OR rl.url LIKE #{search})</if></script>")
     long countCourseResourcePage(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                                  @Param("search") String search);
 
     /** 新建资源库条目（resource_type 为 PG 枚举）。 */
     @Insert("INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, file_size, uploaded_by)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{name}, #{type}::resource_type, #{url}, #{description}, #{fileSize}, #{uploadedBy}::uuid)")
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{type}, #{url}, #{description}, #{fileSize}, #{uploadedBy})")
     int insertResourceLibrary(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                               @Param("type") String type, @Param("url") String url,
                               @Param("description") String description, @Param("fileSize") Long fileSize,
@@ -70,29 +70,29 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
 
     /** 新建节点资源绑定（创建流程，幂等）。 */
     @Insert("INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{nodeId}::uuid, #{resourceId}::uuid)"
-        + " ON CONFLICT (node_id, resource_id) DO NOTHING")
+        + " VALUES (#{id}, #{tenantId}, #{nodeId}, #{resourceId})"
+        + " ON DUPLICATE KEY UPDATE id = id")
     int insertNodeBinding(@Param("id") String id, @Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
                           @Param("resourceId") String resourceId);
 
     /** 新建课程资源绑定（创建流程，幂等）。 */
     @Insert("INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{courseId}::uuid, #{resourceId}::uuid)"
-        + " ON CONFLICT (course_id, resource_id) DO NOTHING")
+        + " VALUES (#{id}, #{tenantId}, #{courseId}, #{resourceId})"
+        + " ON DUPLICATE KEY UPDATE id = id")
     int insertCourseBinding(@Param("id") String id, @Param("tenantId") String tenantId, @Param("courseId") String courseId,
                             @Param("resourceId") String resourceId);
 
     /** 绑定已有节点资源（返回绑定 ID）。 */
     @Select("INSERT INTO node_resource_bindings (tenant_id, node_id, resource_id)"
         + " VALUES (#{tenantId}, #{nodeId}, #{resourceId})"
-        + " ON CONFLICT (node_id, resource_id) DO UPDATE SET node_id = EXCLUDED.node_id RETURNING id")
+        + " ON DUPLICATE KEY UPDATE node_id = VALUES(node_id) RETURNING id")
     String bindNodeResource(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
                             @Param("resourceId") String resourceId);
 
     /** 绑定已有课程资源（返回绑定 ID）。 */
     @Select("INSERT INTO course_resource_bindings (tenant_id, course_id, resource_id)"
         + " VALUES (#{tenantId}, #{courseId}, #{resourceId})"
-        + " ON CONFLICT (course_id, resource_id) DO UPDATE SET course_id = EXCLUDED.course_id RETURNING id")
+        + " ON DUPLICATE KEY UPDATE course_id = VALUES(course_id) RETURNING id")
     String bindCourseResource(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                               @Param("resourceId") String resourceId);
 
@@ -113,19 +113,19 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
     int deleteCourseBinding(@Param("id") String id);
 
     /** 课程绑定后同步 courses.resource_ids 聚合字段。 */
-    @Update("UPDATE courses SET resource_ids = array_append(resource_ids, #{resourceId}::uuid),"
-        + " resource_count = COALESCE(array_length(array_append(resource_ids, #{resourceId}::uuid), 1), 0)"
-        + " WHERE id = #{courseId} AND NOT (#{resourceId}::uuid = ANY(resource_ids))")
+    @Update("UPDATE courses SET resource_ids = JSON_ARRAY_APPEND(resource_ids, '$', #{resourceId}),"
+        + " resource_count = COALESCE(JSON_LENGTH(JSON_ARRAY_APPEND(resource_ids, '$', #{resourceId})), 0)"
+        + " WHERE id = #{courseId} AND NOT JSON_CONTAINS(resource_ids, JSON_QUOTE(#{resourceId}), '$')")
     int syncCourseResourceBind(@Param("courseId") String courseId, @Param("resourceId") String resourceId);
 
     /** 课程解绑后同步 courses.resource_ids 聚合字段。 */
-    @Update("UPDATE courses SET resource_ids = array_remove(resource_ids, #{resourceId}::uuid),"
-        + " resource_count = COALESCE(array_length(array_remove(resource_ids, #{resourceId}::uuid), 1), 0)"
+    @Update("UPDATE courses SET resource_ids = JSON_REMOVE(resource_ids, JSON_UNQUOTE(JSON_SEARCH(resource_ids, 'one', #{resourceId}))),"
+        + " resource_count = COALESCE(array_length(JSON_REMOVE(resource_ids, JSON_UNQUOTE(JSON_SEARCH(resource_ids, 'one', #{resourceId}))), 1), 0)"
         + " WHERE id = #{courseId}")
     int syncCourseResourceUnbind(@Param("courseId") String courseId, @Param("resourceId") String resourceId);
 
     /** 校验资源归属当前租户（节点引用校验用）。 */
     @Select("<script>SELECT COUNT(*) FROM resource_library WHERE tenant_id = #{tenantId}"
-        + " AND id = ANY(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]))</script>")
+        + " AND JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')</script>")
     long countResourcesInTenant(@Param("tenantId") String tenantId, @Param("ids") List<String> ids);
 }

@@ -31,7 +31,7 @@ public interface JobWorkflowMapper extends BaseMapperPlus<JobWorkflow, JobWorkfl
     @Update("""
         UPDATE workflows SET
             name = #{name}, scene = #{scene}, description = #{description},
-            steps = CAST(#{steps} AS jsonb), major_ids = CAST(#{majorIds} AS jsonb), status = #{status}
+            steps = CAST(#{steps} AS JSON), major_ids = CAST(#{majorIds} AS JSON), status = #{status}
         WHERE id = #{id} AND tenant_id = #{tenantId}
         """)
     int updateWorkflow(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,

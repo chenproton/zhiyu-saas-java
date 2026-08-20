@@ -5,9 +5,10 @@ import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedJdbcTypes;
 import org.apache.ibatis.type.MappedTypes;
 
-import java.sql.Array;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.CallableStatement;
-import java.sql.Connection;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,47 +26,47 @@ import java.util.List;
  * @author zhiyu
  */
 @MappedTypes(List.class)
-@MappedJdbcTypes(JdbcType.ARRAY)
+@MappedJdbcTypes(JdbcType.VARCHAR)
 public class PgArrayTypeHandler extends BaseTypeHandler<List<String>> {
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final TypeReference<List<String>> LIST_REF = new TypeReference<>() {
+    };
+
+    /** MySQL 版：数组列以 JSON 文本存储（原 PG uuid[]/varchar[] → JSON），读写走 JSON 序列化。 */
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, List<String> parameter, JdbcType jdbcType)
         throws SQLException {
-        Connection conn = ps.getConnection();
-        Array array = conn.createArrayOf("text", parameter.toArray());
-        ps.setArray(i, array);
+        try {
+            ps.setString(i, MAPPER.writeValueAsString(parameter == null ? java.util.List.of() : parameter));
+        } catch (Exception e) {
+            throw new SQLException("数组列 JSON 序列化失败", e);
+        }
     }
 
     @Override
     public List<String> getNullableResult(ResultSet rs, String columnName) throws SQLException {
-        return toList(rs.getArray(columnName));
+        return parse(rs.getString(columnName));
     }
 
     @Override
     public List<String> getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-        return toList(rs.getArray(columnIndex));
+        return parse(rs.getString(columnIndex));
     }
 
     @Override
     public List<String> getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-        return toList(cs.getArray(columnIndex));
+        return parse(cs.getString(columnIndex));
     }
 
-    private List<String> toList(Array array) throws SQLException {
-        if (array == null) {
+    private List<String> parse(String json) {
+        if (json == null || json.isBlank()) {
             return null;
         }
-        Object raw = array.getArray();
-        if (raw == null) {
+        try {
+            return MAPPER.readValue(json, LIST_REF);
+        } catch (Exception ignored) {
             return null;
         }
-        Object[] elements = (Object[]) raw;
-        List<String> out = new ArrayList<>(elements.length);
-        for (Object el : elements) {
-            if (el != null) {
-                out.add(el.toString());
-            }
-        }
-        return out;
     }
 }

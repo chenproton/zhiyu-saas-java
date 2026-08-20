@@ -25,7 +25,7 @@ public interface SceneRubricTemplateMapper extends BaseMapperPlus<SceneRubricTem
     @Insert("INSERT INTO rubric_templates (id, tenant_id, name, mode, types, description, data, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{mode},"
         + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{description},"
-        + " CAST(#{data} AS jsonb), NOW(), NOW())")
+        + " CAST(#{data} AS JSON), NOW(), NOW())")
     int insertTemplate(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                        @Param("mode") String mode, @Param("types") List<String> types,
                        @Param("description") String description, @Param("data") String data);
@@ -35,7 +35,7 @@ public interface SceneRubricTemplateMapper extends BaseMapperPlus<SceneRubricTem
      */
     @Update("UPDATE rubric_templates SET name = #{name}, mode = #{mode},"
         + " types = #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " description = #{description}, data = CAST(#{data} AS jsonb), updated_at = NOW() WHERE id = #{id}")
+        + " description = #{description}, data = CAST(#{data} AS JSON), updated_at = NOW() WHERE id = #{id}")
     int updateTemplate(@Param("id") String id, @Param("name") String name, @Param("mode") String mode,
                        @Param("types") List<String> types, @Param("description") String description,
                        @Param("data") String data);

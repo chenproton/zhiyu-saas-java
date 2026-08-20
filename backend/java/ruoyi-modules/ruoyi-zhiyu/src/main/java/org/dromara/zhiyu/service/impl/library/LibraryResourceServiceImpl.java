@@ -37,7 +37,7 @@ import java.util.UUID;
  * 资源库服务实现（对齐 Go resource_library_handler.go + service/resource.go +
  * store/resource_library.go 语义）。
  *
- * <p>列表默认 limit=50（上限 200）、offset=0；search 按 Go 语义转义 ILIKE 通配符
+ * <p>列表默认 limit=50（上限 200）、offset=0；search 按 Go 语义转义 LIKE 通配符
  * （%/_\），日期范围按 YYYY-MM-DD 解析（endDate 含当天，转次日零点开区间）。</p>
  *
  * @author zhiyu
@@ -229,7 +229,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
         return dto;
     }
 
-    /** 转义 ILIKE 通配符并包裹 %pattern%（对齐 Go strings.NewReplacer 语义） */
+    /** 转义 LIKE 通配符并包裹 %pattern%（对齐 Go strings.NewReplacer 语义） */
     private String toLikePattern(String search) {
         if (search == null || search.isBlank()) {
             return null;

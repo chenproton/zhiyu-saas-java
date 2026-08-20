@@ -23,11 +23,11 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     // ===== 可见性列表（source_enterprise_id 或 grant） =====
 
-    @Select("<script>SELECT cp.id::text FROM career_positions cp"
-        + " WHERE (cp.source_enterprise_id = #{enterpriseId}::uuid"
-        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId}::uuid AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
-        + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND cp.tenant_id = #{schoolTenantId}::uuid</if>"
-        + " <if test=\"search != null and search != ''\"> AND cp.name ILIKE '%' || #{search} || '%'</if>"
+    @Select("<script>SELECT cp.id FROM career_positions cp"
+        + " WHERE (cp.source_enterprise_id = #{enterpriseId}"
+        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
+        + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND cp.tenant_id = #{schoolTenantId}</if>"
+        + " <if test=\"search != null and search != ''\"> AND cp.name LIKE CONCAT('%', #{search}, '%')</if>"
         + " ORDER BY cp.updated_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<String> selectPositionIds(@Param("enterpriseId") String enterpriseId,
                                    @Param("schoolTenantId") String schoolTenantId,
@@ -35,27 +35,27 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
                                    @Param("offset") int offset);
 
     @Select("<script>SELECT COUNT(*) FROM career_positions cp"
-        + " WHERE (cp.source_enterprise_id = #{enterpriseId}::uuid"
-        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId}::uuid AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
-        + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND cp.tenant_id = #{schoolTenantId}::uuid</if>"
-        + " <if test=\"search != null and search != ''\"> AND cp.name ILIKE '%' || #{search} || '%'</if></script>")
+        + " WHERE (cp.source_enterprise_id = #{enterpriseId}"
+        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
+        + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND cp.tenant_id = #{schoolTenantId}</if>"
+        + " <if test=\"search != null and search != ''\"> AND cp.name LIKE CONCAT('%', #{search}, '%')</if></script>")
     long countPositions(@Param("enterpriseId") String enterpriseId, @Param("schoolTenantId") String schoolTenantId,
                         @Param("search") String search);
 
     @Select("<script>SELECT cp.id, t.name FROM career_positions cp JOIN tenants t ON t.id = cp.tenant_id WHERE cp.id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectSchoolNames(@Param("ids") List<String> ids);
 
     @Select("<script>SELECT career_position_id, major_id FROM career_position_majors WHERE career_position_id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<PosMajorRow> selectPositionMajorIds(@Param("ids") List<String> ids);
 
     @Select("<script>SELECT id, name FROM majors WHERE id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectMajorNames(@Param("ids") List<String> ids);
 
     @Select("<script>SELECT id, name FROM users WHERE id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectUserNames(@Param("ids") List<String> ids);
 
     // ===== 写入 =====
@@ -65,9 +65,9 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
         + " collaborators, source_type, source_enterprise_id, source_resource_id)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{batchId}, #{name}, #{shortName}, #{industryId}, #{positionType},"
         + " #{salaryMin}, #{salaryMax}, #{coverImage}, #{description},"
-        + " CAST(#{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]),"
+        + " #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{careerPath}, #{version}, #{status}, #{createdBy},"
-        + " CAST(#{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{sourceType}, #{sourceEnterpriseId}, #{sourceResourceId})")
     int insertCoBuildPosition(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                               @Param("batchId") String batchId, @Param("name") String name,
@@ -84,10 +84,10 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
     @Update("UPDATE career_positions SET batch_id = #{batchId}, name = #{name}, short_name = #{shortName},"
         + " industry_id = #{industryId}, position_type = #{positionType}, salary_min = #{salaryMin},"
         + " salary_max = #{salaryMax}, cover_image = #{coverImage}, description = #{description},"
-        + " requirements = CAST(#{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]),"
+        + " requirements = #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " career_path = #{careerPath}, version = #{version},"
-        + " collaborators = CAST(#{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " updated_at = NOW() WHERE id = #{id}::uuid")
+        + " collaborators = #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " updated_at = NOW() WHERE id = #{id}")
     int updateCoBuildPosition(@Param("id") String id, @Param("batchId") String batchId, @Param("name") String name,
                               @Param("shortName") String shortName, @Param("industryId") String industryId,
                               @Param("positionType") String positionType, @Param("salaryMin") Integer salaryMin,
@@ -98,60 +98,60 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     /** 状态流转（CAS，对齐 Go ContentActions.Transition）。 */
     @Update("UPDATE career_positions SET status = #{to}, updated_at = NOW()"
-        + " WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid AND status = #{current}")
+        + " WHERE id = #{id} AND tenant_id = #{tenantId} AND status = #{current}")
     int casTransition(@Param("id") String id, @Param("tenantId") String tenantId, @Param("current") String current,
                       @Param("to") String to);
 
-    @Select("SELECT status FROM career_positions WHERE id = #{id}::uuid")
+    @Select("SELECT status FROM career_positions WHERE id = #{id}")
     String selectStatus(@Param("id") String id);
 
-    @Select("SELECT EXISTS(SELECT 1 FROM career_positions WHERE tenant_id = #{tenantId}::uuid AND code = #{code})")
+    @Select("SELECT EXISTS(SELECT 1 FROM career_positions WHERE tenant_id = #{tenantId} AND code = #{code})")
     boolean existsCode(@Param("tenantId") String tenantId, @Param("code") String code);
 
-    @Select("SELECT tenant_id::text FROM career_positions WHERE id = #{id}::uuid")
+    @Select("SELECT tenant_id FROM career_positions WHERE id = #{id}")
     String selectTenantId(@Param("id") String id);
 
     /** 查询本企业对该源资源未完结的编辑 draft（对齐 FindDraftBySource）。 */
-    @Select("SELECT id::text FROM career_positions WHERE source_enterprise_id = #{enterpriseId}::uuid"
-        + " AND source_resource_id = #{sourceResourceId}::uuid AND status IN ('draft','pending','rejected') LIMIT 1")
+    @Select("SELECT id FROM career_positions WHERE source_enterprise_id = #{enterpriseId}"
+        + " AND source_resource_id = #{sourceResourceId} AND status IN ('draft','pending','rejected') LIMIT 1")
     String selectDraftIdBySource(@Param("enterpriseId") String enterpriseId,
                                  @Param("sourceResourceId") String sourceResourceId);
 
     /** 删除保护：存在成绩/画像或被已发布场景引用时拒绝删除。 */
-    @Select("SELECT EXISTS(SELECT 1 FROM job_ability_results WHERE career_position_id = #{id}::uuid)"
-        + " OR EXISTS(SELECT 1 FROM student_ability_portraits WHERE career_position_id = #{id}::uuid)"
-        + " OR EXISTS(SELECT 1 FROM scenarios WHERE career_position_id = #{id}::uuid AND status = 'published')")
+    @Select("SELECT EXISTS(SELECT 1 FROM job_ability_results WHERE career_position_id = #{id})"
+        + " OR EXISTS(SELECT 1 FROM student_ability_portraits WHERE career_position_id = #{id})"
+        + " OR EXISTS(SELECT 1 FROM scenarios WHERE career_position_id = #{id} AND status = 'published')")
     boolean existsInUse(@Param("id") String id);
 
-    @Delete("DELETE FROM job_ability_results WHERE career_position_id = #{id}::uuid")
+    @Delete("DELETE FROM job_ability_results WHERE career_position_id = #{id}")
     int cleanupJobAbilityResults(@Param("id") String id);
 
-    @Delete("DELETE FROM student_ability_portraits WHERE career_position_id = #{id}::uuid")
+    @Delete("DELETE FROM student_ability_portraits WHERE career_position_id = #{id}")
     int cleanupStudentPortraits(@Param("id") String id);
 
-    @Delete("DELETE FROM job_ability_aggregate_logs WHERE career_position_id = #{id}::uuid")
+    @Delete("DELETE FROM job_ability_aggregate_logs WHERE career_position_id = #{id}")
     int cleanupAggregateLogs(@Param("id") String id);
 
-    @Delete("DELETE FROM view_counters WHERE target_type = 'career_position' AND target_id = #{id}::uuid")
+    @Delete("DELETE FROM view_counters WHERE target_type = 'career_position' AND target_id = #{id}")
     int cleanupViewCounters(@Param("id") String id);
 
-    @Delete("DELETE FROM favorite_counters WHERE target_type = 'career_position' AND target_id = #{id}::uuid")
+    @Delete("DELETE FROM favorite_counters WHERE target_type = 'career_position' AND target_id = #{id}")
     int cleanupFavoriteCounters(@Param("id") String id);
 
-    @Delete("DELETE FROM career_positions WHERE id = #{id}::uuid")
+    @Delete("DELETE FROM career_positions WHERE id = #{id}")
     int deletePositionById(@Param("id") String id);
 
     // ===== 专业绑定 =====
 
-    @Delete("DELETE FROM career_position_majors WHERE career_position_id = #{positionId}::uuid")
+    @Delete("DELETE FROM career_position_majors WHERE career_position_id = #{positionId}")
     int deleteMajors(@Param("positionId") String positionId);
 
-    @Insert("INSERT INTO career_position_majors (career_position_id, major_id) VALUES (#{positionId}::uuid, #{majorId}::uuid)")
+    @Insert("INSERT INTO career_position_majors (career_position_id, major_id) VALUES (#{positionId}, #{majorId})")
     int insertMajor(@Param("positionId") String positionId, @Param("majorId") String majorId);
 
     // ===== 岗位职责 =====
 
-    @Delete("DELETE FROM position_responsibilities WHERE career_position_id = #{positionId}::uuid")
+    @Delete("DELETE FROM position_responsibilities WHERE career_position_id = #{positionId}")
     int deleteResponsibilities(@Param("positionId") String positionId);
 
     @Insert("INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, description, sort_order)"
@@ -162,15 +162,15 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     // ===== 证书 =====
 
-    @Delete("DELETE FROM position_certificates WHERE career_position_id = #{positionId}::uuid")
+    @Delete("DELETE FROM position_certificates WHERE career_position_id = #{positionId}")
     int deleteCertificates(@Param("positionId") String positionId);
 
     @Insert("INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)"
-        + " VALUES (#{id}, #{tenantId}, #{positionId}, #{libraryId}) ON CONFLICT DO NOTHING")
+        + " VALUES (#{id}, #{tenantId}, #{positionId}, #{libraryId}) ON DUPLICATE KEY UPDATE id = id")
     int insertCertificate(@Param("id") String id, @Param("tenantId") String tenantId,
                           @Param("positionId") String positionId, @Param("libraryId") String libraryId);
 
-    @Select("SELECT id::text FROM certificate_library WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    @Select("SELECT id FROM certificate_library WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectCertificateLibraryId(@Param("tenantId") String tenantId, @Param("name") String name);
 
     @Insert("INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)"
@@ -181,20 +181,20 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     // ===== 能力绑定 / 能力域 =====
 
-    @Delete("DELETE FROM ability_domains WHERE career_position_id = #{positionId}::uuid")
+    @Delete("DELETE FROM ability_domains WHERE career_position_id = #{positionId}")
     int deleteAbilityDomains(@Param("positionId") String positionId);
 
-    @Delete("DELETE FROM position_ability_bindings WHERE career_position_id = #{positionId}::uuid")
+    @Delete("DELETE FROM position_ability_bindings WHERE career_position_id = #{positionId}")
     int deleteAbilityBindings(@Param("positionId") String positionId);
 
     @Select("INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id,"
         + " source, domain, required_level, rubric_description, attributes, weight)"
         + " VALUES (#{id}, #{tenantId}, #{positionId}, #{responsibilityId}, #{abilityPointId},"
         + " #{source}, #{domain}, #{requiredLevel}, #{rubricDescription},"
-        + " CAST(#{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]), #{weight})"
-        + " ON CONFLICT (career_position_id, responsibility_id, ability_point_id) DO UPDATE SET"
-        + " domain = EXCLUDED.domain, required_level = EXCLUDED.required_level,"
-        + " rubric_description = EXCLUDED.rubric_description, attributes = EXCLUDED.attributes, weight = EXCLUDED.weight"
+        + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight})"
+        + " ON DUPLICATE KEY UPDATE"
+        + " domain = VALUES(domain), required_level = VALUES(required_level),"
+        + " rubric_description = VALUES(rubric_description), attributes = VALUES(attributes), weight = VALUES(weight)"
         + " RETURNING id")
     String upsertAbilityBindingReturnId(@Param("id") String id, @Param("tenantId") String tenantId,
                                         @Param("positionId") String positionId,
@@ -206,18 +206,18 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     @Insert("INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)"
         + " VALUES (#{id}, #{tenantId}, #{positionId}, #{name}, #{description},"
-        + " CAST(#{bindingIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]), #{sortOrder})")
+        + " #{bindingIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{sortOrder})")
     int insertAbilityDomain(@Param("id") String id, @Param("tenantId") String tenantId,
                             @Param("positionId") String positionId, @Param("name") String name,
                             @Param("description") String description, @Param("bindingIds") List<String> bindingIds,
                             @Param("sortOrder") int sortOrder);
 
-    @Select("SELECT id::text FROM ability_points WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    @Select("SELECT id FROM ability_points WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectAbilityPointId(@Param("tenantId") String tenantId, @Param("name") String name);
 
     @Insert("INSERT INTO ability_points (id, tenant_id, name, description, code, attributes, is_public)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{description}, #{code},"
-        + " CAST(#{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]), false)")
+        + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, false)")
     int insertAbilityPoint(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                            @Param("description") String description, @Param("code") String code,
                            @Param("attributes") List<String> attributes);

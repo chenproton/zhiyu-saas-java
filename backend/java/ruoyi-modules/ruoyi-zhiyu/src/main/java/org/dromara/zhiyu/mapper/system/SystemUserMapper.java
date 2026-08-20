@@ -32,7 +32,7 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " username, password_hash, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status)"
         + " VALUES (#{id}, #{tenantId}, #{institutionId}, #{orgNodeId}, #{majorId}, #{role}, #{platform}, #{globalLoginName},"
         + " #{username}, #{passwordHash}, #{name}, #{email}, #{phone}, #{avatarUrl}, #{studentNo}, #{workId}, #{idCard},"
-        + " COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[], '{}'::uuid[]), '{}'::jsonb, 'active')")
+        + " COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, JSON_ARRAY()), '{}', 'active')")
     int insertUser(@Param("id") String id, @Param("tenantId") String tenantId, @Param("institutionId") String institutionId,
                    @Param("orgNodeId") String orgNodeId, @Param("majorId") String majorId, @Param("role") String role,
                    @Param("platform") String platform, @Param("globalLoginName") String globalLoginName,
@@ -48,7 +48,7 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " email = COALESCE(#{email}, email), phone = COALESCE(#{phone}, phone),"
         + " avatar_url = COALESCE(#{avatarUrl}, avatar_url), student_no = COALESCE(#{studentNo}, student_no),"
         + " work_id = COALESCE(#{workId}, work_id), id_card = COALESCE(#{idCard}, id_card),"
-        + " title_ids = COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[], title_ids),"
+        + " title_ids = COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, title_ids),"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateUser(@Param("id") String id, @Param("tenantId") String tenantId, @Param("institutionId") String institutionId,
                    @Param("orgNodeId") String orgNodeId, @Param("majorId") String majorId, @Param("role") String role,
@@ -72,17 +72,17 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
     int deleteUser(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Update("UPDATE users SET status = 'graduated', graduate_year = #{graduateYear}, updated_at = NOW()"
-        + " WHERE id = ANY(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[])"
+        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND tenant_id = #{tenantId} AND status = 'active'")
     int batchGraduate(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds,
                       @Param("graduateYear") Integer graduateYear);
 
-    @Delete("DELETE FROM users WHERE id = ANY(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[])"
+    @Delete("DELETE FROM users WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND tenant_id = #{tenantId}")
     int batchDeleteUsers(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds);
 
     @Update("UPDATE users SET org_node_id = #{orgNodeId}, updated_at = NOW()"
-        + " WHERE id = ANY(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[])"
+        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND tenant_id = #{tenantId}")
     int batchUpdateOrgNode(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds,
                            @Param("orgNodeId") String orgNodeId);
@@ -103,13 +103,13 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, status, graduate_year,"
         + " last_login_at, created_at, updated_at FROM users"
         + " WHERE tenant_id = #{tenantId}"
-        + " <if test='institutionId != null and institutionId != \"\"'> AND institution_id = #{institutionId}::uuid</if>"
-        + " <if test='roleId != null and roleId != \"\"'> AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = #{roleId}::uuid)</if>"
+        + " <if test='institutionId != null and institutionId != \"\"'> AND institution_id = #{institutionId}</if>"
+        + " <if test='roleId != null and roleId != \"\"'> AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = #{roleId})</if>"
         + " <if test='roleCode != null and roleCode != \"\"'> AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = #{roleCode})</if>"
-        + " <if test='orgNodeId != null and orgNodeId != \"\"'> AND org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = #{orgNodeId}::uuid UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)</if>"
-        + " <if test='titleId != null and titleId != \"\"'> AND title_ids @&gt; ARRAY[#{titleId}]::uuid[]</if>"
+        + " <if test='orgNodeId != null and orgNodeId != \"\"'> AND org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = #{orgNodeId} UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)</if>"
+        + " <if test='titleId != null and titleId != \"\"'> AND title_ids @&gt; JSON_ARRAY(#{titleId})</if>"
         + " <if test='status != null and status != \"\"'> AND status = #{status}</if>"
-        + " <if test='search != null and search != \"\"'> AND (username ILIKE '%' || #{search} || '%' OR name ILIKE '%' || #{search} || '%' OR email ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (username LIKE CONCAT('%', #{search}, '%') OR name LIKE CONCAT('%', #{search}, '%') OR email LIKE CONCAT('%', #{search}, '%'))</if>"
         + " ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     @Results({
         @Result(column = "title_ids", property = "titleIds", typeHandler = PgArrayTypeHandler.class)
@@ -121,13 +121,13 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
                                    @Param("limit") long limit, @Param("offset") long offset);
 
     @Select("<script>SELECT COUNT(*) FROM users WHERE tenant_id = #{tenantId}"
-        + " <if test='institutionId != null and institutionId != \"\"'> AND institution_id = #{institutionId}::uuid</if>"
-        + " <if test='roleId != null and roleId != \"\"'> AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = #{roleId}::uuid)</if>"
+        + " <if test='institutionId != null and institutionId != \"\"'> AND institution_id = #{institutionId}</if>"
+        + " <if test='roleId != null and roleId != \"\"'> AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = #{roleId})</if>"
         + " <if test='roleCode != null and roleCode != \"\"'> AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = #{roleCode})</if>"
-        + " <if test='orgNodeId != null and orgNodeId != \"\"'> AND org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = #{orgNodeId}::uuid UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)</if>"
-        + " <if test='titleId != null and titleId != \"\"'> AND title_ids @&gt; ARRAY[#{titleId}]::uuid[]</if>"
+        + " <if test='orgNodeId != null and orgNodeId != \"\"'> AND org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = #{orgNodeId} UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)</if>"
+        + " <if test='titleId != null and titleId != \"\"'> AND title_ids @&gt; JSON_ARRAY(#{titleId})</if>"
         + " <if test='status != null and status != \"\"'> AND status = #{status}</if>"
-        + " <if test='search != null and search != \"\"'> AND (username ILIKE '%' || #{search} || '%' OR name ILIKE '%' || #{search} || '%' OR email ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (username LIKE CONCAT('%', #{search}, '%') OR name LIKE CONCAT('%', #{search}, '%') OR email LIKE CONCAT('%', #{search}, '%'))</if>"
         + "</script>")
     long countUsers(@Param("tenantId") String tenantId, @Param("institutionId") String institutionId,
                     @Param("roleId") String roleId, @Param("roleCode") String roleCode,

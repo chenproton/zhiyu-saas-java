@@ -154,7 +154,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             try {
                 favoriteMapper.insert(fav);
             } catch (DuplicateKeyException e) {
-                // 并发下该行可能已被另一请求插入（对齐 Go ON CONFLICT DO NOTHING 静默 no-op）
+                // 并发下该行可能已被另一请求插入（对齐 Go ON DUPLICATE KEY UPDATE id = id 静默 no-op）
                 inserted = false;
             }
             if (inserted) {

@@ -18,7 +18,7 @@ sudo ./install.sh
 ```
 
 脚本自动完成：
-1. 离线安装 Docker、Nginx、PostgreSQL 客户端
+1. 离线安装 Docker、Nginx、MySQL 客户端
 2. 导入全部服务镜像
 3. 生成随机数据库密码与密钥（配置保存在 `/opt/zhiyu-saas/.env`）
 4. 启动数据库并执行迁移、初始化种子数据
@@ -59,8 +59,8 @@ sudo ./install.sh --update
 ## 目录说明
 
 ```
-├── images/        # 全部服务镜像（java-backend/PostgreSQL/Redis/kkFileView）
-├── debs/          # 系统依赖离线包（Docker/Nginx/PostgreSQL 客户端）
+├── images/        # 全部服务镜像（java-backend/MySQL/Redis/kkFileView）
+├── debs/          # 系统依赖离线包（Docker/Nginx/MySQL 客户端）
 ├── web/           # 前端 dist（portal 业务门户 + plus-ui 管理端，nginx 容器挂载）
 ├── deploy/        # Docker Compose、Nginx 配置、数据库迁移 SQL 与框架表初始化 SQL
 ├── install.sh     # 一键安装/升级

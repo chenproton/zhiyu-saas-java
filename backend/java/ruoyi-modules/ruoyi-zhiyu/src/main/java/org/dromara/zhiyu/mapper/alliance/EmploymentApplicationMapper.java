@@ -37,11 +37,11 @@ public interface EmploymentApplicationMapper extends BaseMapperPlus<EmploymentAp
         + " LEFT JOIN majors m ON m.id = u.major_id"
         + " LEFT JOIN organizations o ON o.id = u.org_node_id"
         + " WHERE j.id = #{jobId} AND j.status = 'published' AND (j.project_id IS NULL OR p.publish_status = 'published')"
-        + " <if test='orgPathIds != null and orgPathIds != \"\"'> AND (p.target_groups = '[]'::jsonb OR EXISTS ("
-        + "   SELECT 1 FROM jsonb_array_elements(p.target_groups) g"
-        + "   WHERE (g->>'orgNodeId' IS NULL OR g->>'orgNodeId' = ANY(#{orgPathIds}::text[]))"
-        + "     AND (g->>'majorId' IS NULL OR #{majorId}::text = g->>'majorId')"
-        + "     AND (g->>'graduateYear' IS NULL OR #{graduateYear} = (g->>'graduateYear')::int)))</if>"
+        + " <if test='orgPathIds != null and orgPathIds != \"\"'> AND (p.target_groups = '[]' OR EXISTS ("
+        + "   SELECT 1 FROM JSON_TABLE(p.target_groups, '$[*]' COLUMNS (g JSON PATH '$')) g"
+        + "   WHERE (g->>'$.orgNodeId' IS NULL OR g->>'$.orgNodeId' = ANY(#{orgPathIds}))"
+        + "     AND (g->>'$.majorId' IS NULL OR #{majorId} = g->>'$.majorId')"
+        + "     AND (g->>'$.graduateYear' IS NULL OR #{graduateYear} = (g->>'$.graduateYear'))))</if>"
         + "</script>")
     int insertApplication(@Param("id") String id, @Param("jobId") String jobId,
                           @Param("studentId") String studentId, @Param("coverLetter") String coverLetter,
@@ -62,7 +62,7 @@ public interface EmploymentApplicationMapper extends BaseMapperPlus<EmploymentAp
         + " <if test='projectId != null and projectId != \"\"'> AND j.project_id = #{projectId}</if>"
         + " <if test='jobId != null and jobId != \"\"'> AND a.job_id = #{jobId}</if>"
         + " <if test='enterpriseId != null and enterpriseId != \"\"'> AND a.enterprise_id = #{enterpriseId}</if>"
-        + " <if test='search != null and search != \"\"'> AND a.student_name ILIKE '%' || #{search} || '%'</if>"
+        + " <if test='search != null and search != \"\"'> AND a.student_name LIKE CONCAT('%', #{search}, '%')</if>"
         + " ORDER BY a.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<EmploymentApplication> listApplications(@Param("tenantId") String tenantId, @Param("projectId") String projectId,
                                                  @Param("jobId") String jobId, @Param("enterpriseId") String enterpriseId,
@@ -74,7 +74,7 @@ public interface EmploymentApplicationMapper extends BaseMapperPlus<EmploymentAp
         + " <if test='projectId != null and projectId != \"\"'> AND j.project_id = #{projectId}</if>"
         + " <if test='jobId != null and jobId != \"\"'> AND a.job_id = #{jobId}</if>"
         + " <if test='enterpriseId != null and enterpriseId != \"\"'> AND a.enterprise_id = #{enterpriseId}</if>"
-        + " <if test='search != null and search != \"\"'> AND a.student_name ILIKE '%' || #{search} || '%'</if></script>")
+        + " <if test='search != null and search != \"\"'> AND a.student_name LIKE CONCAT('%', #{search}, '%')</if></script>")
     long countApplications(@Param("tenantId") String tenantId, @Param("projectId") String projectId,
                            @Param("jobId") String jobId, @Param("enterpriseId") String enterpriseId,
                            @Param("search") String search);
@@ -100,7 +100,7 @@ public interface EmploymentApplicationMapper extends BaseMapperPlus<EmploymentAp
         + " SELECT id, parent_id FROM organizations WHERE id = #{orgNodeId}"
         + " UNION ALL"
         + " SELECT o.id, o.parent_id FROM organizations o JOIN up_tree t ON o.id = t.parent_id"
-        + ") SELECT COALESCE(array_agg(id::text), '{}') FROM up_tree")
+        + ") SELECT COALESCE(JSON_ARRAYAGG(id), JSON_ARRAY()) FROM up_tree")
     String selectOrgPathIds(@Param("orgNodeId") String orgNodeId);
 
     @Select("SELECT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id"

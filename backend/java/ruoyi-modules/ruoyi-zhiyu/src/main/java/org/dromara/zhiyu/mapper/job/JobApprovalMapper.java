@@ -49,7 +49,7 @@ public interface JobApprovalMapper extends BaseMapperPlus<JobApprovalRecord, Job
      *
      * @return 影响行数（0 表示记录已非 pending）
      */
-    @Update("UPDATE approval_records SET history = CAST(#{history} AS jsonb), updated_at = NOW()"
+    @Update("UPDATE approval_records SET history = CAST(#{history} AS JSON), updated_at = NOW()"
         + " WHERE id = #{id} AND status = 'pending'")
     int updateHistory(@Param("id") String id, @Param("history") String history);
 
@@ -59,7 +59,7 @@ public interface JobApprovalMapper extends BaseMapperPlus<JobApprovalRecord, Job
      * @return 影响行数（0 表示记录已非 pending 或步骤已被并发修改）
      */
     @Update("UPDATE approval_records SET status = #{status}, current_step_idx = #{stepIdx},"
-        + " history = CAST(#{history} AS jsonb), updated_at = NOW()"
+        + " history = CAST(#{history} AS JSON), updated_at = NOW()"
         + " WHERE id = #{id} AND status = 'pending' AND current_step_idx = #{oldStepIdx}")
     int advanceRecord(@Param("id") String id, @Param("status") String status, @Param("stepIdx") int stepIdx,
                       @Param("oldStepIdx") int oldStepIdx, @Param("history") String history);
@@ -70,13 +70,13 @@ public interface JobApprovalMapper extends BaseMapperPlus<JobApprovalRecord, Job
      */
     @Update("<script>"
         + "<choose>"
-        + "<when test='table == \"career_positions\"'>UPDATE career_positions SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
-        + "<when test='table == \"scenarios\"'>UPDATE scenarios SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
-        + "<when test='table == \"courses\"'>UPDATE courses SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
-        + "<when test='table == \"question_banks\"'>UPDATE question_banks SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
-        + "<when test='table == \"exams\"'>UPDATE exams SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
-        + "<when test='table == \"training_programs\"'>UPDATE training_programs SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
-        + "<when test='table == \"teaching_plans\"'>UPDATE teaching_plans SET status = #{status}, updated_at = NOW() WHERE id = #{targetId}::uuid AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"career_positions\"'>UPDATE career_positions SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"scenarios\"'>UPDATE scenarios SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"courses\"'>UPDATE courses SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"question_banks\"'>UPDATE question_banks SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"exams\"'>UPDATE exams SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"training_programs\"'>UPDATE training_programs SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
+        + "<when test='table == \"teaching_plans\"'>UPDATE teaching_plans SET status = #{status}, updated_at = NOW() WHERE id = #{targetId} AND tenant_id = #{tenantId}</when>"
         + "</choose>"
         + "</script>")
     int syncEntityStatus(@Param("table") String table, @Param("status") String status,

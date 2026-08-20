@@ -35,7 +35,7 @@ public interface SystemUserExtensionFieldMapper extends BaseMapperPlus<SystemUse
     SystemUserExtensionField selectByIdAndTenant(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Update("UPDATE user_extension_fields SET field_name = #{fieldName}, is_enabled = #{isEnabled},"
-        + " is_required = #{isRequired}, applicable_role_codes = CAST(#{applicableRoleCodes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[])"
+        + " is_required = #{isRequired}, applicable_role_codes = #{applicableRoleCodes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateField(@Param("id") String id, @Param("tenantId") String tenantId, @Param("fieldName") String fieldName,
                     @Param("isEnabled") Boolean isEnabled, @Param("isRequired") Boolean isRequired,

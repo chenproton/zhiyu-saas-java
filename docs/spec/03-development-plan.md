@@ -45,7 +45,7 @@
 |--------|--------|---------|------|------|
 | 仓库初始化（monorepo：apps/packages/backend） | A | 1 | — | ✅ |
 | deploy.sh 一键部署脚本（首装依赖/.env/建库/种子） | A | 2 | 仓库初始化 | ✅ |
-| docker-compose（postgres/redis/后端/前端/kkfileview） | A | 1 | 脚本 | ✅ |
+| docker-compose（mysql/redis/后端/前端/kkfileview） | A | 1 | 脚本 | ✅ |
 | CI 工作流（前端 typecheck/lint/test，后端 gofmt/vet/build/test） | A | 1 | 仓库初始化 | ✅ |
 
 ### M1 后端核心域建设（07-11 ~ 07-18）
@@ -126,7 +126,7 @@
 | file-viewer 文档预览（flyfish-dev） | 浏览器原生（flyfish-dev/file-viewer），覆盖全部 208 扩展名，无服务端转换 | 已启用 |
 | kkfileview 文档预览服务 | 可选 profile，端口 8012（保留作 file-viewer 不支持格式的回退） | 可选启用 |
 | Redis | 缓存/限流，未配置自动降级 | 已就绪（docker） |
-| PostgreSQL 15 | 主数据库 | 已就绪（docker） |
+| MySQL 8.0 | 主数据库 | 已就绪（docker） |
 | 设计稿 | 无外部设计稿，组件库（Element Plus + 亮色主题）即视觉规范 | 内置 |
 
 ### 3.3 风险项与应对
@@ -154,16 +154,16 @@
 
 ## 5. 部署契约（deploy.sh 行为约定）
 
-> 与实现同源：`deploy.sh` 是**唯一部署入口**（Java + Vue 单栈：Java 后端 + portal-vue/plus-ui 前端 + PostgreSQL）。建库建表（`db/migrations` 纯 psql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh。
+> 与实现同源：`deploy.sh` 是**唯一部署入口**（Java + Vue 单栈：Java 后端 + portal-vue/plus-ui 前端 + MySQL 8.0）。建库建表（`db/migrations` 纯 mysql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh。
 
 ### 5.1 执行顺序（顺序即契约）
 
 1. **取部署锁**（`/run/zhiyu-deploy.lock`，flock 不可用即拒绝部署）——先于任何系统级动作（apt / 安装 Node / 装 nginx / 配 docker mirror），避免并发部署互踩
 2. 校验分支 → 在隔离 worktree（`/tmp/zhiyu-build-cache`）上以 `origin/master` 为基座合并目标分支
 3. 增量构建：源码 hash 比对**只构建变更部分**——Java 后端（`backend/java` Maven 构建）+ `frontend/portal-vue` + `frontend/plus-ui`；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
-4. **第一段启动**：只起数据层 `postgres` / `redis`
+4. **第一段启动**：只起数据层 `mysql` / `redis`
 5. **全库备份**（`/opt/zhiyu-saas/backups`，目录 700 / 文件 600，保留最近 7 份）
-6. **执行迁移**：`db/migrations/*.up.sql` 纯 psql 执行（`ON_ERROR_STOP=1`，遇错立即停止，不叠加半应用 DDL）+ **Java 框架表初始化**（deploy 幂等初始化）
+6. **执行迁移**：`db/migrations/*.up.sql` 纯 mysql 执行（`mysql 遇错即停`，遇错立即停止，不叠加半应用 DDL）+ **Java 框架表初始化**（deploy 幂等初始化）
 7. **第二段启动**：再起业务容器 `java-backend` / `nginx` / `kkfileview`（前端 portal-vue/plus-ui 为静态产物，rsync 到 `$DEPLOY_DIR/web/` 由 nginx 容器 bind mount，无独立容器）
 8. **健康门禁**：带 healthcheck 的服务必须 `healthy`（`Up (health: starting)` / `Up (unhealthy)` 不算就绪）；网关容器重启后自检两次失败即回滚
 9. **业务冒烟**：`/portal/login` 200、`/health` 200、`/api/v1/auth/captcha` 200（API+Redis）、`/api/v1/settings/theme` 200（API+DB 读）、`/api/v1/tenants` 401（鉴权中间件生效）；任一失败即回滚
@@ -186,17 +186,17 @@
 | 容器 | 可见密钥 | 理由 |
 |---|---|---|
 | `java-backend` | 显式白名单：`ZHIYU_DB_HOST/PORT/USER/PASSWORD`（数据源）、`ZHIYU_REDIS_HOST/PORT/PASSWORD`（Redis 口令）、`JWT_SECRET`（Sa-Token 签名密钥，application.yml `${JWT_SECRET:...}`）、`SEED_ADMIN_PASSWORD`（SeedRunner 种子）、`ZHIYU_UPLOAD_DIR`（上传目录） | 运行期实际读取的全部变量（`application-prod.yml` + application.yml）。**不再用 `env_file: .env`**：那会把仅宿主机需要的 `SEED_ADMIN_PASSWORD` 与全部 `VITE_*` 一并灌进运行容器 |
-| `postgres` | 仅 `POSTGRES_*`（值来自 `DB_USER`/`DB_PASSWORD`/`DB_NAME`） | 建库账号 |
+| `mysql` | 仅 `MYSQL_*`（值来自 `DB_USER`/`DB_PASSWORD`/`DB_NAME`） | 建库账号 |
 | `frontend` / `nginx` / `redis` / `kkfileview` | **无**（redis 仅 `--requirepass` 命令行参数，kkfileview 仅 `KK_*` 预览配置） | 静态产物与第三方组件不得持有可伪造 token 的 `JWT_SECRET` / 数据库口令 |
 
-密钥另有三条硬约束：`.env` 权限 600（含构建树内副本）、口令不进进程 argv（psql 走 `PGPASSWORD`）、部署输出与日志不回显任何口令。
+密钥另有三条硬约束：`.env` 权限 600（含构建树内副本）、口令不进进程 argv（mysql 走 `MYSQL_PWD`）、部署输出与日志不回显任何口令。
 
 ### 5.3 备份与恢复（已实测）
 
-- 备份：每次部署迁移前全库 `pg_dump` 到 `/opt/zhiyu-saas/backups`（目录 700 / 文件 600，保留最近 7 份，约 11MB/份）。
-- 恢复：**一律用容器内 psql**（`docker exec -i zhiyu-postgres psql ...`），客户端与 dump 同源；
-  pg_dump 15.18+ 输出 `\restrict/\unrestrict` 元命令，宿主旧版 psql（<15.14 / <16.10）会报 `invalid command \restrict`。
-- 恢复演练（2026-08-19 实测）：最新备份恢复到临时库 `restore_drill` 成功，表数与 `04-database-schema.md` 头部一致（业务表 + Java 栈 RuoYi 框架表，框架表由 deploy 框架表初始化），与生产一致；宿主 psql 16.14 亦可恢复。
+- 备份：每次部署迁移前全库 `mysqldump` 到 `/opt/zhiyu-saas/backups`（目录 700 / 文件 600，保留最近 7 份）。
+- 恢复：**一律用容器内 mysql**（`docker exec -i zhiyu-mysql mysql ...`），客户端与 dump 同源；
+
+
 - 约定：覆盖生产前必须先恢复到临时库比对表数与关键表行数。
 
 ### 5.4 质量门禁

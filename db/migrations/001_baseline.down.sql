@@ -1,9 +1,11 @@
-DO $$ DECLARE r RECORD;
-BEGIN
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
-    END LOOP;
-    FOR r IN (SELECT typname FROM pg_type WHERE typtype = 'e') LOOP
-        EXECUTE 'DROP TYPE IF EXISTS ' || quote_ident(r.typname) || ' CASCADE';
-    END LOOP;
-END $$;
+-- 001 down: 删除全部业务表（MySQL 版，替代 PG DO 块动态枚举）
+-- 共 156 张表；MySQL DROP TABLE 受外键约束影响，先禁用外键检查
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS ability_domains, ability_points, affairs_batches, alliance_achievements, alliance_agreements, alliance_brand_topics, alliance_brands, alliance_dictionaries, alliance_employment_applications, alliance_employment_jobs, alliance_employment_projects, alliance_enterprise_agreements, alliance_enterprise_links, alliance_enterprises, alliance_expert_mentor_links, alliance_experts, alliance_permissions, alliance_project_milestones, alliance_projects, alliance_resource_grants, alliance_school_info, announcements, app_modules, appeal_records, approval_records;
+DROP TABLE IF EXISTS authorizations, banner_configs, banners, batches, brand_major_rank_configs, career_position_majors, career_positions, cert_issuance_records, certificate_library, certification_ability_items, certification_ability_points, certification_competency_requirements, certification_grade_data, certification_grade_leaderboard, certification_point_levels, certification_related_tasks, certification_rules, certification_weights, community_replies, community_topics, course_evaluation_results, course_homework_submissions, course_homeworks, course_knowledge_bindings, course_resource_bindings;
+DROP TABLE IF EXISTS courses, credit_conversion_rules, evaluation_batches, evaluation_method_categories, evaluation_method_targets, evaluation_methods, exam_questions, exam_results, exam_usages, exams, favorite_counters, graduation_project_archives, graduation_project_evaluations, graduation_project_topics, graduation_query_results, hybrid_node_modules, industries, institution_expertise_tags, institutions, job_ability_aggregate_logs, job_ability_results, job_run_logs, knowledge_points, learn_roads, lesson_batches;
+DROP TABLE IF EXISTS lesson_behavior_records, login_logs, majors, micro_cert_templates, node_ability_point_bindings, node_evaluation_results, node_homework_submissions, node_homeworks, node_knowledge_point_bindings, node_quiz_questions, node_quizzes, node_resource_bindings, node_resources, on_site_question_library, operation_logs, orders, org_types, organizations, period_slots, platform_configs, platform_links, platform_settings, position_ability_bindings, position_certificates, position_favorites;
+DROP TABLE IF EXISTS position_recommendations, position_responsibilities, question_bank_knowledge_points, question_banks, questions, random_draw_questions, resource_codes, resource_library, resource_snapshots, resource_tag_relations, resource_tags, resources, roles, rubric_templates, scenario_grade_mappings, scenario_tasks, scenario_weight_configs, scenarios, scene_archives, scene_batches, scene_evaluation_results, schedule_entries, staff_titles, student_ability_archives, student_ability_portraits;
+DROP TABLE IF EXISTS student_honors, subscription_packages, system_course_nodes, tags, task_ability_bindings, task_deliverables, task_eval_points, task_eval_score_rules, task_evaluation_methods, task_knowledge_bindings, task_resource_bindings, task_resources, task_review_steps, teaching_plan_entries, teaching_plan_entry_classes, teaching_plans, tenant_settings, tenants, terms, training_program_courses, training_programs, user_extension_fields, user_favorites, user_relations, user_roles;
+DROP TABLE IF EXISTS users, venues, view_counters, view_logs, withdrawals, workflows;
+SET FOREIGN_KEY_CHECKS = 1;

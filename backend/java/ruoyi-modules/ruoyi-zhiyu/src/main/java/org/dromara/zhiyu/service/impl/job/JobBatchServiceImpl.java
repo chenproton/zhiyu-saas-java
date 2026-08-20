@@ -196,7 +196,7 @@ public class JobBatchServiceImpl implements IJobBatchService {
         return s == null || s.isEmpty() ? null : s;
     }
 
-    /** 转义 ILIKE 通配符并包裹 %pattern%（对齐 Go strings.NewReplacer 语义）。 */
+    /** 转义 LIKE 通配符并包裹 %pattern%（对齐 Go strings.NewReplacer 语义）。 */
     private String toLikePattern(String search) {
         if (search == null || search.isBlank()) {
             return null;

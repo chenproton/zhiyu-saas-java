@@ -29,8 +29,8 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
     @Select("<script>SELECT id, tenant_id, name, type, organizer, description, cover_image, start_date, end_date,"
         + " publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at"
         + " FROM alliance_employment_projects p"
-        + " WHERE jsonb_exists(p.enterprise_ids, #{enterpriseId})"
-        + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND p.tenant_id = #{schoolTenantId}::uuid</if>"
+        + " WHERE JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')"
+        + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND p.tenant_id = #{schoolTenantId}</if>"
         + " ORDER BY p.created_at DESC LIMIT 200</script>")
     List<PartnerEmploymentProject> listProjects(@Param("enterpriseId") String enterpriseId,
                                                 @Param("schoolTenantId") String schoolTenantId);
@@ -38,7 +38,7 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
     @Select("SELECT id, tenant_id, name, type, organizer, description, cover_image, start_date, end_date,"
         + " publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at"
         + " FROM alliance_employment_projects p"
-        + " WHERE p.id = #{id}::uuid AND jsonb_exists(p.enterprise_ids, #{enterpriseId})")
+        + " WHERE p.id = #{id} AND JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')")
     PartnerEmploymentProject getProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId);
 
     // ===== 就业岗位 =====
@@ -48,7 +48,7 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
         + " description, responsibilities, requirements, contact_person, contact_phone, deadline, status, created_by)"
         + " VALUES (#{id}, #{tenantId}, #{enterpriseId}, #{projectId}, #{title}, #{jobType},"
         + " #{location}, #{salaryMin}, #{salaryMax}, #{headcount}, #{education},"
-        + " COALESCE(CAST(#{suitableMajors, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " COALESCE(CAST(#{suitableMajors, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " #{description}, #{responsibilities}, #{requirements}, #{contactPerson}, #{contactPhone},"
         + " #{deadline}, #{status}, #{createdBy})")
     int insertJob(@Param("id") String id, @Param("tenantId") String tenantId, @Param("enterpriseId") String enterpriseId,
@@ -64,10 +64,10 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
     @Update("UPDATE alliance_employment_jobs SET"
         + " title = #{title}, job_type = #{jobType}, location = #{location}, salary_min = #{salaryMin},"
         + " salary_max = #{salaryMax}, headcount = #{headcount}, education = #{education},"
-        + " suitable_majors = COALESCE(CAST(#{suitableMajors, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " suitable_majors = COALESCE(CAST(#{suitableMajors, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " description = #{description}, responsibilities = #{responsibilities}, requirements = #{requirements},"
         + " contact_person = #{contactPerson}, contact_phone = #{contactPhone}, deadline = #{deadline}, updated_at = NOW()"
-        + " WHERE id = #{id}::uuid AND enterprise_id = #{enterpriseId}::uuid")
+        + " WHERE id = #{id} AND enterprise_id = #{enterpriseId}")
     int updateJob(@Param("id") String id, @Param("enterpriseId") String enterpriseId, @Param("title") String title,
                   @Param("jobType") String jobType, @Param("location") String location,
                   @Param("salaryMin") BigDecimal salaryMin, @Param("salaryMax") BigDecimal salaryMax,
@@ -77,20 +77,20 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
                   @Param("contactPerson") String contactPerson, @Param("contactPhone") String contactPhone,
                   @Param("deadline") LocalDate deadline);
 
-    @Delete("DELETE FROM alliance_employment_jobs WHERE id = #{id}::uuid AND enterprise_id = #{enterpriseId}::uuid")
+    @Delete("DELETE FROM alliance_employment_jobs WHERE id = #{id} AND enterprise_id = #{enterpriseId}")
     int deleteJob(@Param("id") String id, @Param("enterpriseId") String enterpriseId);
 
     /** 发布时绑定项目（校验项目归属与企业被分配；0 行命中返回 false）。 */
-    @Update("UPDATE alliance_employment_jobs j SET status = #{status}, project_id = #{projectId}::uuid, updated_at = NOW()"
+    @Update("UPDATE alliance_employment_jobs j SET status = #{status}, project_id = #{projectId}, updated_at = NOW()"
         + " FROM alliance_employment_projects p"
-        + " WHERE j.id = #{id}::uuid AND j.enterprise_id = #{enterpriseId}::uuid"
-        + " AND p.id = #{projectId}::uuid AND jsonb_exists(p.enterprise_ids, #{enterpriseId})"
+        + " WHERE j.id = #{id} AND j.enterprise_id = #{enterpriseId}"
+        + " AND p.id = #{projectId} AND JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')"
         + " AND p.tenant_id = j.tenant_id")
     int setJobStatusWithProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId,
                                 @Param("status") String status, @Param("projectId") String projectId);
 
     @Update("UPDATE alliance_employment_jobs SET status = #{status}, updated_at = NOW()"
-        + " WHERE id = #{id}::uuid AND enterprise_id = #{enterpriseId}::uuid")
+        + " WHERE id = #{id} AND enterprise_id = #{enterpriseId}")
     int setJobStatus(@Param("id") String id, @Param("enterpriseId") String enterpriseId, @Param("status") String status);
 
     // ===== 投递（企业端只读） =====
@@ -103,7 +103,7 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
         + " LEFT JOIN alliance_employment_jobs j ON j.id = a.job_id"
         + " LEFT JOIN partner_enterprises pe ON pe.id = a.enterprise_id"
         + " LEFT JOIN alliance_employment_projects p ON p.id = j.project_id"
-        + " WHERE a.job_id = #{jobId}::uuid AND a.enterprise_id = #{enterpriseId}::uuid"
+        + " WHERE a.job_id = #{jobId} AND a.enterprise_id = #{enterpriseId}"
         + " ORDER BY a.created_at DESC LIMIT 200")
     List<PartnerEmploymentApplication> listApplications(@Param("jobId") String jobId,
                                                         @Param("enterpriseId") String enterpriseId);
@@ -116,21 +116,21 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
         + " LEFT JOIN alliance_employment_jobs j ON j.id = a.job_id"
         + " LEFT JOIN partner_enterprises pe ON pe.id = a.enterprise_id"
         + " LEFT JOIN alliance_employment_projects p ON p.id = j.project_id"
-        + " WHERE a.id = #{id}::uuid AND a.enterprise_id = #{enterpriseId}::uuid LIMIT 1")
+        + " WHERE a.id = #{id} AND a.enterprise_id = #{enterpriseId} LIMIT 1")
     PartnerEmploymentApplication getApplication(@Param("id") String id, @Param("enterpriseId") String enterpriseId);
 
     // ===== 批量组装（防 N+1） =====
 
     @Select("<script>SELECT id, name FROM partner_enterprises WHERE id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectEnterpriseNames(@Param("ids") List<String> ids);
 
     @Select("<script>SELECT id, name FROM alliance_employment_projects WHERE id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectProjectNames(@Param("ids") List<String> ids);
 
     @Select("<script>SELECT job_id, COUNT(*) AS cnt FROM alliance_employment_applications WHERE job_id IN"
-        + " <foreach collection=\"jobIds\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach>"
+        + " <foreach collection=\"jobIds\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach>"
         + " GROUP BY job_id</script>")
     List<JobCountRow> selectApplicationCounts(@Param("jobIds") List<String> jobIds);
 

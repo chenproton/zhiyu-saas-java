@@ -39,8 +39,8 @@ public interface TrainingProgramMapper extends BaseMapperPlus<TrainingProgram, T
 
     /** 邀请协作者（去重追加）。 */
     @Update("""
-        UPDATE training_programs SET collaborators = array_append(collaborators, #{userId}), updated_at = NOW()
-        WHERE id = #{id} AND NOT (collaborators @> ARRAY[#{userId}]::uuid[])
+        UPDATE training_programs SET collaborators = JSON_ARRAY_APPEND(collaborators, '$', #{userId}), updated_at = NOW()
+        WHERE id = #{id} AND NOT (JSON_CONTAINS(collaborators, JSON_QUOTE(#{userId}), '$'))
         """)
     int inviteCollaborator(@Param("id") String id, @Param("userId") String userId);
 

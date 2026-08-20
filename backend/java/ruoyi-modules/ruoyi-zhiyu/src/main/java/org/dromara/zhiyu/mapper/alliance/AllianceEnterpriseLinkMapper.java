@@ -21,14 +21,14 @@ public interface AllianceEnterpriseLinkMapper extends BaseMapperPlus<AllianceEnt
     @Insert("INSERT INTO alliance_enterprise_links (id, tenant_id, enterprise_id, relation_type, status, rating,"
         + " enterprise_type, is_public, secondary_colleges, created_by, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{enterpriseId}, #{relationType}, #{status}, #{rating},"
-        + " #{enterpriseType}, #{isPublic}, CAST(#{secondaryColleges} AS jsonb), #{createdBy}, NOW(), NOW())")
+        + " #{enterpriseType}, #{isPublic}, CAST(#{secondaryColleges} AS JSON), #{createdBy}, NOW(), NOW())")
     int insertLink(AllianceEnterpriseLink l);
 
     @Delete("DELETE FROM alliance_enterprise_links WHERE enterprise_id = #{enterpriseId} AND tenant_id = #{tenantId}")
     int deleteLink(@Param("enterpriseId") String enterpriseId, @Param("tenantId") String tenantId);
 
     @Update("UPDATE alliance_enterprise_links SET status = #{status}, rating = #{rating}, enterprise_type = #{enterpriseType},"
-        + " is_public = #{isPublic}, secondary_colleges = CAST(#{secondaryColleges} AS jsonb), updated_at = NOW()"
+        + " is_public = #{isPublic}, secondary_colleges = CAST(#{secondaryColleges} AS JSON), updated_at = NOW()"
         + " WHERE enterprise_id = #{enterpriseId} AND tenant_id = #{tenantId}")
     int updateLink(@Param("enterpriseId") String enterpriseId, @Param("tenantId") String tenantId,
                    @Param("status") String status, @Param("rating") String rating,
@@ -88,7 +88,7 @@ public interface AllianceEnterpriseLinkMapper extends BaseMapperPlus<AllianceEnt
         + " l.is_public, l.secondary_colleges"
         + " FROM alliance_enterprise_links l JOIN partner_enterprises e ON e.id = l.enterprise_id"
         + " WHERE l.tenant_id = #{tenantId}"
-        + " <if test='search != null and search != \"\"'> AND (e.name ILIKE '%' || #{search} || '%' OR e.industry ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (e.name LIKE CONCAT('%', #{search}, '%') OR e.industry LIKE CONCAT('%', #{search}, '%'))</if>"
         + " <if test='status != null and status != \"\"'> AND l.status = #{status}</if>"
         + " ORDER BY l.created_at DESC LIMIT #{limit} OFFSET #{offset}"
         + "</script>")
@@ -101,7 +101,7 @@ public interface AllianceEnterpriseLinkMapper extends BaseMapperPlus<AllianceEnt
     @Select("<script>"
         + "SELECT COUNT(*) FROM alliance_enterprise_links l JOIN partner_enterprises e ON e.id = l.enterprise_id"
         + " WHERE l.tenant_id = #{tenantId}"
-        + " <if test='search != null and search != \"\"'> AND (e.name ILIKE '%' || #{search} || '%' OR e.industry ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (e.name LIKE CONCAT('%', #{search}, '%') OR e.industry LIKE CONCAT('%', #{search}, '%'))</if>"
         + " <if test='status != null and status != \"\"'> AND l.status = #{status}</if>"
         + "</script>")
     long countBySchoolTenant(@Param("tenantId") String tenantId,

@@ -18,7 +18,7 @@ public interface ZhiyuFavoriteCounterMapper extends BaseMapperPlus<ZhiyuFavorite
      */
     @Update("""
         UPDATE favorite_counters SET cnt = GREATEST(cnt - 1, 0), updated_at = now()
-        WHERE target_type = #{targetType} AND target_id = #{targetId}::uuid
+        WHERE target_type = #{targetType} AND target_id = #{targetId}
         """)
     int decrement(@Param("targetType") String targetType, @Param("targetId") String targetId);
 
@@ -27,8 +27,8 @@ public interface ZhiyuFavoriteCounterMapper extends BaseMapperPlus<ZhiyuFavorite
      */
     @Insert("""
         INSERT INTO favorite_counters (target_type, target_id, cnt)
-        VALUES (#{targetType}, #{targetId}::uuid, 1)
-        ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = favorite_counters.cnt + 1, updated_at = now()
+        VALUES (#{targetType}, #{targetId}, 1)
+        ON DUPLICATE KEY UPDATE cnt = favorite_counters.cnt + 1, updated_at = now()
         """)
     int increment(@Param("targetType") String targetType, @Param("targetId") String targetId);
 }

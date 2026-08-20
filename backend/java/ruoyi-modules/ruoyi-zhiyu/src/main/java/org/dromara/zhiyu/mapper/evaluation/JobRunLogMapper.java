@@ -19,6 +19,6 @@ public interface JobRunLogMapper extends BaseMapperPlus<JobRunLog, JobRunLog> {
 
     /** 回填执行结果（finished_at/status/error；成功时 error 置空串，对齐 Go finishJobRun）。 */
     @Update("UPDATE job_run_logs SET finished_at = NOW(), status = #{status}, error = #{error}"
-        + " WHERE id = #{id}::uuid")
+        + " WHERE id = #{id}")
     int finish(@Param("id") String id, @Param("status") String status, @Param("error") String error);
 }

@@ -2,6 +2,6 @@
 -- teacher/student（menus 已配置）与配置过 menus 的 school_admin 默认授予；
 -- 无 menus 的 school_admin 不限制，保持不动；企业侧角色不使用门户，不回填。
 UPDATE roles
-SET permissions = jsonb_set(permissions, '{menus,/portal/ai/landing}', 'true', true)
+SET permissions = JSON_SET(permissions, '$.menus."/portal/ai/landing"', TRUE)
 WHERE code IN ('teacher', 'student', 'school_admin')
-  AND permissions ? 'menus';
+  AND JSON_CONTAINS_PATH(permissions, 'one', '$.menus');

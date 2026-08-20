@@ -30,37 +30,37 @@ public interface EvaluationSceneResultMapper extends BaseMapperPlus<EvaluationSc
               @Param("subjectiveContent") String subjectiveContent);
 
     /** 场景任务反查场景 ID（提交时服务端盖章） */
-    @Select("SELECT scenario_id::text FROM scenario_tasks WHERE id = #{taskId}::uuid")
+    @Select("SELECT scenario_id FROM scenario_tasks WHERE id = #{taskId}")
     String scenarioIdByTask(@Param("taskId") String taskId);
 
     /** 反向回写链：按 usageId 定位考试结果 */
-    @Select("SELECT er.id::text FROM exam_results er"
-        + " WHERE er.exam_usage_id = #{usageId}::uuid AND er.user_id = #{userId}::uuid"
+    @Select("SELECT er.id FROM exam_results er"
+        + " WHERE er.exam_usage_id = #{usageId} AND er.user_id = #{userId}"
         + " ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC LIMIT 1")
     String findExamResultByUsage(@Param("usageId") String usageId, @Param("userId") String userId);
 
     /** 反向回写链：按 paperId/examId + 任务目标定位考试结果 */
-    @Select("SELECT er.id::text FROM exam_results er JOIN exam_usages eu ON er.exam_usage_id = eu.id"
-        + " WHERE eu.target_type = 'task' AND #{taskId}::uuid = ANY(eu.target_ids) AND eu.exam_id = #{examId}::uuid"
-        + " AND er.user_id = #{userId}::uuid"
+    @Select("SELECT er.id FROM exam_results er JOIN exam_usages eu ON er.exam_usage_id = eu.id"
+        + " WHERE eu.target_type = 'task' AND #{taskId} = ANY(eu.target_ids) AND eu.exam_id = #{examId}"
+        + " AND er.user_id = #{userId}"
         + " ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC LIMIT 1")
     String findExamResultByExam(@Param("taskId") String taskId, @Param("examId") String examId,
                                 @Param("userId") String userId);
 
     /** 更新考试结果分数（同步及格判定与 graded_at 重交保护） */
     @Update("UPDATE exam_results SET score = #{score}, is_pass = (#{score} >= total_score * 0.6),"
-        + " graded_at = NOW(), updated_at = NOW() WHERE id = #{examResultId}::uuid")
+        + " graded_at = NOW(), updated_at = NOW() WHERE id = #{examResultId}")
     int updateExamResultScore(@Param("examResultId") String examResultId, @Param("score") BigDecimal score);
 
     /** 批量查询评分目标（task/method/evaluatee） */
-    @Select("<script>SELECT id::text AS id, task_id::text AS task_id, method_key, evaluatee_id::text AS evaluatee_id"
+    @Select("<script>SELECT id AS id, task_id AS task_id, method_key, evaluatee_id AS evaluatee_id"
         + " FROM scene_evaluation_results WHERE id IN"
-        + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}::uuid</foreach></script>")
+        + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach></script>")
     List<Map<String, Object>> batchGetGradeTargets(@Param("ids") List<String> ids);
 
     /** 场景快照数据（评分回写按成绩行盖章版本定位） */
     @Select("SELECT snapshot_data FROM resource_snapshots"
-        + " WHERE tenant_id = #{tenantId}::uuid AND resource_type = 'scenarios' AND resource_id = #{sceneId}::uuid AND version = #{version}")
+        + " WHERE tenant_id = #{tenantId} AND resource_type = 'scenarios' AND resource_id = #{sceneId} AND version = #{version}")
     String scenarioSnapshotData(@Param("tenantId") String tenantId, @Param("sceneId") String sceneId,
                                 @Param("version") String version);
 
@@ -71,23 +71,23 @@ public interface EvaluationSceneResultMapper extends BaseMapperPlus<EvaluationSc
         + " VALUES (#{tenantId}, #{taskId}, #{sceneId}, #{methodKey}, #{evaluateeId}, #{evaluatorId},"
         + " #{evaluatorType}, 'pending', #{maxScore}, #{evalPointScores}, #{objectiveAnswers},"
         + " #{subjectiveContent}, #{drawnQuestions}, #{version}, NOW(), NOW())"
-        + " ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key) DO UPDATE SET"
-        + " scene_id = EXCLUDED.scene_id, evaluator_id = EXCLUDED.evaluator_id, evaluator_type = EXCLUDED.evaluator_type,"
-        + " max_score = EXCLUDED.max_score, objective_answers = EXCLUDED.objective_answers,"
-        + " subjective_content = EXCLUDED.subjective_content, drawn_questions = EXCLUDED.drawn_questions,"
-        + " eval_point_scores = EXCLUDED.eval_point_scores, version = EXCLUDED.version,"
-        + " status = 'pending', graded_at = NULL, updated_at = EXCLUDED.updated_at"
+        + " ON DUPLICATE KEY UPDATE"
+        + " scene_id = VALUES(scene_id), evaluator_id = VALUES(evaluator_id), evaluator_type = VALUES(evaluator_type),"
+        + " max_score = VALUES(max_score), objective_answers = VALUES(objective_answers),"
+        + " subjective_content = VALUES(subjective_content), drawn_questions = VALUES(drawn_questions),"
+        + " eval_point_scores = VALUES(eval_point_scores), version = VALUES(version),"
+        + " status = 'pending', graded_at = NULL, updated_at = VALUES(updated_at)"
         + " WHERE scene_evaluation_results.graded_at IS NULL")
     int upsertSubmit(EvaluationSceneResult entity);
 
     /** live JOIN 回退定位考试结果（对齐 Go FindLatestExamResult） */
-    @Select("SELECT er.id::text FROM exam_results er"
+    @Select("SELECT er.id FROM exam_results er"
         + " JOIN exam_usages eu ON er.exam_usage_id = eu.id"
         + " JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)"
-        + " WHERE tem.task_id = #{taskId}::uuid AND tem.method_key = #{methodKey}"
-        + " AND er.user_id = #{evaluateeId}::uuid AND eu.target_type = 'task'"
-        + " AND eu.exam_id = COALESCE(NULLIF(tem.resource_config->>'paperId', ''),"
-        + " NULLIF(tem.resource_config->>'examId', ''))::uuid"
+        + " WHERE tem.task_id = #{taskId} AND tem.method_key = #{methodKey}"
+        + " AND er.user_id = #{evaluateeId} AND eu.target_type = 'task'"
+        + " AND eu.exam_id = COALESCE(NULLIF(tem.resource_config->>'$.paperId', ''),"
+        + " NULLIF(tem.resource_config->>'$.examId', ''))"
         + " ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC LIMIT 1")
     String findLatestExamResult(@Param("taskId") String taskId, @Param("methodKey") String methodKey,
                                 @Param("evaluateeId") String evaluateeId);

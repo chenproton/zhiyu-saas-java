@@ -21,7 +21,7 @@ public interface SceneWeightConfigMapper extends BaseMapperPlus<SceneWeightConfi
      */
     @Select("INSERT INTO scenario_weight_configs (tenant_id, scenario_id, task_id, weight)"
         + " VALUES (#{tenantId}, #{scenarioId}, #{taskId}, #{weight})"
-        + " ON CONFLICT (scenario_id, task_id) DO UPDATE SET weight = EXCLUDED.weight"
+        + " ON DUPLICATE KEY UPDATE weight = VALUES(weight)"
         + " RETURNING id")
     String upsertReturnId(@Param("tenantId") String tenantId, @Param("scenarioId") String scenarioId,
                           @Param("taskId") String taskId, @Param("weight") BigDecimal weight);

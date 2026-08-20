@@ -17,9 +17,9 @@ import java.util.List;
 public interface NodeEvaluationResultMapper extends BaseMapperPlus<NodeEvaluationResult, NodeEvaluationResult> {
 
     String SELECT_COLUMNS = "id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,"
-        + " total_score, max_score, eval_point_scores::text AS eval_point_scores,"
-        + " objective_answers::text AS objective_answers, subjective_content::text AS subjective_content,"
-        + " drawn_questions::text AS drawn_questions, comment, graded_at, graded_by, version, created_at, updated_at";
+        + " total_score, max_score, eval_point_scores AS eval_point_scores,"
+        + " objective_answers AS objective_answers, subjective_content AS subjective_content,"
+        + " drawn_questions AS drawn_questions, comment, graded_at, graded_by, version, created_at, updated_at";
 
     /** 查询单条（限定租户）。 */
     @Select("SELECT " + SELECT_COLUMNS + " FROM node_evaluation_results WHERE id = #{id} AND tenant_id = #{tenantId}")
@@ -36,14 +36,14 @@ public interface NodeEvaluationResultMapper extends BaseMapperPlus<NodeEvaluatio
         + " evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content,"
         + " drawn_questions, version, created_at, updated_at)"
         + " VALUES (#{tenantId}, #{nodeId}, #{methodKey}, #{evaluateeId}, #{evaluatorId}, #{evaluatorType},"
-        + " 'pending', #{maxScore}, CAST(#{evalPointScores} AS jsonb), CAST(#{objectiveAnswers} AS jsonb),"
-        + " CAST(#{subjectiveContent} AS jsonb), CAST(#{drawnQuestions} AS jsonb), #{version}, NOW(), NOW())"
-        + " ON CONFLICT (tenant_id, node_id, evaluatee_id, method_key) DO UPDATE SET"
-        + " evaluator_id = EXCLUDED.evaluator_id, evaluator_type = EXCLUDED.evaluator_type,"
-        + " max_score = EXCLUDED.max_score, objective_answers = EXCLUDED.objective_answers,"
-        + " subjective_content = EXCLUDED.subjective_content, drawn_questions = EXCLUDED.drawn_questions,"
-        + " eval_point_scores = EXCLUDED.eval_point_scores, version = EXCLUDED.version, status = 'pending',"
-        + " graded_at = NULL, updated_at = EXCLUDED.updated_at"
+        + " 'pending', #{maxScore}, CAST(#{evalPointScores} AS JSON), CAST(#{objectiveAnswers} AS JSON),"
+        + " CAST(#{subjectiveContent} AS JSON), CAST(#{drawnQuestions} AS JSON), #{version}, NOW(), NOW())"
+        + " ON DUPLICATE KEY UPDATE"
+        + " evaluator_id = VALUES(evaluator_id), evaluator_type = VALUES(evaluator_type),"
+        + " max_score = VALUES(max_score), objective_answers = VALUES(objective_answers),"
+        + " subjective_content = VALUES(subjective_content), drawn_questions = VALUES(drawn_questions),"
+        + " eval_point_scores = VALUES(eval_point_scores), version = VALUES(version), status = 'pending',"
+        + " graded_at = NULL, updated_at = VALUES(updated_at)"
         + " WHERE node_evaluation_results.graded_at IS NULL RETURNING id")
     String upsertResult(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
                         @Param("methodKey") String methodKey, @Param("evaluateeId") String evaluateeId,
@@ -55,7 +55,7 @@ public interface NodeEvaluationResultMapper extends BaseMapperPlus<NodeEvaluatio
 
     /** 评分（pending→evaluated，仅可评未评分结果）。 */
     @Update("UPDATE node_evaluation_results SET total_score = #{score}, comment = #{comment},"
-        + " eval_point_scores = CAST(#{evalPointScores} AS jsonb), status = 'evaluated',"
+        + " eval_point_scores = CAST(#{evalPointScores} AS JSON), status = 'evaluated',"
         + " graded_at = NOW(), graded_by = #{graderId}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId} AND status = 'pending'")
     int grade(@Param("id") String id, @Param("tenantId") String tenantId, @Param("graderId") String graderId,
@@ -64,9 +64,9 @@ public interface NodeEvaluationResultMapper extends BaseMapperPlus<NodeEvaluatio
 
     /** 课程下全部节点的测评结果（教师评分列表用）。 */
     @Select("SELECT ner.id, ner.node_id, ner.method_key, ner.evaluatee_id, ner.evaluator_id, ner.evaluator_type, ner.status,"
-        + " ner.total_score, ner.max_score, ner.eval_point_scores::text AS eval_point_scores,"
-        + " ner.objective_answers::text AS objective_answers, ner.subjective_content::text AS subjective_content,"
-        + " ner.drawn_questions::text AS drawn_questions, ner.comment, ner.graded_at, ner.graded_by, ner.version,"
+        + " ner.total_score, ner.max_score, ner.eval_point_scores AS eval_point_scores,"
+        + " ner.objective_answers AS objective_answers, ner.subjective_content AS subjective_content,"
+        + " ner.drawn_questions AS drawn_questions, ner.comment, ner.graded_at, ner.graded_by, ner.version,"
         + " ner.created_at, ner.updated_at"
         + " FROM node_evaluation_results ner JOIN system_course_nodes n ON n.id = ner.node_id"
         + " WHERE ner.tenant_id = #{tenantId} AND n.course_id = #{courseId}"

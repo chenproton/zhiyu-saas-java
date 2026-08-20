@@ -28,7 +28,7 @@ public interface SystemUserRelationMapper extends BaseMapperPlus<SystemUserRelat
         + " LEFT JOIN users tgt_u ON tgt_u.id = r.target_id"
         + " LEFT JOIN organizations tgt_org ON tgt_org.id = COALESCE(r.target_org_node_id, tgt_u.org_node_id)"
         + " WHERE r.tenant_id = #{tenantId}"
-        + " AND (#{search} = '' OR init_u.name ILIKE '%' || #{search} || '%' OR tgt_u.name ILIKE '%' || #{search} || '%')"
+        + " AND (#{search} = '' OR init_u.name LIKE CONCAT('%', #{search}, '%') OR tgt_u.name LIKE CONCAT('%', #{search}, '%'))"
         + " ORDER BY r.created_at DESC LIMIT #{limit} OFFSET #{offset}")
     List<Map<String, Object>> selectPage(@Param("tenantId") String tenantId, @Param("search") String search,
                                          @Param("limit") long limit, @Param("offset") long offset);
@@ -37,7 +37,7 @@ public interface SystemUserRelationMapper extends BaseMapperPlus<SystemUserRelat
         + " LEFT JOIN users init_u ON init_u.id = r.initiator_id"
         + " LEFT JOIN users tgt_u ON tgt_u.id = r.target_id"
         + " WHERE r.tenant_id = #{tenantId}"
-        + " AND (#{search} = '' OR init_u.name ILIKE '%' || #{search} || '%' OR tgt_u.name ILIKE '%' || #{search} || '%')")
+        + " AND (#{search} = '' OR init_u.name LIKE CONCAT('%', #{search}, '%') OR tgt_u.name LIKE CONCAT('%', #{search}, '%'))")
     long count(@Param("tenantId") String tenantId, @Param("search") String search);
 
     @Select("SELECT initiator_id, target_id FROM user_relations WHERE id = #{id} AND tenant_id = #{tenantId}")

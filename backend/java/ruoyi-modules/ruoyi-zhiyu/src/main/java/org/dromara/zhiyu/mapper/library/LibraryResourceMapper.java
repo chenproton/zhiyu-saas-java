@@ -26,8 +26,8 @@ import java.util.List;
 public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, LibraryResource> {
 
     /** 资源列（含上传人 JOIN 列） */
-    String SELECT_COLUMNS = "rl.id, rl.tenant_id, rl.name, rl.resource_type::text AS resource_type,"
-        + " rl.url, rl.description, rl.thumbnail, rl.file_size, rl.metadata::text AS metadata, rl.uploaded_by,"
+    String SELECT_COLUMNS = "rl.id, rl.tenant_id, rl.name, rl.resource_type AS resource_type,"
+        + " rl.url, rl.description, rl.thumbnail, rl.file_size, rl.metadata AS metadata, rl.uploaded_by,"
         + " u.name AS uploader_name, o.name AS uploader_org_name, m.name AS uploader_major_name,"
         + " rl.created_at, rl.updated_at";
 
@@ -39,12 +39,12 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
 
     /** 列表过滤条件（<script> 内 <if> 片段，供分页/计数复用） */
     String FILTER_FRAGMENT = "<where>"
-        + " rl.tenant_id = #{tenantId}::uuid"
+        + " rl.tenant_id = #{tenantId}"
         + " <if test=\"search != null and search != ''\">"
-        + " AND (rl.name ILIKE #{search} ESCAPE '\\' OR rl.description ILIKE #{search} ESCAPE '\\')"
+        + " AND (rl.name LIKE #{search} ESCAPE '\\' OR rl.description LIKE #{search} ESCAPE '\\')"
         + " </if>"
         + " <if test=\"resourceType != null and resourceType != ''\">"
-        + " AND rl.resource_type = #{resourceType}::resource_type"
+        + " AND rl.resource_type = #{resourceType}"
         + " </if>"
         + " <if test=\"orgName != null and orgName != ''\">"
         + " AND o.name = #{orgName}"
@@ -53,7 +53,7 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
         + " AND m.name = #{majorName}"
         + " </if>"
         + " <if test=\"uploadedBy != null and uploadedBy != ''\">"
-        + " AND rl.uploaded_by = #{uploadedBy}::uuid"
+        + " AND rl.uploaded_by = #{uploadedBy}"
         + " </if>"
         + " <if test=\"tagIds != null and tagIds.size() &gt; 0\">"
         + " AND EXISTS (SELECT 1 FROM resource_tag_relations rtr"
@@ -61,14 +61,14 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
         + " AND rtr.resource_type = 'resource_library'"
         + " AND rtr.resource_id = rl.id"
         + " AND rtr.tag_id IN"
-        + " <foreach collection=\"tagIds\" item=\"tagId\" open=\"(\" separator=\",\" close=\")\">#{tagId}::uuid</foreach>)"
+        + " <foreach collection=\"tagIds\" item=\"tagId\" open=\"(\" separator=\",\" close=\")\">#{tagId}</foreach>)"
         + " </if>"
         + "</where>";
 
     /**
      * 分页查询资源列表（tenant + search/resourceType/orgName/majorName/uploadedBy/tagIds 过滤）。
      *
-     * @param search 已转义 ILIKE 通配符后的 %pattern% 表达式
+     * @param search 已转义 LIKE 通配符后的 %pattern% 表达式
      */
     @Select("<script>SELECT " + SELECT_COLUMNS + " " + JOIN_CLAUSE + " " + FILTER_FRAGMENT
         + " ORDER BY rl.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
@@ -97,7 +97,7 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
      * 按名称精确匹配查询已有资源（批量导入重名校验）。
      */
     @Select("<script>SELECT " + SELECT_COLUMNS + " " + JOIN_CLAUSE
-        + " WHERE rl.tenant_id = #{tenantId}::uuid AND rl.resource_type = #{resourceType}::resource_type"
+        + " WHERE rl.tenant_id = #{tenantId} AND rl.resource_type = #{resourceType}"
         + " AND rl.name IN"
         + " <foreach collection=\"names\" item=\"name\" open=\"(\" separator=\",\" close=\")\">#{name}</foreach>"
         + "</script>")
@@ -108,8 +108,8 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
      * 新建资源（metadata 为 jsonb；null 时由 Service 传 "{}" 对齐 Go JSONMap 默认）。
      */
     @Insert("INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{name}, #{resourceType}::resource_type,"
-        + " #{url}, #{description}, #{thumbnail}, #{fileSize}, CAST(#{metadata} AS jsonb), #{uploadedBy}::uuid)")
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{resourceType},"
+        + " #{url}, #{description}, #{thumbnail}, #{fileSize}, CAST(#{metadata} AS JSON), #{uploadedBy})")
     int insertResource(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                        @Param("resourceType") String resourceType, @Param("url") String url,
                        @Param("description") String description, @Param("thumbnail") String thumbnail,
@@ -120,9 +120,9 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
      * 更新资源全部字段（部分更新语义由 Service 先合并再调用）。
      */
     @Update("UPDATE resource_library SET"
-        + " name = #{name}, resource_type = #{resourceType}::resource_type, url = #{url},"
+        + " name = #{name}, resource_type = #{resourceType}, url = #{url},"
         + " description = #{description}, thumbnail = #{thumbnail}, file_size = #{fileSize},"
-        + " metadata = CAST(#{metadata} AS jsonb), updated_at = NOW()"
+        + " metadata = CAST(#{metadata} AS JSON), updated_at = NOW()"
         + " WHERE id = #{id}")
     int updateResource(@Param("id") String id, @Param("name") String name,
                        @Param("resourceType") String resourceType, @Param("url") String url,
@@ -138,12 +138,12 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
     /**
      * 按类型统计资源数量（列表总览统计卡片，可选 search 过滤）。
      */
-    @Select("<script>SELECT rl.resource_type::text AS resource_type, COUNT(*) AS count"
+    @Select("<script>SELECT rl.resource_type AS resource_type, COUNT(*) AS count"
         + " FROM resource_library rl"
         + " <where>"
-        + " rl.tenant_id = #{tenantId}::uuid"
+        + " rl.tenant_id = #{tenantId}"
         + " <if test=\"search != null and search != ''\">"
-        + " AND (rl.name ILIKE #{search} ESCAPE '\\' OR rl.description ILIKE #{search} ESCAPE '\\')"
+        + " AND (rl.name LIKE #{search} ESCAPE '\\' OR rl.description LIKE #{search} ESCAPE '\\')"
         + " </if>"
         + " </where>"
         + " GROUP BY rl.resource_type ORDER BY count DESC</script>")
@@ -165,8 +165,8 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
         + " + COALESCE((SELECT COUNT(*) FROM node_resource_bindings nrb WHERE nrb.resource_id = rl.id), 0)"
         + " + COALESCE((SELECT COUNT(*) FROM task_resource_bindings trb WHERE trb.resource_id = rl.id), 0) AS ref_count"
         + " FROM resource_library rl"
-        + " WHERE rl.tenant_id = #{tenantId}::uuid"
-        + " <if test=\"resourceType != null and resourceType != ''\">AND rl.resource_type::text = #{resourceType}</if>"
+        + " WHERE rl.tenant_id = #{tenantId}"
+        + " <if test=\"resourceType != null and resourceType != ''\">AND rl.resource_type = #{resourceType}</if>"
         + " ) refs GROUP BY label</script>")
     List<CitationBucketDto> citationBuckets(@Param("tenantId") String tenantId, @Param("resourceType") String resourceType);
 
@@ -179,8 +179,8 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
      * 零引用资源总数（上传时段筛选 + 可选类型过滤）。
      */
     @Select("<script>SELECT COUNT(*) FROM resource_library rl"
-        + " WHERE rl.tenant_id = #{tenantId}::uuid"
-        + " <if test=\"resourceType != null and resourceType != ''\">AND rl.resource_type::text = #{resourceType}</if>"
+        + " WHERE rl.tenant_id = #{tenantId}"
+        + " <if test=\"resourceType != null and resourceType != ''\">AND rl.resource_type = #{resourceType}</if>"
         + " <if test=\"from != null\">AND rl.created_at &gt;= #{from}</if>"
         + " <if test=\"to != null\">AND rl.created_at &lt; #{to}</if>"
         + UNCITED_FRAGMENT
@@ -192,8 +192,8 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
      * 零引用资源分页列表（名称 + 上传时间）。
      */
     @Select("<script>SELECT rl.id, rl.name, rl.created_at FROM resource_library rl"
-        + " WHERE rl.tenant_id = #{tenantId}::uuid"
-        + " <if test=\"resourceType != null and resourceType != ''\">AND rl.resource_type::text = #{resourceType}</if>"
+        + " WHERE rl.tenant_id = #{tenantId}"
+        + " <if test=\"resourceType != null and resourceType != ''\">AND rl.resource_type = #{resourceType}</if>"
         + " <if test=\"from != null\">AND rl.created_at &gt;= #{from}</if>"
         + " <if test=\"to != null\">AND rl.created_at &lt; #{to}</if>"
         + UNCITED_FRAGMENT

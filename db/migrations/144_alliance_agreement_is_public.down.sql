@@ -1,1 +1,4 @@
-ALTER TABLE alliance_agreements DROP COLUMN IF EXISTS is_public;
+SET FOREIGN_KEY_CHECKS = 0;  -- down 回滚：MySQL 受外键约束影响，先禁用检查
+ALTER TABLE alliance_agreements DROP COLUMN is_public;
+
+SET FOREIGN_KEY_CHECKS = 1;

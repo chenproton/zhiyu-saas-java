@@ -1,1 +1,1 @@
-ALTER TABLE certificate_library ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone DEFAULT now() NOT NULL;
+ALTER TABLE certificate_library ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL;

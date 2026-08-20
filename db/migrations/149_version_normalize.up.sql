@@ -4,28 +4,39 @@
 --   2. 空值（NULL/''）→ V1.0（与创建默认值对齐）
 --   3. 纯数字（如 v1）→ 补 .0 成 V1.0
 --   4. 自定义版本号（如 v2.3.4）仅规范化前缀大小写，数字部分不动
-CREATE OR REPLACE FUNCTION normalize_resource_version(v text) RETURNS text AS $$
-DECLARE
-  digits text;
-BEGIN
-  IF v IS NULL OR btrim(v) = '' THEN
-    RETURN 'V1.0';
-  END IF;
-  digits := regexp_replace(btrim(v), '^[vV]+', '');
-  IF digits = '' THEN
-    digits := '1.0';
-  END IF;
-  IF digits ~ '^[0-9]+$' THEN
-    digits := digits || '.0';
-  END IF;
-  RETURN 'V' || digits;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
-
-UPDATE career_positions SET version = normalize_resource_version(version);
-UPDATE scenarios SET version = normalize_resource_version(version);
-UPDATE courses SET version = normalize_resource_version(version);
-UPDATE exams SET version = normalize_resource_version(version);
-UPDATE question_banks SET version = normalize_resource_version(version);
-
-DROP FUNCTION normalize_resource_version(text);
+-- MySQL 实现（原 PG 自定义函数 normalize_resource_version 以表达式内联）：
+--   规范化 = CASE WHEN 空 → '1.0'
+--                WHEN 剥离 v/V 前缀后为空 → '1.0'
+--                WHEN 剥离后为纯数字 → 数字 + '.0'
+--                ELSE 剥离后原样
+--            END，最终 CONCAT('V', 规范化)
+UPDATE career_positions SET version = CONCAT('V', CASE
+    WHEN NULLIF(TRIM(version), '') IS NULL THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') = '' THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') REGEXP '^[0-9]+$' THEN CONCAT(REGEXP_REPLACE(TRIM(version), '^[vV]+', ''), '.0')
+    ELSE REGEXP_REPLACE(TRIM(version), '^[vV]+', '')
+END);
+UPDATE scenarios SET version = CONCAT('V', CASE
+    WHEN NULLIF(TRIM(version), '') IS NULL THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') = '' THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') REGEXP '^[0-9]+$' THEN CONCAT(REGEXP_REPLACE(TRIM(version), '^[vV]+', ''), '.0')
+    ELSE REGEXP_REPLACE(TRIM(version), '^[vV]+', '')
+END);
+UPDATE courses SET version = CONCAT('V', CASE
+    WHEN NULLIF(TRIM(version), '') IS NULL THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') = '' THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') REGEXP '^[0-9]+$' THEN CONCAT(REGEXP_REPLACE(TRIM(version), '^[vV]+', ''), '.0')
+    ELSE REGEXP_REPLACE(TRIM(version), '^[vV]+', '')
+END);
+UPDATE exams SET version = CONCAT('V', CASE
+    WHEN NULLIF(TRIM(version), '') IS NULL THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') = '' THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') REGEXP '^[0-9]+$' THEN CONCAT(REGEXP_REPLACE(TRIM(version), '^[vV]+', ''), '.0')
+    ELSE REGEXP_REPLACE(TRIM(version), '^[vV]+', '')
+END);
+UPDATE question_banks SET version = CONCAT('V', CASE
+    WHEN NULLIF(TRIM(version), '') IS NULL THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') = '' THEN '1.0'
+    WHEN REGEXP_REPLACE(TRIM(version), '^[vV]+', '') REGEXP '^[0-9]+$' THEN CONCAT(REGEXP_REPLACE(TRIM(version), '^[vV]+', ''), '.0')
+    ELSE REGEXP_REPLACE(TRIM(version), '^[vV]+', '')
+END);

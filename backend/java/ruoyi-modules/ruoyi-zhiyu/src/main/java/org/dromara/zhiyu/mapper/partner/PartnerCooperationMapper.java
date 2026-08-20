@@ -21,15 +21,15 @@ public interface PartnerCooperationMapper {
     /** 企业关联的合作学校（link 未终止），按学校名排序。 */
     @Select("SELECT l.tenant_id AS tenantId, t.name AS schoolName"
         + " FROM alliance_enterprise_links l JOIN tenants t ON t.id = l.tenant_id"
-        + " WHERE l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated' ORDER BY t.name")
+        + " WHERE l.enterprise_id = #{enterpriseId} AND l.status != 'terminated' ORDER BY t.name")
     List<CooperationSchool> listCooperationSchools(@Param("enterpriseId") String enterpriseId);
 
     @Select("SELECT tenant_id AS tenantId, id, name, phase, is_public AS isPublic, updated_at AS updatedAt FROM ("
         + " SELECT x.tenant_id, x.id, x.name, x.phase, x.is_public, x.updated_at,"
         + " ROW_NUMBER() OVER (PARTITION BY x.tenant_id ORDER BY x.updated_at DESC) rn"
         + " FROM alliance_projects x"
-        + " WHERE EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated')"
-        + " AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = #{enterpriseId}::text)"
+        + " WHERE EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
+        + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')"
         + " ) ranked WHERE rn <= 50 ORDER BY updated_at DESC")
     List<ProjectRow> listCooperationProjects(@Param("enterpriseId") String enterpriseId);
 
@@ -37,8 +37,8 @@ public interface PartnerCooperationMapper {
         + " SELECT x.tenant_id, x.id, x.title, x.type, x.is_public, x.updated_at,"
         + " ROW_NUMBER() OVER (PARTITION BY x.tenant_id ORDER BY x.updated_at DESC) rn"
         + " FROM alliance_achievements x"
-        + " WHERE EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated')"
-        + " AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = #{enterpriseId}::text)"
+        + " WHERE EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
+        + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')"
         + " ) ranked WHERE rn <= 50 ORDER BY updated_at DESC")
     List<AchievementRow> listCooperationAchievements(@Param("enterpriseId") String enterpriseId);
 
@@ -46,8 +46,8 @@ public interface PartnerCooperationMapper {
         + " SELECT x.tenant_id, x.id, x.name, x.type, x.status, x.is_public, x.updated_at,"
         + " ROW_NUMBER() OVER (PARTITION BY x.tenant_id ORDER BY x.updated_at DESC) rn"
         + " FROM alliance_agreements x"
-        + " WHERE EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated')"
-        + " AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = #{enterpriseId}::text)"
+        + " WHERE EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
+        + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')"
         + " ) ranked WHERE rn <= 50 ORDER BY updated_at DESC")
     List<AgreementRow> listCooperationAgreements(@Param("enterpriseId") String enterpriseId);
 
@@ -57,32 +57,32 @@ public interface PartnerCooperationMapper {
         + " to_char(x.start_date, 'YYYY-MM-DD') AS startDate, to_char(x.end_date, 'YYYY-MM-DD') AS endDate,"
         + " x.budget, x.secondary_colleges AS secondaryColleges, x.is_public AS isPublic,"
         + " x.created_at AS createdAt, x.updated_at AS updatedAt"
-        + " FROM alliance_projects x WHERE x.id = #{id}::uuid"
-        + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated')"
-        + " AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = #{enterpriseId}::text)")
+        + " FROM alliance_projects x WHERE x.id = #{id}"
+        + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
+        + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')")
     ProjectDetailRow getCooperationProject(@Param("enterpriseId") String enterpriseId, @Param("id") String id);
 
     @Select("SELECT id, tenant_id AS tenantId, project_id AS projectId, name, description,"
         + " to_char(due_date, 'YYYY-MM-DD') AS dueDate, to_char(completed_date, 'YYYY-MM-DD') AS completedDate,"
         + " is_completed AS isCompleted"
-        + " FROM alliance_project_milestones WHERE project_id = #{projectId}::uuid ORDER BY sort_order, created_at")
+        + " FROM alliance_project_milestones WHERE project_id = #{projectId} ORDER BY sort_order, created_at")
     List<MilestoneRow> listMilestones(@Param("projectId") String projectId);
 
     @Select("SELECT x.id, x.title, x.type, x.description, to_char(x.achievement_date, 'YYYY-MM-DD') AS achievementDate,"
         + " x.citation_reason AS citationReason, x.owner_persons AS ownerPersons, x.co_builders AS coBuilders,"
         + " x.secondary_colleges AS secondaryColleges, x.status, x.view_count AS viewCount,"
         + " x.is_public AS isPublic, x.created_at AS createdAt, x.updated_at AS updatedAt"
-        + " FROM alliance_achievements x WHERE x.id = #{id}::uuid"
-        + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated')"
-        + " AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = #{enterpriseId}::text)")
+        + " FROM alliance_achievements x WHERE x.id = #{id}"
+        + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
+        + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')")
     AchievementDetailRow getCooperationAchievement(@Param("enterpriseId") String enterpriseId, @Param("id") String id);
 
     @Select("SELECT x.id, x.name, x.type, x.content, to_char(x.start_date, 'YYYY-MM-DD') AS startDate,"
         + " to_char(x.end_date, 'YYYY-MM-DD') AS endDate, x.status, x.is_public AS isPublic,"
         + " x.created_at AS createdAt, x.updated_at AS updatedAt"
-        + " FROM alliance_agreements x WHERE x.id = #{id}::uuid"
-        + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId}::uuid AND l.status != 'terminated')"
-        + " AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(x.enterprise_ids) eid WHERE eid = #{enterpriseId}::text)")
+        + " FROM alliance_agreements x WHERE x.id = #{id}"
+        + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
+        + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')")
     AgreementDetailRow getCooperationAgreement(@Param("enterpriseId") String enterpriseId, @Param("id") String id);
 
     // ===== 专家测评任务 =====
@@ -100,42 +100,42 @@ public interface PartnerCooperationMapper {
         + "   COUNT(*) FILTER (WHERE er.status = 'evaluated') AS graded_count"
         + "   FROM scene_evaluation_results er"
         + "   WHERE er.task_id = st.id AND er.tenant_id = l.tenant_id AND er.evaluator_id = x.user_id) prog ON true"
-        + " WHERE x.enterprise_id = #{enterpriseId}::uuid AND x.user_id IS NOT NULL"
+        + " WHERE x.enterprise_id = #{enterpriseId} AND x.user_id IS NOT NULL"
         + " ORDER BY rs.updated_at DESC LIMIT 200")
     List<MentorTask> listMentorTasks(@Param("enterpriseId") String enterpriseId);
 
     // ===== 统计 =====
 
-    @Select("SELECT COUNT(*) FROM alliance_experts WHERE tenant_id = #{tenantId}::uuid")
+    @Select("SELECT COUNT(*) FROM alliance_experts WHERE tenant_id = #{tenantId}")
     long countExperts(@Param("tenantId") String tenantId);
 
-    @Select("SELECT COUNT(*) FROM alliance_experts WHERE tenant_id = #{tenantId}::uuid AND is_public = true AND status = 'active'")
+    @Select("SELECT COUNT(*) FROM alliance_experts WHERE tenant_id = #{tenantId} AND is_public = true AND status = 'active'")
     long countPublicExperts(@Param("tenantId") String tenantId);
 
-    @Select("SELECT COUNT(*) FROM users WHERE tenant_id = #{tenantId}::uuid AND platform = 'partner'")
+    @Select("SELECT COUNT(*) FROM users WHERE tenant_id = #{tenantId} AND platform = 'partner'")
     long countMembers(@Param("tenantId") String tenantId);
 
-    @Select("SELECT COUNT(*) FROM career_positions cp WHERE cp.source_enterprise_id = #{enterpriseId}::uuid"
+    @Select("SELECT COUNT(*) FROM career_positions cp WHERE cp.source_enterprise_id = #{enterpriseId}"
         + " OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + " WHERE g.enterprise_id = #{enterpriseId}::uuid AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids))")
+        + " WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids))")
     long countCoBuildPositions(@Param("enterpriseId") String enterpriseId);
 
-    @Select("SELECT COUNT(*) FROM scenarios sc WHERE sc.source_enterprise_id = #{enterpriseId}::uuid"
+    @Select("SELECT COUNT(*) FROM scenarios sc WHERE sc.source_enterprise_id = #{enterpriseId}"
         + " OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + " WHERE g.enterprise_id = #{enterpriseId}::uuid AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids))")
+        + " WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids))")
     long countCoBuildScenarios(@Param("enterpriseId") String enterpriseId);
 
     @Select("SELECT m.month, COALESCE(e.cnt, 0) AS experts, COALESCE(p.cnt, 0) AS positions, COALESCE(sc.cnt, 0) AS scenarios"
         + " FROM (SELECT to_char(d, 'YYYY-MM') AS month FROM generate_series(date_trunc('month', NOW()) - make_interval(months => #{months} - 1), date_trunc('month', NOW()), '1 month') d) m"
         + " LEFT JOIN (SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt FROM alliance_experts"
-        + "   WHERE tenant_id = #{tenantId}::uuid AND created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) e ON e.month = m.month"
+        + "   WHERE tenant_id = #{tenantId} AND created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) e ON e.month = m.month"
         + " LEFT JOIN (SELECT to_char(date_trunc('month', cp.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt FROM career_positions cp"
-        + "   WHERE (cp.source_enterprise_id = #{enterpriseId}::uuid OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + "     WHERE g.enterprise_id = #{enterpriseId}::uuid AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
+        + "   WHERE (cp.source_enterprise_id = #{enterpriseId} OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
+        + "     WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
         + "   AND cp.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) p ON p.month = m.month"
         + " LEFT JOIN (SELECT to_char(date_trunc('month', sc.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt FROM scenarios sc"
-        + "   WHERE (sc.source_enterprise_id = #{enterpriseId}::uuid OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + "     WHERE g.enterprise_id = #{enterpriseId}::uuid AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids)))"
+        + "   WHERE (sc.source_enterprise_id = #{enterpriseId} OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
+        + "     WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids)))"
         + "   AND sc.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) sc ON sc.month = m.month"
         + " ORDER BY m.month")
     List<NewMonthCountRow> countMonthlyNew(@Param("tenantId") String tenantId,
@@ -144,13 +144,13 @@ public interface PartnerCooperationMapper {
     @Select("SELECT m.month, COALESCE(p.cnt, 0) AS projects, COALESCE(a.cnt, 0) AS agreements, COALESCE(c.cnt, 0) AS achievements"
         + " FROM (SELECT to_char(d, 'YYYY-MM') AS month FROM generate_series(date_trunc('month', NOW()) - make_interval(months => #{months} - 1), date_trunc('month', NOW()), '1 month') d) m"
         + " LEFT JOIN (SELECT to_char(date_trunc('month', p.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt"
-        + "   FROM alliance_projects p, jsonb_array_elements_text(p.enterprise_ids) eid WHERE eid = #{enterpriseId}::text"
+        + "   FROM alliance_projects p JOIN JSON_TABLE(p.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) jt WHERE jt.eid = #{enterpriseId}"
         + "   AND p.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) p ON p.month = m.month"
         + " LEFT JOIN (SELECT to_char(date_trunc('month', a.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt"
-        + "   FROM alliance_agreements a, jsonb_array_elements_text(a.enterprise_ids) eid WHERE eid = #{enterpriseId}::text"
+        + "   FROM alliance_agreements a JOIN JSON_TABLE(a.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) jt WHERE jt.eid = #{enterpriseId}"
         + "   AND a.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) a ON a.month = m.month"
         + " LEFT JOIN (SELECT to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt"
-        + "   FROM alliance_achievements c, jsonb_array_elements_text(c.enterprise_ids) eid WHERE eid = #{enterpriseId}::text"
+        + "   FROM alliance_achievements c JOIN JSON_TABLE(c.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) jt WHERE jt.eid = #{enterpriseId}"
         + "   AND c.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) c ON c.month = m.month"
         + " ORDER BY m.month")
     List<ContentMonthCountRow> countMonthlyContent(@Param("enterpriseId") String enterpriseId, @Param("months") int months);
@@ -158,14 +158,14 @@ public interface PartnerCooperationMapper {
     // ===== 共建人候选（合作学校） =====
 
     @Select("SELECT u.id, u.name FROM users u"
-        + " WHERE u.tenant_id = #{schoolTenantId}::uuid AND u.platform = 'portal'"
+        + " WHERE u.tenant_id = #{schoolTenantId} AND u.platform = 'portal'"
         + " AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = u.id AND r.code = 'student')"
         + " ORDER BY u.name")
     List<CoBuilderRow> listSchoolTeachers(@Param("schoolTenantId") String schoolTenantId);
 
     @Select("SELECT x.id AS expertId, x.name, x.title, e.name AS enterpriseName, x.user_id AS userId"
         + " FROM alliance_experts x"
-        + " JOIN alliance_enterprise_links l ON l.enterprise_id = x.enterprise_id AND l.tenant_id = #{schoolTenantId}::uuid"
+        + " JOIN alliance_enterprise_links l ON l.enterprise_id = x.enterprise_id AND l.tenant_id = #{schoolTenantId}"
         + " JOIN partner_enterprises e ON e.id = x.enterprise_id"
         + " WHERE x.user_id IS NOT NULL ORDER BY e.name, x.created_at DESC")
     List<CoBuilderRow> listSchoolExperts(@Param("schoolTenantId") String schoolTenantId);

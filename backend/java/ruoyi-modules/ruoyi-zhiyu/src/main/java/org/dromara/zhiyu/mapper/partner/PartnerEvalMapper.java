@@ -17,24 +17,24 @@ import java.util.List;
  */
 public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, SceneEvalMethod> {
 
-    @Select("SELECT pg_advisory_xact_lock(hashtext(#{key})::bigint)")
+    @Select("SELECT pg_advisory_xact_lock(hashtext(#{key}))")
     void lockTaskEval(@Param("key") String key);
 
-    @Select("SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = #{taskId}::uuid AND tenant_id = #{tenantId}::uuid")
+    @Select("SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = #{taskId} AND tenant_id = #{tenantId}")
     Integer selectMaxVersion(@Param("taskId") String taskId, @Param("tenantId") String tenantId);
 
-    @Select("SELECT name FROM scenario_tasks WHERE id = #{taskId}::uuid")
+    @Select("SELECT name FROM scenario_tasks WHERE id = #{taskId}")
     String selectTaskName(@Param("taskId") String taskId);
 
     @Select("INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type,"
         + " eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)"
         + " VALUES (#{tenantId}, #{taskId}, #{methodKey}, #{weight}, #{evalObject}, #{scoreType},"
-        + " CAST(#{evalSubjects} AS jsonb), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS jsonb),"
+        + " CAST(#{evalSubjects} AS JSON), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS JSON),"
         + " #{version}, #{isEnabled})"
-        + " ON CONFLICT (task_id, method_key) DO UPDATE SET weight = EXCLUDED.weight, eval_object = EXCLUDED.eval_object,"
-        + " score_type = EXCLUDED.score_type, eval_subjects = EXCLUDED.eval_subjects,"
-        + " standard_name = EXCLUDED.standard_name, standard_mode = EXCLUDED.standard_mode,"
-        + " resource_config = EXCLUDED.resource_config, version = EXCLUDED.version, is_enabled = EXCLUDED.is_enabled,"
+        + " ON DUPLICATE KEY UPDATE weight = VALUES(weight), eval_object = VALUES(eval_object),"
+        + " score_type = VALUES(score_type), eval_subjects = VALUES(eval_subjects),"
+        + " standard_name = VALUES(standard_name), standard_mode = VALUES(standard_mode),"
+        + " resource_config = VALUES(resource_config), version = VALUES(version), is_enabled = VALUES(is_enabled),"
         + " updated_at = now() RETURNING id")
     String upsertMethodReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
                                 @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
@@ -43,22 +43,22 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
                                 @Param("standardMode") String standardMode, @Param("resourceConfig") String resourceConfig,
                                 @Param("version") Integer version, @Param("isEnabled") Boolean isEnabled);
 
-    @Delete("DELETE FROM task_eval_points WHERE config_id = #{configId}::uuid")
+    @Delete("DELETE FROM task_eval_points WHERE config_id = #{configId}")
     int deleteEvalPoints(@Param("configId") String configId);
 
-    @Delete("DELETE FROM task_eval_score_rules WHERE config_id = #{configId}::uuid")
+    @Delete("DELETE FROM task_eval_score_rules WHERE config_id = #{configId}")
     int deleteScoreRules(@Param("configId") String configId);
 
-    @Delete("DELETE FROM task_review_steps WHERE config_id = #{configId}::uuid")
+    @Delete("DELETE FROM task_review_steps WHERE config_id = #{configId}")
     int deleteReviewSteps(@Param("configId") String configId);
 
     @Insert("INSERT INTO task_eval_points (tenant_id, config_id, name, description, sub_type, types, weight,"
         + " scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)"
         + " VALUES (#{tenantId}, #{configId}, #{name}, #{description}, #{subType},"
         + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight},"
-        + " #{scoringMethod}, CAST(#{gradeMapping} AS jsonb),"
-        + " CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{scoringMethod}, CAST(#{gradeMapping} AS JSON),"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{sortOrder})")
     int insertEvalPoint(@Param("tenantId") String tenantId, @Param("configId") String configId,
                         @Param("name") String name, @Param("description") String description,
@@ -78,7 +78,7 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
     @Insert("INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight,"
         + " sort_order, assigned_user_ids)"
         + " VALUES (#{tenantId}, #{configId}, #{label}, #{description}, #{enabled}, #{subjectType}, #{weight},"
-        + " #{sortOrder}, CAST(#{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]))")
+        + " #{sortOrder}, #{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler})")
     int insertReviewStep(@Param("tenantId") String tenantId, @Param("configId") String configId,
                          @Param("label") String label, @Param("description") String description,
                          @Param("enabled") Boolean enabled, @Param("subjectType") String subjectType,
@@ -86,19 +86,19 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
                          @Param("assignedUserIds") List<String> assignedUserIds);
 
     @Select("SELECT id, config_id AS configId, name, description, sub_type AS subType,"
-        + " array_to_json(types)::text AS types, weight, scoring_method AS scoringMethod,"
-        + " grade_mapping::text AS gradeMapping, array_to_json(knowledge_point_ids)::text AS knowledgePointIds,"
-        + " array_to_json(ability_point_ids)::text AS abilityPointIds, sort_order AS sortOrder"
-        + " FROM task_eval_points WHERE config_id = #{configId}::uuid ORDER BY sort_order")
+        + " array_to_json(types) AS types, weight, scoring_method AS scoringMethod,"
+        + " grade_mapping AS gradeMapping, array_to_json(knowledge_point_ids) AS knowledgePointIds,"
+        + " array_to_json(ability_point_ids) AS abilityPointIds, sort_order AS sortOrder"
+        + " FROM task_eval_points WHERE config_id = #{configId} ORDER BY sort_order")
     List<EvalPointRow> selectEvalPoints(@Param("configId") String configId);
 
     @Select("SELECT id, config_id AS configId, name, description, rule, weight, sort_order AS sortOrder"
-        + " FROM task_eval_score_rules WHERE config_id = #{configId}::uuid ORDER BY sort_order")
+        + " FROM task_eval_score_rules WHERE config_id = #{configId} ORDER BY sort_order")
     List<ScoreRuleRow> selectScoreRules(@Param("configId") String configId);
 
     @Select("SELECT id, config_id AS configId, label, description, enabled, subject_type AS subjectType,"
-        + " array_to_json(assigned_user_ids)::text AS assignedUserIds, weight, sort_order AS sortOrder"
-        + " FROM task_review_steps WHERE config_id = #{configId}::uuid ORDER BY sort_order")
+        + " array_to_json(assigned_user_ids) AS assignedUserIds, weight, sort_order AS sortOrder"
+        + " FROM task_review_steps WHERE config_id = #{configId} ORDER BY sort_order")
     List<ReviewStepRow> selectReviewSteps(@Param("configId") String configId);
 
     class EvalPointRow {

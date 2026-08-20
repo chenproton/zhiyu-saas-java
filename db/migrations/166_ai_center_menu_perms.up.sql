@@ -6,33 +6,33 @@
 --   企业侧角色（enterprise_*）不使用门户 AI 中心，不回填。
 -- 同时将存量订阅包 modules 补齐 ai=true（缺失时前端 subscriptionModules 门禁会整体隐藏 AI 中心）。
 UPDATE roles
-SET permissions = jsonb_set(
-    jsonb_set(
-        jsonb_set(permissions, '{menus,/portal/apps/ai/chat}', 'true', true),
-        '{menus,/portal/apps/ai/square}', 'true', true
+SET permissions = JSON_SET(
+    JSON_SET(
+        JSON_SET(permissions, '$.menus."/portal/apps/ai/chat"', TRUE),
+        '$.menus."/portal/apps/ai/square"', TRUE
     ),
-    '{menus,/portal/apps/ai/studio}', 'true', true
+    '$.menus."/portal/apps/ai/studio"', TRUE
 )
 WHERE code IN ('teacher', 'student')
-  AND permissions ? 'menus';
+  AND JSON_CONTAINS_PATH(permissions, 'one', '$.menus');
 
 UPDATE roles
-SET permissions = jsonb_set(
-    jsonb_set(
-        jsonb_set(
-            jsonb_set(
-                jsonb_set(permissions, '{menus,/portal/apps/ai/chat}', 'true', true),
-                '{menus,/portal/apps/ai/square}', 'true', true
+SET permissions = JSON_SET(
+    JSON_SET(
+        JSON_SET(
+            JSON_SET(
+                JSON_SET(permissions, '$.menus."/portal/apps/ai/chat"', TRUE),
+                '$.menus."/portal/apps/ai/square"', TRUE
             ),
-            '{menus,/portal/apps/ai/studio}', 'true', true
+            '$.menus."/portal/apps/ai/studio"', TRUE
         ),
-        '{menus,/portal/apps/ai/admin/reviews}', 'true', true
+        '$.menus."/portal/apps/ai/admin/reviews"', TRUE
     ),
-    '{menus,/portal/apps/ai/admin/integrations}', 'true', true
+    '$.menus."/portal/apps/ai/admin/integrations"', TRUE
 )
 WHERE code = 'school_admin'
-  AND permissions ? 'menus';
+  AND JSON_CONTAINS_PATH(permissions, 'one', '$.menus');
 
 UPDATE subscription_packages
-SET modules = jsonb_set(modules, '{ai}', 'true', true)
-WHERE NOT (modules ? 'ai');
+SET modules = JSON_SET(modules, '$.ai', TRUE)
+WHERE NOT JSON_CONTAINS_PATH(modules, 'one', '$.ai');

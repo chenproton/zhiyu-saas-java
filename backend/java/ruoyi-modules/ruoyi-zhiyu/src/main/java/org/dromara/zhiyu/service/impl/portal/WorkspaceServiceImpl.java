@@ -233,7 +233,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private List<WorkspaceAnnouncement> listAnnouncements(String role, String tenantId) {
         try {
             var wrapper = QueryBuilder.lambda(PortalAnnouncement.class)
-                .apply("(array_length(target_roles, 1) IS NULL OR target_roles @> ARRAY[{0}::varchar])", role);
+                .apply("(JSON_LENGTH(target_roles) IS NULL OR JSON_CONTAINS(target_roles, JSON_QUOTE({0}), '$'))", role);
             if (tenantId != null) {
                 wrapper.eq(PortalAnnouncement::getTenantId, tenantId);
             }
@@ -473,7 +473,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             }
             if (orgNodeId != null && !orgNodeId.isBlank()) {
                 wrapper.apply("EXISTS (SELECT 1 FROM schedule_entries se WHERE se.course_id = courses.id AND se.status = 'published'"
-                    + " AND (se.class_node_id = {0}::uuid OR {0}::uuid = ANY(se.class_node_ids)))", orgNodeId);
+                    + " AND (se.class_node_id = {0} OR {0} = ANY(se.class_node_ids)))", orgNodeId);
             }
             wrapper.orderByDesc(LessonCourse::getUpdatedAt).last("LIMIT 50");
             rows = courseMapper.selectList(wrapper.build());
@@ -528,7 +528,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             }
             if (orgNodeId != null && !orgNodeId.isBlank()) {
                 wrapper.apply("EXISTS (SELECT 1 FROM schedule_entries se WHERE se.scenario_id = scenarios.id AND se.status = 'published'"
-                    + " AND se.type = 'scene' AND (se.class_node_id = {0}::uuid OR {0}::uuid = ANY(se.class_node_ids)))", orgNodeId);
+                    + " AND se.type = 'scene' AND (se.class_node_id = {0} OR {0} = ANY(se.class_node_ids)))", orgNodeId);
             }
             wrapper.orderByDesc(PortalScenario::getUpdatedAt).last("LIMIT 50");
             scenarios = scenarioMapper.selectList(wrapper.build());
@@ -585,12 +585,12 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 .in(PortalExamUsage::getStatus, "published", "finished")
                 .in(PortalExamUsage::getTargetType, MANUAL_EXAM_TARGET_TYPES);
             if (!classNodeId.isEmpty()) {
-                wrapper.apply("(target_type != 'class' OR {0}::uuid = ANY(target_ids))", classNodeId);
+                wrapper.apply("(target_type != 'class' OR {0} = ANY(target_ids))", classNodeId);
             } else {
                 wrapper.ne(PortalExamUsage::getTargetType, "class");
             }
             if (tenantId != null) {
-                wrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0}::uuid)", tenantId);
+                wrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0})", tenantId);
             }
             wrapper.last("ORDER BY start_time ASC NULLS LAST LIMIT 50");
             usages = examUsageMapper.selectList(wrapper.build());
@@ -644,7 +644,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         try {
             var wrapper = QueryBuilder.lambda(LessonCourse.class)
                 .eq(LessonCourse::getStatus, "published")
-                .apply("(teacher_id = {0}::uuid OR creator_id = {0}::uuid)", userId);
+                .apply("(teacher_id = {0} OR creator_id = {0})", userId);
             if (tenantId != null) {
                 wrapper.eq(LessonCourse::getTenantId, tenantId);
             }
@@ -796,7 +796,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private int draftCourseCount(String userId, String tenantId) {
         var wrapper = QueryBuilder.lambda(LessonCourse.class)
             .eq(LessonCourse::getStatus, "draft")
-            .apply("(teacher_id = {0}::uuid OR creator_id = {0}::uuid)", userId);
+            .apply("(teacher_id = {0} OR creator_id = {0})", userId);
         if (tenantId != null) {
             wrapper.eq(LessonCourse::getTenantId, tenantId);
         }
@@ -809,12 +809,12 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             .apply("(start_time IS NULL OR start_time >= {0})", OffsetDateTime.now())
             .in(PortalExamUsage::getTargetType, MANUAL_EXAM_TARGET_TYPES);
         if (!classNodeId.isEmpty()) {
-            wrapper.apply("(target_type != 'class' OR {0}::uuid = ANY(target_ids))", classNodeId);
+            wrapper.apply("(target_type != 'class' OR {0} = ANY(target_ids))", classNodeId);
         } else {
             wrapper.ne(PortalExamUsage::getTargetType, "class");
         }
         if (tenantId != null) {
-            wrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0}::uuid)", tenantId);
+            wrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0})", tenantId);
         }
         return examUsageMapper.selectCount(wrapper.build()).intValue();
     }
@@ -842,7 +842,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         try {
             var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
                 .eq(ScheduleEntry::getStatus, "published")
-                .apply("(class_node_id = {0}::uuid OR {0}::uuid = ANY(class_node_ids))", classNodeId);
+                .apply("(class_node_id = {0} OR {0} = ANY(class_node_ids))", classNodeId);
             if (tenantId != null) {
                 wrapper.eq(ScheduleEntry::getTenantId, tenantId);
             }
@@ -914,12 +914,12 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 .eq(PortalExamUsage::getStatus, "published")
                 .in(PortalExamUsage::getTargetType, MANUAL_EXAM_TARGET_TYPES);
             if (!classNodeId.isEmpty()) {
-                wrapper.apply("(target_type != 'class' OR {0}::uuid = ANY(target_ids))", classNodeId);
+                wrapper.apply("(target_type != 'class' OR {0} = ANY(target_ids))", classNodeId);
             } else {
                 wrapper.ne(PortalExamUsage::getTargetType, "class");
             }
             if (tenantId != null) {
-                wrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0}::uuid)", tenantId);
+                wrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0})", tenantId);
             }
             wrapper.last("ORDER BY start_time ASC NULLS LAST LIMIT 20");
             return examUsageMapper.selectList(wrapper.build());
@@ -950,7 +950,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private int[] teacherStats(String userId, String tenantId) {
         var wrapper = QueryBuilder.lambda(LessonCourse.class)
             .eq(LessonCourse::getStatus, "published")
-            .apply("(teacher_id = {0}::uuid OR creator_id = {0}::uuid)", userId);
+            .apply("(teacher_id = {0} OR creator_id = {0})", userId);
         if (tenantId != null) {
             wrapper.eq(LessonCourse::getTenantId, tenantId);
         }
@@ -977,7 +977,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         var examWrapper = QueryBuilder.lambda(PortalExamUsage.class).eq(PortalExamUsage::getStatus, "published");
         if (tenantId != null) {
-            examWrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0}::uuid)", tenantId);
+            examWrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0})", tenantId);
         }
         int examCount = examUsageMapper.selectCount(examWrapper.build()).intValue();
         return new int[] {courseCount, examCount};
@@ -1037,7 +1037,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
     private <T> Long selectCountTenant(com.baomidou.mybatisplus.core.mapper.BaseMapper<T> mapper, Class<T> clazz, String tenantId) {
         var wrapper = QueryBuilder.lambda(clazz);
-        wrapper.apply("tenant_id = {0}::uuid", tenantId);
+        wrapper.apply("tenant_id = {0}", tenantId);
         return mapper.selectCount(wrapper.build());
     }
 
@@ -1253,10 +1253,10 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             String scopeCond;
             String scopeArg;
             if (!classNodeId.isEmpty()) {
-                scopeCond = "(se.class_node_id = {0}::uuid OR {0}::uuid = ANY(se.class_node_ids))";
+                scopeCond = "(se.class_node_id = {0} OR {0} = ANY(se.class_node_ids))";
                 scopeArg = classNodeId;
             } else {
-                scopeCond = "se.teacher_id = {0}::uuid";
+                scopeCond = "se.teacher_id = {0}";
                 scopeArg = userId;
             }
             Map<String, Long> scheduleCounts = new HashMap<>();
@@ -1315,7 +1315,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             .eq(ScheduleEntry::getTenantId, tenantId)
             .eq(ScheduleEntry::getTermId, termId);
         if (!classNodeId.isEmpty()) {
-            wrapper.apply("({0}::uuid = ANY(class_node_ids) OR class_node_id = {0}::uuid)", classNodeId);
+            wrapper.apply("({0} = ANY(class_node_ids) OR class_node_id = {0})", classNodeId);
         }
         if (!teacherId.isEmpty()) {
             wrapper.eq(ScheduleEntry::getTeacherId, teacherId);
@@ -1515,7 +1515,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             try {
                 var scheduleWrapper = QueryBuilder.lambda(ScheduleEntry.class)
                     .eq(ScheduleEntry::getStatus, "published")
-                    .apply("(class_node_id = {0}::uuid OR {0}::uuid = ANY(class_node_ids))", orgNodeId);
+                    .apply("(class_node_id = {0} OR {0} = ANY(class_node_ids))", orgNodeId);
                 if ("scenarios".equals(resourceType)) {
                     scheduleWrapper.eq(ScheduleEntry::getType, "scene")
                         .in(ScheduleEntry::getScenarioId, resourceIds);

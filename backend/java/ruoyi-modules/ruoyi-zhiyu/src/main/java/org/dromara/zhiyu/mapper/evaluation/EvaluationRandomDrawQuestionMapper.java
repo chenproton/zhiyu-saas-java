@@ -31,9 +31,9 @@ public interface EvaluationRandomDrawQuestionMapper extends BaseMapperPlus<Evalu
 
     /** 批量查询专业名称（key=major_id，value=name） */
     @Select("<script>SELECT id, name FROM majors WHERE id IN"
-        + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}::uuid</foreach></script>")
+        + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach></script>")
     List<Map<String, Object>> selectMajorNames(@Param("ids") List<String> ids);
 
-    @Select("SELECT EXISTS(SELECT 1 FROM random_draw_questions WHERE tenant_id = #{tenantId}::uuid AND name = #{name})")
+    @Select("SELECT EXISTS(SELECT 1 FROM random_draw_questions WHERE tenant_id = #{tenantId} AND name = #{name})")
     boolean existsName(@Param("tenantId") String tenantId, @Param("name") String name);
 }

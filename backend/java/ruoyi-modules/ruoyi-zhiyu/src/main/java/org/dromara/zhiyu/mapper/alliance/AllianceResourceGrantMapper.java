@@ -30,23 +30,22 @@ public interface AllianceResourceGrantMapper extends BaseMapperPlus<AllianceReso
                    @Param("resourceType") String resourceType);
 
     @Insert("INSERT INTO alliance_resource_grants (tenant_id, enterprise_id, resource_type, resource_ids, created_by)"
-        + " VALUES (#{tenantId}, #{enterpriseId}, #{resourceType}, #{resourceIds}::uuid[], #{createdBy})"
-        + " ON CONFLICT (tenant_id, enterprise_id, resource_type)"
-        + " DO UPDATE SET resource_ids = EXCLUDED.resource_ids, created_by = EXCLUDED.created_by, updated_at = NOW()")
+        + " VALUES (#{tenantId}, #{enterpriseId}, #{resourceType}, #{resourceIds}, #{createdBy})"
+        + " ON DUPLICATE KEY UPDATE resource_ids = VALUES(resource_ids), created_by = VALUES(created_by), updated_at = NOW()")
     int upsertGrant(@Param("tenantId") String tenantId, @Param("enterpriseId") String enterpriseId,
                     @Param("resourceType") String resourceType, @Param("resourceIds") String resourceIds,
                     @Param("createdBy") String createdBy);
 
-    @Select("SELECT COUNT(*) FROM career_positions WHERE id = ANY(#{ids}::uuid[]) AND tenant_id = #{tenantId}")
+    @Select("SELECT COUNT(*) FROM career_positions WHERE JSON_CONTAINS(CAST(REPLACE(REPLACE(#{ids}, '{', '['), '}', ']') AS JSON), JSON_QUOTE(id), '$') AND tenant_id = #{tenantId}")
     int countPositionsOwned(@Param("tenantId") String tenantId, @Param("ids") String ids);
 
-    @Select("SELECT COUNT(*) FROM scenarios WHERE id = ANY(#{ids}::uuid[]) AND tenant_id = #{tenantId}")
+    @Select("SELECT COUNT(*) FROM scenarios WHERE JSON_CONTAINS(CAST(REPLACE(REPLACE(#{ids}, '{', '['), '}', ']') AS JSON), JSON_QUOTE(id), '$') AND tenant_id = #{tenantId}")
     int countScenesOwned(@Param("tenantId") String tenantId, @Param("ids") String ids);
 
-    @Select("SELECT id::text FROM career_positions WHERE source_enterprise_id = #{enterpriseId} AND status != 'archived'")
+    @Select("SELECT id FROM career_positions WHERE source_enterprise_id = #{enterpriseId} AND status != 'archived'")
     List<String> listCoBuiltPositions(@Param("enterpriseId") String enterpriseId);
 
-    @Select("SELECT id::text FROM scenarios WHERE source_enterprise_id = #{enterpriseId} AND status != 'archived'")
+    @Select("SELECT id FROM scenarios WHERE source_enterprise_id = #{enterpriseId} AND status != 'archived'")
     List<String> listCoBuiltScenes(@Param("enterpriseId") String enterpriseId);
 
     @Data
@@ -62,13 +61,13 @@ public interface AllianceResourceGrantMapper extends BaseMapperPlus<AllianceReso
         private String batchName;
     }
 
-    @Select("SELECT cp.id::text AS id, cp.name, 'position' AS type,"
+    @Select("SELECT cp.id AS id, cp.name, 'position' AS type,"
         + " CASE WHEN cp.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END AS source,"
         + " cp.source_enterprise_id, pe.name AS source_enterprise_name, cp.status, cp.batch_id, b.name AS batch_name"
         + " FROM career_positions cp LEFT JOIN partner_enterprises pe ON pe.id = cp.source_enterprise_id"
         + " LEFT JOIN batches b ON b.id = cp.batch_id WHERE cp.tenant_id = #{tenantId}"
         + " UNION ALL"
-        + " SELECT s.id::text AS id, s.name, 'scene' AS type,"
+        + " SELECT s.id AS id, s.name, 'scene' AS type,"
         + " CASE WHEN s.source_enterprise_id IS NULL THEN 'school' ELSE 'enterprise' END AS source,"
         + " s.source_enterprise_id, pe.name AS source_enterprise_name, s.status, s.batch_id, sb.name AS batch_name"
         + " FROM scenarios s LEFT JOIN partner_enterprises pe ON pe.id = s.source_enterprise_id"

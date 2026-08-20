@@ -18,7 +18,7 @@ import java.util.List;
  * PostgreSQL jsonb 数组列（tenants.secondary_colleges 等）↔ {@link List}&lt;Object&gt; 类型处理器。
  *
  * <p>读：经 JDBC getString 取 jsonb 原文后按数组解析；写：序列化为 JSON 文本，
- * 调用方需在 SQL 中用 {@code CAST(#{...} AS jsonb)} 显式转换。</p>
+ * 调用方需在 SQL 中用 {@code CAST(#{...} AS JSON)} 显式转换。</p>
  *
  * @author zhiyu
  */

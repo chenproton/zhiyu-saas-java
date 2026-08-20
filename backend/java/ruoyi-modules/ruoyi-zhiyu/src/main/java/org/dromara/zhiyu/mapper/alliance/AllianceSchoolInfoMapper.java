@@ -20,12 +20,12 @@ public interface AllianceSchoolInfoMapper extends BaseMapperPlus<AllianceSchoolI
 
     @Insert("INSERT INTO alliance_school_info (id, tenant_id, name, short_name, school_type, province, city,"
         + " address, website, contact_phone, description, logo_url, scale_data, secondary_colleges, created_at, updated_at)"
-        + " VALUES (COALESCE(#{id}, gen_random_uuid()), #{tenantId}, #{name}, #{shortName}, #{schoolType}, #{province}, #{city},"
+        + " VALUES (COALESCE(#{id}, (UUID())), #{tenantId}, #{name}, #{shortName}, #{schoolType}, #{province}, #{city},"
         + " #{address}, #{website}, #{contactPhone}, #{description}, #{logoUrl},"
-        + " CAST(#{scaleData} AS jsonb), CAST(#{secondaryColleges} AS jsonb), NOW(), NOW())"
-        + " ON CONFLICT (tenant_id) DO UPDATE SET name = #{name}, short_name = #{shortName}, school_type = #{schoolType},"
+        + " CAST(#{scaleData} AS JSON), CAST(#{secondaryColleges} AS JSON), NOW(), NOW())"
+        + " ON DUPLICATE KEY UPDATE name = #{name}, short_name = #{shortName}, school_type = #{schoolType},"
         + " province = #{province}, city = #{city}, address = #{address}, website = #{website},"
         + " contact_phone = #{contactPhone}, description = #{description}, logo_url = #{logoUrl},"
-        + " scale_data = CAST(#{scaleData} AS jsonb), secondary_colleges = CAST(#{secondaryColleges} AS jsonb), updated_at = NOW()")
+        + " scale_data = CAST(#{scaleData} AS JSON), secondary_colleges = CAST(#{secondaryColleges} AS JSON), updated_at = NOW()")
     int upsertSchoolInfo(AllianceSchoolInfo info);
 }

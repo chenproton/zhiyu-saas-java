@@ -1,6 +1,6 @@
 # Vue 业务门户（Java 配套）规格文档 — 知与 SaaS
 
-> 状态（2026-08 迁移完成）：**Java + Vue 单栈**。Go 后端与 React 前端（原目录已随迁移删除）已于 2026-08 移除；本仓库仅剩 Java 后端（`backend/java/ruoyi-*`）+ Vue 业务门户（`frontend/portal-vue`）+ Vue 管理端（`frontend/plus-ui`），共用 PostgreSQL，统一由 `deploy.sh` 部署（`db/migrations` 纯 psql 迁移 + Java Maven 构建 + portal-vue/plus-ui 构建 + SeedRunner 种子 + 框架表初始化 + 冒烟）。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**AI 功能已随迁移整体下线**（页面/接口/表已删除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
+> 状态（2026-08 迁移完成）：**Java + Vue 单栈**。Go 后端与 React 前端（原目录已随迁移删除）已于 2026-08 移除；本仓库仅剩 Java 后端（`backend/java/ruoyi-*`）+ Vue 业务门户（`frontend/portal-vue`）+ Vue 管理端（`frontend/plus-ui`），共用 MySQL 8.0，统一由 `deploy.sh` 部署（`db/migrations` 纯 mysql 迁移 + Java Maven 构建 + portal-vue/plus-ui 构建 + SeedRunner 种子 + 框架表初始化 + 冒烟）。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**AI 功能已随迁移整体下线**（页面/接口/表已删除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
 > 状态（2026-08-19 完成）：**Vue 门户与 React 基线功能对齐实施完成**。M1-M8 全部模块翻译/核对完成，M9 特有页分类落地，M10 验收通过：路由差距清零、`vue-tsc` 类型检查 + `vite build` 通过、`spec-check.sh` 硬约束全部通过；M11 全局布局体系复刻完成。详见 §11。
 > **阅读约定**：本文档记录迁移专项，§1–§10 多为**迁移执行期的背景与过程叙述**（其中提到的 Next.js / java-edu / Go 后端 / `/java/` 前缀 / 8083 双栈 / deploy-java.sh 均为历史状态，现已不存在）；**当前形态以本状态头与 §8「部署与验证」为准**。
 >
@@ -47,7 +47,7 @@
 - 但**复用** plus-ui 的：`vite.config.ts`/`tsconfig.json`/`uno.config.ts` 工程配置、权限 store/指令、Element Plus 通用组件（Pagination/DictTag 等）。注意：portal-vue 请求层为**原生 fetch**（`src/api/http.ts`，无 axios 依赖），token 存取也在 `http.ts` 内实现，不复用 plus-ui 的 request/auth utils。
 
 ### 2.3 数据边界
-- **无数据模型变更**：Java 后端已共享 PostgreSQL（同一库 `zhiyu_saas`），Vue 门户纯前端，不新增表/迁移/字段。
+- **无数据模型变更**：Java 后端已共享 MySQL 8.0（同一库 `zhiyu_saas`），Vue 门户纯前端，不新增表/迁移/字段。
 - 无新 API：全部复用 Java 后端现有 `/api/v1/**`（契约见 `02-api-contract.md`）。
 
 ### 2.4 与其他模块的关系
@@ -136,7 +136,7 @@
 ## 8. 部署与验证
 
 ### 8.1 部署（单栈现状，无 `/java` 前缀）
-- 统一经 `deploy.sh`（**唯一部署入口**）：`db/migrations` 纯 psql 迁移 + `backend/java` Maven 构建 + `frontend/portal-vue`/`frontend/plus-ui` 构建 + SeedRunner 种子 + Java 框架表初始化 + 健康门禁/业务冒烟（详见 `03-development-plan.md` §5）。
+- 统一经 `deploy.sh`（**唯一部署入口**）：`db/migrations` 纯 mysql 迁移 + `backend/java` Maven 构建 + `frontend/portal-vue`/`frontend/plus-ui` 构建 + SeedRunner 种子 + Java 框架表初始化 + 健康门禁/业务冒烟（详见 `03-development-plan.md` §5）。
 - 入口：边缘 nginx :80 **根路径直连**（`deploy/nginx/conf.d/`，单栈配置已注明「无 /java/ 前缀分流」），业务门户/管理端/API/上传全部经容器网关 → `java-backend`。`VITE_API_BASE=/api/v1`。
 - 前端：portal-vue 为业务门户（根路径 + SPA fallback），plus-ui 为管理端；均由 deploy.sh 构建并发布。
 - 登录态：单栈部署 token key 直接用平台基础 key（`zhiyu-portal-token`（portal）/ `zhiyu-token`（saas）/ `zhiyu-partner-token`（partner），见 `frontend/portal-vue/src/api/http.ts`），**无 `-java` 后缀隔离**。

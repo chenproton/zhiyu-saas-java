@@ -25,12 +25,12 @@ public interface PartnerEnterpriseMapper extends BaseMapperPlus<PartnerEnterpris
         + " contact_email, unified_social_credit_code, business_license_photos, qualification_photos,"
         + " intellectual_property_photos, cover_photos, enable_public, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{name},"
-        + " CAST(#{cooperationTypes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
+        + " CAST(#{cooperationTypes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
         + " #{contactPerson}, #{contactPhone}, #{contactEmail}, #{unifiedSocialCreditCode},"
-        + " CAST(#{businessLicensePhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
-        + " CAST(#{qualificationPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
-        + " CAST(#{intellectualPropertyPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
-        + " CAST(#{coverPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
+        + " CAST(#{businessLicensePhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
+        + " CAST(#{qualificationPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
+        + " CAST(#{intellectualPropertyPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
+        + " CAST(#{coverPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
         + " #{enablePublic}, NOW(), NOW())")
     int insertEnterprise(PartnerEnterprise e);
 
@@ -40,14 +40,14 @@ public interface PartnerEnterpriseMapper extends BaseMapperPlus<PartnerEnterpris
     @Update("UPDATE partner_enterprises SET"
         + " name = #{name}, industry = #{industry}, region = #{region}, description = #{description},"
         + " logo_url = #{logoUrl}, cover_image = #{coverImage},"
-        + " cooperation_types = CAST(#{cooperationTypes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
+        + " cooperation_types = CAST(#{cooperationTypes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
         + " contact_person = #{contactPerson}, contact_phone = #{contactPhone}, contact_email = #{contactEmail},"
         + " address = #{address}, unified_social_credit_code = #{unifiedSocialCreditCode},"
         + " established_year = #{establishedYear}, employee_count = #{employeeCount},"
-        + " business_license_photos = CAST(#{businessLicensePhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
-        + " qualification_photos = CAST(#{qualificationPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
-        + " intellectual_property_photos = CAST(#{intellectualPropertyPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
-        + " cover_photos = CAST(#{coverPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb),"
+        + " business_license_photos = CAST(#{businessLicensePhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
+        + " qualification_photos = CAST(#{qualificationPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
+        + " intellectual_property_photos = CAST(#{intellectualPropertyPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
+        + " cover_photos = CAST(#{coverPhotos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON),"
         + " enable_public = #{enablePublic}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateProfile(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,

@@ -42,8 +42,8 @@ public interface SystemTenantMapper extends BaseMapperPlus<ZhiyuTenant, ZhiyuTen
         + " short_name = COALESCE(#{shortName}, short_name), school_type = COALESCE(#{schoolType}, school_type),"
         + " province = COALESCE(NULLIF(#{province}, ''), province), city = COALESCE(NULLIF(#{city}, ''), city),"
         + " website = COALESCE(#{website}, website), contact_phone = COALESCE(#{contactPhone}, contact_phone),"
-        + " scale_data = COALESCE(#{scaleData, typeHandler=org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler}::jsonb, scale_data),"
-        + " secondary_colleges = COALESCE(#{secondaryColleges, typeHandler=org.dromara.zhiyu.core.mybatis.JsonArrayTypeHandler}::jsonb, secondary_colleges),"
+        + " scale_data = COALESCE(#{scaleData, typeHandler=org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler}, scale_data),"
+        + " secondary_colleges = COALESCE(#{secondaryColleges, typeHandler=org.dromara.zhiyu.core.mybatis.JsonArrayTypeHandler}, secondary_colleges),"
         + " education_level = COALESCE(#{educationLevel}, education_level), education_nature = COALESCE(#{educationNature}, education_nature),"
         + " valid_from = COALESCE(CAST(NULLIF(#{validFrom}, '') AS date), valid_from),"
         + " valid_until = COALESCE(CAST(NULLIF(#{validUntil}, '') AS date), valid_until), updated_at = NOW()"
@@ -62,7 +62,7 @@ public interface SystemTenantMapper extends BaseMapperPlus<ZhiyuTenant, ZhiyuTen
     @Update("UPDATE tenants SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
     int updateStatus(@Param("id") String id, @Param("status") String status);
 
-    @Update("UPDATE tenants SET admin_ids = #{adminIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[] WHERE id = #{id}")
+    @Update("UPDATE tenants SET admin_ids = #{adminIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} WHERE id = #{id}")
     int updateAdminIds(@Param("id") String id, @Param("adminIds") List<String> adminIds);
 
     @Delete("DELETE FROM users WHERE tenant_id = #{tenantId}")

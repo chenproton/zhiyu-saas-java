@@ -54,15 +54,15 @@ public interface JobPositionAbilityBindingMapper extends BaseMapperPlus<JobPosit
         ) VALUES (
             #{id}, #{tenantId}, #{careerPositionId}, #{responsibilityId}, #{abilityPointId}, #{source},
             #{domain}, #{requiredLevel}, #{rubricDescription},
-            CAST(#{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]),
+            #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},
             #{weight}
         )
-        ON CONFLICT (career_position_id, responsibility_id, ability_point_id) DO UPDATE SET
-            domain = EXCLUDED.domain,
-            required_level = EXCLUDED.required_level,
-            rubric_description = EXCLUDED.rubric_description,
-            attributes = EXCLUDED.attributes,
-            weight = EXCLUDED.weight
+        ON DUPLICATE KEY UPDATE
+            domain = VALUES(domain),
+            required_level = VALUES(required_level),
+            rubric_description = VALUES(rubric_description),
+            attributes = VALUES(attributes),
+            weight = VALUES(weight)
         """)
     int upsertBinding(JobPositionAbilityBinding binding);
 }

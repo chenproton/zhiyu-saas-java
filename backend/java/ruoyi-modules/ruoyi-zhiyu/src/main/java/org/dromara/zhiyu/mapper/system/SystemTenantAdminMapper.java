@@ -28,7 +28,7 @@ public interface SystemTenantAdminMapper {
                              @Param("roleCode") String roleCode);
 
     @Insert("INSERT INTO users (id, tenant_id, role, platform, login_name, username, password_hash, name, oauth, status)"
-        + " VALUES (#{id}, #{tenantId}, #{role}, #{platform}, #{loginName}, #{username}, #{passwordHash}, #{name}, '{}'::jsonb, 'active')")
+        + " VALUES (#{id}, #{tenantId}, #{role}, #{platform}, #{loginName}, #{username}, #{passwordHash}, #{name}, '{}', 'active')")
     int insertAdmin(@Param("id") String id, @Param("tenantId") String tenantId, @Param("role") String role,
                     @Param("platform") String platform, @Param("loginName") String loginName,
                     @Param("username") String username, @Param("passwordHash") String passwordHash,
@@ -56,7 +56,7 @@ public interface SystemTenantAdminMapper {
         + " AND user_id IN (SELECT id FROM users WHERE id = #{adminId} AND tenant_id = #{tenantId})")
     int deleteAdminRoles(@Param("tenantId") String tenantId, @Param("adminId") String adminId);
 
-    @Update("UPDATE tenants SET admin_ids = array_remove(admin_ids, #{adminId}::uuid) WHERE id = #{tenantId}")
+    @Update("UPDATE tenants SET admin_ids = JSON_REMOVE(admin_ids, JSON_UNQUOTE(JSON_SEARCH(admin_ids, 'one', #{adminId}))) WHERE id = #{tenantId}")
     int removeFromAdminIds(@Param("tenantId") String tenantId, @Param("adminId") String adminId);
 
     @Delete("DELETE FROM users WHERE id = #{adminId} AND tenant_id = #{tenantId}")

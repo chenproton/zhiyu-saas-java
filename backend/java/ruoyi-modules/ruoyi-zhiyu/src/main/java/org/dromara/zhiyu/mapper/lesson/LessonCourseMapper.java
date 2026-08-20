@@ -36,16 +36,16 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
         + " online_hours, offline_hours, online_weight, offline_weight, semester, class_name,"
         + " status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,"
         + " knowledge_point_ids, ability_point_ids, resource_ids, eval_data, node_count, resource_count, study_count)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{code}, #{name}, #{type}, #{category}, #{majorId}::uuid, #{teacherId}::uuid,"
-        + " #{industryId}::uuid, #{version}, #{onlineHours}, #{offlineHours}, #{onlineWeight}, #{offlineWeight},"
+        + " VALUES (#{id}, #{tenantId}, #{code}, #{name}, #{type}, #{category}, #{majorId}, #{teacherId},"
+        + " #{industryId}, #{version}, #{onlineHours}, #{offlineHours}, #{onlineWeight}, #{offlineWeight},"
         + " #{semester}, #{className}, 'draft', #{coverColor}, #{coverImage}, #{courseTag}, #{difficulty}, #{description},"
-        + " #{creatorId}::uuid,"
-        + " CAST(#{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " #{batchId}::uuid,"
-        + " CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{evalData} AS jsonb), 0, 0, 0)")
+        + " #{creatorId},"
+        + " #{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{batchId},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " CAST(#{evalData} AS JSON), 0, 0, 0)")
     int insertCourse(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                      @Param("name") String name, @Param("type") String type, @Param("category") String category,
                      @Param("majorId") String majorId, @Param("teacherId") String teacherId,
@@ -64,19 +64,19 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
     /**
      * 更新课程（code 不变；resource_count 按 resource_ids 数组长度重算；限定租户）。
      */
-    @Update("UPDATE courses SET name = #{name}, type = #{type}, category = #{category}, major_id = #{majorId}::uuid,"
-        + " teacher_id = #{teacherId}::uuid, industry_id = #{industryId}::uuid, version = #{version},"
+    @Update("UPDATE courses SET name = #{name}, type = #{type}, category = #{category}, major_id = #{majorId},"
+        + " teacher_id = #{teacherId}, industry_id = #{industryId}, version = #{version},"
         + " online_hours = #{onlineHours}, offline_hours = #{offlineHours}, online_weight = #{onlineWeight},"
         + " offline_weight = #{offlineWeight}, semester = #{semester}, class_name = #{className},"
         + " cover_color = #{coverColor}, cover_image = #{coverImage}, course_tag = #{courseTag},"
         + " difficulty = #{difficulty}, description = #{description},"
-        + " co_creator_ids = CAST(#{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " batch_id = #{batchId}::uuid,"
-        + " knowledge_point_ids = CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " ability_point_ids = CAST(#{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " resource_ids = CAST(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " eval_data = CAST(#{evalData} AS jsonb),"
-        + " resource_count = COALESCE(array_length(CAST(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]), 1), 0),"
+        + " co_creator_ids = #{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " batch_id = #{batchId},"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " ability_point_ids = #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " eval_data = CAST(#{evalData} AS JSON),"
+        + " resource_count = COALESCE(JSON_LENGTH(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}), 0),"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateCourse(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                      @Param("type") String type, @Param("category") String category, @Param("majorId") String majorId,
@@ -110,15 +110,15 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
     int bumpVersion(@Param("id") String id, @Param("version") String version);
 
     /** 邀请协作者（co_creator_ids 数组追加，幂等）。 */
-    @Update("UPDATE courses SET co_creator_ids = array_append(co_creator_ids, #{userId}::uuid), updated_at = NOW()"
-        + " WHERE id = #{id} AND NOT (co_creator_ids @> ARRAY[#{userId}::uuid])")
+    @Update("UPDATE courses SET co_creator_ids = JSON_ARRAY_APPEND(co_creator_ids, '$', #{userId}), updated_at = NOW()"
+        + " WHERE id = #{id} AND NOT (JSON_CONTAINS(co_creator_ids, JSON_QUOTE(#{userId}), '$'))")
     int inviteCollaborator(@Param("id") String id, @Param("userId") String userId);
 
     /** 课程删除保护：存在课程/节点测评成绩或节点考试结果时拒绝物理删除。 */
     @Select("SELECT EXISTS(SELECT 1 FROM course_evaluation_results WHERE course_id = #{id})"
         + " OR EXISTS(SELECT 1 FROM node_evaluation_results WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id = #{id}))"
         + " OR EXISTS(SELECT 1 FROM exam_results er JOIN exam_usages eu ON eu.id = er.exam_usage_id"
-        + " WHERE eu.target_type = 'node' AND eu.target_ids && (SELECT COALESCE(array_agg(id), '{}') FROM system_course_nodes WHERE course_id = #{id}))")
+        + " WHERE eu.target_type = 'node' AND eu.target_ids && (SELECT COALESCE(JSON_ARRAYAGG(id), JSON_ARRAY()) FROM system_course_nodes WHERE course_id = #{id}))")
     boolean existsEvaluationResults(@Param("id") String id);
 
     /** 删除前解绑培养方案引用。 */
@@ -142,13 +142,13 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
     int deleteCourseHomeworks(@Param("id") String id);
 
     /** 删除课程级考试安排（保留已有成绩的安排）。 */
-    @Delete("DELETE FROM exam_usages WHERE target_type = 'course' AND #{id}::uuid = ANY(target_ids)"
+    @Delete("DELETE FROM exam_usages WHERE target_type = 'course' AND #{id} = ANY(target_ids)"
         + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)")
     int deleteCourseExamUsages(@Param("id") String id);
 
     /** 从知识点颗粒课反向引用中移除该课程。 */
-    @Update("UPDATE knowledge_points SET granular_lesson_ids = array_remove(granular_lesson_ids, #{id})"
-        + " WHERE #{id}::uuid = ANY(granular_lesson_ids)")
+    @Update("UPDATE knowledge_points SET granular_lesson_ids = JSON_REMOVE(granular_lesson_ids, JSON_UNQUOTE(JSON_SEARCH(granular_lesson_ids, 'one', #{id})))"
+        + " WHERE #{id} = ANY(granular_lesson_ids)")
     int unbindKnowledgePointGranularRefs(@Param("id") String id);
 
     /** 删除课程（限定租户）。 */
@@ -165,8 +165,8 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
 
     /** 插入课程知识点绑定（幂等）。 */
     @Insert("INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)"
-        + " VALUES (gen_random_uuid(), #{tenantId}::uuid, #{courseId}::uuid, #{kpId}::uuid, 'course', #{sourceId}::uuid)"
-        + " ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING")
+        + " VALUES ((UUID()), #{tenantId}, #{courseId}, #{kpId}, 'course', #{sourceId})"
+        + " ON DUPLICATE KEY UPDATE id = id")
     int insertCourseKnowledgeBinding(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                                      @Param("kpId") String kpId, @Param("sourceId") String sourceId);
 
@@ -176,8 +176,8 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
 
     /** 插入课程资源绑定（幂等）。 */
     @Insert("INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)"
-        + " VALUES (gen_random_uuid(), #{tenantId}::uuid, #{courseId}::uuid, #{resourceId}::uuid)"
-        + " ON CONFLICT (course_id, resource_id) DO NOTHING")
+        + " VALUES ((UUID()), #{tenantId}, #{courseId}, #{resourceId})"
+        + " ON DUPLICATE KEY UPDATE id = id")
     int insertCourseResourceBinding(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                                     @Param("resourceId") String resourceId);
 }

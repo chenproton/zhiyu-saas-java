@@ -46,7 +46,7 @@ done
 [[ -n "$(ls "$OFFLINE_DIR"/debs/*.deb 2>/dev/null)" ]] || \
   die "缺少 offline/debs/ 离线系统依赖包，请先准备（见 offline/README.md）"
 [[ -n "$(ls "$OFFLINE_DIR"/docker-images/*.tar 2>/dev/null)" ]] || \
-  die "缺少 offline/docker-images/ 第三方镜像包（postgres/redis/nginx/kkfileview），请先准备（见 offline/README.md）"
+  die "缺少 offline/docker-images/ 第三方镜像包（mysql/redis/nginx/kkfileview），请先准备（见 offline/README.md）"
 
 # ── 0. 加载 offline 第三方镜像（构建 java-backend 需要 ubuntu:24.04）──
 for tar in "$OFFLINE_DIR"/docker-images/*.tar; do
@@ -119,7 +119,7 @@ cp "$OFFLINE_DIR"/debs/*.deb "$PKG_DIR/debs/" 2>/dev/null || true
 mkdir -p "$PKG_DIR/deploy/migrations"
 rsync -a "$ROOT/db/migrations/" "$PKG_DIR/deploy/migrations/"
 # RuoYi 框架表初始化 SQL（install.sh 幂等导入）
-cp "$ROOT/backend/java/script/sql/postgres/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
+cp "$ROOT/backend/java/script/sql/mysql/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
 cp "$ROOT/deploy/docker-compose.yml" "$PKG_DIR/deploy/"
 cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
 # 容器网关配置必须一起带：compose 的 nginx 服务挂载 ./nginx-container/conf.d，缺失则容器起不来

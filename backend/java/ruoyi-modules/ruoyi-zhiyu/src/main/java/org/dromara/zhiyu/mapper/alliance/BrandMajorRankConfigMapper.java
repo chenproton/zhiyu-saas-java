@@ -21,8 +21,8 @@ public interface BrandMajorRankConfigMapper extends BaseMapperPlus<BrandMajorRan
     List<BrandMajorRankConfig> listConfigs(@Param("tenantId") String tenantId);
 
     @Insert("INSERT INTO brand_major_rank_configs (id, tenant_id, major_id, enabled, rank_limit, created_at, updated_at)"
-        + " VALUES (gen_random_uuid(), #{tenantId}, #{majorId}, #{enabled}, #{rankLimit}, NOW(), NOW())"
-        + " ON CONFLICT (tenant_id, major_id) DO UPDATE SET enabled = #{enabled}, rank_limit = #{rankLimit}, updated_at = NOW()")
+        + " VALUES ((UUID()), #{tenantId}, #{majorId}, #{enabled}, #{rankLimit}, NOW(), NOW())"
+        + " ON DUPLICATE KEY UPDATE enabled = #{enabled}, rank_limit = #{rankLimit}, updated_at = NOW()")
     int saveConfig(@Param("tenantId") String tenantId, @Param("majorId") String majorId,
                    @Param("enabled") boolean enabled, @Param("rankLimit") int rankLimit);
 
@@ -114,7 +114,7 @@ public interface BrandMajorRankConfigMapper extends BaseMapperPlus<BrandMajorRan
         + " ) dept ON true"
         + " WHERE u.tenant_id = #{tenantId}"
         + " AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = u.id AND r2.code = 'student')"
-        + " <if test='search != null and search != \"\"'> AND (u.name ILIKE '%' || #{search} || '%' OR COALESCE(u.student_no, u.username, u.login_name) ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (u.name LIKE CONCAT('%', #{search}, '%') OR COALESCE(u.student_no, u.username, u.login_name) LIKE CONCAT('%', #{search}, '%'))</if>"
         + " ORDER BY mr.eff_major_name, agg.avg_rate DESC NULLS LAST, u.name ASC LIMIT 1000"
         + "</script>")
     List<RankStudentRow> listRankStudents(@Param("tenantId") String tenantId, @Param("search") String search);

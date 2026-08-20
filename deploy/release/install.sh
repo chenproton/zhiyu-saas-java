@@ -23,7 +23,7 @@ DEPLOY_DIR="/opt/zhiyu-saas"
 NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
 VERSION="$(cat "$PKG_DIR/VERSION" 2>/dev/null || echo latest)"
 JAVA_NGINX_PORT=8083; NGINX_PORT=80
-POSTGRES_HOST_PORT=5433; KKFILEVIEW_HOST_PORT=8012
+MYSQL_HOST_PORT=3306; KKFILEVIEW_HOST_PORT=8012
 
 MODE="install"
 [[ "${1:-}" == "--update" ]] && MODE="update"
@@ -190,7 +190,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   jwt_secret=$(rand_str 64)
   redis_pass=$(rand_str 24)
   {
-    echo "DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:${POSTGRES_HOST_PORT}/zhiyu-saas?sslmode=disable"
+    echo "DATABASE_URL=mysql://zhiyu_saas:${db_pass}@127.0.0.1:${MYSQL_HOST_PORT}/zhiyu-saas?useUnicode=true&characterEncoding=utf8"
     echo "JWT_SECRET=${jwt_secret}"
     echo "REDIS_PASSWORD=${redis_pass}"
     echo "DB_USER=zhiyu_saas"
@@ -205,7 +205,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
     echo "NGINX_SSL_DOMAIN="
     echo "NGINX_SSL_CERT="
     echo "NGINX_SSL_CERT_KEY="
-    echo "POSTGRES_HOST_PORT=5433"
+    echo "MYSQL_HOST_PORT=3306"
     echo "KKFILEVIEW_HOST_PORT=8012"
     echo "ENABLE_KKFILEVIEW=true"
     echo "KKFILEVIEW_IMAGE=fangzhengjin/kkfileview:4.4.0"
@@ -241,11 +241,11 @@ fi
 # 端口冲突检测与自动回退（每次安装执行，写入 .env）
 NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026" "true")
 JAVA_NGINX_PORT=$(resolve_port "JAVA_NGINX_PORT" "${JAVA_NGINX_PORT:-8083}" "8084")
-POSTGRES_HOST_PORT=$(resolve_port "POSTGRES_HOST_PORT" "${POSTGRES_HOST_PORT:-5433}" "5434")
+MYSQL_HOST_PORT=$(resolve_port "MYSQL_HOST_PORT" "${MYSQL_HOST_PORT:-3306}" "3307")
 KKFILEVIEW_HOST_PORT=$(resolve_port "KKFILEVIEW_HOST_PORT" "${KKFILEVIEW_HOST_PORT:-8012}" "8013")
 update_env_var "$ENV_FILE" "NGINX_PORT" "$NGINX_PORT"
 update_env_var "$ENV_FILE" "JAVA_NGINX_PORT" "$JAVA_NGINX_PORT"
-update_env_var "$ENV_FILE" "POSTGRES_HOST_PORT" "$POSTGRES_HOST_PORT"
+update_env_var "$ENV_FILE" "MYSQL_HOST_PORT" "$MYSQL_HOST_PORT"
 update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
 
 # kkFileView 对外地址自动推导
@@ -258,9 +258,9 @@ if [[ -z "${KK_BASE_URL:-}" ]]; then
 fi
 update_env_var "$ENV_FILE" "KK_BASE_URL" "$KK_BASE_URL"
 
-# DATABASE_URL 中的 host 端口与 POSTGRES_HOST_PORT 保持一致
-if [[ "$DATABASE_URL" != *":${POSTGRES_HOST_PORT}/zhiyu-saas"* ]]; then
-  DATABASE_URL=$(echo "$DATABASE_URL" | sed -E "s|@127\.0\.0\.1:[0-9]+/|@127.0.0.1:${POSTGRES_HOST_PORT}/|")
+# DATABASE_URL 中的 host 端口与 MYSQL_HOST_PORT 保持一致
+if [[ "$DATABASE_URL" != *":${MYSQL_HOST_PORT}/zhiyu-saas"* ]]; then
+  DATABASE_URL=$(echo "$DATABASE_URL" | sed -E "s|@127\.0\.0\.1:[0-9]+/|@127.0.0.1:${MYSQL_HOST_PORT}/|")
   update_env_var "$ENV_FILE" "DATABASE_URL" "$DATABASE_URL"
 fi
 set -a; source "$ENV_FILE"; set +a
@@ -268,9 +268,10 @@ set -a; source "$ENV_FILE"; set +a
 DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
-# psql 统一包装：口令走 PGPASSWORD，不进 argv（同机任意用户 ps 可见）
-psql_db() { PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -p "${POSTGRES_HOST_PORT}" -U "$DB_USER" -d "$DB_NAME" "$@"; }
-export IMAGE_TAG JAVA_NGINX_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET REDIS_PASSWORD
+# MySQL 统一包装：口令走 MYSQL_PWD，不进 argv（同机任意用户 ps 可见）
+mysql_db() { MYSQL_PWD="$DB_PASSWORD" mysql --default-character-set=utf8mb4 -h 127.0.0.1 -P "${MYSQL_HOST_PORT}" -u "$DB_USER" "$DB_NAME" "$@"; }
+psql_db() { mysql_db "$@"; }
+export IMAGE_TAG JAVA_NGINX_PORT MYSQL_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET REDIS_PASSWORD
 
 # ── 4. Docker 部署 ──
 log "部署服务（${MODE}）..."
@@ -301,21 +302,21 @@ fi
 
 # 分两段启动（与 deploy.sh 同源）：先起数据层 → 备份 + 迁移 → 再起业务容器。
 # 单段全量 up（尤其 --update 升级场景）会让新版本 backend 先在旧 schema 上对外服务。
-compose up -d postgres redis 2>&1 | tail -3 \
+compose up -d mysql redis 2>&1 | tail -3 \
   || { compose logs --tail 30 >&2 || true; die "数据层容器启动失败，请查看上方日志"; }
 
 # 等待 PG 就绪
 for _ in $(seq 1 30); do
-  compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
+  compose exec -T mysql mysqladmin ping -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASSWORD" --silent >/dev/null 2>&1 && break
   sleep 2
 done
-for _ in $(seq 1 15); do psql_db -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 1 15); do mysql_db -e "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
 
 # 迁移前备份（仅数据库已存在时有效，失败仅警告）
 BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
 # 全库明文 dump：目录 700 + 文件 600（默认 755/644 不可接受）
 chmod 700 "$DEPLOY_DIR/backups" 2>/dev/null || true
-( umask 077; compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null ) \
+( umask 077; compose exec -T mysql mysqldump --default-character-set=utf8mb4 --single-transaction -u"$DB_USER" -p"$DB_PASSWORD" > "$BACKUP_FILE" 2>/dev/null ) \
   || { warn "数据库备份失败（首次安装可忽略），已跳过"; rm -f "$BACKUP_FILE"; }
 # 不能用 `ls glob | tail`：无匹配时 ls 退出 2 + pipefail 会让安装静默中止（首次安装 backups 为空必现）
 find "$DEPLOY_DIR/backups" -maxdepth 1 -name 'zhiyu-saas-*.sql' -printf '%T@ %p\n' 2>/dev/null \
@@ -323,47 +324,47 @@ find "$DEPLOY_DIR/backups" -maxdepth 1 -name 'zhiyu-saas-*.sql' -printf '%T@ %p\
 
 # ── 5. 数据库迁移 + 框架表初始化（纯 psql，无需 Go 工具）──
 log "数据库迁移..."
-psql_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
+mysql_db -e "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);" 2>/dev/null || true
 MIG_DIR="$PKG_DIR/deploy/migrations"
 if [[ -d "$MIG_DIR" && -f "$MIG_DIR/001_baseline.up.sql" ]]; then
-  BASE_RECORDED=$(psql_db -tAc "SELECT 1 FROM schema_migrations WHERE version='001_baseline'" 2>/dev/null | tr -d ' ')
-  BASE_TABLE=$(psql_db -tAc "SELECT to_regclass('public.tenants') IS NOT NULL" 2>/dev/null | tr -d ' ')
+  BASE_RECORDED=$(mysql_db -N -e "SELECT 1 FROM schema_migrations WHERE version='001_baseline'" 2>/dev/null | tr -d ' ')
+  BASE_TABLE=$(mysql_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='tenants'" 2>/dev/null | tr -d ' ')
   if [[ "$BASE_RECORDED" != "1" && "$BASE_TABLE" != "t" ]]; then
     log "  空库，执行 001_baseline（单事务 + ON_ERROR_STOP）..."
-    psql_db -v ON_ERROR_STOP=1 --single-transaction -f "$MIG_DIR/001_baseline.up.sql" 2>&1 | tail -3 \
+    mysql_db < "$MIG_DIR/001_baseline.up.sql" 2>&1 | tail -3 \
       || die "baseline 迁移失败（事务已回滚，备份位于 $DEPLOY_DIR/backups/）"
-    psql_db -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" >/dev/null || true
+    mysql_db -e "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON DUPLICATE KEY UPDATE version = version;" >/dev/null || true
   else
     log "  baseline 已存在，跳过"
   fi
 fi
-# 增量迁移（逐个执行未应用版本，--single-transaction 防半应用）
-APPLIED=$(psql_db -tAc "SELECT version FROM schema_migrations;" 2>/dev/null || true)
+# 增量迁移（逐个执行未应用版本；MySQL DDL 隐式提交，mysql client 遇错即停）
+APPLIED=$(mysql_db -N -e "SELECT version FROM schema_migrations;" 2>/dev/null || true)
 FAILED_MIG=false
 for f in "$MIG_DIR"/*.up.sql; do
   [[ -f "$f" ]] || continue
   v=$(basename "$f" .up.sql)
   echo "$APPLIED" | grep -qx "$v" && continue
   log "  执行迁移: $(basename "$f")"
-  if ! psql_db -v ON_ERROR_STOP=1 --single-transaction -f "$f" 2>&1 | tail -5; then
+  if ! mysql_db < "$f" 2>&1 | tail -5; then
     FAILED_MIG=true
     warn "迁移失败: $(basename "$f")（停止后续迁移）"
     break
   fi
-  psql_db -c "INSERT INTO schema_migrations (version) VALUES ('$v') ON CONFLICT DO NOTHING;" >/dev/null || true
+  mysql_db -e "INSERT INTO schema_migrations (version) VALUES ('$v') ON DUPLICATE KEY UPDATE version = version;" >/dev/null || true
 done
 $FAILED_MIG && die "数据库迁移失败，备份位于 $DEPLOY_DIR/backups/"
 
 # RuoYi 框架表初始化（幂等）：java-backend 启动依赖 sys_* 表
 log "初始化 RuoYi 框架表..."
-for pair in "postgres_ry_vue:sys_social" "postgres_ry_job:sj_namespace" \
-            "postgres_ry_workflow:flow_definition" "postgres_ry_ai:sai_user"; do
+for pair in "mysql_ry_vue:sys_social" "mysql_ry_job:sj_namespace" \
+            "mysql_ry_workflow:flow_definition" "mysql_ry_ai:sai_user"; do
   f="${pair%%:*}" probe="${pair##*:}"
-  if psql_db -tAc "SELECT to_regclass('public.$probe')" 2>/dev/null | grep -q "$probe"; then
+  if mysql_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='$probe'" 2>/dev/null | grep -q "$probe"; then
     continue
   fi
   [[ -f "$PKG_DIR/deploy/$f.sql" ]] || { warn "缺少 $f.sql，跳过"; continue; }
-  psql_db -v ON_ERROR_STOP=1 --single-transaction -f "$PKG_DIR/deploy/$f.sql" 2>&1 | tail -3 \
+  mysql_db < "$PKG_DIR/deploy/$f.sql" 2>&1 | tail -3 \
     || warn "初始化 $f.sql 失败（事务已回滚）"
 done
 # 种子数据（platform 租户 + admin 用户）由 java-backend 启动时 SeedRunner 执行，

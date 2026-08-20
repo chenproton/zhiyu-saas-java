@@ -34,11 +34,14 @@ public interface SystemStaffTitleMapper extends BaseMapperPlus<SystemStaffTitle,
     @Delete("DELETE FROM staff_titles WHERE id = #{id}")
     int deleteTitle(@Param("id") String id);
 
-    @Select("SELECT COUNT(*) FROM users WHERE tenant_id = #{tenantId} AND #{titleId} = ANY(title_ids)")
+    @Select("SELECT COUNT(*) FROM users WHERE tenant_id = #{tenantId} AND JSON_CONTAINS(title_ids, JSON_QUOTE(#{titleId}), '$')")
     int countUserRefs(@Param("tenantId") String tenantId, @Param("titleId") String titleId);
 
-    @Select("SELECT title_id, COUNT(*) FROM users, unnest(title_ids) AS title_id"
-        + " WHERE tenant_id = #{tenantId} AND title_id = ANY(#{titleIds}::uuid[]) GROUP BY title_id")
+    @Select("<script>SELECT jt.title_id AS title_id, COUNT(*) FROM users"
+        + " JOIN JSON_TABLE(users.title_ids, '$[*]' COLUMNS (title_id CHAR(36) PATH '$')) jt ON 1 = 1"
+        + " WHERE tenant_id = #{tenantId} AND jt.title_id IN"
+        + " <foreach collection='titleIds' item='tid' open='(' separator=',' close=')'>#{tid}</foreach>"
+        + " GROUP BY jt.title_id</script>")
     List<Map<String, Object>> batchCountUsersByTitle(@Param("tenantId") String tenantId,
                                                      @Param("titleIds") List<String> titleIds);
 }

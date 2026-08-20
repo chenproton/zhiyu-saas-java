@@ -2,11 +2,10 @@
 -- 该页面渲染的批量按钮（提交审批/撤回审批/发布/取消发布/删除）由前端 hasPermission 门控，
 -- 存量租户默认角色仅配置了 evaluation.exams，导致题库页批量操作按钮缺失。
 UPDATE roles
-SET permissions = jsonb_set(
+SET permissions = JSON_SET(
     permissions,
-    '{evaluation,question-banks}',
-    '["submit_approval","withdraw_approval","publish","unpublish","delete","review","reject"]'::jsonb,
-    true
+    '$.evaluation."question-banks"',
+    CAST('["submit_approval","withdraw_approval","publish","unpublish","delete","review","reject"]' AS JSON)
 )
 WHERE code IN ('school_admin', 'teacher')
-  AND permissions ? 'evaluation';
+  AND JSON_CONTAINS_PATH(permissions, 'one', '$.evaluation');

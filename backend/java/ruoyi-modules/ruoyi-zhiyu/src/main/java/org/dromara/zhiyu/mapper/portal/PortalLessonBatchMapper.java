@@ -23,11 +23,11 @@ public interface PortalLessonBatchMapper extends BaseMapperPlus<PortalLessonBatc
     String FROM_CLAUSE = "FROM lesson_batches lb LEFT JOIN majors m ON m.id = lb.major_id";
 
     String FILTER_FRAGMENT = "<where>"
-        + " lb.tenant_id = #{tenantId}::uuid"
-        + " <if test=\"orgNodeId != null and orgNodeId != ''\">AND lb.org_node_id = #{orgNodeId}::uuid</if>"
+        + " lb.tenant_id = #{tenantId}"
+        + " <if test=\"orgNodeId != null and orgNodeId != ''\">AND lb.org_node_id = #{orgNodeId}</if>"
         + " <if test=\"status != null and status != ''\">AND lb.status = #{status}</if>"
-        + " <if test=\"majorId != null and majorId != ''\">AND lb.major_id = #{majorId}::uuid</if>"
-        + " <if test=\"search != null and search != ''\">AND (lb.name ILIKE #{search} OR lb.code ILIKE #{search})</if>"
+        + " <if test=\"majorId != null and majorId != ''\">AND lb.major_id = #{majorId}</if>"
+        + " <if test=\"search != null and search != ''\">AND (lb.name LIKE #{search} OR lb.code LIKE #{search})</if>"
         + "</where>";
 
     @Select("<script>SELECT " + SELECT_COLUMNS + " " + FROM_CLAUSE + " " + FILTER_FRAGMENT
@@ -49,15 +49,15 @@ public interface PortalLessonBatchMapper extends BaseMapperPlus<PortalLessonBatc
     String selectTenantId(@Param("id") String id);
 
     @Insert("INSERT INTO lesson_batches (id, tenant_id, name, code, org_node_id, major_id, workflow_id, status, course_count)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{name}, #{code}, #{orgNodeId}::uuid, #{majorId}::uuid,"
-        + " #{workflowId}::uuid, #{status}, 0)")
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{code}, #{orgNodeId}, #{majorId},"
+        + " #{workflowId}, #{status}, 0)")
     int insertBatch(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                     @Param("code") String code, @Param("orgNodeId") String orgNodeId, @Param("majorId") String majorId,
                     @Param("workflowId") String workflowId, @Param("status") String status);
 
     @Update("<script>UPDATE lesson_batches SET name = #{name},"
-        + " code = COALESCE(#{code}, code), org_node_id = COALESCE(#{orgNodeId}::uuid, org_node_id),"
-        + " major_id = COALESCE(#{majorId}::uuid, major_id), workflow_id = COALESCE(#{workflowId}::uuid, workflow_id),"
+        + " code = COALESCE(#{code}, code), org_node_id = COALESCE(#{orgNodeId}, org_node_id),"
+        + " major_id = COALESCE(#{majorId}, major_id), workflow_id = COALESCE(#{workflowId}, workflow_id),"
         + " updated_at = NOW()"
         + " <if test=\"status != null and status != ''\">, status = #{status}</if>"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}</script>")

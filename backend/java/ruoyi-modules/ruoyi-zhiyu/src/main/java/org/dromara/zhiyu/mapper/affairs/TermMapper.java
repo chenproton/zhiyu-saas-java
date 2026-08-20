@@ -25,12 +25,12 @@ public interface TermMapper extends BaseMapperPlus<Term, Term> {
     int clearCurrentExcept(@Param("tenantId") String tenantId, @Param("id") String id);
 
     /** 学期查重（对齐 Go store/imports.go ImportTerm）。 */
-    @Select("SELECT id FROM terms WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    @Select("SELECT id FROM terms WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
     /** 学期导入插入（对齐 Go store/imports.go ImportTerm）。 */
     @Insert("INSERT INTO terms (id, tenant_id, name, start_date, end_date, weeks_count)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{name}, #{startDate}, #{endDate}, #{weeks})")
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{startDate}, #{endDate}, #{weeks})")
     int insertTerm(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                    @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
                    @Param("weeks") Integer weeks);

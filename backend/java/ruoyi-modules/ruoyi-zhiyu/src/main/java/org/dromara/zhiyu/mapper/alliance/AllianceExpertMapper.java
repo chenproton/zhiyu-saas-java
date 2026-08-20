@@ -23,20 +23,20 @@ public interface AllianceExpertMapper extends BaseMapperPlus<AllianceExpert, All
         + " avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source,"
         + " position_direction, secondary_colleges, is_public, user_id, created_by, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{gender}, #{age}, #{title}, #{position}, #{expertType}, #{industry},"
-        + " CAST(#{professionalFields} AS jsonb), CAST(#{specialties} AS jsonb), #{experienceYears}, #{education},"
-        + " #{introduction}, #{workExperience}, #{city}, #{avatarUrl}, #{coverImage}, CAST(#{photos} AS jsonb),"
-        + " CAST(#{attachments} AS jsonb), #{enterpriseId}, #{organization}, #{rating}, #{status}, #{partnerSource},"
-        + " #{positionDirection}, CAST(#{secondaryColleges} AS jsonb), #{isPublic}, #{userId}, #{createdBy}, NOW(), NOW())")
+        + " CAST(#{professionalFields} AS JSON), CAST(#{specialties} AS JSON), #{experienceYears}, #{education},"
+        + " #{introduction}, #{workExperience}, #{city}, #{avatarUrl}, #{coverImage}, CAST(#{photos} AS JSON),"
+        + " CAST(#{attachments} AS JSON), #{enterpriseId}, #{organization}, #{rating}, #{status}, #{partnerSource},"
+        + " #{positionDirection}, CAST(#{secondaryColleges} AS JSON), #{isPublic}, #{userId}, #{createdBy}, NOW(), NOW())")
     int insertExpert(AllianceExpert e);
 
     @Update("UPDATE alliance_experts SET name = #{name}, gender = #{gender}, age = #{age}, title = #{title},"
         + " position = #{position}, expert_type = #{expertType}, industry = #{industry},"
-        + " professional_fields = CAST(#{professionalFields} AS jsonb), specialties = CAST(#{specialties} AS jsonb),"
+        + " professional_fields = CAST(#{professionalFields} AS JSON), specialties = CAST(#{specialties} AS JSON),"
         + " experience_years = #{experienceYears}, education = #{education}, introduction = #{introduction},"
         + " work_experience = #{workExperience}, city = #{city}, avatar_url = #{avatarUrl}, cover_image = #{coverImage},"
-        + " photos = CAST(#{photos} AS jsonb), attachments = CAST(#{attachments} AS jsonb), enterprise_id = #{enterpriseId},"
+        + " photos = CAST(#{photos} AS JSON), attachments = CAST(#{attachments} AS JSON), enterprise_id = #{enterpriseId},"
         + " organization = #{organization}, rating = #{rating}, status = #{status}, partner_source = #{partnerSource},"
-        + " position_direction = #{positionDirection}, secondary_colleges = CAST(#{secondaryColleges} AS jsonb),"
+        + " position_direction = #{positionDirection}, secondary_colleges = CAST(#{secondaryColleges} AS JSON),"
         + " is_public = #{isPublic}, user_id = #{userId}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateExpert(AllianceExpert e);
@@ -57,10 +57,10 @@ public interface AllianceExpertMapper extends BaseMapperPlus<AllianceExpert, All
 
     @Select("<script>"
         + "SELECT x.* FROM alliance_experts x"
-        + " WHERE x.enterprise_id = ANY(#{enterpriseIds}::uuid[])"
+        + " WHERE JSON_CONTAINS(CAST(REPLACE(REPLACE(#{enterpriseIds}, '{', '['), '}', ']') AS JSON), JSON_QUOTE(x.enterprise_id), '$')"
         + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id"
         + "   AND l.tenant_id = #{tenantId} AND l.status != 'terminated')"
-        + " <if test='search != null and search != \"\"'> AND (x.name ILIKE '%' || #{search} || '%' OR x.title ILIKE '%' || #{search} || '%' OR x.industry ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (x.name LIKE CONCAT('%', #{search}, '%') OR x.title LIKE CONCAT('%', #{search}, '%') OR x.industry LIKE CONCAT('%', #{search}, '%'))</if>"
         + " <if test='status != null and status != \"\"'> AND x.status = #{status}</if>"
         + " ORDER BY x.created_at DESC LIMIT #{limit} OFFSET #{offset}"
         + "</script>")
@@ -73,10 +73,10 @@ public interface AllianceExpertMapper extends BaseMapperPlus<AllianceExpert, All
 
     @Select("<script>"
         + "SELECT COUNT(*) FROM alliance_experts x"
-        + " WHERE x.enterprise_id = ANY(#{enterpriseIds}::uuid[])"
+        + " WHERE JSON_CONTAINS(CAST(REPLACE(REPLACE(#{enterpriseIds}, '{', '['), '}', ']') AS JSON), JSON_QUOTE(x.enterprise_id), '$')"
         + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = x.enterprise_id"
         + "   AND l.tenant_id = #{tenantId} AND l.status != 'terminated')"
-        + " <if test='search != null and search != \"\"'> AND (x.name ILIKE '%' || #{search} || '%' OR x.title ILIKE '%' || #{search} || '%' OR x.industry ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (x.name LIKE CONCAT('%', #{search}, '%') OR x.title LIKE CONCAT('%', #{search}, '%') OR x.industry LIKE CONCAT('%', #{search}, '%'))</if>"
         + " <if test='status != null and status != \"\"'> AND x.status = #{status}</if>"
         + "</script>")
     long countByEnterpriseIds(@Param("tenantId") String tenantId,

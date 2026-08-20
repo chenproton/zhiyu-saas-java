@@ -65,9 +65,9 @@ public interface AffairsScheduleMapper extends BaseMapperPlus<ScheduleEntry, Sch
         <script>
         SELECT e.id, e.course_name AS courseName, COALESCE(e.course_code, '') AS courseCode, e.type AS entryType,
             e.start_week AS startWeek, e.end_week AS endWeek, COALESCE(e.week_pattern, 'all') AS weekPattern,
-            COALESCE(e.class_node_id::text, '') AS classNodeId, COALESCE(e.teacher_id::text, '') AS teacherId,
-            COALESCE(e.venue_type, '') AS venueType, COALESCE(e.scenario_id::text, '') AS scenarioId,
-            COALESCE(e.course_id::text, '') AS courseId
+            COALESCE(e.class_node_id, '') AS classNodeId, COALESCE(e.teacher_id, '') AS teacherId,
+            COALESCE(e.venue_type, '') AS venueType, COALESCE(e.scenario_id, '') AS scenarioId,
+            COALESCE(e.course_id, '') AS courseId
         FROM teaching_plan_entries e
         JOIN teaching_plans p ON p.id = e.plan_id
         WHERE p.tenant_id = #{tenantId} AND p.term_id = #{termId} AND p.status = 'published' AND e.status = 'planned'
@@ -99,9 +99,9 @@ public interface AffairsScheduleMapper extends BaseMapperPlus<ScheduleEntry, Sch
 
     /** 已排课导出映射（主表回填；periods 取 jsonb 文本、班级名取已逗号拼接文本）。 */
     @Select("""
-        SELECT se.plan_entry_id AS planEntryId, se.day_of_week AS day, se.periods::text AS periodsJson,
+        SELECT se.plan_entry_id AS planEntryId, se.day_of_week AS day, se.periods AS periodsJson,
             COALESCE(u.name, '') AS teacherName, COALESCE(v.name, '') AS venueName,
-            COALESCE((SELECT array_to_string(array_agg(o2.name ORDER BY cid), '，') FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '') AS classNamesText
+            COALESCE((SELECT GROUP_CONCAT(o2.name ORDER BY ord SEPARATOR '，') FROM JSON_TABLE(se.class_node_ids, '$[*]' COLUMNS (cid CHAR(36) PATH '$', ord FOR ORDINALITY)) c JOIN organizations o2 ON o2.id = c.cid), '') AS classNamesText
         FROM schedule_entries se
         LEFT JOIN users u ON u.id = se.teacher_id
         LEFT JOIN venues v ON v.id = se.venue_id

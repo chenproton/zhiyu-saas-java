@@ -24,14 +24,14 @@ public interface EmploymentProjectMapper extends BaseMapperPlus<EmploymentProjec
     @Insert("INSERT INTO alliance_employment_projects (id, tenant_id, name, type, organizer, description, cover_image,"
         + " start_date, end_date, publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{type}, #{organizer}, #{description}, #{coverImage},"
-        + " #{startDate}, #{endDate}, #{publishStatus}, CAST(#{enterpriseIds} AS jsonb), CAST(#{targetGroups} AS jsonb),"
+        + " #{startDate}, #{endDate}, #{publishStatus}, CAST(#{enterpriseIds} AS JSON), CAST(#{targetGroups} AS JSON),"
         + " #{createdBy}, NOW(), NOW())")
     int insertProject(EmploymentProject p);
 
     @Update("UPDATE alliance_employment_projects SET name = #{name}, type = #{type}, organizer = #{organizer},"
         + " description = #{description}, cover_image = #{coverImage}, start_date = #{startDate}, end_date = #{endDate},"
-        + " publish_status = #{publishStatus}, enterprise_ids = CAST(#{enterpriseIds} AS jsonb),"
-        + " target_groups = CAST(#{targetGroups} AS jsonb), updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+        + " publish_status = #{publishStatus}, enterprise_ids = CAST(#{enterpriseIds} AS JSON),"
+        + " target_groups = CAST(#{targetGroups} AS JSON), updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateProject(EmploymentProject p);
 
     @Delete("DELETE FROM alliance_employment_projects WHERE id = #{id} AND tenant_id = #{tenantId}")
@@ -85,13 +85,13 @@ public interface EmploymentProjectMapper extends BaseMapperPlus<EmploymentProjec
     EmploymentProject selectPublicProject(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Select("<script>SELECT " + COLS + " FROM alliance_employment_projects p"
-        + " WHERE jsonb_exists(p.enterprise_ids, #{enterpriseId})"
+        + " WHERE JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')"
         + " <if test='schoolTenantId != null and schoolTenantId != \"\"'> AND p.tenant_id = #{schoolTenantId}</if>"
         + " ORDER BY p.created_at DESC LIMIT 200</script>")
     List<EmploymentProject> listPartnerProjects(@Param("enterpriseId") String enterpriseId,
                                                 @Param("schoolTenantId") String schoolTenantId);
 
     @Select("SELECT " + COLS + " FROM alliance_employment_projects p"
-        + " WHERE p.id = #{id} AND jsonb_exists(p.enterprise_ids, #{enterpriseId})")
+        + " WHERE p.id = #{id} AND JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')")
     EmploymentProject selectPartnerProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId);
 }

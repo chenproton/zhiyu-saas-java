@@ -23,12 +23,6 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
 
-        <!-- PostgreSql驱动包（zhiyu-saas 迁移：数据库保留 PostgreSQL） -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-        </dependency>
-
 <!--        &lt;!&ndash; mp支持的数据库均支持 只需要增加对应的jdbc依赖即可 &ndash;&gt;-->
 <!--        &lt;!&ndash; Oracle &ndash;&gt;-->
 <!--        <dependency>-->

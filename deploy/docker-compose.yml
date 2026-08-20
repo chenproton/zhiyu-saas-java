@@ -1,53 +1,39 @@
 name: zhiyu-saas
 
 services:
-  postgres:
-    # 不注入全量 .env：只需 environment 里的 POSTGRES_*；
-    # 注入 JWT_SECRET/AI_CONFIG_SECRET 只会无谓扩大密钥暴露面
-    image: postgres:15-alpine
-    container_name: zhiyu-postgres
+  mysql:
+    image: mysql:8.0
+    container_name: zhiyu-mysql
     restart: unless-stopped
-    shm_size: 128mb
     logging:
       driver: json-file
       options:
         max-size: "50m"
         max-file: "3"
     environment:
-      POSTGRES_USER: ${DB_USER:-zhiyu_saas}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME:-zhiyu-saas}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${DB_PASSWORD}}
+      MYSQL_DATABASE: ${DB_NAME:-zhiyu-saas}
+      MYSQL_USER: ${DB_USER:-zhiyu_saas}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     command:
-      - "postgres"
-      - "-c"
-      - "max_connections=200"
-      - "-c"
-      - "shared_buffers=512MB"
-      - "-c"
-      - "effective_cache_size=1536MB"
-      - "-c"
-      - "work_mem=4MB"
-      - "-c"
-      - "maintenance_work_mem=128MB"
-      - "-c"
-      - "random_page_cost=1.1"
-      - "-c"
-      - "log_min_duration_statement=1000"
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+      - "--max-connections=200"
+      - "--innodb-buffer-pool-size=512M"
+      - "--log-bin-trust-function-creators=1"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     ports:
-      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3306}:3306"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-zhiyu_saas} -d ${DB_NAME:-zhiyu-saas}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
     networks:
       - zhiyu
 
   redis:
-    # 无状态缓存；单栈化后 Java 后端（application-prod.yml 要求 redis 密码必须配置）
-    # 使用口令连接，故设 requirepass（REDIS_PASSWORD，.env 首次生成）
     image: redis:7-alpine
     container_name: zhiyu-redis
     restart: unless-stopped
@@ -78,7 +64,6 @@ services:
       - zhiyu
 
   java-backend:
-    # 单栈（Java+Vue）：ruoyi-admin.jar，容器内 8080；DB/Redis 走容器网络直连
     image: zhiyu-java-backend:${IMAGE_TAG:-latest}
     container_name: zhiyu-java-backend
     restart: unless-stopped
@@ -90,15 +75,14 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: "8080"
-      ZHIYU_DB_HOST: postgres
-      ZHIYU_DB_PORT: "5432"
+      ZHIYU_DB_HOST: mysql
+      ZHIYU_DB_PORT: "3306"
       ZHIYU_DB_USER: ${DB_USER:-zhiyu_saas}
       ZHIYU_DB_PASSWORD: ${DB_PASSWORD}
       ZHIYU_REDIS_HOST: redis
       ZHIYU_REDIS_PORT: "6379"
       ZHIYU_REDIS_PASSWORD: ${REDIS_PASSWORD:-ruoyi123}
       ZHIYU_UPLOAD_DIR: /opt/zhiyu-saas/uploads
-      # JWT 签名密钥（Sa-Token jwt-secret-key 生产值；.env 首次生成随机 64 位，缺失时回退默认仅供本地开发）
       JWT_SECRET: ${JWT_SECRET:-abcdefghijklmnopqrstuvwxyz}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
     volumes:
@@ -110,22 +94,17 @@ services:
       retries: 5
       start_period: 30s
     depends_on:
-      postgres: { condition: service_healthy }
+      mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
-    # read_only 容器需可写挂载点：logback-plus.xml 的 log.path=./logs（相对 /app），
-    # 不加 tmpfs 会因 FileNotFoundException 启动即崩（部署实测）
     tmpfs:
       - "/tmp:noexec,nosuid,size=100m"
       - "/app/logs:noexec,nosuid,size=10m"
     networks:
       - zhiyu
 
-  # 服务网关：静态服务 Vue 业务门户（根路径）与 RuoYi 管理端（/plus-ui/），
-  # 并按容器名代理 java-backend（API/上传）与 kkfileview（预览）；
-  # 仅暴露一个宿主端口（127.0.0.1:${JAVA_NGINX_PORT:-8083}）给系统 nginx（边缘网关）
   nginx:
     image: nginx:1.27-alpine
     container_name: zhiyu-nginx
@@ -134,7 +113,6 @@ services:
       - "127.0.0.1:${JAVA_NGINX_PORT:-8083}:80"
     volumes:
       - ./nginx-container/conf.d:/etc/nginx/conf.d:ro
-      # Vue 构建产物（deploy.sh rsync 到 $DEPLOY_DIR/web/，compose 相对路径基于 project-directory）
       - ./web/portal:/usr/share/nginx/html/portal:ro
       - ./web/plus-ui:/usr/share/nginx/html/plus-ui:ro
     depends_on:
@@ -155,8 +133,6 @@ services:
 
   kkfileview:
     profiles: ["kkfileview"]
-    # 高危第三方组件（LibreOffice/ffmpeg）：被打穿即可读环境变量，
-    # 绝不能让它拿到 JWT_SECRET / DATABASE_URL（单栈化后无需再注入 AI_CONFIG_SECRET）
     image: ${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}
     container_name: zhiyu-kkfileview
     restart: unless-stopped
@@ -172,8 +148,6 @@ services:
       KK_CONTEXT_PATH: /kkfileview
       KK_OFFICE_PREVIEW_TYPE: pdf
       KK_OFFICE_PREVIEW_SWITCH_DISABLED: "true"
-      # 该镜像逻辑：为 true 时远程 http(s) 视频（mov/avi/mkv 等 MEDIACONVERT 类型）才走 ffmpeg 转码预览，
-      # 否则直接返回"系统还不支持该格式文件的在线预览"。默认值 true 固化在 deploy.sh（新装写入 .env，旧 .env 自动补写）
       KK_MEDIA_CONVERT_DISABLE: ${KK_MEDIA_CONVERT_DISABLE:-true}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8012/kkfileview/onlinePreview >/dev/null || exit 1"]
@@ -185,7 +159,7 @@ services:
       - zhiyu
 
 volumes:
-  postgres_data:
+  mysql_data:
   redis_data:
   uploads_data:
 

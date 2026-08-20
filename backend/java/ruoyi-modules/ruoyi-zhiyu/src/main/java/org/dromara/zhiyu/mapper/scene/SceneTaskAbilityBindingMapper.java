@@ -17,16 +17,16 @@ public interface SceneTaskAbilityBindingMapper
 
     /** 绑定能力点（唯一冲突时幂等），返回 id。 */
     @Insert("INSERT INTO task_ability_bindings (id, tenant_id, task_id, ability_point_id)"
-        + " VALUES (gen_random_uuid(), #{tenantId}::uuid, #{taskId}::uuid, #{abilityPointId}::uuid)"
-        + " ON CONFLICT (task_id, ability_point_id) DO UPDATE SET task_id = EXCLUDED.task_id RETURNING id")
+        + " VALUES ((UUID()), #{tenantId}, #{taskId}, #{abilityPointId})"
+        + " ON DUPLICATE KEY UPDATE task_id = VALUES(task_id) RETURNING id")
     String insertReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
                           @Param("abilityPointId") String abilityPointId);
 
     /** 查询绑定行关联的任务 ID（归属校验用）。 */
-    @Select("SELECT task_id FROM task_ability_bindings WHERE id = #{id}::uuid")
+    @Select("SELECT task_id FROM task_ability_bindings WHERE id = #{id}")
     String selectTaskId(@Param("id") String id);
 
     /** 解绑（按 id）。 */
-    @Delete("DELETE FROM task_ability_bindings WHERE id = #{id}::uuid")
+    @Delete("DELETE FROM task_ability_bindings WHERE id = #{id}")
     int deleteByIdParam(@Param("id") String id);
 }

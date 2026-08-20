@@ -10,9 +10,10 @@ import java.util.List;
 /**
  * 资源快照 Mapper（resource_snapshots 表，Go→Java 迁移）。
  *
- * <p>快照 bundle 为 jsonb 列，实体以原始 JSON 文本读写。
- * 岗位 live bundle 组装（快照缺档回退用）的 to_jsonb 查询全部沉淀在本 Mapper，
- * 输出列与 Go snapshot_builders.go 的 BuildPositionSnapshot 一致。</p>
+ * <p>快照 bundle 为 JSON 列，实体以原始 JSON 文本读写。
+ * 岗位 live bundle 组装（快照缺档回退用）的 JSON 组装查询全部沉淀在本 Mapper，
+ * 输出列与 Go snapshot_builders.go 的 BuildPositionSnapshot 一致。
+ * MySQL 版：原 PG to_jsonb/jsonb_agg 改 JSON_OBJECT / JSON_ARRAYAGG。</p>
  *
  * @author zhiyu
  */
@@ -20,13 +21,6 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
 
     /** 资源类型：岗位 */
     String TYPE_POSITION = "position";
-
-    /** 岗位主表快照列（对齐 Go PositionInsertColumns，别名 camelCase 输出） */
-    String POSITION_INSERT_COLUMNS = "id, tenant_id AS \"tenantId\", code, batch_id AS \"batchId\","
-        + " name, short_name AS \"shortName\", industry_id AS \"industryId\", position_type AS \"positionType\","
-        + " salary_min AS \"salaryMin\", salary_max AS \"salaryMax\", cover_image AS \"coverImage\","
-        + " description, requirements, career_path AS \"careerPath\", version, status,"
-        + " created_by AS \"createdBy\", collaborators";
 
     /**
      * 查询最新快照版本（资源租户限定）。
@@ -38,9 +32,9 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
                                @Param("resourceId") String resourceId);
 
     /**
-     * 查询指定版本快照内容（jsonb 原文）。
+     * 查询指定版本快照内容（JSON 原文）。
      */
-    @Select("SELECT snapshot_data::text FROM resource_snapshots WHERE tenant_id = #{tenantId}"
+    @Select("SELECT CAST(snapshot_data AS CHAR) FROM resource_snapshots WHERE tenant_id = #{tenantId}"
         + " AND resource_type = #{resourceType} AND resource_id = #{resourceId} AND version = #{version}")
     String selectSnapshotData(@Param("tenantId") String tenantId, @Param("resourceType") String resourceType,
                               @Param("resourceId") String resourceId, @Param("version") String version);
@@ -59,70 +53,94 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
 
     // ---------- 岗位 live bundle 组装（对齐 BuildPositionSnapshot） ----------
 
-    /** 岗位主对象（to_jsonb 单对象）。 */
-    @Select("SELECT to_jsonb(t)::text FROM (SELECT " + POSITION_INSERT_COLUMNS
-        + " FROM career_positions WHERE id = #{id} AND tenant_id = #{tenantId}) t")
+    /** 岗位主对象（JSON_OBJECT 单对象）。 */
+    @Select("SELECT JSON_OBJECT("
+        + " 'id', cp.id, 'tenantId', cp.tenant_id, 'code', cp.code, 'batchId', cp.batch_id,"
+        + " 'name', cp.name, 'shortName', cp.short_name, 'industryId', cp.industry_id, 'positionType', cp.position_type,"
+        + " 'salaryMin', cp.salary_min, 'salaryMax', cp.salary_max, 'coverImage', cp.cover_image,"
+        + " 'description', cp.description, 'requirements', cp.requirements, 'careerPath', cp.career_path,"
+        + " 'version', cp.version, 'status', cp.status, 'createdBy', cp.created_by, 'collaborators', cp.collaborators"
+        + ") FROM career_positions cp WHERE cp.id = #{id} AND cp.tenant_id = #{tenantId}")
     String buildPositionObj(@Param("id") String id, @Param("tenantId") String tenantId);
 
-    /** 岗位-专业绑定数组（jsonb_agg）。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, career_position_id AS \"careerPositionId\", major_id AS \"majorId\""
+    /** 岗位-专业绑定数组（JSON_ARRAYAGG）。 */
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'careerPositionId', t.career_position_id, 'majorId', t.major_id"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, career_position_id, major_id"
         + " FROM career_position_majors WHERE career_position_id = #{id}) t")
     String buildPositionMajors(@Param("id") String id);
 
     /** 岗位职责数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.sort_order, t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, career_position_id AS \"careerPositionId\", name, description, sort_order AS \"sortOrder\""
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'careerPositionId', t.career_position_id, 'name', t.name, 'description', t.description, 'sortOrder', t.sort_order"
+        + ") ORDER BY t.sort_order, t.id), '[]') FROM ("
+        + " SELECT id, career_position_id, name, description, sort_order"
         + " FROM position_responsibilities WHERE career_position_id = #{id}) t")
     String buildPositionResponsibilities(@Param("id") String id);
 
     /** 岗位能力绑定数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, career_position_id AS \"careerPositionId\", responsibility_id AS \"responsibilityId\","
-        + " ability_point_id AS \"abilityPointId\", source, domain, required_level AS \"requiredLevel\","
-        + " rubric_description AS \"rubricDescription\", attributes, weight"
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'careerPositionId', t.career_position_id, 'responsibilityId', t.responsibility_id,"
+        + " 'abilityPointId', t.ability_point_id, 'source', t.source, 'domain', t.domain, 'requiredLevel', t.required_level,"
+        + " 'rubricDescription', t.rubric_description, 'attributes', t.attributes, 'weight', t.weight"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level,"
+        + " rubric_description, attributes, weight"
         + " FROM position_ability_bindings WHERE career_position_id = #{id}) t")
     String buildPositionAbilityBindings(@Param("id") String id);
 
     /** 能力域数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.sort_order, t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, career_position_id AS \"careerPositionId\", name, description,"
-        + " binding_ids AS \"bindingIds\", sort_order AS \"sortOrder\""
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'careerPositionId', t.career_position_id, 'name', t.name, 'description', t.description,"
+        + " 'bindingIds', t.binding_ids, 'sortOrder', t.sort_order"
+        + ") ORDER BY t.sort_order, t.id), '[]') FROM ("
+        + " SELECT id, career_position_id, name, description, binding_ids, sort_order"
         + " FROM ability_domains WHERE career_position_id = #{id}) t")
     String buildAbilityDomains(@Param("id") String id);
 
     /** 岗位证书数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, career_position_id AS \"careerPositionId\", certificate_library_id AS \"certificateLibraryId\""
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'careerPositionId', t.career_position_id, 'certificateLibraryId', t.certificate_library_id"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, career_position_id, certificate_library_id"
         + " FROM position_certificates WHERE career_position_id = #{id}) t")
     String buildPositionCertificates(@Param("id") String id);
 
     /** 认定规则数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, career_position_id AS \"careerPositionId\", status, rule_source AS \"ruleSource\","
-        + " level_mapping AS \"levelMapping\""
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'careerPositionId', t.career_position_id, 'status', t.status, 'ruleSource', t.rule_source,"
+        + " 'levelMapping', t.level_mapping"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, career_position_id, status, rule_source, level_mapping"
         + " FROM certification_rules WHERE career_position_id = #{id}) t")
     String buildCertificationRules(@Param("id") String id);
 
     /** 认定权重数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, rule_id AS \"ruleId\", ability_point_id AS \"abilityPointId\", task_id AS \"taskId\", weight"
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'ruleId', t.rule_id, 'abilityPointId', t.ability_point_id, 'taskId', t.task_id, 'weight', t.weight"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, rule_id, ability_point_id, task_id, weight"
         + " FROM certification_weights WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{id})) t")
     String buildCertificationWeights(@Param("id") String id);
 
     /** 认定能力项数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.sort_order, t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, rule_id AS \"ruleId\", name, sort_order AS \"sortOrder\""
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'ruleId', t.rule_id, 'name', t.name, 'sortOrder', t.sort_order"
+        + ") ORDER BY t.sort_order, t.id), '[]') FROM ("
+        + " SELECT id, rule_id, name, sort_order"
         + " FROM certification_ability_items WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{id})) t")
     String buildCertificationAbilityItems(@Param("id") String id);
 
     /** 认定能力点数组。 */
-    @Select("SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, item_id AS \"itemId\", ability_point_id AS \"abilityPointId\","
-        + " mapping_type AS \"mappingType\", custom_level_mapping AS \"customLevelMapping\","
-        + " required_level AS \"requiredLevel\", weight"
+    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'itemId', t.item_id, 'abilityPointId', t.ability_point_id,"
+        + " 'mappingType', t.mapping_type, 'customLevelMapping', t.custom_level_mapping,"
+        + " 'requiredLevel', t.required_level, 'weight', t.weight"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, item_id, ability_point_id, mapping_type, custom_level_mapping, required_level, weight"
         + " FROM certification_ability_points WHERE item_id IN"
         + " (SELECT id FROM certification_ability_items WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{id}))) t")
@@ -130,8 +148,9 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
 
     /**
      * 岗位引用的能力点 ID 集合（绑定 + 认定引用去重；空集合返回空列表）。
+     * MySQL 版：原 JSON_ARRAYAGG(DISTINCT x) 改 UNION 子查询直接多行返回（MyBatis 映射 List<String> 每行一元素）。
      */
-    @Select("SELECT COALESCE(array_agg(DISTINCT x)::text[], '{}'::text[]) FROM ("
+    @Select("SELECT x FROM ("
         + " SELECT pab.ability_point_id AS x FROM position_ability_bindings pab WHERE pab.career_position_id = #{id}"
         + " UNION SELECT cap.ability_point_id FROM certification_ability_points cap"
         + " WHERE cap.item_id IN (SELECT id FROM certification_ability_items WHERE rule_id IN"
@@ -141,10 +160,12 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
     /**
      * 能力点内容数组（按 ID 集合 + 租户）。
      */
-    @Select("<script>SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.id), '[]'::jsonb)::text FROM ("
-        + " SELECT id, name, code, description, attributes, is_public AS \"isPublic\","
-        + " creator_id AS \"creatorId\", created_at AS \"createdAt\""
+    @Select("<script>SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+        + " 'id', t.id, 'name', t.name, 'code', t.code, 'description', t.description, 'attributes', t.attributes,"
+        + " 'isPublic', t.is_public, 'creatorId', t.creator_id, 'createdAt', t.created_at"
+        + ") ORDER BY t.id), '[]') FROM ("
+        + " SELECT id, name, code, description, attributes, is_public, creator_id, created_at"
         + " FROM ability_points WHERE tenant_id = #{tenantId} AND id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach>) t</script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach>) t</script>")
     String buildAbilityPoints(@Param("ids") List<String> ids, @Param("tenantId") String tenantId);
 }

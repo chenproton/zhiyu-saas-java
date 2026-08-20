@@ -17,7 +17,7 @@ public interface PortalViewCounterMapper extends BaseMapperPlus<PortalViewCounte
      */
     @Insert("""
         INSERT INTO view_logs (target_type, target_id, user_id, tenant_id)
-        VALUES (#{targetType}, #{targetId}::uuid, #{userId}::uuid, NULLIF(#{tenantId}, '')::uuid)
+        VALUES (#{targetType}, #{targetId}, #{userId}, NULLIF(#{tenantId}, ''))
         """)
     int logView(@Param("targetType") String targetType, @Param("targetId") String targetId,
                 @Param("userId") String userId, @Param("tenantId") String tenantId);
@@ -27,8 +27,8 @@ public interface PortalViewCounterMapper extends BaseMapperPlus<PortalViewCounte
      */
     @Insert("""
         INSERT INTO view_counters (target_type, target_id, cnt)
-        VALUES (#{targetType}, #{targetId}::uuid, 1)
-        ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = view_counters.cnt + 1, updated_at = now()
+        VALUES (#{targetType}, #{targetId}, 1)
+        ON DUPLICATE KEY UPDATE cnt = view_counters.cnt + 1, updated_at = now()
         """)
     int increment(@Param("targetType") String targetType, @Param("targetId") String targetId);
 }

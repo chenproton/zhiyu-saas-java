@@ -25,41 +25,41 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
 
     /** 源场景字段（FetchSource）。 */
     @Select("SELECT name, code, cover_image, career_position_id,"
-        + " COALESCE(array_to_json(industry_ids)::text, '[]') AS industry_ids,"
-        + " COALESCE(array_to_json(profession_ids)::text, '[]') AS profession_ids,"
+        + " COALESCE(array_to_json(industry_ids), '[]') AS industry_ids,"
+        + " COALESCE(array_to_json(profession_ids), '[]') AS profession_ids,"
         + " batch_id, difficulty, version, background, delivery_goal,"
-        + " COALESCE(array_to_json(co_builder_ids)::text, '[]') AS co_builder_ids, tenant_id"
+        + " COALESCE(array_to_json(co_builder_ids), '[]') AS co_builder_ids, tenant_id"
         + " FROM scenarios WHERE id = #{id}")
     SourceScenarioRow fetchSource(@Param("id") String id);
 
     /** 源场景任务（含 jsonb/数组列 JSON 文本）。 */
     @Select("SELECT id, name, code, sort_order, description, detailed_description, description_pdf,"
         + " estimated_hours, task_type, difficulty, background,"
-        + " COALESCE(array_to_json(dependency_ids)::text, '[]') AS dependency_ids,"
-        + " COALESCE(array_to_json(knowledge_point_ids)::text, '[]') AS knowledge_point_ids,"
-        + " COALESCE(array_to_json(ability_point_ids)::text, '[]') AS ability_point_ids,"
-        + " COALESCE(array_to_json(resource_ids)::text, '[]') AS resource_ids,"
-        + " COALESCE(eval_data::text, '{}') AS eval_data"
+        + " COALESCE(array_to_json(dependency_ids), '[]') AS dependency_ids,"
+        + " COALESCE(array_to_json(knowledge_point_ids), '[]') AS knowledge_point_ids,"
+        + " COALESCE(array_to_json(ability_point_ids), '[]') AS ability_point_ids,"
+        + " COALESCE(array_to_json(resource_ids), '[]') AS resource_ids,"
+        + " COALESCE(eval_data, JSON_ARRAY()) AS eval_data"
         + " FROM scenario_tasks WHERE scenario_id = #{scenarioId} ORDER BY sort_order")
     List<TaskSourceRow> fetchTasks(@Param("scenarioId") String scenarioId);
 
     /** 源交付物。 */
-    @Select("SELECT type, name, description, COALESCE(evaluation_points::text, '{}') AS evaluation_points, sort_order"
+    @Select("SELECT type, name, description, COALESCE(evaluation_points, JSON_ARRAY()) AS evaluation_points, sort_order"
         + " FROM task_deliverables WHERE task_id = #{taskId} ORDER BY sort_order")
     List<DeliverableRow> fetchDeliverables(@Param("taskId") String taskId);
 
     /** 源测评方法（含 jsonb 列文本；扫描失败按 Go 语义整体失败）。 */
     @Select("SELECT id, method_key, weight, eval_object, score_type,"
-        + " COALESCE(eval_subjects::text, '[]') AS eval_subjects, standard_name, standard_mode,"
-        + " COALESCE(resource_config::text, '{}') AS resource_config, version, is_enabled"
+        + " COALESCE(eval_subjects, '[]') AS eval_subjects, standard_name, standard_mode,"
+        + " COALESCE(resource_config, JSON_ARRAY()) AS resource_config, version, is_enabled"
         + " FROM task_evaluation_methods WHERE task_id = #{taskId} AND tenant_id = #{tenantId}")
     List<MethodSourceRow> fetchMethods(@Param("taskId") String taskId, @Param("tenantId") String tenantId);
 
     /** 源评估点（数组/jsonb 列 JSON 文本）。 */
-    @Select("SELECT name, description, sub_type, COALESCE(array_to_json(types)::text, '[]') AS types,"
-        + " weight, scoring_method, COALESCE(grade_mapping::text, '[]') AS grade_mapping,"
-        + " COALESCE(array_to_json(knowledge_point_ids)::text, '[]') AS knowledge_point_ids,"
-        + " COALESCE(array_to_json(ability_point_ids)::text, '[]') AS ability_point_ids, sort_order"
+    @Select("SELECT name, description, sub_type, COALESCE(array_to_json(types), '[]') AS types,"
+        + " weight, scoring_method, COALESCE(grade_mapping, '[]') AS grade_mapping,"
+        + " COALESCE(array_to_json(knowledge_point_ids), '[]') AS knowledge_point_ids,"
+        + " COALESCE(array_to_json(ability_point_ids), '[]') AS ability_point_ids, sort_order"
         + " FROM task_eval_points WHERE config_id = #{configId}")
     List<EvalPointSourceRow> fetchEvalPoints(@Param("configId") String configId);
 
@@ -98,7 +98,7 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
 
     /** 插入克隆交付物。 */
     @Insert("INSERT INTO task_deliverables (id, task_id, type, name, description, evaluation_points, sort_order, tenant_id)"
-        + " VALUES (#{id}, #{taskId}, #{type}, #{name}, #{description}, CAST(#{evaluationPoints} AS jsonb), #{sortOrder}, #{tenantId})")
+        + " VALUES (#{id}, #{taskId}, #{type}, #{name}, #{description}, CAST(#{evaluationPoints} AS JSON), #{sortOrder}, #{tenantId})")
     int insertDeliverable(@Param("id") String id, @Param("taskId") String taskId, @Param("type") String type,
                           @Param("name") String name, @Param("description") String description,
                           @Param("evaluationPoints") String evaluationPoints, @Param("sortOrder") Integer sortOrder,
@@ -108,7 +108,7 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
     @Insert("INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type,"
         + " eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)"
         + " VALUES (#{id}, #{tenantId}, #{taskId}, #{methodKey}, #{weight}, #{evalObject}, #{scoreType},"
-        + " CAST(#{evalSubjects} AS jsonb), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS jsonb),"
+        + " CAST(#{evalSubjects} AS JSON), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS JSON),"
         + " #{version}, #{isEnabled})")
     int insertMethod(@Param("id") String id, @Param("tenantId") String tenantId, @Param("taskId") String taskId,
                      @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
@@ -121,8 +121,8 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
     @Insert("INSERT INTO task_eval_points (id, tenant_id, config_id, name, description, sub_type, types, weight,"
         + " scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)"
         + " VALUES (#{id}, #{tenantId}, #{configId}, #{name}, #{description}, #{subType},"
-        + " CAST(#{types} AS text[]), #{weight}, #{scoringMethod}, CAST(#{gradeMapping} AS jsonb),"
-        + " CAST(#{knowledgePointIds} AS uuid[]), CAST(#{abilityPointIds} AS uuid[]), #{sortOrder})")
+        + " #{types}, #{weight}, #{scoringMethod}, CAST(#{gradeMapping} AS JSON),"
+        + " #{knowledgePointIds}, #{abilityPointIds}, #{sortOrder})")
     int insertEvalPoint(@Param("id") String id, @Param("tenantId") String tenantId, @Param("configId") String configId,
                         @Param("name") String name, @Param("description") String description,
                         @Param("subType") String subType, @Param("types") String types,
@@ -183,7 +183,7 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
     /**
      * 重映射任务依赖（dependency_ids 按旧→新任务 ID 映射后回写）。
      */
-    @Update("UPDATE scenario_tasks SET dependency_ids = CAST(#{newDeps} AS uuid[]) WHERE id = #{taskId}")
+    @Update("UPDATE scenario_tasks SET dependency_ids = #{newDeps} WHERE id = #{taskId}")
     int updateDependencyIds(@Param("taskId") String taskId, @Param("newDeps") String newDeps);
 
     // ---------- 源行类型 ----------

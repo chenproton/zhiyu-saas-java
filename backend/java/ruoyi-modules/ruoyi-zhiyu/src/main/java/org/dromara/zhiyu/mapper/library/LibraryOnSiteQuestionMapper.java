@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * 现场题库 Mapper（on_site_question_library 表）。
  *
- * <p>列表走自定义 SQL（tenant 过滤 + question_text/answer ILIKE 搜索 + 分页），
+ * <p>列表走自定义 SQL（tenant 过滤 + question_text/answer LIKE 搜索 + 分页），
  * 数组列经 {@link PgArrayTypeHandler} 读写；插入/更新显式 cast uuid[]/text[]，
  * 对齐 Go store/on_site_question_library.go 语义。</p>
  *
@@ -29,14 +29,14 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
 
     /** 搜索条件（<script> 内 <if> 片段，供分页/计数复用） */
     String SEARCH_FRAGMENT = "<where>"
-        + " tenant_id = #{tenantId}::uuid"
+        + " tenant_id = #{tenantId}"
         + " <if test=\"search != null and search != ''\">"
-        + " AND (question_text ILIKE #{search} ESCAPE '\\' OR answer ILIKE #{search} ESCAPE '\\')"
+        + " AND (question_text LIKE #{search} ESCAPE '\\' OR answer LIKE #{search} ESCAPE '\\')"
         + " </if>"
         + "</where>";
 
     /**
-     * 分页查询现场题库（search 为已转义 ILIKE 通配符后的 %pattern% 表达式）。
+     * 分页查询现场题库（search 为已转义 LIKE 通配符后的 %pattern% 表达式）。
      */
     @Select("<script>SELECT " + SELECT_COLUMNS + " FROM on_site_question_library " + SEARCH_FRAGMENT
         + " ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
@@ -57,10 +57,10 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
      * 新建题目（knowledge_point_ids/tags 为 null 时 Service 传空列表，对齐 Go coalesce 为空数组）。
      */
     @Insert("INSERT INTO on_site_question_library (id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{questionText}, #{answer}, #{questionType}, #{score}, #{difficulty},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[],"
-        + " #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::text[],"
-        + " #{creatorId}::uuid)")
+        + " VALUES (#{id}, #{tenantId}, #{questionText}, #{answer}, #{questionType}, #{score}, #{difficulty},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{creatorId})")
     int insertQuestion(@Param("id") String id, @Param("tenantId") String tenantId,
                        @Param("questionText") String questionText, @Param("answer") String answer,
                        @Param("questionType") String questionType, @Param("score") Double score,
@@ -73,8 +73,8 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
     @Update("UPDATE on_site_question_library SET"
         + " question_text = #{questionText}, answer = #{answer}, question_type = #{questionType},"
         + " score = #{score}, difficulty = #{difficulty},"
-        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::uuid[],"
-        + " tags = #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}::text[],"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " tags = #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " updated_at = NOW()"
         + " WHERE id = #{id}")
     int updateQuestion(@Param("id") String id, @Param("questionText") String questionText,
@@ -94,7 +94,7 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
     @Select("SELECT r.code"
         + " FROM roles r"
         + " JOIN user_roles ur ON ur.role_id = r.id"
-        + " WHERE ur.user_id = #{userId}::uuid"
+        + " WHERE ur.user_id = #{userId}"
         + " ORDER BY r.created_at")
     List<String> selectRoleCodesByUserId(@Param("userId") String userId);
 }

@@ -24,7 +24,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " target_type, target_ids, status, activation_mode, creator_id, exam_version)"
         + " VALUES (#{id}, #{tenantId}, #{examId}, #{name}, #{description}, #{startTime}, #{endTime}, #{duration},"
         + " #{targetType},"
-        + " CAST(#{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{status}, #{activationMode}, #{creatorId}, #{examVersion})")
     int insertUsage(@Param("id") String id, @Param("tenantId") String tenantId, @Param("examId") String examId,
                     @Param("name") String name, @Param("description") String description,
@@ -37,7 +37,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     @Update("UPDATE exam_usages SET name = #{name}, description = COALESCE(#{description}, description),"
         + " start_time = COALESCE(#{startTime}, start_time), end_time = COALESCE(#{endTime}, end_time),"
         + " duration = COALESCE(#{duration}, duration), target_type = COALESCE(#{targetType}, target_type),"
-        + " target_ids = COALESCE(CAST(#{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]), target_ids),"
+        + " target_ids = COALESCE(#{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, target_ids),"
         + " activation_mode = #{activationMode},"
         + " status = CASE WHEN #{activationMode} = 'always' THEN 'published' ELSE status END,"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
@@ -53,7 +53,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " VALUES (#{id}, #{tenantId}, #{examId}, #{name}, NULL,"
         + " CAST(NULLIF(#{startTime}, '') AS timestamptz), CAST(NULLIF(#{endTime}, '') AS timestamptz),"
         + " #{duration}, #{targetType},"
-        + " CAST(#{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{status}, #{activationMode}, #{creatorId}, #{examVersion})")
     int insertNodeUsage(@Param("id") String id, @Param("tenantId") String tenantId, @Param("examId") String examId,
                         @Param("name") String name, @Param("startTime") String startTime,
@@ -73,13 +73,13 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
                           @Param("duration") Integer duration, @Param("activationMode") String activationMode);
 
     /** 查询节点已有安排（对齐 Go FindNodeUsage）。 */
-    @Select("SELECT id::text FROM exam_usages WHERE exam_id = #{examId}::uuid"
-        + " AND target_type = 'node' AND #{nodeId}::uuid = ANY(target_ids) LIMIT 1")
+    @Select("SELECT id FROM exam_usages WHERE exam_id = #{examId}"
+        + " AND target_type = 'node' AND #{nodeId} = ANY(target_ids) LIMIT 1")
     String selectNodeUsageId(@Param("examId") String examId, @Param("nodeId") String nodeId);
 
     /** 查询任务已有草稿安排（去重复用；对齐 Go createTempExamUsage 的 draft 分支）。 */
-    @Select("SELECT id::text FROM exam_usages WHERE tenant_id = #{tenantId}::uuid AND exam_id = #{examId}::uuid"
-        + " AND target_type = 'task' AND #{taskId}::uuid = ANY(target_ids) AND status = 'draft' LIMIT 1")
+    @Select("SELECT id FROM exam_usages WHERE tenant_id = #{tenantId} AND exam_id = #{examId}"
+        + " AND target_type = 'task' AND #{taskId} = ANY(target_ids) AND status = 'draft' LIMIT 1")
     String selectDraftTaskUsageId(@Param("tenantId") String tenantId, @Param("examId") String examId,
                                   @Param("taskId") String taskId);
 
@@ -88,14 +88,14 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     String currentDateYmd();
 
     /** 同租户同目标类型当天已生成安排数（同天序号基数；对齐 Go NextAutoUsageName）。 */
-    @Select("SELECT COUNT(*) FROM exam_usages WHERE tenant_id = #{tenantId}::uuid AND target_type = #{targetType}"
+    @Select("SELECT COUNT(*) FROM exam_usages WHERE tenant_id = #{tenantId} AND target_type = #{targetType}"
         + " AND created_at::date = CURRENT_DATE")
     int countUsagesCreatedToday(@Param("tenantId") String tenantId, @Param("targetType") String targetType);
 
     /** 批量查询节点已有安排（对齐 Go FindNodeUsages，防逐 examID 回查 N+1）。 */
-    @Select("<script>SELECT exam_id::text AS exam_id, id::text AS id FROM exam_usages"
-        + " WHERE target_type = 'node' AND #{nodeId}::uuid = ANY(target_ids) AND exam_id IN"
-        + " <foreach collection='examIds' item='e' open='(' separator=',' close=')'>#{e}::uuid</foreach></script>")
+    @Select("<script>SELECT exam_id AS exam_id, id AS id FROM exam_usages"
+        + " WHERE target_type = 'node' AND #{nodeId} = ANY(target_ids) AND exam_id IN"
+        + " <foreach collection='examIds' item='e' open='(' separator=',' close=')'>#{e}</foreach></script>")
     List<NodeUsageRow> selectNodeUsageRows(@Param("examIds") List<String> examIds, @Param("nodeId") String nodeId);
 
     /** 节点安排查询行。 */
@@ -145,7 +145,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     String examTenantId(@Param("examId") String examId);
 
     /** 清理课程级旧测评（无结果的 exam_usages，对齐 Go CleanupCourseLevelAssessments） */
-    @Delete("DELETE FROM exam_usages eu WHERE eu.target_type = 'course' AND #{courseId}::uuid = ANY(eu.target_ids)"
+    @Delete("DELETE FROM exam_usages eu WHERE eu.target_type = 'course' AND #{courseId} = ANY(eu.target_ids)"
         + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)")
     int cleanupCourseLevelAssessments(@Param("courseId") String courseId);
 
@@ -154,13 +154,13 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     String examVersion(@Param("examId") String examId, @Param("tenantId") String tenantId);
 
     /** 考试中心列表（对齐 Go ListExamCenter：手动安排 + 当前用户交卷状态） */
-    @Select("<script>SELECT eu.id::text AS id, eu.exam_id::text AS exam_id, eu.name AS usage_name,"
+    @Select("<script>SELECT eu.id AS id, eu.exam_id AS exam_id, eu.name AS usage_name,"
         + " COALESCE(e.name, '') AS exam_name, COALESCE(e.description, '') AS description,"
         + " eu.start_time, eu.end_time, eu.duration, eu.status,"
         + " (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = eu.exam_id) AS question_count,"
         + " COALESCE(e.total_score, 0) AS total_score,"
         + " <if test='classNodeId != null and classNodeId != \"\"'>"
-        + " COALESCE(eu.target_type &lt;&gt; 'class' OR #{classNodeId}::uuid = ANY(eu.target_ids), false) AS class_match,"
+        + " COALESCE(eu.target_type &lt;&gt; 'class' OR #{classNodeId} = ANY(eu.target_ids), false) AS class_match,"
         + " </if>"
         + " <if test='classNodeId == null or classNodeId == \"\"'>"
         + " COALESCE(eu.target_type &lt;&gt; 'class', false) AS class_match,"
@@ -168,15 +168,15 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " (er.id IS NOT NULL) AS submitted, er.score, eu.exam_version"
         + " FROM exam_usages eu"
         + " JOIN exams e ON e.id = eu.exam_id"
-        + " LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = #{userId}::uuid"
+        + " LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = #{userId}"
         + " WHERE eu.status IN ('published', 'finished')"
         + " AND eu.target_type IN ('class', 'major', 'department', 'public')"
-        + " AND eu.tenant_id = #{tenantId}::uuid"
+        + " AND eu.tenant_id = #{tenantId}"
         + " ORDER BY eu.start_time ASC NULLS LAST LIMIT 100</script>")
     List<Map<String, Object>> selectExamCenter(@Param("tenantId") String tenantId, @Param("userId") String userId,
                                                @Param("classNodeId") String classNodeId);
 
     /** 学生班级组织节点（对齐 Go UserClassNodeID） */
-    @Select("SELECT COALESCE(u.org_node_id::text, '') FROM users u WHERE u.id = #{userId}::uuid")
+    @Select("SELECT COALESCE(u.org_node_id, '') FROM users u WHERE u.id = #{userId}")
     String userClassNodeId(@Param("userId") String userId);
 }

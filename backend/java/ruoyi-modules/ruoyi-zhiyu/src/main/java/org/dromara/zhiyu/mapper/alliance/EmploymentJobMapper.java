@@ -32,14 +32,14 @@ public interface EmploymentJobMapper extends BaseMapperPlus<EmploymentJob, Emplo
         + " location, salary_min, salary_max, headcount, education, suitable_majors, description, responsibilities,"
         + " requirements, contact_person, contact_phone, deadline, status, created_by, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{enterpriseId}, #{projectId}, #{title}, #{jobType}, #{location},"
-        + " #{salaryMin}, #{salaryMax}, #{headcount}, #{education}, CAST(#{suitableMajors} AS jsonb),"
+        + " #{salaryMin}, #{salaryMax}, #{headcount}, #{education}, CAST(#{suitableMajors} AS JSON),"
         + " #{description}, #{responsibilities}, #{requirements}, #{contactPerson}, #{contactPhone}, #{deadline},"
         + " #{status}, #{createdBy}, NOW(), NOW())")
     int insertJob(EmploymentJob j);
 
     @Update("UPDATE alliance_employment_jobs SET title = #{title}, job_type = #{jobType}, location = #{location},"
         + " salary_min = #{salaryMin}, salary_max = #{salaryMax}, headcount = #{headcount}, education = #{education},"
-        + " suitable_majors = CAST(#{suitableMajors} AS jsonb), description = #{description},"
+        + " suitable_majors = CAST(#{suitableMajors} AS JSON), description = #{description},"
         + " responsibilities = #{responsibilities}, requirements = #{requirements}, contact_person = #{contactPerson},"
         + " contact_phone = #{contactPhone}, deadline = #{deadline}, updated_at = NOW()"
         + " WHERE id = #{id} AND enterprise_id = #{enterpriseId}")
@@ -60,7 +60,7 @@ public interface EmploymentJobMapper extends BaseMapperPlus<EmploymentJob, Emplo
     @Update("UPDATE alliance_employment_jobs j SET status = #{status}, project_id = #{projectId}, updated_at = NOW()"
         + " FROM alliance_employment_projects p"
         + " WHERE j.id = #{id} AND j.enterprise_id = #{enterpriseId} AND p.id = #{projectId}"
-        + " AND jsonb_exists(p.enterprise_ids, #{enterpriseId}) AND p.tenant_id = j.tenant_id")
+        + " AND JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$') AND p.tenant_id = j.tenant_id")
     int setPartnerStatusWithProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId,
                                     @Param("status") String status, @Param("projectId") String projectId);
 
@@ -69,7 +69,7 @@ public interface EmploymentJobMapper extends BaseMapperPlus<EmploymentJob, Emplo
         + " <if test='projectId != null and projectId != \"\"'> AND j.project_id = #{projectId}</if>"
         + " <if test='enterpriseId != null and enterpriseId != \"\"'> AND j.enterprise_id = #{enterpriseId}</if>"
         + " <if test='status != null and status != \"\"'> AND j.status = #{status}</if>"
-        + " <if test='search != null and search != \"\"'> AND j.title ILIKE '%' || #{search} || '%'</if>"
+        + " <if test='search != null and search != \"\"'> AND j.title LIKE CONCAT('%', #{search}, '%')</if>"
         + " ORDER BY j.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<EmploymentJob> listJobs(@Param("tenantId") String tenantId, @Param("projectId") String projectId,
                                  @Param("enterpriseId") String enterpriseId, @Param("status") String status,
@@ -80,7 +80,7 @@ public interface EmploymentJobMapper extends BaseMapperPlus<EmploymentJob, Emplo
         + " <if test='projectId != null and projectId != \"\"'> AND j.project_id = #{projectId}</if>"
         + " <if test='enterpriseId != null and enterpriseId != \"\"'> AND j.enterprise_id = #{enterpriseId}</if>"
         + " <if test='status != null and status != \"\"'> AND j.status = #{status}</if>"
-        + " <if test='search != null and search != \"\"'> AND j.title ILIKE '%' || #{search} || '%'</if></script>")
+        + " <if test='search != null and search != \"\"'> AND j.title LIKE CONCAT('%', #{search}, '%')</if></script>")
     long countJobs(@Param("tenantId") String tenantId, @Param("projectId") String projectId,
                    @Param("enterpriseId") String enterpriseId, @Param("status") String status,
                    @Param("search") String search);

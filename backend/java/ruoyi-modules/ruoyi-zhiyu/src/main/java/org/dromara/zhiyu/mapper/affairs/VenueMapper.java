@@ -14,12 +14,12 @@ import org.dromara.zhiyu.domain.affairs.Venue;
 public interface VenueMapper extends BaseMapperPlus<Venue, Venue> {
 
     /** 场地查重（对齐 Go store/imports.go ImportVenue）。 */
-    @Select("SELECT id FROM venues WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    @Select("SELECT id FROM venues WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
     /** 场地导入插入（对齐 Go store/imports.go ImportVenue）。 */
     @Insert("INSERT INTO venues (id, tenant_id, name, type, capacity)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{name}, #{type}, #{capacity})")
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{type}, #{capacity})")
     int insertVenue(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                     @Param("type") String type, @Param("capacity") Integer capacity);
 }

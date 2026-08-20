@@ -27,8 +27,8 @@ public interface TeachingPlanEntryMapper extends BaseMapperPlus<TeachingPlanEntr
             e.class_node_id, COALESCE(o.name, '') AS class_name, e.teacher_id, COALESCE(u.name, '') AS teacher_name,
             e.teacher_type, e.venue_type, e.scenario_id, COALESCE(s.name, '') AS scenario_name,
             COALESCE(cp.name, '') AS position_name, e.course_id, COALESCE(c.name, '') AS linked_course_name, e.status,
-            COALESCE((SELECT array_agg(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), '{}') AS class_node_ids,
-            COALESCE((SELECT array_agg(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), '{}') AS class_names
+            COALESCE((SELECT JSON_ARRAYAGG(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), JSON_ARRAY()) AS class_node_ids,
+            COALESCE((SELECT JSON_ARRAYAGG(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), JSON_ARRAY()) AS class_names
         FROM teaching_plan_entries e
         JOIN teaching_plans p ON p.id = e.plan_id
         LEFT JOIN organizations o ON o.id = e.class_node_id
@@ -79,8 +79,8 @@ public interface TeachingPlanEntryMapper extends BaseMapperPlus<TeachingPlanEntr
             e.class_node_id, COALESCE(o.name, '') AS class_name, e.teacher_id, COALESCE(u.name, '') AS teacher_name,
             e.teacher_type, e.venue_type, e.scenario_id, COALESCE(s.name, '') AS scenario_name,
             COALESCE(cp.name, '') AS position_name, e.course_id, COALESCE(c.name, '') AS linked_course_name, e.status,
-            COALESCE((SELECT array_agg(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), '{}') AS class_node_ids,
-            COALESCE((SELECT array_agg(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), '{}') AS class_names
+            COALESCE((SELECT JSON_ARRAYAGG(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), JSON_ARRAY()) AS class_node_ids,
+            COALESCE((SELECT JSON_ARRAYAGG(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), JSON_ARRAY()) AS class_names
         FROM teaching_plan_entries e
         JOIN teaching_plans p ON p.id = e.plan_id
         LEFT JOIN organizations o ON o.id = e.class_node_id

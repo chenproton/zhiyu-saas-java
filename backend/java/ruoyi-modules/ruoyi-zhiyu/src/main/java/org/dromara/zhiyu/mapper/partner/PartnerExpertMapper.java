@@ -30,13 +30,13 @@ public interface PartnerExpertMapper extends BaseMapperPlus<PartnerExpert, Partn
         + " is_public, user_id, created_by)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{gender}, #{age}, #{title}, #{position}, #{expertType},"
         + " #{industry},"
-        + " COALESCE(CAST(#{professionalFields, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
-        + " COALESCE(CAST(#{specialties, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " COALESCE(CAST(#{professionalFields, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
+        + " COALESCE(CAST(#{specialties, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " #{experienceYears}, #{education}, #{introduction}, #{workExperience}, #{city}, #{avatarUrl}, #{coverImage},"
-        + " COALESCE(CAST(#{photos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
-        + " COALESCE(CAST(#{attachments, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " COALESCE(CAST(#{photos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
+        + " COALESCE(CAST(#{attachments, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " #{enterpriseId}, #{organization}, #{rating}, #{status}, #{partnerSource}, #{positionDirection},"
-        + " COALESCE(CAST(#{secondaryColleges, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " COALESCE(CAST(#{secondaryColleges, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " COALESCE(#{isPublic}, false), #{userId}, #{createdBy})")
     int insertExpert(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                      @Param("gender") String gender, @Param("age") Integer age, @Param("title") String title,
@@ -59,15 +59,15 @@ public interface PartnerExpertMapper extends BaseMapperPlus<PartnerExpert, Partn
     @Update("UPDATE alliance_experts SET"
         + " name = #{name}, gender = #{gender}, age = #{age}, title = #{title}, position = #{position},"
         + " expert_type = #{expertType}, industry = #{industry},"
-        + " professional_fields = COALESCE(CAST(#{professionalFields, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
-        + " specialties = COALESCE(CAST(#{specialties, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " professional_fields = COALESCE(CAST(#{professionalFields, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
+        + " specialties = COALESCE(CAST(#{specialties, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " experience_years = #{experienceYears}, education = #{education}, introduction = #{introduction},"
         + " work_experience = #{workExperience}, city = #{city}, avatar_url = #{avatarUrl}, cover_image = #{coverImage},"
-        + " photos = COALESCE(CAST(#{photos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
-        + " attachments = COALESCE(CAST(#{attachments, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " photos = COALESCE(CAST(#{photos, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
+        + " attachments = COALESCE(CAST(#{attachments, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " enterprise_id = #{enterpriseId}, organization = #{organization}, rating = #{rating}, status = #{status},"
         + " partner_source = #{partnerSource}, position_direction = #{positionDirection},"
-        + " secondary_colleges = COALESCE(CAST(#{secondaryColleges, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS jsonb), '[]'::jsonb),"
+        + " secondary_colleges = COALESCE(CAST(#{secondaryColleges, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringListTypeHandler} AS JSON), '[]'),"
         + " is_public = COALESCE(#{isPublic}, false), user_id = #{userId}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateExpert(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
@@ -92,8 +92,8 @@ public interface PartnerExpertMapper extends BaseMapperPlus<PartnerExpert, Partn
     int deleteExpert(@Param("id") String id, @Param("tenantId") String tenantId);
 
     /** 从评审步骤评审人数组中移除该账号（数组列无 FK，防悬空引用）。 */
-    @Update("UPDATE task_review_steps SET assigned_user_ids = array_remove(assigned_user_ids, #{userId}::uuid)"
-        + " WHERE #{userId}::uuid = ANY(assigned_user_ids)")
+    @Update("UPDATE task_review_steps SET assigned_user_ids = JSON_REMOVE(assigned_user_ids, JSON_UNQUOTE(JSON_SEARCH(assigned_user_ids, 'one', #{userId})))"
+        + " WHERE #{userId} = ANY(assigned_user_ids)")
     int removeExpertFromReviewSteps(@Param("userId") String userId);
 
     /** 删除专家账号的用户角色。 */
@@ -105,15 +105,15 @@ public interface PartnerExpertMapper extends BaseMapperPlus<PartnerExpert, Partn
     int deleteUser(@Param("userId") String userId);
 
     /** 按租户+角色 code 查询角色 ID。 */
-    @Select("SELECT id::text FROM roles WHERE tenant_id = #{tenantId}::uuid AND code = #{code} LIMIT 1")
+    @Select("SELECT id FROM roles WHERE tenant_id = #{tenantId} AND code = #{code} LIMIT 1")
     String selectRoleIdByCode(@Param("tenantId") String tenantId, @Param("code") String code);
 
     /** 绑定用户角色。 */
     @Insert("INSERT INTO user_roles (id, user_id, role_id) VALUES (#{id}, #{userId}, #{roleId})"
-        + " ON CONFLICT (user_id, role_id) DO NOTHING")
+        + " ON DUPLICATE KEY UPDATE id = id")
     int insertUserRole(@Param("id") String id, @Param("userId") String userId, @Param("roleId") String roleId);
 
     /** 角色用户数累加。 */
-    @Update("UPDATE roles SET user_count = user_count + 1 WHERE id = #{roleId}::uuid")
+    @Update("UPDATE roles SET user_count = user_count + 1 WHERE id = #{roleId}")
     int incrementRoleUserCount(@Param("roleId") String roleId);
 }

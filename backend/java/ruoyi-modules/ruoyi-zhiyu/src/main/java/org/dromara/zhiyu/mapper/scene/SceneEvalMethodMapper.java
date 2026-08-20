@@ -25,7 +25,7 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
     /**
      * 任务级 advisory 锁（须在事务内调用，串行化并发保存；对齐 Go LockByKey）。
      */
-    @Select("SELECT pg_advisory_xact_lock(hashtext(#{key})::bigint)")
+    @Select("SELECT pg_advisory_xact_lock(hashtext(#{key}))")
     void lockTaskEval(@Param("key") String key);
 
     /**
@@ -47,13 +47,13 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
     @Select("INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type,"
         + " eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)"
         + " VALUES (#{tenantId}, #{taskId}, #{methodKey}, #{weight}, #{evalObject}, #{scoreType},"
-        + " CAST(#{evalSubjects} AS jsonb), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS jsonb),"
+        + " CAST(#{evalSubjects} AS JSON), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS JSON),"
         + " #{version}, #{isEnabled})"
-        + " ON CONFLICT (task_id, method_key) DO UPDATE SET"
-        + " weight = EXCLUDED.weight, eval_object = EXCLUDED.eval_object, score_type = EXCLUDED.score_type,"
-        + " eval_subjects = EXCLUDED.eval_subjects, standard_name = EXCLUDED.standard_name,"
-        + " standard_mode = EXCLUDED.standard_mode, resource_config = EXCLUDED.resource_config,"
-        + " version = EXCLUDED.version, is_enabled = EXCLUDED.is_enabled, updated_at = now()"
+        + " ON DUPLICATE KEY UPDATE"
+        + " weight = VALUES(weight), eval_object = VALUES(eval_object), score_type = VALUES(score_type),"
+        + " eval_subjects = VALUES(eval_subjects), standard_name = VALUES(standard_name),"
+        + " standard_mode = VALUES(standard_mode), resource_config = VALUES(resource_config),"
+        + " version = VALUES(version), is_enabled = VALUES(is_enabled), updated_at = now()"
         + " RETURNING id")
     String upsertMethodReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
                                 @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
@@ -81,9 +81,9 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
         + " scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)"
         + " VALUES (#{tenantId}, #{configId}, #{name}, #{description}, #{subType},"
         + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight},"
-        + " #{scoringMethod}, CAST(#{gradeMapping} AS jsonb),"
-        + " CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{scoringMethod}, CAST(#{gradeMapping} AS JSON),"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{sortOrder})")
     int insertEvalPoint(@Param("tenantId") String tenantId, @Param("configId") String configId,
                         @Param("name") String name, @Param("description") String description,
@@ -110,7 +110,7 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
         + " sort_order, assigned_user_ids)"
         + " VALUES (#{tenantId}, #{configId}, #{label}, #{description}, #{enabled}, #{subjectType}, #{weight},"
         + " #{sortOrder},"
-        + " CAST(#{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]))")
+        + " #{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler})")
     int insertReviewStep(@Param("tenantId") String tenantId, @Param("configId") String configId,
                          @Param("label") String label, @Param("description") String description,
                          @Param("enabled") Boolean enabled, @Param("subjectType") String subjectType,

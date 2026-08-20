@@ -23,12 +23,12 @@ public interface PartnerScenarioTaskMapper extends BaseMapperPlus<SceneScenarioT
         + " source_scenario_id, knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id)"
         + " VALUES (#{id}, #{scenarioId}, #{name}, #{code}, #{sortOrder}, #{description}, #{detailedDescription},"
         + " #{descriptionPdf}, #{estimatedHours}, #{taskType}, #{difficulty}, #{background},"
-        + " CAST(#{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{isReferenced}, #{sourceScenarioId},"
-        + " CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " CAST(#{evalData} AS jsonb), #{tenantId})")
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " CAST(#{evalData} AS JSON), #{tenantId})")
     int insertTask(@Param("id") String id, @Param("scenarioId") String scenarioId, @Param("name") String name,
                    @Param("code") String code, @Param("sortOrder") Integer sortOrder,
                    @Param("description") String description, @Param("detailedDescription") String detailedDescription,
@@ -43,13 +43,13 @@ public interface PartnerScenarioTaskMapper extends BaseMapperPlus<SceneScenarioT
     @Update("UPDATE scenario_tasks SET scenario_id = #{scenarioId}, name = #{name}, code = #{code}, sort_order = #{sortOrder},"
         + " description = #{description}, detailed_description = #{detailedDescription}, description_pdf = #{descriptionPdf},"
         + " estimated_hours = #{estimatedHours}, task_type = #{taskType}, difficulty = #{difficulty}, background = #{background},"
-        + " dependency_ids = CAST(#{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " dependency_ids = #{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " is_referenced = #{isReferenced}, source_scenario_id = #{sourceScenarioId},"
-        + " knowledge_point_ids = CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " ability_point_ids = CAST(#{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " resource_ids = CAST(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " eval_data = CAST(#{evalData} AS jsonb)"
-        + " WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " ability_point_ids = #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " eval_data = CAST(#{evalData} AS JSON)"
+        + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateTask(@Param("id") String id, @Param("tenantId") String tenantId, @Param("scenarioId") String scenarioId,
                    @Param("name") String name, @Param("code") String code, @Param("sortOrder") Integer sortOrder,
                    @Param("description") String description, @Param("detailedDescription") String detailedDescription,
@@ -61,30 +61,30 @@ public interface PartnerScenarioTaskMapper extends BaseMapperPlus<SceneScenarioT
                    @Param("abilityPointIds") List<String> abilityPointIds, @Param("resourceIds") List<String> resourceIds,
                    @Param("evalData") String evalData);
 
-    @Delete("DELETE FROM scenario_tasks WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+    @Delete("DELETE FROM scenario_tasks WHERE id = #{id} AND tenant_id = #{tenantId}")
     int deleteTask(@Param("id") String id, @Param("tenantId") String tenantId);
 
-    @Update("UPDATE scenario_tasks SET sort_order = #{sortOrder} WHERE id = #{taskId}::uuid AND scenario_id = #{scenarioId}::uuid")
+    @Update("UPDATE scenario_tasks SET sort_order = #{sortOrder} WHERE id = #{taskId} AND scenario_id = #{scenarioId}")
     int reorderTask(@Param("taskId") String taskId, @Param("scenarioId") String scenarioId, @Param("sortOrder") int sortOrder);
 
-    @Select("SELECT scenario_id::text FROM scenario_tasks WHERE id = #{id}::uuid")
+    @Select("SELECT scenario_id FROM scenario_tasks WHERE id = #{id}")
     String selectScenarioId(@Param("id") String id);
 
-    @Select("SELECT tenant_id::text FROM scenario_tasks WHERE id = #{id}::uuid")
+    @Select("SELECT tenant_id FROM scenario_tasks WHERE id = #{id}")
     String selectTenantId(@Param("id") String id);
 
-    @Select("SELECT name FROM scenario_tasks WHERE id = #{id}::uuid")
+    @Select("SELECT name FROM scenario_tasks WHERE id = #{id}")
     String selectName(@Param("id") String id);
 
-    @Select("SELECT EXISTS(SELECT 1 FROM scene_evaluation_results WHERE task_id = #{id}::uuid)")
+    @Select("SELECT EXISTS(SELECT 1 FROM scene_evaluation_results WHERE task_id = #{id})")
     boolean existsEvaluationResults(@Param("id") String id);
 
     @Select("<script>SELECT id, name FROM knowledge_points WHERE id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectKnowledgePointNames(@Param("ids") List<String> ids);
 
     @Select("<script>SELECT id, name FROM ability_points WHERE id IN"
-        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}::uuid</foreach></script>")
+        + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach></script>")
     List<IdNameRow> selectAbilityPointNames(@Param("ids") List<String> ids);
 
     class IdNameRow {

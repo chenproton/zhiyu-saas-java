@@ -100,8 +100,8 @@ public interface TeachingPlanMapper extends BaseMapperPlus<TeachingPlan, Teachin
 
     /** 邀请协作者（去重追加）。 */
     @Update("""
-        UPDATE teaching_plans SET collaborators = array_append(collaborators, #{userId}), updated_at = NOW()
-        WHERE id = #{id} AND NOT (collaborators @> ARRAY[#{userId}]::uuid[])
+        UPDATE teaching_plans SET collaborators = JSON_ARRAY_APPEND(collaborators, '$', #{userId}), updated_at = NOW()
+        WHERE id = #{id} AND NOT (JSON_CONTAINS(collaborators, JSON_QUOTE(#{userId}), '$'))
         """)
     int inviteCollaborator(@Param("id") String id, @Param("userId") String userId);
 

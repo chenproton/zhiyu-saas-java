@@ -24,7 +24,7 @@ public interface PortalExamUsageMapper extends BaseMapperPlus<PortalExamUsage, P
         END, updated_at = NOW()
         WHERE activation_mode = 'scheduled' AND status IN ('draft', 'published')
             AND (start_time IS NOT NULL AND #{now} >= start_time OR end_time IS NOT NULL AND #{now} >= end_time)
-            AND (COALESCE(#{tenantId}, '') = '' OR tenant_id = #{tenantId}::uuid)
+            AND (COALESCE(#{tenantId}, '') = '' OR tenant_id = #{tenantId})
         """)
     int syncScheduledExamUsageStatus(@Param("tenantId") String tenantId, @Param("now") java.time.OffsetDateTime now);
 }

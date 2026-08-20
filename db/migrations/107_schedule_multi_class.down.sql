@@ -1,1 +1,4 @@
-ALTER TABLE schedule_entries DROP COLUMN IF EXISTS class_node_ids;
+SET FOREIGN_KEY_CHECKS = 0;  -- down 回滚：MySQL 受外键约束影响，先禁用检查
+ALTER TABLE schedule_entries DROP COLUMN class_node_ids;
+
+SET FOREIGN_KEY_CHECKS = 1;

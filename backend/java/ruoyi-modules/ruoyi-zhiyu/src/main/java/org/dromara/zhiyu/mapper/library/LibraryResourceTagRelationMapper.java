@@ -14,7 +14,7 @@ import java.util.List;
  * 资源-标签绑定 Mapper（resource_tag_relations 表，多态引用）。
  *
  * <p>全量替换与批量查询均走自定义 SQL（事务由 Service 编排），
- * 插入 ON CONFLICT DO NOTHING 对齐 Go 幂等语义。</p>
+ * 插入 ON DUPLICATE KEY UPDATE id = id 对齐 Go 幂等语义。</p>
  *
  * @author zhiyu
  */
@@ -25,7 +25,7 @@ public interface LibraryResourceTagRelationMapper extends BaseMapperPlus<Library
      */
     @Delete("""
         DELETE FROM resource_tag_relations
-        WHERE tenant_id = #{tenantId}::uuid AND resource_type = #{resourceType} AND resource_id = #{resourceId}
+        WHERE tenant_id = #{tenantId} AND resource_type = #{resourceType} AND resource_id = #{resourceId}
         """)
     int deleteByResource(@Param("tenantId") String tenantId, @Param("resourceType") String resourceType,
                          @Param("resourceId") String resourceId);
@@ -44,8 +44,8 @@ public interface LibraryResourceTagRelationMapper extends BaseMapperPlus<Library
      */
     @Insert("""
         INSERT INTO resource_tag_relations (id, tenant_id, tag_id, resource_type, resource_id)
-        VALUES (#{id}, #{tenantId}::uuid, #{tagId}::uuid, #{resourceType}, #{resourceId}::uuid)
-        ON CONFLICT (tenant_id, resource_type, resource_id, tag_id) DO NOTHING
+        VALUES (#{id}, #{tenantId}, #{tagId}, #{resourceType}, #{resourceId})
+        ON DUPLICATE KEY UPDATE id = id
         """)
     int insertRelation(@Param("id") String id, @Param("tenantId") String tenantId, @Param("tagId") String tagId,
                        @Param("resourceType") String resourceType, @Param("resourceId") String resourceId);
@@ -58,9 +58,9 @@ public interface LibraryResourceTagRelationMapper extends BaseMapperPlus<Library
         SELECT rtr.resource_id, t.id AS tag_id, t.tenant_id, t.name, t.color, t.created_at, t.updated_at
         FROM resource_tag_relations rtr
         JOIN tags t ON t.id = rtr.tag_id
-        WHERE rtr.tenant_id = #{tenantId}::uuid AND rtr.resource_type = #{resourceType}
+        WHERE rtr.tenant_id = #{tenantId} AND rtr.resource_type = #{resourceType}
           AND rtr.resource_id IN
-          <foreach collection="resourceIds" item="rid" open="(" separator="," close=")">#{rid}::uuid</foreach>
+          <foreach collection="resourceIds" item="rid" open="(" separator="," close=")">#{rid}</foreach>
         ORDER BY t.created_at DESC
         </script>
         """)

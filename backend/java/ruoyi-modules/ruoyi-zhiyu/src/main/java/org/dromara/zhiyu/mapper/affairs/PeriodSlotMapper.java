@@ -16,12 +16,12 @@ import java.time.LocalTime;
 public interface PeriodSlotMapper extends BaseMapperPlus<PeriodSlot, PeriodSlot> {
 
     /** 节次查重（对齐 Go store/imports.go ImportPeriodSlot）。 */
-    @Select("SELECT id FROM period_slots WHERE tenant_id = #{tenantId}::uuid AND name = #{name} LIMIT 1")
+    @Select("SELECT id FROM period_slots WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
     /** 节次导入插入（对齐 Go store/imports.go ImportPeriodSlot）。 */
     @Insert("INSERT INTO period_slots (id, tenant_id, name, slot_type, start_time, end_time, sort_order)"
-        + " VALUES (#{id}, #{tenantId}::uuid, #{name}, #{slotType}, #{startTime}, #{endTime}, #{sortOrder})")
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{slotType}, #{startTime}, #{endTime}, #{sortOrder})")
     int insertPeriodSlot(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                          @Param("slotType") String slotType, @Param("startTime") LocalTime startTime,
                          @Param("endTime") LocalTime endTime, @Param("sortOrder") Integer sortOrder);

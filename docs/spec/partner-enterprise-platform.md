@@ -172,7 +172,7 @@ ALTER TABLE tenants ADD COLUMN type varchar(16) NOT NULL DEFAULT 'school';
 - **新增**：`enable_public boolean NOT NULL DEFAULT false`（142 落地；150 将默认值改为 `true`——注册时默认开启。企业侧"愿意对外展示"开关，互动流程一的双控之一，企业服务台维护）
 - **移除（移到 link 表）**：`enterprise_type`、`rating`、`status`、`is_public`、`secondary_colleges`、`rating_record`、`created_by`
 - `name` 增加全局唯一约束（企业主体唯一）
-- 重命名后 `alliance_experts.enterprise_id` 外键自动指向新表名（PostgreSQL RENAME 行为）
+- 重命名后 `alliance_experts.enterprise_id` 外键自动指向新表名（MySQL RENAME 行为）
 
 ### 4.3 新表 `alliance_enterprise_links`（学校-企业合作关联）
 

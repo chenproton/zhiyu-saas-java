@@ -27,13 +27,13 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
         + " cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id,"
         + " teacher_id, expert_id, sort_order, view_count, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{brandType}, #{name}, #{status}, #{isPublic}, #{isFeatured},"
-        + " #{coverImage}, #{coverVideo}, #{description}, CAST(#{data} AS jsonb), #{studentId}, #{enterpriseId},"
+        + " #{coverImage}, #{coverVideo}, #{description}, CAST(#{data} AS JSON), #{studentId}, #{enterpriseId},"
         + " #{positionId}, #{majorId}, #{teacherId}, #{expertId}, #{sortOrder}, #{viewCount}, NOW(), NOW())")
     int insertBrand(AllianceBrand b);
 
     @Update("UPDATE alliance_brands SET name = #{name}, status = #{status}, is_public = #{isPublic},"
         + " is_featured = #{isFeatured}, cover_image = #{coverImage}, cover_video = #{coverVideo},"
-        + " description = #{description}, data = CAST(#{data} AS jsonb), student_id = #{studentId},"
+        + " description = #{description}, data = CAST(#{data} AS JSON), student_id = #{studentId},"
         + " enterprise_id = #{enterpriseId}, position_id = #{positionId}, major_id = #{majorId},"
         + " teacher_id = #{teacherId}, expert_id = #{expertId}, sort_order = #{sortOrder}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
@@ -87,7 +87,7 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
     @Select("<script>SELECT " + BASE_COLS + ", " + EMPLOYER_EXTRA
         + " FROM alliance_brands b LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id"
         + " WHERE b.tenant_id = #{tenantId} AND b.brand_type = 'employer'"
-        + " <if test='search != null and search != \"\"'> AND (b.name ILIKE '%' || #{search} || '%' OR pe.name ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (b.name LIKE CONCAT('%', #{search}, '%') OR pe.name LIKE CONCAT('%', #{search}, '%'))</if>"
         + " ORDER BY b.sort_order ASC, b.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<EmployerBrandRow> listEmployerBrands(@Param("tenantId") String tenantId,
                                               @Param("search") String search,
@@ -96,7 +96,7 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
 
     @Select("<script>SELECT COUNT(*) FROM alliance_brands b LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id"
         + " WHERE b.tenant_id = #{tenantId} AND b.brand_type = 'employer'"
-        + " <if test='search != null and search != \"\"'> AND (b.name ILIKE '%' || #{search} || '%' OR pe.name ILIKE '%' || #{search} || '%')</if></script>")
+        + " <if test='search != null and search != \"\"'> AND (b.name LIKE CONCAT('%', #{search}, '%') OR pe.name LIKE CONCAT('%', #{search}, '%'))</if></script>")
     long countEmployerBrands(@Param("tenantId") String tenantId, @Param("search") String search);
 
     @Select("SELECT " + BASE_COLS + ", " + EMPLOYER_EXTRA
@@ -119,15 +119,15 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
 
     String JOB_EXTRA = "COALESCE(cp.name, '') AS position_name, COALESCE(cp.position_type, '') AS position_type,"
         + " cp.salary_min, cp.salary_max,"
-        + " array_to_json(COALESCE(maj.major_names, '{}'))::text AS major_names, COALESCE(cp.status, '') AS position_status";
+        + " COALESCE(maj.major_names, JSON_ARRAY()) AS major_names, COALESCE(cp.status, '') AS position_status";
 
     @Select("<script>SELECT " + BASE_COLS + ", " + JOB_EXTRA
         + " FROM alliance_brands b LEFT JOIN career_positions cp ON cp.id = b.position_id"
-        + " LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m.name ORDER BY cpm.major_id), '{}') AS major_names"
+        + " LEFT JOIN LATERAL (SELECT COALESCE(JSON_ARRAYAGG(m.name ORDER BY cpm.major_id), JSON_ARRAY()) AS major_names"
         + "   FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id"
         + "   WHERE cpm.career_position_id = cp.id) maj ON true"
         + " WHERE b.tenant_id = #{tenantId} AND b.brand_type = 'job'"
-        + " <if test='search != null and search != \"\"'> AND (b.name ILIKE '%' || #{search} || '%' OR COALESCE(cp.name, '') ILIKE '%' || #{search} || '%')</if>"
+        + " <if test='search != null and search != \"\"'> AND (b.name LIKE CONCAT('%', #{search}, '%') OR COALESCE(cp.name, '') LIKE CONCAT('%', #{search}, '%'))</if>"
         + " ORDER BY b.sort_order ASC, b.created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<JobBrandRow> listJobBrands(@Param("tenantId") String tenantId,
                                     @Param("search") String search,
@@ -136,12 +136,12 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
 
     @Select("<script>SELECT COUNT(*) FROM alliance_brands b LEFT JOIN career_positions cp ON cp.id = b.position_id"
         + " WHERE b.tenant_id = #{tenantId} AND b.brand_type = 'job'"
-        + " <if test='search != null and search != \"\"'> AND (b.name ILIKE '%' || #{search} || '%' OR COALESCE(cp.name, '') ILIKE '%' || #{search} || '%')</if></script>")
+        + " <if test='search != null and search != \"\"'> AND (b.name LIKE CONCAT('%', #{search}, '%') OR COALESCE(cp.name, '') LIKE CONCAT('%', #{search}, '%'))</if></script>")
     long countJobBrands(@Param("tenantId") String tenantId, @Param("search") String search);
 
     @Select("SELECT " + BASE_COLS + ", " + JOB_EXTRA
         + " FROM alliance_brands b LEFT JOIN career_positions cp ON cp.id = b.position_id"
-        + " LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m.name ORDER BY cpm.major_id), '{}') AS major_names"
+        + " LEFT JOIN LATERAL (SELECT COALESCE(JSON_ARRAYAGG(m.name ORDER BY cpm.major_id), JSON_ARRAY()) AS major_names"
         + "   FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id"
         + "   WHERE cpm.career_position_id = cp.id) maj ON true"
         + " WHERE b.id = #{id} AND b.tenant_id = #{tenantId}")
@@ -205,18 +205,18 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
 
     String PUBLIC_EXTRA = EMPLOYER_EXTRA + ","
         + " COALESCE(cp.name, '') AS position_name, COALESCE(cp.position_type, '') AS position_type,"
-        + " cp.salary_min, cp.salary_max, array_to_json(COALESCE(maj.major_names, '{}'))::text AS major_names,"
+        + " cp.salary_min, cp.salary_max, COALESCE(maj.major_names, JSON_ARRAY()) AS major_names,"
         + " ind.name AS industry_name, COALESCE(cp.status, '') AS position_status, cp.description AS position_description,"
-        + " array_to_json(COALESCE(cp.requirements, '{}'))::text AS position_requirements, cp.career_path AS position_career_path,"
+        + " COALESCE(cp.requirements, JSON_ARRAY()) AS position_requirements, cp.career_path AS position_career_path,"
         + " cp.cover_image AS position_cover_image,"
-        + " COALESCE((SELECT jsonb_agg(jsonb_build_object('id', r.id, 'careerPositionId', r.career_position_id,"
+        + " COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', r.id, 'careerPositionId', r.career_position_id,"
         + "   'name', r.name, 'description', r.description, 'sortOrder', r.sort_order) ORDER BY r.sort_order)"
-        + "   FROM position_responsibilities r WHERE r.career_position_id = cp.id), '[]'::jsonb) AS responsibilities,"
-        + " COALESCE((SELECT jsonb_agg(jsonb_build_object('id', pc.id, 'careerPositionId', pc.career_position_id,"
+        + "   FROM position_responsibilities r WHERE r.career_position_id = cp.id), '[]') AS responsibilities,"
+        + " COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', pc.id, 'careerPositionId', pc.career_position_id,"
         + "   'certificateLibraryId', pc.certificate_library_id, 'name', cl.name, 'url', cl.url,"
         + "   'description', cl.description, 'imageUrl', cl.image_url) ORDER BY cl.name)"
         + "   FROM position_certificates pc JOIN certificate_library cl ON cl.id = pc.certificate_library_id"
-        + "   WHERE pc.career_position_id = cp.id), '[]'::jsonb) AS certificates,"
+        + "   WHERE pc.career_position_id = cp.id), '[]') AS certificates,"
         + " COALESCE(ae.name, u.name, '') AS person_name, COALESCE(ae.avatar_url, u.avatar_url, '') AS person_avatar,"
         + " ae.title AS person_title, ae.position AS person_position,"
         + " COALESCE(ae.organization, org.name, '') AS person_organization, ae.industry AS person_industry,"
@@ -224,14 +224,14 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
         + " ae.introduction AS person_introduction, ae.work_experience AS person_work_experience, ae.city AS person_city,"
         + " ae.expert_type AS person_expert_type, ae.rating AS person_rating, ae.status AS person_status,"
         + " ae.gender AS person_gender, ae.age AS person_age,"
-        + " COALESCE(ae.specialties, '[]'::jsonb) AS person_specialties,"
-        + " COALESCE(ae.professional_fields, '[]'::jsonb) AS person_professional_fields,"
-        + " COALESCE(ae.attachments, '[]'::jsonb) AS person_attachments";
+        + " COALESCE(ae.specialties, '[]') AS person_specialties,"
+        + " COALESCE(ae.professional_fields, '[]') AS person_professional_fields,"
+        + " COALESCE(ae.attachments, '[]') AS person_attachments";
 
     String PUBLIC_FROM = "alliance_brands b"
         + " LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id"
         + " LEFT JOIN career_positions cp ON cp.id = b.position_id"
-        + " LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m.name ORDER BY cpm.major_id), '{}') AS major_names"
+        + " LEFT JOIN LATERAL (SELECT COALESCE(JSON_ARRAYAGG(m.name ORDER BY cpm.major_id), JSON_ARRAY()) AS major_names"
         + "   FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id"
         + "   WHERE cpm.career_position_id = cp.id) maj ON true"
         + " LEFT JOIN industries ind ON ind.id = cp.industry_id"

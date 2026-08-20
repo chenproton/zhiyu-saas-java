@@ -22,26 +22,26 @@ import java.util.Map;
 public interface QuestionImportMapper {
 
     /** 校验题库存在性（限定租户），返回题库 ID；未命中返回 null。 */
-    @Select("SELECT id::text FROM question_banks WHERE id = #{bankId}::uuid AND tenant_id = #{tenantId}::uuid")
+    @Select("SELECT id FROM question_banks WHERE id = #{bankId} AND tenant_id = #{tenantId}")
     String selectQuestionBankIdScoped(@Param("bankId") String bankId, @Param("tenantId") String tenantId);
 
     /** 导入查重：按租户+题库+题干查询题目 ID/创建者。 */
-    @Select("SELECT id::text AS id, COALESCE(creator_id::text, '') AS creator_id"
-        + " FROM questions WHERE tenant_id = #{tenantId}::uuid AND bank_id = #{bankId}::uuid AND content = #{content} LIMIT 1")
+    @Select("SELECT id AS id, COALESCE(creator_id, '') AS creator_id"
+        + " FROM questions WHERE tenant_id = #{tenantId} AND bank_id = #{bankId} AND content = #{content} LIMIT 1")
     Map<String, Object> selectQuestionIdentity(@Param("tenantId") String tenantId, @Param("bankId") String bankId,
                                                @Param("content") String content);
 
     /** 按租户+题库+题干查询题目 ID（rename 模式判重）。 */
-    @Select("SELECT id::text FROM questions WHERE tenant_id = #{tenantId}::uuid AND bank_id = #{bankId}::uuid"
+    @Select("SELECT id FROM questions WHERE tenant_id = #{tenantId} AND bank_id = #{bankId}"
         + " AND content = #{content} LIMIT 1")
     String selectQuestionIdByContent(@Param("tenantId") String tenantId, @Param("bankId") String bankId,
                                      @Param("content") String content);
 
     /** 覆盖导入：更新题目类型/选项/答案/解析/分值/难度/知识点（不更新题干；限定租户）。 */
-    @Update("UPDATE questions SET type = #{type}, options = CAST(#{options} AS jsonb), answer = #{answer},"
+    @Update("UPDATE questions SET type = #{type}, options = CAST(#{options} AS JSON), answer = #{answer},"
         + " analysis = #{analysis}, score = #{score}, difficulty = #{difficulty},"
-        + " knowledge_point_ids = CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " updated_at = NOW() WHERE id = #{id}::uuid AND tenant_id = #{tenantId}::uuid")
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateQuestionImport(@Param("id") String id, @Param("tenantId") String tenantId, @Param("type") String type,
                              @Param("options") String options, @Param("answer") String answer,
                              @Param("analysis") String analysis, @Param("score") BigDecimal score,
@@ -51,10 +51,10 @@ public interface QuestionImportMapper {
     /** 导入创建题目（draft 状态）。 */
     @Insert("INSERT INTO questions (id, tenant_id, code, bank_id, type, content, options, answer, analysis, score,"
         + " difficulty, knowledge_point_ids, creator_id, source, status)"
-        + " VALUES (#{id}::uuid, #{tenantId}::uuid, #{code}, #{bankId}::uuid, #{type}, #{content},"
-        + " CAST(#{options} AS jsonb), #{answer}, #{analysis}, #{score}, #{difficulty},"
-        + " CAST(#{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " #{creatorId}::uuid, #{source}, 'draft')")
+        + " VALUES (#{id}, #{tenantId}, #{code}, #{bankId}, #{type}, #{content},"
+        + " CAST(#{options} AS JSON), #{answer}, #{analysis}, #{score}, #{difficulty},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{creatorId}, #{source}, 'draft')")
     int insertQuestionImport(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                              @Param("bankId") String bankId, @Param("type") String type,
                              @Param("content") String content, @Param("options") String options,

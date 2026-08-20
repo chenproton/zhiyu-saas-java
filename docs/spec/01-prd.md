@@ -243,7 +243,7 @@
 | 浏览器 | 现代浏览器（Chrome/Edge/Firefox/Safari 近 2 个主版本）；移动端适配已完成 3 轮全量扫描 |
 | 后端运行时 | Java 21 / Spring Boot 4（CI 校验 Maven 编译） |
 | 前端运行时 | Node ≥ 20（CI 用 22）、pnpm；Vue 业务门户（portal-vue，Vue 3.5 + Element Plus）+ 管理端（plus-ui，RuoYi 框架） |
-| 数据库 | PostgreSQL 15（docker 5433 映射）；Redis 7（必需，后端启动依赖，见 compose healthcheck） |
+| 数据库 | MySQL 8.0（docker 3306 映射）；Redis 7（必需，后端启动依赖，见 compose healthcheck） |
 | 文档预览 | kkfileview 服务（docker compose profile，默认启用，端口 8012）；浏览器原生可渲染格式（图片/PDF 等）直接展示，其余经 kkfileview 转换预览（前端 `/kkfileview/onlinePreview?url=<签名URL>`，见 `02-api-contract.md` §3.6） |
 
 ### 5.4 可维护性

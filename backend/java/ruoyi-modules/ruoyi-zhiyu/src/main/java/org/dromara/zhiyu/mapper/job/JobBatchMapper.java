@@ -27,11 +27,11 @@ public interface JobBatchMapper extends BaseMapperPlus<JobBatch, JobBatch> {
 
     /** 列表过滤条件（租户 + orgNodeId/status/search，供计数/分页复用） */
     String FILTER_FRAGMENT = "<where>"
-        + " b.tenant_id = #{tenantId}::uuid"
-        + " <if test=\"orgNodeId != null and orgNodeId != ''\">AND b.org_node_id = #{orgNodeId}::uuid</if>"
+        + " b.tenant_id = #{tenantId}"
+        + " <if test=\"orgNodeId != null and orgNodeId != ''\">AND b.org_node_id = #{orgNodeId}</if>"
         + " <if test=\"status != null and status != ''\">AND b.status = #{status}</if>"
         + " <if test=\"search != null and search != ''\">"
-        + " AND b.name ILIKE #{search} ESCAPE '\\'"
+        + " AND b.name LIKE #{search} ESCAPE '\\'"
         + " </if>"
         + "</where>";
 
@@ -67,8 +67,8 @@ public interface JobBatchMapper extends BaseMapperPlus<JobBatch, JobBatch> {
      * 更新批次（COALESCE 保留原值语义；status 仅当非空时更新，对齐 Go BatchStore.UpdateFields）。
      */
     @Update("<script>UPDATE batches SET name = #{name},"
-        + " code = COALESCE(#{code}, code), org_node_id = COALESCE(#{orgNodeId}::uuid, org_node_id),"
-        + " major_id = COALESCE(#{majorId}::uuid, major_id), workflow_id = COALESCE(#{workflowId}::uuid, workflow_id),"
+        + " code = COALESCE(#{code}, code), org_node_id = COALESCE(#{orgNodeId}, org_node_id),"
+        + " major_id = COALESCE(#{majorId}, major_id), workflow_id = COALESCE(#{workflowId}, workflow_id),"
         + " updated_at = NOW()"
         + " <if test=\"status != null and status != ''\">, status = #{status}</if>"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}</script>")

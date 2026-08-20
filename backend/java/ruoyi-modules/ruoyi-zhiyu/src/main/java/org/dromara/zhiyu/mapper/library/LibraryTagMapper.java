@@ -29,10 +29,10 @@ public interface LibraryTagMapper extends BaseMapperPlus<LibraryTag, LibraryTag>
         LEFT JOIN (
             SELECT tag_id, COUNT(*) AS cnt
             FROM resource_tag_relations
-            WHERE tenant_id = #{tenantId}::uuid
+            WHERE tenant_id = #{tenantId}
             GROUP BY tag_id
         ) cnt ON cnt.tag_id = t.id
-        WHERE t.tenant_id = #{tenantId}::uuid
+        WHERE t.tenant_id = #{tenantId}
         ORDER BY t.created_at DESC
         """)
     List<LibraryTag> selectWithResourceCount(@Param("tenantId") String tenantId);
@@ -42,7 +42,7 @@ public interface LibraryTagMapper extends BaseMapperPlus<LibraryTag, LibraryTag>
      */
     @Update("""
         UPDATE tags SET name = #{name}, color = #{color}, updated_at = NOW()
-        WHERE id = #{id} AND tenant_id = #{tenantId}::uuid
+        WHERE id = #{id} AND tenant_id = #{tenantId}
         """)
     int updateOwned(@Param("id") String id, @Param("tenantId") String tenantId,
                     @Param("name") String name, @Param("color") String color);
@@ -50,6 +50,6 @@ public interface LibraryTagMapper extends BaseMapperPlus<LibraryTag, LibraryTag>
     /**
      * 删除标签（带租户条件；绑定关系由 FK ON DELETE CASCADE 自动清理）。
      */
-    @Delete("DELETE FROM tags WHERE id = #{id} AND tenant_id = #{tenantId}::uuid")
+    @Delete("DELETE FROM tags WHERE id = #{id} AND tenant_id = #{tenantId}")
     int deleteOwned(@Param("id") String id, @Param("tenantId") String tenantId);
 }

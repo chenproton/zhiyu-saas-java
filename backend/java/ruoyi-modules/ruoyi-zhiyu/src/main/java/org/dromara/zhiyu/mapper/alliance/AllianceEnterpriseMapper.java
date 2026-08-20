@@ -27,7 +27,7 @@ public interface AllianceEnterpriseMapper extends BaseMapperPlus<AllianceEnterpr
     AllianceEnterprise selectByTenant(@Param("tenantId") String tenantId);
 
     @Select("SELECT " + COLS + " FROM partner_enterprises e"
-        + " WHERE (#{keyword} = '' OR e.name ILIKE '%' || #{keyword} || '%' OR e.industry ILIKE '%' || #{keyword} || '%')"
+        + " WHERE (#{keyword} = '' OR e.name LIKE CONCAT('%', #{keyword}, '%') OR e.industry LIKE CONCAT('%', #{keyword}, '%'))"
         + " AND NOT EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.enterprise_id = e.id AND l.tenant_id = #{schoolTenantId})"
         + " ORDER BY e.created_at DESC LIMIT #{limit}")
     List<AllianceEnterprise> searchEnterprises(@Param("schoolTenantId") String schoolTenantId,
@@ -39,9 +39,9 @@ public interface AllianceEnterpriseMapper extends BaseMapperPlus<AllianceEnterpr
         + " unified_social_credit_code, established_year, employee_count, business_license_photos,"
         + " qualification_photos, intellectual_property_photos, cover_photos, enable_public, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{industry}, #{region}, #{description}, #{logoUrl},"
-        + " #{coverImage}, CAST(#{cooperationTypes} AS jsonb), #{contactPerson}, #{contactPhone}, #{contactEmail}, #{address},"
-        + " #{unifiedSocialCreditCode}, #{establishedYear}, #{employeeCount}, CAST(#{businessLicensePhotos} AS jsonb),"
-        + " CAST(#{qualificationPhotos} AS jsonb), CAST(#{intellectualPropertyPhotos} AS jsonb), CAST(#{coverPhotos} AS jsonb),"
+        + " #{coverImage}, CAST(#{cooperationTypes} AS JSON), #{contactPerson}, #{contactPhone}, #{contactEmail}, #{address},"
+        + " #{unifiedSocialCreditCode}, #{establishedYear}, #{employeeCount}, CAST(#{businessLicensePhotos} AS JSON),"
+        + " CAST(#{qualificationPhotos} AS JSON), CAST(#{intellectualPropertyPhotos} AS JSON), CAST(#{coverPhotos} AS JSON),"
         + " #{enablePublic}, NOW(), NOW())")
     int insertEnterprise(AllianceEnterprise e);
 
@@ -53,11 +53,11 @@ public interface AllianceEnterpriseMapper extends BaseMapperPlus<AllianceEnterpr
         + " pe.business_license_photos, pe.qualification_photos, pe.intellectual_property_photos, pe.cover_photos,"
         + " pe.enable_public, pe.created_at, pe.updated_at, l.rating,"
         + " (SELECT COUNT(*) FROM alliance_projects p WHERE p.tenant_id = #{tenantId} AND p.is_public = true"
-        + "   AND p.enterprise_ids @> jsonb_build_array(pe.id)) AS project_count,"
+        + "   AND JSON_CONTAINS(p.enterprise_ids, JSON_QUOTE(pe.id), '$')) AS project_count,"
         + " (SELECT COUNT(*) FROM alliance_agreements a WHERE a.tenant_id = #{tenantId}"
-        + "   AND a.enterprise_ids @> jsonb_build_array(pe.id)) AS agreement_count,"
+        + "   AND JSON_CONTAINS(a.enterprise_ids, JSON_QUOTE(pe.id), '$')) AS agreement_count,"
         + " (SELECT COUNT(*) FROM alliance_achievements ac WHERE ac.tenant_id = #{tenantId} AND ac.is_public = true"
-        + "   AND ac.enterprise_ids @> jsonb_build_array(pe.id)) AS achievement_count"
+        + "   AND JSON_CONTAINS(ac.enterprise_ids, JSON_QUOTE(pe.id), '$')) AS achievement_count"
         + " FROM partner_enterprises pe"
         + " JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = #{tenantId}"
         + "   AND l.is_public = true AND l.status != 'terminated'"

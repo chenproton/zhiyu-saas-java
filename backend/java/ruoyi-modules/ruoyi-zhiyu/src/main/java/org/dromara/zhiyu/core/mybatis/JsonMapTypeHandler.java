@@ -19,7 +19,7 @@ import java.util.Map;
  * tenants.scale_data 等）↔ {@link Map}&lt;String,Object&gt; 类型处理器。
  *
  * <p>读：经 JDBC getString 取 jsonb 原文后按 Map 解析；写：序列化为 JSON 文本，
- * 调用方需在 SQL 中用 {@code CAST(#{...} AS jsonb)} 显式转换（PG 不隐式转 text→jsonb）。</p>
+ * 调用方需在 SQL 中用 {@code CAST(#{...} AS JSON)} 显式转换（PG 不隐式转 text→jsonb）。</p>
  *
  * @author zhiyu
  */

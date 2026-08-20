@@ -19,7 +19,7 @@ public interface SceneTaskResourceBindingMapper extends BaseMapperPlus<SceneTask
      */
     @Select("INSERT INTO task_resource_bindings (tenant_id, task_id, resource_id)"
         + " VALUES (#{tenantId}, #{taskId}, #{resourceId})"
-        + " ON CONFLICT (task_id, resource_id) DO UPDATE SET task_id = EXCLUDED.task_id"
+        + " ON DUPLICATE KEY UPDATE task_id = VALUES(task_id)"
         + " RETURNING id")
     String bindReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
                         @Param("resourceId") String resourceId);

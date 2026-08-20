@@ -31,7 +31,7 @@ public interface JobPositionCertificateMapper extends BaseMapperPlus<JobPosition
      */
     @Select("<script>SELECT " + SELECT_COLUMNS + " " + FROM_CLAUSE
         + " WHERE pc.tenant_id = #{tenantId}"
-        + " <if test=\"careerPositionId != null and careerPositionId != ''\">AND pc.career_position_id = #{careerPositionId}::uuid</if>"
+        + " <if test=\"careerPositionId != null and careerPositionId != ''\">AND pc.career_position_id = #{careerPositionId}</if>"
         + " ORDER BY cl.name ASC LIMIT #{limit} OFFSET #{offset}</script>")
     List<JobPositionCertificate> selectCertificates(@Param("tenantId") String tenantId,
                                                     @Param("careerPositionId") String careerPositionId,
@@ -42,7 +42,7 @@ public interface JobPositionCertificateMapper extends BaseMapperPlus<JobPosition
      */
     @Select("<script>SELECT COUNT(*) " + FROM_CLAUSE
         + " WHERE pc.tenant_id = #{tenantId}"
-        + " <if test=\"careerPositionId != null and careerPositionId != ''\">AND pc.career_position_id = #{careerPositionId}::uuid</if>"
+        + " <if test=\"careerPositionId != null and careerPositionId != ''\">AND pc.career_position_id = #{careerPositionId}</if>"
         + "</script>")
     long countCertificates(@Param("tenantId") String tenantId, @Param("careerPositionId") String careerPositionId);
 
@@ -56,7 +56,7 @@ public interface JobPositionCertificateMapper extends BaseMapperPlus<JobPosition
      * 按岗位查询证书绑定原始行（深拷贝用，仅本表实际列，避免 JOIN 结果列映射到本表）。
      */
     @Select("SELECT id, tenant_id, career_position_id, certificate_library_id"
-        + " FROM position_certificates WHERE career_position_id = #{positionId}::uuid")
+        + " FROM position_certificates WHERE career_position_id = #{positionId}")
     List<JobPositionCertificate> selectRawByPosition(@Param("positionId") String positionId);
 
     /**
@@ -70,7 +70,7 @@ public interface JobPositionCertificateMapper extends BaseMapperPlus<JobPosition
      */
     @Insert("INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{url}, #{description}, #{imageUrl})"
-        + " ON CONFLICT (tenant_id, name) DO NOTHING")
+        + " ON DUPLICATE KEY UPDATE id = id")
     int insertLibrary(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                       @Param("url") String url, @Param("description") String description,
                       @Param("imageUrl") String imageUrl);

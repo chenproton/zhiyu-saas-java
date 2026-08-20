@@ -37,6 +37,6 @@ public interface EvaluationBatchMapper extends BaseMapperPlus<EvaluationBatch, E
 
     /** 批量查询专业名称（key=major_id，value=name） */
     @Select("<script>SELECT id, name FROM majors WHERE id IN"
-        + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}::uuid</foreach></script>")
+        + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach></script>")
     List<Map<String, Object>> selectMajorNames(@Param("ids") List<String> ids);
 }

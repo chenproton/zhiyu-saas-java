@@ -2,15 +2,15 @@
 -- 已创建的历史影子账号（users 记录）不受影响。
 
 CREATE TABLE IF NOT EXISTS alliance_expert_mentor_links (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    expert_id UUID NOT NULL REFERENCES alliance_experts(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,
-    enabled boolean NOT NULL DEFAULT true,
-    created_by uuid,
-    created_at timestamptz NOT NULL DEFAULT now(),
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    tenant_id CHAR(36) NOT NULL,
+    expert_id CHAR(36) NOT NULL REFERENCES alliance_experts(id) ON DELETE CASCADE,
+    user_id CHAR(36) NOT NULL,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    created_by CHAR(36),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (tenant_id, expert_id)
 );
-CREATE INDEX IF NOT EXISTS idx_expert_mentor_links_tenant ON alliance_expert_mentor_links(tenant_id);
+CREATE INDEX idx_expert_mentor_links_tenant ON alliance_expert_mentor_links(tenant_id);
 
-ALTER TABLE graduation_project_topics ADD COLUMN IF NOT EXISTS enterprise_mentor_id uuid;
+ALTER TABLE graduation_project_topics ADD COLUMN enterprise_mentor_id CHAR(36);

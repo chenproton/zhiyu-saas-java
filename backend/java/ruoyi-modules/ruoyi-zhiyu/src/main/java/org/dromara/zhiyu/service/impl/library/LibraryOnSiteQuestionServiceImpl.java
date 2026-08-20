@@ -167,7 +167,7 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
         return roleCodes != null && roleCodes.contains(ROLE_STUDENT);
     }
 
-    /** 转义 ILIKE 通配符并包裹 %pattern%（对齐 Go ListQueryBuilder 转义语义） */
+    /** 转义 LIKE 通配符并包裹 %pattern%（对齐 Go ListQueryBuilder 转义语义） */
     private String toLikePattern(String search) {
         if (search == null || search.isBlank()) {
             return null;

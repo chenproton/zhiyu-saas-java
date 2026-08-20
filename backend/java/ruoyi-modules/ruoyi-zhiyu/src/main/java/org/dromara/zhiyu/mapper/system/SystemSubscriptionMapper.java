@@ -19,7 +19,7 @@ import java.util.Map;
  */
 public interface SystemSubscriptionMapper extends BaseMapperPlus<SystemSubscriptionPackage, SystemSubscriptionPackage> {
 
-    @Select("SELECT id, tenant_id, name, valid_until::text AS valid_until, modules, status, ai_token_quota, created_at, updated_at"
+    @Select("SELECT id, tenant_id, name, valid_until AS valid_until, modules, status, ai_token_quota, created_at, updated_at"
         + " FROM subscription_packages WHERE tenant_id = #{tenantId} ORDER BY created_at DESC LIMIT 1")
     @Results({
         @Result(column = "modules", property = "modules", typeHandler = JsonMapTypeHandler.class)
@@ -28,13 +28,13 @@ public interface SystemSubscriptionMapper extends BaseMapperPlus<SystemSubscript
 
     @Insert("INSERT INTO subscription_packages (id, tenant_id, name, valid_until, modules, status, ai_token_quota)"
         + " VALUES (#{id}, #{tenantId}, #{name}, CAST(NULLIF(#{validUntil}, '') AS date),"
-        + " CAST(#{modules, typeHandler=org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler} AS jsonb), #{status}, COALESCE(#{aiTokenQuota}, 0))")
+        + " CAST(#{modules, typeHandler=org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler} AS JSON), #{status}, COALESCE(#{aiTokenQuota}, 0))")
     int insertSubscription(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                            @Param("validUntil") String validUntil, @Param("modules") Map<String, Object> modules,
                            @Param("status") String status, @Param("aiTokenQuota") Long aiTokenQuota);
 
     @Update("UPDATE subscription_packages SET name = #{name}, valid_until = CAST(NULLIF(#{validUntil}, '') AS date),"
-        + " modules = CAST(#{modules, typeHandler=org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler} AS jsonb),"
+        + " modules = CAST(#{modules, typeHandler=org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler} AS JSON),"
         + " status = #{status}, ai_token_quota = COALESCE(#{aiTokenQuota}, ai_token_quota), updated_at = NOW()"
         + " WHERE id = #{id}")
     int updateSubscription(@Param("id") String id, @Param("name") String name, @Param("validUntil") String validUntil,

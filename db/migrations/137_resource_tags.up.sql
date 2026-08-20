@@ -1,21 +1,21 @@
 -- 标签管理：标签表 + 资源标签多对多绑定表
 CREATE TABLE tags (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id   uuid NOT NULL,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    tenant_id CHAR(36) NOT NULL,
     name        varchar(64) NOT NULL,
     color       varchar(16) NOT NULL DEFAULT '#6366f1',
-    created_at  timestamptz NOT NULL DEFAULT NOW(),
-    updated_at  timestamptz NOT NULL DEFAULT NOW(),
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (tenant_id, name)
 );
 
 CREATE TABLE resource_tag_relations (
-    id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id     uuid NOT NULL,
-    tag_id        uuid NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    tenant_id CHAR(36) NOT NULL,
+    tag_id CHAR(36) NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     resource_type varchar(32) NOT NULL,
-    resource_id   uuid NOT NULL,
-    created_at    timestamptz NOT NULL DEFAULT NOW(),
+    resource_id CHAR(36) NOT NULL,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (tenant_id, resource_type, resource_id, tag_id)
 );
 

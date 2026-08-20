@@ -29,9 +29,9 @@ public interface JobCareerPositionMapper extends BaseMapperPlus<JobCareerPositio
         + " version, status, created_by, collaborators, source_type, source_enterprise_id)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{batchId}, #{name}, #{shortName}, #{industryId},"
         + " #{positionType}, #{salaryMin}, #{salaryMax}, #{coverImage}, #{description},"
-        + " CAST(#{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]),"
+        + " #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{careerPath}, #{version}, #{status}, #{createdBy},"
-        + " CAST(#{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " COALESCE(#{sourceType}, 'school'), #{sourceEnterpriseId})")
     int insertPosition(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                        @Param("batchId") String batchId, @Param("name") String name,
@@ -51,9 +51,9 @@ public interface JobCareerPositionMapper extends BaseMapperPlus<JobCareerPositio
         + " batch_id = #{batchId}, name = #{name}, short_name = #{shortName}, industry_id = #{industryId},"
         + " position_type = #{positionType}, salary_min = #{salaryMin}, salary_max = #{salaryMax},"
         + " cover_image = #{coverImage}, description = #{description},"
-        + " requirements = CAST(#{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS text[]),"
+        + " requirements = #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " career_path = #{careerPath}, version = #{version},"
-        + " collaborators = CAST(#{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " collaborators = #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id}")
     int updatePosition(@Param("id") String id, @Param("batchId") String batchId, @Param("name") String name,
                        @Param("shortName") String shortName, @Param("industryId") String industryId,
@@ -91,8 +91,8 @@ public interface JobCareerPositionMapper extends BaseMapperPlus<JobCareerPositio
     /**
      * 邀请协作者（collaborators 数组追加，幂等：已存在不重复追加）。
      */
-    @Update("UPDATE career_positions SET collaborators = array_append(collaborators, #{userId}::uuid), updated_at = NOW()"
-        + " WHERE id = #{id} AND NOT (collaborators @> ARRAY[#{userId}::uuid])")
+    @Update("UPDATE career_positions SET collaborators = JSON_ARRAY_APPEND(collaborators, '$', #{userId}), updated_at = NOW()"
+        + " WHERE id = #{id} AND NOT (JSON_CONTAINS(collaborators, JSON_QUOTE(#{userId}), '$'))")
     int inviteCollaborator(@Param("id") String id, @Param("userId") String userId);
 
     /**
@@ -177,7 +177,7 @@ public interface JobCareerPositionMapper extends BaseMapperPlus<JobCareerPositio
      * 浏览计数累加（ON CONFLICT 累加，对齐 Go RecordView 的 view_counters upsert）。
      */
     @Update("INSERT INTO view_counters (target_type, target_id, cnt) VALUES ('career_position', #{targetId}, 1)"
-        + " ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = view_counters.cnt + 1, updated_at = now()")
+        + " ON DUPLICATE KEY UPDATE cnt = view_counters.cnt + 1, updated_at = now()")
     int incrementViewCounter(@Param("targetId") String targetId);
 
     /**

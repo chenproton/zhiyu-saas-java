@@ -2,7 +2,7 @@
 
 > 分支模型说明：本仓库**主线只有 `master`**，按「分支隔离 + 部署成功自动合并 master」协作（见第四节）。
 >
-> 本仓库为**单栈架构**：**Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21），共用 PostgreSQL，配套两套 Vue 前端：**Vue 业务门户**（`frontend/portal-vue`）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架）。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
+> 本仓库为**单栈架构**：**Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21），共用 MySQL 8.0，配套两套 Vue 前端：**Vue 业务门户**（`frontend/portal-vue`）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架）。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
 > 开发契约分两部分：第一部分为仓库级开发契约（spec-first / 部署 / 运维），第二部分为 Java 后端框架契约。按所改模块选择对应契约执行。
 
 ### 顶层目录结构
@@ -13,7 +13,7 @@
 ├── frontend/
 │   ├── portal-vue/  # Vue 业务门户（Element Plus + Pinia，Java 配套）
 │   └── plus-ui/     # Vue 管理端（RuoYi 框架，Java 配套）
-├── db/migrations/   # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 psql 执行）
+├── db/migrations/   # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 mysql 执行）
 ├── docs/            # 全量文档（spec、ADR、规范）
 ├── deploy/          # docker-compose / nginx / Dockerfile（Java+Vue 单栈编排）
 ├── scripts/         # spec-check / ui-smoke / package-release 等工具
@@ -100,7 +100,7 @@
 3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge` / `--skip-gates`）
 4. `cd / && git worktree remove /tmp/<agent>`
 
-deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal-vue/plus-ui）；分两段启动（先数据层→备份→迁移→框架表初始化→再业务容器）；健康门禁 + 业务冒烟（门户/管理端/API/Redis/DB/鉴权探针），任一失败回滚旧镜像且不合并 master；部署锁保证并发串行；**建库建表（db/migrations 纯 psql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh**。完整执行顺序、密钥注入边界、备份恢复见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。**质量门禁默认开启**（Maven 编译 + portal-vue/plus-ui 构建 + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
+deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal-vue/plus-ui）；分两段启动（先数据层→备份→迁移→框架表初始化→再业务容器）；健康门禁 + 业务冒烟（门户/管理端/API/Redis/DB/鉴权探针），任一失败回滚旧镜像且不合并 master；部署锁保证并发串行；**建库建表（db/migrations 纯 mysql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh**。完整执行顺序、密钥注入边界、备份恢复见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。**质量门禁默认开启**（Maven 编译 + portal-vue/plus-ui 构建 + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
 
 ### 4.2 提交前必跑（代码改动）
 
@@ -152,7 +152,7 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 | 服务状态 | `docker compose -f deploy/docker-compose.yml ps`（仓库根无 compose 文件，必须带 -f） |
 | 后端日志 | `docker compose -f deploy/docker-compose.yml logs java-backend --tail 100` 或 `docker logs zhiyu-java-backend --tail 100` |
 | 健康检查 | `curl -sf http://127.0.0.1/health`（经生产入口，网关已显式代理到 java-backend）；容器内自检用 `docker exec zhiyu-java-backend curl -sf http://127.0.0.1:8080/health` |
-| 连接数据库 | `psql "$DATABASE_URL"` |
+| 连接数据库 | `mysql "$DATABASE_URL"` |
 | 回滚部署 | `git checkout <上一个已上线 commit>` 后 `./deploy.sh`（重新构建；禁止手动登服务器改代码）。仓库当前**未打任何 tag**，故用 commit 而非 tag；部署成功后镜像只保留最新 1 个，无法「不重建直接切回上一版」 |
 | 离线实施包 | `./scripts/package-release.sh v1.0.0`（产出 Java+Vue 单栈离线包，含前端 dist 与迁移 SQL） |
 | 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |

@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  * 节点测验题目（node_quiz_questions 表，Go→Java 迁移）。
  *
  * <p>表无 created_at/updated_at 列，故不继承 BaseZhiyuEntity；options 为 jsonb
- * 列，以 JSON 原文文本承载（读取时 options::text，写入 CAST 为 jsonb）。</p>
+ * 列，以 JSON 原文文本承载（读取时 options，写入 CAST 为 jsonb）。</p>
  *
  * @author zhiyu
  */

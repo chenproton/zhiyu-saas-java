@@ -16,14 +16,14 @@ public interface SystemSettingsMapper {
     String selectPlatform(@Param("key") String key);
 
     @Insert("INSERT INTO platform_settings (key, value, updated_at) VALUES (#{key}, #{value}, now())"
-        + " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+        + " ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = now()")
     int upsertPlatform(@Param("key") String key, @Param("value") String value);
 
     @Select("SELECT value FROM tenant_settings WHERE tenant_id = #{tenantId} AND key = #{key}")
     String selectTenant(@Param("tenantId") String tenantId, @Param("key") String key);
 
     @Insert("INSERT INTO tenant_settings (tenant_id, key, value, updated_at) VALUES (#{tenantId}, #{key}, #{value}, now())"
-        + " ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+        + " ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = now()")
     int upsertTenant(@Param("tenantId") String tenantId, @Param("key") String key, @Param("value") String value);
 
     @Delete("DELETE FROM tenant_settings WHERE tenant_id = #{tenantId} AND key = #{key}")

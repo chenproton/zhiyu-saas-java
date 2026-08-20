@@ -22,8 +22,8 @@ public interface JobLearnRoadMapper extends BaseMapperPlus<JobLearnRoad, JobLear
      * 更新学习路径（限定租户；position_ids 数组列显式 CAST）。
      */
     @Update("UPDATE learn_roads SET name = #{name}, description = #{description},"
-        + " position_ids = CAST(#{positionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
-        + " steps = CAST(#{steps} AS jsonb), updated_at = NOW()"
+        + " position_ids = #{positionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " steps = CAST(#{steps} AS JSON), updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateLearnRoad(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                         @Param("description") String description, @Param("positionIds") List<String> positionIds,

@@ -30,10 +30,10 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
         + " delivery_goal, creator_id, co_builder_ids, tenant_id, source_type, source_enterprise_id)"
         + " VALUES (#{id}, #{name}, #{code}, #{coverImage}, #{careerPositionId},"
         + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " CAST(#{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{batchId}, #{difficulty}, #{version}, 'draft', #{background},"
         + " #{deliveryGoal}, #{creatorId},"
-        + " CAST(#{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{tenantId}, COALESCE(#{sourceType}, 'school'), #{sourceEnterpriseId})")
     int insertScenario(@Param("id") String id, @Param("name") String name, @Param("code") String code,
                        @Param("coverImage") String coverImage, @Param("careerPositionId") String careerPositionId,
@@ -49,10 +49,10 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
      */
     @Update("UPDATE scenarios SET name = #{name}, cover_image = #{coverImage}, career_position_id = #{careerPositionId},"
         + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " profession_ids = CAST(#{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " batch_id = #{batchId}, difficulty = #{difficulty}, version = #{version},"
         + " background = #{background}, delivery_goal = #{deliveryGoal},"
-        + " co_builder_ids = CAST(#{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS uuid[]),"
+        + " co_builder_ids = #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id}")
     int updateScenario(@Param("id") String id, @Param("name") String name, @Param("coverImage") String coverImage,
                        @Param("careerPositionId") String careerPositionId, @Param("industryIds") List<String> industryIds,
@@ -64,8 +64,8 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
     /**
      * 邀请协作者（co_builder_ids 数组追加，幂等：已存在不重复追加）。
      */
-    @Update("UPDATE scenarios SET co_builder_ids = array_append(co_builder_ids, #{userId}::uuid), updated_at = NOW()"
-        + " WHERE id = #{id} AND NOT (co_builder_ids @> ARRAY[#{userId}::uuid])")
+    @Update("UPDATE scenarios SET co_builder_ids = JSON_ARRAY_APPEND(co_builder_ids, '$', #{userId}), updated_at = NOW()"
+        + " WHERE id = #{id} AND NOT (JSON_CONTAINS(co_builder_ids, JSON_QUOTE(#{userId}), '$'))")
     int inviteCollaborator(@Param("id") String id, @Param("userId") String userId);
 
     /**
@@ -136,7 +136,7 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
      * 浏览计数累加（ON CONFLICT 累加，对齐 Go RecordView 的 view_counters upsert）。
      */
     @Update("INSERT INTO view_counters (target_type, target_id, cnt) VALUES ('scenario', #{targetId}, 1)"
-        + " ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = view_counters.cnt + 1, updated_at = now()")
+        + " ON DUPLICATE KEY UPDATE cnt = view_counters.cnt + 1, updated_at = now()")
     int incrementViewCounter(@Param("targetId") String targetId);
 
     /** 查询创建人姓名（详情/列表组装）。 */

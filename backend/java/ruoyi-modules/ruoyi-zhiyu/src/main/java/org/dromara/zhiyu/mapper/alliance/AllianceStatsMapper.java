@@ -21,27 +21,27 @@ public interface AllianceStatsMapper extends BaseMapperPlus<AllianceSchoolInfo, 
     int countPublicEnterprisesGlobal();
 
     @Select("SELECT COUNT(*) FROM alliance_projects p WHERE p.is_public = true AND p.tenant_id = #{tenantId} AND EXISTS ("
-        + " SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid"
-        + " JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true"
+        + " SELECT 1 FROM JSON_TABLE(p.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) eid"
+        + " JOIN partner_enterprises pe ON pe.id = eid AND pe.enable_public = true"
         + " JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = #{tenantId}"
         + " AND l.is_public = true AND l.status != 'terminated')")
     int countPublicProjectsByTenant(@Param("tenantId") String tenantId);
 
     @Select("SELECT COUNT(*) FROM alliance_projects p WHERE p.is_public = true AND EXISTS ("
-        + " SELECT 1 FROM jsonb_array_elements_text(p.enterprise_ids) eid"
-        + " JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true)")
+        + " SELECT 1 FROM JSON_TABLE(p.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) eid"
+        + " JOIN partner_enterprises pe ON pe.id = eid AND pe.enable_public = true)")
     int countPublicProjectsGlobal();
 
     @Select("SELECT COUNT(*) FROM alliance_achievements a WHERE a.is_public = true AND a.tenant_id = #{tenantId} AND EXISTS ("
-        + " SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid"
-        + " JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true"
+        + " SELECT 1 FROM JSON_TABLE(a.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) eid"
+        + " JOIN partner_enterprises pe ON pe.id = eid AND pe.enable_public = true"
         + " JOIN alliance_enterprise_links l ON l.enterprise_id = pe.id AND l.tenant_id = #{tenantId}"
         + " AND l.is_public = true AND l.status != 'terminated')")
     int countPublicAchievementsByTenant(@Param("tenantId") String tenantId);
 
     @Select("SELECT COUNT(*) FROM alliance_achievements a WHERE a.is_public = true AND EXISTS ("
-        + " SELECT 1 FROM jsonb_array_elements_text(a.enterprise_ids) eid"
-        + " JOIN partner_enterprises pe ON pe.id = eid::uuid AND pe.enable_public = true)")
+        + " SELECT 1 FROM JSON_TABLE(a.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) eid"
+        + " JOIN partner_enterprises pe ON pe.id = eid AND pe.enable_public = true)")
     int countPublicAchievementsGlobal();
 
     @Select("SELECT COUNT(*) FROM alliance_experts x WHERE x.is_public = true AND x.status = 'active'"

@@ -97,11 +97,11 @@ spring:
       # 严格模式 匹配不到数据源则报错
       strict: true
       datasource:
-        # 主库数据源（zhiyu-saas 迁移：PostgreSQL，复用现有 zhiyu-saas 库）
+        # 主库数据源（zhiyu-saas 迁移：MySQL 8.0（已从 PostgreSQL 切换））
         # 主机/端口环境变量化：裸机部署用 127.0.0.1:5433，Docker 部署用 host.docker.internal
         master:
           type: ${spring.datasource.type}
-          driverClassName: org.postgresql.Driver
+          driverClassName: com.mysql.cj.jdbc.Driver
           url: jdbc:postgresql://${ZHIYU_DB_HOST:127.0.0.1}:${ZHIYU_DB_PORT:5433}/zhiyu-saas?useUnicode=true&characterEncoding=utf8&useSSL=false&currentSchema=public&stringtype=unspecified
           username: ${ZHIYU_DB_USER:zhiyu_saas}
           password: ${ZHIYU_DB_PASSWORD:change-me}
@@ -121,7 +121,7 @@ spring:
 #          password: root
 #        postgres:
 #          type: ${spring.datasource.type}
-#          driverClassName: org.postgresql.Driver
+#          driverClassName: com.mysql.cj.jdbc.Driver
 #          url: jdbc:postgresql://localhost:5432/postgres?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
 #          username: root
 #          password: root
