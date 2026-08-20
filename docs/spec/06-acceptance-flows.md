@@ -772,6 +772,17 @@ steps:
     timeoutMs: 20000
   - role: student
     click: 开始考试
+  # 卡片「开始考试」是 Link 跳转到答题页；答题页初始为「考试须知」区，
+  # 需点击页面内自己的「开始考试」按钮才进入答题态（显示题目与「提交试卷」），2026-08-21 实测
+  - role: student
+    expectText: 开始考试
+    timeoutMs: 20000
+  - role: student
+    click: 开始考试
+  # 答题页异步加载（authLoading + 题目快照），先等「提交试卷」按钮出现再作答
+  - role: student
+    expectText: 提交试卷
+    timeoutMs: 25000
   - role: student
     click: 正确
     submit: 提交试卷
@@ -1142,8 +1153,12 @@ steps:
     confirm: true
     optional: true
   # L-1：新建合作协议（名称 + 挂企业 + 日期 + 前台展示开关）
+  # 断言页面标题「新建合作协议」：placeholder（请输入协议名称…）非可见文本，expectText 等不到（2026-08-21 实测）
   - role: school
     goto: /portal/apps/alliance/agreements/new
+    expectText: 新建合作协议
+    timeoutMs: 20000
+  - role: school
     fill: { 请输入协议名称: "SMOKE_协议{rand}" }
     saveAs: { agreementName: 请输入协议名称 }
     select: { 选择合作企业: 巡检测试企业 }
@@ -1415,14 +1430,17 @@ steps:
     timeoutMs: 20000
   - role: school
     select: { 请选择人培方案: "{{programName}}" }
+  # 学期必须选「当前学期」：学生课表按 is_current 学期查询（FindTermForSchedule is_current DESC），
+  # 选最新学期（2028）会导致排课学期与学生课表学期错位、学生课表看不到排课（2026-08-21 实测）
   - role: school
-    select: { 请选择学期: first }
+    select: { 请选择学期: "（当前学期）" }
     submit: 生成教学计划
     expectApi: { method: POST, url: /affairs/teaching-plans, status: 201 }
     timeoutMs: 20000
+  # 教学计划行名 = 「方案+学期+专业」拼装（无独立名称），用 {{programName}} 定位行
   - role: school
     goto: /affairs/teaching-plans
-    clickRow: { text: "{{courseName}}", action: 提交审批 }
+    clickRow: { text: "{{programName}}", action: 提交审批 }
     expectText: 提交审批
     timeoutMs: 20000
   - role: school
@@ -1432,42 +1450,91 @@ steps:
     expectApi: { method: POST, url: /approvals, status: 201 }
   - role: school
     goto: /affairs/approvals
-    clickRow: { text: "{{courseName}}", action: 通过 }
+    clickRow: { text: "{{programName}}", action: 通过 }
     submit: 确认通过
     expectApi: { method: POST, url: /approvals/, status: 200 }
   - role: school
     goto: /affairs/teaching-plans
-    expectText: "{{courseName}}"
+    expectText: "{{programName}}"
     timeoutMs: 20000
   - role: school
-    clickRow: { text: "{{courseName}}", action: 发布 }
+    clickRow: { text: "{{programName}}", action: 发布 }
     expectApi: { method: POST, url: /affairs/teaching-plans/, status: 200 }
-  # ── 排课：选计划 → 待排条目 → 排入 周一·上午第一节课 ──
+  # ── 排课：最新生成的计划自动选中（列表按 generated_at DESC）→ 待排条目 → 排入 周一·上午第一节课 ──
   # 条目自动挂专业（软件技术）班级，弹窗班级预填；场地必选
   - role: school
     goto: /affairs/scheduling
-    expectText: 请选择教学计划
+    expectText: 排课管理
     timeoutMs: 20000
-  - role: school
-    select: { 请选择教学计划: "{{programName}}" }
-    clickText: "{{courseName}}"
-    timeoutMs: 20000
+  # 幂等清理：上轮 flow 残留的 draft 排课会占用「周一·上午第一节课」单元格，
+  # 点击触发「编辑排课」而非「完善排课信息」且创建冲突（2026-08-21 实测）。
+  # 点残留格 → 编辑弹窗 → 取消排课 → 确认删除；首次运行（空单元格）无反应→后续 skip
   - role: school
     clickCell: { 上午第一节课: 周一 }
-    expectText: 编辑排课
+    optional: true
+  - role: school
+    click: 取消排课
+    confirm: true
+    optional: true
+  - role: school
+    expectText: "{{courseName}}"
     timeoutMs: 20000
   - role: school
-    select: { 选择场地: first }
-    submit: 保存
+    clickText: "{{courseName}}"
+  - role: school
+    clickCell: { 上午第一节课: 周一 }
+    # 首次排课弹窗标题为「完善排课信息」（班级/教师/场地均必填）
+    expectText: 完善排课信息
+    timeoutMs: 20000
+  # 授课班级：打开 picker（预填时显示「管理班级」，空时显示「添加班级」，双路径 optional）
+  # 并确保 软件技术2401 勾选后确认——覆盖「条目带班级」与「不带」两种状态
+  - role: school
+    click: 管理班级
+    fill: { 搜索...: 软件技术2401 }
+    optional: true
+  - role: school
+    click: 添加班级
+    fill: { 搜索...: 软件技术2401 }
+    optional: true
+  - role: school
+    check: { 软件技术2401: true }
+    submit: true
+    optional: true
+  # 授课教师必填：UserSelector 选择（与审批人选择同组件同交互）
+  - role: school
+    click: 选择教师
+    expectText: 选择用户
+    timeoutMs: 20000
+  - role: school
+    fill: { 搜索用户...: 巡检-教师 }
+    clickRow: { text: 巡检-教师 }
+  - role: school
+    click: 确认
+  # 场地必填：触发器显示「请选择」（value=none），选具体场地（不依赖 first 占位跳过）
+  - role: school
+    select: { 请选择: "创新机房 A201" }
+  # 验证三字段已设置（触发器文本已更新为所选值）
+  - role: school
+    expectText: 巡检-教师
+    timeoutMs: 5000
+  - role: school
+    expectText: "创新机房 A201"
+    timeoutMs: 5000
+  - role: school
+    submit: 保存并排课
     expectApi: { method: POST, url: /affairs/schedules, status: 201 }
     timeoutMs: 20000
-  # ── 发布课表（课表视图与发布 Tab）──
+  # ── 发布课表（课表视图与发布 Tab：发布课表按钮 → 确认发布弹窗）──
   - role: school
     click: 课表视图与发布
-    expectText: 发布
+    expectText: 发布课表
     timeoutMs: 20000
   - role: school
-    click: 发布
+    click: 发布课表
+    expectText: 确认发布
+    timeoutMs: 10000
+  - role: school
+    click: 确认发布
     expectApi: { method: POST, url: /affairs/schedules/publish, status: 200 }
     timeoutMs: 20000
   # ── 学生课表可见（学生已属 软件技术2401，排课班级来自专业班级）──

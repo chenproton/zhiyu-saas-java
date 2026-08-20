@@ -145,13 +145,24 @@ async function clickRowAction(page, rowText, action) {
 // 下拉选择：label 邻近的 combobox 触发器 → 选项；Combobox 带搜索框时先输入
 async function selectOption(page, label, option) {
   let trigger = null
-  const texts = page.locator(`xpath=//*[normalize-space(text())=${JSON.stringify(label)}]`)
-  const tn = Math.min(await texts.count(), 5)
-  for (let i = 0; i < tn && !trigger; i++) {
-    const box = texts.nth(i).locator(`xpath=ancestor::*[self::div or self::label][1]`)
-    const t = box.locator('[role="combobox"], button:has([data-placeholder])')
-    if (await t.count()) trigger = t.first()
+  // 1) 优先：定位「文本含 label」的 combobox 触发器本身（filter hasText 子串匹配）。
+  //    避免「文本的 ancestor 容器内含整行多个 combobox」时误取第一个（如人培方案课程行：
+  //    「搜索体系课...」的 ancestor div 含行类型 select「体系课」，先取到它就点错了，2026-08-20 实测）
+  const byText = page.locator('[role="combobox"]:visible').filter({ hasText: label }).first()
+  if (await byText.count()) {
+    trigger = byText
   }
+  // 2) 文本的邻近容器内找 combobox（placeholder 渲染为按钮文本的场景）
+  if (!trigger) {
+    const texts = page.locator(`xpath=//*[normalize-space(text())=${JSON.stringify(label)}]`)
+    const tn = Math.min(await texts.count(), 5)
+    for (let i = 0; i < tn && !trigger; i++) {
+      const box = texts.nth(i).locator(`xpath=ancestor::*[self::div or self::label][1]`)
+      const t = box.locator('[role="combobox"], button:has([data-placeholder])')
+      if (await t.count()) trigger = t.first()
+    }
+  }
+  // 3) 兜底：文本之后最近的 combobox
   if (!trigger) {
     const fb = page.locator(`xpath=//*[contains(normalize-space(.), ${JSON.stringify(label)})][1]/following::*[@role='combobox'][1]`)
     if (await fb.count()) trigger = fb.first()
@@ -175,17 +186,29 @@ async function selectOption(page, label, option) {
     }
   }
   const panelSel = '[data-state="open"] [role="option"]:visible:not([aria-disabled="true"]), [data-state="open"] [cmdk-item]:visible:not([aria-disabled="true"])'
+  // first 时跳过占位选项（「请选择/不指定」等空值项），避免选中后表单仍为空
   const opt = option === 'first'
-    ? page.locator(panelSel).first()
+    ? page.locator(panelSel + ':not(:has-text("请选择")):not(:has-text("不指定"))').first()
     : page.locator(panelSel).filter({ hasText: option }).first()
   // 选项限定在「当前打开的面板」内：无差别 getByRole('option') 会命中已关闭 Select 残留的 portal
   // 选项（如人培方案课程行的行类型 Select），导致点错；禁用项（占位/空态）跳过（2026-08-20 实测）
-  if (await opt.count()) { await opt.click(); await dismissIfOpen(); return }
+  try {
+    // 等待选项出现（下拉数据异步加载，如方案课程行体系课列表；cmdk 选项随数据渲染挂载）
+    await opt.waitFor({ state: 'visible', timeout: 6000 })
+    await opt.click()
+    await dismissIfOpen()
+    return
+  } catch { /* 主选择器未命中，走兜底 */ }
   // 兜底：仍限定「当前打开面板」（data-state=open）内的可见非禁用选项；无状态面板（旧实现）才放宽
   const item = option === 'first'
-    ? page.locator(panelSel + ', [cmdk-list] [cmdk-item]:visible:not([aria-disabled="true"])').first()
+    ? page.locator(panelSel + ':not(:has-text("请选择")):not(:has-text("不指定")), [cmdk-list] [cmdk-item]:visible:not([aria-disabled="true"]):not(:has-text("请选择")):not(:has-text("不指定"))').first()
     : page.locator(panelSel + ', [cmdk-list] [cmdk-item]:visible:not([aria-disabled="true"])').filter({ hasText: option }).first()
-  if (await item.count()) { await item.click(); await dismissIfOpen(); return }
+  try {
+    await item.waitFor({ state: 'visible', timeout: 3000 })
+    await item.click()
+    await dismissIfOpen()
+    return
+  } catch { /* 兜底也未命中 */ }
   throw new Error(`「${label}」下拉中未找到选项「${option}」`)
 }
 
@@ -210,7 +233,7 @@ async function clickSubmit(page, cfg, submit) {
 async function clickConfirm(page, cfg) {
   const dialog = page.locator('[role="dialog"]:visible, [role="alertdialog"]:visible').last()
   if (!await dialog.count()) throw new Error('confirm：当前无可确认弹窗')
-  const words = ['确认', '确定', '删除', '通过', '发布', '下架', '关闭', '启用', '禁用', 'OK', 'Confirm', 'Delete']
+  const words = ['确认', '确定', '删除', '通过', '发布', '下架', '关闭', '启用', '禁用', '取消排课', 'OK', 'Confirm', 'Delete']
   const re = new RegExp(`^(?:${words.join('|')})`)
   const btns = dialog.locator('button:visible')
   const n = await btns.count()
