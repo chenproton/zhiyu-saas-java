@@ -6,14 +6,13 @@
     </div>
 
     <el-card shadow="never">
-      <!-- 分类筛选（对齐 React：测评资源=题库+试卷，AI 服务=知识库+智能体） -->
+      <!-- 分类筛选（对齐 React：测评资源=题库+试卷） -->
       <el-radio-group v-model="activeCategory" class="cat-tabs">
         <el-radio-button value="all">全部收藏（{{ totalCount }}）</el-radio-button>
         <el-radio-button value="jobs">职业岗位</el-radio-button>
         <el-radio-button value="scenes">实践场景</el-radio-button>
         <el-radio-button value="courses">数字课程</el-radio-button>
         <el-radio-button value="exams">测评资源</el-radio-button>
-        <el-radio-button value="ai">AI 服务</el-radio-button>
       </el-radio-group>
 
       <div v-loading="loading" class="content">
@@ -72,22 +71,19 @@ const favorites = reactive<Record<string, FavItem[]>>({
   scenes: [],
   courses: [],
   banks: [],
-  exams: [],
-  aiKbs: [],
-  aiAgents: []
+  exams: []
 });
 
 const totalCount = computed(() =>
   Object.values(favorites).reduce((s, arr) => s + arr.length, 0)
 );
 
-/* 展示分组：测评资源合并题库+试卷；AI 服务合并知识库+智能体 */
+/* 展示分组：测评资源合并题库+试卷 */
 const groups = computed(() => [
   { key: 'jobs', label: '职业岗位', items: favorites.jobs },
   { key: 'scenes', label: '实践场景', items: favorites.scenes },
   { key: 'courses', label: '数字课程', items: favorites.courses },
-  { key: 'exams', label: '测评资源', items: [...favorites.banks, ...favorites.exams] },
-  { key: 'ai', label: 'AI 服务', items: [...favorites.aiKbs, ...favorites.aiAgents] }
+  { key: 'exams', label: '测评资源', items: [...favorites.banks, ...favorites.exams] }
 ]);
 
 const visibleGroups = computed(() =>
@@ -140,20 +136,6 @@ async function load() {
       description: e.description,
       href: `/evaluation/landing/exams/${e.id}`,
       targetType: 'exam' as FavoriteTargetType
-    }));
-    favorites.aiKbs = (favRes?.ai_kb || []).map((k) => ({
-      id: k.id,
-      name: k.name,
-      description: k.description,
-      href: `/portal/apps/ai/kb/${k.id}`,
-      targetType: 'ai_kb' as FavoriteTargetType
-    }));
-    favorites.aiAgents = (favRes?.ai_agent || []).map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      href: `/portal/apps/ai/agents/${a.id}`,
-      targetType: 'ai_agent' as FavoriteTargetType
     }));
   } catch (e) {
     ElMessage.error((e as Error).message || '加载失败');

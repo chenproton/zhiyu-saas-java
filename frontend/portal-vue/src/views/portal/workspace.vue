@@ -1,5 +1,5 @@
 <!--
-  我的服务台（/portal/workspace）——完整复刻 React frontend/edu/app/portal/workspace/page.tsx（911 行）。
+  我的服务台（/portal/workspace）——完整复刻原 React 版 workspace/page.tsx（911 行）。
 
   对齐要点：
   - 角色分支：student（学生工作台）/ teacher（教师工作台）/ school_admin（学校管理员工作台），

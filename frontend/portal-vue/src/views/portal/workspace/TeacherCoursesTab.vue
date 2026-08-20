@@ -1,6 +1,6 @@
 <!--
   我的场景/课程 Tab（教师）。
-  对齐 React frontend/edu/app/portal/workspace/_components/teacher-courses-tab.tsx（1176 行）：
+  对齐原 React 版 teacher-courses-tab.tsx（1176 行）：
   - 数据源：GET /portal/workspace/dashboard?role=teacher（classPlans / classSessions）；
   - 顶部学期切换（classPlans.term 去重，默认第一个学期）；
   - 左侧课程/场景导航（首字方块 + 班级徽标 + 混合课程/实践场景徽标 + 节次数），默认选中首个；

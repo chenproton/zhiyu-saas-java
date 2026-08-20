@@ -66,17 +66,8 @@ public final class ZhiyuRateLimitRule {
         new Rule(null, "/api/v1/alliance/public/**", "public-read", 120, ONE_MINUTE, false),
 
         // ===== 登录用户端点（按用户，未登录退回 IP） =====
-        // 文件上传：upload 20 次/分（Go uploadLimiter，含知识库文档上传）
+        // 文件上传：upload 20 次/分（Go uploadLimiter）
         new Rule("POST", "/api/v1/files/upload", "upload", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/kb/*/documents", "upload", 20, ONE_MINUTE, true),
-        // AI 对话/生成：ai 20 次/分（Go aiLimiter）
-        new Rule("POST", "/api/v1/ai/chat", "ai", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/position-assist", "ai", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/scenario-assist", "ai", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/kb/*/ask", "ai", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/agents/*/chat", "ai", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/agents/*/preview", "ai", 20, ONE_MINUTE, true),
-        new Rule("POST", "/api/v1/ai/yiknow/chat", "ai", 20, ONE_MINUTE, true),
         // 导入/导出/模板：import-export 10 次/分（Go importExportLimiter）
         new Rule(null, "/api/v1/import/**", "import-export", 10, ONE_MINUTE, true),
         new Rule(null, "/api/v1/export/**", "import-export", 10, ONE_MINUTE, true),

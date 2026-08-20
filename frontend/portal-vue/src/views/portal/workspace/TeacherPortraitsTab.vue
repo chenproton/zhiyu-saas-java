@@ -1,6 +1,6 @@
 <!--
   我的学生 Tab（教师）。
-  对齐 React frontend/edu/app/portal/workspace/_components/teacher-portraits-tab.tsx（524 行）：
+  对齐原 React 版 teacher-portraits-tab.tsx（524 行）：
   - 数据源：GET /evaluation/job-ability/results（page/limit 分页，page 从 1 起），全量分页拉取避免 >200 截断；
     同一学生保留达成率最高的一条；
   - 顶部三卡：总学生数 / 当前筛选（班级）/ 匹配结果人数；

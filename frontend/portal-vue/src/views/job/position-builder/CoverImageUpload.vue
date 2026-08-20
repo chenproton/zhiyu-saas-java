@@ -1,5 +1,5 @@
 <template>
-  <!-- 封面上传（对齐 React frontend/edu/components/shared/cover-image-upload.tsx） -->
+  <!-- 封面上传（对齐原 React 版 cover-image-upload） -->
   <div>
     <div class="cover-label">{{ label }}</div>
     <div class="cover-box" role="button" tabindex="0" @click="triggerUpload" @keydown.enter.prevent="triggerUpload">

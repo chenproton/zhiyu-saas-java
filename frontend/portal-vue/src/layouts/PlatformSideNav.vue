@@ -1,5 +1,5 @@
 <!--
-  平台左侧导航（完整移植 React frontend/packages/ui/src/components/platform-shell/PlatformSideNav.tsx）
+  平台左侧导航（完整移植原 React 版 PlatformSideNav.tsx）
 
   对齐要点：
   - 品牌区：返回按钮（config.sideBackHref）+ 平台图标 + currentPlatformLabel，底部分隔线；

@@ -1,1 +1,0 @@
-DROP TABLE IF EXISTS ai_kb_asks;

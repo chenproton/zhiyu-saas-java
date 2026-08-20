@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-// 手动抽题弹窗：对齐 React frontend/edu/components/evaluation/manual-question-dialog.tsx
+// 手动抽题弹窗：对齐原 React 版 manual-question-dialog.tsx
 import { computed, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { questionApi, questionBankApi } from '@/api/evaluation';

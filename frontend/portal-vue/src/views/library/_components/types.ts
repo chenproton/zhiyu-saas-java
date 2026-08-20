@@ -1,5 +1,5 @@
-// 库页面共享类型（对齐 frontend/packages/shared-types/src/library.ts 与
-// frontend/packages/api-client 的 CitationStats / UncitedItem 契约）
+// 库页面共享类型（对齐原 React 版 shared-types 的 library.ts 与
+// api-client 的 CitationStats / UncitedItem 契约）
 
 export interface CitationBucket {
   label: string;

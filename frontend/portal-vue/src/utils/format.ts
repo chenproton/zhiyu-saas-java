@@ -1,4 +1,4 @@
-// 通用格式化工具（等价 frontend/edu/lib/format-utils.ts 的 formatSize / isSafeLinkUrl）
+// 通用格式化工具（等价原 React 版 format-utils.ts 的 formatSize / isSafeLinkUrl）
 
 export function formatSize(bytes?: number): string {
   if (bytes == null || Number.isNaN(bytes)) return '-';

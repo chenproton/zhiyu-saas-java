@@ -2,11 +2,11 @@
  * 我的服务台公共工具：学习入口链接、周次导航、状态徽标配色、角色解析。
  *
  * 对齐来源（React）：
- * - frontend/edu/lib/learn-links.ts        → sceneLandingHref / lessonLandingHref / examHref
- * - frontend/edu/lib/schedule-utils.ts     → getWeekStart / getWeekEnd / getWeeksInMonth / getWeekIndex / getWeekTargetDate
- * - frontend/packages/shared-types/src/status.ts → getStatusConfig（仅取工作台用到的状态键）
- * - frontend/edu/lib/active-role.ts        → resolveActiveRole / persistActiveRole（同一 localStorage key）
- * - frontend/edu/app/portal/workspace/_data/workspace-student-types.ts → allPeriods / days
+ * - 原 React 版 lib/learn-links.ts  → sceneLandingHref / lessonLandingHref / examHref
+ * - 原 React 版 lib/schedule-utils.ts → getWeekStart / getWeekEnd / getWeeksInMonth / getWeekIndex / getWeekTargetDate
+ * - 原 React 版 shared-types/status.ts → getStatusConfig（仅取工作台用到的状态键）
+ * - 原 React 版 lib/active-role.ts → resolveActiveRole / persistActiveRole（同一 localStorage key）
+ * - 原 React 版 workspace-student-types.ts → allPeriods / days
  */
 
 import type { Role } from '@/types/system';

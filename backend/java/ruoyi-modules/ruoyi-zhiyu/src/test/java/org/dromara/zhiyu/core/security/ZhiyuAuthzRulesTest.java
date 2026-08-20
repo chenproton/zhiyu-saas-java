@@ -22,8 +22,7 @@ import static org.dromara.zhiyu.core.security.ZhiyuAuthzRules.Outcome.UNAUTHORIZ
  *   <li>middleware/menu_test.go（RequireMenu 授权矩阵 + 跨模块只读引用回归）；</li>
  *   <li>middleware/platform_test.go（RequirePlatform 平台隔离矩阵）；</li>
  *   <li>middleware/rbac.go（RequireSystemPermission / RequireUserRead / RequireRoleOrMenu）；</li>
- *   <li>router/routes_partner.go:95-104（adminOnly 组）；</li>
- *   <li>handler/ai_center_menu_auth_test.go（AI 管理端菜单驱动授权）。</li>
+ *   <li>router/routes_partner.go:95-104（adminOnly 组）。</li>
  * </ul>
  *
  * @author zhiyu
@@ -383,39 +382,6 @@ class ZhiyuAuthzRulesTest {
         // 无 partner 角色（如 portal 学校账号误持 partner token）→ 拒绝
         assertEquals(FORBIDDEN_PERMISSION, eval("GET", "/api/v1/partner/schools", "u", "partner",
             snapshot(List.of("teacher"))));
-    }
-
-    // ---------- AI 管理端菜单驱动授权（ai_center_menu_auth_test.go）----------
-
-    @Test
-    @DisplayName("AI 管理端：勾选 AI 管理菜单即可审核/挂接，不再限 school_admin 角色")
-    void aiAdminMenuDriven() {
-        AuthzSnapshot custom = snapshot(List.of("custom_role"),
-            "/portal/apps/ai/admin/reviews", "/portal/apps/ai/admin/integrations");
-        assertEquals(ALLOW, eval("GET", "/api/v1/ai/admin/reviews", "u", "portal", custom));
-        assertEquals(ALLOW, eval("GET", "/api/v1/ai/admin/integrations", "u", "portal", custom));
-        assertEquals(ALLOW, eval("POST", "/api/v1/ai/admin/reviews/kb/1/approve", "u", "portal", custom));
-        // 未配置其他模块菜单仍拒绝
-        assertEquals(FORBIDDEN_PERMISSION, eval("GET", "/api/v1/job/positions", "u", "portal", custom));
-        // 只勾前台 AI 菜单不获管理权限
-        assertEquals(FORBIDDEN_PERMISSION, eval("GET", "/api/v1/ai/admin/reviews", "u", "portal",
-            menusOnly("/portal/apps/ai/chat")));
-        // school_admin 无 menus 兜底全量（admin 视图）
-        assertEquals(ALLOW, eval("GET", "/api/v1/ai/admin/reviews", "u", "portal",
-            adminSnapshot(List.of("school_admin"))));
-    }
-
-    @Test
-    @DisplayName("AI 用户端：任意登录角色可用（知识库/智能体/广场/对话）")
-    void aiUserSideAuthenticated() {
-        AuthzSnapshot noMenus = snapshot(List.of("student"));
-        assertEquals(ALLOW, eval("GET", "/api/v1/ai/kb", "u", "portal", noMenus));
-        assertEquals(ALLOW, eval("POST", "/api/v1/ai/kb", "u", "portal", noMenus));
-        assertEquals(ALLOW, eval("POST", "/api/v1/ai/agents/1/chat", "u", "portal", noMenus));
-        assertEquals(ALLOW, eval("GET", "/api/v1/ai/square/kbs", "u", "portal", noMenus));
-        assertEquals(ALLOW, eval("GET", "/api/v1/ai/integrations", "u", "portal", noMenus));
-        assertEquals(ALLOW, eval("POST", "/api/v1/ai/chat", "u", "portal", noMenus));
-        assertEquals(ALLOW, eval("PATCH", "/api/v1/ai/conversations/1", "u", "portal", noMenus));
     }
 
     // ---------- 导入导出与工作流（routes.go:116-125 / routes_affairs.go:66-78）----------

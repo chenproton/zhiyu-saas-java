@@ -1,19 +1,23 @@
-# ADR-0003 关键写操作名单（纵深防御：SQL 层必须补租户条件）
-# 格式：每行 `<store文件名> <函数名...>`（空格分隔多个函数名）
-# 新增关键写操作（考试题目增删改分、密码/状态写）时，在本文件追加一行，
-# spec-check.sh 第 6 项会自动校验对应 store 函数体是否含 tenant_id 条件。
-users.go UpdateStatus ResetPassword
-tenant_admins.go ResetPassword
-exams.go AddQuestion FetchQuestion RemoveQuestion UpdateQuestionScore BulkUpdateScores RecalcExamTotal
-# 导入覆盖场景的密码/状态写（UpdateImportUser/UpdateImportTeacher 为包级函数，
-# 覆盖更新 users 的 password_hash/status，SQL 已带 tenant_id 条件）
-resource_import_export.go UpdateImportUser UpdateImportTeacher
-# 状态写/改分（2026-08 第二轮复查补录）：
-# 内容状态机流转/审核、考试/评价结果改分、申诉处理、题目同步、职称启停
-content_actions.go Transition Review
-exam_results.go Grade
-evaluation_results.go Grade BatchGrade
-appeal.go Process
-exam_questions.go SyncExamQuestions
-staff_titles.go UpdateStatus
-
+# ADR-0003 关键写操作名单（Java mapper 文件级：纵深防御，SQL 层必须带 tenant_id 租户条件）
+# 格式：每行一个 mapper 文件路径，相对 ruoyi-zhiyu 模块根
+#       （backend/java/ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu 下），
+#       即 mapper/<域>/<类名>.java；以 # 开头为注释。
+# 校验规则（spec-check.sh 第 6 项）：文件内 SQL（@Select/@Update/@Insert/@Delete 注解字符串
+# 与 String 常量 SQL）文本必须包含 tenant_id，否则违规。
+# 新增关键写操作（考试题目增删改分、密码/状态写、申诉处理、题目同步、职称启停、审批状态流转）时，
+# 在本文件追加一行即可纳入校验。
+mapper/job/JobBatchMapper.java
+mapper/job/JobCareerPositionMapper.java
+mapper/job/JobApprovalMapper.java
+mapper/affairs/TeachingPlanEntryMapper.java
+mapper/lesson/LessonCourseMapper.java
+mapper/lesson/NodeEvaluationResultMapper.java
+mapper/lesson/LessonNodeQuizMapper.java
+mapper/lesson/LessonNodeQuizQuestionMapper.java
+mapper/evaluation/EvaluationAppealMapper.java
+mapper/evaluation/EvaluationExamMapper.java
+mapper/evaluation/EvaluationExamResultMapper.java
+mapper/evaluation/EvaluationQuestionMapper.java
+mapper/system/SystemStaffTitleMapper.java
+mapper/system/SystemTenantAdminMapper.java
+mapper/system/SystemUserMapper.java

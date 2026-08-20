@@ -11,7 +11,7 @@
 | 类型 | 特征 | 读者如何使用 | 本仓库的例子 |
 |---|---|---|---|
 | **教程（tutorial）** | 引导读者「按顺序做完一件事」，有可观察的结果 | 从第一步读到最后，动手操作 | （暂缺，见「三、当前缺口」） |
-| **参考（reference）** | 支持「在明确范围内查找」，无所谓顺序 | 用时翻查，跳着读 | `components.md`（组件速查）、`refactor-layering.md`（红线清单）、`spec/*`（规格） |
+| **参考（reference）** | 支持「在明确范围内查找」，无所谓顺序 | 用时翻查，跳着读 | `security-standards.md`（安全红线）、`refactor-layering.md`（Go 时代分层方案，历史参考）、`spec/*`（规格） |
 
 **判断口诀**：如果文档要求读者「从头读才能懂」，它是教程；如果读者「哪里不懂查哪里」，它是参考。
 
@@ -30,10 +30,8 @@
 
 | 主题 | 权威文档 |
 |---|---|
-| 后端分层红线（handler/store/service 职责） | `refactor-layering.md` |
-| 前端组件复用速查 | `components.md` |
-| 表单/表格架构盘点 | `forms-tables.md` |
-| AI 功能统一底座 | `ai-development.md` |
+| 后端分层红线（controller/service/mapper） | 根 `AGENTS.md` 第二部分（Java 框架契约）；Go 时代方案见 `refactor-layering.md`（历史参考） |
+| 前端组件复用速查 | 根 `AGENTS.md` 第二部分 + `frontend/portal-vue`/`frontend/plus-ui` 源码（Element Plus / RuoYi） |
 | 快照版本机制 | `resource-snapshot-versioning.md` |
 | 全平台能力规格 | `spec/01~05` |
 

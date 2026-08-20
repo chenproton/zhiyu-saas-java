@@ -1,6 +1,6 @@
 <!--
   区块卡片：标题 + 图标底色 + 右侧动作按钮 + 内容插槽。
-  对齐 React frontend/edu/app/portal/workspace/_components/section-card.tsx
+  对齐原 React 版 section-card.tsx
   （白底、1px #f3f4f6 边框、圆角 12px、轻阴影；图标 32×32 圆角底色按 iconColor 取色）。
 -->
 <template>

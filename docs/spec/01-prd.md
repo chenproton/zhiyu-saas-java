@@ -14,7 +14,7 @@
 | 痛点 | 现状 | 平台价值 |
 |------|------|---------|
 | 人才培养与产业岗位脱节 | 课程体系由学科逻辑驱动，不指向具体岗位能力 | 岗位能力建模先行（岗位→职责→能力点），课程/场景/测评全部回挂能力点 |
-| 学生能力无数据沉淀 | 成绩单只有分数，无法证明"胜任某岗位" | 课程/节点/场景多级评价结果统一汇入岗位能力汇聚，形成能力画像与档案（**临时边界**：当前汇聚仅用场景任务，课程任务恢复见 `certifications.go` `certificationSceneTasksOnly` 开关） |
+| 学生能力无数据沉淀 | 成绩单只有分数，无法证明"胜任某岗位" | 课程/节点/场景多级评价结果统一汇入岗位能力汇聚，形成能力画像与档案（**临时边界**：当前汇聚仅用场景任务） |
 | 教学资源建设零散 | 资源散落，不可复用、不可评估 | 统一资源库（11 类资源）+ 知识点/能力点双索引 + 评价量规复用 |
 | 校企合作管理靠手工 | 企业、协议、项目、成果、专家信息分散，无台账 | 联盟管理平台，全主体台账 + 合作字典 + 品牌运营 |
 | 教务排课靠人工冲突 | 场地/教师/班级冲突频繁返工 | 教学计划→自动排课→冲突检测（409 提示三类冲突） |
@@ -49,7 +49,6 @@
 | resource | 教学资源共享服务平台 | library | 资源库、知识点/能力点/证书库、现场问答题库 |
 | affairs | 教务管理服务平台 | affairs | 学期、人培方案、教学计划、排课、批次/审批 |
 | alliance | 产教融合与就业服务平台 | portal/alliance | 校企合作台账、品牌运营、对外展示落地页 |
-| ai | AI 智能服务平台 | portal/apps/ai | AI 助手对话、AI 辅助表单填写（岗位/场景）；AI 智能服务中心（自建知识库/智能体、AI 广场、发布审核、第三方挂接）；统一走 AIService 底座 |
 | opc | OPC专区 | — | 占位 |
 | decision | 敏捷决策中心 | — | 占位 |
 | research | 教科研服务中心 | — | 占位 |
@@ -63,7 +62,6 @@
 - **OPC 专区、敏捷决策中心、教科研服务**：仅应用中心入口卡片，无页面无接口
 - **平台地址/跳转配置**：`platform_links`/`app_modules` 表已删除（迁移 110），固定地址收敛到前端配置
 - **跨租户数据访问**：平台管理员无跨租户读取特权（明确的产品边界，防止数据泄露）
-- **AI 数据分析**：规划中，未实现
 - **课程/节点作业提交与批改**：数据表已建但无接口与页面（休眠）
 - **毕业设计与毕业资格查询**：数据表已建但无接口与页面（休眠）；**微证书发放**：同（表已建、无路由）
 
@@ -149,21 +147,6 @@
 | P-1 | 作为 teacher/student/school_admin，我希望登录后进入角色化工作台，以便直达常用功能 | 登录后按角色跳转（school_admin→应用中心，teacher/student→工作台）；工作台数据按角色聚合（30s 缓存，键含 userID） |
 | P-2 | 作为用户，我希望通过菜单权限控制页面可见性，以便按岗位职责隔离功能 | **菜单驱动的 API 授权（ADR-0008）**：角色=菜单权限集合，页面可见性与后端 API 授权均由 roles 配置的 menus 驱动（勾选菜单即授予对应页面的全部 CRUD/审批操作）；school_admin/platform_admin 未显式配置 menus 时全量放行（roles 页回显全选，显式配置后按菜单判定）；保留特判：关键写白名单（密码/租户状态/有效期/审批终审限 school_admin，纵深防御）、服务台按角色聚合（P-1）、平台隔离与租户归属校验不变 |
 
-### 3.10 AI 智能服务中心（ai，详见 docs/spec/ai-service-center.md §3）
-
-| # | 用户故事 | 验收标准（AC） |
-|---|---------|---------------|
-| KB-1 | 作为教师/学生，我希望创建知识库并上传文档（pdf/docx/txt/md），以便沉淀可问答的知识 | 创建默认为私有；上传后异步解析分块（≤10MB，失败可见原因）；doc_count 实时反映 |
-| KB-2 | 作为知识库拥有者，我希望邀请协作者共同维护，以便团队协作建设 | editor 可编辑/传文档，viewer 只读；owner 不能被加为协作者；移除即时生效 |
-| KB-3 | 作为知识库拥有者，我希望把知识库发布到全校广场，以便知识共享 | 发布需 school_admin 审核；驳回带理由可修改后重新提交；下架后广场不可见 |
-| AG-1 | 作为教师/学生，我希望创建智能体并关联自己的知识库，以便获得垂直领域问答助手 | 名称/头像/开场白/system_prompt 可配；关联 ≤5 个知识库（私有需本人或协作可见） |
-| AG-2 | 作为用户，我希望与智能体流式对话并看到资料来源，以便信任答案依据 | SSE 流式输出；命中知识时展示溯源（文档名+段号+片段）；无命中明确兜底话术 |
-| AG-3 | 作为用户，我希望管理我的多轮会话，以便延续上下文 | 会话持久化（标题取首问）；历史窗口 10 条；会话仅本人可见/可删 |
-| SQ-1 | 作为用户，我希望在 AI 广场搜索/浏览全校共享的知识库与智能体，以便一键使用 | 仅 published 可见；搜索/标签/热度排序；收藏（仅已发布可收藏） |
-| AD-1 | 作为 school_admin，我希望审核知识库/智能体的发布申请，以便把控内容质量 | 通过/驳回（必填理由）/下架；审核日志留痕；学生无权访问管理端 |
-| AD-2 | 作为 school_admin，我希望挂接第三方智能体与应用，以便聚合外部 AI 服务入口 | 纯链接卡片（URL 仅 http/https）；上下架即时生效；广场分组展示 |
-| ST-1 | 安全锚点：私有知识库的内容绝不通过任何智能体/接口泄露给无权限用户 | 检索 SQL 强制可见性过滤（published ∨ owner ∨ collaborator）；越权访问一律 404 语义 |
-
 ---
 
 ## 4. 功能详述
@@ -177,7 +160,7 @@
 
 ### 4.2 内容统一状态机
 
-统一内容状态机覆盖**5 类版本化内容实体**：岗位、场景、课程、题库、试卷（`domain/status.go` + `store/content_actions.go`）；这 5 类含 `version` 列、发布即快照（ADR-0006，`versionedContentTables`）。**人培方案、教学计划不接入六态**：仅两态（draft/published、draft/confirmed），不版本化，但同列 `AllowedContentTables` 白名单，共享提交/发布/归档等统一动作的表名校验；**题目（exam_questions）不接入内容状态机**（随题库/试卷整体流转）。
+统一内容状态机覆盖**5 类版本化内容实体**：岗位、场景、课程、题库、试卷（统一内容动作校验）；这 5 类含 `version` 列、发布即快照（ADR-0006，`versionedContentTables`）。**人培方案、教学计划不接入六态**：仅两态（draft/published、draft/confirmed），不版本化，但同列 `AllowedContentTables` 白名单，共享提交/发布/归档等统一动作的表名校验；**题目（exam_questions）不接入内容状态机**（随题库/试卷整体流转）。
 
 状态 6 个：`draft` / `pending` / `approved` / `rejected` / `published` / `archived`。
 
@@ -194,7 +177,7 @@
 
 - **可编辑态**：draft / rejected / approved / published（`published` 可继续编辑，编辑后重新发布生成新版本，历史学习/测评数据经快照保留，见 `docs/resource-snapshot-versioning.md`）
 - **可删除态**：draft / rejected / archived（物理删除，外键级联清理子表）
-- 每次动作经 `ContentActionStore.Transition` 校验合法转移，非法转移返回 409
+- 每次动作经统一内容动作服务校验合法转移，非法转移返回 409
 
 ### 4.3 审批流
 
@@ -233,7 +216,7 @@
 
 | 项 | 指标 | 实现 |
 |----|------|------|
-| 常规接口超时 | 30s | chi 中间件统一；import/export/templates 前缀 10min |
+| 常规接口超时 | 30s | 框架统一中间件；import/export/templates 前缀 10min |
 | 分页上限 | 200 条/页，默认 50 | `maxPageSize=200`，limit 钳制 [1,200] |
 | 请求体上限 | 10MB | `maxJSONBodySize` |
 | 缓存 | 落地页考试 2min、公开岗位 2min、场景列表 2min、工作台 30s | Redis（键含租户+查询参数 / userID）；未配置 Redis 自动禁用 |
@@ -246,8 +229,8 @@
 | 认证 | JWT HS256，密钥 `JWT_SECRET`（.env，禁止入库）；有效 7 天 |
 | 授权 | 三级中间件：平台隔离（RequirePlatform）→ 角色（RequireRole）→ 菜单/按钮权限；GET 放行仅限只读（RequireRoleOrMenu 限制 GET/HEAD/OPTIONS） |
 | 数据权限 | 租户行级隔离；写操作三重校验；登录日志 + 操作日志审计（POST/PUT/DELETE 自动记录） |
-| 限流 | 登录 6 接口 30 次/分钟/IP（`/auth/login`、`/auth/saas/login`、`/auth/portal/login`、`/auth/partner/login`、`/auth/partner/register`、`/auth/select-tenant`），Redis 计数，429 + X-RateLimit-* 头；另有验证码/上传/导入导出/AI 对话/密码写/公开读取限流，见 `docs/security-standards.md` §4 |
-| SQL 注入 | 排序白名单（SanitizeIdentifier）；store 层参数化查询 |
+| 限流 | 登录 6 接口 30 次/分钟/IP（`/auth/login`、`/auth/saas/login`、`/auth/portal/login`、`/auth/partner/login`、`/auth/partner/register`、`/auth/select-tenant`），Redis 计数，429 + X-RateLimit-* 头；另有验证码/上传/导入导出/密码写/公开读取限流，见 `docs/security-standards.md` §4 |
+| SQL 注入 | 排序白名单；数据访问层参数化查询 |
 | 敏感信息 | 密码 bcrypt；管理员初始密码仅返回一次 |
 | 部署加固 | 后端容器只读文件系统 + cap_drop；上传目录独立 |
 
@@ -256,17 +239,17 @@
 | 项 | 说明 |
 |----|------|
 | 浏览器 | 现代浏览器（Chrome/Edge/Firefox/Safari 近 2 个主版本）；移动端适配已完成 3 轮全量扫描 |
-| 后端运行时 | Go 1.25（CI 校验 gofmt/vet/test） |
-| 前端运行时 | Node ≥ 20（CI 用 22）、pnpm 9.15.9、React SPA（Vite 7 + React Router） |
+| 后端运行时 | Java 21 / Spring Boot 4（CI 校验 Maven 编译） |
+| 前端运行时 | Node ≥ 20（CI 用 22）、pnpm；Vue 业务门户（portal-vue，Vue 3.5 + Element Plus）+ 管理端（plus-ui，RuoYi 框架） |
 | 数据库 | PostgreSQL 15（docker 5433 映射）；Redis 7（可选） |
-| 文档预览 | flyfish-dev/file-viewer（浏览器原生，`@file-viewer/react` + `@file-viewer/preset-all`，覆盖全部 208 扩展名/25 条链路）；kkfileview 服务（profile 可选启用，端口 8012）保留作不支持格式的回退 |
+| 文档预览 | flyfish-dev/file-viewer（浏览器原生），覆盖全部 208 扩展名/25 条链路；kkfileview 服务（profile 可选启用，端口 8012）保留作不支持格式的回退 |
 
 ### 5.4 可维护性
 
-- 后端分层：handler（HTTP 适配）→ service（编排+事务）→ store（唯一 SQL）→ domain（模型）；详见 `docs/refactor-layering.md`
-- 新增 handler 禁止拼 SQL/持有 pool；新接口必须附带 handler/service/store 测试至少一种
-- 前端组件规范见 `docs/components.md`、`docs/forms-tables.md`
-- 质量门禁：CI 前端 typecheck/lint/test/format:check，后端 gofmt/vet/build/test（DB 容器）
+- 后端分层：controller（HTTP 适配）→ service（编排+事务）→ mapper（数据访问，无 DAO 层）；Java 框架契约详见根 `AGENTS.md` 第二部分
+- 新增 controller 禁止拼 SQL/持有 DB 句柄；新接口必须附带 controller/service/mapper 测试至少一种
+- 前端组件规范见 `AGENTS.md` 第二部分（Vue 门户/管理端组件体系）
+- 质量门禁：`deploy.sh` 默认开启——Maven 编译 + portal-vue/plus-ui 构建 + spec-check（见根 `AGENTS.md` 4.2）
 
 ---
 
@@ -290,8 +273,8 @@
 
 ### 6.2 参考资料
 
-- 架构分层：`docs/refactor-layering.md`
-- 前端组件：`docs/components.md`、`docs/forms-tables.md`
+- 架构分层：根 `AGENTS.md` 第二部分（Java 框架契约）
+- 前端组件：`frontend/portal-vue`（Element Plus）与 `frontend/plus-ui`（RuoYi 框架）
 - 审查指引：`docs/code-review-checklist.md`（审查清单）
 - 接口契约：`docs/spec/02-api-contract.md`
 - 数据库设计：`docs/spec/04-database-schema.md`

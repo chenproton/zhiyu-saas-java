@@ -1,6 +1,6 @@
 <!--
   工作台课表网格（年 / 月 / 周 三视图 + 年月周下拉 + 上下翻页 + 今天）。
-  对齐 React frontend/edu/app/portal/workspace/_components/workspace-schedule-grid.tsx（595 行）：
+  对齐原 React 版 workspace-schedule-grid.tsx（595 行）：
   - 周视图：8 列（节次/星期 + 周一~周日）× 10 节次行，事件卡按 type 取色并挂气泡；
   - 月视图：日历格，带 date 的单次事件按日期匹配、不带 date 的按星期每周重复，超 3 条折叠为「+N 项」；
   - 年视图：12 个月卡片，仅带 date 的单次事件按月归类（每月最多 4 条），否则显示「暂无安排」。

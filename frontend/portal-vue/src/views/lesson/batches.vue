@@ -1,5 +1,5 @@
 <template>
-  <!-- 对齐 React frontend/edu/app/lesson/admin/batches/page.tsx（BatchGroupPage 用法） -->
+  <!-- 对齐原 React 版 lesson/admin/batches/page.tsx（BatchGroupPage 用法） -->
   <BatchGroupPage
     title="批次分组管理"
     subtitle="管理课程建设批次分组，关联审批流程"

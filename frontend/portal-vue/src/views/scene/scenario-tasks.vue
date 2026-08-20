@@ -52,34 +52,10 @@
       <div class="tasks-actions">
         <el-button size="small" @click="openClone">克隆/引用任务</el-button>
         <el-button size="small" @click="openWeight">配置权重</el-button>
-        <AiTaskChainSuggestion
-          :scenario="{
-            name: existingScenario?.name || '',
-            background: existingScenario?.background || '',
-            positionName: positionName,
-            industryNames: industryName ? industryName.split('、') : [],
-            professionNames: professionName ? professionName.split('、') : [],
-            positionId: existingScenario?.careerPositionId || ''
-          }"
-          :existing-tasks="tasks.map((tk) => ({ name: tk.name, type: tk.taskType, difficulty: tk.difficulty || 3 }))"
-          :on-adopt="handleAdoptTaskChain"
-          :panel-target="taskChainPanelRef"
-        />
         <el-tag size="small" :type="totalWeight === 100 ? 'info' : 'danger'">总权重 {{ totalWeight }}%</el-tag>
         <el-button size="small" type="primary" @click="isAddTaskOpen = true">添加任务</el-button>
       </div>
     </div>
-
-    <!-- AI 任务链建议面板挂载点（teleport 目标，整行全宽，对齐 React aiTaskChainPanelRef） -->
-    <div ref="taskChainPanelRef" class="task-chain-panel-slot"></div>
-
-    <!-- AI 任务链采纳撤销提示（10 秒内可撤销） -->
-    <el-alert v-if="adoptUndo" type="success" :closable="false" class="mb-4 adopt-undo-alert">
-      <div class="adopt-undo-row">
-        <span>已采纳 AI 任务链，10 秒内可撤销</span>
-        <el-button size="small" text type="primary" @click="handleUndoAdoptChain">撤销</el-button>
-      </div>
-    </el-alert>
 
     <!-- 任务矩阵（8 列卡片，拖拽排序） -->
     <div class="task-matrix">
@@ -176,58 +152,6 @@
       <template v-if="editingCard && currentTask">
         <div class="card-dialog-sub">任务：{{ currentTask.name }}</div>
 
-        <!-- 卡片级 AI 工具栏（对齐 React renderAiToolbar） -->
-        <div v-if="cardAiField" class="card-ai-toolbar">
-          <div class="ai-toolbar-main">
-            <div class="ai-toolbar-left">
-              <el-icon class="ai-sparkle"><MagicStick /></el-icon>
-              <template v-if="cardUpdatedCount > 0">
-                <el-tag size="small" class="ai-updated-badge">AI 已更新 {{ cardUpdatedCount }} 项</el-tag>
-                <el-button
-                  v-for="k in cardAiKeys"
-                  :key="k"
-                  v-show="cardAiUpdated(k)"
-                  text
-                  size="small"
-                  class="ai-restore"
-                  @click="restoreCardField(k)"
-                >
-                  <el-icon><RefreshLeft /></el-icon>
-                  恢复上版：{{ AI_FIELD_LABELS[k] }}
-                </el-button>
-                <el-button text size="small" class="ai-restore" @click="restoreCardAll(() => ElMessage.success('已全部恢复 AI 覆盖前的内容'))">
-                  <el-icon><RefreshLeft /></el-icon>
-                  全部撤销
-                </el-button>
-              </template>
-              <span v-else class="ai-hint">AI 将基于场景与任务内容生成并直接写入</span>
-            </div>
-            <el-button size="small" class="ai-gen-btn" :disabled="cardAiRunning" @click="runCardAi">
-              <el-icon v-if="cardAiRunning" class="is-loading"><Loading /></el-icon>
-              <el-icon v-else><MagicStick /></el-icon>
-              {{ cardUpdatedCount > 0 ? '重新生成' : 'AI 生成' }}
-            </el-button>
-          </div>
-
-          <!-- 未匹配建议（新建后自动关联） -->
-          <div v-if="cardUnmatchedSuggestions.length > 0" class="ai-suggestions">
-            <p class="ai-suggestions-tip">
-              <el-icon><MagicStick /></el-icon>
-              以下建议未找到现有对象，可新建后自动关联
-            </p>
-            <div v-for="s in cardUnmatchedSuggestions" :key="s.name" class="ai-suggestion-row">
-              <div class="ai-suggestion-info">
-                <span class="ai-suggestion-name">{{ s.name }}</span>
-                <span v-if="s.description" class="ai-suggestion-desc">{{ s.description }}</span>
-              </div>
-              <el-button size="small" class="ai-create-btn" @click="handleCardCreateSuggestion(s)">
-                <el-icon><Plus /></el-icon>
-                新建
-              </el-button>
-            </div>
-          </div>
-        </div>
-
         <div class="card-dialog-body" :style="cardDialogBodyStyle">
           <!-- info -->
           <TaskInfoCard
@@ -242,35 +166,7 @@
             @update:difficulty="localTask.difficulty = $event"
             @update:hours="localTask.hours = $event"
             @update:background="localTask.background = $event"
-          >
-            <template #name-ai>
-              <ScenarioFieldAiControls
-                :updated="cardAiUpdated('name')"
-                :running="cardAiRunning"
-                :loading="cardPolishRunning"
-                @restore="restoreCardField('name')"
-                @generate="runCardSingleField('name')"
-              />
-            </template>
-            <template #background-ai>
-              <ScenarioFieldAiControls
-                :updated="cardAiUpdated('background')"
-                :running="cardAiRunning"
-                :loading="cardPolishRunning"
-                @restore="restoreCardField('background')"
-                @generate="runCardSingleField('background')"
-              />
-            </template>
-            <template #difficulty-ai>
-              <ScenarioFieldAiControls
-                :updated="cardAiUpdated('difficulty')"
-                :running="cardAiRunning"
-                :loading="cardPolishRunning"
-                @restore="restoreCardField('difficulty')"
-                @generate="runCardSingleField('difficulty')"
-              />
-            </template>
-          </TaskInfoCard>
+          />
 
           <!-- description -->
           <DescriptionEditor
@@ -452,31 +348,6 @@
       </template>
     </el-dialog>
 
-    <!-- 卡片级 AI 进度弹窗（运行中关闭视为取消） -->
-    <AiProgressDialog
-      :open="cardPipeline.open.value"
-      title="AI 辅助编写"
-      description="大模型正在根据场景与任务内容生成建议"
-      :steps="cardAiSteps"
-      :current-step="cardPipeline.phase.value"
-      :progress="cardPipeline.progress.value"
-      @close="cardPipeline.handleClose"
-    />
-
-    <!-- 卡片级 AI 未配置引导弹窗（对齐 React AiNotConfiguredDialog） -->
-    <el-dialog v-model="cardAiNotConfiguredOpen" width="460px">
-      <template #header>
-        <div class="dialog-header">
-          <el-icon class="dialog-header-icon primary"><Setting /></el-icon>
-          <span class="dialog-header-title">尚未配置 AI 服务</span>
-        </div>
-      </template>
-      <p class="dialog-desc">请先在 系统管理 &gt; 租户信息 中配置 AI 服务，再使用 AI 辅助编写</p>
-      <template #footer>
-        <el-button @click="cardAiNotConfiguredOpen = false">取消</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 删除确认 -->
     <el-dialog v-model="deleteConfirmOpen" title="确认删除" width="420px">
       <p>确定要删除任务「{{ deleteConfirmTask?.name }}」吗？删除后不可恢复。</p>
@@ -492,7 +363,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowLeft, CircleCheck, CircleCheckFilled, Delete, Document, Loading, Lock, MagicStick, Medal, Plus, Rank, RefreshLeft, ScaleToOriginal, Setting, Unlock } from '@element-plus/icons-vue';
+import { ArrowLeft, CircleCheck, CircleCheckFilled, Delete, Document, Lock, Medal, Rank, ScaleToOriginal, Unlock } from '@element-plus/icons-vue';
 import { request, buildQuery } from '@/api/http';
 import type { ListResponse } from '@/api/http';
 import { scenarioApi } from '@/api/scene';
@@ -527,17 +398,6 @@ import AbilitySelector from '../partner/co-build-scene-tasks/AbilitySelector.vue
 import ResourceSelector from '../partner/co-build-scene-tasks/ResourceSelector.vue';
 import DescriptionEditor from '../lesson/description-editor.vue';
 import EvaluationRulesEditor from './evaluation-rules/EvaluationRulesEditor.vue';
-import AiTaskChainSuggestion from './AiTaskChainSuggestion.vue';
-import AiProgressDialog from '../job/position-builder/AiProgressDialog.vue';
-import ScenarioFieldAiControls from './ScenarioFieldAiControls.vue';
-import { isAiNotConfigured, useAiFieldWriter, useAiPipeline } from '../job/position-builder/ai';
-import {
-  scenarioAiAssist,
-  type AIScenarioAssistField,
-  type AIScenarioAssistResponse,
-  type AIScenarioSuggestion,
-  type AIScenarioTaskChainTask
-} from './scenario-ai';
 
 const route = useRoute();
 const router = useRouter();
@@ -617,9 +477,9 @@ const cloneScenarios = ref<any[]>([]);
 const customKnowledgePointIds = ref<Set<string>>(new Set());
 // 已持久化的自定义知识点（保存时走 update 而非重建，避免重复创建）
 const persistedCustomKnowledgePointIds = ref<Set<string>>(new Set());
-// 自定义资源 ID（AI 新建建议 / 上传，保存时映射临时 ID → 真实 ID）
+// 自定义资源 ID（上传/新建，保存时映射临时 ID → 真实 ID）
 const customResourceIds = ref<Set<string>>(new Set());
-// 自定义能力点 ID（当前页面不直接新建能力点，AI 建议未命中仅引导去岗位页，此处保持与 React 一致的空集合）
+// 自定义能力点 ID（当前页面不直接新建能力点，保持与 React 一致的空集合）
 const customAbilityPointIds = ref<Set<string>>(new Set());
 
 const editingCard = ref<{ taskId: string; type: CardType } | null>(null);
@@ -641,16 +501,6 @@ const isCloning = ref(false);
 
 const isWeightConfigOpen = ref(false);
 const pieColors = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#06b6d4', '#ec4899'];
-
-// AI 任务链建议面板挂载点（对齐 React aiTaskChainPanelRef：面板 teleport 到标题行下方整行全宽）
-const taskChainPanelRef = ref<HTMLElement | null>(null);
-// AI 任务链采纳后的撤销快照（10 秒内可撤销）
-const adoptUndo = ref<{
-  created: Task[];
-  mode: 'append' | 'overwrite';
-  removedSnapshot?: { removed: Task[]; removedStates: Record<string, TaskState> };
-} | null>(null);
-let adoptUndoTimer: ReturnType<typeof setTimeout> | null = null;
 
 /* ============ 计算属性 ============ */
 
@@ -1225,243 +1075,6 @@ async function handleDeleteTask(id: string) {
   }
 }
 
-/* ============ AI 任务链采纳（对齐 React handleAdoptTaskChain / handleUndoAdoptChain） ============ */
-
-/** 视图任务 → 创建 payload（覆盖模式回滚/撤销时重建被删除的旧任务用） */
-function taskToCreatePayload(tk: Task) {
-  return {
-    scenarioId,
-    name: tk.name,
-    code: tk.code,
-    sortOrder: tk.order,
-    description: tk.description,
-    detailedDescription: tk.detailedDescription,
-    descriptionPdf: tk.descriptionPdf,
-    estimatedHours: tk.estimatedHours,
-    taskType: tk.taskType,
-    difficulty: tk.difficulty,
-    background: tk.background,
-    dependencyIds: [],
-    isReferenced: !!tk.isReferenced,
-    sourceScenarioId: tk.sourceScenarioId,
-    knowledgePointIds: tk.knowledgePoints,
-    abilityPointIds: tk.abilityPoints,
-    resourceIds: tk.resources
-  };
-}
-
-/** 重建被删除的旧任务（覆盖模式回滚/撤销）：依赖关系经新 ID 映射回填，任务状态一并恢复 */
-async function restoreRemovedTasks(removed: Task[], removedStates: Record<string, TaskState>) {
-  const idMap = new Map<string, string>();
-  const recreated: Task[] = [];
-  for (const rt of removed) {
-    try {
-      const created = await request<any>(`/scene/tasks`, {
-        method: 'POST',
-        body: JSON.stringify(taskToCreatePayload(rt))
-      });
-      idMap.set(rt.id, created.id);
-      recreated.push({
-        id: created.id,
-        name: created.name,
-        code: created.code,
-        order: created.sortOrder ?? rt.order,
-        description: created.description || rt.description,
-        detailedDescription: created.detailedDescription || rt.detailedDescription,
-        descriptionPdf: created.descriptionPdf || rt.descriptionPdf,
-        estimatedHours: created.estimatedHours ?? rt.estimatedHours,
-        taskType: (created.taskType as 'assessment' | 'training') || rt.taskType,
-        difficulty: created.difficulty ?? rt.difficulty,
-        background: created.background || rt.background,
-        dependencies: rt.dependencies,
-        resources: rt.resources,
-        knowledgePoints: rt.knowledgePoints,
-        knowledgePointNames: rt.knowledgePointNames,
-        abilityPoints: rt.abilityPoints,
-        abilityPointNames: rt.abilityPointNames,
-        isReferenced: !!rt.isReferenced,
-        sourceScenarioId: rt.sourceScenarioId,
-        sourceScenarioName: rt.sourceScenarioName
-      });
-    } catch {
-      // 小概率失败容忍：能恢复多少恢复多少，不阻断整体回滚
-    }
-  }
-  for (const rt of removed) {
-    const newId = idMap.get(rt.id);
-    const mapped = (rt.dependencies || []).map((d) => idMap.get(d)).filter((x): x is string => !!x);
-    if (newId && mapped.length > 0) {
-      await request(`/scene/tasks/${newId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ dependencyIds: mapped })
-      }).catch((err) => console.error('更新任务依赖失败', err));
-    }
-  }
-  if (recreated.length > 0) {
-    tasks.value = [...tasks.value, ...recreated];
-    taskStates.value = { ...taskStates.value, ...removedStates };
-  }
-}
-
-function genTaskCode(i: number): string {
-  const uid =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID().slice(0, 6)
-      : Math.random().toString(36).slice(2, 8);
-  return `TK-${uid}-${i}`;
-}
-
-/**
- * AI 任务链采纳：
- * - append：逐个创建任务追加在现有任务之后（部分失败保留已创建），权重不覆盖既有配置；
- * - overwrite：先删除现有全部任务，再按新链创建（任一步失败回滚重建旧任务），权重在新任务间平分；
- * 两种模式均 10 秒内可撤销。
- */
-async function handleAdoptTaskChain(payload: { tasks: AIScenarioTaskChainTask[]; mode: 'append' | 'overwrite' }) {
-  const { tasks: suggested, mode } = payload;
-  let removedSnapshot: { removed: Task[]; removedStates: Record<string, TaskState> } | undefined;
-
-  if (mode === 'overwrite' && tasks.value.length > 0) {
-    // 覆盖模式：删除现有全部任务，任一删除失败则重建已删除部分并中止
-    const removedStates = { ...taskStates.value };
-    const removed: Task[] = [];
-    for (const old of tasks.value) {
-      try {
-        await request(`/scene/tasks/${old.id}`, { method: 'DELETE' });
-        removed.push(old);
-      } catch (err) {
-        if (removed.length > 0) await restoreRemovedTasks(removed, removedStates);
-        ElMessage.error(`无法删除任务「${old.name}」：${(err as Error).message}`);
-        return;
-      }
-    }
-    removedSnapshot = { removed, removedStates };
-  }
-
-  const baseOrder = mode === 'overwrite' ? 0 : tasks.value.length;
-  const createdTasks: Task[] = [];
-  let lastErr: unknown = null;
-  for (let i = 0; i < suggested.length; i++) {
-    const s = suggested[i];
-    try {
-      const created = await request<any>(`/scene/tasks`, {
-        method: 'POST',
-        body: JSON.stringify({
-          scenarioId,
-          name: s.name,
-          code: genTaskCode(i),
-          sortOrder: baseOrder + i + 1,
-          estimatedHours: s.estimatedHours,
-          taskType: s.type as 'assessment' | 'training',
-          difficulty: s.difficulty,
-          background: s.description,
-          dependencyIds: [],
-          isReferenced: false,
-          knowledgePointIds: [],
-          abilityPointIds: [],
-          resourceIds: []
-        })
-      });
-      createdTasks.push({
-        id: created.id,
-        name: created.name,
-        code: created.code,
-        order: created.sortOrder ?? baseOrder + i + 1,
-        description: created.description || '',
-        detailedDescription: created.detailedDescription,
-        descriptionPdf: created.descriptionPdf,
-        estimatedHours: created.estimatedHours ?? s.estimatedHours,
-        taskType: (created.taskType as 'assessment' | 'training') || s.type,
-        difficulty: created.difficulty ?? s.difficulty,
-        background: created.background || s.description,
-        dependencies: [],
-        resources: [],
-        knowledgePoints: [],
-        abilityPoints: [],
-        isReferenced: false
-      });
-    } catch (err) {
-      lastErr = err;
-      break;
-    }
-  }
-
-  if (mode === 'overwrite' && lastErr) {
-    // 新链创建失败：清理已建新任务并回滚重建旧任务
-    for (const ct of createdTasks) {
-      await request(`/scene/tasks/${ct.id}`, { method: 'DELETE' }).catch((err) =>
-        console.error('清理已建任务失败', err)
-      );
-    }
-    if (removedSnapshot) {
-      tasks.value = [];
-      taskStates.value = {};
-      await restoreRemovedTasks(removedSnapshot.removed, removedSnapshot.removedStates);
-    }
-    ElMessage.error((lastErr as Error).message || '覆盖失败');
-    return;
-  }
-
-  if (createdTasks.length > 0) {
-    const appendMode = mode === 'append';
-    tasks.value = appendMode ? [...tasks.value, ...createdTasks] : [...createdTasks];
-    const next: Record<string, TaskState> = appendMode ? { ...taskStates.value } : {};
-    createdTasks.forEach((ct, i) => {
-      next[ct.id] = makeDefaultTaskState(baseOrder + createdTasks.length, baseOrder + i);
-    });
-    // 新任务分配剩余权重（append 不覆盖既有任务配置；overwrite 旧任务已清空，即平分 100）
-    const used = Object.values(next).reduce((sum, st) => sum + (st.weight || 0), 0);
-    const remaining = Math.max(0, 100 - used);
-    const n = createdTasks.length;
-    createdTasks.forEach((ct, i) => {
-      next[ct.id] = {
-        ...next[ct.id],
-        weight: Math.floor(remaining / n) + (i < remaining % n ? 1 : 0)
-      };
-    });
-    taskStates.value = next;
-    ElMessage.success(
-      mode === 'overwrite'
-        ? `AI 任务链已覆盖为 ${createdTasks.length} 个任务`
-        : `AI 任务链已采纳 ${createdTasks.length} 个任务`
-    );
-    // 10 秒内可撤销
-    adoptUndo.value = { created: createdTasks, mode, removedSnapshot };
-    if (adoptUndoTimer) clearTimeout(adoptUndoTimer);
-    adoptUndoTimer = setTimeout(() => {
-      adoptUndo.value = null;
-    }, 10000);
-  }
-  if (lastErr) {
-    ElMessage.error(`部分任务采纳失败：${(lastErr as Error).message}`);
-  }
-}
-
-/** 撤销 AI 任务链采纳：删除刚创建的任务并清理状态；覆盖模式同时重建被删除的旧任务 */
-async function handleUndoAdoptChain() {
-  const snapshot = adoptUndo.value;
-  if (!snapshot) return;
-  const { created, mode, removedSnapshot } = snapshot;
-  for (const ct of created) {
-    await request(`/scene/tasks/${ct.id}`, { method: 'DELETE' }).catch((err) =>
-      console.error('清理已建任务失败', err)
-    );
-  }
-  tasks.value = tasks.value.filter((t) => !created.some((ct) => ct.id === t.id));
-  const next = { ...taskStates.value };
-  created.forEach((ct) => delete next[ct.id]);
-  taskStates.value = next;
-  if (mode === 'overwrite' && removedSnapshot) {
-    await restoreRemovedTasks(removedSnapshot.removed, removedSnapshot.removedStates);
-  }
-  adoptUndo.value = null;
-  if (adoptUndoTimer) {
-    clearTimeout(adoptUndoTimer);
-    adoptUndoTimer = null;
-  }
-  ElMessage.success('已撤销');
-}
-
 /* ============ 拖拽排序 ============ */
 
 function onDrop(idx: number) {
@@ -1997,286 +1610,6 @@ async function handleCardSave() {
   editingCard.value = null;
 }
 
-/* ============ 卡片级 AI 字段编写（对齐 React EditCardDialog renderAiToolbar / applyAiResult / runSingleField / handleCreateSuggestion） ============ */
-
-/** AI 可直接写入的任务字段键（1 级撤销历史） */
-type TaskAiFieldKey = 'name' | 'background' | 'difficulty' | 'description' | 'knowledge' | 'ability' | 'resources';
-
-/** 各卡片 → AI field 映射（后端 /ai/scenario-assist） */
-const AI_FIELD_BY_CARD: Partial<Record<CardType, AIScenarioAssistField>> = {
-  info: 'taskPolish',
-  description: 'taskDescription',
-  knowledge: 'taskKnowledge',
-  ability: 'taskAbility',
-  resources: 'taskResource'
-};
-
-/** 各卡片可写字段键 */
-const AI_KEYS_BY_CARD: Partial<Record<CardType, TaskAiFieldKey[]>> = {
-  info: ['name', 'background', 'difficulty'],
-  description: ['description'],
-  knowledge: ['knowledge'],
-  ability: ['ability'],
-  resources: ['resources']
-};
-
-const CARD_AI_KEYS: TaskAiFieldKey[] = ['name', 'background', 'difficulty', 'description', 'knowledge', 'ability', 'resources'];
-
-/** 字段中文名（恢复上版/未生成提示用） */
-const AI_FIELD_LABELS: Record<TaskAiFieldKey, string> = {
-  name: '任务名称',
-  background: '任务背景',
-  difficulty: '难度等级',
-  description: '任务说明',
-  knowledge: '考查知识点',
-  ability: '考查能力点',
-  resources: '任务资源'
-};
-
-/** 各卡片 AI 进度弹窗步骤 */
-const AI_STEPS_BY_CARD: Partial<Record<CardType, string[]>> = {
-  info: ['阅读任务信息', '生成任务基础信息'],
-  description: ['阅读任务信息', '生成任务说明'],
-  knowledge: ['阅读任务信息', '推荐考查知识点'],
-  ability: ['阅读任务信息', '推荐考查能力点'],
-  resources: ['阅读任务信息', '推荐任务资源']
-};
-const AI_STEPS_DEFAULT = ['阅读任务信息', 'AI 生成中'];
-const cardAiSteps = computed<string[]>(() =>
-  editingCard.value ? AI_STEPS_BY_CARD[editingCard.value.type] || AI_STEPS_DEFAULT : AI_STEPS_DEFAULT
-);
-
-const cardAiNotConfiguredOpen = ref(false);
-// 未匹配的实体建议（knowledge/resources 卡：引导新建；ability 卡：提示去岗位页）
-const cardUnmatchedSuggestions = ref<AIScenarioSuggestion[]>([]);
-
-const cardAiField = computed<AIScenarioAssistField | undefined>(() =>
-  editingCard.value ? AI_FIELD_BY_CARD[editingCard.value.type] : undefined
-);
-const cardAiKeys = computed<TaskAiFieldKey[]>(() =>
-  editingCard.value ? AI_KEYS_BY_CARD[editingCard.value.type] || [] : []
-);
-
-/** AI 写入分发的字段快照（与页面分散 ref 对应的聚合视图） */
-function snapshotCardField(key: TaskAiFieldKey): Record<string, unknown> {
-  const state = currentState.value;
-  switch (key) {
-    case 'name':
-      return { name: localTask.value.name };
-    case 'background':
-      return { background: localTask.value.background };
-    case 'difficulty':
-      return { difficulty: localTask.value.difficulty };
-    case 'description':
-      return { description: state.description };
-    case 'knowledge':
-      return { knowledge: state.knowledgePoints };
-    case 'ability':
-      return { ability: state.abilityPoints };
-    case 'resources':
-      return { resources: state.resources };
-  }
-}
-
-/** AI 写入分发（快照恢复同样走这里） */
-function applyCardAiWrite(data: Record<string, unknown>) {
-  if (data.name !== undefined || data.background !== undefined || data.difficulty !== undefined) {
-    localTask.value = { ...localTask.value, ...data };
-  }
-  const taskId = editingCard.value?.taskId;
-  if (!taskId) return;
-  if (data.description !== undefined) updateState(taskId, { description: data.description as string });
-  if (data.knowledge !== undefined) updateState(taskId, { knowledgePoints: data.knowledge as string[] });
-  if (data.ability !== undefined) updateState(taskId, { abilityPoints: data.ability as string[] });
-  if (data.resources !== undefined) updateState(taskId, { resources: data.resources as string[] });
-}
-
-const cardWriter = useAiFieldWriter<TaskAiFieldKey, Record<string, unknown>>(
-  CARD_AI_KEYS,
-  applyCardAiWrite,
-  snapshotCardField
-);
-const { writeField: writeCardField, restoreField: restoreCardField, restoreAll: restoreCardAll } = cardWriter;
-const cardAiUpdated = (key: TaskAiFieldKey) => cardWriter.aiUpdated(key);
-const cardUpdatedCount = computed(() => cardWriter.updatedCount.value);
-
-const cardPipeline = useAiPipeline<undefined, AIScenarioAssistResponse>({
-  steps: () => cardAiSteps.value,
-  request: (_task, signal) =>
-    scenarioAiAssist(
-      {
-        field: cardAiField.value!,
-        scenario: {
-          name: existingScenario.value?.name || '',
-          background: existingScenario.value?.background || '',
-          difficulty: existingScenario.value?.difficulty || 0,
-          industryNames: industryName.value ? industryName.value.split('、') : [],
-          professionNames: professionName.value ? professionName.value.split('、') : [],
-          positionId: positionId.value,
-          positionName: positionName.value,
-          taskName: localTask.value.name || currentTask.value?.name || '',
-          taskBackground: localTask.value.background,
-          taskDescription: currentState.value.description || currentTask.value?.description || '',
-          taskDifficulty: localTask.value.difficulty,
-          existingTasks: [],
-          intention: ''
-        }
-      },
-      signal
-    ),
-  onError: (err) => {
-    if (isAiNotConfigured(err)) {
-      cardAiNotConfiguredOpen.value = true;
-      return true;
-    }
-    ElMessage.error(err instanceof Error && err.message ? err.message : 'AI 生成失败');
-    return true;
-  }
-});
-
-const cardAiRunning = computed(() => cardPipeline.isRunning.value);
-const cardPolishRunning = computed(
-  () => cardPipeline.isRunning.value && cardPipeline.runningId.value === 'taskPolish'
-);
-
-/** 应用 AI 结果：按卡片类型分发写入 */
-function applyCardAiResult(res: AIScenarioAssistResponse) {
-  const cardType = editingCard.value?.type;
-  if (!cardType) return;
-  switch (cardType) {
-    case 'info': {
-      const p = res.task;
-      if (!p) return;
-      const skipped: string[] = [];
-      if ((p.name || '').trim()) writeCardField('name', { name: (p.name || '').trim() });
-      else skipped.push(AI_FIELD_LABELS.name);
-      if ((p.background || '').trim())
-        writeCardField('background', { background: (p.background || '').trim() });
-      else skipped.push(AI_FIELD_LABELS.background);
-      if (p.difficulty >= 1 && p.difficulty <= 5)
-        writeCardField('difficulty', { difficulty: p.difficulty });
-      else skipped.push(AI_FIELD_LABELS.difficulty);
-      if (skipped.length > 0) ElMessage.info(`AI 未生成：${skipped.join('、')}，已保留原内容`);
-      return;
-    }
-    case 'description':
-      if (res.taskDescription) writeCardField('description', { description: res.taskDescription });
-      return;
-    case 'knowledge':
-    case 'ability':
-    case 'resources': {
-      const items = res.suggestions || [];
-      const matched = items.filter((s) => s.matchedId);
-      const unmatched = items.filter((s) => !s.matchedId);
-      if (matched.length > 0) {
-        const key = cardType === 'knowledge' ? 'knowledge' : cardType === 'ability' ? 'ability' : 'resources';
-        const cur = (snapshotCardField(key)[key] as string[]) || [];
-        const next = [...cur];
-        for (const s of matched) {
-          if (!next.includes(s.matchedId!)) next.push(s.matchedId!);
-        }
-        writeCardField(key, { [key]: next });
-      }
-      if (unmatched.length > 0) {
-        if (cardType === 'ability') {
-          ElMessage.info('以下能力点未找到，请先到岗位能力建模中添加');
-          cardUnmatchedSuggestions.value = [];
-        } else {
-          cardUnmatchedSuggestions.value = unmatched;
-        }
-      } else {
-        cardUnmatchedSuggestions.value = [];
-      }
-      return;
-    }
-    default:
-      return;
-  }
-}
-
-/** 区块级 AI 生成（整卡字段一次生成） */
-function runCardAi() {
-  const field = cardAiField.value;
-  if (!field) return;
-  void cardPipeline.run([{ id: field, meta: undefined, apply: applyCardAiResult }]);
-}
-
-/** 单字段生成（info 卡：名称/背景/难度 label 旁 Sparkles） */
-function runCardSingleField(target: 'name' | 'background' | 'difficulty') {
-  void cardPipeline.run(
-    [
-      {
-        id: 'taskPolish',
-        meta: undefined,
-        apply: (res) => {
-          const p = res.task;
-          if (!p) return;
-          if (target === 'name' && (p.name || '').trim()) {
-            writeCardField('name', { name: (p.name || '').trim() });
-            return;
-          }
-          if (target === 'background' && (p.background || '').trim()) {
-            writeCardField('background', { background: (p.background || '').trim() });
-            return;
-          }
-          if (target === 'difficulty' && p.difficulty >= 1 && p.difficulty <= 5) {
-            writeCardField('difficulty', { difficulty: p.difficulty });
-            return;
-          }
-          ElMessage.info(`AI 未生成${AI_FIELD_LABELS[target]}，已保留原内容`);
-        }
-      }
-    ],
-    { showDialog: false }
-  );
-}
-
-/** 新建建议（引用优先：未命中项引导走既有新建流程） */
-async function handleCardCreateSuggestion(s: AIScenarioSuggestion) {
-  const cardType = editingCard.value?.type;
-  const taskId = editingCard.value?.taskId;
-  if (!cardType || !taskId) return;
-  try {
-    if (cardType === 'knowledge') {
-      const created = await knowledgeApi.create({
-        name: s.name,
-        description: s.description || undefined
-      });
-      const nextSet = new Set(customKnowledgePointIds.value);
-      nextSet.add(created.id);
-      customKnowledgePointIds.value = nextSet;
-      const nextPersisted = new Set(persistedCustomKnowledgePointIds.value);
-      nextPersisted.add(created.id);
-      persistedCustomKnowledgePointIds.value = nextPersisted;
-      knowledgePoints.value = [
-        ...knowledgePoints.value,
-        { id: created.id, name: created.name, code: created.code, description: created.description, linked: true, granularLessons: [] }
-      ];
-      const cur = currentState.value.knowledgePoints;
-      writeCardField('knowledge', { knowledge: [...cur, created.id] });
-    } else {
-      const created = await resourceLibraryApi.create({
-        name: s.name,
-        resourceType: (s.type || 'other') as any,
-        description: s.description || undefined
-      });
-      const nextSet = new Set(customResourceIds.value);
-      nextSet.add(created.id);
-      customResourceIds.value = nextSet;
-      learningResources.value = [
-        ...learningResources.value,
-        { id: created.id, name: created.name, type: created.resourceType || s.type || 'other', url: created.url, description: created.description, size: created.fileSize !== undefined ? String(created.fileSize) : undefined }
-      ];
-      const cur = currentState.value.resources;
-      writeCardField('resources', { resources: [...cur, created.id] });
-    }
-    cardUnmatchedSuggestions.value = cardUnmatchedSuggestions.value.filter((u) => u.name !== s.name);
-    ElMessage.success(`已新建并关联「${s.name}」`);
-  } catch (err) {
-    ElMessage.error((err as Error).message || '新建失败');
-  }
-}
-
 /* ============ 克隆/引用 ============ */
 
 function toggleCloneSelect(id: string) {
@@ -2499,16 +1832,6 @@ function closeWeight() {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-.task-chain-panel-slot {
-  min-height: 0;
-}
-.adopt-undo-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
 }
 .tip {
   color: #999;
@@ -2858,123 +2181,5 @@ function closeWeight() {
 }
 .weight-percent {
   color: #909399;
-}
-
-/* 卡片级 AI 工具栏 */
-.card-ai-toolbar {
-  margin-bottom: 12px;
-  border: 1px solid #e0cffc;
-  border-radius: 8px;
-  background: #faf5ff;
-  padding: 10px 12px;
-}
-.ai-toolbar-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.ai-toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-.ai-sparkle {
-  color: #7c3aed;
-  flex-shrink: 0;
-}
-.ai-updated-badge {
-  border-color: #e0cffc;
-  color: #7c3aed;
-  background: #fff;
-  height: 20px;
-  padding: 0 6px;
-  font-size: 10px;
-  line-height: 20px;
-}
-.ai-restore {
-  height: 22px;
-  padding: 0 4px;
-  font-size: 11px;
-  color: #7c3aed;
-}
-.ai-restore:hover {
-  color: #6b21a8;
-  background: #faf5ff;
-}
-.ai-hint {
-  font-size: 12px;
-  color: #6b21a8;
-}
-.ai-gen-btn {
-  flex-shrink: 0;
-  border-color: #e0cffc;
-  color: #7c3aed;
-  background: #fff;
-}
-.ai-gen-btn:hover {
-  border-color: #c4b5fd;
-  color: #6b21a8;
-  background: #faf5ff;
-}
-.ai-suggestions {
-  margin-top: 8px;
-  border-top: 1px dashed #e0cffc;
-  padding-top: 8px;
-}
-.ai-suggestions-tip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: #6b21a8;
-}
-.ai-suggestion-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.ai-suggestion-info {
-  min-width: 0;
-}
-.ai-suggestion-name {
-  font-size: 13px;
-  color: #303133;
-  font-weight: 500;
-}
-.ai-suggestion-desc {
-  font-size: 12px;
-  color: #909399;
-  margin-left: 8px;
-}
-.ai-create-btn {
-  flex-shrink: 0;
-  border-color: #e0cffc;
-  color: #7c3aed;
-}
-.dialog-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.dialog-header-icon {
-  color: #7c3aed;
-}
-.dialog-header-icon.primary {
-  color: #409eff;
-}
-.dialog-header-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-.dialog-desc {
-  margin: 0;
-  font-size: 13px;
-  color: #909399;
-  line-height: 1.6;
 }
 </style>

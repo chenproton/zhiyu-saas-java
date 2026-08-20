@@ -1,6 +1,6 @@
 <!--
   工作台首页 Tab：左侧课表（3/4）+ 右侧「今日待办 / 通知公告」（1/4）。
-  对齐 React frontend/edu/app/portal/workspace/_components/dashboard-tab.tsx
+  对齐原 React 版 dashboard-tab.tsx
   （dashboard 接口按 activeRoleCode 取数；角色切换用请求序号丢弃过期响应；
    待办空态「暂无待办事项」、公告空态「暂无通知公告」；待办「查看全部」跳「我的学习」）。
 -->

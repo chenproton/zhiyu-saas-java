@@ -2,9 +2,9 @@
   门户全局布局壳（完整移植 React 布局体系）
 
   对齐来源：
-  - 顶部导航：React `frontend/edu/components/portal/top-nav.tsx`
+  - 顶部导航：原 React 版 `top-nav.tsx`
     （品牌 + 门户首页/我的服务台/应用服务中心 3 项 + 当前时间 + 用户区/登录入口，含 isActive 高亮语义）
-  - 布局壳：React `frontend/edu/components/platform-shell/PlatformShell.tsx`
+  - 布局壳：原 React 版 `PlatformShell.tsx`
     + `components/shared/platform-layout.tsx`（顶栏固定 56px + 左侧域导航 + 右侧内容区）
   - 域侧栏挂载：React 各域 `app/<domain>/layout.tsx`；Vue 路由为单层 children，
     故按路径解析域配置（见 navigation-config.ts resolvePlatformNavigationConfig）
@@ -104,7 +104,7 @@ const topNavItems = [
 /**
  * 对齐 React top-nav.tsx isActive：
  * - /portal 精确匹配；
- * - /portal/apps 仅主页高亮（平台页 /portal/apps/ai 等有独立定位，不高亮入口）；
+ * - /portal/apps 仅主页高亮（各平台页有独立定位，不高亮入口）；
  * - 其余前缀匹配。
  */
 function isTopNavActive(href: string): boolean {

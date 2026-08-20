@@ -1,7 +1,8 @@
 # zhiyu-saas 后端分层重构计划
 
+> ⚠️ **历史文档（Go 时代）**：本文档是 Go 后端（`handler/service/store`）分层方案的记录。Go 后端已于 2026-08 迁移删除，当前后端为 **Java（controller → service → mapper，无 DAO 层）**，分层红线以根 `AGENTS.md` 第二部分「Java 后端框架契约」为准（controller 无裸 SQL/DB 句柄、service 无拼接 SQL、mapper 不读 HTTP 请求/Sa-Token/租户上下文）。本文档仅作历史参考。
+>
 > 状态：已完成。P0-P3 全部收口（路线图与各批验收明细已从本文档删除，历史见 git 提交：P0 立规 / P1 骨架 / P2 核心域 73 个 handler 5 批 / P3 清理）。
-> 本文档为**后端分层目标架构与红线的唯一出处**；`AGENTS.md`「三、硬性架构约束」第 3.1 条仅保留摘要与链接。
 
 ## 一、现状基线（实测，2026-08-14 更新）
 

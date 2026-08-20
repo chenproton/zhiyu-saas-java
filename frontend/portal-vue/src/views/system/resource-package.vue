@@ -128,7 +128,6 @@ const PLATFORM_DEFS: PlatformDef[] = [
   { key: 'resource', label: '教学资源共享服务平台', subModules: ['公共资源库', '我的资源库', '标签管理'] },
   { key: 'affairs', label: '教务管理服务平台', subModules: ['教务管理', '教学管理', '审批管理'] },
   { key: 'alliance', label: '产教融合与就业服务平台', subModules: ['产教融合管理', '品牌运营管理', '就业服务管理'] },
-  { key: 'ai', label: 'AI 智能服务平台', subModules: ['YI Know 助手', 'AI 广场管理'] },
   { key: 'opc', label: 'OPC专区', subModules: [] },
   { key: 'decision', label: '敏捷决策中心', subModules: [] },
   { key: 'research', label: '教科研服务中心', subModules: [] }

@@ -43,90 +43,6 @@
         </div>
       </el-card>
 
-      <!-- AI 服务配置 -->
-      <el-card shadow="never" class="section-card">
-        <div class="tenant-head">
-          <div class="tenant-head-left">
-            <div class="tenant-icon">✨</div>
-            <div>
-              <div class="tenant-name">AI 服务配置</div>
-              <div class="tenant-desc-sub">接入租户自有 OpenAI 兼容服务，token 成本租户自负</div>
-            </div>
-          </div>
-          <div class="head-actions">
-            <el-tag :type="aiConfig?.configured ? 'success' : 'info'">
-              {{ aiConfig?.configured ? '已配置' : '未配置' }}
-            </el-tag>
-            <el-button size="small" @click="openAIDialog">配置</el-button>
-          </div>
-        </div>
-        <div class="info-grid">
-          <div class="info-item">
-            <div class="info-label">Base URL</div>
-            <div class="info-value">{{ aiConfig?.baseUrl || '-' }}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">模型</div>
-            <div class="info-value">{{ aiConfig?.model || '-' }}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">API Key</div>
-            <div class="info-value">{{ aiConfig?.apiKeyMasked || '-' }}</div>
-          </div>
-        </div>
-
-        <div v-if="aiConfig?.configured && aiUsage" class="ai-usage">
-          <div class="stat-grid">
-            <div class="stat-card">
-              <div class="stat-icon">⚡</div>
-              <div>
-                <div class="stat-label">总 API 请求次数</div>
-                <div class="stat-value">{{ aiUsage.totalRequests.toLocaleString() }}</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">🪙</div>
-              <div>
-                <div class="stat-label">总 Token 消耗</div>
-                <div class="stat-value">{{ aiUsage.totalTokens.toLocaleString() }}</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">📊</div>
-              <div v-if="aiUsage.tokenQuota > 0" class="stat-quota">
-                <div class="stat-label">AI 套餐用量</div>
-                <el-progress
-                  type="circle"
-                  :percentage="Math.min(quotaPercent, 100)"
-                  :width="56"
-                  :stroke-width="8"
-                  :color="quotaColor"
-                />
-                <div class="stat-value">{{ quotaPercent.toFixed(2) }}%</div>
-              </div>
-              <div v-else>
-                <div class="stat-label">AI 套餐用量</div>
-                <div class="stat-value small">未设置套餐额度</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-title">每日 Token 消耗（近 30 天）</div>
-          <div class="bar-chart">
-            <div v-for="(d, i) in aiUsageChartData" :key="i" class="bar-col">
-              <div class="bar-area">
-                <div
-                  class="bar"
-                  :style="{ height: barHeight(d.tokens) }"
-                  :title="`${d.label}: ${d.tokens.toLocaleString()}`"
-                />
-              </div>
-              <div class="bar-label">{{ i % 5 === 0 ? d.label : '' }}</div>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
       <!-- 学校管理员 -->
       <el-card shadow="never" class="section-card">
         <template #header>
@@ -273,40 +189,6 @@
       </template>
     </el-dialog>
 
-    <!-- AI 服务配置 -->
-    <el-dialog v-model="aiDialog" title="AI 服务配置" width="480px">
-      <el-form label-width="90px">
-        <el-form-item label="Base URL" required>
-          <el-input v-model="aiForm.baseUrl" placeholder="https://api.openai.com/v1" />
-        </el-form-item>
-        <el-form-item label="API Key" :required="!aiConfig?.configured">
-          <el-input
-            v-model="aiForm.apiKey"
-            type="password"
-            show-password
-            :placeholder="aiConfig?.configured ? '留空则不修改' : 'sk-...'"
-          />
-        </el-form-item>
-        <el-form-item label="模型" required>
-          <el-input v-model="aiForm.model" placeholder="gpt-4o-mini" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button v-if="aiConfig?.configured" type="danger" plain style="float: left" :loading="aiSubmitting" @click="aiDeleteConfirm = true">清除配置</el-button>
-        <el-button @click="aiDialog = false">取消</el-button>
-        <el-button type="primary" :loading="aiSubmitting" @click="handleAISave">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 清除 AI 配置确认 -->
-    <el-dialog v-model="aiDeleteConfirm" title="确认清除" width="420px">
-      <p>确定清除当前租户的 AI 服务配置吗？清除后租户内所有 AI 功能将不可用。</p>
-      <template #footer>
-        <el-button @click="aiDeleteConfirm = false">取消</el-button>
-        <el-button type="danger" :loading="aiSubmitting" @click="handleAIDelete">清除</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 管理员编辑 -->
     <el-dialog v-model="adminEditDialog" title="编辑管理员" width="440px">
       <el-form label-width="70px">
@@ -394,26 +276,6 @@ interface TenantInfo {
   educationNature: string;
   status: 'active' | 'inactive';
   createdAt: string;
-}
-
-interface AIConfigView {
-  configured: boolean;
-  baseUrl?: string;
-  model?: string;
-  apiKeyMasked?: string;
-}
-
-interface AIUsageDay {
-  date: string;
-  tokens: number;
-  requests: number;
-}
-
-interface AIUsageStats {
-  totalRequests: number;
-  totalTokens: number;
-  tokenQuota: number;
-  daily: AIUsageDay[];
 }
 
 interface TenantAdmin {
@@ -614,107 +476,6 @@ async function handleUpdate() {
   }
 }
 
-// ===== AI 服务配置 =====
-const aiConfig = ref<AIConfigView | null>(null);
-const aiUsage = ref<AIUsageStats | null>(null);
-const aiDialog = ref(false);
-const aiDeleteConfirm = ref(false);
-const aiSubmitting = ref(false);
-const aiForm = reactive({ baseUrl: '', apiKey: '', model: '' });
-
-const aiUsageChartData = computed(() => (aiUsage.value?.daily || []).map((d) => ({ label: d.date.slice(5), tokens: d.tokens })));
-
-const maxDailyTokens = computed(() => {
-  const tokens = aiUsageChartData.value.map((d) => d.tokens);
-  return tokens.length ? Math.max(...tokens) : 0;
-});
-
-const quotaPercent = computed(() => {
-  const quota = aiUsage.value?.tokenQuota || 0;
-  if (quota <= 0) return 0;
-  return Math.round(((aiUsage.value?.totalTokens || 0) / quota) * 1000) / 10;
-});
-
-const quotaColor = computed(() => {
-  const p = quotaPercent.value;
-  if (p >= 90) return '#ef4444';
-  if (p >= 70) return '#f59e0b';
-  return '#6366f1';
-});
-
-function barHeight(tokens: number): string {
-  const max = maxDailyTokens.value;
-  if (max <= 0) return '0%';
-  return `${Math.max(2, Math.round((tokens / max) * 100))}%`;
-}
-
-async function fetchAIConfig() {
-  if (!tenantId.value) return;
-  try {
-    const view = await portalRequest<AIConfigView>('/ai/config');
-    aiConfig.value = view;
-    if (view.configured) {
-      try {
-        aiUsage.value = await portalRequest<AIUsageStats>('/ai/usage');
-      } catch {
-        aiUsage.value = null;
-      }
-    } else {
-      aiUsage.value = null;
-    }
-  } catch {
-    aiConfig.value = null;
-    aiUsage.value = null;
-  }
-}
-
-function openAIDialog() {
-  aiForm.baseUrl = aiConfig.value?.baseUrl || '';
-  aiForm.apiKey = '';
-  aiForm.model = aiConfig.value?.model || '';
-  aiDialog.value = true;
-}
-
-async function handleAISave() {
-  if (!aiForm.baseUrl || !aiForm.model) {
-    ElMessage.warning('请填写 Base URL 与模型');
-    return;
-  }
-  aiSubmitting.value = true;
-  try {
-    await portalRequest('/ai/config', {
-      method: 'PUT',
-      body: JSON.stringify({
-        baseUrl: aiForm.baseUrl,
-        model: aiForm.model,
-        ...(aiForm.apiKey ? { apiKey: aiForm.apiKey } : {})
-      })
-    });
-    aiDialog.value = false;
-    ElMessage.success('保存成功');
-    await fetchAIConfig();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
-  } finally {
-    aiSubmitting.value = false;
-  }
-}
-
-async function handleAIDelete() {
-  aiSubmitting.value = true;
-  try {
-    await portalRequest('/ai/config', { method: 'DELETE' });
-    aiDeleteConfirm.value = false;
-    aiDialog.value = false;
-    ElMessage.success('已清除 AI 配置');
-    await fetchAIConfig();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '清除失败');
-  } finally {
-    aiSubmitting.value = false;
-  }
-}
-
 // ===== 学校管理员 =====
 const admins = ref<TenantAdmin[]>([]);
 const adminLoading = ref(false);
@@ -836,7 +597,6 @@ async function submitAdminPassword() {
 
 onMounted(() => {
   fetchTenant();
-  fetchAIConfig();
   fetchAdmins();
 });
 </script>
@@ -885,41 +645,5 @@ onMounted(() => {
 .tenant-desc { margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
 .card-title { font-size: 15px; font-weight: 600; }
 .card-subtitle { color: #909399; font-size: 12px; margin-top: 2px; }
-.ai-usage { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-}
-.stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: #ecf5ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.stat-label { font-size: 12px; color: #909399; }
-.stat-value { font-size: 20px; font-weight: 600; margin-top: 2px; }
-.stat-value.small { font-size: 14px; }
-.stat-quota { display: flex; align-items: center; gap: 10px; }
-.chart-title { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
-.bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 200px; }
-.bar-col { flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; }
-.bar-area { flex: 1; display: flex; align-items: flex-end; }
-.bar { width: 100%; background: #6366f1; border-radius: 2px 2px 0 0; }
-.bar-label { height: 20px; font-size: 10px; color: #94a3b8; text-align: center; overflow: hidden; white-space: nowrap; }
 .cell-mono { font-family: monospace; font-size: 13px; }
 </style>

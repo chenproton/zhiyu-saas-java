@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 /**
- * 新建试卷弹窗：对齐 React frontend/edu/components/evaluation/exam-form-dialog.tsx 的核心字段
+ * 新建试卷弹窗：对齐原 React 版 exam-form-dialog.tsx 的核心字段
  * （名称/简介/所属批次/考试时长）。封面上传与协作者维护走试卷管理页，不在任务编排内联表单里做。
  */
 import { ref, watch } from 'vue';

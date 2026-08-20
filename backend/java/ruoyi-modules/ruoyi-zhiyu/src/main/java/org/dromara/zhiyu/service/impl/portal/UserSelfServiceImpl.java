@@ -40,7 +40,7 @@ public class UserSelfServiceImpl implements IUserSelfService {
 
         ZhiyuUser user = userMapper.selectById(userId);
         if (user == null) {
-            throw new ApiException(500, "server_error", "更新后查询用户失败");
+            throw new ApiException(500, "internal_error", "更新后查询用户失败");
         }
         return toUserView(user);
     }

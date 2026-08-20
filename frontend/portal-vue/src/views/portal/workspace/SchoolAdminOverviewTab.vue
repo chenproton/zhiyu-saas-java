@@ -1,6 +1,6 @@
 <!--
   学校管理员工作台首页 Tab（资源运营驾驶舱）。
-  对齐 React frontend/edu/app/portal/workspace/_components/school-admin-overview-tab.tsx（248 行）：
+  对齐原 React 版 school-admin-overview-tab.tsx（248 行）：
   - 数据源：GET /portal/workspace/dashboard?role=school_admin（resourceStats/personnelStats/todos/announcements）；
   - 资源管理入口：后端下发的资源存量卡（icon key → 图标，href 跳转）+ 3 个固定入口
     （教学资源共享库 /library/knowledge、教务管理 /affairs/programs、产教融合 /portal/apps/alliance/enterprises）；

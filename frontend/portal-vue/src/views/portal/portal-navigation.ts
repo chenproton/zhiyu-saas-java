@@ -2,15 +2,15 @@
  * 门户首页 / 应用服务中心的共享数据与权限助手（对齐 React）。
  *
  * 对齐来源（React）：
- * - frontend/edu/app/portal/page.tsx                 → 首页 hero + 特性胶囊 + 三组生态 + 12 张平台卡
- * - frontend/edu/app/portal/apps/page.tsx            → 应用中心菜单/常用服务/模块卡
- * - frontend/edu/lib/navigation-config.ts            → platformModuleDefs / getPlatformCardModules
- * - frontend/edu/lib/menu-permissions.ts             → checkMenuPermission
- * - frontend/edu/lib/frequent-services.ts            → 常用服务点击计数
- * - frontend/edu/contexts/portal-auth-context.tsx    → hasMenuPermission 语义
+ * - 原 React 版 portal/page.tsx           → 首页 hero + 特性胶囊 + 三组生态 + 12 张平台卡
+ * - 原 React 版 portal/apps/page.tsx      → 应用中心菜单/常用服务/模块卡
+ * - 原 React 版 lib/navigation-config.ts  → platformModuleDefs / getPlatformCardModules
+ * - 原 React 版 lib/menu-permissions.ts   → checkMenuPermission
+ * - 原 React 版 lib/frequent-services.ts  → 常用服务点击计数
+ * - 原 React 版 portal-auth-context.tsx   → hasMenuPermission 语义
  *
  * 说明：src/api/*.ts 未收录订阅/登录态聚合端点，按任务约定不改 api/*.ts，
- * 这里用同一 request()/portalRequest() 直连相同后端路径（Go 后端 internal/router/routes.go 已注册）。
+ * 这里用同一 request()/portalRequest() 直连相同后端路径（Java 后端 /api/v1 已注册）。
  * 图标以字符串 key 表达，由页面映射到 @element-plus/icons-vue 组件，避免 ts 里耦合具体图标。
  */
 
@@ -70,14 +70,6 @@ export const HOME_PLATFORMS: HomePlatformItem[] = [
     bg: '#ecfdf5',
     title: 'COFA测评中心',
     desc: '基于统一评价标准，实现对实践过程与结果的精准量化评估与技能认证。'
-  },
-  {
-    id: 'ai',
-    icon: 'sparkles',
-    color: '#6366f1',
-    bg: '#eef2ff',
-    title: 'AI 智能服务中心',
-    desc: '融合前沿AI技术，为教学设计、资源建设、学习辅导、评价分析提供伴随式智能服务。'
   },
   {
     id: 'course',
@@ -140,7 +132,7 @@ export const HOME_PLATFORMS: HomePlatformItem[] = [
 /** 首页三组生态（每组 4 张卡，顺序同 React SECTIONS） */
 export const HOME_SECTIONS = [
   { title: '产教协同育人生态', ids: ['alliance', 'career', 'scene', 'ability'] },
-  { title: '教学资源保障生态', ids: ['ai', 'course', 'resource', 'mall'] },
+  { title: '教学资源保障生态', ids: ['course', 'resource', 'mall'] },
   { title: '教学治理服务生态', ids: ['affairs', 'research', 'decision', 'opc'] }
 ];
 
@@ -152,8 +144,7 @@ export const HOME_INTERNAL_ROUTES: Record<string, string> = {
   course: '/lesson/landing',
   resource: '/library/landing',
   affairs: '/affairs/programs',
-  alliance: '/portal/alliance/landing',
-  ai: '/portal/apps/ai/landing'
+  alliance: '/portal/alliance/landing'
 };
 
 /* ==================== 应用服务中心（/portal/apps）==================== */
@@ -173,7 +164,6 @@ export const APPS_MENU_ITEMS: AppsMenuItem[] = [
   { id: 'resource', label: '教学资源共享服务平台', icon: 'share' },
   { id: 'alliance', label: '产教协同与人才品牌运营平台', icon: 'users' },
   { id: 'affairs', label: '教务服务平台', icon: 'calendar' },
-  { id: 'ai', label: 'AI 智能服务平台', icon: 'sparkles' },
   { id: 'opc', label: 'OPC专区', icon: 'rocket' },
   { id: 'decision', label: '敏捷决策中心', icon: 'bar-chart' },
   { id: 'research', label: '教科研服务中心', icon: 'graduation-cap' }
@@ -188,7 +178,6 @@ export const APPS_PLATFORM_STYLES: Record<string, { color: string; bg: string }>
   scene: { color: '#0891b2', bg: '#ecfeff' },
   ability: { color: '#059669', bg: '#ecfdf5' },
   affairs: { color: '#0d9488', bg: '#f0fdfa' },
-  ai: { color: '#4f46e5', bg: '#eef2ff' },
   resource: { color: '#2563eb', bg: '#eff6ff' },
   opc: { color: '#ea580c', bg: '#fff7ed' },
   decision: { color: '#0284c7', bg: '#f0f9ff' },
@@ -205,7 +194,6 @@ export const APPS_PLATFORM_HREFS: Record<string, string> = {
   resource: '/library/knowledge',
   alliance: '/portal/alliance/landing',
   affairs: '/affairs/org-structure',
-  ai: '/portal/apps/ai/landing',
   opc: '#',
   decision: '#',
   research: '#'
@@ -259,10 +247,6 @@ export const APPS_PLATFORM_MODULES: Record<string, AppsModuleItem[]> = {
     { id: 'affairs-mgmt', title: '教务管理', desc: '维护组织架构、专业、师生与职位数据，配置学期场地等教务基础数据', href: '/affairs/org-structure' },
     { id: 'teaching-mgmt', title: '教学管理', desc: '维护培养方案、教学计划与排课', href: '/affairs/programs' },
     { id: 'teaching-approval', title: '审批管理', desc: '维护审批流程与批次管理', href: '/affairs/batches' }
-  ],
-  ai: [
-    { id: 'chat', title: 'YI Know 助手', desc: 'YI Know 智能问答：基于租户自有知识库与多元大模型的场景化教学对话助手', href: '/portal/apps/ai/chat' },
-    { id: 'admin', title: 'AI 广场管理', desc: '审核知识库/智能体的上架申请，并维护外部 AI 服务的挂接卡片', href: '/portal/apps/ai/admin/reviews' }
   ],
   opc: [],
   decision: [],
@@ -361,7 +345,6 @@ export async function loadPortalAuth() {
 
 const PLATFORM_PATH_PREFIXES: { prefix: string; platform: string }[] = [
   { prefix: '/portal/apps/system', platform: 'system' },
-  { prefix: '/portal/apps/ai', platform: 'ai' },
   { prefix: '/portal/apps/alliance', platform: 'alliance' },
   { prefix: '/job', platform: 'career' },
   { prefix: '/lesson', platform: 'course' },

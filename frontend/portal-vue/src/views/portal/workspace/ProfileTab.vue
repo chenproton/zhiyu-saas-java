@@ -1,6 +1,6 @@
 <!--
   个人中心 Tab：个人资料 / 我的荣誉奖励（仅学生）/ 账号安全 / 通知偏好。
-  对齐 React frontend/edu/app/portal/workspace/_components/profile-tab.tsx：
+  对齐原 React 版 profile-tab.tsx：
   - 个人资料：头像 + 姓名 + 身份行，账号信息表单（可改姓名）+ 其它信息（只读：学号/手机/邮箱/专业/班级，
     staff 变体为 工号/所属机构/手机/邮箱）；
   - 我的荣誉奖励：/portal/workspace/honors 增删改 + 证书附件上传（/files/upload）；

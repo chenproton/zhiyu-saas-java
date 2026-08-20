@@ -1,6 +1,6 @@
 <!--
   混合课程评分弹窗：左侧混合课列表（有 courseId 的开课计划）+ 右侧「节点 → 班级 → 学生 → 测评结果」。
-  对齐 React frontend/edu/app/portal/workspace/_components/hybrid-grading-dialog.tsx：
+  对齐原 React 版 hybrid-grading-dialog.tsx：
   - 打开时拉 /portal/workspace/dashboard?role=teacher 取 classPlans（仅保留有 courseId 的），
     未传 courseId 时默认选中第一个混合课；
   - 选中课程后并发拉 /lesson/nodes?courseId=&limit=1000、/lesson/course-node-evaluation-results?courseId=、

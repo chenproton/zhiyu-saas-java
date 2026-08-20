@@ -27,7 +27,8 @@ sudo ./install.sh
 部署完成后访问：
 
 ```
-http://<服务器IP>/portal/login
+http://<服务器IP>/portal/login        业务门户
+http://<服务器IP>/plus-ui/           RuoYi 管理端
 管理员账号: admin / admin123   （租户: platform）
 ```
 
@@ -41,8 +42,8 @@ http://<服务器IP>/portal/login
 | 启动全部服务 | `sudo ./start.sh` |
 | 停止全部服务（数据保留） | `sudo ./stop.sh` |
 | 查看服务状态 | `docker compose -f /opt/zhiyu-saas/docker-compose.yml ps` |
-| 查看后端日志 | `docker compose -f /opt/zhiyu-saas/docker-compose.yml logs -f backend` |
-| 健康检查 | `curl -sf http://127.0.0.1:8080/health` |
+| 查看后端日志 | `docker compose -f /opt/zhiyu-saas/docker-compose.yml logs -f java-backend` |
+| 健康检查 | `curl -sf http://127.0.0.1:8083/health` |
 
 ## 升级
 
@@ -58,11 +59,10 @@ sudo ./install.sh --update
 ## 目录说明
 
 ```
-├── images/        # 全部服务镜像（后端/前端/PostgreSQL/Redis/kkFileView）
+├── images/        # 全部服务镜像（java-backend/PostgreSQL/Redis/kkFileView）
 ├── debs/          # 系统依赖离线包（Docker/Nginx/PostgreSQL 客户端）
-├── bin/           # 数据库迁移与种子初始化工具（静态二进制）
-├── migrations/    # 数据库迁移 SQL
-├── deploy/        # Docker Compose 与 Nginx 配置
+├── web/           # 前端 dist（portal 业务门户 + plus-ui 管理端，nginx 容器挂载）
+├── deploy/        # Docker Compose、Nginx 配置、数据库迁移 SQL 与框架表初始化 SQL
 ├── install.sh     # 一键安装/升级
 ├── start.sh       # 启动服务
 ├── stop.sh        # 停止服务

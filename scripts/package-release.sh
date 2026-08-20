@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# package-release.sh - 生成无源码离线实施部署包
+# package-release.sh - 生成无源码离线实施部署包（单栈：Java + Vue）
 #
 # 用法:
 #   ./scripts/package-release.sh v1.0.0
@@ -10,12 +10,13 @@
 #   release/zhiyu-saas-v1.0.0.tar.gz     # 压缩包
 #
 # 说明:
-#   - 在可联网的开发机上执行（需要 docker / go / pnpm，镜像构建依赖本地已有
-#     alpine:3.21 与 node:22-alpine，缺失时会从 offline/docker-images 加载）
+#   - 在可联网的开发机上执行（需要 docker / JDK 21 / pnpm，构建 java-backend 镜像与
+#     portal-vue/plus-ui 产物；镜像构建依赖本地已有 ubuntu:24.04 与 nginx:1.27-alpine，
+#     缺失时会从 offline/docker-images 加载）
 #   - 客户服务器（全新 Ubuntu 24.04 x86_64）无需任何开发工具链，
 #     复制交付目录后执行 ./install.sh 即可
-#   - 包内不包含源代码，仅包含构建产物与 SQL 迁移文件
-#   - offline/ 下的大文件（debs / docker-images / go / node）不随 git 提交，
+#   - 包内不包含源代码，仅包含构建产物、SQL 迁移文件与前端 dist
+#   - offline/ 下的大文件（debs / docker-images / node）不随 git 提交，
 #     需手动准备；也可通过环境变量 OFFLINE_DIR 指向其他位置的资源目录
 #
 set -euo pipefail
@@ -30,22 +31,24 @@ PKG_DIR="$RELEASE_DIR/zhiyu-saas-$VERSION"
 BUILD_DIR="$(mktemp -d /tmp/zhiyu-pkg-build.XXXXXX)"
 trap 'rm -rf "$BUILD_DIR"' EXIT
 
-export PATH="/usr/local/go/bin:$PATH"
+JAVA_HOME_DIR="${JAVA_HOME_DIR:-/usr/lib/jvm/java-21-openjdk-amd64}"
 
 log() { echo "==> $*"; }
+warn() { echo "  警告：$*" >&2; }
 die() { echo "  错误：$*" >&2; exit 1; }
 
-for bin in docker go pnpm rsync python3; do
+for bin in docker pnpm rsync python3; do
   command -v "$bin" >/dev/null 2>&1 || die "需要 $bin，请先安装"
 done
+[[ -x "$JAVA_HOME_DIR/bin/java" ]] || die "需要 JDK 21（$JAVA_HOME_DIR），请先安装 openjdk-21-jdk-headless"
 
 # 离线资源完整性校验（客户机无网络，缺任何一项都无法完成部署）
 [[ -n "$(ls "$OFFLINE_DIR"/debs/*.deb 2>/dev/null)" ]] || \
   die "缺少 offline/debs/ 离线系统依赖包，请先准备（见 offline/README.md）"
 [[ -n "$(ls "$OFFLINE_DIR"/docker-images/*.tar 2>/dev/null)" ]] || \
-  die "缺少 offline/docker-images/ 第三方镜像包（postgres/redis/kkfileview），请先准备（见 offline/README.md）"
+  die "缺少 offline/docker-images/ 第三方镜像包（postgres/redis/nginx/kkfileview），请先准备（见 offline/README.md）"
 
-# ── 0. 加载 offline 第三方镜像（构建后端需要 alpine，构建前端需要 node:22-alpine）──
+# ── 0. 加载 offline 第三方镜像（构建 java-backend 需要 ubuntu:24.04）──
 for tar in "$OFFLINE_DIR"/docker-images/*.tar; do
   [[ -f "$tar" ]] || continue
   img=$(tar xfO "$tar" manifest.json 2>/dev/null | python3 -c "
@@ -62,74 +65,69 @@ for m in json.load(sys.stdin):
   fi
 done
 
-# ── 1. 编译静态工具二进制（客户机无需 Go 工具链）──
-log "编译迁移/种子工具（linux/amd64 静态二进制）..."
 rm -rf "$PKG_DIR"
-mkdir -p "$PKG_DIR"/{images,debs,bin,migrations,deploy}
-# 注意：Go 后端已迁到 backend/go/（脚本此前仍写 $ROOT/backend，离线包必然构建失败）
-(cd "$ROOT/backend/go" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-  go build -mod=vendor -ldflags="-s -w" -o "$PKG_DIR/bin/migrate" ./cmd/migrate/main.go)
-(cd "$ROOT/backend/go" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-  go build -mod=vendor -ldflags="-s -w" -o "$PKG_DIR/bin/seed" ./cmd/seed/main.go)
+mkdir -p "$PKG_DIR"/{images,debs,deploy,web}
 
-# ── 2. 构建后端镜像 ──
-log "构建后端镜像 zhiyu-backend:$VERSION ..."
+# ── 1. 构建后端 jar（Maven，prod profile）──
+log "构建后端 jar（Maven）..."
+(cd "$ROOT/backend/java" && JAVA_HOME="$JAVA_HOME_DIR" PATH="$JAVA_HOME_DIR/bin:$PATH" \
+  ./mvnw clean package -P prod -DskipTests -q) || die "Maven 构建失败"
+JAR="$ROOT/backend/java/ruoyi-admin/target/ruoyi-admin.jar"
+[[ -f "$JAR" ]] || die "ruoyi-admin.jar 未生成"
+
+# ── 2. 构建后端镜像 zhiyu-java-backend:$VERSION ──
+log "构建后端镜像 zhiyu-java-backend:$VERSION ..."
 TMPCTX=$(mktemp -d)
 trap 'rm -rf "$BUILD_DIR" "$TMPCTX"' EXIT
-(cd "$ROOT/backend/go" && CGO_ENABLED=0 go build -mod=vendor -ldflags="-s -w" -o "$TMPCTX/server" ./cmd/server/main.go)
-mkdir -p "$TMPCTX/migrations"
-rsync -a --delete "$ROOT/backend/go/migrations/" "$TMPCTX/migrations/"
-cp "$ROOT/backend/go/Dockerfile" "$TMPCTX/Dockerfile"
-DOCKER_BUILD_ARGS=()
-docker images alpine:3.21 --format ok 2>/dev/null | grep -q ok && DOCKER_BUILD_ARGS+=(--build-arg SKIP_APK_ADD=true)
-docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$VERSION" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
+cp "$JAR" "$TMPCTX/ruoyi-admin.jar"
+rsync -aL --exclude='lib/src.zip' --exclude='demo' --exclude='sample' \
+  "$JAVA_HOME_DIR/" "$TMPCTX/jdk/"
+cp "$ROOT/deploy/docker/java-backend.Dockerfile" "$TMPCTX/Dockerfile"
+docker build -t "zhiyu-java-backend:$VERSION" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
 
-# ── 3. 构建前端镜像（在临时副本中构建，不污染仓库工作树）──
-log "构建前端镜像 zhiyu-edu:$VERSION ..."
-rsync -a --exclude=.git --exclude=node_modules --exclude=.next \
-  --exclude='*.tsbuildinfo' --exclude=backend/go/bin "$ROOT/" "$BUILD_DIR/"
-(cd "$BUILD_DIR" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
-(cd "$BUILD_DIR" && pnpm install --frozen-lockfile 2>/dev/null) || \
-(cd "$BUILD_DIR" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+# ── 3. 构建前端产物（portal-vue 业务门户 + plus-ui 管理端，dist 直接进交付目录）──
+log "构建前端产物（portal-vue + plus-ui）..."
+rsync -a --exclude=.git --exclude=node_modules --exclude=dist \
+  --exclude='*.tsbuildinfo' --exclude=backend/java --exclude=offline \
+  "$ROOT/" "$BUILD_DIR/"
 
-# 离线图片编辑器资产同步到 public（构建镜像时打包进去，客户机无需单独携带）
-rm -rf "$BUILD_DIR/frontend/edu/public/image-editor"
-mkdir -p "$BUILD_DIR/frontend/edu/public/image-editor"
-rsync -a --delete "$OFFLINE_DIR/image-editor/" "$BUILD_DIR/frontend/edu/public/image-editor/"
+# portal-vue（build 内含 vue-tsc 类型检查）
+(cd "$BUILD_DIR/frontend/portal-vue" && pnpm install --offline --silent 2>/dev/null) || \
+  (cd "$BUILD_DIR/frontend/portal-vue" && pnpm install --silent 2>/dev/null) || \
+  die "portal-vue 依赖安装失败"
+(cd "$BUILD_DIR/frontend/portal-vue" && NODE_ENV=production pnpm build >/dev/null) || die "portal-vue 构建失败"
+[[ -d "$BUILD_DIR/frontend/portal-vue/dist" ]] || die "portal-vue 产物缺失：dist"
 
-# 前端已是 Vite 纯静态 SPA（Next.js 已下线）：产物在 frontend/edu/dist，
-# 由 nginx 镜像托管；不再有 .next/standalone。.env 里的 VITE_* 必须在构建期注入。
-if [[ -f "$ROOT/.env" ]]; then
-  set -a; . "$ROOT/.env"; set +a
-  log "  已加载 .env 供 VITE_* 注入（离线包产物内固化站点地址/跨平台链接）"
-else
-  warn "未找到 $ROOT/.env：VITE_* 将取默认值（移动端二维码与跨平台链接会回落）"
-fi
-(cd "$BUILD_DIR" && NODE_ENV=production pnpm --filter @zhiyu/edu build) || die "前端构建失败"
-
-EDU_DIR="$BUILD_DIR/frontend/edu"
-[[ -d "$EDU_DIR/dist" ]] || die "前端产物缺失：$EDU_DIR/dist（Vite build 未生成）"
-docker build -t "zhiyu-edu:$VERSION" -f "$EDU_DIR/Dockerfile" "$EDU_DIR" 2>&1 | tail -3
-rm -rf "$TMPCTX"
+# plus-ui 管理端
+(cd "$BUILD_DIR/frontend/plus-ui" && pnpm install --offline --silent 2>/dev/null) || \
+  (cd "$BUILD_DIR/frontend/plus-ui" && pnpm install --silent 2>/dev/null) || \
+  die "plus-ui 依赖安装失败"
+(cd "$BUILD_DIR/frontend/plus-ui" && NODE_ENV=production pnpm build >/dev/null) || die "plus-ui 构建失败"
+[[ -d "$BUILD_DIR/frontend/plus-ui/dist" ]] || die "plus-ui 产物缺失：dist"
 
 # ── 4. 导出镜像 ──
 log "导出 Docker 镜像..."
-docker save -o "$PKG_DIR/images/zhiyu-backend-$VERSION.tar" "zhiyu-backend:$VERSION"
-docker save -o "$PKG_DIR/images/zhiyu-edu-$VERSION.tar" "zhiyu-edu:$VERSION"
+docker save -o "$PKG_DIR/images/zhiyu-java-backend-$VERSION.tar" "zhiyu-java-backend:$VERSION"
 cp "$OFFLINE_DIR"/docker-images/*.tar "$PKG_DIR/images/" 2>/dev/null || true
 
 # ── 5. 组装交付目录 ──
 log "组装交付目录..."
 cp "$OFFLINE_DIR"/debs/*.deb "$PKG_DIR/debs/" 2>/dev/null || true
-rsync -a "$ROOT/backend/go/migrations/" "$PKG_DIR/migrations/"
+mkdir -p "$PKG_DIR/deploy/migrations"
+rsync -a "$ROOT/db/migrations/" "$PKG_DIR/deploy/migrations/"
+# RuoYi 框架表初始化 SQL（install.sh 幂等导入）
+cp "$ROOT/backend/java/script/sql/postgres/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
 cp "$ROOT/deploy/docker-compose.yml" "$PKG_DIR/deploy/"
 cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
 # 容器网关配置必须一起带：compose 的 nginx 服务挂载 ./nginx-container/conf.d，缺失则容器起不来
 cp -r "$ROOT/deploy/nginx-container" "$PKG_DIR/deploy/nginx-container"
+# 前端 dist（nginx 容器挂载 $DEPLOY_DIR/web/）
+cp -r "$BUILD_DIR/frontend/portal-vue/dist" "$PKG_DIR/web/portal"
+cp -r "$BUILD_DIR/frontend/plus-ui/dist" "$PKG_DIR/web/plus-ui"
 cp "$ROOT/deploy/release/install.sh" "$ROOT/deploy/release/start.sh" \
    "$ROOT/deploy/release/stop.sh" "$ROOT/deploy/release/README.md" "$PKG_DIR/"
 echo "$VERSION" > "$PKG_DIR/VERSION"
-chmod +x "$PKG_DIR"/*.sh "$PKG_DIR"/bin/*
+chmod +x "$PKG_DIR"/*.sh 2>/dev/null || true
 
 # ── 6. 压缩 ──
 log "压缩发布包..."

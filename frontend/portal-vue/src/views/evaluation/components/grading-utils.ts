@@ -1,7 +1,7 @@
-// 场景评分详情页共享工具：逐字移植 React
-// frontend/edu/components/shared/exam-grading/question-grading-card.tsx（判分逻辑）
-// + frontend/edu/lib/exam-snapshot.ts（examFromSnapshot）
-// + frontend/edu/lib/format-utils.ts（computeTotalScore / formatDateTime）
+// 场景评分详情页共享工具：逐字移植原 React 版
+// question-grading-card.tsx（判分逻辑）
+// + exam-snapshot.ts（examFromSnapshot）
+// + format-utils.ts（computeTotalScore / formatDateTime）
 // daily-exam-detail.vue 内联过同一套逻辑；本文件抽出供场景评分链路复用，不回改 daily-exam-detail。
 
 export const QUESTION_TYPE_LABELS_SHORT: Record<string, string> = {

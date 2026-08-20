@@ -1,6 +1,8 @@
 # 后端可复用资产速查
 
-> 新写后端代码前先查本表，判断能否复用，避免重复造轮子。「能复用而不复用」需在 commit 说明理由（见 `spec-standards.md` DoD 第 6 条）。分层红线见 `refactor-layering.md`。
+> ⚠️ **历史文档（Go 时代）**：本文档是 Go 后端（`store`/`handler`/`service`）复用资产的记录。Go 后端已于 2026-08 迁移删除，当前后端为 **Java（controller → service → mapper，`BaseMapperPlus` + `QueryBuilder.lambda` + `MapstructUtils` 等）**，复用约定以根 `AGENTS.md` 第二部分「Java 后端框架契约」为准。本文档仅作历史参考。
+
+> 原「新写后端代码前先查本表」纪律由 `AGENTS.md` 第二部分（组件/方法复用）承接；「能复用而不复用」需在 commit 说明理由（见 `spec-standards.md` DoD 第 6 条）。
 
 ## 一、列表查询（最多复用的一类，约 2/3 场景）
 
@@ -33,10 +35,7 @@
 | `handler.safeHandler` | `handler/common.go` | 带 panic recover 的 handler 包装 |
 | `store.LockByKey` | `store/query.go` | 分布式锁（核心业务防重复） |
 | `store.IsUniqueViolation` | `store/query.go` | 判断唯一键冲突（23505） |
-| `ai.Client.ChatCompletionStream` | `ai/stream.go` | SSE 流式 LLM 调用（delta 回调 + usage 捕获 + 上游错误脱敏）；任何流式 AI 端点必须用它（ADR-0002） |
-| `AIService.ChatStream` | `service/ai_stream.go` | 流式编排（租户配置加载/解密/用量记录），业务 service 一律经它，禁止直连 ai.Client |
-| `handler.sseEmitter` | `handler/ai_center_handler.go` | SSE 事件写出（meta/sources/delta/done/error + 惰性提交头：流前错误仍返回 HTTP JSON） |
-| `store.escapeLike` 惯例 | `store/query.go` / `ai_center.go` | ILIKE 搜索转义 %/_ 并加 `ESCAPE '\'` |
+| `store.escapeLike` 惯例 | `store/query.go` | ILIKE 搜索转义 %/_ 并加 `ESCAPE '\'` |
 | `store.MarshalJSONBytes` | `store/query.go` | JSON 序列化（含 fallback） |
 | `store.GenerateUniqueEntityCode` | `store/entity_code.go` | 唯一实体编码生成（前缀+查重重试） |
 | `store.FormatDateTime` | `store/` | 时间格式化（避免各层重复） |
@@ -48,4 +47,4 @@
 | `store.WithTxStore` / `withTxStore` | `store/` | 事务包装（store 层） |
 | `service.WithTx` | `service/` | 事务编排（service 层） |
 
-> 更新纪律：新增可复用的公共 store 方法 / handler 模板 / 工具函数时，同步登记本表；删除时同步移除——与 `components.md` 的登记纪律一致。
+> 更新纪律：新增可复用的公共 store 方法 / handler 模板 / 工具函数时，同步登记本表；删除时同步移除——与复用速查的登记纪律一致。

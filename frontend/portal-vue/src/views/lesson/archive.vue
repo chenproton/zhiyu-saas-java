@@ -1,5 +1,5 @@
 <template>
-  <!-- 对齐 React frontend/edu/app/lesson/admin/archive/page.tsx（ArchiveListPage 用法） -->
+  <!-- 对齐原 React 版 lesson/admin/archive/page.tsx（ArchiveListPage 用法） -->
   <ArchiveListPage
     entity-label="课程"
     page-title="课程历史档案库"

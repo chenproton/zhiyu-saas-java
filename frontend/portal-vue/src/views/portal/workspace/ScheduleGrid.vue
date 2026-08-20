@@ -1,6 +1,6 @@
 <!--
   学期周课表网格（7 列星期 × 节次行），学生/教师工作台「我的课表」共用。
-  对齐 React frontend/edu/components/shared/schedule-grid.tsx
+  对齐原 React 版 shared/schedule-grid.tsx
   （节次行优先取节次配置并按 sortOrder 排序，缺省时从课表条目的 periods 归并；
    按周次过滤支持单/双周；场景课带「场景」徽标；提供 href 时整卡可跳转）。
 -->

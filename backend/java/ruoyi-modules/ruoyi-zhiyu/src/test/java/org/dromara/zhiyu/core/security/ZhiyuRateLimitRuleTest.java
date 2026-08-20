@@ -55,29 +55,12 @@ class ZhiyuRateLimitRuleTest {
     }
 
     @Test
-    @DisplayName("上传：upload 20 次/分 按用户（含知识库文档上传）")
+    @DisplayName("上传：upload 20 次/分 按用户")
     void uploadRules() {
         ZhiyuRateLimitRule.Rule upload = rule("POST", "/api/v1/files/upload");
         assertEquals("upload", upload.namespace());
         assertEquals(20, upload.limit());
         assertTrue(upload.byUser());
-
-        ZhiyuRateLimitRule.Rule kbDoc = rule("POST", "/api/v1/ai/kb/" + UUID + "/documents");
-        assertEquals("upload", kbDoc.namespace());
-    }
-
-    @Test
-    @DisplayName("AI 调用：ai 20 次/分 按用户")
-    void aiRules() {
-        for (String path : new String[]{"/api/v1/ai/chat", "/api/v1/ai/position-assist",
-            "/api/v1/ai/scenario-assist", "/api/v1/ai/kb/" + UUID + "/ask",
-            "/api/v1/ai/agents/" + UUID + "/chat", "/api/v1/ai/agents/" + UUID + "/preview",
-            "/api/v1/ai/yiknow/chat"}) {
-            ZhiyuRateLimitRule.Rule r = rule("POST", path);
-            assertEquals("ai", r.namespace(), path);
-            assertEquals(20, r.limit(), path);
-            assertTrue(r.byUser(), path);
-        }
     }
 
     @Test

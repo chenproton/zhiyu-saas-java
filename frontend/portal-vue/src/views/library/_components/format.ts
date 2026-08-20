@@ -1,4 +1,4 @@
-// 本地时间格式化工具（等价 frontend/edu/lib/format-utils.ts 的 formatDate 语义；
+// 本地时间格式化工具（等价原 React 版 format-utils.ts 的 formatDate 语义；
 // Vue 门户 utils/format.ts 仅有 formatSize / isSafeLinkUrl，故这里补日期相关辅助）
 
 function pad(n: number): string {

@@ -48,7 +48,7 @@
 
 <script setup lang="ts">
 // 测评启用条件：手动启用 / 定时启用（起止时间）/ 随时作答
-// 对齐 React frontend/edu/components/evaluation-rules/exam-activation-config.tsx
+// 对齐原 React 版 evaluation-rules/exam-activation-config.tsx
 import { computed } from 'vue';
 import type { ExamActivationValue } from './types';
 

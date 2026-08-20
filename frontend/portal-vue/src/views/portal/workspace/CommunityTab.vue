@@ -1,6 +1,6 @@
 <!--
   学习社区 Tab（React community-tab 对位）。
-  对齐 React frontend/edu/app/portal/workspace/_components/community-tab.tsx：
+  对齐原 React 版 community-tab.tsx：
   - 顶部 4 指标（热门话题 / 我的提问 / 学习小组 / 我的导师）；
   - 左 2/3 话题列表（热门话题/最新发布/我的提问）与详情（返回列表 / 回复流 / 楼中楼回复 / 回复框）；
   - 右 1/3 侧边栏（学习小组 / 我的导师 / 社区规范，需求明确保留演示数据）；

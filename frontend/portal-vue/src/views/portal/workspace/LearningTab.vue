@@ -1,6 +1,6 @@
 <!--
   我的学习 Tab：顶部 4 指标 + 左「我的实践场景」/ 右「我的课程」，各带状态筛选。
-  对齐 React frontend/edu/app/portal/workspace/_components/learning-tab.tsx
+  对齐原 React 版 learning-tab.tsx
   （dashboard?role=student 取 courses/sceneTasks；场景筛选 全部/进行中/待提交/已完成，
    课程筛选 全部/进行中/未开始/已完成；按钮跳 scene/lesson landing 并带排课 resourceVersion）。
 -->

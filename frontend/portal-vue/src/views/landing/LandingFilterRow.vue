@@ -1,6 +1,6 @@
 <template>
   <!-- 筛选行（行业/专业等 chip 组，超出一行自动折叠 + 展开/收起）：
-       对齐 React frontend/edu/components/shared/landing-filter-row.tsx（accentColor=primary）。 -->
+       对齐原 React 版 landing-filter-row（accentColor=primary）。 -->
   <div v-if="items.length > 1" class="filter-row" :class="{ 'filter-row-border': showBorder }">
     <span class="filter-label">{{ label }}</span>
     <div class="filter-body">

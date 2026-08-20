@@ -1,6 +1,6 @@
 // 岗位编辑页本地编辑态模型与常量
-// 逐字对齐 React：frontend/edu/lib/types/job-source.ts（Position 编辑态视图）
-// + frontend/edu/lib/converters/job-converters.ts（convert* 系列字段映射）
+// 逐字对齐原 React 版：lib/types/job-source.ts（Position 编辑态视图）
+// + lib/converters/job-converters.ts（convert* 系列字段映射）
 // 说明：Vue 侧 types/job.ts 只描述后端裸 JSON DTO，编辑态（salaryRange 元组、
 // certificates/responsibilities/abilityBindings 内联）为页面局部模型，按契约禁止改 types/*.ts，故内联于此。
 

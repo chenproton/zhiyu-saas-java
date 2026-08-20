@@ -1,8 +1,8 @@
 /**
  * Vue 门户全局导航配置
  *
- * 完整移植自 React `frontend/edu/lib/navigation-config.ts`
- * （类型定义移植自 `frontend/packages/ui/src/components/platform-shell/config.ts`
+ * 完整移植自原 React 版 `lib/navigation-config.ts`
+ * （类型定义移植自原 React 版 `platform-shell/config.ts`
  *  与 `icons.ts`，路径匹配语义移植自同目录 `utils.ts` / `PlatformSideNav.tsx`）。
  *
  * 移植原则：
@@ -35,7 +35,6 @@ import {
   Histogram,
   HomeFilled,
   Key,
-  MagicStick,
   Medal,
   OfficeBuilding,
   Operation,
@@ -85,7 +84,6 @@ export const platformIconMap = {
   school: School, // lucide School（React 直接引用组件）
   settings: Setting,
   share2: Share,
-  sparkles: MagicStick,
   star: Star,
   tags: PriceTag,
   user: User,
@@ -740,57 +738,6 @@ export const systemNavigationConfig: PlatformNavigationConfig = {
 };
 
 /* ============================================================
-   AI 智能服务中心导航（门户-AI 平台）
-   侧栏只列后台管理功能；前台落地页/大厅/详情/创作页为全宽页（无侧栏），
-   全宽清单见 AI_FULL_WIDTH_PATHS（对齐 React app/portal/apps/ai/layout.tsx）
-   ============================================================ */
-export const aiNavigationConfig: PlatformNavigationConfig = {
-  brandTitle: 'AI 智能服务平台',
-  currentPlatformId: 'ai',
-  currentPlatformLabel: 'AI 智能服务平台',
-  brandHref: '/portal/apps/ai/landing',
-  brandIcon: 'sparkles',
-  platformIcon: 'sparkles',
-  sideBackHref: '/portal/apps',
-  currentUserName: '用户',
-  currentUserRoleLabel: '平台用户',
-  showCurrentTime: true,
-  showUserMenu: true,
-  userMenuItems: COMMON_USER_MENU_ITEMS,
-  sideNavItems: [
-    {
-      id: 'admin',
-      label: 'AI 广场管理',
-      icon: 'settings',
-      children: [
-        {
-          id: 'admin-reviews',
-          label: '知识库/智能体审核',
-          href: '/portal/apps/ai/admin/reviews'
-        },
-        {
-          id: 'admin-kbs',
-          label: '知识库管理',
-          href: '/portal/apps/ai/admin/kbs'
-        },
-        {
-          id: 'admin-agents',
-          label: '智能体管理',
-          href: '/portal/apps/ai/admin/agents'
-        },
-        {
-          id: 'admin-integrations',
-          label: '外部 AI 服务上架',
-          href: '/portal/apps/ai/admin/integrations'
-        }
-      ]
-    }
-  ],
-  defaultExpandedSideNavIds: ['admin'],
-  platformSwitchItems: []
-};
-
-/* ============================================================
    Library 模块导航（资源共享平台）
    ============================================================ */
 export const libraryNavigationConfig: PlatformNavigationConfig = {
@@ -1316,15 +1263,6 @@ export const allianceNavigationConfig: PlatformNavigationConfig = {
    返回 null = 该路径无左侧导航（门户页 / 前台全宽页）。
    ============================================================ */
 
-/** AI 前台全宽页（无侧栏），对齐 React app/portal/apps/ai/layout.tsx FULL_WIDTH_PAGES */
-const AI_FULL_WIDTH_PATHS = [
-  '/portal/apps/ai/landing',
-  '/portal/apps/ai/hall',
-  '/portal/apps/ai/agents',
-  '/portal/apps/ai/kb',
-  '/portal/apps/ai/studio'
-];
-
 /** 产教联盟前台页（无侧栏），对齐 React app/portal/alliance/layout.tsx */
 const ALLIANCE_PUBLIC_PREFIX = '/portal/alliance';
 
@@ -1335,13 +1273,8 @@ interface DomainRule {
 }
 
 const DOMAIN_RULES: DomainRule[] = [
-  // ---- portal 域：先排除无侧栏的前台/门户页，再匹配三个管理应用 ----
+  // ---- portal 域：先排除无侧栏的前台/门户页，再匹配管理应用 ----
   { test: (p) => p === ALLIANCE_PUBLIC_PREFIX || p.startsWith(`${ALLIANCE_PUBLIC_PREFIX}/`), config: null },
-  {
-    test: (p) => AI_FULL_WIDTH_PATHS.some((full) => p === full || p.startsWith(`${full}/`)),
-    config: null
-  },
-  { test: (p) => p.startsWith('/portal/apps/ai'), config: aiNavigationConfig },
   { test: (p) => p.startsWith('/portal/apps/system'), config: systemNavigationConfig },
   { test: (p) => p.startsWith('/portal/apps/alliance'), config: allianceNavigationConfig },
   // 门户首页 / 我的服务台 / 应用服务中心及其余 /portal/* 页面：纯内容，无侧栏

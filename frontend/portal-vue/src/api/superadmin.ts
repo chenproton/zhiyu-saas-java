@@ -1,6 +1,6 @@
-// 超管控制台数据通道（对齐 React frontend/edu/app/superadmin/page.tsx + api-client adminAiApi）。
-// 全部走 SaaS 平台 token（saasRequest），请求前缀 /admin/tenants 对应 Java SuperAdminController
-// 与 AiTenantConfigController；主题公开读取走 SettingsController 的 /settings/theme。
+// 超管控制台数据通道（对齐原 React 版 superadmin/page.tsx）。
+// 全部走 SaaS 平台 token（saasRequest），请求前缀 /admin/tenants 对应 Java SuperAdminController；
+// 主题公开读取走 SettingsController 的 /settings/theme。
 import { saasRequest, buildQuery } from './http';
 import type { ListResponse } from './http';
 
@@ -55,13 +55,6 @@ export interface TenantAdmin {
   lastLoginAt?: string;
 }
 
-export interface AIConfigView {
-  configured: boolean;
-  baseUrl?: string;
-  model?: string;
-  apiKeyMasked?: string;
-}
-
 export interface SubscriptionPackage {
   id: string;
   tenantId?: string;
@@ -69,7 +62,6 @@ export interface SubscriptionPackage {
   validUntil?: string;
   modules?: Record<string, unknown>;
   status?: string;
-  aiTokenQuota?: number;
 }
 
 export interface CaptchaData {
@@ -114,14 +106,10 @@ export const PLATFORM_MODULES: PlatformModuleDef[] = [
   { id: 'resource', label: '教学资源共享服务平台' },
   { id: 'affairs', label: '教务管理服务平台' },
   { id: 'alliance', label: '产教融合与就业服务平台' },
-  { id: 'ai', label: 'AI 智能服务平台' },
   { id: 'opc', label: 'OPC专区' },
   { id: 'decision', label: '敏捷决策中心' },
   { id: 'research', label: '教科研服务中心' }
 ];
-
-// AI 套餐额度换算：2 元 / 1M token → 1 元 = 500,000 token
-export const AI_TOKEN_PER_RMB = 500000;
 
 const TENANTS_API = '/admin/tenants';
 
@@ -159,7 +147,7 @@ export const superAdminApi = {
 
   // ---- 订阅套餐 ----
   getSubscription: (tenantId: string) => adminFetch<SubscriptionPackage>(`/${tenantId}/subscription`),
-  updateSubscription: (tenantId: string, req: { modules: Record<string, boolean>; aiTokenQuota: number }) =>
+  updateSubscription: (tenantId: string, req: { modules: Record<string, boolean> }) =>
     adminFetch<SubscriptionPackage>(`/${tenantId}/subscription`, { method: 'PUT', body: JSON.stringify(req) }),
 
   // ---- 管理员（学校 / 企业）----
@@ -187,17 +175,7 @@ export const superAdminApi = {
       body: JSON.stringify({ primary })
     }),
   deleteTenantTheme: (tenantId: string) =>
-    adminFetch<Record<string, string>>(`/${tenantId}/settings/theme`, { method: 'DELETE' }),
-
-  // ---- 租户级 AI 配置（adminAiApi 等价物）----
-  getAiConfig: (tenantId: string) => saasRequest<AIConfigView>(`/admin/tenants/${tenantId}/ai/config`),
-  saveAiConfig: (tenantId: string, req: { baseUrl: string; model: string; apiKey?: string }) =>
-    saasRequest<{ status: string }>(`/admin/tenants/${tenantId}/ai/config`, {
-      method: 'PUT',
-      body: JSON.stringify(req)
-    }),
-  deleteAiConfig: (tenantId: string) =>
-    saasRequest<{ status: string }>(`/admin/tenants/${tenantId}/ai/config`, { method: 'DELETE' })
+    adminFetch<Record<string, string>>(`/${tenantId}/settings/theme`, { method: 'DELETE' })
 };
 
 // ---- SaaS 认证 ----

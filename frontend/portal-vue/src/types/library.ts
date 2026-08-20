@@ -1,4 +1,4 @@
-// 移植自 frontend/packages/shared-types/src/library.ts
+// 移植自原 React 版 shared-types 的 library.ts
 
 export type ResourceKind =
   | 'document'

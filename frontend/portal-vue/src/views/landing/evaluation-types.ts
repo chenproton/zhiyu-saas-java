@@ -1,6 +1,6 @@
 // 测评广场（evaluation landing）共享类型与工具。
-// 字段对齐 React 侧 frontend/packages/shared-types/src/evaluation-exam.ts（ExamCenterItem）与
-// frontend/edu/lib/{cover-gradients,format-utils}.ts；接口契约与 React 完全一致（裸 JSON、{items,total}）。
+// 字段对齐原 React 版 shared-types 的 evaluation-exam.ts（ExamCenterItem）与
+// lib/{cover-gradients,format-utils}.ts；接口契约与原 React 版完全一致（裸 JSON、{items,total}）。
 
 /** 测评中心条目（landing 考试中心，GET /evaluation/exam-center） */
 export interface ExamCenterItem {

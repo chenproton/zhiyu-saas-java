@@ -1,6 +1,6 @@
 <!--
   通用服务台（企业导师等非学生/教师/学校管理员角色的兜底视图）。
-  对齐 React frontend/edu/app/portal/workspace/page.tsx 尾部通用分支：
+  对齐原 React 版 workspace/page.tsx 尾部通用分支：
   - 快捷统计 4 卡（合作项目 / 实习学生 / 待办事项 / 消息通知）取 dashboard.stats 与 todos/announcements；
   - 8 个信息卡：通知公告 / 校园日历 / 待办事项 / 账号安全中心 / 本周活跃度 / 学习数据统计 /
     资源使用占比 / 校园通讯录。其中安全项、周活跃度、月度趋势、资源占比、通讯录在 React 侧

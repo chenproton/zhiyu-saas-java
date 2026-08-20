@@ -1,6 +1,6 @@
 <!--
   指标卡：图标 + 标题 + 数值 + 趋势文案。
-  对齐 React frontend/edu/app/portal/workspace/_components/stat-card.tsx
+  对齐原 React 版 stat-card.tsx
   （白底圆角 12px、hover 抬阴影；trendUp 为绿色，否则灰色；可点击时整卡可键盘触发）。
 -->
 <template>

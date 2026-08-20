@@ -1,6 +1,6 @@
 <!--
   教师学生情况 Tab（学校管理员）。
-  对齐 React frontend/edu/app/portal/workspace/_components/school-admin-personnel-tab.tsx（129 行）：
+  对齐原 React 版 school-admin-personnel-tab.tsx（129 行）：
   - 数据源：GET /portal/workspace/dashboard?role=school_admin 的 personnelStats（学生/教职工/企业导师/学校管理员）；
   - 顶部计数卡：按人员类别取图标（学生/教职工/企业导师/学校管理员），主色渐变卡；
   - 人员管理入口：学生管理 / 教职工管理 / 账户列表 / 角色权限 / 组织架构（跳 /portal/apps/system/org-user/*）。

@@ -17,7 +17,7 @@ import java.util.Set;
  *   <li>窄授权规则必须排在同前缀宽授权规则之前（如 citation-stats 管理面规则先于
  *       跨模块只读宽授权规则）；</li>
  *   <li>未命中任何规则的 /api/v1/** 路径按「portal 平台 + 已登录」兜底（等价 Go
- *       门户平台组内无额外授权的登录态接口，如 /ai/chat、/alliance/public/*）。</li>
+ *       门户平台组内无额外授权的登录态接口，如 /alliance/public/*）。</li>
  * </ul>
  *
  * @author zhiyu
@@ -153,10 +153,6 @@ public final class ZhiyuAuthzRules {
         rules.add(portalAuth(GET_ONLY, "/api/v1/subscriptions"));
         // Go registerLandingRoutes（routes.go:475-477）
         rules.add(portalAuth(GET_ONLY, "/api/v1/job/landing/target-positions"));
-        // Go routes.go:104-107 AI 对话/辅助编写：租户内任意登录用户
-        rules.add(portalAuth(Set.of("POST"), "/api/v1/ai/chat"));
-        rules.add(portalAuth(Set.of("POST"), "/api/v1/ai/position-assist"));
-        rules.add(portalAuth(Set.of("POST"), "/api/v1/ai/scenario-assist"));
         // Go routes.go:112-113 联盟公开前台：登录公开，不受菜单限制（spec 02 §1.9）
         rules.add(portalAuth(null, "/api/v1/alliance/public"));
         rules.add(portalAuth(null, "/api/v1/alliance/public/**"));
@@ -164,30 +160,11 @@ public final class ZhiyuAuthzRules {
         rules.add(portalAuth(GET_ONLY, "/api/v1/affairs/period-slots"));
         // Go routes.go:330-333 本租户详情只读：任何登录用户可读本租户（handler 强制归属）
         rules.add(portalAuth(GET_ONLY, "/api/v1/tenants/*"));
-        // Go routes_ai_center.go 用户端：任意登录角色可用（可见性在 service 层判定）
-        rules.add(portalAuth(null, "/api/v1/ai/kb"));
-        rules.add(portalAuth(null, "/api/v1/ai/kb/**"));
-        rules.add(portalAuth(null, "/api/v1/ai/agents"));
-        rules.add(portalAuth(null, "/api/v1/ai/agents/**"));
-        rules.add(portalAuth(null, "/api/v1/ai/conversations"));
-        rules.add(portalAuth(null, "/api/v1/ai/conversations/**"));
-        rules.add(portalAuth(null, "/api/v1/ai/yiknow"));
-        rules.add(portalAuth(null, "/api/v1/ai/yiknow/**"));
-        rules.add(portalAuth(GET_ONLY, "/api/v1/ai/square/kbs"));
-        rules.add(portalAuth(GET_ONLY, "/api/v1/ai/square/agents"));
-        rules.add(portalAuth(GET_ONLY, "/api/v1/ai/integrations"));
 
-        // ===== SECTION D：AI 管理端（Go routes_ai_center.go:61-71 菜单驱动 RBAC）=====
-        rules.add(portalMenu(null, "/api/v1/ai/admin", ZhiyuMenuCatalog.AI_ADMIN_MENUS));
-        rules.add(portalMenu(null, "/api/v1/ai/admin/**", ZhiyuMenuCatalog.AI_ADMIN_MENUS));
-
-        // ===== SECTION E：系统管理面（Go RequireSystemPermission，routes.go:190-194 + registerPortalRoutes）=====
+        // ===== SECTION D：系统管理面（Go RequireSystemPermission，routes.go:190-194 + registerPortalRoutes）=====
         // Go registerPortalRoutes:584-586（GET /tenants/{id} 被后注册覆盖为登录公开，见 SECTION C）
         rules.add(portalSystem(GET_ONLY, "/api/v1/tenants"));
         rules.add(portalSystem(Set.of("PUT"), "/api/v1/tenants/*"));
-        // 租户 AI 服务配置与用量（Go registerPortalRoutes:589-592）
-        rules.add(portalSystem(null, "/api/v1/ai/config"));
-        rules.add(portalSystem(GET_ONLY, "/api/v1/ai/usage"));
         // 租户管理员管理（Go registerPortalRoutes:594-598）
         rules.add(portalSystem(null, "/api/v1/admins"));
         rules.add(portalSystem(null, "/api/v1/admins/**"));

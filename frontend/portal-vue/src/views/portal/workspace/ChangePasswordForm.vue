@@ -1,6 +1,6 @@
 <!--
   个人中心-修改密码（学生/教师/学校管理员共用）：无需旧密码，两遍新密码一致即可。
-  对齐 React frontend/edu/app/portal/workspace/_components/change-password-form.tsx
+  对齐原 React 版 change-password-form.tsx
   （规则：至少 8 位且同时含字母与数字；POST /portal/workspace/me/password）。
 -->
 <template>

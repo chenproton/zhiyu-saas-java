@@ -1,6 +1,6 @@
 <!--
   教师工作台课程日历（周视图表格 + 事件气泡操作）。
-  对齐 React frontend/edu/app/portal/workspace/_components/teacher-dashboard-tab.tsx 的 CourseScheduleTable：
+  对齐原 React 版 teacher-dashboard-tab.tsx 的 CourseScheduleTable：
   - 头部：{年}年{月}月 · 第{N}周 + 周起止日期 + 年/月/周下拉 + 上一周/下一周 + 今天；
   - 表体：8 列（节次/星期 + 周一~周日）× 9 节次（上午 1~晚自习 1），按 dayOfWeek + period 命中事件；
   - 课程/场景类事件挂气泡：已关联节次/任务列表 + 修改关联 / 前往备课·导学准备 / 前往上课·前往导学 /

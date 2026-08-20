@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-// 题目预览弹窗：对齐 React frontend/edu/components/evaluation/question-preview.tsx
+// 题目预览弹窗：对齐原 React 版 question-preview.tsx
 import { computed } from 'vue';
 import { QUESTION_TYPE_COLORS, QUESTION_TYPE_LABELS } from '@/types/evaluation';
 import type { QuestionType } from '@/types/evaluation';

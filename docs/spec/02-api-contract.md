@@ -1,9 +1,9 @@
 # 接口契约文档 — 知与 SaaS
 
-> 基于后端源码（`backend/go/internal/router/`、`backend/go/internal/handler/`）回溯整理。
-> 全量接口约 **700+ 个**（实测 623 条静态注册 + 约 81 条模板展开，含按角色组重复注册的只读接口），本文档以「公共规范 + 通用模式 + 模块清单 + 代表性详写」方式记录，未逐接口展开的遵循同名通用模式。
+> 基于后端源码回溯整理。
+> 全量接口约 **700+ 个**，本文档以「公共规范 + 通用模式 + 模块清单 + 代表性详写」方式记录，未逐接口展开的遵循同名通用模式。
 > 企业平台（Partner）的接口（`/partner/*`、`/auth/partner/*`）在子平台 spec [`partner-enterprise-platform.md`](partner-enterprise-platform.md) §5 单独记载，本文档不重复（§1.11 仅列 SaaS 运营端跨平台管理入口）。
-> 2026-08-14 全量审计修订：补齐 AI/快照 bundle/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员等漏登记端点；删除毕业设计/微证书/作业模块等无路由僵尸条目；修正认证规则与机器码词汇表。
+> 2026-08-14 全量审计修订：补齐快照 bundle/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员等漏登记端点；删除毕业设计/微证书/作业模块等无路由僵尸条目；修正认证规则与机器码词汇表。
 
 ---
 
@@ -13,15 +13,14 @@
 
 ### 授权模型（2026-08-17 起，ADR-0008「菜单驱动的 API 授权」）
 
-> 角色差异收敛为**菜单权限配置差异**：所有角色的页面与 API 访问权限均由 `/portal/apps/system/org-user/roles` 的菜单勾选驱动（`roles.permissions.menus`），配置一致则权限一致。后端 API 按「模块菜单」声明授权（`RequireMenu`，见 `backend/go/internal/router/menu_grants.go`），写操作与只读操作均由菜单决定。保留的少量角色特判：
+> 角色差异收敛为**菜单权限配置差异**：所有角色的页面与 API 访问权限均由 `/portal/apps/system/org-user/roles` 的菜单勾选驱动（`roles.permissions.menus`），配置一致则权限一致。后端 API 按「模块菜单」声明授权（`RequireMenu`），写操作与只读操作均由菜单决定。保留的少量角色特判：
 >
 > - **平台隔离**（`RequirePlatform` portal/saas/partner）与**租户归属校验**（handler 层，ADR-0003）不变；
 > - **关键写白名单**（`RequireSystemPermission`）：密码/租户状态/有效期/审批终审等关键写操作仍限 `school_admin`/`platform_admin` 角色（纵深防御）；
 > - **服务台**（`portalWorkspace`）：工作台/社区/个人中心按角色聚合（PRD P-1）；
 > - **school_admin「无 menus = 全量」**：未显式配置 menus 时全量放行（与 roles 页回显全选一致）；显式配置后按菜单判定；
 > - **学生**：默认种子仅落地页 5 个 + 服务台菜单，落地页菜单隐含授权对应只读 API 面；
-> - **B13 配置化**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（原代码级收窄取消，配置可覆盖）；
-> - **AI 中心**：用户端登录公开（可见性 service 层判定）；管理端（审核/挂接）由 AI 管理菜单（`/portal/apps/ai/admin/reviews`、`/portal/apps/ai/admin/integrations`）控制，不再限 `school_admin` 角色（2026-08-17 修订）。
+> - **B13 配置化**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（原代码级收窄取消，配置可覆盖）。
 >
 > 旧权限列标记（`systemAdmin`/`businessUser`/`jobViewer`/`RequireAllianceManager`）在 2026-08-17 重构后由对应菜单组替代，语义映射：`businessUser` ≈ 对应模块管理菜单；`jobViewer` ≈ 模块管理菜单 ∪ 落地页菜单（只读面）；`systemAdmin` ≈ `/portal/apps/system` 菜单 + school_admin 角色兜底；`RequireAllianceManager` ≈ 联盟管理菜单。
 >
@@ -128,10 +127,10 @@
 | GET | `/evaluation/exam-results/{id}`、POST `/{id}/grade` | businessUser | 成绩详情/教师评分 |
 | GET/POST | `/evaluation/results` | jobViewer 读+Submit / businessUser | 评估结果列表/提交 |
 | GET/POST | `/evaluation/results/{id}`、`/{id}/grade`、`/results/batch-grade` | businessUser | 结果详情/评分/批量评分 |
-| GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分；`/course-scores` 当前被学生画像页临时隐藏（`student_portrait.html` `SHOW_COURSE_SCORES` 开关，见 `docs/系统功能清单.md`「六、6 认证结果与能力汇聚」） |
+| GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分；`/course-scores` 当前被学生画像页临时隐藏（前端 `SHOW_COURSE_SCORES` 开关，见 `docs/系统功能清单.md`「六、6 认证结果与能力汇聚」） |
 | GET/POST | `/evaluation/job-ability/aggregate`、`/aggregate/status` | businessUser | 触发汇聚/状态 |
 | GET/POST/PUT/DELETE | `/evaluation/certifications`、`/{id}` | businessUser | 认证规则（见 §3.4，实际端点以 `/evaluation/certifications` 为前缀） |
-| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：`certifications.go` `certificationSceneTasksOnly` 开关过滤体系课/混合课课程任务，恢复课程置 false） |
+| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：后端 `certificationSceneTasksOnly` 开关过滤体系课/混合课课程任务，恢复课程置 false） |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | businessUser | 能力点五档分数线 |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights` | businessUser | 单个能力点下任务权重（单点保存，不影响其它能力点） |
 | GET/POST | `/evaluation/certifications/{id}/items`、`/items/{id}/points`、`/{id}/full` | businessUser | 能力项/能力点/全量规则 |
@@ -174,7 +173,7 @@
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET/PUT | `/tenants`、`/tenants/{id}` | 列表 `GET /tenants` 与写 `PUT /tenants/{id}`：systemAdmin / 本租户 portal 管理员（归属校验）；详情 `GET /tenants/{id}`：jobViewer 本租户业务角色（教师/学生/企业导师等）可读（handler 强制本租户，跨租户 403） | 租户信息（当前租户）；详情只读面向联盟前台落地页（`/portal/alliance/landing` hero 学校卡）与学校信息页（`/portal/apps/alliance/school`）读取本租户展示信息；**有效期 `valid_from`/`valid_until` 仅平台管理员可修改**，本租户管理员（portal）更新时自动剥离有效期字段（防止自行延长订阅） |
-| GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流）；本租户 portal 管理员经系统管理菜单调用（handler 强制本租户，归属校验在位）；**租户自助新增暂不开放**（产品决策：前端隐藏「新增」入口，`POST /admins` 仍保留供平台侧使用，见 `docs/系统功能清单.md`「十一、1 租户信息」；恢复方式为 `school-admin-manager.tsx` 顶部 `SHOW_ADD_BUTTON` 改为 true） |
+| GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流）；本租户 portal 管理员经系统管理菜单调用（handler 强制本租户，归属校验在位）；**租户自助新增暂不开放**（产品决策：前端隐藏「新增」入口，`POST /admins` 仍保留供平台侧使用，见 `docs/系统功能清单.md`「十一、1 租户信息」；恢复方式为前端租户信息页组件顶部 `SHOW_ADD_BUTTON` 改为 true） |
 | GET/POST/PUT/DELETE | `/organizations`、`/organizations/tree`、`/org-types` | systemAdmin | 组织/组织类型 |
 | GET/POST/PUT/DELETE | `/users`（12 个写动作 + List） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/批量创建/毕业/删除/改密/绑定角色等） |
 | GET/POST/PUT/DELETE | `/staff-titles`、`/user-extension-fields`、`/user-relations` | systemAdmin | 职称/扩展字段/用户关系 |
@@ -230,24 +229,11 @@
 | GET/PUT | `/admin/tenants/{id}/enterprise` | 企业租户主体信息 |
 | GET/POST/PUT/DELETE/POST /{id}/reset-password | `/admin/tenants/{tenantId}/admins` | 租户管理员管理（5） |
 | GET/POST/PUT/DELETE/POST /{id}/reset-password | `/admin/tenants/{tenantId}/enterprise-admins` | 企业租户管理员管理（5） |
-| GET/PUT/DELETE | `/admin/tenants/{tenantId}/ai/config` | AI 服务代管（同租户自身配置表） |
 | GET/PUT | `/admin/tenants/{tenantId}/subscription` | 租户订阅套餐 |
 | PUT/DELETE | `/admin/tenants/{tenantId}/settings/theme` | 租户主题色覆盖管理 |
 | GET/PUT | `/admin/settings/theme` | 全局主题色配置 |
 
-### 1.12 AI 智能服务（ai，portal 平台组）
-
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| GET/PUT/DELETE | `/ai/config` | systemAdmin | 租户 AI 服务配置（api_key 仅回传脱敏值） |
-| GET | `/ai/usage` | systemAdmin | AI 用量统计（全量 + 近 30 天序列 + 套餐额度） |
-| POST | `/ai/chat` | portal 任意登录用户（限流 20/min/用户） | AI 助手对话（非流式；messages ≤ 50 条、单条 ≤ 8000 字符） |
-| POST | `/ai/position-assist` | 同上 | 岗位 AI 辅助编写（润色/拆解/推荐；生成内容由前端写入表单，服务端不落库） |
-| POST | `/ai/scenario-assist` | 同上 | 场景/任务 AI 辅助编写（基础信息/任务卡片/任务链建议） |
-
-错误映射统一：未配置 → 412 `ai_not_configured`；上游错误 → 502 + 脱敏 message；其余 → 500（见 [`ai-development.md`](../ai-development.md)）。
-
-### 1.13 内容快照 bundle（五类资源，`GET /{base}/{id}/snapshot?version=`）
+### 1.12 内容快照 bundle（五类资源，`GET /{base}/{id}/snapshot?version=`）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -281,7 +267,7 @@
 | SaveDraft | `POST {base}/{id}/save-draft` | 回退草稿 | approved/published → draft |
 | Invite | `POST {base}/{id}/invite` | 协作者邀请 | — |
 
-非法转移返回 `409 {"error": "..."}`；动作经 `store.ContentActionStore` 统一校验。5 类内容（岗位/场景/课程/题库/试卷）发布即快照（ADR-0006）。
+非法转移返回 `409 {"error": "..."}`；动作经统一内容动作服务校验。5 类内容（岗位/场景/课程/题库/试卷）发布即快照（ADR-0006）。
 
 ### 2.2 批次 6 动作（岗位/场景/课程/测评/教务五套同构）
 
@@ -368,7 +354,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | POST | `/evaluation/certifications/points/{pointId}/tasks` | 关联任务 |
 | PUT/DELETE | `/evaluation/certifications/tasks/{id}` | 关联任务更新/删除 |
 | GET/PUT | `/evaluation/certifications/{id}/full` | 全量规则读/写 |
-| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：`certifications.go` `certificationSceneTasksOnly` 过滤体系课/混合课课程任务，恢复置 false，见 §1.4 同端点注） |
+| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：后端 `certificationSceneTasksOnly` 过滤体系课/混合课课程任务，恢复置 false，见 §1.4 同端点注） |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | 能力点五档分数线 |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights` | 单个能力点下任务权重（胜任配置弹窗保存：只校验并保存当前能力点，不影响其它能力点） |
 
@@ -397,73 +383,6 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 **GET `/api/v1/portal/workspace/dashboard`** → `200` 按角色聚合的 DTO（课程/任务/考试/课表/待办），30s Redis 缓存（键含 userID+角色）。
 
-### 3.8 AI 对话
-
-**POST `/api/v1/ai/chat`**
-
-- 请求体：
-```json
-{ "messages": [ { "role": "user", "content": "..." } ] }
-```
-- 护栏：messages 1~50 条、单条 ≤ 8000 字符 → 违反返回 `400`
-- 未配置 AI → `412 {"error":"ai_not_configured"}`；上游错误 → `502` + 脱敏后的上游 message；其余 → `500`
-- 成功响应：`{"reply": "...", "usage": {"promptTokens": n, "completionTokens": n, "totalTokens": n}}`
-- 限流：20 次/分钟/用户
-
-### 3.9 AI 智能服务中心（/ai/kb、/ai/agents、/ai/square、/ai/integrations、/ai/admin/*）
-
-> 完整契约（请求/响应字段、SSE 事件协议、状态机）见 [`ai-service-center.md`](ai-service-center.md) §5；此处登记路由面与公共约定。
-
-**用户端（portal 平台组，任意登录角色，可见性由 service 层判定）**
-
-- 知识库：`GET/POST /ai/kb`，`GET/PUT/DELETE /ai/kb/{id}`，`POST /ai/kb/{id}/submit|unpublish`；文档 `GET/POST /ai/kb/{id}/documents`（POST 为 multipart 上传，≤10MB，扩展名白名单 pdf/docx/txt/md，走 uploadLimiter）、`GET/DELETE /ai/kb/{id}/documents/{docId}`；协作者 `GET/POST /ai/kb/{id}/collaborators`、`PUT/DELETE /ai/kb/{id}/collaborators/{userId}`；库内问答 `POST /ai/kb/{id}/ask`（SSE，aiLimiter）。
-- 智能体：`GET/POST /ai/agents`，`GET/PUT/DELETE /ai/agents/{id}`，`POST /ai/agents/{id}/submit|unpublish`；对话 `POST /ai/agents/{id}/chat`（SSE，aiLimiter）；会话 `GET /ai/agents/{id}/conversations`、`GET/PATCH/DELETE /ai/conversations/{id}`（PATCH=重命名，v2.7.3）。
-- 广场：`GET /ai/square/kbs|agents`（q/tag/sort=hot|new + 分页）、`GET /ai/integrations?kind=`。
-- 收藏：复用通用收藏 `GET/POST /favorites/{targetType}/{id}`，targetType 扩展 `ai_kb`/`ai_agent`，仅 published 对象可收藏（其余 404）。
-
-**管理端（AI 管理菜单，菜单驱动 RBAC）**
-
-- `GET /ai/admin/reviews?type=kb|agent&status=`、`POST /ai/admin/reviews/{type}/{id}/{action}`（action=approve/reject/takedown，reject 必须 comment）
-- `GET /ai/admin/overview`
-- 挂接 CRUD：`GET/POST /ai/admin/integrations`、`PUT /ai/admin/integrations/{id}`、`POST /ai/admin/integrations/{id}/toggle`、`DELETE /ai/admin/integrations/{id}`（url 仅允许 http/https，防 javascript: XSS）
-
-**SSE 流式协议（chat/ask 共用）**：`event: meta`（conversationId/messageId）→ `event: sources`（命中资料段，无命中则不发送）→ `event: delta`（增量文本 ×N）→ `event: done`；流中途失败发 `event: error`；开始前失败仍返回 HTTP JSON（401/403/404/412/500）。未配置 AI → 412 `ai_not_configured`；上游错误 → 502 脱敏 message。护栏：消息 ≤2000 字符、system_prompt ≤4000 字符、关联知识库 ≤5 个、历史窗口 10 条。
-
-**路由登记表**
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /ai/kb | 我的/共享给我的知识库列表 |
-| POST | /ai/kb | 创建知识库 |
-| GET/PUT/DELETE | /ai/kb/{id} | 详情 / 编辑 / 删除（删除仅 private/rejected 态） |
-| POST | /ai/kb/{id}/submit | 提交发布审核 |
-| POST | /ai/kb/{id}/unpublish | 下架回私有 |
-| GET/POST | /ai/kb/{id}/documents | 文档列表 / multipart 上传 |
-| GET/DELETE | /ai/kb/{id}/documents/{id} | 文档详情 / 删除 |
-| GET/POST | /ai/kb/{id}/collaborators | 协作者列表 / 添加 |
-| PUT/DELETE | /ai/kb/{id}/collaborators/{id} | 变更角色（路径末段为 userId）/ 移除 |
-| POST | /ai/kb/{id}/ask | 库内问答（SSE） |
-| GET/POST | /ai/agents | 我的智能体列表 / 创建 |
-| GET/PUT/DELETE | /ai/agents/{id} | 详情 / 编辑 / 删除 |
-| POST | /ai/agents/{id}/submit | 提交审核（响应含 warnings） |
-| POST | /ai/agents/{id}/unpublish | 下架 |
-| POST | /ai/agents/{id}/chat | 智能体对话（SSE） |
-| GET | /ai/agents/{id}/conversations | 我的会话列表 |
-| GET/PATCH/DELETE | /ai/conversations/{id} | 会话详情（含消息）/ 重命名 / 删除 |
-| POST | /ai/yiknow/chat | YIKnow 通用会话对话（SSE，同 chat 事件协议 meta/delta/done/error；无 agent_id） |
-| GET | /ai/yiknow/conversations | YIKnow 通用会话列表（复用 /ai/conversations/{id} 读写删） |
-| GET | /ai/square/kbs | 广场知识库（q/tag/sort/分页） |
-| GET | /ai/square/agents | 广场智能体 |
-| GET | /ai/integrations | 第三方挂接展示（上架中） |
-| GET | /ai/admin/reviews | 审核列表（AI 管理菜单） |
-| POST | /ai/admin/reviews/{type}/{id}/{action} | 审核操作（type=kb/agent；action=approve/reject/takedown） |
-| GET | /ai/admin/overview | 管理概览统计 |
-| GET/POST | /ai/admin/integrations | 挂接列表（含下架）/ 新增 |
-| PUT/DELETE | /ai/admin/integrations/{id} | 编辑 / 删除 |
-| POST | /ai/admin/integrations/{id}/toggle | 上架/下架 |
-
-
-
 ---
 
 ## 4. 公共规范
@@ -486,7 +405,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | 成功（列表） | `{"items": [...], "total": <count>}` |
 | 错误 | `{"error": "<消息>", "code": "<机器码>?"}`——`error` 为面向用户的消息（中文），`code` 为可选机器码，仅在需前端按码分支时出现 |
 
-机器码词汇表（`backend/go/internal/handler/error_codes.go` 为唯一事实源；前端按 `code` 分支，不解析 `error` 文案）：
+机器码词汇表（后端 `ApiException` 机器码为唯一事实源；前端按 `code` 分支，不解析 `error` 文案）：
 
 | code | 状态码 | 场景 |
 |------|--------|------|
@@ -495,14 +414,11 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | `forbidden` | 403 | 无权限/越权/平台不匹配 |
 | `not_found` | 404 | 资源不存在 |
 | `conflict` | 409 | 状态冲突/唯一键冲突/外键被引用 |
-| `too_many_requests` | 429 | 限流（实际响应 code 为数字 `429`，词汇表仅作映射兜底） |
 | `internal_error` | 500 | 服务异常 |
-| `ai_not_configured` | 412 | 租户未配置 AI |
-| `ai_upstream_error` | 502 | AI 上游错误 |
 | `captcha_required` | 400 | 登录需先完成验证码 |
 | `captcha_wrong` | 400 | 验证码不匹配 |
 
-历史接口中部分错误仅有 `error` 无 `code`（向后兼容，不强制回填）；新增接口统一按上表。前端实际分支的码：`captcha_required` / `captcha_wrong` / `ai_not_configured`。
+历史接口中部分错误仅有 `error` 无 `code`（向后兼容，不强制回填）；新增接口统一按上表。前端实际分支的码：`captcha_required` / `captcha_wrong`。
 
 ### 4.3 分页
 
@@ -520,10 +436,8 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | 403 | 无权限 | 角色不匹配/菜单无权限/跨租户操作/平台不匹配 |
 | 404 | 资源不存在 | 实体不存在/实体不归属当前租户（同一响应） |
 | 409 | 状态冲突 | 非法状态流转/唯一键冲突(23505)/外键被引用(23503)/排课冲突 |
-| 412 | 前置条件不满足 | 租户未配置 AI（`ai_not_configured`） |
-| 429 | 限流 | 登录 30 次/分钟/IP；AI 20 次/分钟/用户；上传 20 次/分钟/用户；导入导出 10 次/分钟/用户；密码写 10 次/分钟/用户；公开读取 120 次/分钟/IP（见 `docs/security-standards.md` §4） |
+| 429 | 限流 | 登录 30 次/分钟/IP；上传 20 次/分钟/用户；导入导出 10 次/分钟/用户；密码写 10 次/分钟/用户；公开读取 120 次/分钟/IP（见 `docs/security-standards.md` §4） |
 | 500 | 服务异常 | `{"error":"服务器内部错误"}`（原始 error 记录日志，不泄露） |
-| 502 | 上游错误 | AI 上游非 2xx（透传脱敏 message） |
 
 ### 4.5 其他约定
 
@@ -537,8 +451,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 | 版本 | 日期 | 变更内容 | 影响范围 |
 |------|------|---------|---------|
-| v1.1 | 2026-08-15 | 新增 §3.9 AI 智能服务中心：知识库/智能体/广场/审核上架/第三方挂接路由面 + SSE 流式协议（meta/sources/delta/done/error）+ 通用收藏类型扩展（ai_kb/ai_agent，仅 published 可收藏） | ai 模块（见 ai-service-center.md §5） |
-| v1.0 | 2026-08-14 | **全量审计修订**：补齐 AI（§1.12）/快照 bundle（§1.13）/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员/联盟 search-grants-mentor-options-talent-ranking 等漏登记端点；修正认证规则端点（`/evaluation/certifications/*`）；删除僵尸条目（毕业设计/微证书/测评方法字典/作业提交批改/`exam-usages/{id}/start`/`lesson/nodes/{nodeId}/quizzes` 等）；接口数量更新为 700+；机器码词汇表与 error_codes.go 对齐（§4.2）；uploads 路径与状态码表补 412/502 | 全模块文档 |
+| v1.0 | 2026-08-14 | **全量审计修订**：补齐快照 bundle（§1.12）/主题设置/通用收藏/社区/荣誉/标签/引用统计/学校管理员/联盟 search-grants-mentor-options-talent-ranking 等漏登记端点；修正认证规则端点（`/evaluation/certifications/*`）；删除僵尸条目（毕业设计/微证书/测评方法字典/作业提交批改/`exam-usages/{id}/start`/`lesson/nodes/{nodeId}/quizzes` 等）；接口数量更新为 700+；机器码词汇表对齐（§4.2） | 全模块文档 |
 | v0.9 | 2026-08-04 | 评价标准保存即落库 + 409 重试；联盟字典码中文化→英文编码（迁移 122）；体系课节点测评提交闭环；`/job/student` 重定向至 `/job/landing` | scene/evaluation、alliance 导入识别、lesson |
 | v0.8 | 2026-08-03 | 恢复 RequirePlatform 平台隔离中间件；场景导入按文件后缀推断资源类型 | 安全、导入 |
 | v0.7 | 2026-08-01 | 删除 `platform_links`/`app_modules` 表与相关接口（迁移 110）；排课导入导出重构；联盟全主体关联 + 批量导入导出 | 前端配置收敛、affairs、alliance |

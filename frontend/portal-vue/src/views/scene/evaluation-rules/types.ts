@@ -1,7 +1,7 @@
 /**
  * 任务评价规则编辑器（EvaluationRulesEditor）本地类型与常量。
  *
- * 逐项对齐 React `frontend/edu/components/evaluation-rules/`：
+ * 逐项对齐原 React 版 `components/evaluation-rules/`：
  * - types.ts / constants.tsx（EvalPointField / RubricScheme / ScoreRuleItem / 标签与配色）
  * - evaluation-rules-editor.tsx 内部的 ReviewStep / stdDraft 形状
  * EvalRuleConfig 及其子类型复用 `@/views/lesson/lesson-edit-utils`（与 shared-types 一致）。

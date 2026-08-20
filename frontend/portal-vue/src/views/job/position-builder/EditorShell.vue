@@ -1,5 +1,5 @@
 <template>
-  <!-- 全屏编辑外壳（对齐 React frontend/edu/components/shared/editor-shell.tsx mode="fullscreen"） -->
+  <!-- 全屏编辑外壳（对齐原 React 版 editor-shell 的 mode="fullscreen"） -->
   <div class="editor-shell">
     <div class="shell-header">
       <div class="header-left">

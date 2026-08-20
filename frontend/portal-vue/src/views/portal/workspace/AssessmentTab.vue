@@ -1,6 +1,6 @@
 <!--
   测评认证 Tab：岗位能力认定结果表 + 参与的日常考试与期末测评清单 + 能力点认定明细弹窗。
-  对齐 React frontend/edu/app/portal/workspace/_components/assessment-tab.tsx
+  对齐原 React 版 assessment-tab.tsx
   （结果表 9 列含达成率/胜任度/认证得分；考试清单按 全部/待考/进行中/已完成 筛选；
    明细弹窗带请求序号守卫，避免连续点击后旧明细覆盖新选择）。
 -->

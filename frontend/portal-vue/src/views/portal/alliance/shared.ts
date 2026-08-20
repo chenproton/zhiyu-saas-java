@@ -1,6 +1,6 @@
 // 产教联盟前台（portal/alliance）共享类型与工具函数。
-// 逐字移植 React 侧 frontend/packages/shared-types/src/alliance.ts、
-// frontend/edu/lib/format-utils.ts、format-salary.ts 与 public-cards 中的纯函数。
+// 逐字移植原 React 版 shared-types 的 alliance.ts、
+// lib/format-utils.ts、format-salary.ts 与 public-cards 中的纯函数。
 // 因任务约束禁止修改 src/types/alliance.ts / src/api/*.ts，此处自包含一份完整前台类型与字典。
 
 // ==================== 类型 ====================

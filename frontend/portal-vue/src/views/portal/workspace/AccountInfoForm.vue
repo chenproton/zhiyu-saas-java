@@ -1,6 +1,6 @@
 <!--
   个人中心-账号信息（学生/教师/学校管理员共用）：用户ID 与用户名只读，仅姓名可改。
-  对齐 React frontend/edu/app/portal/workspace/_components/account-info-form.tsx
+  对齐原 React 版 account-info-form.tsx
   （PUT /portal/workspace/me；姓名空/未变更时保存按钮禁用；保存成功后刷新登录态）。
 -->
 <template>

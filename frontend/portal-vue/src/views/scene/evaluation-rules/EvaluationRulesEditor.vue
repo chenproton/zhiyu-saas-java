@@ -245,7 +245,7 @@
 /**
  * 任务评价规则编辑器（EvaluationRulesEditor）。
  *
- * 完整复刻 React `frontend/edu/components/evaluation-rules/evaluation-rules-editor.tsx`（5029 行）：
+ * 完整复刻原 React 版 `evaluation-rules-editor.tsx`（5029 行）：
  * 评价顺序/权重配置 → 每个评价方式的四步卡片（测评对象 / 评价主体 / 测评资源 / 评价标准配置）
  * → 各步骤弹窗（含现场问答题库、评审流程与评分人、试卷、题库选题、量规与评分规则、模板库、
  * 知识点/能力点绑定），并支持「保存评价标准」立即落库（persistStandard）。

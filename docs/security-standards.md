@@ -23,7 +23,7 @@
   - 停用用户 / 停用租户 / 删除用户 → 下一请求即 401（不等到 7 天过期）；
   - 修改/重置密码后 → 旧 token 下一请求即 401（`users.password_changed_at` 早于 token `iat` 判定）。
 - **登出**：前端清除本地 token（无服务端会话状态）；7 天过期 + 逐请求吊销已覆盖会话生命周期，无需服务端吊销通道。
-- **存储介质评估（2026-08-15 结论）**：token 存 localStorage（`frontend/packages/api-client`），可被同源 XSS 窃取；后端已具备 HttpOnly cookie 通道（`middleware.SetAuthCookie`，仅 /uploads 图片通道使用）。**评估结论：主认证不迁移 HttpOnly cookie**——迁移需配套 CSRF 防护、改造三端全部请求链路与文件下载鉴权，收益（XSS 场景已由 CSP/上传沙箱/输入消毒多层缓解）与成本风险不成比例；未来若引入第三方脚本面扩大再复议。
+- **存储介质评估（2026-08-15 结论）**：token 存 localStorage（前端请求层），可被同源 XSS 窃取；后端已具备 HttpOnly cookie 通道（仅 /uploads 图片通道使用）。**评估结论：主认证不迁移 HttpOnly cookie**——迁移需配套 CSRF 防护、改造三端全部请求链路与文件下载鉴权，收益（XSS 场景已由 CSP/上传沙箱/输入消毒多层缓解）与成本风险不成比例；未来若引入第三方脚本面扩大再复议。
 - **Claims 最小化**：只放 userId/tenantId/roleCodes/permissions/platform，不放密钥、密码哈希等敏感信息。
 
 ## 3. 密钥管理
@@ -31,17 +31,14 @@
 | 密钥 | 用途 | 要求 | 状态 |
 |------|------|------|------|
 | `JWT_SECRET` | 签发 JWT | ≥ 32 字节随机；每 90 天轮换（`JWT_SECRET_PREVIOUS` 旧验签、新签发）；禁止提交仓库（`.env`） | `[已实施]`（双密钥验签已落地） |
-| `AI_CONFIG_SECRET` | 加密租户 AI api_key | **独立密钥，禁止回落 `JWT_SECRET`**（缺失即启动失败）；每 90 天轮换（解密先试主密钥、再兜底历史密钥 `JWT_SECRET`，兼容独立前存量密文） | `[已实施]` |
-| 租户 AI api_key | 调用第三方 LLM | 入库加密（AES-256-GCM），永不回传前端、禁止打日志；只展示脱敏尾号 | `[已实施]` |
 
 ## 4. 限流与防爆破
 
 - **现状**：登录 6 接口（`/auth/login`、`/auth/saas/login`、`/auth/portal/login`、`/auth/partner/login`、`/auth/partner/register`、`/auth/select-tenant`）+ `/auth/captcha` + `/files/upload` + 导入导出已挂限流器（Redis 计数，未配置 Redis 自动降级为内存限流）。
 - **验证码**：字符验证码，连续输错 3 次触发、新设备首次登录必须校验（`[已实施]`）。
 - **补齐项**（`[已实施]`）：
-  1. AI 对话/生成端点限流（`/ai/chat`、`/ai/position-assist`、`/ai/scenario-assist`，每用户 20 次/分钟，防 token 额度盗刷）；
-  2. 密码相关写操作限流（本人改密/管理员重置密码，每用户 10 次/分钟）；
-  3. 公开读取接口限流（`/settings/theme` 120 次/分钟/IP；登录公开的联盟前台 `/alliance/public/*` 120 次/分钟/IP；`/job/public/positions`、`/scene/scenarios` 已有 2 分钟缓存）。
+  1. 密码相关写操作限流（本人改密/管理员重置密码，每用户 10 次/分钟）；
+  2. 公开读取接口限流（`/settings/theme` 120 次/分钟/IP；登录公开的联盟前台 `/alliance/public/*` 120 次/分钟/IP；`/job/public/positions`、`/scene/scenarios` 已有 2 分钟缓存）。
 - **文档口径修正**：`系统功能清单.md` 原称「接口限流」为平台级能力，实际仅覆盖上述端点；本文档为准——未挂限流器的接口**不视为已限流**。
 
 ## 5. 上传与文件安全
@@ -61,4 +58,3 @@
 ## 7. 敏感信息脱敏与日志
 
 - 身份证号、手机号等 PII 展示脱敏（`[已实施]` 部分）；日志禁止打印密码、api_key、token、身份证明文。
-- 第三方 AI 上游错误 message 透传时，须过滤 `sk-` 等密钥前缀与可能回显的敏感片段（`[已实施]`：`ai.SanitizeUpstreamMessage`，见 ai-development.md）。

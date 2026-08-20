@@ -1,6 +1,6 @@
 <!--
   资源运营 Tab（学校管理员）。
-  对齐 React frontend/edu/app/portal/workspace/_components/school-admin-resources-tab.tsx（206 行）：
+  对齐原 React 版 school-admin-resources-tab.tsx（206 行）：
   - 数据源：GET /portal/workspace/dashboard?role=school_admin（resourceStats / resourceGrowth / todos）；
   - 资源存量指标：6 张存量卡（图标 + 数量 + 名称）；
   - 资源增长趋势：岗位/场景/课程/题库/试卷/考试 各一张卡（今日新增 + 走势），空态「暂无增长数据」；

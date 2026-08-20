@@ -5,17 +5,14 @@ import type { CommunityTopic, CommunityReply, CommunityTopicSort } from '@/types
 import type { Scenario } from '@/types/scene';
 import type { Course } from '@/types/lesson';
 import type { QuestionBank, Exam } from '@/types/evaluation';
-import type { AIAgent, AIKnowledgeBase } from '@/types/ai';
 
-export type FavoriteTargetType = 'scene' | 'course' | 'question_bank' | 'exam' | 'ai_kb' | 'ai_agent';
+export type FavoriteTargetType = 'scene' | 'course' | 'question_bank' | 'exam';
 
 export interface FavoriteListResponse {
   scene: Scenario[];
   course: Course[];
   question_bank: QuestionBank[];
   exam: Exam[];
-  ai_kb: AIKnowledgeBase[];
-  ai_agent: AIAgent[];
 }
 
 export const favoriteApi = {

@@ -1,6 +1,6 @@
 <!--
   关联备课内容弹窗（教师工作台首页 / 我的场景·课程共用）。
-  对齐 React frontend/edu/app/portal/workspace/_components/prep-associate-dialog.tsx：
+  对齐原 React 版 prep-associate-dialog.tsx：
   - 一级为「混合课程 / 实践场景」（只读展示 planName），二级为可多选的「节次 / 任务」；
   - 候选来自 hybridCourseSessions / scenarioTasks（React 侧为空，展示「暂无可用节次/任务」）；
   - 确认关联后按钮变「修改关联」，并出现「前往备课 / 前往导学」（新窗口打开 prepUrl）；

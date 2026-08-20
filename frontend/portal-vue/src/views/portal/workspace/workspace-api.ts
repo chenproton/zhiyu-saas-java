@@ -2,13 +2,13 @@
  * 我的服务台（工作台）数据契约与端点直连。
  *
  * 对齐来源（React）：
- * - frontend/packages/api-client/src/api/portal.ts  → portalApi.workspaceDashboard / portalMeApi
- * - frontend/packages/api-client/src/api/honors.ts  → studentHonorApi
- * - frontend/packages/api-client/src/api/affairs.ts → myScheduleApi
- * - frontend/packages/shared-types/src/portal.ts    → Workspace* / StudentHonor 类型
+ * - 原 React 版 api-client 的 api/portal.ts  → portalApi.workspaceDashboard / portalMeApi
+ * - 原 React 版 api-client 的 api/honors.ts  → studentHonorApi
+ * - 原 React 版 api-client 的 api/affairs.ts → myScheduleApi
+ * - 原 React 版 shared-types 的 portal.ts    → Workspace* / StudentHonor 类型
  *
  * 说明：src/api/*.ts 尚未收录以上工作台端点，按任务约定不改 api/*.ts，
- * 这里用同一 request()/portalRequest() 直连相同后端路径（Go 后端 internal/router/routes.go 已注册）。
+ * 这里用同一 request()/portalRequest() 直连相同后端路径（Java 后端 /api/v1 已注册）。
  */
 
 import { request, portalRequest, buildQuery } from '@/api/http';

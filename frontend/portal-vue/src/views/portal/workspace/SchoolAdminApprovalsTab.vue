@@ -1,6 +1,6 @@
 <!--
   审批中心 Tab（学校管理员）。
-  对齐 React frontend/edu/app/portal/workspace/_components/school-admin-approvals-tab.tsx（113 行）：
+  对齐原 React 版 school-admin-approvals-tab.tsx（113 行）：
   - 数据源：GET /portal/workspace/dashboard?role=school_admin 的 todos（待审批项）；
   - 顶部 4 卡：待审批总数 + 前 3 项待审批（标题去掉「待审批」字样）；
   - 「待审批事项清单」：每项按 todo.id / 类型映射到对应域审批中心（课程/场景/岗位/题库/试卷/培养方案/教学计划），

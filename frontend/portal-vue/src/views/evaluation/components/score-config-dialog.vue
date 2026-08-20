@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-// 题型分配弹窗：对齐 React frontend/edu/components/evaluation/score-config-dialog.tsx
+// 题型分配弹窗：对齐原 React 版 score-config-dialog.tsx
 import { computed, ref, watch } from 'vue';
 import { QUESTION_TYPE_LABELS } from '@/types/evaluation';
 

@@ -1,5 +1,5 @@
 <template>
-  <!-- 岗位卡片：对齐 React frontend/edu/components/job/student/job-card.tsx，
+  <!-- 岗位卡片：对齐原 React 版 job-card，
        点击跳转岗位详情 /job/landing/:id（路由由详情页对齐任务注册）。 -->
   <router-link :to="`/job/landing/${position.id}`" class="job-card">
     <div class="job-cover" :style="coverStyle">

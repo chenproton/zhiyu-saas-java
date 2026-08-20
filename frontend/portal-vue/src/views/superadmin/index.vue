@@ -171,7 +171,7 @@
     <!-- 管理员列表 -->
     <AdminListDialog v-model="adminOpen" :tenant="adminTarget" />
 
-    <!-- 订阅套餐 + AI 配置 -->
+    <!-- 订阅套餐 -->
     <SubscriptionDialog v-model="subscriptionOpen" :tenant="subscriptionTarget" />
 
     <!-- 租户主题配置 -->

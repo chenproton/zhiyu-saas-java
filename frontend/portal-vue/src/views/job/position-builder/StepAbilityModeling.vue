@@ -1,15 +1,6 @@
 <template>
   <!-- 步骤二：能力建模（逐项对齐 React components/job/position-builder/step-ability-modeling.tsx） -->
   <div class="ability-wrap">
-    <!-- AI 拆解完成后的撤销条（等价 React toast + ToastAction「10 秒内可撤销」） -->
-    <div v-if="undoTip" class="undo-banner">
-      <span>{{ undoTip }}，10 秒内可撤销</span>
-      <el-button size="small" plain class="ai-btn" @click="undoAiAssist">
-        <el-icon><RefreshLeft /></el-icon>
-        撤销
-      </el-button>
-    </div>
-
     <div class="ability-layout">
       <!-- 左侧：工作职责 -->
       <div class="resp-pane">
@@ -76,17 +67,6 @@
             <h3 class="pane-title">能力点列表</h3>
             <span class="pane-sub">共 {{ totalBindings }} 个能力点</span>
           </div>
-          <el-button
-            size="small"
-            round
-            plain
-            class="ai-btn"
-            :disabled="pipeline.isRunning.value || position.responsibilities.length === 0"
-            @click="confirmAiOpen = true"
-          >
-            <el-icon :class="{ 'is-loading': pipeline.isRunning.value }"><MagicStick /></el-icon>
-            {{ pipeline.isRunning.value ? 'AI 拆解中...' : 'AI 辅助编写' }}
-          </el-button>
         </div>
 
         <div ref="contentRef" class="binding-scroll">
@@ -401,36 +381,11 @@
       </div>
     </el-dialog>
 
-    <!-- AI 拆解意图确认 -->
-    <el-dialog v-model="confirmAiOpen" title="确认 AI 拆解能力点？" width="520px">
-      <p class="dialog-desc">
-        AI 将按 {{ position.responsibilities.length }} 项工作职责逐条拆解 3-5
-        个能力点并直接写入（已有的能力点将被替换），自动切换到下一项职责，完成后可一键撤销。
-      </p>
-      <template #footer>
-        <el-button @click="confirmAiOpen = false">取消</el-button>
-        <el-button type="primary" class="ai-primary" @click="runAiAssist">
-          <el-icon><MagicStick /></el-icon>
-          确认生成
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- AI 拆解进度 -->
-    <AiProgressDialog
-      :open="pipeline.open.value"
-      title="AI 辅助拆解能力点"
-      description="大模型正在按工作职责逐个生成能力点并写入"
-      :steps="aiSteps"
-      :current-step="pipeline.phase.value"
-      :progress="pipeline.progress.value"
-      @close="pipeline.handleClose"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import {
   Check,
@@ -438,20 +393,10 @@ import {
   Delete,
   EditPen,
   Files,
-  MagicStick,
   Plus,
-  RefreshLeft,
   Search
 } from '@element-plus/icons-vue';
 import { abilityApi, positionApi } from '@/api/job';
-import { industryApi } from '@/api/system';
-import AiProgressDialog from './AiProgressDialog.vue';
-import {
-  isAiNotConfigured,
-  positionAiAssist,
-  useAiPipeline,
-  type AIPositionAssistResponse
-} from './ai';
 import {
   ABILITY_ATTRIBUTES,
   COMPETENCY_LEVELS,
@@ -469,7 +414,6 @@ const emit = defineEmits<{ (e: 'update', data: Partial<LocalPosition>): void }>(
 
 const abilities = ref<LocalAbility[]>([]);
 const poolPositions = ref<{ id: string; name: string }[]>([]);
-const industries = ref<{ id: string; name: string }[]>([]);
 const selectedRespId = ref<string | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
 const sectionRefs = new Map<string, HTMLElement>();
@@ -502,12 +446,6 @@ let poolFilterSeq = 0;
 const editingAbilityId = ref<string | null>(null);
 const editAbilityName = ref('');
 const editAbilityAttributes = ref<string[]>([]);
-
-// AI
-const confirmAiOpen = ref(false);
-const undoTip = ref('');
-let undoTimer: ReturnType<typeof setTimeout> | null = null;
-let undoSnapshot: { appliedRespIds: Set<string>; preRunByResp: Map<string, LocalAbilityBinding[]> } | null = null;
 
 const totalBindings = computed(() => props.position.abilityBindings.length);
 const selectedResp = computed(() =>
@@ -562,15 +500,6 @@ async function loadPoolPositions() {
     poolPositions.value = (res.items || []).map((p) => ({ id: p.id, name: p.name }));
   } catch {
     poolPositions.value = [];
-  }
-}
-
-async function loadIndustries() {
-  try {
-    const res = await industryApi.list({ limit: 1000 });
-    industries.value = (res.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name }));
-  } catch {
-    industries.value = [];
   }
 }
 
@@ -924,131 +853,9 @@ async function deleteAbility(abilityId: string) {
   }
 }
 
-// ===== AI 辅助拆解（逐职责串行写入 + 一键撤销） =====
-const aiSteps = computed(() => [
-  '阅读岗位信息',
-  ...props.position.responsibilities.map((r) => `拆解「${(r.name || '未命名').slice(0, 12)}」能力点`)
-]);
-
-function resolveIndustryName(id: string): string {
-  if (!id) return '';
-  return industries.value.find((i) => i.id === id)?.name || id;
-}
-
-const pipeline = useAiPipeline<LocalResponsibility, AIPositionAssistResponse>({
-  steps: () => aiSteps.value,
-  request: (task, signal) =>
-    positionAiAssist(
-      {
-        field: 'abilities',
-        position: {
-          name: props.position.name,
-          shortName: props.position.shortName,
-          industry: resolveIndustryName(props.position.industry),
-          majors: [],
-          salaryRange: [props.position.salaryRange[0], props.position.salaryRange[1]],
-          description: props.position.description,
-          responsibilities: props.position.responsibilities.map((r) => r.name),
-          requirements: props.position.requirements,
-          careerPath: props.position.careerPath,
-          responsibilityName: task.meta.name
-        }
-      },
-      signal
-    ),
-  onError: (err) => {
-    if (isAiNotConfigured(err)) {
-      ElMessage.warning('AI 未配置：请先在「系统管理 > 租户信息」配置 AI 服务后再使用 AI 辅助编写');
-      return true;
-    }
-    ElMessage.error((err as Error).message || 'AI 生成失败');
-    // 单条职责失败不影响其余职责继续拆解
-    return false;
-  }
-});
-
-function runAiAssist() {
-  const resps = props.position.responsibilities;
-  if (resps.length === 0 || pipeline.isRunning.value) return;
-  confirmAiOpen.value = false;
-  // 记录各职责拆解前的绑定，供撤销时精确回滚被 AI 覆盖的职责
-  const preRunByResp = new Map<string, LocalAbilityBinding[]>();
-  resps.forEach((resp) => {
-    preRunByResp.set(
-      resp.id,
-      props.position.abilityBindings.filter((b) => b.responsibilityId === resp.id).map((b) => ({ ...b }))
-    );
-  });
-  const appliedRespIds = new Set<string>();
-  const tasks = resps.map((resp) => ({
-    id: 'abilities',
-    meta: resp,
-    onStart: () => {
-      selectedRespId.value = resp.id;
-      scrollToResp(resp.id);
-    },
-    apply: (res: AIPositionAssistResponse) => {
-      const items = res?.abilities;
-      if (!items || items.length === 0) return;
-      appliedRespIds.add(resp.id);
-      const newBindings: LocalAbilityBinding[] = items.map((a) => ({
-        id: localId('bind-ai'),
-        responsibilityId: resp.id,
-        source: 'custom',
-        name: a.name,
-        level: 'understand',
-        rubricDescription: a.rubricDescription || '',
-        description: '',
-        attributes: a.attributes || [],
-        domain: a.domain || undefined
-      }));
-      // 以最新 position 为准合并，保留 AI 运行期间用户手动新增/编辑的绑定
-      emit('update', {
-        abilityBindings: [
-          ...props.position.abilityBindings.filter((b) => b.responsibilityId !== resp.id),
-          ...newBindings
-        ]
-      });
-    }
-  }));
-  void pipeline.run(tasks).then((result) => {
-    if (result.success === 0) return;
-    undoSnapshot = { appliedRespIds, preRunByResp };
-    showUndoTip(`AI 已为 ${result.success} 项职责生成能力点`);
-  });
-}
-
-function showUndoTip(text: string) {
-  undoTip.value = text;
-  if (undoTimer) clearTimeout(undoTimer);
-  undoTimer = setTimeout(() => {
-    undoTip.value = '';
-    undoSnapshot = null;
-  }, 10_000);
-}
-
-function undoAiAssist() {
-  if (!undoSnapshot) return;
-  let next = props.position.abilityBindings;
-  undoSnapshot.appliedRespIds.forEach((respId) => {
-    const pre = undoSnapshot?.preRunByResp.get(respId) || [];
-    next = [...next.filter((b) => b.responsibilityId !== respId), ...pre];
-  });
-  emit('update', { abilityBindings: next });
-  undoTip.value = '';
-  undoSnapshot = null;
-  if (undoTimer) clearTimeout(undoTimer);
-  ElMessage.success('已撤销');
-}
-
 onMounted(() => {
   void loadAbilities();
   void loadPoolPositions();
-  void loadIndustries();
-});
-
-onUnmounted(() => {
-  if (undoTimer) clearTimeout(undoTimer);
 });
 </script>
 
@@ -1057,18 +864,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.undo-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 16px;
-  border: 1px solid #e0d0ff;
-  border-radius: 8px;
-  background: #f8f4ff;
-  font-size: 13px;
-  color: #6d3fc0;
 }
 .ability-layout {
   display: flex;
@@ -1410,13 +1205,5 @@ onUnmounted(() => {
 }
 .dim {
   color: #a8abb2;
-}
-.ai-btn {
-  border-color: #d9c8ff;
-  color: #7c3aed;
-}
-.ai-primary {
-  background: #7c3aed;
-  border-color: #7c3aed;
 }
 </style>

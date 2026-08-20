@@ -2,7 +2,7 @@
  * 任务评价规则编辑器专用接口层。
  *
  * 与 React 端同一后端契约（裸 JSON / {items,total} / limit-offset），路径逐字照抄
- * frontend/packages/api-client/src/api/{scene,alliance,evaluation}.ts：
+ * 原 React 版 api-client 的 {scene,alliance,evaluation}.ts：
  * - 评价标准模板：/scene/rubric-templates（taskEvaluationApi.listTemplates/createTemplate/updateTemplate）
  * - 企业导师选项：/alliance/experts/mentor-options（allianceExpertApi.mentorOptions）
  * - 现场问答题：/evaluation/random-draw-questions（randomDrawQuestionApi）

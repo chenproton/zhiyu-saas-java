@@ -1,5 +1,5 @@
 <template>
-  <!-- 场景卡片：对齐 React frontend/edu/components/scene/student/scene-card.tsx，
+  <!-- 场景卡片：对齐原 React 版 scene-card，
        点击跳转场景详情 /scene/landing/:id。 -->
   <router-link :to="`/scene/landing/${scenario.id}`" class="scene-card">
     <div class="scene-cover" :style="coverStyle">

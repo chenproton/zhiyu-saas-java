@@ -10,7 +10,7 @@
 
 1. `AGENTS.md`「二、开发原则」（简单优先、核心加锁、复用优先）。
 2. `docs/decisions/` 相关 ADR——尤其 `0003`（租户隔离「SQL 层可选限定」是刻意的，不是漏写）、`0001`（分层红线）。
-3. `docs/refactor-layering.md`、`docs/components.md`（已有的复用/收敛约定）。
+3. `AGENTS.md`「第二部分 Java 框架契约」（分层与复用约定）；历史方案见 `docs/refactor-layering.md`（已标注为 Go 时代历史）。
 
 **默认「有意为之」的东西，不要当「低费力可删」处理**（除非用户明确要求）：AGENTS.md 里明示的防御分支、刻意的双实现、`0003` 里「handler 校验为主」的租户策略等。
 

@@ -1,6 +1,6 @@
 <!--
   课表事件气泡：可跳转事件（课程/场景）点击弹出「前往学习 / 查看测评结果」。
-  对齐 React frontend/edu/app/portal/workspace/_components/workspace-schedule-grid.tsx
+  对齐原 React 版 workspace-schedule-grid.tsx
   的 ScheduleEventPopover（不可跳转事件原样渲染，不挂气泡；查看测评结果按钮禁用）。
 -->
 <template>

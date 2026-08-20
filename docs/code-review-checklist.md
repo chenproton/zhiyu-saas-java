@@ -6,7 +6,7 @@
 
 ## 一、先对齐事实（审前必做）
 
-1. 读 `AGENTS.md` 全部红线（分层、AI 底座、复用优先、部署契约）。
+1. 读 `AGENTS.md` 全部红线（分层、复用优先、部署契约）。
 2. 读本改动的意图：commit message / spec 对应章节 / 相关 ADR（`docs/decisions/`）。
 3. 若有 spec：确认改动是否符合 `spec-standards.md` 的一致性红线（代码 ↔ spec 是否同步）。
 4. 确认排除项（`vendor/`、`node_modules/` 等，见 `AGENTS.md`「五、AI 协作者约定」第 4 条），只审自有代码。
@@ -22,18 +22,14 @@
 - 核心业务是否有加锁防重复（`AGENTS.md`「二、开发原则」：核心加锁、普通容忍）。
 
 ### 3. 分层红线（本仓库特有，代码最容易看不出的）
-- handler 有无裸 SQL / 直调 `db.Query` / 持有 `*pgxpool.Pool`（`refactor-layering.md`）。
+- controller 有无裸 SQL / DB 句柄（`JdbcTemplate`/`DataSource` 等）/ MyBatis 注解（根 `AGENTS.md` 第二部分 3.1）。
 - service 有无拼 SQL。
-- store 有无读 HTTP/Claims。
+- mapper 有无读 HTTP 请求 / Sa-Token / 租户上下文。
 - 新接口有无至少一种测试。
 
-### 4. AI 统一底座（本仓库特有）
-- 有无绕过 `AIService` 自封装 LLM（`ai-development.md`）。
-- 错误映射是否合规（412/502/500）、api_key 是否落日志/回传。
-
-### 5. 租户隔离与越权（本仓库特有）
+### 4. 租户隔离与越权（本仓库特有）
 - 关键写操作 SQL 有无租户条件（`ADR-0003`）。
-- 每个新端点是否做了归属校验（`verifyTenantOwnership` / crud CheckOwnership）。
+- 每个新端点是否做了归属校验（`SystemGuard` / service 层校验）。
 - 有没有「漏校验即跨租户读他租户数据」的路径。
 
 ## 三、范围 / 必要性 / 过度设计
@@ -51,9 +47,9 @@
 
 输出发现时，每条含：**缺陷 / 位置 / 影响 / 证据**。
 
-- **blocker**：正确性、生命周期、安全、破坏必需行为、违反分层/AI 红线。
+- **blocker**：正确性、生命周期、安全、破坏必需行为、违反分层红线。
 - **suggestion**：可读性、可维护性、可选优化。
-- **不报**：已被绿色门禁（gofmt/vet/typecheck/lint/test）强制的东西，重复报无意义。
+- **不报**：已被绿色门禁（编译/构建/lint/单测）强制的东西，重复报无意义。
 
 一个「有据可查的 blocker」胜过一堆「nit」。优先正确性与红线，其次才轮风格。
 
@@ -61,7 +57,7 @@
 
 | 自动门禁（deploy.sh / CI） | 本清单补足（语义） |
 |---|---|
-| gofmt / vet / build / test | 分层红线、越权、生命周期、竞态、过度设计 |
-| pnpm typecheck / lint / test | 「代码看不出的」意图偏离、spec 不一致、AI 底座绕过 |
+| Maven 编译 + portal-vue/plus-ui 构建 + spec-check | 分层红线、越权、生命周期、竞态、过度设计 |
+| portal-vue / plus-ui 类型检查 / lint / 单测 | 「代码看不出的」意图偏离、spec 不一致 |
 
 > 自动门禁建立的是「编译/类型/格式正确」，本清单建立的是「语义/契约/意图正确」。两者缺一不可。

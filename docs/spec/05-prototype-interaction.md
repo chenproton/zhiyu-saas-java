@@ -1,7 +1,7 @@
 # 原型 / 交互说明 — 知与 SaaS
 
-> 基于 `frontend/edu`（React SPA（Vite 7 + React Router + shadcn/ui + Tailwind 4））回溯整理。
-> 亮色主题；视觉规范即 shadcn new-york 风格组件库（`frontend/packages/ui`），无独立设计稿。
+> 基于前端门户（Vue 业务门户 `frontend/portal-vue` + Vue 管理端 `frontend/plus-ui`）回溯整理。
+> 亮色主题；无独立设计稿。
 
 ---
 
@@ -18,8 +18,6 @@
 | 系统管理 | `/portal/apps/system/*`（tenant/resource/org-user/logs 4 组 15+ 页） | portal | P0 |
 | 产教融合管理 | `/portal/apps/alliance/*`（school/enterprises/projects/achievements/experts/agreements/permissions/dictionaries/brands） | portal | P0 |
 | 联盟公开落地页 | `/portal/alliance/landing`（入口，`/portal/alliance` 无 page 仅子页路由）、`/portal/alliance/brands` 等 | portal | P1 |
-| AI 智能服务 | `/portal/apps/ai`（落地页 `landing` 单页集成 + 大厅/详情/创作页/后台管理；AI 对话统一走 **YIKnowChatDialog 弹窗**——右下角 YiKnowAssistant 悬浮球、应用中心「YI Know 助手」卡片、落地页「立即体验」三入口共用，v2.8 起独立对话页 `/portal/apps/ai/chat` 已下线） | portal | P1 |
-| AI 服务配置 | `/portal/apps/system/tenant` 租户信息页内 AI 配置区 | portal | P0 |
 | 超管控制台 | `/superadmin` | saas | P0 |
 
 ### 1.2 八大业务子系统
@@ -35,11 +33,9 @@
 | 产教融合与就业服务 | `/portal/apps/alliance` | 见 1.1 | `/portal/alliance` |
 | 系统管理 | `/portal/apps/system` | 见 1.1 | — |
 
-> 另：AI 智能服务（`portal/apps/ai`）：AI 助手对话（见 §1.1）；AI 辅助表单编写内嵌于岗位/场景编辑页。
-
 ### 1.3 全局布局
 
-所有业务子系统统一 `PlatformLayout`：**TopNav（h-14 固定）+ 左侧 PlatformSideNav（可折叠）+ 主内容区**；landing 系列页面为独立无壳布局（仅 TopNav）。门户端为 TopNav + 内容 + 右下角 YiKnowAssistant AI 助手悬浮球。
+所有业务子系统统一 `PlatformLayout`：**TopNav（h-14 固定）+ 左侧 PlatformSideNav（可折叠）+ 主内容区**；landing 系列页面为独立无壳布局（仅 TopNav）。门户端为 TopNav + 内容。
 
 ---
 
@@ -57,7 +53,7 @@
 
 ### 2.2 门户首页 `/portal`
 
-平台卡片墙（12 个模块卡片：系统管理/职业岗位/实践场景/数字课程/能力测评/资源共享/教务/产教融合 + AI/OPC/决策/科研占位），卡片点击进入子系统首页；未订阅模块灰化禁用（订阅模块控制）。
+平台卡片墙（11 个模块卡片：系统管理/职业岗位/实践场景/数字课程/能力测评/资源共享/教务/产教融合 + OPC/决策/科研占位），卡片点击进入子系统首页；未订阅模块灰化禁用（订阅模块控制）。
 
 ### 2.3 我的服务台 `/portal/workspace`（角色化 Tab）
 
@@ -97,8 +93,8 @@
 - 列表页：筛选行（landing-filter-row）+ 卡片网格（岗位/场景/课程卡片带封面、难度/评分、收藏按钮）
 - 详情页：Header（封面 + 标题 + 关键信息徽章）→ 内容区（课程：节点树/作业/测验；场景：任务链；岗位：职责/能力/证书）
 - 学习页 `/[id]/learn`：课程播放/任务执行界面
-- 岗位详情页「实践场景」tab 与学习页（`/job/landing/[id]/learn`）场景排列顺序**一致**，均按该岗位关联的第一条学习路径（`/job/learn-roads`）步骤顺序排序（未纳入步骤的场景追加末尾；无关联路径/未登录/加载失败时回退列表原顺序）；排序规则收敛于 `frontend/edu/lib/learn-road-order.ts`；**生效前提**：学习路径读取依赖 `/job/learn-roads` 菜单授权（`RequireMenu(jobManageMenus)`），无该菜单的用户（默认学生）与未登录一致回退列表原顺序，两页行为仍保持一致
-- `/job/learn-roads` 管理页：列表列「场景数/任务数」按岗位**实时统计**——场景数 = 该岗位关联（careerPositionId）的全部非归档场景数，任务数 = 这些场景下任务数之和（场景接口返回的 taskCount 实时计数），聚合规则收敛于 `frontend/edu/lib/position-scene-stats.ts`；**不使用学习路径 steps 快照**（steps 是保存时缓存，场景/任务增删后不更新，且无学习路径的岗位会错误显示 0/0）。「编辑学习路径」的「场景顺序」列表 = 该岗位关联场景按学习路径步骤顺序排列（与落地页/学习页同一套 `orderScenariosByLearnRoad` 排序，无路径时按列表原顺序），每个场景的任务实时加载自 `scenario_tasks`，列表与岗位关联场景一一对应（不再生成 orphan 假场景卡片；保存时 steps 写回真实场景步骤，残留的过期步骤被收敛）
+- 岗位详情页「实践场景」tab 与学习页（`/job/landing/[id]/learn`）场景排列顺序**一致**，均按该岗位关联的第一条学习路径（`/job/learn-roads`）步骤顺序排序（未纳入步骤的场景追加末尾；无关联路径/未登录/加载失败时回退列表原顺序）；排序规则收敛于前端统一排序逻辑；**生效前提**：学习路径读取依赖 `/job/learn-roads` 菜单授权（`RequireMenu(jobManageMenus)`），无该菜单的用户（默认学生）与未登录一致回退列表原顺序，两页行为仍保持一致
+- `/job/learn-roads` 管理页：列表列「场景数/任务数」按岗位**实时统计**——场景数 = 该岗位关联（careerPositionId）的全部非归档场景数，任务数 = 这些场景下任务数之和（场景接口返回的 taskCount 实时计数），聚合规则收敛于前端统一统计逻辑；**不使用学习路径 steps 快照**（steps 是保存时缓存，场景/任务增删后不更新，且无学习路径的岗位会错误显示 0/0）。「编辑学习路径」的「场景顺序」列表 = 该岗位关联场景按学习路径步骤顺序排列（与落地页/学习页同一套 `orderScenariosByLearnRoad` 排序，无路径时按列表原顺序），每个场景的任务实时加载自 `scenario_tasks`，列表与岗位关联场景一一对应（不再生成 orphan 假场景卡片；保存时 steps 写回真实场景步骤，残留的过期步骤被收敛）
 - 未登录可浏览公开列表（免登录无壳）；未发布内容仅可通过预览接口访问
 
 ### 2.7 超管控制台 `/superadmin`
@@ -118,8 +114,8 @@
 
 ### 2.9 系统管理-租户信息页 `/portal/apps/system/tenant`
 
-- 租户/学校资料展示与编辑（基础信息/联系信息/网络信息）、AI 服务配置区
-- **学校管理员卡片**：本租户学校管理员列表/编辑/删除/修改密码；**「新增」按钮当前隐藏**——租户自助新增学校管理员暂不开放（产品决策，后续可能恢复；恢复方式 `school-admin-manager.tsx` 顶部 `SHOW_ADD_BUTTON` 改为 true，见 `docs/系统功能清单.md`「十一、1 租户信息」）
+- 租户/学校资料展示与编辑（基础信息/联系信息/网络信息）
+- **学校管理员卡片**：本租户学校管理员列表/编辑/删除/修改密码；**「新增」按钮当前隐藏**——租户自助新增学校管理员暂不开放（产品决策，后续可能恢复；恢复方式为前端租户信息页组件顶部 `SHOW_ADD_BUTTON` 改为 true，见 `docs/系统功能清单.md`「十一、1 租户信息」）
 
 ---
 
@@ -152,7 +148,7 @@
 
 - **「已改动」判定口径**：**逐字段**比对——用户交互事件（pointerdown/keydown/input/change/paste，均先于值变化）触发时为「尚无基线」的字段记录当前值作为干净基线，之后某字段当前值与自己的基线不同才算有未保存内容。因此：弹窗打开后异步回填的初始值不算改动；改完又改回原值等于没改；搜索筛选/切 Tab/列表重载导致字段增删（结构变化）不算改动，但用户在新出现的字段里输入照样算改动。
 - **覆盖控件**：原生 input/textarea/select/file、contenteditable、Radix 勾选框/开关/单选/下拉触发器/滑块（按 `aria-checked`、`aria-valuenow`、选中文案比对）。自绘勾选行需声明 `role="checkbox" aria-checked`（读屏器同样需要）才可被识别。
-- **检测盲区（已知，不阻断）**：iframe 内编辑器（图片编辑器）、canvas 自绘内容、只存在 React state 而不落 DOM 的编辑状态检测不到；这类弹窗需要守卫时显式传 `unsavedGuard={true}`。
+- **检测盲区（已知，不阻断）**：iframe 内编辑器（图片编辑器）、canvas 自绘内容、只存在组件 state 而不落 DOM 的编辑状态检测不到；这类弹窗需要守卫时显式传 `unsavedGuard={true}`。
 - **不算「内容」的控件**：搜索框（`input[type="search"]`）、cmdk 搜索输入、`input[type="hidden"]`；其他需排除的控件加 `data-unsaved-ignore`。
 - **逐弹窗开关**：`unsavedGuard`——`'auto'`（默认，自动检测）/ `true`（强制视为有未保存内容，用于画布/iframe 类自定义编辑器）/ `false`（关闭守卫）。`false` 适用：纯展示弹窗、弹窗内即时保存的场景（如企业租户详情的展示开关）、勾选即时同步给父级表单的选择器弹窗（关闭本就不丢内容，如资源选择器「添加课程资源」、共建人选择器）。
 - **消费方优先**：守卫挂在 Radix `onInteractOutside`（关闭链最后一环），消费方在 `onPointerDownOutside`/`onInteractOutside`/`onEscapeKeyDown` 里已 `preventDefault()` 的弹窗（全屏编辑器禁止点外部关闭）行为完全不变，也不会弹确认；右键点击外部同样不触发。
@@ -208,6 +204,6 @@ StatusBadge 六色徽章：draft（灰）/pending（黄）/approved（蓝）/rej
 
 ## 5. 附录：组件速查
 
-- 通用组件清单与用法：`docs/components.md`
-- 表单与表格规范（FormFieldRow / PortalCrudPage / ContentListPage）：`docs/forms-tables.md`
+- 通用组件清单与用法：见 `AGENTS.md` 第二部分与 `frontend/portal-vue`/`frontend/plus-ui` 源码（Element Plus / RuoYi 框架）
+- 表单与表格规范（el-form / el-table / el-dialog）：同见上（Vue 门户基于 Element Plus）
 - 后端对应交互语义：`docs/spec/02-api-contract.md`（内容 13 动作、批次 6 动作、导入流程）

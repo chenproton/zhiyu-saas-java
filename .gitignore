@@ -17,8 +17,6 @@ dist/
 .vercel
 
 # Backend build artifacts
-backend/go/tmp/
-backend/go/bin/
 *.exe
 
 # Uploaded files
@@ -31,7 +29,6 @@ backups/
 # Runtime artifacts
 /logs/
 .rollback/
-backend/go/main
 tsconfig.tsbuildinfo
 *.log
 
@@ -47,15 +44,6 @@ offline/debs/*.deb
 # Release packages (USB delivery, built by scripts/package-release.sh)
 /release/
 
-# Image editor assets: 仓库中是指向 offline/image-editor 的符号链接，
-# deploy.sh 构建时会替换为实体文件；禁止把实体文件提交入库
-/frontend/edu/public/image-editor/
-
-# file-viewer 运行时资产（CAD/archive/ppt/model/typst/pdf 的 worker/wasm/字体）：
-# 由 prebuild 脚本从 node_modules 复制生成，不提交入库
-/frontend/edu/public/wasm/
-/frontend/edu/public/vendor/
-
 ### Java 框架（base-dev-framework6，同步自 saas-framework6-java-vue）###
 target/
 .classpath
@@ -67,6 +55,9 @@ target/
 frontend/plus-ui/.history/
 frontend/plus-ui/node_modules/
 frontend/plus-ui/dist/
+frontend/portal-vue/dist/
+frontend/portal-vue/node_modules/
+
 frontend/plus-ui/npm-debug.log*
 frontend/plus-ui/yarn-debug.log*
 frontend/plus-ui/yarn-error.log*
@@ -88,5 +79,3 @@ frontend/plus-ui/auto-imports.d.ts
 frontend/plus-ui/components.d.ts
 deploy/docker/build-context/
 
-# Go 构建二进制（go build 输出）
-backend/go/server

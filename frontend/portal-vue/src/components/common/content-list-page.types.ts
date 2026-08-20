@@ -1,4 +1,4 @@
-// 通用内容列表页类型契约 —— 对齐 React frontend/edu/components/shared/content-list-page.tsx
+// 通用内容列表页类型契约 —— 对齐原 React 版 content-list-page.tsx
 // 说明：领域后端对象形态不一，itemApi/create/update/mapItem 入参以 any 承接，
 // 值约束由各域 mapItem/createPayload 承担（与 React ContentListPageConfig 一致）。
 
@@ -52,7 +52,7 @@ export interface ContentApprovalApi {
   create: (req: { targetType: string; targetId: string; workflowId?: string }) => Promise<unknown>;
 }
 
-/** 导入预览行（Vue/Java 后端形态，兼容 Go 后端的 duplicates 形态） */
+/** 导入预览行（Vue/Java 后端形态） */
 export interface ImportPreviewRow {
   row: number;
   name?: string;
@@ -67,7 +67,7 @@ export interface ImportPreviewResult {
   valid?: number;
   invalid?: number;
   rows?: ImportPreviewRow[];
-  // 兼容 React（Go 后端）形态
+  // 兼容 React 版形态
   duplicates?: number;
   created?: number;
   failed?: number;

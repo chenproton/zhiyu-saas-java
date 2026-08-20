@@ -65,11 +65,11 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
 
 ### 1.4 覆盖范围与安全护栏
 
-**覆盖**：`school/teacher/student` 走 portal 登录（`/portal/login`）；`partner`（企业端）走独立门户（`/partner/login`）。静态路由自动枚举 `frontend/edu/app` 下全部页面（含 `(group)` 分组段，跳过 `[id]` 动态段）；动态详情/编辑页从后端 API 拉真实 id 直接访问。无权限页（遮罩/全 401/403）自动记 `skip` 不算错误。
+**覆盖**：`school/teacher/student` 走 portal 登录（`/portal/login`）；`partner`（企业端）走独立门户（`/partner/login`）。静态路由自动枚举 `frontend/portal-vue/src/router/index.ts` 下全部路由（跳过纯 redirect 项）；动态详情/编辑页从后端 API 拉真实 id 直接访问。无权限页（遮罩/全 401/403）自动记 `skip` 不算错误。
 
 **安全护栏**（默认开启，保护真实数据）：
 - 只操作 `SMOKE_` 前缀测试数据；`/superadmin` 与角色管理页默认不触发 CRUD；
-- 语言切换按钮不点（防止危险词失效）；「重新生成/AI 生成」类按钮默认跳过（避免真实 LLM 调用计费）；
+- 语言切换按钮不点（防止危险词失效）；
 - 下拉菜单里的编辑/删除/启用/禁用一律跳过（无法判定来源数据行），避免误操作真实数据。
 
 ### 1.5 结果与报告
@@ -219,7 +219,7 @@ steps:
     optional: true
 ```
 
-> 更真实的跨角色闭环参考 `docs/spec/06-acceptance-flows.md`（就业供需大厅 / 知识库发布 / 智能体发布 / 第三方挂接 4 条现成流程）。
+> 更真实的跨角色闭环参考 `docs/spec/06-acceptance-flows.md`（就业供需大厅 / 岗位发布 / 课程发布学习 / 考试安排 / 场景任务 / 教务计划 / 联盟公开页 / 资源复用 / 教学计划排课等 9 条现成流程）。
 
 ### 2.7 正式登记 vs 临时调试
 
@@ -240,32 +240,29 @@ steps:
 
 | 依赖 | 说明 |
 |---|---|
-| 后端工具链 | `go vet/build/test`（Go 1.25+） |
-| 前端工具链 | Node 20+ / pnpm 9，根目录 `pnpm install`（含 `frontend/edu` + `frontend/packages/*`） |
-| **测试库** | 后端集成测试用 `TEST_DATABASE_URL` 指定独立测试库（**绝不指向生产库**，见 §五） |
+| 后端工具链 | JDK 21 / Maven（`backend/java`，`./mvnw compile -q` 编译门禁） |
+| 前端工具链 | Node 20+ / pnpm，`frontend/portal-vue` 与 `frontend/plus-ui` 各自 `pnpm install` + `pnpm build` |
 | UI 冒烟依赖 | `cd scripts/ui-smoke && npm install` + 系统 Google Chrome |
 | 测试账号 | `school/school123`、`teacher/teacher123`、`student/student123`、`partner(smokepartner/smoke123)` |
 
 ### 3.2 后端测试
 
 ```bash
-cd backend/go && go vet ./... && go build ./... && go test ./... -count=1
+cd backend/java && ./mvnw compile -q    # 编译门禁（JDK 21）
+./mvnw test -q                          # 单测（controller/service/mapper 层，JUnit 5 + Mockito）
 ```
 
-- 集成测试经 `testhelper.SetupTestEnv` 自动向测试库跑 migration 并装配生产路由；**未设 `TEST_DATABASE_URL` 时自动 skip**（安全红线，避免误连生产库）：
-  ```bash
-  TEST_DATABASE_URL="postgres://user:pass@127.0.0.1:5432/zhiyu-saas-test?sslmode=disable" go test ./...
-  ```
-- 测试文件约定 `xxx_test.go`，分层要求与红线见 `docs/refactor-layering.md`（新接口至少 handler/service/store 一种测试）。
+- 单测位于 `backend/java/*/src/test/java/`；分层要求与红线见根 `AGENTS.md` 第二部分（新接口至少 controller/service/mapper 测试一种）。
+- 集成测试需要独立测试库的场景（写库型测试）：**绝不指向生产库**（误连不可逆），未配置时跳过。
 
 ### 3.3 前端测试
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm test
+cd frontend/portal-vue && pnpm build     # 业务门户构建（含 vue-tsc 类型检查）
+cd frontend/plus-ui && pnpm build        # 管理端构建
 ```
 
-- `typecheck` = `tsc --noEmit`；`lint` = `eslint .`；`test` = `vitest run`；
-- vitest 默认**全量收集 `*.test.ts`**（新增测试自动纳入，无需改配置）；测试只跑纯逻辑（`lib/` 工具函数、组件纯逻辑），不渲染真实页面——页面级验证交给 UI 冒烟。
+- 前端门禁以构建 + 类型检查（`vue-tsc`）为主；纯逻辑工具函数可配单测（页面级验证交给 UI 冒烟）。
 
 ### 3.4 spec 门禁
 
@@ -273,7 +270,7 @@ pnpm typecheck && pnpm lint && pnpm test
 ./scripts/spec-check.sh
 ```
 
-12 项硬约束（handler 无裸 SQL/持仓、service 无拼 SQL、store 不读请求、AI 走统一底座、migration up/down 配对、五层 spec 制品、ADR 索引、安全红线、schema↔migration 双向一致等）。阻断级违规必须提交前修掉；提示级（XSS/路由契约/spec 耦合）需人工确认。
+14 项校验（controller 无裸 SQL/DB 句柄/MyBatis 注解、service 无拼 SQL、mapper 不读请求/租户上下文、LLM 直连红线、migration up/down 配对、spec 五层制品、ADR 索引、安全红线、schema↔migration 双向一致等，详见 `spec-standards.md` §九）。阻断级违规必须提交前修掉；提示级（路由契约覆盖/验收流程一致性/新端点租户校验/LLM 直连/down 不可逆标注）需人工确认。
 
 ---
 
@@ -303,7 +300,7 @@ pnpm typecheck && pnpm lint && pnpm test
 | `dangerousWords` / `dangerousWordsEn` | 会被跳过的写数据/危险按钮词表（中英） |
 | `cleanupApis` | 巡检后清理 `SMOKE_` 数据的接口映射 |
 
-> 新页面（静态路由）会自动被巡检器枚举（扫描 `frontend/edu/app`），无需手工登记；带 `[id]` 的动态详情/编辑页需在 `dynamicRoutes` 配置真实 id 来源。
+> 新页面（静态路由）会自动被巡检器枚举（扫描 `frontend/portal-vue/src/router/index.ts`），无需手工登记；带 `[id]` 的动态详情/编辑页需在 `dynamicRoutes` 配置真实 id 来源。
 
 ### 4.2 扩展巡检器本身（进阶，可选）
 
@@ -324,12 +321,11 @@ pnpm typecheck && pnpm lint && pnpm test
 
 ## 五、红线与注意事项
 
-1. **测试库隔离（最高优先级）**：`TEST_DATABASE_URL` 未设置时后端集成测试会 skip；**绝不指向生产库**（测试会对库执行 migration 与 DELETE 种子数据，误连不可逆）。
+1. **测试库隔离（最高优先级）**：后端集成测试（写库型）必须指向独立测试库，**绝不指向生产库**（测试会对库执行 migration 与 DELETE 种子数据，误连不可逆）；未配置时跳过。
 2. **UI 冒烟只操作 `SMOKE_` 数据**：CRUD 的创建/编辑/删除/启停只作用于带 `SMOKE_` 前缀的行；`/superadmin` 与角色管理页默认不触发 CRUD。
-3. **不产生真实 LLM 调用**：UI 冒烟默认跳过「重新生成/AI 生成」类按钮（按 token 计费）；AI 对话链路不进 flow，由后端集成测试覆盖。
-4. **`--base-url` 必须走 nginx 网关**：直连容器内前端端口时 rewrite 会失败。
-5. **报告噪音已知项**：种子数据 `example.com` 占位图、静态资源 404、429 限流、401/403 无权限页（记 `info`/`skip` 不算错误）。
-6. **新增正式 flow 后跑 `spec-check.sh`**：会做 flow↔PRD 用户故事的提示级一致性检查，避免 flow 漂移。
+3. **`--base-url` 必须走 nginx 网关**：直连容器内前端端口时 rewrite 会失败。
+4. **报告噪音已知项**：种子数据 `example.com` 占位图、静态资源 404、429 限流、401/403 无权限页（记 `info`/`skip` 不算错误）。
+5. **新增正式 flow 后跑 `spec-check.sh`**：会做 flow↔PRD 用户故事的提示级一致性检查，避免 flow 漂移。
 
 ---
 
@@ -337,6 +333,6 @@ pnpm typecheck && pnpm lint && pnpm test
 
 - UI 冒烟工具完整用法：`scripts/ui-smoke/README.md`
 - 验收流程 DSL 与清单：`docs/spec/06-acceptance-flows.md`
-- 后端分层红线（测试归属）：`docs/refactor-layering.md`
+- 后端分层红线（测试归属）：根 `AGENTS.md` 第二部分（controller/service/mapper）
 - spec 工作流 / DoD：`docs/spec-standards.md`
-- 前端组件复用：`docs/components.md`、`docs/forms-tables.md`
+- 前端组件复用：`AGENTS.md` 第二部分 + `frontend/portal-vue`/`frontend/plus-ui` 源码

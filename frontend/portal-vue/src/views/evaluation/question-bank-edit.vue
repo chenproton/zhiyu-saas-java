@@ -264,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-// 题库题目管理页：对齐 React frontend/edu/app/evaluation/question-banks/[id]/page.tsx
+// 题库题目管理页：对齐原 React 版 question-banks/[id]/page.tsx
 import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';

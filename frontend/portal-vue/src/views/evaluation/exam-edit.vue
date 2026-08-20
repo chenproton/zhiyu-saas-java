@@ -196,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-// 组卷页：对齐 React frontend/edu/app/evaluation/exams/[id]/page.tsx（ExamComposerPage）
+// 组卷页：对齐原 React 版 exams/[id]/page.tsx（ExamComposerPage）
 import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';

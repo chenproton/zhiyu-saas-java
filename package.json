@@ -7,15 +7,15 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev:edu": "pnpm --filter @zhiyu/edu dev",
-    "build:edu": "pnpm --filter @zhiyu/edu build",
-    "build:backend": "cd backend/go && go build -o bin/server ./cmd/server/main.go",
-    "build:all": "pnpm build:backend && pnpm build:edu",
+    "dev:portal": "pnpm --filter portal-vue dev",
+    "build:portal": "pnpm --filter portal-vue build",
+    "build:plus-ui": "pnpm --filter plus-ui build",
+    "build:all": "pnpm build:portal && pnpm build:plus-ui",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "format": "prettier --write \"frontend/edu/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"frontend/packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\"",
-    "format:check": "prettier --check \"frontend/edu/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\" \"frontend/packages/**/*.{ts,tsx,js,jsx,mjs,cjs,css,json}\""
+    "format": "prettier --write \"frontend/portal-vue/**/*.{ts,vue,js,mjs,cjs,css,json}\"",
+    "format:check": "prettier --check \"frontend/portal-vue/**/*.{ts,vue,js,mjs,cjs,css,json}\""
   },
   "devDependencies": {
     "prettier": "^3.9.6"

@@ -1,5 +1,5 @@
 <template>
-  <!-- 收藏岗位排行榜：对齐 React frontend/edu/components/job/student/ranking-list.tsx -->
+  <!-- 收藏岗位排行榜：对齐原 React 版 ranking-list -->
   <div v-if="ranked.length === 0" class="rank-card">
     <div class="rank-header">
       <span class="rank-title-bar" />

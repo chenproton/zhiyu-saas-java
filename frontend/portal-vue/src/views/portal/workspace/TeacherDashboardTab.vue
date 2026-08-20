@@ -1,6 +1,6 @@
 <!--
   教师工作台首页 Tab：左侧课程日历（3/4）+ 右侧「待办事项 / 通知公告」（1/4）。
-  对齐 React frontend/edu/app/portal/workspace/_components/teacher-dashboard-tab.tsx（794 行）：
+  对齐原 React 版 teacher-dashboard-tab.tsx（794 行）：
   - 数据源：GET /portal/workspace/dashboard?role=teacher（announcements/todos/schedule/classPlans/classSessions）；
   - 课程日历：TeacherScheduleTable（周视图 + 格位气泡操作）；
   - 待办事项：按 type 取图标与中文标签（成绩/审批/作业/审核），空态「暂无待办事项」，

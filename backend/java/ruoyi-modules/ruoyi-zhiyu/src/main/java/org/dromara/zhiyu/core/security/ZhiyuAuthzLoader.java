@@ -162,16 +162,6 @@ public class ZhiyuAuthzLoader {
     }
 
     /**
-     * AI 管理端写前校验（对齐 Go routes_ai_center.go:61-71 RequireMenu(aiAdminMenus)）：
-     * 勾选 AI 管理菜单（审核/挂接）即获得管理权限，不再限 school_admin 角色。
-     */
-    public void requireAiCenterAdmin() {
-        if (!current().coversAny(ZhiyuMenuCatalog.AI_ADMIN_MENUS)) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-    }
-
-    /**
      * partner 管理员写接口校验（对齐 Go routes_partner.go:95-104 adminOnly
      * RequireRole(enterprise_admin)）。
      */
@@ -179,14 +169,6 @@ public class ZhiyuAuthzLoader {
         if (!current().hasRole(ZhiyuAuthzRules.ROLE_ENTERPRISE_ADMIN)) {
             throw new ApiException(403, "forbidden", "权限不足");
         }
-    }
-
-    /**
-     * school_admin 角色判定（对齐 Go aiIsSchoolAdmin：按令牌角色编码而非 users.role
-     * 单字段），用于 AI 中心审核管理只读体验放行。
-     */
-    public boolean isSchoolAdmin() {
-        return current().hasRole(ZhiyuAuthzRules.ROLE_SCHOOL_ADMIN);
     }
 
     private String cacheKey(String userId) {

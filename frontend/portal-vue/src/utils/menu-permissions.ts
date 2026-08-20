@@ -1,5 +1,5 @@
 /**
- * 角色权限配置数据（对齐 React frontend/edu/lib/menu-permissions.ts）。
+ * 角色权限配置数据（对齐原 React 版 lib/menu-permissions.ts）。
  *
  * MENU_TREE 由 React navigation-config 的 buildMenuTree() 输出静态生成（142 节点），
  * 用于角色权限配置对话框的「菜单权限」Tab；permissionModuleConfig 驱动「操作权限」Tab。
@@ -46,17 +46,6 @@ export const MENU_TREE: MenuTreeItem[] = [
       children: [
       { id: 'system-entry-logs-login', label: '登录日志查看', href: '/portal/apps/system/logs/login' },
       { id: 'system-entry-logs-operation', label: '操作日志查看', href: '/portal/apps/system/logs/operation' }
-      ] }
-    ] },
-  { id: 'ai', label: 'AI 智能服务平台',
-    children: [
-    { id: 'ai-main', label: 'AI 智能服务中心', href: '/portal/apps/ai' },
-    { id: 'ai-admin', label: 'AI 广场管理',
-      children: [
-      { id: 'ai-admin-reviews', label: '知识库/智能体审核', href: '/portal/apps/ai/admin/reviews' },
-      { id: 'ai-admin-kbs', label: '知识库管理', href: '/portal/apps/ai/admin/kbs' },
-      { id: 'ai-admin-agents', label: '智能体管理', href: '/portal/apps/ai/admin/agents' },
-      { id: 'ai-admin-integrations', label: '外部 AI 服务上架', href: '/portal/apps/ai/admin/integrations' }
       ] }
     ] },
   { id: 'career', label: '职业岗位学习平台',

@@ -154,7 +154,7 @@
 
 <script setup lang="ts">
 /**
- * 题库选题面板：对齐 React frontend/edu/components/evaluation-rules/bank-question-selector-panel.tsx
+ * 题库选题面板：对齐原 React 版 bank-question-selector-panel.tsx
  * 题库 Tab（我的/共建/公共题库）→ 题库搜索 → 进入题库选题 → 右侧已选题目与分值配置（均匀/题型分配）。
  */
 import { computed, onMounted, ref, watch } from 'vue';

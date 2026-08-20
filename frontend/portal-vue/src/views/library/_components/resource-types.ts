@@ -1,4 +1,4 @@
-// 资源类型元数据（对齐 frontend/edu/lib/resource-type-constants.tsx）。
+// 资源类型元数据（对齐原 React 版 lib/resource-type-constants）。
 // Vue 门户无 Tailwind/lucide，改用十六进制色值与 Element Plus 样式。
 
 export const TYPE_COLORS: Record<string, string> = {

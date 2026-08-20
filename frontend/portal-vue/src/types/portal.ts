@@ -1,4 +1,4 @@
-// 门户学习社区类型（移植自 frontend/packages/shared-types/src/portal.ts）
+// 门户学习社区类型（移植自原 React 版 shared-types 的 portal.ts）
 
 export interface CommunityTopic {
   id: string;

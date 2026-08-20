@@ -1,6 +1,6 @@
 <!--
   个人中心 Tab（教师）。
-  对齐 React frontend/edu/app/portal/workspace/_components/teacher-profile-tab.tsx（226 行）：
+  对齐原 React 版 teacher-profile-tab.tsx（226 行）：
   - 三个子页：个人资料 / 账号安全 / 通知偏好；
   - 个人资料：头像 + 姓名 + 「部门 · 专业」身份行，账号信息表单（可改姓名，复用 AccountInfoForm）
     + 其它信息（不可修改：工号 / 所属部门 / 专业 / 手机号 / 邮箱，三列栅格）；

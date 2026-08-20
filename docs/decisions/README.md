@@ -35,14 +35,13 @@
 
 | 序号 | 标题 | 状态 | 一句话结论 |
 |---|---|---|---|
-| 0001 | 后端分层红线（handler/service/store 职责分离） | 已接受 | handler 不写 SQL，service 不拼 SQL，store 不读 HTTP/Claims |
-| 0002 | AI 功能统一走 AIService 底座 | 已接受 | 禁止自封装 LLM 调用，一律经 AIService |
-| 0003 | 租户隔离采用「handler 层校验 + SQL 层可选限定」 | 已接受 | handler 先 verifyTenantOwnership 兜底，store 层 SQL 限定属纵深防御而非必须 |
+| 0001 | 后端分层红线（controller/service/mapper 职责分离） | 已接受 | controller 不写 SQL、不持 DB 句柄，service 不拼 SQL，mapper 不读 HTTP/上下文；SQL 统一带 tenant_id |
+| 0003 | 租户隔离采用「service 层校验 + SQL 层纵深防御」 | 已接受 | 归属校验在 service 层（SystemGuard 等）兜底，关键写操作 SQL 层补 tenant_id 条件 |
 | 0004 | 文件预览从 kkfileview 切换为 flyfish-dev/file-viewer | 已取代 | 前端切浏览器原生 file-viewer，kkfileview 保留作回退（范围被 0005 扩大） |
 | 0005 | 文件预览按 file-viewer 支持格式全覆盖扩大切换范围 | 已接受 | preset-all 覆盖全部格式，删除自研 ZipPreview，其余回退 kkfileview |
 | 0006 | 资源快照与版本固化机制 | 已接受 | 发布即快照、快照表无 FK、成绩行 version 服务端盖章 |
 | 0007 | 企业平台架构——企业全局实体 + 专家账号直绑 | 已接受 | 企业全局唯一经 links 关联，账号直绑取代影子账号 |
 | 0008 | 权限模型演进——菜单驱动的 API 授权 | 已接受 | 角色=菜单权限集合，API 授权经「菜单→API」映射表驱动，关键写保留 school_admin 白名单 |
-| 0009 | 前端从 Next.js 迁移为纯 React SPA（Vite + React Router） | 已接受 | 项目已 85% 客户端化且后端为 Go，Next 的 RSC/SSR/Server Actions 无净收益；迁 Vite7 + React Router v7，行为不变 |
 
 > 初建时仅登记已沉淀在 `AGENTS.md`/`docs/*.md` 的重要既有决策（0001~0003），不回溯补写全部历史；后续新决策再按模板新增。
+> 0002（AI 统一底座）与 0009（React SPA）已随 2026-08 的 Go/React 迁移删除而废弃移除（AI 功能整体下线、React 前端已删除）。

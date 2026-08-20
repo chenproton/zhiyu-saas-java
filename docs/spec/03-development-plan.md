@@ -1,6 +1,6 @@
 # 开发计划表 — 知与 SaaS
 
-> 回溯式文档：M0~M5 里程碑与任务按 git 提交历史（2026-07-01 ~ 2026-08-04，1996 个 commit）反推，状态均为已完成；M6~M8 为 08-04 之后的迭代摘要（AI 底座/安全加固、企业平台 Partner、资源快照）。供后续版本规划参考，新迭代按同样节奏制定 WBS。
+> 回溯式文档：M0~M5 里程碑与任务按 git 提交历史（2026-07-01 ~ 2026-08-04，1996 个 commit）反推，状态均为已完成；M6~M8 为 08-04 之后的迭代摘要（安全加固、企业平台 Partner、资源快照）。供后续版本规划参考，新迭代按同样节奏制定 WBS。
 
 ---
 
@@ -14,7 +14,7 @@
 | M3 流程与治理 | 内容状态机统一、批次/审批/工作流四系统统一、store 分层迁移 | 07-18 ~ 07-28 | ContentActionStore、五套批次、统一审批、store 层重构 | ✅ 完成 |
 | M4 联盟与教务 | 联盟台账/导入导出、教务（学期/人培/排课）、Excel 三件套 | 07-26 ~ 07-31 | alliance 全主体、affairs 全链路、import/export 体系 | ✅ 完成 |
 | M5 平台化与体验 | 工作台 v2、移动端适配、超管控制台、安全加固 | 07-27 ~ 08-04 | 角色工作台、响应式全量修复、RequirePlatform 恢复、五轮代码审查 | ✅ 完成 |
-| M6 AI 底座与安全加固 | AIService 统一底座、AI 配置/用量/护栏、安全非功能落地（密钥/限流/上传） | 08-05 ~ 08-12 | ai-development.md 底座全链路、security-standards.md 全部落地、spec-check.sh 门禁 | ✅ 完成 |
+| M6 安全加固与门禁 | 安全非功能落地（密钥/限流/上传）、spec-check.sh 门禁 | 08-05 ~ 08-12 | security-standards.md 全部落地、spec-check.sh 门禁 | ✅ 完成 |
 | M7 企业平台 Partner | 企业全局实体 + 专家账号直绑 + 企业端资源共建 + 联盟前台公开 | 08-12 ~ 08-14 | ADR-0007、partner-enterprise-platform.md、迁移 142/145/146/154/155 | ✅ 完成 |
 | M8 资源快照与版本固化 | 发布即快照、成绩行版本盖章、快照查询剥离学生答案 | 08-14 | ADR-0006、resource-snapshot-versioning.md、迁移 158 | ✅ 完成 |
 
@@ -69,7 +69,7 @@
 | 门户首页/应用中心（12 模块卡片）+ TopNav | A1 | 2 | 登录 | ✅ |
 | 各模块 wire 真实 API（移除 localStorage mock） | A2/A3 并行 | 6 | M1 接口 | ✅ |
 | 学生落地页（job/scene/lesson/evaluation landing 四套） | A2 | 3 | 公开接口 | ✅ |
-| 共享组件下沉 frontend/packages/ui（StatusBadge/ConfirmDialog/ImportWizard 等） | A3 | 3 | — | ✅ |
+| 共享组件下沉公共组件库（StatusBadge/ConfirmDialog/ImportWizard 等） | A3 | 3 | — | ✅ |
 | api-client 工厂（createCrudApi/createContentApi）+ shared-types | A3 | 3 | — | ✅ |
 
 ### M3 流程与治理（07-18 ~ 07-28）
@@ -123,7 +123,7 @@
 
 | 依赖 | 说明 | 状态 |
 |------|------|------|
-| file-viewer 文档预览（flyfish-dev） | 浏览器原生（`@file-viewer/react` + `@file-viewer/preset-all`），覆盖全部 208 扩展名，无服务端转换 | 已启用 |
+| file-viewer 文档预览（flyfish-dev） | 浏览器原生（flyfish-dev/file-viewer），覆盖全部 208 扩展名，无服务端转换 | 已启用 |
 | kkfileview 文档预览服务 | 可选 profile，端口 8012（保留作 file-viewer 不支持格式的回退） | 可选启用 |
 | Redis | 缓存/限流，未配置自动降级 | 已就绪（docker） |
 | PostgreSQL 15 | 主数据库 | 已就绪（docker） |
@@ -138,7 +138,7 @@
 | 状态机非法流转 | 数据一致性 | ContentActionStore 统一校验 + 409 冲突语义 |
 | 租户数据越权 | 数据泄露 | 三重校验 + 平台隔离 + 无跨租户特权原则 |
 | 导入大文件超时 | 导入失败 | 10min 长超时 + 预览先行 + 行级错误报告 |
-| 部署编译错误 | 阻塞上线 | deploy.sh 质量门禁（gofmt/vet/test/typecheck/lint）前置拦截 |
+| 部署编译错误 | 阻塞上线 | deploy.sh 质量门禁（Maven 编译 + portal-vue/plus-ui 构建 + spec-check）前置拦截 |
 
 ---
 
@@ -154,23 +154,23 @@
 
 ## 5. 部署契约（deploy.sh 行为约定）
 
-> 与实现同源：`deploy.sh`（Go+React 栈）/ `deploy-java.sh`（Java+Vue 栈）。两栈分开部署，仅共享 `zhiyu-postgres` 与 docker 网络。
+> 与实现同源：`deploy.sh` 是**唯一部署入口**（Java + Vue 单栈：Java 后端 + portal-vue/plus-ui 前端 + PostgreSQL）。建库建表（`db/migrations` 纯 psql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh。
 
 ### 5.1 执行顺序（顺序即契约）
 
-1. **取部署锁**（`/run/zhiyu-deploy.lock`，flock 不可用即拒绝部署）——先于任何系统级动作（apt / 解压 Go·Node / 装 nginx / 配 docker mirror），避免并发部署互踩
+1. **取部署锁**（`/run/zhiyu-deploy.lock`，flock 不可用即拒绝部署）——先于任何系统级动作（apt / 安装 Node / 装 nginx / 配 docker mirror），避免并发部署互踩
 2. 校验分支 → 在隔离 worktree（`/tmp/zhiyu-build-cache`）上以 `origin/master` 为基座合并目标分支
-3. 增量构建：后端/前端各自按源码指纹判断，未变更则跳过；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
+3. 增量构建：源码 hash 比对**只构建变更部分**——Java 后端（`backend/java` Maven 构建）+ `frontend/portal-vue` + `frontend/plus-ui`；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
 4. **第一段启动**：只起数据层 `postgres` / `redis`
 5. **全库备份**（`/opt/zhiyu-saas/backups`，目录 700 / 文件 600，保留最近 7 份）
-6. **执行迁移**：优先 `cmd/migrate`，失败回落 psql（`ON_ERROR_STOP=1`，遇错立即停止，不叠加半应用 DDL）
-7. **第二段启动**：再起业务容器 `backend` / `frontend` / `nginx` / `kkfileview`
+6. **执行迁移**：`db/migrations/*.up.sql` 纯 psql 执行（`ON_ERROR_STOP=1`，遇错立即停止，不叠加半应用 DDL）+ **Java 框架表初始化**（deploy 幂等初始化）
+7. **第二段启动**：再起业务容器 `java-backend` / `portal-vue` / `plus-ui` / `nginx` / `kkfileview`
 8. **健康门禁**：带 healthcheck 的服务必须 `healthy`（`Up (health: starting)` / `Up (unhealthy)` 不算就绪）；网关容器重启后自检两次失败即回滚
 9. **业务冒烟**：`/portal/login` 200、`/health` 200、`/api/v1/auth/captcha` 200（API+Redis）、`/api/v1/settings/theme` 200（API+DB 读）、`/api/v1/tenants` 401（鉴权中间件生效）；任一失败即回滚
-10. 首次建库时补跑**种子数据**（`cmd/seed`，失败仅 warn 不回滚）
+10. 首次建库时补跑**种子数据**（java-backend SeedRunner，失败仅 warn 不回滚）
 11. 等待 **kkfileview** 就绪（最长 180s，非核心服务，未就绪仅 warn）
 12. 写入构建指纹 → 生成生产 nginx 配置（临时文件 + `cmp` 去重 + 原子 mv，`nginx -t` 失败自动复位并**不回滚**）→ 合并分支到 master
-13. 收尾清理：本项目已退出容器、构建缓存（超 `BUILD_CACHE_LIMIT_GB` 才裁剪，**全宿主范围**）、悬空镜像（`until=24h`，避免清掉其他栈的回滚镜像）、每仓库只留最新 1 个镜像标签；并检测上传卷根目录旧布局，提示执行 `scripts/migrate_uploads.sh`
+13. 收尾清理：本项目已退出容器、构建缓存（超 `BUILD_CACHE_LIMIT_GB` 才裁剪，**全宿主范围**）、悬空镜像（`until=24h`）、每仓库只留最新 1 个镜像标签；并检测上传卷根目录旧布局，提示执行 `scripts/migrate_uploads.sh`
 
 **失败处理分三类**（不是所有失败都回滚）：
 - **回滚**（`rollback_deploy` → 回上一版镜像 + 重做健康检查 + 报错退出，**不合并 master**）：数据层/业务容器启动失败、baseline 与增量迁移失败、健康门禁未过、网关自检两次失败、业务冒烟未过；
@@ -185,7 +185,7 @@
 
 | 容器 | 可见密钥 | 理由 |
 |---|---|---|
-| `backend` | 显式白名单：`DATABASE_URL` / `REDIS_URL` / `JWT_SECRET` / `AI_CONFIG_SECRET` / `PORT` / `UPLOAD_DIR` / `ALERT_WEBHOOK_URL` | 运行期实际读取的全部变量（`backend/go/internal/config`）。**不再用 `env_file: .env`**：那会把仅宿主机需要的 `SEED_ADMIN_PASSWORD`（`cmd/seed` 用）、`TEST_DATABASE_URL`（门禁 go test 用）与全部 `VITE_*` 一并灌进运行容器 |
+| `java-backend` | 显式白名单：`DATABASE_URL` / `REDIS_PASSWORD` / `JWT_SECRET` / `DB_PASSWORD` / `SEED_ADMIN_PASSWORD` | 运行期实际读取的全部变量（Java 配置）。**不再用 `env_file: .env`**：那会把仅宿主机需要的 `SEED_ADMIN_PASSWORD`（SeedRunner 种子用）与全部 `VITE_*` 一并灌进运行容器 |
 | `postgres` | 仅 `POSTGRES_*` | 建库账号 |
 | `frontend` / `nginx` / `redis` / `kkfileview` | **无** | 静态产物与第三方组件不得持有可伪造 token 的 `JWT_SECRET` |
 
@@ -196,42 +196,28 @@
 - 备份：每次部署迁移前全库 `pg_dump` 到 `/opt/zhiyu-saas/backups`（目录 700 / 文件 600，保留最近 7 份，约 11MB/份）。
 - 恢复：**一律用容器内 psql**（`docker exec -i zhiyu-postgres psql ...`），客户端与 dump 同源；
   pg_dump 15.18+ 输出 `\restrict/\unrestrict` 元命令，宿主旧版 psql（<15.14 / <16.10）会报 `invalid command \restrict`。
-- 恢复演练（2026-08-19 实测）：最新备份恢复到临时库 `restore_drill` 成功，**191 张表**（= Go 侧 166 张，见 `04-database-schema.md` 头部；其余为 Java 栈 RuoYi 框架表，两栈共库）/ 42 租户 / 93 条 `schema_migrations`，与生产一致；宿主 psql 16.14 亦可恢复。
+- 恢复演练（2026-08-19 实测）：最新备份恢复到临时库 `restore_drill` 成功，表数与 `04-database-schema.md` 头部一致（业务表 + Java 栈 RuoYi 框架表，框架表由 deploy 框架表初始化），与生产一致；宿主 psql 16.14 亦可恢复。
 - 约定：覆盖生产前必须先恢复到临时库比对表数与关键表行数。
 
-### 5.4 两栈部署顺序与共享资源
+### 5.4 质量门禁
 
-两套栈**分开部署、互不依赖代码**，但共享三样东西，故首次现场部署必须**先 `./deploy.sh` 再 `./deploy-java.sh`**：
-
-| 共享资源 | 名称 | 说明 |
-|---|---|---|
-| 数据库容器 | `zhiyu-postgres` | 同一库 `zhiyu-saas`，Go 与 Java 表名不相交；Java 栈的框架表由 `deploy-java.sh` 幂等初始化 |
-| 上传卷 | `zhiyu-saas_uploads_data` | 两栈都挂到 `/opt/zhiyu-saas/uploads`；两侧容器均以 uid 1000 运行，避免互相写不进 |
-| docker 网络 | `zhiyu-saas_zhiyu` | Java 栈 join 该网络后按容器名 `zhiyu-postgres:5432` 直连 |
-
-`deploy.sh` 的清理动作已按 compose 项目标签/时间窗限定，不会误删 Java 栈容器与回滚镜像；唯一例外是构建缓存裁剪为全宿主范围。
-另有两份**人工维护、deploy.sh 只读不写**的现网 nginx 配置（现网 HTTPS 入口与其依赖的 Referer 分流 map），版本化快照见 `deploy/nginx/host-live/`。
-
-### 5.5 质量门禁
-
-CI（`.github/workflows/ci.yml`）三个 job：前端 typecheck/lint/test/format、后端 gofmt/vet/build/test + `spec-check.sh`、**shell（`bash -n` 全量 + shellcheck，覆盖 deploy/deploy-java/scripts/release 全部脚本）**。
+CI（`.github/workflows/ci.yml`）：Java Maven 编译 + portal-vue/plus-ui 构建 + `spec-check.sh` + **shell（`bash -n` 全量 + shellcheck，覆盖 deploy/scripts 全部脚本）**。
 
 **`deploy.sh` 质量门禁默认开启**，`--skip-gates` 仅应急跳过。原因：CI 触发条件是 `push: [master]`，而 deploy.sh 部署成功后直推 master —— 门禁若只靠 CI，等于事后报警，红了也拦不住已写入的 master。
 
-门禁的两条**边界必须知道**（否则会高估覆盖度）：
+门禁的几条**边界必须知道**（否则会高估覆盖度）：
 1. **`spec-check.sh` 无条件执行**（秒级），纯文档/纯脚本改动同样校验；
-2. **语言级门禁随构建触发**：`gofmt/vet/go test` 只在后端源码指纹变化时跑，`typecheck/lint/test` 只在前端指纹变化时跑 —— 无源码变更的部署不会重复跑它们（CI 仍会在 master 上全量跑）；
-3. `go test` 需要 `TEST_DATABASE_URL` 指向**专用测试库**（集成测试会写库），未配置或探测不通时**跳过并告警**，不阻断部署。
+2. **语言级门禁随构建触发**：Java Maven 编译只在 Java 源码指纹变化时跑，portal-vue/plus-ui 构建只在前端指纹变化时跑 —— 无源码变更的部署不会重复跑它们（CI 仍会在 master 上全量跑）；
 
 ## 6. 后续迭代建议
 
-0. **S0（完成）：验收 flow 覆盖补全**——`06-acceptance-flows.md` §2.1 已把 PRD 39 个故事按「已有 flow / 不需 flow」登记（应补清单已全部落地）；
-   当前 12 条 flow：AI 三链 + 就业大厅 + 岗位发布 + 课程发布学习 + 考试安排 + 场景任务 + 教务计划 + 教学计划排课全链路 + 联盟公开页 + 资源复用；
+0. **S0（完成）：验收 flow 覆盖补全**——`06-acceptance-flows.md` §2.1 已把 PRD 29 个故事按「已有 flow / 不需 flow」登记（应补清单已全部落地）；
+   当前 9 条 flow：就业大厅 + 岗位发布 + 课程发布学习 + 考试安排 + 场景任务 + 教务计划 + 教学计划排课全链路 + 联盟公开页 + 资源复用；
    按 UI 现状裁剪项已注明（场景任务依赖编排、教务自动排课无 UI 入口、学期日历选择 DSL 不可驱动，由后端集成测试与逐页巡检覆盖）。
    2026-08-20 增补：修复场次班级选择器提前提交与场次列表加载缺陷后 exam-loop 恢复 E-2 学生参考链路；
    新增 teaching-plan-schedule-loop 自给课程/方案/计划数据，打通「课程→方案→计划→排课→学生课表」完整链路。
 
-1. **S1（建议）**：补齐 AI 智能服务/OPC 专区/决策中心/教科研四个占位模块的产品定义
+1. **S1（建议）**：补齐 OPC 专区/决策中心/教科研三个占位模块的产品定义
 2. **S2（建议）**：商城 marketplace 重启用（表结构已保留）或明确移除归档
 3. **S3（建议）**：学生端数据 mock 替换为真实 API（workspace `_data/` 标注"后续应替换"）
 4. **S4（建议）**：按本文档粒度逐接口补全契约文档与自动化契约测试（如 pytest/openapi schema）

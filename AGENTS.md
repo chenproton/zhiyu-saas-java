@@ -1,23 +1,21 @@
-# 知与 SaaS 双后端仓库开发契约（Go + Java）
+# 知与 SaaS 仓库开发契约（Java + Vue 单栈）
 
-> 分支模型说明：本仓库**主线只有 `master`**，Go 侧按「分支隔离 + 部署成功自动合并 master」协作（见第四节）；第二部分 Java 契约里的 `main/dev/release` Git Flow 属**框架模板约定**，当前仓库未启用，接入前需先与用户确认。
+> 分支模型说明：本仓库**主线只有 `master`**，按「分支隔离 + 部署成功自动合并 master」协作（见第四节）。
 >
-> 本仓库同时维护两套后端：**Go 后端**（`backend/go/`，线上运行）与 **Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名），共用同一 PostgreSQL，配套三套前端：**React SPA**（`frontend/edu`，Vite 7 + React Router，Go 配套）+ **Vue 业务门户**（`frontend/portal-vue`，Java 配套）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架，Java 配套）。
-> 开发契约分两部分：第一部分为 Go 后端契约，第二部分为 Java 后端框架契约。按所改后端选择对应契约执行。
+> 本仓库为**单栈架构**：**Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21），共用 PostgreSQL，配套两套 Vue 前端：**Vue 业务门户**（`frontend/portal-vue`）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架）。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
+> 开发契约分两部分：第一部分为仓库级开发契约（spec-first / 部署 / 运维），第二部分为 Java 后端框架契约。按所改模块选择对应契约执行。
 
 ### 顶层目录结构
 
 ```
 ├── backend/
-│   ├── go/          # Go 后端（cmd/internal/migrations/vendor/go.mod）
-│   └── java/        # Java 后端（ruoyi-*/ + pom.xml + mvnw + script/，多模块 Maven）
+│   └── java/        # Java 后端（ruoyi-*/ + pom.xml + mvnw + script/，多模块 Maven，org.dromara）
 ├── frontend/
-│   ├── edu/         # React SPA（Vite 7 + React Router，Go 配套，原 apps/edu）
-│   ├── packages/    # React 共享包（api-client/shared-types/ui）
 │   ├── portal-vue/  # Vue 业务门户（Element Plus + Pinia，Java 配套）
 │   └── plus-ui/     # Vue 管理端（RuoYi 框架，Java 配套）
-├── docs/            # 全量文档（Go+Java 合并、spec、ADR、规范）
-├── deploy/          # docker-compose / nginx / Dockerfile（Go+Java 两套编排）
+├── db/migrations/   # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 psql 执行）
+├── docs/            # 全量文档（spec、ADR、规范）
+├── deploy/          # docker-compose / nginx / Dockerfile（Java+Vue 单栈编排）
 ├── scripts/         # spec-check / ui-smoke / package-release 等工具
 └── AGENTS.md        # 本文件：全局开发契约（唯一根级描述文档）
 ```
@@ -32,7 +30,7 @@
 
 1. **禁止覆盖/还原他人代码**：不得对非当次任务的文件执行 `git checkout` / `git restore` / `git reset`。遇到与本次任务无关的编译/类型错误，报错停止并告知用户，禁止擅自修复他人未提交的修改。
 2. **禁止破坏安全边界**：不新增越权路径（跨租户读数据）、不泄露密钥（api_key 不回传、不落日志）、不做 SQL 注入前端。
-3. **禁止破坏架构分层**：遵守「三、硬性架构约束」的 handler/service/store 分层与 AI 统一底座，禁止绕过约束抄近路。
+3. **禁止破坏架构分层**：遵守「三、硬性架构约束」的 controller/service/mapper 分层（Java 框架契约，无 DAO 层），禁止绕过约束抄近路。
 
 ## 一、开发流程（接任务后先判类型，再走对应闭环）
 
@@ -72,30 +70,23 @@
 
 - **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图再写代码；新增/变更行为必须同步 spec。见 [`docs/spec-standards.md`](docs/spec-standards.md)。
 - **简单优先**：不过度防御；小概率异常宁可容忍；核心业务加锁防重复，普通业务允许报错或重复插入；核心接口保流畅，非核心允许等待。
-- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端速查见 [`docs/components.md`](docs/components.md)、[`docs/forms-tables.md`](docs/forms-tables.md)；后端速查见 [`docs/backend-reuse.md`](docs/backend-reuse.md)。
+- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端复用查 portal-vue `src/components/` 与 `src/views/*/_components/`（React 时代速查表 `docs/components.md`/`docs/forms-tables.md` 已标历史墓碑）；后端复用查 `backend/java/ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/core/` 与 `.codex/skills/` 框架技能（`docs/backend-reuse.md` 已标历史墓碑）。
 - **性能自检（温和，写代码时自问，不硬拦）**：涉及列表/批量/聚合的代码，写完自问——① 有没有循环内逐条 SQL（N+1）？应改 JOIN / `IN($N)` / 批量；② 列表/聚合查询有没有显式 LIMIT 或「数据量有界」的论证？③ 新增后台任务/goroutine 有没有超时 + panic 兜底 + 去重？④ 新增外部 HTTP 调用有没有设 timeout？「简单优先」指代码形状简单（一行 JOIN 与十行循环一样简单），不代表可以先写 N+1 再说。详见 [`docs/code-review-checklist.md`](docs/code-review-checklist.md)。
 
 ## 三、硬性架构约束（安全 + 架构合理的落地红线）
 
 > 详细规范与理由见对应文档；这里只列「必须遵守」的硬条款，其余放文档。
 
-### 3.1 后端分层红线（完整见 [`docs/refactor-layering.md`](docs/refactor-layering.md)，理由见 ADR-0001）
+### 3.1 后端分层红线（Java 框架契约，理由见 ADR-0001）
 
-- **handler**：禁止出现 `SELECT/INSERT/UPDATE/DELETE`、禁止直接 `db.Query/QueryRow/Exec`、禁止持有 `*pgxpool.Pool`（全量适用，含 import/export/template）。
-- **service**：禁止拼接 SQL。
-- **store**：禁止读取 HTTP 请求/Claims。
-- 新接口必须附带 handler/service/store 测试至少一种。
+- **controller**：禁止出现裸 SQL（`SELECT/INSERT/UPDATE/DELETE`）、禁止持有 `JdbcTemplate`/`DataSource`/`SqlSessionFactory` 等 DB 句柄、禁止 MyBatis 注解（`@Select` 等）、禁止直接调 mapper。
+- **service**：禁止拼接 SQL；业务逻辑统一在 Service 层组装，数据访问走 Mapper。
+- **mapper**：禁止读取 HTTP 请求（`HttpServletRequest`）、Sa-Token（`StpUtil`）、租户上下文（`TenantContext`）；SQL 统一带 `tenant_id` 条件做租户过滤。
+- 新接口必须附带 controller/service/mapper 测试至少一种。
 
-### 3.2 AI 统一底座红线（完整见 [`docs/ai-development.md`](docs/ai-development.md)，理由见 ADR-0002）
+### 3.2 安全红线（越权 / 租户隔离，理由见 ADR-0003）
 
-- LLM 调用一律经 `AIService`（`AIService.Chat` / `ai.Client.ChatCompletion`）：禁止新建 LLM HTTP client、禁止直接查 `tenant_ai_configs` 或自行解密 api_key。
-- 错误映射：未配置 → 412 `ai_not_configured`；上游错误 → 502 + message；其余 → `respondServerError`。
-- 密钥：api_key 永不回传前端、禁止打日志。
-- 护栏：新端点设请求上限、不自动重试、流式经 `ai.Client.ChatCompletionStream`。
-
-### 3.3 安全红线（越权 / 租户隔离，理由见 ADR-0003）
-
-- 每个新端点必须做归属校验（`verifyTenantOwnership` / crud `CheckOwnership`）。
+- 租户隔离以 SQL 层 `tenant_id` 条件 + 归属校验（`SystemGuard` / service 层校验）为准，禁止跨租户读写。
 - 关键写操作（考试题目增删改分、密码/状态写）SQL 层补租户条件作纵深防御。
 - 新端点写前自检五问：① 有没有跨租户读/写他租户数据？② 密钥/密码是否可能回传或落日志？③ 有没有 SQL 注入面？④ 上传文件是否会执行？⑤ 有没有未鉴权/越权匿名访问路径？
 
@@ -109,17 +100,18 @@
 3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge` / `--skip-gates`）
 4. `cd / && git worktree remove /tmp/<agent>`
 
-deploy.sh 自动：源码 hash 比对只构建变更部分；分两段启动（先数据层→备份→迁移→再业务容器）；健康门禁 + 5 探针业务冒烟，任一失败回滚旧镜像且不合并 master；部署锁保证并发串行。**完整执行顺序、密钥注入边界、备份恢复与两栈共享资源见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。****质量门禁默认开启**（后端 gofmt/vet/test + 前端 typecheck/lint/test + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
+deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal-vue/plus-ui）；分两段启动（先数据层→备份→迁移→框架表初始化→再业务容器）；健康门禁 + 业务冒烟（门户/管理端/API/Redis/DB/鉴权探针），任一失败回滚旧镜像且不合并 master；部署锁保证并发串行；**建库建表（db/migrations 纯 psql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh**。完整执行顺序、密钥注入边界、备份恢复见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。**质量门禁默认开启**（Maven 编译 + portal-vue/plus-ui 构建 + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
 
 ### 4.2 提交前必跑（代码改动）
 
 ```bash
-cd backend/go && go vet ./... && go build ./... && gofmt -l .
-pnpm typecheck && pnpm lint && pnpm test
-./scripts/spec-check.sh   # spec 校验共 14 项：阻断级 1–9、11、13、14（分层/AI 底座/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码 + **spec 随代码变更** + **新端点租户归属校验** + **新端点必须带测试**）；提示级 10、12（路由↔契约覆盖/验收流程一致性；另含 down 不可逆标注、XSS 清单），详见 spec-standards.md §九
+cd backend/java && ./mvnw compile -q            # Java 后端编译（JDK 21）
+cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
+cd frontend/plus-ui && pnpm build                # 管理端
+./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/LLM 直连/down 不可逆标注），详见 spec-standards.md §九
 ```
 
-migration 需配对 `.down.sql`；单次 commit 只含当次变更。
+migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5；单次 commit 只含当次变更。
 
 ### 4.3 交付规则
 
@@ -133,7 +125,7 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
    > 两个例外（属自动化门禁，不是「主动做 E2E」）：① `deploy.sh` 部署后自带 5 探针业务冒烟（无浏览器、无账号，失败即回滚）；② 涉及核心业务链路的功能，按 DoD 第 7 条需设计 `docs/spec/06-acceptance-flows.md` 的 flow，并在部署后由用户或按需执行 `--flows` 跑通（AI 不主动跑）。
-4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`frontend/edu/public/image-editor`（符号链接）、`backend/go/vendor/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`。
+4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`backend/java/*/target/`。
 
 ## 六、规范索引（细则去哪找）
 
@@ -144,10 +136,8 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | spec 分级/模板/DoD/闭环 | [`spec-standards.md`](docs/spec-standards.md) |
 | 写/跑业务链路验收流程 | [`spec/06-acceptance-flows.md`](docs/spec/06-acceptance-flows.md)（flow DSL） |
 | spec-first 执行手册（AI 技能，任务开始时加载） | [`.dsh/skills/spec-workflow/SKILL.md`](.dsh/skills/spec-workflow/SKILL.md) |
-| 后端分层红线细节 | [`refactor-layering.md`](docs/refactor-layering.md) |
-| AI 底座架构 | [`ai-development.md`](docs/ai-development.md) |
+| Java 后端框架规范/分层/禁止写法 | 本文件「第二部分」+ `.codex/skills/crud-development/SKILL.md` |
 | 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
-| 后端复用速查 | [`backend-reuse.md`](docs/backend-reuse.md) |
 | 安全非功能规范（密码/会话/密钥/限流/上传） | [`security-standards.md`](docs/security-standards.md) |
 | 非功能规范（性能/可观测/国际化/测试） | [`non-functional-standards.md`](docs/non-functional-standards.md) |
 | 架构决策为什么 | [`decisions/`](docs/decisions/README.md)（ADR） |
@@ -161,17 +151,16 @@ migration 需配对 `.down.sql`；单次 commit 只含当次变更。
 | 操作 | 命令 |
 |------|------|
 | 服务状态 | `docker compose -f deploy/docker-compose.yml ps`（仓库根无 compose 文件，必须带 -f） |
-| 后端日志 | `docker compose -f deploy/docker-compose.yml logs backend --tail 100` 或 `docker logs zhiyu-backend --tail 100` |
-| 健康检查 | `curl -sf http://127.0.0.1/health`（经生产入口，网关已显式代理到 backend）；容器**不再发布宿主 8080**，容器内自检用 `docker exec zhiyu-backend wget -qO- http://127.0.0.1:8080/health` |
+| 后端日志 | `docker compose -f deploy/docker-compose.yml logs java-backend --tail 100` 或 `docker logs zhiyu-java-backend --tail 100` |
+| 健康检查 | `curl -sf http://127.0.0.1/health`（经生产入口，网关已显式代理到 java-backend）；容器内自检用 `docker exec zhiyu-java-backend curl -sf http://127.0.0.1:8080/health` |
 | 连接数据库 | `psql "$DATABASE_URL"` |
 | 回滚部署 | `git checkout <上一个已上线 commit>` 后 `./deploy.sh`（重新构建；禁止手动登服务器改代码）。仓库当前**未打任何 tag**，故用 commit 而非 tag；部署成功后镜像只保留最新 1 个，无法「不重建直接切回上一版」 |
-| 离线实施包 | `./scripts/package-release.sh v1.0.0`（产出 Go+React 栈离线包；Java 栈需联网构建，不在包内） |
-| Java 栈部署 | `./deploy-java.sh`（入口 `:8083`，经边缘 nginx `/java/` 收编到 80）。**首次现场部署顺序：先 `./deploy.sh` 建库+Go 栈，再 `./deploy-java.sh`**；两栈共享 `zhiyu-postgres`、`zhiyu-saas_uploads_data` 卷与 `zhiyu-saas_zhiyu` 网络 |
+| 离线实施包 | `./scripts/package-release.sh v1.0.0`（产出 Java+Vue 单栈离线包，含前端 dist 与迁移 SQL） |
 | 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |
 | UI 全站巡检 | `node scripts/ui-smoke/ui-smoke.mjs`（默认不做，见「五.3」） |
 | 业务链路验收 | `node scripts/ui-smoke/ui-smoke.mjs --flows`（spec 06 驱动；新功能核心链路须同步设计 flow，见 `docs/spec-standards.md` DoD 7） |
 
-环境变量（`DATABASE_URL`、`JWT_SECRET`、`AI_CONFIG_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
+环境变量（`DATABASE_URL`、`JWT_SECRET`、`DB_PASSWORD`、`REDIS_PASSWORD`、`SEED_ADMIN_PASSWORD`）在 `.env` 配置，禁止提交仓库。
 
 ---
 

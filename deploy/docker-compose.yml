@@ -46,7 +46,8 @@ services:
       - zhiyu
 
   redis:
-    # 无状态缓存，不需要任何密钥
+    # 无状态缓存；单栈化后 Java 后端（application-prod.yml 要求 redis 密码必须配置）
+    # 使用口令连接，故设 requirepass（REDIS_PASSWORD，.env 首次生成）
     image: redis:7-alpine
     container_name: zhiyu-redis
     restart: unless-stopped
@@ -57,6 +58,8 @@ services:
         max-file: "3"
     command:
       - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:-ruoyi123}"
       - "--maxmemory"
       - "256mb"
       - "--maxmemory-policy"
@@ -67,44 +70,43 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-ruoyi123} ping 2>/dev/null | grep PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - zhiyu
 
-  backend:
-    # 不用 env_file 全量注入：那会把 .env 里所有键（含仅宿主机需要的 SEED_ADMIN_PASSWORD、
-    # TEST_DATABASE_URL 与全部 VITE_*）灌进运行期容器，无谓扩大密钥暴露面。
-    # 运行期实际需要的仅下列变量（backend/go/internal/config 只读 DATABASE_URL/REDIS_URL/
-    # JWT_SECRET/AI_CONFIG_SECRET，另加 PORT/UPLOAD_DIR，可选 ALERT_WEBHOOK_URL）。
-    image: zhiyu-backend:${IMAGE_TAG:-latest}
-    container_name: zhiyu-backend
+  java-backend:
+    # 单栈（Java+Vue）：ruoyi-admin.jar，容器内 8080；DB/Redis 走容器网络直连
+    image: zhiyu-java-backend:${IMAGE_TAG:-latest}
+    container_name: zhiyu-java-backend
     restart: unless-stopped
-    # 业务容器不暴露宿主端口：统一由 nginx 容器（服务网关）在容器网络内代理
     logging:
       driver: json-file
       options:
         max-size: "50m"
         max-file: "3"
     environment:
-      DATABASE_URL: postgres://${DB_USER:-zhiyu_saas}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-zhiyu-saas}?sslmode=disable
-      REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: ${JWT_SECRET}
-      # 原先靠 env_file 传入，收窄后必须显式声明（缺失会导致租户 AI 配置无法解密）
-      AI_CONFIG_SECRET: ${AI_CONFIG_SECRET}
-      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
-      PORT: "8080"
-      UPLOAD_DIR: /opt/zhiyu-saas/uploads
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: "8080"
+      ZHIYU_DB_HOST: postgres
+      ZHIYU_DB_PORT: "5432"
+      ZHIYU_DB_USER: ${DB_USER:-zhiyu_saas}
+      ZHIYU_DB_PASSWORD: ${DB_PASSWORD}
+      ZHIYU_REDIS_HOST: redis
+      ZHIYU_REDIS_PORT: "6379"
+      ZHIYU_REDIS_PASSWORD: ${REDIS_PASSWORD:-ruoyi123}
+      ZHIYU_UPLOAD_DIR: /opt/zhiyu-saas/uploads
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
     volumes:
       - uploads_data:/opt/zhiyu-saas/uploads
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/ready || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -115,37 +117,40 @@ services:
     networks:
       - zhiyu
 
-  frontend:
-    # 纯静态 nginx 托管 Vite 产物：VITE_* 在构建期已固化，运行期不需要任何密钥
-    image: zhiyu-edu:${IMAGE_TAG:-latest}
-    container_name: zhiyu-edu
+  # 服务网关：静态服务 Vue 业务门户（根路径）与 RuoYi 管理端（/plus-ui/），
+  # 并按容器名代理 java-backend（API/上传）与 kkfileview（预览）；
+  # 仅暴露一个宿主端口（127.0.0.1:${JAVA_NGINX_PORT:-8083}）给系统 nginx（边缘网关）
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: zhiyu-nginx
     restart: unless-stopped
-    # 业务容器不暴露宿主端口：统一由 nginx 容器（服务网关）在容器网络内代理
+    ports:
+      - "127.0.0.1:${JAVA_NGINX_PORT:-8083}:80"
+    volumes:
+      - ./nginx-container/conf.d:/etc/nginx/conf.d:ro
+      # Vue 构建产物（deploy.sh rsync 到 $DEPLOY_DIR/web/，compose 相对路径基于 project-directory）
+      - ./web/portal:/usr/share/nginx/html/portal:ro
+      - ./web/plus-ui:/usr/share/nginx/html/plus-ui:ro
+    depends_on:
+      - java-backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/portal/login >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     logging:
       driver: json-file
       options:
-        max-size: "50m"
+        max-size: "10m"
         max-file: "3"
-    environment:
-      NODE_ENV: production
-      PORT: "3020"
-      HOSTNAME: 0.0.0.0
-      # Next.js rewrite（/api、/uploads 等）在容器网络内直连 backend，
-      # 不能用 127.0.0.1（容器自身），否则 rewrite 一律 500
-      API_PROXY_URL: "http://zhiyu-backend:8080"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3020/portal/login || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
     networks:
       - zhiyu
 
   kkfileview:
     profiles: ["kkfileview"]
     # 高危第三方组件（LibreOffice/ffmpeg）：被打穿即可读环境变量，
-    # 绝不能让它拿到 JWT_SECRET（可伪造任意用户 token）/ AI_CONFIG_SECRET / DATABASE_URL
+    # 绝不能让它拿到 JWT_SECRET / DATABASE_URL（单栈化后无需再注入 AI_CONFIG_SECRET）
     image: ${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}
     container_name: zhiyu-kkfileview
     restart: unless-stopped
@@ -170,35 +175,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    networks:
-      - zhiyu
-
-  # 服务网关：容器网络内按容器名路由到 backend/frontend，
-  # 仅暴露一个宿主端口（127.0.0.1:${GO_NGINX_PORT:-8084}）给系统 nginx（边缘网关）
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: zhiyu-nginx
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${GO_NGINX_PORT:-8084}:80"
-    volumes:
-      - ./nginx-container/conf.d:/etc/nginx/conf.d:ro
-    depends_on:
-      - backend
-      - frontend
-    # 网关也要有 healthcheck：否则 deploy.sh 的就绪判断只能看容器 Up，
-    # 上游解析错误/配置坏掉时仍会被判「就绪」（配合就绪门禁修复形成闭环）
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - zhiyu
 

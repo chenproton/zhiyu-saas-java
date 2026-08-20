@@ -1,10 +1,43 @@
 /**
  * 路由发现：静态枚举 + 动态 [id] 路由（从后端拉真实实体 id）+ git-diff 定向圈定。
+ * 单栈（Java+Vue）后：路由表从 frontend/portal-vue/src/router/index.ts 提取
+ * （Vue Router 绝对/相对 path 统一拼接；:id 动态段转 [id] 匹配 BUILTIN_DYNAMIC_ROUTES）。
  */
 import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
 import path from 'path'
-import { APP_DIR, PROJECT_ROOT } from './config.mjs'
+import { PROJECT_ROOT } from './config.mjs'
+
+const ROUTER_FILE = path.join(PROJECT_ROOT, 'frontend', 'portal-vue', 'src', 'router', 'index.ts')
+
+// 从 portal-vue router 提取全部 path（相对路径拼接 '/' 前缀；空串/纯 redirect 跳过）
+async function extractRouterPaths() {
+  let src
+  try { src = await fs.readFile(ROUTER_FILE, 'utf8') } catch { return [] }
+  const paths = new Set()
+  for (const m of src.matchAll(/path:\s*'([^']*)'/g)) {
+    let p = m[1]
+    if (!p) continue
+    if (!p.startsWith('/')) p = `/${p}`
+    paths.add(p)
+  }
+  return [...paths]
+}
+
+// 静态路由枚举：无动态段（:xxx）的路径
+export async function discoverStaticRoutes() {
+  const all = await extractRouterPaths()
+  return all.filter(p => !p.includes(':')).sort()
+}
+
+// 枚举动态路由模式（:xxx 段转 [xxx] 形式，匹配 BUILTIN_DYNAMIC_ROUTES key）
+export async function discoverDynamicPatterns() {
+  const all = await extractRouterPaths()
+  return all
+    .filter(p => p.includes(':'))
+    .map(p => p.replace(/:[A-Za-z0-9_]+/g, '[id]'))
+    .sort()
+}
 
 // 动态路由 → 实体 id 获取方式：内置常见映射，配置文件中可覆盖/追加。
 // api: GET 后返回 {items:[{id}]} 或 {id} 结构；url: 用 {id} 占位生成真实路由。
@@ -57,12 +90,6 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/partner/co-build/scenes/[id]/edit': { api: '/api/v1/partner/co-build/scenes?limit=10', url: '/partner/co-build/scenes/{id}/edit' },
   '/partner/co-build/scenes/[id]/edit/tasks': { api: '/api/v1/partner/co-build/scenes?limit=10', url: '/partner/co-build/scenes/{id}/edit/tasks' },
 
-  // ===== AI 智能服务中心（v1.1+）动态路由 =====
-  '/portal/apps/ai/agents/[id]': { api: '/api/v1/ai/agents?limit=10', url: '/portal/apps/ai/agents/{id}' },
-  '/portal/apps/ai/kb/[id]': { api: '/api/v1/ai/kb?limit=10', url: '/portal/apps/ai/kb/{id}' },
-  '/portal/apps/ai/studio/agents/[id]': { api: '/api/v1/ai/agents?limit=10', url: '/portal/apps/ai/studio/agents/{id}' },
-  '/portal/apps/ai/studio/kb/[id]': { api: '/api/v1/ai/kb?limit=10', url: '/portal/apps/ai/studio/kb/{id}' },
-
   // ===== 就业供需（L-4）动态路由 =====
   '/portal/apps/alliance/employmentproject/[id]': { api: '/api/v1/alliance/employment-projects?limit=10', url: '/portal/apps/alliance/employmentproject/{id}' },
   '/portal/alliance/employment/[id]': { api: '/api/v1/alliance/public/employment-projects?limit=10&tenantId={tenantId}', url: '/portal/alliance/employment/{id}' },
@@ -70,57 +97,6 @@ const BUILTIN_DYNAMIC_ROUTES = {
   '/partner/employment-jobs/[id]': { api: '/api/v1/partner/employment-jobs?limit=10', url: '/partner/employment-jobs/{id}' },
   '/partner/employment-jobs/[id]/edit': { api: '/api/v1/partner/employment-jobs?limit=10', url: '/partner/employment-jobs/{id}/edit' },
   '/partner/employment-projects/[id]': { api: '/api/v1/partner/employment-projects?limit=10', url: '/partner/employment-projects/{id}' },
-}
-
-// 静态路由枚举：跳过动态段 [id]（由 resolveDynamicRoutes 单独处理）；(group) 分组段不占 URL，继续向下遍历
-async function walkRoutes(dir, prefix, out) {
-  let entries
-  try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return }
-  for (const e of entries) {
-    if (e.name.startsWith('.')) continue
-    const full = path.join(dir, e.name)
-    if (e.isDirectory()) {
-      if (e.name.startsWith('(') && e.name.endsWith(')')) {
-        await walkRoutes(full, prefix, out)
-        continue
-      }
-      if (e.name.includes('[') || e.name.includes('(')) continue
-      await walkRoutes(full, `${prefix}/${e.name}`, out)
-    } else if (e.name === 'page.tsx') {
-      out.push(prefix)
-    }
-  }
-}
-
-export async function discoverStaticRoutes() {
-  const routes = []
-  await walkRoutes(APP_DIR, '', routes)
-  return [...new Set(routes)].sort()
-}
-
-// 枚举动态路由模式（含 [xxx] 段的路径）
-async function discoverDynamicPatterns() {
-  const patterns = []
-  async function walk(dir, prefix) {
-    let entries
-    try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return }
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue
-      const full = path.join(dir, e.name)
-      if (e.isDirectory()) {
-        if (e.name.startsWith('(') && e.name.endsWith(')')) {
-          await walk(full, prefix)
-          continue
-        }
-        if (e.name.includes('(')) continue
-        await walk(full, `${prefix}/${e.name}`)
-      } else if (e.name === 'page.tsx' && prefix.includes('[')) {
-        patterns.push(prefix)
-      }
-    }
-  }
-  await walk(APP_DIR, '')
-  return patterns
 }
 
 // 从 JWT payload 解出 tenantId（alliance public 等按租户过滤的列表拉 id 用）。
@@ -168,22 +144,8 @@ export async function resolveDynamicRoutes(cfg, baseUrl, token) {
   return resolved
 }
 
-// import 解析：@/ 别名与相对路径（./ ../）→ APP_DIR 内候选文件列表（纯函数，便于测试）
-export function resolveImportCandidates(importerFile, spec) {
-  let base
-  if (spec.startsWith('@/')) base = spec.slice(2)
-  else if (spec.startsWith('.')) base = path.posix.normalize(path.posix.join(path.posix.dirname(importerFile), spec))
-  else return []
-  return [`${base}.tsx`, `${base}.ts`, `${base}/index.tsx`, `${base}/index.ts`, `${base}/page.tsx`]
-}
-
-function resolveImport(importerFile, spec) {
-  return resolveImportCandidates(importerFile, spec).find(c => {
-    try { fs.accessSync(path.join(APP_DIR, c)); return true } catch { return false }
-  }) || null
-}
-
-// git-diff 圈定受影响路由：改动文件 → 页面文件/组件依赖反查
+// git-diff 圈定受影响路由：Vue 为单 router 表 + 组件引用复杂，改动 portal-vue/plus-ui
+// 一律全量巡检（不做组件级反查，避免圈定不准漏检）
 export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
   let files = []
   try {
@@ -202,64 +164,14 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
       return routes
     }
   }
-  // 共享包（frontend/packages/ui、api-client 等）影响全站，圈定无意义，直接全量
-  if (files.some(f => f.startsWith('frontend/packages/'))) {
-    console.warn('  [git-diff] 改动涉及 frontend/packages/ 共享包，影响面全站，回退为全量巡检')
-    return routes
+  const touched = files.some(f =>
+    f.startsWith('frontend/portal-vue/') || f.startsWith('frontend/plus-ui/') || f.startsWith('frontend/'))
+  if (!touched) {
+    console.warn('  [git-diff] 前端无改动，跳过巡检（或回退为全量）')
+  } else {
+    console.warn('  [git-diff] 前端有改动，Vue 单 router 表不圈定单页，回退为全量巡检')
   }
-  files = files.filter(l => l.includes('frontend/edu') && /\.(tsx?|ts)$/.test(l))
-  if (!files.length) {
-    console.warn('  [git-diff] 未发现 frontend/edu 下的改动文件，回退为全量巡检')
-    return routes
-  }
-
-  const changed = new Set(files.map(f => f.replace('frontend/edu/', '')))
-  const appFiles = new Set(files.filter(f => f.startsWith('frontend/edu/app/')).map(f => f.replace('frontend/edu/app/', '')))
-  const compFiles = [...changed].filter(f => !f.startsWith('app/'))
-
-  // 组件 → 页面依赖映射（静态扫描 import，深度受限）
-  const pageDeps = new Map() // route -> Set(依赖文件)
-  const compImportCache = new Map()
-  function scanImports(filePath, depth) {
-    if (depth <= 0) return []
-    if (compImportCache.has(filePath)) return compImportCache.get(filePath)
-    const deps = []
-    try {
-      const src = fs.readFileSync(path.join(APP_DIR, filePath), 'utf8')
-      const imports = [...src.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(m => m[1])
-      for (const imp of imports) {
-        const hit = resolveImport(filePath, imp)
-        if (hit) {
-          deps.push(hit)
-          deps.push(...scanImports(hit, depth - 1))
-        }
-      }
-    } catch { /* 忽略无法读取的文件 */ }
-    compImportCache.set(filePath, deps)
-    return deps
-  }
-
-  const affected = new Set()
-  for (const route of routes) {
-    // 页面文件本身被改
-    const pageFile = route === '' ? 'app/page.tsx' : `app${route}/page.tsx`
-    if (appFiles.has(pageFile) || appFiles.has(pageFile.replace('app/', ''))) {
-      affected.add(route)
-      continue
-    }
-    // 页面 import 了改动组件
-    const deps = scanImports(pageFile, cfg.depScanDepth)
-    if (deps.some(d => compFiles.some(c => c.endsWith(d) || d.endsWith(c)))) {
-      affected.add(route)
-    }
-  }
-
-  if (!affected.size) {
-    console.warn('  [git-diff] 改动未涉及任何静态路由（可能只改了动态路由/组件），回退为全量巡检')
-    return routes
-  }
-  console.log(`  [git-diff] 改动文件 ${changed.size} 个，圈定受影响路由 ${affected.size} 个`)
-  return routes.filter(r => affected.has(r))
+  return routes
 }
 
 // 仅清理、不巡检的内置实体 API：表单测试可能在这些实体上创建 SMOKE_ 数据，但无对应动态路由页，

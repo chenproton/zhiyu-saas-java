@@ -162,7 +162,7 @@ import { scenarioApi, sceneBatchApi } from '@/api/scene';
 import { approvalApi } from '@/api/approval';
 import { importExportApi } from '@/api/import-export';
 
-// ─── 对齐 React frontend/edu/app/scene/page.tsx 的映射与 payload ──────────────
+// ─── 对齐原 React 版 scene/page.tsx 的映射与 payload ──────────────
 
 function generateCode(prefix: string): string {
   return `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;

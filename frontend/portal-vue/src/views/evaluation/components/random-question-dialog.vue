@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-// 随机抽题弹窗：对齐 React frontend/edu/components/evaluation/random-question-dialog.tsx
+// 随机抽题弹窗：对齐原 React 版 random-question-dialog.tsx
 import { computed, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { questionApi, questionBankApi } from '@/api/evaluation';

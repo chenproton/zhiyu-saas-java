@@ -52,7 +52,7 @@ steps:
 - `optional` 步骤按错误类型分级：未找到目标 / 按钮已禁用 → `skip`（幂等前置已完成，不警告不截图）；其余失败 → `warn`（如残留无法清理、页面回归），流程仍判通过；
 - **pageerror 哨兵（默认开启）**：每步执行窗口内浏览器任何未捕获异常（React 渲染崩溃、`undefined` 拼接等）即判该步失败——2026-08 AI 工坊事故（接口全 200 但管理页白屏）暴露「只断言接口与文字、不看脚本错误」的盲区，此哨兵兜底该类问题；误伤时可用 `skipPageErrorCheck` 单步豁免；
 - 所有创建数据必须使用 `SMOKE_` 前缀（走巡检器统一清理与安全护栏）；
-- 不产生真实 LLM 调用；不点击语言切换/超管危险操作（继承巡检器危险词护栏）。
+- 不点击语言切换/超管危险操作（继承巡检器危险词护栏）。
 
 **刻意不做**：业务数值正确性断言、视觉/DOM 布局校验、条件分支/循环、流程间数据依赖。保持线性、可读、可维护。
 
@@ -63,9 +63,6 @@ steps:
 | flow id | story | 角色链 | 业务链路 |
 |---------|-------|--------|---------|
 | employment-hall-loop | L-4 | school→partner→student→partner→school | 学校引入并激活企业→发布就业项目→企业录岗位并挂项目发布→学生大厅可见并投递→企业查看投递→学校下架治理 |
-| ai-kb-publish-loop | KB-1/KB-3/AD-1 | teacher→school→student→school→teacher | 教师建知识库→提交审核→学校管理员通过→学生广场可见→管理员下架→教师清理 |
-| ai-agent-publish-loop | AG-1/AD-1 | teacher→school→student→school→teacher | 教师建智能体→提交审核→管理员通过→学生广场可见→管理员下架→教师清理 |
-| ai-integration-loop | AD-2 | school→student→school | 管理员挂接第三方应用→学生广场应用区可见→管理员下架 |
 | job-publish-loop | J-1/J-2/J-3 | teacher→school→teacher→student→school→teacher | 教师建岗位→填基础信息保存→提交审批→学校通过→发布→学生公开岗位大厅可见→取消发布→教师删除 |
 | course-publish-loop | C-1/C-4/C-2 | teacher→school→teacher→student→teacher→school | 教师建体系课并编排节点→提交审批→学校通过→发布→学生落地页可见并进入学习→取消发布删除清理 |
 | exam-loop | E-1/E-2 | school→teacher→school→teacher→student | 学校给学生分配班级（前置）→教师建试卷加判断题→审批通过→发布→创建考试场次并开启→学生考试中心参加答题→查分可见 |
@@ -75,17 +72,14 @@ steps:
 | resource-reuse-loop | R-1 | teacher→student(车辆场景) | 教师创建链接资源→绑定到场景任务→完成配置落库→任务卡片可见→清理 |
 | teaching-plan-schedule-loop | A-1/A-2/A-3 | school→teacher→school→student | 建体系课发布→建人培方案挂课程审批发布→生成教学计划审批发布→排课发布课表→学生课表可见（自给课程/计划数据，闭环完整） |
 
-### 2.1 覆盖登记（PRD 39 个用户故事的 flow 归属）
+### 2.1 覆盖登记（PRD 29 个用户故事的 flow 归属）
 
-DoD 第 7 条只要求**核心业务链路**（跨角色/跨页面）有 flow，单页 CRUD 由 handler/service 单测 + 逐页巡检覆盖。据此三分类：
+DoD 第 7 条只要求**核心业务链路**（跨角色/跨页面）有 flow，单页 CRUD 由 controller/service/mapper 单测 + 逐页巡检覆盖。据此三分类：
 
 | 归属 | 用户故事 | 说明 |
 |---|---|---|
-| **已有 flow** | J-1/J-2/J-3、L-4、KB-1/KB-3、AG-1、AD-1、AD-2、C-1/C-4/C-2、E-1/E-2、SC-1/SC-2/SC-3、A-1/A-2/A-3、L-1/L-3、R-1 | 见下方 §3；SC-1 的「任务依赖编排」与 A-2 的「自动排课 API」无 UI 入口，flow 按 UI 现状裁剪（见各 flow 说明）；A-1/A-2/A-3 完整链路由 teaching-plan-schedule-loop 覆盖（网格排课经 DSL clickCell 驱动） |
-| **不需 flow（单页/单角色 CRUD 或非 UI）** | S-1/S-2/S-3、J-4（Excel 导入，另有导入向导单测）、C-3、E-3/E-4/E-5、P-1/P-2（登录与菜单权限由巡检登录本身覆盖）、KB-2、AG-2/AG-3、SQ-1 | 由单测 + `ui-smoke` 逐页巡检 + 后端集成测试覆盖 |
-| **不进本文件（DSL 约束）** | ST-1、AG-2 的流式问答 | 涉及真实 LLM 调用，由后端集成测试覆盖 |
-
-> AI 智能服务中心的对话链路（SSE 流式问答、私有库泄露防线 ST-1）涉及真实 LLM 调用，按 DSL 约束不进本文件，由后端集成测试覆盖（`backend/go/internal/handler/ai_center_flow_test.go`：TestAICenter_AgentChatStream 含泄露防线断言、TestAICenter_KBAsk 含溯源断言）。
+| **已有 flow** | J-1/J-2/J-3、L-4、C-1/C-4/C-2、E-1/E-2、SC-1/SC-2/SC-3、A-1/A-2/A-3、L-1/L-3、R-1 | 见下方 §3；SC-1 的「任务依赖编排」与 A-2 的「自动排课 API」无 UI 入口，flow 按 UI 现状裁剪（见各 flow 说明）；A-1/A-2/A-3 完整链路由 teaching-plan-schedule-loop 覆盖（网格排课经 DSL clickCell 驱动） |
+| **不需 flow（单页/单角色 CRUD 或非 UI）** | S-1/S-2/S-3、J-4（Excel 导入，另有导入向导单测）、C-3、E-3/E-4/E-5、P-1/P-2（登录与菜单权限由巡检登录本身覆盖） | 由单测 + `ui-smoke` 逐页巡检 + 后端集成测试覆盖 |
 
 ---
 
@@ -209,129 +203,6 @@ steps:
     optional: true
 ```
 
-### 3.2 知识库发布闭环（ai-kb-publish-loop）
-
-```flow
-flow: ai-kb-publish-loop
-story: KB-1
-desc: 教师建知识库 → 提交审核 → 学校管理员通过 → 学生广场可见 → 管理员下架 → 教师清理
-steps:
-  # 幂等清理（上次失败残留；工坊为卡片布局，用 clickCard 定位）
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "SMOKE_AI库", action: 删除 }
-    confirm: true
-    optional: true
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    click: 新建知识库
-    fill: { 名称: "SMOKE_AI库{rand}" }
-    saveAs: { kbName: 名称 }
-    submit: true
-    expectApi: { method: POST, url: /ai/kb, status: 201 }
-  # 回归护栏：进入库管理页验证动态路由参数解析（Next 15+ params 为 Promise，
-  # 误读 params.id 会得到 undefined → 页面报错；2026-08 事故，见 ai-service-center §11）
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "{{kbName}}", action: 编辑 }
-    expectText: 文档管理
-    timeoutMs: 20000
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "{{kbName}}", action: 提交审核 }
-    expectApi: { method: POST, url: /ai/kb/, status: 200 }
-  - role: school
-    goto: /portal/apps/ai/admin/reviews
-    clickRow: { text: "{{kbName}}", action: 通过 }
-    confirm: true
-    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
-  # v1.3 起广场平铺无 Tab：/square 重定向落地页 #square 锚点，三区内容同页可见，直接断言
-  - role: student
-    goto: /portal/apps/ai/square
-    expectText: "{{kbName}}"
-    timeoutMs: 20000
-  - role: school
-    goto: /portal/apps/ai/admin/reviews
-    # 状态筛选是 Radix Select：先点触发器（当前值「待审核」）展开下拉，再选「已发布」选项
-    click: 待审核
-  - role: school
-    click: 已发布
-    clickRow: { text: "{{kbName}}", action: 下架 }
-    confirm: true
-    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "{{kbName}}", action: 删除 }
-    confirm: true
-    expectApi: { method: DELETE, url: /ai/kb/, status: 200 }
-```
-
-### 3.3 智能体发布闭环（ai-agent-publish-loop）
-
-```flow
-flow: ai-agent-publish-loop
-story: AG-1
-desc: 教师建智能体 → 提交审核（警告确认）→ 管理员通过 → 学生广场可见 → 管理员下架 → 教师清理
-steps:
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "SMOKE_AI助手", action: 删除 }
-    confirm: true
-    optional: true
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    click: 新建智能体
-    # 「新建智能体」是**跳转**到独立构建页 /portal/apps/ai/studio/agents/new（不再是弹窗），
-    # 页面需等 majors/kbs/organizations 等数据加载完才渲染表单，故本步只确认构建页就绪
-    expectText: 角色提示词
-    timeoutMs: 20000
-  - role: teacher
-    # 字段 label 取自 agent-form.tsx：输入框 placeholder「智能体名称」、Label「角色提示词」
-    # 角色提示词必须按 **placeholder** 定位：其 Label 与 Textarea 不在同一父容器
-    # （agent-form.tsx:242 Label 在 flex 行内），按 label 找会回退并填到别的输入框 →
-    # systemPrompt 为空 → 前端校验拦下、连请求都不发（2026-08-19 实测踩到）
-    fill: { 智能体名称: "SMOKE_AI助手{rand}", 定义智能体的角色设定与回答规则: "SMOKE 巡检用提示词，仅测链路" }
-    saveAs: { agentName: 智能体名称 }
-    submit: 创建智能体
-    expectApi: { method: POST, url: /ai/agents, status: 201 }
-    timeoutMs: 20000
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "{{agentName}}", action: 提交审核 }
-    expectApi: { method: POST, url: /ai/agents/, status: 200 }
-  # 审核列表切 Tab 后需等接口回数据再定位行（同一步内 clickRow 只有 8s 窗口，
-  # 智能体审核 Tab 首次加载常超过该窗口 → 拆成「切 Tab 并等行出现」+「点通过」两步）
-  - role: school
-    goto: /portal/apps/ai/admin/reviews
-    click: 智能体审核
-    expectText: "{{agentName}}"
-    timeoutMs: 25000
-  - role: school
-    clickRow: { text: "{{agentName}}", action: 通过 }
-    confirm: true
-    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
-  - role: student
-    goto: /portal/apps/ai/square
-    expectText: "{{agentName}}"
-    timeoutMs: 20000
-  - role: school
-    goto: /portal/apps/ai/admin/reviews
-    click: 智能体审核
-  - role: school
-    # 状态筛选是 Radix Select：先点触发器（当前值「待审核」）展开下拉，再选「已发布」选项
-    click: 待审核
-  - role: school
-    click: 已发布
-    clickRow: { text: "{{agentName}}", action: 下架 }
-    confirm: true
-    expectApi: { method: POST, url: /ai/admin/reviews/, status: 200 }
-  - role: teacher
-    goto: /portal/apps/ai/studio
-    clickCard: { text: "{{agentName}}", action: 删除 }
-    confirm: true
-    expectApi: { method: DELETE, url: /ai/agents/, status: 200 }
-```
-
 ### 3.4 岗位发布闭环（job-publish-loop）
 
 > 覆盖内容资源的完整状态机 draft→pending→approved→published→（取消发布）→删除，
@@ -449,41 +320,6 @@ steps:
 > **首次运行提示**：本 flow 的路由与按钮文案均来自代码静态核对，但审批弹窗（`通过` 是否需要填意见后再点 `通过`）
 > 与发布确认弹窗的按钮词在实机上可能略有差异；首次 `--flows` 运行若在这两步失败，按报告里的实际按钮文案微调即可，
 > 其余步骤无需改动。
-
-### 3.5 第三方挂接管理闭环（ai-integration-loop）
-
-```flow
-flow: ai-integration-loop
-story: AD-2
-desc: 管理员挂接第三方应用 → 学生广场应用区可见 → 管理员下架清理
-steps:
-  - role: school
-    goto: /portal/apps/ai/admin/integrations
-    clickRow: { text: "SMOKE_应用", action: 删除 }
-    confirm: true
-    optional: true
-  - role: school
-    goto: /portal/apps/ai/admin/integrations
-    click: 新增
-    fill: { 名称: "SMOKE_应用{rand}", URL: "https://example.com/app{rand}" }
-    saveAs: { appName: 名称 }
-    submit: true
-    expectApi: { method: POST, url: /ai/admin/integrations, status: 201 }
-  - role: student
-    goto: /portal/apps/ai/landing#square
-    expectText: "{{appName}}"
-    timeoutMs: 20000
-  - role: school
-    goto: /portal/apps/ai/admin/integrations
-    clickRow: { text: "{{appName}}", action: 下架 }
-    expectApi: { method: POST, url: /ai/admin/integrations/, status: 200 }
-  - role: school
-    goto: /portal/apps/ai/admin/integrations
-    clickRow: { text: "{{appName}}", action: 删除 }
-    confirm: true
-    expectApi: { method: DELETE, url: /ai/admin/integrations/, status: 200 }
-    optional: true
-```
 
 ### 3.6 体系课发布与学习闭环（course-publish-loop）
 

@@ -1,5 +1,5 @@
 // 系统课程编辑页（course-edit.vue）共享类型与纯函数。
-// 与 React frontend/edu/app/lesson/admin/system/add 对齐：
+// 与原 React 版 lesson/admin/system/add 对齐：
 // - 节点契约（响应 {order,type,...} / 保存 {sortOrder,refType,...}）
 // - evalData.evalRuleConfig 完整 JSON 结构（后端 task_evaluation 契约）
 // 本文件只含类型与纯函数，不发起任何请求。

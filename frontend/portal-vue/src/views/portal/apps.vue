@@ -141,10 +141,6 @@ const ICONS: Record<string, Component> = {
   book: Reading,
   'check-circle': CircleCheck,
   share: Share,
-  users: UserFilled,
-  calendar: Calendar,
-  sparkles: MagicStick,
-  rocket: Promotion,
   'bar-chart': TrendCharts,
   'graduation-cap': School
 };
@@ -281,17 +277,13 @@ function go(href: string) {
 
 function onServiceClick(item: ServiceItem) {
   recordServiceClick(item.href);
-  // YI Know 助手卡片（/portal/apps/ai/chat）在 Vue 无对话弹窗，落到 AI 落地页
-  const target = item.href === '/portal/apps/ai/chat' ? '/portal/apps/ai/landing' : item.href;
-  go(target);
+  go(item.href);
 }
 
 function onModuleClick(module: AppsModuleItem) {
   recordServiceClick(module.href);
   if (module.href === '#') return;
-  // YI Know 助手卡片（/portal/apps/ai/chat）在 Vue 无对话弹窗，落到 AI 落地页
-  const target = module.href === '/portal/apps/ai/chat' ? '/portal/apps/ai/landing' : module.href;
-  go(target);
+  go(module.href);
 }
 
 onMounted(async () => {

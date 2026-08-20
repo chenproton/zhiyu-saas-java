@@ -1,6 +1,6 @@
 <!--
   课程/节次数据弹窗：教学进展（tracking）/ 测评进展（assessment）/ 课程期末总评（final）。
-  对齐 React frontend/edu/app/portal/workspace/_components/teacher-courses-tab.tsx 的
+  对齐原 React 版 teacher-courses-tab.tsx 的
   CourseDetailDialog + TrackingView / AssessmentView / FinalView。
 
   数据说明：React 侧三视图数据全部来自 _data/workspace-teacher-types.ts 的占位常量

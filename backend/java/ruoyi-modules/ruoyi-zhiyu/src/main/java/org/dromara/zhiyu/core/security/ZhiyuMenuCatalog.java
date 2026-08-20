@@ -158,15 +158,6 @@ public final class ZhiyuMenuCatalog {
         "/portal/apps/system/logs/operation"
     );
 
-    /** AI 智能服务平台菜单（前台入口 + 管理） */
-    public static final List<String> AI_MENUS = List.of(
-        "/portal/apps/ai",
-        "/portal/apps/ai/landing",
-        "/portal/apps/ai/chat",
-        "/portal/apps/ai/admin/reviews",
-        "/portal/apps/ai/admin/integrations"
-    );
-
     /** 门户服务台菜单 */
     public static final List<String> WORKSPACE_MENUS = List.of("/portal/workspace");
 
@@ -174,11 +165,6 @@ public final class ZhiyuMenuCatalog {
     public static final List<String> LANDING_MENUS = List.of(
         "/job/landing", "/lesson/landing", "/scene/landing",
         "/evaluation/landing", "/library/landing"
-    );
-
-    /** AI 管理端菜单（routes_ai_center.go 管理组 RequireMenu 参数） */
-    public static final List<String> AI_ADMIN_MENUS = List.of(
-        "/portal/apps/ai/admin/reviews", "/portal/apps/ai/admin/integrations"
     );
 
     /** 系统管理菜单前缀（对齐 Go middleware/rbac.go systemMenuPrefix） */
@@ -189,14 +175,14 @@ public final class ZhiyuMenuCatalog {
 
     /**
      * 全部业务管理菜单并集（参考数据等跨模块只读接口的授权面，对齐 Go allManageMenus()）：
-     * job/scene/lesson/evaluation/library/affairs/alliance/workflow/system/ai 去重并集。
+     * job/scene/lesson/evaluation/library/affairs/alliance/workflow/system 去重并集。
      */
     public static List<String> allManageMenus() {
         Set<String> seen = new LinkedHashSet<>();
         for (List<String> group : List.of(
             JOB_MANAGE_MENUS, SCENE_MANAGE_MENUS, LESSON_MANAGE_MENUS,
             EVALUATION_MANAGE_MENUS, LIBRARY_MANAGE_MENUS, AFFAIRS_MANAGE_MENUS,
-            ALLIANCE_MANAGE_MENUS, WORKFLOW_MENUS, SYSTEM_MENUS, AI_MENUS)) {
+            ALLIANCE_MANAGE_MENUS, WORKFLOW_MENUS, SYSTEM_MENUS)) {
             seen.addAll(group);
         }
         return new ArrayList<>(seen);

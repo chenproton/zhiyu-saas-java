@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-// 题目编辑弹窗：对齐 React frontend/edu/components/evaluation/question-form-dialog.tsx
+// 题目编辑弹窗：对齐原 React 版 question-form-dialog.tsx
 import { computed, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { knowledgeApi } from '@/api/lesson';

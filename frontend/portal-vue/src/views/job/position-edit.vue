@@ -1,5 +1,5 @@
 <template>
-  <!-- 岗位编辑页（完整复刻 React frontend/edu/app/job/positions/[id]/edit/page.tsx） -->
+  <!-- 岗位编辑页（完整复刻原 React 版） -->
   <div v-if="loading" class="page-state">
     <el-icon class="is-loading" :size="32"><Loading /></el-icon>
   </div>
@@ -27,7 +27,7 @@
     <!-- 步骤一：基础信息（左表单 + 右侧栏） -->
     <div v-if="activeStep === 'basic'" class="basic-grid">
       <div class="basic-main">
-        <StepBasicInfo :position="position" ai-mode hide-position-type @update="updatePositionData" />
+        <StepBasicInfo :position="position" hide-position-type @update="updatePositionData" />
       </div>
 
       <div class="basic-side">

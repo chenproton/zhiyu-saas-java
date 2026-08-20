@@ -9,8 +9,8 @@
 # 选项:
 #   --clean       清空构建缓存，全量重建
 #   --force       仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）
-#   --skip-gates  跳过质量门禁（门禁默认开启：spec-check 无条件跑；有构建时才跑 gofmt/vet/go test
-#                 与 typecheck/lint/test。CI 只在 push 到 master 后触发，故门禁不能只靠 CI）
+#   --skip-gates  跳过质量门禁（门禁默认开启：spec-check 无条件跑；有构建时才跑 Maven 编译
+#                 与 portal-vue/plus-ui 构建。CI 只在 push 到 master 后触发，故门禁不能只靠 CI）
 #   --skip-merge  部署成功不自动合并到 master
 #
 # 所有行为自动判断:
@@ -44,14 +44,15 @@ while [[ $# -gt 0 ]]; do
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
       echo "用法: $0 --branch <分支名> [--clean] [--force] [--skip-gates] [--skip-merge]"
-      echo "  门禁默认开启（gofmt/vet/go test + typecheck/lint/test + spec-check），--skip-gates 应急跳过"
+      echo "  门禁默认开启（Maven 编译 + portal-vue/plus-ui 构建 + spec-check），--skip-gates 应急跳过"
       echo "  --force 仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
 
 # ── 常量 ──
-BACKEND_PORT=8080; EDU_PORT=3020; GO_NGINX_PORT=8084
+# 单栈（Java+Vue）：java-backend 容器内 8080；nginx 网关容器发布 JAVA_NGINX_PORT
+JAVA_BACKEND_PORT=8080; JAVA_NGINX_PORT=8083
 DEPLOY_DIR="/opt/zhiyu-saas"
 # 全新服务器上 install_offline_debs 等前置步骤会先写 $DEPLOY_DIR 下的标记文件，
 # 必须先建目录，否则 "touch ... No such file or directory" 中断部署
@@ -60,8 +61,8 @@ NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
 OFFLINE_DIR="${OFFLINE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/offline}"
 NODE_VERSION="${NODE_VERSION:-22.12.0}"
 
-# 确保非交互式 shell 也能找到本脚本安装的 Go/Node/pnpm
-export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"
+# 确保非交互式 shell 也能找到本脚本安装的 Node/pnpm/JDK
+export PATH="/usr/local/bin:$PATH"
 
 # ── 工具函数 ──
 log()   { echo "==> $*"; }
@@ -122,10 +123,6 @@ PYEOF
 url_decode() {
   command -v python3 >/dev/null 2>&1 && \
     python3 -c "import urllib.parse,sys; print(urllib.parse.unquote(sys.argv[1]))" "$1" || echo "$1"
-}
-url_encode() {
-  command -v python3 >/dev/null 2>&1 && \
-    python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1" || echo "$1"
 }
 rand_str() {
   local len="${1:-24}"
@@ -251,11 +248,11 @@ for m in ms:
 #   2. 裸数字行唯一对应一个迁移文件且全名缺失 → 改名为全名
 #   3. 裸数字对应多个迁移文件且全名记录不完整 → 无法判定归属，保留并警告人工确认
 normalize_migration_versions() {
-  local backend_dir="$1" migrate_url="$2"
+  local mig_dir="$1"
   local sql="" bare full all_full files=()
   for bare in $(psql_db -Atc "SELECT version FROM schema_migrations WHERE version ~ '^[0-9]+\$';" 2>/dev/null || true); do
     files=()
-    for f in "$backend_dir"/migrations/${bare}_*.up.sql; do
+    for f in "$mig_dir"/${bare}_*.up.sql; do
       [[ -f "$f" ]] || continue
       files+=("$(basename "$f" .up.sql)")
     done
@@ -278,33 +275,26 @@ normalize_migration_versions() {
   if psql_db -v ON_ERROR_STOP=1 -c "$sql" >/dev/null 2>&1; then
     log "  迁移版本表已规范化（裸数字版本对齐全名）"
   else
-    warn "迁移版本表规范化失败，继续尝试 migrate 工具"
+    warn "迁移版本表规范化失败，继续尝试 psql 执行"
   fi
 }
 
-# 执行数据库迁移；若 migrate 工具失败，使用 psql 兜底逐个执行未应用迁移文件
+# 执行数据库迁移：纯 psql 逐个执行未应用迁移（schema_migrations 记录版本，幂等）
 run_migrations() {
-  local backend_dir="$1" migrate_url="$2"
-  normalize_migration_versions "$backend_dir" "$migrate_url"
-  # 复用与后端构建同一份 GOCACHE：原来用默认缓存目录，每次部署多两轮全量编译（与前端 3.4G 峰值同机竞争）
-  if (cd "$backend_dir" && GOCACHE="${BUILD_CACHE:-/tmp}/go-cache" \
-      DATABASE_URL="$migrate_url" go run ./cmd/migrate/main.go up); then
-    return 0
-  fi
-
-  warn "migrate 工具执行失败，尝试使用 psql 兜底执行未应用迁移..."
+  local mig_dir="$1"
+  normalize_migration_versions "$mig_dir"
   local applied_versions
   applied_versions=$(psql_db -Atc "SELECT version FROM schema_migrations;" 2>/dev/null || true)
 
   local failed=false
-  for f in "$backend_dir"/migrations/*.up.sql; do
+  for f in "$mig_dir"/*.up.sql; do
     [[ -f "$f" ]] || continue
     local version
     version=$(basename "$f" .up.sql)
     if echo "$applied_versions" | grep -qx "$version"; then
       continue
     fi
-    log "  兜底执行: $(basename "$f")"
+    log "  执行迁移: $(basename "$f")"
     # --single-transaction 必须加：否则某个 migration 半途失败会留下「半应用」状态，
     # 既不会记入 schema_migrations 也无法回退，下次重跑必然二次失败
     if psql_db -v ON_ERROR_STOP=1 --single-transaction -f "$f" 2>&1 | tail -5; then
@@ -312,7 +302,7 @@ run_migrations() {
     else
       failed=true
       # 立即停止：继续应用后续 migration 会在半应用的 schema 上叠加 DDL，之后必然卡住
-      warn "兜底迁移失败: $(basename "$f")（停止后续迁移，避免半应用 DDL 叠加）"
+      warn "迁移失败: $(basename "$f")（停止后续迁移，避免半应用 DDL 叠加）"
       break
     fi
   done
@@ -325,23 +315,19 @@ run_migrations() {
 
 # ── 哈希计算 ──
 # 基于文件内容哈希，避免构建路径不同导致缓存失效
-source_hash() {
-  find "$@" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' -o -name '*.sql' -o -name 'Dockerfile' \) \
-    -not -path '*/bin/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
+# Java 后端源码指纹：.java/.xml/.yml 与 pom 配置
+java_hash() {
+  find "$1/backend/java" -type f \( -name '*.java' -o -name '*.xml' -o -name '*.yml' -o -name '*.yaml' -o -name 'pom.xml' \) \
+    -not -path '*/target/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
-frontend_hash() {
-  # 排除构建期生成物（public/image-editor 687 文件、wasm/vendor 由 prebuild 生成）：
-  # 它们一变就白烧一次「3.4GB 峰值 + 1 分钟」的前端构建。
-  # 纳入根级配置：根 package.json / pnpm-workspace.yaml / tsconfig.base.json / .npmrc 变更
-  # 会影响产物，原来不在指纹内 → 会被误判「无变更跳过」而部署陈旧 dist。
+# Vue 前端指纹：portal-vue + plus-ui 源码（排除 node_modules/dist）
+vue_hash() {
   {
-    find "$1/frontend/edu" "$1/frontend/packages" -type f \
-      -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/dist/*' \
-      -not -path '*/public/image-editor/*' -not -path '*/public/wasm/*' -not -path '*/public/vendor/*' \
+    find "$1/frontend/portal-vue" "$1/frontend/plus-ui" -type f \
+      -not -path '*/node_modules/*' -not -path '*/dist/*' \
       -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null
-    # 只喂存在的文件：不存在的路径（如本仓库当前没有 .npmrc）会让 md5sum 失败，
-    # xargs 返回 123 + pipefail 直接中止部署
+    # 只喂存在的文件：不存在的路径会让 md5sum 失败，xargs 返回 123 + pipefail 直接中止部署
     for root_cfg in "$1/package.json" "$1/pnpm-workspace.yaml" "$1/tsconfig.base.json" "$1/.npmrc"; do
       [[ -f "$root_cfg" ]] && printf '%s\0' "$root_cfg"
     done
@@ -350,7 +336,6 @@ frontend_hash() {
   } | sort -z | xargs -0 -r md5sum 2>/dev/null | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
-lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
 
 # ════════════════════════════════════════════
 # 1. 自动安装系统依赖
@@ -401,7 +386,7 @@ if command -v flock >/dev/null 2>&1; then
     # 回滚用的临时标签：仅当没有容器在引用时才清理。
     # 回滚发生后容器正跑 :rollback，此时 docker rmi 必然因 "image is being used" 失败，
     # 原写法被 || true 吞掉、标签长期残留；这里显式判断引用情况，避免误以为已清理。
-    for img in "zhiyu-backend:rollback" "zhiyu-edu:rollback"; do
+    for img in "zhiyu-java-backend:rollback"; do
       if docker image inspect "$img" >/dev/null 2>&1; then
         if [[ -z "$(docker ps -aq --filter "ancestor=$img" 2>/dev/null)" ]]; then
           docker rmi "$img" >/dev/null 2>&1 || true
@@ -543,39 +528,29 @@ systemctl enable --now nginx 2>/dev/null || true
 # 禁用 Ubuntu/Debian 默认站点，并清理可能存在的旧 zhiyu-saas 站点配置，避免 server 块冲突
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/zhiyu-saas /etc/nginx/sites-available/zhiyu-saas
 
-# Go
-# 校验存在且版本匹配（GO_VERSION）：已装旧版本（如 offline 曾提供 1.23.7）而 go.mod 要求
-# 1.25.0 时，只查 command -v 会跳过安装，导致 go build 自动下载 toolchain 在无网环境失败
-GO_VERSION="${GO_VERSION:-1.25.0}"
-if ! { command -v go >/dev/null 2>&1 && go version 2>/dev/null | grep -qF "go${GO_VERSION}"; }; then
-  is_root || die "需要 root 安装 Go"
-  log "安装 Go..."
-  ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"; [[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
-  GO_VERSION="${GO_VERSION:-1.25.0}"
-  GO_TARBALL="go${GO_VERSION}.linux-${ARCH}.tar.gz"
-  GO_DOWNLOADED=false
-  if local_go=$(offline_file "$GO_TARBALL"); then
-    log "  使用本地 Go 安装包: $local_go"
-    cp -f "$local_go" /tmp/go.tar.gz
-    GO_DOWNLOADED=true
-  else
-    for url in \
-      "https://mirrors.aliyun.com/golang/${GO_TARBALL}" \
-      "https://go.dev/dl/${GO_TARBALL}" \
-      "https://goproxy.cn/dl/${GO_TARBALL}"; do
-      if curl -fsSL "$url" -o /tmp/go.tar.gz 2>/dev/null; then
-        log "  下载 Go ${GO_VERSION} 成功: $url"
-        GO_DOWNLOADED=true
-        break
-      fi
-      warn "下载失败: $url"
-    done
+# JDK 21（Java 后端 Maven 构建与镜像 JDK 拷贝都需要）
+# 校验 /usr/lib/jvm/java-21-openjdk-amd64 存在（离线构建直接拷贝该目录进镜像）；
+# 缺失时尝试 apt 安装 openjdk-21-jdk-headless，仍缺则报错提示人工安装
+JAVA_HOME_DIR="/usr/lib/jvm/java-21-openjdk-amd64"
+ensure_jdk21() {
+  if [[ -d "$JAVA_HOME_DIR" ]] && [[ -x "$JAVA_HOME_DIR/bin/java" ]]; then
+    return 0
   fi
-  [[ "$GO_DOWNLOADED" == "true" ]] || die "无法下载 Go ${GO_VERSION}，请检查 GO_VERSION、offline/ 目录或网络"
-  rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz && rm -f /tmp/go.tar.gz
-  export PATH="/usr/local/go/bin:$PATH"
-  echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
-fi
+  is_root || die "需要 root 安装 JDK 21"
+  log "安装 JDK 21（openjdk-21-jdk-headless）..."
+  pkg_install openjdk-21-jdk-headless
+  if [[ ! -x "$JAVA_HOME_DIR/bin/java" ]]; then
+    # Debian 12 / Ubuntu 24.04 的 openjdk-21 安装在 /usr/lib/jvm/java-21-openjdk-amd64；
+    # 其他发行版路径可能不同，兜底探测
+    FOUND=$(ls -d /usr/lib/jvm/java-21-* 2>/dev/null | head -1 || true)
+    if [[ -n "$FOUND" && -x "$FOUND/bin/java" ]]; then
+      JAVA_HOME_DIR="$FOUND"
+    else
+      die "未找到 JDK 21（需 /usr/lib/jvm/java-21-openjdk-amd64），请手动安装 openjdk-21-jdk-headless 后重试"
+    fi
+  fi
+}
+ensure_jdk21
 
 # Node.js + pnpm
 if ! command -v node >/dev/null 2>&1; then
@@ -678,16 +653,13 @@ if [[ ! -f "$ENV_FILE" ]]; then
     cp "$PROJECT_ROOT/.env.example" "$ENV_FILE"
     db_pass=$(rand_str 24)
     jwt_secret=$(rand_str 64)
-    ai_secret=$(rand_str 64)
     sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/zhiyu-saas?sslmode=disable|" "$ENV_FILE"
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" "$ENV_FILE"
-    sed -i "s|^AI_CONFIG_SECRET=.*|AI_CONFIG_SECRET=${ai_secret}|" "$ENV_FILE"
     sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${db_pass}|" "$ENV_FILE"
     # 写入部署相关默认值，便于用户后续修改
     {
       echo ""
       echo "# 部署配置（由 deploy.sh 首次生成）"
-      echo "GO_VERSION=${GO_VERSION:-1.25.0}"
       echo "PNPM_VERSION=${PNPM_VERSION:-9.15.9}"
       echo "NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}"
       echo "NGINX_DEFAULT_SERVER=${NGINX_DEFAULT_SERVER:-default_server}"
@@ -695,9 +667,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "NGINX_SSL_DOMAIN=${NGINX_SSL_DOMAIN:-}"
       echo "NGINX_SSL_CERT=${NGINX_SSL_CERT:-}"
       echo "NGINX_SSL_CERT_KEY=${NGINX_SSL_CERT_KEY:-}"
-      echo "BACKEND_PORT=${BACKEND_PORT:-8080}"
-      echo "EDU_PORT=${EDU_PORT:-3020}"
-      echo "GO_NGINX_PORT=${GO_NGINX_PORT:-8084}"
+      echo "JAVA_NGINX_PORT=${JAVA_NGINX_PORT:-8083}"
+      echo "REDIS_PASSWORD=${REDIS_PASSWORD:-}"
       echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5433}"
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-true}"
@@ -707,14 +678,13 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "VITE_SITE_URL=${VITE_SITE_URL:-}"  # 移动端访问二维码站点地址，deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
-      echo "GO_CACHE_LIMIT_MB=${GO_CACHE_LIMIT_MB:-8192}"
       echo "BUILD_CACHE_LIMIT_GB=${BUILD_CACHE_LIMIT_GB:-10}"
     } >> "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     log "已生成 .env（权限 600；管理员账号 admin，密码见其中 SEED_ADMIN_PASSWORD）"
   fi
 fi
-# 无条件收紧 .env 权限：含 DATABASE_URL 口令 / JWT_SECRET / AI_CONFIG_SECRET，
+# 无条件收紧 .env 权限：含 DATABASE_URL 口令 / JWT_SECRET / REDIS_PASSWORD，
 # 历史遗留或人工编辑过的 .env 可能是 0644（全局可读），仅在首次生成分支里 chmod 600 不够。
 chmod 600 "$ENV_FILE" 2>/dev/null || true
 set -a; source "$ENV_FILE"; set +a
@@ -734,16 +704,6 @@ if ! grep -q "^KK_MEDIA_CONVERT_DISABLE=" "$ENV_FILE" 2>/dev/null; then
   KK_MEDIA_CONVERT_DISABLE=true
 fi
 
-# 旧 .env 若未配置 AI_CONFIG_SECRET（租户 AI API Key 独立加密密钥），补写随机值。
-# 后端 config.Load 强制校验该变量（禁止回落 JWT_SECRET），旧 .env 缺失或留空都会导致
-# migrate/seed/server 启动失败并触发部署回滚；存量密文仍由后端用 JWT_SECRET 兜底解密。
-if ! grep -q "^AI_CONFIG_SECRET=..*" "$ENV_FILE" 2>/dev/null; then
-  AI_CONFIG_SECRET=$(rand_str 64)
-  update_env_var "$ENV_FILE" "AI_CONFIG_SECRET" "$AI_CONFIG_SECRET"
-  log "旧 .env 已补写 AI_CONFIG_SECRET"
-fi
-export AI_CONFIG_SECRET
-
 # 根据 .env 启用 docker compose profile，兼容 docker compose 与 docker-compose
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
   export COMPOSE_PROFILES="kkfileview"
@@ -755,21 +715,26 @@ fi
 # 端口冲突检测与自动回退
 # ════════════════════════════════════════════
 NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026" "true")
-# BACKEND_PORT / EDU_PORT 不再做宿主端口探测：backend/frontend 容器已不发布宿主端口
-# （deploy/docker-compose.yml 明说），网关容器里是容器名直连 zhiyu-backend:8080 / zhiyu-edu:3020。
-# 继续探测只会在宿主 8080 被占用时把 .env 改成 8081，制造「配置说 8081、实际跑 8080」的假象。
-BACKEND_PORT="${BACKEND_PORT:-8080}"
-EDU_PORT="${EDU_PORT:-3020}"
-GO_NGINX_PORT=$(resolve_port "GO_NGINX_PORT" "${GO_NGINX_PORT:-8084}" "8085")
+# JAVA_BACKEND_PORT 不做宿主端口探测：java-backend 容器不发布宿主端口（compose 明说），
+# 容器网络内固定 8080，继续探测只会在宿主 8080 被占用时制造「配置说 8081、实际跑 8080」的假象。
+JAVA_BACKEND_PORT="${JAVA_BACKEND_PORT:-8080}"
+JAVA_NGINX_PORT=$(resolve_port "JAVA_NGINX_PORT" "${JAVA_NGINX_PORT:-8083}" "8084")
 POSTGRES_HOST_PORT=$(resolve_port "POSTGRES_HOST_PORT" "${POSTGRES_HOST_PORT:-5433}" "5434")
 KKFILEVIEW_HOST_PORT=$(resolve_port "KKFILEVIEW_HOST_PORT" "${KKFILEVIEW_HOST_PORT:-8012}" "8013")
 
 update_env_var "$ENV_FILE" "NGINX_PORT" "$NGINX_PORT"
-update_env_var "$ENV_FILE" "BACKEND_PORT" "$BACKEND_PORT"
-update_env_var "$ENV_FILE" "EDU_PORT" "$EDU_PORT"
-update_env_var "$ENV_FILE" "GO_NGINX_PORT" "$GO_NGINX_PORT"
+update_env_var "$ENV_FILE" "JAVA_NGINX_PORT" "$JAVA_NGINX_PORT"
 update_env_var "$ENV_FILE" "POSTGRES_HOST_PORT" "$POSTGRES_HOST_PORT"
 update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
+
+# 旧 .env 若未配置 REDIS_PASSWORD（单栈化前 redis 无口令），补写随机值
+# （compose 中 redis requirepass 与 java-backend ZHIYU_REDIS_PASSWORD 同源）
+if ! grep -q "^REDIS_PASSWORD=" "$ENV_FILE" 2>/dev/null || [[ -z "$(grep '^REDIS_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)" ]]; then
+  REDIS_PASSWORD=$(rand_str 24)
+  update_env_var "$ENV_FILE" "REDIS_PASSWORD" "$REDIS_PASSWORD"
+  log "旧 .env 已补写 REDIS_PASSWORD（redis 单栈化口令）"
+fi
+export REDIS_PASSWORD
 
 # kkFileView 对外地址：未手动设置时，根据当前 nginx 配置自动推导协议和域名
 if [[ -z "${KK_BASE_URL:-}" ]]; then
@@ -820,7 +785,7 @@ update_env_var "$ENV_FILE" "VITE_SITE_URL" "$VITE_SITE_URL"
 if [[ "${VITE_SITE_URL:-}" == https://* ]]; then
   for _var in VITE_CAREER_PLATFORM_URL VITE_SCENE_PLATFORM_URL \
              VITE_ALLIANCE_PLATFORM_URL VITE_ABILITY_PLATFORM_URL \
-             VITE_COURSE_LEARN_URL VITE_MALL_URL VITE_AI_ASSISTANT_URL; do
+             VITE_COURSE_LEARN_URL VITE_MALL_URL; do
     _val=""
     # shellcheck disable=SC2154
     if [[ -n "${!_var:-}" ]]; then
@@ -857,11 +822,10 @@ set -a; source "$ENV_FILE"; set +a
 DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
-MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/${DB_NAME}?sslmode=disable"
 # psql 统一包装：口令走 PGPASSWORD 环境变量，不进 argv（argv 在 ps 里对同机任意用户可见）。
-# MIGRATE_URL 仍保留给 go run ./cmd/migrate（经环境变量传递，不落 argv）。
+# 迁移纯 psql 执行（db/migrations/*.up.sql），不再依赖 Go migrate 工具。
 psql_db() { PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -p "${POSTGRES_HOST_PORT:-5433}" -U "$DB_USER" -d "$DB_NAME" "$@"; }
-export IMAGE_TAG BACKEND_PORT EDU_PORT GO_NGINX_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET KK_MEDIA_CONVERT_DISABLE
+export IMAGE_TAG JAVA_BACKEND_PORT JAVA_NGINX_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET KK_MEDIA_CONVERT_DISABLE REDIS_PASSWORD
 
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
@@ -941,8 +905,8 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
     git -C "$ORIGINAL_ROOT" worktree add --detach "$BUILD_TREE" origin/master || die "无法创建 worktree"
   fi
 
-  # 保留 frontend/edu/dist 以复用 Vite 增量产物；仅清理后端编译产物
-  rm -rf "$BUILD_TREE/backend/go/bin" 2>/dev/null || true
+  # 清理 Java 编译产物（Maven target），保留前端 dist 复用增量产物
+  rm -rf "$BUILD_TREE"/backend/java/*/target "$BUILD_TREE"/backend/java/ruoyi-admin/target 2>/dev/null || true
   if [[ -n "$BRANCH_NAME" ]]; then
     # merge --abort 必须带 || true：merge 因本地改动被拒（尚未开始合并）时它会失败，
     # 在 { } 里失败会让 errexit 抢先退出，die 的提示根本打不出来
@@ -954,22 +918,16 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   BUILD_ROOT="$BUILD_TREE"
 fi
 
-BACKEND_DIR="$BUILD_ROOT/backend/go"
-EDU_DIR="$BUILD_ROOT/frontend/edu"
-
-# 优先使用 vendor/ 目录（如果存在），否则用 GOPROXY 下载
-if [[ -d "$BACKEND_DIR/vendor" ]]; then
-  export GOPROXY="${GOPROXY:-off}"
-else
-  export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
-fi
+JAVA_DIR="$BUILD_ROOT/backend/java"
+PORTAL_VUE_DIR="$BUILD_ROOT/frontend/portal-vue"
+PLUS_UI_DIR="$BUILD_ROOT/frontend/plus-ui"
+MIGRATIONS_DIR="$BUILD_ROOT/db/migrations"
 
 # 注意：不再创建 $DEPLOY_DIR/{logs,.rollback}——全脚本从无写入，空目录只会误导排障
-mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" "$BUILD_CACHE"
+mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" "$DEPLOY_DIR/web" "$BUILD_CACHE"
 
-# 记录当前镜像（用于回滚）
-PREV_BACKEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-backend 2>/dev/null || true)"
-PREV_FRONTEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-edu 2>/dev/null || true)"
+# 记录当前镜像（用于回滚；前端 dist 挂载在宿主机 $DEPLOY_DIR/web/，回滚镜像只需后端）
+PREV_JAVA="$(docker inspect --format='{{.Config.Image}}' zhiyu-java-backend 2>/dev/null || true)"
 
 # 部署失败统一回滚：compose up / 迁移 / 健康检查任一环节失败均回到旧镜像。
 # 与旧版"tag 失败被 || true 吞掉、回滚结果不校验"不同，这里逐步校验：
@@ -980,22 +938,18 @@ PREV_FRONTEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-edu 2>/dev/nu
 rollback_deploy() {
   local reason="$1"
   log "部署失败（${reason}），回滚旧镜像..."
-  if [[ -z "$PREV_BACKEND" || -z "$PREV_FRONTEND" ]]; then
-    compose logs backend --tail 30 2>/dev/null || true
+  if [[ -z "$PREV_JAVA" ]]; then
+    compose logs java-backend --tail 30 2>/dev/null || true
     die "部署失败，且没有旧镜像可回滚（首次部署），请排查后重试"
   fi
-  docker tag "$PREV_BACKEND" "zhiyu-backend:rollback" 2>/dev/null || {
-    warn "旧后端镜像 $PREV_BACKEND 已不存在，无法回滚"
-    die "回滚失败，请人工排查（旧镜像: $PREV_BACKEND / $PREV_FRONTEND）"
+  docker tag "$PREV_JAVA" "zhiyu-java-backend:rollback" 2>/dev/null || {
+    warn "旧后端镜像 $PREV_JAVA 已不存在，无法回滚"
+    die "回滚失败，请人工排查（旧镜像: $PREV_JAVA）"
   }
-  docker tag "$PREV_FRONTEND" "zhiyu-edu:rollback" 2>/dev/null || {
-    warn "旧前端镜像 $PREV_FRONTEND 已不存在，无法回滚"
-    die "回滚失败，请人工排查（旧镜像: $PREV_BACKEND / $PREV_FRONTEND）"
-  }
-  if ! IMAGE_TAG=rollback compose up -d --no-deps backend frontend 2>&1 | tail -5; then
-    die "回滚容器启动失败，请人工排查（旧镜像: $PREV_BACKEND / $PREV_FRONTEND）"
+  if ! IMAGE_TAG=rollback compose up -d --no-deps java-backend 2>&1 | tail -5; then
+    die "回滚容器启动失败，请人工排查（旧镜像: $PREV_JAVA）"
   fi
-  for svc in backend frontend; do
+  for svc in java-backend; do
     found=false
     for _ in $(seq 1 45); do
       S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
@@ -1004,17 +958,16 @@ rollback_deploy() {
     done
     $found || warn "$svc 回滚后未就绪"
   done
-  compose logs backend --tail 30 2>/dev/null || true
+  compose logs java-backend --tail 30 2>/dev/null || true
   # 复位 .env 的 IMAGE_TAG 到回滚后的镜像标签：构建前已把它写成新 commit，
   # 若不复位，下次 `docker compose up` 或人工重启会再次拉起刚刚失败的版本（回滚不持久）。
-  PREV_TAG="${PREV_BACKEND##*:}"
-  if [[ -n "$PREV_TAG" && "$PREV_TAG" != "$PREV_BACKEND" ]]; then
+  PREV_TAG="${PREV_JAVA##*:}"
+  if [[ -n "$PREV_TAG" && "$PREV_TAG" != "$PREV_JAVA" ]]; then
     update_env_var "$ENV_FILE" "IMAGE_TAG" "$PREV_TAG"
     warn "已把 .env 的 IMAGE_TAG 复位为回滚版本 $PREV_TAG（当前容器实际跑 :rollback 标签，内容同版）"
   fi
   # 迁移环节失败时数据库可能处于中间状态（仅 psql 兜底部分应用场景），提示人工恢复路径
   if [[ -s "${BACKUP_FILE:-}" ]]; then
-    # 不打印 MIGRATE_URL：内含 DB 口令，会落到部署日志/CI/会话记录
     # 恢复一律走容器内 psql：客户端版本与 dump/服务端同源。
     # pg_dump 15.18+ 会输出 \restrict/\unrestrict 元命令，宿主上若是旧版 psql（<15.14/16.10）会直接报
     # "invalid command \restrict"。已实测：容器内 psql 与宿主 psql 16.14 都能恢复（191 表/42 租户）。
@@ -1026,8 +979,7 @@ rollback_deploy() {
 }
 
 # 构建前先清理旧镜像，为本次构建腾出磁盘空间（在用镜像不受影响）
-prune_old_images "zhiyu-backend" 1
-prune_old_images "zhiyu-edu" 1
+prune_old_images "zhiyu-java-backend" 1
 
 # ════════════════════════════════════════════
 # 4. 构建后端（变更自动检测）
@@ -1035,11 +987,11 @@ prune_old_images "zhiyu-edu" 1
 # 优先加载本地 Docker 镜像，避免无法联网时 pull 失败
 load_offline_images
 
-BACKEND_HASH=$(source_hash "$BACKEND_DIR")
+JAVA_HASH=$(java_hash "$BUILD_ROOT")
 BUILD_BACKEND=true
 [[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/backend-hash" ]] && \
-  [[ "$BACKEND_HASH" == "$(cat "$BUILD_CACHE/backend-hash")" ]] && \
-  [[ -n "$(docker images -q "zhiyu-backend:$BACKEND_HASH" 2>/dev/null)" ]] && BUILD_BACKEND=false
+  [[ "$JAVA_HASH" == "$(cat "$BUILD_CACHE/backend-hash")" ]] && \
+  [[ -n "$(docker images -q "zhiyu-java-backend:$JAVA_HASH" 2>/dev/null)" ]] && BUILD_BACKEND=false
 
 # spec 硬约束校验：与「是否有构建」解耦，无条件执行（秒级）。
 # 分层红线/AI 底座/migration 配对/spec 制品/ADR 索引/安全红线 对纯脚本、纯文档、
@@ -1052,25 +1004,14 @@ if [[ "$GATES_FLAG" == "true" ]]; then
 fi
 
 if $BUILD_BACKEND; then
-  log "构建后端"
+  log "构建后端（Maven，JDK 21）"
   if [[ "$GATES_FLAG" == "true" ]]; then
-    log "  质量门禁: gofmt / go vet / go test"
-    if gofmt -l "$BACKEND_DIR" | grep -q .; then
-      warn "gofmt 检查失败，存在未格式化文件："
-      gofmt -l "$BACKEND_DIR" | head -10
-      die "gofmt 检查未通过，请先运行 gofmt -w ."
-    fi
-    # 与下方 go build 共用 GOCACHE，避免双份编译缓存拖慢部署
-    (cd "$BACKEND_DIR" && GOCACHE="$BUILD_CACHE/go-cache" go vet ./...) || die "go vet ./... 失败"
-    # go test 集成测试会向数据库执行 migration/DELETE，仅允许在 TEST_DATABASE_URL
-    # 指定的专用测试库上运行，避免误伤生产数据。
-    TEST_DB_URL="${TEST_DATABASE_URL:-}"
-    # pg_isready 必须用 -d 传连接串：直接位置传参会被当成 dbname，导致「设了 TEST_DATABASE_URL
-    # 却仍判定测试库不可用」而静默跳过 go test
-    if [[ -n "$TEST_DB_URL" ]] && command -v pg_isready >/dev/null 2>&1 && pg_isready -d "$TEST_DB_URL" >/dev/null 2>&1; then
-      (cd "$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DB_URL" go test ./...) || die "go test ./... 失败"
-    else
-      warn "未设置 TEST_DATABASE_URL 或测试库不可用，跳过 go test（避免对生产库执行测试 SQL）"
+    log "  质量门禁: Maven 编译（-DskipTests）+ spec-check"
+    # Maven 编译即部署门禁；Java 单测由 CI 全量执行（部署阶段不依赖测试库）
+    if ! (cd "$JAVA_DIR" && JAVA_HOME="$JAVA_HOME_DIR" PATH="$JAVA_HOME_DIR/bin:$PATH" \
+      ./mvnw clean package -P prod -DskipTests -q >"$DEPLOY_DIR/.build-maven.log" 2>&1); then
+      tail -n 40 "$DEPLOY_DIR/.build-maven.log" >&2 || true
+      die "Maven 构建失败（完整日志: $DEPLOY_DIR/.build-maven.log）"
     fi
   else
     log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
@@ -1078,177 +1019,125 @@ if $BUILD_BACKEND; then
     mkdir -p "$DEPLOY_DIR/.audit"
     printf '%s  skip-gates  IMAGE_TAG=%s  user=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$IMAGE_TAG" "${SUDO_USER:-${USER:-unknown}}" \
       >> "$DEPLOY_DIR/.audit/gates-skip.log" 2>/dev/null || true
+    (cd "$JAVA_DIR" && JAVA_HOME="$JAVA_HOME_DIR" PATH="$JAVA_HOME_DIR/bin:$PATH" \
+      ./mvnw clean package -P prod -DskipTests -q >"$DEPLOY_DIR/.build-maven.log" 2>&1) \
+      || { tail -n 40 "$DEPLOY_DIR/.build-maven.log" >&2 || true; die "Maven 构建失败（完整日志: $DEPLOY_DIR/.build-maven.log）"; }
   fi
-  mkdir -p "$BUILD_CACHE/go-cache"
-  if [[ -d "$BACKEND_DIR/vendor" ]]; then
-    (cd "$BACKEND_DIR" && CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
-      go build -mod=vendor -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go)
-  else
-    (cd "$BACKEND_DIR" && CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
-      go build -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go)
-  fi
+
+  JAR="$JAVA_DIR/ruoyi-admin/target/ruoyi-admin.jar"
+  [[ -f "$JAR" ]] || die "ruoyi-admin.jar 未生成（Maven 构建异常，见 $DEPLOY_DIR/.build-maven.log）"
 
   TMPCTX=$(mktemp -d)
-  cp "$BACKEND_DIR/bin/server" "$TMPCTX/server"
-  mkdir -p "$TMPCTX/migrations"
-  rsync -a --delete "$BACKEND_DIR/migrations/" "$TMPCTX/migrations/"
-  cp "$BACKEND_DIR/Dockerfile" "$TMPCTX/Dockerfile"
-  # ip2region 离线数据文件（IP 归属地查询，登录日志地点）
-  if [[ -f "$OFFLINE_DIR/ip2region_v4.xdb" ]]; then
-    cp "$OFFLINE_DIR/ip2region_v4.xdb" "$TMPCTX/ip2region_v4.xdb"
-  else
-    die "offline/ip2region_v4.xdb 缺失：请先下载 ip2region v2.2 IPv4 数据文件到 offline/ 目录"
-  fi
-
-  # 本地已加载 alpine 镜像时跳过 apk add，避免离线环境联网失败
-  DOCKER_BUILD_ARGS=()
-  if docker images alpine:3.21 --format ok 2>/dev/null | grep -q ok; then
-    DOCKER_BUILD_ARGS+=(--build-arg SKIP_APK_ADD=true)
-  fi
+  cp "$JAR" "$TMPCTX/ruoyi-admin.jar"
+  # JDK 21 从宿主机拷贝（离线构建；-L 跟随 conf 等符号链接）
+  rsync -aL --exclude='lib/src.zip' --exclude='demo' --exclude='sample' \
+    "$JAVA_HOME_DIR/" "$TMPCTX/jdk/"
+  cp "$BUILD_ROOT/deploy/docker/java-backend.Dockerfile" "$TMPCTX/Dockerfile"
 
   BUILD_LOG="$DEPLOY_DIR/.build-backend.log"
-  if ! docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" >"$BUILD_LOG" 2>&1; then
+  if ! docker build -t "zhiyu-java-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" >"$BUILD_LOG" 2>&1; then
     tail -n 40 "$BUILD_LOG" >&2 || true
     die "后端镜像构建失败（完整日志: $BUILD_LOG）"
   fi
   tail -n 5 "$BUILD_LOG"
-  docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
+  docker tag "zhiyu-java-backend:$IMAGE_TAG" "zhiyu-java-backend:$JAVA_HASH"
   rm -rf "$TMPCTX"
   # 指纹延后落盘（见部署末尾）：提前写会让被中断的部署在下次运行时误判「无变更跳过构建」
-  PENDING_BACKEND_HASH="$BACKEND_HASH"
+  PENDING_BACKEND_HASH="$JAVA_HASH"
 else
   log "后端: 无变更，跳过"
   # 当前 commit 标签也要指向同一镜像，compose 才能正常拉起
   # 失败不能吞：hash 镜像被并发清理后 compose 会去 registry 拉不存在的 tag，最终走回滚
-  docker tag "zhiyu-backend:$BACKEND_HASH" "zhiyu-backend:$IMAGE_TAG" 2>/dev/null \
-    || die "标记后端镜像失败：zhiyu-backend:$BACKEND_HASH 不存在（可用 --clean 强制重建）"
+  docker tag "zhiyu-java-backend:$JAVA_HASH" "zhiyu-java-backend:$IMAGE_TAG" 2>/dev/null \
+    || die "标记后端镜像失败：zhiyu-java-backend:$JAVA_HASH 不存在（可用 --clean 强制重建）"
 fi
 
 # ════════════════════════════════════════════
-# 5. 构建前端（变更自动检测）
+# 5. 构建前端（变更自动检测）：portal-vue 业务门户 + plus-ui 管理端
+#    （产物 rsync 到 $DEPLOY_DIR/web/，由 nginx 容器挂载，不构建前端镜像）
 # ════════════════════════════════════════════
-FRONTEND_HASH=$(frontend_hash "$BUILD_ROOT")
+FRONTEND_HASH=$(vue_hash "$BUILD_ROOT")
 BUILD_FRONTEND=true
 [[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/frontend-hash" ]] && \
   [[ "$FRONTEND_HASH" == "$(cat "$BUILD_CACHE/frontend-hash")" ]] && \
-  [[ -n "$(docker images -q "zhiyu-edu:$FRONTEND_HASH" 2>/dev/null)" ]] && BUILD_FRONTEND=false
-
-# 依赖版本变化时，即使源码文件没动也要重新安装依赖并构建前端
-NEED_INSTALL=false
-[[ ! -d "$BUILD_ROOT/node_modules" ]] && NEED_INSTALL=true
-LOCK_HASH=$(lock_hash "$BUILD_ROOT")
-CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_CACHE/lock-hash")
-[[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && { NEED_INSTALL=true; BUILD_FRONTEND=true; }
+  [[ -d "$DEPLOY_DIR/web/portal" && -d "$DEPLOY_DIR/web/plus-ui" ]] && BUILD_FRONTEND=false
 
 if $BUILD_FRONTEND; then
-  log "构建前端"
-
-  if $NEED_INSTALL; then
-    # 离线依赖包：offline/node_modules.tar.gz（联网机按 offline/README.md 预生成，~370MB）。
-    # 命中则直接解压到构建树，跳过 pnpm install——完全离线、无需 npm registry / pnpm store。
-    OFFLINE_NODE_MODULES="$OFFLINE_DIR/node_modules.tar.gz"
-    if [[ -f "$OFFLINE_NODE_MODULES" ]]; then
-      log "  离线依赖包命中，解压 node_modules（跳过 pnpm install）..."
-      rm -rf "$BUILD_ROOT/node_modules"
-      tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" || die "解压 offline/node_modules.tar.gz 失败"
-    else
-      log "  安装依赖..."
-      # 先试离线安装（需要 node_modules 或 pnpm store 已就绪）
-      # 第三档 --no-frozen-lockfile 会改写 lockfile → 构建出与 CI 不同的依赖树，必须显式告警
-      (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
-      (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
-      { warn "frozen-lockfile 安装失败，降级 --no-frozen-lockfile（会改写 lockfile）"
-        (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
-        if ! git -C "$BUILD_ROOT" diff --quiet -- pnpm-lock.yaml 2>/dev/null; then
-          warn "  lockfile 已被改写，与仓库不一致（CI 依赖树可能不同）："
-          git -C "$BUILD_ROOT" diff --stat -- pnpm-lock.yaml 2>/dev/null | tail -3 || true
-        fi
-      }
-    fi
-    echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
-  fi
+  log "构建前端（portal-vue + plus-ui）"
 
   if [[ "$GATES_FLAG" == "true" ]]; then
-    log "  质量门禁: pnpm typecheck / pnpm lint / pnpm test"
-    (cd "$BUILD_ROOT" && pnpm typecheck) || die "pnpm typecheck 失败"
-    (cd "$BUILD_ROOT" && pnpm lint) || die "pnpm lint 失败"
-    # vitest 单测与 AGENTS.md「二、交付要求」本地检查清单对齐（此前缺跑，仅 CI 覆盖）
-    (cd "$BUILD_ROOT" && pnpm test) || die "pnpm test 失败"
+    log "  质量门禁: portal-vue（vue-tsc + vite build）/ plus-ui（vite build）"
   else
     log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
+    # 审计痕迹：记录谁在何时跳过门禁（多 Agent 环境事后可追责/回查）
+    mkdir -p "$DEPLOY_DIR/.audit"
+    printf '%s  skip-gates(frontend)  IMAGE_TAG=%s  user=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$IMAGE_TAG" "${SUDO_USER:-${USER:-unknown}}" \
+      >> "$DEPLOY_DIR/.audit/gates-skip.log" 2>/dev/null || true
   fi
 
-  [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/dist"
-
-  # 离线图片编辑器资产：从 offline/image-editor 同步到前端 public（完全离线，不依赖 CDN）
-  # public/image-editor 在仓库中是符号链接（指向仓库 offline/image-editor），
-  # 但拷贝部署的服务器上可能被解引用成真实目录，rm -rf 两种情况都能删，这里统一替换为真实文件，
-  # 保证 vite build 时是实际文件而非断链。
-  if [[ -d "$BUILD_ROOT/offline/image-editor" ]]; then
-    log "  同步离线图片编辑器资产..."
-    # 只在它是符号链接时删除（仓库里是链接，vite build 需要实体文件）；
-    # 已是实体目录则交给 rsync --delete 增量同步（17MB/687 文件，避免每次全量重拷）
-    [[ -L "$EDU_DIR/public/image-editor" ]] && rm -f "$EDU_DIR/public/image-editor"
-    mkdir -p "$EDU_DIR/public/image-editor"
-    rsync -a --delete "$BUILD_ROOT/offline/image-editor/" "$EDU_DIR/public/image-editor/"
+  # 离线依赖包：offline/node_modules.tar.gz（联网机按 offline/README.md 预生成）。
+  # 命中则按仓库相对路径解压 portal-vue/plus-ui 依赖，跳过联网 pnpm install
+  OFFLINE_NODE_MODULES="$OFFLINE_DIR/node_modules.tar.gz"
+  if [[ -f "$OFFLINE_NODE_MODULES" ]]; then
+    log "  离线依赖包命中，解压 portal-vue/plus-ui node_modules（跳过 pnpm install）..."
+    tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" \
+      frontend/portal-vue/node_modules frontend/plus-ui/node_modules 2>/dev/null \
+      || tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" 2>/dev/null || true
   fi
 
-  # Vite 纯静态 SPA：build 产出 dist/（index.html + 构建资产 + public 静态资源），
-  # 由 nginx 容器托管；API 走边缘 nginx 反代，容器内无需代理（原 Next rewrites 已废弃）。
-  # 内存说明：该应用 Vite build 未限堆时峰值 anon-rss 达 3.1~3.4GB。两层保护：
-  # ① systemd-run 瞬态单元绕开父 cgroup（dsh-web.service 4GB）钳制，
-  #    必须加 --slice=system.slice 才能逃出父 cgroup，且必须 --wait（否则立即返回、dist 未就绪就进 docker build）；
-  # ② cgroup 上限压到整机（7.9GB）以下：原 MemoryMax=8G 大于物理内存，限额永不触发，
-  #    只能由内核 global OOM 随机挑受害者（实测杀过 dsh-web.service）。设 6G 后超限只杀构建本身。
-  #    切勿设 MemoryHigh≈峰值（曾设 3500M）：V8 老生代由 frontend/edu/package.json 的
-  #    --max-old-space-size=3072 决定，峰值 RSS 约 3.5G，MemoryHigh 一压就疯狂回收，
-  #    加上 vm.swappiness=0 无处可换，实测从 65 秒退化成 23 分钟后 oom-kill。
-  #    要调堆请改 frontend/edu/package.json 的 --max-old-space-size（脚本里的 NODE_OPTIONS 会被它覆盖）。
-  # ③ systemd-run 起的是 transient service（PID1 拉起），**不继承本脚本环境**，
-  #    因此 .env 里的 VITE_* 必须显式 --setenv 传入，否则 Vite 读不到（Vite 的 envDir 是
-  #    frontend/edu，也读不到仓库根 .env）→ 产物静默退化：移动端二维码回落 window.location.origin、
-  #    跨平台链接回落演示地址，且脚本还在警告"请在 .env 填 https 地址"（配了也不生效）。
-  # 注意：此处在顶层 if 块内（非函数），不能用 local
-  FE_LOG="$DEPLOY_DIR/.build-frontend-pnpm.log"
+  # ── portal-vue 业务门户（build 内含 vue-tsc 类型检查）──
+  log "  构建 portal-vue（业务门户，根路径 base）..."
+  if [[ ! -d "$PORTAL_VUE_DIR/node_modules" ]]; then
+    (cd "$PORTAL_VUE_DIR" && pnpm install --frozen-lockfile 2>/dev/null) || \
+    { warn "portal-vue frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
+      (cd "$PORTAL_VUE_DIR" && pnpm install --no-frozen-lockfile) || die "portal-vue 依赖安装失败"; }
+  fi
+  PORTAL_LOG="$DEPLOY_DIR/.build-portal.log"
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
-    # 把 .env 中所有 VITE_* 透传进构建单元（值可能含空格，用数组避免二次分词）
+    # 内存护栏：Vue 构建（vue-tsc + vite build）峰值可达数 GB，用瞬态单元绕开父 cgroup 钳制
     VITE_SETENV=()
     while IFS= read -r kv; do
       [[ -n "$kv" ]] && VITE_SETENV+=(--setenv="$kv")
     done < <(grep -E '^VITE_[A-Za-z0-9_]+=' "$ENV_FILE" 2>/dev/null || true)
-    log "  透传 ${#VITE_SETENV[@]} 个 VITE_* 变量到构建单元"
-    # --pipe：不加则构建输出只进 journal，日志文件里只有 systemd 状态行（历史上 die 提示指向空日志）
     if ! systemd-run --collect --wait --pipe --slice=system.slice \
          --property=MemoryAccounting=yes \
          --property=MemoryMax=6G --property=MemorySwapMax=2G \
          --setenv=NODE_ENV=production \
-         "${VITE_SETENV[@]}" -- bash -c "cd '$BUILD_ROOT' && pnpm --filter @zhiyu/edu build" \
-         >"$FE_LOG" 2>&1; then
+         "${VITE_SETENV[@]}" -- bash -c "cd '$PORTAL_VUE_DIR' && pnpm build" \
+         >"$PORTAL_LOG" 2>&1; then
       rc=$?
-      tail -n 40 "$FE_LOG" >&2 || true
+      tail -n 40 "$PORTAL_LOG" >&2 || true
       [[ $rc -eq 137 || $rc -eq 143 ]] && \
-        warn "疑似内存超限（退出码 $rc）：错峰构建，或调小 frontend/edu/package.json 的 --max-old-space-size"
-      die "前端构建失败（完整日志: $FE_LOG）"
+        warn "portal-vue 疑似内存超限（退出码 $rc）：错峰构建"
+      die "portal-vue 构建失败（完整日志: $PORTAL_LOG）"
     fi
   else
-    # 直连回退路径：本脚本已 set -a source .env，VITE_* 已在环境中，无需额外透传
-    (cd "$BUILD_ROOT" && NODE_ENV=production \
-      pnpm --filter @zhiyu/edu build) || die "前端构建失败"
+    # 直连回退路径：本脚本已 set -a source .env，VITE_* 已在环境中
+    (cd "$PORTAL_VUE_DIR" && NODE_ENV=production pnpm build >"$PORTAL_LOG" 2>&1) \
+      || { tail -n 40 "$PORTAL_LOG" >&2 || true; die "portal-vue 构建失败（完整日志: $PORTAL_LOG）"; }
   fi
+  log "    portal-vue 构建完成"
 
-  BUILD_LOG="$DEPLOY_DIR/.build-frontend.log"
-  # docker build 失败时先把日志尾巴打出来，否则 set -e 直接退出、终端上看不到任何原因
-  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR" >"$BUILD_LOG" 2>&1 || {
-    tail -n 30 "$BUILD_LOG" >&2 || true
-    die "前端镜像构建失败（日志: $BUILD_LOG）"
-  }
-  tail -n 5 "$BUILD_LOG"
-  docker tag "zhiyu-edu:$IMAGE_TAG" "zhiyu-edu:$FRONTEND_HASH"
+  # ── plus-ui 管理端 ──
+  log "  构建 plus-ui（RuoYi 管理端，/plus-ui/ 子路径）..."
+  if [[ ! -d "$PLUS_UI_DIR/node_modules" ]]; then
+    (cd "$PLUS_UI_DIR" && pnpm install --frozen-lockfile 2>/dev/null) || \
+    { warn "plus-ui frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
+      (cd "$PLUS_UI_DIR" && pnpm install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
+  fi
+  PLUS_LOG="$DEPLOY_DIR/.build-plus-ui.log"
+  (cd "$PLUS_UI_DIR" && NODE_ENV=production pnpm build >"$PLUS_LOG" 2>&1) \
+    || { tail -n 40 "$PLUS_LOG" >&2 || true; die "plus-ui 构建失败（完整日志: $PLUS_LOG）"; }
+  log "    plus-ui 构建完成"
+
+  # 产物同步到部署目录（nginx 容器挂载 $DEPLOY_DIR/web/）
+  rm -rf "$DEPLOY_DIR/web/portal" "$DEPLOY_DIR/web/plus-ui"
+  mkdir -p "$DEPLOY_DIR/web"
+  cp -r "$PORTAL_VUE_DIR/dist" "$DEPLOY_DIR/web/portal"
+  cp -r "$PLUS_UI_DIR/dist" "$DEPLOY_DIR/web/plus-ui"
   PENDING_FRONTEND_HASH="$FRONTEND_HASH"
 else
-  log "前端: 无变更，跳过"
-  docker tag "zhiyu-edu:$FRONTEND_HASH" "zhiyu-edu:$IMAGE_TAG" 2>/dev/null \
-    || die "标记前端镜像失败：zhiyu-edu:$FRONTEND_HASH 不存在（可用 --clean 强制重建）"
+  log "前端: 无变更，跳过（复用 $DEPLOY_DIR/web 现有产物）"
 fi
 
 # ════════════════════════════════════════════
@@ -1343,28 +1232,54 @@ if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   if $NEED_BASELINE; then
     log "  空库，执行 001_baseline（单事务 + ON_ERROR_STOP）..."
     psql_db -v ON_ERROR_STOP=1 --single-transaction \
-      -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3 \
+      -f "$MIGRATIONS_DIR/001_baseline.up.sql" 2>&1 | tail -3 \
       || rollback_deploy "baseline 迁移失败（已整体回滚事务，库仍为空，可修复后重试）"
     psql_db -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
   fi
 
-  # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
-  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
+  # baseline 之后补齐后续增量迁移（psql 按 schema_migrations 记录跳过已应用版本）
+  run_migrations "$MIGRATIONS_DIR" || rollback_deploy "数据库迁移失败"
   # marker 落在「baseline + 增量迁移都成功」之后：提前 touch 会让被 OOM/SIGKILL 打断的部署
   # 在下次运行时跳过 baseline
   touch "$DEPLOY_DIR/.migration-done"
-
-  log "初始化种子数据..."
-  (cd "$BACKEND_DIR" && GOCACHE="${BUILD_CACHE:-/tmp}/go-cache" \
-    DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" \
-    go run ./cmd/seed/main.go) || warn "种子初始化失败"
-  # 不回显密码（AGENTS.md 3.2：密钥禁止落日志）
-  log "  运营方租户: platform / 管理员: admin（密码见 .env 的 SEED_ADMIN_PASSWORD）"
 else
-  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || rollback_deploy "数据库迁移失败"
+  run_migrations "$MIGRATIONS_DIR" || rollback_deploy "数据库迁移失败"
 fi
 
-# 第二段：schema 已就绪，再拉起业务容器（backend/frontend/nginx/kkfileview）
+# RuoYi 框架表初始化（幂等）：Java 后端启动依赖 sys_* 表，全新库必须先行导入
+# （postgres_ry_*.sql 含裸 CREATE TABLE 与无 ON CONFLICT 的 INSERT，用代表表存在性做门闩 + 单事务）
+init_db_schema() {
+  local sql_dir="$BUILD_ROOT/backend/java/script/sql/postgres"
+  local applied=0 skipped=0
+  local pair
+  for pair in "postgres_ry_vue:sys_social" "postgres_ry_job:sj_namespace" \
+              "postgres_ry_workflow:flow_definition" "postgres_ry_ai:sai_user"; do
+    local f="${pair%%:*}" probe="${pair##*:}"
+    if psql_db -tAc "SELECT to_regclass('public.$probe')" 2>/dev/null | grep -q "$probe"; then
+      skipped=$((skipped + 1))
+      continue
+    fi
+    [[ -f "$sql_dir/$f.sql" ]] || { warn "缺少 $sql_dir/$f.sql，跳过"; continue; }
+    log "  应用 $f.sql（代表表 $probe 不存在）..."
+    if psql_db -v ON_ERROR_STOP=1 --single-transaction -f "$sql_dir/$f.sql" \
+        >"$DEPLOY_DIR/.java-init-$f.log" 2>&1; then
+      applied=$((applied + 1))
+    else
+      warn "初始化 $f.sql 失败（事务已回滚，详见 $DEPLOY_DIR/.java-init-$f.log）"
+      tail -5 "$DEPLOY_DIR/.java-init-$f.log" >&2 || true
+    fi
+  done
+  log "框架表初始化完成（新应用 $applied 个文件，已存在跳过 $skipped 个）"
+}
+log "检查 RuoYi 框架表（逐文件幂等初始化）..."
+init_db_schema
+
+# 种子数据（platform 租户 + admin 用户）由 Java 后端 SeedRunner 在首次启动时执行：
+# SEED_ADMIN_PASSWORD 已注入 java-backend 容器环境变量，密码不回显（AGENTS.md 3.2）
+log "种子数据由 java-backend 启动时执行（SeedRunner，SEED_ADMIN_PASSWORD 经容器环境注入）"
+log "  运营方租户: platform / 管理员: admin（密码见 .env 的 SEED_ADMIN_PASSWORD）"
+
+# 第二段：schema 已就绪，再拉起业务容器（java-backend/nginx/kkfileview）
 log "数据层与迁移完成，启动业务容器..."
 if ! compose up -d --remove-orphans >>"$COMPOSE_UP_LOG" 2>&1; then
   echo "docker compose up（业务容器）失败日志：" >&2
@@ -1376,7 +1291,7 @@ tail -n 5 "$COMPOSE_UP_LOG"
 # 健康检查
 log "等待服务就绪..."
 OK=true
-for svc in backend frontend nginx; do
+for svc in java-backend nginx; do
   found=false
   for _ in $(seq 1 45); do
     S=$(compose ps "$svc" --format '{{.Health}}' 2>/dev/null || echo "starting")
@@ -1397,7 +1312,7 @@ if ! $OK; then
   rollback_deploy "健康检查未通过"
 fi
 
-# backend/frontend 容器重建后 IP 可能变化，而 zhiyu-nginx 网关在启动时缓存了其旧 IP，
+# java-backend/nginx 容器重建后 IP 可能变化，而 zhiyu-nginx 网关在启动时缓存了其旧 IP，
 # 会导致转发到旧 IP 产生 502（Nginx hostname 解析缓存问题）。必须在服务「已就绪」之后
 # 再重启网关容器，让它重新解析到最新 IP（过早重启会拿到旧 IP / DNS 尚未传播，仍 502）。
 # 注意：即使「无变更跳过构建」，只要 IMAGE_TAG 变化（分支部署每次 commit 都不同），
@@ -1408,7 +1323,7 @@ for attempt in 1 2; do
   sleep 3
   docker restart zhiyu-nginx >/dev/null 2>&1 || warn "重启 zhiyu-nginx 失败（可能尚未创建，忽略）"
   sleep 2
-  if curl -sf --max-time 5 "http://127.0.0.1:${GO_NGINX_PORT:-8084}/" >/dev/null 2>&1; then
+  if curl -sf --max-time 5 "http://127.0.0.1:${JAVA_NGINX_PORT:-8083}/portal/login" >/dev/null 2>&1; then
     log "  网关上游 IP 解析已刷新（前端 200）"
     break
   fi
@@ -1419,16 +1334,16 @@ done
 
 # ── 部署后业务冒烟 ──
 # 只验「容器 healthy + 首页 200」不足以证明系统可用（历史上没有任何业务链路校验）。
-# 这里用四个不需要账号口令、也不受登录验证码影响的探针，覆盖：
-#   静态产物 → 后端存活 → API+Redis（验证码生成）→ DB 读（主题配置）→ 鉴权中间件（未带 token 必须 401）
-# 全部通过才算部署成功；任一失败即回滚，避免把 502/白屏/鉴权失效的版本合并进 master。
+# 这里用不需要账号口令、也不受登录验证码影响的探针，覆盖：
+#   门户/管理端静态产物 → 后端存活 → API+Redis（验证码生成）→ DB 读（主题配置）→ 鉴权中间件（未带 token 必须 401）
+#   全部通过才算部署成功；任一失败即回滚，避免把 502/白屏/鉴权失效的版本合并进 master。
 smoke_test() {
   local base rc=0
   # 优先走生产入口（宿主 nginx，覆盖完整链路），不可用时退到网关容器端口
   if curl -sf -o /dev/null --max-time 5 "http://127.0.0.1:${NGINX_PORT:-80}/portal/login"; then
     base="http://127.0.0.1:${NGINX_PORT:-80}"
   else
-    base="http://127.0.0.1:${GO_NGINX_PORT:-8084}"
+    base="http://127.0.0.1:${JAVA_NGINX_PORT:-8083}"
   fi
   log "  冒烟基址: $base"
 
@@ -1464,8 +1379,9 @@ smoke_test() {
   }
 
   # ── 1) 静态产物与前端路由 ──
-  check "/portal/login"                 200 "前端 SPA 产物"          "<!doctype html"
+  check "/portal/login"                 200 "业务门户 SPA 产物"       "<!doctype html"
   check "/library/resources/document"   200 "SPA 客户端路由回落"      "<!doctype html"
+  check "/plus-ui/"                     200 "RuoYi 管理端产物"        "<!doctype html"
   # dist 真产物：从 index.html 取带 hash 的入口 JS，验证资源目录挂载正确（不是又一次 index 回落）
   ASSET=$(curl -s --max-time 10 "$base/portal/login" | grep -oE '/assets/[A-Za-z0-9_.-]+\.js' | head -1)
   if [[ -n "$ASSET" ]]; then
@@ -1515,13 +1431,20 @@ smoke_test() {
     else warn "    ✗ 文件预览服务异常（kkfileview → $KK_CODE）"; rc=1; fi
   fi
 
-  # ── 6) 数据库迁移状态一致（库里已应用数 = 仓库 up 迁移数）──
-  APPLIED=$(psql_db -tAc "SELECT count(*) FROM schema_migrations" 2>/dev/null | tr -d ' ' || echo "")
-  ONDISK=$(find "$BACKEND_DIR/migrations" -maxdepth 1 -name '*.up.sql' 2>/dev/null | wc -l | tr -d ' ')
-  if [[ -n "$APPLIED" && "$APPLIED" == "$ONDISK" ]]; then
-    log "    ✓ 迁移状态一致（已应用 $APPLIED = 仓库 $ONDISK）"
+  # ── 6) 数据库迁移状态一致（仓库 up 迁移必须全部已应用；库内可多于仓库——
+  #        历史 AI migrations 已从仓库移除但存量库 schema_migrations 仍保留记录，属正常）──
+  MISSING=""
+  for up in "$MIGRATIONS_DIR"/*.up.sql; do
+    [[ -f "$up" ]] || continue
+    v=$(basename "$up" .up.sql)
+    if ! psql_db -tAc "SELECT 1 FROM schema_migrations WHERE version='$v'" 2>/dev/null | grep -q 1; then
+      MISSING="$MISSING $v"
+    fi
+  done
+  if [[ -z "$MISSING" ]]; then
+    log "    ✓ 迁移状态一致（仓库 up 迁移全部已应用）"
   else
-    warn "    ✗ 迁移状态不一致（库内已应用 ${APPLIED:-?}，仓库 $ONDISK）"; rc=1
+    warn "    ✗ 存在未应用迁移:$MISSING"; rc=1
   fi
   return $rc
 }
@@ -1589,23 +1512,10 @@ CACHE_AFTER=$(docker buildx du 2>/dev/null | tail -1 | awk '{print $2}' || true)
 docker image prune -f --filter "until=24h" >/dev/null 2>&1 || true
 
 # 清理过旧的镜像标签，每侧仅保留最新 1 个（当前在用）
-prune_old_images "zhiyu-backend" 1
-prune_old_images "zhiyu-edu" 1
+prune_old_images "zhiyu-java-backend" 1
 prune_old_images "fangzhengjin/kkfileview" 1
 # 再清理保留镜像上的历史 commit 标签（只留 content-hash 与当前 IMAGE_TAG）
-prune_extra_tags "zhiyu-backend" "$BACKEND_HASH"
-prune_extra_tags "zhiyu-edu" "$FRONTEND_HASH"
-
-# Go 编译缓存超限（默认 8GB）时整体清理，避免无限增长（下次后端构建全量重编，可接受）。
-# 阈值不宜过小：全局 GOCACHE 若与 deploy 共用同一目录（go env -w GOCACHE=...），
-# 过小的阈值会在每次部署时连带清空日常开发编译缓存。
-GO_CACHE_DIR="$BUILD_CACHE/go-cache"
-GO_CACHE_LIMIT="${GO_CACHE_LIMIT_MB:-8192}"
-if [[ -d "$GO_CACHE_DIR" ]] && \
-   [[ "$(du -sm "$GO_CACHE_DIR" 2>/dev/null | awk '{print $1}')" -gt "$GO_CACHE_LIMIT" ]]; then
-  rm -rf "$GO_CACHE_DIR"
-  log "go-cache 超过 ${GO_CACHE_LIMIT}MB，已清理（下次后端构建将全量编译）"
-fi
+prune_extra_tags "zhiyu-java-backend" "$JAVA_HASH"
 
 # pnpm store 清理未被任何项目引用的孤儿包（node_modules 硬链接不受影响，离线安装能力保留）
 if command -v pnpm >/dev/null 2>&1; then
@@ -1620,9 +1530,9 @@ if [[ -f "$NGINX_CONF" ]]; then
   NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
   NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-}"
   NGINX_PORT="${NGINX_PORT:-80}"
-  GO_NGINX_PORT="${GO_NGINX_PORT:-8084}"
+  JAVA_NGINX_PORT="${JAVA_NGINX_PORT:-8083}"
   KKFILEVIEW_HOST_PORT="${KKFILEVIEW_HOST_PORT:-8012}"
-  export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT GO_NGINX_PORT KKFILEVIEW_HOST_PORT
+  export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT JAVA_NGINX_PORT KKFILEVIEW_HOST_PORT
 
   # 生成生产入口配置：先写临时文件，内容一致则跳过（避免每次部署产生完全相同的 .bak），
   # 不一致才备份 + 原子 mv。原写法直接重定向到生产配置：管道任一环失败（envsubst 缺失/磁盘满）
@@ -1631,7 +1541,7 @@ if [[ -f "$NGINX_CONF" ]]; then
   NGINX_TS="$(date +%Y%m%d%H%M%S)"
   NGINX_TMP="${NGINX_DST}.new.$$"
   sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" \
-    | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $GO_NGINX_PORT $KKFILEVIEW_HOST_PORT' \
+    | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $JAVA_NGINX_PORT $KKFILEVIEW_HOST_PORT' \
     > "$NGINX_TMP" || { rm -f "$NGINX_TMP"; die "生成 nginx 配置失败（原配置未改动）"; }
   [[ -s "$NGINX_TMP" ]] || { rm -f "$NGINX_TMP"; die "生成的 nginx 配置为空（原配置未改动）"; }
   if [[ -f "$NGINX_DST" ]] && cmp -s "$NGINX_TMP" "$NGINX_DST"; then
@@ -1655,7 +1565,7 @@ if [[ -f "$NGINX_CONF" ]]; then
   if [[ -f "$NGINX_SSL_CONF" && -n "${NGINX_SSL_DOMAIN:-}" && -n "${NGINX_SSL_CERT:-}" && -n "${NGINX_SSL_CERT_KEY:-}" ]]; then
     if [[ -f "$NGINX_SSL_CERT" && -f "$NGINX_SSL_CERT_KEY" ]]; then
       export NGINX_SSL_DOMAIN NGINX_SSL_CERT NGINX_SSL_CERT_KEY
-      sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_SSL_CONF" | envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $GO_NGINX_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_SSL_DST"
+      sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_SSL_CONF" | envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $JAVA_NGINX_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_SSL_DST"
       log "已生成 HTTPS nginx 配置: $NGINX_SSL_DST"
     else
       warn "NGINX_SSL_DOMAIN 已设置但证书文件不存在，跳过 HTTPS 配置"
@@ -1766,16 +1676,17 @@ fi
 # 一致性自检：$DEPLOY_DIR/.env 的 IMAGE_TAG 必须对应真实存在的镜像，
 # 否则人工 `docker compose up` 会拉不到镜像（历史上因写入时机早于/晚于复制而两次踩到）
 DEPLOY_TAG=$(grep '^IMAGE_TAG=' "$DEPLOY_DIR/.env" 2>/dev/null | cut -d= -f2 || true)
-if [[ -n "$DEPLOY_TAG" ]] && [[ -z "$(docker images -q "zhiyu-backend:$DEPLOY_TAG" 2>/dev/null)" ]]; then
+if [[ -n "$DEPLOY_TAG" ]] && [[ -z "$(docker images -q "zhiyu-java-backend:$DEPLOY_TAG" 2>/dev/null)" ]]; then
   warn "$DEPLOY_DIR/.env 的 IMAGE_TAG=$DEPLOY_TAG 没有对应镜像，人工 compose up 会失败（请复查写入时机）"
 fi
 
 log "✨ 部署完成！"
 echo "   外部入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
+echo "   RuoYi 管理端: http://<服务器IP>:${NGINX_PORT}/plus-ui/"
 echo "   nginx 端口: ${NGINX_PORT}"
-echo "   服务网关容器: http://localhost:${GO_NGINX_PORT}（zhiyu-nginx，业务容器不暴露宿主端口）"
+echo "   服务网关容器: http://localhost:${JAVA_NGINX_PORT}（zhiyu-nginx，业务容器不暴露宿主端口）"
 echo "   管理: admin（密码见部署机 .env 的 SEED_ADMIN_PASSWORD）  (SaaS 登录)"
-echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
+echo "   镜像: zhiyu-java-backend:$IMAGE_TAG"
 
 # 旧布局上传文件检测：新版 /uploads/{tenantID}/{filename} 要求文件位于租户子目录。
 # 若 uploads 卷根目录存在单段文件名（旧布局），提醒执行迁移脚本，否则旧图片全部 404。

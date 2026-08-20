@@ -1,4 +1,4 @@
-// 业务门户请求层 —— 逐字移植 frontend/packages/api-client/src/api-helpers.ts
+// 业务门户请求层 —— 逐字移植原 React 版 api-client 的 api-helpers.ts
 // 与 Go/React 业务门户共用同一套契约（裸 JSON、{items,total}、/api/v1、Bearer token）。
 
 export interface ListResponse<T> {
@@ -16,16 +16,9 @@ const TOKEN_KEYS: Record<AuthPlatform, string> = {
   partner: 'zhiyu-partner-token'
 };
 
-// Go/Java 双栈共用同一域名，仅路径前缀不同；localStorage 按域名隔离、不按路径隔离，
-// 因此 Java 版（/java/ 前缀）使用 -java 后缀的 token key，与 Go 版登录态隔离。
-function isJavaPath(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.location.pathname.startsWith('/java/');
-}
-
+// 单栈（Java+Vue）部署：无 Go/Java 前缀分流，token key 直接用平台基础 key。
 function getTokenKey(platform: AuthPlatform): string {
-  const base = TOKEN_KEYS[platform];
-  return isJavaPath() ? `${base}-java` : base;
+  return TOKEN_KEYS[platform];
 }
 
 function getDefaultPlatform(): AuthPlatform {
@@ -58,13 +51,13 @@ export function removeToken(platform?: AuthPlatform) {
 export function isPortalPath(path?: string): boolean {
   if (typeof window === 'undefined') return false;
   const p = path ?? window.location.pathname;
-  return p.startsWith('/portal') || p.startsWith('/java/portal');
+  return p.startsWith('/portal');
 }
 
 export function isPartnerPath(path?: string): boolean {
   if (typeof window === 'undefined') return false;
   const p = path ?? window.location.pathname;
-  return p.startsWith('/partner') || p.startsWith('/java/partner');
+  return p.startsWith('/partner');
 }
 
 function resolvePlatform(): AuthPlatform {
@@ -78,9 +71,8 @@ export function handleUnauthorized(platform: AuthPlatform): void {
   removeToken(platform);
   const loginPath =
     platform === 'portal' ? '/portal/login' : platform === 'partner' ? '/partner/login' : '/login';
-  const prefix = isJavaPath() ? '/java' : '';
-  if (!window.location.pathname.startsWith(prefix + loginPath)) {
-    window.location.href = prefix + loginPath;
+  if (!window.location.pathname.startsWith(loginPath)) {
+    window.location.href = loginPath;
   }
 }
 

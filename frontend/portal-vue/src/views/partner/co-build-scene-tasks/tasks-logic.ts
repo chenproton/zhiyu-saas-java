@@ -1,5 +1,5 @@
-// 场景共建任务链编辑页的纯类型与纯函数（对齐 React
-// frontend/edu/app/partner/co-build/scenes/[id]/edit/tasks/page.tsx 及其复用的
+// 场景共建任务链编辑页的纯类型与纯函数（对齐原 React 版
+// co-build/scenes/[id]/edit/tasks/page.tsx 及其复用的
 // tasks-logic.tsx / shared-types/evaluation-rules.ts）。
 // 本文件只含类型与纯函数，不发起任何请求；EvalRuleConfig 等统一契约复用 lesson-edit-utils.ts。
 import {

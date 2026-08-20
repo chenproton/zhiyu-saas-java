@@ -1,6 +1,6 @@
 <!--
   我的课表 Tab（学生/教师工作台共用，当前学期已发布课表）。
-  对齐 React frontend/edu/app/portal/workspace/_components/my-schedule-tab.tsx
+  对齐原 React 版 my-schedule-tab.tsx
   （学期信息条 + 网格；后端 404「尚未配置学期」按空态处理；
    学生场景课跳场景学习并带排课 resourceVersion，教师跳场景/课程测评结果）。
 -->

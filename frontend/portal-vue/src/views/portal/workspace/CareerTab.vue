@@ -1,7 +1,7 @@
 <!--
   我的收藏 Tab（React career-tab 对位）。
-  对齐 React frontend/edu/app/portal/workspace/_components/career-tab.tsx：
-  - 分类筛选：全部收藏（N）/ 职业岗位 / 实践场景 / 数字课程 / 测评资源（题库+试卷）/ AI 服务（知识库+智能体）；
+  对齐原 React 版 career-tab.tsx：
+  - 分类筛选：全部收藏（N）/ 职业岗位 / 实践场景 / 数字课程 / 测评资源（题库+试卷）；
   - 岗位收藏走 /job/positions/favorites 与 POST /job/positions/{id}/favorite（toggle）；
     其余走 GET /favorites 与 POST /favorites/{targetType}/{id}；
   - 岗位/场景卡片复用门户已有 JobCard / SceneCard（与 landing 页一致）；
@@ -193,57 +193,6 @@
         </div>
       </div>
 
-      <!-- AI 知识库 -->
-      <div v-if="visibleKeys.includes('aiKbs') && favorites.aiKbs.length > 0" class="fav-block">
-        <h4 class="block-title">
-          <el-icon class="i-cyan"><MagicStick /></el-icon>AI 知识库
-          <span class="block-count">（{{ favorites.aiKbs.length }}）</span>
-        </h4>
-        <div class="card-grid">
-          <div v-for="kb in favorites.aiKbs" :key="kb.id" class="card-wrap">
-            <router-link :to="`/portal/apps/ai/kb/${kb.id}`" class="mini-card">
-              <div class="mini-title">{{ kb.name }}</div>
-              <div class="mini-desc">{{ kb.description || '无描述' }}</div>
-              <div class="mini-meta">{{ kb.docCount }} 个文档</div>
-            </router-link>
-            <button
-              type="button"
-              class="unfav-btn light"
-              title="取消收藏"
-              @click="unfavorite('aiKbs', kb.id, 'ai_kb')"
-            >
-              <el-icon><Star /></el-icon>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- AI 智能体 -->
-      <div v-if="visibleKeys.includes('aiAgents') && favorites.aiAgents.length > 0" class="fav-block">
-        <h4 class="block-title">
-          <el-icon class="i-cyan"><MagicStick /></el-icon>AI 智能体
-          <span class="block-count">（{{ favorites.aiAgents.length }}）</span>
-        </h4>
-        <div class="card-grid">
-          <div v-for="agent in favorites.aiAgents" :key="agent.id" class="card-wrap">
-            <router-link :to="`/portal/apps/ai/agents/${agent.id}`" class="mini-card">
-              <div class="mini-head">
-                <span class="mini-avatar">{{ agent.avatar }}</span>
-                <div class="mini-title">{{ agent.name }}</div>
-              </div>
-              <div class="mini-desc">{{ agent.description || agent.greeting || '无描述' }}</div>
-            </router-link>
-            <button
-              type="button"
-              class="unfav-btn light"
-              title="取消收藏"
-              @click="unfavorite('aiAgents', agent.id, 'ai_agent')"
-            >
-              <el-icon><Star /></el-icon>
-            </button>
-          </div>
-        </div>
-      </div>
     </template>
   </SectionCard>
 </template>
@@ -258,7 +207,6 @@ import {
   Document,
   Loading,
   Location,
-  MagicStick,
   Reading,
   Star,
   Tickets
@@ -270,7 +218,6 @@ import type { CareerPosition } from '@/types/job';
 import type { Scenario } from '@/types/scene';
 import type { Course } from '@/types/lesson';
 import type { Exam, QuestionBank } from '@/types/evaluation';
-import type { AIAgent, AIKnowledgeBase } from '@/types/ai';
 import JobCard from '@/views/landing/JobCard.vue';
 import SceneCard from '@/views/landing/SceneCard.vue';
 import SectionCard from './SectionCard.vue';
@@ -289,20 +236,18 @@ const CATEGORIES = [
   { id: 'jobs', label: '职业岗位', icon: Briefcase },
   { id: 'scenes', label: '实践场景', icon: Collection },
   { id: 'courses', label: '数字课程', icon: Reading },
-  { id: 'exams', label: '测评资源', icon: Document },
-  { id: 'ai', label: 'AI 服务', icon: MagicStick }
+  { id: 'exams', label: '测评资源', icon: Document }
 ];
 
-type FavKey = 'jobs' | 'scenes' | 'courses' | 'banks' | 'exams' | 'aiKbs' | 'aiAgents';
+type FavKey = 'jobs' | 'scenes' | 'courses' | 'banks' | 'exams';
 
-// 分类 -> 收藏实体集合的键名映射（测评资源含题库与试卷，AI 服务含知识库与智能体）
+// 分类 -> 收藏实体集合的键名映射（测评资源含题库与试卷）
 const CATEGORY_KEYS: Record<string, FavKey[]> = {
-  all: ['jobs', 'scenes', 'courses', 'banks', 'exams', 'aiKbs', 'aiAgents'],
+  all: ['jobs', 'scenes', 'courses', 'banks', 'exams'],
   jobs: ['jobs'],
   scenes: ['scenes'],
   courses: ['courses'],
-  exams: ['banks', 'exams'],
-  ai: ['aiKbs', 'aiAgents']
+  exams: ['banks', 'exams']
 };
 
 const activeCategory = ref('all');
@@ -313,9 +258,7 @@ const favorites = reactive({
   scenes: [] as Scenario[],
   courses: [] as Course[],
   banks: [] as QuestionBank[],
-  exams: [] as Exam[],
-  aiKbs: [] as AIKnowledgeBase[],
-  aiAgents: [] as AIAgent[]
+  exams: [] as Exam[]
 });
 
 const visibleKeys = computed(() => CATEGORY_KEYS[activeCategory.value] || CATEGORY_KEYS.all);
@@ -326,9 +269,7 @@ const totalCount = computed(
     favorites.scenes.length +
     favorites.courses.length +
     favorites.banks.length +
-    favorites.exams.length +
-    favorites.aiKbs.length +
-    favorites.aiAgents.length
+    favorites.exams.length
 );
 
 function coverStyle(coverImage: string | undefined, index: number) {
@@ -370,8 +311,6 @@ onMounted(async () => {
     favorites.courses = favRes?.course || [];
     favorites.banks = favRes?.question_bank || [];
     favorites.exams = favRes?.exam || [];
-    favorites.aiKbs = favRes?.ai_kb || [];
-    favorites.aiAgents = favRes?.ai_agent || [];
   } finally {
     loading.value = false;
   }
@@ -661,7 +600,7 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* AI 知识库 / 智能体简卡 */
+/* 收藏简卡 */
 .mini-card {
   display: block;
   border: 1px solid #f3f4f6;

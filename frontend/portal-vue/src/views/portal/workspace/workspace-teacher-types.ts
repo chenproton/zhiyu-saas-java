@@ -1,12 +1,12 @@
 /**
  * 教师工作台类型定义与占位数据。
  *
- * 对齐来源（React）：frontend/edu/app/portal/workspace/_data/workspace-teacher-types.ts
+ * 对齐来源（原 React 版）：workspace-teacher-types.ts
  * —— React 侧该文件的教学跟踪 / 测评管理 / 期末总评 / 账号安全条目数据「已清空为默认值/空数组」，
  * 仅用于撑起页面结构，等接入真实接口后再填充。Vue 侧同样保持空值，保证与 React 展示一致
  * （不自造假数据；接入真实接口时两侧同步改）。
  *
- * 外部平台地址对齐 frontend/edu/lib/external-links.ts 的 SCENE_PLATFORM_URL
+ * 外部平台地址对齐原 React 版 external-links.ts 的 SCENE_PLATFORM_URL
  * （portal-vue 未收录 external-links，这里按同一环境变量 + 同一兜底地址取值）。
  */
 

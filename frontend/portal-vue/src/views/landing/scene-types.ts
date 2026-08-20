@@ -1,5 +1,5 @@
 // 场景 landing（列表/详情/学习页）共享类型与转换工具。
-// 逐字对齐 React frontend/edu/lib/snapshot-converters.ts + learn-links.ts 的语义：
+// 逐字对齐原 React 版 snapshot-converters.ts + learn-links.ts 的语义：
 // 学习端走 GET /scene/scenarios/{id}/snapshot 单次快照 bundle（snake_case jsonb），
 // 页面渲染沿用 camelCase 模型；动态元数据（创建人/更新时间/浏览量/行业名）由 live 接口补齐后 merge。
 

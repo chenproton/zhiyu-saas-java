@@ -1,6 +1,6 @@
 // 课程广场（lesson landing）共享类型与工具。
-// 对齐 React 侧 frontend/packages/shared-types（SCENE_DIFFICULTY / EVAL_METHOD_LABELS / EVAL_METHOD_COLORS /
-// evalRuleConfigToMethods、snapshot.ts 课程快照）与 frontend/edu/lib/snapshot-converters.ts 的课程快照转换。
+// 对齐原 React 版 shared-types（SCENE_DIFFICULTY / EVAL_METHOD_LABELS / EVAL_METHOD_COLORS /
+// evalRuleConfigToMethods、snapshot.ts 课程快照）与 snapshot-converters.ts 的课程快照转换。
 // 接口契约与 React 完全一致（裸 JSON、{items,total}、limit/offset、snake_case 快照 bundle）。
 import { request, buildQuery } from '@/api/http';
 import type { ListResponse } from '@/api/http';

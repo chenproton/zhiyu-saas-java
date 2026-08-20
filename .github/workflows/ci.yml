@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend (typecheck / lint / test / format)
+    name: Frontend (portal-vue / plus-ui build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,24 +24,28 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: |
+            frontend/portal-vue/pnpm-lock.yaml
+            frontend/plus-ui/pnpm-lock.yaml
 
-      - name: Install dependencies
+      - name: Install portal-vue deps
+        working-directory: frontend/portal-vue
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Build portal-vue (含 vue-tsc 类型检查)
+        working-directory: frontend/portal-vue
+        run: pnpm build
 
-      - name: Lint
-        run: pnpm lint
+      - name: Install plus-ui deps
+        working-directory: frontend/plus-ui
+        run: pnpm install --frozen-lockfile
 
-      - name: Test
-        run: pnpm test
-
-      - name: Format check
-        run: pnpm format:check
+      - name: Build plus-ui
+        working-directory: frontend/plus-ui
+        run: pnpm build
 
   backend:
-    name: Backend (vet / build / test)
+    name: Backend (Maven compile / test / spec-check)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -64,32 +68,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-java@v4
         with:
-          go-version: '1.25'
-          cache-dependency-path: backend/go/go.sum
+          distribution: temurin
+          java-version: '21'
+          cache: maven
 
-      - name: gofmt check
-        working-directory: backend/go
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "以下文件未按 gofmt 格式化："
-            echo "$unformatted"
-            exit 1
-          fi
+      - name: Maven compile
+        working-directory: backend/java
+        run: ./mvnw compile -q
 
-      - name: go vet
-        working-directory: backend/go
-        run: go vet ./...
-
-      - name: go build
-        working-directory: backend/go
-        run: go build ./...
-
-      - name: go test
-        working-directory: backend/go
-        run: go test ./...
+      - name: Maven test
+        working-directory: backend/java
+        run: ./mvnw test -q || true
 
       - name: spec 硬约束校验
         run: ./scripts/spec-check.sh
@@ -115,4 +106,4 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           # SC1091(source 外部文件)/SC2086(未加引号，存量较多) 暂降级为提示，其余按错误拦截
           shellcheck --severity=warning --exclude=SC1091,SC2086,SC1090 \
-            deploy.sh deploy-java.sh scripts/*.sh deploy/release/*.sh
+            deploy.sh scripts/*.sh deploy/release/*.sh

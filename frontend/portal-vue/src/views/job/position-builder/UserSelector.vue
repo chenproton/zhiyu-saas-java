@@ -1,5 +1,5 @@
 <template>
-  <!-- 共建人选择器（对齐 React frontend/edu/components/shared/user-selector.tsx，含企业专家分组） -->
+  <!-- 共建人选择器（对齐原 React 版 user-selector，含企业专家分组） -->
   <div class="user-selector">
     <el-button class="trigger" :disabled="disabled" @click="openDialog">
       <el-icon v-if="modelValue.length > 0"><UserFilled /></el-icon>
