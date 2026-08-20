@@ -67,7 +67,7 @@
 | GET | `/job/positions/{id}/snapshot` | jobViewer | 岗位快照 bundle（`?version=`，见 §1.12） |
 | GET/POST/PUT/DELETE | `/job/abilities`、`/ability-domains` | jobViewer 读 / businessUser 写 | 能力点、能力域（5 动作 CRUD） |
 | GET | `/job/abilities/citation-stats`、`/uncited` | jobViewer | 能力点引用统计/零引用列表 |
-| GET/POST/PUT/DELETE | `/job/position-abilities`、`/position-responsibilities`、`/position-certificates` | 同上 | 岗位能力绑定/职责/证书 |
+| GET/POST/PUT/DELETE | `/job/position-abilities`（GET 仅列表，无 `GET /{id}`）、`/position-responsibilities`、`/position-certificates` | 同上 | 岗位能力绑定/职责/证书 |
 | GET/POST/PUT/DELETE | `/job/certificate-library` | businessUser | 证书库（5 CRUD） |
 | GET | `/job/certificate-library/citation-stats`、`/uncited` | jobViewer | 证书库引用统计/零引用 |
 | GET/POST/PUT/DELETE | `/job/recommendations` | businessUser | 岗位推荐（4：List/Create/Update/Delete） |
@@ -407,7 +407,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 |------|------|
 | 成功（对象） | 业务对象 JSON 直接返回；创建类返回 `{"id":"..."}` |
 | 成功（列表） | `{"items": [...], "total": <count>}` |
-| 错误 | `{"error": "<消息>", "code": "<机器码>?"}`——`error` 为面向用户的消息（中文），`code` 为可选机器码，仅在需前端按码分支时出现 |
+| 错误 | `{"error": "<消息>", "code": "<机器码>"}`——`error` 为面向用户的消息（中文），`code` 为机器码（`ApiException` 业务异常**恒带**；仅鉴权过滤器 401/403 与排课冲突 409 为无 `code` 例外） |
 
 机器码词汇表（后端 `ApiException` 机器码为唯一事实源；前端按 `code` 分支，不解析 `error` 文案）：
 
@@ -422,7 +422,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | `captcha_required` | 400 | 登录需先完成验证码 |
 | `captcha_wrong` | 400 | 验证码不匹配 |
 
-历史接口中部分错误仅有 `error` 无 `code`（向后兼容，不强制回填）；新增接口统一按上表。前端实际分支的码：`captcha_required` / `captcha_wrong`。
+§3.x 各端点示例中的 `{"error":...}` 为**省略 `code` 的缩写写法**；实际 `ApiException` 响应恒带 `code`（如 `401 {"code":"unauthorized","error":"用户名或密码错误"}`）。无 `code` 例外：① 鉴权过滤器（未登录/无权限）返回的 401/403；② 排课冲突 `409 {"error":"排课冲突","conflicts":[...]}`（`ScheduleConflictException`）。前端实际分支的码：`captcha_required` / `captcha_wrong`。
 
 ### 4.3 分页
 
