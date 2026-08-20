@@ -10,6 +10,8 @@
           <div>
             <el-button v-if="selectedIds.length" type="danger" @click="confirmBatchDelete">批量删除({{ selectedIds.length }})</el-button>
             <el-button v-if="selectedIds.length" @click="joinDialog = true">批量加入部门({{ selectedIds.length }})</el-button>
+            <el-button @click="importDialog = true">批量导入</el-button>
+            <el-button @click="exportTeachers">批量导出</el-button>
             <el-button type="primary" @click="openCreate">新建教师</el-button>
           </div>
         </div>
@@ -118,6 +120,11 @@
         <el-button type="primary" :loading="saving" @click="saveJoin">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入（对齐 system 版入口 /import-export 的 teachers 实体，走 Java 泛化导入） -->
+    <el-dialog v-model="importDialog" title="批量导入教师" width="560px">
+      <ImportExport entity="teachers" :on-imported="load" />
+    </el-dialog>
   </div>
 </template>
 
@@ -126,6 +133,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { userManagementApi, staffTitleApi } from '@/api/portal';
 import { roleApi, organizationApi } from '@/api/system';
+import { authedFetch } from '@/api/http';
+import ImportExport from '@/components/ImportExport.vue';
 import { useAuthStore } from '@/stores/auth';
 import type { User, StaffTitle } from '@/types/user';
 
@@ -164,6 +173,8 @@ const resetPassword = ref('');
 
 const joinDialog = ref(false);
 const joinOrgNodeId = ref('');
+
+const importDialog = ref(false);
 
 const titleNameMap = computed(() => {
   const m = new Map<string, string>();
@@ -373,6 +384,27 @@ async function saveJoin() {
     ElMessage.error((e as Error).message || '批量加入部门失败');
   } finally {
     saving.value = false;
+  }
+}
+
+// 批量导出（对齐 system 版 teachers.vue：POST /export/teachers/excel，选中优先）
+async function exportTeachers() {
+  try {
+    const res = await authedFetch('/export/teachers/excel', { method: 'POST', body: JSON.stringify({ ids: selectedIds.value }) });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '教师导出.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success(selectedIds.value.length > 0 ? `已导出 ${selectedIds.value.length} 名教职工` : '导出完成');
+  } catch (e) {
+    ElMessage.error((e as Error).message || '导出失败');
   }
 }
 

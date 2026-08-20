@@ -5,7 +5,11 @@
         <h2 class="page-title">{{ usage?.name || '考试结果' }}</h2>
         <p class="page-sub">在线考试 · 考试结果统计</p>
       </div>
-      <el-button @click="$router.push('/evaluation/exam-usage')">返回考试管理</el-button>
+      <div>
+        <!-- 对齐 React：导出数据为占位按钮（考试结果不在通用导出白名单内） -->
+        <el-button disabled title="即将上线" style="margin-right: 8px">导出数据</el-button>
+        <el-button @click="$router.push('/evaluation/exam-usage')">返回考试管理</el-button>
+      </div>
     </div>
 
     <el-row :gutter="16" class="stats-row">
@@ -43,9 +47,25 @@
         <el-table-column label="交卷时间" width="160">
           <template #default="{ row }">{{ fmt(row.submitTime) }}</template>
         </el-table-column>
+        <el-table-column label="评分状态" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.gradingStatus === 'evaluated'" type="success">已评分</el-tag>
+            <el-tag v-else type="warning">待评分</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="是否通过" width="90">
           <template #default="{ row }">
             <el-tag :type="row.isPass ? 'success' : 'danger'">{{ row.isPass ? '及格' : '不及格' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="110" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              link
+              type="primary"
+              size="small"
+              @click="router.push(`/evaluation/lesson-results/daily-exams/${row.id}`)"
+            >查看详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -64,13 +84,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { examUsageApi, examResultApi } from '@/api/evaluation';
 import type { ExamUsage, ExamResult } from '@/types/evaluation';
 
 const PAGE_SIZE = 20;
 const route = useRoute();
+const router = useRouter();
 const usageId = String(route.query.usageId || '');
 
 const usage = ref<ExamUsage | null>(null);

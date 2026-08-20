@@ -835,6 +835,11 @@ const routes: RouteRecordRaw[] = [
       },
       // ---- 门户系统应用 · 租户/资源/日志（对齐 React /portal/apps/system/*）----
       {
+        // 索引重定向（对齐 React routes.tsx：/portal/apps/system → tenant）
+        path: 'portal/apps/system',
+        redirect: '/portal/apps/system/tenant'
+      },
+      {
         path: 'portal/apps/system/tenant',
         name: 'SystemTenant',
         component: () => import('@/views/system/tenant.vue')
@@ -924,6 +929,11 @@ const routes: RouteRecordRaw[] = [
         path: 'users',
         name: 'UserManagement',
         component: () => import('@/views/portal/users.vue')
+      },
+      {
+        // 索引重定向（对齐 React routes.tsx：/partner → workspace）
+        path: 'partner',
+        redirect: '/partner/workspace'
       },
       {
         path: 'partner/experts',
@@ -1251,9 +1261,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/import-export.vue')
       },
       {
-        // 404 兜底（对齐 React not-found）：未知路径重定向到门户首页
+        // 404 兜底（对齐 React not-found）：未知路径展示 404 页而非静默跳首页
         path: ':pathMatch(.*)*',
-        redirect: { path: '/portal' }
+        name: 'NotFound',
+        component: () => import('@/views/not-found.vue')
       }
     ]
   }

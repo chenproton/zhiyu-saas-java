@@ -5,10 +5,13 @@
         <h1 class="page-title">合作项目管理</h1>
         <p class="page-sub">管理校企合作项目，追踪项目阶段与里程碑。</p>
       </div>
-      <el-button type="primary" @click="router.push('/portal/apps/alliance/projects/new')">
-        <el-icon><Plus /></el-icon>
-        新建项目
-      </el-button>
+      <div>
+        <el-button style="margin-right: 8px" @click="importDialog = true">批量导入</el-button>
+        <el-button type="primary" @click="router.push('/portal/apps/alliance/projects/new')">
+          <el-icon><Plus /></el-icon>
+          新建项目
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="never">
@@ -76,6 +79,11 @@
         @current-change="loadItems"
       />
     </el-card>
+
+    <!-- 批量导入（对齐 React importConfig：alliance-projects，走 Java 泛化导入 /import/{entity}/excel） -->
+    <el-dialog v-model="importDialog" title="批量导入合作项目" width="560px">
+      <ImportExport entity="alliance-projects" :on-imported="loadItems" />
+    </el-dialog>
   </div>
 </template>
 
@@ -85,6 +93,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
+import ImportExport from '@/components/ImportExport.vue';
 import {
   allianceProjectApi,
   enterpriseApi,
@@ -106,6 +115,7 @@ const search = ref('');
 const page = ref(1);
 const pageSize = 20;
 const total = ref(0);
+const importDialog = ref(false);
 const enterprises = ref<AllianceEnterprise[]>([]);
 const milestones = ref<Record<string, AllianceProjectMilestone[]>>({});
 
