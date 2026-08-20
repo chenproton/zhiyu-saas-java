@@ -19,6 +19,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -41,8 +43,8 @@ public class ZhiyuAuthFilter extends OncePerRequestFilter {
     private final ZhiyuUserMapper userMapper;
     private final ZhiyuTenantMapper tenantMapper;
 
-    /** 无需登录即可访问的 zhiyu 路径（登录/预授权消费/公开主题色） */
-    private static final Set<String> PUBLIC_PATHS = Set.of(
+    /** 无需登录即可访问的 zhiyu 路径（登录/预授权消费/公开主题色）；授权拦截器复用同一清单 */
+    static final Set<String> PUBLIC_PATHS = Set.of(
         "/api/v1/auth/login",
         "/api/v1/auth/saas/login",
         "/api/v1/auth/portal/login",
@@ -95,8 +97,19 @@ public class ZhiyuAuthFilter extends OncePerRequestFilter {
         Object tenantId = StpUtil.getSessionByLoginId(loginId).get("tenantId");
         Object username = StpUtil.getSessionByLoginId(loginId).get("username");
         Object platform = StpUtil.getSessionByLoginId(loginId).get("platform");
+        Object roleCodes = StpUtil.getSessionByLoginId(loginId).get("roleCodes");
         String uid = userId == null ? loginId.toString() : userId.toString();
         String tid = tenantId == null ? null : tenantId.toString();
+        // 角色编码（等价 Go claims.RoleCodes，登录时快照进会话；授权拦截器判定用）
+        List<String> roleCodeList = null;
+        if (roleCodes instanceof Iterable<?> iterable) {
+            roleCodeList = new ArrayList<>();
+            for (Object code : iterable) {
+                if (code != null) {
+                    roleCodeList.add(code.toString());
+                }
+            }
+        }
 
         // 逐请求会话校验（对齐 Go RequireActiveUser：停用即时失效，DB 异常 fail-closed 401）
         try {
@@ -120,7 +133,8 @@ public class ZhiyuAuthFilter extends OncePerRequestFilter {
 
         TenantContext.set(uid, tid,
             username == null ? null : username.toString(),
-            platform == null ? null : platform.toString());
+            platform == null ? null : platform.toString(),
+            roleCodeList);
         try {
             chain.doFilter(request, response);
         } finally {

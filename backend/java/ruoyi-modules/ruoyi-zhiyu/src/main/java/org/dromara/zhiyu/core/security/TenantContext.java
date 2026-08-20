@@ -1,10 +1,13 @@
 package org.dromara.zhiyu.core.security;
 
+import java.util.List;
+
 /**
  * zhiyu 请求租户/用户上下文（对齐 Go 版 middleware 从 JWT claims 携带的信息）。
  *
  * <p>由 {@link ZhiyuAuthFilter} 在请求进入时写入、请求结束时清理；业务代码通过
- * 静态方法读取当前用户与租户（等价 Go 版 claims.UserID / claims.TenantID）。</p>
+ * 静态方法读取当前用户与租户（等价 Go 版 claims.UserID / claims.TenantID /
+ * claims.RoleCodes）。</p>
  *
  * @author zhiyu
  */
@@ -14,6 +17,7 @@ public final class TenantContext {
     private static final ThreadLocal<String> TENANT_ID = new ThreadLocal<>();
     private static final ThreadLocal<String> USERNAME = new ThreadLocal<>();
     private static final ThreadLocal<String> PLATFORM = new ThreadLocal<>();
+    private static final ThreadLocal<List<String>> ROLE_CODES = new ThreadLocal<>();
 
     private TenantContext() {
     }
@@ -22,10 +26,19 @@ public final class TenantContext {
      * 设置当前请求上下文。
      */
     public static void set(String userId, String tenantId, String username, String platform) {
+        set(userId, tenantId, username, platform, null);
+    }
+
+    /**
+     * 设置当前请求上下文（含角色编码，等价 Go claims.RoleCodes）。
+     */
+    public static void set(String userId, String tenantId, String username, String platform,
+                           List<String> roleCodes) {
         USER_ID.set(userId);
         TENANT_ID.set(tenantId);
         USERNAME.set(username);
         PLATFORM.set(platform);
+        ROLE_CODES.set(roleCodes);
     }
 
     /**
@@ -36,6 +49,7 @@ public final class TenantContext {
         TENANT_ID.remove();
         USERNAME.remove();
         PLATFORM.remove();
+        ROLE_CODES.remove();
     }
 
     /** 当前用户 ID（未登录为 null） */
@@ -56,5 +70,10 @@ public final class TenantContext {
     /** 当前平台（saas/portal/partner） */
     public static String getPlatform() {
         return PLATFORM.get();
+    }
+
+    /** 当前用户角色编码（登录时快照进 Sa-Token 会话；旧会话/缺失为 null） */
+    public static List<String> getRoleCodes() {
+        return ROLE_CODES.get();
     }
 }

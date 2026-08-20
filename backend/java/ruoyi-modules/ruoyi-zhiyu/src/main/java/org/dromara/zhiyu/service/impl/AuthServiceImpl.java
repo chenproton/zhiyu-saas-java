@@ -551,6 +551,8 @@ public class AuthServiceImpl implements IAuthService {
         StpUtil.getSession().set("tenantId", user.getTenantId());
         StpUtil.getSession().set("username", user.getUsername());
         StpUtil.getSession().set("platform", user.getPlatform());
+        // 角色编码快照（等价 Go claims.RoleCodes），服务端授权判定（菜单兜底/角色白名单）用
+        StpUtil.getSession().set("roleCodes", roleCodes);
 
         LoginResponse resp = new LoginResponse();
         resp.setToken(StpUtil.getTokenValue());

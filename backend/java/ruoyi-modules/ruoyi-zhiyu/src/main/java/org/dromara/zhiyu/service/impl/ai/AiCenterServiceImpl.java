@@ -11,6 +11,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
+import org.dromara.zhiyu.core.security.ZhiyuAuthzLoader;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.ZhiyuUser;
 import org.dromara.zhiyu.domain.ai.AiAgent;
@@ -114,6 +115,7 @@ public class AiCenterServiceImpl implements IAiCenterService {
     private final PortalViewCounterMapper viewCounterMapper;
     private final AiKbChunkMapper chunkMapper;
     private final IAiService aiService;
+    private final ZhiyuAuthzLoader authzLoader;
 
     // ==================== 知识库 ====================
 
@@ -1112,28 +1114,24 @@ public class AiCenterServiceImpl implements IAiCenterService {
         return userId;
     }
 
+    /**
+     * AI 管理端写前校验（对齐 Go routes_ai_center.go:61-71 菜单驱动 RBAC，ADR-0008）：
+     * 勾选 AI 管理菜单（/portal/apps/ai/admin/reviews、/portal/apps/ai/admin/integrations）
+     * 即获得审核/挂接管理权限，不再限 school_admin 角色；school_admin 未显式配置菜单时
+     * 走「无 menus=全量」兜底（由授权快照加载器统一处理）。
+     */
     private void requireSchoolAdmin() {
-        if (!isSchoolAdmin()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
+        authzLoader.requireAiCenterAdmin();
     }
 
+    /**
+     * 审核管理只读体验判定（对齐 Go ai_center_handler.go aiIsSchoolAdmin）：
+     * 按角色编码（claims.RoleCodes）判定 school_admin，而非 users.role 单字段。
+     */
     private boolean isSchoolAdmin() {
-        ZhiyuUser user = currentUser();
-        return user != null && "school_admin".equals(user.getRole());
+        return authzLoader.isSchoolAdmin();
     }
 
-    private ZhiyuUser currentUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            return null;
-        }
-        try {
-            return userMapper.selectById(userId);
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
     // ==================== 可见性 ====================
 

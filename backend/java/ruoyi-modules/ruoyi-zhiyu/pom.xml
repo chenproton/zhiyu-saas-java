@@ -90,7 +90,7 @@
             <version>3.0.7</version>
         </dependency>
 
-        <!-- 单元测试 -->
+        <!-- 单元测试（JUnit5/Mockito，与 ruoyi-admin 一致） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

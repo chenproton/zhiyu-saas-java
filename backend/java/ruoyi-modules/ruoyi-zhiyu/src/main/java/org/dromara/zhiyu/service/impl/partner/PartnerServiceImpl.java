@@ -8,6 +8,7 @@ import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
+import org.dromara.zhiyu.core.security.ZhiyuAuthzLoader;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.ZhiyuUser;
 import org.dromara.zhiyu.domain.dto.partner.PartnerDtos.ChangePasswordRequest;
@@ -74,7 +75,17 @@ public class PartnerServiceImpl implements IPartnerService {
     private final PartnerEnterpriseLinkMapper linkMapper;
     private final PartnerCooperationMapper cooperationMapper;
     private final ZhiyuUserMapper userMapper;
+    private final ZhiyuAuthzLoader authzLoader;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    /**
+     * partner 管理员写接口角色校验（对齐 Go routes_partner.go:95-104 adminOnly
+     * RequireRole(enterprise_admin)：企业资料写/合作状态确认/专家库管理仅企业管理员）。
+     * 路由层已由 ZhiyuAuthzInterceptor 拦截，此处为服务层纵深防御。
+     */
+    private void requireEnterpriseAdmin() {
+        authzLoader.requireEnterpriseAdmin();
+    }
 
     // ===== 企业主体 =====
 
@@ -85,6 +96,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public PartnerEnterprise updateProfile(ProfileUpdateRequest req) {
+        requireEnterpriseAdmin();
         String tenantId = requireTenant();
         PartnerEnterprise existing = resolveEnterprise(tenantId);
 
@@ -119,6 +131,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public ListResponse<PartnerExpert> listExperts(String search, long limit, long offset) {
+        requireEnterpriseAdmin();
         String tenantId = requireTenant();
         LambdaQueryBuilder<PartnerExpert> wrapper = QueryBuilder.lambda(PartnerExpert.class)
             .eq(PartnerExpert::getTenantId, tenantId);
@@ -132,12 +145,14 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public PartnerExpert getExpert(String id) {
+        requireEnterpriseAdmin();
         return fetchExpert(id, requireTenant());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExpertCreateResponse createExpert(ExpertCreateRequest req) {
+        requireEnterpriseAdmin();
         String tenantId = requireTenant();
         String userId = requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
@@ -204,6 +219,7 @@ public class PartnerServiceImpl implements IPartnerService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public PartnerExpert updateExpert(String id, ExpertUpdateRequest req) {
+        requireEnterpriseAdmin();
         String tenantId = requireTenant();
         PartnerExpert existing = fetchExpert(id, tenantId);
         PartnerExpert merged = mergeExpertPartial(existing, req);
@@ -230,6 +246,7 @@ public class PartnerServiceImpl implements IPartnerService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteExpert(String id) {
+        requireEnterpriseAdmin();
         String tenantId = requireTenant();
         PartnerExpert expert = fetchExpert(id, tenantId);
         if (expert.getUserId() != null) {
@@ -323,6 +340,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public School updateSchoolStatus(String schoolTenantId, SchoolStatusRequest req) {
+        requireEnterpriseAdmin();
         String tenantId = requireTenant();
         String status = req.getStatus();
         if (!"active".equals(status) && !"paused".equals(status) && !"terminated".equals(status)) {
