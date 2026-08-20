@@ -238,7 +238,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/auth/partner/login` | 复用 `loginWithPlatform` 流程（platform=partner） |
+| POST | `/auth/partner/login` | 复用统一登录流程（`ZhiyuAuthController`/`AuthServiceImpl`，platform=partner） |
 | POST | `/auth/partner/register` | 公开注册：事务内创建「企业租户 + partner_enterprises 主体 + 管理员用户 + 角色种子」，直接签发 token |
 | GET | `/auth/partner/me` | 用户信息 + 企业主体合并返回 |
 
@@ -428,7 +428,7 @@ B10/B11（企业账号直绑 + public 改造）→ B12（任务级分配）→ B
 
 | 场景 | 预留机制 |
 |------|----------|
-| 企业平台新增模块（项目/活动/岗位/课程等） | 均为 `partner_*` 表 + `routes_partner.go` 加路由 + handler 按域加文件 + `partnerNavigationConfig` 加菜单，与 portal 扩展流程同构 |
+| 企业平台新增模块（项目/活动/岗位/课程等） | 均为 `partner_*` 表 + Java `Partner*Controller` 加端点 + Service/Mapper 按域加文件 + `partnerNavigationConfig` 加菜单，与 portal 扩展流程同构 |
 | 企业角色扩展 | roles 表支持企业租户自定义角色/权限（复用现有机制，本期仅种子两个默认角色） |
 | 合作类型扩展 | link 表 `relation_type` 预留（如校企共建/基地合作），无需改表结构 |
 | 资源分享机制泛化 | 专家跨租户只读模式可泛化为"企业资源对合作学校共享"通用机制 |
