@@ -516,7 +516,7 @@ async function performSave() {
       } else if (r.linkType === 'course' && r.courseId) {
         payloads.push({
           name: '',
-          code: r.code.trim() || undefined,
+          code: (r.code || '').trim() || undefined,
           credits: r.credits || 0,
           hours: r.hours || 0,
           semester: 1,
