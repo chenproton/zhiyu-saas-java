@@ -1072,7 +1072,9 @@ FRONTEND_HASH=$(vue_hash "$BUILD_ROOT")
 BUILD_FRONTEND=true
 [[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/frontend-hash" ]] && \
   [[ "$FRONTEND_HASH" == "$(cat "$BUILD_CACHE/frontend-hash")" ]] && \
-  [[ -d "$DEPLOY_DIR/web/portal" && -d "$DEPLOY_DIR/web/plus-ui" ]] && BUILD_FRONTEND=false
+  # 产物完整性判定：只查目录存在会被「web/ 被清空的空目录」骗过（跳过构建 → rsync 不执行 →
+  # nginx 挂载永远拿不到 index.html → 500/unhealthy，实测自愈失败）。必须校验 index.html 实际存在。
+  [[ -f "$DEPLOY_DIR/web/portal/index.html" && -f "$DEPLOY_DIR/web/plus-ui/index.html" ]] && BUILD_FRONTEND=false
 
 if $BUILD_FRONTEND; then
   log "构建前端（portal-vue + plus-ui）"
