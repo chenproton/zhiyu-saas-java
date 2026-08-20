@@ -14,6 +14,7 @@ import type {
   ExamResult,
   ExamCenterItem,
   ExamSnapshot,
+  RandomDrawQuestion,
   SceneEvaluationResult
 } from '@/types/evaluation';
 
@@ -64,6 +65,13 @@ export const questionApi = {
       body: JSON.stringify({ bankId, items })
     })
 };
+
+/** 现场问答题库（对齐 React randomDrawQuestionApi；Java 端 EvaluationQuestionBankController） */
+export const randomDrawQuestionApi = createCrudApi<
+  RandomDrawQuestion,
+  Partial<Omit<RandomDrawQuestion, 'id' | 'createdAt' | 'updatedAt'>>,
+  Partial<Omit<RandomDrawQuestion, 'id' | 'createdAt' | 'updatedAt'>>
+>('/evaluation/random-draw-questions');
 
 export const evaluationBatchApi = createCrudApi<any, Record<string, unknown>, Record<string, unknown>>(
   '/evaluation/batches'
@@ -157,6 +165,9 @@ export const evaluationResultApi = {
       score: number;
       evalPointScores?: Record<string, unknown>;
       comment?: string;
+      drawnQuestions?: Record<string, unknown>;
+      objectiveAnswers?: Record<string, unknown>;
+      subjectiveContent?: Record<string, unknown>;
     }
   ) => request<SceneEvaluationResult>(`/evaluation/results/${id}/grade`, {
     method: 'POST',

@@ -1,11 +1,29 @@
 import { createContentApi, createCrudApi, request, buildQuery } from './http';
 import type { ListResponse } from './http';
-import type { Scenario, ScenarioTask, TaskResource, TaskResourceBinding } from '@/types/scene';
+import type {
+  Scenario,
+  ScenarioSnapshot,
+  ScenarioTask,
+  TaskEvaluationMethod,
+  TaskResource,
+  TaskResourceBinding
+} from '@/types/scene';
 
 type ScenarioCreate = Partial<Omit<Scenario, 'id' | 'createdAt' | 'updatedAt'>>;
 type ScenarioUpdate = Partial<Omit<Scenario, 'id' | 'createdAt' | 'updatedAt'>>;
 
-export const scenarioApi = createContentApi<Scenario, ScenarioCreate, ScenarioUpdate>('/scene/scenarios');
+export const scenarioApi = {
+  ...createContentApi<Scenario, ScenarioCreate, ScenarioUpdate>('/scene/scenarios'),
+  /** 场景快照 bundle（?version= 可选，缺省最新已发布快照；对齐 React scenarioApi.getSnapshot） */
+  getSnapshot: (id: string, params?: { version?: string }) =>
+    request<ScenarioSnapshot>(`/scene/scenarios/${id}/snapshot${buildQuery(params || {})}`)
+};
+
+// 任务评价方式（对齐 React taskEvaluationApi；Java 端 SceneEvalMethodController /api/v1/scene）
+export const taskEvaluationApi = {
+  listMethods: (taskId: string) =>
+    request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`)
+};
 
 export const taskApi = {
   ...createCrudApi<ScenarioTask, Partial<Omit<ScenarioTask, 'id'>>, Partial<Omit<ScenarioTask, 'id'>>>(
