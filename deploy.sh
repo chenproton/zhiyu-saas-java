@@ -1101,7 +1101,9 @@ if $BUILD_FRONTEND; then
 
   # ── portal-vue 业务门户（build 内含 vue-tsc 类型检查）──
   log "  构建 portal-vue（业务门户，根路径 base）..."
-  if [[ ! -d "$PORTAL_VUE_DIR/node_modules" ]]; then
+  # node_modules 存在但缺关键 devDeps（vue-tsc）也要重装：上一轮失败残留的不完整安装
+  # （NODE_ENV=production 跳过 devDeps）会骗过目录存在性检查，导致 vue-tsc 一直缺失
+  if [[ ! -d "$PORTAL_VUE_DIR/node_modules" || ! -x "$PORTAL_VUE_DIR/node_modules/.bin/vue-tsc" ]]; then
     # env -u NODE_ENV：宿主若全局导出 NODE_ENV=production，pnpm 会跳过 devDependencies
     # （vue-tsc/typescript 缺失 → vue-tsc --noEmit 找不到命令 → 构建必失败，实测复现）
     (cd "$PORTAL_VUE_DIR" && env -u NODE_ENV pnpm install --frozen-lockfile 2>/dev/null) || \
@@ -1142,8 +1144,9 @@ if $BUILD_FRONTEND; then
   if grep -q '"packageManager": "pnpm@10' "$PLUS_UI_DIR/package.json" 2>/dev/null; then
     PLUS_PNPM="npx --yes pnpm@10.34.5"
   fi
-  if [[ ! -d "$PLUS_UI_DIR/node_modules" ]]; then
-    # 同 portal-vue：env -u NODE_ENV 避免宿主 NODE_ENV=production 跳过 devDependencies
+  # 同 portal-vue：node_modules 存在但缺关键 devDeps（vite）也要重装
+  if [[ ! -d "$PLUS_UI_DIR/node_modules" || ! -x "$PLUS_UI_DIR/node_modules/.bin/vite" ]]; then
+    # env -u NODE_ENV 避免宿主 NODE_ENV=production 跳过 devDependencies
     (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --frozen-lockfile 2>/dev/null) || \
     { warn "plus-ui frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
       (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
