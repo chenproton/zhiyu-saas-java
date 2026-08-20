@@ -428,6 +428,21 @@ if [[ -f "$NGINX_CONF" ]]; then
 fi
 
 # ── 7. 健康检查 ──
+# nginx 前端挂载自愈（与 deploy.sh 同款）：升级场景若 web 产物曾 rm -rf 重建导致挂载失效，
+# 自动重启 nginx 刷新挂载，避免 try_files 循环 500
+log "检查 nginx 前端挂载有效性..."
+NGINX_MOUNT_OK=false
+for _ in 1 2 3; do
+  if docker exec zhiyu-nginx sh -c '[ -f /usr/share/nginx/html/portal/index.html ]' 2>/dev/null; then
+    NGINX_MOUNT_OK=true
+    break
+  fi
+  log "  nginx 挂载异常（portal/index.html 不可见），自动重启 zhiyu-nginx 刷新挂载..."
+  docker restart zhiyu-nginx >/dev/null 2>&1 || true
+  sleep 5
+done
+[[ "$NGINX_MOUNT_OK" == "true" ]] || warn "  nginx 挂载自愈未成功（web/portal 产物缺失？），继续按健康检查结果判定"
+
 log "等待服务就绪..."
 OK=true
 for svc in java-backend nginx; do

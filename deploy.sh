@@ -894,9 +894,21 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   [[ "$CLEAN_BUILD" == "true" ]] && { git -C "$ORIGINAL_ROOT" worktree remove --force "$BUILD_TREE" 2>/dev/null || true; rm -rf "$BUILD_TREE"; }
 
   if [[ -e "$BUILD_TREE/.git" ]]; then
-    # 失败不能吞：否则会在残留的旧 HEAD 上继续构建，却宣称部署了目标分支/最新 master
-    git -C "$BUILD_TREE" checkout --detach --force origin/master 2>/dev/null \
-      || die "构建 worktree 切换到 origin/master 失败（可用 --clean 重建 $BUILD_TREE）"
+    # 跨仓库占用检测：/tmp/zhiyu-build-cache 路径固定，可能被本机其他仓库同名注册
+    # （历史残留/多仓库同机开发）。复用前比对 git common-dir 归属，异仓则移除重建——
+    # 否则会在他人代码树上 checkout/merge（实测：merge origin/x 报 not something we can merge）。
+    TREE_COMMON=$(cd "$BUILD_TREE" && git rev-parse --git-common-dir 2>/dev/null | xargs -I{} readlink -f "$BUILD_TREE"/{} 2>/dev/null || echo "")
+    OWN_COMMON=$(git -C "$ORIGINAL_ROOT" rev-parse --git-common-dir 2>/dev/null | xargs -I{} readlink -f "$ORIGINAL_ROOT"/{} 2>/dev/null || echo "")
+    if [[ -n "$TREE_COMMON" && -n "$OWN_COMMON" && "$TREE_COMMON" != "$OWN_COMMON" ]]; then
+      log "构建 worktree 属于其他仓库（${TREE_COMMON} ≠ ${OWN_COMMON}），自动移除重建..."
+      rm -rf "$BUILD_TREE"
+      git -C "$ORIGINAL_ROOT" worktree prune 2>/dev/null || true
+      git -C "$ORIGINAL_ROOT" worktree add --detach "$BUILD_TREE" origin/master || die "无法创建 worktree"
+    else
+      # 失败不能吞：否则会在残留的旧 HEAD 上继续构建，却宣称部署了目标分支/最新 master
+      git -C "$BUILD_TREE" checkout --detach --force origin/master 2>/dev/null \
+        || die "构建 worktree 切换到 origin/master 失败（可用 --clean 重建 $BUILD_TREE）"
+    fi
   else
     [[ -d "$BUILD_TREE" ]] && rm -rf "$BUILD_TREE"
     # 清理失效的 worktree 注册（目录被手动删除但 .git/worktrees 仍登记时 add 会报
@@ -1295,6 +1307,24 @@ if ! compose up -d --remove-orphans >>"$COMPOSE_UP_LOG" 2>&1; then
   rollback_deploy "docker compose up 业务容器失败"
 fi
 tail -n 5 "$COMPOSE_UP_LOG"
+
+# nginx 前端挂载自愈：web 产物 rsync 增量同步不破坏 bind mount，但历史 rm -rf 重建遗留
+# 的失效挂载（容器挂载点指向已删 inode → index.html 不可见 → try_files 循环 500）需重启
+# 容器刷新挂载。检测到异常自动重启（最多 3 次），无需人工干预。
+log "检查 nginx 前端挂载有效性..."
+NGINX_MOUNT_OK=false
+for _ in 1 2 3; do
+  if docker exec zhiyu-nginx sh -c '[ -f /usr/share/nginx/html/portal/index.html ]' 2>/dev/null; then
+    NGINX_MOUNT_OK=true
+    break
+  fi
+  log "  nginx 挂载异常（portal/index.html 不可见），自动重启 zhiyu-nginx 刷新挂载..."
+  docker restart zhiyu-nginx >/dev/null 2>&1 || true
+  sleep 5
+done
+if [[ "$NGINX_MOUNT_OK" != "true" ]]; then
+  warn "  nginx 挂载自愈未成功（$DEPLOY_DIR/web/portal 产物缺失？），继续按健康检查结果判定"
+fi
 
 # 健康检查
 log "等待服务就绪..."
