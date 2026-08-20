@@ -334,6 +334,18 @@ export interface ExamResult {
   createdAt: string;
 }
 
+/** 现场问答题（/evaluation/random-draw-questions，对齐 React shared-types RandomDrawQuestion） */
+export interface RandomDrawQuestion {
+  id: string;
+  name: string;
+  description?: string;
+  answer?: string;
+  majorId?: string;
+  majorName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface SceneEvaluationResult {
   id: string;
   taskId: string;

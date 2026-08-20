@@ -15,84 +15,210 @@
       <el-radio-button value="timetable">课表视图与发布</el-radio-button>
     </el-radio-group>
 
-    <!-- 自定义排课 -->
-    <el-card v-if="step === 'grid'" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">排课列表</span>
-          <div>
-            <el-button :disabled="!planId" @click="autoSchedule">自动排课</el-button>
+    <!-- ============ 自定义排课：场地×节次可视化网格 ============ -->
+    <template v-if="step === 'grid'">
+      <el-empty
+        v-if="!selectedPlan"
+        description="请先在顶部选择已确认的教学计划"
+        :image-size="80"
+        class="grid-empty"
+      />
+
+      <template v-else>
+        <!-- 工具栏 -->
+        <div class="grid-toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-stats">已排 {{ scheduledCount }}/{{ planEntries.length }} 门 · 待排 {{ pendingEntries.length }} 门</span>
+          </div>
+          <div class="toolbar-actions">
             <el-button :disabled="!planId" @click="exportExcel">导出排课</el-button>
             <el-button :disabled="!planId" @click="pickImport">导入排课表</el-button>
+            <el-button :disabled="!planId" @click="autoSchedule">自动排课</el-button>
             <el-button type="primary" :disabled="!planId" @click="openCreate">新增排课</el-button>
           </div>
         </div>
-      </template>
 
-      <el-table v-loading="loading" :data="schedules" stripe>
-        <el-table-column label="课程" prop="courseName" min-width="140" show-overflow-tooltip />
-        <el-table-column label="班级" min-width="120">
-          <template #default="{ row }">{{ row.className || row.classNames?.join('、') || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="教师" prop="teacherName" width="100">
-          <template #default="{ row }">{{ row.teacherName || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="星期" width="80">
-          <template #default="{ row }">周{{ '一二三四五六日'[(row.dayOfWeek - 1) % 7] }}</template>
-        </el-table-column>
-        <el-table-column label="节次" width="100">
-          <template #default="{ row }">{{ (row.periods || []).join('、') }}</template>
-        </el-table-column>
-        <el-table-column label="周次" width="100">
-          <template #default="{ row }">{{ row.startWeek }}-{{ row.endWeek }} 周</template>
-        </el-table-column>
-        <el-table-column label="场地" prop="venueName" width="100">
-          <template #default="{ row }">{{ row.venueName || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'published' ? 'success' : 'info'">{{ row.status === 'published' ? '已发布' : '草稿' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="130" align="right">
-          <template #default="{ row }">
-            <el-button size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="confirmDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <!-- 课表视图与发布 -->
-    <el-card v-else shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">课表视图（已发布，版本 v{{ timetableVersion }}）</span>
-          <el-button type="primary" :disabled="!planId" @click="publish">发布课表</el-button>
+        <!-- 场地筛选 -->
+        <div class="venue-filter">
+          <button
+            type="button"
+            class="venue-chip"
+            :class="{ active: venueFilter === '__all' }"
+            @click="venueFilter = '__all'"
+          >
+            全部
+          </button>
+          <button
+            v-for="v in venues"
+            :key="v.id"
+            type="button"
+            class="venue-chip"
+            :class="{ active: venueFilter === v.id }"
+            @click="venueFilter = v.id"
+          >
+            <el-icon class="venue-chip-icon"><Location /></el-icon>{{ v.name }}
+          </button>
         </div>
+
+        <!-- 已选中待排课程提示条 -->
+        <div v-if="selectedEntry && !movingEntry" class="hint-banner hint-blue">
+          <span class="hint-strong">已选中：{{ selectedEntry.courseName }}</span>
+          <span>→ 点击右侧空格排课</span>
+          <el-button size="small" text class="hint-cancel" @click="selectedPendingId = null">
+            <el-icon class="btn-icon"><Close /></el-icon>取消
+          </el-button>
+        </div>
+
+        <!-- 移动中提示条 -->
+        <div v-if="movingEntry" class="hint-banner hint-orange">
+          <span class="hint-strong">正在重新排课：{{ movingEntry.courseName }}</span>
+          <span>→ 点击右侧空格切换时间</span>
+          <el-button size="small" text class="hint-cancel" @click="movingEntry = null">
+            <el-icon class="btn-icon"><Close /></el-icon>取消
+          </el-button>
+        </div>
+
+        <!-- 待排课程列表 + 可视化网格 -->
+        <div class="grid-layout">
+          <div class="pending-panel">
+            <div class="pending-head">
+              <h3 class="pending-title">待排课程 ({{ pendingEntries.length }})</h3>
+              <p class="pending-sub">点击选中·再点空格排课</p>
+            </div>
+            <div class="pending-list">
+              <div v-if="pendingEntries.length === 0" class="pending-done">
+                <el-icon class="pending-done-icon"><CircleCheck /></el-icon>
+                <span>全部排完</span>
+              </div>
+              <button
+                v-for="e in pendingEntries"
+                :key="e.id"
+                type="button"
+                class="pending-card"
+                :class="{ selected: e.id === selectedPendingId }"
+                @click="selectedPendingId = selectedPendingId === e.id ? null : e.id"
+              >
+                <div class="pending-card-head">
+                  <span class="pending-course">{{ e.courseName }}</span>
+                  <el-tag v-if="e.type === 'scene'" size="small" effect="plain" class="scene-tag">场景</el-tag>
+                </div>
+                <div class="pending-meta">第 {{ e.startWeek }}-{{ e.endWeek }} 周</div>
+                <div v-if="e.teacherName" class="pending-meta">
+                  <el-icon class="pending-meta-icon"><User /></el-icon>{{ e.teacherName }}
+                </div>
+                <div v-if="(e.classNodeIds || []).length > 0" class="pending-meta">
+                  {{ (e.classNames || []).slice(0, 2).join('、') }}等{{ (e.classNodeIds || []).length }}班
+                </div>
+                <div class="pending-action">{{ selectedPendingId === e.id ? '已选中·点空格排课' : '点击选中' }}</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid-panel">
+            <ScheduleGrid
+              :entries="filteredSchedules"
+              :period-slots="periodSlots"
+              :loading="loading"
+              always-show
+              empty-text="点击左侧课程后点此处空格"
+              :editable="true"
+              :movable="true"
+              :clickable="!!selectedEntry || !!movingEntry"
+              :moving-entry="movingEntry"
+              @entry-click="handleEditClick"
+              @cell-click="handleCellClick"
+              @entry-move="handleEntryMove"
+            />
+          </div>
+        </div>
+
+        <!-- 排课列表（保留原有列表/编辑/删除能力） -->
+        <el-collapse v-model="listOpen" class="list-collapse">
+          <el-collapse-item name="list">
+            <template #title>
+              <span class="collapse-title">排课列表（{{ schedules.length }} 条）</span>
+            </template>
+            <el-table v-loading="loading" :data="schedules" stripe>
+              <el-table-column label="课程" prop="courseName" min-width="140" show-overflow-tooltip />
+              <el-table-column label="班级" min-width="120">
+                <template #default="{ row }">{{ row.className || row.classNames?.join('、') || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="教师" prop="teacherName" width="100">
+                <template #default="{ row }">{{ row.teacherName || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="星期" width="80">
+                <template #default="{ row }">周{{ '一二三四五六日'[(row.dayOfWeek - 1) % 7] }}</template>
+              </el-table-column>
+              <el-table-column label="节次" width="100">
+                <template #default="{ row }">{{ (row.periods || []).join('、') }}</template>
+              </el-table-column>
+              <el-table-column label="周次" width="100">
+                <template #default="{ row }">{{ row.startWeek }}-{{ row.endWeek }} 周</template>
+              </el-table-column>
+              <el-table-column label="场地" prop="venueName" width="100">
+                <template #default="{ row }">{{ row.venueName || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="130" align="right">
+                <template #default="{ row }">
+                  <el-button size="small" @click="openEdit(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="confirmDelete(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-collapse-item>
+        </el-collapse>
+
+        <!-- 完善排课信息弹窗（选中待排课程后点空格） -->
+        <el-dialog v-model="preConfigOpen" title="完善排课信息" width="480px">
+          <p class="pre-config-desc">
+            「{{ preConfigEntry?.courseName || '' }}」排课前需配置完整：班级、教师、场地均为必填
+          </p>
+          <el-form label-width="90px">
+            <el-form-item label="授课班级" required>
+              <el-tree-select
+                v-model="preClassIds"
+                :data="classTreeData"
+                node-key="value"
+                :props="{ label: 'label', children: 'children' }"
+                multiple
+                check-strictly
+                placeholder="选择授课班级"
+                style="width: 100%"
+              />
+            </el-form-item>
+            <el-form-item label="授课教师" required>
+              <el-select v-model="preTeacherId" filterable placeholder="选择教师" style="width: 100%">
+                <el-option v-for="t in teachers" :key="t.id" :label="t.name" :value="t.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="场地" required>
+              <el-select v-model="preVenueId" filterable placeholder="选择场地" style="width: 100%">
+                <el-option v-for="v in venues" :key="v.id" :label="`${v.name}（${v.type}）`" :value="v.id" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button @click="preConfigOpen = false">取消</el-button>
+            <el-button
+              type="primary"
+              :loading="preConfigSaving"
+              :disabled="preClassIds.length === 0 || !preTeacherId || !preVenueId"
+              @click="handlePreConfigSave"
+            >
+              保存并排课
+            </el-button>
+          </template>
+        </el-dialog>
       </template>
-      <el-table v-loading="loading" :data="timetableItems" stripe>
-        <el-table-column label="课程" prop="courseName" min-width="140" show-overflow-tooltip />
-        <el-table-column label="班级" min-width="120">
-          <template #default="{ row }">{{ row.className || row.classNames?.join('、') || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="教师" prop="teacherName" width="100">
-          <template #default="{ row }">{{ row.teacherName || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="星期" width="80">
-          <template #default="{ row }">周{{ '一二三四五六日'[(row.dayOfWeek - 1) % 7] }}</template>
-        </el-table-column>
-        <el-table-column label="节次" width="100">
-          <template #default="{ row }">{{ (row.periods || []).join('、') }}</template>
-        </el-table-column>
-        <el-table-column label="周次" width="100">
-          <template #default="{ row }">{{ row.startWeek }}-{{ row.endWeek }} 周</template>
-        </el-table-column>
-        <el-table-column label="场地" prop="venueName" width="100">
-          <template #default="{ row }">{{ row.venueName || '-' }}</template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    </template>
+
+    <!-- ============ 课表视图与发布：班级/教师双视角周课表 ============ -->
+    <TimetableViewTab
+      v-else
+      :term="timetableTerm"
+      :class-tree-data="classTreeData"
+      :teachers="teachers"
+    />
 
     <!-- 导入预览 -->
     <el-dialog v-model="importDialog" title="导入排课表" width="520px">
@@ -106,7 +232,7 @@
         :on-change="onImportFileChange"
         :file-list="importFileList"
       >
-        <div>拖拽或点击上传 .xlsx 文件</div>
+        <div>拖拽或点击上传 .xlsx 文件（可先「导出排课」作为模板）</div>
       </el-upload>
       <div v-if="importPreview" class="preview">
         <p>待导入 {{ importPreview.total }} 条，有效 {{ importPreview.valid }} 条，无效 {{ importPreview.invalid }} 条</p>
@@ -163,6 +289,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
+        <el-button v-if="editing" size="small" type="danger" text class="dialog-delete" @click="confirmDelete(editing)">取消排课</el-button>
         <el-button @click="dialog = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
@@ -171,25 +298,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { teachingPlanApi, scheduleApi, venueApi, periodSlotApi } from '@/api/affairs';
+import { CircleCheck, Close, Location, User } from '@element-plus/icons-vue';
+import { teachingPlanApi, scheduleApi, venueApi, periodSlotApi, termApi } from '@/api/affairs';
 import { organizationApi, orgTypeApi } from '@/api/system';
 import { userManagementApi } from '@/api/portal';
 import { importExportApi, type ImportPreviewResult } from '@/api/import-export';
-import type { TeachingPlanDetail, TeachingPlanEntry, ScheduleEntry, Venue, PeriodSlot } from '@/types/affairs';
+import type { AffairsTerm, TeachingPlanDetail, TeachingPlanEntry, ScheduleEntry, Venue, PeriodSlot } from '@/types/affairs';
+import ScheduleGrid from './schedule-grid.vue';
+import TimetableViewTab, { type ClassTreeNode } from './timetable-view-tab.vue';
 
 const step = ref<'grid' | 'timetable'>('grid');
 const plans = ref<TeachingPlanDetail[]>([]);
 const planId = ref('');
 const planEntries = ref<TeachingPlanEntry[]>([]);
 const schedules = ref<ScheduleEntry[]>([]);
-const timetableItems = ref<ScheduleEntry[]>([]);
-const timetableVersion = ref(0);
 const venues = ref<Venue[]>([]);
 const periodSlots = ref<PeriodSlot[]>([]);
-const teachers = ref<{ id: string; name: string }[]>([]);
-const classTreeData = ref<{ value: string; label: string; children?: any[] }[]>([]);
+const teachers = ref<{ id: string; name: string; workId?: string }[]>([]);
+const classTreeData = ref<ClassTreeNode[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const dialog = ref(false);
@@ -199,12 +327,70 @@ const importFile = ref<File | null>(null);
 const importFileList = ref<any[]>([]);
 const importPreview = ref<ImportPreviewResult | null>(null);
 
+// ===== 可视化网格状态（对齐 React schedule-grid-tab.tsx） =====
+const venueFilter = ref<string>('__all');
+const selectedPendingId = ref<string | null>(null);
+const movingEntry = ref<ScheduleEntry | null>(null);
+const preConfigOpen = ref(false);
+const preConfigEntry = ref<TeachingPlanEntry | null>(null);
+const preConfigDay = ref(0);
+const preConfigPeriod = ref('');
+const preClassIds = ref<string[]>([]);
+const preTeacherId = ref('');
+const preVenueId = ref('');
+const preConfigSaving = ref(false);
+const listOpen = ref<string[]>(['list']);
+
 const form = reactive({
   courseName: '', classNodeId: '', teacherId: '', dayOfWeek: 1,
   periods: [] as string[], startWeek: 1, endWeek: 16, venueId: ''
 });
 
 const selectedPlan = computed(() => plans.value.find((p) => p.id === planId.value) || null);
+const pendingEntries = computed(() => planEntries.value.filter((e) => e.status === 'planned'));
+const scheduledCount = computed(() => planEntries.value.filter((e) => e.status === 'scheduled').length);
+const selectedEntry = computed(
+  () => pendingEntries.value.find((e) => e.id === selectedPendingId.value) || null
+);
+const filteredSchedules = computed(() =>
+  venueFilter.value === '__all'
+    ? schedules.value
+    : schedules.value.filter((e) => e.venueId === venueFilter.value)
+);
+
+// 课表视图使用的学期（选中计划变化时拉取完整 term 的周数/日期）
+const selectedTerm = ref<AffairsTerm | null>(null);
+const timetableTerm = computed<AffairsTerm | null>(() => {
+  if (!selectedPlan.value) return null;
+  return (
+    selectedTerm.value ?? {
+      id: selectedPlan.value.termId,
+      name: selectedPlan.value.termName || '',
+      startDate: '',
+      endDate: '',
+      weeksCount: 16,
+      isCurrent: false,
+      createdAt: ''
+    }
+  );
+});
+
+watch(
+  selectedPlan,
+  async (plan) => {
+    if (!plan?.termId) {
+      selectedTerm.value = null;
+      return;
+    }
+    try {
+      const res = await termApi.list({ search: plan.termId, limit: 50 });
+      selectedTerm.value = (res.items || []).find((x) => x.id === plan.termId) || null;
+    } catch {
+      selectedTerm.value = null;
+    }
+  },
+  { immediate: true }
+);
 
 async function loadPlans() {
   try {
@@ -227,13 +413,14 @@ async function loadDicts() {
     ]);
     venues.value = venueRes.items;
     periodSlots.value = periodRes.items;
-    teachers.value = (teacherRes.items || []).map((u) => ({ id: u.id, name: u.name }));
+    teachers.value = (teacherRes.items || []).map((u) => ({ id: u.id, name: u.name, workId: u.workId }));
     const classTypeIds = new Set((orgTypeRes.items || []).filter((t) => t.name === '班级').map((t) => t.id));
-    const buildTree = (nodes: any[]): any[] => nodes.map((n) => ({ value: n.id, label: n.name, children: n.children ? buildTree(n.children) : [] }));
+    const buildTree = (nodes: any[]): ClassTreeNode[] =>
+      nodes.map((n) => ({ value: n.id, label: n.name, typeId: n.typeId, children: n.children ? buildTree(n.children) : [] }));
     const fullTree = buildTree(orgRes.items || []);
-    const filterClassTree = (nodes: any[]): any[] =>
+    const filterClassTree = (nodes: ClassTreeNode[]): ClassTreeNode[] =>
       nodes.map((n) => ({ ...n, children: filterClassTree(n.children || []) }))
-        .filter((n) => n.children.length > 0 || classTypeIds.has(n.value));
+        .filter((n) => (n.children && n.children.length > 0) || (n.typeId ? classTypeIds.has(n.typeId) : false));
     classTreeData.value = filterClassTree(fullTree);
   } catch {
     /* ignore */
@@ -242,6 +429,8 @@ async function loadDicts() {
 
 async function onPlanChange() {
   if (!planId.value) return;
+  selectedPendingId.value = null;
+  movingEntry.value = null;
   loading.value = true;
   try {
     const detail = await teachingPlanApi.get(planId.value);
@@ -259,7 +448,8 @@ async function loadSchedules() {
   if (!planId.value) return;
   loading.value = true;
   try {
-    const res = await scheduleApi.list({ termId: selectedPlan.value?.termId, limit: 500 });
+    // 网格为草稿编辑区，只展示草稿（已发布是发布时的快照，在课表视图中查看）
+    const res = await scheduleApi.list({ termId: selectedPlan.value?.termId, status: 'draft', limit: 200 });
     schedules.value = res.items;
   } catch (e) {
     ElMessage.error((e as Error).message || '加载排课失败');
@@ -269,21 +459,124 @@ async function loadSchedules() {
   }
 }
 
-async function loadTimetable() {
-  if (!planId.value) return;
-  loading.value = true;
+async function reloadAll() {
+  await loadSchedules();
+  await onPlanChange();
+}
+
+// ===== 网格交互（对齐 React schedule-grid-tab.tsx） =====
+
+async function handleCellClick(dayOfWeek: number, periodKey: string) {
+  if (!selectedEntry.value) return;
+  const classIds =
+    selectedEntry.value.classNodeIds || (selectedEntry.value.classNodeId ? [selectedEntry.value.classNodeId] : []);
+  // 场地必须在排课时指定（教学计划条目不含场地），因此始终要求弹窗配置班级/教师/场地
+  // 若顶部场地筛选已切换到具体场地，则自动带入弹窗场地字段
+  preConfigEntry.value = selectedEntry.value;
+  preConfigDay.value = dayOfWeek;
+  preConfigPeriod.value = periodKey;
+  preClassIds.value = classIds;
+  preTeacherId.value = selectedEntry.value.teacherId || '';
+  preVenueId.value = venueFilter.value === '__all' ? '' : venueFilter.value;
+  preConfigOpen.value = true;
+}
+
+async function doCreateSchedule(
+  entry: TeachingPlanEntry,
+  day: number,
+  period: string,
+  classIds: string[],
+  teacherId: string,
+  venueId: string
+): Promise<{ created: number; lastErr: string }> {
   try {
-    const res = await scheduleApi.timetable({ termId: selectedPlan.value?.termId || '', status: 'published' });
-    timetableItems.value = res.items;
-    timetableVersion.value = res.version || 0;
-  } catch (e) {
-    ElMessage.error((e as Error).message || '加载课表失败');
-    timetableItems.value = [];
-  } finally {
-    loading.value = false;
+    await scheduleApi.create({
+      termId: selectedPlan.value?.termId || '',
+      planEntryId: entry.id,
+      courseName: entry.courseName,
+      courseCode: entry.courseCode || undefined,
+      courseId: entry.courseId || undefined,
+      type: entry.type || 'traditional',
+      classNodeId: classIds[0] || '',
+      classNodeIds: classIds,
+      teacherId: teacherId || undefined,
+      dayOfWeek: day,
+      periods: [period],
+      startWeek: entry.startWeek || 1,
+      endWeek: entry.endWeek || 1,
+      weekPattern: entry.weekPattern || 'all',
+      venueId: venueId || undefined,
+      scenarioId: entry.scenarioId || undefined
+    });
+    return { created: 1, lastErr: '' };
+  } catch (err) {
+    return { created: 0, lastErr: (err as Error)?.message || '' };
   }
 }
 
+async function handlePreConfigSave() {
+  if (!preConfigEntry.value) return;
+  preConfigSaving.value = true;
+  try {
+    const { created, lastErr } = await doCreateSchedule(
+      preConfigEntry.value,
+      preConfigDay.value,
+      preConfigPeriod.value,
+      preClassIds.value,
+      preTeacherId.value,
+      preVenueId.value
+    );
+    if (created > 0) {
+      ElMessage.success(`「${preConfigEntry.value.courseName}」已排入周${preConfigDay.value} ${preConfigPeriod.value}`);
+      selectedPendingId.value = null;
+      preConfigEntry.value = null;
+      preConfigOpen.value = false;
+      await reloadAll();
+    } else if (lastErr) {
+      ElMessage.error(lastErr);
+    }
+  } catch (e) {
+    ElMessage.error((e as Error).message || '排课失败');
+  } finally {
+    preConfigSaving.value = false;
+  }
+}
+
+async function handleEntryMove(entry: ScheduleEntry, dayOfWeek: number, periodKey: string) {
+  try {
+    await scheduleApi.update(entry.id, {
+      termId: entry.termId,
+      planEntryId: entry.planEntryId,
+      courseName: entry.courseName,
+      courseCode: entry.courseCode || undefined,
+      courseId: entry.courseId || undefined,
+      type: entry.type,
+      classNodeId: entry.classNodeId,
+      // 多班级条目必须回传完整班级列表，否则后端回退仅主班级、其余班级丢失
+      classNodeIds: entry.classNodeIds || (entry.classNodeId ? [entry.classNodeId] : []),
+      teacherId: entry.teacherId || undefined,
+      dayOfWeek,
+      periods: [periodKey],
+      startWeek: entry.startWeek,
+      endWeek: entry.endWeek,
+      weekPattern: entry.weekPattern,
+      venueId: entry.venueId || undefined,
+      scenarioId: entry.scenarioId || undefined
+    });
+    ElMessage.success('排课已调整');
+    movingEntry.value = null;
+    await reloadAll();
+  } catch (e) {
+    ElMessage.error((e as Error).message || '调整失败');
+  }
+}
+
+function handleEditClick(entry: ScheduleEntry) {
+  movingEntry.value = null;
+  openEdit(entry);
+}
+
+// ===== 新增/编辑弹窗（保留原有能力） =====
 function openCreate() {
   editing.value = null;
   form.courseName = '';
@@ -335,7 +628,7 @@ async function save() {
       ElMessage.success('创建成功');
     }
     dialog.value = false;
-    loadSchedules();
+    await reloadAll();
   } catch (e) {
     const err = e as Error & { conflicts?: { courseName: string; className?: string; teacherName?: string }[] };
     if (err.conflicts && err.conflicts.length) {
@@ -349,11 +642,16 @@ async function save() {
 }
 
 async function confirmDelete(row: ScheduleEntry) {
-  try { await ElMessageBox.confirm(`确定删除「${row.courseName}」的排课吗？`, '确认删除', { type: 'warning' }); } catch { return; }
+  try {
+    await ElMessageBox.confirm(`确定删除「${row.courseName}」的排课吗？`, '确认删除', { type: 'warning' });
+  } catch {
+    return;
+  }
   try {
     await scheduleApi.delete(row.id);
     ElMessage.success('删除成功');
-    loadSchedules();
+    dialog.value = false;
+    await reloadAll();
   } catch (e) {
     ElMessage.error((e as Error).message || '删除失败');
   }
@@ -364,7 +662,7 @@ async function autoSchedule() {
   try {
     const res = await scheduleApi.autoSchedule({ termId: selectedPlan.value?.termId || '', planId: planId.value });
     ElMessage.success(`自动排课完成：成功 ${res.success} 条，失败 ${res.failed} 条`);
-    loadSchedules();
+    await reloadAll();
   } catch (e) {
     ElMessage.error((e as Error).message || '自动排课失败');
   }
@@ -379,6 +677,7 @@ async function exportExcel() {
   }
 }
 
+// ===== 导入（保留原有能力） =====
 function pickImport() {
   importFile.value = null;
   importFileList.value = [];
@@ -415,22 +714,11 @@ async function doImport(overwrite: boolean) {
     const res = await importExportApi.import('schedules', importFile.value, overwrite, false);
     ElMessage.success(`导入完成：新增 ${res.created} 条，失败 ${res.failed} 条`);
     closeImport();
-    loadSchedules();
+    await reloadAll();
   } catch (e) {
     ElMessage.error((e as Error).message || '导入失败');
   } finally {
     saving.value = false;
-  }
-}
-
-async function publish() {
-  if (!planId.value) return;
-  try {
-    const res = await scheduleApi.publish(selectedPlan.value?.termId || '');
-    ElMessage.success(`已发布 ${res.published} 条排课（版本 v${res.version}）`);
-    loadTimetable();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '发布失败');
   }
 }
 
@@ -447,7 +735,171 @@ onMounted(async () => {
 .page-title { font-size: 20px; font-weight: 700; margin: 0; }
 .page-sub { color: #909399; margin: 8px 0 0; }
 .step-tabs { margin-bottom: 16px; }
-.card-header { display: flex; align-items: center; justify-content: space-between; }
-.card-title { font-size: 16px; font-weight: 600; }
+.grid-empty { background: #fff; border: 1px solid #e4e7ed; border-radius: 8px; padding: 48px 0; }
+
+/* 工具栏 */
+.grid-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.toolbar-stats { font-size: 14px; color: #606266; }
+
+/* 场地筛选 */
+.venue-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.venue-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #dcdfe6;
+  background: #fff;
+  color: #606266;
+  border-radius: 9999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.venue-chip:hover { border-color: #a0cfff; color: #409eff; }
+.venue-chip.active { background: #409eff; color: #fff; border-color: #409eff; }
+.venue-chip-icon { font-size: 12px; }
+
+/* 提示条 */
+.hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.hint-blue { background: #ecf5ff; border: 1px solid #b3d8ff; color: #409eff; }
+.hint-orange { background: #fdf6ec; border: 1px solid #faecd8; color: #e6a23c; }
+.hint-strong { font-weight: 500; }
+.hint-cancel { margin-left: auto; color: inherit; }
+
+/* 网格布局 */
+.grid-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (min-width: 1024px) {
+  .grid-layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+.pending-panel {
+  width: 100%;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 560px;
+}
+@media (min-width: 1024px) {
+  .pending-panel { width: 300px; }
+}
+.pending-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f2f5;
+}
+.pending-title { font-size: 14px; font-weight: 600; color: #303133; margin: 0; }
+.pending-sub { font-size: 12px; color: #909399; margin: 2px 0 0; }
+.pending-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pending-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 0;
+  color: #c0c4cc;
+  font-size: 14px;
+}
+.pending-done-icon { font-size: 28px; color: #67c23a; }
+.pending-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.pending-card:hover { border-color: #a0cfff; background: rgba(64, 158, 255, 0.04); }
+.pending-card.selected { border-color: #409eff; background: #ecf5ff; }
+.pending-card-head { display: flex; align-items: center; gap: 6px; }
+.pending-course {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.scene-tag { flex-shrink: 0; }
+.pending-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+}
+.pending-meta-icon { font-size: 12px; }
+.pending-action { margin-top: 6px; font-size: 12px; font-weight: 500; color: #409eff; }
+.grid-panel {
+  min-width: 0;
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+/* 排课列表 */
+.list-collapse { background: #fff; border: 1px solid #e4e7ed; border-radius: 8px; }
+.collapse-title { font-size: 14px; font-weight: 600; color: #303133; }
+
+/* 完善排课信息弹窗 */
+.pre-config-desc {
+  font-size: 13px;
+  color: #606266;
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+/* 弹窗删除按钮 */
+.dialog-delete { margin-right: auto; }
+
+.import-file { padding: 12px; border: 1px dashed #dcdfe6; border-radius: 8px; color: #606266; font-size: 13px; margin-bottom: 12px; }
+.preview p { font-size: 13px; color: #606266; }
+.preview-row { display: flex; gap: 8px; font-size: 12px; padding: 4px 0; color: #303133; }
+.preview-row .err { color: #f56c6c; }
 .week-row { display: flex; align-items: center; gap: 8px; }
+.btn-icon { margin-right: 2px; }
 </style>
