@@ -275,10 +275,12 @@ export IMAGE_TAG JAVA_NGINX_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_P
 # ── 4. Docker 部署 ──
 log "部署服务（${MODE}）..."
 cp "$PKG_DIR/deploy/docker-compose.yml" "$DEPLOY_DIR/docker-compose.yml"
-# 前端 dist（nginx 容器挂载 $DEPLOY_DIR/web/）：portal 业务门户 + plus-ui 管理端
+# 前端 dist（nginx 容器 bind mount $DEPLOY_DIR/web/）：portal 业务门户 + plus-ui 管理端。
+# 升级场景禁止 rm -rf 重建目录（会破坏运行中 nginx 的挂载，见 deploy.sh 同款注释），用 rsync 增量同步
 if [[ -d "$PKG_DIR/web/portal" && -d "$PKG_DIR/web/plus-ui" ]]; then
-  rm -rf "$DEPLOY_DIR/web"
-  cp -r "$PKG_DIR/web" "$DEPLOY_DIR/web"
+  mkdir -p "$DEPLOY_DIR/web/portal" "$DEPLOY_DIR/web/plus-ui"
+  rsync -a --delete "$PKG_DIR/web/portal/" "$DEPLOY_DIR/web/portal/"
+  rsync -a --delete "$PKG_DIR/web/plus-ui/" "$DEPLOY_DIR/web/plus-ui/"
 else
   die "交付包缺少 web/（前端 dist），无法部署：请用新版 package-release.sh 重新打包"
 fi

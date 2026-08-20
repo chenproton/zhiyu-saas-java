@@ -1136,11 +1136,13 @@ if $BUILD_FRONTEND; then
     || { tail -n 40 "$PLUS_LOG" >&2 || true; die "plus-ui 构建失败（完整日志: $PLUS_LOG）"; }
   log "    plus-ui 构建完成"
 
-  # 产物同步到部署目录（nginx 容器挂载 $DEPLOY_DIR/web/）
-  rm -rf "$DEPLOY_DIR/web/portal" "$DEPLOY_DIR/web/plus-ui"
-  mkdir -p "$DEPLOY_DIR/web"
-  cp -r "$PORTAL_VUE_DIR/dist" "$DEPLOY_DIR/web/portal"
-  cp -r "$PLUS_UI_DIR/dist" "$DEPLOY_DIR/web/plus-ui"
+  # 产物同步到部署目录（nginx 容器 bind mount $DEPLOY_DIR/web/）。
+  # 必须 rsync 增量同步、**禁止 rm -rf 重建目录**：删除源目录会使运行中 nginx 的
+  # bind mount 指向已删 inode → 挂载点变空 → index.html 404 → try_files 循环 500 → 健康检查失败
+  # （远程部署实测：rm -rf + cp 后 nginx unhealthy，部署回滚）。
+  mkdir -p "$DEPLOY_DIR/web/portal" "$DEPLOY_DIR/web/plus-ui"
+  rsync -a --delete "$PORTAL_VUE_DIR/dist/" "$DEPLOY_DIR/web/portal/"
+  rsync -a --delete "$PLUS_UI_DIR/dist/" "$DEPLOY_DIR/web/plus-ui/"
   PENDING_FRONTEND_HASH="$FRONTEND_HASH"
 else
   log "前端: 无变更，跳过（复用 $DEPLOY_DIR/web 现有产物）"
