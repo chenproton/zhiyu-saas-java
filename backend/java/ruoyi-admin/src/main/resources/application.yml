@@ -116,6 +116,8 @@ security:
     - /warm-flow-ui/config
     - /snail-chat/**
     - /api/snail/chat/**
+    # 健康探针（deploy.sh 冒烟与 compose healthcheck 依赖，须免鉴权）
+    - /health
     # 登录/注册/验证码等认证接口放行（Go→Java 迁移启用）
     - /auth/**
     - /resource/sms/code
