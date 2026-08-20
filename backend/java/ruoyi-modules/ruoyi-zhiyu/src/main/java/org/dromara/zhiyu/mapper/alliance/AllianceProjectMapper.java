@@ -43,12 +43,12 @@ public interface AllianceProjectMapper extends BaseMapperPlus<AllianceProject, A
 
     @Update("UPDATE alliance_achievements SET project_ids = COALESCE(("
         + " SELECT jsonb_agg(x) FROM jsonb_array_elements_text(project_ids) x WHERE x <> #{id}"
-        + "), '[]'::jsonb), updated_at = NOW() WHERE project_ids ? #{id} AND tenant_id = #{tenantId}")
+        + "), '[]'::jsonb), updated_at = NOW() WHERE jsonb_exists(project_ids, #{id}) AND tenant_id = #{tenantId}")
     int removeProjectRefFromAchievements(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Update("UPDATE alliance_agreements SET project_ids = COALESCE(("
         + " SELECT jsonb_agg(x) FROM jsonb_array_elements_text(project_ids) x WHERE x <> #{id}"
-        + "), '[]'::jsonb), updated_at = NOW() WHERE project_ids ? #{id} AND tenant_id = #{tenantId}")
+        + "), '[]'::jsonb), updated_at = NOW() WHERE jsonb_exists(project_ids, #{id}) AND tenant_id = #{tenantId}")
     int removeProjectRefFromAgreements(@Param("id") String id, @Param("tenantId") String tenantId);
 
     // ---- 公开项目（含 progress） ----

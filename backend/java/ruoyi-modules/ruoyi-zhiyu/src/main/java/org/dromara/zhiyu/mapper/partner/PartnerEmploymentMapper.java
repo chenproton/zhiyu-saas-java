@@ -29,7 +29,7 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
     @Select("<script>SELECT id, tenant_id, name, type, organizer, description, cover_image, start_date, end_date,"
         + " publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at"
         + " FROM alliance_employment_projects p"
-        + " WHERE p.enterprise_ids ? #{enterpriseId}"
+        + " WHERE jsonb_exists(p.enterprise_ids, #{enterpriseId})"
         + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND p.tenant_id = #{schoolTenantId}::uuid</if>"
         + " ORDER BY p.created_at DESC LIMIT 200</script>")
     List<PartnerEmploymentProject> listProjects(@Param("enterpriseId") String enterpriseId,
@@ -38,7 +38,7 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
     @Select("SELECT id, tenant_id, name, type, organizer, description, cover_image, start_date, end_date,"
         + " publish_status, enterprise_ids, target_groups, created_by, created_at, updated_at"
         + " FROM alliance_employment_projects p"
-        + " WHERE p.id = #{id}::uuid AND p.enterprise_ids ? #{enterpriseId}")
+        + " WHERE p.id = #{id}::uuid AND jsonb_exists(p.enterprise_ids, #{enterpriseId})")
     PartnerEmploymentProject getProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId);
 
     // ===== 就业岗位 =====
@@ -84,7 +84,7 @@ public interface PartnerEmploymentMapper extends BaseMapperPlus<PartnerEmploymen
     @Update("UPDATE alliance_employment_jobs j SET status = #{status}, project_id = #{projectId}::uuid, updated_at = NOW()"
         + " FROM alliance_employment_projects p"
         + " WHERE j.id = #{id}::uuid AND j.enterprise_id = #{enterpriseId}::uuid"
-        + " AND p.id = #{projectId}::uuid AND p.enterprise_ids ? #{enterpriseId}::text"
+        + " AND p.id = #{projectId}::uuid AND jsonb_exists(p.enterprise_ids, #{enterpriseId})"
         + " AND p.tenant_id = j.tenant_id")
     int setJobStatusWithProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId,
                                 @Param("status") String status, @Param("projectId") String projectId);

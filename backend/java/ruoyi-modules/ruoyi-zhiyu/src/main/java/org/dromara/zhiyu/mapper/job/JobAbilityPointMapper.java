@@ -25,7 +25,10 @@ public interface JobAbilityPointMapper extends BaseMapperPlus<JobAbilityPoint, J
      * 能力点引用次数分布（引用源：岗位职责/节点/场景任务/认证绑定；对齐 Go CitationStats）。
      */
     @Select("""
-        SELECT bucket, COUNT(*) AS cnt FROM (
+        SELECT CASE WHEN ref_count = 0 THEN '0次' WHEN ref_count <= 5 THEN '1-5次'
+            WHEN ref_count <= 10 THEN '6-10次' WHEN ref_count <= 100 THEN '11-100次' ELSE '100次以上' END AS label,
+            COUNT(*) AS count
+        FROM (
             SELECT ap.id,
                 COALESCE((SELECT COUNT(*) FROM position_ability_bindings pab WHERE pab.ability_point_id = ap.id), 0)
                 + COALESCE((SELECT COUNT(*) FROM node_ability_point_bindings nab WHERE nab.ability_point_id = ap.id), 0)
@@ -34,7 +37,7 @@ public interface JobAbilityPointMapper extends BaseMapperPlus<JobAbilityPoint, J
             FROM ability_points ap
             WHERE ap.tenant_id = #{tenantId}
         ) refs
-        GROUP BY bucket
+        GROUP BY label
         """)
     List<CitationCountRow> selectCitationStats(@Param("tenantId") String tenantId);
 

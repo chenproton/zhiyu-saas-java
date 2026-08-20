@@ -60,7 +60,7 @@ public interface EmploymentJobMapper extends BaseMapperPlus<EmploymentJob, Emplo
     @Update("UPDATE alliance_employment_jobs j SET status = #{status}, project_id = #{projectId}, updated_at = NOW()"
         + " FROM alliance_employment_projects p"
         + " WHERE j.id = #{id} AND j.enterprise_id = #{enterpriseId} AND p.id = #{projectId}"
-        + " AND p.enterprise_ids ? #{enterpriseId}::text AND p.tenant_id = j.tenant_id")
+        + " AND jsonb_exists(p.enterprise_ids, #{enterpriseId}) AND p.tenant_id = j.tenant_id")
     int setPartnerStatusWithProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId,
                                     @Param("status") String status, @Param("projectId") String projectId);
 

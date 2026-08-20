@@ -85,13 +85,13 @@ public interface EmploymentProjectMapper extends BaseMapperPlus<EmploymentProjec
     EmploymentProject selectPublicProject(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Select("<script>SELECT " + COLS + " FROM alliance_employment_projects p"
-        + " WHERE p.enterprise_ids ? #{enterpriseId}"
+        + " WHERE jsonb_exists(p.enterprise_ids, #{enterpriseId})"
         + " <if test='schoolTenantId != null and schoolTenantId != \"\"'> AND p.tenant_id = #{schoolTenantId}</if>"
         + " ORDER BY p.created_at DESC LIMIT 200</script>")
     List<EmploymentProject> listPartnerProjects(@Param("enterpriseId") String enterpriseId,
                                                 @Param("schoolTenantId") String schoolTenantId);
 
     @Select("SELECT " + COLS + " FROM alliance_employment_projects p"
-        + " WHERE p.id = #{id} AND p.enterprise_ids ? #{enterpriseId}")
+        + " WHERE p.id = #{id} AND jsonb_exists(p.enterprise_ids, #{enterpriseId})")
     EmploymentProject selectPartnerProject(@Param("id") String id, @Param("enterpriseId") String enterpriseId);
 }

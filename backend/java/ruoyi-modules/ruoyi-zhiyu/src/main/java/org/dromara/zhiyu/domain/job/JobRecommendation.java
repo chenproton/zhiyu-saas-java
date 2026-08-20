@@ -1,5 +1,6 @@
 package org.dromara.zhiyu.domain.job;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
@@ -25,7 +26,8 @@ public class JobRecommendation extends BaseZhiyuEntity {
     /** 专业 ID */
     private String majorId;
 
-    /** 专业名称（JOIN majors，非表列） */
+    /** 专业名称（JOIN majors 结果列，非表列；泛型 selectList 必须排除，否则 SQL 引用不存在的 major_name 列） */
+    @TableField(exist = false)
     private String majorName;
 
     /** 岗位 ID */

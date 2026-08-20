@@ -25,13 +25,16 @@ public interface JobCertificateLibraryMapper extends BaseMapperPlus<JobCertifica
      * 证书引用次数分布（引用源：岗位证书绑定；对齐 Go CitationStats）。
      */
     @Select("""
-        SELECT bucket, COUNT(*) AS cnt FROM (
+        SELECT CASE WHEN ref_count = 0 THEN '0次' WHEN ref_count <= 5 THEN '1-5次'
+            WHEN ref_count <= 10 THEN '6-10次' WHEN ref_count <= 100 THEN '11-100次' ELSE '100次以上' END AS label,
+            COUNT(*) AS count
+        FROM (
             SELECT cl.id,
                 COALESCE((SELECT COUNT(*) FROM position_certificates pc WHERE pc.certificate_library_id = cl.id), 0) AS ref_count
             FROM certificate_library cl
             WHERE cl.tenant_id = #{tenantId}
         ) refs
-        GROUP BY bucket
+        GROUP BY label
         """)
     List<CitationCountRow> selectCitationStats(@Param("tenantId") String tenantId);
 

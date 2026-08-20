@@ -98,14 +98,21 @@ async function login(ctx, page, cfg, role, listeners) {
   })
 
   // 提交并等待响应：先注册监听，再点击（监听器在 resolve 时自移除，重复调用安全）
+  // Vue 门户（portal-vue）提交按钮为 el-button（class=submit-btn），无 type=submit；
+  // 兼容两种形态：优先 button[type=submit]，回退 .submit-btn
   const submit = () => {
     const wait = submitAndWait()
-    return page.click('button[type="submit"]').then(() => wait)
+    const btn = page.locator('button[type="submit"]').first()
+    const click = btn.isVisible().then(v => v ? btn.click() : page.locator('button.submit-btn').first().click())
+    return click.then(() => wait)
   }
 
   // 页面出现验证码后：主动刷新验证码（确保在监听之后发请求）→ 从 Redis 读答案 → 填入输入框
+  // Vue 门户验证码输入为 el-input（placeholder=请输入验证码，无 aria-label）；
+  // 刷新入口为 <img title="点击刷新验证码">（非 button），两种形态都兼容。
   const solveCaptchaViaUi = async () => {
     const input = page.locator('input[aria-label="验证码"]')
+      .or(page.locator('input[placeholder="请输入验证码"]')).first()
     await input.waitFor({ state: 'visible', timeout: 5000 })
     const captchaIdPromise = new Promise(resolve => {
       const h = async res => {
@@ -120,8 +127,18 @@ async function login(ctx, page, cfg, role, listeners) {
     })
     // 点击验证码图片刷新，触发一次新的 GET /auth/captcha（注册监听后发请求，避免竞态）
     const imgBtn = page.locator('button[title="点击刷新验证码"]')
+      .or(page.locator('img[title="点击刷新验证码"]')).first()
     await imgBtn.waitFor({ state: 'visible', timeout: 5000 })
+    const oldSrc = await imgBtn.getAttribute('src').catch(() => null)
     await imgBtn.click()
+    // 等刷新完成（src 变化 = Vue loadCaptcha 已把新 captchaId 写入页面状态）：
+    // 否则立即填 code 提交时页面还带着旧 captchaId，必 captcha_wrong
+    if (oldSrc) {
+      await page.waitForFunction(
+        prev => { const img = document.querySelector('img.captcha-img'); return img && img.src !== prev },
+        oldSrc, { timeout: 8000 },
+      ).catch(() => {})
+    }
     const captchaId = await captchaIdPromise
     if (!captchaId) throw new Error('验证码自动识别失败: 未获取到 captchaId')
     const code = captchaAnswer(captchaId)
@@ -131,19 +148,16 @@ async function login(ctx, page, cfg, role, listeners) {
 
   try {
     await page.goto(`${cfg.baseUrl}/portal/login`, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    // 等待 React 水合完成（DOM 元素挂上 __reactProps 即事件处理器就绪）：
-    // 否则点击提交会走原生表单提交（POST 打到页面路径而非 /api），登录响应永远等不到
+    // 等待 Vue 挂载完成（提交按钮出现即事件处理器就绪；Vue 无 React 的 __reactProps 水合标记）
     await page.waitForFunction(
-      () => {
-        const btn = document.querySelector('button[type="submit"]')
-        return btn && Object.keys(btn).some(k => k.startsWith('__reactProps'))
-      },
+      () => !!document.querySelector('button.submit-btn, button[type="submit"]'),
       null, { timeout: 20000 },
     ).catch(() => {})
     // 固定设备标识：信任跨运行累积，避免每次巡检都触发新设备验证码
     await page.evaluate(() => { try { localStorage.setItem('zhiyu-device-id', SMOKE_DEVICE_ID) } catch { /* ignore */ } })
-    await page.fill('#username', cred.username)
-    await page.fill('#password', cred.password)
+    // Vue 门户 el-input 无 id：账号/密码按 autocomplete 属性定位（login.vue 已声明）
+    await page.fill('input[autocomplete="username"]', cred.username)
+    await page.fill('input[autocomplete="current-password"]', cred.password)
   } catch (e) {
     throw new Error(`登录页操作失败: ${e.message}`)
   }

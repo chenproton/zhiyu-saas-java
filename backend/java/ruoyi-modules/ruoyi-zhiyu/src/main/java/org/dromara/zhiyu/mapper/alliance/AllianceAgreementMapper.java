@@ -38,7 +38,7 @@ public interface AllianceAgreementMapper extends BaseMapperPlus<AllianceAgreemen
 
     @Update("UPDATE alliance_projects SET agreement_ids = COALESCE(("
         + " SELECT jsonb_agg(x) FROM jsonb_array_elements_text(agreement_ids) x WHERE x <> #{id}"
-        + "), '[]'::jsonb), updated_at = NOW() WHERE agreement_ids ? #{id} AND tenant_id = #{tenantId}")
+        + "), '[]'::jsonb), updated_at = NOW() WHERE jsonb_exists(agreement_ids, #{id}) AND tenant_id = #{tenantId}")
     int removeAgreementRefFromProjects(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Data
