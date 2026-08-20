@@ -204,4 +204,9 @@ public interface EvaluationCertificationMapper extends BaseMapperPlus<Evaluation
     /** 岗位租户（认证体系归属校验） */
     @Select("SELECT tenant_id::text FROM career_positions WHERE id = #{positionId}::uuid")
     String positionTenantId(@Param("positionId") String positionId);
+
+    /** 所有已发布认证规则的租户+岗位组合（每日汇聚定时任务用；对齐 Go ListPublishedTargets） */
+    @Select("SELECT DISTINCT tenant_id::text AS tenant_id, career_position_id::text AS position_id"
+        + " FROM certification_rules WHERE status = 'published' AND tenant_id IS NOT NULL")
+    List<Map<String, Object>> listPublishedTargets();
 }

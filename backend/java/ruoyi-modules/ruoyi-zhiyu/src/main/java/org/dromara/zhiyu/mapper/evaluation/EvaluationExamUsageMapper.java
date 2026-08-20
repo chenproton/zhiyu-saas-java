@@ -77,6 +77,21 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " AND target_type = 'node' AND #{nodeId}::uuid = ANY(target_ids) LIMIT 1")
     String selectNodeUsageId(@Param("examId") String examId, @Param("nodeId") String nodeId);
 
+    /** 查询任务已有草稿安排（去重复用；对齐 Go createTempExamUsage 的 draft 分支）。 */
+    @Select("SELECT id::text FROM exam_usages WHERE tenant_id = #{tenantId}::uuid AND exam_id = #{examId}::uuid"
+        + " AND target_type = 'task' AND #{taskId}::uuid = ANY(target_ids) AND status = 'draft' LIMIT 1")
+    String selectDraftTaskUsageId(@Param("tenantId") String tenantId, @Param("examId") String examId,
+                                  @Param("taskId") String taskId);
+
+    /** 数据库当前日期（YYYYMMDD；自动命名用，对齐 Go to_char(NOW(), 'YYYYMMDD')）。 */
+    @Select("SELECT to_char(NOW(), 'YYYYMMDD')")
+    String currentDateYmd();
+
+    /** 同租户同目标类型当天已生成安排数（同天序号基数；对齐 Go NextAutoUsageName）。 */
+    @Select("SELECT COUNT(*) FROM exam_usages WHERE tenant_id = #{tenantId}::uuid AND target_type = #{targetType}"
+        + " AND created_at::date = CURRENT_DATE")
+    int countUsagesCreatedToday(@Param("tenantId") String tenantId, @Param("targetType") String targetType);
+
     /** 批量查询节点已有安排（对齐 Go FindNodeUsages，防逐 examID 回查 N+1）。 */
     @Select("<script>SELECT exam_id::text AS exam_id, id::text AS id FROM exam_usages"
         + " WHERE target_type = 'node' AND #{nodeId}::uuid = ANY(target_ids) AND exam_id IN"
