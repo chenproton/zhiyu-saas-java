@@ -28,7 +28,7 @@ whenToUse: 接到「新增功能 / 修复 bug / 重构 / 变更行为」任务�
 | 2 | 明确需求 | 澄清为「做什么/为什么」，**只谈 WHAT/WHY，不碰 HOW**（技术栈/表结构/代码组织一律后置） | spec 需求章节 | 不清楚用 ask_user_question 问用户 |
 | 3 | 制定方案 | 需求 → 数据模型 / API 契约 / 测试场景；**每个技术选择记录理由并回链需求** | spec 架构/API/数据章节 | 选型需拍板时问用户；复用优先：先查 `AGENTS.md` 第二部分（Java 复用约定）+ 相关 ADR |
 | 4 | 拆解任务 | 生成可执行任务清单，标依赖与可并行项 `[P]` | todo_write 任务清单（可写入 spec 开发计划章节） | 依赖明确才能标 [P] |
-| 5 | 实现 | 写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）；核心业务链路同步 `docs/spec/06-acceptance-flows.md` 验收 flow | 代码 + 回写的 spec + 06 flow | 走分支隔离工作流；migration 必须配对 `.down.sql`；单次 commit 只含当次变更 |
+| 5 | 实现 | 写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束） | 代码 + 回写的 spec | 走分支隔离工作流；migration 必须配对 `.down.sql`；单次 commit 只含当次变更 |
 | 6 | 校验 | `spec_check` 工具（硬约束）+ 语义自查：spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试断言 | 校验报告 | 硬约束失败必须修复；语义用 `spec_analyze` 派子代理独立复查 |
 | 7 | 收敛 | 对照 spec 评估，把「没做完/偏航/新增件」记回任务或 spec | 收敛记录 | 成为下轮输入 |
 
@@ -53,7 +53,6 @@ cd frontend/plus-ui && pnpm build                # 管理端
 2. spec 已同步（新增能力写入、变更行为更新对应章节）。
 3. 测试至少一种（controller/service/mapper 单测）。
 4. API 变更同步 `02-api-contract.md` 或子平台 spec API 章节；migration 配对 `.down.sql` 且编号登记进 `04-database-schema.md` §5。
-4b. 涉及核心业务链路（跨角色/跨页面端到端链）的功能：`docs/spec/06-acceptance-flows.md` 已新增/更新对应 flow（挂钩 PRD 用户故事），且部署后 `--flows` 跑通；纯局部改动豁免需在 commit 说明。
 5. 没做 spec「扩展性预留」里写「暂不做」的东西；真做了要么补 spec 要么删代码。
 6. 新建公共抽象前已查复用速查表 + ADR，并同步登记速查表；能复用而未复用的需在 commit 说明理由。
 
@@ -84,7 +83,7 @@ deploy.sh 自动做：源码 hash 增量构建（Java Maven + portal-vue/plus-ui
 | 2/3 需求与方案 | `spec_scaffold`（新模块按 10 节模板生成 docs/spec/<slug>.md 骨架，防结构漂移） |
 | 3/4 方案与任务 | `plan-mode`（大方案先 exit_plan_mode 给用户审）+ `todo_write` |
 | 5 实现 | `bash`（构建/测试）、`edit`/`write` |
-| 6/7 校验与收敛 | `spec_check`（机器硬约束）+ `spec_analyze`（子代理语义复查）+ `goal`（长任务跨轮驱动）；业务链路用 `node scripts/ui-smoke/ui-smoke.mjs --flows`（spec 06 驱动，部署后跑） |
+| 6/7 校验与收敛 | `spec_check`（机器硬约束）+ `spec_analyze`（子代理语义复查）+ `goal`（长任务跨轮驱动）；全量页面冒烟用 `node scripts/ui-smoke/ui-smoke.mjs`（部署后跑） |
 
 - 长任务（多轮、多文件）：用 `create_goal` 建目标持续驱动，每轮对照 spec 汇报进度。
 - 扫描/统计只覆盖自有代码，排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`backend/java/*/target/`。

@@ -1,8 +1,6 @@
 # 自动化测试使用指南
 
-> 本文档的核心是 **UI 冒烟测试工具**（`scripts/ui-smoke`），重点讲两件事：
-> 1. **全量点击测试**：自动登录并遍历每个页面，点击所有按钮/弹窗/下拉/Tab，测试 CRUD，监控前端异常与接口错误；
-> 2. **自定义每个页面的测试流程**：用 ```flow 代码书写精确的页面操作序列（去哪个页面 → 点哪个按钮 → 填哪个字段 → 断言什么），巡检器按序驱动浏览器执行并断言。
+> 本文档的核心是 **UI 冒烟测试工具**（`scripts/ui-smoke`）：自动登录并遍历每个页面（全量页面访问冒烟），点击所有按钮/弹窗/下拉/Tab，测试 CRUD，监控前端异常与接口错误。
 >
 > 后端/前端单测与静态检查作为「快速门禁」在第三章给出（本地秒级反馈，提交前必跑）。
 
@@ -19,7 +17,7 @@
 - 默认进入 **CRUD 测试**：识别「创建/新增/编辑/删除/启用/禁用」类按钮，创建数据用 `SMOKE_` 前缀，只编辑/删除/启停带 `SMOKE_` 标记的测试数据行，结束后自动清理；
 - 同时监控 **前端 console / JS 异常 / 后端接口报错**，发现「点哪儿坏了」这类回归。
 
-它与 flow 的关系：逐页巡检发现「**点哪儿坏了**」；flow 发现「**业务链路断了**」。两者互补。
+
 
 ### 1.2 快速上手
 
@@ -36,8 +34,6 @@ node scripts/ui-smoke/ui-smoke.mjs --route /portal/apps/system
 # 重构后定向回归：只跑 git 改动涉及的路由（含组件依赖反查）
 node scripts/ui-smoke/ui-smoke.mjs --git-diff
 
-# 只跑自定义流程（第二章 flow）
-node scripts/ui-smoke/ui-smoke.mjs --flows
 
 # 指定目标环境 / 覆盖账号
 node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --account school:proton:admin123
@@ -55,8 +51,6 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
 | `--baseline <json>` | 与上次报告做回归 diff（新增/已修复/持续三类） |
 | `--resume <json>` | 断点续跑（跳过上次已 ok/skip 的路由） |
 | `--click-only` | 只点击页面元素，不填表单、不测 CRUD（旧默认行为） |
-| `--flows` / `--no-flows` | 只跑流程 / 全量时跳过流程 |
-| `--flows-spec <path>` | 流程 spec 文件路径，**可指向任意含 flow 块的 markdown 文件**（默认 `docs/spec/06-acceptance-flows.md`） |
 | `--fail-on-error` | 发现错误退出码 1（供 CI） |
 | `--timeout-min <n>` | 全局看门狗超时（分钟） |
 | `--no-cleanup` | 测试后不清理 `SMOKE_` 数据（默认自动清理） |
@@ -80,155 +74,6 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
   - `errors[].type`：`pageerror`(JS 异常) / `console` / `api`(≥400) / `network` / `page` / `form` / `crud` / `timeout`；
   - `aggregate`：去重错误聚类（含次数与涉及页面）；`diff`：与基线对比。
 - 已知噪音：种子数据 `example.com` 占位图、静态资源 404、429 限流、401/403 无权限页。
-
----
-
-## 二、UI 冒烟测试：自定义每个页面的测试流程（flow 代码书写）
-
-> 这是本文档**最重要**的部分：用 ```flow 代码精确描述「每个页面的具体操作流程」，巡检器按序驱动浏览器逐步执行并断言。
-
-### 2.1 flow 是什么 + 最小示例
-
-每条流程是一个 ```flow 代码块，内容为 YAML。最小示例——只操作一个页面：
-
-````markdown
-```flow
-flow: my-page-check            # 流程 id（全文件唯一，kebab-case）
-desc: 只巡检「课程管理」页的操作流程
-steps:
-  - role: school               # 执行本步的登录角色
-    goto: /portal/apps/lesson/admin
-    expectText: 课程管理
-  - role: school
-    click: 新建课程
-    fill: { 课程名称: "SMOKE_调试{rand}" }
-    select: { 课程类型: first }
-    submit: true
-    expectApi: { method: POST, url: /lesson, status: 201 }
-```
-````
-
-```bash
-# 写进独立文件跑（临时/调试，不污染正式 spec）
-node scripts/ui-smoke/ui-smoke.mjs --flows-spec /tmp/my-page-flow.md
-```
-
-**要点**：`role` 每个步骤独立声明，**全程同一个角色、只操作一个页面完全可行**；不强制跨角色。
-
-### 2.2 DSL 规范（动作详解）
-
-流程结构：`flow` / `story`（PRD 用户故事编号，可选）/ `desc` / `steps`（步骤数组）。每个步骤由一个 `role` + 若干动作键组成，**动作按书写顺序执行**。
-
-| 动作 | 写法 | 含义 |
-|---|---|---|
-| 跳转 | `goto: /路由` | 跳转页面（带查询串/锚点可写全） |
-| 精确点击 | `click: 按钮文字` | 点击精确匹配文字的按钮/链接 |
-| 模糊点击 | `clickText: 文字` | 点击包含该文字的可点击元素（卡片/链接/行标题） |
-| 表格行操作 | `clickRow: { text: 行内文字, action: 按钮文字 }` | 先按文字定位表格行，再点行内按钮 |
-| 卡片操作 | `clickCard: { text: 卡内文字, action: 按钮文字 }` | 先按文字定位卡片（需带 `data-smoke-card`），再点卡内按钮 |
-| 网格单元格 | `clickCell: { 行内文字: 列头文字 }` | 表格网格（排课周课表等）：按「行文字 × 列头文字」定位交点单元格点击（单元格无文字属性时用） |
-| 填表 | `fill: { 字段label: 值 }` | 按 label 填文本/数字/日期字段 |
-| 下拉选择 | `select: { 字段label: 选项文字或first }` | 下拉/Combobox 选择；`first` = 第一个选项 |
-| 提交 | `submit: 按钮文字或true` | 点击提交按钮；`true` = 自动识别「保存/创建/确认」等提交词 |
-| 确认 | `confirm: true` | 点击弹窗中的确认类按钮（确认/删除/发布/下架） |
-| 开关 | `toggle: { label: true或false }` | Radix Switch 按 label 定位邻近 `[role=switch]`，确保目标状态（已满足则不动，幂等）；用于「前台展示」类开关 |
-| 复选 | `check: { label: true或false }` | Radix Checkbox 按 label 定位邻近 `[role=checkbox]`，确保目标勾选状态（已满足则不动，幂等）；用于组织树选择器等「名字是 span、勾选在 Checkbox」的布局 |
-| 接口断言 | `expectApi: { method: POST, url: /路径片段, status: 201 }` | 断言本步执行期间出现匹配的接口响应 |
-| 文字断言 | `expectText: 文字` | 断言页面可见该文字（支持 `{{var}}`） |
-| 存变量 | `saveAs: { 变量名: 字段label }` | 把本步 `fill` 的值存入流程上下文 |
-| 幂等前置 | `optional: true` | 目标未找到/按钮已禁用记 `skip` 静默跳过；其余失败记 `warn` 不判失败 |
-| 看门狗 | `timeoutMs: 10000` | 单步超时（默认 15000，超时判失败） |
-| 豁免哨兵 | `skipPageErrorCheck: true` | 豁免本步 pageerror 哨兵（见 §2.4） |
-
-### 2.3 模板变量与上下文
-
-- `{rand}`：每流程运行一次的随机串（6 位），保证 `SMOKE_` 数据名唯一；
-- `{{varName}}`：引用 `saveAs` 存入的上下文变量；
-- 跨步骤/跨角色传递数据只靠这两者 + `SMOKE_` 名称搜索，不做接口级编排。
-
-### 2.4 执行语义与硬性约束
-
-- 步骤按数组顺序执行；`role` 切换时巡检器按需登录并复用该角色会话；
-- 非 `optional` 步骤失败 = 流程失败（失败步骤自动截图 `/tmp/zhiyu-ui-smoke/flow-*.png`，并跳过后续步骤）；
-- **pageerror 哨兵（默认开启）**：每步执行窗口内浏览器任何未捕获异常（渲染崩溃、`undefined` 拼接等）即判该步失败——兜「接口 200 但页面白屏」类事故；误伤时单步 `skipPageErrorCheck: true` 豁免；
-- 所有创建数据必须 `SMOKE_` 前缀（走统一清理与安全护栏）；
-- 不产生真实 LLM 调用；不点击语言切换/超管危险操作；不做业务数值正确性断言、不写条件分支/循环（保持线性、可读）。
-
-### 2.5 完整示例一：单页面流程（含幂等清理）
-
-```yaml
-flow: course-list-check
-desc: 课程列表页的创建 → 搜索 → 删除完整操作流程
-steps:
-  # 幂等前置：清理上次失败残留（optional，残留不阻断）
-  - role: school
-    goto: /portal/apps/lesson/admin
-    clickRow: { text: "SMOKE_课程", action: 删除 }
-    confirm: true
-    optional: true
-  # 创建
-  - role: school
-    click: 新建课程
-    fill: { 课程名称: "SMOKE_课程{rand}", 课程简介: "冒烟测试数据" }
-    select: { 课程类型: first }
-    saveAs: { courseName: 课程名称 }
-    submit: true
-    expectApi: { method: POST, url: /lesson, status: 201 }
-  # 搜索到刚创建的记录
-  - role: school
-    goto: /portal/apps/lesson/admin
-    fill: { 搜索课程名称: "{{courseName}}" }
-    click: 搜索
-    expectText: "{{courseName}}"
-  # 清理
-  - role: school
-    clickRow: { text: "{{courseName}}", action: 删除 }
-    confirm: true
-    expectApi: { method: DELETE, url: /lesson/, status: 200 }
-```
-
-### 2.6 完整示例二：跨角色业务链路（创建 → 发布 → 对端可见 → 下架）
-
-```yaml
-flow: xxx-publish-loop
-story: XX-1
-desc: 管理员创建并发布 → 学生可见 → 管理员下架并清理
-steps:
-  - role: school
-    goto: /portal/apps/xxx/new
-    fill: { 名称: "SMOKE_示例{rand}" }
-    saveAs: { name: 名称 }
-    submit: true
-    expectApi: { method: POST, url: /xxx, status: 201 }
-  - role: school
-    goto: /portal/apps/xxx
-    fill: { 搜索: "{{name}}" }
-    clickRow: { text: "{{name}}", action: 发布 }
-    expectApi: { method: PUT, url: /xxx/, status: 200 }
-  - role: student
-    goto: /portal/apps/xxx/square
-    expectText: "{{name}}"
-  - role: school
-    goto: /portal/apps/xxx
-    fill: { 搜索: "{{name}}" }
-    clickRow: { text: "{{name}}", action: 下架 }
-    optional: true
-  - role: school
-    clickRow: { text: "{{name}}", action: 删除 }
-    confirm: true
-    optional: true
-```
-
-> 更真实的跨角色闭环参考 `docs/spec/06-acceptance-flows.md`（就业供需大厅 / 岗位发布 / 课程发布学习 / 考试安排 / 场景任务 / 教务计划 / 联盟公开页 / 资源复用 / 教学计划排课等 9 条现成流程）。
-
-### 2.7 正式登记 vs 临时调试
-
-| 场景 | 做法 | 运行方式 |
-|---|---|---|
-| **核心业务链路**（跨角色/跨页面，需长期维护 + 一致性检查） | 写进 `docs/spec/06-acceptance-flows.md`（§2 加清单行 + §3 加 flow 块） | `--flows`（跑全部）/ `--flows-spec docs/spec/06-acceptance-flows.md` |
-| **临时/调试单页面流程** | 写独立 markdown 文件，不塞正式 spec | `--flows-spec /tmp/my-flow.md` |
-
-临时文件里的 flow 同样走 `SMOKE_` 护栏与统一清理；若它确实是核心链路，再迁入正式 spec 登记。
 
 ---
 
@@ -308,14 +153,13 @@ cd frontend/plus-ui && pnpm build        # 管理端构建
 
 | 文件 | 职责 |
 |---|---|
-| `scripts/ui-smoke/flows.mjs` | 解析 ```flow 块并逐步骤执行（新增动作在这里加 switch 分支） |
 | `scripts/ui-smoke/clicker.mjs` | 页面元素枚举 / 点击队列 / CRUD 动作识别 |
 | `scripts/ui-smoke/forms.mjs` | 表单填充 / 提交 |
 | `scripts/ui-smoke/routes.mjs` | 静态路由枚举 + 动态路由解析 |
 | `scripts/ui-smoke/config.mjs` | 配置默认值 + CLI 参数解析（新 `--xxx` 参数在此注册） |
 | `scripts/ui-smoke/report.mjs` | 报告生成 |
 
-> 新增 DSL 动作：在 `docs/spec/06-acceptance-flows.md` §1 补文档 → 在 `flows.mjs` 加执行分支 → 用真实链路验证。改工具属代码改动，按 AGENTS.md 走提交门禁。
+> 新增点击语义（如拖拽/上传）时改 `clicker.mjs`/`forms.mjs`；改工具属代码改动，按 AGENTS.md 走提交门禁。
 
 ---
 
@@ -325,14 +169,12 @@ cd frontend/plus-ui && pnpm build        # 管理端构建
 2. **UI 冒烟只操作 `SMOKE_` 数据**：CRUD 的创建/编辑/删除/启停只作用于带 `SMOKE_` 前缀的行；`/superadmin` 与角色管理页默认不触发 CRUD。
 3. **`--base-url` 必须走 nginx 网关**：直连容器内前端端口时 rewrite 会失败。
 4. **报告噪音已知项**：种子数据 `example.com` 占位图、静态资源 404、429 限流、401/403 无权限页（记 `info`/`skip` 不算错误）。
-5. **新增正式 flow 后跑 `spec-check.sh`**：会做 flow↔PRD 用户故事的提示级一致性检查，避免 flow 漂移。
 
 ---
 
 ## 六、相关文档
 
 - UI 冒烟工具完整用法：`scripts/ui-smoke/README.md`
-- 验收流程 DSL 与清单：`docs/spec/06-acceptance-flows.md`
 - 后端分层红线（测试归属）：根 `AGENTS.md` 第二部分（controller/service/mapper）
 - spec 工作流 / DoD：`docs/spec-standards.md`
 - 前端组件复用：`AGENTS.md` 第二部分 + `frontend/portal-vue`/`frontend/plus-ui` 源码

@@ -153,7 +153,6 @@
 2. 迁移全程不修改既有前端/后端基线（历史验收项，已随单栈迁移自然满足）。
 3. Java 侧生产健康检查持续通过（`docker compose -f deploy/docker-compose.yml ps` 全 healthy、`/health` ok）。
 4. 本 spec §3.2 模板在试点域后回填为可复用标准。
-5. 涉及跨角色/跨页面端到端链路的域，在 `06-acceptance-flows.md` 补对应 flow（复用 Java 侧链路）。
 
 ## 9. 实施顺序与风险
 

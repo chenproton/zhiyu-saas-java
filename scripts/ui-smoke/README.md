@@ -29,12 +29,6 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff
 # 与上次报告做回归对比（新增/已修复/持续错误）
 node scripts/ui-smoke/ui-smoke.mjs --baseline /tmp/zhiyu-ui-smoke/report.json
 
-# 只跑验收流程（spec 06 驱动的跨角色业务链路，几分钟出结果）
-node scripts/ui-smoke/ui-smoke.mjs --flows
-
-# 全量巡检但跳过验收流程（默认先跑流程再逐页巡检）
-node scripts/ui-smoke/ui-smoke.mjs --all-roles --no-flows
-
 # 只巡检指定路由（调试）
 node scripts/ui-smoke/ui-smoke.mjs --route /portal/apps/system
 
@@ -49,7 +43,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 
 | 选项 | 默认 | 说明 |
 |---|---|---|
-| `--base-url` | `http://127.0.0.1` | 目标站点，**必须走 nginx 网关**；直连 3020 时容器内 Next rewrite 会失败 |
+| `--base-url` | `http://127.0.0.1` | 目标站点，**必须走 nginx 网关**（边缘 2026 / 网关 8083，直连业务容器端口不可达） |
 | `--roles` | `school` | 逗号分隔角色列表（默认只跑 school 提速；全量用 `--all-roles`） |
 | `--all-roles` | - | 跑全部角色 school,teacher,student,partner |
 | `--account` | - | 覆盖角色账号，如 `--account school:school:newpass` |
@@ -65,9 +59,6 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 | `--tail-backend` | 关 | 用 docker compose 抓取后端日志 error/panic 增量 |
 | `--fail-on-error` | 关 | 发现错误退出码 1（供 CI） |
 | `--click-only` | 关 | 只点击页面元素，不测试 CRUD 按钮/表单（旧默认行为） |
-| `--flows` | 关 | 只跑验收流程（`docs/spec/06-acceptance-flows.md` 的 ```flow 块，跨角色业务链路） |
-| `--no-flows` | 关 | 全量巡检时跳过验收流程（默认先跑流程；`--click-only`/`--route`/`--git-diff` 模式自动跳过） |
-| `--flows-spec` | spec 06 | 验收流程 spec 文件路径 |
 | `--click-dangerous` | 关 | 允许点击写数据按钮（CRUD 模式下只操作 `SMOKE_` 测试数据） |
 | `--test-forms` | 默认开启 | 已合并到默认 CRUD 行为，保留仅作兼容 |
 | `--no-cleanup` | 关 | CRUD 测试后不清理 `SMOKE_` 前缀数据 |
@@ -82,11 +73,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 - **每页交互**：点完所有唯一可点元素（按钮/链接/Tab，含弹窗内按钮），**下拉菜单项（Radix `[role="menu"]`/`menuitem`）在菜单打开期间立即点击**（菜单项随菜单关闭即卸载，无法走队列延迟点击；重开触发器以点完多个项）；**列表行内按钮去重**：同一按钮类型只点前 `maxRowClicks` 行（默认 1 行，大表页从 5000+ 元素降到几十，SMOKE_ 测试数据行豁免以保 CRUD 覆盖）；弹窗/下拉打开后 Esc 关闭，跳转后回访继续，点击产生的新元素（Tab 切换等）增量补充
 - **CRUD 测试**（默认）：识别"创建/新增/编辑/删除/启用/禁用"类按钮，创建数据时使用 `SMOKE_` 前缀，编辑/删除/启用/禁用只操作带 `SMOKE_` 标记的测试数据行，最后自动清理；**独立编辑页表单测试仅对巡检创建的 `SMOKE_` 实体执行**（真实实体编辑页只点击不提交，防止改名/覆盖真实数据）
 - **无权限页**：自动识别（遮罩/全 401/403）记为 `skip`，不算错误
-- **安全性**：默认只操作 `SMOKE_` 前缀测试数据；**下拉菜单项因 portal 化无法判定来源数据行，其中的编辑/删除/启用/禁用一律跳过**（导航/表单入口/普通项可点），避免误操作真实数据；`/superadmin` 与 `/portal/apps/system/org-user/roles` 默认不触发 CRUD 操作，避免改乱权限；语言切换按钮不点（防止危险词失效）；locale 被切英文时自动切回；**「重新生成/AI 生成」类按钮默认跳过**（会真实调用 LLM 按 token 计费，全量巡检不触发）
-
-## 验收流程（flows）
-
-业务流程以机器可读 YAML 写在 [`docs/spec/06-acceptance-flows.md`](../../docs/spec/06-acceptance-flows.md)（DSL 规范见该文件 §1）：每条流程是一串跨角色步骤（goto/click/clickRow/fill/select/submit/confirm/expectApi/expectText），巡检器按序执行并断言接口响应与页面文字。逐页巡检发现「点哪儿坏了」，验收流程发现「业务链路断了」，两者互补。流程产生的数据同样以 `SMOKE_` 前缀创建并参与统一清理；`optional` 步骤（幂等前置）中「未找到目标/按钮已禁用」记 `skip` 静默跳过，其余失败记 `warn` 不判失败。失败步骤自动截图到 `/tmp/zhiyu-ui-smoke/flow-*.png`。
+- **安全性**：默认只操作 `SMOKE_` 前缀测试数据；**下拉菜单项因 portal 化无法判定来源数据行，其中的编辑/删除/启用/禁用一律跳过**（导航/表单入口/普通项可点），避免误操作真实数据；`/superadmin` 与 `/portal/apps/system/org-user/roles` 默认不触发 CRUD 操作，避免改乱权限；语言切换按钮不点（防止危险词失效）；locale 被切英文时自动切回
 
 ## 报告说明
 

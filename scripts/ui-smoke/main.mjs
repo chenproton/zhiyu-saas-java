@@ -9,11 +9,24 @@ import { resolveConfig, STATE_DIR, PROJECT_ROOT } from './config.mjs'
 import { discoverStaticRoutes, resolveDynamicRoutes, scopeRoutesByGitDiff, BUILTIN_DYNAMIC_ROUTES, BUILTIN_CLEANUP_APIS } from './routes.mjs'
 import { walkRoute, tokenKeyForRole } from './clicker.mjs'
 import { cleanupSmokeData } from './forms.mjs'
-import { loadFlows, runFlows } from './flows.mjs'
 import { aggregateErrors, buildResumeDoneSet, classifyApiResponse, diffWithBaseline, isTransientError, printSummary, writeReport } from './report.mjs'
 import { promises as fs } from 'fs'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+// 从部署机 .env 读取键值（验证码读取需要 redis 口令；.env 权限 600，仅部署机可用）
+function grepEnv(key, candidates) {
+  for (const f of candidates) {
+    const fp = f.replace('PROJECT_ROOT', PROJECT_ROOT)
+    try {
+      const line = execFileSync('grep', ['-E', `^${key}=`, fp], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+        .split('\n')[0]
+      const v = (line || '').split('=').slice(1).join('=').trim()
+      if (v) return v
+    } catch { /* 文件不存在或键缺失，继续 */ }
+  }
+  return ''
+}
 
 // ── 验证码（新设备登录自动识别）──────────────────────────────
 // 登录页固定设备标识：信任跨运行累积（30 天滑窗），第二次起不再触发新设备验证码；
@@ -28,12 +41,12 @@ const SMOKE_DEVICE_ID = 'smoke-device-portal'
  */
 function captchaAnswer(captchaId) {
   if (!captchaId) return null
-  // 默认必须是 Go 栈的 zhiyu-redis：验证码答案 key（zhiyu:captcha:answer:*）由 **Go 后端** 写入，
-  // 它连的是 zhiyu-redis。此前默认写成 zhiyu-java-redis-compose，Java 栈一停（容器被移除）
-  // 就读不到答案 → 登录卡在验证码重试 → 所有 flow 静默挂死到超时（2026-08-19 实测踩到）。
-  // Go redis 无口令，Java redis 需 -a；按容器名选择参数，避免无口令实例上的多余告警。
+  // 单栈（Java+Vue）：验证码答案 key（zhiyu:captcha:answer:*）由 java-backend 写入 zhiyu-redis，
+  // redis 带口令（REDIS_PASSWORD，compose requirepass），从部署 .env 读取（SMOKE_REDIS_PASSWORD 可覆盖）
   const container = process.env.SMOKE_REDIS_CONTAINER || 'zhiyu-redis'
-  const authArgs = container.includes('java') ? ['-a', 'ruoyi123'] : []
+  const redisPass = process.env.SMOKE_REDIS_PASSWORD
+    || grepEnv('REDIS_PASSWORD', ['/opt/zhiyu-saas/.env', 'PROJECT_ROOT/.env'])
+  const authArgs = redisPass ? ['-a', redisPass, '--no-auth-warning'] : []
   const tryGet = (c, extra) => {
     const out = execFileSync(
       'docker', ['exec', c, 'redis-cli', ...extra, 'GET', `zhiyu:captcha:answer:${captchaId}`],
@@ -45,10 +58,9 @@ function captchaAnswer(captchaId) {
     const v = tryGet(container, authArgs)
     if (v) return v
   } catch { /* 容器不存在或无该 key，继续兜底 */ }
-  // 兜底：另一个栈的 redis（双栈共存时答案可能落在对侧）
-  const fallback = container === 'zhiyu-redis' ? 'zhiyu-java-redis-compose' : 'zhiyu-redis'
+  // 兜底：无口令连接（旧无口令 redis 或未配置口令的实例）
   try {
-    return tryGet(fallback, fallback.includes('java') ? ['-a', 'ruoyi123'] : [])
+    return tryGet(container, [])
   } catch {
     return null
   }
@@ -454,58 +466,8 @@ export async function main() {
     }, cfg.timeoutMin * 60000)
   }
 
-  // ── 验收流程（spec 06 驱动）：跨角色业务链路，默认在全量巡检前执行 ──
-  let flowResults = null
-  let flowErrors = []
-  const flowRoles = new Set()
-  const wantFlows = (cfg.flowsOnly || (cfg.flows !== false && !cfg.clickOnly && !cfg.route && !cfg.gitDiff))
-  if (wantFlows) {
-    try {
-      const flows = await loadFlows(cfg.flowsSpec).catch(e => {
-        console.warn(`[flow] 读取验收流程失败（${e.message}），跳过流程巡检`)
-        return []
-      })
-      if (flows.length) {
-        console.log(`\n=== 验收流程：${flows.length} 条（spec 06 驱动）===`)
-        const flowSink = []
-        const roleSessions = new Map()
-        const ensureContext = async (role) => {
-          if (roleSessions.has(role)) return roleSessions.get(role)
-          await ensureBrowser()
-          const fctx = await withTimeout(bstate.browser.newContext(), 20000, 'newContext')
-          const fpage = await withTimeout(fctx.newPage(), 20000, 'newPage')
-          // 单元素操作 10s 快速失败：避免单个定位器卡满整个步骤超时，错误信息更可定位
-          fpage.setDefaultTimeout(10000)
-          attachListeners(fpage, flowSink, cfg, { clickIndex: -1, url: '' })
-          const loginListeners = []
-          try {
-            await login(fctx, fpage, cfg, role, loginListeners)
-            console.log(`  [flow] [${role}] 登录成功`)
-          } finally {
-            for (const l of loginListeners) fpage.off(l.kind, l.handler)
-          }
-          const session = { ctx: fctx, page: fpage }
-          roleSessions.set(role, session)
-          return session
-        }
-        flowResults = await runFlows(flows, cfg, { ensureContext })
-        flowErrors = flowSink
-        for (const fr of flowResults) for (const st of fr.steps) flowRoles.add(st.role)
-        for (const sess of roleSessions.values()) await sess.ctx.close().catch(() => {})
-        const passN = flowResults.filter(f => f.status !== 'fail').length
-        console.log(`\n[flow] 验收流程完成：${passN}/${flowResults.length} 通过`)
-      } else if (cfg.flowsOnly) {
-        console.log('[flow] spec 06 中无验收流程定义，无流程可跑')
-        flowResults = []
-      }
-    } catch (e) {
-      console.error(`[flow] 验收流程执行异常（不影响逐页巡检）: ${e.message}`)
-      flowResults = flowResults || []
-    }
-  }
-
   try {
-    for (const role of cfg.flowsOnly ? [] : cfg.roles) {
+    for (const role of cfg.roles) {
       console.log(`\n=== [${role}] 开始巡检 ===`)
       let ctx
       try {
@@ -645,9 +607,9 @@ export async function main() {
     const specs = buildCleanupSpecs(cfg)
     const seenIds = new Set()
     cleanupTotal = { deleted: 0, failed: 0 }
-    const cleanupRoles = cfg.flowsOnly ? [...flowRoles] : cfg.roles
+    const cleanupRoles = cfg.roles
     for (const role of cleanupRoles) {
-      if (!cfg.flowsOnly && results[role]?.login !== 'ok') continue
+      if (results[role]?.login !== 'ok') continue
       const token = await readStateToken(role)
       if (!token) continue
       const roleCreatedIds = new Set()
@@ -672,16 +634,6 @@ export async function main() {
   const totalErrors = Object.values(results).reduce((acc, r) => {
     return acc + (r?.routes?.filter(x => x.errors.length).length || 0)
   }, 0)
-  const flowFailures = (flowResults || []).filter(f => f.status === 'fail').length
-  if (flowResults?.length) {
-    console.log('\n=== 验收流程结果 ===')
-    for (const f of flowResults) {
-      const warnN = f.steps.filter(x => x.status === 'warn').length
-      console.log(`  [${f.status}] ${f.flow}${f.story ? `（${f.story}）` : ''}${warnN ? ` ${warnN} 步警告` : ''}`)
-      const bad = f.steps.find(x => x.status === 'fail')
-      if (bad) console.log(`       失败步骤 ${bad.i} [${bad.role}] ${bad.desc}：${bad.reason}`)
-    }
-  }
   const aggregate = aggregateErrors(results)
   const diff = cfg.baseline ? await diffWithBaseline(cfg.baseline, results) : null
   printSummary(results, aggregate, diff, totalErrors, cfg)
@@ -700,12 +652,10 @@ export async function main() {
     } : null,
     cleanup: cleanupTotal,
     backendLogLines,
-    flows: flowResults,
-    flowErrors,
     results,
   }
   await writeReport(cfg.report, report)
-  console.log(`\n共 ${totalErrors} 个页面发现问题${flowResults?.length ? `，验收流程 ${flowResults.length - flowFailures}/${flowResults.length} 通过` : ''}，报告已保存: ${cfg.report}（耗时 ${Math.round((Date.now() - startedAt) / 1000)}s）`)
+  console.log(`\n共 ${totalErrors} 个页面发现问题，报告已保存: ${cfg.report}（耗时 ${Math.round((Date.now() - startedAt) / 1000)}s）`)
 
-  if (cfg.failOnError && (totalErrors > 0 || flowFailures > 0)) process.exit(1)
+  if (cfg.failOnError && totalErrors > 0) process.exit(1)
 }

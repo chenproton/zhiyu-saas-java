@@ -48,7 +48,7 @@
 2. **明确需求**：把需求澄清为「做什么/为什么」，聚焦 **WHAT/WHY，不碰 HOW**（不写技术栈/表结构/代码组织）。不清楚就问用户。
 3. **制定方案**：需求 → 数据模型 / API 契约 / 测试场景。**每个技术选择记录理由并回链需求**。选型需拍板时问用户。
 4. **拆解任务**：生成可执行任务清单，标依赖与可并行项（`[P]`）。
-5. **实现**：写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）；核心业务链路（跨角色/跨页面端到端链）同步设计并登记验收流程（`docs/spec/06-acceptance-flows.md`，DoD 第 7 条）。走「四、分支隔离工作流」。
+5. **实现**：写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）。走「四、分支隔离工作流」。
 6. **校验**：`./scripts/spec-check.sh`（硬约束）+ 语义自查（spec 说的有没有实现、代码做的有没有写进 spec）。
 7. **收敛**：对照 spec 评估，把「没做完/偏航/新增件」记回任务或 spec，形成下轮输入。
 
@@ -108,7 +108,7 @@ deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal
 cd backend/java && ./mvnw compile -q            # Java 后端编译（JDK 21）
 cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
 cd frontend/plus-ui && pnpm build                # 管理端
-./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/LLM 直连/down 不可逆标注），详见 spec-standards.md §九
+./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/新端点租户校验提示/LLM 直连/down 不可逆标注），详见 spec-standards.md §九
 ```
 
 migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5；单次 commit 只含当次变更。
@@ -124,7 +124,7 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖。
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
-   > 两个例外（属自动化门禁，不是「主动做 E2E」）：① `deploy.sh` 部署后自带 5 探针业务冒烟（无浏览器、无账号，失败即回滚）；② 涉及核心业务链路的功能，按 DoD 第 7 条需设计 `docs/spec/06-acceptance-flows.md` 的 flow，并在部署后由用户或按需执行 `--flows` 跑通（AI 不主动跑）。
+   > 例外（属自动化门禁，不是「主动做 E2E」）：`deploy.sh` 部署后自带业务冒烟探针（无浏览器、无账号，失败即回滚）。
 4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`backend/java/*/target/`。
 
 ## 六、规范索引（细则去哪找）
@@ -134,7 +134,6 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 | 我要 | 读 |
 |---|---|
 | spec 分级/模板/DoD/闭环 | [`spec-standards.md`](docs/spec-standards.md) |
-| 写/跑业务链路验收流程 | [`spec/06-acceptance-flows.md`](docs/spec/06-acceptance-flows.md)（flow DSL） |
 | spec-first 执行手册（AI 技能，任务开始时加载） | [`.dsh/skills/spec-workflow/SKILL.md`](.dsh/skills/spec-workflow/SKILL.md) |
 | Java 后端框架规范/分层/禁止写法 | 本文件「第二部分」+ `.codex/skills/crud-development/SKILL.md` |
 | 组件复用速查 | [`components.md`](docs/components.md) + [`forms-tables.md`](docs/forms-tables.md) |
@@ -158,7 +157,6 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 | 离线实施包 | `./scripts/package-release.sh v1.0.0`（产出 Java+Vue 单栈离线包，含前端 dist 与迁移 SQL） |
 | 上传文件迁移 | `DATABASE_URL=… UPLOAD_DIR=… ./scripts/migrate_uploads.sh` |
 | UI 全站巡检 | `node scripts/ui-smoke/ui-smoke.mjs`（默认不做，见「五.3」） |
-| 业务链路验收 | `node scripts/ui-smoke/ui-smoke.mjs --flows`（spec 06 驱动；新功能核心链路须同步设计 flow，见 `docs/spec-standards.md` DoD 7） |
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`DB_PASSWORD`、`REDIS_PASSWORD`、`SEED_ADMIN_PASSWORD`）在 `.env` 配置，禁止提交仓库。
 

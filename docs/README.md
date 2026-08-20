@@ -43,8 +43,7 @@
 ```
 docs/
 ├── spec/                        # 功能规格（单一事实源）
-│   ├── 01-prd.md ~ 05-prototype-interaction.md   # 全平台五层
-│   ├── 06-acceptance-flows.md                    # 验收流程（flow DSL）
+│   ├── 01-prd.md ~ 05-prototype-interaction.md   # 全平台五层（06 验收流程已废弃删除）
 │   ├── partner-enterprise-platform.md            # 子平台示例
 │   └── vue-business-portal.md                    # Vue 业务门户（Java 配套）
 ├── decisions/                   # ADR 决策记录（为什么这么做）

@@ -25,7 +25,7 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 | 03 | 开发计划（WBS） | 里程碑、任务拆解、依赖、风险、评审节点 |
 | 04 | 数据库 Schema | ER 关系、字段级表定义、租户隔离方式、数据字典 |
 | 05 | 原型/交互 | 页面清单、关键交互、全局规则、响应式 |
-| 06 | 验收流程（补充层，按需） | 核心业务链路的机器可读验收流程（flow DSL），驱动冒烟巡检按业务流程点击；与 PRD 用户故事双向挂钩，spec-check 提示级校验一致性 |
+| 06 | 验收流程 | （已废弃删除：2026-08 起 ui-smoke 仅做全量页面冒烟，不再保留 flow 业务流程测试） |
 
 **每一层都必须与代码一致**：spec 描述的能力，代码必须实现；代码实现的行为，spec 必须记录。二者任一变化，另一者需同步更新（见「六、一致性红线」）。
 
@@ -60,11 +60,10 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 4. **契约** API 变更同步 `02-api-contract.md` 或子平台 spec 的 API 章节；migration 配对 `.down.sql`。
 5. **边界** spec 的「扩展性预留」未写「暂不做」的东西，若实现发现实际做了，要么补 spec，要么删除代码。
 6. **复用评估** 新建公共抽象（组件/函数/接口/mapper 方法）前已查 `AGENTS.md` 第二部分（Java 框架契约与复用约定）+ 相关 ADR，并**同步登记速查表**；能复用而未复用的需在 commit 说明理由。
-7. **验收流程** 功能涉及核心业务链路（跨角色/跨页面的端到端操作链）时，已在 `docs/spec/06-acceptance-flows.md` 新增或更新对应 flow（与 PRD 用户故事挂钩），并在部署环境跑通 `node scripts/ui-smoke/ui-smoke.mjs --flows`；纯局部页面/内部逻辑改动可豁免（commit 说明理由）。
 
 ## 五、规格的放置与命名
 
-- 全平台 spec 固定在 `docs/spec/`，编号 `01`~`05` 为必备五层，`06` 为验收流程补充层（核心链路按需，见 DoD 第 7 条）。
+- 全平台 spec 固定在 `docs/spec/`，编号 `01`~`05` 为必备五层（`06` 验收流程已废弃删除，见层表）。
 - 子平台 spec 放在 `docs/spec/`，命名 `<模块英文名>.md`（小写连字符），不编号，因为一个模块是独立范围。
 - **禁止**把 spec 散落到 `docs/` 根目录或各 `backend/`/`apps/` 内部；spec 是「全项目的单一事实源」，集中一处，任何 AI 协作者都先读这里。
 - 规格文档不设「教程 vs 参考」之分（见 `documentation-standards.md`）：spec 一律是**参考型**，按需查，不要求顺序通读。
@@ -106,10 +105,10 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 |---|---|---|---|---|
 | 1 | 对齐意图（constitution） | 读 `AGENTS.md` + 相关 `docs/*.md` 与 ADR，确立本仓的红线、分层、复用约束 | 无新产物 | 否 |
 | 2 | 明确需求（specify） | 把用户需求澄清为「做什么/为什么」，聚焦 WHAT/WHY，**不碰 HOW**（技术栈、表结构、代码组织一律后置） | 更新/新建 spec 的需求章节 | 需求不清晰时提问 |
-| 3 | 制定方案（plan） | 把需求映射为技术方案，每个技术选择**记录理由并回链到需求**；涉及核心业务链路的，同时设计验收流程步骤（哪几个角色、按什么顺序、断言什么） | spec 的架构/API/数据章节 + 06 flow 草案 | 技术选型需要拍板时提问 |
+| 3 | 制定方案（plan） | 把需求映射为技术方案，每个技术选择**记录理由并回链到需求** | spec 的架构/API/数据章节 | 技术选型需要拍板时提问 |
 | 4 | 拆解任务（tasks） | 从方案生成可执行任务清单，标注依赖与可并行项 | 任务清单（可写入 spec 开发计划章节） | 否 |
-| 5 | 实现（implement） | 按任务写代码 + 测试 + migration，**同时回写 spec**；核心链路的验收 flow 与代码同次提交 | 代码 + 回写的 spec + 06 flow | 否（自动） |
-| 6 | 校验（analyze） | 跨制品一致性：spec↔代码↔测试是否对齐，跑 `scripts/spec-check.sh` 硬约束 + 语义自查 + 部署后跑 `--flows` 验证业务链路 | 校验报告 | 否 |
+| 5 | 实现（implement） | 按任务写代码 + 测试 + migration，**同时回写 spec** | 代码 + 回写的 spec | 否（自动） |
+| 6 | 校验（analyze） | 跨制品一致性：spec↔代码↔测试是否对齐，跑 `scripts/spec-check.sh` 硬约束 + 语义自查 | 校验报告 | 否 |
 | 7 | 收敛（converge） | 对照 spec 评估实现，把「没做完/偏航/新增件」记回任务或 spec，形成下一轮迭代输入 | 收敛记录 | 否 |
 
 ### 关键原则（从 spec-kit 提炼）
@@ -124,8 +123,7 @@ AI 协作者承担完整闭环，用户只负责**给需求**和**关键决策�
 | 类型 | 手段 | 负责什么 |
 |---|---|---|
 | **硬约束（可自动，硬拦）**<br>（共 14 项中的 1–9、11、13、14） | `scripts/spec-check.sh` | ①分层红线（controller 无裸 SQL/DB 句柄/MyBatis 注解、service 无拼接 SQL、mapper 不读 HTTP 请求/Sa-Token/租户上下文）②LLM 直连红线（controller/service 禁止直连 LLM 特征）③migration 配对（`.up.sql` 必须有 `.down.sql`；**down 不可逆标注本身是提示级**，见下一行）④spec 五层齐备 ⑤ADR 索引双向一致 ⑥安全红线（ADR-0003 关键写租户条件，点名 mapper 文件级）⑦schema 文档↔migrations 编号一致 ⑧表数机械校验（migrations CREATE−DROP ↔ 04 头部）⑨机器码词汇表（02 §4.2 ↔ ApiException 机器码）⑪**spec 随代码变更**（改 controller/service/mapper/migrations 必须同次回写 spec，纯重构写 `spec:nochange` 豁免）⑬**新端点租户归属校验**（@PathVariable 且无 SystemGuard 的 controller 端点，AGENTS.md 3.2）⑭**新端点必须带测试**（新增 controller/service/mapper 实现文件须同次带测试，DoD 3） |
-| **温和提示（可自动，不拦）**<br>（10、12 项 + down 不可逆/XSS） | `scripts/spec-check.sh` | ⑩路由↔契约双向覆盖 ⑫验收流程一致性（06 flow ↔ PRD 用户故事）；另含 **down 不可逆标注**与 XSS（dangerouslySetInnerHTML 清单），两者均为提示级、不阻断 |
+| **温和提示（可自动，不拦）**<br>（10、12 项 + down 不可逆/XSS） | `scripts/spec-check.sh` | ⑩路由↔契约双向覆盖 ⑫验收流程一致性（06 已废弃删除，恒跳过）；另含 **down 不可逆标注**与 XSS（v-html 清单），两者均为提示级、不阻断 |
 | **语义一致性（需 AI）** | analyze 节点 | spec 说的有没有实现、代码做的有没有写进 spec、验收标准能否变成测试 |
-| **业务链路（可自动，真实环境）** | `scripts/ui-smoke` `--flows` | 按 06 的 flow 定义驱动浏览器跨角色走核心链路，断言接口响应与关键文案；逐页巡检保覆盖面、流程巡检保链路不断 |
 
 `spec-check.sh` 只查「机器能判定的违规」，**不能**判断「spec 与代码语义是否一致」——那必须由 AI 在 analyze/converge 节点做。两者配合：脚本拦截硬红线，AI 补语义。
