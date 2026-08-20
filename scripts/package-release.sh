@@ -100,9 +100,12 @@ rsync -a --exclude=.git --exclude=node_modules --exclude=dist \
 
 # plus-ui 管理端
 (cd "$BUILD_DIR/frontend/plus-ui" && pnpm install --offline --silent 2>/dev/null) || \
-  (cd "$BUILD_DIR/frontend/plus-ui" && pnpm install --silent 2>/dev/null) || \
+# plus-ui 声明 packageManager pnpm@10.34.5（engines.pnpm >=10），全局 pnpm 9 不兼容 → npx 拉取 pnpm@10
+PLUS_PNPM="pnpm"
+grep -q '"packageManager": "pnpm@10' "$BUILD_DIR/frontend/plus-ui/package.json" 2>/dev/null && PLUS_PNPM="npx --yes pnpm@10.34.5"
+(cd "$BUILD_DIR/frontend/plus-ui" && $PLUS_PNPM install --silent 2>/dev/null) || \
   die "plus-ui 依赖安装失败"
-(cd "$BUILD_DIR/frontend/plus-ui" && NODE_ENV=production pnpm build >/dev/null) || die "plus-ui 构建失败"
+(cd "$BUILD_DIR/frontend/plus-ui" && NODE_ENV=production $PLUS_PNPM build >/dev/null) || die "plus-ui 构建失败"
 [[ -d "$BUILD_DIR/frontend/plus-ui/dist" ]] || die "plus-ui 产物缺失：dist"
 
 # ── 4. 导出镜像 ──

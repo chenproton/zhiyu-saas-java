@@ -1120,13 +1120,19 @@ if $BUILD_FRONTEND; then
 
   # ── plus-ui 管理端 ──
   log "  构建 plus-ui（RuoYi 管理端，/plus-ui/ 子路径）..."
+  # plus-ui 声明 packageManager pnpm@10.34.5 且 engines.pnpm >=10，全局 pnpm 9 不兼容
+  # （ERR_PNPM_UNSUPPORTED_ENGINE）→ 用 npx 拉取 pnpm@10 执行安装与构建
+  PLUS_PNPM="pnpm"
+  if grep -q '"packageManager": "pnpm@10' "$PLUS_UI_DIR/package.json" 2>/dev/null; then
+    PLUS_PNPM="npx --yes pnpm@10.34.5"
+  fi
   if [[ ! -d "$PLUS_UI_DIR/node_modules" ]]; then
-    (cd "$PLUS_UI_DIR" && pnpm install --frozen-lockfile 2>/dev/null) || \
+    (cd "$PLUS_UI_DIR" && $PLUS_PNPM install --frozen-lockfile 2>/dev/null) || \
     { warn "plus-ui frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
-      (cd "$PLUS_UI_DIR" && pnpm install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
+      (cd "$PLUS_UI_DIR" && $PLUS_PNPM install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
   fi
   PLUS_LOG="$DEPLOY_DIR/.build-plus-ui.log"
-  (cd "$PLUS_UI_DIR" && NODE_ENV=production pnpm build >"$PLUS_LOG" 2>&1) \
+  (cd "$PLUS_UI_DIR" && NODE_ENV=production $PLUS_PNPM build >"$PLUS_LOG" 2>&1) \
     || { tail -n 40 "$PLUS_LOG" >&2 || true; die "plus-ui 构建失败（完整日志: $PLUS_LOG）"; }
   log "    plus-ui 构建完成"
 
