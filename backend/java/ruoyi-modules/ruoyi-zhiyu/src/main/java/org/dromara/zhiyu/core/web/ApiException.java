@@ -7,7 +7,7 @@ import java.io.Serial;
 /**
  * zhiyu 业务异常（对齐 Go 版 errorResponse：{code, error, message}）。
  *
- * <p>zhiyu 模块的前端（React，代码不动）期望错误响应形状为
+ * <p>zhiyu 模块的前端（Vue：portal-vue/plus-ui）期望错误响应形状为
  * {@code {"code": "...", "error": "...", "message": "..."}}，
  * 与框架 R&lt;T&gt; 包装不一致，因此 zhiyu 模块统一抛本异常并走
  * {@link ApiExceptionHandler} 输出。</p>

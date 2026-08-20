@@ -30,11 +30,10 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | `/health`、`/health/ready` | 公开 | 健康检查（ready 含 DB+Redis 探活） |
-| GET | `/metrics` | 公开 | Prometheus 指标（请求量/耗时/5xx + DB 连接池） |
+| GET | `/health` | 公开 | 存活探针（返回 `{"status":"ok"}`；DB/Redis 探活由部署业务冒烟覆盖，见 `03-development-plan.md` §5） |
 | GET | `/uploads/{tenantID}/{filename}` | 公开(混合鉴权) | 静态文件：签名 URL 免登录；登录态需租户匹配，跨租户 403 |
-| POST | `/api/v1/files/upload` | JWT(限流 20/min/用户) | 文件上传（multipart/form-data, `file` 字段，≤10MB，扩展名白名单 + magic bytes 嗅探） |
-| GET | `/api/v1/files/preview` | JWT | 文件预览（服务端转换，office 类） |
+| POST | `/api/v1/files/upload` | JWT(限流 20/min/用户) | 文件上传（multipart/form-data, `file` 字段，≤10MB，扩展名白名单） |
+| GET | `/api/v1/files/preview` | JWT | 文件预览（Content-Disposition inline 原样输出文件流，供浏览器/kkfileview 渲染；参数 `?name=`） |
 | GET | `/api/v1/files/sign-url` | JWT | 生成文件签名 URL（HMAC，15 分钟有效期） |
 | POST | `/api/v1/auth/login` | 公开(限流) | 通用登录（saas 语义） |
 | POST | `/api/v1/auth/saas/login` | 公开(限流) | SaaS 运营端登录 |
@@ -130,7 +129,8 @@
 | GET/POST | `/evaluation/job-ability/results`、`/summary`、`/{id}`、`/course-scores` | jobViewer 读 | 岗位能力结果/汇总/课程得分；`/course-scores` 当前被学生画像页临时隐藏（前端 `SHOW_COURSE_SCORES` 开关，见 `docs/系统功能清单.md`「六、6 认证结果与能力汇聚」） |
 | GET/POST | `/evaluation/job-ability/aggregate`、`/aggregate/status` | businessUser | 触发汇聚/状态 |
 | GET/POST/PUT/DELETE | `/evaluation/certifications`、`/{id}` | businessUser | 认证规则（见 §3.4，实际端点以 `/evaluation/certifications` 为前缀） |
-| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | businessUser | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：后端 `certificationSceneTasksOnly` 开关过滤体系课/混合课课程任务，恢复课程置 false） |
+| GET | `/evaluation/certifications/positions/{positionId}/model` | businessUser | 规则模型；模型任务当前**仅含场景任务**（临时边界：后端 `certificationSceneTasksOnly` 开关过滤体系课/混合课课程任务，恢复课程置 false） |
+| PUT | `/evaluation/certifications/positions/{positionId}/weights` | businessUser | 两级权重保存 |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | businessUser | 能力点五档分数线 |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights` | businessUser | 单个能力点下任务权重（单点保存，不影响其它能力点） |
 | GET/POST | `/evaluation/certifications/{id}/items`、`/items/{id}/points`、`/{id}/full` | businessUser | 能力项/能力点/全量规则 |
@@ -150,7 +150,8 @@
 | GET | `/library/resources/stats`、`/citation-stats`、`/uncited` | jobViewer | 资源统计/引用统计/零引用 |
 | POST | `/library/resources/import/preview` | businessUser | 资源批量导入预览 |
 | GET/POST/PUT/DELETE | `/library/on-site-questions` | 同上 | 现场问答题库 |
-| GET/POST/PUT/DELETE | `/library/tags`、`/resource-tags` | businessUser | 标签管理 + 资源标签绑定 |
+| GET/POST/PUT/DELETE | `/library/tags` | businessUser | 标签管理（5 CRUD） |
+| POST | `/library/resource-tags` | businessUser | 资源标签绑定（`POST /library/resource-tags` 绑定 + `POST /query` 批量查询） |
 | POST | `/library/resource-tags/query` | jobViewer | 资源标签批量查询（库浏览必需） |
 
 ### 1.6 教务管理（affairs，`/affairs/*`）
@@ -175,14 +176,17 @@
 | GET/PUT | `/tenants`、`/tenants/{id}` | 列表 `GET /tenants` 与写 `PUT /tenants/{id}`：systemAdmin / 本租户 portal 管理员（归属校验）；详情 `GET /tenants/{id}`：jobViewer 本租户业务角色（教师/学生/企业导师等）可读（handler 强制本租户，跨租户 403） | 租户信息（当前租户）；详情只读面向联盟前台落地页（`/portal/alliance/landing` hero 学校卡）与学校信息页（`/portal/apps/alliance/school`）读取本租户展示信息；**有效期 `valid_from`/`valid_until` 仅平台管理员可修改**，本租户管理员（portal）更新时自动剥离有效期字段（防止自行延长订阅） |
 | GET/POST/PUT/DELETE | `/admins`、`/admins/{id}`、`/admins/{id}/reset-password` | systemAdmin | 学校管理员管理（5 动作，重置密码限流）；本租户 portal 管理员经系统管理菜单调用（handler 强制本租户，归属校验在位）；**租户自助新增暂不开放**（产品决策：前端隐藏「新增」入口，`POST /admins` 仍保留供平台侧使用，见 `docs/系统功能清单.md`「十一、1 租户信息」；恢复方式为前端租户信息页组件顶部 `SHOW_ADD_BUTTON` 改为 true） |
 | GET/POST/PUT/DELETE | `/organizations`、`/organizations/tree`、`/org-types` | systemAdmin | 组织/组织类型 |
-| GET/POST/PUT/DELETE | `/users`（12 个写动作 + List） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/批量创建/毕业/删除/改密/绑定角色等） |
-| GET/POST/PUT/DELETE | `/staff-titles`、`/user-extension-fields`、`/user-relations` | systemAdmin | 职称/扩展字段/用户关系 |
+| GET/POST/PUT/DELETE | `/users`（10 个写动作 + List/详情） | systemAdmin 写 / RequireUserRead 读 | 用户管理（创建/更新/删除/状态/改密/绑定角色/batch/batch-graduate/batch-delete/batch-org-node） |
+| GET/POST/PUT/DELETE | `/staff-titles` | systemAdmin | 职称（5 CRUD） |
+| GET/PUT | `/user-extension-fields` | systemAdmin | 用户扩展字段（列表/更新 `/{id}`） |
+| GET/POST/DELETE | `/user-relations` | systemAdmin | 用户关系（列表/新增/删除 `/{id}`） |
 | GET/POST/PUT/DELETE | `/roles`、`/roles/{id}/assign` | systemAdmin | 角色与授权 |
 | GET/POST/PUT/DELETE | `/majors`、`/industries` | businessUser 读 / systemAdmin 写 | 专业/行业字典 |
 | GET/POST/PUT/DELETE | `/resource-codes` | systemAdmin | 资源编码 |
 | GET | `/logs/login`、`/logs/operation` | systemAdmin | 审计日志 |
 | GET/POST | `/favorites`、`/favorites/{targetType}/{id}` | 任一业务管理/落地页菜单 | 通用收藏（场景/课程/题库/试卷） |
-| PUT | `/portal/workspace/me`、`/me/password` | portalWorkspace | 个人资料/改密（改密限流） |
+| PUT | `/portal/workspace/me` | portalWorkspace | 个人资料更新 |
+| POST | `/portal/workspace/me/password` | portalWorkspace | 改密（改密限流） |
 
 ### 1.8 工作流 / 审批（portal，school_admin/teacher）
 
@@ -324,14 +328,13 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 - 响应：
 ```json
 {
-  "user": { "id": "...", "loginName": "teacher01", "orgNodeId": "...", "titleIds": [] },
+  "user": { "id": "...", "loginName": "teacher01", "orgNodeId": "..." },
   "tenant": { "id": "...", "name": "某某学校", "status": "active" },
-  "orgNode": { "id": "...", "name": "信息工程系" },
-  "major": { "id": "...", "name": "..." },  // 无专业时整个键省略（omitempty），不返回 null
-  "institution": { "id": "...", "name": "..." },
   "roles": [ { "id": "...", "code": "teacher", "name": "教师" } ]
 }
 ```
+
+> 响应仅含 `user`/`tenant`/`roles` 三段；`institution`/`orgNode`/`major`/`titleIds` 为 Go 时代字段，Java 实现不再返回（前端按需从组织/专业接口另行获取）。
 
 ### 3.3 内容发布流转（以岗位为例）
 
@@ -354,7 +357,8 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 | POST | `/evaluation/certifications/points/{pointId}/tasks` | 关联任务 |
 | PUT/DELETE | `/evaluation/certifications/tasks/{id}` | 关联任务更新/删除 |
 | GET/PUT | `/evaluation/certifications/{id}/full` | 全量规则读/写 |
-| GET/PUT | `/evaluation/certifications/positions/{positionId}/model`、`/weights` | 规则模型/两级权重；模型任务当前**仅含场景任务**（临时边界：后端 `certificationSceneTasksOnly` 过滤体系课/混合课课程任务，恢复置 false，见 §1.4 同端点注） |
+| GET | `/evaluation/certifications/positions/{positionId}/model` | 规则模型；模型任务当前**仅含场景任务**（临时边界：后端 `certificationSceneTasksOnly` 过滤体系课/混合课课程任务，恢复置 false，见 §1.4 同端点注） |
+| PUT | `/evaluation/certifications/positions/{positionId}/weights` | 两级权重保存 |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/levels` | 能力点五档分数线 |
 | PUT | `/evaluation/certifications/positions/{positionId}/points/{abilityPointId}/task-weights` | 单个能力点下任务权重（胜任配置弹窗保存：只校验并保存当前能力点，不影响其它能力点） |
 
@@ -377,7 +381,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 ### 3.6 文件上传
 
-**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，单文件 ≤10MB，请求体上限含 multipart 头部）→ `201 {"url": "/uploads/{tenantID}/xxx.png", "name": "...", "size": n, "mimeType": "..."}`；`GET /api/v1/files/preview?url=...` 返回可预览地址；`GET /api/v1/files/sign-url?url=...` 生成 15 分钟签名 URL（无登录态可访问，供 kkfileview 等外部拉取）。文档预览由前端 file-viewer（flyfish-dev，浏览器原生）渲染：凡扩展名落在 `@file-viewer/core` 的 `DEFAULT_SUPPORTED_EXTENSIONS`（208 个扩展名，覆盖 office/pdf/压缩包/邮件/CAD/3D/地理/脑图/绘图/电子书/图片/音视频/代码文本/字体/设计/数据）一律走 `FileViewerPreview`；其余格式回退 kkfileview。kkfileview 服务保留。
+**POST `/api/v1/files/upload`**（`multipart/form-data`，字段 `file`，单文件 ≤10MB，请求体上限含 multipart 头部）→ `200 {"url": "/uploads/{tenantID}/xxx.png", "name": "...", "size": n, "mimeType": "..."}`；`GET /api/v1/files/preview?name=...` 原样 inline 输出文件流（浏览器可原生渲染的格式直接展示）；`GET /api/v1/files/sign-url?name=...` 生成 15 分钟签名 URL（无登录态可访问，供 kkfileview 等外部拉取）。文档预览由前端经 `/kkfileview/onlinePreview?url=<b64(签名URL)>` 渲染（kkfileview 服务，`ENABLE_KKFILEVIEW=true` 时启用，见 `deploy/docker-compose.yml`）；浏览器原生可渲染的图片/PDF 等直接展示。
 
 ### 3.7 工作台聚合
 
@@ -422,7 +426,7 @@ List/Get 类只读接口在 businessUser（写）与 jobViewer（读，含学生
 
 ### 4.3 分页
 
-- 查询参数：`limit`（1-200，默认 50）、`offset`（默认 0）、`search`（对配置列 ILIKE 模糊匹配）
+- 查询参数：`limit`（1-200，默认 20，见 `LimitOffsetQuery`）、`offset`（默认 0）、`search`（对配置列 ILIKE 模糊匹配）
 - 排序：默认 `created_at DESC`；排序列白名单（防注入）
 - 响应：`{"items":[], "total":<总数>}`
 

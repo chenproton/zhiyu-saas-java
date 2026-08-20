@@ -81,7 +81,7 @@ tenants(租户) ── 行级隔离一切业务数据
 | school_type / province / city / scale_data / secondary_colleges / education_level / education_nature | — | — | 可 | 迁移 104/105 增补教育属性（jsonb 等） |
 | created_at / updated_at | timestamptz | now() | 否 | — |
 
-索引：`uq_tenants_code`（code 唯一）、`uq_tenants_domain`（domain 唯一）。
+索引：`tenants_code_key UNIQUE (code)`（code 唯一）；**无 domain 唯一约束**（domain 可重复）。
 
 ### 2.2 `users` — 用户
 
@@ -92,7 +92,7 @@ tenants(租户) ── 行级隔离一切业务数据
 | org_node_id | uuid | — | 可 | 组织节点（教师→院系，学生→班级），SET NULL |
 | major_id | uuid | — | 可 | 专业，SET NULL |
 | role | user_role ENUM | — | 否 | school/enterprise/operator |
-| login_name | varchar(255) | — | 可 | 全局唯一（tenantID+"_"+原始名） |
+| login_name | varchar(255) | — | 可 | 复合唯一 `uq_users_tenant_platform_login (tenant_id, platform, login_name)`（同一租户同一平台内唯一） |
 | password_hash | varchar(255) | — | 否 | bcrypt |
 | student_no / work_id | varchar(64) | — | 可 | 学号/工号 |
 | title_ids | uuid[] | '{}' | 否 | 职称 |
@@ -101,7 +101,7 @@ tenants(租户) ── 行级隔离一切业务数据
 
 ### 2.3 `organizations` / `org_types` — 组织树
 
-organizations：`id, tenant_id(CASCADE), type_id(FK org_types RESTRICT), parent_id(自引用), name, member_count, created_at/updated_at`。
+organizations：`id, tenant_id(CASCADE), type_id(FK org_types CASCADE，116 治理), parent_id(自引用), name, member_count, created_at/updated_at`。
 org_types：`id, tenant_id, name, category, is_default`。组织树创建递归防环（循环引用 409）。
 
 ### 2.4 `roles` / `user_roles` — RBAC
@@ -145,16 +145,16 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | certification_ability_items | rule_id CASCADE、name、sort_order | 能力项 |
 | certification_ability_points | item_id CASCADE、ability_point_id、mapping_type(inherit/custom)、custom_level_mapping jsonb、required_level、weight | 能力点映射 |
 | certification_related_tasks | cert_point_id CASCADE、task_id、max_score、weight | 关联任务 |
-| certification_weights | cert_point_id（task_id 可空=能力点占岗位分）、weight | 两级权重（091） |
+| certification_weights | rule_id、ability_point_id、task_id（可空=能力点占岗位分）、weight | 两级权重（091） |
 | certification_grade_data | position_id + grade_year 唯一、total_ability_points、avg_achievement_rate | 年级数据（无 tenant_id） |
 | certification_competency_requirements | grade_data_id、duty_name、target_level、current_level | 达标要求 |
 | certification_grade_leaderboard | grade_data_id、user_id、achievement_rate、grade_label | 排行榜 |
 
 ### 2.8 `courses` / `system_course_nodes` — 课程链
 
-**courses**：`id, tenant_id, code((tenant,code) 唯一), name, type, category, teacher_id, version, online_hours/offline_hours/online_weight, semester, status(CHECK 六态), knowledge_point_ids uuid[], resource_ids uuid[], ability_point_ids uuid[](095), eval_data jsonb(093), batch_id, description, cover_image, created_by`。
+**courses**：`id, tenant_id, code((tenant,code) 唯一), name, type, category, teacher_id, version, online_hours/offline_hours/online_weight, semester, status(CHECK 六态), knowledge_point_ids uuid[], resource_ids uuid[], ability_point_ids uuid[](095), eval_data jsonb(093), batch_id, description, cover_image, creator_id`。
 
-**system_course_nodes**（树形）：`id, course_id(CASCADE), parent_id(自引用 SET NULL), title, ref_type(normal), source_id, teaching_goals, estimated_hours, eval_data jsonb, sort_order, created_at/updated_at, tenant_id`。
+**system_course_nodes**（树形）：`id, course_id(CASCADE), parent_id(自引用 SET NULL), name, ref_type(normal), source_id, teaching_goals, estimated_hours, eval_data jsonb, sort_order, created_at/updated_at, tenant_id`。
 
 节点子表：`node_homeworks`（need_attachment/deadline/status）、`node_homework_submissions`（**098**：(homework,student) 唯一、attachment_urls[]、score/total_score）、`node_quizzes`/`node_quiz_questions`（time_limit、type/options/answer jsonb）、`node_resources`/`node_resource_bindings`、`node_knowledge_point_bindings`/`node_ability_point_bindings`（无 tenant_id）、`hybrid_node_modules`（module_key/mode/data jsonb）。
 
@@ -176,7 +176,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 
 ### 2.10 `scenarios` / `scenario_tasks` — 场景链
 
-**scenarios**：`id, tenant_id, code((tenant,code) 唯一), name, status(CHECK 六态), difficulty(1-5 CHECK), profession_name, industry_ids varchar(64)[], career_position_id, batch_id, delivery_goal, background, cover_image, version, created_by`。
+**scenarios**：`id, tenant_id, code((tenant,code) 唯一), name, status(CHECK 六态), difficulty(1-5 CHECK), profession_name, industry_ids varchar(64)[], career_position_id, batch_id, delivery_goal, background, cover_image, version, creator_id`。
 
 **scenario_tasks**：`id, scenario_id(CASCADE), name, task_type, difficulty(1-5), dependency_ids uuid[], is_referenced, knowledge_ids/ability_ids/resource_ids uuid[], eval_data jsonb, sort_order`。
 
@@ -186,12 +186,12 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 
 ### 2.11 考试链
 
-**question_banks**：`id, tenant_id, code((tenant,code) 唯一), name, description, status(CHECK 六态), is_draft_pool, owner_type, batch_id, created_by`。
+**question_banks**：`id, tenant_id, code((tenant,code) 唯一), name, description, status(CHECK 六态), is_draft_pool, owner_type, batch_id, creator_id`。
 **questions**：`id, bank_id(CASCADE), tenant_id, type, content, options jsonb, answer text, difficulty, knowledge_point_ids uuid[], analysis, status`。
-**exams**：`id, tenant_id, code((tenant,code) 唯一), name, description, total_score, duration, owner_type(mine), is_temp, collaborator_ids uuid[], status(CHECK 六态), batch_id, created_by`。
+**exams**：`id, tenant_id, code((tenant,code) 唯一), name, description, total_score, duration, owner_type(mine), is_temp, collaborator_ids uuid[], status(CHECK 六态), batch_id, creator_id`。
 **exam_questions**：`exam_id CASCADE + question_id SET NULL（158 删题保护，question_id 可空）`，**(exam,question) 唯一（113）**、score、sort_order。
-**exam_usages**：`id, tenant_id, exam_id, target_type(mine/course/node), target_ids uuid[], status(draft), start_time/end_time, duration, created_by`。
-**exam_results**：`id, tenant_id, usage_id CASCADE, user_id, score/total_score, is_pass, answers jsonb`，**(usage,user) 唯一**。
+**exam_usages**：`id, tenant_id, exam_id, target_type(mine/course/node), target_ids uuid[], status(draft/published/finished，133 归一), start_time/end_time, duration, creator_id`。
+**exam_results**：`id, tenant_id, exam_usage_id CASCADE, user_id, score/total_score, is_pass, answers jsonb`，**(exam_usage_id, user_id) 唯一**。
 **random_draw_questions**：随机抽题（answer 字段，按专业范围）。
 **question_bank_knowledge_points**：关联（无 tenant_id）。
 
@@ -223,7 +223,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | training_programs | code、entry_year、level(中专/大专/本科)、total_credits、status(draft/published)、collaborators[]、batch_id |
 | training_program_courses | program_id CASCADE、course_id SET NULL、credits、hours、semester、nature(必修/选修/实践/场景)、assessment、position_id(102)（无 tenant_id） |
 | teaching_plans | status(draft/confirmed)、(program_id,term_id) 唯一 |
-| teaching_plan_entries | plan_id、type(theory/practice/scene)、week_pattern(all/odd/even)、teacher_type、venue_type、course_id/scenario_id、teacher_id、org_node_id（无 tenant_id） |
+| teaching_plan_entries | plan_id、type(theory/practice/scene)、week_pattern(all/odd/even)、teacher_type、venue_type、course_id/scenario_id、teacher_id、class_node_id（无 tenant_id） |
 | teaching_plan_entry_classes | (entry_id,class_id) 复合主键（101，多班级） |
 | venues | name、capacity、tenant_id |
 | period_slots | start_time/end_time、tenant_id |
@@ -257,10 +257,10 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | job_ability_results | (position_id,user_id) 唯一、achievement_rate（岗位能力加权平均分 0-100）、ability_cognition_score（认知得分 0-100）、position_competency（胜任度%，比值法，分母仅含 requiredLevel≠understand 的有门槛能力点）、position_competency_v2（胜任度新%，等级距离法）、grade、ability_point_details jsonb |
 | job_ability_aggregate_logs | 聚合任务日志 running/finished |
 | student_ability_portraits | user_id、content jsonb、version |
-| student_ability_archives | (user_id,position_id) 唯一、audit_status、direction(positive/negative)、converted_credit |
-| micro_cert_templates | name、cert_type、description、image_url |
+| student_ability_archives | user_id、material_type、audit_status、direction(positive/negative)、converted_credit（无 (user,position) 唯一约束） |
+| micro_cert_templates | title、cert_type_id、cert_type_name、content、cover_image |
 | cert_issuance_records | cert_number 唯一、(tenant,template,user) 唯一（114）、issue_date/expire_date、status(issued)、revoked_at |
-| graduation_project_topics | source、status、capacity、advisor_id、enterprise_mentor_id |
+| graduation_project_topics | source、status、capacity、advisor_id（enterprise_mentor_id 已于 154 删除） |
 | graduation_project_archives | (topic_id,user_id) 唯一（111）、phase、doc_status、has_rectification |
 | graduation_project_evaluations | advisor/enterprise/defense_score、comprehensive_grade、is_excellent |
 | graduation_query_results | credit_completed/required、scene_passed/required、graduation_status、ability_cert_status |
@@ -312,14 +312,14 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 
 ## 3. 租户隔离说明
 
-- **绝大多数业务表带 `tenant_id`**（可空列 + 索引 + ON DELETE CASCADE）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 153 张）为准。
+- **绝大多数业务表带 `tenant_id`**（多为可空列 + 索引；FK 级联仅覆盖 140 治理后的增量表——001 baseline 的 46 张业务表 `tenant_id` 无 FK，隔离依赖 SQL 层 `tenant_id` 条件 + service 层归属校验，见 ADR-0003）：所有业务实体（岗位/课程/场景/题库/试卷/批次/联盟/教务/资源…）；全库表数以本文档头部（当前 153 张）为准。
 - **少数表无 `tenant_id`**，分三类：
   1. **平台级公共表**：`platform_configs`（全局 KV）、`tenants`（本身）
   2. **计数器**：`favorite_counters`、`view_counters`（按 target_type+target_id 聚合，跨租户无妨）
   3. **依赖父表隔离的纯关联/派生表**：`career_position_majors`、`position_favorites`、`user_roles`、`evaluation_method_targets`、`question_bank_knowledge_points`、`node_ability_point_bindings`、`node_knowledge_point_bindings`、`teaching_plan_entries`(+`teaching_plan_entry_classes`)、`training_program_courses`、`certification_grade_data`(+`competency_requirements`+`grade_leaderboard`)
 - **行级隔离**（非库级）：数据访问层 SQL 统一带 `tenant_id` 条件；写操作另做租户归属校验（ADR-0003）
 - **唯一性**：`(tenant_id, code/name)` 复合唯一索引 20+ 个（courses/exams/scenarios/question_banks/career_positions/majors/industries/certificate_library 等）
-- **级联治理**（115/116）：可空业务引用（教师/评分人）→ SET NULL；NOT NULL 学生归属 → CASCADE；tenant 引用一律 CASCADE，保证删租户/删用户不阻塞
+- **级联治理**（115/116）：可空业务引用（教师/评分人）→ SET NULL；NOT NULL 学生归属 → CASCADE；增量表 tenant 引用 → CASCADE（保证删租户不阻塞）；001 baseline 表 `tenant_id` 多无 FK（显式 SQL 过滤隔离）
 
 ---
 
@@ -351,7 +351,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | batches 五套.status | open / closed |
 | approval_records / appeal_records / 评价结果.status | pending / approved / rejected |
 | course/node/scene_homework_submissions.status | submitted |
-| exam_usages.status | draft |
+| exam_usages.status | draft / published / finished（133 归一，in_progress 并入 published） |
 | rubric_templates.mode | rubric / score_rule |
 | position_ability_bindings.weight / scenario_weight_configs.weight | 0-100 |
 | scenarios/scenario_tasks.difficulty | 1-5 |
@@ -387,7 +387,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 091 | certification_weights | 认证两级权重 |
 | 092 | affairs 基础表 | terms/training_programs/venues/period_slots |
 | 093 | courses.eval_data | 课程评价数据 |
-| 094 | course_assessments + schedule_entries.course_id | 课程评估/排课关联课程 |
+| 094 | course_homeworks + schedule_entries.course_id | 课程作业表/排课关联课程 |
 | 095 | course_evaluation_results + courses.ability_point_ids | 课程级评价/能力点 |
 | 096 | course_homework_submissions | 课程作业提交 |
 | 097 | knowledge_points.source + node_evaluation_results + 教务课程 | 知识点来源/节点评价 |
@@ -417,7 +417,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 122 | alliance_dict_english_codes | 联盟字典英文码 |
 | 123 | eval_standard_copy | 量规标准复制到任务侧 |
 | 124 | certification_point_levels | 能力点五档分数线配置（每能力点独立） |
-| 125 | job_ability_results 指标扩展 | 能力认知得分（0-100）+ 排名指标 |
+| 125 | job_ability_results 指标扩展 | ability_cognition_score（0-100）+ position_competency（胜任度） |
 | 126 | job_ability_results 指标扩展 | 岗位胜任度等新指标 |
 | 127 | community_topics/community_replies | 学习社区帖子与回复 |
 | 128 | 知识点/能力点编码回填 | 存量无编码行生成 NL 编码 |
@@ -433,7 +433,7 @@ ability_points：`id, tenant_id, name, code(varchar(64), 迁移 120 回填 'NL-x
 | 138 | teaching_plans 通用内容架构 | 批次绑定等内容管理接入 |
 | 139 | 引用统计/零引用查询支撑 | CitationStats/ListUncited |
 | 140 | 增量迁移索引补齐 | 091~137 增量新表的索引补建 |
-| 141 | lesson_batches.status 默认值 | DB 默认 'active' 对齐后端实现 |
+| 141 | lesson_batches.status 默认值 | DB 默认值从 'active' 改为 'open'（对齐后端 open/closed 两态） |
 | 142 | alliance_enterprise_links + 专家企业外键 | 企业平台阶段一底座 |
 | 143 | 任务级企业导入标记 | 企业平台阶段二 |
 | 144 | alliance_agreements 前台显示开关 | 公开展示列 |

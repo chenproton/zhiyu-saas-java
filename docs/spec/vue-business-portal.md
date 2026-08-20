@@ -11,7 +11,7 @@
 ### 1.1 背景
 - 本仓库原为 Go + Java 双后端并存；Java 后端（`backend/java/ruoyi-*`，`org.dromara`）等价迁移 13 个业务域，共 635+ 端点，API 契约与 Go 版对齐（`/api/v1/**`、裸 JSON、`{items,total}`、`limit/offset`）。Go 后端已随 2026-08 单栈迁移删除。
 - （**迁移前的历史状态，已不成立**）Java 后端曾复用 Next.js 业务门户（通过 `NEXT_PUBLIC_BASE_PATH=/java` 在 `/java/portal` 服务）；现 Java 侧为独立 Vue 门户，Next.js/React 前端已删除。
-- 现有 Vue 工程 `frontend/plus-ui`（RuoYi-Vue-Plus 管理端，Vue 3.5.40 / Vite 8.1.5 / TS 6.0.3 / Element Plus 2.14.3）已随框架合仓进入仓库，但**仅覆盖后台管理控制台**（系统管理/工作流/代码生成/监控），且当前未接线 Java。
+- 现有 Vue 工程 `frontend/plus-ui`（RuoYi-Vue-Plus 管理端，Vue 3.5.40 / Vite 8.1.5 / TS 6.0.3 / Element Plus 2.14.3）已随框架合仓进入仓库，覆盖后台管理控制台（系统管理/工作流/代码生成/监控），并已随单栈化接入 Java：deploy.sh 构建发布 `/plus-ui/`，`/prod-api/` 经容器网关代理到 java-backend（见 §8 与 `deploy/nginx-container/conf.d/zhiyu-site.conf`）。
 
 ### 1.2 目标
 把 Java 配套的**业务门户**（岗位/场景/课程/联盟/评价/教务等前台页面）从 Next.js 迁移到 Vue 3.5 / TypeScript / Vite，使 Java 具备独立的 Vue 前端体系：
@@ -44,7 +44,7 @@
 ### 2.2 独立应用 vs 塞进 plus-ui
 - **决策：新建独立应用 `frontend/portal-vue`**，不复用 plus-ui 的「后台管理」布局/路由/菜单体系。
 - 理由：业务门户是前台 landing + 卡片导航 + 多角色工作台风格（见 `05-prototype-interaction.md`），与 plus-ui 的后台侧栏布局形态不同；硬塞会导致布局层大改 plus-ui，破坏管理端。
-- 但**复用** plus-ui 的：`vite.config.ts`/`tsconfig.json`/`uno.config.ts` 工程配置、`utils/request.ts`（axios 封装）、`utils/auth.ts`（token 存取）、权限 store/指令、Element Plus 通用组件（Pagination/DictTag 等）。
+- 但**复用** plus-ui 的：`vite.config.ts`/`tsconfig.json`/`uno.config.ts` 工程配置、权限 store/指令、Element Plus 通用组件（Pagination/DictTag 等）。注意：portal-vue 请求层为**原生 fetch**（`src/api/http.ts`，无 axios 依赖），token 存取也在 `http.ts` 内实现，不复用 plus-ui 的 request/auth utils。
 
 ### 2.3 数据边界
 - **无数据模型变更**：Java 后端已共享 PostgreSQL（同一库 `zhiyu_saas`），Vue 门户纯前端，不新增表/迁移/字段。
@@ -112,10 +112,10 @@
 > 全程只新增 `frontend/portal-vue/**` 与部署脚本/nginx 增量配置；不修改既有前端/后端基线。
 
 ### Phase 0 — 工程基建（一次，依赖：无）
-- [ ] `frontend/portal-vue` 应用壳：Vite/TS/Element Plus/pinia/vue-router/axios 配置（复用 plus-ui 版本锁定）。
+- [x] `frontend/portal-vue` 应用壳：Vite/TS/Element Plus/pinia/vue-router 配置（复用 plus-ui 版本锁定；请求层用原生 fetch，无 axios）。
 - [ ] 登录页 + 布局（前台 landing/卡片导航风格）+ 路由守卫 + 权限 store + `v-hasPermi` 指令。
 - [ ] 移植 `shared-types`（26 个 .ts）为 `frontend/portal-vue/src/types/*`。
-- [ ] Vue 请求层 `src/api/*`：axios 实例 + `/api/v1` + 401 处理 + token 存取（对齐 `-java` 隔离）。
+- [x] Vue 请求层 `src/api/*`：原生 fetch 封装（`http.ts`）+ `/api/v1` + 401 处理 + token 存取（单栈部署无 `-java` 前缀隔离）。
 - [ ] nginx：portal-vue 静态资源与 SPA fallback 路由（见 §8）。
 - [ ] 冒烟：登录 → me → 空工作台可渲染。
 
@@ -139,7 +139,7 @@
 - 统一经 `deploy.sh`（**唯一部署入口**）：`db/migrations` 纯 psql 迁移 + `backend/java` Maven 构建 + `frontend/portal-vue`/`frontend/plus-ui` 构建 + SeedRunner 种子 + Java 框架表初始化 + 健康门禁/业务冒烟（详见 `03-development-plan.md` §5）。
 - 入口：边缘 nginx :80 **根路径直连**（`deploy/nginx/conf.d/`，单栈配置已注明「无 /java/ 前缀分流」），业务门户/管理端/API/上传全部经容器网关 → `java-backend`。`VITE_API_BASE=/api/v1`。
 - 前端：portal-vue 为业务门户（根路径 + SPA fallback），plus-ui 为管理端；均由 deploy.sh 构建并发布。
-- 登录态：单栈部署 token key 直接用平台基础 key（`zhiyu-portal-token` / `zhiyu-saas-token` / `zhiyu-partner-token`，见 `frontend/portal-vue/src/api/http.ts`），**无 `-java` 后缀隔离**。
+- 登录态：单栈部署 token key 直接用平台基础 key（`zhiyu-portal-token`（portal）/ `zhiyu-token`（saas）/ `zhiyu-partner-token`（partner），见 `frontend/portal-vue/src/api/http.ts`），**无 `-java` 后缀隔离**。
 - 上传件：`/uploads/` 由 Java 后端统一服务，走 `zhiyu-saas_uploads_data` 卷（容器以 uid 1000 运行）。
 - 历史状态（已不存在）：`/java/` 前缀、8083 直连双栈、`deploy-java.sh`、java-edu 容器均已随单栈迁移移除。
 

@@ -37,7 +37,7 @@
 
 ## 2. 范围界定
 
-### 2.1 本期已实现功能（12 个平台模块）
+### 2.1 本期已实现功能（11 个平台模块）
 
 | 模块 ID | 模块名 | 系统 | 说明 |
 |---------|--------|------|------|
@@ -53,13 +53,15 @@
 | decision | 敏捷决策中心 | — | 占位 |
 | research | 教科研服务中心 | — | 占位 |
 
-另含：**门户/工作台**（portal：登录、应用中心、我的服务台）、**SaaS 超管控制台**（superadmin：租户 CRUD + 订阅套餐开关）。
+另含：**门户/工作台**（portal：登录、应用中心、我的服务台）、**SaaS 超管控制台**（superadmin：租户 CRUD + 订阅套餐开关）、**企业平台 Partner**（企业管理员/成员/专家、资源共建/就业服务/联盟公开，完整规格见 [`partner-enterprise-platform.md`](partner-enterprise-platform.md)）。
+
+> 模块口径：上表 11 个为前端 `PLATFORM_MODULES` 业务模块（无 ai——AI 功能已于 2026-08 随单栈迁移整体下线）；后端默认订阅套餐另含 `ai` 模块条目，属历史遗留、无实际功能。
 
 ### 2.2 明确不做（一期范围外）
 
-- **商城 marketplace**：`apps/marketplace` 源码已移除归档，不参与构建；`institutions/orders/withdrawals` 等商城表保留但无业务接口支撑
-- **短信/微信登录**：前端登录页为占位 Tab，仅账号密码可用
-- **OPC 专区、敏捷决策中心、教科研服务**：仅应用中心入口卡片，无页面无接口
+- **商城 marketplace**：`apps/marketplace`（React 时代）源码已随单栈迁移移除；`institutions/orders/withdrawals` 等商城表保留但无业务接口支撑；门户首页卡片墙仍渲染「产教资源中心」(mall) 卡片（无路由、恒锁定）
+- **短信/微信登录**：前端登录页为单卡片账号密码登录（无短信/微信 Tab）
+- **OPC 专区、敏捷决策中心、教科研服务**：门户首页与应用中心渲染锁定态入口卡片，无页面无接口
 - **平台地址/跳转配置**：`platform_links`/`app_modules` 表已删除（迁移 110），固定地址收敛到前端配置
 - **跨租户数据访问**：平台管理员无跨租户读取特权（明确的产品边界，防止数据泄露）
 - **课程/节点作业提交与批改**：数据表已建但无接口与页面（休眠）
@@ -217,9 +219,9 @@
 | 项 | 指标 | 实现 |
 |----|------|------|
 | 常规接口超时 | 30s | 框架统一中间件；import/export/templates 前缀 10min |
-| 分页上限 | 200 条/页，默认 50 | `maxPageSize=200`，limit 钳制 [1,200] |
+| 分页上限 | 200 条/页，默认 20 | `maxPageSize=200`，limit 钳制 [1,200]，默认 20（`LimitOffsetQuery`） |
 | 请求体上限 | 10MB | `maxJSONBodySize` |
-| 缓存 | 落地页考试 2min、公开岗位 2min、场景列表 2min、工作台 30s | Redis（键含租户+查询参数 / userID）；未配置 Redis 自动禁用 |
+| 缓存 | 落地页考试 2min、公开岗位 2min、场景列表 2min、工作台 30s | Redis（键含租户+查询参数 / userID）；Redis 为部署必需服务（compose depends_on healthy，见 `deploy/docker-compose.yml`） |
 | 异步化 | 操作日志、能力汇聚 | OpLogBuffer 异步缓冲 + scheduler 定时聚合 |
 
 ### 5.2 安全
@@ -241,8 +243,8 @@
 | 浏览器 | 现代浏览器（Chrome/Edge/Firefox/Safari 近 2 个主版本）；移动端适配已完成 3 轮全量扫描 |
 | 后端运行时 | Java 21 / Spring Boot 4（CI 校验 Maven 编译） |
 | 前端运行时 | Node ≥ 20（CI 用 22）、pnpm；Vue 业务门户（portal-vue，Vue 3.5 + Element Plus）+ 管理端（plus-ui，RuoYi 框架） |
-| 数据库 | PostgreSQL 15（docker 5433 映射）；Redis 7（可选） |
-| 文档预览 | flyfish-dev/file-viewer（浏览器原生），覆盖全部 208 扩展名/25 条链路；kkfileview 服务（profile 可选启用，端口 8012）保留作不支持格式的回退 |
+| 数据库 | PostgreSQL 15（docker 5433 映射）；Redis 7（必需，后端启动依赖，见 compose healthcheck） |
+| 文档预览 | kkfileview 服务（docker compose profile，默认启用，端口 8012）；浏览器原生可渲染格式（图片/PDF 等）直接展示，其余经 kkfileview 转换预览（前端 `/kkfileview/onlinePreview?url=<签名URL>`，见 `02-api-contract.md` §3.6） |
 
 ### 5.4 可维护性
 

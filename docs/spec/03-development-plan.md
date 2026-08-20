@@ -66,7 +66,7 @@
 | 任务名 | 负责人 | 预估工时 | 依赖 | 状态 |
 |--------|--------|---------|------|------|
 | 登录页（三 Tab + 租户选择弹窗）+ AuthProvider | A1 | 2 | M1 认证 | ✅ |
-| 门户首页/应用中心（12 模块卡片）+ TopNav | A1 | 2 | 登录 | ✅ |
+| 门户首页/应用中心（11 模块卡片）+ TopNav | A1 | 2 | 登录 | ✅ |
 | 各模块 wire 真实 API（移除 localStorage mock） | A2/A3 并行 | 6 | M1 接口 | ✅ |
 | 学生落地页（job/scene/lesson/evaluation landing 四套） | A2 | 3 | 公开接口 | ✅ |
 | 共享组件下沉公共组件库（StatusBadge/ConfirmDialog/ImportWizard 等） | A3 | 3 | — | ✅ |
@@ -127,7 +127,7 @@
 | kkfileview 文档预览服务 | 可选 profile，端口 8012（保留作 file-viewer 不支持格式的回退） | 可选启用 |
 | Redis | 缓存/限流，未配置自动降级 | 已就绪（docker） |
 | PostgreSQL 15 | 主数据库 | 已就绪（docker） |
-| 设计稿 | 无外部设计稿，组件库（shadcn + 亮色主题）即视觉规范 | 内置 |
+| 设计稿 | 无外部设计稿，组件库（Element Plus + 亮色主题）即视觉规范 | 内置 |
 
 ### 3.3 风险项与应对
 
@@ -211,10 +211,9 @@ CI（`.github/workflows/ci.yml`）：Java Maven 编译 + portal-vue/plus-ui 构�
 
 ## 6. 后续迭代建议
 
-   当前 9 条 flow：就业大厅 + 岗位发布 + 课程发布学习 + 考试安排 + 场景任务 + 教务计划 + 教学计划排课全链路 + 联盟公开页 + 资源复用；
-   按 UI 现状裁剪项已注明（场景任务依赖编排、教务自动排课无 UI 入口、学期日历选择 DSL 不可驱动，由后端集成测试与逐页巡检覆盖）。
-   2026-08-20 增补：修复场次班级选择器提前提交与场次列表加载缺陷后 exam-loop 恢复 E-2 学生参考链路；
-   新增 teaching-plan-schedule-loop 自给课程/方案/计划数据，打通「课程→方案→计划→排课→学生课表」完整链路。
+> 2026-08-20 起（用户决策）：ui-smoke **仅保留全量页面访问冒烟 + CRUD 巡检**，flow 业务流程测试已移除
+> （scripts/ui-smoke/flows.mjs 与 docs/spec/06-acceptance-flows.md 同步删除，spec-check 第 12 项因 06 文件缺失恒跳过）。
+> 核心业务链路（跨角色/跨页面的端到端链）正确性改由**后端集成测试 + 逐页巡检**覆盖，不再维护 flow DSL。
 
 1. **S1（建议）**：补齐 OPC 专区/决策中心/教科研三个占位模块的产品定义
 2. **S2（建议）**：商城 marketplace 重启用（表结构已保留）或明确移除归档

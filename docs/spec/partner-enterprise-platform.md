@@ -40,11 +40,11 @@
 |---------|----------------------|------------------------|
 | 租户 | `tenants`（学校租户） | `tenants`（企业租户，`type=enterprise`） |
 | 平台标识 | `platform=portal`（JWT + DB） | `platform=partner`（新增；DB 为 varchar 无需 DDL） |
-| 前端路由段 | `/portal/*`，独立 login/layout/Guard | `/partner/*`，独立 login/layout/Guard |
+| 前端路由段 | `/portal/*`，`PortalLayout` | `/partner/*`，业务页面挂在 `PortalLayout` children（`/partner/login` 为独立登录页，无独立布局/Guard，见 §F5） |
 | Token key | `zhiyu-portal-token` | `zhiyu-partner-token` |
 | API 前缀 | `/api/v1` + `RequirePlatform('portal')` | `/api/v1/partner/*` + `RequirePlatform('partner')` |
 | 角色/权限 | roles + user_roles + permissions + 菜单权限 | 企业租户内种子角色 `enterprise_admin` / `enterprise_member`，复用同一套机制 |
-| 导航菜单 | `lib/navigation-config.ts` | `partnerNavigationConfig`（未来加功能 = 加菜单 + 加页面） |
+| 导航菜单 | `frontend/portal-vue/src/layouts/navigation-config.ts` | `partnerNavigationConfig`（未来加功能 = 加菜单 + 加页面） |
 | 跨平台合作 | — | 合作关联表（学校租户 × 企业租户） |
 
 ### 2.2 核心决策（已确认）
@@ -86,7 +86,7 @@
 **现状**：
 - `/api/v1/alliance/public/*`（GET，挂在 jobViewer 组，需 portal JWT + 角色，**非匿名**）
 - `is_public` 由学校维护；数据访问层查询**完全不按租户过滤**，所有学校的公开数据跨租户汇聚展示
-- 前台页面：`landing`（学校信息卡 + 统计卡 + 企业/项目/成果/专家区块 + 品牌 Tab）、各列表页/详情页（public-cards.tsx）
+- 前台页面：`views/portal/alliance/landing.vue`（学校信息卡 + 统计卡 + 企业/项目/成果/专家区块 + 品牌 Tab）及各列表页/详情页
 
 **目标流程**：
 1. 企业侧：注册（默认开启 `enable_public`）→ 维护主体信息 → 按需关闭 `enable_public`（企业"愿意对外展示"）；专家档案 `is_public`（语义改为企业侧维护，专家"愿意被展示"）
@@ -105,7 +105,7 @@
 - 岗位共建：`career_positions.collaborators uuid[]`（UserSelector 选 users，仅排除学生，企业导师可被选中）
 - 场景共建：`scenarios.co_builder_ids uuid[]`（UserSelector 选 users）
 - 排课：`schedule_entries.teacher_id → users(id)`，`teaching_plan_entries.teacher_type` 已支持"企业导师"
-- 毕业设计：`graduation_project_topics.enterprise_mentor_id`（**无 FK、无角色校验、前端未使用**，当前是悬空引用）
+- 毕业设计：`graduation_project_topics.enterprise_mentor_id` 遗留列已于 migration 154 清理（全仓库无读写代码），毕业设计课题导师绑定不在当前范围
 - `enterprise_mentor` 角色权限过宽：businessUser 组全写权限 + `canManageAlliance`（联盟全量 CRUD）
 
 **目标流程**：
@@ -113,10 +113,10 @@
 2. 学校引入企业 → 专家只读可见（`GET /alliance/experts`）
 3. 学校在岗位/场景共建人选择器中选"企业专家"（数据源：已引入企业的专家，须已绑定企业账号）→ 岗位 `collaborators` / 场景 `co_builder_ids` 直接写入企业账号 id（`alliance_experts.user_id`）
 4. 企业导师用自己的企业账号参与共建（岗位/场景编辑）、被排课（teacher_type=企业导师）
-5. 毕业设计课题正式选择企业导师（复用选择器，修复悬空引用）
+5. （不在当前范围）毕业设计课题导师绑定：`enterprise_mentor_id` 遗留列已随 migration 154 删除，未规划替代
 
 **权限收窄（重要，2026-08-17 起为配置级，ADR-0008）**：移除 `enterprise_mentor` 的 `canManageAlliance` 全量权限，联盟管理归 `school_admin`/`teacher`；保留共建（job/scene 写）+ 测评打分。菜单驱动 RBAC 后，`enterprise_mentor` 默认种子不勾联盟菜单即无联盟权限（配置可覆盖），代码级收窄取消。联盟写授权面 = `/portal/apps/alliance` 管理菜单：仅勾联盟前台落地页（`/portal/alliance/landing`）的角色是前台只读角色，不获联盟管理 CRUD 权限。
-**一期范围**：共建人选择器支持"企业专家"来源（直接绑定企业账号）+ 毕业设计导师选择 + 权限收窄。
+**一期范围**：共建人选择器支持"企业专家"来源（直接绑定企业账号）+ 权限收窄（毕业设计导师绑定不在范围，遗留列已删）。
 **演进**：partner 平台待评分入口（跨租户评分）。
 
 ### 3.4 互动流程三：企业专家参与学生测评打分
@@ -146,7 +146,7 @@
 | 2 | 岗位/场景共建人仅能选学校租户 users | 支持从已引入企业专家（绑定企业账号）中选择 | §3.3 |
 | 3 | enterprise_mentor 拥有联盟全量 CRUD 与全部业务写权限 | 收窄为共建 + 打分（菜单驱动后为配置级：默认种子不勾联盟菜单） | §3.3 |
 | 4 | 测评 enterprise_mentor 主体仅有声明式配置 | 任务级分配 + 评分菜单授权，形成打分闭环 | §3.4 |
-| 5 | `graduation_project_topics.enterprise_mentor_id` 悬空 | 正式选择器 + 绑定 | §3.3 |
+| 5 | ~~`graduation_project_topics.enterprise_mentor_id` 悬空~~ | 遗留列已随 migration 154 删除，不在范围 | §3.3 |
 | 6 | public 接口跨租户汇聚学校数据 | 全局企业主体 + links 双控过滤 | §3.2 |
 | 7 | 学校信息两套并存（school-info / tenants） | 保持现状，文档记录，不做本期改造 | §3.2 |
 
@@ -169,7 +169,7 @@ ALTER TABLE tenants ADD COLUMN type varchar(16) NOT NULL DEFAULT 'school';
 
 - `tenant_id` 语义改变：从"学校租户"变为"企业自己的租户"（企业注册时创建企业租户）
 - **保留主体字段**：`name`、`unified_social_credit_code`、`industry`、`region`、`description`、`logo_url`、`cover_image`、`cooperation_types`、`contact_person`、`contact_phone`、`contact_email`、`address`、`established_year`、`employee_count`、`business_license_photos`、`qualification_photos`、`intellectual_property_photos`、`cover_photos`
-- **新增**：`enable_public boolean NOT NULL DEFAULT true`（企业侧"愿意对外展示"开关，互动流程一的双控之一，企业服务台维护；注册时默认开启）
+- **新增**：`enable_public boolean NOT NULL DEFAULT false`（142 落地；150 将默认值改为 `true`——注册时默认开启。企业侧"愿意对外展示"开关，互动流程一的双控之一，企业服务台维护）
 - **移除（移到 link 表）**：`enterprise_type`、`rating`、`status`、`is_public`、`secondary_colleges`、`rating_record`、`created_by`
 - `name` 增加全局唯一约束（企业主体唯一）
 - 重命名后 `alliance_experts.enterprise_id` 外键自动指向新表名（PostgreSQL RENAME 行为）
@@ -256,7 +256,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | GET | `/partner/workspace/dashboard` | 所有 | 服务台统计（专家数/合作学校数等） |
 | GET | `/partner/schools` | 所有 | 合作学校列表（link 反向视图） |
 | PUT | `/partner/schools/{tenantId}/status` | 仅 admin | 合作状态双向确认 |
-| GET | `/partner/cooperation`、`/projects/{id}`、`/achievements/{id}`、`/agreements/{id}` | 所有 | 合作内容三合一查看 |
+| GET | `/partner/cooperation`、`/partner/cooperation/projects/{id}`、`/partner/cooperation/achievements/{id}`、`/partner/cooperation/agreements/{id}` | 所有 | 合作内容三合一查看 |
 | GET | `/partner/mentor-tasks` | 所有 | 导师任务列表（承接的测评任务/进度） |
 
 > **成员账号管理（`/partner/members`）未实现**：规格 F9 与早期 §5.2 曾规划，当前企业成员账号由注册时创建（企业管理员）或运营端代管（`/admin/tenants/{tenantId}/enterprise-admins`），无企业侧自助成员 CRUD 页面与接口。若需实现，按 §10 扩展机制新增。
@@ -308,9 +308,9 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | DELETE | `/alliance/enterprises/{id}/link` | 新增：解除引入（历史协议/项目/成果引用保留，页面不再展示） |
 | GET | `/alliance/enterprises/{id}` | 合并视图：全局主体只读 + link 管理字段 + 协议/项目/成果 Tab（逻辑不变） |
 | PUT | `/alliance/enterprises/{id}` | 仅更新学校侧字段（rating/status/enterprise_type/is_public/secondary_colleges） |
-| POST | `/alliance/enterprises` | **移除**（学校不再创建企业） |
+| POST | `/alliance/enterprises` | 无普通创建端点（学校不直接建主体）；**`POST /alliance/enterprises/register` 代注册企业保留**（学校代企业注册并建 link，前端「代注册企业」对话框） |
 | GET | `/alliance/experts` | 按本校 links 企业过滤，跨租户只读；**越权校验：enterprise_id 必须属于本校 links** |
-| POST/PUT/DELETE | `/alliance/experts`、`/alliance/experts/{id}` | **移除**（学校不再维护专家） |
+| POST/PUT/DELETE | `/alliance/experts`、`/alliance/experts/{id}` | 保留（学校侧仍维护本校可见专家档案；`PUT /alliance/experts/{id}/display` 切换前台展示） |
 | GET | `/alliance/experts/mentor-options` | 新增：共建人选择器数据源（本校已引入企业的专家 + 已绑定企业账号状态），供岗位/场景共建人选择器使用 |
 | GET | `/alliance/public/enterprises`、`/experts`、`/projects`、`/achievements`、`/brands`、`/stats` | 改造：数据源从学校租户数据改为「全局企业主体 + links 双控过滤」；无 tenantId 全局展示、带 tenantId 按该校 links 过滤（§3.2） |
 
@@ -324,7 +324,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 ### 5.5 导入接口处理
 
 - 导入接口已迁移，可正常调整
-- 移除 `/import/alliance-enterprises*`、`/import/alliance-experts*` 路由注册，接口 404 即失效
+- 联盟企业/专家不再列入导入实体白名单：泛型 `/import/{entity}` 路由保留，命中白名单外实体返回 400「不支持的实体」（效果等价移除，机制非 404）
 - 前端同步移除联盟企业/专家 Excel 导入入口
 
 ### 5.6 权限与越权校验
@@ -341,15 +341,15 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | # | 任务 | 文件/位置 | 测试 |
 |---|------|----------|------|
 | B1 | domain：`UserPlatformPartner`、partner 角色常量 | domain 常量层 | — |
-| B2 | store：`alliance_enterprise_link_store`（link CRUD、ListBySchoolTenant、ListByEnterpriseTenant） | 新文件 | store 测试 |
-| B3 | store：`alliance_expert_store` 新增 `ListByEnterpriseIDs`（跨租户只读+归属校验） | 改造 | store 测试 |
+| B2 | service/mapper：`AllianceEnterpriseLink` 相关 service + mapper（link CRUD、按学校/企业租户列表） | 新文件 | service/mapper 测试 |
+| B3 | service/mapper：`AllianceExpertMapper` 新增按企业 ID 列表查询（跨租户只读 + 归属校验） | 改造 | service/mapper 测试 |
 | B4 | store/service：partner 注册（建租户+企业主体+管理员+角色种子，事务） | 新 store + service | handler 测试 |
 | B5 | 认证：`/auth/partner/login`、`/auth/partner/register`、`/auth/partner/me` | 认证 handler/service | handler 测试 |
 | B6 | partner 路由组 + handler 按域拆分（partner_auth/enterprise/expert/member） | 新路由组 + 新 handler 文件 | handler 测试 |
 | B7 | 学校侧改造：enterprises link 视图/search/link/unlink/update，移除 create | 联盟 handler/service | handler 测试 |
 | B8 | 学校侧改造：experts 只读 + 越权校验，移除写接口 | 同上 | handler 测试 |
 | B9 | 移除 `/import/alliance-enterprises*`、`/import/alliance-experts*` 路由注册 | 路由注册表 | — |
-| B10 | 互动：企业专家直接绑定机制（mentor-options 数据源返回已绑定企业账号的专家，供选择器绑定；幂等） | 新 store/handler | store + handler 测试 |
+| B10 | 互动：企业专家直接绑定机制（mentor-options 数据源返回已绑定企业账号的专家，供选择器绑定；幂等） | 新 service/mapper + controller | service/mapper + controller 测试 |
 | B11 | 互动：public 接口数据源改造（全局企业 + links 双控过滤，§3.2） | 联盟 handler | handler 测试 |
 | B12 | 互动：任务级企业导师分配机制（测评配置落定具体评分人） | 测评 handler/store | handler 测试 |
 | B13 | 互动：`enterprise_mentor` 角色收窄（移除 canManageAlliance；种子权限移除联盟菜单） | 种子权限 | 回归测试 |
@@ -365,9 +365,9 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 |---|------|----------|
 | F1 | api-client：AuthPlatform 加 `partner`、token key `zhiyu-partner-token`、`isPartnerPath`、`partnerRequest`、401 跳 `/partner/login` | Vue 请求层（`frontend/portal-vue/src/api/`） |
 | F2 | 新增 `api/partner.ts`（auth/profile/experts/members/dashboard/schools） | 新文件 |
-| F3 | `api/alliance.ts` 改造：enterpriseApi 改 list/search/link/unlink/update（移除 create）；expertApi 仅 list/get；新增 mentor-link/mentor-options | 改造 |
+| F3 | `api/alliance.ts` 改造：enterpriseApi 改 list/search/link/unlink/update（移除普通 create，保留 register）；expertApi 保留 list/get/create/update/delete + display；新增 mentor-options | 改造 |
 | F4 | `/partner/login`：登录 + 注册双 Tab（参考 portal/login 风格） | Vue 门户 `/partner/login` 页 |
-| F5 | `/partner/layout`：PartnerAuthGuard（token + platform=partner）+ 独立侧栏 | Vue 门户 `/partner/layout` 路由壳 |
+| F5 | ~~独立 `/partner/layout` + PartnerAuthGuard~~（已按简化实现落地：partner 业务页面挂在 `PortalLayout` children，认证复用 portal 认证体系 + `RequirePlatform('partner')`；`/partner/login` 为独立登录页） | Vue 门户 `router/index.ts`（PortalLayout children） |
 | F6 | `/partner/workspace`：企业服务台首页（统计卡 + 入口卡片，参考 portal/workspace 兜底布局） | 新页面 |
 | F7 | `/partner/enterprise`：主体信息维护（改造自 enterprises/new 表单，去掉学校管理字段，含 enable_public 开关） | 新页面 |
 | F8 | `/partner/experts/*`：列表 + 详情 + 新建/编辑（改造自现有专家页面，含 is_public 开关） | 新页面 |
@@ -377,7 +377,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | F12 | 学校侧 enterprises：已引入列表 + "引入企业"搜索 Dialog；保留评级/状态/前台展示管理；移除新建/编辑主体/导入入口 | 改造 |
 | F13 | 学校侧 enterprises/[id]：主体只读 + 管理字段 + 协议/项目/成果 Tab 不变；移除 new/[id]/edit 页 | 改造 |
 | F14 | 学校侧 experts：只读列表（企业筛选）+ 专家详情（共建导师入口已移除，共建人选专家走选择器直接勾选企业账号），移除 new/edit | 改造 |
-| F15 | 互动：岗位/场景共建人选择器（UserSelector）支持"企业专家"来源（mentor-options 数据源，直接绑定企业侧账号，无影子账号） | `components/shared/user-selector.tsx`、job/scene 编辑页 |
+| F15 | 互动：岗位/场景共建人选择器（UserSelector）支持"企业专家"来源（mentor-options 数据源，直接绑定企业侧账号，无影子账号） | `views/job/position-builder/UserSelector.vue`、job/scene 编辑页 |
 | F16 | 互动：enterprise_mentor 评分菜单授权（种子菜单补 `/evaluation/scene-results` 等） + 任务级企业导师分配 UI（任务编辑页） | 种子权限、任务编辑组件 |
 | F17 | 互动：毕业设计课题页企业导师选择（复用 mentor-options） | graduation 前端（如有页面） |
 

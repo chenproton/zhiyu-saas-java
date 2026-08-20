@@ -1,6 +1,6 @@
 # 0004: 文件预览从 kkfileview 切换为 flyfish-dev/file-viewer（kkfileview 保留作回退）
 
-- 状态：已取代
+- 状态：已废弃（React 时代决策：flyfish-dev/file-viewer 随 2026-08 React 前端迁移删除，当前预览走 kkfileview，见 `02-api-contract.md` §3.6）
 - 日期：2026-08-14
 
 ## 背景

@@ -33,9 +33,11 @@
 | 产教融合与就业服务 | `/portal/apps/alliance` | 见 1.1 | `/portal/alliance` |
 | 系统管理 | `/portal/apps/system` | 见 1.1 | — |
 
+> 另含**企业端 Partner**（`/partner/*`：workspace/enterprise/experts/members/schools/cooperation/tasks/settings，独立登录页 `/partner/login`，业务页面挂在 PortalLayout 下，完整规格见 [`partner-enterprise-platform.md`](partner-enterprise-platform.md)）与 **SaaS 超管控制台**（`/superadmin`，见 1.1）。
+
 ### 1.3 全局布局
 
-所有业务子系统统一 `PlatformLayout`：**TopNav（h-14 固定）+ 左侧 PlatformSideNav（可折叠）+ 主内容区**；landing 系列页面为独立无壳布局（仅 TopNav）。门户端为 TopNav + 内容。
+所有业务子系统统一 `PortalLayout`（`frontend/portal-vue/src/layouts/PortalLayout.vue`）：**TopNav（固定）+ 左侧 PlatformSideNav（可折叠）+ 主内容区**；landing 系列页面为独立无壳布局（仅 TopNav）。门户端为 TopNav + 内容。
 
 ---
 
@@ -43,7 +45,7 @@
 
 ### 2.1 登录页 `/portal/login`
 
-- **布局**：居中卡片，三 Tab（账号密码 / 短信登录 / 微信登录——后两者占位禁用），开发环境展示测试账号快捷按钮
+- **布局**：居中单卡片账号密码登录（Element Plus `el-card`，无短信/微信 Tab）；开发环境展示测试账号快捷按钮
 - **流程**：账号密码 → `portalLogin` → 若返回 `needsTenantSelection` 弹出「选择租户」Dialog（租户列表单选）→ `selectTenant` → 写入 token（localStorage `zhiyu-portal-token`）→ 按角色跳转：
   - `school_admin` → `/portal/apps`
   - `teacher/student` → `/portal/workspace`
@@ -53,37 +55,38 @@
 
 ### 2.2 门户首页 `/portal`
 
-平台卡片墙（11 个模块卡片：系统管理/职业岗位/实践场景/数字课程/能力测评/资源共享/教务/产教融合 + OPC/决策/科研占位），卡片点击进入子系统首页；未订阅模块灰化禁用（订阅模块控制）。
+平台卡片墙（`HOME_PLATFORMS`，11 个模块卡片：产教融合/产业岗位/实践场景/COFA测评/数字课程/教学资产/产教资源中心(mall)/教务/教科研/数智决策/OPC；**不含系统管理**——system 只在应用中心菜单；OPC/决策/教科研为锁定占位卡），卡片点击进入子系统首页；未订阅模块灰化禁用（订阅模块控制）。
 
 ### 2.3 我的服务台 `/portal/workspace`（角色化 Tab）
 
 | 角色 | Tab 结构 |
 |------|---------|
-| 学生 | 学习 / 生涯 / 测评 / 画像 / 社区 / 我的（+ 课表） |
-| 教师 | 课程 / 画像 / 导学评分（+ 课表） |
-| 学校管理员 | 总览（资源运营驾驶舱 + 增长折线图）/ 人事 / 资源 / 审批 / 排课 |
+| 学生 | 工作台首页 / 我的学习 / 我的课表 / 我的收藏 / 测评认证 / 学生画像 / 学习社区 / 个人中心 |
+| 教师 | 工作台首页 / 我的场景·课程 / 我的课表 / 我的学生 / 个人中心 |
+| 学校管理员 | 工作台首页 / 资源运营 / 审批中心 / 教师学生情况 / 个人中心 |
 
+- Tab 结构与 `frontend/portal-vue/src/views/portal/workspace.vue` 一致（`?tab=` 驱动，非法/缺省回 dashboard）
 - 数据来自 `workspaceDashboard` 聚合接口（30s 缓存）
-- 学生「学习」Tab 可筛选（场景/课程等），点击前往真实落地页
-- 教师「导学评分」支持 hybrid 评分弹窗与 iframe 评分（grading-iframe-dialog）
+- 学生「我的学习」Tab 可筛选（场景/课程等），点击前往真实落地页
+- 教师「我的场景·课程」支持 hybrid 评分弹窗（`HybridGradingDialog`；React 时代 grading-iframe-dialog 未移植）
 
-### 2.4 内容列表页（ContentListPage 通用模板）
+### 2.4 内容列表页（content-list-page 通用模板）
 
-岗位/场景/课程/题库/试卷/人培方案等统一模式：
+岗位/场景/课程/题库/试卷/人培方案等统一模式（`frontend/portal-vue/src/components/common/content-list-page.vue`）：
 
-- **区域划分**：顶部 PageHeaderCard（标题 + 描述 + 新建按钮）→ 筛选区（搜索框 + 批次/专业/状态筛选）→ 列表区（表格：封面+名称、类型/分类、状态徽章、时间、操作列）
-- **列宽自定义**（2026-08 新增）：内容列表表格支持用户拖拽调整列宽（拖拽列头右缘手柄），列宽按**当前浏览器**持久化（localStorage，key 前缀 `zhiyu:table-widths:`），刷新/重新进入保持不变；能力内置于通用 Table 原语（`<Table resizable storageKey>` + `<TableHead columnKey/defaultWidth/minWidth>`），开启后表格为 `table-layout: fixed` 且宽度 = 注册列宽之和（所见即所得，窄屏横向滚动），未注册 columnKey 的列自动分摊剩余宽度；**ContentListPage 全部列表页已启用**——`/job/positions`（`job.positions.list`）、`/scene`（`scene.list`）、`/lesson/admin/courses`（`lesson.courses.list`）、`/evaluation/question-banks`（`evaluation.question-banks.list`）、`/evaluation/exams`（`evaluation.exams.list`）、`/affairs/programs`（`affairs.programs.list`）、`/affairs/teaching-plans`（`affairs.teaching-plans.list`）；同页签内同 key 多表格实例（分组视图每批次一张表）宽度自动同步
+- **区域划分**：顶部页头（标题 + 描述 + 新建按钮）→ 筛选区（搜索框 + 批次/专业/状态筛选）→ 列表区（`el-table`：封面+名称、类型/分类、状态徽章（el-tag）、时间、操作列）
+- **列宽**：`el-table` 原生列宽（`width`/`min-width`），无拖拽持久化（React 时代可拖拽列宽未移植）
 - **状态动作条**（status-action-bar）：按状态机呈现可用操作——draft：编辑/删除/提交审批；pending：撤回/审批；approved：发布/编辑；published：取消发布/归档；archived：恢复/删除
 - **行内操作**：编辑 / 克隆 / 删除（ConfirmDialog 二次确认）
 - **空态**：Empty 组件（插画 + 引导文案 + 新建按钮）
-- **分页**：PaginationBar（limit/offset），bottom 右侧
-- **导入**：ImportWizardDialog（下载模板 → 上传 → 预览错误行 → 确认执行 → 结果汇总 toast）
+- **分页**：content-list-page 内置分页（limit/offset），bottom 右侧
+- **导入**：导入向导（下载模板 → 上传 → 预览错误行 → 确认执行 → 结果汇总 toast，见 §2.8）
 
 ### 2.5 编辑页（editor-shell 分步构建器）
 
 岗位/场景/课程等复杂编辑采用**分步构建器**（左侧步骤条 + 右侧内容面板）：
 
-- 步骤条可回退；每步表单 `FormFieldRow` 网格布局；校验提交时执行
+- 步骤条可回退；每步表单网格布局（Element Plus `el-form` + 栅格）；校验提交时执行
 - 「保存草稿」与「整单保存」（save-full）两个动作
 - 章节编辑器（课程）/任务编排页（场景 tasks：拖拽重排 + 依赖选择）
 - 评价标准配置：eval-method-card/selector/config-module 卡片式选择与配置
@@ -101,10 +104,10 @@
 
 - 单页应用：登录（saasLogin + JWT roleCodes 含 platform_admin 校验）
 - 租户管理：表格列表 → 创建 Dialog（一键生成管理员，随机密码仅弹窗展示一次）→ 状态开关 → 编辑
-- 订阅套餐：模块开关列表（12 模块），保存即生效
+- 订阅套餐：模块开关列表（11 个业务模块，无 ai——AI 功能已下线；后端默认套餐含 ai 条目为历史遗留，见 `PLATFORM_MODULES`），保存即生效
 - 租户管理员：列表/新建/重置密码（预览密码 Dialog）
 
-### 2.8 导入向导（ImportWizardDialog）
+### 2.8 导入向导（导入预览流程）
 
 1. 下载模板（Excel 或"导出为导入模板"）
 2. 上传文件 → 解析
@@ -123,40 +126,27 @@
 
 ### 3.1 导航结构
 
-- **顶层**：TopNav（logo + 门户首页/我的服务台/应用中心 + 实时时钟 + 用户菜单：角色切换/个人中心/账号设置/字号缩放/退出登录）
+- **顶层**：TopNav（logo + 门户首页/我的服务台/应用中心 + 用户菜单：个人中心/账号设置/退出登录；React 时代「角色切换/字号缩放」未移植，见 `PortalLayout.vue` 注释）
 - **二级**：PlatformSideNav（子系统菜单树，按菜单权限 `hasMenuPermission` 过滤渲染）；左侧顶部返回按钮回应用中心
-- **面包屑**：编辑页使用步骤条替代面包屑；列表页使用 PageHeaderCard 标题
+- **面包屑**：编辑页使用步骤条替代面包屑；列表页使用页头标题
 
 ### 3.2 弹窗规范
 
 | 场景 | 组件 | 说明 |
 |------|------|------|
-| 二次确认（删除/取消发布/驳回等） | ConfirmDialog / AlertDialog | 危险操作必带，红色确认按钮 |
+| 二次确认（删除/取消发布/驳回等） | `el-popconfirm` / `ElMessageBox.confirm` | 危险操作必带，红色确认按钮 |
 | 创建/编辑表单 | Dialog（居中 Modal） | 表单 3 项以内优先 Dialog；超过 3 项用独立页面 |
 | 复杂选择（用户/组织/资源/知识点/批次） | 选择器 Dialog | knowledge-selector / user-selector / resource-selector 等统一组件 |
 | 侧滑详情/配置 | Sheet（Drawer） | 移动端 PlatformSideNav 折叠为抽屉 |
 | 跳转新页面 | 编辑页/详情页 | editor-shell 类复杂编辑 |
 
-**关闭前未保存内容确认（全局，由 `DialogContent` 统一提供）**
+**关闭前未保存内容确认**
 
-| 关闭路径 | 表单未被改动 | 表单已被用户改动 |
-|---|---|---|
-| 点击周围遮罩 | 直接关闭 | 弹二次确认「确认离开？未保存内容将丢失」→「离开」丢弃并关闭 /「继续编辑」留在弹窗 |
-| ESC 键 | 直接关闭 | 同上 |
-| 右上角 X（`showCloseButton` 内置按钮） | 直接关闭 | 同上 |
-| 底部「取消」/「保存」等业务按钮 | 直接关闭（业务自己控制 `open`） | 直接关闭（用户明确操作，不再拦一次） |
-
-- **「已改动」判定口径**：**逐字段**比对——用户交互事件（pointerdown/keydown/input/change/paste，均先于值变化）触发时为「尚无基线」的字段记录当前值作为干净基线，之后某字段当前值与自己的基线不同才算有未保存内容。因此：弹窗打开后异步回填的初始值不算改动；改完又改回原值等于没改；搜索筛选/切 Tab/列表重载导致字段增删（结构变化）不算改动，但用户在新出现的字段里输入照样算改动。
-- **覆盖控件**：原生 input/textarea/select/file、contenteditable、Radix 勾选框/开关/单选/下拉触发器/滑块（按 `aria-checked`、`aria-valuenow`、选中文案比对）。自绘勾选行需声明 `role="checkbox" aria-checked`（读屏器同样需要）才可被识别。
-- **检测盲区（已知，不阻断）**：iframe 内编辑器（图片编辑器）、canvas 自绘内容、只存在组件 state 而不落 DOM 的编辑状态检测不到；这类弹窗需要守卫时显式传 `unsavedGuard={true}`。
-- **不算「内容」的控件**：搜索框（`input[type="search"]`）、cmdk 搜索输入、`input[type="hidden"]`；其他需排除的控件加 `data-unsaved-ignore`。
-- **逐弹窗开关**：`unsavedGuard`——`'auto'`（默认，自动检测）/ `true`（强制视为有未保存内容，用于画布/iframe 类自定义编辑器）/ `false`（关闭守卫）。`false` 适用：纯展示弹窗、弹窗内即时保存的场景（如企业租户详情的展示开关）、勾选即时同步给父级表单的选择器弹窗（关闭本就不丢内容，如资源选择器「添加课程资源」、共建人选择器）。
-- **消费方优先**：守卫挂在 Radix `onInteractOutside`（关闭链最后一环），消费方在 `onPointerDownOutside`/`onInteractOutside`/`onEscapeKeyDown` 里已 `preventDefault()` 的弹窗（全屏编辑器禁止点外部关闭）行为完全不变，也不会弹确认；右键点击外部同样不触发。
-- **扩展性预留（暂不做）**：Sheet（侧滑抽屉）与页面级路由离开暂不接入该守卫。
+> React 时代基于 Radix `DialogContent` + `unsavedGuard` 的全局未保存守卫**未移植到 Vue 门户**（Vue 用 Element Plus `el-dialog`，`close-on-click-modal` 默认可关）。当前由业务侧按需自行确认（如表单编辑页离开前确认），无统一守卫；如后续需要，以 el-dialog `before-close` 逐弹窗实现。
 
 ### 3.3 表单校验
 
-- **提交时校验**（非实时）：FormFieldRow 组件统一行布局，错误信息显示在字段下方
+- **提交时校验**（非实时）：表单行网格布局（`el-form` + `el-row`/`el-col`），错误信息显示在字段下方
 - 必填/格式由后端校验兜底（400 提示透传中文错误）
 - 唯一冲突（code/name）由后端 409/400 提示，前端 toast 展示
 
@@ -168,11 +158,11 @@
 | 失败操作 | Toast 展示后端 error 消息（中文） |
 | 全局错误 | GlobalApiErrorHandler：401 清 token 跳登录；5xx 通用提示 + 刷新按钮 |
 | 加载态 | 列表 skeleton 行；按钮 loading 态（useAsync）；页面级 spinner |
-| 批量操作 | 批量删除/毕业/改组织 均需多选 + ConfirmDialog |
+| 批量操作 | 批量删除/毕业/改组织 均需多选 + 二次确认（`ElMessageBox.confirm`） |
 
 ### 3.5 内容状态机 UI 流转
 
-StatusBadge 六色徽章：draft（灰）/pending（黄）/approved（蓝）/rejected（红）/published（绿）/archived（深灰）；操作按钮按状态动态渲染（见 2.4），非法操作后端 409 兜底。
+状态徽章（各页 `el-tag` 按状态机着色）：draft（灰）/pending（黄）/approved（蓝）/rejected（红）/published（绿）/archived（深灰）；操作按钮按状态动态渲染（见 2.4），非法操作后端 409 兜底。
 
 ### 3.6 四态规范
 
@@ -181,13 +171,13 @@ StatusBadge 六色徽章：draft（灰）/pending（黄）/approved（蓝）/rej
 | 初始态（空数据） | Empty 组件插画 + 「暂无数据」+ 新建引导按钮 |
 | 加载态 | 表格骨架屏（skeleton rows）；下拉加载 skeleton |
 | 错误态 | ErrorState 组件（错误信息 + 重试按钮）；网络错误全局拦截提示 |
-| 边界态 | 超长文本 ellipsis + tooltip；超长表格横向滚动；大量数据分页（limit 50/页默认） |
+| 边界态 | 超长文本 ellipsis + tooltip；超长表格横向滚动；大量数据分页（limit 默认 20/页，上限 200，见 `02-api-contract.md` §4.3） |
 
 ---
 
 ## 4. 响应式规则
 
-- **断点**：Tailwind 默认断点（sm 640 / md 768 / lg 1024 / xl 1280）
+- **断点**：CSS 媒体查询断点（与 Element Plus 栅格对齐：sm 640 / md 768 / lg 1024 / xl 1280；**无 Tailwind 依赖**）
 - **已完成的适配**（三轮全量扫描修复，30 文件 43 处）：
   - PlatformSideNav 在移动端折叠为抽屉（Sheet）
   - CRUD 页头部与组织树响应式（表单网格流式、表格横向滚动）
@@ -198,7 +188,7 @@ StatusBadge 六色徽章：draft（灰）/pending（黄）/approved（蓝）/rej
   - 卡片墙：1 → 2 → 3 → 4 列自适应
   - 编辑分步器：移动端步骤条折叠为顶部 Tab
   - TopNav：移动端收敛为 logo + 汉堡菜单
-- **字号缩放**：全局字号缩放脚本（`zhiyu-font-scale`，用户菜单可调）
+- **字号缩放**：React 时代功能，Vue 门户未移植（`PortalLayout.vue` 注释注明）
 
 ---
 
