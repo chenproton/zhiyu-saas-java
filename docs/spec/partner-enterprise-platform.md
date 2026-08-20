@@ -329,9 +329,9 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 ### 5.6 权限与越权校验
 
-- 企业端：`enterprise_admin` 可写（主体/专家/成员），`enterprise_member` 只读；JWT claims 携带 RoleCodes，handler 校验
+- 企业端：`enterprise_admin` 可写（主体/专家/成员），`enterprise_member` 只读；JWT claims 携带 RoleCodes，鉴权中间件/controller 校验
 - 学校端：沿用 `canManageAlliance` + `requireTenant`；专家跨租户读取必须校验企业 ID ∈ 本校 links（防越权）
-- **角色收窄（互动流程二，2026-08-17 起配置级）**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（菜单驱动 RBAC，ADR-0008；配置可覆盖）；保留业务共建（job/scene 写）+ 测评打分。影响范围：种子角色权限与联盟菜单授权（handler 读菜单授权）
+- **角色收窄（互动流程二，2026-08-17 起配置级）**：`enterprise_mentor` 默认种子不勾联盟菜单即无联盟管理权限（菜单驱动 RBAC，ADR-0008；配置可覆盖）；保留业务共建（job/scene 写）+ 测评打分。影响范围：种子角色权限与联盟菜单授权（授权中间件读菜单）
 - 企业专家参与共建/打分直接经企业账号（`alliance_experts.user_id`），无学校侧账号创建
 
 ---
@@ -343,17 +343,17 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | B1 | domain：`UserPlatformPartner`、partner 角色常量 | domain 常量层 | — |
 | B2 | service/mapper：`AllianceEnterpriseLink` 相关 service + mapper（link CRUD、按学校/企业租户列表） | 新文件 | service/mapper 测试 |
 | B3 | service/mapper：`AllianceExpertMapper` 新增按企业 ID 列表查询（跨租户只读 + 归属校验） | 改造 | service/mapper 测试 |
-| B4 | store/service：partner 注册（建租户+企业主体+管理员+角色种子，事务） | 新 store + service | handler 测试 |
-| B5 | 认证：`/auth/partner/login`、`/auth/partner/register`、`/auth/partner/me` | 认证 handler/service | handler 测试 |
-| B6 | partner 路由组 + handler 按域拆分（partner_auth/enterprise/expert/member） | 新路由组 + 新 handler 文件 | handler 测试 |
-| B7 | 学校侧改造：enterprises link 视图/search/link/unlink/update，移除 create | 联盟 handler/service | handler 测试 |
-| B8 | 学校侧改造：experts 只读 + 越权校验，移除写接口 | 同上 | handler 测试 |
-| B9 | 移除 `/import/alliance-enterprises*`、`/import/alliance-experts*` 路由注册 | 路由注册表 | — |
+| B4 | service：partner 注册（建租户+企业主体+管理员+角色种子，事务） | 新 service | service 测试 |
+| B5 | 认证：`/auth/partner/login`、`/auth/partner/register`、`/auth/partner/me` | 认证 controller/service | controller/service 测试 |
+| B6 | partner 路由组 + controller 按域拆分（partner_auth/enterprise/expert/member） | 新 controller 文件 | controller 测试 |
+| B7 | 学校侧改造：enterprises link 视图/search/link/unlink/update，移除普通 create（register 保留） | 联盟 controller/service | controller/service 测试 |
+| B8 | 学校侧改造：experts 视图按已引入企业过滤 + 越权校验（写接口实际保留，见 §5.3） | 联盟 controller/service | controller/service 测试 |
+| B9 | 联盟企业/专家移出导入实体白名单（泛型 `/import/{entity}` 返回 400「不支持的实体」） | 导入实体白名单 | 导入测试 |
 | B10 | 互动：企业专家直接绑定机制（mentor-options 数据源返回已绑定企业账号的专家，供选择器绑定；幂等） | 新 service/mapper + controller | service/mapper + controller 测试 |
-| B11 | 互动：public 接口数据源改造（全局企业 + links 双控过滤，§3.2） | 联盟 handler | handler 测试 |
-| B12 | 互动：任务级企业导师分配机制（测评配置落定具体评分人） | 测评 handler/store | handler 测试 |
+| B11 | 互动：public 接口数据源改造（全局企业 + links 双控过滤，§3.2） | 联盟 controller/service | controller/service 测试 |
+| B12 | 互动：任务级企业导师分配机制（测评配置落定具体评分人） | 测评 service/mapper | service/mapper 测试 |
 | B13 | 互动：`enterprise_mentor` 角色收窄（移除 canManageAlliance；种子权限移除联盟菜单） | 种子权限 | 回归测试 |
-| B14 | 互动：毕业设计课题企业导师选择器后端（校验 mentor-link 关系） | 毕设 handler | handler 测试 |
+| B14 | ~~互动：毕业设计课题企业导师选择器后端~~（不在范围：`enterprise_mentor_id` 已随 migration 154 删除，见 §3.3/§4.5） | — | — |
 
 分层约束（Java 框架契约，AGENTS.md 第二部分）：controller 不拼 SQL、不持有 DB 句柄；service 编排+事务；mapper 唯一 SQL；新接口至少一种测试。
 
@@ -398,8 +398,8 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 ```
 阶段一（平台底座）：
-B1 → B2/B3/B4（store）→ B5（认证）→ B6（partner 路由组）
-→ B7/B8（学校侧改造）→ B9（导入路由移除）
+B1 → B2/B3/B4（service/mapper）→ B5（认证）→ B6（partner 路由组）
+→ B7/B8（学校侧改造）→ B9（导入实体白名单）
 → F1/F2/F3（api-client）→ F4~F11（/partner 平台框架）
 → F12~F14（学校侧改造）→ 本地验证 → 提请部署
 
@@ -418,7 +418,7 @@ B10/B11（企业账号直绑 + public 改造）→ B12（任务级分配）→ B
 | 导入文件 | 导入接口可调整；移除路由注册与前端入口 |
 | 解除引入后历史引用 | 协议/项目/成果引用保留，页面不再展示，文档说明 |
 | partner 用户名唯一性 | 注册接口应用层校验 partner 平台全局唯一（现有唯一约束是租户级，不动） |
-| PUT 全列覆盖语义 | 学校侧企业更新改为专用 handler（仅 link 管理字段），不复用通用更新兜底 |
+| PUT 全列覆盖语义 | 学校侧企业更新改为专用 controller/service 方法（仅 link 管理字段），不复用通用更新兜底 |
 | enterprise_mentor 角色收窄引发回归 | B13 单独提交并跑联盟/岗位/场景/测评回归测试；已绑定的旧账号权限随角色权限变更即时生效（权限存 roles.permissions） |
 | public 接口语义变化 | 前台展示从"跨租户汇聚"变为"全局企业+双控过滤"，前端展示页（portal/alliance/*）同步适配，避免出现空数据 |
 
