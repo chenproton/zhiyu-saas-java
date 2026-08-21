@@ -61,14 +61,16 @@ public interface SystemRoleMapper extends BaseMapperPlus<SystemRole, SystemRole>
         + " WHERE ur.user_id = #{userId} ORDER BY r.created_at")
     List<SystemRole> selectRolesByUser(@Param("userId") String userId);
 
-    /** 删除用户的全部角色绑定（bind/rebind/delete 前）。 */
-    @Delete("DELETE FROM user_roles WHERE user_id = #{userId}")
-    int deleteUserRolesByUser(@Param("userId") String userId);
+    /** 删除用户的全部角色绑定（bind/rebind/delete 前；租户条件作纵深防御，防跨租户 IDOR）。 */
+    @Delete("DELETE FROM user_roles WHERE user_id = #{userId}"
+        + " AND EXISTS (SELECT 1 FROM users u WHERE u.id = #{userId} AND u.tenant_id = #{tenantId})")
+    int deleteUserRolesByUser(@Param("userId") String userId, @Param("tenantId") String tenantId);
 
-    /** 递减用户当前角色计数（bind/rebind/delete 前）。 */
+    /** 递减用户当前角色计数（bind/rebind/delete 前；租户条件作纵深防御，防跨租户 IDOR）。 */
     @Update("UPDATE roles SET user_count = GREATEST(user_count - 1, 0)"
-        + " WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = #{userId})")
-    int decrementUserCountsByUser(@Param("userId") String userId);
+        + " WHERE id IN (SELECT ur.role_id FROM user_roles ur WHERE ur.user_id = #{userId}"
+        + " AND EXISTS (SELECT 1 FROM users u WHERE u.id = #{userId} AND u.tenant_id = #{tenantId}))")
+    int decrementUserCountsByUser(@Param("userId") String userId, @Param("tenantId") String tenantId);
 
     /** 递减单角色计数。 */
     @Update("UPDATE roles SET user_count = GREATEST(user_count - 1, 0) WHERE id = #{roleId}")

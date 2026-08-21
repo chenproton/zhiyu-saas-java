@@ -124,8 +124,8 @@ public class SystemUserServiceImpl implements ISystemUserService {
         guard.requireManageUsers();
         String tenantId = guard.requireTenant();
         ZhiyuUser user = requireOwned(tenantId, id);
-        roleMapper.decrementUserCountsByUser(id);
-        roleMapper.deleteUserRolesByUser(id);
+        roleMapper.decrementUserCountsByUser(id, tenantId);
+        roleMapper.deleteUserRolesByUser(id, tenantId);
         userMapper.deleteUser(id, user.getTenantId());
         return id;
     }
@@ -209,12 +209,17 @@ public class SystemUserServiceImpl implements ISystemUserService {
         guard.requireManageUsers();
         String tenantId = guard.requireTenant();
         validateUuids(userIds);
-        for (String id : userIds) {
-            roleMapper.decrementUserCountsByUser(id);
-            roleMapper.deleteUserRolesByUser(id);
+        // 防跨租户 IDOR：先按当前租户过滤 ID 列表，只对租户内真实存在的用户执行角色清理与删除
+        List<String> owned = userMapper.filterTenantUserIds(tenantId, userIds);
+        if (owned.isEmpty()) {
+            return 0;
         }
-        userMapper.batchDeleteUsers(tenantId, userIds);
-        return userIds.size();
+        for (String id : owned) {
+            roleMapper.decrementUserCountsByUser(id, tenantId);
+            roleMapper.deleteUserRolesByUser(id, tenantId);
+        }
+        userMapper.batchDeleteUsers(tenantId, owned);
+        return owned.size();
     }
 
     @Override
@@ -242,8 +247,8 @@ public class SystemUserServiceImpl implements ISystemUserService {
         if (userMapper.countRolesInTenant(user.getTenantId(), unique) != unique.size()) {
             throw new ApiException(400, "bad_request", "存在无效角色或角色不属于当前租户");
         }
-        roleMapper.decrementUserCountsByUser(id);
-        roleMapper.deleteUserRolesByUser(id);
+        roleMapper.decrementUserCountsByUser(id, tenantId);
+        roleMapper.deleteUserRolesByUser(id, tenantId);
         List<String> inserted = new ArrayList<>();
         for (String roleId : unique) {
             int rows = roleMapper.insertUserRole(UUID.randomUUID().toString(), id, roleId);
@@ -277,8 +282,8 @@ public class SystemUserServiceImpl implements ISystemUserService {
         if (valid != 1) {
             throw new ApiException(400, "bad_request", "存在无效角色或角色不属于当前租户");
         }
-        roleMapper.decrementUserCountsByUser(userId);
-        roleMapper.deleteUserRolesByUser(userId);
+        roleMapper.decrementUserCountsByUser(userId, tenantId);
+        roleMapper.deleteUserRolesByUser(userId, tenantId);
         roleMapper.insertUserRole(UUID.randomUUID().toString(), userId, roleId);
         roleMapper.incrementUserCount(roleId, tenantId);
     }

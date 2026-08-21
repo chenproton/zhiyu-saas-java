@@ -28,6 +28,11 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
     })
     ZhiyuUser selectUserByIdAndTenant(@Param("id") String id, @Param("tenantId") String tenantId);
 
+    /** 按租户过滤用户 ID 列表（batchDelete 防跨租户 IDOR：仅返回当前租户真实存在的用户）。 */
+    @Select("SELECT id FROM users WHERE tenant_id = #{tenantId}"
+        + " AND JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')")
+    List<String> filterTenantUserIds(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds);
+
     @Insert("INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name,"
         + " username, password_hash, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status)"
         + " VALUES (#{id}, #{tenantId}, #{institutionId}, #{orgNodeId}, #{majorId}, #{role}, #{platform}, #{globalLoginName},"
