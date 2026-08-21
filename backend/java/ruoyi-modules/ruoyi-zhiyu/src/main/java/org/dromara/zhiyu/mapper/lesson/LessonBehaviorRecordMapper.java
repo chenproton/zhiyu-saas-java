@@ -23,8 +23,8 @@ public interface LessonBehaviorRecordMapper extends BaseMapperPlus<LessonBehavio
         + " r.rush_avg_time_sec, r.created_at, r.updated_at, r.tenant_id"
         + " FROM lesson_behavior_records r JOIN users u ON u.id = r.student_user_id"
         + " WHERE r.course_id = #{courseId} AND r.tenant_id = #{tenantId}"
-        + " <if test=\"startDate != null and startDate != ''\">AND r.record_date &gt;= #{startDate}::date</if>"
-        + " <if test=\"endDate != null and endDate != ''\">AND r.record_date &lt;= #{endDate}::date</if>"
+        + " <if test=\"startDate != null and startDate != ''\">AND r.record_date &gt;= CAST(#{startDate} AS DATE)</if>"
+        + " <if test=\"endDate != null and endDate != ''\">AND r.record_date &lt;= CAST(#{endDate} AS DATE)</if>"
         + " ORDER BY r.record_date DESC, r.created_at DESC LIMIT 1000</script>")
     List<LessonBehaviorRecord> selectRecords(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                                              @Param("startDate") String startDate, @Param("endDate") String endDate);
@@ -49,7 +49,7 @@ public interface LessonBehaviorRecordMapper extends BaseMapperPlus<LessonBehavio
     @Select("SELECT id, course_id, student_user_id, record_date, attendance, quiz_score, interaction_count,"
         + " praise_count, rush_correct_count, rush_avg_time_sec, created_at, updated_at, tenant_id"
         + " FROM lesson_behavior_records WHERE course_id = #{courseId} AND student_user_id = #{studentUserId}"
-        + " AND record_date = #{recordDate}::date LIMIT 1")
+        + " AND record_date = CAST(#{recordDate} AS DATE) LIMIT 1")
     LessonBehaviorRecord selectUpserted(@Param("courseId") String courseId, @Param("studentUserId") String studentUserId,
                                         @Param("recordDate") LocalDate recordDate);
 }

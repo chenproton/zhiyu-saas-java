@@ -89,7 +89,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
 
     /** 同租户同目标类型当天已生成安排数（同天序号基数；对齐 Go NextAutoUsageName）。 */
     @Select("SELECT COUNT(*) FROM exam_usages WHERE tenant_id = #{tenantId} AND target_type = #{targetType}"
-        + " AND created_at::date = CURRENT_DATE")
+        + " AND CAST(created_at AS DATE) = CURRENT_DATE")
     int countUsagesCreatedToday(@Param("tenantId") String tenantId, @Param("targetType") String targetType);
 
     /** 批量查询节点已有安排（对齐 Go FindNodeUsages，防逐 examID 回查 N+1）。 */

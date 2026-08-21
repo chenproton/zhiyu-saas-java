@@ -123,7 +123,7 @@ public interface ImportExportMapper {
     String selectUserIdByLoginName(@Param("tenantId") String tenantId, @Param("loginName") String loginName);
 
     @Insert("INSERT INTO users (id, tenant_id, org_node_id, role, login_name, username, password_hash, name, status, platform)"
-        + " VALUES (#{id}, #{tenantId}, #{orgNodeId}, 'school'::user_role, #{loginName}, #{username},"
+        + " VALUES (#{id}, #{tenantId}, #{orgNodeId}, 'school', #{loginName}, #{username},"
         + " #{passwordHash}, #{name}, #{status}, 'portal')")
     int insertUser(@Param("id") String id, @Param("tenantId") String tenantId, @Param("orgNodeId") String orgNodeId,
                    @Param("loginName") String loginName, @Param("username") String username,
@@ -386,7 +386,7 @@ public interface ImportExportMapper {
         + "<when test=\"entity == 'courses'\">SELECT id, name, code, NULL AS description, status, created_at FROM courses WHERE tenant_id = #{tenantId}</when>"
         + "<when test=\"entity == 'career_positions'\">SELECT id, name, NULL AS code, NULL AS description, status, created_at FROM career_positions WHERE tenant_id = #{tenantId}</when>"
         + "<when test=\"entity == 'scenarios'\">SELECT id, name, code, NULL AS description, status, created_at FROM scenarios WHERE tenant_id = #{tenantId}</when>"
-        + "<otherwise>SELECT NULL AS id, '' AS name, '' AS code, '' AS description, '' AS status, NULL::timestamptz AS created_at WHERE FALSE</otherwise>"
+        + "<otherwise>SELECT NULL AS id, '' AS name, '' AS code, '' AS description, '' AS status, CAST(NULL AS DATETIME) AS created_at WHERE FALSE</otherwise>"
         + "</choose>"
         + ") t ORDER BY created_at DESC</script>")
     List<Map<String, Object>> listGenericExportRows(@Param("entity") String entity, @Param("tenantId") String tenantId);
