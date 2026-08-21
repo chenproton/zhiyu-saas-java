@@ -97,11 +97,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
-import { useAuthStore } from '@/stores/auth';
 import {
   allianceAgreementApi,
   listAllEnterprises,
@@ -109,8 +107,10 @@ import {
   fetchAllianceDict,
   mergeDictOptions,
   syncAgreementProjectLinks,
+  type AllianceAgreement,
   type AllianceDictItem,
 } from './crud-shared';
+import { useAllianceEditPage } from './crud-pages';
 import ImageUpload from './components/ImageUpload.vue';
 
 interface FormState {
@@ -126,16 +126,15 @@ interface FormState {
   attachments: string[];
 }
 
-const route = useRoute();
-const router = useRouter();
-const auth = useAuthStore();
+const { route, router, isNew, id, loading, saving, notFound, submit, onCancel } =
+  useAllianceEditPage<AllianceAgreement>({
+    listPath: '/portal/apps/alliance/agreements',
+    detailPath: (detailId) => `/portal/apps/alliance/agreements/${detailId}`,
+    fetchEntity: (fetchId) => allianceAgreementApi.get(fetchId),
+    fillForm,
+    loadOptions,
+  });
 
-const isNew = computed(() => !route.params.id);
-const id = route.params.id as string | undefined;
-
-const loading = ref(false);
-const saving = ref(false);
-const notFound = ref(false);
 const typeItems = ref<AllianceDictItem[]>([]);
 const statusItems = ref<AllianceDictItem[]>([]);
 const enterprises = ref<{ label: string; value: string }[]>([]);
@@ -195,21 +194,6 @@ async function loadOptions() {
   statusItems.value = await fetchAllianceDict('agreement_status');
 }
 
-async function load() {
-  if (!isNew.value && id) {
-    loading.value = true;
-    try {
-      const a = await allianceAgreementApi.get(id);
-      fillForm(a);
-    } catch (e) {
-      notFound.value = true;
-      ElMessage.error((e as Error).message || '加载失败');
-    } finally {
-      loading.value = false;
-    }
-  }
-}
-
 async function handleSave() {
   if (!form.name.trim()) {
     // 新建对齐 React new 页文案「协议名称不能为空」，编辑对齐 React edit 页「请填写协议名称」
@@ -225,8 +209,7 @@ async function handleSave() {
     ElMessage.warning('到期日期不能早于生效日期');
     return;
   }
-  saving.value = true;
-  try {
+  await submit(async () => {
     const payload = {
       name: form.name.trim(),
       type: form.type,
@@ -259,33 +242,8 @@ async function handleSave() {
     }
     ElMessage.success(isCreate ? '协议已创建' : '协议已更新');
     router.push(`/portal/apps/alliance/agreements/${agreementId}`);
-  } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
-  } finally {
-    saving.value = false;
-  }
+  });
 }
-
-function onCancel() {
-  if (isNew.value) {
-    router.push('/portal/apps/alliance/agreements');
-  } else if (id) {
-    router.push(`/portal/apps/alliance/agreements/${id}`);
-  } else {
-    router.back();
-  }
-}
-
-onMounted(async () => {
-  if (!auth.user) {
-    try {
-      await auth.fetchMe();
-    } catch {
-      // 忽略
-    }
-  }
-  await Promise.all([loadOptions(), load()]);
-});
 </script>
 
 <style scoped>

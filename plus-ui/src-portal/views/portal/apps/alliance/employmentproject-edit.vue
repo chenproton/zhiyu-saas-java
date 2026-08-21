@@ -118,8 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { portalRequest } from '@/api/http';
 import { useAuthStore } from '@/stores/auth';
@@ -127,15 +126,24 @@ import { organizationApi, majorApi } from '@/api/system';
 import type { Organization, Major } from '@/types/system';
 import { EMPLOYMENT_PROJECT_TYPE_LABELS, fetchAllPages } from './alliance-admin';
 import type { EmploymentProject, EmploymentTargetGroup, ListResponse } from './alliance-admin';
+import { useAllianceEditPage } from './crud-pages';
 import ImageUpload from './components/ImageUpload.vue';
 
 const PROJECT_TYPES = ['spring', 'autumn', 'directed', 'order'];
 
-const router = useRouter();
 const auth = useAuthStore();
 const tenantId = computed(() => (auth.user?.tenantId as string) || '');
 
-const saving = ref(false);
+const { router, saving, submit } = useAllianceEditPage({
+  listPath: '/portal/apps/alliance/employmentproject',
+  detailPath: (detailId) => `/portal/apps/alliance/employmentproject/${detailId}`,
+  loadOptions: () => {
+    loadEnterprises();
+    loadMajors();
+    loadOrgTree();
+  },
+});
+
 const form = reactive({
   name: '',
   type: 'spring',
@@ -237,8 +245,7 @@ async function handleSave() {
     ElMessage.warning('请填写自定义项目类型');
     return;
   }
-  saving.value = true;
-  try {
+  await submit(async () => {
     const payload = {
       name: form.name.trim(),
       type: form.type === 'custom' ? `custom:${form.customType.trim()}` : form.type,
@@ -257,27 +264,8 @@ async function handleSave() {
     });
     ElMessage.success('项目已创建');
     router.push(`/portal/apps/alliance/employmentproject/${data.id}`);
-  } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
-  } finally {
-    saving.value = false;
-  }
+  });
 }
-
-onMounted(async () => {
-  // 直接进页/硬刷新时 auth.user 尚未填充（路由守卫只校验 token），tenantId 为空会导致
-  // 参与企业/专业/组织节点三个下拉全部空白——先补齐用户上下文（对齐 React usePortalAuth）。
-  if (!auth.user) {
-    try {
-      await auth.fetchMe();
-    } catch {
-      // 忽略：拉取失败时下拉为空，不阻断表单填写
-    }
-  }
-  loadEnterprises();
-  loadMajors();
-  loadOrgTree();
-});
 </script>
 
 <style scoped>

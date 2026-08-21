@@ -80,11 +80,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ref } from 'vue';
 import { Plus } from '@element-plus/icons-vue';
-import { useAuthStore } from '@/stores/auth';
 import ImportExport from '@/components/ImportExport.vue';
 import {
   allianceAgreementApi,
@@ -95,17 +92,8 @@ import {
   type AllianceEnterprise,
   type AllianceProject,
 } from './crud-shared';
+import { useAllianceListPage } from './crud-pages';
 
-const auth = useAuthStore();
-const tenantId = computed(() => (auth.user?.tenantId as string) || '');
-const router = useRouter();
-
-const items = ref<AllianceAgreement[]>([]);
-const loading = ref(false);
-const search = ref('');
-const page = ref(1);
-const pageSize = 20;
-const total = ref(0);
 const importDialog = ref(false);
 const enterprises = ref<AllianceEnterprise[]>([]);
 const projects = ref<AllianceProject[]>([]);
@@ -140,68 +128,35 @@ function isExpiring(endDate?: string): boolean {
   return days >= 0 && days <= 90;
 }
 
-async function loadItems() {
-  loading.value = true;
-  try {
-    const res = await allianceAgreementApi.list({
-      search: search.value.trim() || undefined,
-      limit: pageSize,
-      offset: (page.value - 1) * pageSize,
-    });
-    items.value = res.items;
-    total.value = res.total ?? 0;
-  } catch (e) {
-    ElMessage.error((e as Error).message || '加载失败');
-  } finally {
-    loading.value = false;
-  }
-}
-
-function onSearch() {
-  page.value = 1;
-  loadItems();
-}
-
-async function togglePublic(row: AllianceAgreement) {
-  const next = !row.isPublic;
-  try {
-    await allianceAgreementApi.update(row.id, { ...row, isPublic: next });
-    row.isPublic = next;
-    ElMessage.success(next ? '已开启前台展示' : '已取消前台展示');
-  } catch (e) {
-    ElMessage.error((e as Error).message || '操作失败');
-  }
-}
-
-async function confirmDelete(row: AllianceAgreement) {
-  try {
-    await ElMessageBox.confirm(`确定要删除协议「${row.name}」吗？`, '确认删除', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    });
-  } catch {
-    return;
-  }
-  try {
-    await allianceAgreementApi.delete(row.id);
-    ElMessage.success('协议已删除');
-    loadItems();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '删除失败');
-  }
-}
-
-onMounted(async () => {
-  if (!auth.user) {
-    try {
-      await auth.fetchMe();
-    } catch {
-      // 忽略
-    }
-  }
-  loadRefs();
-  loadItems();
+const {
+  router,
+  items,
+  loading,
+  search,
+  page,
+  pageSize,
+  total,
+  loadItems,
+  resetAndLoad: onSearch,
+  togglePublic,
+  confirmDelete,
+} = useAllianceListPage<AllianceAgreement>({
+  fetchList: (query) => allianceAgreementApi.list(query),
+  togglePublic: {
+    update: (row, next) => allianceAgreementApi.update(row.id, { ...row, isPublic: next }),
+    apply: (row, next) => {
+      row.isPublic = next;
+    },
+    successText: (next) => (next ? '已开启前台展示' : '已取消前台展示'),
+  },
+  remove: {
+    confirmText: (row) => `确定要删除协议「${row.name}」吗？`,
+    deleteRow: (row) => allianceAgreementApi.delete(row.id),
+    successText: '协议已删除',
+  },
+  onMountedExtras: () => {
+    loadRefs();
+  },
 });
 </script>
 

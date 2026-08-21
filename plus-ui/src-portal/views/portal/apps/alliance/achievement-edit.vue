@@ -129,8 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
@@ -144,6 +143,7 @@ import {
   type AllianceAchievement,
   type AllianceDictItem,
 } from './crud-shared';
+import { useAllianceEditPage } from './crud-pages';
 import ImageUpload from './components/ImageUpload.vue';
 
 interface FormState {
@@ -162,18 +162,19 @@ interface FormState {
   attachments: string[];
 }
 
-const route = useRoute();
-const router = useRouter();
 const auth = useAuthStore();
 const tenantId = computed(() => (auth.user?.tenantId as string) || '');
 
-const isNew = computed(() => !route.params.id);
-const id = route.params.id as string | undefined;
+const { route, router, isNew, id, loading, saving, notFound, submit, onCancel } =
+  useAllianceEditPage<AllianceAchievement>({
+    listPath: '/portal/apps/alliance/achievements',
+    detailPath: (detailId) => `/portal/apps/alliance/achievements/${detailId}`,
+    fetchEntity: (fetchId) => achievementApi.get(fetchId),
+    fillForm,
+    loadOptions,
+  });
 
 const loaded = ref<AllianceAchievement | null>(null);
-const loading = ref(false);
-const saving = ref(false);
-const notFound = ref(false);
 const typeItems = ref<AllianceDictItem[]>([]);
 const enterprises = ref<{ label: string; value: string }[]>([]);
 const projects = ref<{ label: string; value: string }[]>([]);
@@ -210,6 +211,7 @@ function normalizeTags(list: string[]): string[] {
 }
 
 function fillForm(a: AllianceAchievement) {
+  loaded.value = a;
   form.title = a.title || '';
   form.type = a.type || 'custom';
   form.description = a.description || '';
@@ -239,29 +241,12 @@ async function loadOptions() {
   secondaryColleges.value = await loadSecondaryColleges(tenantId.value);
 }
 
-async function load() {
-  if (!isNew.value && id) {
-    loading.value = true;
-    try {
-      const a = await achievementApi.get(id);
-      loaded.value = a;
-      fillForm(a);
-    } catch (e) {
-      notFound.value = true;
-      ElMessage.error((e as Error).message || '加载失败');
-    } finally {
-      loading.value = false;
-    }
-  }
-}
-
 async function handleSave() {
   if (!form.title.trim()) {
     ElMessage.warning('成果标题不能为空');
     return;
   }
-  saving.value = true;
-  try {
+  await submit(async () => {
     if (isNew.value) {
       const data = await achievementApi.create({
         title: form.title.trim(),
@@ -296,33 +281,8 @@ async function handleSave() {
       ElMessage.success('成果已更新');
       router.push(`/portal/apps/alliance/achievements/${id}`);
     }
-  } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
-  } finally {
-    saving.value = false;
-  }
+  });
 }
-
-function onCancel() {
-  if (isNew.value) {
-    router.push('/portal/apps/alliance/achievements');
-  } else if (id) {
-    router.push(`/portal/apps/alliance/achievements/${id}`);
-  } else {
-    router.back();
-  }
-}
-
-onMounted(async () => {
-  if (!auth.user) {
-    try {
-      await auth.fetchMe();
-    } catch {
-      // 忽略
-    }
-  }
-  await Promise.all([loadOptions(), load()]);
-});
 </script>
 
 <style scoped>

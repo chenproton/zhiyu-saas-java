@@ -88,11 +88,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ref } from 'vue';
 import { Plus } from '@element-plus/icons-vue';
-import { useAuthStore } from '@/stores/auth';
 import ImportExport from '@/components/ImportExport.vue';
 import {
   allianceProjectApi,
@@ -104,17 +101,8 @@ import {
   type AllianceEnterprise,
   type AllianceProjectMilestone,
 } from './crud-shared';
+import { useAllianceListPage } from './crud-pages';
 
-const auth = useAuthStore();
-const tenantId = computed(() => (auth.user?.tenantId as string) || '');
-const router = useRouter();
-
-const items = ref<AllianceProject[]>([]);
-const loading = ref(false);
-const search = ref('');
-const page = ref(1);
-const pageSize = 20;
-const total = ref(0);
 const importDialog = ref(false);
 const enterprises = ref<AllianceEnterprise[]>([]);
 const milestones = ref<Record<string, AllianceProjectMilestone[]>>({});
@@ -147,77 +135,45 @@ function progressOf(row: AllianceProject): number {
   return Math.round((done / ms.length) * 100);
 }
 
-async function loadItems() {
-  loading.value = true;
-  try {
-    const res = await allianceProjectApi.list({
-      search: search.value.trim() || undefined,
-      limit: pageSize,
-      offset: (page.value - 1) * pageSize,
-    });
-    items.value = res.items;
-    total.value = res.total ?? 0;
-
+const {
+  router,
+  items,
+  loading,
+  search,
+  page,
+  pageSize,
+  total,
+  loadItems,
+  resetAndLoad: onSearch,
+  togglePublic,
+  confirmDelete,
+} = useAllianceListPage<AllianceProject>({
+  fetchList: (query) => allianceProjectApi.list(query),
+  afterLoaded: async (list) => {
     const map: Record<string, AllianceProjectMilestone[]> = {};
     const results = await Promise.all(
-      res.items.map((p) => milestoneApi.list(p.id).catch(() => ({ items: [] as AllianceProjectMilestone[] }))),
+      list.map((p) => milestoneApi.list(p.id).catch(() => ({ items: [] as AllianceProjectMilestone[] }))),
     );
-    res.items.forEach((p, i) => {
+    list.forEach((p, i) => {
       map[p.id] = results[i].items || [];
     });
     milestones.value = map;
-  } catch (e) {
-    ElMessage.error((e as Error).message || '加载失败');
-  } finally {
-    loading.value = false;
-  }
-}
-
-function onSearch() {
-  page.value = 1;
-  loadItems();
-}
-
-async function togglePublic(row: AllianceProject) {
-  const next = !row.isPublic;
-  try {
-    await allianceProjectApi.update(row.id, { isPublic: next });
-    row.isPublic = next;
-    ElMessage.success(next ? '已设为前台展示' : '已取消前台展示');
-  } catch (e) {
-    ElMessage.error((e as Error).message || '操作失败');
-  }
-}
-
-async function confirmDelete(row: AllianceProject) {
-  try {
-    await ElMessageBox.confirm(`确定要删除项目 ${row.name} 吗？`, '确认删除', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    });
-  } catch {
-    return;
-  }
-  try {
-    await allianceProjectApi.delete(row.id);
-    ElMessage.success('已删除');
-    loadItems();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '删除失败');
-  }
-}
-
-onMounted(async () => {
-  if (!auth.user) {
-    try {
-      await auth.fetchMe();
-    } catch {
-      // 忽略
-    }
-  }
-  loadEnterprises();
-  loadItems();
+  },
+  togglePublic: {
+    update: (row, next) => allianceProjectApi.update(row.id, { isPublic: next }),
+    apply: (row, next) => {
+      row.isPublic = next;
+    },
+    successText: (next) => (next ? '已设为前台展示' : '已取消前台展示'),
+  },
+  remove: {
+    confirmText: (row) => `确定要删除项目 ${row.name} 吗？`,
+    deleteRow: (row) => allianceProjectApi.delete(row.id),
+    successText: '已删除',
+  },
+  onMountedExtras: () => {
+    loadEnterprises();
+  },
 });
 </script>
 
