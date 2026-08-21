@@ -31,8 +31,8 @@ description: |
    - Controller `extends BaseController`，返回 `R<T>`，标准 REST（`/list`、`/{id}`、`POST`、`PUT`、`DELETE /{ids}`、`POST /export`）
    - 写接口带 `@SaCheckPermission("${module}:${business}:${action}")` + `@Log` + 必要的 `@RepeatSubmit`
    - 默认方法集合：`queryById/queryPageList/queryList/insertByBo/updateByBo/deleteWithValidByIds`，再叠加唯一校验/数据权限/缓存/导入导出
-4. **前端骨架**（代码生成器）：按 `frontend_type` 选 `fm/vue`(Element Plus) 或 `fm/react`(Ant Design Pro)，产出 api.ts/types/index 页面，命名 `listXxx/getXxx/addXxx/updateXxx/delXxx` 与后端路由一致，前端骨架放入仓库内 frontend/plus-ui/ 对应目录（src/api、src/views）。
-5. **验证**：`mvn -pl backend/java/ruoyi-modules/ruoyi-{module} -am -DskipTests compile`（Java 21）。
+4. **前端骨架**（代码生成器）：按 `frontend_type` 选 `fm/vue`(Element Plus) 或 `fm/react`(Ant Design Pro)，产出 api.ts/types/index 页面，命名 `listXxx/getXxx/addXxx/updateXxx/delXxx` 与后端路由一致，前端骨架放入仓库内 plus-ui/ 对应目录（src/api、src/views）。
+5. **验证**：`mvn -pl ruoyi-modules/ruoyi-{module} -am -DskipTests compile`（Java 21）。
 
 ## 禁止
 

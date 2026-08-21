@@ -16,7 +16,7 @@ description: |
 # 本地启动与环境搭建（后端 ruoyi-admin）
 
 > 适用范围：本项目后端（包名 `org.dromara`，Web 入口模块 `ruoyi-admin`，启动类 `org.dromara.DromaraApplication`）。
-> 本 Skill 只讲**后端**本地启动与环境搭建。前端 `plus-ui` 在仓库内 `frontend/plus-ui/` 目录，单独装依赖与启动，本文不展开。
+> 本 Skill 只讲**后端**本地启动与环境搭建。前端 `plus-ui` 在仓库内 `plus-ui/` 目录，单独装依赖与启动，本文不展开。
 
 ## 一、概述
 
@@ -26,11 +26,11 @@ description: |
 
 1. 装运行时：**JDK 21**（强制，SB4 要求）+ Maven 3.8+（或直接用项目自带 `mvnw`）。
 2. 装中间件：**MySQL** + **Redis**（两者均为必需，缺一启动即失败）。
-3. 建库导 SQL：建数据库 `ry-vue` → 导入 `backend/java/script/sql/ry_vue.sql`（按需再导 `ry_job.sql` / `ry_ai.sql` / `ry_workflow.sql`）。
-4. 改配置：编辑 `backend/java/ruoyi-admin/src/main/resources/application-dev.yml` 的数据源 URL / 账号密码、Redis 地址 / 密码。
+3. 建库导 SQL：建数据库 `ry-vue` → 导入 `script/sql/ry_vue.sql`（按需再导 `ry_job.sql` / `ry_ai.sql` / `ry_workflow.sql`）。
+4. 改配置：编辑 `ruoyi-admin/src/main/resources/application-dev.yml` 的数据源 URL / 账号密码、Redis 地址 / 密码。
 5. 编译启动：`mvn -DskipTests clean package` 后用 IDEA 启动类或 `java -jar` 启动，访问健康端点验证。
 
-> ⚠️ 端口、数据库名、Redis 密码等**一切以源码 yml 实际值为准**。本文给出的值取自 `backend/java/ruoyi-admin/src/main/resources/application.yml` 与 `application-dev.yml`（dev 为默认激活 profile）；若你本地改过这些文件，以你改后的实际值为准。
+> ⚠️ 端口、数据库名、Redis 密码等**一切以源码 yml 实际值为准**。本文给出的值取自 `ruoyi-admin/src/main/resources/application.yml` 与 `application-dev.yml`（dev 为默认激活 profile）；若你本地改过这些文件，以你改后的实际值为准。
 
 ## 二、环境要求
 
@@ -38,7 +38,7 @@ description: |
 |------|-------------|-------------|
 | **JDK** | **21（必须）** | `pom.xml` `<java.version>21</java.version>`，Spring Boot 4.1 强制 JDK 21+（README 标注同时兼容 JDK 25） |
 | **Maven** | 3.8+，或用项目自带 `mvnw` / `mvnw.cmd` | 根目录提供 Maven Wrapper，无需本机预装 Maven |
-| **MySQL** | 5.7+ / 8.x（默认数据源 MySQL，驱动 `com.mysql.cj.jdbc.Driver`） | `application-dev.yml` 默认 `jdbc:mysql://localhost:3306/ry-vue`。也原生支持 Oracle / PostgreSQL / SQLServer（见 `backend/java/script/sql/oracle|postgres|sqlserver` 目录），但需自行打开 yml 中对应注释数据源 |
+| **MySQL** | 5.7+ / 8.x（默认数据源 MySQL，驱动 `com.mysql.cj.jdbc.Driver`） | `application-dev.yml` 默认 `jdbc:mysql://localhost:3306/ry-vue`。也原生支持 Oracle / PostgreSQL / SQLServer（见 `script/sql/oracle|postgres|sqlserver` 目录），但需自行打开 yml 中对应注释数据源 |
 | **Redis** | 6+（**必需**，密码必须配置） | `application-dev.yml` `spring.data.redis`：`localhost:6379` / `database:0` / `password: ruoyi123`。Redisson 单机配置 |
 | Web 容器 | Jetty（已内置，无需单独装） | README 明确采用 Jetty，启动日志会显示 Jetty 而非 Tomcat |
 | IDE | IntelliJ IDEA（推荐，需启用 Lombok / MapStruct 注解处理器） | 编译期依赖 Lombok + Mapstruct-Plus + therapi-javadoc 注解处理器（见 `pom.xml` `annotationProcessorPaths`） |
@@ -65,7 +65,7 @@ java -version
 CREATE DATABASE `ry-vue` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 ```
 
-然后导入建表脚本（脚本位于 `backend/java/script/sql/`）：
+然后导入建表脚本（脚本位于 `script/sql/`）：
 
 | SQL 脚本 | 是否必需 | 说明 |
 |----------|---------|------|
@@ -76,16 +76,16 @@ CREATE DATABASE `ry-vue` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_c
 
 ```bash
 # 命令行导入主库脚本（按机器实际 mysql 客户端路径调整）
-mysql -uroot -proot ry-vue < backend/java/script/sql/ry_vue.sql
+mysql -uroot -proot ry-vue < script/sql/ry_vue.sql
 # 按需再导入其它脚本
-mysql -uroot -proot ry-vue < backend/java/script/sql/ry_job.sql
+mysql -uroot -proot ry-vue < script/sql/ry_job.sql
 ```
 
-> Oracle / PostgreSQL / SQLServer 用户：改用 `backend/java/script/sql/oracle/` `backend/java/script/sql/postgres/` `backend/java/script/sql/sqlserver/` 下的对应脚本，并在 yml 中打开对应数据源注释（同时关闭 / 调整 master 的 MySQL 配置）。
+> Oracle / PostgreSQL / SQLServer 用户：改用 `script/sql/oracle/` `script/sql/postgres/` `script/sql/sqlserver/` 下的对应脚本，并在 yml 中打开对应数据源注释（同时关闭 / 调整 master 的 MySQL 配置）。
 
 ### 3. 修改 dev 环境配置（数据源 + Redis）
 
-编辑 `backend/java/ruoyi-admin/src/main/resources/application-dev.yml`，按本地实际改这两处：
+编辑 `ruoyi-admin/src/main/resources/application-dev.yml`，按本地实际改这两处：
 
 ```yaml
 # 数据源（master）
@@ -138,34 +138,34 @@ mvnw.cmd -DskipTests clean package
 
 ### 2. 启动方式一：IDEA 启动类（开发首选）
 
-直接运行启动类 `org.dromara.DromaraApplication`（位于 `backend/java/ruoyi-admin/src/main/java/org/dromara/DromaraApplication.java`）的 `main` 方法。
+直接运行启动类 `org.dromara.DromaraApplication`（位于 `ruoyi-admin/src/main/java/org/dromara/DromaraApplication.java`）的 `main` 方法。
 
 - 启动成功控制台会打印 `ruoyi-admin` 的 banner 横幅
 - IDEA 务必启用 Lombok 插件与注解处理（Enable annotation processing），否则编译期 `@Data` 生成的 get/set 与 Mapstruct 转换类会缺失，报一堆"找不到方法 / 符号"。
 
 ### 3. 启动方式二：命令行 java -jar（部署 / 无 IDE 环境）
 
-打包后产物在 `backend/java/ruoyi-admin/target/` 下（jar 名形如 `ruoyi-admin.jar`，版本随 `pom.xml` 的 `revision` 变化）：
+打包后产物在 `ruoyi-admin/target/` 下（jar 名形如 `ruoyi-admin.jar`，版本随 `pom.xml` 的 `revision` 变化）：
 
 ```bash
 # 用 dev profile 启动（库/Redis 等读 application-dev.yml）
-java -jar backend/java/ruoyi-admin/target/ruoyi-admin.jar --spring.profiles.active=dev
+java -jar ruoyi-admin/target/ruoyi-admin.jar --spring.profiles.active=dev
 
 # 指定 JVM 启动内存（生产示例）
-java -Xms512m -Xmx1024m -jar backend/java/ruoyi-admin/target/ruoyi-admin.jar --spring.profiles.active=prod
+java -Xms512m -Xmx1024m -jar ruoyi-admin/target/ruoyi-admin.jar --spring.profiles.active=prod
 ```
 
-> 通配写法 `java -jar backend/java/ruoyi-admin/target/*.jar --spring.profiles.active=dev` 在部分 shell 中通配符不展开会失败，建议先 `ls backend/java/ruoyi-admin/target/*.jar` 看准确文件名再写全名。
+> 通配写法 `java -jar ruoyi-admin/target/*.jar --spring.profiles.active=dev` 在部分 shell 中通配符不展开会失败，建议先 `ls ruoyi-admin/target/*.jar` 看准确文件名再写全名。
 
 ## 五、外置服务端（按需启动）
 
-下列三个服务在 `backend/java/ruoyi-extend/` 下，是**独立可执行的 Server**，默认主应用里对应的 **client 开关是关闭的**，不启动它们不影响主应用跑起来。只有当你要用监控 / 分布式调度 / AI 功能时，才需要先起对应 Server，再在主应用 yml 打开对应 client 开关。
+下列三个服务在 `ruoyi-extend/` 下，是**独立可执行的 Server**，默认主应用里对应的 **client 开关是关闭的**，不启动它们不影响主应用跑起来。只有当你要用监控 / 分布式调度 / AI 功能时，才需要先起对应 Server，再在主应用 yml 打开对应 client 开关。
 
 | 外置服务 | 模块路径 | 默认端口 / 说明 | 配套主应用开关 |
 |----------|---------|-----------------|----------------|
-| 监控中心 | `backend/java/ruoyi-extend/ruoyi-monitor-admin` | `9090`，context-path `/admin`（Spring Boot Admin 服务端） | `application-dev.yml` 的 `spring.boot.admin.client.enabled`，默认 `false` |
-| 任务调度 | `backend/java/ruoyi-extend/ruoyi-snailjob-server` | 见该模块自身配置；主应用客户端默认 `snail-job.enabled: false` | `application-dev.yml` 的 `snail-job.enabled`，默认 `false`（server.port 默认 17888，客户端口随主端口漂移 `2${server.port}`） |
-| AI 服务 | `backend/java/ruoyi-extend/ruoyi-snailai-server` | gRPC `18888` 等；主应用客户端默认 `snail-ai.enabled: false` | `application-dev.yml` 的 `snail-ai.enabled`，默认 `false` |
+| 监控中心 | `ruoyi-extend/ruoyi-monitor-admin` | `9090`，context-path `/admin`（Spring Boot Admin 服务端） | `application-dev.yml` 的 `spring.boot.admin.client.enabled`，默认 `false` |
+| 任务调度 | `ruoyi-extend/ruoyi-snailjob-server` | 见该模块自身配置；主应用客户端默认 `snail-job.enabled: false` | `application-dev.yml` 的 `snail-job.enabled`，默认 `false`（server.port 默认 17888，客户端口随主端口漂移 `2${server.port}`） |
+| AI 服务 | `ruoyi-extend/ruoyi-snailai-server` | gRPC `18888` 等；主应用客户端默认 `snail-ai.enabled: false` | `application-dev.yml` 的 `snail-ai.enabled`，默认 `false` |
 
 启动方式与主应用一致：用各自模块的启动类（IDEA）或单独打包后 `java -jar`。
 
@@ -216,13 +216,13 @@ java -version
 
 # 2) 创建数据库并导入主库脚本
 mysql -uroot -proot -e "CREATE DATABASE \`ry-vue\` DEFAULT CHARACTER SET utf8mb4;"
-mysql -uroot -proot ry-vue < backend/java/script/sql/ry_vue.sql
+mysql -uroot -proot ry-vue < script/sql/ry_vue.sql
 
 # 3) 编译打包（跳过测试）
 mvn -DskipTests clean package
 
 # 4) 命令行启动（dev profile）
-java -jar backend/java/ruoyi-admin/target/ruoyi-admin.jar --spring.profiles.active=dev
+java -jar ruoyi-admin/target/ruoyi-admin.jar --spring.profiles.active=dev
 
 # 5) 验证健康端点（期望 status=UP）
 curl http://localhost:8080/actuator/health
@@ -239,7 +239,7 @@ redis-cli -h localhost -p 6379 -a ruoyi123 ping
 | 8080 端口被占用 | `taskkill /IM java.exe` 按名批杀（会误杀 IDE / 终端宿主） | `netstat -ano \| findstr :8080` 定位 PID → `taskkill /F /PID <PID>` 精准击杀 |
 | Redis 报 `NOAUTH` / 连接失败 | 把 yml 的 `password` 删掉留空当作"无密码" | 给 Redis 配密码或把 yml 的 `password` 改成真实密码（框架要求 Redis 必须有密码） |
 | 启动找不到 `getXxx` 方法 | 手动给实体类补 get/set | IDEA 启用 Lombok 插件 + Enable annotation processing；命令行用 `mvn clean package` |
-| 数据库报 `Unknown database 'ry-vue'` | 改连接串连到其它库凑合 | 按 yml 实际库名建库并导入 `backend/java/script/sql/ry_vue.sql` |
+| 数据库报 `Unknown database 'ry-vue'` | 改连接串连到其它库凑合 | 按 yml 实际库名建库并导入 `script/sql/ry_vue.sql` |
 
 ## 十、最佳实践
 

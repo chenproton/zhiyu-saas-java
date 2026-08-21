@@ -16,7 +16,7 @@
 #     SIGPIPE 退出 141，导致 if 恒为假（检测死代码）。因此所有「文件内容过滤后再判断」的检查
 #     一律改为命令替换形态 [ -n "$(producer | grep -E pattern)" ]，不再使用管道尾端 grep -q。
 #   - 代码结构基线（Java 单栈，Go 版本已于 2026-08 迁移删除）：
-#        CONTROLLER_DIR = backend/java/ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/controller
+#        CONTROLLER_DIR = ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/controller
 #        SERVICE_DIR    = .../service（含 impl 子目录，递归扫描）
 #        MAPPER_DIR     = .../mapper
 #        MIGRATIONS_DIR = db/migrations
@@ -40,7 +40,7 @@ pass()      { echo "  [通过] $*"; }
 echo "== spec 硬约束校验 =="
 
 # ---- Java 代码结构基线（迁移自 Go：handler/service/store → controller/service/mapper） ----
-MODULE_JAVA="backend/java/ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu"
+MODULE_JAVA="ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu"
 CONTROLLER_DIR="$MODULE_JAVA/controller"
 SERVICE_DIR="$MODULE_JAVA/service"
 MAPPER_DIR="$MODULE_JAVA/mapper"
@@ -57,6 +57,14 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse -q --ver
     fi
   fi
 fi
+
+# 变更文件名枚举（rename 感知）：整库目录搬迁时默认 renameLimit(1000) 不足，
+# 且 pathspec 过滤会切断新旧路径配对、把纯 rename 拆成 A+D，导致搬迁文件被误判为"新增/变更"。
+# 故统一全量 diff（-M + 放大 renameLimit，--diff-filter 由调用方定）后按路径前缀过滤。
+git_diff_names() {  # usage: git_diff_names <diff-filter> [git diff 参数...]；输出仓库根相对路径
+  local filter="$1"; shift
+  git -c diff.renameLimit=100000 diff --name-only --diff-filter="$filter" -M "$@" 2>/dev/null
+}
 
 # 行尾注释剥离（Java：// 行注释；`//...` 含 URL 字符串内的 // 一并剥掉再查关键字，
 # 剥掉后真实代码（关键字在注释之前）仍被命中，不漏报；/* */ 块注释内的关键字
@@ -497,10 +505,10 @@ fi
 # ---------------------------------------------------------------
 echo "-- 11. spec 随代码变更（代码↔spec 耦合，阻断级） --"
 if [[ -n "$BASELINE" ]]; then
-  code_changes=$(git diff --name-only "$BASELINE" HEAD -- "$CONTROLLER_DIR" "$MAPPER_DIR" "$MIGRATIONS_DIR" 2>/dev/null | grep -vE 'Test\.java$')
-  code_changes+=$'\n'"$(git diff --name-only HEAD -- "$CONTROLLER_DIR" "$MAPPER_DIR" "$MIGRATIONS_DIR" 2>/dev/null | grep -vE 'Test\.java$')"
-  spec_changes=$(git diff --name-only "$BASELINE" HEAD -- docs/spec docs/系统功能清单.md 2>/dev/null)
-  spec_changes+=$'\n'"$(git diff --name-only HEAD -- docs/spec docs/系统功能清单.md 2>/dev/null)"
+  code_changes=$( { git_diff_names ACDMT "$BASELINE" HEAD; git_diff_names ACDMT HEAD; } \
+    | grep -E "^(${CONTROLLER_DIR}|${MAPPER_DIR}|${MIGRATIONS_DIR})/" | grep -vE 'Test\.java$' )
+  spec_changes=$( { git_diff_names ACDMT "$BASELINE" HEAD; git_diff_names ACDMT HEAD; } \
+    | grep -E '^(docs/spec/|docs/系统功能清单\.md$)' )
   code_changes=$(printf '%s' "$code_changes" | grep -vE '^[[:space:]]*$' | sort -u | head -50)
   spec_changes=$(printf '%s' "$spec_changes" | grep -vE '^[[:space:]]*$' | sort -u)
   if [[ -n "$code_changes" ]]; then
@@ -566,9 +574,8 @@ fi
 echo "-- 13. 新端点租户归属校验（提示级：@PathVariable 且无 SystemGuard） --"
 OWNERSHIP_HINTED=0
 if [[ -n "$BASELINE" ]]; then
-  changed_ctl=$(git diff --name-only "$BASELINE" HEAD -- "$CONTROLLER_DIR" 2>/dev/null | grep '\.java$' | grep -v 'Test\.java$')
-  changed_ctl+=$'\n'"$(git diff --name-only HEAD -- "$CONTROLLER_DIR" 2>/dev/null | grep '\.java$' | grep -v 'Test\.java$')"
-  changed_ctl+=$'\n'"$(git diff --cached --name-only -- "$CONTROLLER_DIR" 2>/dev/null | grep '\.java$' | grep -v 'Test\.java$')"
+  changed_ctl=$( { git_diff_names ACDMT "$BASELINE" HEAD; git_diff_names ACDMT HEAD; git_diff_names ACDMT --cached; } \
+    | grep "^${CONTROLLER_DIR}/" | grep '\.java$' | grep -v 'Test\.java$' )
   changed_ctl+=$'\n'"$(git ls-files --others --exclude-standard -- "$CONTROLLER_DIR" 2>/dev/null | grep '\.java$' | grep -v 'Test\.java$')"
   changed_ctl=$(printf '%s' "$changed_ctl" | grep -vE '^[[:space:]]*$' | sort -u)
   for f in $changed_ctl; do
@@ -593,10 +600,10 @@ fi
 # ---------------------------------------------------------------
 echo "-- 14. 新端点/新实现必须带测试（阻断级） --"
 TEST_OK=1
-TEST_ROOT="backend/java/ruoyi-modules/ruoyi-zhiyu/src/test/java"
+TEST_ROOT="ruoyi-modules/ruoyi-zhiyu/src/test/java"
 if [[ -n "$BASELINE" ]]; then
-  new_impl=$(git diff --name-status "$BASELINE" HEAD -- "$MODULE_JAVA" 2>/dev/null | grep -E '^A\s' | grep '\.java$' | grep -v 'Test\.java$' | awk '{print $2}')
-  new_impl+=$'\n'"$(git diff --cached --name-status -- "$MODULE_JAVA" 2>/dev/null | grep -E '^A\s' | grep '\.java$' | grep -v 'Test\.java$' | awk '{print $2}')"
+  new_impl=$( { git_diff_names A "$BASELINE" HEAD; git_diff_names A --cached; } \
+    | grep "^${MODULE_JAVA}/" | grep '\.java$' | grep -v 'Test\.java$' )
   new_impl+=$'\n'"$(git ls-files --others --exclude-standard -- "$MODULE_JAVA" 2>/dev/null | grep '\.java$' | grep -v 'Test\.java$')"
   new_impl=$(printf '%s' "$new_impl" | grep -vE '^[[:space:]]*$' | sort -u)
   for f in $new_impl; do

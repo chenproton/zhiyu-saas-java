@@ -2,22 +2,27 @@
 
 > 分支模型说明：本仓库**主线只有 `master`**，按「分支隔离 + 部署成功自动合并 master」协作（见第四节）。
 >
-> 本仓库为**单栈架构**：**Java 后端**（`backend/java/ruoyi-*/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21），共用 MySQL 8.0，配套两套 Vue 前端：**Vue 业务门户**（`frontend/portal-vue`）+ **Vue 管理端**（`frontend/plus-ui`，RuoYi 框架）。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
+> 本仓库为**单栈架构**：**Java 后端多模块 Maven 工程位于仓库根目录**（`pom.xml` + `mvnw` + `ruoyi-*/` + `script/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21，布局与上游框架技术方案对齐），共用 MySQL 8.0，配套两套 Vue 前端：**Vue 业务门户**（`frontend/portal-vue`）+ **Vue 管理端**（`plus-ui/`，RuoYi 框架，位于仓库根）。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
 > 开发契约分两部分：第一部分为仓库级开发契约（spec-first / 部署 / 运维），第二部分为 Java 后端框架契约。按所改模块选择对应契约执行。
 
 ### 顶层目录结构
 
 ```
-├── backend/
-│   └── java/        # Java 后端（ruoyi-*/ + pom.xml + mvnw + script/，多模块 Maven，org.dromara）
+├── pom.xml / mvnw     # Java 后端 Maven 根工程（多模块，org.dromara）
+├── ruoyi-admin/       # 后端唯一可执行入口
+├── ruoyi-api/         # 跨模块 API 契约层
+├── ruoyi-common/*     # 24 个公共能力模块
+├── ruoyi-modules/*    # 业务模块：system / ai / workflow / job / gen / demo / zhiyu
+├── ruoyi-extend/*     # 独立部署服务：monitor-admin / snailjob-server / snailai-server
+├── script/            # 框架初始化 SQL、Docker Compose、Nginx 配置
+├── plus-ui/           # Vue 管理端（RuoYi 框架，Java 配套）
 ├── frontend/
-│   ├── portal-vue/  # Vue 业务门户（Element Plus + Pinia，Java 配套）
-│   └── plus-ui/     # Vue 管理端（RuoYi 框架，Java 配套）
-├── db/migrations/   # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 mysql 执行）
-├── docs/            # 全量文档（spec、ADR、规范）
-├── deploy/          # docker-compose / nginx / Dockerfile（Java+Vue 单栈编排）
-├── scripts/         # spec-check / ui-smoke / package-release 等工具
-└── AGENTS.md        # 本文件：全局开发契约（唯一根级描述文档）
+│   └── portal-vue/    # Vue 业务门户（Element Plus + Pinia，Java 配套）
+├── db/migrations/     # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 mysql 执行）
+├── docs/              # 全量文档（spec、ADR、规范）
+├── deploy/            # docker-compose / nginx / Dockerfile（Java+Vue 单栈编排）
+├── scripts/           # spec-check / ui-smoke / package-release 等工具
+└── AGENTS.md          # 本文件：全局开发契约（唯一根级描述文档）
 ```
 
 ---
@@ -70,7 +75,7 @@
 
 - **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图再写代码；新增/变更行为必须同步 spec。见 [`docs/spec-standards.md`](docs/spec-standards.md)。
 - **简单优先**：不过度防御；小概率异常宁可容忍；核心业务加锁防重复，普通业务允许报错或重复插入；核心接口保流畅，非核心允许等待。
-- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端复用查 portal-vue `src/components/` 与 `src/views/*/_components/`（React 时代速查表 `docs/components.md`/`docs/forms-tables.md` 已标历史墓碑）；后端复用查 `backend/java/ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/core/` 与 `.codex/skills/` 框架技能（`docs/backend-reuse.md` 已标历史墓碑）。
+- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端复用查 portal-vue `src/components/` 与 `src/views/*/_components/`（React 时代速查表 `docs/components.md`/`docs/forms-tables.md` 已标历史墓碑）；后端复用查 `ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/core/` 与 `.codex/skills/` 框架技能（`docs/backend-reuse.md` 已标历史墓碑）。
 - **性能自检（温和，写代码时自问，不硬拦）**：涉及列表/批量/聚合的代码，写完自问——① 有没有循环内逐条 SQL（N+1）？应改 JOIN / `IN($N)` / 批量；② 列表/聚合查询有没有显式 LIMIT 或「数据量有界」的论证？③ 新增后台任务/goroutine 有没有超时 + panic 兜底 + 去重？④ 新增外部 HTTP 调用有没有设 timeout？「简单优先」指代码形状简单（一行 JOIN 与十行循环一样简单），不代表可以先写 N+1 再说。详见 [`docs/code-review-checklist.md`](docs/code-review-checklist.md)。
 
 ## 三、硬性架构约束（安全 + 架构合理的落地红线）
@@ -105,9 +110,9 @@ deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal
 ### 4.2 提交前必跑（代码改动）
 
 ```bash
-cd backend/java && ./mvnw compile -q            # Java 后端编译（JDK 21）
+./mvnw compile -q            # Java 后端编译（JDK 21）
 cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
-cd frontend/plus-ui && pnpm build                # 管理端
+cd plus-ui && pnpm build                # 管理端
 ./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/LLM 直连/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/down 不可逆标注/XSS），详见 spec-standards.md §九
 ```
 
@@ -125,7 +130,7 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
    > 例外（属自动化门禁，不是「主动做 E2E」）：`deploy.sh` 部署后自带业务冒烟探针（无浏览器、无账号，失败即回滚）。
-4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`backend/java/*/target/`。
+4. **扫描/统计只覆盖自有代码**：排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`*/target/`。
 
 ## 六、规范索引（细则去哪找）
 
@@ -171,7 +176,7 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 
 ## 项目定位
 
-本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于 `backend/java/`，配套前端为 Vue 业务门户 `frontend/portal-vue`（Element Plus + Pinia）与 Vue 管理端 `frontend/plus-ui`（RuoYi 框架），代码生成器内置模板产出前端骨架。
+本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于 ``，配套前端为 Vue 业务门户 `frontend/portal-vue`（Element Plus + Pinia）与 Vue 管理端 `plus-ui`（RuoYi 框架），代码生成器内置模板产出前端骨架。
 
 > 🔴 **本项目遵循框架约定**：包名 `org.dromara`，**三层架构无 DAO 层**（Controller→Service→Mapper，直接用 `BaseMapperPlus`），Entity 继承 `BaseEntity`，查询用 `QueryBuilder.lambda`，标准 REST 路径（`/list`、`/{id}`）。不要套用 `plus.ruoyi` / DAO 层 / `PlusLambdaQuery` / `/pageXxx` 等其它衍生版约定。
 
@@ -283,7 +288,7 @@ org.dromara.{module}/
 
 生成器默认方法集合：`queryById` / `queryPageList` / `queryList` / `insertByBo` / `updateByBo` / `deleteWithValidByIds`，再叠加唯一校验、数据权限、MPJ、缓存、Excel 导入导出、关联维护。
 
-### 模块拓扑（均位于 `backend/java/` 下）
+### 模块拓扑（均位于 `` 下）
 
 ```
 ruoyi-admin          # 唯一可执行入口
@@ -314,7 +319,7 @@ ruoyi-extend/*       # monitor-admin / snailjob-server / snailai-server（独立
 
 ## 代码生成器（ruoyi-gen，6.x 重构）
 
-- 模板引擎 **FreeMarker(.ftl)**（已由 Velocity 迁移），模板在 `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/`。
+- 模板引擎 **FreeMarker(.ftl)**（已由 Velocity 迁移），模板在 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/`。
 - **多前端栈**：`gen_table.frontend_type` → `fm/<type>/`：`vue`（Element Plus）/ `react`（Ant Design Pro）。新增前端栈只加 `fm/<type>/` 目录 + 4 个 FTL，不在 Java 里加硬编码分支。
 - 上下文变量大幅扩充（needXxx 列开关、enableExport/Status/Unique/Sort、树字面量），写 `.ftl` 直接用已算好的值，别在模板里再扫列。
 

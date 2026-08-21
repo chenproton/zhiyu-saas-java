@@ -37,9 +37,9 @@ whenToUse: 接到「新增功能 / 修复 bug / 重构 / 变更行为」任务�
 ## 3. 提交前必跑（硬约束）
 
 ```bash
-cd backend/java && ./mvnw compile -q            # Java 后端编译（JDK 21）
+./mvnw compile -q            # Java 后端编译（JDK 21）
 cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
-cd frontend/plus-ui && pnpm build                # 管理端
+cd plus-ui && pnpm build                # 管理端
 ./scripts/spec-check.sh                          # spec 硬约束（必须通过）
 ```
 
@@ -86,4 +86,4 @@ deploy.sh 自动做：源码 hash 增量构建（Java Maven + portal-vue/plus-ui
 | 6/7 校验与收敛 | `spec_check`（机器硬约束）+ `spec_analyze`（子代理语义复查）+ `goal`（长任务跨轮驱动）；全量页面冒烟用 `node scripts/ui-smoke/ui-smoke.mjs`（部署后跑） |
 
 - 长任务（多轮、多文件）：用 `create_goal` 建目标持续驱动，每轮对照 spec 汇报进度。
-- 扫描/统计只覆盖自有代码，排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`backend/java/*/target/`。
+- 扫描/统计只覆盖自有代码，排除 `offline/`、`node_modules/`、`dist/`、`*.tsbuildinfo`、`logs/`、`*/target/`。

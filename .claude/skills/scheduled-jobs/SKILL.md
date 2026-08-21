@@ -3,7 +3,7 @@ name: scheduled-jobs
 description: |
   base-dev-framework6-java定时任务与分布式调度开发指南。框架以 SnailJob 2.0.0
   （com.aizuda，阿里开源，取代早期 PowerJob / XXL-Job 路线）为分布式调度核心：业务侧是
-  client（ruoyi-common-job + ruoyi-job），调度侧是独立 server（backend/java/ruoyi-extend/ruoyi-snailjob-server），
+  client（ruoyi-common-job + ruoyi-job），调度侧是独立 server（ruoyi-extend/ruoyi-snailjob-server），
   任务执行器用 @JobExecutor / AbstractJobExecutor 编写，支持失败重试、可视化管理、广播、
   静态分片、Map / MapReduce 动态分片、DAG 工作流编排。简单进程内周期任务用 Spring 内置
   @Scheduled（@EnableScheduling 已在 SnailJobConfig 开启）；毫秒级延时 / 事件驱动用
@@ -31,7 +31,7 @@ description: |
 
 | 机制 | 模块 / 类 | 调度位置 | 适用 |
 |------|-----------|----------|------|
-| **SnailJob 2.0.0** | `ruoyi-common-job`（client）+ `backend/java/ruoyi-extend/ruoyi-snailjob-server`（server） | 独立调度中心，可视化配置 | 分布式、需重试、需分片 / 工作流、跨实例统一管理的"重"任务 |
+| **SnailJob 2.0.0** | `ruoyi-common-job`（client）+ `ruoyi-extend/ruoyi-snailjob-server`（server） | 独立调度中心，可视化配置 | 分布式、需重试、需分片 / 工作流、跨实例统一管理的"重"任务 |
 | **@Scheduled** | Spring 内置，`@EnableScheduling`（在 `SnailJobConfig` 已开启） | 当前 JVM 进程内 | 单机、固定周期、逻辑简单、不需要可视化的"轻"任务 |
 | **Redisson 队列** | `ruoyi-common-redis` 的 `QueueUtils`（`org.dromara.common.redis.utils`） | Redis，事件驱动订阅 | 阻塞队列 / 优先队列 + `subscribeOnElements` 订阅式消费 |
 
@@ -81,7 +81,7 @@ public class SnailJobConfig {
 ### 3.1 架构与配置
 
 - **Client（业务端）**：`ruoyi-common-job`（启动配置） + `ruoyi-job`（任务执行器示例，包 `org.dromara.job.snailjob`）。
-- **Server（调度中心）**：`backend/java/ruoyi-extend/ruoyi-snailjob-server`，引入 `snail-job-server-starter`，独立 Spring Boot 应用，控制台端口 `17888`。
+- **Server（调度中心）**：`ruoyi-extend/ruoyi-snailjob-server`，引入 `snail-job-server-starter`，独立 Spring Boot 应用，控制台端口 `17888`。
 
 client 配置（`application-dev.yml` 的 `snail-job:` 段，真实字段）：
 
@@ -98,7 +98,7 @@ snail-job:
   host:                                        # 客户端 IP，可不填自动获取
 ```
 
-> 落库脚本：`backend/java/script/sql/ry_job.sql`（含 `sj_group_config`、`sj_namespace` 等表）。
+> 落库脚本：`script/sql/ry_job.sql`（含 `sj_group_config`、`sj_namespace` 等表）。
 
 ### 3.2 任务执行器的两种写法（真实注解 com.aizuda.snailjob.*）
 
@@ -363,16 +363,16 @@ QueueUtils.subscribeBlockingQueue("order:notify", (Long orderId) -> {
 ## 八、本仓库定时任务能力完整度
 
 - **SnailJob client（业务侧）**：完整。`ruoyi-common-job` 提供启动配置，`ruoyi-job` 提供 8 个真实示例执行器，覆盖：注解式、继承式、广播、静态分片、Map、MapReduce、DAG 工作流（支付宝 / 微信 / 汇总账单）。
-- **SnailJob server（调度侧）**：完整。`backend/java/ruoyi-extend/ruoyi-snailjob-server` 是可独立部署的调度中心（含 Dockerfile、多 profile 配置）。
+- **SnailJob server（调度侧）**：完整。`ruoyi-extend/ruoyi-snailjob-server` 是可独立部署的调度中心（含 Dockerfile、多 profile 配置）。
 - **@Scheduled**：能力具备（`@EnableScheduling` 已开），但**框架未内置任何 @Scheduled 示例任务**——属可用未用，业务自行编写。
 - **Redisson 队列**：具备阻塞 / 优先队列 + 订阅消费（`QueueUtils`），`ruoyi-demo` 有 `PriorityQueueController` 示例；**延迟队列能力已被官方废弃并从工具类移除**，这是本仓库唯一的"残缺点"，延时业务需用 SnailJob cron 替代。
 
 引用真实源文件：
-- `backend/java/ruoyi-common/ruoyi-common-job/src/main/java/org/dromara/common/job/config/SnailJobConfig.java`
-- `backend/java/ruoyi-common/ruoyi-common-job/pom.xml`、`.../resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-- `backend/java/ruoyi-modules/ruoyi-job/src/main/java/org/dromara/job/snailjob/`：`TestAnnoJobExecutor`、`TestClassJobExecutor`、`TestBroadcastJob`、`TestStaticShardingJob`、`TestMapJobAnnotation`、`TestMapReduceAnnotation1`、`AlipayBillTask`、`SummaryBillTask`、`WechatBillTask`
-- `backend/java/ruoyi-modules/ruoyi-job/src/main/java/org/dromara/job/entity/BillDTO.java`
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/utils/QueueUtils.java`
-- `backend/java/ruoyi-extend/ruoyi-snailjob-server/`（pom.xml、Dockerfile、application-*.yml）
+- `ruoyi-common/ruoyi-common-job/src/main/java/org/dromara/common/job/config/SnailJobConfig.java`
+- `ruoyi-common/ruoyi-common-job/pom.xml`、`.../resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
+- `ruoyi-modules/ruoyi-job/src/main/java/org/dromara/job/snailjob/`：`TestAnnoJobExecutor`、`TestClassJobExecutor`、`TestBroadcastJob`、`TestStaticShardingJob`、`TestMapJobAnnotation`、`TestMapReduceAnnotation1`、`AlipayBillTask`、`SummaryBillTask`、`WechatBillTask`
+- `ruoyi-modules/ruoyi-job/src/main/java/org/dromara/job/entity/BillDTO.java`
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/utils/QueueUtils.java`
+- `ruoyi-extend/ruoyi-snailjob-server/`（pom.xml、Dockerfile、application-*.yml）
 - 根 `pom.xml`（`snailjob.version=2.0.0`，snail-job-client-starter / job-core / retry-core）
-- `backend/java/ruoyi-admin/src/main/resources/application-dev.yml`（`snail-job:` 配置段）
+- `ruoyi-admin/src/main/resources/application-dev.yml`（`snail-job:` 配置段）

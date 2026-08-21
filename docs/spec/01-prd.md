@@ -276,7 +276,7 @@
 ### 6.2 参考资料
 
 - 架构分层：根 `AGENTS.md` 第二部分（Java 框架契约）
-- 前端组件：`frontend/portal-vue`（Element Plus）与 `frontend/plus-ui`（RuoYi 框架）
+- 前端组件：`frontend/portal-vue`（Element Plus）与 `plus-ui`（RuoYi 框架）
 - 审查指引：`docs/code-review-checklist.md`（审查清单）
 - 接口契约：`docs/spec/02-api-contract.md`
 - 数据库设计：`docs/spec/04-database-schema.md`

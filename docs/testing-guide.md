@@ -85,26 +85,26 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
 
 | 依赖 | 说明 |
 |---|---|
-| 后端工具链 | JDK 21 / Maven（`backend/java`，`./mvnw compile -q` 编译门禁） |
-| 前端工具链 | Node 20+ / pnpm，`frontend/portal-vue` 与 `frontend/plus-ui` 各自 `pnpm install` + `pnpm build` |
+| 后端工具链 | JDK 21 / Maven（`.`，`./mvnw compile -q` 编译门禁） |
+| 前端工具链 | Node 20+ / pnpm，`frontend/portal-vue` 与 `plus-ui` 各自 `pnpm install` + `pnpm build` |
 | UI 冒烟依赖 | `cd scripts/ui-smoke && npm install` + 系统 Google Chrome |
 | 测试账号 | `school/school123`、`teacher/teacher123`、`student/student123`、`partner(smokepartner/smoke123)` |
 
 ### 3.2 后端测试
 
 ```bash
-cd backend/java && ./mvnw compile -q    # 编译门禁（JDK 21）
+./mvnw compile -q    # 编译门禁（JDK 21）
 ./mvnw test -q                          # 单测（controller/service/mapper 层，JUnit 5 + Mockito）
 ```
 
-- 单测位于 `backend/java/*/src/test/java/`；分层要求与红线见根 `AGENTS.md` 第二部分（新接口至少 controller/service/mapper 测试一种）。
+- 单测位于 `*/src/test/java/`；分层要求与红线见根 `AGENTS.md` 第二部分（新接口至少 controller/service/mapper 测试一种）。
 - 集成测试需要独立测试库的场景（写库型测试）：**绝不指向生产库**（误连不可逆），未配置时跳过。
 
 ### 3.3 前端测试
 
 ```bash
 cd frontend/portal-vue && pnpm build     # 业务门户构建（含 vue-tsc 类型检查）
-cd frontend/plus-ui && pnpm build        # 管理端构建
+cd plus-ui && pnpm build        # 管理端构建
 ```
 
 - 前端门禁以构建 + 类型检查（`vue-tsc`）为主；纯逻辑工具函数可配单测（页面级验证交给 UI 冒烟）。
@@ -177,4 +177,4 @@ cd frontend/plus-ui && pnpm build        # 管理端构建
 - UI 冒烟工具完整用法：`scripts/ui-smoke/README.md`
 - 后端分层红线（测试归属）：根 `AGENTS.md` 第二部分（controller/service/mapper）
 - spec 工作流 / DoD：`docs/spec-standards.md`
-- 前端组件复用：`AGENTS.md` 第二部分 + `frontend/portal-vue`/`frontend/plus-ui` 源码
+- 前端组件复用：`AGENTS.md` 第二部分 + `frontend/portal-vue`/`plus-ui` 源码

@@ -45,8 +45,8 @@ Snail AI 由蚂蚁开源（`com.aizuda`，版本 `0.0.5`，与 SnailJob 同源�
 
 | 段 | 物理形态 | 关键端口 | 在本仓库的位置 | 职责 |
 |----|---------|---------|---------------|------|
-| ① SnailAI Server | 独立 Spring Boot 进程，可独立部署 / 容器化 | gRPC `18888`、HTTP `8900`（context-path `/snail-ai`） | `backend/java/ruoyi-extend/ruoyi-snailai-server/`（`snail-ai-starter`） | 管模型 / 应用 / Key / 资源 / RAG / 短期记忆；下发 Chat 请求 |
-| ② RuoYi client | 主应用内的两个模块 | 客户端 gRPC `18889`（接收 Server 分发） | `backend/java/ruoyi-common/ruoyi-common-ai/` + `backend/java/ruoyi-modules/ruoyi-ai/` | agent-chat 网关 + agent-executor + openapi client |
+| ① SnailAI Server | 独立 Spring Boot 进程，可独立部署 / 容器化 | gRPC `18888`、HTTP `8900`（context-path `/snail-ai`） | `ruoyi-extend/ruoyi-snailai-server/`（`snail-ai-starter`） | 管模型 / 应用 / Key / 资源 / RAG / 短期记忆；下发 Chat 请求 |
+| ② RuoYi client | 主应用内的两个模块 | 客户端 gRPC `18889`（接收 Server 分发） | `ruoyi-common/ruoyi-common-ai/` + `ruoyi-modules/ruoyi-ai/` | agent-chat 网关 + agent-executor + openapi client |
 | ③ 前端 SDK | 浏览器 / 小程序内的 Snail AI Web SDK | 直连 ② 的 HTTP 网关 | plus-ui / plus-uniapp | 渲染对话，按 `Result` 结构解析响应 |
 
 > **为什么要独立 Server？** 大模型 Key、应用 Token、模型路由都集中在 Server 治理，RuoYi 不落任何大模型厂商 Key，只持有 Server 颁发的 `app-id` + `token`（`SAI_*`）。Server 可单独扩容、独立升级，与业务进程解耦。
@@ -71,9 +71,9 @@ Snail AI 由蚂蚁开源（`com.aizuda`，版本 `0.0.5`，与 SnailJob 同源�
 </dependency>
 ```
 
-版本统一由根 `pom.xml` 的 `<snailai.version>0.0.5</snailai.version>` 管理（`dependencyManagement` 三段 starter 都引用它）。`backend/java/ruoyi-modules/ruoyi-ai` 在此基础上额外引入 `ruoyi-common-satoken` + `ruoyi-common-web`，对外提供 `/snail-ai/**` 普通接口。
+版本统一由根 `pom.xml` 的 `<snailai.version>0.0.5</snailai.version>` 管理（`dependencyManagement` 三段 starter 都引用它）。`ruoyi-modules/ruoyi-ai` 在此基础上额外引入 `ruoyi-common-satoken` + `ruoyi-common-web`，对外提供 `/snail-ai/**` 普通接口。
 
-## 二、配置（`backend/java/ruoyi-admin/.../application-dev.yml` 的 `snail-ai:` 段）
+## 二、配置（`ruoyi-admin/.../application-dev.yml` 的 `snail-ai:` 段）
 
 ```yaml
 --- # snail-ai 配置
@@ -378,11 +378,11 @@ import org.dromara.common.satoken.utils.LoginHelper;
 
 | 文件 | 作用 |
 |------|------|
-| `backend/java/ruoyi-common/ruoyi-common-ai/pom.xml` | client 三 starter（chat / executor / openapi）声明 |
-| `backend/java/ruoyi-common/ruoyi-common-ai/.../config/SnailAiConfig.java` | `@ConditionalOnProperty(enabled=true)` 自动配置开关 |
-| `backend/java/ruoyi-common/ruoyi-common-ai/.../handler/SnailAiChatExceptionHandler.java` | Chat 网关异常处理器（吐 `Result`，`@Order` 最高优先级） |
-| `backend/java/ruoyi-common/ruoyi-common-ai/.../AutoConfiguration.imports` | 注册 `SnailAiConfig` 为自动配置 |
-| `backend/java/ruoyi-modules/ruoyi-ai/.../controller/SnailAiController.java` | `/snail-ai/user/register` 注册 OpenAPI 用户（返回 `R`） |
-| `backend/java/ruoyi-admin/.../application-dev.yml`（`snail-ai:` 段） | client 配置：server 地址 / app-id / token / open-api / 超时 |
-| `backend/java/ruoyi-extend/ruoyi-snailai-server/`（pom + Dockerfile + application.yml） | 独立 Server：snail-ai-starter / JDK21+ZGC / gRPC18888+HTTP8900 |
+| `ruoyi-common/ruoyi-common-ai/pom.xml` | client 三 starter（chat / executor / openapi）声明 |
+| `ruoyi-common/ruoyi-common-ai/.../config/SnailAiConfig.java` | `@ConditionalOnProperty(enabled=true)` 自动配置开关 |
+| `ruoyi-common/ruoyi-common-ai/.../handler/SnailAiChatExceptionHandler.java` | Chat 网关异常处理器（吐 `Result`，`@Order` 最高优先级） |
+| `ruoyi-common/ruoyi-common-ai/.../AutoConfiguration.imports` | 注册 `SnailAiConfig` 为自动配置 |
+| `ruoyi-modules/ruoyi-ai/.../controller/SnailAiController.java` | `/snail-ai/user/register` 注册 OpenAPI 用户（返回 `R`） |
+| `ruoyi-admin/.../application-dev.yml`（`snail-ai:` 段） | client 配置：server 地址 / app-id / token / open-api / 超时 |
+| `ruoyi-extend/ruoyi-snailai-server/`（pom + Dockerfile + application.yml） | 独立 Server：snail-ai-starter / JDK21+ZGC / gRPC18888+HTTP8900 |
 | 根 `pom.xml` → `<snailai.version>0.0.5</snailai.version>` | Snail AI 全家桶版本统一管理 |

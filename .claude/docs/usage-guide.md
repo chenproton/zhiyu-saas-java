@@ -28,7 +28,7 @@
 |------|------|------|
 | JDK | **Java 21** | Spring Boot 4 / Jakarta EE 10 强制要求，低版本起不来 |
 | Maven | 3.8+ | 或用仓库自带 `mvnw` |
-| MySQL | 8.x | 建库导入 `backend/java/script/sql` 下的初始化脚本 |
+| MySQL | 8.x | 建库导入 `script/sql` 下的初始化脚本 |
 | Redis | 5+ | 缓存 / 会话 / 限流依赖，必须先起 |
 
 > 详细装环境、首次启动、排查启动失败：在 Claude Code 里说「帮我把项目跑起来」会激活 **dev-startup** 技能，或直接用 **/start** 命令。
@@ -236,7 +236,7 @@ A：本项目遵循框架约定，与某些定制衍生版（如 ruoyi-plus-unia
 A：**必须 Java 21**。本版本基于 Spring Boot 4.1.0 / Jakarta EE 10 / Jetty 容器，低于 21 直接起不来。Maven 用 3.8+ 或仓库自带 `mvnw`。
 
 **Q3：前端代码在哪？为什么仓库里没有完整前端工程？**
-A：本项目是**前后端一体化仓库**：根目录为后端多模块 Maven 工程，前端 plus-ui（Vue3 + Element Plus）在**仓库内 frontend/plus-ui/ 目录**。代码生成器（ruoyi-gen）内置 FreeMarker 模板产出前端骨架：`gen_table.frontend_type` 选 `vue`（Element Plus）或 `react`（Ant Design Pro），模板在 `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/<type>/`。写前端就用 `ui-pc` / `html-to-code` 技能。
+A：本项目是**前后端一体化仓库**：根目录为后端多模块 Maven 工程，前端 plus-ui（Vue3 + Element Plus）在**仓库内 plus-ui/ 目录**。代码生成器（ruoyi-gen）内置 FreeMarker 模板产出前端骨架：`gen_table.frontend_type` 选 `vue`（Element Plus）或 `react`（Ant Design Pro），模板在 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/<type>/`。写前端就用 `ui-pc` / `html-to-code` 技能。
 
 **Q4：多租户现在是开还是关？**
 A：**本副本当前未启用多租户**（`TenantLineInnerInterceptor` 插件未进拦截器链 = 不会自动过滤）。`multi-tenant` 技能描述的是原版多租户的完整机制（插件 + `tenant_id` 列自动过滤 + `TenantHelper` 动态切换）；要启用需按技能指引开启插件。需要做行级隔离但不想上多租户，用 `data-permission`（部门/本人级）。

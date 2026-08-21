@@ -30,7 +30,7 @@ description: |
 
 1. **当前业务模块最近似实现** —— 同模块已有的相似 Entity/Service/Controller 是第一参照。
 2. **公共能力模块统一约定** —— `ruoyi-common-mybatis` / `ruoyi-common-core` / `ruoyi-common-web` 等的统一封装。
-3. **generator 模板** —— `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/` 下的 `.ftl` 模板（标准单表 CRUD 的黄金骨架）。
+3. **generator 模板** —— `ruoyi-modules/ruoyi-gen/src/main/resources/fm/` 下的 `.ftl` 模板（标准单表 CRUD 的黄金骨架）。
 4. **通用 Spring / MyBatis-Plus 默认习惯** —— 前三者都没有时才退回这一层。
 
 > **规则冲突时，永远相信当前仓库的真实代码**，而不是本表或通用记忆。

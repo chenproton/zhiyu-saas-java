@@ -5,7 +5,7 @@ description: |
   实现机制：MyBatis-Plus 的 TenantLineInnerInterceptor 插件 + 表的 tenant_id 列自动拼接
   过滤条件，配合 TenantHelper 做动态切换 / 忽略隔离，配合 sys_tenant、sys_tenant_package
   做租户与套餐管理。所有约定以 ruoyi-common-tenant 模块、MybatisPlusConfig 拦截器链、
-  backend/java/script/sql 建表脚本的真实代码为准。
+  script/sql 建表脚本的真实代码为准。
 
   触发场景：
   - 新建业务表 / 业务模块，需要让数据按租户隔离（自动只查当前租户的数据）。
@@ -85,7 +85,7 @@ public class TenantEntity extends BaseEntity {
 - `ruoyi-common` 下**未找到** `ruoyi-common-tenant` 模块、`TenantHelper`、`TenantEntity`、`TenantConstants`。
 - `MybatisPlusConfig.mybatisPlusInterceptor()` 拦截器链里**只注册了**数据权限 / 分页 / 乐观锁三个插件，
   `TenantLineInnerInterceptor` **仅出现在该类底部的注释说明里**（"TenantLineInnerInterceptor 多租户插件"），**没有 addInnerInterceptor 进链**。
-- `backend/java/script/sql/ry_workflow.sql` 等工作流表仍保留 `tenant_id varchar(40) DEFAULT NULL COMMENT '租户id'` 列（建表层预留）。
+- `script/sql/ry_workflow.sql` 等工作流表仍保留 `tenant_id varchar(40) DEFAULT NULL COMMENT '租户id'` 列（建表层预留）。
 
 > 结论：本副本当前**未启用多租户**（插件未进链 = 不会自动过滤）。本技能下文描述的是
 > **标准多租户机制**——这是框架的真实设计。若本地要启用，
@@ -432,10 +432,10 @@ tenant:
 
 ## 十、引用的真实源文件
 
-- `backend/java/ruoyi-common/ruoyi-common-mybatis/src/main/java/org/dromara/common/mybatis/config/MybatisPlusConfig.java`
+- `ruoyi-common/ruoyi-common-mybatis/src/main/java/org/dromara/common/mybatis/config/MybatisPlusConfig.java`
   —— 拦截器链（确认租户插件当前仅在注释、未进链）
-- `backend/java/ruoyi-common/ruoyi-common-mybatis/src/main/java/org/dromara/common/mybatis/core/domain/BaseEntity.java`
+- `ruoyi-common/ruoyi-common-mybatis/src/main/java/org/dromara/common/mybatis/core/domain/BaseEntity.java`
   —— BaseEntity 五字段、无 tenantId
-- `backend/java/script/sql/ry_workflow.sql` —— 工作流表保留 `tenant_id varchar(40)` 列
+- `script/sql/ry_workflow.sql` —— 工作流表保留 `tenant_id varchar(40)` 列
 - 框架设计（ruoyi-common-tenant 模块）：`TenantHelper`、`TenantEntity`、
   `TenantConstants.DEFAULT_TENANT_ID`、`TenantLineInnerInterceptor`、`sys_tenant` / `sys_tenant_package`

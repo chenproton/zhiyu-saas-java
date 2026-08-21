@@ -4,7 +4,7 @@ description: |
   base-dev-framework6-java行级数据权限开发指南。覆盖 @DataPermission + @DataColumn
   注解、6 种数据范围枚举（DataScopeType）、PlusDataPermissionHandler 工作原理、与 MPJ 联表
   别名配合、临时忽略数据权限、不生效排查。所有约定均来自真实源码
-  backend/java/ruoyi-common/ruoyi-common-mybatis 与 backend/java/ruoyi-modules/ruoyi-system（SysUser/SysRole/SysDept/SysPost）。
+  ruoyi-common/ruoyi-common-mybatis 与 ruoyi-modules/ruoyi-system（SysUser/SysRole/SysDept/SysPost）。
 
   触发场景：
   - 为业务模块的列表/分页/导出/删除接口加部门级、本人级数据隔离过滤。
@@ -33,7 +33,7 @@ description: |
 经理只能看到部门 A 及其子部门的用户，普通员工只能看到自己创建的数据。它与「功能权限」
 （能不能点这个按钮、能不能访问这个接口，由 Sa-Token 的 `@SaCheckPermission` 控制）是两个维度。
 
-框架的数据权限实现位于 `backend/java/ruoyi-common/ruoyi-common-mybatis`，核心三件：
+框架的数据权限实现位于 `ruoyi-common/ruoyi-common-mybatis`，核心三件：
 
 | 组件 | 全限定名 | 职责 |
 |------|----------|------|

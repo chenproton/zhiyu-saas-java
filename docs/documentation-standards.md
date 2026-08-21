@@ -31,7 +31,7 @@
 | 主题 | 权威文档 |
 |---|---|
 | 后端分层红线（controller/service/mapper） | 根 `AGENTS.md` 第二部分（Java 框架契约）；Go 时代方案见 `refactor-layering.md`（历史参考） |
-| 前端组件复用速查 | 根 `AGENTS.md` 第二部分 + `frontend/portal-vue`/`frontend/plus-ui` 源码（Element Plus / RuoYi） |
+| 前端组件复用速查 | 根 `AGENTS.md` 第二部分 + `frontend/portal-vue`/`plus-ui` 源码（Element Plus / RuoYi） |
 | 快照版本机制 | `resource-snapshot-versioning.md` |
 | 全平台能力规格 | `spec/01~05` |
 

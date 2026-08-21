@@ -19,14 +19,14 @@ description: |
 
 # ui-pc —— 本项目 后台前端页面（Vue/Element Plus + React/Ant Design Pro 双栈）
 
-## 一、概述：双栈 + 前端在仓库内 frontend/plus-ui/
+## 一、概述：双栈 + 前端在仓库内 plus-ui/
 
-base-dev-framework6-java的后台管理端前端 **plus-ui 在仓库内 `frontend/plus-ui/` 目录**，本项目
+base-dev-framework6-java的后台管理端前端 **plus-ui 在仓库内 `plus-ui/` 目录**，本项目
 **包含仓库内前端工程**，并内置一套**代码生成器前端模板**。页面靠 `ruoyi-gen` 模块的
 FreeMarker 模板（`.ftl`）产出，模板位于：
 
 ```
-backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/
+ruoyi-modules/ruoyi-gen/src/main/resources/fm/
 ├── vue/      ← Element Plus 栈：api.ts.ftl / types.ts.ftl / index.vue.ftl / index-tree.vue.ftl
 └── react/    ← Ant Design Pro 栈：api.ts.ftl / types.ts.ftl / index.tsx.ftl / index-tree.tsx.ftl
 ```
