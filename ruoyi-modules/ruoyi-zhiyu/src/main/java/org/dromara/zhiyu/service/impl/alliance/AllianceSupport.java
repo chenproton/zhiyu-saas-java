@@ -52,7 +52,7 @@ final class AllianceSupport {
 
     static void verifyTenantOwnership(String entityTenantId) {
         String tenantId = requireTenant();
-        if (entityTenantId != null && !entityTenantId.equals(tenantId)) {
+        if (!tenantId.equals(entityTenantId)) {
             throw new ApiException(403, "forbidden", "无权操作：资源不属于您的租户");
         }
     }

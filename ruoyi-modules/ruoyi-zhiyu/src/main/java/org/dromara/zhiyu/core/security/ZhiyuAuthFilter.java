@@ -80,10 +80,9 @@ public class ZhiyuAuthFilter extends OncePerRequestFilter {
         try {
             loginId = StpUtil.getLoginIdByToken(token);
         } catch (Exception e) {
-            // 诊断日志：token 校验失败原因（只打 8 位前缀，避免 token 泄露）
-            log.warn("zhiyu 鉴权失败 path={} token={}... 原因={}",
+            // 诊断日志：token 校验失败原因（不落 token 原文，统一 <redacted>）
+            log.warn("zhiyu 鉴权失败 path={} token=<redacted> 原因={}",
                 request.getRequestURI(),
-                token.length() > 8 ? token.substring(0, 8) : token,
                 e.getClass().getSimpleName() + ": " + e.getMessage());
             loginId = null;
         }
