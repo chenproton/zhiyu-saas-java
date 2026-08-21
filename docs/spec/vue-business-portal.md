@@ -254,7 +254,9 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 2. 左侧导航按当前路径解析域：`/job`、`/scene`、`/lesson`、`/evaluation`、`/library`、`/affairs`、`/partner`、`/portal/apps/system`、`/portal/apps/alliance`（另含 Vue 旧短路径 `/system/*`、`/users`、`/alliance/*`）；`/portal/*` 门户页、`/portal/alliance/*` 前台页、顶层 landing 与聚合页（`/approvals`、`/workflows`、`/import-export`）**无侧栏**——与 React 各域 `layout.tsx` 挂载范围等价。
 3. React 中 Vue 路由不存在的落点做等价替换并注释：场景管理 `/scene/` → `/scene/scenarios`；Vue 别名路径（如 `/evaluation/job-ability-results`、`/partner/co-build-scenarios`、`/lesson/courses`）以**追加 matcher** 方式保证高亮，不改 React 原有 matcher 语义。
 
-**未复刻项（依赖缺失能力，后续阶段接入）**：菜单权限过滤（Vue 无 `hasMenuPermission` 数据源，侧栏仅过滤 `hidden`）、国际化切换 / 字号缩放 / 移动端扫码 / 多角色切换（React 顶栏依赖 i18n 与角色接口）、顶层 landing 公开页的顶栏（landing 为 `PortalLayout` 之外的顶层路由，接入需改 `router/index.ts`，本阶段禁止）。
+**未复刻项（依赖缺失能力，后续阶段接入）**：菜单权限过滤（Vue 无 `hasMenuPermission` 数据源，侧栏仅过滤 `hidden`）、国际化切换 / 字号缩放 / 移动端扫码 / 多角色切换（React 顶栏依赖 i18n 与角色接口）。
+
+> **后续接入记录（2026 布局补全）**：顶层 landing 公开页的顶栏已接入——顶部导航栏从 `PortalLayout.vue` 提取为共享组件 `layouts/PortalHeader.vue`（PortalLayout 与 LandingLayout 共用，全站顶部导航一致）；新建 `layouts/LandingLayout.vue`（仅 TopNav 无壳布局，无左侧域导航、无 `portal-main` padding，保持 landing 全宽设计）；`router/index.ts` 将 landing 系列（job/scene/lesson/library/evaluation）与 `/changelog` 挂到 LandingLayout children（在 PortalLayout 记录之前，利用 vue-router 同 path 记录按声明序优先匹配）。
 
 **与 React 的已知差异（阶段 1 有意保留，接入页面/路由时再处理）**：
 

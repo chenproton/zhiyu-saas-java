@@ -25,13 +25,6 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
-    // 更新日志（对齐 React /changelog，公共页无布局，无需登录）
-    path: '/changelog',
-    name: 'Changelog',
-    component: () => import('@/views/changelog.vue'),
-    meta: { public: true }
-  },
-  {
     // 超管控制台（对齐 React /superadmin，SaaS 平台登录态；页面内部自行鉴权，不走门户 token 守卫）
     path: '/superadmin',
     name: 'Superadmin',
@@ -39,99 +32,114 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
-    path: '/job/landing',
-    name: 'JobLanding',
-    component: () => import('@/views/landing/job.vue'),
-    meta: { public: true }
-  },
-  {
-    // 岗位详情（公开 landing 子页，对齐 React /job/landing/[id]）
-    path: '/job/landing/:id',
-    name: 'JobLandingDetail',
-    component: () => import('@/views/landing/job-detail.vue'),
-    meta: { public: true }
-  },
-  {
-    // 岗位学习页（公开 landing 子页，对齐 React /job/landing/[id]/learn）
-    path: '/job/landing/:id/learn',
-    name: 'JobLandingLearn',
-    component: () => import('@/views/landing/job-learn.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/scene/landing',
-    name: 'SceneLanding',
-    component: () => import('@/views/landing/scene.vue'),
-    meta: { public: true }
-  },
-  {
-    // 场景详情（公开 landing 子页，对齐 React /scene/landing/[id]）
-    path: '/scene/landing/:id',
-    name: 'SceneLandingDetail',
-    component: () => import('@/views/landing/scene-detail.vue'),
-    meta: { public: true }
-  },
-  {
-    // 场景学习页（公开 landing 子页，对齐 React /scene/landing/[id]/learn）
-    path: '/scene/landing/:id/learn',
-    name: 'SceneLandingLearn',
-    component: () => import('@/views/landing/scene-learn.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/lesson/landing',
-    name: 'LessonLanding',
-    component: () => import('@/views/landing/lesson.vue'),
-    meta: { public: true }
-  },
-  {
-    // 课程详情（公开 landing 子页，对齐 React /lesson/landing/[id]）
-    path: '/lesson/landing/:id',
-    name: 'LessonLandingDetail',
-    component: () => import('@/views/landing/lesson-detail.vue'),
-    meta: { public: true }
-  },
-  {
-    // 课程学习页（公开 landing 子页，对齐 React /lesson/landing/[id]/learn）
-    path: '/lesson/landing/:id/learn',
-    name: 'LessonLandingLearn',
-    component: () => import('@/views/landing/lesson-learn.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/library/landing',
-    name: 'LibraryLanding',
-    component: () => import('@/views/landing/library.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/evaluation/landing',
-    name: 'EvaluationLanding',
-    component: () => import('@/views/landing/evaluation.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/evaluation/landing/exam-center',
-    name: 'EvaluationLandingExamCenter',
-    component: () => import('@/views/landing/exam-center.vue'),
-    meta: { public: true }
-  },
-  {
-    // 对齐 React：/evaluation/landing/exams 重定向到考试中心（React 为 <Navigate>）
-    path: '/evaluation/landing/exams',
-    redirect: '/evaluation/landing/exam-center'
-  },
-  {
-    path: '/evaluation/landing/banks/:id',
-    name: 'EvaluationLandingBankDetail',
-    component: () => import('@/views/landing/bank-detail.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/evaluation/landing/exams/:id',
-    name: 'EvaluationLandingExamDetail',
-    component: () => import('@/views/landing/exam-detail.vue'),
-    meta: { public: true }
+    // 公开前台页无壳布局（仅顶部全局导航栏，无左侧域导航）：landing 系列 + 更新日志
+    // 对齐 React landing 系列「独立无壳布局（仅 TopNav）」（见 docs/spec/vue-business-portal.md §11.7）
+    path: '/',
+    component: () => import('@/layouts/LandingLayout.vue'),
+    children: [
+      {
+        // 更新日志（对齐 React /changelog，公共页无布局，无需登录）
+        path: 'changelog',
+        name: 'Changelog',
+        component: () => import('@/views/changelog.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'job/landing',
+        name: 'JobLanding',
+        component: () => import('@/views/landing/job.vue'),
+        meta: { public: true }
+      },
+      {
+        // 岗位详情（公开 landing 子页，对齐 React /job/landing/[id]）
+        path: 'job/landing/:id',
+        name: 'JobLandingDetail',
+        component: () => import('@/views/landing/job-detail.vue'),
+        meta: { public: true }
+      },
+      {
+        // 岗位学习页（公开 landing 子页，对齐 React /job/landing/[id]/learn）
+        path: 'job/landing/:id/learn',
+        name: 'JobLandingLearn',
+        component: () => import('@/views/landing/job-learn.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'scene/landing',
+        name: 'SceneLanding',
+        component: () => import('@/views/landing/scene.vue'),
+        meta: { public: true }
+      },
+      {
+        // 场景详情（公开 landing 子页，对齐 React /scene/landing/[id]）
+        path: 'scene/landing/:id',
+        name: 'SceneLandingDetail',
+        component: () => import('@/views/landing/scene-detail.vue'),
+        meta: { public: true }
+      },
+      {
+        // 场景学习页（公开 landing 子页，对齐 React /scene/landing/[id]/learn）
+        path: 'scene/landing/:id/learn',
+        name: 'SceneLandingLearn',
+        component: () => import('@/views/landing/scene-learn.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'lesson/landing',
+        name: 'LessonLanding',
+        component: () => import('@/views/landing/lesson.vue'),
+        meta: { public: true }
+      },
+      {
+        // 课程详情（公开 landing 子页，对齐 React /lesson/landing/[id]）
+        path: 'lesson/landing/:id',
+        name: 'LessonLandingDetail',
+        component: () => import('@/views/landing/lesson-detail.vue'),
+        meta: { public: true }
+      },
+      {
+        // 课程学习页（公开 landing 子页，对齐 React /lesson/landing/[id]/learn）
+        path: 'lesson/landing/:id/learn',
+        name: 'LessonLandingLearn',
+        component: () => import('@/views/landing/lesson-learn.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'library/landing',
+        name: 'LibraryLanding',
+        component: () => import('@/views/landing/library.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'evaluation/landing',
+        name: 'EvaluationLanding',
+        component: () => import('@/views/landing/evaluation.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'evaluation/landing/exam-center',
+        name: 'EvaluationLandingExamCenter',
+        component: () => import('@/views/landing/exam-center.vue'),
+        meta: { public: true }
+      },
+      {
+        // 对齐 React：/evaluation/landing/exams 重定向到考试中心（React 为 <Navigate>）
+        path: 'evaluation/landing/exams',
+        redirect: '/evaluation/landing/exam-center'
+      },
+      {
+        path: 'evaluation/landing/banks/:id',
+        name: 'EvaluationLandingBankDetail',
+        component: () => import('@/views/landing/bank-detail.vue'),
+        meta: { public: true }
+      },
+      {
+        path: 'evaluation/landing/exams/:id',
+        name: 'EvaluationLandingExamDetail',
+        component: () => import('@/views/landing/exam-detail.vue'),
+        meta: { public: true }
+      }
+    ]
   },
   {
     path: '/',
