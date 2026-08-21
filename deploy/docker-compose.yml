@@ -83,7 +83,8 @@ services:
       ZHIYU_REDIS_PORT: "6379"
       ZHIYU_REDIS_PASSWORD: ${REDIS_PASSWORD:-ruoyi123}
       ZHIYU_UPLOAD_DIR: /opt/zhiyu-saas/uploads
-      JWT_SECRET: ${JWT_SECRET:-abcdefghijklmnopqrstuvwxyz}
+      # JWT_SECRET 必须显式提供（deploy.sh 首次部署自动生成 64 位随机值写入 .env）；缺失直接报错，禁止弱兜底
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 未设置（请运行 ./deploy.sh 首次部署生成，或写入 .env）}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
     volumes:
       - uploads_data:/opt/zhiyu-saas/uploads

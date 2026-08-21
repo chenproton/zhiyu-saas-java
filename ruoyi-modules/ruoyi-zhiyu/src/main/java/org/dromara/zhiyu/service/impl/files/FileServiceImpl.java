@@ -42,11 +42,11 @@ import java.util.UUID;
 @Service
 public class FileServiceImpl implements IFileService {
 
-    /** 上传目录（环境变量 ZHIYU_UPLOAD_DIR 可配，默认仓库 data/uploads） */
-    @Value("${ZHIYU_UPLOAD_DIR:/root/projects/saas-framework6-java-vue/data/uploads}")
+    /** 上传目录（环境变量 ZHIYU_UPLOAD_DIR 可配，默认仓库 data/uploads；生产由 compose 注入 /opt/zhiyu-saas/uploads） */
+    @Value("${ZHIYU_UPLOAD_DIR:./data/uploads}")
     private String uploadDir;
 
-    /** 签名密钥（对齐 Go JWTSecret；取 Sa-Token jwt-secret-key，无硬编码兜底，缺失即启动失败） */
+    /** 签名密钥（对齐 Go JWTSecret；取 Sa-Token jwt-secret-key。生产 profile 由 application-prod.yml 强制注入、缺失即启动失败；本地开发允许 base 默认） */
     @Value("${sa-token.jwt-secret-key}")
     private String signSecret;
 

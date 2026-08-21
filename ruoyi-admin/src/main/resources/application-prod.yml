@@ -322,3 +322,8 @@ justauth:
       client-id: 10**********6
       client-secret: 1f7d08**********5b7**********29e
       redirect-uri: ${justauth.address}/social-callback?source=gitea
+
+--- # Sa-Token 生产强制注入 JWT 密钥（无兜底：缺失即启动失败，禁止回落公开弱密钥）
+sa-token:
+  # 与 base application.yml 的 sa-token 段合并；此处仅覆盖 jwt-secret-key，无默认值
+  jwt-secret-key: ${JWT_SECRET}

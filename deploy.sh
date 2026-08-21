@@ -824,6 +824,14 @@ COMPOSE_PROJECT="${COMPOSE_PROJECT:-zhiyu-saas}"
 BUILD_CACHE="$DEPLOY_DIR/.build-cache"
 set -a; source "$ENV_FILE"; set +a
 
+# JWT_SECRET 强度门禁：缺失或过短（<32 字符）视为弱密钥，重新生成 64 位随机值写入 .env，
+# 防止生产容器回落公开弱密钥（docker-compose 已用 :? 强制要求该变量，此处兜底自动修复）
+if [[ -z "${JWT_SECRET:-}" || ${#JWT_SECRET} -lt 32 ]]; then
+  echo "  [warn] .env 中 JWT_SECRET 缺失或过短，重新生成 64 位随机密钥"
+  ${JWT_SECRET}=$(rand_str 64)
+  sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${JWT_SECRET}|" "$ENV_FILE"
+fi
+
 # 数据库连接
 DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
