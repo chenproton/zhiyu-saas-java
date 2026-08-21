@@ -98,11 +98,11 @@ spring:
       strict: true
       datasource:
         # 主库数据源（zhiyu-saas 迁移：MySQL 8.0（已从 PostgreSQL 切换））
-        # 主机/端口环境变量化：裸机部署用 127.0.0.1:5433，Docker 部署用 host.docker.internal
+        # 主机/端口环境变量化：裸机部署用 127.0.0.1:3306，Docker 部署用容器名 mysql
         master:
           type: ${spring.datasource.type}
           driverClassName: com.mysql.cj.jdbc.Driver
-          url: jdbc:postgresql://${ZHIYU_DB_HOST:127.0.0.1}:${ZHIYU_DB_PORT:5433}/zhiyu-saas?useUnicode=true&characterEncoding=utf8&useSSL=false&currentSchema=public&stringtype=unspecified
+          url: jdbc:mysql://${ZHIYU_DB_HOST:127.0.0.1}:${ZHIYU_DB_PORT:3306}/zhiyu-saas?useUnicode=true&characterEncoding=utf8&useSSL=false&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
           username: ${ZHIYU_DB_USER:zhiyu_saas}
           password: ${ZHIYU_DB_PASSWORD:change-me}
 #        # 从库数据源
