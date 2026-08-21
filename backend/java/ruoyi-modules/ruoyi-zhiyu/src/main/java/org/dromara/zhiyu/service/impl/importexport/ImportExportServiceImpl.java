@@ -79,14 +79,14 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     /** Excel 导入实体（kebab-case URL 段，excel/preview 路径） */
     private static final Set<String> EXCEL_IMPORT_ENTITIES = Set.of(
-        "positions", "scenarios", "question-banks", "exams", "courses", "granular-courses",
+        "positions", "scenarios", "question-banks", "questions", "exams", "courses", "granular-courses",
         "industries", "majors", "organizations", "students", "teachers",
         "alliance-projects", "alliance-achievements", "alliance-agreements",
         "alliance-permissions", "alliance-brands", "schedules", "program-courses", "affairs-config");
 
     /** 支持 preview 的实体（affairs-config 仅 excel，无 preview） */
     private static final Set<String> PREVIEW_ENTITIES = Set.of(
-        "positions", "scenarios", "question-banks", "exams", "courses", "granular-courses",
+        "positions", "scenarios", "question-banks", "questions", "exams", "courses", "granular-courses",
         "industries", "majors", "organizations", "students", "teachers",
         "alliance-projects", "alliance-achievements", "alliance-agreements",
         "alliance-permissions", "alliance-brands", "schedules", "program-courses");

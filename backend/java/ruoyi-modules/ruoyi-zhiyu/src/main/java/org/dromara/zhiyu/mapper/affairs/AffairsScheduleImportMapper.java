@@ -62,7 +62,8 @@ public interface AffairsScheduleImportMapper {
         + " AND status = 'draft'")
     int clearDraftScheduleEntries(@Param("tenantId") String tenantId, @Param("termId") String termId);
 
-    @Update("UPDATE teaching_plan_entries e SET status = 'planned'"
-        + " FROM teaching_plans p WHERE p.id = e.plan_id AND p.tenant_id = #{tenantId} AND p.term_id = #{termId}")
+    @Update("UPDATE teaching_plan_entries e JOIN teaching_plans p ON p.id = e.plan_id"
+        + " SET e.status = 'planned'"
+        + " WHERE p.tenant_id = #{tenantId} AND p.term_id = #{termId}")
     int resetPlanEntriesToPlanned(@Param("tenantId") String tenantId, @Param("termId") String termId);
 }
