@@ -1,6 +1,7 @@
 package org.dromara.zhiyu.service.impl.evaluation;
 
 import lombok.RequiredArgsConstructor;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -74,7 +75,7 @@ public class EvaluationAppealServiceImpl implements IEvaluationAppealService {
         if (isBlank(req.getStatus())) {
             throw new ApiException(400, "bad_request", "缺少状态");
         }
-        if (!"approved".equals(req.getStatus()) && !"rejected".equals(req.getStatus())) {
+        if (!ZhiyuStatusConstants.APPROVED.equals(req.getStatus()) && !ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
             throw new ApiException(400, "bad_request", "状态仅支持 approved/rejected");
         }
         if (isStudent()) {

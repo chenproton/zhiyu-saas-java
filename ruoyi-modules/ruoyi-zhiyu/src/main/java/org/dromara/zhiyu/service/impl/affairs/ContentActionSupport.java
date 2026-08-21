@@ -2,6 +2,7 @@ package org.dromara.zhiyu.service.impl.affairs;
 
 import java.util.Map;
 import java.util.Set;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 
 /**
  * 内容型实体（人培方案/教学计划）共享的状态流转允许表（对齐 Go allowedStatusTransitions）。
@@ -11,12 +12,12 @@ import java.util.Set;
 final class ContentActionSupport {
 
     static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
-        "draft", Set.of("pending", "archived"),
-        "rejected", Set.of("draft", "pending", "archived"),
-        "pending", Set.of("draft", "approved", "rejected"),
-        "approved", Set.of("draft", "published", "archived"),
-        "published", Set.of("draft", "archived"),
-        "archived", Set.of("draft")
+        ZhiyuStatusConstants.DRAFT, Set.of(ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.REJECTED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.PENDING, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.APPROVED, ZhiyuStatusConstants.REJECTED),
+        ZhiyuStatusConstants.APPROVED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PUBLISHED, "archived"),
+        ZhiyuStatusConstants.PUBLISHED, Set.of(ZhiyuStatusConstants.DRAFT, "archived"),
+        "archived", Set.of(ZhiyuStatusConstants.DRAFT)
     );
 
     private ContentActionSupport() {

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -92,12 +93,12 @@ public class JobPositionServiceImpl implements IJobPositionService {
 
     /** 允许的状态流转（key=当前状态，value=可进入状态集合；对齐 Go allowedStatusTransitions） */
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
-        "draft", Set.of("pending", "archived"),
-        "rejected", Set.of("draft", "pending", "archived"),
-        "pending", Set.of("draft", "approved", "rejected"),
-        "approved", Set.of("draft", "published", "archived"),
-        "published", Set.of("draft", "archived"),
-        "archived", Set.of("draft")
+        ZhiyuStatusConstants.DRAFT, Set.of(ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.REJECTED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.PENDING, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.APPROVED, ZhiyuStatusConstants.REJECTED),
+        ZhiyuStatusConstants.APPROVED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PUBLISHED, "archived"),
+        ZhiyuStatusConstants.PUBLISHED, Set.of(ZhiyuStatusConstants.DRAFT, "archived"),
+        "archived", Set.of(ZhiyuStatusConstants.DRAFT)
     );
 
     private final SystemGuard systemGuard;
@@ -141,7 +142,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
 
         LambdaQueryBuilder<JobCareerPosition> wrapper = QueryBuilder.lambda(JobCareerPosition.class)
             .eq(JobCareerPosition::getTenantId, tenantId)
-            .eq(JobCareerPosition::getStatus, "published")
+            .eq(JobCareerPosition::getStatus, ZhiyuStatusConstants.PUBLISHED)
             .eqIfText(JobCareerPosition::getPositionType, positionType);
         if (search != null && !search.isEmpty()) {
             wrapper.like(JobCareerPosition::getName, search);
@@ -202,7 +203,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
             emptyToNull(req.getShortName()), emptyToNull(req.getIndustryId()), req.getPositionType(),
             req.getSalaryMin(), req.getSalaryMax(), emptyToNull(req.getCoverImage()),
             emptyToNull(req.getDescription()), coalesce(req.getRequirements()), emptyToNull(req.getCareerPath()),
-            version, "draft", userId, coalesce(req.getCollaborators()), "school", null);
+            version, ZhiyuStatusConstants.DRAFT, userId, coalesce(req.getCollaborators()), "school", null);
         rewriteMajors(id, coalesce(req.getMajorIds()));
         return assembleDetail(fetchOwned(id));
     }
@@ -420,7 +421,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
         positionMapper.insertPosition(newId, tenantId, code, src.getBatchId(), newName, src.getShortName(),
             src.getIndustryId(), src.getPositionType(), src.getSalaryMin(), src.getSalaryMax(),
             src.getCoverImage(), src.getDescription(), coalesce(src.getRequirements()), src.getCareerPath(),
-            src.getVersion(), "draft", userId, coalesce(src.getCollaborators()), "school", null);
+            src.getVersion(), ZhiyuStatusConstants.DRAFT, userId, coalesce(src.getCollaborators()), "school", null);
 
         // 专业绑定
         List<JobCareerPositionMajor> majors = majorMapper.selectList(
@@ -517,22 +518,22 @@ public class JobPositionServiceImpl implements IJobPositionService {
 
     @Override
     public CareerPositionDto submit(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
     public CareerPositionDto withdraw(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public CareerPositionDto saveDraft(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public CareerPositionDto publish(String id) {
-        return transition(id, "published");
+        return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
@@ -542,7 +543,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
 
     @Override
     public CareerPositionDto unpublish(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -561,7 +562,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
         // 从审批中撤回时，同步删除审批中心对应的待审批记录
-        if ("pending".equals(currentStatus) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(currentStatus) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             positionMapper.deletePendingApproval(id);
         }
         return assembleDetail(fetchOwned(id));
@@ -572,10 +573,10 @@ public class JobPositionServiceImpl implements IJobPositionService {
     public CareerPositionDto review(String id, ContentReviewRequest req) {
         systemGuard.requireUser();
         String toStatus;
-        if ("approved".equals(req.getStatus())) {
-            toStatus = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            toStatus = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
@@ -701,7 +702,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
             }
         }
         // 快照缺档（历史数据）：回退 live 现场组装；仅当请求版本与 live 版本一致且已发布
-        if (!"published".equals(live.status)) {
+        if (!ZhiyuStatusConstants.PUBLISHED.equals(live.status)) {
             throw new ApiException(404, "not_found", "资源不存在或未发布");
         }
         if (version != null && !version.isEmpty() && !version.equals(live.version)) {

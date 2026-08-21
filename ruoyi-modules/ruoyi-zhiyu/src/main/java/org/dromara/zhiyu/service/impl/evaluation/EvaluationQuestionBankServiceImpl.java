@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -64,12 +65,12 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     /** 允许的状态流转（对齐 Go allowedStatusTransitions） */
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
-        "draft", Set.of("pending", "archived"),
-        "rejected", Set.of("draft", "pending", "archived"),
-        "pending", Set.of("draft", "approved", "rejected"),
-        "approved", Set.of("draft", "published", "archived"),
-        "published", Set.of("draft", "archived"),
-        "archived", Set.of("draft")
+        ZhiyuStatusConstants.DRAFT, Set.of(ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.REJECTED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.PENDING, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.APPROVED, ZhiyuStatusConstants.REJECTED),
+        ZhiyuStatusConstants.APPROVED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PUBLISHED, "archived"),
+        ZhiyuStatusConstants.PUBLISHED, Set.of(ZhiyuStatusConstants.DRAFT, "archived"),
+        "archived", Set.of(ZhiyuStatusConstants.DRAFT)
     );
 
     private final SystemGuard systemGuard;
@@ -116,7 +117,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
         systemGuard.requireUser();
         EvaluationQuestionBank bank = fetchBank(id);
         // 学生仅可读已发布题库（决策 7）
-        if (isStudent() && !"published".equals(bank.getStatus())) {
+        if (isStudent() && !ZhiyuStatusConstants.PUBLISHED.equals(bank.getStatus())) {
             throw new ApiException(404, "not_found", "题库不存在");
         }
         return assembleBank(bank);
@@ -187,23 +188,23 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionBankDto submitBank(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
     public QuestionBankDto reviewBank(String id, ReviewRequest req) {
         systemGuard.requireUser();
         String toStatus;
-        if ("approved".equals(req.getStatus())) {
-            toStatus = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            toStatus = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         EvaluationQuestionBank bank = fetchBank(id);
         String tenantId = systemGuard.requireTenant();
-        int rows = bankMapper.casTransition(id, tenantId, "pending", toStatus);
+        int rows = bankMapper.casTransition(id, tenantId, ZhiyuStatusConstants.PENDING, toStatus);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "题库不存在或不在待处理状态");
         }
@@ -212,7 +213,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionBankDto publishBank(String id) {
-        return transition(id, "published");
+        return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
@@ -222,17 +223,17 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionBankDto unpublishBank(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public QuestionBankDto withdrawBank(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public QuestionBankDto saveDraftBank(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
@@ -270,10 +271,10 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
         if (rows == 0) {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
-        if ("pending".equals(currentStatus) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(currentStatus) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             bankMapper.deletePendingApproval("question_bank", id);
         }
-        if ("published".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(toStatus)) {
             String version = nextVersion(bank.getVersion());
             bankMapper.bumpVersion(id, tenantId, version);
             saveBankSnapshot(tenantId, id, version);
@@ -512,7 +513,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
         }
         // 快照缺档：回退 live（仅当 live status=published 且请求版本与 live 版本一致）
         EvaluationQuestionBank live = fetchBankScoped(bankId, tenantId);
-        if (live == null || !"published".equals(live.getStatus())) {
+        if (live == null || !ZhiyuStatusConstants.PUBLISHED.equals(live.getStatus())) {
             return null;
         }
         String liveVersion = live.getVersion() == null ? "" : live.getVersion();
@@ -543,7 +544,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
         List<EvaluationQuestion> questions = questionMapper.selectList(QueryBuilder.lambda(EvaluationQuestion.class)
             .eq(EvaluationQuestion::getBankId, bank.getId())
             .eq(EvaluationQuestion::getTenantId, bank.getTenantId())
-            .eq(EvaluationQuestion::getStatus, "published")
+            .eq(EvaluationQuestion::getStatus, ZhiyuStatusConstants.PUBLISHED)
             .orderByAsc(EvaluationQuestion::getCreatedAt).build());
         List<Map<String, Object>> qList = new ArrayList<>();
         for (EvaluationQuestion q : questions) {

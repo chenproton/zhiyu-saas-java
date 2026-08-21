@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -90,7 +91,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
 
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Set<String> EDITABLE_STATUSES = Set.of("draft", "pending", "rejected");
+    private static final Set<String> EDITABLE_STATUSES = Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, ZhiyuStatusConstants.REJECTED);
 
     private final SystemGuard systemGuard;
     private final PartnerPositionMapper positionMapper;
@@ -161,7 +162,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         positionMapper.insertCoBuildPosition(id, req.getSchoolTenantId(), code, req.getBatchId(), req.getName(),
             req.getShortName(), req.getIndustryId(), req.getPositionType(), req.getSalaryMin(), req.getSalaryMax(),
             req.getCoverImage(), req.getDescription(), req.getRequirements() == null ? List.of() : req.getRequirements(),
-            req.getCareerPath(), version, "draft", userId,
+            req.getCareerPath(), version, ZhiyuStatusConstants.DRAFT, userId,
             req.getCollaborators() == null ? List.of() : req.getCollaborators(), "enterprise", enterpriseId, null);
         for (String majorId : req.getMajorIds() == null ? List.<String>of() : req.getMajorIds()) {
             positionMapper.insertMajor(id, majorId);
@@ -323,7 +324,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         JobCareerPosition pos = ownedPosition(enterpriseId, id);
         requireActiveLink(enterpriseId, pos.getTenantId());
         String schoolTenantId = pos.getTenantId();
-        if (positionMapper.casTransition(id, schoolTenantId, pos.getStatus(), "pending") == 0) {
+        if (positionMapper.casTransition(id, schoolTenantId, pos.getStatus(), ZhiyuStatusConstants.PENDING) == 0) {
             throw new ApiException(409, "conflict", "当前状态不允许该操作");
         }
         approvalMapper.insertPendingApproval(UUID.randomUUID().toString(), schoolTenantId, "career_position", id, userId);
@@ -336,7 +337,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         String enterpriseId = resolveEnterpriseId();
         JobCareerPosition pos = ownedPosition(enterpriseId, id);
         requireActiveLink(enterpriseId, pos.getTenantId());
-        if (positionMapper.casTransition(id, pos.getTenantId(), pos.getStatus(), "draft") == 0) {
+        if (positionMapper.casTransition(id, pos.getTenantId(), pos.getStatus(), ZhiyuStatusConstants.DRAFT) == 0) {
             throw new ApiException(409, "conflict", "当前状态不允许该操作");
         }
         approvalMapper.deletePendingApproval("career_position", id);
@@ -369,7 +370,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         positionMapper.insertCoBuildPosition(newId, src.getTenantId(), code, src.getBatchId(), src.getName(),
             src.getShortName(), src.getIndustryId(), src.getPositionType(), src.getSalaryMin(), src.getSalaryMax(),
             src.getCoverImage(), src.getDescription(), src.getRequirements() == null ? List.of() : src.getRequirements(),
-            src.getCareerPath(), src.getVersion(), "draft", userId,
+            src.getCareerPath(), src.getVersion(), ZhiyuStatusConstants.DRAFT, userId,
             src.getCollaborators() == null ? List.of() : src.getCollaborators(), "enterprise", enterpriseId, id);
         for (String majorId : fetchPositionMajorIds(id)) {
             positionMapper.insertMajor(newId, majorId);
@@ -520,7 +521,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         scenarioMapper.insertCoBuildScenario(id, req.getName(), code, req.getCoverImage(), req.getCareerPositionId(),
             req.getIndustryIds() == null ? List.of() : req.getIndustryIds(),
             req.getProfessionIds() == null ? List.of() : req.getProfessionIds(),
-            req.getBatchId(), difficulty, version, "draft", req.getBackground(), req.getDeliveryGoal(), userId,
+            req.getBatchId(), difficulty, version, ZhiyuStatusConstants.DRAFT, req.getBackground(), req.getDeliveryGoal(), userId,
             req.getCoBuilderIds() == null ? List.of() : req.getCoBuilderIds(), req.getSchoolTenantId(), "enterprise",
             enterpriseId, null);
         grantMapper.addResourceId(req.getSchoolTenantId(), enterpriseId, "scenario", id, userId);
@@ -572,7 +573,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         String userId = systemGuard.requireUser();
         SceneScenario sc = ownedScenario(enterpriseId, id);
         requireActiveLink(enterpriseId, sc.getTenantId());
-        if (scenarioMapper.casTransition(id, sc.getTenantId(), sc.getStatus(), "pending") == 0) {
+        if (scenarioMapper.casTransition(id, sc.getTenantId(), sc.getStatus(), ZhiyuStatusConstants.PENDING) == 0) {
             throw new ApiException(409, "conflict", "当前状态不允许该操作");
         }
         approvalMapper.insertPendingApproval(UUID.randomUUID().toString(), sc.getTenantId(), "scenario", id, userId);
@@ -585,7 +586,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         String enterpriseId = resolveEnterpriseId();
         SceneScenario sc = ownedScenario(enterpriseId, id);
         requireActiveLink(enterpriseId, sc.getTenantId());
-        if (scenarioMapper.casTransition(id, sc.getTenantId(), sc.getStatus(), "draft") == 0) {
+        if (scenarioMapper.casTransition(id, sc.getTenantId(), sc.getStatus(), ZhiyuStatusConstants.DRAFT) == 0) {
             throw new ApiException(409, "conflict", "当前状态不允许该操作");
         }
         approvalMapper.deletePendingApproval("scenario", id);
@@ -618,7 +619,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         scenarioMapper.insertCoBuildScenario(newId, src.getName(), code, src.getCoverImage(), src.getCareerPositionId(),
             src.getIndustryIds() == null ? List.of() : src.getIndustryIds(),
             src.getProfessionIds() == null ? List.of() : src.getProfessionIds(),
-            src.getBatchId(), src.getDifficulty() == null ? 1 : src.getDifficulty(), src.getVersion(), "draft",
+            src.getBatchId(), src.getDifficulty() == null ? 1 : src.getDifficulty(), src.getVersion(), ZhiyuStatusConstants.DRAFT,
             src.getBackground(), src.getDeliveryGoal(), userId,
             src.getCoBuilderIds() == null ? List.of() : src.getCoBuilderIds(), src.getTenantId(), "enterprise",
             enterpriseId, id);
@@ -1283,15 +1284,15 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
 
     private void resetToDraftPosition(String id, String tenantId) {
         String status = positionMapper.selectStatus(id);
-        if (!"draft".equals(status)) {
-            positionMapper.casTransition(id, tenantId, status, "draft");
+        if (!ZhiyuStatusConstants.DRAFT.equals(status)) {
+            positionMapper.casTransition(id, tenantId, status, ZhiyuStatusConstants.DRAFT);
         }
     }
 
     private void resetToDraftScenario(String id, String tenantId) {
         String status = scenarioMapper.selectStatus(id);
-        if (!"draft".equals(status)) {
-            scenarioMapper.casTransition(id, tenantId, status, "draft");
+        if (!ZhiyuStatusConstants.DRAFT.equals(status)) {
+            scenarioMapper.casTransition(id, tenantId, status, ZhiyuStatusConstants.DRAFT);
         }
     }
 

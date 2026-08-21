@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -152,7 +153,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
         systemGuard.requireUser();
         fetchRule(id);
         String tenantId = systemGuard.requireTenant();
-        if (!"draft".equals(req.getStatus()) && !"published".equals(req.getStatus())) {
+        if (!ZhiyuStatusConstants.DRAFT.equals(req.getStatus()) && !ZhiyuStatusConstants.PUBLISHED.equals(req.getStatus())) {
             throw new ApiException(400, "bad_request", "状态仅支持 draft/published");
         }
         certMapper.updateRuleStatus(id, tenantId, req.getStatus());

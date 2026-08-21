@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.ZhiyuTenant;
@@ -433,7 +434,7 @@ public class AllianceServiceImpl implements IAllianceService {
         p.setType(req.getType());
         p.setDescription(req.getDescription());
         p.setPhase(req.getPhase() == null || req.getPhase().isEmpty() ? "initiation" : req.getPhase());
-        p.setPublishStatus(req.getPublishStatus() == null || req.getPublishStatus().isEmpty() ? "draft" : req.getPublishStatus());
+        p.setPublishStatus(req.getPublishStatus() == null || req.getPublishStatus().isEmpty() ? ZhiyuStatusConstants.DRAFT : req.getPublishStatus());
         p.setStartDate(req.getStartDate());
         p.setEndDate(req.getEndDate());
         p.setBudget(req.getBudget());
@@ -627,7 +628,7 @@ public class AllianceServiceImpl implements IAllianceService {
         a.setRelatedPositions(AllianceSupport.jsonObjectOrDefault(req.getRelatedPositions(), "[]"));
         a.setRelatedScenes(AllianceSupport.jsonObjectOrDefault(req.getRelatedScenes(), "[]"));
         a.setRelatedCourses(AllianceSupport.jsonObjectOrDefault(req.getRelatedCourses(), "[]"));
-        a.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? "draft" : req.getStatus());
+        a.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? ZhiyuStatusConstants.DRAFT : req.getStatus());
         a.setViewCount(0);
         a.setSecondaryColleges(AllianceSupport.jsonList(req.getSecondaryColleges()));
         a.setIsPublic(Boolean.TRUE.equals(req.getIsPublic()));
@@ -741,7 +742,7 @@ public class AllianceServiceImpl implements IAllianceService {
         a.setContent(req.getContent());
         a.setStartDate(req.getStartDate());
         a.setEndDate(req.getEndDate());
-        a.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? "draft" : req.getStatus());
+        a.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? ZhiyuStatusConstants.DRAFT : req.getStatus());
         a.setEnterpriseIds(AllianceSupport.jsonList(req.getEnterpriseIds()));
         a.setProjectIds(AllianceSupport.jsonList(req.getProjectIds()));
         a.setAttachments(AllianceSupport.jsonList(req.getAttachments()));
@@ -1001,7 +1002,7 @@ public class AllianceServiceImpl implements IAllianceService {
         b.setTenantId(tenantId);
         b.setBrandType(req.getBrandType());
         b.setName(req.getName());
-        b.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? "draft" : req.getStatus());
+        b.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? ZhiyuStatusConstants.DRAFT : req.getStatus());
         b.setIsPublic(Boolean.TRUE.equals(req.getIsPublic()));
         b.setIsFeatured(Boolean.TRUE.equals(req.getIsFeatured()));
         b.setCoverImage(req.getCoverImage());

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -124,7 +125,7 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
         record.setTargetId(req.getTargetId());
         record.setWorkflowId(emptyToNull(req.getWorkflowId()));
         record.setCurrentStepIdx(0);
-        record.setStatus("pending");
+        record.setStatus(ZhiyuStatusConstants.PENDING);
         record.setSubmitterId(TenantContext.getUserId());
         record.setHistory("[]");
         approvalMapper.insert(record);
@@ -143,11 +144,11 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
         if (record.getTenantId() == null) {
             throw new ApiException(403, "forbidden", "缺少租户信息");
         }
-        if (!"pending".equals(record.getStatus())) {
+        if (!ZhiyuStatusConstants.PENDING.equals(record.getStatus())) {
             throw new ApiException(400, "bad_request", "审批记录不在待处理状态");
         }
         if (req.getAction() == null
-            || (!"approved".equals(req.getAction()) && !"rejected".equals(req.getAction()))) {
+            || (!ZhiyuStatusConstants.APPROVED.equals(req.getAction()) && !ZhiyuStatusConstants.REJECTED.equals(req.getAction()))) {
             throw new ApiException(400, "bad_request", "无效操作");
         }
         if (!isUserApproverForStep(record, userId)) {
@@ -176,16 +177,16 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
         String historyJson = toJson(history);
 
         // 决策（对齐 Go decide 回调）：驳回直接终态；通过按步骤完成度推进
-        boolean rejected = "rejected".equals(req.getAction());
+        boolean rejected = ZhiyuStatusConstants.REJECTED.equals(req.getAction());
         boolean complete;
         String newStatus;
         int newStepIdx;
         if (rejected) {
             complete = true;
-            newStatus = "rejected";
+            newStatus = ZhiyuStatusConstants.REJECTED;
             newStepIdx = record.getCurrentStepIdx();
         } else if (isStepComplete(workflow, record, history)) {
-            newStatus = isLastStep(workflow, record.getCurrentStepIdx()) ? "approved" : "pending";
+            newStatus = isLastStep(workflow, record.getCurrentStepIdx()) ? ZhiyuStatusConstants.APPROVED : ZhiyuStatusConstants.PENDING;
             newStepIdx = record.getCurrentStepIdx() + 1;
             complete = true;
         } else {
@@ -207,9 +208,9 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
                 throw new ApiException(400, "bad_request", "审批记录不在待处理状态");
             }
             // 终态（通过/驳回）才同步实体状态；非终态推进只改步骤
-            if (!"pending".equals(newStatus)) {
+            if (!ZhiyuStatusConstants.PENDING.equals(newStatus)) {
                 // 学校自建资源编辑稿审批通过 → 合并覆盖原资源（仅通过时合并，合并后不再同步实体状态）
-                if ("approved".equals(newStatus)
+                if (ZhiyuStatusConstants.APPROVED.equals(newStatus)
                     && mergeSourceEditDraft(record.getTargetType(), record.getTargetId(), tenantId)) {
                     return get(id);
                 }
@@ -278,7 +279,7 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
                 continue;
             }
             Object action = m.get("action");
-            if (!"approved".equals(String.valueOf(action))) {
+            if (!ZhiyuStatusConstants.APPROVED.equals(String.valueOf(action))) {
                 continue;
             }
             Object stepRaw = m.get("stepIdx");

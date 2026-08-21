@@ -14,6 +14,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -380,7 +381,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         int newVersion = curVersion + 1;
         scheduleMapper.deletePublished(tenantId, req.getTermId());
         int published = scheduleMapper.publishFromDraft(tenantId, req.getTermId(), newVersion);
-        return Map.of("published", published, "version", newVersion);
+        return Map.of(ZhiyuStatusConstants.PUBLISHED, published, "version", newVersion);
     }
 
     @Override
@@ -393,7 +394,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             throw new ApiException(400, "bad_request", "缺少 termId 参数");
         }
         if (status == null || status.isEmpty() || !isSchoolAdmin()) {
-            status = "published";
+            status = ZhiyuStatusConstants.PUBLISHED;
         }
         LambdaQueryBuilder<ScheduleEntry> wrapper = QueryBuilder.lambda(ScheduleEntry.class)
             .eq(ScheduleEntry::getTenantId, tenantId)
@@ -443,7 +444,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             QueryBuilder.lambda(ScheduleEntry.class)
                 .eq(ScheduleEntry::getTenantId, tenantId)
                 .eq(ScheduleEntry::getTermId, req.getTermId())
-                .eq(ScheduleEntry::getStatus, "draft").build());
+                .eq(ScheduleEntry::getStatus, ZhiyuStatusConstants.DRAFT).build());
         Set<String> scheduledNow = existing.stream().map(ScheduleEntry::getPlanEntryId)
             .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
         List<AffairsScheduleMapper.PendingPlanEntry> stillPending = pending.stream()
@@ -503,7 +504,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
                         se.setVenueId(venue.id());
                         se.setScenarioId(emptyToNull(e.scenarioId()));
                         se.setSource("auto");
-                        se.setStatus("draft");
+                        se.setStatus(ZhiyuStatusConstants.DRAFT);
                         se.setVersion(1);
                         creates.add(se);
                         success++;
@@ -533,7 +534,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             QueryBuilder.lambda(ScheduleEntry.class)
                 .eq(ScheduleEntry::getTenantId, tenantId)
                 .eq(ScheduleEntry::getTermId, termId)
-                .eq(ScheduleEntry::getStatus, "draft").build());
+                .eq(ScheduleEntry::getStatus, ZhiyuStatusConstants.DRAFT).build());
         return checkConflicts(existing, p, excludeId);
     }
 
@@ -937,7 +938,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
         se.setVenueId(emptyToNull(p.getVenueId()));
         se.setScenarioId(emptyToNull(p.getScenarioId()));
         se.setSource(source);
-        se.setStatus("draft");
+        se.setStatus(ZhiyuStatusConstants.DRAFT);
         se.setVersion(1);
         return se;
     }

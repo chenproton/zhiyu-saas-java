@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -219,7 +220,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         List<ScheduleEntryDto> items = new ArrayList<>();
         if (!classNodeId.isEmpty() || !teacherId.isEmpty()) {
-            items = listTimetableEntries(tenantId, termId, classNodeId, teacherId, "published");
+            items = listTimetableEntries(tenantId, termId, classNodeId, teacherId, ZhiyuStatusConstants.PUBLISHED);
         }
         MyScheduleResponse resp = new MyScheduleResponse();
         resp.setTerm(term);
@@ -442,7 +443,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         List<WorkspaceTodo> todos = new ArrayList<>();
         try {
             var wrapper = QueryBuilder.lambda(PortalApprovalRecord.class)
-                .eq(PortalApprovalRecord::getStatus, "pending");
+                .eq(PortalApprovalRecord::getStatus, ZhiyuStatusConstants.PENDING);
             if (tenantId != null) {
                 wrapper.eq(PortalApprovalRecord::getTenantId, tenantId);
             }
@@ -468,7 +469,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         List<LessonCourse> rows = new ArrayList<>();
         try {
             var wrapper = QueryBuilder.lambda(LessonCourse.class)
-                .eq(LessonCourse::getStatus, "published");
+                .eq(LessonCourse::getStatus, ZhiyuStatusConstants.PUBLISHED);
             if (tenantId != null) {
                 wrapper.eq(LessonCourse::getTenantId, tenantId);
             }
@@ -523,7 +524,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         List<PortalScenario> scenarios = new ArrayList<>();
         try {
             var wrapper = QueryBuilder.lambda(PortalScenario.class)
-                .eq(PortalScenario::getStatus, "published");
+                .eq(PortalScenario::getStatus, ZhiyuStatusConstants.PUBLISHED);
             if (tenantId != null) {
                 wrapper.eq(PortalScenario::getTenantId, tenantId);
             }
@@ -583,7 +584,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         try {
             syncExamUsageStatus(tenantId);
             var wrapper = QueryBuilder.lambda(PortalExamUsage.class)
-                .in(PortalExamUsage::getStatus, "published", "finished")
+                .in(PortalExamUsage::getStatus, ZhiyuStatusConstants.PUBLISHED, "finished")
                 .in(PortalExamUsage::getTargetType, MANUAL_EXAM_TARGET_TYPES);
             if (!classNodeId.isEmpty()) {
                 wrapper.apply("(target_type != 'class' OR JSON_CONTAINS(target_ids, JSON_QUOTE({0}), '$'))", classNodeId);
@@ -644,7 +645,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         List<LessonCourse> rows = new ArrayList<>();
         try {
             var wrapper = QueryBuilder.lambda(LessonCourse.class)
-                .eq(LessonCourse::getStatus, "published")
+                .eq(LessonCourse::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .apply("(teacher_id = {0} OR creator_id = {0})", userId);
             if (tenantId != null) {
                 wrapper.eq(LessonCourse::getTenantId, tenantId);
@@ -747,7 +748,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 plan.setTerm(termName);
                 plan.setStudents(0);
                 plan.setTeacher(se.getTeacherId() == null ? "" : teacherMap.getOrDefault(se.getTeacherId(), ""));
-                plan.setStatus("published".equals(se.getStatus()) ? "active" : "pending");
+                plan.setStatus(ZhiyuStatusConstants.PUBLISHED.equals(se.getStatus()) ? "active" : ZhiyuStatusConstants.PENDING);
                 plan.setScenarioId(se.getScenarioId());
                 plan.setCourseId(se.getCourseId());
                 planIndex.put(key, plan);
@@ -768,7 +769,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 if ("even".equals(se.getWeekPattern()) && w % 2 != 0) {
                     continue;
                 }
-                String sessionStatus = "published".equals(se.getStatus()) ? "associated" : "pending";
+                String sessionStatus = ZhiyuStatusConstants.PUBLISHED.equals(se.getStatus()) ? "associated" : ZhiyuStatusConstants.PENDING;
                 String displayPeriod = periodLabel.getOrDefault(label, label);
                 WorkspaceClassSession session = new WorkspaceClassSession();
                 session.setId(se.getId() + "-w" + w);
@@ -787,7 +788,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     // ---------- 统计子查询（对齐 store/portal.go 各方法） ----------
 
     private int pendingApprovalCount(String tenantId) {
-        var wrapper = QueryBuilder.lambda(PortalApprovalRecord.class).eq(PortalApprovalRecord::getStatus, "pending");
+        var wrapper = QueryBuilder.lambda(PortalApprovalRecord.class).eq(PortalApprovalRecord::getStatus, ZhiyuStatusConstants.PENDING);
         if (tenantId != null) {
             wrapper.eq(PortalApprovalRecord::getTenantId, tenantId);
         }
@@ -796,7 +797,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
     private int draftCourseCount(String userId, String tenantId) {
         var wrapper = QueryBuilder.lambda(LessonCourse.class)
-            .eq(LessonCourse::getStatus, "draft")
+            .eq(LessonCourse::getStatus, ZhiyuStatusConstants.DRAFT)
             .apply("(teacher_id = {0} OR creator_id = {0})", userId);
         if (tenantId != null) {
             wrapper.eq(LessonCourse::getTenantId, tenantId);
@@ -806,7 +807,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
     private int upcomingExamCount(String tenantId, String classNodeId) {
         var wrapper = QueryBuilder.lambda(PortalExamUsage.class)
-            .eq(PortalExamUsage::getStatus, "published")
+            .eq(PortalExamUsage::getStatus, ZhiyuStatusConstants.PUBLISHED)
             .apply("(start_time IS NULL OR start_time >= {0})", OffsetDateTime.now())
             .in(PortalExamUsage::getTargetType, MANUAL_EXAM_TARGET_TYPES);
         if (!classNodeId.isEmpty()) {
@@ -823,7 +824,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private List<ScheduleEntry> listTeacherSchedules(String userId, String tenantId) {
         try {
             var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
-                .eq(ScheduleEntry::getStatus, "published")
+                .eq(ScheduleEntry::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .eq(ScheduleEntry::getTeacherId, userId);
             if (tenantId != null) {
                 wrapper.eq(ScheduleEntry::getTenantId, tenantId);
@@ -842,7 +843,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private List<ScheduleEntry> listStudentSchedules(String classNodeId, String tenantId) {
         try {
             var wrapper = QueryBuilder.lambda(ScheduleEntry.class)
-                .eq(ScheduleEntry::getStatus, "published")
+                .eq(ScheduleEntry::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .apply("(class_node_id = {0} OR JSON_CONTAINS(class_node_ids, JSON_QUOTE({0}), '$'))", classNodeId);
             if (tenantId != null) {
                 wrapper.eq(ScheduleEntry::getTenantId, tenantId);
@@ -912,7 +913,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         try {
             syncExamUsageStatus(tenantId);
             var wrapper = QueryBuilder.lambda(PortalExamUsage.class)
-                .eq(PortalExamUsage::getStatus, "published")
+                .eq(PortalExamUsage::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .in(PortalExamUsage::getTargetType, MANUAL_EXAM_TARGET_TYPES);
             if (!classNodeId.isEmpty()) {
                 wrapper.apply("(target_type != 'class' OR JSON_CONTAINS(target_ids, JSON_QUOTE({0}), '$'))", classNodeId);
@@ -950,7 +951,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
     private int[] teacherStats(String userId, String tenantId) {
         var wrapper = QueryBuilder.lambda(LessonCourse.class)
-            .eq(LessonCourse::getStatus, "published")
+            .eq(LessonCourse::getStatus, ZhiyuStatusConstants.PUBLISHED)
             .apply("(teacher_id = {0} OR creator_id = {0})", userId);
         if (tenantId != null) {
             wrapper.eq(LessonCourse::getTenantId, tenantId);
@@ -970,13 +971,13 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private int[] studentStats(String tenantId) {
-        var courseWrapper = QueryBuilder.lambda(LessonCourse.class).eq(LessonCourse::getStatus, "published");
+        var courseWrapper = QueryBuilder.lambda(LessonCourse.class).eq(LessonCourse::getStatus, ZhiyuStatusConstants.PUBLISHED);
         if (tenantId != null) {
             courseWrapper.eq(LessonCourse::getTenantId, tenantId);
         }
         int courseCount = courseMapper.selectCount(courseWrapper.build()).intValue();
 
-        var examWrapper = QueryBuilder.lambda(PortalExamUsage.class).eq(PortalExamUsage::getStatus, "published");
+        var examWrapper = QueryBuilder.lambda(PortalExamUsage.class).eq(PortalExamUsage::getStatus, ZhiyuStatusConstants.PUBLISHED);
         if (tenantId != null) {
             examWrapper.apply("EXISTS (SELECT 1 FROM users u WHERE u.id = creator_id AND u.tenant_id = {0})", tenantId);
         }
@@ -1515,7 +1516,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         if (orgNodeId != null && !orgNodeId.isBlank()) {
             try {
                 var scheduleWrapper = QueryBuilder.lambda(ScheduleEntry.class)
-                    .eq(ScheduleEntry::getStatus, "published")
+                    .eq(ScheduleEntry::getStatus, ZhiyuStatusConstants.PUBLISHED)
                     .apply("(class_node_id = {0} OR JSON_CONTAINS(class_node_ids, JSON_QUOTE({0}), '$'))", orgNodeId);
                 if ("scenarios".equals(resourceType)) {
                     scheduleWrapper.eq(ScheduleEntry::getType, "scene")
@@ -1577,7 +1578,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private String publishedStatusLabel(String status) {
-        if ("published".equals(status)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(status)) {
             return "进行中";
         }
         if ("archived".equals(status)) {
@@ -1598,7 +1599,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     }
 
     private String examStatusLabel(String status) {
-        if ("published".equals(status)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(status)) {
             return "待考";
         }
         if ("in_progress".equals(status)) {

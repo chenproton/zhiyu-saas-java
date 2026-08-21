@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.favorites;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.ZhiyuUser;
@@ -196,7 +197,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             QueryBuilder.lambda(PortalScenario.class)
                 .in(PortalScenario::getId, ids)
                 .eq(PortalScenario::getTenantId, tenantId)
-                .eq(PortalScenario::getStatus, "published")
+                .eq(PortalScenario::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .build());
         Map<String, PortalScenario> byId = rows.stream()
             .collect(Collectors.toMap(PortalScenario::getId, Function.identity()));
@@ -275,7 +276,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             QueryBuilder.lambda(LessonCourse.class)
                 .in(LessonCourse::getId, ids)
                 .eq(LessonCourse::getTenantId, tenantId)
-                .eq(LessonCourse::getStatus, "published")
+                .eq(LessonCourse::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .build());
         Map<String, LessonCourse> byId = rows.stream()
             .collect(Collectors.toMap(LessonCourse::getId, Function.identity()));
@@ -349,7 +350,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             QueryBuilder.lambda(FavQuestionBank.class)
                 .in(FavQuestionBank::getId, ids)
                 .eq(FavQuestionBank::getTenantId, tenantId)
-                .eq(FavQuestionBank::getStatus, "published")
+                .eq(FavQuestionBank::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .build());
         Map<String, FavQuestionBank> byId = rows.stream()
             .collect(Collectors.toMap(FavQuestionBank::getId, Function.identity()));
@@ -400,7 +401,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             QueryBuilder.lambda(PortalExam.class)
                 .in(PortalExam::getId, ids)
                 .eq(PortalExam::getTenantId, tenantId)
-                .eq(PortalExam::getStatus, "published")
+                .eq(PortalExam::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .eq(PortalExam::getIsTemp, false)
                 .build());
         Map<String, PortalExam> byId = rows.stream()
@@ -462,7 +463,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             QueryBuilder.lambda(FavAIKB.class)
                 .in(FavAIKB::getId, ids)
                 .eq(FavAIKB::getTenantId, tenantId)
-                .eq(FavAIKB::getStatus, "published")
+                .eq(FavAIKB::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .build());
         Map<String, FavAIKB> byId = rows.stream()
             .collect(Collectors.toMap(FavAIKB::getId, Function.identity()));
@@ -515,7 +516,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
             QueryBuilder.lambda(FavAIAgent.class)
                 .in(FavAIAgent::getId, ids)
                 .eq(FavAIAgent::getTenantId, tenantId)
-                .eq(FavAIAgent::getStatus, "published")
+                .eq(FavAIAgent::getStatus, ZhiyuStatusConstants.PUBLISHED)
                 .build());
         Map<String, FavAIAgent> byId = rows.stream()
             .collect(Collectors.toMap(FavAIAgent::getId, Function.identity()));
@@ -622,7 +623,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
                     FavAIKB kb = aiKbMapper.selectOne(
                         QueryBuilder.lambda(FavAIKB.class)
                             .eq(FavAIKB::getId, targetId)
-                            .eq(FavAIKB::getStatus, "published")
+                            .eq(FavAIKB::getStatus, ZhiyuStatusConstants.PUBLISHED)
                             .build());
                     yield kb == null ? null : kb.getTenantId();
                 }
@@ -630,7 +631,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
                     FavAIAgent a = aiAgentMapper.selectOne(
                         QueryBuilder.lambda(FavAIAgent.class)
                             .eq(FavAIAgent::getId, targetId)
-                            .eq(FavAIAgent::getStatus, "published")
+                            .eq(FavAIAgent::getStatus, ZhiyuStatusConstants.PUBLISHED)
                             .build());
                     yield a == null ? null : a.getTenantId();
                 }

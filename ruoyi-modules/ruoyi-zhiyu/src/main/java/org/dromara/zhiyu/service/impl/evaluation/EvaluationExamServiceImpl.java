@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -84,12 +85,12 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     /** 允许的状态流转（对齐 Go allowedStatusTransitions） */
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
-        "draft", Set.of("pending", "archived"),
-        "rejected", Set.of("draft", "pending", "archived"),
-        "pending", Set.of("draft", "approved", "rejected"),
-        "approved", Set.of("draft", "published", "archived"),
-        "published", Set.of("draft", "archived"),
-        "archived", Set.of("draft")
+        ZhiyuStatusConstants.DRAFT, Set.of(ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.REJECTED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.PENDING, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.APPROVED, ZhiyuStatusConstants.REJECTED),
+        ZhiyuStatusConstants.APPROVED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PUBLISHED, "archived"),
+        ZhiyuStatusConstants.PUBLISHED, Set.of(ZhiyuStatusConstants.DRAFT, "archived"),
+        "archived", Set.of(ZhiyuStatusConstants.DRAFT)
     );
 
     /** 手动创建的考试安排目标类型（对齐 Go isManualTargetType） */
@@ -116,7 +117,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         String effectiveStatus = status;
         if (student) {
             // 学生列表仅见已发布试卷（对齐 Go forcePublishedForStudent）
-            effectiveStatus = "published";
+            effectiveStatus = ZhiyuStatusConstants.PUBLISHED;
         }
         LambdaQueryBuilder<PortalExam> wrapper = QueryBuilder.lambda(PortalExam.class)
             .eq(PortalExam::getTenantId, tenantId)
@@ -142,7 +143,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         PortalExam exam = fetchExam(id);
         // 学生作答由服务端判分，不返回答案与解析；且仅可读已发布试卷（决策 7）
         boolean student = isStudent();
-        if (student && !"published".equals(exam.getStatus())) {
+        if (student && !ZhiyuStatusConstants.PUBLISHED.equals(exam.getStatus())) {
             throw new ApiException(404, "not_found", "考试不存在");
         }
         ExamDto dto = assembleExam(exam);
@@ -214,23 +215,23 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto submitExam(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
     public ExamDto reviewExam(String id, ReviewRequest req) {
         systemGuard.requireUser();
         String toStatus;
-        if ("approved".equals(req.getStatus())) {
-            toStatus = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            toStatus = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         fetchExam(id);
         String tenantId = systemGuard.requireTenant();
-        int rows = examMapper.casTransition(id, tenantId, "pending", toStatus);
+        int rows = examMapper.casTransition(id, tenantId, ZhiyuStatusConstants.PENDING, toStatus);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "考试不存在或不在待处理状态");
         }
@@ -239,7 +240,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto publishExam(String id) {
-        return transition(id, "published");
+        return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
@@ -249,17 +250,17 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto unpublishExam(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public ExamDto withdrawExam(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public ExamDto saveDraftExam(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
@@ -291,10 +292,10 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         if (rows == 0) {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
-        if ("pending".equals(currentStatus) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(currentStatus) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             examMapper.deletePendingApproval("exam", id);
         }
-        if ("published".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(toStatus)) {
             String version = nextVersion(exam.getVersion());
             examMapper.bumpVersion(id, tenantId, version);
             saveExamSnapshot(tenantId, id, version);
@@ -456,9 +457,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         if (examTenantId == null || !examTenantId.equals(tenantId)) {
             throw new ApiException(404, "not_found", "考试安排不存在");
         }
-        String status = "draft";
+        String status = ZhiyuStatusConstants.DRAFT;
         if ("always".equals(req.getActivationMode())) {
-            status = "published";
+            status = ZhiyuStatusConstants.PUBLISHED;
         }
         String examVersion = resolveExamVersion(tenantId, req.getExamId());
         String id = UUID.randomUUID().toString();
@@ -513,10 +514,10 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         systemGuard.requireUser();
         EvaluationExamUsage usage = fetchExamUsage(id);
         String tenantId = systemGuard.requireTenant();
-        if (!"draft".equals(usage.getStatus()) && !"pending".equals(usage.getStatus())) {
+        if (!ZhiyuStatusConstants.DRAFT.equals(usage.getStatus()) && !ZhiyuStatusConstants.PENDING.equals(usage.getStatus())) {
             throw new ApiException(400, "bad_request", "考试安排不在草稿状态");
         }
-        examUsageMapper.setStatus(id, tenantId, "published");
+        examUsageMapper.setStatus(id, tenantId, ZhiyuStatusConstants.PUBLISHED);
         return toExamUsageDto(fetchExamUsage(id));
     }
 
@@ -525,7 +526,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         systemGuard.requireUser();
         EvaluationExamUsage usage = fetchExamUsage(id);
         String tenantId = systemGuard.requireTenant();
-        if (!"published".equals(usage.getStatus()) && !"in_progress".equals(usage.getStatus())) {
+        if (!ZhiyuStatusConstants.PUBLISHED.equals(usage.getStatus()) && !"in_progress".equals(usage.getStatus())) {
             throw new ApiException(400, "bad_request", "考试安排不在已发布状态");
         }
         examUsageMapper.setStatus(id, tenantId, "finished");
@@ -680,7 +681,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             }
         }
         boolean isPass = !hasSubjective && score.compareTo(grading.totalScore.multiply(new BigDecimal("0.6"))) >= 0;
-        String gradingStatus = hasSubjective ? "pending" : "evaluated";
+        String gradingStatus = hasSubjective ? ZhiyuStatusConstants.PENDING : "evaluated";
 
         Map<String, Object> profile = examResultMapper.fetchUserProfile(userId);
         if (profile == null) {
@@ -697,11 +698,11 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         // 同步场景/课程/节点统一评价（同一事务）
         String answersJson = toJson(req.getAnswers() == null ? Map.of() : req.getAnswers());
         examResultMapper.syncSceneEvaluation(tenantId, req.getExamUsageId(), userId, score, grading.totalScore,
-            answersJson, hasSubjective ? "pending" : "evaluated", req.getMethodKey());
+            answersJson, hasSubjective ? ZhiyuStatusConstants.PENDING : "evaluated", req.getMethodKey());
         examResultMapper.syncCourseEvaluation(tenantId, req.getExamUsageId(), userId, score, grading.totalScore,
-            answersJson, hasSubjective ? "pending" : "evaluated", req.getMethodKey());
+            answersJson, hasSubjective ? ZhiyuStatusConstants.PENDING : "evaluated", req.getMethodKey());
         examResultMapper.syncNodeEvaluation(tenantId, req.getExamUsageId(), userId, score, grading.totalScore,
-            answersJson, hasSubjective ? "pending" : "evaluated", req.getMethodKey());
+            answersJson, hasSubjective ? ZhiyuStatusConstants.PENDING : "evaluated", req.getMethodKey());
         EvaluationExamResult saved = examResultMapper.selectOne(QueryBuilder.lambda(EvaluationExamResult.class)
             .eq(EvaluationExamResult::getExamUsageId, req.getExamUsageId())
             .eq(EvaluationExamResult::getUserId, userId).build());
@@ -869,7 +870,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         entity.setEvaluateeId(req.getEvaluateeId());
         entity.setEvaluatorId(evaluatorId);
         entity.setEvaluatorType(emptyToNull(req.getEvaluatorType()));
-        entity.setStatus("pending");
+        entity.setStatus(ZhiyuStatusConstants.PENDING);
         entity.setMaxScore(maxScore);
         entity.setEvalPointScores(toJson(req.getEvalPointScores() == null ? Map.of() : req.getEvalPointScores()));
         entity.setObjectiveAnswers(toJson(req.getObjectiveAnswers() == null ? Map.of() : req.getObjectiveAnswers()));
@@ -1041,7 +1042,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         }
         PortalExam live = examMapper.selectOne(QueryBuilder.lambda(PortalExam.class)
             .eq(PortalExam::getId, examId).eq(PortalExam::getTenantId, tenantId).build());
-        if (live == null || !"published".equals(live.getStatus())) {
+        if (live == null || !ZhiyuStatusConstants.PUBLISHED.equals(live.getStatus())) {
             return null;
         }
         String liveVersion = live.getVersion() == null ? "" : live.getVersion();

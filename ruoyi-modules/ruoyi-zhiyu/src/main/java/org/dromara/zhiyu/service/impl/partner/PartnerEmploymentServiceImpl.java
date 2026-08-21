@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -123,7 +124,7 @@ public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
             req.getLocation(), req.getSalaryMin(), req.getSalaryMax(), req.getHeadcount(), req.getEducation(),
             req.getSuitableMajors() == null ? List.of() : req.getSuitableMajors(), req.getDescription(),
             req.getResponsibilities(), req.getRequirements(), req.getContactPerson(), req.getContactPhone(),
-            req.getDeadline(), "draft", userId);
+            req.getDeadline(), ZhiyuStatusConstants.DRAFT, userId);
         return getJob(id);
     }
 
@@ -145,7 +146,7 @@ public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
     public String deleteJob(String id) {
         String enterpriseId = resolveEnterpriseId();
         PartnerEmploymentJob existing = getJob(id);
-        if (!"draft".equals(existing.getStatus())) {
+        if (!ZhiyuStatusConstants.DRAFT.equals(existing.getStatus())) {
             throw new ApiException(409, "conflict", "仅草稿岗位可删除，已发布岗位请先关闭");
         }
         employmentMapper.deleteJob(id, enterpriseId);
@@ -158,7 +159,7 @@ public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
         String enterpriseId = resolveEnterpriseId();
         String status;
         if ("publish".equals(req.getAction())) {
-            status = "published";
+            status = ZhiyuStatusConstants.PUBLISHED;
         } else if ("close".equals(req.getAction())) {
             status = "closed";
         } else {

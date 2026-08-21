@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -97,7 +98,7 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
             req.getRefType() == null || req.getRefType().isEmpty() ? "normal" : req.getRefType(),
             emptyToNull(req.getSourceId()), req.getSourceName(), req.getTeachingGoals(), req.getDetailedDescription(),
             req.getDescriptionPdf(), req.getBackground(), req.getEstimatedHours(), req.getDuration(), req.getDifficulty(),
-            kpIds, resIds, toJson(req.getEvalData()), req.getStatus() == null || req.getStatus().isEmpty() ? "draft" : req.getStatus());
+            kpIds, resIds, toJson(req.getEvalData()), req.getStatus() == null || req.getStatus().isEmpty() ? ZhiyuStatusConstants.DRAFT : req.getStatus());
         for (String kpId : kpIds) {
             nodeMapper.insertNodeKnowledgeBinding(id, kpId);
         }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -68,7 +69,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
                 return ListResponse.of(new ArrayList<>(), 0);
             }
             SceneScenario sc = scenarioMapper.selectById(scenarioId);
-            if (sc == null || !"published".equals(sc.getStatus())) {
+            if (sc == null || !ZhiyuStatusConstants.PUBLISHED.equals(sc.getStatus())) {
                 return ListResponse.of(new ArrayList<>(), 0);
             }
         }
@@ -92,7 +93,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         // 学生仅可查看已发布场景的任务
         if (isStudent()) {
             SceneScenario sc = scenarioMapper.selectById(task.getScenarioId());
-            if (sc == null || !"published".equals(sc.getStatus())) {
+            if (sc == null || !ZhiyuStatusConstants.PUBLISHED.equals(sc.getStatus())) {
                 throw new ApiException(404, "not_found", "任务不存在");
             }
         }

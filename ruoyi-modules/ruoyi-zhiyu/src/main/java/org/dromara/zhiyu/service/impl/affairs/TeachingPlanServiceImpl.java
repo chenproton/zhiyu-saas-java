@@ -11,6 +11,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -146,7 +147,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
                 posScenMap.put(c.getPositionId(), scenarioMapper.selectList(
                     QueryBuilder.lambda(PortalScenario.class)
                         .eq(PortalScenario::getCareerPositionId, c.getPositionId())
-                        .eq(PortalScenario::getStatus, "published").build()));
+                        .eq(PortalScenario::getStatus, ZhiyuStatusConstants.PUBLISHED).build()));
             }
         }
 
@@ -162,7 +163,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
         plan.setTermId(req.getTermId());
         plan.setMajorId(program.getMajorId());
         plan.setEntryYear(program.getEntryYear());
-        plan.setStatus("draft");
+        plan.setStatus(ZhiyuStatusConstants.DRAFT);
         plan.setCreatedBy(userId);
         plan.setCollaborators(new ArrayList<>());
         planMapper.insert(plan);
@@ -239,7 +240,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public TeachingPlanDto submit(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
@@ -249,22 +250,22 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public TeachingPlanDto unpublish(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public TeachingPlanDto withdraw(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public TeachingPlanDto saveDraft(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public TeachingPlanDto publish(String id) {
-        return transition(id, "published");
+        return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
@@ -272,10 +273,10 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     public TeachingPlanDto review(String id, ReviewRequest req) {
         systemGuard.requireUser();
         String to;
-        if ("approved".equals(req.getStatus())) {
-            to = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            to = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            to = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            to = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
@@ -600,10 +601,10 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
         if (rows == 0) {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
-        if ("pending".equals(current) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(current) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             planMapper.deletePendingApproval(id);
         }
-        if ("published".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(toStatus)) {
             planMapper.markConfirmed(id);
         }
         return toDto(fetchOwnedAction(id), null);
@@ -681,11 +682,11 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     private String statusLabel(String s) {
         return switch (s == null ? "" : s) {
-            case "draft" -> "草稿";
-            case "pending" -> "审批中";
-            case "approved" -> "已通过";
-            case "rejected" -> "已驳回";
-            case "published" -> "已发布";
+            case ZhiyuStatusConstants.DRAFT -> "草稿";
+            case ZhiyuStatusConstants.PENDING -> "审批中";
+            case ZhiyuStatusConstants.APPROVED -> "已通过";
+            case ZhiyuStatusConstants.REJECTED -> "已驳回";
+            case ZhiyuStatusConstants.PUBLISHED -> "已发布";
             case "archived" -> "已归档";
             case "planned" -> "待排课";
             case "scheduled" -> "已排课";

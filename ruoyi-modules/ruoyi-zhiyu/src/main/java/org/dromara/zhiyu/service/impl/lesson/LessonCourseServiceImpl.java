@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -69,12 +70,12 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     };
 
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
-        "draft", Set.of("pending", "archived"),
-        "rejected", Set.of("draft", "pending", "archived"),
-        "pending", Set.of("draft", "approved", "rejected"),
-        "approved", Set.of("draft", "published", "archived"),
-        "published", Set.of("draft", "archived"),
-        "archived", Set.of("draft")
+        ZhiyuStatusConstants.DRAFT, Set.of(ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.REJECTED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.PENDING, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.APPROVED, ZhiyuStatusConstants.REJECTED),
+        ZhiyuStatusConstants.APPROVED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PUBLISHED, "archived"),
+        ZhiyuStatusConstants.PUBLISHED, Set.of(ZhiyuStatusConstants.DRAFT, "archived"),
+        "archived", Set.of(ZhiyuStatusConstants.DRAFT)
     );
 
     private final SystemGuard systemGuard;
@@ -102,7 +103,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
         String effectiveStatus = status;
         if (isStudent()) {
-            effectiveStatus = "published";
+            effectiveStatus = ZhiyuStatusConstants.PUBLISHED;
         }
 
         LambdaQueryBuilder<LessonCourse> wrapper = baseListWrapper(tenantId, search, type, category, effectiveStatus, batchId);
@@ -116,7 +117,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     public CourseDto get(String id) {
         systemGuard.requireUser();
         LessonCourse course = fetchOwned(id);
-        if (isStudent() && !"published".equals(course.getStatus())) {
+        if (isStudent() && !ZhiyuStatusConstants.PUBLISHED.equals(course.getStatus())) {
             throw new ApiException(404, "not_found", "课程不存在");
         }
         return assembleDetail(course, course.getTenantId());
@@ -218,22 +219,22 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Override
     public CourseDto submit(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
     public CourseDto withdraw(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public CourseDto saveDraft(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public CourseDto publish(String id) {
-        return transition(id, "published");
+        return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
@@ -243,7 +244,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Override
     public CourseDto unpublish(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
@@ -251,10 +252,10 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     public CourseDto review(String id, ReviewRequest req) {
         systemGuard.requireUser();
         String toStatus;
-        if ("approved".equals(req.getStatus())) {
-            toStatus = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            toStatus = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
@@ -325,7 +326,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
             }
         }
         PortalResourceSnapshotMapper.LiveStateRow live = snapshotMapper.selectCourseLiveState(tenantId, id);
-        if (live == null || !"published".equals(live.getStatus())) {
+        if (live == null || !ZhiyuStatusConstants.PUBLISHED.equals(live.getStatus())) {
             throw new ApiException(404, "not_found", "资源不存在或未发布");
         }
         if (version != null && !version.isEmpty() && !version.equals(live.getVersion())) {
@@ -353,10 +354,10 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         if (rows == 0) {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
-        if ("pending".equals(currentStatus) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(currentStatus) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             courseMapper.deletePendingApproval(id);
         }
-        if ("published".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(toStatus)) {
             String version = nextVersion(course.getVersion());
             courseMapper.bumpVersion(id, version);
             snapshotMapper.saveSnapshot(tenantId, "courses", id, version, buildCourseSnapshotJson(tenantId, id));
@@ -614,7 +615,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     }
 
     private String statusFor(String activationMode) {
-        return "always".equals(activationMode) ? "published" : "draft";
+        return "always".equals(activationMode) ? ZhiyuStatusConstants.PUBLISHED : ZhiyuStatusConstants.DRAFT;
     }
 
     private String resolveActivationMode(Map<String, Object> rc, String methodKey) {

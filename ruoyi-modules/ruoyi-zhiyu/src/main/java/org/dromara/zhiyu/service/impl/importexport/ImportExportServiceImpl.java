@@ -18,6 +18,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.affairs.TrainingProgramCourse;
@@ -1285,7 +1286,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 b.setTenantId(tenantId);
                 b.setBrandType(type);
                 b.setName(name);
-                b.setStatus("draft");
+                b.setStatus(ZhiyuStatusConstants.DRAFT);
                 b.setIsPublic(false);
                 b.setIsFeatured(false);
                 b.setDescription(nullableStr(cell(row, 2)));
@@ -1366,7 +1367,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                     b.setTenantId(tenantId);
                     b.setBrandType(bt);
                     b.setName(br.name);
-                    b.setStatus(br.status == null || br.status.isEmpty() ? "draft" : br.status);
+                    b.setStatus(br.status == null || br.status.isEmpty() ? ZhiyuStatusConstants.DRAFT : br.status);
                     b.setIsPublic(br.isPublic);
                     b.setIsFeatured(br.isFeatured);
                     b.setCoverImage(br.coverImage);
@@ -1962,7 +1963,7 @@ public class ImportExportServiceImpl implements IImportExportService {
         }
         String name;
         String description;
-        String status = "draft";
+        String status = ZhiyuStatusConstants.DRAFT;
         boolean statusFilled;
         boolean isPublic;
         boolean isPublicFilled;
@@ -4215,7 +4216,7 @@ public class ImportExportServiceImpl implements IImportExportService {
     }
 
     private static String mapPublishStatus(String v) {
-        return mapDict(v, "草稿", "draft", "已发布", "published", "发布", "published", "已归档", "archived", "归档", "archived", "draft");
+        return mapDict(v, "草稿", ZhiyuStatusConstants.DRAFT, "已发布", ZhiyuStatusConstants.PUBLISHED, "发布", ZhiyuStatusConstants.PUBLISHED, "已归档", "archived", "归档", "archived", ZhiyuStatusConstants.DRAFT);
     }
 
     private static String mapAchievementType(String v) {
@@ -4224,9 +4225,9 @@ public class ImportExportServiceImpl implements IImportExportService {
     }
 
     private static String mapAgreementStatus(String v) {
-        return mapDict(v, "草稿", "draft", "生效中", "active", "生效", "active", "有效", "active",
+        return mapDict(v, "草稿", ZhiyuStatusConstants.DRAFT, "生效中", "active", "生效", "active", "有效", "active",
             "已失效", "expired", "失效", "expired", "已过期", "expired", "过期", "expired",
-            "已续签", "renewed", "续签", "renewed", "已终止", "terminated", "终止", "terminated", "draft");
+            "已续签", "renewed", "续签", "renewed", "已终止", "terminated", "终止", "terminated", ZhiyuStatusConstants.DRAFT);
     }
 
     private static String mapAccountType(String v) {

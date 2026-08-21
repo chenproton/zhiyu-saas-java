@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.affairs;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -111,7 +112,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
         program.setLevel(emptyToNull(p.getLevel()));
         program.setDuration(p.getDuration());
         program.setTotalCredits(p.getTotalCredits() == null ? null : BigDecimal.valueOf(p.getTotalCredits()));
-        program.setStatus("draft");
+        program.setStatus(ZhiyuStatusConstants.DRAFT);
         program.setDescription(emptyToNull(p.getDescription()));
         program.setBatchId(emptyToNull(p.getBatchId()));
         program.setCreatedBy(userId);
@@ -169,7 +170,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public TrainingProgramDto submit(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
@@ -179,23 +180,23 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public TrainingProgramDto unpublish(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public TrainingProgramDto withdraw(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public TrainingProgramDto saveDraft(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public TrainingProgramDto publish(String id, String status) {
-        String to = status == null || status.isEmpty() ? "published" : status;
-        if (!"draft".equals(to) && !"published".equals(to)) {
+        String to = status == null || status.isEmpty() ? ZhiyuStatusConstants.PUBLISHED : status;
+        if (!ZhiyuStatusConstants.DRAFT.equals(to) && !ZhiyuStatusConstants.PUBLISHED.equals(to)) {
             throw new ApiException(400, "bad_request", "状态仅支持 draft/published");
         }
         TrainingProgram existing = fetchOwnedAction(id);
@@ -210,10 +211,10 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     public TrainingProgramDto review(String id, ReviewRequest req) {
         systemGuard.requireUser();
         String to;
-        if ("approved".equals(req.getStatus())) {
-            to = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            to = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            to = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            to = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
@@ -333,7 +334,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
         program.setLevel(src.getLevel());
         program.setDuration(src.getDuration());
         program.setTotalCredits(src.getTotalCredits());
-        program.setStatus("draft");
+        program.setStatus(ZhiyuStatusConstants.DRAFT);
         program.setDescription(src.getDescription());
         program.setCreatedBy(userId);
         program.setCollaborators(new ArrayList<>());
@@ -471,7 +472,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
         if (rows == 0) {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
-        if ("pending".equals(current) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(current) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             programMapper.deletePendingApproval(id);
         }
         return toDto(fetchOwnedAction(id));

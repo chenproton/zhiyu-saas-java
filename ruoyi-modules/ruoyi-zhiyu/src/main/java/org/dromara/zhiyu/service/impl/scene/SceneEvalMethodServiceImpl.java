@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -335,7 +336,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
         }
         String id = UUID.randomUUID().toString();
         // 初始状态：随时作答 → 已发布；定时/手动启停 → 草稿（开启后发布）
-        String status = "always".equals(activationMode) ? "published" : "draft";
+        String status = "always".equals(activationMode) ? ZhiyuStatusConstants.PUBLISHED : ZhiyuStatusConstants.DRAFT;
         // 名称：{场景名-任务名}-{测评类型}-{YYYYMMDD}-{序号}（同一天多个测评序号递增）
         String name = nextAutoUsageName(tenantId, "task", prefix, label);
         // 绑定固化（文档 5.3）：创建即打 exam_version（快照最新为准，缺档回退 live version）

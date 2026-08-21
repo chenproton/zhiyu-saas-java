@@ -2,6 +2,7 @@ package org.dromara.zhiyu.service.impl.alliance;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.alliance.AllianceEnterprise;
@@ -103,7 +104,7 @@ public class AllianceEmploymentServiceImpl implements IAllianceEmploymentService
         p.setCoverImage(req.getCoverImage());
         p.setStartDate(req.getStartDate());
         p.setEndDate(req.getEndDate());
-        p.setPublishStatus("published".equals(req.getPublishStatus()) ? "published" : "draft");
+        p.setPublishStatus(ZhiyuStatusConstants.PUBLISHED.equals(req.getPublishStatus()) ? ZhiyuStatusConstants.PUBLISHED : ZhiyuStatusConstants.DRAFT);
         p.setEnterpriseIds(AllianceSupport.jsonList(req.getEnterpriseIds()));
         p.setTargetGroups(AllianceSupport.jsonObjectOrDefault(req.getTargetGroups(), "[]"));
         p.setCreatedBy(AllianceSupport.currentUserOrNull());
@@ -176,7 +177,7 @@ public class AllianceEmploymentServiceImpl implements IAllianceEmploymentService
     @Override
     public Map<String, String> adminSetJobStatus(String id, String status) {
         String tenantId = AllianceSupport.requireTenant();
-        if (!"closed".equals(status) && !"published".equals(status)) {
+        if (!"closed".equals(status) && !ZhiyuStatusConstants.PUBLISHED.equals(status)) {
             throw new ApiException(400, "bad_request", "仅支持下架(closed)/恢复(published)");
         }
         jobMapper.adminSetStatus(id, tenantId, status);
@@ -396,7 +397,7 @@ public class AllianceEmploymentServiceImpl implements IAllianceEmploymentService
         j.setContactPerson(req.getContactPerson());
         j.setContactPhone(req.getContactPhone());
         j.setDeadline(req.getDeadline());
-        j.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? "draft" : req.getStatus());
+        j.setStatus(req.getStatus() == null || req.getStatus().isEmpty() ? ZhiyuStatusConstants.DRAFT : req.getStatus());
         j.setCreatedBy(AllianceSupport.currentUserOrNull());
         jobMapper.insertJob(j);
         return getPartnerJob(j.getId());
@@ -468,7 +469,7 @@ public class AllianceEmploymentServiceImpl implements IAllianceEmploymentService
         String action = req.getAction();
         String status;
         if ("publish".equals(action)) {
-            status = "published";
+            status = ZhiyuStatusConstants.PUBLISHED;
         } else if ("close".equals(action)) {
             status = "closed";
         } else {

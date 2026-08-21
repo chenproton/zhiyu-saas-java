@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -76,12 +77,12 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     /** 允许的状态流转（key=当前状态，value=可进入状态集合；对齐 Go allowedStatusTransitions） */
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
-        "draft", Set.of("pending", "archived"),
-        "rejected", Set.of("draft", "pending", "archived"),
-        "pending", Set.of("draft", "approved", "rejected"),
-        "approved", Set.of("draft", "published", "archived"),
-        "published", Set.of("draft", "archived"),
-        "archived", Set.of("draft")
+        ZhiyuStatusConstants.DRAFT, Set.of(ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.REJECTED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, "archived"),
+        ZhiyuStatusConstants.PENDING, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.APPROVED, ZhiyuStatusConstants.REJECTED),
+        ZhiyuStatusConstants.APPROVED, Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PUBLISHED, "archived"),
+        ZhiyuStatusConstants.PUBLISHED, Set.of(ZhiyuStatusConstants.DRAFT, "archived"),
+        "archived", Set.of(ZhiyuStatusConstants.DRAFT)
     );
 
     private final SystemGuard systemGuard;
@@ -108,7 +109,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         String effectiveStatus = status;
         if (student) {
             // 学生列表仅见已发布场景（越权加固 A3，对齐 Go forcePublishedForStudent）
-            effectiveStatus = "published";
+            effectiveStatus = ZhiyuStatusConstants.PUBLISHED;
         }
 
         LambdaQueryBuilder<SceneScenario> wrapper = baseListWrapper(tenantId, search, batchId, careerPositionId, effectiveStatus);
@@ -124,7 +125,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         systemGuard.requireUser();
         SceneScenario scenario = fetchOwned(id);
         // 学生仅可读已发布场景（决策 7：draft 对学生不可见，对齐 Go）
-        if (isStudent() && !"published".equals(scenario.getStatus())) {
+        if (isStudent() && !ZhiyuStatusConstants.PUBLISHED.equals(scenario.getStatus())) {
             throw new ApiException(404, "not_found", "场景方案不存在");
         }
         // 视图计数（对齐 Go recordViewAsync：失败仅记日志不阻塞）
@@ -209,22 +210,22 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public ScenarioDto submit(String id) {
-        return transition(id, "pending");
+        return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
     public ScenarioDto withdraw(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public ScenarioDto saveDraft(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
     public ScenarioDto publish(String id) {
-        return transition(id, "published");
+        return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
@@ -234,7 +235,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public ScenarioDto unpublish(String id) {
-        return transition(id, "draft");
+        return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     /**
@@ -256,11 +257,11 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
             throw new ApiException(500, "internal_error", "状态流转失败");
         }
         // 从审批中撤回时，同步删除审批中心对应的待审批记录
-        if ("pending".equals(currentStatus) && "draft".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PENDING.equals(currentStatus) && ZhiyuStatusConstants.DRAFT.equals(toStatus)) {
             deletePendingApproval(id);
         }
         // 发布时自动递增版本号并落快照（同一事务，构建失败即回滚）
-        if ("published".equals(toStatus)) {
+        if (ZhiyuStatusConstants.PUBLISHED.equals(toStatus)) {
             String version = nextVersion(scenario.getVersion());
             scenarioMapper.bumpVersion(id, version);
             savePublishSnapshot(tenantId, id, version);
@@ -273,10 +274,10 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     public ScenarioDto review(String id, ReviewRequest req) {
         systemGuard.requireUser();
         String toStatus;
-        if ("approved".equals(req.getStatus())) {
-            toStatus = "approved";
-        } else if ("rejected".equals(req.getStatus())) {
-            toStatus = "rejected";
+        if (ZhiyuStatusConstants.APPROVED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.APPROVED;
+        } else if (ZhiyuStatusConstants.REJECTED.equals(req.getStatus())) {
+            toStatus = ZhiyuStatusConstants.REJECTED;
         } else {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
@@ -612,7 +613,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
             Object versionObj = scenario.get("version");
             String liveVersion = versionObj == null ? "" : String.valueOf(versionObj);
             String liveStatus = statusOf(scenario);
-            if (!"published".equals(liveStatus)) {
+            if (!ZhiyuStatusConstants.PUBLISHED.equals(liveStatus)) {
                 return null;
             }
             if (version != null && !version.isEmpty() && !version.equals(liveVersion)) {
