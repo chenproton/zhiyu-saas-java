@@ -4,7 +4,7 @@ description: |
   base-dev-framework6-java测试开发技能。基于 JUnit5 + Mockito + AssertJ
   编写单元测试、Service 单测、Controller 测试、集成测试、工具类测试与参数化测试。
   贴合本仓库真实基座：仅引入 spring-boot-starter-test，无 ruoyi-common-test 统一基类，
-  示例测试位于 backend/java/ruoyi-admin/src/test/java/org/dromara/test/。
+  示例测试位于 ruoyi-admin/src/test/java/org/dromara/test/。
 
   触发场景：
   - 编写单元测试（工具类、Service、Controller）与参数化测试
@@ -27,9 +27,9 @@ description: |
 
 经核对真实源码，本仓库**测试代码很少**，且**没有 `ruoyi-common-test` 统一测试基类模块**（`ruoyi-common` 下不存在 `ruoyi-common-test` 子模块）。当前真实情况：
 
-- 测试依赖**仅一处**：`backend/java/ruoyi-admin/pom.xml` 声明了 `spring-boot-starter-test`（`scope=test`）。
+- 测试依赖**仅一处**：`ruoyi-admin/pom.xml` 声明了 `spring-boot-starter-test`（`scope=test`）。
   该 starter 由 Spring Boot 4 传递性带入 **JUnit5（Jupiter）+ Mockito + AssertJ + Hamcrest + JSONassert + Spring Test / MockMvc** 全套测试库，**无需额外声明 mockito/assertj 依赖**。
-- 现有测试**仅 4 个纯 JUnit5 示例**，位于 `backend/java/ruoyi-admin/src/test/java/org/dromara/test/`：
+- 现有测试**仅 4 个纯 JUnit5 示例**，位于 `ruoyi-admin/src/test/java/org/dromara/test/`：
   - `DemoUnitTest`：演示 `@BeforeAll/@AfterAll/@BeforeEach/@AfterEach/@Test/@DisplayName/@Disabled/@Timeout/@RepeatedTest` 与 `assertAll` 组合断言。
   - `AssertUnitTest`：演示 `assertEquals/assertNotEquals/assertSame/assertNotSame/assertTrue/assertFalse/assertNull/assertNotNull`。
   - `ParamUnitTest`：演示参数化 `@ParameterizedTest` + `@ValueSource/@NullSource/@EnumSource/@MethodSource`。
@@ -421,7 +421,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 4. **善用 `@Tag` 配合 profile**：`<groups>${profiles.active}</groups>` 已就绪，给慢测/环境相关测试打 `@Tag("local")`，给永不参与构建的占位测试打 `@Tag("exclude")`（surefire 已全局排除）。
 5. **集成测试必做数据隔离**：`@Transactional` 自动回滚，或用独立测试库，**禁止**让测试污染开发/生产数据。
 6. **静态工具类用 `mockStatic` + try-with-resources**：`RedisUtils`、`SpringUtils` 等静态方法只能这样 Mock，且必须在作用域内还原，避免串测。
-7. **测试只放在 `src/test/java`**：本项目示例位于 `backend/java/ruoyi-admin/src/test/java/org/dromara/test/`，业务模块测试放各自模块 `src/test/java` 下，包名仍以 `org.dromara` 开头。
+7. **测试只放在 `src/test/java`**：本项目示例位于 `ruoyi-admin/src/test/java/org/dromara/test/`，业务模块测试放各自模块 `src/test/java` 下，包名仍以 `org.dromara` 开头。
 8. **覆盖率关注分支而非行数**：优先覆盖 `if/异常分支`（如 `deleteWithValidByIds` 的数量不匹配抛异常分支），比堆 getter/setter 覆盖率更有价值。
 
 ---

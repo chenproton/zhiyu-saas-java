@@ -37,7 +37,7 @@ description: |
 ### 模块结构（真实文件）
 
 ```
-backend/java/ruoyi-common/ruoyi-common-mqtt/
+ruoyi-common/ruoyi-common-mqtt/
 ├── pom.xml                                          # 依赖 mica-mqtt-client-spring-boot-starter + common-core + common-json
 └── src/main/
     ├── java/org/dromara/common/mqtt/
@@ -50,7 +50,7 @@ backend/java/ruoyi-common/ruoyi-common-mqtt/
 ```
 
 demo 示例（真实文件，订阅/发布范例）：
-`backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/controller/MqttController.java`
+`ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/controller/MqttController.java`
 
 ## 引入与启用
 
@@ -71,7 +71,7 @@ demo 示例（真实文件，订阅/发布范例）：
 
 ## 连接配置
 
-配置根为 **`mqtt.client`**（注意是 mica-mqtt starter 的原生前缀，不是 `mqtt.*`）。`backend/java/ruoyi-admin/src/main/resources/application.yml` 真实片段：
+配置根为 **`mqtt.client`**（注意是 mica-mqtt starter 的原生前缀，不是 `mqtt.*`）。`ruoyi-admin/src/main/resources/application.yml` 真实片段：
 
 ```yaml
 --- # mqtt 配置

@@ -17,7 +17,7 @@ description: |
 
 > 本技能面向 **base-dev-framework6-java**（包名 `org.dromara`，Spring Boot 4 / Java 21 / MyBatis-Plus 3.5.16）。
 > 决策顺序（冲突时）：① 当前模块最近似实现 → ② `ruoyi-common-mybatis` 统一约定 → ③ 代码生成器 SQL/Java 模板 → ④ 通用 MyBatis-Plus 习惯。
-> 真实建表 SQL 见 `backend/java/script/sql/ry_vue.sql`，方言模板见 `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/sql/*.sql.ftl`。
+> 真实建表 SQL 见 `script/sql/ry_vue.sql`，方言模板见 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/sql/*.sql.ftl`。
 
 ## 一、概述
 
@@ -40,7 +40,7 @@ description: |
 
 ## 二、标准建表模板 SQL（MySQL）
 
-以下模板对齐 `backend/java/script/sql/ry_vue.sql` 中 `sys_*` 表与代码生成器约定，新业务表照此写：
+以下模板对齐 `script/sql/ry_vue.sql` 中 `sys_*` 表与代码生成器约定，新业务表照此写：
 
 ```sql
 -- ----------------------------
@@ -307,7 +307,7 @@ public List<XxxVo> queryFromOracle() { ... }
 
 跨数据库方言由 `DataBaseHelper.getDataBaseType()` 自动判定（基于连接元数据，缓存到数据源名），常见用法是 `find_in_set`：原版按库切换 `find_in_set`(MySQL) / `instr`(Oracle) / `strpos`(PostgreSQL) / `charindex`(SQL Server)。写库内 SQL 时优先用框架封装的 `findInSetIfPresent` 等条件，不要硬编码某一种方言函数。
 
-> SQL 文件位置：MySQL 主库 `backend/java/script/sql/ry_vue.sql`、`ry_job.sql`、`ry_workflow.sql`、`ry_ai.sql`；其他库 `backend/java/script/sql/oracle/*.sql`、`backend/java/script/sql/postgres/*.sql`、`backend/java/script/sql/sqlserver/*.sql`。换库部署时跑对应目录脚本。
+> SQL 文件位置：MySQL 主库 `script/sql/ry_vue.sql`、`ry_job.sql`、`ry_workflow.sql`、`ry_ai.sql`；其他库 `script/sql/oracle/*.sql`、`script/sql/postgres/*.sql`、`script/sql/sqlserver/*.sql`。换库部署时跑对应目录脚本。
 
 ## 七、完整 SQL 日志排查（SqlLogInterceptor）
 
@@ -393,7 +393,7 @@ customerMapper.selectVoList(QueryBuilder.lambda(Customer.class).eqIfText(Custome
 4. **读返 VO、写用 BO**：`selectVoXxx` 直接出 VO；写入 `MapstructUtils.convert(bo, Entity.class)`，雪花 ID 在 insert 后回填到 BO。
 5. **分页只用 `PageQuery` + `PageResult`**，禁止自造分页结构。
 6. **字典/缓存联动**：改 `sys_dict_*` 必须同步失效 `CacheNames.SYS_DICT` / `SYS_DICT_TYPE`，走 service / `@CacheEvict`，别只改库。
-7. **多库优先框架方言封装**：跨 MySQL/Oracle/PG/SQLServer 时用 `DataBaseHelper` / `findInSetIfPresent`，避免硬编码单库函数；换库部署跑 `backend/java/script/sql/{库}/` 对应脚本。
+7. **多库优先框架方言封装**：跨 MySQL/Oracle/PG/SQLServer 时用 `DataBaseHelper` / `findInSetIfPresent`，避免硬编码单库函数；换库部署跑 `script/sql/{库}/` 对应脚本。
 8. **多数据源用 `@DS` 就近声明**：方法级优先于类级；`strict: true` 下数据源名必须在 yml 已注册。
 9. **排查 SQL 开 `sql-log`**：拿回填后的可执行 SQL 去客户端 `EXPLAIN`，定位条件/索引/逻辑删除问题；prod 查完即关。
 10. **复杂逻辑放 service、事务用 `@Transactional(rollbackFor = Exception.class)`**：多表写入、关联表维护、删除前校验都在 service，显式业务失败抛 `ServiceException`。

@@ -17,8 +17,8 @@ description: |
 
 > 适用框架：**base-dev-framework6-java** · 包名根 `org.dromara` · L4 框架专属技能
 >
-> 真实源码模块：`backend/java/ruoyi-common/ruoyi-common-elasticsearch`
-> 演示样例：`backend/java/ruoyi-modules/ruoyi-demo`（`domain/Document.java` + `esmapper/DocumentMapper.java` + `controller/EsCrudController.java`）
+> 真实源码模块：`ruoyi-common/ruoyi-common-elasticsearch`
+> 演示样例：`ruoyi-modules/ruoyi-demo`（`domain/Document.java` + `esmapper/DocumentMapper.java` + `controller/EsCrudController.java`）
 
 ---
 
@@ -47,7 +47,7 @@ Easy-Es 是开源的 ES ORM 框架，使用体验与 **MyBatis-Plus 高度对齐
 `ruoyi-common-elasticsearch` 模块极简，只有两个类 + 自动装配声明：
 
 ```
-backend/java/ruoyi-common/ruoyi-common-elasticsearch/
+ruoyi-common/ruoyi-common-elasticsearch/
 ├── pom.xml                                    # 仅引 easy-es-boot-starter
 └── src/main/
     ├── java/org/dromara/common/elasticsearch/config/
@@ -106,7 +106,7 @@ public class ActuatorEnvironmentPostProcessor implements EnvironmentPostProcesso
 
 ## 二、配置（application.yml 的 `easy-es:` 段）
 
-以下为 `backend/java/ruoyi-admin/src/main/resources/application.yml` 中的**真实配置**（已含原注释）：
+以下为 `ruoyi-admin/src/main/resources/application.yml` 中的**真实配置**（已含原注释）：
 
 ```yaml
 # 文档地址: https://www.easy-es.cn/
@@ -527,13 +527,13 @@ public class ArticleServiceImpl implements IArticleService {
 
 ## 引用的真实源文件
 
-- `backend/java/ruoyi-common/ruoyi-common-elasticsearch/pom.xml`
-- `backend/java/ruoyi-common/ruoyi-common-elasticsearch/src/main/java/org/dromara/common/elasticsearch/config/EasyEsConfiguration.java`
-- `backend/java/ruoyi-common/ruoyi-common-elasticsearch/src/main/java/org/dromara/common/elasticsearch/config/ActuatorEnvironmentPostProcessor.java`
-- `backend/java/ruoyi-common/ruoyi-common-elasticsearch/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-- `backend/java/ruoyi-common/ruoyi-common-elasticsearch/src/main/resources/META-INF/spring.factories`
-- `backend/java/ruoyi-admin/src/main/resources/application.yml`（`easy-es:` 段，289-333 行）
+- `ruoyi-common/ruoyi-common-elasticsearch/pom.xml`
+- `ruoyi-common/ruoyi-common-elasticsearch/src/main/java/org/dromara/common/elasticsearch/config/EasyEsConfiguration.java`
+- `ruoyi-common/ruoyi-common-elasticsearch/src/main/java/org/dromara/common/elasticsearch/config/ActuatorEnvironmentPostProcessor.java`
+- `ruoyi-common/ruoyi-common-elasticsearch/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
+- `ruoyi-common/ruoyi-common-elasticsearch/src/main/resources/META-INF/spring.factories`
+- `ruoyi-admin/src/main/resources/application.yml`（`easy-es:` 段，289-333 行）
 - `pom.xml`（`easy-es.version=3.0.2`、`elasticsearch-client.version=7.17.28` 及依赖声明）
-- `backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/domain/Document.java`
-- `backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/esmapper/DocumentMapper.java`
-- `backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/controller/EsCrudController.java`
+- `ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/domain/Document.java`
+- `ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/esmapper/DocumentMapper.java`
+- `ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/controller/EsCrudController.java`

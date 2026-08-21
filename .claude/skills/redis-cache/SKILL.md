@@ -23,7 +23,7 @@ description: |
 
 ## 一、概述
 
-本技能对应模块 `backend/java/ruoyi-common/ruoyi-common-redis`，所有能力底层基于 **Redisson（spring-boot-starter + spring-cache）**。
+本技能对应模块 `ruoyi-common/ruoyi-common-redis`，所有能力底层基于 **Redisson（spring-boot-starter + spring-cache）**。
 关键版本（来自根 `pom.xml`，已逐项核对源码）：
 
 | 组件 | 版本 | 用途 |
@@ -466,15 +466,15 @@ RedisUtils.deleteKeys("user:cache:" + tenantId + ":*");
 
 ## 参考源码（均为本仓库真实路径）
 
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/utils/RedisUtils.java`
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/utils/CacheUtils.java`
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/config/RedisConfig.java`（序列化 codec）
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/config/CacheConfig.java`（Caffeine + CacheManager）
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/manager/PlusSpringCacheManager.java`
-- `backend/java/ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/annotation/RateLimiter.java` + `aspectj/RateLimiterAspect.java` + `enums/LimitType.java`
-- `backend/java/ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/constant/CacheNames.java`
-- `backend/java/ruoyi-modules/ruoyi-system/.../service/impl/SysDictTypeServiceImpl.java`（@Cacheable/@CachePut/CacheUtils 真实用法）
-- `backend/java/ruoyi-modules/ruoyi-demo/.../controller/RedisLockController.java`（@Lock4j + LockTemplate）
-- `backend/java/ruoyi-admin/.../web/controller/CaptchaController.java`（@RateLimiter 真实用法）
-- `backend/java/ruoyi-admin/src/main/resources/application.yml`（lock4j 全局配置）
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/utils/RedisUtils.java`
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/utils/CacheUtils.java`
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/config/RedisConfig.java`（序列化 codec）
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/config/CacheConfig.java`（Caffeine + CacheManager）
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/manager/PlusSpringCacheManager.java`
+- `ruoyi-common/ruoyi-common-redis/src/main/java/org/dromara/common/redis/annotation/RateLimiter.java` + `aspectj/RateLimiterAspect.java` + `enums/LimitType.java`
+- `ruoyi-common/ruoyi-common-core/src/main/java/org/dromara/common/core/constant/CacheNames.java`
+- `ruoyi-modules/ruoyi-system/.../service/impl/SysDictTypeServiceImpl.java`（@Cacheable/@CachePut/CacheUtils 真实用法）
+- `ruoyi-modules/ruoyi-demo/.../controller/RedisLockController.java`（@Lock4j + LockTemplate）
+- `ruoyi-admin/.../web/controller/CaptchaController.java`（@RateLimiter 真实用法）
+- `ruoyi-admin/src/main/resources/application.yml`（lock4j 全局配置）
 - 根 `pom.xml`（redisson 4.6.1 / lock4j 2.2.7 / fory 1.2.0）

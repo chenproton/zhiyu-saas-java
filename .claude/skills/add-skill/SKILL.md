@@ -28,7 +28,7 @@ description: |
 - **对象转换**：MapStruct-Plus，`MapstructUtils.convert(bo, Entity.class)`；BO 上标 `@AutoMapper(target=Entity.class)`。
 - **响应包装**：`R<T>` / `R<Void>`；分页 `PageQuery` + `PageResult`。
 - **认证授权**：Sa-Token（`@SaCheckPermission("${module}:${business}:${action}")`）。
-- **前端在独立的 plus-ui 仓库**，本仓库内只有由 `backend/java/ruoyi-modules/ruoyi-gen` 代码生成器产出的 FreeMarker 模板（Vue + React 双栈），没有随仓库的前端工程目录。
+- **前端在独立的 plus-ui 仓库**，本仓库内只有由 `ruoyi-modules/ruoyi-gen` 代码生成器产出的 FreeMarker 模板（Vue + React 双栈），没有随仓库的前端工程目录。
 
 > **核心原则**：`.claude/skills/` 是主目录（source of truth），`.codex/skills/` 是镜像。本仓库**同时存在** `.claude/` 与 `.codex/` 两套体系，任何技能的新增或修改，都必须同步到两个目录。Hook 脚本统一使用 `.cjs` 扩展名。
 
@@ -261,20 +261,20 @@ description: |
 后端：CRUD、API、数据库、注解、工具类、错误处理、权限、安全、数据权限、多租户
 跨模块：ruoyi-api 契约层（UserService/WorkflowService 等接口 + DTO/Model/Event）
 方向能力：AI（ruoyi-ai）、工作流（Warm-Flow）、任务调度（SnailJob）、MQTT、ES、消息推送
-前端（生成器产物）：Vue（Element Plus）/ React（Ant Design Pro），位于仓库内 frontend/plus-ui/ 目录
+前端（生成器产物）：Vue（Element Plus）/ React（Ant Design Pro），位于仓库内 plus-ui/ 目录
 跨领域：架构、集成、测试、性能、国际化、翻译/JSON 增强
 ```
 
 **关联参考代码**（项目中的真实例子）：
 ```
 本仓库（org.dromara 后端 + 代码生成器模板）：
-- backend/java/ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/  （系统管理，重数据权限 + MPJ）
-- backend/java/ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/      （示例模块，CRUD 范本，含 MCP 示例）
-- backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/                （★ 代码生成器 FreeMarker 模板：vue/ 与 react/ 双栈）
+- ruoyi-modules/ruoyi-system/src/main/java/org/dromara/system/  （系统管理，重数据权限 + MPJ）
+- ruoyi-modules/ruoyi-demo/src/main/java/org/dromara/demo/      （示例模块，CRUD 范本，含 MCP 示例）
+- ruoyi-modules/ruoyi-gen/src/main/resources/fm/                （★ 代码生成器 FreeMarker 模板：vue/ 与 react/ 双栈）
 
 跨模块契约层：
-- backend/java/ruoyi-api/ruoyi-api-system/    （UserService/DeptService/OssService... 接口 + DTO/Model）
-- backend/java/ruoyi-api/ruoyi-api-workflow/  （WorkflowService + StartProcessDTO/CompleteTaskDTO + ProcessEvent）
+- ruoyi-api/ruoyi-api-system/    （UserService/DeptService/OssService... 接口 + DTO/Model）
+- ruoyi-api/ruoyi-api-workflow/  （WorkflowService + StartProcessDTO/CompleteTaskDTO + ProcessEvent）
 
 注意：前端页面在独立的 plus-ui 仓库，不在本仓库内；本仓库只有 ruoyi-gen 下的 FreeMarker (.ftl) 模板。
 ```
@@ -387,7 +387,7 @@ description: |
 
 #### 前端/移动端技能示例（生成器模板、组件、设计等）
 
-> 本仓库前端为**代码生成器产物**，模板位于 `backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/{vue|react}/`，运行时页面在独立的 plus-ui 仓库。涉及前端的技能应面向「生成器模板 + 生成产物约定」编写。
+> 本仓库前端为**代码生成器产物**，模板位于 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/{vue|react}/`，运行时页面在独立的 plus-ui 仓库。涉及前端的技能应面向「生成器模板 + 生成产物约定」编写。
 
 ```markdown
 ## 前端栈与模板目录

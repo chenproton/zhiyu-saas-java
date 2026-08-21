@@ -23,7 +23,7 @@ description: |
 
 架构设计在本项目中要回答四个问题：
 
-1. **新代码放哪个模块**——按职责落到 `backend/java/ruoyi-common/*`（公共能力）、`backend/java/ruoyi-modules/*`（业务）、`ruoyi-api`（跨模块契约）、`backend/java/ruoyi-extend/*`（外置 server）。
+1. **新代码放哪个模块**——按职责落到 `ruoyi-common/*`（公共能力）、`ruoyi-modules/*`（业务）、`ruoyi-api`（跨模块契约）、`ruoyi-extend/*`（外置 server）。
 2. **模块之间怎么调**——🔴 跨业务模块调用一律走 `ruoyi-api` 暴露的接口契约，**绝不**直接 import 另一个业务模块的实现类。
 3. **一个模块内部怎么分层**——标准三层 `Controller → Service → Mapper`，**无 DAO 层**。
 4. **什么时候要新建模块**——见第六节判定标准，默认不新建，优先复用已有 24 个 common 子模块与 6 个业务模块。
@@ -50,12 +50,12 @@ base-dev-framework6-java (root, packaging=pom；flatten 统一 revision)
 │           ├── domain          #     + event：ProcessEvent / ProcessTaskEvent / ProcessDeleteEvent
 │           └── event
 │
-├── backend/java/ruoyi-common/               # 24 个公共能力子模块（由 ruoyi-common-bom 统一版本）
+├── ruoyi-common/               # 24 个公共能力子模块（由 ruoyi-common-bom 统一版本）
 │   ├── core / web / mybatis / redis / satoken / security / log / doc / json
 │   ├── excel / oss / encrypt / sensitive / translation / mail / sms / social
 │   └── ai / mcp / elasticsearch / mqtt / push / job        # 6.x 新增方向
 │
-├── backend/java/ruoyi-modules/              # 业务模块（互不直接依赖，仅经 ruoyi-api 通信）
+├── ruoyi-modules/              # 业务模块（互不直接依赖，仅经 ruoyi-api 通信）
 │   ├── ruoyi-system            #   系统管理（用户/角色/菜单/部门/字典/OSS，重数据权限 + MPJ）
 │   ├── ruoyi-workflow          #   Warm-Flow 工作流
 │   ├── ruoyi-job               #   SnailJob 业务任务
@@ -63,7 +63,7 @@ base-dev-framework6-java (root, packaging=pom；flatten 统一 revision)
 │   ├── ruoyi-gen               #   代码生成器（FreeMarker + 多前端栈）
 │   └── ruoyi-demo              #   示例（含 MCP server/client 示例）
 │
-└── backend/java/ruoyi-extend/               # ★ 外置独立 Server（独立进程、独立端口，与主应用解耦）
+└── ruoyi-extend/               # ★ 外置独立 Server（独立进程、独立端口，与主应用解耦）
     ├── ruoyi-monitor-admin     #   Spring Boot Admin 监控端
     ├── ruoyi-snailjob-server   #   SnailJob 调度服务端
     └── ruoyi-snailai-server    #   Snail AI 服务端（管模型/应用/Key）
@@ -72,11 +72,11 @@ base-dev-framework6-java (root, packaging=pom；flatten 统一 revision)
 ### 依赖方向（单向，禁止反向 / 环）
 
 ```
-ruoyi-admin ─依赖→ backend/java/ruoyi-modules/* ─依赖→ ruoyi-api ─依赖→ ruoyi-common-core
+ruoyi-admin ─依赖→ ruoyi-modules/* ─依赖→ ruoyi-api ─依赖→ ruoyi-common-core
      │                   │
-     └───────────────────┴─────────依赖→ backend/java/ruoyi-common/*（按需）
+     └───────────────────┴─────────依赖→ ruoyi-common/*（按需）
 
-backend/java/ruoyi-extend/*  独立进程，不参与主应用装配
+ruoyi-extend/*  独立进程，不参与主应用装配
 ruoyi-api       只依赖 ruoyi-common-core（保持契约层极薄，避免把公共依赖污染进契约）
 ```
 
@@ -136,7 +136,7 @@ controller/EntityController     extends BaseController；返回 R<T>；方法级
 | 协作方式 | 适用 | 载体 |
 |----------|------|------|
 | 同步接口调用 | 需要立即拿到返回值（查用户昵称、查流程状态） | `ruoyi-api` 的 `XxxService` |
-| 事件广播 | 一对多、无返回、可异步（流程节点流转通知） | `backend/java/ruoyi-api/event` 的 `XxxEvent` + `@EventListener` |
+| 事件广播 | 一对多、无返回、可异步（流程节点流转通知） | `ruoyi-api/event` 的 `XxxEvent` + `@EventListener` |
 
 ## 五、ruoyi-common 子模块职责表（24 个）
 
@@ -171,9 +171,9 @@ controller/EntityController     extends BaseController；返回 R<T>；方法级
 
 ## 六、何时新建模块（决策标准）
 
-默认**不新建模块**，优先在 `backend/java/ruoyi-modules/ruoyi-system` 或合适的现有业务模块内加包。满足以下任一条件才考虑新建：
+默认**不新建模块**，优先在 `ruoyi-modules/ruoyi-system` 或合适的现有业务模块内加包。满足以下任一条件才考虑新建：
 
-| 应新建 common 子模块（`ruoyi-common-xxx`） | 应新建业务模块（`backend/java/ruoyi-modules/ruoyi-xxx`） | 应新建外置 server（`backend/java/ruoyi-extend/xxx`） |
+| 应新建 common 子模块（`ruoyi-common-xxx`） | 应新建业务模块（`ruoyi-modules/ruoyi-xxx`） | 应新建外置 server（`ruoyi-extend/xxx`） |
 |------|------|------|
 | 引入了一套独立的第三方技术栈（如新 MQ/搜索/AI） | 是一个完整、可独立演进的业务域（如工作流、AI 应用） | 需要独立进程/独立端口/独立伸缩 |
 | 多个业务模块都要复用、且与业务无关 | 有自己的表、菜单、权限标识体系 | 是控制台/调度台/网关类基础设施 |
@@ -182,7 +182,7 @@ controller/EntityController     extends BaseController；返回 R<T>；方法级
 **新建模块清单**（缺一不可）：
 1. 建目录 + `pom.xml`（parent 指向 `base-dev-framework6-java`，依赖只声明真正需要的 common/api）；
 2. 在父 `pom.xml` 的 `<modules>` 注册；
-3. 若是业务模块，在 `backend/java/ruoyi-admin/pom.xml` 加依赖才会被装配进主应用；
+3. 若是业务模块，在 `ruoyi-admin/pom.xml` 加依赖才会被装配进主应用；
 4. 包名 `org.dromara.{模块名}`，按三层建包 `domain/mapper/service/controller`；
 5. 若需对外暴露能力，回到 `ruoyi-api` 补契约接口 + DTO（先定契约再实现）。
 
@@ -191,7 +191,7 @@ controller/EntityController     extends BaseController；返回 R<T>；方法级
 - **按业务域聚合，不按技术分层拆模块**：一个业务域（如工作流）的 Entity/Service/Controller 都在同一模块内，不要把所有 Entity 抽到一个"data 模块"。
 - **公共能力下沉到 common，业务能力上浮到 modules**：判断标准是"换一个业务系统还用不用得上"——用得上→common，用不上→modules。
 - **契约最小化**：`ruoyi-api` 只放跨模块真正调用的方法和字段，不要把业务模块的全部 Service 方法都搬上去，否则契约层会变成"第二个业务模块"。
-- **外置 server 自治**：`backend/java/ruoyi-extend/*` 各自是独立 Spring Boot 应用，通过网络协议（HTTP/调度协议）与主应用交互，不共享内存对象。
+- **外置 server 自治**：`ruoyi-extend/*` 各自是独立 Spring Boot 应用，通过网络协议（HTTP/调度协议）与主应用交互，不共享内存对象。
 
 ## 八、代码示例
 
@@ -228,7 +228,7 @@ public interface UserService {
 ### 示例 2：业务模块实现契约（一个 Bean 满足内/外两套接口）
 
 ```java
-// backend/java/ruoyi-modules/ruoyi-system: 同时实现内部接口 ISysUserService 与对外契约 UserService
+// ruoyi-modules/ruoyi-system: 同时实现内部接口 ISysUserService 与对外契约 UserService
 @Service
 @RequiredArgsConstructor
 public class SysUserServiceImpl implements ISysUserService, UserService {
@@ -249,7 +249,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
 ### 示例 3：跨模块消费契约（workflow 调 system，真实写法）
 
 ```java
-// backend/java/ruoyi-modules/ruoyi-workflow: WorkflowGlobalListener —— 注入契约接口，不碰 system 实现
+// ruoyi-modules/ruoyi-workflow: WorkflowGlobalListener —— 注入契约接口，不碰 system 实现
 @Component
 @RequiredArgsConstructor
 public class WorkflowGlobalListener {
@@ -372,11 +372,11 @@ SysUser u = MapstructUtils.convert(bo, SysUser.class);
 
 ## 十、最佳实践
 
-1. **画依赖图先于写代码**——动手前确认新代码所在模块的"出向依赖"只指向 `ruoyi-api` / `backend/java/ruoyi-common/*`，不指向其它业务模块。
+1. **画依赖图先于写代码**——动手前确认新代码所在模块的"出向依赖"只指向 `ruoyi-api` / `ruoyi-common/*`，不指向其它业务模块。
 2. **契约先行**——任何跨模块需求，先在 `ruoyi-api` 提交接口 + DTO（必要时 + Event），再写实现；评审时把"契约 diff"作为架构变更的审查重点。
 3. **DTO 与 Entity 物理隔离**——`ruoyi-api` 里只放 DTO/Model，绝不引入业务模块的 Entity，防止 ORM/租户/逻辑删除细节外泄。
 4. **能力下沉、业务上浮**——发现某段逻辑"换个项目还能用"，及时下沉到合适的 `ruoyi-common-xxx`；保持业务模块聚焦业务。
 5. **优先复用 24 个 common 子模块**——选型时先查第五节职责表，避免重复造缓存/Excel/翻译/推送轮子。
-6. **外置 server 走网络协议**——`backend/java/ruoyi-extend/*` 与主应用解耦，绝不让主应用通过内存对象耦合监控端/调度端/AI 端。
+6. **外置 server 走网络协议**——`ruoyi-extend/*` 与主应用解耦，绝不让主应用通过内存对象耦合监控端/调度端/AI 端。
 7. **代际特征落到工程**——Spring Boot 4 / Jakarta EE 10 下用 `jakarta.*` 命名空间、boot4 系列 starter、Jetty 容器；新引依赖优先选 boot4 适配版，避免混入 javax.* 旧代际包。
 8. **守住分层职责边界**——Controller 不写业务、Service 不返回 `R<T>`、Mapper 不做业务判断；条件构建只用 `QueryBuilder`，杜绝 DAO 层与 `buildQueryWrapper` 回潮。

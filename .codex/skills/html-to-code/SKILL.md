@@ -19,7 +19,7 @@ description: |
 
 本技能把 **HTML 设计稿 / 原型 / 静态页面**，转换成 base-dev-framework6-java前端工程能直接落地的代码。
 
-本项目前端工程在**仓库内 `frontend/plus-ui/` 目录**（前后端一体化），支持两套技术栈，由数据库 `gen_table.frontend_type` 字段决定：
+本项目前端工程在**仓库内 `plus-ui/` 目录**（前后端一体化），支持两套技术栈，由数据库 `gen_table.frontend_type` 字段决定：
 
 | frontend_type | 技术栈 | 页面文件 | 组件库 | 表单库 |
 |---------------|--------|----------|--------|--------|
@@ -28,8 +28,8 @@ description: |
 
 转换的**黄金参照**不是凭空设计，而是代码生成器自带的 FreeMarker 模板：
 
-- Vue 端：`backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/index.vue.ftl`、`api.ts.ftl`、`types.ts.ftl`
-- React 端：`backend/java/ruoyi-modules/ruoyi-gen/src/main/resources/fm/react/index.tsx.ftl`、`api.ts.ftl`、`types.ts.ftl`
+- Vue 端：`ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/index.vue.ftl`、`api.ts.ftl`、`types.ts.ftl`
+- React 端：`ruoyi-modules/ruoyi-gen/src/main/resources/fm/react/index.tsx.ftl`、`api.ts.ftl`、`types.ts.ftl`
 
 > **核心原则**：转换出来的代码必须"像生成器生成的一样"，而不是把 HTML 原样塞进 `<template>`。设计稿只决定**布局意图与字段**，最终结构对齐生成器骨架。
 
@@ -182,7 +182,7 @@ delXxx    -> DELETE /{module}/{business}/{id|ids}
 
 ### 步骤 6：产物落位
 
-前端工程在仓库内 `frontend/plus-ui/` 目录，**按其目录约定落位**（`src/api`、`src/views`）：
+前端工程在仓库内 `plus-ui/` 目录，**按其目录约定落位**（`src/api`、`src/views`）：
 
 - 页面：`src/views/{module}/{business}/index.vue`（Vue）或 `index.tsx`（React）。
 - API：`src/api/{module}/{business}/index.ts`。
@@ -440,7 +440,7 @@ const canList = hasPermi(userInfo, ['system:user:list']);
 5. **权限指令到位**：Vue 用 `v-hasPermi="['module:business:action']"`；React 用 `hasPermi(userInfo, ['module:business:action'])` 返回布尔，再短路渲染。权限标识符与后端 `@SaCheckPermission` 一致。
 6. **API/类型遵循后端约定**：函数名（`listXxx`/`getXxx`/`addXxx`/`updateXxx`/`delXxx`）与路由段（`/list`、`/{id}`、根路径）不得偏离后端 Controller。
 7. **日期范围别删 params**：存在 BETWEEN 日期查询时，Vue 用 `useDateRangeQuery` 生成 `dateRangeXxx`/`applyXxxDateRange`，React 用列 `valueType: 'dateTimeRange'` + `applyXxxDateRange`，并保留 `Query.params?: any`，后端 BO 依赖 begin/end 参数。
-8. **产物落位仓库内 frontend/plus-ui/**：plus-ui 前端工程在仓库内 `frontend/plus-ui/` 目录，页面/API/类型按 `src/views`、`src/api` 目录约定放置。
+8. **产物落位仓库内 plus-ui/**：plus-ui 前端工程在仓库内 `plus-ui/` 目录，页面/API/类型按 `src/views`、`src/api` 目录约定放置。
 9. **字段不编造**：列与表单字段必须来自真实 Entity/`types.ts` 或设计稿明确文案，拿不准先查后端实体或问用户。
 10. **删除设计稿专属壳**：浏览器框、手机模拟器壳、占位 mock 数据、设计稿注释、装饰性内联样式，转换时一律剔除，只保留真实业务内容区。
 

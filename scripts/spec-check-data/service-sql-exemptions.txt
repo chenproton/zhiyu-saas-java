@@ -1,7 +1,7 @@
 # service-sql-exemptions.txt — spec-check.sh 第 1 项「service 不得拼接 SQL」的豁免名单
 #
 # 格式：每行一个 service 文件路径，相对 service 目录根
-#       （backend/java/ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/service 下，
+#       （ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/service 下，
 #        即 impl/<域>/<类名>.java 或 <域>/<类名>.java）；以 # 开头为注释。
 #       默认严格（出现裸 SELECT/INSERT/UPDATE/DELETE 关键字即违规），
 #       仅「合法常量 SQL 片段」可豁免——即非用户输入拼接的固定查询片段。

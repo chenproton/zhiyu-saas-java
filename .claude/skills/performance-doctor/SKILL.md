@@ -38,9 +38,9 @@ description: |
 
 这是 6.x 慢查询排查的**第一利器**。源码位置：
 
-- 拦截器：`backend/java/ruoyi-common/ruoyi-common-mybatis/src/main/java/org/dromara/common/mybatis/interceptor/SqlLogInterceptor.java`
-- 配置类：`backend/java/ruoyi-common/ruoyi-common-mybatis/.../config/properties/SqlLogProperties.java`
-- 注册处：`backend/java/ruoyi-common/ruoyi-common-mybatis/.../config/MybatisPlusConfig.java`
+- 拦截器：`ruoyi-common/ruoyi-common-mybatis/src/main/java/org/dromara/common/mybatis/interceptor/SqlLogInterceptor.java`
+- 配置类：`ruoyi-common/ruoyi-common-mybatis/.../config/properties/SqlLogProperties.java`
+- 注册处：`ruoyi-common/ruoyi-common-mybatis/.../config/MybatisPlusConfig.java`
 
 ### 2.1 它做了什么（核对源码）
 
@@ -52,7 +52,7 @@ description: |
 
 ### 2.2 如何开启（核对 application-dev.yml）
 
-配置前缀 `mybatis-plus.sql-log`（`SqlLogProperties` 默认 `enabled=false`、`output=console`）。`backend/java/ruoyi-admin/src/main/resources/application-dev.yml` 实测配置：
+配置前缀 `mybatis-plus.sql-log`（`SqlLogProperties` 默认 `enabled=false`、`output=console`）。`ruoyi-admin/src/main/resources/application-dev.yml` 实测配置：
 
 ```yaml
 --- # MyBatis Plus 配置

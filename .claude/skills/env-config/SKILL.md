@@ -3,7 +3,7 @@ name: env-config
 description: |
   base-dev-framework6-java多环境配置技能。指导后端 Spring Boot 多 profile
   （application.yml 公共 + application-dev.yml / application-prod.yml 环境特定）的组织、切换、
-  外部环境变量覆盖与生产敏感配置脱密。包名 org.dromara，不涉及前端（前端在仓库内 `frontend/plus-ui/`，其 `.env` 配置见前端工程）。
+  外部环境变量覆盖与生产敏感配置脱密。包名 org.dromara，不涉及前端（前端在仓库内 `plus-ui/`，其 `.env` 配置见前端工程）。
 
   触发场景：
   - 需要配置/区分开发环境与生产环境（application-dev.yml / application-prod.yml）
@@ -22,8 +22,8 @@ description: |
 # 多环境配置（env-config）
 
 > 适用框架：**base-dev-framework6-java（包名 `org.dromara`）**
-> 适用目录：`backend/java/ruoyi-admin/src/main/resources/`、各 `ruoyi-common-*/src/main/resources/`、根 `pom.xml`
-> 本技能**只覆盖后端**。前端（plus-ui，仓库内 `frontend/plus-ui/` 目录）的 `.env` 配置不在本技能范围内。
+> 适用目录：`ruoyi-admin/src/main/resources/`、各 `ruoyi-common-*/src/main/resources/`、根 `pom.xml`
+> 本技能**只覆盖后端**。前端（plus-ui，仓库内 `plus-ui/` 目录）的 `.env` 配置不在本技能范围内。
 
 ---
 
@@ -57,7 +57,7 @@ spring:
 ### 2.1 三个文件的物理位置
 
 ```
-backend/java/ruoyi-admin/src/main/resources/
+ruoyi-admin/src/main/resources/
 ├── application.yml          # 公共配置（含 profiles.active 与所有环境无关项）
 ├── application-dev.yml      # 开发环境：数据源 / Redis / 邮件 / 短信 / 三方授权 / 各开关
 ├── application-prod.yml     # 生产环境：同结构，连接池更大、日志更省、临时目录可写
@@ -69,8 +69,8 @@ backend/java/ruoyi-admin/src/main/resources/
 此外，**公共模块也带配置片段**，会被 Spring Boot 自动合并：
 
 ```
-backend/java/ruoyi-common/ruoyi-common-mybatis/src/main/resources/common-mybatis.yml   # MyBatis-Plus 内置项
-backend/java/ruoyi-common/ruoyi-common-satoken/src/main/resources/common-satoken.yml   # Sa-Token 内置项
+ruoyi-common/ruoyi-common-mybatis/src/main/resources/common-mybatis.yml   # MyBatis-Plus 内置项
+ruoyi-common/ruoyi-common-satoken/src/main/resources/common-satoken.yml   # Sa-Token 内置项
 ```
 
 > 这两个 `common-*.yml` 文件头都写着"**内置配置 不允许修改 如需修改请在 nacos 上写相同配置覆盖**"。
@@ -516,9 +516,9 @@ sa-token:
 
 ## 附：本技能引用的真实源文件
 
-- `backend/java/ruoyi-admin/src/main/resources/application.yml`（公共配置、`@profiles.active@`、各开关）
-- `backend/java/ruoyi-admin/src/main/resources/application-dev.yml`（开发环境：数据源/Redis/SQL 日志开关）
-- `backend/java/ruoyi-admin/src/main/resources/application-prod.yml`（生产环境：连接池更大/SQL 日志关/临时目录）
-- `backend/java/ruoyi-common/ruoyi-common-mybatis/src/main/resources/common-mybatis.yml`（MyBatis-Plus 内置项）
-- `backend/java/ruoyi-common/ruoyi-common-satoken/src/main/resources/common-satoken.yml`（Sa-Token 内置项）
+- `ruoyi-admin/src/main/resources/application.yml`（公共配置、`@profiles.active@`、各开关）
+- `ruoyi-admin/src/main/resources/application-dev.yml`（开发环境：数据源/Redis/SQL 日志开关）
+- `ruoyi-admin/src/main/resources/application-prod.yml`（生产环境：连接池更大/SQL 日志关/临时目录）
+- `ruoyi-common/ruoyi-common-mybatis/src/main/resources/common-mybatis.yml`（MyBatis-Plus 内置项）
+- `ruoyi-common/ruoyi-common-satoken/src/main/resources/common-satoken.yml`（Sa-Token 内置项）
 - `pom.xml`（profiles：local/dev/prod 与 `profiles.active`/`logging.level`/`monitor.*` 属性）

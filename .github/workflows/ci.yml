@@ -27,7 +27,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: |
             frontend/portal-vue/pnpm-lock.yaml
-            frontend/plus-ui/pnpm-lock.yaml
+            plus-ui/pnpm-lock.yaml
 
       - name: Install portal-vue deps
         working-directory: frontend/portal-vue
@@ -40,11 +40,11 @@ jobs:
       # plus-ui 声明 packageManager pnpm@10.34.5 且 engines.pnpm >=10，全局 pnpm 9 不兼容
       # （ERR_PNPM_UNSUPPORTED_ENGINE），与 deploy.sh 的 PLUS_PNPM 逻辑保持一致
       - name: Install plus-ui deps (pnpm 10)
-        working-directory: frontend/plus-ui
+        working-directory: plus-ui
         run: npx --yes pnpm@10.34.5 install --frozen-lockfile
 
       - name: Build plus-ui (pnpm 10)
-        working-directory: frontend/plus-ui
+        working-directory: plus-ui
         run: npx --yes pnpm@10.34.5 build
 
   backend:
@@ -78,11 +78,11 @@ jobs:
           cache: maven
 
       - name: Maven compile
-        working-directory: backend/java
+        working-directory: .
         run: ./mvnw compile -q
 
       - name: Maven test
-        working-directory: backend/java
+        working-directory: .
         run: ./mvnw test -q || true
 
       - name: spec 硬约束校验

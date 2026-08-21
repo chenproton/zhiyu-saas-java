@@ -165,7 +165,7 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
     }
   }
   const touched = files.some(f =>
-    f.startsWith('frontend/portal-vue/') || f.startsWith('frontend/plus-ui/') || f.startsWith('frontend/'))
+    f.startsWith('frontend/portal-vue/') || f.startsWith('plus-ui/') || f.startsWith('frontend/'))
   if (!touched) {
     console.warn('  [git-diff] 前端无改动，跳过巡检（或回退为全量）')
   } else {

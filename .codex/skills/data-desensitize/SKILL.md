@@ -32,19 +32,19 @@ description: |
 - **权限感知**：通过 `SensitiveService` 决定当前用户是否需要脱敏——管理员/授权角色可看明文。
 - **不可逆**：掩码是单向遮挡，前端拿到的就是 `***`，不存在"再解码出原文"。
 
-> **模块位置**：`backend/java/ruoyi-common/ruoyi-common-sensitive/`（脱敏核心）依赖 `ruoyi-common-core` 的 `DesensitizedUtils`。
+> **模块位置**：`ruoyi-common/ruoyi-common-sensitive/`（脱敏核心）依赖 `ruoyi-common-core` 的 `DesensitizedUtils`。
 > **包名基线**：原版包名 `org.dromara.common.sensitive.*` / `org.dromara.common.core.utils.*`。**禁止**写成 `plus.ruoyi.*` / `com.ruoyi.*`。
 
 ### 真实源码引用（本技能完全基于以下文件，未凭空编造）
 
 | 文件 | 作用 |
 |------|------|
-| `backend/java/ruoyi-common/ruoyi-common-sensitive/.../annotation/Sensitive.java` | `@Sensitive` 注解：`strategy()` + `roleKey()` + `perms()` |
-| `backend/java/ruoyi-common/ruoyi-common-sensitive/.../core/SensitiveStrategy.java` | 脱敏策略枚举（17 种，含 6.x 新增 4 种） |
-| `backend/java/ruoyi-common/ruoyi-common-sensitive/.../core/SensitiveService.java` | 权限感知接口 `isSensitive(roleKey, perms)`，默认管理员不过滤 |
-| `backend/java/ruoyi-common/ruoyi-common-sensitive/.../handler/SensitiveJsonFieldProcessor.java` | 序列化期处理器，判断注解 + 调权限服务 + 执行掩码 |
-| `backend/java/ruoyi-common/ruoyi-common-sensitive/.../config/SensitiveConfig.java` | `@AutoConfiguration` 自动注册处理器 Bean |
-| `backend/java/ruoyi-common/ruoyi-common-core/.../utils/DesensitizedUtils.java` | `mask()` / `maskHighSecurity()`，供 STRING_MASK / MASK_HIGH_SECURITY 调用 |
+| `ruoyi-common/ruoyi-common-sensitive/.../annotation/Sensitive.java` | `@Sensitive` 注解：`strategy()` + `roleKey()` + `perms()` |
+| `ruoyi-common/ruoyi-common-sensitive/.../core/SensitiveStrategy.java` | 脱敏策略枚举（17 种，含 6.x 新增 4 种） |
+| `ruoyi-common/ruoyi-common-sensitive/.../core/SensitiveService.java` | 权限感知接口 `isSensitive(roleKey, perms)`，默认管理员不过滤 |
+| `ruoyi-common/ruoyi-common-sensitive/.../handler/SensitiveJsonFieldProcessor.java` | 序列化期处理器，判断注解 + 调权限服务 + 执行掩码 |
+| `ruoyi-common/ruoyi-common-sensitive/.../config/SensitiveConfig.java` | `@AutoConfiguration` 自动注册处理器 Bean |
+| `ruoyi-common/ruoyi-common-core/.../utils/DesensitizedUtils.java` | `mask()` / `maskHighSecurity()`，供 STRING_MASK / MASK_HIGH_SECURITY 调用 |
 
 ---
 

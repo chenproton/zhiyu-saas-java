@@ -20,7 +20,7 @@ description: |
 
 # realtime-push - 统一实时推送（SSE + WebSocket 双传输）
 
-> 模块：`backend/java/ruoyi-common/ruoyi-common-push`，包 `org.dromara.common.push`。
+> 模块：`ruoyi-common/ruoyi-common-push`，包 `org.dromara.common.push`。
 > 跨模块消息体：`ruoyi-api` → `org.dromara.system.api.domain.PushPayloadDTO`。
 > 配置段：`application.yml` 的 `message:`。前端连接路径统一为 `/resource/message`。
 
@@ -60,7 +60,7 @@ description: |
 
 ## 2. 配置（application.yml 的 message: 段）
 
-真实配置（`backend/java/ruoyi-admin/src/main/resources/application.yml`）：
+真实配置（`ruoyi-admin/src/main/resources/application.yml`）：
 
 ```yaml
 --- # 统一消息推送配置
@@ -348,25 +348,25 @@ message:
 
 ## 引用的真实源文件
 
-- `backend/java/ruoyi-common/ruoyi-common-push/.../helper/PushHelper.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../core/PushSessionManager.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../core/SseEmitterSessionManager.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../core/WebSocketSessionManager.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../dto/PushDTO.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../enums/MessageTransportEnum.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../annotation/ConditionalOnMessageTransport.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../condition/MessageTransportCondition.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../config/MessageAutoConfiguration.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../config/MessageSseConfiguration.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../config/MessageWebSocketConfiguration.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../controller/SseController.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../handler/PlusWebSocketHandler.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../interceptor/PlusWebSocketInterceptor.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../listener/MessageTopicListener.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../properties/MessageProperties.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../constant/MessageConstants.java`
-- `backend/java/ruoyi-common/ruoyi-common-push/.../resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-- `backend/java/ruoyi-api/.../system/api/domain/PushPayloadDTO.java`
-- `backend/java/ruoyi-common/ruoyi-common-core/.../enums/PushTypeEnum.java`
-- `backend/java/ruoyi-common/ruoyi-common-core/.../enums/PushSourceEnum.java`
-- `backend/java/ruoyi-admin/src/main/resources/application.yml`（`message:` 段）
+- `ruoyi-common/ruoyi-common-push/.../helper/PushHelper.java`
+- `ruoyi-common/ruoyi-common-push/.../core/PushSessionManager.java`
+- `ruoyi-common/ruoyi-common-push/.../core/SseEmitterSessionManager.java`
+- `ruoyi-common/ruoyi-common-push/.../core/WebSocketSessionManager.java`
+- `ruoyi-common/ruoyi-common-push/.../dto/PushDTO.java`
+- `ruoyi-common/ruoyi-common-push/.../enums/MessageTransportEnum.java`
+- `ruoyi-common/ruoyi-common-push/.../annotation/ConditionalOnMessageTransport.java`
+- `ruoyi-common/ruoyi-common-push/.../condition/MessageTransportCondition.java`
+- `ruoyi-common/ruoyi-common-push/.../config/MessageAutoConfiguration.java`
+- `ruoyi-common/ruoyi-common-push/.../config/MessageSseConfiguration.java`
+- `ruoyi-common/ruoyi-common-push/.../config/MessageWebSocketConfiguration.java`
+- `ruoyi-common/ruoyi-common-push/.../controller/SseController.java`
+- `ruoyi-common/ruoyi-common-push/.../handler/PlusWebSocketHandler.java`
+- `ruoyi-common/ruoyi-common-push/.../interceptor/PlusWebSocketInterceptor.java`
+- `ruoyi-common/ruoyi-common-push/.../listener/MessageTopicListener.java`
+- `ruoyi-common/ruoyi-common-push/.../properties/MessageProperties.java`
+- `ruoyi-common/ruoyi-common-push/.../constant/MessageConstants.java`
+- `ruoyi-common/ruoyi-common-push/.../resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
+- `ruoyi-api/.../system/api/domain/PushPayloadDTO.java`
+- `ruoyi-common/ruoyi-common-core/.../enums/PushTypeEnum.java`
+- `ruoyi-common/ruoyi-common-core/.../enums/PushSourceEnum.java`
+- `ruoyi-admin/src/main/resources/application.yml`（`message:` 段）

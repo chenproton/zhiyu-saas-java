@@ -1,6 +1,6 @@
 # 原型 / 交互说明 — 知与 SaaS
 
-> 基于前端门户（Vue 业务门户 `frontend/portal-vue` + Vue 管理端 `frontend/plus-ui`）回溯整理。
+> 基于前端门户（Vue 业务门户 `frontend/portal-vue` + Vue 管理端 `plus-ui`）回溯整理。
 > 亮色主题；无独立设计稿。
 
 ---
@@ -194,6 +194,6 @@
 
 ## 5. 附录：组件速查
 
-- 通用组件清单与用法：见 `AGENTS.md` 第二部分与 `frontend/portal-vue`/`frontend/plus-ui` 源码（Element Plus / RuoYi 框架）
+- 通用组件清单与用法：见 `AGENTS.md` 第二部分与 `frontend/portal-vue`/`plus-ui` 源码（Element Plus / RuoYi 框架）
 - 表单与表格规范（el-form / el-table / el-dialog）：同见上（Vue 门户基于 Element Plus）
 - 后端对应交互语义：`docs/spec/02-api-contract.md`（内容 13 动作、批次 6 动作、导入流程）

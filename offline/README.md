@@ -25,7 +25,7 @@ offline/
 ├── node_modules.tar.gz          # 前端 npm 依赖离线包（可选，完全离线安装 npm 依赖用）
 │                                 # 生成（联网开发机，装好全部依赖后，覆盖 portal-vue + plus-ui 两个 workspace）:
 │                                 #   tar --hard-dereference -czf offline/node_modules.tar.gz \
-│                                 #     frontend/portal-vue/node_modules frontend/plus-ui/node_modules
+│                                 #     frontend/portal-vue/node_modules plus-ui/node_modules
 │                                 # deploy.sh 检测到本包时按仓库相对路径解压、跳过 pnpm install（无需 npm registry / pnpm store）
 ```
 

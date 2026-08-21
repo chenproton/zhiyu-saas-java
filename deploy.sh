@@ -319,15 +319,18 @@ run_migrations() {
 # ── 哈希计算 ──
 # 基于文件内容哈希，避免构建路径不同导致缓存失效
 # Java 后端源码指纹：.java/.xml/.yml 与 pom 配置
+# 后端 Maven 工程位于仓库根（ruoyi-* 模块 + pom.xml + script/），需显式枚举模块根，
+# 不能扫 "$1/."——会把 docs/deploy/plus-ui node_modules 下的 yml 算进哈希，破坏缓存
 java_hash() {
-  find "$1/backend/java" -type f \( -name '*.java' -o -name '*.xml' -o -name '*.yml' -o -name '*.yaml' -o -name 'pom.xml' \) \
+  find "$1/pom.xml" "$1/ruoyi-admin" "$1/ruoyi-api" "$1/ruoyi-common" "$1/ruoyi-modules" "$1/ruoyi-extend" "$1/script" \
+    -type f \( -name '*.java' -o -name '*.xml' -o -name '*.yml' -o -name '*.yaml' -o -name 'pom.xml' \) \
     -not -path '*/target/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
 # Vue 前端指纹：portal-vue + plus-ui 源码（排除 node_modules/dist）
 vue_hash() {
   {
-    find "$1/frontend/portal-vue" "$1/frontend/plus-ui" -type f \
+    find "$1/frontend/portal-vue" "$1/plus-ui" -type f \
       -not -path '*/node_modules/*' -not -path '*/dist/*' \
       -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null
     # 只喂存在的文件：不存在的路径会让 md5sum 失败，xargs 返回 123 + pipefail 直接中止部署
@@ -924,7 +927,7 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   fi
 
   # 清理 Java 编译产物（Maven target），保留前端 dist 复用增量产物
-  rm -rf "$BUILD_TREE"/backend/java/*/target "$BUILD_TREE"/backend/java/ruoyi-admin/target 2>/dev/null || true
+  rm -rf "$BUILD_TREE"/*/target "$BUILD_TREE"/ruoyi-admin/target 2>/dev/null || true
   if [[ -n "$BRANCH_NAME" ]]; then
     # merge --abort 必须带 || true：merge 因本地改动被拒（尚未开始合并）时它会失败，
     # 在 { } 里失败会让 errexit 抢先退出，die 的提示根本打不出来
@@ -936,9 +939,9 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
   BUILD_ROOT="$BUILD_TREE"
 fi
 
-JAVA_DIR="$BUILD_ROOT/backend/java"
+JAVA_DIR="$BUILD_ROOT"
 PORTAL_VUE_DIR="$BUILD_ROOT/frontend/portal-vue"
-PLUS_UI_DIR="$BUILD_ROOT/frontend/plus-ui"
+PLUS_UI_DIR="$BUILD_ROOT/plus-ui"
 MIGRATIONS_DIR="$BUILD_ROOT/db/migrations"
 
 # 注意：不再创建 $DEPLOY_DIR/{logs,.rollback}——全脚本从无写入，空目录只会误导排障
@@ -1099,7 +1102,7 @@ if $BUILD_FRONTEND; then
   if [[ -f "$OFFLINE_NODE_MODULES" ]]; then
     log "  离线依赖包命中，解压 portal-vue/plus-ui node_modules（跳过 pnpm install）..."
     tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" \
-      frontend/portal-vue/node_modules frontend/plus-ui/node_modules 2>/dev/null \
+      frontend/portal-vue/node_modules plus-ui/node_modules 2>/dev/null \
       || tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" 2>/dev/null || true
   fi
 
@@ -1280,7 +1283,7 @@ fi
 # RuoYi 框架表初始化（幂等）：Java 后端启动依赖 sys_* 表，全新库必须先行导入
 # （mysql_ry_*.sql 含裸 CREATE TABLE 与无 ON CONFLICT 的 INSERT，用代表表存在性做门闩 + 单事务）
 init_db_schema() {
-  local sql_dir="$BUILD_ROOT/backend/java/script/sql/mysql"
+  local sql_dir="$BUILD_ROOT/script/sql/mysql"
   local applied=0 skipped=0
   local pair
   for pair in "mysql_ry_vue:sys_social" "mysql_ry_job:sj_namespace" \

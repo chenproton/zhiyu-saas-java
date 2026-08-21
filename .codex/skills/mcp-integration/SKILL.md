@@ -21,11 +21,11 @@ description: |
 
 ## 一、概述：Server / Client 两套能力，同一个模块
 
-MCP 能力封装在公共模块 `backend/java/ruoyi-common/ruoyi-common-mcp`，底层基于 **Spring AI 2.0.0**（`<spring-ai.version>2.0.0</spring-ai.version>`）。
+MCP 能力封装在公共模块 `ruoyi-common/ruoyi-common-mcp`，底层基于 **Spring AI 2.0.0**（`<spring-ai.version>2.0.0</spring-ai.version>`）。
 该模块的 `pom.xml` 同时引入两个 starter，因此**一个模块两头都能用**：
 
 ```xml
-<!-- backend/java/ruoyi-common/ruoyi-common-mcp/pom.xml -->
+<!-- ruoyi-common/ruoyi-common-mcp/pom.xml -->
 <!-- MCP 服务端 -->
 <dependency>
     <groupId>org.springframework.ai</groupId>
@@ -48,7 +48,7 @@ MCP 能力封装在公共模块 `backend/java/ruoyi-common/ruoyi-common-mcp`，�
 - **自动装配条件**：`McpAutoConfiguration` 仅当容器内存在 `McpSyncClient` Bean 时才注册 `McpClientTemplate`（`@ConditionalOnBean(McpSyncClient.class)`）。client 没开 → 没有 `McpSyncClient` → 没有 `McpClientTemplate`，业务侧用 `ObjectProvider` 兜底取，取不到就抛提示。
 
 ```java
-// backend/java/ruoyi-common/ruoyi-common-mcp/src/main/java/org/dromara/common/mcp/config/McpAutoConfiguration.java
+// ruoyi-common/ruoyi-common-mcp/src/main/java/org/dromara/common/mcp/config/McpAutoConfiguration.java
 @AutoConfiguration
 public class McpAutoConfiguration {
 
@@ -143,7 +143,7 @@ private <T> T execute(Function<McpClientTemplate, T> action) {
 
 ---
 
-## 四、配置示例（核对自 backend/java/ruoyi-admin/application.yml）
+## 四、配置示例（核对自 ruoyi-admin/application.yml）
 
 ### 4.1 Server 段（默认开启）
 
@@ -207,7 +207,7 @@ spring.ai.mcp:
 ### 示例 1：定义 MCP 工具（@McpTool） —— `McpDemoServerTool`
 
 ```java
-// backend/java/ruoyi-modules/ruoyi-demo/.../mcp/McpDemoServerTool.java
+// ruoyi-modules/ruoyi-demo/.../mcp/McpDemoServerTool.java
 @Component
 public class McpDemoServerTool {
 
@@ -246,7 +246,7 @@ public String summary() {
 ### 示例 3：作为 Client 消费外部 MCP —— `McpDemoClientService`
 
 ```java
-// backend/java/ruoyi-modules/ruoyi-demo/.../mcp/McpDemoClientService.java
+// ruoyi-modules/ruoyi-demo/.../mcp/McpDemoClientService.java
 @Service
 @RequiredArgsConstructor
 public class McpDemoClientService {
@@ -302,7 +302,7 @@ result.ifPresent(r -> {
 ### 示例 5：Controller 手动触发 Client 调用 —— `McpDemoController`
 
 ```java
-// backend/java/ruoyi-modules/ruoyi-demo/.../controller/McpDemoController.java
+// ruoyi-modules/ruoyi-demo/.../controller/McpDemoController.java
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/demo/mcp")

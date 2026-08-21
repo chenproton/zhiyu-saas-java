@@ -70,9 +70,9 @@ mkdir -p "$PKG_DIR"/{images,debs,deploy,web}
 
 # ── 1. 构建后端 jar（Maven，prod profile）──
 log "构建后端 jar（Maven）..."
-(cd "$ROOT/backend/java" && JAVA_HOME="$JAVA_HOME_DIR" PATH="$JAVA_HOME_DIR/bin:$PATH" \
+(cd "$ROOT" && JAVA_HOME="$JAVA_HOME_DIR" PATH="$JAVA_HOME_DIR/bin:$PATH" \
   ./mvnw clean package -P prod -DskipTests -q) || die "Maven 构建失败"
-JAR="$ROOT/backend/java/ruoyi-admin/target/ruoyi-admin.jar"
+JAR="$ROOT/ruoyi-admin/target/ruoyi-admin.jar"
 [[ -f "$JAR" ]] || die "ruoyi-admin.jar 未生成"
 
 # ── 2. 构建后端镜像 zhiyu-java-backend:$VERSION ──
@@ -88,7 +88,9 @@ docker build -t "zhiyu-java-backend:$VERSION" -f "$TMPCTX/Dockerfile" "$TMPCTX" 
 # ── 3. 构建前端产物（portal-vue 业务门户 + plus-ui 管理端，dist 直接进交付目录）──
 log "构建前端产物（portal-vue + plus-ui）..."
 rsync -a --exclude=.git --exclude=node_modules --exclude=dist \
-  --exclude='*.tsbuildinfo' --exclude=backend/java --exclude=offline \
+  --exclude='*.tsbuildinfo' --exclude=offline \
+  --exclude=ruoyi-admin --exclude=ruoyi-api --exclude=ruoyi-common \
+  --exclude=ruoyi-modules --exclude=ruoyi-extend --exclude=script \
   "$ROOT/" "$BUILD_DIR/"
 
 # portal-vue（build 内含 vue-tsc 类型检查）
@@ -99,14 +101,14 @@ rsync -a --exclude=.git --exclude=node_modules --exclude=dist \
 [[ -d "$BUILD_DIR/frontend/portal-vue/dist" ]] || die "portal-vue 产物缺失：dist"
 
 # plus-ui 管理端
-(cd "$BUILD_DIR/frontend/plus-ui" && pnpm install --offline --silent 2>/dev/null) || \
+(cd "$BUILD_DIR/plus-ui" && pnpm install --offline --silent 2>/dev/null) || \
 # plus-ui 声明 packageManager pnpm@10.34.5（engines.pnpm >=10），全局 pnpm 9 不兼容 → npx 拉取 pnpm@10
 PLUS_PNPM="pnpm"
-grep -q '"packageManager": "pnpm@10' "$BUILD_DIR/frontend/plus-ui/package.json" 2>/dev/null && PLUS_PNPM="npx --yes pnpm@10.34.5"
-(cd "$BUILD_DIR/frontend/plus-ui" && $PLUS_PNPM install --silent 2>/dev/null) || \
+grep -q '"packageManager": "pnpm@10' "$BUILD_DIR/plus-ui/package.json" 2>/dev/null && PLUS_PNPM="npx --yes pnpm@10.34.5"
+(cd "$BUILD_DIR/plus-ui" && $PLUS_PNPM install --silent 2>/dev/null) || \
   die "plus-ui 依赖安装失败"
-(cd "$BUILD_DIR/frontend/plus-ui" && NODE_ENV=production $PLUS_PNPM build >/dev/null) || die "plus-ui 构建失败"
-[[ -d "$BUILD_DIR/frontend/plus-ui/dist" ]] || die "plus-ui 产物缺失：dist"
+(cd "$BUILD_DIR/plus-ui" && NODE_ENV=production $PLUS_PNPM build >/dev/null) || die "plus-ui 构建失败"
+[[ -d "$BUILD_DIR/plus-ui/dist" ]] || die "plus-ui 产物缺失：dist"
 
 # ── 4. 导出镜像 ──
 log "导出 Docker 镜像..."
@@ -119,14 +121,14 @@ cp "$OFFLINE_DIR"/debs/*.deb "$PKG_DIR/debs/" 2>/dev/null || true
 mkdir -p "$PKG_DIR/deploy/migrations"
 rsync -a "$ROOT/db/migrations/" "$PKG_DIR/deploy/migrations/"
 # RuoYi 框架表初始化 SQL（install.sh 幂等导入）
-cp "$ROOT/backend/java/script/sql/mysql/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
+cp "$ROOT/script/sql/mysql/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
 cp "$ROOT/deploy/docker-compose.yml" "$PKG_DIR/deploy/"
 cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
 # 容器网关配置必须一起带：compose 的 nginx 服务挂载 ./nginx-container/conf.d，缺失则容器起不来
 cp -r "$ROOT/deploy/nginx-container" "$PKG_DIR/deploy/nginx-container"
 # 前端 dist（nginx 容器挂载 $DEPLOY_DIR/web/）
 cp -r "$BUILD_DIR/frontend/portal-vue/dist" "$PKG_DIR/web/portal"
-cp -r "$BUILD_DIR/frontend/plus-ui/dist" "$PKG_DIR/web/plus-ui"
+cp -r "$BUILD_DIR/plus-ui/dist" "$PKG_DIR/web/plus-ui"
 cp "$ROOT/deploy/release/install.sh" "$ROOT/deploy/release/start.sh" \
    "$ROOT/deploy/release/stop.sh" "$ROOT/deploy/release/README.md" "$PKG_DIR/"
 echo "$VERSION" > "$PKG_DIR/VERSION"

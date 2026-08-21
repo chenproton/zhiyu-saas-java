@@ -160,7 +160,7 @@
 
 1. **取部署锁**（`/run/zhiyu-deploy.lock`，flock 不可用即拒绝部署）——先于任何系统级动作（apt / 安装 Node / 装 nginx / 配 docker mirror），避免并发部署互踩
 2. 校验分支 → 在隔离 worktree（`/tmp/zhiyu-build-cache`）上以 `origin/master` 为基座合并目标分支
-3. 增量构建：源码 hash 比对**只构建变更部分**——Java 后端（`backend/java` Maven 构建）+ `frontend/portal-vue` + `frontend/plus-ui`；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
+3. 增量构建：源码 hash 比对**只构建变更部分**——Java 后端（`.` Maven 构建）+ `frontend/portal-vue` + `plus-ui`；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
 4. **第一段启动**：只起数据层 `mysql` / `redis`
 5. **全库备份**（`/opt/zhiyu-saas/backups`，目录 700 / 文件 600，保留最近 7 份）
 6. **执行迁移**：`db/migrations/*.up.sql` 纯 mysql 执行（`mysql 遇错即停`，遇错立即停止，不叠加半应用 DDL）+ **Java 框架表初始化**（deploy 幂等初始化）
