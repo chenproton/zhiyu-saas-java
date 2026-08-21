@@ -3,6 +3,7 @@
 > 分支模型说明：本仓库**主线只有 `master`**，按「分支隔离 + 部署成功自动合并 master」协作（见第四节）。
 >
 > 本仓库为**单栈架构**：**Java 后端多模块 Maven 工程位于仓库根目录**（`pom.xml` + `mvnw` + `ruoyi-*/` + `script/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21，布局与上游框架技术方案对齐），共用 MySQL 8.0，前端为 **`plus-ui/` 单工程双构建**（RuoYi 框架，位于仓库根）：**admin 管理端**（`plus-ui/src` → `dist`）+ **portal 业务门户**（`plus-ui/src-portal` → `dist-portal`），一份 package.json / lockfile / node_modules，运行时仍是两个独立 SPA。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
+>
 > 开发契约分两部分：第一部分为仓库级开发契约（spec-first / 部署 / 运维），第二部分为 Java 后端框架契约。按所改模块选择对应契约执行。
 
 ### 顶层目录结构
@@ -37,37 +38,13 @@
 
 ## 一、开发流程（接任务后先判类型，再走对应闭环）
 
-> 判断任务类型 → 走对应流程。流程细节依据见 [`docs/spec-standards.md`](docs/spec-standards.md)「Spec 工作流」。
-
 | 任务类型 | 判断标准 | 流程 |
 |---|---|---|
-| **新功能** | 增加能力 / 新模块 / 新接口 | 七节点闭环（见下） |
-| **修复 bug** | 现有行为与 spec/预期不符 | 修复流程（见下） |
-| **重构** | 行为不变，仅改结构/可读性 | 重构流程（见下） |
+| **新功能** | 增加能力 / 新模块 / 新接口 | 七节点闭环 |
+| **修复 bug** | 现有行为与 spec/预期不符 | 修复流程 |
+| **重构** | 行为不变，仅改结构/可读性 | 重构流程 |
 
-### （一）新功能：七节点闭环
-
-1. **对齐意图**：读本契约 + 相关 `docs/*.md` + `docs/decisions/`（ADR），确认红线与既有决策。**不写代码**。
-2. **明确需求**：把需求澄清为「做什么/为什么」，聚焦 **WHAT/WHY，不碰 HOW**（不写技术栈/表结构/代码组织）。不清楚就问用户。
-3. **制定方案**：需求 → 数据模型 / API 契约 / 测试场景。**每个技术选择记录理由并回链需求**。选型需拍板时问用户。
-4. **拆解任务**：生成可执行任务清单，标依赖与可并行项（`[P]`）。
-5. **实现**：写代码 + 测试 + migration，**同时回写 spec**（spec-first 硬约束）。走「四、分支隔离工作流」。
-6. **校验**：`./scripts/spec-check.sh`（硬约束）+ 语义自查（spec 说的有没有实现、代码做的有没有写进 spec）。
-7. **收敛**：对照 spec 评估，把「没做完/偏航/新增件」记回任务或 spec，形成下轮输入。
-
-### （二）修复 bug 流程
-
-1. **定位意图**：先读 spec 与 ADR，确认「正确行为」（bug = 实现偏离了 spec/合理预期）。
-2. **补测试**：先写/改能复现 bug 的测试（红）。
-3. **修复**：改代码让测试通过（绿）。**若修复改变行为 → 同步 spec**；纯修复不改 spec，但 commit 说明。
-4. **校验**：`spec-check.sh` + 本地门禁 + `deploy.sh --branch` 部署。
-
-### （三）重构流程
-
-1. **确认行为不变**：重构必须等价变换；若改可观察行为 → 走「新功能/修复」，不是重构。
-2. **评估收益**：按 [`docs/simplification-notes.md`](docs/simplification-notes.md) 给证据（调用点），区分「真简化」vs「有意为之」（查 ADR）。
-3. **执行**：改结构，**不同步 spec**（行为没变）。
-4. **校验**：`spec-check.sh` + 全量门禁确认无回归 + 部署。
+三类流程的完整步骤（七节点闭环 / 修复 / 重构）见 [`docs/dev-processes.md`](docs/dev-processes.md)；任务开始时先加载 spec-first 执行手册 [`.dsh/skills/spec-workflow/SKILL.md`](.dsh/skills/spec-workflow/SKILL.md)，spec 细则见 [`docs/spec-standards.md`](docs/spec-standards.md)「Spec 工作流」。
 
 ## 二、开发原则（写代码时的心法）
 
@@ -78,16 +55,16 @@
 
 ## 三、硬性架构约束（安全 + 架构合理的落地红线）
 
-> 详细规范与理由见对应文档；这里只列「必须遵守」的硬条款，其余放文档。
+> 完整条款与理由见 [`docs/architecture-constraints.md`](docs/architecture-constraints.md)（拆自本节的细则，决策依据 ADR-0001 / ADR-0003）；以下为必须遵守的要点：
 
-### 3.1 后端分层红线（Java 框架契约，理由见 ADR-0001）
+### 3.1 后端分层红线
 
-- **controller**：禁止出现裸 SQL（`SELECT/INSERT/UPDATE/DELETE`）、禁止持有 `JdbcTemplate`/`DataSource`/`SqlSessionFactory` 等 DB 句柄、禁止 MyBatis 注解（`@Select` 等）、禁止直接调 mapper。
-- **service**：禁止拼接 SQL；业务逻辑统一在 Service 层组装，数据访问走 Mapper。
-- **mapper**：禁止读取 HTTP 请求（`HttpServletRequest`）、Sa-Token（`StpUtil`）、租户上下文（`TenantContext`）；SQL 统一带 `tenant_id` 条件做租户过滤。
+- **controller**：无裸 SQL / DB 句柄（`JdbcTemplate` 等）/ MyBatis 注解 / 直接调 mapper。
+- **service**：不拼接 SQL；业务逻辑在 Service 层组装，数据访问走 Mapper。
+- **mapper**：不读 HTTP 请求 / Sa-Token / 租户上下文；SQL 统一带 `tenant_id` 条件。
 - 新接口必须附带 controller/service/mapper 测试至少一种。
 
-### 3.2 安全红线（越权 / 租户隔离，理由见 ADR-0003）
+### 3.2 安全红线
 
 - 租户隔离以 SQL 层 `tenant_id` 条件 + 归属校验（`SystemGuard` / service 层校验）为准，禁止跨租户读写。
 - 关键写操作（考试题目增删改分、密码/状态写）SQL 层补租户条件作纵深防御。
@@ -124,7 +101,7 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 
 ## 五、AI 协作者约定（协作纪律）
 
-1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖。
+1. **只改当次任务相关文件**，不碰无关文件；忽略他人未提交修改，不得还原/覆盖（同铁律 #1）。
 2. **前端样式修改不主动验证**：禁止无头浏览器视觉验证、DOM/布局测量、CDP 脚本、创建临时测试账号等；样式问题部署后由用户人工确认。
 3. **不做端到端验证（默认）**：不跑 UI Smoke / `--route` 单页 / 浏览器自动化，除非用户主动要求；本地验证以编译 + 类型检查 + lint + 单测为准。
    > 例外（属自动化门禁，不是「主动做 E2E」）：`deploy.sh` 部署后自带业务冒烟探针（无浏览器、无账号，失败即回滚）。
@@ -136,6 +113,9 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 
 | 我要 | 读 |
 |---|---|
+| 开发流程细节（新功能/修复/重构） | [`dev-processes.md`](docs/dev-processes.md) |
+| 硬性架构约束全文（分层/安全红线） | [`architecture-constraints.md`](docs/architecture-constraints.md) |
+| Codex 技能完整清单（48 个，含触发词） | [`codex-skills-index.md`](docs/codex-skills-index.md) |
 | spec 分级/模板/DoD/闭环 | [`spec-standards.md`](docs/spec-standards.md) |
 | spec-first 执行手册（AI 技能，任务开始时加载） | [`.dsh/skills/spec-workflow/SKILL.md`](.dsh/skills/spec-workflow/SKILL.md) |
 | Java 后端框架规范/分层/禁止写法 | 本文件「第二部分」+ `.codex/skills/crud-development/SKILL.md` |
@@ -165,16 +145,15 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 
 ---
 
-# 第二部分：Java 后端框架契约（base-dev-framework6-java）
-
-# AGENTS.md - base-dev-framework6-java · Codex 入口
+# 第二部分：Java 后端框架契约（base-dev-framework6-java · Codex 入口）
 
 ## 语言设置
+
 **必须使用中文**与用户对话。
 
 ## 项目定位
 
-本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于仓库根，配套前端为 `plus-ui` 单工程双构建——Vue 管理端（`plus-ui/src`，RuoYi 框架）与 Vue 业务门户（`plus-ui/src-portal`，Element Plus + Pinia），代码生成器内置模板产出前端骨架。
+本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10）；前后端一体化单仓库布局（Java 多模块在仓库根 + `plus-ui` 单工程双构建 + 代码生成器内置模板产出前端骨架）见第一部分头部。
 
 > 🔴 **本项目遵循框架约定**：包名 `org.dromara`，**三层架构无 DAO 层**（Controller→Service→Mapper，直接用 `BaseMapperPlus`），Entity 继承 `BaseEntity`，查询用 `QueryBuilder.lambda`，标准 REST 路径（`/list`、`/{id}`）。不要套用 `plus.ruoyi` / DAO 层 / `PlusLambdaQuery` / `/pageXxx` 等其它衍生版约定。
 
@@ -185,71 +164,13 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 - `java: 非法字符: '﻿'` → 优先判定为 BOM：定位文件 → 移除文件头 BOM → 扫描同目录 `.java` → 重新编译验证。
 - 中文注释/日志/文档必须可读，不允许乱码。
 
-## 🔴 Git Flow 分支与提交规范（必须遵守）
+## Git Flow 分支与提交规范（上游规范，本仓库不生效）
 
-> ⚠️ **边界说明（本仓库 vs 上游）**：本节为上游框架公司规范原文，保留用于上游同步对照。**本仓库实际执行第一部分的「单 master + 分支隔离」模型**（无 main/dev/release 分支、不打版本 Tag、合并走 deploy.sh 自动直推 master），提交 message 用 `type(scope): subject` 格式、**不要求禅道 Issue ID**。本节下方的 main/dev/release/hotfix 红线与禅道 ID 要求对本仓库不生效。
+> ⚠️ 本节为上游框架公司规范原文，现移至 [`docs/upstream-sync-notes.md`](docs/upstream-sync-notes.md)「附录：上游 Git Flow 规范原文」保留，供上游同步对照。**本仓库实际执行第一部分的「单 master + 分支隔离」模型**（无 main/dev/release 分支、不打版本 Tag、合并走 deploy.sh 自动直推 master），提交 message 用 `type(scope): subject` 格式、**不要求禅道 Issue ID**。分支/提交/MR 规范见 [`docs/Git Flow 开发协作简易指南.md`](docs/Git Flow 开发协作简易指南.md)。
 
-> 提交代码、创建/合并分支、发版前**必须**先阅读 `docs/Git Flow 开发协作简易指南.md`，并**强制**按以下约定执行。
+## 🔴 经验沉淀（会话开始时）
 
-### 分支模型与硬性红线
-
-| 分支 | 命名 | 来源 | 合并去向 | 说明 |
-|------|------|------|---------|------|
-| main | `main` | - | - | 生产基线，**只接受** `release/*` 与 `hotfix/*` 的合并，合并后**必须打唯一版本 Tag**（如 `v1.2.0`） |
-| dev | `dev` | main | release | 开发主线，接受 `feat/*`、`hotfix/*`、`release/*` 的合并 |
-| release | `release/<版本>` | dev | main & dev | 预发/冻结分支，验证通过后合并 main 与 dev，**立即删除** |
-| feature | `feat/<禅道ID_描述_代号>` | dev | dev | 个人功能分支，开发完合并回 dev **后删除** |
-| hotfix | `hotfix/<版本_代号>` | main | main & dev & release | 线上紧急修复，**必须反向同步回 dev**（存在活跃 release 时也同步） |
-| customer | `cust/<name>` | **main 的稳定 Tag** | - | 客户定制分支，通用功能经"重构/配置化"后回流 dev |
-
-1. 🔴 **严禁** `dev` 或其他功能开发分支直接合并入 `main`；`main` 只接受 `release` 与 `hotfix` 的合并。
-2. 🔴 发布链路严格 `dev` → `release/<版本>` → `main`；**合并到 main 后必须打唯一版本 Tag** 作为不可变代码基线。
-3. 🔴 `hotfix` **必须**反向同步回 `dev`（闭环）；存在活跃 `release` 分支时必须同步到该 `release`。
-4. 🔴 `cust/<name>` 必须基于 `main` 的**稳定 Tag** 拉出；客户定制通用功能需"重构/配置化"后才能合并回 `dev` 主线。
-
-### 提交信息格式（强制）
-
-每次提交**必须**写 Commit message（否则不允许提交），格式：`type(scope): subject`，**主体需关联禅道 Issue ID**：
-
-```text
-<type>(<scope>): <subject> [Bug-<IssueID>]
-```
-
-示例：`fix(api): 增加课程章节分级接口 [Bug 1111]`
-
-`type` 取值：`feat`（新功能）/ `fix`（修补 Bug）/ `docs`（文档）/ `style`（格式）/ `refactor`（重构）/ `chore`（构建/工具）/ `test`（测试）。
-
-### MR 合并准则（强制）
-
-1. 提交 MR 前**必须**本地编译 + 基础自测通过。
-2. MR 必须经过**至少 1 位**同事 Code Review 才能合并；**main 与 release 分支**的 MR 须技术负责人或项目维护者最终批准。
-3. MR 标题遵循 `type: subject [禅道指令 ID]` 格式，描述需说明功能点、影响范围、测试结果。
-4. `feat` / `hotfix` 分支 MR 合并完成后**必须勾选删除源分支**。
-
-## 🔴 Skills 强制评估（Codex 版 · 必须遵守）
-
-> Codex 启动时已**自动从 `.codex/skills/` 加载所有 SKILL.md 的 frontmatter**（name + description + 触发词），故无需手动扫描技能目录。每次用户提问时，UserPromptSubmit Hook（`.codex/hooks/skill-forced-eval.cjs`）会注入"强制技能评估流程"指令。必须严格遵循：
-
-1. **评估**：根据已加载的技能 frontmatter，列出与本次任务匹配的技能及理由（无匹配则写"无匹配技能"）。
-2. **加载**：对每个匹配技能，先用 **Read** 逐个读取 `.codex/skills/<技能名>/SKILL.md` 全文，**读完之后**才开始执行命令 / 写代码。
-3. **实现**：按技能文档中的 框架规范实现。
-
-**Skills 位置**：`.codex/skills/<技能名>/SKILL.md`。
-
-> 本仓库内置 **`.claude/agents/`**（6 个后端 subagent）与 **`.codex/skills/`**（分场景技能体系）。二者**互补共存**：agents 是后端专项子代理，技能是场景化编码规范。
-
-## 🔴 经验沉淀目录加载（会话开始时）
-
-会话开始（首次响应用户）前，若 `.claude/docs/experience/` 有内容，执行：
-```bash
-ls -t .claude/docs/experience/*/*-exp-summary.md 2>/dev/null | head -1
-```
-有输出 → 读取该最近摘要作为本次会话经验上下文（已沉淀的禁令/踩过的坑）。读完即可，不必复述。
-**例外**：用户首条是简单问候或与项目无关的纯通用问题，可跳过。
-
-> Codex 端 `.codex/hooks/session-start.cjs` 在 SessionStart 事件中会自动把最近的经验摘要注入到 `additionalContext`，二者互为补充。
-
----
+会话开始（首次响应用户）前，若 `.claude/docs/experience/` 有内容：`ls -t .claude/docs/experience/*/*-exp-summary.md 2>/dev/null | head -1`，有输出则读取该最近摘要作为本次会话经验上下文（已沉淀的禁令/踩过的坑），读完即可不必复述。**例外**：用户首条是简单问候或与项目无关的纯通用问题，可跳过。Codex 端 `.codex/hooks/session-start.cjs` 会自动把最近的经验摘要注入 `additionalContext`，二者互为补充。
 
 ## 核心架构（必须牢记）
 
@@ -288,14 +209,14 @@ org.dromara.{module}/
 
 生成器默认方法集合：`queryById` / `queryPageList` / `queryList` / `insertByBo` / `updateByBo` / `deleteWithValidByIds`，再叠加唯一校验、数据权限、MPJ、缓存、Excel 导入导出、关联维护。
 
-### 模块拓扑（均位于 `` 下）
+### 模块拓扑
 
 ```
 ruoyi-admin          # 唯一可执行入口
 ruoyi-api            # 跨模块 API 契约层（仅依赖 common-core；跨模块调用走它，不直接 import 实现）
 ruoyi-common/*       # 24 个公共能力模块（core/web/mybatis/redis/satoken/security/log/doc/excel/oss/json/
                      #   encrypt/sensitive/translation/mail/sms/social + ai/mcp/elasticsearch/mqtt/push/job）
-ruoyi-modules/*      # system / ai / workflow / job / gen / demo
+ruoyi-modules/*      # system / ai / workflow / job / gen / demo / zhiyu
 ruoyi-extend/*       # monitor-admin / snailjob-server / snailai-server（独立部署 Server）
 ```
 
@@ -351,116 +272,25 @@ ruoyi-extend/*       # monitor-admin / snailjob-server / snailai-server（独立
 | `/next` | 下一步建议 |
 | `/start` | 项目快速启动 |
 
-## 开发前检查清单
+## 开发前检查清单（动手前过一遍）
 
 - [ ] 已读目标模块最近似的现有代码（优先复用其写法）
+- [ ] 已评估并列出本次命中的技能，且**已 Read 全部命中的 SKILL.md**
 - [ ] 包名 `org.dromara`，三层无 DAO，Entity `extends BaseEntity`
-- [ ] 查询用 `QueryBuilder.lambda` + IfText/IfPresent 条件，分页 `selectVoPage`+`PageResult.build`
+- [ ] 查询用 `QueryBuilder.lambda` + IfText/IfPresent，分页 `selectVoPage` + `PageResult.build`，转换用 `MapstructUtils`
 - [ ] BO/VO 用 `@AutoMapper`，转换用 `MapstructUtils`
-- [ ] 写接口带权限 `@SaCheckPermission` + 日志 `@Log`，标准 REST 路径
-- [ ] 不违反"绝对禁止"表；UTF-8 无 BOM
+- [ ] 写接口带权限 `@SaCheckPermission` + 日志 `@Log`，标准 REST 路径，BO 入参 / VO 出参
+- [ ] 不违反「绝对禁止」表 / 未引入任何 `plus.ruoyi` / DAO / `PlusLambdaQuery` / `TenantEntity(默认)` / `is_deleted` 等衍生版写法
+- [ ] UTF-8 无 BOM、LF 换行；中文可读
 
 ---
 
 ## Codex 技能系统
 
-### 工作原理
-
-本仓库为 Codex CLI 配置了完整的技能系统，与 Claude Code 端体验对称：
-
-- **技能发现 / 加载**：Codex 启动时自动扫描 `.codex/skills/` 下所有子目录，读取每个 `SKILL.md` 的 YAML frontmatter（`name` + `description` + 触发场景 + 触发词），将其作为"技能索引"装入上下文。因此**无需手动列目录**——你启动时已经"知道"有哪些技能、各自何时触发。但 frontmatter 只是索引，**技能正文必须按需用 Read 读取**。
-- **Hooks 协同**（由 `.codex/hooks.json` 注册，配合 `.codex/config.toml` 的 `[features] hooks = true` 开关，仅在 `.codex/` 被标记 trusted 时生效）：
-  - `session-start.cjs`（SessionStart）：会话开始时自动把最近的经验摘要（`.claude/docs/experience/*/*-exp-summary.md`）注入 `additionalContext`，让你带着历史踩坑记录开场。
-  - `skill-forced-eval.cjs`（UserPromptSubmit）：每次用户提问时注入约 500 字的"强制技能评估流程"指令（评估 → Read 技能 → 实现），因 Codex 已自动加载 frontmatter，hook 只需注入流程而非完整技能列表。
-  - `pre-tool-use.cjs`（PreToolUse）：在 Bash / Edit / Write / apply_patch 等工具执行前做安全检查（如拦截危险命令、`> nul` 等）。
-  - `stop.cjs`（Stop）：会话结束时做清理与收尾提示。
-
-### 技能清单与触发条件（共 48 个）
-
-> 42 个镜像技能（与 `.claude/skills/` 内容一致）+ 6 个命令技能（`dev` / `crud` / `check` / `progress` / `next` / `start`）。按字母排序：
-
-| 技能名 | 触发词 / 用途 |
-|--------|--------------|
-| `add-skill` | 添加技能、创建技能、新技能、写技能、技能文档、修改技能、更新技能、技能同步——为框架增加/修改/重命名/删除技能并同步双系统 |
-| `api-development` | API设计、接口规范、RESTful、URL设计、接口路径、R\<T\>、统一响应、接口命名、端点设计、前后端联动、export导出——接口设计规范（完整模块开发用 crud-development） |
-| `architecture-design` | 架构设计、模块划分、分层、解耦、依赖管理、ruoyi-api、契约层、模块拓扑、重构、领域划分、系统设计——模块拓扑/契约层/三层架构/何时新建模块 |
-| `backend-annotations` | 注解、@Translation、翻译、ID转名称、字典转标签、@RateLimiter、@RepeatSubmit、@Sensitive、@DataPermission、@Log、@EncryptField、@Lock4j、@DS、@SaCheckPermission、@AutoMapper、分组校验——后端高级注解总索引（重点 @Translation 序列化映射） |
-| `brainstorm` | 头脑风暴、方案、怎么设计、有什么办法、创意、讨论、探索、想法、建议、怎么做、如何实现——方案探索与创意思维 |
-| `bug-detective` | Bug、报错、不工作、调试、排查、为什么、出问题、失败、不生效、无效、定位问题——排查已发生的问题、定位 Bug（设计异常机制用 error-handler） |
-| `check` | /check、代码检查、规范检查、code review、检查代码——命令技能：框架全栈代码规范检查 |
-| `code-patterns` | 规范、禁止、命名、Git提交、代码风格、不能用、不允许、约定、红线、禁令、对照表、写法错了——全栈编码禁令与规范速查（错误 vs 正确对照） |
-| `collaborating-with-codex` | Codex、协作、多模型、原型、Diff、算法分析、代码审查、codex协同、codex-plugin-cc、codex插件、review-gate——与 OpenAI Codex CLI 协同开发 |
-| `collaborating-with-gemini` | Gemini、协作、多模型、前端原型、UI设计、CSS、样式、gemini协同——与 Google Gemini CLI 协同（前端/UI 原型为主） |
-| `crud` | /crud、快速CRUD、代码生成、基于表生成、增删改查——命令技能：基于已有表快速生成 CRUD |
-| `crud-development` | CRUD、增删改查、新建模块、业务模块、Entity、BO、VO、Mapper、Service、Controller、selectVoPage、PageQuery、QueryBuilder、MapstructUtils、BaseMapperPlus、xxxApi.ts、代码生成器——CRUD 业务模块全栈开发（后端四件套 + 前端数据通道） |
-| `data-desensitize` | 脱敏、数据脱敏、@Sensitive、SensitiveStrategy、敏感数据、PII、掩码、手机号脱敏、身份证脱敏、银行卡脱敏、DesensitizedUtils——序列化期 PII 掩码（DB 仍明文） |
-| `data-permission` | 数据权限、@DataPermission、@DataColumn、DataScope、行级权限、数据隔离、部门权限、本人权限、自定义权限、权限过滤、PlusDataPermissionHandler、忽略数据权限——行级数据权限（认证授权用 security-guard） |
-| `database-ops` | 数据库、MySQL、SQL、表、字段、索引、字典、建表、DDL、del_flag、雪花ID、dynamic-datasource、多数据源、selectVoPage、QueryBuilder、@DS、sys_dict、sys_menu——数据库操作/建表规范/字典菜单/SQL 日志 |
-| `deployment-guide` | 部署、上线、发布、生产环境、Docker、Compose、打包、JAR、Jetty、Nginx、反向代理、密钥、profile、application-prod、外置server、monitor-admin、snailjob、snailai-server——部署与上线（JDK21+SB4+Jetty/Docker/三外置 server） |
-| `dev` | /dev、开发新功能、全栈开发、新功能、开发模块、写功能——命令技能：开发新功能（全栈代码生成） |
-| `dev-startup` | 本地启动、首次启动、跑起来、装环境、装依赖、配置环境、启动后端、JDK21、Maven、mvnw、MySQL、Redis、端口占用、健康检查、actuator、SpringDoc——本地从零搭建后端环境、首次启动、排查启动失败 |
-| `elasticsearch-search` | Elasticsearch、ES、Easy-Es、全文检索、搜索引擎、EsMapper、@IndexName、@IndexField、索引、全文搜索——基于 Easy-Es 的 ORM 风格全文检索 |
-| `env-config` | 环境配置、profile、application.yml、application-dev.yml、application-prod.yml、多环境、环境变量、SPRING_PROFILES_ACTIVE、占位符、@profiles.active@、${ENV:default}、密钥外置——多环境配置组织/切换/敏感配置脱密（后端） |
-| `error-handler` | 异常处理、ServiceException、try-catch、全局异常、GlobalExceptionHandler、错误码、日志规范、@Slf4j、错误提示、校验异常、R响应——设计异常处理机制（排查 Bug 用 bug-detective） |
-| `exp-sediment` | 沉淀经验、经验沉淀、总结会话、记下来、记录经验、/exp、exp review、反哺框架、经验审计、避免再踩坑、以前怎么处理、之前的方案、历史经验、查记录、上次怎么解决——经验沉淀（写入）与消费（读取），与 session-start.cjs 配对成闭环 |
-| `file-oss-management` | 文件上传、OSS、对象存储、云存储、MinIO、阿里云OSS、腾讯云COS、七牛、S3、AWS、预签名、presigned、SysOss、OssClient、OssFactory——文件上传下载（AWS SDK v2 S3 统一适配） |
-| `git-workflow` | git、提交、commit、分支、合并、push、pull、冲突、回滚、版本、历史——Git 版本控制操作 |
-| `html-to-code` | HTML转代码、设计稿转换、原型转代码、HTML转Vue、HTML转React、设计稿转页面、区块转换、组件转换、Element Plus、Ant Design Pro——HTML/原型转 6.x 前端代码（Vue 或 React） |
-| `i18n-development` | 国际化、多语言、i18n、翻译、MessageUtils、语言切换、content-language、messages.properties、locale、MessageSource、LocaleResolver、zh_CN、en_US——国际化开发（以后端 MessageUtils 为主） |
-| `iot-mqtt` | MQTT、物联网、IoT、设备通信、设备消息、mica-mqtt、publish、subscribe、QoS、Topic、EMQX、Mosquitto、共享订阅、设备上线、遗嘱消息——基于 mica-mqtt 的 IoT 通信开发 |
-| `json-serialization` | JSON、序列化、反序列化、JsonUtils、Jackson、日期格式、精度、BigDecimal、Long、大数字、类型转换、TypeReference、JSON校验、JsonValueEnhancer、BigNumberSerializer——JSON 处理（Jackson 3，包名 tools.jackson.*） |
-| `log-audit` | 操作日志、登录日志、审计、@Log、sys_oper_log、sys_login_info、BusinessType、LogAspect、OperLogEvent、excludeParamNames、isSaveRequestData、日志脱敏——操作/登录日志与审计追踪 |
-| `mcp-integration` | MCP、Model Context Protocol、@McpTool、@McpResource、McpClientTemplate、MCP工具、MCP资源、mcp-server、mcp-client、AI工具、agent工具——基于 Spring AI 2.0.0 的 MCP Server/Client 集成 |
-| `multi-tenant` | 多租户、租户隔离、tenant_id、TenantHelper、租户切换、ignore、动态租户、sys_tenant、租户套餐、TenantLineInnerInterceptor、SaaS、租户上下文——多租户 SaaS 数据隔离（租户插件 + tenant_id 自动过滤） |
-| `next` | /next、下一步、接下来、接下来做什么——命令技能：下一步建议 |
-| `performance-doctor` | 性能优化、慢查询、SQL优化、索引、EXPLAIN、N+1、分页优化、缓存、SqlLogInterceptor、SQL日志、响应慢、深分页、HikariCP——性能诊断与优化（"能跑但慢"，逻辑 Bug 用 bug-detective） |
-| `progress` | /progress、进度、进度报告、项目进度——命令技能：项目进度报告 |
-| `project-navigator` | 项目结构、文件在哪、目录、模块、代码位置、找、定位、在哪里、参考代码、模块职责、ruoyi-common、ruoyi-modules、ruoyi-api、ruoyi-extend、ruoyi-gen、放哪、新建模块——项目结构导航与代码定位 |
-| `realtime-push` | 实时推送、消息推送、SSE、WebSocket、PushHelper、服务端推送、广播、在线消息、EventSource、双传输、message.transport、集群广播、通知推送——统一实时推送（SSE/WebSocket 双传输，业务零改动切换） |
-| `redis-cache` | Redis、缓存、Cache、@Cacheable、@CacheEvict、RedisUtils、CacheUtils、分布式锁、RLock、Lock4j、限流、@RateLimiter、发布订阅、缓存穿透/雪崩/击穿、缓存key、Redisson、Fory——Redis 缓存/分布式锁/限流/发布订阅 |
-| `scheduled-jobs` | 定时任务、SnailJob、延迟队列、@Scheduled、任务调度、重试机制、工作流编排、分布式任务、@JobExecutor、订单超时、周期任务、分片任务、MapReduce、DAG、QueueUtils——定时任务与分布式调度（SnailJob 2.0.0） |
-| `security-guard` | 安全、Sa-Token、@SaCheckPermission、@SaCheckLogin、@SaCheckRole、登录认证、Token、LoginHelper、StpUtil、加密、@EncryptField、@ApiEncrypt、限流、@RateLimiter、防重复、@RepeatSubmit、XSS、权限标识——安全开发规范（认证授权/加解密/接口安全） |
-| `snail-ai-integration` | AI、Snail AI、SnailAI、大模型、AI对话、Agent、聊天、ai-integration、snail-ai、OpenAPI、AI集成、智能助手——集成/接入/扩展 Snail AI（com.aizuda 0.0.5）大模型能力 |
-| `start` | /start、启动、跑起来、本地启动、启动项目——命令技能：项目快速启动 |
-| `task-tracker` | 创建任务、跟踪任务、记录进度、任务跟踪、继续任务、恢复任务、查看任务、归档任务、任务列表、方案讨论、技术调研、记录问题——跨会话开发任务进度跟踪（Markdown 持久化） |
-| `tech-decision` | 选型、用什么、对比、哪个好、优缺点、选择、技术方案、库、框架、工具、模块——技术选型与方案对比（含选 ruoyi-common 模块） |
-| `test-development` | 测试、单元测试、集成测试、@Test、JUnit5、Mockito、Mock、断言、AssertJ、@SpringBootTest、@Mock、@InjectMocks、MockMvc、测试覆盖率、参数化测试、@WebMvcTest、@Tag——测试开发（无统一测试基类） |
-| `ui-pc` | 前端、前端页面、Element Plus、el-table、el-form、el-dialog、Ant Design Pro、ProTable、ModalForm、代码生成器前端、Vue页面、React页面、useDict、列表页、表单页、后台页面——后台管理端前端页面（Vue/React 双栈，按生成器模板风格） |
-| `utils-toolkit` | 工具类、日期、时间、DateUtils、字符串、StringUtils、集合、StreamUtils、对象转换、MapstructUtils、树结构、TreeBuildUtils、校验、ValidatorUtils、SpringUtils、RedisUtils、Hutool——后端工具类速查，选对工具避免重复造轮子 |
-| `workflow-warmflow` | 工作流、流程、审批、Warm-Flow、WorkflowService、流程引擎、发起流程、办理任务、待办、已办、流程图、审批流、ProcessEvent、workflow——Warm-Flow 国产工作流引擎集成（业务只依赖 ruoyi-api 契约） |
-| `writing-plans` | 写计划、制定计划、实施计划、拆解任务、任务拆解、计划层、把方案落地、详细步骤、可执行计划、计划文档、开发计划、实施方案——把方案/需求拆成可直接执行的细颗粒任务台账 |
-
-### 强制执行规则
-
-1. **先 Read 再实现**：评估命中某个技能后，**必须先用 Read 读完 `.codex/skills/<技能名>/SKILL.md` 全文**，再开始写代码 / 执行命令。frontmatter 只是索引，正文才含框架真实约定、源码路径、坑点与禁令。**禁止跳过 Read 凭印象直接动手**。
-2. **多技能组合全部读**：一个任务命中多个技能时（例如"新增模块 + 数据权限 + 缓存"），把所有命中的 SKILL.md **逐个读完**再统一实现，不要只读一个就开干。
-3. **标注已用技能**：实现前在回复中**明确列出本次评估命中并已读取的技能名**（如"已读取 crud-development + database-ops"），让用户可核对技能是否被正确应用。
-
-### 示例（典型场景）
-
-- **新增 system 模块 CRUD（如"部门通知"表）** → 命中 `crud-development`（后端四件套 + 前端数据通道）+ `database-ops`（建表规范 / DDL / del_flag / 雪花 ID）。先 Read 两个 SKILL.md，再按 `org.dromara.*`、三层无 DAO、`QueryBuilder.lambda` + `selectVoPage`、`@AutoMapper` + `MapstructUtils` 实现。
-- **接入 Snail AI 智能对话 / Agent** → 命中 `snail-ai-integration`（必要时叠加 `mcp-integration`）。Read 后按 `snail-ai` 配置（gRPC 地址 / app-id / token）、返回结构 Result vs R、enabled 开关与 5001 认证排查实现，不凭记忆编 langchain4j（本仓库无）。
-- **排查"列表查询返回为空"** → 命中 `bug-detective`（定位原因）+ `performance-doctor` / `database-ops`（开 `SqlLogInterceptor` 抓真实 SQL）。Read 后按技能流程排查数据权限过滤、租户过滤、`del_flag`、查询条件 IfText 是否命中，而非盲目改代码。
-
-### 与 .claude/agents/ 后端 subagent 互补
-
-- `.claude/agents/` 6 个后端 subagent（`backend-common-infrastructure` / `backend-crud` / `backend-engineering` / `backend-javadoc` / `backend-module-enhancement` / `backend-query-permission`），是更细分的后端角色定义，与技能体系互补。
-
-### 禁止行为
-
-- 🔴 **禁止跳过 Read 直接写代码**：未读对应 SKILL.md 就凭"印象/训练数据"写框架代码——会写出过时或错误的约定。
-- 🔴 **禁止套用 `plus.ruoyi` / `com.ruoyi` 等衍生版约定**：本项目遵循框架约定，**不得引入** `plus.ruoyi` 包名、DAO 层 / `buildQueryWrapper()`、`PlusLambdaQuery` / `likeCast`、默认 `TenantEntity`、`is_deleted` 逻辑删除字段、`/pageXxxs` 非标准路径——这些是其它衍生版（ruoyi-plus-uniapp）写法，在本仓库一律为错。
-- 🔴 **禁止凭空编造技术栈**：无 `langchain4j` / `Fastjson2` / `Knife4j`；JSON 走 Jackson 3（`tools.jackson.*`），AI 走 Snail AI + Spring AI/MCP，文档走 SpringDoc。
-
-### 自检清单（动手前过一遍）
-
-- [ ] 已评估并列出本次命中的技能，且**已 Read 全部命中的 SKILL.md**
-- [ ] 包名 `org.dromara`，三层无 DAO，Entity `extends BaseEntity`
-- [ ] 查询用 `QueryBuilder.lambda` + IfText/IfPresent，分页 `selectVoPage` + `PageResult.build`，转换用 `MapstructUtils`
-- [ ] 写接口带 `@SaCheckPermission` + `@Log`，标准 REST 路径，BO 入参 / VO 出参
-- [ ] 未引入任何 `plus.ruoyi` / DAO / `PlusLambdaQuery` / `TenantEntity(默认)` / `is_deleted` 等衍生版写法
-- [ ] UTF-8 无 BOM、LF 换行；中文可读
-
-### 核心原则
-
-**先评估、先 Read、再实现**——Codex 自动加载的只是技能索引，真正的 6.x 约定藏在各 SKILL.md 正文与真实源码里。命中技能不读正文 = 没用技能。一切以 `org.dromara` 原版真实代码为准，凡与衍生版约定冲突，原版优先。
+- **技能发现 / 加载**：Codex 启动时自动扫描 `.codex/skills/` 下所有 SKILL.md 的 YAML frontmatter（name + description + 触发场景 + 触发词）作为技能索引装入上下文，**无需手动列目录**——启动时已经"知道"有哪些技能、各自何时触发；但 frontmatter 只是索引，**技能正文必须按需用 Read 读取**。完整技能清单（48 个，含触发词）见 [`docs/codex-skills-index.md`](docs/codex-skills-index.md)。
+- **强制评估流程**（UserPromptSubmit Hook 注入指令）：每次用户提问，先评估命中哪些技能（无匹配则写"无匹配技能"），再**逐个 Read 读完命中的 SKILL.md 全文**才开始执行命令/写代码，实现前在回复中列出已读取的技能名，让用户可核对。
+- **Hooks 协同**（`.codex/hooks.json` 注册，配合 `.codex/config.toml` 的 `[features] hooks = true` 开关，仅在 `.codex/` 被标记 trusted 时生效）：`session-start.cjs`（SessionStart）注入最近经验摘要；`skill-forced-eval.cjs`（UserPromptSubmit）注入强制技能评估流程；`pre-tool-use.cjs`（PreToolUse）工具前安全检查（拦截危险命令、`> nul` 等）；`stop.cjs`（Stop）会话收尾清理。
+- **与 `.claude/agents/` 互补**：`.claude/agents/` 的 6 个后端 subagent（backend-common-infrastructure / backend-crud / backend-engineering / backend-javadoc / backend-module-enhancement / backend-query-permission）是更细分的后端角色定义，与技能体系互补共存。
+- **典型场景映射**：新增 CRUD 模块 → `crud-development` + `database-ops`；接入 Snail AI → `snail-ai-integration`（必要时叠加 `mcp-integration`）；排查"列表查询为空" → `bug-detective` + `performance-doctor` / `database-ops`。
+- **禁止行为**：🔴 禁止跳过 Read 凭"印象/训练数据"写框架代码；🔴 禁止套用 `plus.ruoyi` / `com.ruoyi` 等衍生版约定（DAO 层 / `buildQueryWrapper()` / `PlusLambdaQuery` / `likeCast` / 默认 `TenantEntity` / `is_deleted` / `/pageXxxs`，本仓库一律为错）；🔴 禁止凭空编造技术栈（无 `langchain4j` / `Fastjson2` / `Knife4j`；JSON 走 Jackson 3（`tools.jackson.*`），AI 走 Snail AI + Spring AI/MCP，文档走 SpringDoc）。
+- **核心原则**：**先评估、先 Read、再实现**——命中技能不读正文 = 没用技能。一切以 `org.dromara` 原版真实代码为准，凡与衍生版约定冲突，原版优先。

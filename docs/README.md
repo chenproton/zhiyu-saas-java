@@ -9,6 +9,9 @@
 | 我要做什么 | 先读 |
 |---|---|
 | 任何开发任务的**第一步** | [`../AGENTS.md`](../AGENTS.md)（契约 + spec-first 硬约束） |
+| **判任务类型 / 走开发流程** | [`dev-processes.md`](dev-processes.md)（新功能七节点闭环 / 修复 / 重构，AGENTS.md §一 细则） |
+| **分层 / 安全红线全文** | [`architecture-constraints.md`](architecture-constraints.md)（AGENTS.md §三 细则，依据 ADR-0001/0003） |
+| **Codex 技能完整清单** | [`codex-skills-index.md`](codex-skills-index.md)（48 个，含触发词；正文按需 Read） |
 | **新增/变更功能** | [`spec-standards.md`](spec-standards.md)（spec 分级/模板/DoD + 7 节点闭环）→ 对应 [`spec/`](spec/) |
 | **写/改后端代码** | 根 `AGENTS.md` 第二部分（Java 框架契约：controller/service/mapper 分层与复用）+ [`初始化与部署指南.md`](初始化与部署指南.md) |
 | **Java 后端初始化/部署/多租户** | [`初始化与部署指南.md`](初始化与部署指南.md)（Java 框架环境/启动/构建/Docker）+ [`多租户功能扩展规范.md`](多租户功能扩展规范.md)（Java 多租户扩展）+ [`Git Flow 开发协作简易指南.md`](Git Flow 开发协作简易指南.md)（Java 分支/提交/MR） |
@@ -51,6 +54,9 @@ docs/
 │   ├── README.md                # 索引 + 何时写
 │   └── 0000-template.md         # 模板
 ├── spec-standards.md            # spec 规范（分级/模板/DoD/7 节点闭环）
+├── dev-processes.md            # 开发流程细则（新功能七节点/修复/重构，AGENTS.md §一）
+├── architecture-constraints.md # 分层/安全红线全文（AGENTS.md §三）
+├── codex-skills-index.md       # Codex 技能完整清单（48 个，含触发词）
 ├── documentation-standards.md   # 文档分层 + 砍废话
 ├── prose-standards.md           # 全仓文字品控
 ├── code-review-checklist.md     # 审 PR 语义检查

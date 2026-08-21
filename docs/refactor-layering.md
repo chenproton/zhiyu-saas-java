@@ -50,7 +50,7 @@ internal/
 
 ## 三、分层红线（P0）
 
-> `AGENTS.md`「三、硬性架构约束」第 3.1 条引用本清单，此处为唯一出处：
+> ⚠️ 历史关联：Go 时代 `AGENTS.md`「三、硬性架构约束」第 3.1 条曾引用本清单。Java 版分层红线全文现位于 [`architecture-constraints.md`](architecture-constraints.md)（依据 ADR-0001），本文档仅作历史参考。
 
 1. **新增** handler 中出现 `SELECT/INSERT/UPDATE/DELETE` 字符串，或直接调用 `db.Query/QueryRow/Exec` → 禁止合并
 2. 新增 handler 禁止持有 `*pgxpool.Pool` 字段（import/export/template 已全部迁移为 `Store *store.Store` 注入）
