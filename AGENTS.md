@@ -187,6 +187,8 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 
 ## 🔴 Git Flow 分支与提交规范（必须遵守）
 
+> ⚠️ **边界说明（本仓库 vs 上游）**：本节为上游框架公司规范原文，保留用于上游同步对照。**本仓库实际执行第一部分的「单 master + 分支隔离」模型**（无 main/dev/release 分支、不打版本 Tag、合并走 deploy.sh 自动直推 master），提交 message 用 `type(scope): subject` 格式、**不要求禅道 Issue ID**。本节下方的 main/dev/release/hotfix 红线与禅道 ID 要求对本仓库不生效。
+
 > 提交代码、创建/合并分支、发版前**必须**先阅读 `docs/Git Flow 开发协作简易指南.md`，并**强制**按以下约定执行。
 
 ### 分支模型与硬性红线

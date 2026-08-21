@@ -21,6 +21,7 @@
 | **审 PR / 审改动** | [`code-review-checklist.md`](code-review-checklist.md)（语义检查） |
 | **找可简化处 / 重构** | [`simplification-notes.md`](simplification-notes.md)（简化审计 + Agent Note） |
 | **理解快照版本机制** | [`resource-snapshot-versioning.md`](resource-snapshot-versioning.md) |
+| **从上游框架同步代码/配置** | [`upstream-sync-notes.md`](upstream-sync-notes.md)（有意偏离上游、防误还原清单） |
 
 ## 文档分类（教程 vs 参考）
 
@@ -29,7 +30,7 @@
 ### 参考型（按需查，不要求顺序读）
 
 - **规范/红线**：`security-standards.md`、`spec-standards.md`、`documentation-standards.md`、`prose-standards.md`、`code-review-checklist.md`、`simplification-notes.md`、`refactor-layering.md`（Go 时代分层方案，已由 AGENTS.md 第二部分覆盖，历史参考）
-- **速查/盘点**：`resource-snapshot-versioning.md`
+- **速查/盘点**：`resource-snapshot-versioning.md`、`upstream-sync-notes.md`（上游同步防误还原清单）
 - **规格（spec）**：`spec/` 全部（单一事实源，按需查）
 - **决策（ADR）**：`decisions/` 全部（为什么这么做）
 
@@ -58,6 +59,7 @@ docs/
 ├── backend-reuse.md             # Go 时代后端复用速查（历史参考，已由 AGENTS.md 第二部分覆盖）
 ├── security-standards.md        # 安全非功能规范（密码/会话/密钥/限流/上传）
 ├── resource-snapshot-versioning.md  # 快照版本机制
+├── upstream-sync-notes.md           # 上游框架同步备忘（防误还原清单）
 ├── testing-guide.md                # 自动化测试使用指南（UI 冒烟 + 单测门禁）
 ├── 系统功能清单.md               # 全平台能力盘点（人类/AI 对照用）
 ├── 初始化与部署指南.md              # Java 框架初始化/启动/构建/Docker（教程型）

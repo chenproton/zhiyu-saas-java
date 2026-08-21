@@ -32,3 +32,14 @@ zhiyu 业务模块（`ruoyi-modules/ruoyi-zhiyu`）由 Go 版迁移而来，为�
 
 - zhiyu 模块与框架其它模块风格不一致，新人需要读本 ADR 才能理解「为什么这里不一样」。
 - fail-open 在 Redis 长时间不可用时削弱登录防爆破能力，依赖日志告警兜底。
+
+## 追加登记（2026-08-21 上游比对）：4 项安全姿态偏差
+
+与上游框架 `/tmp/ref-framework` 比对时发现，`ruoyi-admin/src/main/resources/application.yml` 中 4 处配置放松了框架默认安全姿态，均为 zhiyu-saas 迁移期对齐已删除的 Go 版行为，已在配置处带「zhiyu-saas 迁移」注释，且经用户确认（风险接受人=用户）。登记在此防止日后被当作「配置遗漏」回改：
+
+1. **验证码关闭**（`captcha.enable: false`，application.yml:21）：演示环境关闭，zhiyu 模块登录接口按需自实现校验，不使用框架默认图形验证码。
+2. **全局接口加密关闭**（`api-decrypt.enabled: false`，application.yml:165）：Vue 门户/管理端均明文请求，对齐已删除的 Go 版无加密行为。
+3. **认证放行白名单放宽**（`security.excludes`，application.yml:107-127）：放行 `/auth/**`、`/register`、`/captchaImage`、`/resource/sms/code` 及 `/api/v1/**` 等路径；其中 `/api/v1/**` 由 zhiyu 自有 Filter 鉴权，不走 Sa-Token 拦截，属迁移期「Go→Java 迁移启用」的既定放行。
+4. **sa-token 有效期 7 天**（`sa-token.timeout: 604800`，application.yml:96）：对齐 Go 版 7 天会话时长，长于框架常见默认。
+
+风险说明：以上各项均降低默认防护强度（无验证码/无接口加密/长会话/部分路径绕过 Sa-Token），风险由用户确认接受。若后续重新启用某项防护，属行为变更，需同步 spec 与本 ADR。

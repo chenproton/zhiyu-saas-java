@@ -1,7 +1,7 @@
 # 开发环境配置
 server:
   # 服务器的HTTP端口，默认为8080
-  # zhiyu-saas 迁移：线上 Go 服务占用 8080，Java 后端开发期使用 8081
+  # zhiyu-saas 迁移：默认 8081（历史原因是已删除的 Go 服务占用 8080，现沿用 8081 避免与既有部署/脚本冲突）
   port: ${SERVER_PORT:8081}
   servlet:
     # 应用的访问路径
@@ -161,7 +161,7 @@ mybatis-encryptor:
 # api接口加密
 api-decrypt:
   # 是否开启全局接口加密
-  # zhiyu-saas 迁移：前端 React 明文请求（Go 版无加密），关闭接口加密
+  # zhiyu-saas 迁移：Vue 门户/管理端均明文请求（对齐已删除的 Go 版无加密行为），关闭接口加密
   enabled: false
   # AES 加密头标识
   headerFlag: encrypt-key
