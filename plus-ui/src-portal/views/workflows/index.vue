@@ -28,20 +28,28 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialog" :title="editing ? '编辑流程' : '新建流程'" width="560px">
+    <el-dialog v-model="dialog" :title="editing ? '编辑流程' : '新建流程'" width="620px">
       <el-form label-width="90px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="适用场景"><el-input v-model="form.scene" placeholder="如 career_position/scenario" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="审批步骤">
           <div class="steps">
-            <div v-for="(step, i) in form.steps" :key="i" class="step-row">
-              <el-input v-model="step.name" placeholder="步骤名称" class="step-name" />
-              <el-select v-model="step.approvalMode" class="step-mode">
-                <el-option label="任一人" value="any" />
-                <el-option label="全员" value="all" />
-              </el-select>
-              <el-button size="small" type="danger" @click="removeStep(i)">删除</el-button>
+            <div v-for="(step, i) in form.steps" :key="i" class="step-block">
+              <div class="step-row">
+                <span class="step-index">{{ i + 1 }}</span>
+                <el-input v-model="step.name" placeholder="步骤名称（如：教研组长审批）" class="step-name" />
+                <el-button size="small" type="danger" :disabled="form.steps.length <= 1" @click="removeStep(i)">删除</el-button>
+              </div>
+              <div class="step-approvers">
+                <div class="approver-picker">
+                  <UserSelector v-model="step.approverIds" multiple placeholder="选择审批人" />
+                </div>
+                <el-select v-model="step.approvalMode" class="step-mode">
+                  <el-option label="任一通过" value="any" />
+                  <el-option label="全员通过" value="all" />
+                </el-select>
+              </div>
             </div>
             <el-button size="small" @click="addStep">+ 添加步骤</el-button>
           </div>
@@ -59,6 +67,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { workflowApi } from '@/api/system';
+import UserSelector from '@/views/job/position-builder/UserSelector.vue';
 import type { Workflow, WorkflowStep } from '@/types/system';
 
 const items = ref<Workflow[]>([]);
@@ -84,7 +93,15 @@ function openDialog(row?: Workflow) {
   form.name = row?.name || '';
   form.scene = row?.scene || '';
   form.description = row?.description || '';
-  form.steps = row?.steps ? row.steps.map((s) => ({ ...s })) : [];
+  // 兼容历史数据：旧步骤可能缺 approverIds，统一归一化为数组
+  form.steps = row?.steps
+    ? row.steps.map((s) => ({
+        name: s.name,
+        order: s.order,
+        approvalMode: s.approvalMode,
+        approverIds: s.approverIds || []
+      }))
+    : [];
   dialog.value = true;
 }
 function addStep() {
@@ -97,6 +114,21 @@ async function save() {
   if (!form.name.trim()) {
     ElMessage.warning('名称不能为空');
     return;
+  }
+  if (form.steps.length === 0) {
+    ElMessage.warning('请至少添加一个审批步骤');
+    return;
+  }
+  for (let i = 0; i < form.steps.length; i++) {
+    const s = form.steps[i];
+    if (!s.name.trim()) {
+      ElMessage.warning(`步骤 ${i + 1} 的名称不能为空`);
+      return;
+    }
+    if (!s.approverIds || s.approverIds.length === 0) {
+      ElMessage.warning(`步骤 ${i + 1} 未选择审批人，审批流程将无法推进`);
+      return;
+    }
   }
   saving.value = true;
   try {
@@ -143,7 +175,28 @@ onMounted(loadItems);
 .card-header { display: flex; align-items: center; justify-content: space-between; }
 .card-title { font-size: 16px; font-weight: 600; }
 .steps { width: 100%; }
-.step-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.step-block {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.step-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.step-index {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #409eff;
+  color: #fff;
+  font-size: 12px;
+}
 .step-name { flex: 1; }
-.step-mode { width: 110px; }
+.step-approvers { display: flex; gap: 8px; align-items: flex-start; padding-left: 30px; }
+.approver-picker { flex: 1; min-width: 0; }
+.step-mode { width: 110px; flex-shrink: 0; }
 </style>
