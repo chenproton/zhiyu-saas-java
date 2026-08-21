@@ -3,7 +3,7 @@
 > 基于 `db/migrations/`（001_baseline + 091~168 增量）回溯整理。
 > 当前共 **153 张表**（156 定义 − 3 处删除：迁移 110 删除 app_modules/platform_links、154 删除 alliance_expert_mentor_links）。
 > 124~168 增量由「数据模型变更流程」约束回写（见 spec-standards.md），由 spec-check.sh 第 7 项机械校验。
-> 约定（MySQL 8.0，2026-08 从 PostgreSQL 切换）：主键统一 `CHAR(36) DEFAULT (UUID())`；`created_at/updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`；业务枚举用 `varchar + CHECK`（原 7 个 PG ENUM 已转列级 ENUM/CHECK）。数组列（原 PG uuid[]/text[]）统一为 JSON 列。
+> 约定（MySQL 8.0，2026-08 从 PostgreSQL 切换）：主键统一 `CHAR(36) DEFAULT (UUID())`；`created_at/updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`；业务枚举用 `varchar + CHECK`（原 7 个 PG ENUM 已转列级 ENUM/CHECK）。数组列（原 PG uuid[]/text[]）统一为 JSON 列。并发控制：原 PG advisory 锁（PgAdvisoryLockGuard、AffairsScheduleMapper/PartnerEvalMapper/SceneEvalMethodMapper 的 pg_advisory_xact_lock）已改 MySQL GET_LOCK/RELEASE_LOCK（连接级）。
 
 ---
 
