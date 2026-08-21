@@ -87,7 +87,7 @@ public class SceneWeightServiceImpl implements ISceneWeightService {
 
         String id;
         if (req.getId() != null && !req.getId().isEmpty()) {
-            weightMapper.updateByIdParams(req.getId(), req.getScenarioId(), req.getTaskId(), req.getWeight());
+            weightMapper.updateByIdParams(req.getId(), req.getScenarioId(), req.getTaskId(), req.getWeight(), tenantId);
             id = req.getId();
         } else {
             weightMapper.upsert(tenantId, req.getScenarioId(), req.getTaskId(), req.getWeight());

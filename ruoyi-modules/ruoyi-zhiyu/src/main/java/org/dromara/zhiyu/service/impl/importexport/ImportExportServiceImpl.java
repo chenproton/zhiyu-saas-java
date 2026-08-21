@@ -1,6 +1,7 @@
 package org.dromara.zhiyu.service.impl.importexport;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -70,6 +71,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class ImportExportServiceImpl implements IImportExportService {
 
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
@@ -1312,7 +1314,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 br = parseBrandRow(tenantId, row, bt);
             } catch (RowParseException e) {
                 failed++;
-                errors.add("第" + rowNum + "行" + e.getMessage());
+                errors.add("第" + rowNum + "行" + importErrorMessage(e));
                 continue;
             }
             if (br == null) {
@@ -1341,7 +1343,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                             brandMapper.updateBrand(existing);
                         } catch (Exception e) {
                             failed++;
-                            errors.add("第" + rowNum + "行品牌[" + br.name + "]更新失败: " + e.getMessage());
+                            errors.add("第" + rowNum + "行品牌[" + br.name + "]更新失败: " + importErrorMessage(e));
                             continue;
                         }
                     }
@@ -1379,7 +1381,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                     brandMapper.insertBrand(b);
                 } catch (Exception e) {
                     failed++;
-                    errors.add("第" + rowNum + "行品牌[" + br.name + "]创建失败: " + e.getMessage());
+                    errors.add("第" + rowNum + "行品牌[" + br.name + "]创建失败: " + importErrorMessage(e));
                     continue;
                 }
             }
@@ -1940,6 +1942,18 @@ public class ImportExportServiceImpl implements IImportExportService {
         }
     }
 
+    /**
+     * 导入行级错误消息收敛：业务异常（ApiException）与行解析异常透传消息（面向用户），
+     * 未知异常统一通用文案并记录堆栈（避免泄露 SQL/内部细节）。
+     */
+    private String importErrorMessage(Exception e) {
+        if (e instanceof ApiException || e instanceof RowParseException) {
+            return e.getMessage();
+        }
+        log.error("导入处理异常", e);
+        return "内部处理失败，请联系管理员";
+    }
+
     private static final class BrandRow {
         BrandRow(String name) {
             this.name = name;
@@ -2198,7 +2212,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 }
             } catch (Exception e) {
                 acc.failed++;
-                acc.errors.add("岗位[" + name + "]创建失败: " + e.getMessage());
+                acc.errors.add("岗位[" + name + "]创建失败: " + importErrorMessage(e));
                 continue;
             }
             positionMap.put(name, positionId);
@@ -2272,7 +2286,7 @@ public class ImportExportServiceImpl implements IImportExportService {
             } catch (Exception e) {
                 acc.failed++;
                 acc.errors.add("能力点绑定[" + positionName + "/" + respName + "/" + abilityName + "]失败: "
-                    + e.getMessage());
+                    + importErrorMessage(e));
                 continue;
             }
             acc.created++;
@@ -2755,7 +2769,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 created++;
             } catch (Exception e) {
                 failed++;
-                errors.add("课程[" + it.courseName + "]导入失败: " + e.getMessage());
+                errors.add("课程[" + it.courseName + "]导入失败: " + importErrorMessage(e));
             }
         }
         return executeResult(created, failed, 0, "排课", errors);
@@ -2909,7 +2923,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                     replaceCourseBindings(existingId, tenantId, knowledgePointIds, resourceIds);
                 } catch (Exception e) {
                     failed++;
-                    errors.add("颗粒课[" + name + "]更新失败: " + e.getMessage());
+                    errors.add("颗粒课[" + name + "]更新失败: " + importErrorMessage(e));
                 }
                 continue;
             }
@@ -2930,7 +2944,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 created++;
             } catch (Exception e) {
                 failed++;
-                errors.add("颗粒课[" + name + "]创建失败: " + e.getMessage());
+                errors.add("颗粒课[" + name + "]创建失败: " + importErrorMessage(e));
             }
         }
         if (preview) {
@@ -3087,7 +3101,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                         courseImportMapper.deleteCourseNodes(existingId);
                     } catch (Exception e) {
                         failed++;
-                        errors.add("课程[" + name + "]更新失败: " + e.getMessage());
+                        errors.add("课程[" + name + "]更新失败: " + importErrorMessage(e));
                         continue;
                     }
                     courseMap.put(name, existingId);
@@ -3107,7 +3121,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                     userId, batchId, toPgArray(abilityPointIds));
             } catch (Exception e) {
                 failed++;
-                errors.add("课程[" + name + "]创建失败: " + e.getMessage());
+                errors.add("课程[" + name + "]创建失败: " + importErrorMessage(e));
                 continue;
             }
             courseMap.put(name, courseId);
@@ -3215,7 +3229,7 @@ public class ImportExportServiceImpl implements IImportExportService {
             courseImportMapper.insertCourseNode(nodeId, tenantId, nr.courseId, parentId, nr.nodeName, nr.sortOrder,
                 nr.refType, sourceId, sourceName, teachingGoals, (int) duration, difficulty);
         } catch (Exception e) {
-            errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]创建失败: " + e.getMessage());
+            errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]创建失败: " + importErrorMessage(e));
             return false;
         }
         nodeNameMap.get(nr.courseName).put(nr.nodeName, nodeId);
@@ -3272,7 +3286,7 @@ public class ImportExportServiceImpl implements IImportExportService {
             try {
                 courseImportMapper.insertNodeQuiz(UUID.randomUUID().toString(), tenantId, nodeId, title, methodKey);
             } catch (Exception e) {
-                errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]测评[" + evalName + "]创建失败: " + e.getMessage());
+                errors.add("节点[" + nr.courseName + "/" + nr.nodeName + "]测评[" + evalName + "]创建失败: " + importErrorMessage(e));
             }
         }
         return true;
@@ -3373,7 +3387,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                         scenarioImportMapper.deleteScenarioTasks(existingId);
                     } catch (Exception e) {
                         failed++;
-                        errors.add("场景[" + name + "]更新失败: " + e.getMessage());
+                        errors.add("场景[" + name + "]更新失败: " + importErrorMessage(e));
                         continue;
                     }
                     scenarioMap.put(name, existingId);
@@ -3395,7 +3409,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                     professionIds, batchId, difficulty, background, userId);
             } catch (Exception e) {
                 failed++;
-                errors.add("场景[" + name + "]创建失败: " + e.getMessage());
+                errors.add("场景[" + name + "]创建失败: " + importErrorMessage(e));
                 continue;
             }
             scenarioMap.put(name, scenarioId);
@@ -3465,7 +3479,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                         knowledgePointIds, abilityPointIds, resourceIds);
                 } catch (Exception e) {
                     failed++;
-                    errors.add("任务[" + scenarioName + "/" + taskName + "]创建失败: " + e.getMessage());
+                    errors.add("任务[" + scenarioName + "/" + taskName + "]创建失败: " + importErrorMessage(e));
                     continue;
                 }
                 taskCreated++;
@@ -3490,7 +3504,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                                 mk, weight);
                         } catch (Exception e) {
                             errors.add("任务[" + scenarioName + "/" + taskName + "]测评方式[" + mk + "]写入失败: "
-                                + e.getMessage());
+                                + importErrorMessage(e));
                         }
                     }
                 }
@@ -3710,7 +3724,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                             analysis, score, difficulty, knowledgePointIds);
                     } catch (Exception e) {
                         failed++;
-                        errors.add("第" + (i + 1) + "行题目更新失败: " + e.getMessage());
+                        errors.add("第" + (i + 1) + "行题目更新失败: " + importErrorMessage(e));
                         continue;
                     }
                     created++;
@@ -3739,7 +3753,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                     optionsJson, answerJson, analysis, score, difficulty, knowledgePointIds, userId, source);
             } catch (Exception e) {
                 failed++;
-                errors.add("第" + (i + 1) + "行题目创建失败: " + e.getMessage());
+                errors.add("第" + (i + 1) + "行题目创建失败: " + importErrorMessage(e));
                 continue;
             }
             created++;

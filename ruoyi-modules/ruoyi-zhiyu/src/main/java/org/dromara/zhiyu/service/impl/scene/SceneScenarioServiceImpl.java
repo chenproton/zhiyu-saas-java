@@ -190,8 +190,8 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         if (scenarioMapper.existsEvaluationResults(id)) {
             throw new ApiException(409, "conflict", "该场景已存在测评成绩，无法删除");
         }
-        scenarioMapper.unbindTeachingPlanEntries(id);
-        scenarioMapper.unbindScheduleEntries(id);
+        scenarioMapper.unbindTeachingPlanEntries(id, existing.getTenantId());
+        scenarioMapper.unbindScheduleEntries(id, existing.getTenantId());
         // 收集任务 ID 供考试安排清理（scenario_tasks 经外键级联删除）
         List<SceneScenarioTask> tasks = taskMapper.selectList(
             QueryBuilder.lambda(SceneScenarioTask.class).eq(SceneScenarioTask::getScenarioId, id).build());

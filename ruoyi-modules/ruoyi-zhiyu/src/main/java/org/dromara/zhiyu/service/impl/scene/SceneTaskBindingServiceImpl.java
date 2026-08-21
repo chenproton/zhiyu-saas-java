@@ -45,14 +45,14 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
     @Override
     public String unbindKnowledge(String id) {
-        requireTenant();
+        String tenantId = requireTenant();
         requireUser();
         String taskId = knowledgeMapper.selectTaskId(id);
         if (taskId == null) {
             return id;
         }
         verifyTaskTenant(taskId);
-        knowledgeMapper.deleteByIdParam(id);
+        knowledgeMapper.deleteByIdParam(id, tenantId);
         return id;
     }
 
@@ -71,14 +71,14 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
     @Override
     public String unbindAbility(String id) {
-        requireTenant();
+        String tenantId = requireTenant();
         requireUser();
         String taskId = abilityMapper.selectTaskId(id);
         if (taskId == null) {
             return id;
         }
         verifyTaskTenant(taskId);
-        abilityMapper.deleteByIdParam(id);
+        abilityMapper.deleteByIdParam(id, tenantId);
         return id;
     }
 

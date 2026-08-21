@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.evaluation;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
 import org.dromara.zhiyu.core.page.ListResponse;
@@ -65,6 +66,7 @@ import java.util.stream.Collectors;
  *
  * @author zhiyu
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class EvaluationExamServiceImpl implements IEvaluationExamService {
@@ -539,7 +541,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         }
         try {
             examUsageMapper.syncScheduledExamUsageStatus(tenantId, OffsetDateTime.now());
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            // 状态同步失败不阻断考试中心查询，但需留痕
+            log.warn("同步考试安排状态失败 tenantId={}", tenantId, e);
         }
         List<Map<String, Object>> rows = examUsageMapper.selectExamCenter(tenantId, userId, classNodeId);
         List<ExamCenterItemDto> items = new ArrayList<>(rows.size());

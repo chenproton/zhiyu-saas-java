@@ -142,13 +142,14 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
     @Override
     public String unbind(String id) {
         requireUser();
+        String tenantId = requireTenant();
         // 绑定不存在时静默成功（对齐 Go Unbind 幂等语义）
         String taskId = bindingMapper.selectTaskId(id);
         if (taskId == null) {
             return id;
         }
         checkTaskTenant(taskId);
-        bindingMapper.unbind(id);
+        bindingMapper.unbind(id, tenantId);
         return id;
     }
 
@@ -197,6 +198,7 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
             }
             return MAPPER.convertValue(raw, STRING_LIST_REF);
         } catch (Exception e) {
+            log.warn("解析资源 metadata 知识点列表失败，降级为 null", e);
             return null;
         }
     }
@@ -205,6 +207,7 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
         try {
             return MAPPER.writeValueAsString(map == null ? Map.of() : map);
         } catch (Exception e) {
+            log.warn("Map 序列化 JSON 失败，降级为空对象", e);
             return "{}";
         }
     }

@@ -16,14 +16,22 @@ import java.util.List;
  */
 public interface EvaluationAppealMapper extends BaseMapperPlus<EvaluationAppeal, EvaluationAppeal> {
 
-    /** 申诉列表（type/status 过滤，租户隔离，created_at 倒序）。 */
+    /** 申诉列表（type/status 过滤，租户隔离，created_at 倒序，SQL 分页）。 */
     @Select("<script>SELECT id, user_id, type, reason, status, remark, tenant_id, created_at, updated_at"
         + " FROM appeal_records WHERE tenant_id = #{tenantId}"
         + " <if test=\"type != null and type != ''\">AND type = #{type}</if>"
         + " <if test=\"status != null and status != ''\">AND status = #{status}</if>"
-        + " ORDER BY created_at DESC</script>")
+        + " ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     List<EvaluationAppeal> selectAppeals(@Param("tenantId") String tenantId, @Param("type") String type,
-                                         @Param("status") String status);
+                                         @Param("status") String status, @Param("limit") long limit,
+                                         @Param("offset") long offset);
+
+    /** 申诉总数（与 selectAppeals 同过滤条件）。 */
+    @Select("<script>SELECT COUNT(*) FROM appeal_records WHERE tenant_id = #{tenantId}"
+        + " <if test=\"type != null and type != ''\">AND type = #{type}</if>"
+        + " <if test=\"status != null and status != ''\">AND status = #{status}</if></script>")
+    long countAppeals(@Param("tenantId") String tenantId, @Param("type") String type,
+                      @Param("status") String status);
 
     /** 查询申诉所属租户（归属校验用）。 */
     @Select("SELECT tenant_id FROM appeal_records WHERE id = #{id}")

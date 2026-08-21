@@ -43,6 +43,6 @@ public interface SceneRubricTemplateMapper extends BaseMapperPlus<SceneRubricTem
     /**
      * 软删除评分模板（对齐 Go DeleteRubricTemplate）。
      */
-    @Update("UPDATE rubric_templates SET is_deleted = true, updated_at = NOW() WHERE id = #{id}")
-    int softDelete(@Param("id") String id);
+    @Update("UPDATE rubric_templates SET is_deleted = true, updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int softDelete(@Param("id") String id, @Param("tenantId") String tenantId);
 }

@@ -193,7 +193,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         verifyTenantOwnership(scenarioTenantId);
         if (req.getTaskIds() != null) {
             for (int i = 0; i < req.getTaskIds().size(); i++) {
-                taskMapper.reorderTask(req.getTaskIds().get(i), req.getScenarioId(), i);
+                taskMapper.reorderTask(req.getTaskIds().get(i), req.getScenarioId(), i, tenantId);
             }
         }
         return true;
@@ -430,6 +430,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
             ZhiyuUser user = userMapper.selectById(userId);
             return user != null && "student".equals(user.getRole());
         } catch (Exception e) {
+            log.warn("学生角色判定失败，降级为非学生 userId={}", userId, e);
             return false;
         }
     }
@@ -469,6 +470,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         try {
             return MAPPER.writeValueAsString(map == null ? Map.of() : map);
         } catch (Exception e) {
+            log.warn("Map 序列化 JSON 失败，降级为空对象", e);
             return "{}";
         }
     }
@@ -480,6 +482,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         try {
             return MAPPER.readValue(json, MAP_REF);
         } catch (Exception e) {
+            log.warn("JSON 反序列化失败，降级为 null json={}", json, e);
             return null;
         }
     }

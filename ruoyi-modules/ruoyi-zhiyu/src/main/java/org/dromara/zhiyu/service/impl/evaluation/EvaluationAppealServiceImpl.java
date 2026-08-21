@@ -33,13 +33,11 @@ public class EvaluationAppealServiceImpl implements IEvaluationAppealService {
     public ListResponse<AppealDto> list(String type, String status, long limit, long offset) {
         String tenantId = requireTenant();
         requireUser();
-        List<EvaluationAppeal> rows = appealMapper.selectAppeals(tenantId, type, status);
         long safeLimit = clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
-        long total = rows.size();
-        int from = (int) Math.min(safeOffset, rows.size());
-        int to = (int) Math.min(safeOffset + safeLimit, rows.size());
-        List<AppealDto> items = rows.subList(from, to).stream().map(this::toDto).toList();
+        long total = appealMapper.countAppeals(tenantId, type, status);
+        List<EvaluationAppeal> rows = appealMapper.selectAppeals(tenantId, type, status, safeLimit, safeOffset);
+        List<AppealDto> items = rows.stream().map(this::toDto).toList();
         return ListResponse.of(items, total);
     }
 

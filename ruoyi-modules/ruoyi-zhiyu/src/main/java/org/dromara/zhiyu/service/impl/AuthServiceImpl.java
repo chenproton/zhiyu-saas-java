@@ -398,6 +398,7 @@ public class AuthServiceImpl implements IAuthService {
             String v = stringRedisTemplate.opsForValue().get(CAPTCHA_FAIL_IP_KEY + ip);
             return v == null ? 0 : Long.parseLong(v);
         } catch (Exception e) {
+            log.warn("Redis 不可用，IP 登录失败计数降级为 0（登录防护失效）ip={}", ip, e);
             return 0;
         }
     }
@@ -410,8 +411,9 @@ public class AuthServiceImpl implements IAuthService {
             if (n != null && n == 1L) {
                 stringRedisTemplate.expire(key, CAPTCHA_FAIL_TTL);
             }
-        } catch (Exception ignored) {
-            // Redis 不可用：静默跳过，不阻断登录
+        } catch (Exception e) {
+            // Redis 不可用：跳过计数不阻断登录，但需留痕（登录防护失效）
+            log.warn("Redis 不可用，记录 IP 登录失败跳过 ip={}", ip, e);
         }
     }
 
@@ -420,6 +422,7 @@ public class AuthServiceImpl implements IAuthService {
         try {
             stringRedisTemplate.delete(CAPTCHA_FAIL_IP_KEY + ip);
         } catch (Exception ignored) {
+            // Redis 不可用：残留计数 TTL 到期自动清除，无需处理
         }
     }
 
@@ -428,6 +431,7 @@ public class AuthServiceImpl implements IAuthService {
         try {
             return Boolean.TRUE.equals(stringRedisTemplate.hasKey(trustedDeviceKey(platform, username, deviceId)));
         } catch (Exception e) {
+            log.warn("Redis 不可用，常用设备判定降级为「视为常用」platform={} username={}", platform, username, e);
             return true;
         }
     }
@@ -436,7 +440,9 @@ public class AuthServiceImpl implements IAuthService {
     private void markTrustedDevice(String platform, String username, String deviceId) {
         try {
             stringRedisTemplate.opsForValue().set(trustedDeviceKey(platform, username, deviceId), "1", CAPTCHA_TRUST_TTL);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            // Redis 不可用：跳过标记不阻断登录，但需留痕
+            log.warn("Redis 不可用，标记常用设备跳过 platform={} username={}", platform, username, e);
         }
     }
 
@@ -446,6 +452,7 @@ public class AuthServiceImpl implements IAuthService {
             String v = stringRedisTemplate.opsForValue().get(deviceFailKey(platform, username, deviceId));
             return v == null ? 0 : Long.parseLong(v);
         } catch (Exception e) {
+            log.warn("Redis 不可用，设备登录失败计数降级为 0（登录防护失效）platform={} username={}", platform, username, e);
             return 0;
         }
     }
@@ -458,7 +465,9 @@ public class AuthServiceImpl implements IAuthService {
             if (n != null && n == 1L) {
                 stringRedisTemplate.expire(key, CAPTCHA_FAIL_TTL);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            // Redis 不可用：跳过计数不阻断登录，但需留痕（登录防护失效）
+            log.warn("Redis 不可用，记录设备登录失败跳过 platform={} username={}", platform, username, e);
         }
     }
 
@@ -467,6 +476,7 @@ public class AuthServiceImpl implements IAuthService {
         try {
             stringRedisTemplate.delete(deviceFailKey(platform, username, deviceId));
         } catch (Exception ignored) {
+            // Redis 不可用：残留计数 TTL 到期自动清除，无需处理
         }
     }
 

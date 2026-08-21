@@ -34,8 +34,8 @@ public interface SceneTaskResourceBindingMapper extends BaseMapperPlus<SceneTask
     String selectTaskId(@Param("id") String id);
 
     /**
-     * 解绑（绑定不存在时静默成功，对齐 Go Unbind 幂等语义）。
+     * 解绑（绑定不存在时静默成功，对齐 Go Unbind 幂等语义；限定租户）。
      */
-    @Delete("DELETE FROM task_resource_bindings WHERE id = #{id}")
-    int unbind(@Param("id") String id);
+    @Delete("DELETE FROM task_resource_bindings WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int unbind(@Param("id") String id, @Param("tenantId") String tenantId);
 }

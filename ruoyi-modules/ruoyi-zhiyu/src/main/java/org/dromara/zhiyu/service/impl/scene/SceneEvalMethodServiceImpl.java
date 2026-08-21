@@ -576,8 +576,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
     public String deleteTemplate(String id) {
         requireTenant();
         requireUser();
-        fetchOwnedTemplate(id);
-        templateMapper.softDelete(id);
+        SceneRubricTemplate existing = fetchOwnedTemplate(id);
+        templateMapper.softDelete(id, existing.getTenantId());
         return id;
     }
 
@@ -694,6 +694,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
         try {
             return MAPPER.writeValueAsString(value);
         } catch (Exception e) {
+            log.warn("对象序列化 JSON 失败，降级为 fallback", e);
             return fallback;
         }
     }
@@ -706,6 +707,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             List<Object> v = MAPPER.readValue(json, LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
+            log.warn("JSON 数组解析失败，降级为空列表 json={}", json, e);
             return new ArrayList<>();
         }
     }
@@ -718,6 +720,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             Map<String, Object> v = MAPPER.readValue(json, MAP_REF);
             return v == null ? new LinkedHashMap<>() : v;
         } catch (Exception e) {
+            log.warn("JSON 对象解析失败，降级为空 Map json={}", json, e);
             return new LinkedHashMap<>();
         }
     }
@@ -758,6 +761,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             Object v = pd.getReadMethod().invoke(row);
             return v == null ? null : v.toString();
         } catch (Exception e) {
+            log.warn("反射读取字段失败 field={} type={}", field, row == null ? null : row.getClass().getSimpleName(), e);
             return null;
         }
     }

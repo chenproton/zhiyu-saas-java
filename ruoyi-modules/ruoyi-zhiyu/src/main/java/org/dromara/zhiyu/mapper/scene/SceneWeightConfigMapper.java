@@ -33,9 +33,10 @@ public interface SceneWeightConfigMapper extends BaseMapperPlus<SceneWeightConfi
      * 更新权重（按 id；对齐 Go Upsert 的 ID 分支）。
      */
     @Update("UPDATE scenario_weight_configs SET scenario_id = #{scenarioId}, task_id = #{taskId}, weight = #{weight}"
-        + " WHERE id = #{id}")
+        + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateByIdParams(@Param("id") String id, @Param("scenarioId") String scenarioId,
-                         @Param("taskId") String taskId, @Param("weight") BigDecimal weight);
+                         @Param("taskId") String taskId, @Param("weight") BigDecimal weight,
+                         @Param("tenantId") String tenantId);
 
     /**
      * 查询权重配置所属场景 ID（归属校验用）。

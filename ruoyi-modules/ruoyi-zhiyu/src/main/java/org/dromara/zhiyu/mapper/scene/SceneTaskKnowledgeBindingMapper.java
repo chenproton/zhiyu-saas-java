@@ -31,7 +31,7 @@ public interface SceneTaskKnowledgeBindingMapper
     @Select("SELECT task_id FROM task_knowledge_bindings WHERE id = #{id}")
     String selectTaskId(@Param("id") String id);
 
-    /** 解绑（按 id）。 */
-    @Delete("DELETE FROM task_knowledge_bindings WHERE id = #{id}")
-    int deleteByIdParam(@Param("id") String id);
+    /** 解绑（按 id，限定租户）。 */
+    @Delete("DELETE FROM task_knowledge_bindings WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int deleteByIdParam(@Param("id") String id, @Param("tenantId") String tenantId);
 }

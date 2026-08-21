@@ -46,8 +46,8 @@ public class FileServiceImpl implements IFileService {
     @Value("${ZHIYU_UPLOAD_DIR:/root/projects/saas-framework6-java-vue/data/uploads}")
     private String uploadDir;
 
-    /** 签名密钥（对齐 Go JWTSecret；默认取 Sa-Token jwt-secret-key） */
-    @Value("${sa-token.jwt-secret-key:zhiyu-file-sign-secret}")
+    /** 签名密钥（对齐 Go JWTSecret；取 Sa-Token jwt-secret-key，无硬编码兜底，缺失即启动失败） */
+    @Value("${sa-token.jwt-secret-key}")
     private String signSecret;
 
     /** 联盟公开前台文件判定（对齐 Go IsPublicAllianceFile）。 */

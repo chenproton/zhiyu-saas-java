@@ -118,13 +118,13 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
         + " WHERE ser.scene_id = #{id} OR ser.task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id = #{id}))")
     boolean existsEvaluationResults(@Param("id") String id);
 
-    /** 解除教学计划条目对场景的引用（删除前清理）。 */
-    @Update("UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = #{id}")
-    int unbindTeachingPlanEntries(@Param("id") String id);
+    /** 解除教学计划条目对场景的引用（删除前清理，限定租户）。 */
+    @Update("UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = #{id} AND tenant_id = #{tenantId}")
+    int unbindTeachingPlanEntries(@Param("id") String id, @Param("tenantId") String tenantId);
 
-    /** 解除日程条目对场景的引用（删除前清理）。 */
-    @Update("UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = #{id}")
-    int unbindScheduleEntries(@Param("id") String id);
+    /** 解除日程条目对场景的引用（删除前清理，限定租户）。 */
+    @Update("UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = #{id} AND tenant_id = #{tenantId}")
+    int unbindScheduleEntries(@Param("id") String id, @Param("tenantId") String tenantId);
 
     /**
      * 记录浏览（view_logs 追加 + view_counters 累加，对齐 Go RecordView；失败仅记日志不阻塞）。

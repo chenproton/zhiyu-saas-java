@@ -81,8 +81,10 @@ public interface SceneScenarioTaskMapper extends BaseMapperPlus<SceneScenarioTas
     /**
      * 重排任务排序（事务内逐条更新，对齐 Go ScenarioTaskStore.Reorder）。
      */
-    @Update("UPDATE scenario_tasks SET sort_order = #{sortOrder} WHERE id = #{taskId} AND scenario_id = #{scenarioId}")
-    int reorderTask(@Param("taskId") String taskId, @Param("scenarioId") String scenarioId, @Param("sortOrder") int sortOrder);
+    @Update("UPDATE scenario_tasks SET sort_order = #{sortOrder} WHERE id = #{taskId} AND scenario_id = #{scenarioId}"
+        + " AND tenant_id = #{tenantId}")
+    int reorderTask(@Param("taskId") String taskId, @Param("scenarioId") String scenarioId,
+                    @Param("sortOrder") int sortOrder, @Param("tenantId") String tenantId);
 
     /**
      * 查询任务所属场景 ID（归属校验用）。
