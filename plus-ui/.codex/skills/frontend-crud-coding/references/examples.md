@@ -14,7 +14,7 @@
 
 - 先看 `src/api/system/client/*` 和 `src/views/system/client/index.vue` 是否已存在。
 - 再看 `src/views/demo/demo/index.vue` 的标准 hooks 版 CRUD 骨架。
-- 对照项目内 `gen/api.ts.ftl`、`gen/types.ts.ftl`、`gen/index.vue.ftl`。
+- 对照仓库内代码生成器活模板 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/` 下的 `api.ts.ftl`、`types.ts.ftl`、`index.vue.ftl`（plus-ui 本地 `gen/` 副本已删除）。
 - 生成或修改 `api/index.ts`、`types.ts`、`views/.../index.vue`。
 - 使用 `AxiosPromise` from `@/utils/api-types`、`PageResult` from `@/api/types`、`useLoading`、`useFormDialog`、`useSearchReset`、`useTableSelection`。
 

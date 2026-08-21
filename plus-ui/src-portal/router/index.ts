@@ -662,7 +662,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'affairs/students',
         name: 'AffairsStudents',
-        component: () => import('@/views/affairs/students.vue')
+        // 与 system/org-user 学生管理为同一页面（原 affairs/students.vue 为其旧拷贝，已合并删除）
+        component: () => import('@/views/system/students.vue')
       },
       {
         // 学生画像（对齐 React /affairs/student-portraits）
@@ -673,7 +674,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'affairs/teachers',
         name: 'AffairsTeachers',
-        component: () => import('@/views/affairs/teachers.vue')
+        // 与 system/org-user 教职工管理为同一页面（原 affairs/teachers.vue 为其旧拷贝，已合并删除）
+        component: () => import('@/views/system/teachers.vue')
       },
       {
         path: 'affairs/scheduling',

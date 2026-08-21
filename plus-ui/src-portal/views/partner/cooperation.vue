@@ -37,21 +37,21 @@
         <template v-else-if="detailData">
           <template v-if="detail?.kind === 'project'">
             <div class="detail-grid">
-              <div><div class="l">合作类型</div><div class="v">{{ (detailData as any).type || '-' }}</div></div>
-              <div><div class="l">当前阶段</div><div class="v">{{ phaseLabel((detailData as any).phase) }}</div></div>
-              <div><div class="l">发布状态</div><div class="v">{{ publishStatusLabel((detailData as any).publishStatus) }}</div></div>
-              <div><div class="l">预算</div><div class="v">{{ (detailData as any).budget || '-' }}</div></div>
-              <div><div class="l">开始日期</div><div class="v">{{ fmt((detailData as any).startDate) }}</div></div>
-              <div><div class="l">结束日期</div><div class="v">{{ fmt((detailData as any).endDate) }}</div></div>
+              <div><div class="l">合作类型</div><div class="v">{{ projectDetail?.type || '-' }}</div></div>
+              <div><div class="l">当前阶段</div><div class="v">{{ phaseLabel(projectDetail?.phase) }}</div></div>
+              <div><div class="l">发布状态</div><div class="v">{{ publishStatusLabel(projectDetail?.publishStatus) }}</div></div>
+              <div><div class="l">预算</div><div class="v">{{ projectDetail?.budget || '-' }}</div></div>
+              <div><div class="l">开始日期</div><div class="v">{{ fmt(projectDetail?.startDate) }}</div></div>
+              <div><div class="l">结束日期</div><div class="v">{{ fmt(projectDetail?.endDate) }}</div></div>
               <div class="full">
                 <div class="l">关联二级学院</div>
-                <div class="v">{{ joinList((detailData as any).secondaryColleges) }}</div>
+                <div class="v">{{ joinList(projectDetail?.secondaryColleges) }}</div>
               </div>
-              <div class="full"><div class="l">项目简介</div><div class="v">{{ (detailData as any).description || '-' }}</div></div>
+              <div class="full"><div class="l">项目简介</div><div class="v">{{ projectDetail?.description || '-' }}</div></div>
             </div>
-            <div v-if="(detailData as any).milestones?.length" class="milestones">
+            <div v-if="projectDetail?.milestones?.length" class="milestones">
               <div class="l">项目里程碑</div>
-              <div v-for="m in (detailData as any).milestones" :key="m.id" class="milestone">
+              <div v-for="m in projectDetail?.milestones" :key="m.id" class="milestone">
                 <div class="m-name">
                   {{ m.name }}
                   <el-tag :type="m.isCompleted ? 'success' : 'info'" size="small">{{ m.isCompleted ? '已完成' : '未完成' }}</el-tag>
@@ -67,27 +67,27 @@
           </template>
           <template v-else-if="detail?.kind === 'achievement'">
             <div class="detail-grid">
-              <div><div class="l">成果类型</div><div class="v">{{ achievementTypeLabel((detailData as any).type) }}</div></div>
-              <div><div class="l">成果状态</div><div class="v">{{ achievementStatusLabel((detailData as any).status) }}</div></div>
-              <div><div class="l">发布日期</div><div class="v">{{ fmt((detailData as any).achievementDate) }}</div></div>
-              <div><div class="l">浏览次数</div><div class="v">{{ (detailData as any).viewCount }}</div></div>
+              <div><div class="l">成果类型</div><div class="v">{{ achievementTypeLabel(achievementDetail?.type) }}</div></div>
+              <div><div class="l">成果状态</div><div class="v">{{ achievementStatusLabel(achievementDetail?.status) }}</div></div>
+              <div><div class="l">发布日期</div><div class="v">{{ fmt(achievementDetail?.achievementDate) }}</div></div>
+              <div><div class="l">浏览次数</div><div class="v">{{ achievementDetail?.viewCount }}</div></div>
               <div class="full">
                 <div class="l">关联二级学院</div>
-                <div class="v">{{ joinList((detailData as any).secondaryColleges) }}</div>
+                <div class="v">{{ joinList(achievementDetail?.secondaryColleges) }}</div>
               </div>
-              <div class="full"><div class="l">成果简介</div><div class="v">{{ (detailData as any).description || '-' }}</div></div>
-              <div class="full"><div class="l">引用原因 / 核心亮点</div><div class="v">{{ (detailData as any).citationReason || '-' }}</div></div>
-              <div><div class="l">成果归属人</div><div class="v">{{ joinList((detailData as any).ownerPersons) }}</div></div>
-              <div><div class="l">成果共建人</div><div class="v">{{ joinList((detailData as any).coBuilders) }}</div></div>
+              <div class="full"><div class="l">成果简介</div><div class="v">{{ achievementDetail?.description || '-' }}</div></div>
+              <div class="full"><div class="l">引用原因 / 核心亮点</div><div class="v">{{ achievementDetail?.citationReason || '-' }}</div></div>
+              <div><div class="l">成果归属人</div><div class="v">{{ joinList(achievementDetail?.ownerPersons) }}</div></div>
+              <div><div class="l">成果共建人</div><div class="v">{{ joinList(achievementDetail?.coBuilders) }}</div></div>
             </div>
           </template>
           <template v-else>
             <div class="detail-grid">
-              <div><div class="l">协议类型</div><div class="v">{{ (detailData as any).type || '-' }}</div></div>
-              <div><div class="l">协议状态</div><div class="v">{{ agreementStatusLabel((detailData as any).status) }}</div></div>
-              <div><div class="l">开始日期</div><div class="v">{{ fmt((detailData as any).startDate) }}</div></div>
-              <div><div class="l">结束日期</div><div class="v">{{ fmt((detailData as any).endDate) }}</div></div>
-              <div class="full"><div class="l">协议正文</div><div class="v">{{ (detailData as any).content || '-' }}</div></div>
+              <div><div class="l">协议类型</div><div class="v">{{ agreementDetail?.type || '-' }}</div></div>
+              <div><div class="l">协议状态</div><div class="v">{{ agreementStatusLabel(agreementDetail?.status) }}</div></div>
+              <div><div class="l">开始日期</div><div class="v">{{ fmt(agreementDetail?.startDate) }}</div></div>
+              <div><div class="l">结束日期</div><div class="v">{{ fmt(agreementDetail?.endDate) }}</div></div>
+              <div class="full"><div class="l">协议正文</div><div class="v">{{ agreementDetail?.content || '-' }}</div></div>
             </div>
           </template>
         </template>
@@ -97,10 +97,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, computed, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { partnerCooperationApi } from '@/api/partner';
-import type { PartnerCooperationSchool } from '@/types/partner';
+import type {
+  PartnerCooperationSchool,
+  PartnerCooperationProjectDetail,
+  PartnerCooperationAchievementDetail,
+  PartnerCooperationAgreementDetail
+} from '@/types/partner';
 
 type RowKind = 'project' | 'achievement' | 'agreement';
 interface Row { kind: RowKind; id: string; name: string; label: string; updatedAt: string }
@@ -140,10 +145,25 @@ const AGREEMENT_STATUS_LABELS: Record<string, string> = {
 const schools = ref<PartnerCooperationSchool[]>([]);
 const loading = ref(true);
 const detail = ref<Row | null>(null);
-const detailData = ref<any>(null);
+type CooperationDetail =
+  | PartnerCooperationProjectDetail
+  | PartnerCooperationAchievementDetail
+  | PartnerCooperationAgreementDetail;
+const detailData = ref<CooperationDetail | null>(null);
 const detailLoading = ref(false);
 const detailError = ref('');
 const detailDialog = ref(false);
+
+// detail.kind 决定 openDetail 调用哪个详情接口，这里按 kind 把联合类型窄化给模板用
+const projectDetail = computed(() =>
+  detail.value?.kind === 'project' ? (detailData.value as PartnerCooperationProjectDetail | null) : null
+);
+const achievementDetail = computed(() =>
+  detail.value?.kind === 'achievement' ? (detailData.value as PartnerCooperationAchievementDetail | null) : null
+);
+const agreementDetail = computed(() =>
+  detail.value?.kind === 'agreement' ? (detailData.value as PartnerCooperationAgreementDetail | null) : null
+);
 
 const KIND_LABELS: Record<RowKind, string> = { project: '合作项目', achievement: '合作成果', agreement: '合作协议' };
 

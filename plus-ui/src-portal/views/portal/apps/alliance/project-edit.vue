@@ -97,8 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
@@ -111,6 +110,7 @@ import {
   type AllianceProject,
   type AllianceDictItem,
 } from './crud-shared';
+import { useAllianceEditPage } from './crud-pages';
 import ImageUpload from './components/ImageUpload.vue';
 
 interface FormState {
@@ -135,18 +135,19 @@ const PHASE_OPTIONS = [
   { value: 'terminated', label: '已终止' },
 ];
 
-const route = useRoute();
-const router = useRouter();
 const auth = useAuthStore();
 const tenantId = computed(() => (auth.user?.tenantId as string) || '');
 
-const isNew = computed(() => !route.params.id);
-const id = route.params.id as string | undefined;
+const { route, router, isNew, id, loading, saving, notFound, submit, onCancel } =
+  useAllianceEditPage<AllianceProject>({
+    listPath: '/portal/apps/alliance/projects',
+    detailPath: (detailId) => `/portal/apps/alliance/projects/${detailId}`,
+    fetchEntity: (fetchId) => allianceProjectApi.get(fetchId),
+    fillForm,
+    loadOptions,
+  });
 
 const loaded = ref<AllianceProject | null>(null);
-const loading = ref(false);
-const saving = ref(false);
-const notFound = ref(false);
 const typeItems = ref<AllianceDictItem[]>([]);
 const enterprises = ref<{ label: string; value: string }[]>([]);
 const secondaryColleges = ref<string[]>([]);
@@ -177,6 +178,7 @@ const typeValue = computed<string>({
 });
 
 function fillForm(p: AllianceProject) {
+  loaded.value = p;
   form.name = p.name || '';
   form.type = p.type || '';
   form.phase = p.phase || 'initiation';
@@ -202,29 +204,12 @@ async function loadOptions() {
   secondaryColleges.value = await loadSecondaryColleges(tenantId.value);
 }
 
-async function load() {
-  if (!isNew.value && id) {
-    loading.value = true;
-    try {
-      const p = await allianceProjectApi.get(id);
-      loaded.value = p;
-      fillForm(p);
-    } catch (e) {
-      notFound.value = true;
-      ElMessage.error((e as Error).message || '加载失败');
-    } finally {
-      loading.value = false;
-    }
-  }
-}
-
 async function handleSave() {
   if (!form.name.trim()) {
     ElMessage.warning('项目名称不能为空');
     return;
   }
-  saving.value = true;
-  try {
+  await submit(async () => {
     const common = {
       name: form.name.trim(),
       type: typeValue.value,
@@ -246,33 +231,8 @@ async function handleSave() {
       ElMessage.success('项目已保存');
       router.push(`/portal/apps/alliance/projects/${id}`);
     }
-  } catch (e) {
-    ElMessage.error((e as Error).message || '保存失败');
-  } finally {
-    saving.value = false;
-  }
+  });
 }
-
-function onCancel() {
-  if (isNew.value) {
-    router.push('/portal/apps/alliance/projects');
-  } else if (id) {
-    router.push(`/portal/apps/alliance/projects/${id}`);
-  } else {
-    router.back();
-  }
-}
-
-onMounted(async () => {
-  if (!auth.user) {
-    try {
-      await auth.fetchMe();
-    } catch {
-      // 忽略
-    }
-  }
-  await Promise.all([loadOptions(), load()]);
-});
 </script>
 
 <style scoped>

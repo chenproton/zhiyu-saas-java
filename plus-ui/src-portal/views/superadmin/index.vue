@@ -232,9 +232,9 @@ import {
   applyBrandColor,
   isHexColor,
   DEFAULT_BRAND_COLOR,
-  getDeviceId,
   parseJwtPayload
 } from '@/api/superadmin';
+import { getDeviceId } from '@/utils/device';
 import type { AdminTenant, TenantType, CaptchaData } from '@/api/superadmin';
 import ThemeColorPicker from './theme-color-picker.vue';
 import TenantFormDialog from './tenant-form-dialog.vue';

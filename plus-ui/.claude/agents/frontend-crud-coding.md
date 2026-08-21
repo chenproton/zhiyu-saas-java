@@ -19,5 +19,5 @@ description: 前端总入口。用于 plus-ui 前端项目中的标准 CRUD 页�
 
 - 先读当前目录下最近似页面和 API，再动代码。
 - 提交/合并代码时**强制**遵循仓库根 `docs/Git Flow 开发协作简易指南.md`：严禁 `dev` 直接合并 `main`（`main` 只接受 `release/*` 与 `hotfix/*`）；`hotfix` 必须反向同步回 `dev`；commit message 用 `type(scope): subject` 并关联禅道 Issue ID。
-- 冲突时优先相信当前项目真实页面，其次是公共组件和工具，再其次才是 plus-ui Gitee 仓库 `6.X-Vue` 分支的 `gen` 模板。
+- 冲突时优先相信当前项目真实页面，其次是公共组件和工具，再其次才是仓库内代码生成器活模板（`ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/`，plus-ui 本地 `gen/` 副本已删除）。
 - 默认直接产出可落地代码，而不是只给抽象建议。

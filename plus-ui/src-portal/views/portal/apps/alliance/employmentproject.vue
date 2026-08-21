@@ -66,9 +66,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { computed, ref } from 'vue';
+import { ElMessage } from 'element-plus';
 import { portalRequest, buildQuery } from '@/api/http';
 import { useAuthStore } from '@/stores/auth';
 import {
@@ -79,18 +78,11 @@ import {
   employmentTypeLabel,
 } from './alliance-admin';
 import type { EmploymentProject, ListResponse } from './alliance-admin';
+import { useAllianceListPage } from './crud-pages';
 
-const router = useRouter();
 const auth = useAuthStore();
 const tenantId = computed(() => (auth.user?.tenantId as string) || '');
 
-const PAGE_SIZE = 20;
-const items = ref<EmploymentProject[]>([]);
-const loading = ref(false);
-const total = ref(0);
-const page = ref(1);
-const pageSize = PAGE_SIZE;
-const search = ref('');
 const publishStatus = ref('all');
 const typeFilter = ref('all');
 
@@ -100,44 +92,46 @@ function phaseTagType(phase: string): 'success' | 'warning' | 'info' {
   return 'warning';
 }
 
-async function loadList() {
-  if (!tenantId.value) return;
-  loading.value = true;
-  try {
-    const res = await portalRequest<ListResponse<EmploymentProject>>(
+const {
+  router,
+  items,
+  loading,
+  search,
+  page,
+  pageSize,
+  total,
+  loadItems: loadList,
+  resetAndLoad,
+  confirmDelete,
+} = useAllianceListPage<EmploymentProject>({
+  fetchList: (query) =>
+    portalRequest<ListResponse<EmploymentProject>>(
       `/alliance/employment-projects${buildQuery({
-        limit: PAGE_SIZE,
-        offset: (page.value - 1) * PAGE_SIZE,
-        search: search.value.trim() || undefined,
+        ...query,
         publishStatus: publishStatus.value === 'all' ? undefined : publishStatus.value,
         type: typeFilter.value === 'all' ? undefined : typeFilter.value,
       })}`,
-    );
-    items.value = res.items || [];
-    total.value = res.total ?? 0;
-  } catch (e) {
-    ElMessage.error((e as Error).message || '加载失败');
-  } finally {
-    loading.value = false;
-  }
-}
+    ),
+  loadGuard: () => !!tenantId.value,
+  ensureAuth: false,
+  remove: {
+    confirmText: (p) => `确定要删除就业项目 ${p.name} 吗？`,
+    deleteRow: (p) => portalRequest(`/alliance/employment-projects/${p.id}`, { method: 'DELETE' }),
+    successText: '已删除',
+  },
+});
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    page.value = 1;
-    loadList();
-  }, 300);
+  searchTimer = setTimeout(resetAndLoad, 300);
 }
 function reloadList() {
   if (searchTimer) clearTimeout(searchTimer);
-  page.value = 1;
-  loadList();
+  resetAndLoad();
 }
 function onFilterChange() {
-  page.value = 1;
-  loadList();
+  resetAndLoad();
 }
 
 function goDetail(id: string) {
@@ -157,27 +151,6 @@ async function togglePublish(p: EmploymentProject) {
     ElMessage.error((e as Error).message || '操作失败');
   }
 }
-
-async function confirmDelete(p: EmploymentProject) {
-  try {
-    await ElMessageBox.confirm(`确定要删除就业项目 ${p.name} 吗？`, '确认删除', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    });
-  } catch {
-    return;
-  }
-  try {
-    await portalRequest(`/alliance/employment-projects/${p.id}`, { method: 'DELETE' });
-    ElMessage.success('已删除');
-    await loadList();
-  } catch (e) {
-    ElMessage.error((e as Error).message || '删除失败');
-  }
-}
-
-onMounted(loadList);
 </script>
 
 <style scoped>

@@ -12,7 +12,7 @@ description: 前端标准 CRUD 页面专家。用于 plus-ui 前端项目中的�
 ## 核心原则
 
 1. 先看当前模块最近似页面。
-2. 再参考 plus-ui Gitee 仓库 `6.X-Vue` 分支中的 `gen` 模板。
+2. 再参考仓库内代码生成器活模板（从仓库根算起 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/`；plus-ui 本地曾有的 `gen/` 副本与上游逐字节相同、属过期副本，已删除）。
 3. 默认同时维护：
    `src/api/<module>/<business>/index.ts`
    `src/api/<module>/<business>/types.ts`
