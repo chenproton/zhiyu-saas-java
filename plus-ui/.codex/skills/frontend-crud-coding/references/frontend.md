@@ -10,11 +10,11 @@
 - workflow 页：`src/views/workflow/*`、`src/api/workflow/*`。
 - 监控页：`src/views/monitor/*`、`src/api/monitor/*`。
 - 公共 hooks：`src/hooks/async/useLoading.ts`、`src/hooks/dialog/*`、`src/hooks/form/*`、`src/hooks/table/*`、`src/hooks/tree/*`。
-- 项目内 generator 模板：
-  `gen/api.ts.ftl`
-  `gen/types.ts.ftl`
-  `gen/index.vue.ftl`
-  `gen/index-tree.vue.ftl`
+- 仓库内代码生成器活模板（仓库根相对路径 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/`；plus-ui 本地曾有的 `gen/` 目录是与上游逐字节相同的过期副本，已删除）：
+  `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/api.ts.ftl`
+  `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/types.ts.ftl`
+  `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/index.vue.ftl`
+  `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/index-tree.vue.ftl`
 
 ## 基础栈与格式
 
@@ -46,7 +46,7 @@
   `changeXxxStatus` -> `PUT /<module>/<business>/changeStatus`
 - query string 用 `params`，请求体用 `data`。
 - 加密、防重复提交等 headers 直接写在请求配置里，例如用户重置密码中的 `isEncrypt`、`repeatSubmit`。
-- 当前仓库有些 API 使用 `export const`，有些使用 `export function`；新增标准 CRUD 优先跟随 `gen/api.ts.ftl` 和相邻模块。
+- 当前仓库有些 API 使用 `export const`，有些使用 `export function`；新增标准 CRUD 优先跟随 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/api.ts.ftl` 和相邻模块。
 - 只有相邻模块已有 `export default { ... }` 聚合时才新增默认导出。
 
 ## 类型文件规则
@@ -129,10 +129,10 @@
 
 ## 与 gen 模板的关系
 
-- `gen` 是 plus-ui 前端项目内的生成模板；默认远端位置是 `https://gitee.com/JavaLionLi/plus-ui/tree/6.X-Vue/gen`，分支必须标记为 `6.X-Vue`。
-- 本地仓库存在对应文件时优先读本地 `gen`，但不要把本地绝对路径写入 skill 或交付内容。
-- 新增标准单表页面时读取 `gen/index.vue.ftl`、`gen/api.ts.ftl`、`gen/types.ts.ftl`。
-- 新增树表页面时读取 `gen/index-tree.vue.ftl`、`gen/api.ts.ftl`、`gen/types.ts.ftl`。
+- `gen` 模板源于 plus-ui 前端项目内的生成模板；本仓库的活模板在代码生成器模块里，从仓库根算起为 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/`。上游远端位置是 `https://gitee.com/JavaLionLi/plus-ui/tree/6.X-Vue/gen`，分支必须标记为 `6.X-Vue`。
+- plus-ui 内曾有的本地 `gen/` 副本与上游逐字节相同、属过期副本，已删除；读取时一律使用上述仓库根下的活模板路径，但不要把本机绝对路径写入 skill 或交付内容。
+- 新增标准单表页面时读取活模板 `index.vue.ftl`、`api.ts.ftl`、`types.ts.ftl`（均在 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/` 下）。
+- 新增树表页面时读取活模板 `index-tree.vue.ftl`、`api.ts.ftl`、`types.ts.ftl`（均在 `ruoyi-modules/ruoyi-gen/src/main/resources/fm/vue/` 下）。
 - `gen` 模板是标准骨架，不是最终答案；落地时仍要对照目标模块真实页面和公共 hooks。
 - 当前前端项目已经把生成页升级为 hooks 版：`useLoading`、`useFormDialog`、`useSearchReset`、`useTableSelection`、`useDateRangeQuery`。
 - 新增标准 CRUD 时，先从 `gen` 确认字段、权限、导出、状态切换、排序、日期范围等，再落成当前项目的实际页面壳。
