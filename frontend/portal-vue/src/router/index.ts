@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { getToken } from '@/api/http';
+import { useAuthStore } from '@/stores/auth';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -1147,10 +1148,21 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const token = getToken();
   if (!to.meta.public && !token) {
     return { name: 'Login', query: { redirect: to.fullPath } };
+  }
+  // 刷新后恢复用户态：auth store 只被 login/各详情页 fetchMe 填充，
+  // 直接刷新 /job/positions 等页面时 auth.user 为空 → 顶栏用户名消失、
+  // 「我的岗位」按 currentUserId 过滤为空、「全部岗位」tab 依赖角色也不可见。
+  // workspace 页原有自恢复（portalMeApi.me 写回 store），此处统一到路由守卫。
+  if (token && !useAuthStore().user) {
+    try {
+      await useAuthStore().fetchMe();
+    } catch {
+      // 401 已由 http 层跳登录；其余错误按未登录处理
+    }
   }
   return true;
 });
