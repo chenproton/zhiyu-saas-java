@@ -120,7 +120,7 @@ cp "$OFFLINE_DIR"/debs/*.deb "$PKG_DIR/debs/" 2>/dev/null || true
 mkdir -p "$PKG_DIR/deploy/migrations"
 rsync -a "$ROOT/db/migrations/" "$PKG_DIR/deploy/migrations/"
 # RuoYi 框架表初始化 SQL（install.sh 幂等导入）
-cp "$ROOT/script/sql/mysql/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
+cp "$ROOT/scripts/sql/mysql/"*.sql "$PKG_DIR/deploy/" 2>/dev/null || true
 cp "$ROOT/deploy/docker-compose.yml" "$PKG_DIR/deploy/"
 cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
 # 容器网关配置必须一起带：compose 的 nginx 服务挂载 ./nginx-container/conf.d，缺失则容器起不来

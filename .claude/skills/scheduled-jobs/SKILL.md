@@ -98,7 +98,7 @@ snail-job:
   host:                                        # 客户端 IP，可不填自动获取
 ```
 
-> 落库脚本：`script/sql/ry_job.sql`（含 `sj_group_config`、`sj_namespace` 等表）。
+> 落库脚本：`scripts/sql/ry_job.sql`（含 `sj_group_config`、`sj_namespace` 等表）。
 
 ### 3.2 任务执行器的两种写法（真实注解 com.aizuda.snailjob.*）
 

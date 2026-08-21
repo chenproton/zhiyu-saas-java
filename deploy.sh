@@ -319,7 +319,7 @@ run_migrations() {
 # ── 哈希计算 ──
 # 基于文件内容哈希，避免构建路径不同导致缓存失效
 # Java 后端源码指纹：.java/.xml/.yml 与 pom 配置
-# 后端 Maven 工程位于仓库根（ruoyi-* 模块 + pom.xml + script/），需显式枚举模块根，
+# 后端 Maven 工程位于仓库根（ruoyi-* 模块 + pom.xml + scripts/），需显式枚举模块根，
 # 不能扫 "$1/."——会把 docs/deploy/plus-ui node_modules 下的 yml 算进哈希，破坏缓存
 java_hash() {
   find "$1/pom.xml" "$1/ruoyi-admin" "$1/ruoyi-api" "$1/ruoyi-common" "$1/ruoyi-modules" "$1/ruoyi-extend" "$1/script" \
@@ -1288,7 +1288,7 @@ fi
 # RuoYi 框架表初始化（幂等）：Java 后端启动依赖 sys_* 表，全新库必须先行导入
 # （mysql_ry_*.sql 含裸 CREATE TABLE 与无 ON CONFLICT 的 INSERT，用代表表存在性做门闩 + 单事务）
 init_db_schema() {
-  local sql_dir="$BUILD_ROOT/script/sql/mysql"
+  local sql_dir="$BUILD_ROOT/scripts/sql/mysql"
   local applied=0 skipped=0
   local pair
   for pair in "mysql_ry_vue:sys_social" "mysql_ry_job:sj_namespace" \

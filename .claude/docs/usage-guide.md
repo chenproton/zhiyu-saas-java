@@ -28,7 +28,7 @@
 |------|------|------|
 | JDK | **Java 21** | Spring Boot 4 / Jakarta EE 10 强制要求，低版本起不来 |
 | Maven | 3.8+ | 或用仓库自带 `mvnw` |
-| MySQL | 8.x | 建库导入 `script/sql` 下的初始化脚本 |
+| MySQL | 8.x | 建库导入 `scripts/sql` 下的初始化脚本 |
 | Redis | 5+ | 缓存 / 会话 / 限流依赖，必须先起 |
 
 > 详细装环境、首次启动、排查启动失败：在 Claude Code 里说「帮我把项目跑起来」会激活 **dev-startup** 技能，或直接用 **/start** 命令。

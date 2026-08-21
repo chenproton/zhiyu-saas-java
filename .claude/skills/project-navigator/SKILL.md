@@ -22,7 +22,7 @@ description: |
 
 本项目 base-dev-framework6-java 是采用 Spring Boot 4.1.0 + JDK 21 的多模块 Maven 单体后端。
 工程根 `pom.xml` 为聚合 `pom`，下挂 5 个一级模块：`ruoyi-admin` / `ruoyi-api` / `ruoyi-common` / `ruoyi-modules` / `ruoyi-extend`。
-另有非 Java 资源目录 `script/`（SQL、Docker、启动脚本）。
+另有非 Java 资源目录 `scripts/`（SQL、Docker、启动脚本）。
 
 记住三条主线，定位八九不离十：
 
@@ -121,12 +121,12 @@ base-dev-framework6-java (root pom)
 | **代码生成器逻辑** | `ruoyi-modules/ruoyi-gen` → `gen/` | `ruoyi-modules/ruoyi-gen/src/main/java/org/dromara/gen/` |
 | **代码生成器模板（FreeMarker）** | `ruoyi-gen/.../resources/fm/` | `ruoyi-modules/ruoyi-gen/src/main/resources/fm/{java,vue,react,sql,xml}/*.ftl` |
 | **跨模块对外接口 / DTO / Event** | `ruoyi-api` | `ruoyi-api/src/main/java/org/dromara/system/api/`、`.../workflow/api/` |
-| **SQL 初始化脚本** | `script/sql` | `script/sql/ry_vue.sql`、`ry_job.sql`、`ry_workflow.sql`、`ry_ai.sql` |
+| **SQL 初始化脚本** | `scripts/sql` | `scripts/sql/ry_vue.sql`、`ry_job.sql`、`ry_workflow.sql`、`ry_ai.sql` |
 | **运行配置 / 多环境 / 日志配置** | `ruoyi-admin/src/main/resources` | `ruoyi-admin/src/main/resources/application.yml`、`application-dev.yml`、`logback-plus.xml` |
 | **登录 / 认证 Web 入口** | `ruoyi-admin` → `web/` | `ruoyi-admin/src/main/java/org/dromara/web/controller/` |
 | **Mapper XML（自定义 SQL）** | 对应模块 `resources/mapper/{模块}/` | `ruoyi-modules/ruoyi-system/src/main/resources/mapper/system/`、`.../demo/TestDemoMapper.xml` |
 | **监控 / 调度 / AI 服务端** | `ruoyi-extend` | `ruoyi-extend/ruoyi-monitor-admin`、`ruoyi-snailjob-server`、`ruoyi-snailai-server` |
-| **Docker / Nginx / Redis 部署文件** | `script/docker` | `script/docker/docker-compose.yml`、`nginx/conf/nginx.conf` |
+| **Docker / Nginx / Redis 部署文件** | `scripts/docker` | `scripts/docker/docker-compose.yml`、`nginx/conf/nginx.conf` |
 
 > 拿不准时的定位口诀：**"是能力（横切）还是业务？"** —— 能跨业务复用的 → `ruoyi-common-*`；
 > 跟具体业务表强绑定的 → `ruoyi-modules/ruoyi-xxx`；要被别的模块调用的接口 → `ruoyi-api`。
@@ -256,7 +256,7 @@ ruoyi-modules/ruoyi-gen/src/main/resources/fm/
 4. **需要被其它业务模块调用** → 接口与 DTO 先放 `ruoyi-api`，新模块只写实现，调用方依赖 `ruoyi-api`（**绝不**直接 import 新模块的实现类）。
 5. **是要独立部署的 Server**（不随主应用一起跑） → 进 `ruoyi-extend/`。
 
-SQL 与数据库初始化脚本统一放 `script/sql/`（主库脚本写进 `ry_vue.sql` 或按域拆分），别散落在各模块里。
+SQL 与数据库初始化脚本统一放 `scripts/sql/`（主库脚本写进 `ry_vue.sql` 或按域拆分），别散落在各模块里。
 
 ## 七、常见错误对比（导航/定位易踩坑）
 
@@ -277,6 +277,6 @@ SQL 与数据库初始化脚本统一放 `script/sql/`（主库脚本写进 `ry_
 3. **横切 vs 业务 的判断**：写之前问自己"这能跨业务复用吗？"——能就进 `ruoyi-common-*`，不能就进 `ruoyi-modules/ruoyi-xxx`。
 4. **跨模块走契约**：任何模块间调用，先看 `ruoyi-api` 有没有现成接口；没有就先在 `ruoyi-api` 加接口+DTO，再回模块写实现。
 5. **配置集中在 admin**：环境差异（端口、数据源、Redis 地址）只改 `ruoyi-admin` 的 `application-{dev,prod}.yml`，不要散落到子模块。
-6. **SQL 集中在 script**：建表/初始化脚本统一 `script/sql/`，与模块 Java 代码分离，方便部署同步。
+6. **SQL 集中在 script**：建表/初始化脚本统一 `scripts/sql/`，与模块 Java 代码分离，方便部署同步。
 7. **6.x 三铁律常驻脑中**：包根 `org.dromara`、三层无 DAO、前端在独立 `plus-ui` 仓库——定位与写代码时反复自检，杜绝 `com.ruoyi`/`plus.ruoyi`/DAO/`buildQueryWrapper` 的旧习惯。
 8. **善用专项技能接力**：本技能定位到位后，写实现请激活 crud-development（写 CRUD）、redis-cache（缓存）、security-guard（权限）、database-ops（SQL/表）等专项技能，各司其职。

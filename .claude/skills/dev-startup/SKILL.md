@@ -26,7 +26,7 @@ description: |
 
 1. 装运行时：**JDK 21**（强制，SB4 要求）+ Maven 3.8+（或直接用项目自带 `mvnw`）。
 2. 装中间件：**MySQL** + **Redis**（两者均为必需，缺一启动即失败）。
-3. 建库导 SQL：建数据库 `ry-vue` → 导入 `script/sql/ry_vue.sql`（按需再导 `ry_job.sql` / `ry_ai.sql` / `ry_workflow.sql`）。
+3. 建库导 SQL：建数据库 `ry-vue` → 导入 `scripts/sql/ry_vue.sql`（按需再导 `ry_job.sql` / `ry_ai.sql` / `ry_workflow.sql`）。
 4. 改配置：编辑 `ruoyi-admin/src/main/resources/application-dev.yml` 的数据源 URL / 账号密码、Redis 地址 / 密码。
 5. 编译启动：`mvn -DskipTests clean package` 后用 IDEA 启动类或 `java -jar` 启动，访问健康端点验证。
 
@@ -38,7 +38,7 @@ description: |
 |------|-------------|-------------|
 | **JDK** | **21（必须）** | `pom.xml` `<java.version>21</java.version>`，Spring Boot 4.1 强制 JDK 21+（README 标注同时兼容 JDK 25） |
 | **Maven** | 3.8+，或用项目自带 `mvnw` / `mvnw.cmd` | 根目录提供 Maven Wrapper，无需本机预装 Maven |
-| **MySQL** | 5.7+ / 8.x（默认数据源 MySQL，驱动 `com.mysql.cj.jdbc.Driver`） | `application-dev.yml` 默认 `jdbc:mysql://localhost:3306/ry-vue`。也原生支持 Oracle / PostgreSQL / SQLServer（见 `script/sql/oracle|postgres|sqlserver` 目录），但需自行打开 yml 中对应注释数据源 |
+| **MySQL** | 5.7+ / 8.x（默认数据源 MySQL，驱动 `com.mysql.cj.jdbc.Driver`） | `application-dev.yml` 默认 `jdbc:mysql://localhost:3306/ry-vue`。也原生支持 Oracle / PostgreSQL / SQLServer（见 `scripts/sql/oracle|postgres|sqlserver` 目录），但需自行打开 yml 中对应注释数据源 |
 | **Redis** | 6+（**必需**，密码必须配置） | `application-dev.yml` `spring.data.redis`：`localhost:6379` / `database:0` / `password: ruoyi123`。Redisson 单机配置 |
 | Web 容器 | Jetty（已内置，无需单独装） | README 明确采用 Jetty，启动日志会显示 Jetty 而非 Tomcat |
 | IDE | IntelliJ IDEA（推荐，需启用 Lombok / MapStruct 注解处理器） | 编译期依赖 Lombok + Mapstruct-Plus + therapi-javadoc 注解处理器（见 `pom.xml` `annotationProcessorPaths`） |
@@ -65,7 +65,7 @@ java -version
 CREATE DATABASE `ry-vue` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 ```
 
-然后导入建表脚本（脚本位于 `script/sql/`）：
+然后导入建表脚本（脚本位于 `scripts/sql/`）：
 
 | SQL 脚本 | 是否必需 | 说明 |
 |----------|---------|------|
@@ -76,12 +76,12 @@ CREATE DATABASE `ry-vue` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_c
 
 ```bash
 # 命令行导入主库脚本（按机器实际 mysql 客户端路径调整）
-mysql -uroot -proot ry-vue < script/sql/ry_vue.sql
+mysql -uroot -proot ry-vue < scripts/sql/ry_vue.sql
 # 按需再导入其它脚本
-mysql -uroot -proot ry-vue < script/sql/ry_job.sql
+mysql -uroot -proot ry-vue < scripts/sql/ry_job.sql
 ```
 
-> Oracle / PostgreSQL / SQLServer 用户：改用 `script/sql/oracle/` `script/sql/postgres/` `script/sql/sqlserver/` 下的对应脚本，并在 yml 中打开对应数据源注释（同时关闭 / 调整 master 的 MySQL 配置）。
+> Oracle / PostgreSQL / SQLServer 用户：改用 `scripts/sql/oracle/` `scripts/sql/postgres/` `scripts/sql/sqlserver/` 下的对应脚本，并在 yml 中打开对应数据源注释（同时关闭 / 调整 master 的 MySQL 配置）。
 
 ### 3. 修改 dev 环境配置（数据源 + Redis）
 
@@ -216,7 +216,7 @@ java -version
 
 # 2) 创建数据库并导入主库脚本
 mysql -uroot -proot -e "CREATE DATABASE \`ry-vue\` DEFAULT CHARACTER SET utf8mb4;"
-mysql -uroot -proot ry-vue < script/sql/ry_vue.sql
+mysql -uroot -proot ry-vue < scripts/sql/ry_vue.sql
 
 # 3) 编译打包（跳过测试）
 mvn -DskipTests clean package
@@ -239,7 +239,7 @@ redis-cli -h localhost -p 6379 -a ruoyi123 ping
 | 8080 端口被占用 | `taskkill /IM java.exe` 按名批杀（会误杀 IDE / 终端宿主） | `netstat -ano \| findstr :8080` 定位 PID → `taskkill /F /PID <PID>` 精准击杀 |
 | Redis 报 `NOAUTH` / 连接失败 | 把 yml 的 `password` 删掉留空当作"无密码" | 给 Redis 配密码或把 yml 的 `password` 改成真实密码（框架要求 Redis 必须有密码） |
 | 启动找不到 `getXxx` 方法 | 手动给实体类补 get/set | IDEA 启用 Lombok 插件 + Enable annotation processing；命令行用 `mvn clean package` |
-| 数据库报 `Unknown database 'ry-vue'` | 改连接串连到其它库凑合 | 按 yml 实际库名建库并导入 `script/sql/ry_vue.sql` |
+| 数据库报 `Unknown database 'ry-vue'` | 改连接串连到其它库凑合 | 按 yml 实际库名建库并导入 `scripts/sql/ry_vue.sql` |
 
 ## 十、最佳实践
 

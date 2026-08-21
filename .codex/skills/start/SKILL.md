@@ -16,13 +16,13 @@ description: |
 |------|------|------|
 | JDK | **21** | 6.x 要求 Java 21（Spring Boot 4） |
 | Maven | 3.8+ | 自带 `mvnw` Wrapper 可用 |
-| MySQL | 5.7+/8.x | 导入 `script/sql/ry_vue.sql` |
+| MySQL | 5.7+/8.x | 导入 `scripts/sql/ry_vue.sql` |
 | Redis | 6+ | 必需（缓存/会话/限流） |
 
 ## 启动流程
 
 1. **激活** `dev-startup`（若已生成）。
-2. **数据库**：建库 → 导入 `script/sql/ry_vue.sql`（按需 `ry_ai.sql` 等）。
+2. **数据库**：建库 → 导入 `scripts/sql/ry_vue.sql`（按需 `ry_ai.sql` 等）。
 3. **改配置**：`ruoyi-admin/src/main/resources/application-dev.yml`（数据源、Redis、按需 `snail-ai`/`easy-es`/`message` 开关）。
 4. **编译**：`mvn -DskipTests clean package`（或 `./mvnw`）。
 5. **启动**：运行 `ruoyi-admin` 的启动类（IDEA），或 `java -jar ruoyi-admin/target/*.jar --spring.profiles.active=dev`。

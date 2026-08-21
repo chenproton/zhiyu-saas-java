@@ -192,7 +192,7 @@ brainstorm(方案)  →  【writing-plans(计划)】  →  /dev、/crud(执行) 
 
 ```markdown
 - [ ] 1. 建表 + 字典（类型：配置）
-  - 文件：`script/sql/` 下建表脚本（或交给生成器导入）
+  - 文件：`scripts/sql/` 下建表脚本（或交给生成器导入）
   - 框架约束：雪花ID、审计字段（create_by/create_time/update_by/update_time）、del_flag 逻辑删除、如启用多租户加 tenant_id
   - 步骤：写 coupon_template 建表 SQL；加字典 coupon_type（满减/折扣）
   - 验证：SQL 在本地库执行通过

@@ -17,6 +17,11 @@
 - **差异**：上游 `plus-ui/gen/`（代码生成器产物的本地预览目录）在本仓库已删除，生成器相关能力由后端 `ruoyi-gen` 模块承担，前端不再保留该目录。
 - **同步处置**：从上游拷贝 plus-ui 文件时排除 `gen/`；若上游同步工具/脚本试图带回该目录，跳过。
 
+## 4. `script/`（单数）已并入 `scripts/`（复数），统一脚本目录
+
+- **差异**：上游为 `script/`（单数，含 sql/docker/bin/leave/database.yml）；本仓库将上游 `script/` 整体并入本地工具目录 `scripts/`（sql/、docker/、bin/、leave/ 现位于 `scripts/` 下），消除「script vs scripts」双目录歧义。仓库内全部引用（deploy.sh、docs、.claude/.codex 技能、application*.yml 注释）已同步更新。
+- **同步处置**：从上游同步框架资产时，把上游 `script/` 下的文件落到本仓库 `scripts/` 对应子目录；**不要**把上游 `script/` 目录名覆盖回本仓库（本仓库无 `script/` 单数目录）。deploy.sh 框架表初始化路径为 `scripts/sql/mysql`。
+
 ## 维护约定
 
 - 新增「有意偏离上游且易被误还原」的差异时，追加到本文件；差异消除（上游收敛或本仓库回改）时删除对应条目。

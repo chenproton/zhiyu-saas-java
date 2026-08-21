@@ -2,7 +2,7 @@
 
 > 分支模型说明：本仓库**主线只有 `master`**，按「分支隔离 + 部署成功自动合并 master」协作（见第四节）。
 >
-> 本仓库为**单栈架构**：**Java 后端多模块 Maven 工程位于仓库根目录**（`pom.xml` + `mvnw` + `ruoyi-*/` + `script/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21，布局与上游框架技术方案对齐），共用 MySQL 8.0，前端为 **`plus-ui/` 单工程双构建**（RuoYi 框架，位于仓库根）：**admin 管理端**（`plus-ui/src` → `dist`）+ **portal 业务门户**（`plus-ui/src-portal` → `dist-portal`），一份 package.json / lockfile / node_modules，运行时仍是两个独立 SPA。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
+> 本仓库为**单栈架构**：**Java 后端多模块 Maven 工程位于仓库根目录**（`pom.xml` + `mvnw` + `ruoyi-*/` + `scripts/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21，布局与上游框架技术方案对齐），共用 MySQL 8.0，前端为 **`plus-ui/` 单工程双构建**（RuoYi 框架，位于仓库根）：**admin 管理端**（`plus-ui/src` → `dist`）+ **portal 业务门户**（`plus-ui/src-portal` → `dist-portal`），一份 package.json / lockfile / node_modules，运行时仍是两个独立 SPA。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
 >
 > 开发契约分两部分：第一部分为仓库级开发契约（spec-first / 部署 / 运维），第二部分为 Java 后端框架契约。按所改模块选择对应契约执行。
 
@@ -15,12 +15,11 @@
 ├── ruoyi-common/*     # 24 个公共能力模块
 ├── ruoyi-modules/*    # 业务模块：system / ai / workflow / job / gen / demo / zhiyu
 ├── ruoyi-extend/*     # 独立部署服务：monitor-admin / snailjob-server / snailai-server
-├── script/            # 框架初始化 SQL、Docker Compose、Nginx 配置
+├── scripts/           # 统一脚本目录：框架初始化 SQL（sql/）、Docker/Nginx 配置（docker/）、bin/ 启停脚本 + spec-check / ui-smoke / package-release 等工具
 ├── plus-ui/           # Vue 管理端 + 业务门户双应用工程（admin：src/ → dist；portal：src-portal/ → dist-portal）
 ├── db/migrations/     # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 mysql 执行）
 ├── docs/              # 全量文档（spec、ADR、规范）
 ├── deploy/            # docker-compose / nginx / Dockerfile（Java+Vue 单栈编排）
-├── scripts/           # spec-check / ui-smoke / package-release 等工具
 └── AGENTS.md          # 本文件：全局开发契约（唯一根级描述文档）
 ```
 
