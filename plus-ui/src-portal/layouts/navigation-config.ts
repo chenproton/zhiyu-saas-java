@@ -1282,6 +1282,8 @@ const DOMAIN_RULES: DomainRule[] = [
 
   // ---- 业务域 ----
   { test: (p) => p.startsWith('/job/'), config: jobNavigationConfig },
+  // 场景任务编排页：全屏编辑，隐藏左侧域导航（顶栏保留）
+  { test: (p) => /^\/scene\/scenarios\/[^/]+\/edit\/tasks\/?$/.test(p), config: null },
   { test: (p) => p === '/scene' || p.startsWith('/scene/'), config: sceneNavigationConfig },
   { test: (p) => p.startsWith('/lesson/'), config: adminNavigationConfig },
   { test: (p) => p.startsWith('/evaluation/'), config: evaluationNavigationConfig },
