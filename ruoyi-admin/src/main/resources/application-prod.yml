@@ -102,7 +102,7 @@ spring:
         master:
           type: ${spring.datasource.type}
           driverClassName: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://${ZHIYU_DB_HOST:127.0.0.1}:${ZHIYU_DB_PORT:3306}/zhiyu-saas?useUnicode=true&characterEncoding=utf8&useSSL=false&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+          url: jdbc:mysql://${ZHIYU_DB_HOST:127.0.0.1}:${ZHIYU_DB_PORT:3306}/zhiyu-saas?useUnicode=true&characterEncoding=utf8&useSSL=false&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&sessionVariables=group_concat_max_len=16777216
           username: ${ZHIYU_DB_USER:zhiyu_saas}
           password: ${ZHIYU_DB_PASSWORD:change-me}
 #        # 从库数据源
@@ -110,7 +110,7 @@ spring:
 #          lazy: true
 #          type: ${spring.datasource.type}
 #          driverClassName: com.mysql.cj.jdbc.Driver
-#          url: jdbc:mysql://localhost:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+#          url: jdbc:mysql://localhost:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&sessionVariables=group_concat_max_len=16777216
 #          username:
 #          password:
 #        oracle:

@@ -71,7 +71,7 @@ public interface SceneResourceSnapshotMapper extends BaseMapperPlus<SceneResourc
     String buildScenarioObj(@Param("scenarioId") String scenarioId, @Param("tenantId") String tenantId);
 
     /** 场景任务数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'scenario_id', t.scenario_id, 'name', t.name, 'code', t.code, 'sort_order', t.sort_order,"
         + " 'description', t.description, 'detailed_description', t.detailed_description, 'description_pdf', t.description_pdf,"
         + " 'estimated_hours', t.estimated_hours, 'task_type', t.task_type, 'difficulty', t.difficulty,"
@@ -79,91 +79,91 @@ public interface SceneResourceSnapshotMapper extends BaseMapperPlus<SceneResourc
         + " 'source_scenario_id', t.source_scenario_id, 'knowledge_point_ids', t.knowledge_point_ids,"
         + " 'ability_point_ids', t.ability_point_ids, 'resource_ids', t.resource_ids, 'eval_data', t.eval_data,"
         + " 'tenant_id', t.tenant_id"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, scenario_id, name, code, sort_order, description,"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, scenario_id, name, code, sort_order, description,"
         + " detailed_description, description_pdf, estimated_hours, task_type, difficulty, background, dependency_ids,"
         + " is_referenced, source_scenario_id, knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id"
         + " FROM scenario_tasks WHERE scenario_id = #{scenarioId} AND tenant_id = #{tenantId}) t")
     String buildScenarioTasks(@Param("scenarioId") String scenarioId, @Param("tenantId") String tenantId);
 
     /** 测评方法数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'method_key', t.method_key, 'weight', t.weight,"
         + " 'eval_object', t.eval_object, 'score_type', t.score_type, 'eval_subjects', t.eval_subjects,"
         + " 'standard_name', t.standard_name, 'standard_mode', t.standard_mode, 'resource_config', t.resource_config,"
         + " 'version', t.version, 'is_enabled', t.is_enabled"
-        + ") ORDER BY t.task_id, t.method_key), '[]') FROM (SELECT id, task_id, method_key, weight, eval_object,"
+        + ") ORDER BY t.task_id, t.method_key SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, method_key, weight, eval_object,"
         + " score_type, eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled"
         + " FROM task_evaluation_methods WHERE tenant_id = #{tenantId} AND task_id IN (" + TASK_IDS_SUB + ")) t")
     String buildEvalMethods(@Param("scenarioId") String scenarioId, @Param("tenantId") String tenantId);
 
     /** 评估点数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'config_id', t.config_id, 'name', t.name, 'description', t.description,"
         + " 'sub_type', t.sub_type, 'types', t.types, 'weight', t.weight, 'scoring_method', t.scoring_method,"
         + " 'grade_mapping', t.grade_mapping, 'knowledge_point_ids', t.knowledge_point_ids,"
         + " 'ability_point_ids', t.ability_point_ids, 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, config_id, name, description, sub_type, types, weight,"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, config_id, name, description, sub_type, types, weight,"
         + " scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order"
         + " FROM task_eval_points WHERE config_id IN (" + CONFIG_IDS_SUB + ")) t")
     String buildEvalPoints(@Param("scenarioId") String scenarioId, @Param("tenantId") String tenantId);
 
     /** 评分规则数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'config_id', t.config_id, 'name', t.name, 'description', t.description,"
         + " 'rule', t.rule, 'weight', t.weight, 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, config_id, name, description, rule, weight, sort_order"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, config_id, name, description, rule, weight, sort_order"
         + " FROM task_eval_score_rules WHERE config_id IN (" + CONFIG_IDS_SUB + ")) t")
     String buildScoreRules(@Param("scenarioId") String scenarioId, @Param("tenantId") String tenantId);
 
     /** 评审步骤数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'config_id', t.config_id, 'label', t.label, 'description', t.description,"
         + " 'enabled', t.enabled, 'subject_type', t.subject_type, 'weight', t.weight, 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, config_id, label, description, enabled,"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, config_id, label, description, enabled,"
         + " subject_type, weight, sort_order FROM task_review_steps WHERE config_id IN (" + CONFIG_IDS_SUB + ")) t")
     String buildReviewSteps(@Param("scenarioId") String scenarioId, @Param("tenantId") String tenantId);
 
     /** 交付物数组（无租户条件）。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'type', t.type, 'name', t.name, 'description', t.description,"
         + " 'evaluation_points', t.evaluation_points, 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, task_id, type, name, description, evaluation_points, sort_order"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, type, name, description, evaluation_points, sort_order"
         + " FROM task_deliverables WHERE task_id IN (" + TASK_IDS_SUB + ")) t")
     String buildDeliverables(@Param("scenarioId") String scenarioId);
 
     /** 资源绑定数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'resource_id', t.resource_id"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, task_id, resource_id FROM task_resource_bindings"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, resource_id FROM task_resource_bindings"
         + " WHERE task_id IN (" + TASK_IDS_SUB + ")) t")
     String buildResourceBindings(@Param("scenarioId") String scenarioId);
 
     /** 知识点绑定数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'knowledge_point_id', t.knowledge_point_id"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, task_id, knowledge_point_id FROM task_knowledge_bindings"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, knowledge_point_id FROM task_knowledge_bindings"
         + " WHERE task_id IN (" + TASK_IDS_SUB + ")) t")
     String buildKnowledgeBindings(@Param("scenarioId") String scenarioId);
 
     /** 能力点绑定数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'ability_point_id', t.ability_point_id"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, task_id, ability_point_id FROM task_ability_bindings"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, ability_point_id FROM task_ability_bindings"
         + " WHERE task_id IN (" + TASK_IDS_SUB + ")) t")
     String buildAbilityBindings(@Param("scenarioId") String scenarioId);
 
     /** 场景权重数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, task_id, weight FROM scenario_weight_configs"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, weight FROM scenario_weight_configs"
         + " WHERE scenario_id = #{scenarioId}) t")
     String buildWeightConfigs(@Param("scenarioId") String scenarioId);
 
     /** 等级映射数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'task_id', t.task_id, 'level', t.level, 'min_score', t.min_score,"
         + " 'max_score', t.max_score, 'description', t.description, 'color', t.color"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, task_id, level, min_score, max_score, description, color"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, task_id, level, min_score, max_score, description, color"
         + " FROM scenario_grade_mappings WHERE scenario_id = #{scenarioId}) t")
     String buildGradeMappings(@Param("scenarioId") String scenarioId);
 
@@ -193,34 +193,34 @@ public interface SceneResourceSnapshotMapper extends BaseMapperPlus<SceneResourc
     String collectResourceIds(@Param("scenarioId") String scenarioId);
 
     /** 知识点内容数组（连带冻结）。 */
-    @Select("<script>SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("<script>SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'name', t.name, 'code', t.code, 'description', t.description, 'category', t.category"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, name, code, description, category FROM knowledge_points"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, name, code, description, category FROM knowledge_points"
         + " WHERE tenant_id = #{tenantId} AND id IN"
         + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>) t</script>")
     String buildKnowledgePoints(@Param("ids") List<String> ids, @Param("tenantId") String tenantId);
 
     /** 能力点内容数组（连带冻结；is_public 可跨租户）。 */
-    @Select("<script>SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("<script>SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'name', t.name, 'code', t.code, 'description', t.description, 'attributes', t.attributes"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, name, code, description, attributes FROM ability_points"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, name, code, description, attributes FROM ability_points"
         + " WHERE (tenant_id = #{tenantId} OR is_public) AND id IN"
         + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>) t</script>")
     String buildAbilityPoints(@Param("ids") List<String> ids, @Param("tenantId") String tenantId);
 
     /** 资源库条目数组（连带冻结）。 */
-    @Select("<script>SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("<script>SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'name', t.name, 'resource_type', t.resource_type, 'url', t.url, 'description', t.description,"
         + " 'thumbnail', t.thumbnail, 'file_size', t.file_size, 'metadata', t.metadata"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, name, resource_type, url, description, thumbnail, file_size, metadata"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, name, resource_type, url, description, thumbnail, file_size, metadata"
         + " FROM resource_library WHERE tenant_id = #{tenantId} AND id IN"
         + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>) t</script>")
     String buildResourceLibrary(@Param("ids") List<String> ids, @Param("tenantId") String tenantId);
 
     /** 随机抽题题目数组（连带冻结；answer 学生侧剥离）。 */
-    @Select("<script>SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("<script>SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'name', t.name, 'description', t.description, 'answer', t.answer"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, name, description, answer FROM random_draw_questions"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, name, description, answer FROM random_draw_questions"
         + " WHERE tenant_id = #{tenantId} AND id IN"
         + " <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>) t</script>")
     String buildRandomDrawQuestions(@Param("ids") List<String> ids, @Param("tenantId") String tenantId);
@@ -253,75 +253,75 @@ public interface SceneResourceSnapshotMapper extends BaseMapperPlus<SceneResourc
     String buildPositionObj(@Param("positionId") String positionId, @Param("tenantId") String tenantId);
 
     /** 岗位-专业绑定数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'career_position_id', t.career_position_id, 'major_id', t.major_id"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, career_position_id, major_id FROM career_position_majors"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, career_position_id, major_id FROM career_position_majors"
         + " WHERE career_position_id = #{positionId}) t")
     String buildPositionMajors(@Param("positionId") String positionId);
 
     /** 岗位职责数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'career_position_id', t.career_position_id, 'name', t.name, 'description', t.description,"
         + " 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, career_position_id, name, description, sort_order"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, career_position_id, name, description, sort_order"
         + " FROM position_responsibilities WHERE career_position_id = #{positionId}) t")
     String buildPositionResponsibilities(@Param("positionId") String positionId);
 
     /** 岗位能力绑定数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'career_position_id', t.career_position_id, 'responsibility_id', t.responsibility_id,"
         + " 'ability_point_id', t.ability_point_id, 'source', t.source, 'domain', t.domain,"
         + " 'required_level', t.required_level, 'rubric_description', t.rubric_description,"
         + " 'attributes', t.attributes, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, career_position_id, responsibility_id, ability_point_id, source,"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, career_position_id, responsibility_id, ability_point_id, source,"
         + " domain, required_level, rubric_description, attributes, weight"
         + " FROM position_ability_bindings WHERE career_position_id = #{positionId}) t")
     String buildPositionAbilityBindings(@Param("positionId") String positionId);
 
     /** 能力域数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'career_position_id', t.career_position_id, 'name', t.name, 'description', t.description,"
         + " 'binding_ids', t.binding_ids, 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, career_position_id, name, description, binding_ids, sort_order"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, career_position_id, name, description, binding_ids, sort_order"
         + " FROM ability_domains WHERE career_position_id = #{positionId}) t")
     String buildAbilityDomains(@Param("positionId") String positionId);
 
     /** 岗位证书数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'career_position_id', t.career_position_id, 'certificate_library_id', t.certificate_library_id"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, career_position_id, certificate_library_id"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, career_position_id, certificate_library_id"
         + " FROM position_certificates WHERE career_position_id = #{positionId}) t")
     String buildPositionCertificates(@Param("positionId") String positionId);
 
     /** 认定规则数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'career_position_id', t.career_position_id, 'status', t.status,"
         + " 'rule_source', t.rule_source, 'level_mapping', t.level_mapping"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, career_position_id, status, rule_source, level_mapping"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, career_position_id, status, rule_source, level_mapping"
         + " FROM certification_rules WHERE career_position_id = #{positionId}) t")
     String buildCertificationRules(@Param("positionId") String positionId);
 
     /** 认定权重数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'rule_id', t.rule_id, 'ability_point_id', t.ability_point_id, 'task_id', t.task_id, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, rule_id, ability_point_id, task_id, weight FROM certification_weights"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, rule_id, ability_point_id, task_id, weight FROM certification_weights"
         + " WHERE rule_id IN (SELECT id FROM certification_rules WHERE career_position_id = #{positionId})) t")
     String buildCertificationWeights(@Param("positionId") String positionId);
 
     /** 认定能力条目数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'rule_id', t.rule_id, 'name', t.name, 'sort_order', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM (SELECT id, rule_id, name, sort_order"
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, rule_id, name, sort_order"
         + " FROM certification_ability_items WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{positionId})) t")
     String buildCertificationAbilityItems(@Param("positionId") String positionId);
 
     /** 认定能力点数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'item_id', t.item_id, 'ability_point_id', t.ability_point_id,"
         + " 'mapping_type', t.mapping_type, 'custom_level_mapping', t.custom_level_mapping,"
         + " 'required_level', t.required_level, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM (SELECT id, item_id, ability_point_id, mapping_type, custom_level_mapping,"
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM (SELECT id, item_id, ability_point_id, mapping_type, custom_level_mapping,"
         + " required_level, weight FROM certification_ability_points WHERE item_id IN"
         + " (SELECT id FROM certification_ability_items WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{positionId}))) t")

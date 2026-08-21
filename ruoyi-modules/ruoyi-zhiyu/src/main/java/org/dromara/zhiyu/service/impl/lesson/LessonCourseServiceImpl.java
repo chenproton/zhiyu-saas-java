@@ -217,31 +217,37 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CourseDto submit(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CourseDto withdraw(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CourseDto saveDraft(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CourseDto publish(String id) {
         return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CourseDto archive(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CourseDto unpublish(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }

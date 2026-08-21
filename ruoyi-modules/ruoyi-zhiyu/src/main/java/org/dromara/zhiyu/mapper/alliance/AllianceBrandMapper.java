@@ -123,7 +123,7 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
 
     @Select("<script>SELECT " + BASE_COLS + ", " + JOB_EXTRA
         + " FROM alliance_brands b LEFT JOIN career_positions cp ON cp.id = b.position_id"
-        + " LEFT JOIN LATERAL (SELECT COALESCE(JSON_ARRAYAGG(m.name ORDER BY cpm.major_id), JSON_ARRAY()) AS major_names"
+        + " LEFT JOIN LATERAL (SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_QUOTE(m.name) ORDER BY cpm.major_id SEPARATOR ','), ']') AS JSON), JSON_ARRAY()) AS major_names"
         + "   FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id"
         + "   WHERE cpm.career_position_id = cp.id) maj ON true"
         + " WHERE b.tenant_id = #{tenantId} AND b.brand_type = 'job'"
@@ -141,7 +141,7 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
 
     @Select("SELECT " + BASE_COLS + ", " + JOB_EXTRA
         + " FROM alliance_brands b LEFT JOIN career_positions cp ON cp.id = b.position_id"
-        + " LEFT JOIN LATERAL (SELECT COALESCE(JSON_ARRAYAGG(m.name ORDER BY cpm.major_id), JSON_ARRAY()) AS major_names"
+        + " LEFT JOIN LATERAL (SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_QUOTE(m.name) ORDER BY cpm.major_id SEPARATOR ','), ']') AS JSON), JSON_ARRAY()) AS major_names"
         + "   FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id"
         + "   WHERE cpm.career_position_id = cp.id) maj ON true"
         + " WHERE b.id = #{id} AND b.tenant_id = #{tenantId}")
@@ -209,12 +209,12 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
         + " ind.name AS industry_name, COALESCE(cp.status, '') AS position_status, cp.description AS position_description,"
         + " COALESCE(cp.requirements, JSON_ARRAY()) AS position_requirements, cp.career_path AS position_career_path,"
         + " cp.cover_image AS position_cover_image,"
-        + " COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', r.id, 'careerPositionId', r.career_position_id,"
-        + "   'name', r.name, 'description', r.description, 'sortOrder', r.sort_order) ORDER BY r.sort_order)"
+        + " COALESCE((SELECT CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', r.id, 'careerPositionId', r.career_position_id,"
+        + "   'name', r.name, 'description', r.description, 'sortOrder', r.sort_order) ORDER BY r.sort_order SEPARATOR ','), ']') AS JSON)"
         + "   FROM position_responsibilities r WHERE r.career_position_id = cp.id), '[]') AS responsibilities,"
-        + " COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', pc.id, 'careerPositionId', pc.career_position_id,"
+        + " COALESCE((SELECT CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', pc.id, 'careerPositionId', pc.career_position_id,"
         + "   'certificateLibraryId', pc.certificate_library_id, 'name', cl.name, 'url', cl.url,"
-        + "   'description', cl.description, 'imageUrl', cl.image_url) ORDER BY cl.name)"
+        + "   'description', cl.description, 'imageUrl', cl.image_url) ORDER BY cl.name SEPARATOR ','), ']') AS JSON)"
         + "   FROM position_certificates pc JOIN certificate_library cl ON cl.id = pc.certificate_library_id"
         + "   WHERE pc.career_position_id = cp.id), '[]') AS certificates,"
         + " COALESCE(ae.name, u.name, '') AS person_name, COALESCE(ae.avatar_url, u.avatar_url, '') AS person_avatar,"
@@ -231,7 +231,7 @@ public interface AllianceBrandMapper extends BaseMapperPlus<AllianceBrand, Allia
     String PUBLIC_FROM = "alliance_brands b"
         + " LEFT JOIN partner_enterprises pe ON pe.id = b.enterprise_id"
         + " LEFT JOIN career_positions cp ON cp.id = b.position_id"
-        + " LEFT JOIN LATERAL (SELECT COALESCE(JSON_ARRAYAGG(m.name ORDER BY cpm.major_id), JSON_ARRAY()) AS major_names"
+        + " LEFT JOIN LATERAL (SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_QUOTE(m.name) ORDER BY cpm.major_id SEPARATOR ','), ']') AS JSON), JSON_ARRAY()) AS major_names"
         + "   FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id"
         + "   WHERE cpm.career_position_id = cp.id) maj ON true"
         + " LEFT JOIN industries ind ON ind.id = cp.industry_id"

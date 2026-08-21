@@ -169,31 +169,37 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     // ---------- 内容动作 ----------
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto submit(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto archive(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto unpublish(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto withdraw(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto saveDraft(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto publish(String id, String status) {
         String to = status == null || status.isEmpty() ? ZhiyuStatusConstants.PUBLISHED : status;
         if (!ZhiyuStatusConstants.DRAFT.equals(to) && !ZhiyuStatusConstants.PUBLISHED.equals(to)) {

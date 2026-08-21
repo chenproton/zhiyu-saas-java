@@ -239,31 +239,37 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     // ---------- 内容动作 ----------
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto submit(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto archive(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto unpublish(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto withdraw(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto saveDraft(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto publish(String id) {
         return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }

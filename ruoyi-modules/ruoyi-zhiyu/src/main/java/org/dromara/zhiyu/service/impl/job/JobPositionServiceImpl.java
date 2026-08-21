@@ -516,31 +516,37 @@ public class JobPositionServiceImpl implements IJobPositionService {
     // ---------- 状态流转 / 审核 / 邀请 ----------
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CareerPositionDto submit(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CareerPositionDto withdraw(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CareerPositionDto saveDraft(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CareerPositionDto publish(String id) {
         return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CareerPositionDto archive(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CareerPositionDto unpublish(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }

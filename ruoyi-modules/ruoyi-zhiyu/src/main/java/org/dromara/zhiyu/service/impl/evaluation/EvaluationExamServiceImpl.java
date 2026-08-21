@@ -213,6 +213,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     // ---------- 状态流转 / 审核 / 邀请 ----------
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ExamDto submitExam(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
@@ -238,26 +239,31 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ExamDto publishExam(String id) {
         return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ExamDto archiveExam(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ExamDto unpublishExam(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ExamDto withdrawExam(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ExamDto saveDraftExam(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }

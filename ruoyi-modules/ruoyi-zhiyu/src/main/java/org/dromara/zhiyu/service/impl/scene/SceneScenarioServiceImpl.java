@@ -209,31 +209,37 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     // ---------- 状态流转 / 审核 / 邀请 / 克隆 ----------
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenarioDto submit(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenarioDto withdraw(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenarioDto saveDraft(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenarioDto publish(String id) {
         return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenarioDto archive(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ScenarioDto unpublish(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }

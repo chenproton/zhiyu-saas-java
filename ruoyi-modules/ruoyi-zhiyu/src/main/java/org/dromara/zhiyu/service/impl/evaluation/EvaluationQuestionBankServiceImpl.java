@@ -186,6 +186,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     // ---------- 状态流转 / 审核 / 邀请 ----------
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto submitBank(String id) {
         return transition(id, ZhiyuStatusConstants.PENDING);
     }
@@ -211,26 +212,31 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto publishBank(String id) {
         return transition(id, ZhiyuStatusConstants.PUBLISHED);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto archiveBank(String id) {
         return transition(id, "archived");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto unpublishBank(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto withdrawBank(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto saveDraftBank(String id) {
         return transition(id, ZhiyuStatusConstants.DRAFT);
     }

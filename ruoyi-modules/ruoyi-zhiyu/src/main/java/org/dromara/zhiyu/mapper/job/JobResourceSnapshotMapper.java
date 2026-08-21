@@ -64,82 +64,82 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
     String buildPositionObj(@Param("id") String id, @Param("tenantId") String tenantId);
 
     /** 岗位-专业绑定数组（JSON_ARRAYAGG）。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'careerPositionId', t.career_position_id, 'majorId', t.major_id"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, career_position_id, major_id"
         + " FROM career_position_majors WHERE career_position_id = #{id}) t")
     String buildPositionMajors(@Param("id") String id);
 
     /** 岗位职责数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'careerPositionId', t.career_position_id, 'name', t.name, 'description', t.description, 'sortOrder', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM ("
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, career_position_id, name, description, sort_order"
         + " FROM position_responsibilities WHERE career_position_id = #{id}) t")
     String buildPositionResponsibilities(@Param("id") String id);
 
     /** 岗位能力绑定数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'careerPositionId', t.career_position_id, 'responsibilityId', t.responsibility_id,"
         + " 'abilityPointId', t.ability_point_id, 'source', t.source, 'domain', t.domain, 'requiredLevel', t.required_level,"
         + " 'rubricDescription', t.rubric_description, 'attributes', t.attributes, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level,"
         + " rubric_description, attributes, weight"
         + " FROM position_ability_bindings WHERE career_position_id = #{id}) t")
     String buildPositionAbilityBindings(@Param("id") String id);
 
     /** 能力域数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'careerPositionId', t.career_position_id, 'name', t.name, 'description', t.description,"
         + " 'bindingIds', t.binding_ids, 'sortOrder', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM ("
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, career_position_id, name, description, binding_ids, sort_order"
         + " FROM ability_domains WHERE career_position_id = #{id}) t")
     String buildAbilityDomains(@Param("id") String id);
 
     /** 岗位证书数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'careerPositionId', t.career_position_id, 'certificateLibraryId', t.certificate_library_id"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, career_position_id, certificate_library_id"
         + " FROM position_certificates WHERE career_position_id = #{id}) t")
     String buildPositionCertificates(@Param("id") String id);
 
     /** 认定规则数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'careerPositionId', t.career_position_id, 'status', t.status, 'ruleSource', t.rule_source,"
         + " 'levelMapping', t.level_mapping"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, career_position_id, status, rule_source, level_mapping"
         + " FROM certification_rules WHERE career_position_id = #{id}) t")
     String buildCertificationRules(@Param("id") String id);
 
     /** 认定权重数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'ruleId', t.rule_id, 'abilityPointId', t.ability_point_id, 'taskId', t.task_id, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, rule_id, ability_point_id, task_id, weight"
         + " FROM certification_weights WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{id})) t")
     String buildCertificationWeights(@Param("id") String id);
 
     /** 认定能力项数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'ruleId', t.rule_id, 'name', t.name, 'sortOrder', t.sort_order"
-        + ") ORDER BY t.sort_order, t.id), '[]') FROM ("
+        + ") ORDER BY t.sort_order, t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, rule_id, name, sort_order"
         + " FROM certification_ability_items WHERE rule_id IN"
         + " (SELECT id FROM certification_rules WHERE career_position_id = #{id})) t")
     String buildCertificationAbilityItems(@Param("id") String id);
 
     /** 认定能力点数组。 */
-    @Select("SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'itemId', t.item_id, 'abilityPointId', t.ability_point_id,"
         + " 'mappingType', t.mapping_type, 'customLevelMapping', t.custom_level_mapping,"
         + " 'requiredLevel', t.required_level, 'weight', t.weight"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, item_id, ability_point_id, mapping_type, custom_level_mapping, required_level, weight"
         + " FROM certification_ability_points WHERE item_id IN"
         + " (SELECT id FROM certification_ability_items WHERE rule_id IN"
@@ -160,10 +160,10 @@ public interface JobResourceSnapshotMapper extends BaseMapperPlus<JobResourceSna
     /**
      * 能力点内容数组（按 ID 集合 + 租户）。
      */
-    @Select("<script>SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT("
+    @Select("<script>SELECT COALESCE(CAST(CONCAT('[', GROUP_CONCAT(JSON_OBJECT("
         + " 'id', t.id, 'name', t.name, 'code', t.code, 'description', t.description, 'attributes', t.attributes,"
         + " 'isPublic', t.is_public, 'creatorId', t.creator_id, 'createdAt', t.created_at"
-        + ") ORDER BY t.id), '[]') FROM ("
+        + ") ORDER BY t.id SEPARATOR ','), ']') AS JSON), '[]') FROM ("
         + " SELECT id, name, code, description, attributes, is_public, creator_id, created_at"
         + " FROM ability_points WHERE tenant_id = #{tenantId} AND id IN"
         + " <foreach collection=\"ids\" item=\"id\" open=\"(\" separator=\",\" close=\")\">#{id}</foreach>) t</script>")
