@@ -131,7 +131,8 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         checkTaskTenant(req.getTaskId());
-        String id = bindingMapper.bindReturnId(tenantId, req.getTaskId(), req.getResourceId());
+        bindingMapper.bind(tenantId, req.getTaskId(), req.getResourceId());
+        String id = bindingMapper.selectIdByUnique(req.getTaskId(), req.getResourceId());
         if (id == null) {
             throw new ApiException(500, "internal_error", "绑定资源失败");
         }

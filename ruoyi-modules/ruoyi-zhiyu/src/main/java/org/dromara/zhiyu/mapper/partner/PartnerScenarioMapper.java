@@ -19,7 +19,8 @@ public interface PartnerScenarioMapper extends BaseMapperPlus<SceneScenario, Sce
 
     @Select("<script>SELECT sc.id FROM scenarios sc"
         + " WHERE (sc.source_enterprise_id = #{enterpriseId}"
-        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids)))"
+        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario'"
+        + "   AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(sc.id), '$')))"
         + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND sc.tenant_id = #{schoolTenantId}</if>"
         + " <if test=\"search != null and search != ''\"> AND sc.name LIKE CONCAT('%', #{search}, '%')</if>"
         + " ORDER BY sc.updated_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
@@ -30,7 +31,8 @@ public interface PartnerScenarioMapper extends BaseMapperPlus<SceneScenario, Sce
 
     @Select("<script>SELECT COUNT(*) FROM scenarios sc"
         + " WHERE (sc.source_enterprise_id = #{enterpriseId}"
-        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids)))"
+        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario'"
+        + "   AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(sc.id), '$')))"
         + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND sc.tenant_id = #{schoolTenantId}</if>"
         + " <if test=\"search != null and search != ''\"> AND sc.name LIKE CONCAT('%', #{search}, '%')</if></script>")
     long countScenarios(@Param("enterpriseId") String enterpriseId, @Param("schoolTenantId") String schoolTenantId,

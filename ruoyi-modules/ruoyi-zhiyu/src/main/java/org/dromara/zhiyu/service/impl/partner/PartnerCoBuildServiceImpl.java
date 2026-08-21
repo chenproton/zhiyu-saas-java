@@ -289,10 +289,13 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
                     generateUniqueCode("NL", schoolTenantId, positionMapper::existsCode),
                     b.getAttributes() == null ? List.of() : b.getAttributes());
             }
-            String actualId = positionMapper.upsertAbilityBindingReturnId(UUID.randomUUID().toString(), schoolTenantId,
+            String bindingId = UUID.randomUUID().toString();
+            positionMapper.upsertAbilityBinding(bindingId, schoolTenantId,
                 id, backendRespId, abilityPointId, b.getSource(), b.getDomain(), b.getLevel(), b.getRubricDescription(),
                 b.getAttributes() == null ? List.of() : b.getAttributes(), BigDecimal.ZERO);
-            bindingIdMap.put(b.getId(), actualId);
+            // 冲突命中时新 id 未生效，回读唯一键对应已存在行 id
+            String actualId = positionMapper.selectAbilityBindingId(id, backendRespId, abilityPointId);
+            bindingIdMap.put(b.getId(), actualId == null ? bindingId : actualId);
         }
         for (PartnerDtosAbilityDomainItem ad : wrapAbilityDomains(req)) {
             List<String> newBindingIds = new ArrayList<>();
@@ -397,7 +400,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
             positionMapper.insertCertificate(UUID.randomUUID().toString(), tenantId, newId, c.getCertificateLibraryId());
         }
 
-        // 能力绑定（重挂新职责 id；RETURNING id 用于能力域 binding_ids 重映射）
+        // 能力绑定（重挂新职责 id；upsert 后回读实际 id 用于能力域 binding_ids 重映射）
         Map<String, String> bindingIdMap = new LinkedHashMap<>();
         for (JobPositionAbilityBinding b : abilityBindingMapper.selectList(
             QueryBuilder.lambda(JobPositionAbilityBinding.class)
@@ -406,11 +409,14 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
             if (newRespId == null) {
                 continue;
             }
-            String actualId = positionMapper.upsertAbilityBindingReturnId(UUID.randomUUID().toString(), tenantId,
+            String bindingId = UUID.randomUUID().toString();
+            positionMapper.upsertAbilityBinding(bindingId, tenantId,
                 newId, newRespId, b.getAbilityPointId(), b.getSource(), b.getDomain(), b.getRequiredLevel(),
                 b.getRubricDescription(), b.getAttributes() == null ? List.of() : b.getAttributes(),
                 b.getWeight() == null ? BigDecimal.ZERO : b.getWeight());
-            bindingIdMap.put(b.getId(), actualId);
+            // 冲突命中时新 id 未生效，回读唯一键对应已存在行 id
+            String actualId = positionMapper.selectAbilityBindingId(newId, newRespId, b.getAbilityPointId());
+            bindingIdMap.put(b.getId(), actualId == null ? bindingId : actualId);
         }
 
         // 能力域（binding_ids 由旧绑定 id 重映射为新绑定 id）
@@ -772,9 +778,11 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
         int nextVersion = (req.getVersion() == null ? currentVersion : req.getVersion()) + 1;
 
         for (MethodInput m : req.getMethods() == null ? List.<MethodInput>of() : req.getMethods()) {
-            String configId = evalMapper.upsertMethodReturnId(tenantId, taskId, m.getMethodKey(), m.getWeight(),
+            evalMapper.upsertMethod(tenantId, taskId, m.getMethodKey(), m.getWeight(),
                 m.getEvalObject(), m.getScoreType(), toJson(m.getEvalSubjects()), m.getStandardName(),
                 m.getStandardMode(), toJson(m.getResourceConfig()), nextVersion, m.getIsEnabled() == null || m.getIsEnabled());
+            // 冲突命中时回读唯一键（task_id + method_key）对应行 id
+            String configId = evalMapper.selectMethodId(tenantId, taskId, m.getMethodKey());
             evalMapper.deleteEvalPoints(configId);
             evalMapper.deleteScoreRules(configId);
             evalMapper.deleteReviewSteps(configId);
@@ -822,7 +830,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
             if (w.getTaskId() == null || w.getTaskId().isEmpty()) {
                 throw new ApiException(400, "bad_request", "缺少任务 id");
             }
-            weightMapper.upsertReturnId(tenantId, scenarioId, w.getTaskId(), w.getWeight());
+            weightMapper.upsert(tenantId, scenarioId, w.getTaskId(), w.getWeight());
         }
         return true;
     }

@@ -13,9 +13,9 @@ import org.dromara.zhiyu.domain.evaluation.JobRunLog;
  */
 public interface JobRunLogMapper extends BaseMapperPlus<JobRunLog, JobRunLog> {
 
-    /** 写入执行开始记录（status=running），返回日志 ID。 */
-    @Insert("INSERT INTO job_run_logs (job_name, status) VALUES (#{jobName}, 'running') RETURNING id")
-    String insertRunning(@Param("jobName") String jobName);
+    /** 写入执行开始记录（status=running；id 由调用方生成 UUID）。 */
+    @Insert("INSERT INTO job_run_logs (id, job_name, status) VALUES (#{id}, #{jobName}, 'running')")
+    int insertRunning(@Param("id") String id, @Param("jobName") String jobName);
 
     /** 回填执行结果（finished_at/status/error；成功时 error 置空串，对齐 Go finishJobRun）。 */
     @Update("UPDATE job_run_logs SET finished_at = NOW(), status = #{status}, error = #{error}"

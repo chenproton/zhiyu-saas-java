@@ -33,17 +33,17 @@ public interface EvaluationSceneResultMapper extends BaseMapperPlus<EvaluationSc
     @Select("SELECT scenario_id FROM scenario_tasks WHERE id = #{taskId}")
     String scenarioIdByTask(@Param("taskId") String taskId);
 
-    /** 反向回写链：按 usageId 定位考试结果 */
+    /** 反向回写链：按 usageId 定位考试结果（DESC 时 MySQL 默认 NULL 最后，对齐 PG NULLS LAST） */
     @Select("SELECT er.id FROM exam_results er"
         + " WHERE er.exam_usage_id = #{usageId} AND er.user_id = #{userId}"
-        + " ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC LIMIT 1")
+        + " ORDER BY er.submit_time DESC, er.created_at DESC LIMIT 1")
     String findExamResultByUsage(@Param("usageId") String usageId, @Param("userId") String userId);
 
     /** 反向回写链：按 paperId/examId + 任务目标定位考试结果 */
     @Select("SELECT er.id FROM exam_results er JOIN exam_usages eu ON er.exam_usage_id = eu.id"
-        + " WHERE eu.target_type = 'task' AND #{taskId} = ANY(eu.target_ids) AND eu.exam_id = #{examId}"
+        + " WHERE eu.target_type = 'task' AND JSON_CONTAINS(eu.target_ids, JSON_QUOTE(#{taskId}), '$') AND eu.exam_id = #{examId}"
         + " AND er.user_id = #{userId}"
-        + " ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC LIMIT 1")
+        + " ORDER BY er.submit_time DESC, er.created_at DESC LIMIT 1")
     String findExamResultByExam(@Param("taskId") String taskId, @Param("examId") String examId,
                                 @Param("userId") String userId);
 
@@ -64,7 +64,7 @@ public interface EvaluationSceneResultMapper extends BaseMapperPlus<EvaluationSc
     String scenarioSnapshotData(@Param("tenantId") String tenantId, @Param("sceneId") String sceneId,
                                 @Param("version") String version);
 
-    /** 提交评价结果（幂等 upsert；已评分行禁止重交覆盖，返回影响行数） */
+    /** 提交评价结果（幂等 upsert；已评分行禁止重交覆盖——IF 守卫保持原值，对齐 PG ON CONFLICT ... WHERE graded_at IS NULL；返回影响行数） */
     @Insert("INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id,"
         + " evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers,"
         + " subjective_content, drawn_questions, version, created_at, updated_at)"
@@ -72,23 +72,29 @@ public interface EvaluationSceneResultMapper extends BaseMapperPlus<EvaluationSc
         + " #{evaluatorType}, 'pending', #{maxScore}, #{evalPointScores}, #{objectiveAnswers},"
         + " #{subjectiveContent}, #{drawnQuestions}, #{version}, NOW(), NOW())"
         + " ON DUPLICATE KEY UPDATE"
-        + " scene_id = VALUES(scene_id), evaluator_id = VALUES(evaluator_id), evaluator_type = VALUES(evaluator_type),"
-        + " max_score = VALUES(max_score), objective_answers = VALUES(objective_answers),"
-        + " subjective_content = VALUES(subjective_content), drawn_questions = VALUES(drawn_questions),"
-        + " eval_point_scores = VALUES(eval_point_scores), version = VALUES(version),"
-        + " status = 'pending', graded_at = NULL, updated_at = VALUES(updated_at)"
-        + " WHERE scene_evaluation_results.graded_at IS NULL")
+        + " scene_id = IF(graded_at IS NULL, VALUES(scene_id), scene_id),"
+        + " evaluator_id = IF(graded_at IS NULL, VALUES(evaluator_id), evaluator_id),"
+        + " evaluator_type = IF(graded_at IS NULL, VALUES(evaluator_type), evaluator_type),"
+        + " max_score = IF(graded_at IS NULL, VALUES(max_score), max_score),"
+        + " objective_answers = IF(graded_at IS NULL, VALUES(objective_answers), objective_answers),"
+        + " subjective_content = IF(graded_at IS NULL, VALUES(subjective_content), subjective_content),"
+        + " drawn_questions = IF(graded_at IS NULL, VALUES(drawn_questions), drawn_questions),"
+        + " eval_point_scores = IF(graded_at IS NULL, VALUES(eval_point_scores), eval_point_scores),"
+        + " version = IF(graded_at IS NULL, VALUES(version), version),"
+        + " status = IF(graded_at IS NULL, 'pending', status),"
+        + " graded_at = IF(graded_at IS NULL, NULL, graded_at),"
+        + " updated_at = IF(graded_at IS NULL, VALUES(updated_at), updated_at)")
     int upsertSubmit(EvaluationSceneResult entity);
 
     /** live JOIN 回退定位考试结果（对齐 Go FindLatestExamResult） */
     @Select("SELECT er.id FROM exam_results er"
         + " JOIN exam_usages eu ON er.exam_usage_id = eu.id"
-        + " JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)"
+        + " JOIN task_evaluation_methods tem ON JSON_CONTAINS(eu.target_ids, JSON_QUOTE(tem.task_id), '$')"
         + " WHERE tem.task_id = #{taskId} AND tem.method_key = #{methodKey}"
         + " AND er.user_id = #{evaluateeId} AND eu.target_type = 'task'"
         + " AND eu.exam_id = COALESCE(NULLIF(tem.resource_config->>'$.paperId', ''),"
         + " NULLIF(tem.resource_config->>'$.examId', ''))"
-        + " ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC LIMIT 1")
+        + " ORDER BY er.submit_time DESC, er.created_at DESC LIMIT 1")
     String findLatestExamResult(@Param("taskId") String taskId, @Param("methodKey") String methodKey,
                                 @Param("evaluateeId") String evaluateeId);
 }

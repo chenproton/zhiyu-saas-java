@@ -33,7 +33,7 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
     /** 节点删除保护：存在测评成绩或节点考试结果时拒绝删除。 */
     @Select("SELECT EXISTS(SELECT 1 FROM node_evaluation_results WHERE node_id = #{id})"
         + " OR EXISTS(SELECT 1 FROM exam_results er JOIN exam_usages eu ON eu.id = er.exam_usage_id"
-        + " WHERE eu.target_type = 'node' AND #{id} = ANY(eu.target_ids))")
+        + " WHERE eu.target_type = 'node' AND JSON_CONTAINS(eu.target_ids, JSON_QUOTE(#{id}), '$'))")
     boolean existsEvaluationResults(@Param("id") String id);
 
     /** 创建节点（事务内，含数组/jsonb 列）。 */

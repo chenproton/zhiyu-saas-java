@@ -26,7 +26,7 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
     @Select("SELECT name FROM scenario_tasks WHERE id = #{taskId}")
     String selectTaskName(@Param("taskId") String taskId);
 
-    @Select("INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type,"
+    @Insert("INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type,"
         + " eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)"
         + " VALUES (#{tenantId}, #{taskId}, #{methodKey}, #{weight}, #{evalObject}, #{scoreType},"
         + " CAST(#{evalSubjects} AS JSON), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS JSON),"
@@ -35,13 +35,19 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
         + " score_type = VALUES(score_type), eval_subjects = VALUES(eval_subjects),"
         + " standard_name = VALUES(standard_name), standard_mode = VALUES(standard_mode),"
         + " resource_config = VALUES(resource_config), version = VALUES(version), is_enabled = VALUES(is_enabled),"
-        + " updated_at = now() RETURNING id")
-    String upsertMethodReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
-                                @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
-                                @Param("evalObject") String evalObject, @Param("scoreType") String scoreType,
-                                @Param("evalSubjects") String evalSubjects, @Param("standardName") String standardName,
-                                @Param("standardMode") String standardMode, @Param("resourceConfig") String resourceConfig,
-                                @Param("version") Integer version, @Param("isEnabled") Boolean isEnabled);
+        + " updated_at = now()")
+    int upsertMethod(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
+                     @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
+                     @Param("evalObject") String evalObject, @Param("scoreType") String scoreType,
+                     @Param("evalSubjects") String evalSubjects, @Param("standardName") String standardName,
+                     @Param("standardMode") String standardMode, @Param("resourceConfig") String resourceConfig,
+                     @Param("version") Integer version, @Param("isEnabled") Boolean isEnabled);
+
+    /** 按唯一键回读测评方法 id（upsert 冲突命中时返回实际行 id，对齐 Go RETURNING id）。 */
+    @Select("SELECT id FROM task_evaluation_methods WHERE task_id = #{taskId} AND method_key = #{methodKey}"
+        + " AND tenant_id = #{tenantId}")
+    String selectMethodId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
+                          @Param("methodKey") String methodKey);
 
     @Delete("DELETE FROM task_eval_points WHERE config_id = #{configId}")
     int deleteEvalPoints(@Param("configId") String configId);
@@ -86,9 +92,9 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
                          @Param("assignedUserIds") List<String> assignedUserIds);
 
     @Select("SELECT id, config_id AS configId, name, description, sub_type AS subType,"
-        + " array_to_json(types) AS types, weight, scoring_method AS scoringMethod,"
-        + " grade_mapping AS gradeMapping, array_to_json(knowledge_point_ids) AS knowledgePointIds,"
-        + " array_to_json(ability_point_ids) AS abilityPointIds, sort_order AS sortOrder"
+        + " types AS types, weight, scoring_method AS scoringMethod,"
+        + " grade_mapping AS gradeMapping, knowledge_point_ids AS knowledgePointIds,"
+        + " ability_point_ids AS abilityPointIds, sort_order AS sortOrder"
         + " FROM task_eval_points WHERE config_id = #{configId} ORDER BY sort_order")
     List<EvalPointRow> selectEvalPoints(@Param("configId") String configId);
 
@@ -97,7 +103,7 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
     List<ScoreRuleRow> selectScoreRules(@Param("configId") String configId);
 
     @Select("SELECT id, config_id AS configId, label, description, enabled, subject_type AS subjectType,"
-        + " array_to_json(assigned_user_ids) AS assignedUserIds, weight, sort_order AS sortOrder"
+        + " assigned_user_ids AS assignedUserIds, weight, sort_order AS sortOrder"
         + " FROM task_review_steps WHERE config_id = #{configId} ORDER BY sort_order")
     List<ReviewStepRow> selectReviewSteps(@Param("configId") String configId);
 

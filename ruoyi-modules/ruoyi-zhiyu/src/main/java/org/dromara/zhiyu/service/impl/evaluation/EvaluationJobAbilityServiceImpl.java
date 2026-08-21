@@ -36,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -203,10 +204,8 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
      * 汇聚所有已发布认证规则的岗位能力结果（每日定时任务入口；对齐 Go
      * JobAbilityAggregator.AggregateAllPublished）。
      *
-     * <p>逐岗位独立汇聚：每岗位一条汇聚日志 + 独立事务（REQUIRES_NEW），
-     * 事务内先 SET LOCAL statement_timeout = 0 解除全局 15s 语句超时
-     * （对齐 Go aggregateAll 专用连接 SET statement_timeout = 0，事务结束自动恢复，
-     * 等效 Go 的 RESET 兜底）；单岗位失败不中断后续岗位，最终抛首个错误供调用方
+     * <p>逐岗位独立汇聚：每岗位一条汇聚日志 + 独立事务（REQUIRES_NEW）；
+     * 单岗位失败不中断后续岗位，最终抛首个错误供调用方
      * （定时任务）走重试/告警。</p>
      */
     @Override
@@ -218,12 +217,10 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
         for (Map<String, Object> target : targets) {
             String tenantId = str(target.get("tenant_id"));
             String positionId = str(target.get("position_id"));
-            String logId = jobMapper.createAggregateLog(tenantId, positionId);
+            String logId = UUID.randomUUID().toString();
+            jobMapper.createAggregateLog(logId, tenantId, positionId);
             try {
-                int[] result = txTemplate.execute(status -> {
-                    jobMapper.disableStatementTimeout();
-                    return aggregatePosition(tenantId, positionId, List.of());
-                });
+                int[] result = txTemplate.execute(status -> aggregatePosition(tenantId, positionId, List.of()));
                 jobMapper.finishAggregateLog(logId, "finished",
                     result == null ? 0 : result[0], result == null ? 0 : result[1], null);
             } catch (Exception e) {
@@ -263,7 +260,8 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
             running.put("status", "running");
             return running;
         }
-        String logId = jobMapper.createAggregateLog(tenantId, req.getCareerPositionId());
+        String logId = UUID.randomUUID().toString();
+        jobMapper.createAggregateLog(logId, tenantId, req.getCareerPositionId());
         // 异步汇聚（对齐 Go goroutine；失败仅更新日志不阻断响应）
         List<String> userIds = req.getUserIds() == null ? List.of() : req.getUserIds();
         Thread.ofVirtual().start(() -> {

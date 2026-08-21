@@ -93,7 +93,7 @@ public interface PartnerExpertMapper extends BaseMapperPlus<PartnerExpert, Partn
 
     /** 从评审步骤评审人数组中移除该账号（数组列无 FK，防悬空引用）。 */
     @Update("UPDATE task_review_steps SET assigned_user_ids = JSON_REMOVE(assigned_user_ids, JSON_UNQUOTE(JSON_SEARCH(assigned_user_ids, 'one', #{userId})))"
-        + " WHERE #{userId} = ANY(assigned_user_ids)")
+        + " WHERE JSON_CONTAINS(assigned_user_ids, JSON_QUOTE(#{userId}), '$')")
     int removeExpertFromReviewSteps(@Param("userId") String userId);
 
     /** 删除专家账号的用户角色。 */

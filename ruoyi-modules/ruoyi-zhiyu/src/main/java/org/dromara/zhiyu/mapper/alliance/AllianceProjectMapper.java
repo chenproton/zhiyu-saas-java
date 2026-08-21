@@ -56,7 +56,7 @@ public interface AllianceProjectMapper extends BaseMapperPlus<AllianceProject, A
     String PUBLIC_COLS = "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date,"
         + " budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at";
 
-    String PROGRESS = "COALESCE((SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE m.is_completed) / NULLIF(COUNT(*), 0))"
+    String PROGRESS = "COALESCE((SELECT ROUND(100.0 * SUM(CASE WHEN m.is_completed THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0))"
         + " FROM alliance_project_milestones m WHERE m.project_id = p.id), 0) AS progress";
 
     @Select("SELECT " + PUBLIC_COLS + ", " + PROGRESS + " FROM alliance_projects p"

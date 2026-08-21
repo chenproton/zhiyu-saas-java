@@ -31,15 +31,16 @@ public interface SceneGradeMappingMapper extends BaseMapperPlus<SceneGradeMappin
     @Select("SELECT scenario_id FROM scenario_grade_mappings WHERE id = #{id}")
     String selectScenarioId(@Param("id") String id);
 
-    /** 插入等级映射并返回 id。 */
+    /** 插入等级映射（id 由 service 层生成）。 */
     @Insert("INSERT INTO scenario_grade_mappings (id, tenant_id, scenario_id, task_id, level, min_score, max_score,"
         + " description, color)"
-        + " VALUES ((UUID()), #{tenantId}, #{scenarioId}, #{taskId}, #{level},"
-        + " #{minScore}, #{maxScore}, #{description}, #{color}) RETURNING id")
-    String insertReturnId(@Param("tenantId") String tenantId, @Param("scenarioId") String scenarioId,
-                          @Param("taskId") String taskId, @Param("level") String level,
-                          @Param("minScore") BigDecimal minScore, @Param("maxScore") BigDecimal maxScore,
-                          @Param("description") String description, @Param("color") String color);
+        + " VALUES (#{id}, #{tenantId}, #{scenarioId}, #{taskId}, #{level},"
+        + " #{minScore}, #{maxScore}, #{description}, #{color})")
+    int insertMapping(@Param("id") String id, @Param("tenantId") String tenantId,
+                      @Param("scenarioId") String scenarioId,
+                      @Param("taskId") String taskId, @Param("level") String level,
+                      @Param("minScore") BigDecimal minScore, @Param("maxScore") BigDecimal maxScore,
+                      @Param("description") String description, @Param("color") String color);
 
     /** 更新等级映射（按 id）。 */
     @Update("UPDATE scenario_grade_mappings SET scenario_id = #{scenarioId}, task_id = #{taskId},"

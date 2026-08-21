@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 节点测验服务实现（对齐 Go node_quiz_handler.go + store/node_quizzes.go 语义）。
@@ -58,7 +59,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         verifyNodeTenant(req.getNodeId(), tenantId);
-        String id = quizMapper.insertQuiz(tenantId, req.getNodeId(), req.getTitle(), req.getType(), req.getTimeLimit());
+        String id = UUID.randomUUID().toString();
+        quizMapper.insertQuiz(id, tenantId, req.getNodeId(), req.getTitle(), req.getType(), req.getTimeLimit());
         return toQuizDto(quizMapper.selectQuiz(id, tenantId));
     }
 
@@ -114,7 +116,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
         if (quizMapper.selectQuiz(quizId, tenantId) == null) {
             throw new ApiException(404, "not_found", "测验不存在");
         }
-        String id = questionMapper.insertQuestion(tenantId, quizId, req.getType(), req.getQuestion(),
+        String id = UUID.randomUUID().toString();
+        questionMapper.insertQuestion(id, tenantId, quizId, req.getType(), req.getQuestion(),
             toJson(req.getOptions()), req.getAnswer(), req.getScore(), req.getSortOrder());
         return toQuestionDto(questionMapper.selectQuestion(id, tenantId));
     }

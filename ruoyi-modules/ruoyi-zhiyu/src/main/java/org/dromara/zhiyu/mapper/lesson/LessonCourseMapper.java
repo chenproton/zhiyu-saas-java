@@ -14,8 +14,8 @@ import java.util.List;
 /**
  * 课程 Mapper（courses 表，lesson 域课程工作流 + portal 收藏列表共用）。
  *
- * <p>读取走 MyBatis-Plus 内置方法（数组列经 PgArrayTypeHandler 映射）；
- * 写入走自定义 SQL——uuid[] 数组列需显式 CAST 才能写入 PG 数组列。</p>
+ * <p>读取走 MyBatis-Plus 内置方法（数组列经 PgArrayTypeHandler 映射为 JSON 数组）；
+ * 写入走自定义 SQL——JSON 数组列经 TypeHandler 序列化后写入 MySQL JSON 列。</p>
  *
  * @author zhiyu
  */
@@ -114,11 +114,13 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
         + " WHERE id = #{id} AND NOT (JSON_CONTAINS(co_creator_ids, JSON_QUOTE(#{userId}), '$'))")
     int inviteCollaborator(@Param("id") String id, @Param("userId") String userId);
 
-    /** 课程删除保护：存在课程/节点测评成绩或节点考试结果时拒绝物理删除。 */
+    /** 课程删除保护：存在课程/节点测评成绩或节点考试结果时拒绝物理删除（JSON_TABLE 展开节点目标数组，对齐 PG && 重叠语义）。 */
     @Select("SELECT EXISTS(SELECT 1 FROM course_evaluation_results WHERE course_id = #{id})"
         + " OR EXISTS(SELECT 1 FROM node_evaluation_results WHERE node_id IN (SELECT id FROM system_course_nodes WHERE course_id = #{id}))"
         + " OR EXISTS(SELECT 1 FROM exam_results er JOIN exam_usages eu ON eu.id = er.exam_usage_id"
-        + " WHERE eu.target_type = 'node' AND eu.target_ids && (SELECT COALESCE(JSON_ARRAYAGG(id), JSON_ARRAY()) FROM system_course_nodes WHERE course_id = #{id}))")
+        + " WHERE eu.target_type = 'node' AND EXISTS ("
+        + " SELECT 1 FROM JSON_TABLE(eu.target_ids, '$[*]' COLUMNS (x VARCHAR(64) PATH '$')) jt"
+        + " JOIN system_course_nodes n ON n.id = jt.x WHERE n.course_id = #{id}))")
     boolean existsEvaluationResults(@Param("id") String id);
 
     /** 删除前解绑培养方案引用。 */
@@ -142,13 +144,13 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
     int deleteCourseHomeworks(@Param("id") String id);
 
     /** 删除课程级考试安排（保留已有成绩的安排）。 */
-    @Delete("DELETE FROM exam_usages WHERE target_type = 'course' AND #{id} = ANY(target_ids)"
+    @Delete("DELETE FROM exam_usages WHERE target_type = 'course' AND JSON_CONTAINS(target_ids, JSON_QUOTE(#{id}), '$')"
         + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)")
     int deleteCourseExamUsages(@Param("id") String id);
 
     /** 从知识点颗粒课反向引用中移除该课程。 */
     @Update("UPDATE knowledge_points SET granular_lesson_ids = JSON_REMOVE(granular_lesson_ids, JSON_UNQUOTE(JSON_SEARCH(granular_lesson_ids, 'one', #{id})))"
-        + " WHERE #{id} = ANY(granular_lesson_ids)")
+        + " WHERE JSON_CONTAINS(granular_lesson_ids, JSON_QUOTE(#{id}), '$')")
     int unbindKnowledgePointGranularRefs(@Param("id") String id);
 
     /** 删除课程（限定租户）。 */

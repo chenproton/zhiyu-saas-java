@@ -29,10 +29,11 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
     @Select("SELECT EXISTS(SELECT 1 FROM exam_results WHERE exam_usage_id = #{usageId} AND user_id = #{userId} AND graded_at IS NOT NULL)")
     boolean resultTeacherGraded(@Param("usageId") String usageId, @Param("userId") String userId);
 
-    /** 考试安排目标（班级可参加校验） */
-    @Select("SELECT target_type, COALESCE(JSON_ARRAYAGG(x), JSON_ARRAY()) FROM ("
-        + " SELECT unnest(target_ids) AS x FROM exam_usages WHERE id = #{usageId}) t"
-        + " GROUP BY target_type")
+    /** 考试安排目标（班级可参加校验；unnest → JSON_TABLE） */
+    @Select("SELECT eu.target_type AS target_type, COALESCE(JSON_ARRAYAGG(jt.x), JSON_ARRAY()) AS target_ids"
+        + " FROM exam_usages eu"
+        + " JOIN JSON_TABLE(eu.target_ids, '$[*]' COLUMNS (x VARCHAR(64) PATH '$')) jt"
+        + " WHERE eu.id = #{usageId} GROUP BY eu.target_type")
     Map<String, Object> usageTarget(@Param("usageId") String usageId);
 
     /** 考试安排绑定的试卷与固化版本 */
@@ -53,13 +54,13 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
     java.math.BigDecimal liveExamTotalScore(@Param("examId") String examId);
 
     /** 学生班级是否命中考试安排目标班级（对齐 Go UsageTarget class 校验） */
-    @Select("SELECT EXISTS(SELECT 1 FROM exam_usages WHERE id = #{usageId} AND #{classNodeId} = ANY(target_ids))")
+    @Select("SELECT EXISTS(SELECT 1 FROM exam_usages WHERE id = #{usageId} AND JSON_CONTAINS(target_ids, JSON_QUOTE(#{classNodeId}), '$'))")
     boolean classTargetContains(@Param("usageId") String usageId, @Param("classNodeId") String classNodeId);
 
     /** 任务测评方式是否已由教师评分（重交保护；对齐 Go UsageGradedByUser） */
     @Select("SELECT EXISTS("
         + " SELECT 1 FROM exam_usages eu"
-        + " JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids) AND tem.method_key = #{methodKey}"
+        + " JOIN task_evaluation_methods tem ON JSON_CONTAINS(eu.target_ids, JSON_QUOTE(tem.task_id), '$') AND tem.method_key = #{methodKey}"
         + "  AND eu.exam_id = COALESCE(NULLIF(tem.resource_config->>'$.paperId', ''), NULLIF(tem.resource_config->>'$.examId', ''))"
         + " JOIN scene_evaluation_results ser ON ser.task_id = tem.task_id AND ser.evaluatee_id = #{userId}"
         + "  AND ser.method_key = #{methodKey}"
@@ -71,7 +72,7 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
     @Select("SELECT COALESCE("
         + " (SELECT (tem.resource_config->>'$.allowRetake')"
         + "  FROM exam_usages eu"
-        + "  JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)"
+        + "  JOIN task_evaluation_methods tem ON JSON_CONTAINS(eu.target_ids, JSON_QUOTE(tem.task_id), '$')"
         + "   AND eu.exam_id = COALESCE(NULLIF(tem.resource_config->>'$.paperId', ''), NULLIF(tem.resource_config->>'$.examId', ''))"
         + "  WHERE eu.id = #{usageId} AND eu.target_type = 'task' AND tem.resource_config->>'$.allowRetake' IS NOT NULL"
         + "  LIMIT 1), false)")
@@ -92,9 +93,13 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
         + " #{score}, #{totalScore}, #{isPass}, #{answers}, #{gradingStatus},"
         + " (SELECT exam_version FROM exam_usages WHERE id = #{usageId}))"
         + " ON DUPLICATE KEY UPDATE"
-        + " score = VALUES(score), total_score = VALUES(total_score), is_pass = VALUES(is_pass),"
-        + " answers = VALUES(answers), grading_status = VALUES(grading_status), version = VALUES(version),"
-        + " submit_time = NOW() WHERE exam_results.graded_at IS NULL")
+        + " score = IF(exam_results.graded_at IS NULL, VALUES(score), score),"
+        + " total_score = IF(exam_results.graded_at IS NULL, VALUES(total_score), total_score),"
+        + " is_pass = IF(exam_results.graded_at IS NULL, VALUES(is_pass), is_pass),"
+        + " answers = IF(exam_results.graded_at IS NULL, VALUES(answers), answers),"
+        + " grading_status = IF(exam_results.graded_at IS NULL, VALUES(grading_status), grading_status),"
+        + " version = IF(exam_results.graded_at IS NULL, VALUES(version), version),"
+        + " submit_time = IF(exam_results.graded_at IS NULL, NOW(), submit_time)")
     int saveResult(@Param("tenantId") String tenantId, @Param("usageId") String usageId, @Param("userId") String userId,
                    @Param("studentName") String studentName, @Param("className") String className,
                    @Param("grade") String grade, @Param("majorId") String majorId,
@@ -108,7 +113,7 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
         + " SELECT #{tenantId}, tem.task_id, st.scenario_id, tem.method_key, #{userId}, #{status}, #{score}, #{maxScore},"
         + " #{objectiveAnswers}, (SELECT exam_version FROM exam_usages WHERE id = #{usageId})"
         + " FROM exam_usages eu"
-        + " JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)"
+        + " JOIN task_evaluation_methods tem ON JSON_CONTAINS(eu.target_ids, JSON_QUOTE(tem.task_id), '$')"
         + " JOIN scenario_tasks st ON st.id = tem.task_id"
         + " WHERE eu.id = #{usageId} AND tem.method_key = #{methodKey}"
         + " ON DUPLICATE KEY UPDATE"
@@ -129,7 +134,7 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
     /** 同步课程统一评价（考试目标为课程时；对齐 Go SyncCourseEvaluation） */
     @org.apache.ibatis.annotations.Insert("INSERT INTO course_evaluation_results (tenant_id, course_id, method_key,"
         + " evaluatee_id, status, total_score, max_score, objective_answers, version)"
-        + " SELECT #{tenantId}, eu.target_ids[1], COALESCE(NULLIF(#{methodKey}, ''), 'paper'), #{userId}, #{status},"
+        + " SELECT #{tenantId}, JSON_UNQUOTE(JSON_EXTRACT(eu.target_ids, '$[0]')), COALESCE(NULLIF(#{methodKey}, ''), 'paper'), #{userId}, #{status},"
         + " #{score}, #{maxScore}, #{objectiveAnswers}, (SELECT exam_version FROM exam_usages WHERE id = #{usageId})"
         + " FROM exam_usages eu WHERE eu.id = #{usageId} AND eu.target_type = 'course' AND JSON_LENGTH(eu.target_ids) > 0"
         + " ON DUPLICATE KEY UPDATE"
@@ -150,7 +155,7 @@ public interface EvaluationExamResultMapper extends BaseMapperPlus<EvaluationExa
     /** 同步节点统一评价（考试目标为节点时；对齐 Go SyncNodeEvaluation） */
     @org.apache.ibatis.annotations.Insert("INSERT INTO node_evaluation_results (tenant_id, node_id, method_key,"
         + " evaluatee_id, status, total_score, max_score, objective_answers, version)"
-        + " SELECT #{tenantId}, eu.target_ids[1], COALESCE(NULLIF(#{methodKey}, ''), 'paper'), #{userId}, #{status},"
+        + " SELECT #{tenantId}, JSON_UNQUOTE(JSON_EXTRACT(eu.target_ids, '$[0]')), COALESCE(NULLIF(#{methodKey}, ''), 'paper'), #{userId}, #{status},"
         + " #{score}, #{maxScore}, #{objectiveAnswers}, (SELECT exam_version FROM exam_usages WHERE id = #{usageId})"
         + " FROM exam_usages eu WHERE eu.id = #{usageId} AND eu.target_type = 'node' AND JSON_LENGTH(eu.target_ids) > 0"
         + " ON DUPLICATE KEY UPDATE"

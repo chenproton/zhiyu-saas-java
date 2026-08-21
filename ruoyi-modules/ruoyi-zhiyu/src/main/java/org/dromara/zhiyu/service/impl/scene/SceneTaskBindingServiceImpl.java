@@ -38,7 +38,8 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         verifyTaskTenant(req.getTaskId());
-        String id = knowledgeMapper.insertReturnId(tenantId, req.getTaskId(), req.getKnowledgePointId());
+        knowledgeMapper.insertBinding(tenantId, req.getTaskId(), req.getKnowledgePointId());
+        String id = knowledgeMapper.selectIdByUnique(req.getTaskId(), req.getKnowledgePointId());
         return toKnowledgeDto(knowledgeMapper.selectById(id));
     }
 
@@ -63,7 +64,8 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         verifyTaskTenant(req.getTaskId());
-        String id = abilityMapper.insertReturnId(tenantId, req.getTaskId(), req.getAbilityPointId());
+        abilityMapper.insertBinding(tenantId, req.getTaskId(), req.getAbilityPointId());
+        String id = abilityMapper.selectIdByUnique(req.getTaskId(), req.getAbilityPointId());
         return toAbilityDto(abilityMapper.selectById(id));
     }
 

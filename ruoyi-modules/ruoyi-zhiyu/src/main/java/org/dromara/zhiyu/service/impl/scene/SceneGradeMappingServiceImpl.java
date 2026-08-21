@@ -13,6 +13,7 @@ import org.dromara.zhiyu.service.scene.ISceneGradeMappingService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 场景等级映射服务实现（对齐 Go scenario_grade_handler.go + store/scenario_configs.go 语义）。
@@ -65,7 +66,8 @@ public class SceneGradeMappingServiceImpl implements ISceneGradeMappingService {
                 req.getMinScore(), req.getMaxScore(), req.getDescription(), req.getColor());
             id = req.getId();
         } else {
-            id = gradeMapper.insertReturnId(tenantId, req.getScenarioId(), req.getTaskId(), req.getLevel(),
+            id = UUID.randomUUID().toString();
+            gradeMapper.insertMapping(id, tenantId, req.getScenarioId(), req.getTaskId(), req.getLevel(),
                 req.getMinScore(), req.getMaxScore(), req.getDescription(), req.getColor());
         }
         SceneGradeMapping saved = gradeMapper.selectById(id);

@@ -112,16 +112,19 @@ public interface SceneScenarioTaskMapper extends BaseMapperPlus<SceneScenarioTas
     String selectScenarioName(@Param("id") String id);
 
     /**
-     * 清理任务关联的考试安排（target_type='task'，无成绩的安排删除并返回其 exam_id；
-     * 对齐 Go CleanupTaskExamUsages 第一步，两条语句不可合并为 CTE 快照语义问题）。
+     * 查询任务关联的、无成绩的考试安排 exam_id（target_type='task'；
+     * 对齐 Go CleanupTaskExamUsages 第一步，MySQL 无 DELETE...RETURNING，拆为查+删两步）。
      */
-    @Select("WITH del AS ("
-        + " DELETE FROM exam_usages"
-        + " WHERE target_type = 'task' AND #{taskId} = ANY(target_ids)"
-        + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)"
-        + " RETURNING exam_id)"
-        + " SELECT exam_id FROM del")
-    List<String> cleanupTaskExamUsages(@Param("taskId") String taskId);
+    @Select("SELECT eu.exam_id FROM exam_usages eu"
+        + " WHERE eu.target_type = 'task' AND JSON_CONTAINS(eu.target_ids, JSON_QUOTE(#{taskId}), '$')"
+        + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)")
+    List<String> selectTaskExamUsageExamIds(@Param("taskId") String taskId);
+
+    /** 删除任务关联的、无成绩的考试安排（与 selectTaskExamUsageExamIds 同条件）。 */
+    @Delete("DELETE FROM exam_usages"
+        + " WHERE target_type = 'task' AND JSON_CONTAINS(target_ids, JSON_QUOTE(#{taskId}), '$')"
+        + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = exam_usages.id)")
+    int deleteTaskExamUsages(@Param("taskId") String taskId);
 
     /**
      * 删除不再被任何安排引用的独占临时考试（对齐 Go CleanupTaskExamUsages 第二步）。

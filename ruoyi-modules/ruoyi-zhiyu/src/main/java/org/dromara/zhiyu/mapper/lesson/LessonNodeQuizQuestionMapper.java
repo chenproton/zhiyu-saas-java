@@ -34,14 +34,15 @@ public interface LessonNodeQuizQuestionMapper extends BaseMapperPlus<LessonNodeQ
         + " FROM node_quiz_questions WHERE id = #{id} AND tenant_id = #{tenantId}")
     LessonNodeQuizQuestion selectQuestion(@Param("id") String id, @Param("tenantId") String tenantId);
 
-    /** 添加题目，返回 id。 */
+    /** 添加题目（id 由 Service 生成 UUID）。 */
     @Insert("INSERT INTO node_quiz_questions (id, tenant_id, quiz_id, type, question, options, answer, score, sort_order)"
-        + " VALUES ((UUID()), #{tenantId}, #{quizId}, #{type}, #{question},"
-        + " CAST(#{options} AS JSON), #{answer}, #{score}, #{sortOrder}) RETURNING id")
-    String insertQuestion(@Param("tenantId") String tenantId, @Param("quizId") String quizId, @Param("type") String type,
-                          @Param("question") String question, @Param("options") String options,
-                          @Param("answer") String answer, @Param("score") BigDecimal score,
-                          @Param("sortOrder") Integer sortOrder);
+        + " VALUES (#{id}, #{tenantId}, #{quizId}, #{type}, #{question},"
+        + " CAST(#{options} AS JSON), #{answer}, #{score}, #{sortOrder})")
+    int insertQuestion(@Param("id") String id, @Param("tenantId") String tenantId, @Param("quizId") String quizId,
+                       @Param("type") String type,
+                       @Param("question") String question, @Param("options") String options,
+                       @Param("answer") String answer, @Param("score") BigDecimal score,
+                       @Param("sortOrder") Integer sortOrder);
 
     /** 更新题目（限定租户）。 */
     @Update("UPDATE node_quiz_questions SET type = #{type}, question = #{question},"

@@ -168,8 +168,9 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         if (taskMapper.existsEvaluationResults(id)) {
             throw new ApiException(409, "conflict", "该任务已存在测评成绩，无法删除");
         }
-        // 清理考试安排与独占临时考试（同事务）
-        List<String> examIds = taskMapper.cleanupTaskExamUsages(id);
+        // 清理考试安排与独占临时考试（同事务；MySQL 无 DELETE...RETURNING，先查再删）
+        List<String> examIds = taskMapper.selectTaskExamUsageExamIds(id);
+        taskMapper.deleteTaskExamUsages(id);
         if (examIds != null && !examIds.isEmpty()) {
             taskMapper.deleteOrphanTempExams(examIds);
         }

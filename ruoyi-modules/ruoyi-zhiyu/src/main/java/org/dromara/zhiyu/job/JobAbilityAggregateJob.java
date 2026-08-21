@@ -142,7 +142,9 @@ public class JobAbilityAggregateJob {
     /** 写入执行开始记录，返回日志 ID（写失败返回 null，后续跳过更新；对齐 Go startJobRun）。 */
     private String startJobRun() {
         try {
-            return jobRunLogMapper.insertRunning(JOB_NAME);
+            String id = java.util.UUID.randomUUID().toString();
+            jobRunLogMapper.insertRunning(id, JOB_NAME);
+            return id;
         } catch (Exception e) {
             log.warn("定时任务执行记录写入失败 job={}", JOB_NAME, e);
             return null;

@@ -82,8 +82,9 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         checkNodeTenant(req.getNodeId(), tenantId);
-        String id = resourceMapper.bindNodeResource(tenantId, req.getNodeId(), req.getResourceId());
-        return id;
+        resourceMapper.upsertNodeBinding(tenantId, req.getNodeId(), req.getResourceId());
+        // 冲突命中时按唯一键回读实际行 id（对齐 Go RETURNING id）
+        return resourceMapper.selectNodeBindingId(req.getNodeId(), req.getResourceId());
     }
 
     @Override
@@ -149,9 +150,10 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         checkCourseTenant(req.getCourseId(), tenantId);
-        String id = resourceMapper.bindCourseResource(tenantId, req.getCourseId(), req.getResourceId());
+        resourceMapper.upsertCourseBinding(tenantId, req.getCourseId(), req.getResourceId());
         resourceMapper.syncCourseResourceBind(req.getCourseId(), req.getResourceId());
-        return id;
+        // 冲突命中时按唯一键回读实际行 id（对齐 Go RETURNING id）
+        return resourceMapper.selectCourseBindingId(req.getCourseId(), req.getResourceId());
     }
 
     @Override

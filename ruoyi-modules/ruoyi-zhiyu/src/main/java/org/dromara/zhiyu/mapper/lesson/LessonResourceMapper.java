@@ -82,19 +82,27 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
     int insertCourseBinding(@Param("id") String id, @Param("tenantId") String tenantId, @Param("courseId") String courseId,
                             @Param("resourceId") String resourceId);
 
-    /** 绑定已有节点资源（返回绑定 ID）。 */
-    @Select("INSERT INTO node_resource_bindings (tenant_id, node_id, resource_id)"
+    /** 绑定已有节点资源（幂等 upsert，不返回 id；冲突命中时按唯一键回读，对齐 Go RETURNING id）。 */
+    @Insert("INSERT INTO node_resource_bindings (tenant_id, node_id, resource_id)"
         + " VALUES (#{tenantId}, #{nodeId}, #{resourceId})"
-        + " ON DUPLICATE KEY UPDATE node_id = VALUES(node_id) RETURNING id")
-    String bindNodeResource(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
+        + " ON DUPLICATE KEY UPDATE node_id = VALUES(node_id)")
+    int upsertNodeBinding(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
+                          @Param("resourceId") String resourceId);
+
+    /** 按唯一键回读节点绑定 id（upsert 冲突命中时返回实际行 id）。 */
+    @Select("SELECT id FROM node_resource_bindings WHERE node_id = #{nodeId} AND resource_id = #{resourceId}")
+    String selectNodeBindingId(@Param("nodeId") String nodeId, @Param("resourceId") String resourceId);
+
+    /** 绑定已有课程资源（幂等 upsert，不返回 id；冲突命中时按唯一键回读，对齐 Go RETURNING id）。 */
+    @Insert("INSERT INTO course_resource_bindings (tenant_id, course_id, resource_id)"
+        + " VALUES (#{tenantId}, #{courseId}, #{resourceId})"
+        + " ON DUPLICATE KEY UPDATE course_id = VALUES(course_id)")
+    int upsertCourseBinding(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
                             @Param("resourceId") String resourceId);
 
-    /** 绑定已有课程资源（返回绑定 ID）。 */
-    @Select("INSERT INTO course_resource_bindings (tenant_id, course_id, resource_id)"
-        + " VALUES (#{tenantId}, #{courseId}, #{resourceId})"
-        + " ON DUPLICATE KEY UPDATE course_id = VALUES(course_id) RETURNING id")
-    String bindCourseResource(@Param("tenantId") String tenantId, @Param("courseId") String courseId,
-                              @Param("resourceId") String resourceId);
+    /** 按唯一键回读课程绑定 id（upsert 冲突命中时返回实际行 id）。 */
+    @Select("SELECT id FROM course_resource_bindings WHERE course_id = #{courseId} AND resource_id = #{resourceId}")
+    String selectCourseBindingId(@Param("courseId") String courseId, @Param("resourceId") String resourceId);
 
     /** 查询节点绑定行关联的节点 ID（解绑租户归属校验用）。 */
     @Select("SELECT node_id FROM node_resource_bindings WHERE id = #{id}")
@@ -120,7 +128,7 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
 
     /** 课程解绑后同步 courses.resource_ids 聚合字段。 */
     @Update("UPDATE courses SET resource_ids = JSON_REMOVE(resource_ids, JSON_UNQUOTE(JSON_SEARCH(resource_ids, 'one', #{resourceId}))),"
-        + " resource_count = COALESCE(array_length(JSON_REMOVE(resource_ids, JSON_UNQUOTE(JSON_SEARCH(resource_ids, 'one', #{resourceId}))), 1), 0)"
+        + " resource_count = COALESCE(JSON_LENGTH(JSON_REMOVE(resource_ids, JSON_UNQUOTE(JSON_SEARCH(resource_ids, 'one', #{resourceId})))), 0)"
         + " WHERE id = #{courseId}")
     int syncCourseResourceUnbind(@Param("courseId") String courseId, @Param("resourceId") String resourceId);
 

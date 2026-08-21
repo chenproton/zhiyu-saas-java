@@ -44,7 +44,7 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
      * 方法行 upsert（(task_id, method_key) 冲突时更新；rubric_template_id 恒不写入，
      * 评价标准为纯复制语义；对齐 Go SaveTaskMethod）。
      */
-    @Select("INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type,"
+    @Insert("INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type,"
         + " eval_subjects, standard_name, standard_mode, resource_config, version, is_enabled)"
         + " VALUES (#{tenantId}, #{taskId}, #{methodKey}, #{weight}, #{evalObject}, #{scoreType},"
         + " CAST(#{evalSubjects} AS JSON), #{standardName}, #{standardMode}, CAST(#{resourceConfig} AS JSON),"
@@ -53,14 +53,19 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
         + " weight = VALUES(weight), eval_object = VALUES(eval_object), score_type = VALUES(score_type),"
         + " eval_subjects = VALUES(eval_subjects), standard_name = VALUES(standard_name),"
         + " standard_mode = VALUES(standard_mode), resource_config = VALUES(resource_config),"
-        + " version = VALUES(version), is_enabled = VALUES(is_enabled), updated_at = now()"
-        + " RETURNING id")
-    String upsertMethodReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
-                                @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
-                                @Param("evalObject") String evalObject, @Param("scoreType") String scoreType,
-                                @Param("evalSubjects") String evalSubjects, @Param("standardName") String standardName,
-                                @Param("standardMode") String standardMode, @Param("resourceConfig") String resourceConfig,
-                                @Param("version") Integer version, @Param("isEnabled") Boolean isEnabled);
+        + " version = VALUES(version), is_enabled = VALUES(is_enabled), updated_at = now()")
+    int upsertMethod(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
+                     @Param("methodKey") String methodKey, @Param("weight") BigDecimal weight,
+                     @Param("evalObject") String evalObject, @Param("scoreType") String scoreType,
+                     @Param("evalSubjects") String evalSubjects, @Param("standardName") String standardName,
+                     @Param("standardMode") String standardMode, @Param("resourceConfig") String resourceConfig,
+                     @Param("version") Integer version, @Param("isEnabled") Boolean isEnabled);
+
+    /** 回读方法行 id（唯一键 task_id + method_key）。 */
+    @Select("SELECT id FROM task_evaluation_methods WHERE tenant_id = #{tenantId}"
+        + " AND task_id = #{taskId} AND method_key = #{methodKey} LIMIT 1")
+    String selectMethodId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
+                          @Param("methodKey") String methodKey);
 
     /** 删除测评方法的评估点（config 重写前清空）。 */
     @Delete("DELETE FROM task_eval_points WHERE config_id = #{configId}")

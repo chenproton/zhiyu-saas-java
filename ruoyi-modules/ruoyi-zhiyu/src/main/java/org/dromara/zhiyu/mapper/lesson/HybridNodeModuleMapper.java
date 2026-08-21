@@ -42,13 +42,12 @@ public interface HybridNodeModuleMapper extends BaseMapperPlus<HybridNodeModule,
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     HybridNodeModule selectModule(@Param("id") String id, @Param("tenantId") String tenantId);
 
-    /** 插入模块并返回 id（upsert 创建分支用）。 */
+    /** 插入模块（upsert 创建分支用；id 由 Service 生成 UUID）。 */
     @Insert("INSERT INTO hybrid_node_modules (id, tenant_id, node_id, module_key, mode, data)"
-        + " VALUES ((UUID()), #{tenantId}, #{nodeId}, #{moduleKey}, #{mode}, CAST(#{data} AS JSON))"
-        + " RETURNING id")
-    String insertModuleReturnId(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
-                                @Param("moduleKey") String moduleKey, @Param("mode") String mode,
-                                @Param("data") String data);
+        + " VALUES (#{id}, #{tenantId}, #{nodeId}, #{moduleKey}, #{mode}, CAST(#{data} AS JSON))")
+    int insertModuleReturnId(@Param("id") String id, @Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
+                             @Param("moduleKey") String moduleKey, @Param("mode") String mode,
+                             @Param("data") String data);
 
     /** 更新模块（限定租户）。 */
     @Update("UPDATE hybrid_node_modules SET node_id = #{nodeId}, module_key = #{moduleKey},"

@@ -37,7 +37,7 @@ public interface LessonCourseImportMapper {
         + " cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id, ability_point_ids,"
         + " node_count, resource_count, study_count)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{name}, 'system', 'system', #{majorId}, NULL, NULL, 'V1.0',"
-        + " 0, 0, 0, 0, NULL, NULL, 'draft', NULL, NULL, NULL, NULL, #{description}, #{creatorId}, '{}',"
+        + " 0, 0, 0, 0, NULL, NULL, 'draft', NULL, NULL, NULL, NULL, #{description}, #{creatorId}, JSON_ARRAY(),"
         + " #{batchId}, #{abilityPointIds}, 0, 0, 0)")
     int insertSystemCourse(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                            @Param("name") String name, @Param("majorId") String majorId,
@@ -49,7 +49,7 @@ public interface LessonCourseImportMapper {
     @Insert("INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type,"
         + " source_id, source_name, teaching_goals, duration, difficulty, knowledge_point_ids, resource_ids, status)"
         + " VALUES (#{id}, #{tenantId}, #{courseId}, #{parentId}, #{name}, #{sortOrder}, #{refType},"
-        + " #{sourceId}, #{sourceName}, #{teachingGoals}, #{duration}, #{difficulty}, '{}', '{}', 'draft')")
+        + " #{sourceId}, #{sourceName}, #{teachingGoals}, #{duration}, #{difficulty}, JSON_ARRAY(), JSON_ARRAY(), 'draft')")
     int insertCourseNode(@Param("id") String id, @Param("tenantId") String tenantId, @Param("courseId") String courseId,
                          @Param("parentId") String parentId, @Param("name") String name, @Param("sortOrder") Integer sortOrder,
                          @Param("refType") String refType, @Param("sourceId") String sourceId,
@@ -99,8 +99,8 @@ public interface LessonCourseImportMapper {
 
     // ---------- 导出 ----------
 
-    @Select("SELECT COALESCE((SELECT string_agg(ap.name, ',' ORDER BY ap.name)"
-        + " FROM ability_points ap WHERE ap.id = ANY(c.ability_point_ids)), '')"
+    @Select("SELECT COALESCE((SELECT GROUP_CONCAT(ap.name ORDER BY ap.name SEPARATOR ',')"
+        + " FROM ability_points ap WHERE JSON_CONTAINS(c.ability_point_ids, JSON_QUOTE(ap.id), '$')), '')"
         + " FROM courses c WHERE c.id = #{courseId}")
     String selectCourseAbilityPointNames(@Param("courseId") String courseId);
 

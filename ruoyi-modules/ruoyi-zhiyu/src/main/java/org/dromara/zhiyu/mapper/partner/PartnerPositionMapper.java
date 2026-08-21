@@ -25,7 +25,8 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     @Select("<script>SELECT cp.id FROM career_positions cp"
         + " WHERE (cp.source_enterprise_id = #{enterpriseId}"
-        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
+        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position'"
+        + "   AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(cp.id), '$')))"
         + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND cp.tenant_id = #{schoolTenantId}</if>"
         + " <if test=\"search != null and search != ''\"> AND cp.name LIKE CONCAT('%', #{search}, '%')</if>"
         + " ORDER BY cp.updated_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
@@ -36,7 +37,8 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     @Select("<script>SELECT COUNT(*) FROM career_positions cp"
         + " WHERE (cp.source_enterprise_id = #{enterpriseId}"
-        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
+        + "   OR EXISTS (SELECT 1 FROM alliance_resource_grants g WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position'"
+        + "   AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(cp.id), '$')))"
         + " <if test=\"schoolTenantId != null and schoolTenantId != ''\"> AND cp.tenant_id = #{schoolTenantId}</if>"
         + " <if test=\"search != null and search != ''\"> AND cp.name LIKE CONCAT('%', #{search}, '%')</if></script>")
     long countPositions(@Param("enterpriseId") String enterpriseId, @Param("schoolTenantId") String schoolTenantId,
@@ -187,22 +189,28 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
     @Delete("DELETE FROM position_ability_bindings WHERE career_position_id = #{positionId}")
     int deleteAbilityBindings(@Param("positionId") String positionId);
 
-    @Select("INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id,"
+    @Insert("INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id,"
         + " source, domain, required_level, rubric_description, attributes, weight)"
         + " VALUES (#{id}, #{tenantId}, #{positionId}, #{responsibilityId}, #{abilityPointId},"
         + " #{source}, #{domain}, #{requiredLevel}, #{rubricDescription},"
         + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight})"
         + " ON DUPLICATE KEY UPDATE"
         + " domain = VALUES(domain), required_level = VALUES(required_level),"
-        + " rubric_description = VALUES(rubric_description), attributes = VALUES(attributes), weight = VALUES(weight)"
-        + " RETURNING id")
-    String upsertAbilityBindingReturnId(@Param("id") String id, @Param("tenantId") String tenantId,
-                                        @Param("positionId") String positionId,
-                                        @Param("responsibilityId") String responsibilityId,
-                                        @Param("abilityPointId") String abilityPointId, @Param("source") String source,
-                                        @Param("domain") String domain, @Param("requiredLevel") String requiredLevel,
-                                        @Param("rubricDescription") String rubricDescription,
-                                        @Param("attributes") List<String> attributes, @Param("weight") BigDecimal weight);
+        + " rubric_description = VALUES(rubric_description), attributes = VALUES(attributes), weight = VALUES(weight)")
+    int upsertAbilityBinding(@Param("id") String id, @Param("tenantId") String tenantId,
+                             @Param("positionId") String positionId,
+                             @Param("responsibilityId") String responsibilityId,
+                             @Param("abilityPointId") String abilityPointId, @Param("source") String source,
+                             @Param("domain") String domain, @Param("requiredLevel") String requiredLevel,
+                             @Param("rubricDescription") String rubricDescription,
+                             @Param("attributes") List<String> attributes, @Param("weight") BigDecimal weight);
+
+    /** 冲突命中时回读已存在行 id（唯一键 position+responsibility+ability_point）。 */
+    @Select("SELECT id FROM position_ability_bindings WHERE career_position_id = #{positionId}"
+        + " AND responsibility_id = #{responsibilityId} AND ability_point_id = #{abilityPointId} LIMIT 1")
+    String selectAbilityBindingId(@Param("positionId") String positionId,
+                                  @Param("responsibilityId") String responsibilityId,
+                                  @Param("abilityPointId") String abilityPointId);
 
     @Insert("INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)"
         + " VALUES (#{id}, #{tenantId}, #{positionId}, #{name}, #{description},"

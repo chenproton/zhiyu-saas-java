@@ -773,9 +773,10 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         scenarioMapper.deletePendingApproval(scenarioId);
     }
 
-    /** 清理任务关联的考试安排及其独占临时考试（对齐 Go CleanupTaskExamUsages，两条语句不可合并）。 */
+    /** 清理任务关联的考试安排及其独占临时考试（对齐 Go CleanupTaskExamUsages，MySQL 无 DELETE...RETURNING，先查再删）。 */
     private void cleanupTaskExamUsages(String taskId) {
-        List<String> examIds = taskMapper.cleanupTaskExamUsages(taskId);
+        List<String> examIds = taskMapper.selectTaskExamUsageExamIds(taskId);
+        taskMapper.deleteTaskExamUsages(taskId);
         if (examIds != null && !examIds.isEmpty()) {
             taskMapper.deleteOrphanTempExams(examIds);
         }

@@ -116,17 +116,11 @@ public interface EvaluationJobAbilityMapper extends BaseMapperPlus<EvaluationJob
 
     // ---------- 汇聚日志 ----------
 
-    /**
-     * 解除当前事务的语句超时（汇聚 SQL 可能超过全局 15s；SET LOCAL 仅当前事务有效，
-     * 事务结束自动恢复，对齐 Go aggregateAll 专用连接 SET statement_timeout = 0）。
-     * 必须在事务内调用（无事务时 PG 报 WARNING 且不生效）。
-     */
-    @Update("SET LOCAL statement_timeout = 0")
-    int disableStatementTimeout();
-
-    @Insert("INSERT INTO job_ability_aggregate_logs (tenant_id, career_position_id, status)"
-        + " VALUES (#{tenantId}, #{careerPositionId}, 'running') RETURNING id")
-    String createAggregateLog(@Param("tenantId") String tenantId, @Param("careerPositionId") String careerPositionId);
+    /** 创建汇聚日志（id 由调用方生成 UUID）。 */
+    @Insert("INSERT INTO job_ability_aggregate_logs (id, tenant_id, career_position_id, status)"
+        + " VALUES (#{id}, #{tenantId}, #{careerPositionId}, 'running')")
+    int createAggregateLog(@Param("id") String id, @Param("tenantId") String tenantId,
+                           @Param("careerPositionId") String careerPositionId);
 
     @Update("UPDATE job_ability_aggregate_logs SET status = #{status}, student_count = #{studentCount},"
         + " updated_count = #{updatedCount}, error_message = #{errorMessage}, finished_at = NOW()"
@@ -144,7 +138,7 @@ public interface EvaluationJobAbilityMapper extends BaseMapperPlus<EvaluationJob
         + " updated_count, error_message, started_at, finished_at"
         + " FROM job_ability_aggregate_logs"
         + " WHERE tenant_id = #{tenantId} AND career_position_id = #{positionId}"
-        + " AND started_at > NOW() - INTERVAL '1 hour' ORDER BY started_at DESC LIMIT 1")
+        + " AND started_at > NOW() - INTERVAL 1 HOUR ORDER BY started_at DESC LIMIT 1")
     Map<String, Object> recentAggregateLog(@Param("tenantId") String tenantId, @Param("positionId") String positionId);
 
     /** 任务集合下所有已评价学生（去重，候选学生） */
@@ -193,24 +187,25 @@ public interface EvaluationJobAbilityMapper extends BaseMapperPlus<EvaluationJob
                                                     @Param("taskIds") List<String> taskIds,
                                                     @Param("studentIds") List<String> studentIds);
 
-    /** 按岗位刷新画像排名（class/major 排名） */
-    @Update("WITH ranked AS ("
+    /** 按岗位刷新画像排名（class/major 排名；窗口函数在派生表内计算后 JOIN 回写，对齐 PG UPDATE...FROM CTE） */
+    @Update("UPDATE student_ability_portraits p"
+        + " JOIN ("
         + " SELECT user_id, RANK() OVER (PARTITION BY class_name ORDER BY achievement_rate DESC) AS class_rank,"
         + " COUNT(*) OVER (PARTITION BY class_name) AS class_total,"
         + " RANK() OVER (PARTITION BY major_id ORDER BY achievement_rate DESC) AS major_rank,"
         + " COUNT(*) OVER (PARTITION BY major_id) AS major_total"
-        + " FROM job_ability_results WHERE career_position_id = #{positionId} AND tenant_id = #{tenantId})"
-        + " UPDATE student_ability_portraits p SET class_rank = r.class_rank, class_total = r.class_total,"
-        + " major_rank = r.major_rank, major_total = r.major_total, updated_at = NOW()"
-        + " FROM ranked r WHERE p.career_position_id = #{positionId} AND p.user_id = r.user_id"
-        + " AND p.tenant_id = #{tenantId}")
+        + " FROM job_ability_results WHERE career_position_id = #{positionId} AND tenant_id = #{tenantId}"
+        + " ) r ON p.user_id = r.user_id"
+        + " SET p.class_rank = r.class_rank, p.class_total = r.class_total,"
+        + " p.major_rank = r.major_rank, p.major_total = r.major_total, p.updated_at = NOW()"
+        + " WHERE p.career_position_id = #{positionId} AND p.tenant_id = #{tenantId}")
     int refreshRanks(@Param("positionId") String positionId, @Param("tenantId") String tenantId);
 
     /** 学生所在班级已排课的已发布课程（学生课程成绩/画像课程表用） */
     @Select("<script>SELECT DISTINCT c.id AS id, c.name"
         + " FROM courses c JOIN schedule_entries se ON se.course_id = c.id"
         + " WHERE c.tenant_id = #{tenantId} AND c.status = 'published' AND se.status = 'published'"
-        + " AND se.type = 'traditional' AND (se.class_node_id = #{orgNodeId} OR #{orgNodeId} = ANY(se.class_node_ids))"
+        + " AND se.type = 'traditional' AND (se.class_node_id = #{orgNodeId} OR JSON_CONTAINS(se.class_node_ids, JSON_QUOTE(#{orgNodeId}), '$'))"
         + " ORDER BY c.name</script>")
     List<Map<String, Object>> listStudentCourses(@Param("tenantId") String tenantId, @Param("orgNodeId") String orgNodeId);
 
@@ -233,7 +228,7 @@ public interface EvaluationJobAbilityMapper extends BaseMapperPlus<EvaluationJob
         + " WHERE ca.evaluatee_id = #{userId}"
         + " AND EXISTS (SELECT 1 FROM schedule_entries se"
         + "  WHERE se.course_id = ca.course_id AND se.status = 'published' AND se.type = 'traditional'"
-        + "  AND (se.class_node_id = st.org_node_id OR st.org_node_id = ANY(se.class_node_ids)))"
+        + "  AND (se.class_node_id = st.org_node_id OR JSON_CONTAINS(se.class_node_ids, JSON_QUOTE(st.org_node_id), '$')))"
         + " ORDER BY ca.score DESC")
     List<Map<String, Object>> listStudentCourseScores(@Param("tenantId") String tenantId, @Param("userId") String userId);
 
@@ -249,7 +244,7 @@ public interface EvaluationJobAbilityMapper extends BaseMapperPlus<EvaluationJob
         + " JOIN scenarios s ON s.id = se.scenario_id AND s.tenant_id = #{tenantId}"
         + " LEFT JOIN career_positions cp ON cp.id = s.career_position_id"
         + " WHERE se.status = 'published' AND se.type = 'traditional'"
-        + " AND (se.class_node_id = #{orgNodeId} OR #{orgNodeId} = ANY(se.class_node_ids))"
+        + " AND (se.class_node_id = #{orgNodeId} OR JSON_CONTAINS(se.class_node_ids, JSON_QUOTE(#{orgNodeId}), '$'))"
         + " AND s.career_position_id IS NOT NULL")
     List<Map<String, Object>> listScenePositions(@Param("tenantId") String tenantId, @Param("orgNodeId") String orgNodeId);
 }

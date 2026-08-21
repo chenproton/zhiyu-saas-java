@@ -15,12 +15,17 @@ import org.dromara.zhiyu.domain.scene.SceneTaskAbilityBinding;
 public interface SceneTaskAbilityBindingMapper
     extends BaseMapperPlus<SceneTaskAbilityBinding, SceneTaskAbilityBinding> {
 
-    /** 绑定能力点（唯一冲突时幂等），返回 id。 */
+    /** 绑定能力点（唯一冲突时幂等）。 */
     @Insert("INSERT INTO task_ability_bindings (id, tenant_id, task_id, ability_point_id)"
         + " VALUES ((UUID()), #{tenantId}, #{taskId}, #{abilityPointId})"
-        + " ON DUPLICATE KEY UPDATE task_id = VALUES(task_id) RETURNING id")
-    String insertReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
-                          @Param("abilityPointId") String abilityPointId);
+        + " ON DUPLICATE KEY UPDATE task_id = VALUES(task_id)")
+    int insertBinding(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
+                      @Param("abilityPointId") String abilityPointId);
+
+    /** 回读绑定行 id（唯一键 task_id + ability_point_id）。 */
+    @Select("SELECT id FROM task_ability_bindings WHERE task_id = #{taskId}"
+        + " AND ability_point_id = #{abilityPointId} LIMIT 1")
+    String selectIdByUnique(@Param("taskId") String taskId, @Param("abilityPointId") String abilityPointId);
 
     /** 查询绑定行关联的任务 ID（归属校验用）。 */
     @Select("SELECT task_id FROM task_ability_bindings WHERE id = #{id}")

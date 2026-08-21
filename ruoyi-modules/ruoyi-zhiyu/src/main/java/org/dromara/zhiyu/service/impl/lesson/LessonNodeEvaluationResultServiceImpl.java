@@ -132,10 +132,13 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
         if (courseId != null) {
             version = resolveVersion(tenantId, courseId, req.getExpectedVersion());
         }
-        String id = resultMapper.upsertResult(tenantId, req.getNodeId(), req.getMethodKey(), req.getEvaluateeId(),
+        // upsert + 按唯一键回读（已评分行回读为 null，对齐 Go RETURNING id 空语义）
+        resultMapper.upsertResult(tenantId, req.getNodeId(), req.getMethodKey(), req.getEvaluateeId(),
             evaluatorId, emptyToNull(req.getEvaluatorType()), maxScore, toJson(req.getEvalPointScores()),
             toJson(req.getObjectiveAnswers()), toJson(req.getSubjectiveContent()), toJson(req.getDrawnQuestions()),
             version);
+        String id = resultMapper.selectUngradedResultId(tenantId, req.getNodeId(), req.getEvaluateeId(),
+            req.getMethodKey());
         if (id == null) {
             throw new ApiException(409, "conflict", "评价结果已被评分，无法重新提交");
         }

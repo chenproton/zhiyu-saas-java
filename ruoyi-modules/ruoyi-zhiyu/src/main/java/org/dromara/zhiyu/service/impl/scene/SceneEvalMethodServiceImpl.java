@@ -198,13 +198,15 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
         for (TaskEvaluationMethodInput input : req.getMethods() == null ? List.<TaskEvaluationMethodInput>of() : req.getMethods()) {
             boolean enabled = Boolean.TRUE.equals(input.getIsEnabled());
-            String configId = evalMethodMapper.upsertMethodReturnId(tenantId, taskId,
+            evalMethodMapper.upsertMethod(tenantId, taskId,
                 input.getMethodKey(), input.getWeight() == null ? BigDecimal.ZERO : input.getWeight(),
                 input.getEvalObject(), input.getScoreType(),
                 toJson(input.getEvalSubjects(), "[]"),
                 input.getStandardName(), input.getStandardMode(),
                 toJson(input.getResourceConfig(), "{}"),
                 newVersion, enabled);
+            // upsert 后回读唯一键（task_id + method_key）对应行 id
+            String configId = evalMethodMapper.selectMethodId(tenantId, taskId, input.getMethodKey());
             if (!enabled) {
                 // 禁用：清空子表后不插子数据
                 evalMethodMapper.deleteEvalPointsByConfig(configId);

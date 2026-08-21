@@ -49,13 +49,15 @@ public interface PartnerEnterpriseLinkMapper extends BaseMapperPlus<PartnerEnter
     long countByEnterpriseTenant(@Param("enterpriseTenantId") String enterpriseTenantId);
 
     /** 近 months 个月每月新增合作学校数（服务台柱状图）。 */
-    @Select("SELECT to_char(d, 'YYYY-MM') AS month,"
+    @Select("WITH RECURSIVE m AS ("
+        + " SELECT DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) AS d"
+        + " UNION ALL SELECT d + INTERVAL 1 MONTH FROM m WHERE d < DATE_FORMAT(NOW(), '%Y-%m-01'))"
+        + " SELECT DATE_FORMAT(m.d, '%Y-%m') AS month,"
         + " COALESCE((SELECT COUNT(*) FROM alliance_enterprise_links l"
         + "   JOIN partner_enterprises e ON e.id = l.enterprise_id"
         + "   WHERE e.tenant_id = #{enterpriseTenantId}"
-        + "   AND date_trunc('month', l.created_at) = date_trunc('month', d)), 0) AS count"
-        + " FROM generate_series(date_trunc('month', NOW()) - make_interval(months => #{months} - 1),"
-        + " date_trunc('month', NOW()), '1 month') d ORDER BY month")
+        + "   AND DATE_FORMAT(l.created_at, '%Y-%m') = DATE_FORMAT(m.d, '%Y-%m')), 0) AS count"
+        + " FROM m ORDER BY month")
     List<MonthCountRow> countMonthlyLinks(@Param("enterpriseTenantId") String enterpriseTenantId,
                                           @Param("months") int months);
 

@@ -279,7 +279,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             .eqIfText(ScheduleEntry::getType, type);
         if (notEmpty(classNodeId)) {
             wrapper.and(w -> w.eq(ScheduleEntry::getClassNodeId, classNodeId)
-                .or().apply("{0} = ANY(class_node_ids)", classNodeId));
+                .or().apply("JSON_CONTAINS(class_node_ids, JSON_QUOTE({0}), '$')", classNodeId));
         }
         long total = scheduleMapper.selectCount(wrapper.build());
         wrapper.orderByAsc(ScheduleEntry::getDayOfWeek, ScheduleEntry::getStartWeek)
@@ -399,7 +399,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             .eq(ScheduleEntry::getStatus, status);
         if (notEmpty(classNodeId)) {
             wrapper.and(w -> w.eq(ScheduleEntry::getClassNodeId, classNodeId)
-                .or().apply("{0} = ANY(class_node_ids)", classNodeId));
+                .or().apply("JSON_CONTAINS(class_node_ids, JSON_QUOTE({0}), '$')", classNodeId));
         }
         if (notEmpty(teacherId)) {
             wrapper.eq(ScheduleEntry::getTeacherId, teacherId);

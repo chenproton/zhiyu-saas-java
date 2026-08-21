@@ -115,7 +115,7 @@ public interface BrandMajorRankConfigMapper extends BaseMapperPlus<BrandMajorRan
         + " WHERE u.tenant_id = #{tenantId}"
         + " AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = u.id AND r2.code = 'student')"
         + " <if test='search != null and search != \"\"'> AND (u.name LIKE CONCAT('%', #{search}, '%') OR COALESCE(u.student_no, u.username, u.login_name) LIKE CONCAT('%', #{search}, '%'))</if>"
-        + " ORDER BY mr.eff_major_name, agg.avg_rate DESC NULLS LAST, u.name ASC LIMIT 1000"
+        + " ORDER BY mr.eff_major_name, agg.avg_rate DESC, u.name ASC LIMIT 1000"
         + "</script>")
     List<RankStudentRow> listRankStudents(@Param("tenantId") String tenantId, @Param("search") String search);
 }

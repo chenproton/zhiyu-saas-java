@@ -90,7 +90,9 @@ public class SceneWeightServiceImpl implements ISceneWeightService {
             weightMapper.updateByIdParams(req.getId(), req.getScenarioId(), req.getTaskId(), req.getWeight());
             id = req.getId();
         } else {
-            id = weightMapper.upsertReturnId(tenantId, req.getScenarioId(), req.getTaskId(), req.getWeight());
+            weightMapper.upsert(tenantId, req.getScenarioId(), req.getTaskId(), req.getWeight());
+            // upsert 后回读唯一键（scenario_id + task_id）对应行 id
+            id = weightMapper.selectIdByUnique(req.getScenarioId(), req.getTaskId());
         }
         SceneWeightConfig w = weightMapper.selectById(id);
         if (w == null) {

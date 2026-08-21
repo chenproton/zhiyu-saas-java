@@ -29,12 +29,11 @@ public interface LessonNodeQuizMapper extends BaseMapperPlus<LessonNodeQuiz, Les
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     LessonNodeQuiz selectQuiz(@Param("id") String id, @Param("tenantId") String tenantId);
 
-    /** 创建测验，返回 id。 */
+    /** 创建测验（id 由 Service 生成 UUID）。 */
     @Insert("INSERT INTO node_quizzes (id, tenant_id, node_id, title, type, time_limit)"
-        + " VALUES ((UUID()), #{tenantId}, #{nodeId}, #{title}, #{type}, #{timeLimit})"
-        + " RETURNING id")
-    String insertQuiz(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
-                      @Param("title") String title, @Param("type") String type, @Param("timeLimit") Integer timeLimit);
+        + " VALUES (#{id}, #{tenantId}, #{nodeId}, #{title}, #{type}, #{timeLimit})")
+    int insertQuiz(@Param("id") String id, @Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
+                   @Param("title") String title, @Param("type") String type, @Param("timeLimit") Integer timeLimit);
 
     /** 更新测验（time_limit 为 null 时保留原值，限定租户）。 */
     @Update("UPDATE node_quizzes SET title = #{title}, type = #{type},"

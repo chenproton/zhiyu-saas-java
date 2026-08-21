@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 混合模块服务实现（对齐 Go hybrid_module_handler.go + store/hybrid_modules.go 语义）。
@@ -93,7 +94,8 @@ public class LessonHybridModuleServiceImpl implements ILessonHybridModuleService
                 req.getMode(), toJson(req.getData()));
             id = req.getId();
         } else {
-            id = hybridMapper.insertModuleReturnId(tenantId, req.getNodeId(), req.getModuleKey(),
+            id = UUID.randomUUID().toString();
+            hybridMapper.insertModuleReturnId(id, tenantId, req.getNodeId(), req.getModuleKey(),
                 req.getMode(), toJson(req.getData()));
         }
         HybridNodeModule saved = hybridMapper.selectModule(id, tenantId);

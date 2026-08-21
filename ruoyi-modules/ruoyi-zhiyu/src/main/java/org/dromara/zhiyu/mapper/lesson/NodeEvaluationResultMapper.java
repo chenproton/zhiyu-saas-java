@@ -1,5 +1,6 @@
 package org.dromara.zhiyu.mapper.lesson;
 
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -30,28 +31,43 @@ public interface NodeEvaluationResultMapper extends BaseMapperPlus<NodeEvaluatio
     String selectTenantId(@Param("id") String id);
 
     /**
-     * 提交（幂等 upsert）：已评分的结果禁止重交覆盖，返回 NULL 表示已被评分。
+     * 提交（幂等 upsert）：已评分的结果禁止重交覆盖（IF 守卫保持已评分行原值，对齐 PG
+     * ON CONFLICT DO UPDATE ... WHERE graded_at IS NULL）。
      */
-    @Select("INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, evaluator_id,"
+    @Insert("INSERT INTO node_evaluation_results (tenant_id, node_id, method_key, evaluatee_id, evaluator_id,"
         + " evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content,"
         + " drawn_questions, version, created_at, updated_at)"
         + " VALUES (#{tenantId}, #{nodeId}, #{methodKey}, #{evaluateeId}, #{evaluatorId}, #{evaluatorType},"
         + " 'pending', #{maxScore}, CAST(#{evalPointScores} AS JSON), CAST(#{objectiveAnswers} AS JSON),"
         + " CAST(#{subjectiveContent} AS JSON), CAST(#{drawnQuestions} AS JSON), #{version}, NOW(), NOW())"
         + " ON DUPLICATE KEY UPDATE"
-        + " evaluator_id = VALUES(evaluator_id), evaluator_type = VALUES(evaluator_type),"
-        + " max_score = VALUES(max_score), objective_answers = VALUES(objective_answers),"
-        + " subjective_content = VALUES(subjective_content), drawn_questions = VALUES(drawn_questions),"
-        + " eval_point_scores = VALUES(eval_point_scores), version = VALUES(version), status = 'pending',"
-        + " graded_at = NULL, updated_at = VALUES(updated_at)"
-        + " WHERE node_evaluation_results.graded_at IS NULL RETURNING id")
-    String upsertResult(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
-                        @Param("methodKey") String methodKey, @Param("evaluateeId") String evaluateeId,
-                        @Param("evaluatorId") String evaluatorId, @Param("evaluatorType") String evaluatorType,
-                        @Param("maxScore") BigDecimal maxScore, @Param("evalPointScores") String evalPointScores,
-                        @Param("objectiveAnswers") String objectiveAnswers,
-                        @Param("subjectiveContent") String subjectiveContent,
-                        @Param("drawnQuestions") String drawnQuestions, @Param("version") String version);
+        + " evaluator_id = IF(graded_at IS NULL, VALUES(evaluator_id), evaluator_id),"
+        + " evaluator_type = IF(graded_at IS NULL, VALUES(evaluator_type), evaluator_type),"
+        + " max_score = IF(graded_at IS NULL, VALUES(max_score), max_score),"
+        + " objective_answers = IF(graded_at IS NULL, VALUES(objective_answers), objective_answers),"
+        + " subjective_content = IF(graded_at IS NULL, VALUES(subjective_content), subjective_content),"
+        + " drawn_questions = IF(graded_at IS NULL, VALUES(drawn_questions), drawn_questions),"
+        + " eval_point_scores = IF(graded_at IS NULL, VALUES(eval_point_scores), eval_point_scores),"
+        + " version = IF(graded_at IS NULL, VALUES(version), version),"
+        + " status = IF(graded_at IS NULL, 'pending', status),"
+        + " graded_at = IF(graded_at IS NULL, NULL, graded_at),"
+        + " updated_at = IF(graded_at IS NULL, VALUES(updated_at), updated_at)")
+    int upsertResult(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
+                     @Param("methodKey") String methodKey, @Param("evaluateeId") String evaluateeId,
+                     @Param("evaluatorId") String evaluatorId, @Param("evaluatorType") String evaluatorType,
+                     @Param("maxScore") BigDecimal maxScore, @Param("evalPointScores") String evalPointScores,
+                     @Param("objectiveAnswers") String objectiveAnswers,
+                     @Param("subjectiveContent") String subjectiveContent,
+                     @Param("drawnQuestions") String drawnQuestions, @Param("version") String version);
+
+    /**
+     * 按唯一键回读未评分结果 id（upsert 后调用；返回 null 表示行已评分禁止重交，对齐 Go RETURNING id 空语义）。
+     */
+    @Select("SELECT id FROM node_evaluation_results"
+        + " WHERE tenant_id = #{tenantId} AND node_id = #{nodeId} AND evaluatee_id = #{evaluateeId}"
+        + " AND method_key = #{methodKey} AND graded_at IS NULL")
+    String selectUngradedResultId(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,
+                                  @Param("evaluateeId") String evaluateeId, @Param("methodKey") String methodKey);
 
     /** 评分（pending→evaluated，仅可评未评分结果）。 */
     @Update("UPDATE node_evaluation_results SET total_score = #{score}, comment = #{comment},"

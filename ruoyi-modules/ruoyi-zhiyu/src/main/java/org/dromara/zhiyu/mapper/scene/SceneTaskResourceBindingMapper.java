@@ -15,14 +15,17 @@ import org.dromara.zhiyu.domain.scene.SceneTaskResourceBinding;
 public interface SceneTaskResourceBindingMapper extends BaseMapperPlus<SceneTaskResourceBinding, SceneTaskResourceBinding> {
 
     /**
-     * 绑定资源（唯一冲突时幂等更新，返回绑定行 id；对齐 Go ResourceBindingStore.Bind 的 DO UPDATE 语义）。
+     * 绑定资源（唯一冲突时幂等更新；对齐 Go ResourceBindingStore.Bind 的 DO UPDATE 语义）。
      */
-    @Select("INSERT INTO task_resource_bindings (tenant_id, task_id, resource_id)"
+    @Insert("INSERT INTO task_resource_bindings (tenant_id, task_id, resource_id)"
         + " VALUES (#{tenantId}, #{taskId}, #{resourceId})"
-        + " ON DUPLICATE KEY UPDATE task_id = VALUES(task_id)"
-        + " RETURNING id")
-    String bindReturnId(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
-                        @Param("resourceId") String resourceId);
+        + " ON DUPLICATE KEY UPDATE task_id = VALUES(task_id)")
+    int bind(@Param("tenantId") String tenantId, @Param("taskId") String taskId,
+             @Param("resourceId") String resourceId);
+
+    /** 回读绑定行 id（唯一键 task_id + resource_id）。 */
+    @Select("SELECT id FROM task_resource_bindings WHERE task_id = #{taskId} AND resource_id = #{resourceId} LIMIT 1")
+    String selectIdByUnique(@Param("taskId") String taskId, @Param("resourceId") String resourceId);
 
     /**
      * 查询绑定行关联的任务 ID（归属校验用；无行返回 null）。

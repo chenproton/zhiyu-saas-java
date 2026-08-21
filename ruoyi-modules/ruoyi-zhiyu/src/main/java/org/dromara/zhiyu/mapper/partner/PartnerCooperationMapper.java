@@ -54,7 +54,7 @@ public interface PartnerCooperationMapper {
     // ===== 合作内容详情 =====
 
     @Select("SELECT x.id, x.name, x.type, x.description, x.phase, x.publish_status AS publishStatus,"
-        + " to_char(x.start_date, 'YYYY-MM-DD') AS startDate, to_char(x.end_date, 'YYYY-MM-DD') AS endDate,"
+        + " DATE_FORMAT(x.start_date, '%Y-%m-%d') AS startDate, DATE_FORMAT(x.end_date, '%Y-%m-%d') AS endDate,"
         + " x.budget, x.secondary_colleges AS secondaryColleges, x.is_public AS isPublic,"
         + " x.created_at AS createdAt, x.updated_at AS updatedAt"
         + " FROM alliance_projects x WHERE x.id = #{id}"
@@ -63,12 +63,12 @@ public interface PartnerCooperationMapper {
     ProjectDetailRow getCooperationProject(@Param("enterpriseId") String enterpriseId, @Param("id") String id);
 
     @Select("SELECT id, tenant_id AS tenantId, project_id AS projectId, name, description,"
-        + " to_char(due_date, 'YYYY-MM-DD') AS dueDate, to_char(completed_date, 'YYYY-MM-DD') AS completedDate,"
+        + " DATE_FORMAT(due_date, '%Y-%m-%d') AS dueDate, DATE_FORMAT(completed_date, '%Y-%m-%d') AS completedDate,"
         + " is_completed AS isCompleted"
         + " FROM alliance_project_milestones WHERE project_id = #{projectId} ORDER BY sort_order, created_at")
     List<MilestoneRow> listMilestones(@Param("projectId") String projectId);
 
-    @Select("SELECT x.id, x.title, x.type, x.description, to_char(x.achievement_date, 'YYYY-MM-DD') AS achievementDate,"
+    @Select("SELECT x.id, x.title, x.type, x.description, DATE_FORMAT(x.achievement_date, '%Y-%m-%d') AS achievementDate,"
         + " x.citation_reason AS citationReason, x.owner_persons AS ownerPersons, x.co_builders AS coBuilders,"
         + " x.secondary_colleges AS secondaryColleges, x.status, x.view_count AS viewCount,"
         + " x.is_public AS isPublic, x.created_at AS createdAt, x.updated_at AS updatedAt"
@@ -77,8 +77,8 @@ public interface PartnerCooperationMapper {
         + " AND JSON_CONTAINS(x.enterprise_ids, JSON_QUOTE(#{enterpriseId}), '$')")
     AchievementDetailRow getCooperationAchievement(@Param("enterpriseId") String enterpriseId, @Param("id") String id);
 
-    @Select("SELECT x.id, x.name, x.type, x.content, to_char(x.start_date, 'YYYY-MM-DD') AS startDate,"
-        + " to_char(x.end_date, 'YYYY-MM-DD') AS endDate, x.status, x.is_public AS isPublic,"
+    @Select("SELECT x.id, x.name, x.type, x.content, DATE_FORMAT(x.start_date, '%Y-%m-%d') AS startDate,"
+        + " DATE_FORMAT(x.end_date, '%Y-%m-%d') AS endDate, x.status, x.is_public AS isPublic,"
         + " x.created_at AS createdAt, x.updated_at AS updatedAt"
         + " FROM alliance_agreements x WHERE x.id = #{id}"
         + " AND EXISTS (SELECT 1 FROM alliance_enterprise_links l WHERE l.tenant_id = x.tenant_id AND l.enterprise_id = #{enterpriseId} AND l.status != 'terminated')"
@@ -89,17 +89,17 @@ public interface PartnerCooperationMapper {
 
     @Select("SELECT st.id AS taskId, st.name AS taskName, rs.label AS stepLabel, t.name AS schoolName,"
         + " x.name AS expertName, rs.updated_at AS updatedAt,"
-        + " COALESCE(prog.assigned_count, 0) AS assignedCount, COALESCE(prog.graded_count, 0) AS gradedCount"
+        + " (SELECT COUNT(*) FROM scene_evaluation_results er"
+        + "   WHERE er.task_id = st.id AND er.tenant_id = l.tenant_id AND er.evaluator_id = x.user_id) AS assignedCount,"
+        + " (SELECT COUNT(*) FROM scene_evaluation_results er"
+        + "   WHERE er.task_id = st.id AND er.tenant_id = l.tenant_id AND er.evaluator_id = x.user_id"
+        + "   AND er.status = 'evaluated') AS gradedCount"
         + " FROM alliance_experts x"
         + " JOIN alliance_enterprise_links l ON l.enterprise_id = x.enterprise_id"
         + " JOIN tenants t ON t.id = l.tenant_id"
-        + " JOIN task_review_steps rs ON rs.tenant_id = l.tenant_id AND x.user_id = ANY(rs.assigned_user_ids) AND rs.enabled = true"
+        + " JOIN task_review_steps rs ON rs.tenant_id = l.tenant_id AND JSON_CONTAINS(rs.assigned_user_ids, JSON_QUOTE(x.user_id), '$') AND rs.enabled = true"
         + " JOIN task_evaluation_methods em ON em.id = rs.config_id AND em.is_enabled = true"
         + " JOIN scenario_tasks st ON st.id = em.task_id"
-        + " LEFT JOIN LATERAL (SELECT COUNT(*) AS assigned_count,"
-        + "   COUNT(*) FILTER (WHERE er.status = 'evaluated') AS graded_count"
-        + "   FROM scene_evaluation_results er"
-        + "   WHERE er.task_id = st.id AND er.tenant_id = l.tenant_id AND er.evaluator_id = x.user_id) prog ON true"
         + " WHERE x.enterprise_id = #{enterpriseId} AND x.user_id IS NOT NULL"
         + " ORDER BY rs.updated_at DESC LIMIT 200")
     List<MentorTask> listMentorTasks(@Param("enterpriseId") String enterpriseId);
@@ -117,42 +117,49 @@ public interface PartnerCooperationMapper {
 
     @Select("SELECT COUNT(*) FROM career_positions cp WHERE cp.source_enterprise_id = #{enterpriseId}"
         + " OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + " WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids))")
+        + " WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(cp.id), '$'))")
     long countCoBuildPositions(@Param("enterpriseId") String enterpriseId);
 
     @Select("SELECT COUNT(*) FROM scenarios sc WHERE sc.source_enterprise_id = #{enterpriseId}"
         + " OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + " WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids))")
+        + " WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(sc.id), '$'))")
     long countCoBuildScenarios(@Param("enterpriseId") String enterpriseId);
 
-    @Select("SELECT m.month, COALESCE(e.cnt, 0) AS experts, COALESCE(p.cnt, 0) AS positions, COALESCE(sc.cnt, 0) AS scenarios"
-        + " FROM (SELECT to_char(d, 'YYYY-MM') AS month FROM generate_series(date_trunc('month', NOW()) - make_interval(months => #{months} - 1), date_trunc('month', NOW()), '1 month') d) m"
-        + " LEFT JOIN (SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt FROM alliance_experts"
-        + "   WHERE tenant_id = #{tenantId} AND created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) e ON e.month = m.month"
-        + " LEFT JOIN (SELECT to_char(date_trunc('month', cp.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt FROM career_positions cp"
+    @Select("WITH RECURSIVE m AS ("
+        + " SELECT DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) AS d"
+        + " UNION ALL SELECT d + INTERVAL 1 MONTH FROM m WHERE d < DATE_FORMAT(NOW(), '%Y-%m-01'))"
+        + " SELECT DATE_FORMAT(m.d, '%Y-%m') AS month, COALESCE(e.cnt, 0) AS experts, COALESCE(p.cnt, 0) AS positions, COALESCE(sc.cnt, 0) AS scenarios"
+        + " FROM m"
+        + " LEFT JOIN (SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS cnt FROM alliance_experts"
+        + "   WHERE tenant_id = #{tenantId}"
+        + "   AND created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) GROUP BY 1) e ON e.month = DATE_FORMAT(m.d, '%Y-%m')"
+        + " LEFT JOIN (SELECT DATE_FORMAT(cp.created_at, '%Y-%m') AS month, COUNT(*) AS cnt FROM career_positions cp"
         + "   WHERE (cp.source_enterprise_id = #{enterpriseId} OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + "     WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND cp.id = ANY(g.resource_ids)))"
-        + "   AND cp.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) p ON p.month = m.month"
-        + " LEFT JOIN (SELECT to_char(date_trunc('month', sc.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt FROM scenarios sc"
+        + "     WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'position' AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(cp.id), '$')))"
+        + "   AND cp.created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) GROUP BY 1) p ON p.month = DATE_FORMAT(m.d, '%Y-%m')"
+        + " LEFT JOIN (SELECT DATE_FORMAT(sc.created_at, '%Y-%m') AS month, COUNT(*) AS cnt FROM scenarios sc"
         + "   WHERE (sc.source_enterprise_id = #{enterpriseId} OR EXISTS (SELECT 1 FROM alliance_resource_grants g"
-        + "     WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND sc.id = ANY(g.resource_ids)))"
-        + "   AND sc.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) sc ON sc.month = m.month"
-        + " ORDER BY m.month")
+        + "     WHERE g.enterprise_id = #{enterpriseId} AND g.resource_type = 'scenario' AND JSON_CONTAINS(g.resource_ids, JSON_QUOTE(sc.id), '$')))"
+        + "   AND sc.created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) GROUP BY 1) sc ON sc.month = DATE_FORMAT(m.d, '%Y-%m')"
+        + " ORDER BY month")
     List<NewMonthCountRow> countMonthlyNew(@Param("tenantId") String tenantId,
                                            @Param("enterpriseId") String enterpriseId, @Param("months") int months);
 
-    @Select("SELECT m.month, COALESCE(p.cnt, 0) AS projects, COALESCE(a.cnt, 0) AS agreements, COALESCE(c.cnt, 0) AS achievements"
-        + " FROM (SELECT to_char(d, 'YYYY-MM') AS month FROM generate_series(date_trunc('month', NOW()) - make_interval(months => #{months} - 1), date_trunc('month', NOW()), '1 month') d) m"
-        + " LEFT JOIN (SELECT to_char(date_trunc('month', p.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt"
+    @Select("WITH RECURSIVE m AS ("
+        + " SELECT DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) AS d"
+        + " UNION ALL SELECT d + INTERVAL 1 MONTH FROM m WHERE d < DATE_FORMAT(NOW(), '%Y-%m-01'))"
+        + " SELECT DATE_FORMAT(m.d, '%Y-%m') AS month, COALESCE(p.cnt, 0) AS projects, COALESCE(a.cnt, 0) AS agreements, COALESCE(c.cnt, 0) AS achievements"
+        + " FROM m"
+        + " LEFT JOIN (SELECT DATE_FORMAT(p.created_at, '%Y-%m') AS month, COUNT(*) AS cnt"
         + "   FROM alliance_projects p JOIN JSON_TABLE(p.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) jt WHERE jt.eid = #{enterpriseId}"
-        + "   AND p.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) p ON p.month = m.month"
-        + " LEFT JOIN (SELECT to_char(date_trunc('month', a.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt"
+        + "   AND p.created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) GROUP BY 1) p ON p.month = DATE_FORMAT(m.d, '%Y-%m')"
+        + " LEFT JOIN (SELECT DATE_FORMAT(a.created_at, '%Y-%m') AS month, COUNT(*) AS cnt"
         + "   FROM alliance_agreements a JOIN JSON_TABLE(a.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) jt WHERE jt.eid = #{enterpriseId}"
-        + "   AND a.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) a ON a.month = m.month"
-        + " LEFT JOIN (SELECT to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS month, COUNT(*) AS cnt"
+        + "   AND a.created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) GROUP BY 1) a ON a.month = DATE_FORMAT(m.d, '%Y-%m')"
+        + " LEFT JOIN (SELECT DATE_FORMAT(c.created_at, '%Y-%m') AS month, COUNT(*) AS cnt"
         + "   FROM alliance_achievements c JOIN JSON_TABLE(c.enterprise_ids, '$[*]' COLUMNS (eid VARCHAR(64) PATH '$')) jt WHERE jt.eid = #{enterpriseId}"
-        + "   AND c.created_at >= date_trunc('month', NOW()) - make_interval(months => #{months} - 1) GROUP BY 1) c ON c.month = m.month"
-        + " ORDER BY m.month")
+        + "   AND c.created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL (#{months} - 1) MONTH) GROUP BY 1) c ON c.month = DATE_FORMAT(m.d, '%Y-%m')"
+        + " ORDER BY month")
     List<ContentMonthCountRow> countMonthlyContent(@Param("enterpriseId") String enterpriseId, @Param("months") int months);
 
     // ===== 共建人候选（合作学校） =====

@@ -25,20 +25,20 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
 
     /** 源场景字段（FetchSource）。 */
     @Select("SELECT name, code, cover_image, career_position_id,"
-        + " COALESCE(array_to_json(industry_ids), '[]') AS industry_ids,"
-        + " COALESCE(array_to_json(profession_ids), '[]') AS profession_ids,"
+        + " COALESCE(industry_ids, JSON_ARRAY()) AS industry_ids,"
+        + " COALESCE(profession_ids, JSON_ARRAY()) AS profession_ids,"
         + " batch_id, difficulty, version, background, delivery_goal,"
-        + " COALESCE(array_to_json(co_builder_ids), '[]') AS co_builder_ids, tenant_id"
+        + " COALESCE(co_builder_ids, JSON_ARRAY()) AS co_builder_ids, tenant_id"
         + " FROM scenarios WHERE id = #{id}")
     SourceScenarioRow fetchSource(@Param("id") String id);
 
     /** 源场景任务（含 jsonb/数组列 JSON 文本）。 */
     @Select("SELECT id, name, code, sort_order, description, detailed_description, description_pdf,"
         + " estimated_hours, task_type, difficulty, background,"
-        + " COALESCE(array_to_json(dependency_ids), '[]') AS dependency_ids,"
-        + " COALESCE(array_to_json(knowledge_point_ids), '[]') AS knowledge_point_ids,"
-        + " COALESCE(array_to_json(ability_point_ids), '[]') AS ability_point_ids,"
-        + " COALESCE(array_to_json(resource_ids), '[]') AS resource_ids,"
+        + " COALESCE(dependency_ids, JSON_ARRAY()) AS dependency_ids,"
+        + " COALESCE(knowledge_point_ids, JSON_ARRAY()) AS knowledge_point_ids,"
+        + " COALESCE(ability_point_ids, JSON_ARRAY()) AS ability_point_ids,"
+        + " COALESCE(resource_ids, JSON_ARRAY()) AS resource_ids,"
         + " COALESCE(eval_data, JSON_ARRAY()) AS eval_data"
         + " FROM scenario_tasks WHERE scenario_id = #{scenarioId} ORDER BY sort_order")
     List<TaskSourceRow> fetchTasks(@Param("scenarioId") String scenarioId);
@@ -56,10 +56,10 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
     List<MethodSourceRow> fetchMethods(@Param("taskId") String taskId, @Param("tenantId") String tenantId);
 
     /** 源评估点（数组/jsonb 列 JSON 文本）。 */
-    @Select("SELECT name, description, sub_type, COALESCE(array_to_json(types), '[]') AS types,"
+    @Select("SELECT name, description, sub_type, COALESCE(types, JSON_ARRAY()) AS types,"
         + " weight, scoring_method, COALESCE(grade_mapping, '[]') AS grade_mapping,"
-        + " COALESCE(array_to_json(knowledge_point_ids), '[]') AS knowledge_point_ids,"
-        + " COALESCE(array_to_json(ability_point_ids), '[]') AS ability_point_ids, sort_order"
+        + " COALESCE(knowledge_point_ids, JSON_ARRAY()) AS knowledge_point_ids,"
+        + " COALESCE(ability_point_ids, JSON_ARRAY()) AS ability_point_ids, sort_order"
         + " FROM task_eval_points WHERE config_id = #{configId}")
     List<EvalPointSourceRow> fetchEvalPoints(@Param("configId") String configId);
 

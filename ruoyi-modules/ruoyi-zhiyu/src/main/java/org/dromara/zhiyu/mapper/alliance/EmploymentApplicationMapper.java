@@ -39,7 +39,7 @@ public interface EmploymentApplicationMapper extends BaseMapperPlus<EmploymentAp
         + " WHERE j.id = #{jobId} AND j.status = 'published' AND (j.project_id IS NULL OR p.publish_status = 'published')"
         + " <if test='orgPathIds != null and orgPathIds != \"\"'> AND (p.target_groups = '[]' OR EXISTS ("
         + "   SELECT 1 FROM JSON_TABLE(p.target_groups, '$[*]' COLUMNS (g JSON PATH '$')) g"
-        + "   WHERE (g->>'$.orgNodeId' IS NULL OR g->>'$.orgNodeId' = ANY(#{orgPathIds}))"
+        + "   WHERE (g->>'$.orgNodeId' IS NULL OR JSON_CONTAINS(CAST(#{orgPathIds} AS JSON), JSON_QUOTE(g->>'$.orgNodeId'), '$'))"
         + "     AND (g->>'$.majorId' IS NULL OR #{majorId} = g->>'$.majorId')"
         + "     AND (g->>'$.graduateYear' IS NULL OR #{graduateYear} = (g->>'$.graduateYear'))))</if>"
         + "</script>")

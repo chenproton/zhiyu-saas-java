@@ -47,11 +47,11 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
                     @Param("targetType") String targetType, @Param("targetIds") List<String> targetIds,
                     @Param("activationMode") String activationMode);
 
-    /** 创建节点考试安排（start/end 传字符串，SQL 层 CAST timestamptz，对齐 Go CreateNodeUsage/CreateExamUsage）。 */
+    /** 创建节点考试安排（start/end 传字符串，SQL 层 CAST DATETIME，对齐 Go CreateNodeUsage/CreateExamUsage）。 */
     @Insert("INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration,"
         + " target_type, target_ids, status, activation_mode, creator_id, exam_version)"
         + " VALUES (#{id}, #{tenantId}, #{examId}, #{name}, NULL,"
-        + " CAST(NULLIF(#{startTime}, '') AS timestamptz), CAST(NULLIF(#{endTime}, '') AS timestamptz),"
+        + " CAST(NULLIF(#{startTime}, '') AS DATETIME), CAST(NULLIF(#{endTime}, '') AS DATETIME),"
         + " #{duration}, #{targetType},"
         + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
         + " #{status}, #{activationMode}, #{creatorId}, #{examVersion})")
@@ -63,8 +63,8 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
                         @Param("creatorId") String creatorId, @Param("examVersion") String examVersion);
 
     /** 更新安排开放时间窗/时长/启用条件（对齐 Go UpdateUsageWindow，direct SET 语义，限定租户）。 */
-    @Update("UPDATE exam_usages SET start_time = CAST(NULLIF(#{startTime}, '') AS timestamptz),"
-        + " end_time = CAST(NULLIF(#{endTime}, '') AS timestamptz), duration = #{duration},"
+    @Update("UPDATE exam_usages SET start_time = CAST(NULLIF(#{startTime}, '') AS DATETIME),"
+        + " end_time = CAST(NULLIF(#{endTime}, '') AS DATETIME), duration = #{duration},"
         + " activation_mode = #{activationMode},"
         + " status = CASE WHEN #{activationMode} = 'always' THEN 'published' ELSE status END,"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
@@ -74,17 +74,17 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
 
     /** 查询节点已有安排（对齐 Go FindNodeUsage）。 */
     @Select("SELECT id FROM exam_usages WHERE exam_id = #{examId}"
-        + " AND target_type = 'node' AND #{nodeId} = ANY(target_ids) LIMIT 1")
+        + " AND target_type = 'node' AND JSON_CONTAINS(target_ids, JSON_QUOTE(#{nodeId}), '$') LIMIT 1")
     String selectNodeUsageId(@Param("examId") String examId, @Param("nodeId") String nodeId);
 
     /** 查询任务已有草稿安排（去重复用；对齐 Go createTempExamUsage 的 draft 分支）。 */
     @Select("SELECT id FROM exam_usages WHERE tenant_id = #{tenantId} AND exam_id = #{examId}"
-        + " AND target_type = 'task' AND #{taskId} = ANY(target_ids) AND status = 'draft' LIMIT 1")
+        + " AND target_type = 'task' AND JSON_CONTAINS(target_ids, JSON_QUOTE(#{taskId}), '$') AND status = 'draft' LIMIT 1")
     String selectDraftTaskUsageId(@Param("tenantId") String tenantId, @Param("examId") String examId,
                                   @Param("taskId") String taskId);
 
     /** 数据库当前日期（YYYYMMDD；自动命名用，对齐 Go to_char(NOW(), 'YYYYMMDD')）。 */
-    @Select("SELECT to_char(NOW(), 'YYYYMMDD')")
+    @Select("SELECT DATE_FORMAT(NOW(), '%Y%m%d')")
     String currentDateYmd();
 
     /** 同租户同目标类型当天已生成安排数（同天序号基数；对齐 Go NextAutoUsageName）。 */
@@ -94,7 +94,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
 
     /** 批量查询节点已有安排（对齐 Go FindNodeUsages，防逐 examID 回查 N+1）。 */
     @Select("<script>SELECT exam_id AS exam_id, id AS id FROM exam_usages"
-        + " WHERE target_type = 'node' AND #{nodeId} = ANY(target_ids) AND exam_id IN"
+        + " WHERE target_type = 'node' AND JSON_CONTAINS(target_ids, JSON_QUOTE(#{nodeId}), '$') AND exam_id IN"
         + " <foreach collection='examIds' item='e' open='(' separator=',' close=')'>#{e}</foreach></script>")
     List<NodeUsageRow> selectNodeUsageRows(@Param("examIds") List<String> examIds, @Param("nodeId") String nodeId);
 
@@ -145,7 +145,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     String examTenantId(@Param("examId") String examId);
 
     /** 清理课程级旧测评（无结果的 exam_usages，对齐 Go CleanupCourseLevelAssessments） */
-    @Delete("DELETE FROM exam_usages eu WHERE eu.target_type = 'course' AND #{courseId} = ANY(eu.target_ids)"
+    @Delete("DELETE FROM exam_usages eu WHERE eu.target_type = 'course' AND JSON_CONTAINS(eu.target_ids, JSON_QUOTE(#{courseId}), '$')"
         + " AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)")
     int cleanupCourseLevelAssessments(@Param("courseId") String courseId);
 
@@ -160,7 +160,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = eu.exam_id) AS question_count,"
         + " COALESCE(e.total_score, 0) AS total_score,"
         + " <if test='classNodeId != null and classNodeId != \"\"'>"
-        + " COALESCE(eu.target_type &lt;&gt; 'class' OR #{classNodeId} = ANY(eu.target_ids), false) AS class_match,"
+        + " COALESCE(eu.target_type &lt;&gt; 'class' OR JSON_CONTAINS(eu.target_ids, JSON_QUOTE(#{classNodeId}), '$'), false) AS class_match,"
         + " </if>"
         + " <if test='classNodeId == null or classNodeId == \"\"'>"
         + " COALESCE(eu.target_type &lt;&gt; 'class', false) AS class_match,"
@@ -172,7 +172,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " WHERE eu.status IN ('published', 'finished')"
         + " AND eu.target_type IN ('class', 'major', 'department', 'public')"
         + " AND eu.tenant_id = #{tenantId}"
-        + " ORDER BY eu.start_time ASC NULLS LAST LIMIT 100</script>")
+        + " ORDER BY (eu.start_time IS NULL), eu.start_time ASC LIMIT 100</script>")
     List<Map<String, Object>> selectExamCenter(@Param("tenantId") String tenantId, @Param("userId") String userId,
                                                @Param("classNodeId") String classNodeId);
 

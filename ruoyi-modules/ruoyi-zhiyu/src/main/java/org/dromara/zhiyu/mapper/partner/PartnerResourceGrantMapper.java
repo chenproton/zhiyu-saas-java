@@ -37,7 +37,7 @@ public interface PartnerResourceGrantMapper extends BaseMapperPlus<PartnerResour
      */
     @Select("SELECT tenant_id FROM alliance_resource_grants"
         + " WHERE enterprise_id = #{enterpriseId} AND resource_type = #{resourceType}"
-        + " AND #{resourceId} = ANY(resource_ids) LIMIT 1")
+        + " AND JSON_CONTAINS(resource_ids, JSON_QUOTE(#{resourceId}), '$') LIMIT 1")
     String selectGrantTenantId(@Param("enterpriseId") String enterpriseId, @Param("resourceType") String resourceType,
                                @Param("resourceId") String resourceId);
 
@@ -45,10 +45,11 @@ public interface PartnerResourceGrantMapper extends BaseMapperPlus<PartnerResour
      * 从全部授权记录中移除资源 id（资源删除时清理孤儿引用）。
      */
     @Delete("UPDATE alliance_resource_grants SET resource_ids = JSON_REMOVE(resource_ids, JSON_UNQUOTE(JSON_SEARCH(resource_ids, 'one', #{resourceId}))),"
-        + " updated_at = NOW() WHERE resource_type = #{resourceType} AND #{resourceId} = ANY(resource_ids)")
+        + " updated_at = NOW() WHERE resource_type = #{resourceType}"
+        + " AND JSON_CONTAINS(resource_ids, JSON_QUOTE(#{resourceId}), '$')")
     int removeResourceId(@Param("resourceType") String resourceType, @Param("resourceId") String resourceId);
 
     /** 删除授权集合被清空的整行。 */
-    @Delete("DELETE FROM alliance_resource_grants WHERE resource_type = #{resourceType} AND cardinality(resource_ids) = 0")
+    @Delete("DELETE FROM alliance_resource_grants WHERE resource_type = #{resourceType} AND JSON_LENGTH(resource_ids) = 0")
     int deleteEmptyGrants(@Param("resourceType") String resourceType);
 }
