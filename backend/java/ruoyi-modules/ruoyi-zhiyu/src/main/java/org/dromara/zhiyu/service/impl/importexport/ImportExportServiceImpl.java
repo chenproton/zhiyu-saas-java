@@ -2545,6 +2545,7 @@ public class ImportExportServiceImpl implements IImportExportService {
             }
             TrainingProgramCourse c = new TrainingProgramCourse();
             c.setId(UUID.randomUUID().toString());
+            c.setProgramId(programId);
             c.setCredits(credits);
             c.setHours(hours);
             c.setNature(nature);
