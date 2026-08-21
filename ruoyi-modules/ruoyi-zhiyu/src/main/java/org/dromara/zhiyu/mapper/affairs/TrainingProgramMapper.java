@@ -14,6 +14,10 @@ import org.dromara.zhiyu.domain.affairs.TrainingProgram;
  */
 public interface TrainingProgramMapper extends BaseMapperPlus<TrainingProgram, TrainingProgram> {
 
+    /** 方案是否属于指定租户（导入/跨模块归属校验用）。 */
+    @org.apache.ibatis.annotations.Select("SELECT EXISTS(SELECT 1 FROM training_programs WHERE id = #{id} AND tenant_id = #{tenantId})")
+    boolean programExists(@Param("id") String id, @Param("tenantId") String tenantId);
+
     /**
      * 克隆课程（对齐 Go CloneProgram：复制 10 列，theory/practice 取默认 0）。
      */

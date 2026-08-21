@@ -29,6 +29,7 @@ import org.dromara.zhiyu.mapper.affairs.AffairsScheduleImportMapper;
 import org.dromara.zhiyu.mapper.alliance.AllianceBrandMapper;
 import org.dromara.zhiyu.mapper.alliance.AllianceExpertMapper;
 import org.dromara.zhiyu.mapper.affairs.TrainingProgramCourseMapper;
+import org.dromara.zhiyu.mapper.affairs.TrainingProgramMapper;
 import org.dromara.zhiyu.mapper.importexport.ImportExportMapper;
 import org.dromara.zhiyu.mapper.importexport.QuestionImportMapper;
 import org.dromara.zhiyu.mapper.importexport.ScenarioImportMapper;
@@ -147,6 +148,7 @@ public class ImportExportServiceImpl implements IImportExportService {
     private final LessonGranularCourseImportMapper granularImportMapper;
     private final LessonCourseImportMapper courseImportMapper;
     private final TrainingProgramCourseMapper programCourseMapper;
+    private final TrainingProgramMapper programMapper;
     private final TermMapper termMapper;
     private final VenueMapper venueMapper;
     private final PeriodSlotMapper periodSlotMapper;
@@ -2595,6 +2597,10 @@ public class ImportExportServiceImpl implements IImportExportService {
         }
         if (programId == null || programId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少方案ID");
+        }
+        // 防跨租户 IDOR：方案归属校验（对照排课导入 termExists 租户校验；training_program_courses 无 tenant_id 列，归属在父表）
+        if (!programMapper.programExists(programId, tenantId)) {
+            throw new ApiException(400, "bad_request", "方案不存在或不属于当前租户");
         }
         programCourseMapper.deleteByProgram(programId);
         for (TrainingProgramCourse c : courses) {
