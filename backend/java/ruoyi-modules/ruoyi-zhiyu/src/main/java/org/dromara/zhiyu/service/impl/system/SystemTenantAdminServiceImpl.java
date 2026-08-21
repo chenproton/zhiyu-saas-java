@@ -52,6 +52,8 @@ public class SystemTenantAdminServiceImpl implements ISystemTenantAdminService {
             throw new ApiException(500, "internal_error", "租户内不存在角色: " + roleCode);
         }
         adminMapper.incrementRoleCount(tenantId, roleCode);
+        // admin_ids 追加新管理员（幂等），保证 tenants.admin_ids 与真实管理员一致（前端按此统计管理员数量）
+        adminMapper.appendAdminIds(tenantId, id);
         TenantAdminItem admin = adminMapper.getAdmin(tenantId, id, roleCode);
         admin.setNewPassword(plainPassword);
         return admin;

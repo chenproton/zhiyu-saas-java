@@ -56,7 +56,25 @@ public interface SystemTenantAdminMapper {
         + " AND user_id IN (SELECT id FROM users WHERE id = #{adminId} AND tenant_id = #{tenantId})")
     int deleteAdminRoles(@Param("tenantId") String tenantId, @Param("adminId") String adminId);
 
-    @Update("UPDATE tenants SET admin_ids = JSON_REMOVE(admin_ids, JSON_UNQUOTE(JSON_SEARCH(admin_ids, 'one', #{adminId}))) WHERE id = #{tenantId}")
+    /**
+     * 管理员 id 追加进 tenants.admin_ids（JSON 数组，防重复）。
+     *
+     * <p>仅当 id 不在数组中时追加：JSON_SEARCH 未命中返回 NULL，JSON_ARRAY_APPEND 会重复追加，
+     * 故用 NOT JSON_CONTAINS 条件做幂等（对齐建租户时 updateAdminIds 的首个管理员语义）。</p>
+     */
+    @Update("UPDATE tenants SET admin_ids = JSON_ARRAY_APPEND(admin_ids, '$', #{adminId})"
+        + " WHERE id = #{tenantId} AND NOT JSON_CONTAINS(admin_ids, JSON_QUOTE(#{adminId}))")
+    int appendAdminIds(@Param("tenantId") String tenantId, @Param("adminId") String adminId);
+
+    /**
+     * 管理员 id 从 tenants.admin_ids（JSON 数组）移除。
+     *
+     * <p>adminId 不在数组中时 JSON_SEARCH 返回 NULL，原 SQL 会把 NULL 写入 NOT NULL 的
+     * admin_ids 列导致 500（Data truncated，删除非首个管理员必现）——
+     * 加 IS NOT NULL 条件：未命中时 UPDATE 0 行、值保持不变。</p>
+     */
+    @Update("UPDATE tenants SET admin_ids = JSON_REMOVE(admin_ids, JSON_UNQUOTE(JSON_SEARCH(admin_ids, 'one', #{adminId})))"
+        + " WHERE id = #{tenantId} AND JSON_SEARCH(admin_ids, 'one', #{adminId}) IS NOT NULL")
     int removeFromAdminIds(@Param("tenantId") String tenantId, @Param("adminId") String adminId);
 
     @Delete("DELETE FROM users WHERE id = #{adminId} AND tenant_id = #{tenantId}")

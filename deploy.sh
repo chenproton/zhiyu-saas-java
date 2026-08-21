@@ -1285,8 +1285,11 @@ init_db_schema() {
   local pair
   for pair in "mysql_ry_vue:sys_social" "mysql_ry_job:sj_namespace" \
               "mysql_ry_workflow:flow_definition" "mysql_ry_ai:sai_user"; do
-    local f="${pair%%:*}" probe="${pair##*:}"
-    if mysql_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='$probe'" 2>/dev/null | grep -q "$probe"; then
+    local f="${pair%%:*}" probe="${pair##*:}" cnt
+    # 门闩：代表表已存在则跳过。COUNT(*) 输出为 0/1，必须按数字判断——
+    # 原 grep -q "$probe" 匹配表名永假，导致已存在的表每次部署都重跑并报 ERROR 1050
+    cnt=$(mysql_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='$probe'" 2>/dev/null)
+    if [[ "$cnt" =~ ^[1-9][0-9]*$ ]]; then
       skipped=$((skipped + 1))
       continue
     fi
